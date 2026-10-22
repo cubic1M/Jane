@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
+import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import { listGoals } from "@/lib/goals";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { GOALS_COPY, monthlyLine } from "@/planning/goals-copy";
 import { removeGoal } from "./actions";
 import { GoalForm } from "./goal-form";
+import { GoalTradeoffs } from "./tradeoffs";
 
 const EMPTY = { goalId: "", name: "", target: "", targetDate: "", accountId: "", saved: "" };
 const dollars = (cents: number | null) => (cents === null ? "" : (cents / 100).toFixed(2));
@@ -21,13 +23,15 @@ const day = (iso: string) =>
 async function Goals() {
   const user = await requireUser();
   const db = await scopedDb();
-  const [goals, accounts] = await Promise.all([
+  const [goals, accounts, tradeoffs] = await Promise.all([
     listGoals(user.id),
     db.accounts.findMany({
       where: { type: "depository" },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    // Spec step 241: only worth the year plan's work with two goals or more.
+    db.savingsGoals.count().then((n) => (n >= 2 ? loadTradeoffs(user.id) : null)),
   ]);
 
   return (
@@ -106,6 +110,8 @@ async function Goals() {
           ))}
         </ul>
       )}
+
+      {tradeoffs && <GoalTradeoffs view={tradeoffs} />}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Add a goal</h2>

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mattersBlock } from "./primer-matters";
 import type { Snapshot } from "./snapshot";
 
-// The primer's "what matters most": the scan's suggestions first, then the ranked list, and the
+// The primer's "what matters most": the one ranked list (the scan's suggestions lead it), and the
 // open findings, all with figures the guardrails will allow.
 
 const snap = (over: Partial<Snapshot> = {}) =>
@@ -80,6 +80,8 @@ describe("what matters most, for the primer", () => {
     const first = block.text.split("\n")[0];
     expect(first.indexOf("Stop paying overdraft")).toBeLessThan(first.indexOf("Hulu"));
     expect(first).toContain("82% sure, based on 3 bank fees in 12 months of data");
+    // From the one ranked list: said once.
+    expect(first.match(/Stop paying overdraft/g)).toHaveLength(1);
     expect(block.cents).toEqual(expect.arrayContaining([10_500]));
   });
 });

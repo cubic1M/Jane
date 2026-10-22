@@ -47,7 +47,11 @@ describe.runIf(url)("insurance decisions through the router", () => {
 
   it("answers umbrella from the balances", async () => {
     const { reply } = await ask("should I get umbrella insurance");
-    expect(reply.body).toMatch(/^Probably yes\. You have about \$529,380\.67/);
+    // The balances and values are $529k, but after what they owe they're under the line the
+    // page uses, so the chat agrees with the page (insurance QA pass).
+    expect(reply.body).toMatch(
+      /^Probably not yet\. You have about \$529,380\.67 by your balances and values, but after what you owe/,
+    );
     expect(reply.body).toMatch(/\d+% sure: your balances/);
   });
 

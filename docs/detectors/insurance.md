@@ -94,6 +94,9 @@ eight people by `src/detectors/insurance.test.ts` and the harness:
 | `card_cover` | AD4 | a protection plan plus a premium-card fee | the plan's yearly cost |
 | `employer_benefits` | AD2 | salary, an employer, and private life or health charges | half the private premium |
 | `policy_documents` | AD3 | an uploaded policy document waiting to be confirmed | up to a tenth of insurance charges |
+| `fsa_deadline` | AJ5 | an FSA election and plan terms, with $50+ left inside 90 days of Dec 31 | the FSA money left (an estimate: claims aren't visible) |
+| `deductible_met` | AJ5 | the whole deductible paid, from October on | the plan's share of a planned $500 visit |
+| `medical_bill_dispute` | AJ5 | a bill of $500+ paid more than $100 above the plan's share | the difference |
 | `life_insurance`, `business_insurance` | X1, AJ6 | already in `home.ts` and `work.ts` | as there |
 
 Every insurance tool in the registry now has a detector (none are left on

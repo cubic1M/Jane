@@ -19,7 +19,9 @@ export function needInputFromProfile(profile: Profile, data: ProfileInput): Need
   const otherDebt = sum(
     (a) => (a.type === "loan" && a.subtype !== "mortgage") || a.type === "credit",
   );
-  const assets = sum((a) => a.type === "depository" || a.type === "investment");
+  const assets =
+    sum((a) => a.type === "depository" || a.type === "investment") +
+    (data.extras?.ownedValueCents ?? 0);
   const payoff = data.liabilities.find((l) => l.kind === "mortgage")?.payoffDate ?? null;
   return {
     yearlyPayCents: typeof income === "number" && income > 0 ? income * 12 : null,

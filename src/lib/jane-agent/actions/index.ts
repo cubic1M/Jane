@@ -54,6 +54,7 @@ import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
 import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
+import { practicePrefsSave } from "./practice";
 import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
@@ -95,6 +96,8 @@ import {
   taxIpPinHave,
   taxIpPinRemind,
 } from "./tax-identity";
+import { taxDisasterLoss, taxDisasterMove } from "./tax-disaster";
+import { taxDraftConfirm, taxDraftDismiss } from "./tax-draft";
 import { taxEquityAside } from "./tax-equity";
 import { taxYearsPlan } from "./tax-years";
 import { taxAccountantSeen } from "./tax-accountant";
@@ -165,6 +168,8 @@ import { leanNotNow, leanStart } from "./lean";
 import { askAnswer } from "./ask";
 import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
+import { twoApprove, twoDecline, twoSplitEven, twoSplitIncome } from "./two";
+import { tradeoffsKeep, tradeoffsPick } from "./tradeoffs";
 import { unusualMe, unusualNotMe } from "./unusual";
 import {
   bundleNo1,
@@ -249,6 +254,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
+  "practice.prefs_save": practicePrefsSave,
   // Spec step 88.
   "clarify.1": clarifyOne,
   "clarify.2": clarifyTwo,
@@ -336,6 +342,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.notice_team": taxNoticeTeam,
   "tax.notice_mine": taxNoticeMine,
   "tax.ippin_remind": taxIpPinRemind,
+  "tax.disaster_move": taxDisasterMove,
+  "tax.disaster_loss": taxDisasterLoss,
+  "tax.draft_confirm": taxDraftConfirm,
+  "tax.draft_dismiss": taxDraftDismiss,
   "tax.ippin_have": taxIpPinHave,
   "tax.identity_open": taxIdentityOpen,
   "tax.identity_not": taxIdentityNot,
@@ -433,6 +443,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "steady.pay": steadyPay,
   "steady.skip": steadySkip,
   "steady.on": steadyOn,
+  "two.split_income": twoSplitIncome,
+  "two.split_even": twoSplitEven,
+  "two.approve": twoApprove,
+  "two.decline": twoDecline,
+  "tradeoffs.pick": tradeoffsPick,
+  "tradeoffs.keep": tradeoffsKeep,
   "unusual.me": unusualMe,
   "unusual.not_me": unusualNotMe,
 };
@@ -488,7 +504,7 @@ export async function takeChatAction(
   const outcome = await handler.run({ userId, message, action, client, now, choice });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
-  await markPrimerStale(userId, { client });
+  await markPrimerStale(userId, { client, now });
   // Spec step 230: each button of a debt review is its own item. The message stays open,
   // without the button just used, until every item has been dealt with.
   const review = message.refs.reviewButtons ?? [];

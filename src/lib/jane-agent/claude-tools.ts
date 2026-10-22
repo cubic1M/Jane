@@ -19,7 +19,13 @@ import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
+import { FIGURE_IDS, type FigureId } from "@/config/figures";
+import { explainFigure } from "@/lib/figures";
+import { openBooks } from "@/lib/books";
 import { loadSteady } from "@/lib/steady-pay";
+import { loadMoneyForTwo } from "@/lib/money-for-two";
+import { loadTradeoffs } from "@/lib/goal-tradeoffs";
+import type { TradeOrder } from "@/planning/goal-tradeoffs";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
@@ -62,6 +68,7 @@ import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { NEWS_TOOLS, isNewsTool, runNewsTool } from "./news-tools";
+import { PRACTICE_TOOLS, isPracticeTool, runPracticeTool } from "./practice-tools";
 import { rebalanceOffer } from "./investments/replies";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
@@ -344,6 +351,35 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "explain_figure",
+    description:
+      'How a headline figure was worked out (spec step 239): the rows it adds up, the biggest transactions behind it, the rules and rates from config and the date, for safe_to_spend, monthly_spending, monthly_income, net_worth, health_score or debt_free. Use it for "how did you get that?". If the person says a figure is wrong, point them to the page (/figures/<figure>) where a category or their income can be corrected; the correction sticks and updates everything that used it.',
+    input_schema: {
+      type: "object",
+      properties: { figure: { type: "string", enum: [...FIGURE_IDS] } },
+      required: ["figure"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "books_check",
+    description:
+      "Whether the person's data adds up (spec step 238): what Jane checks every day (balances against transactions, the same account linked twice, a link that stopped updating or needs a sign-in, transfers between their own accounts) and the problems still open, in words. Figures that rely on a problem account are marked until it's fixed. Use it for \"are my numbers right?\" and before standing behind a figure from an account with a problem.",
+    input_schema: noInput,
+  },
+  {
+    name: "money_for_two",
+    description:
+      "Money for two (spec step 242), for a person in a household with a partner: how shared bills split (half each or by income, with the shares; never the partner's income), who owes whom, joint goals and their progress, the amount from which a move out of a shared account needs both partners' taps, and big moves waiting for a tap. Only what either of them shared; never the partner's own accounts. Null when they have no partner in Jane.",
+    input_schema: noInput,
+  },
+  {
+    name: "goal_tradeoffs",
+    description:
+      "Goals that trade off openly (spec step 241): whether the person's savings goals need more each month than the year plan has room for; if so each order's dates (when each goal is reached and how many months late), Jane's suggested order with the reason, and the order the person picked, if any. Use it for \"which goal first?\" and \"can I do both?\". The pick re-plans every sector only on the person's tap (the button under the answer).",
+    input_schema: noInput,
+  },
+  {
     name: "steady_pay",
     description:
       "A steady paycheck from uneven income (spec step 240): whether the person has uneven (contracting, gig or freelance) income; if so this month's steady paycheck from the buffer (savings) to checking, why it is what it is (the buffer above or below its target, never under its floor), the buffer's target and floor, the tax share set aside from each deposit, and whether this month's has gone. Moves happen only by autopilot within its caps or the person's tap.",
@@ -419,6 +455,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...INVESTMENT_TOOLS,
   // Spec step 293: the practice portfolio's news.
   ...NEWS_TOOLS,
+  // Phase AW: the practice portfolio's settings, read and changed with a confirmation card.
+  ...PRACTICE_TOOLS,
 ];
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -436,6 +474,7 @@ export async function runChatTool(
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   if (isNewsTool(name)) return runNewsTool(userId, name, input, { client, now });
+  if (isPracticeTool(name)) return runPracticeTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
@@ -753,6 +792,85 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "explain_figure": {
+      const figure = (input as { figure?: unknown }).figure;
+      if (typeof figure !== "string" || !(FIGURE_IDS as readonly string[]).includes(figure)) {
+        return out({ error: "Unknown figure." });
+      }
+      const working = await explainFigure(userId, figure as FigureId, { client, now });
+      if (!working) return out({ working: null, why: "No accounts linked yet." });
+      return out({
+        figure: working.title,
+        value: working.value,
+        asOf: working.asOf,
+        how: working.summary,
+        rows: working.rows,
+        transactions: working.transactions.map((t) => ({
+          date: t.date,
+          what: t.description,
+          amount: money(t.amountCents),
+          category: t.category_label,
+        })),
+        rulesUsed: working.rules,
+        canBeCorrected: working.corrections,
+        page: `/figures/${working.id}`,
+      });
+    }
+    case "books_check": {
+      const books = await openBooks(userId, { client });
+      return out({
+        allAddUp: books.open.filter((o) => o.kind !== "transfer").length === 0,
+        problems: books.open.map((o) => ({ what: o.label, detail: o.words })),
+        accountsWithMarkedFigures: books.markedAccountIds.length,
+      });
+    }
+    case "money_for_two": {
+      const view = await loadMoneyForTwo(userId, { client, now });
+      if (!view) return out({ view: null, why: "No partner in their household yet." });
+      return out({
+        partner: view.partnerName,
+        split: view.rule,
+        chosen: view.chosen,
+        yourShare: `${Math.round(view.myShareBps / 100)}%`,
+        yourShareByIncome: `${Math.round(view.incomeMyShareBps / 100)}%`,
+        owedToYou: money(view.owedToMeCents),
+        spentTogetherThisMonth: money(view.sharedSpentCents),
+        bothTapsFrom: money(view.bigMoveCents),
+        jointGoals: view.jointGoals.map((g) => ({
+          name: g.name,
+          saved: money(g.savedCents),
+          target: money(g.targetCents),
+          by: g.targetDate,
+        })),
+        bigMovesWaiting: view.bigMoves.map((m) => ({
+          amount: money(m.amountCents),
+          to: m.toName,
+          on: m.runOn,
+          waitingFor: m.mine ? "your partner" : "you",
+        })),
+      });
+    }
+    case "goal_tradeoffs": {
+      const view = await loadTradeoffs(userId, { client, now });
+      if (!view) return out({ view: null, why: "No accounts linked yet." });
+      const dates = (o: TradeOrder) =>
+        o.dates.map((d) => ({
+          goal: d.name,
+          reached: d.month,
+          wanted: d.wantedMonth,
+          monthsLate: d.lateMonths,
+        }));
+      return out({
+        competing: view.competing,
+        options: view.options
+          .slice(0, 4)
+          .map((o) => ({ first: o.dates[0]?.name, dates: dates(o) })),
+        suggested: view.suggested ? dates(view.suggested) : null,
+        why: view.reason || null,
+        picked: view.chosen !== null,
+        nowInForce: view.current ? dates(view.current) : null,
+      });
     }
     case "steady_pay": {
       const view = await loadSteady(userId, { client, now });
