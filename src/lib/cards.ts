@@ -71,6 +71,11 @@ function whatChanges(type: FindingType, evidence: Json): string {
     case "insurance_reshop":
       return `We get quotes with the same coverage as your ${merchant} policy and show you any cheaper option before anything changes.`;
     case "card_interest":
+      // Spec step 282: a loan option picked from the options card. Never an application.
+      if (evidence.loanPick === true) {
+        const lender = text(evidence.applyWith);
+        return `We check the option you picked and send you ${lender ? `${lender}'s steps to apply yourself` : "the steps"}. Nothing is applied for and no money moves until you do it.`;
+      }
       return "We ask your card company for a lower rate and look at balance transfer options for you.";
     case "low_balance_risk":
       return "We ask your billers to move due dates to after your payday, and remind you before the low point.";

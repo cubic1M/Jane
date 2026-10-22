@@ -2255,6 +2255,43 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 700,
     },
   },
+  // The perfect fit for borrowing (spec step 283): the pick and the options to choose from.
+  {
+    id: "debt-65",
+    text: "what's the best loan for me?",
+    needs: "rules",
+    expect: {
+      intent: "loan_fit",
+      mentions: /personal|loan/i,
+      link: "/loans",
+      list: true,
+      maxChars: 900,
+    },
+  },
+  {
+    id: "debt-66",
+    text: "which loan should I get to consolidate my cards?",
+    needs: "rules",
+    expect: {
+      intent: "loan_fit",
+      mentions: /cards|consolidat|loan/i,
+      link: "/loans",
+      list: true,
+      maxChars: 900,
+    },
+  },
+  {
+    id: "debt-67",
+    text: "what's the best car loan for $20,000?",
+    needs: "rules",
+    expect: {
+      intent: "loan_fit",
+      mentions: /car loan|\\$20,000/i,
+      link: "/loans",
+      list: true,
+      maxChars: 900,
+    },
+  },
   // Spending, saving and housing decisions, three sentences or fewer.
   {
     id: "debt-56",

@@ -3,7 +3,9 @@ import {
   FIT_COMFORT_SHARE,
   FIT_CREDIT_FLOOR,
   FIT_DTI_CEILING,
+  FIT_BASELINE_MAX_MONTHS,
   FIT_MAX_OPTIONS,
+  FIT_KEEP_CASH_MONTHS,
   FIT_MIN_SAVING_CENTS,
   FIT_NET_TO_GROSS,
   FIT_NO_SCORE_EVIDENCE,
@@ -15,6 +17,7 @@ import type { LoanProduct } from "@/config/debt";
 import { formatRate } from "@/insights/loans";
 import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
+import { payoffPlan } from "./debt";
 import { levelPaymentCents, totalPaidCents } from "./refinance";
 
 // The fit engine (spec step 281), pure: for one need, the person's credit, income, debts and
@@ -33,6 +36,8 @@ export type FitPerson = {
   // All debt payments a month before this loan.
   debtPaymentsCents: number;
   cashCents: number;
+  // A typical month of spending, to keep in cash; absent when not known.
+  spendCents?: number;
   debtTrouble: boolean;
 };
 
@@ -42,7 +47,6 @@ export type FitBaseline = {
   balanceCents: number;
   aprBps: number;
   monthlyCents: number;
-  remainingMonths: number;
 };
 
 export type FitInput = {
@@ -57,7 +61,8 @@ export type FitInput = {
   evidence?: readonly { percent: number; reason: string }[];
 };
 
-export type FitLabel = "best_cost" | "lowest_payment" | "fastest" | "alternative" | "keep";
+export type FitLabel =
+  "best_cost" | "lowest_payment" | "fastest" | "alternative" | "keep" | "payoff";
 
 export const FIT_LABEL_TEXT: Readonly<Record<FitLabel, string>> = {
   best_cost: "Best total cost",
@@ -65,6 +70,7 @@ export const FIT_LABEL_TEXT: Readonly<Record<FitLabel, string>> = {
   fastest: "Paid off soonest",
   alternative: "Another lender",
   keep: "Keep what you have",
+  payoff: "Pay it off with your cash",
 };
 
 export type FitOption = {
@@ -112,6 +118,27 @@ const years = (months: number) => {
   return `${Number.isInteger(y) ? y : y.toFixed(1)} yr${y === 1 ? "" : "s"}`;
 };
 
+// Keeping what they have: paying what they pay now until it's gone, month by month (a card's
+// minimum may barely cover its interest, so it can run for years).
+export function keepCost(b: FitBaseline): { months: number; totalCents: number } {
+  const plan = payoffPlan(
+    [
+      {
+        id: "keep",
+        name: b.label,
+        balanceCents: b.balanceCents,
+        aprBps: b.aprBps,
+        minimumCents: b.monthlyCents,
+      },
+    ],
+    b.monthlyCents,
+    "avalanche",
+  );
+  return plan.ok
+    ? { months: plan.months, totalCents: plan.totalPaidCents }
+    : { months: FIT_BASELINE_MAX_MONTHS, totalCents: b.monthlyCents * FIT_BASELINE_MAX_MONTHS };
+}
+
 type Scored = Omit<FitOption, "label" | "headline" | "details"> & {
   eligible: boolean;
   why: string | null;
@@ -123,9 +150,7 @@ function score(input: FitInput, offer: LoanOffer): Scored {
   const paymentCents = levelPaymentCents(input.amountCents, offer.aprBps, offer.termMonths);
   const totalCostCents =
     totalPaidCents(input.amountCents, offer.aprBps, offer.termMonths) + offer.feeCents;
-  const baselineTotal = baseline
-    ? totalPaidCents(baseline.balanceCents, baseline.aprBps, baseline.remainingMonths)
-    : null;
+  const baselineTotal = baseline ? keepCost(baseline).totalCents : null;
   const savesCents = baselineTotal !== null ? baselineTotal - totalCostCents : null;
   const paymentChangeCents = baseline ? paymentCents - baseline.monthlyCents : null;
   const paymentShare =
@@ -196,7 +221,7 @@ function detailsOf(o: Scored, baseline: FitBaseline | null | undefined): string[
   if (baseline && o.savesCents !== null) {
     lines.push(
       o.savesCents >= 0
-        ? `${formatCents(o.savesCents)} less than keeping ${baseline.label} (${formatCents(baseline.monthlyCents)} a month for ${baseline.remainingMonths} more months)`
+        ? `${formatCents(o.savesCents)} less than keeping ${baseline.label} (${formatCents(baseline.monthlyCents)} a month for ${keepCost(baseline).months} more months)`
         : `${formatCents(-o.savesCents)} more than keeping ${baseline.label}`,
     );
   }
@@ -225,7 +250,42 @@ const toOption = (o: Scored, label: FitLabel, input: FitInput): FitOption => ({
   details: detailsOf(o, input.baseline),
 });
 
+// Paying off what they have from cash they don't need: the cheapest way out when the cash covers
+// it and still leaves a month of spending. Null when it doesn't, or there is nothing to pay.
+function payoffOption(input: FitInput): FitOption | null {
+  const b = input.baseline;
+  const spend = input.person.spendCents;
+  if (!b || spend === undefined) return null;
+  const spare = input.person.cashCents - spend * FIT_KEEP_CASH_MONTHS;
+  if (spare < b.balanceCents) return null;
+  const saves = keepCost(b).totalCents - b.balanceCents;
+  if (saves < FIT_MIN_SAVING_CENTS) return null;
+  return {
+    id: "payoff",
+    label: "payoff",
+    lender: "Pay it off with your cash",
+    aprBps: 0,
+    rateType: null,
+    termMonths: 0,
+    paymentCents: 0,
+    feeCents: 0,
+    totalCostCents: b.balanceCents,
+    savesCents: saves,
+    paymentChangeCents: -b.monthlyCents,
+    paymentShare: 0,
+    breakEvenMonths: null,
+    comfortable: true,
+    headline: `Pay off ${b.label} with your cash - ${formatCents(saves)} less`,
+    details: [
+      `Uses ${formatCents(b.balanceCents)} of your ${formatCents(input.person.cashCents)} in cash`,
+      `Leaves ${formatCents(input.person.cashCents - b.balanceCents)}, at least a month of spending`,
+      `${formatCents(saves)} less than keeping ${b.label} (${formatCents(b.monthlyCents)} a month for ${keepCost(b).months} more months)`,
+    ],
+  };
+}
+
 export function fit(input: FitInput): FitResult {
+  const payoff = payoffOption(input);
   const scored = input.offers.map((o) => score(input, o));
   const eligible = scored.filter((s) => s.eligible);
   const ineligible: FitIneligible[] = scored
@@ -251,6 +311,19 @@ export function fit(input: FitInput): FitResult {
     whatWouldHelp: [],
     assumptions,
   };
+  if (eligible.length === 0 && payoff) {
+    const w = [
+      { percent: 90, reason: "your balances as your accounts show them" },
+      ...(input.evidence ?? []),
+    ].reduce((a, b) => (b.percent < a.percent ? b : a));
+    return {
+      ...base,
+      options: [payoff],
+      pick: payoff.id,
+      confidence: { percent: w.percent, reason: w.reason },
+      ineligible,
+    };
+  }
   if (eligible.length === 0) {
     const helps: string[] = [];
     const floor = FIT_CREDIT_FLOOR[input.product];
@@ -274,7 +347,9 @@ export function fit(input: FitInput): FitResult {
   const best = stretch
     ? [...eligible].sort((a, b) => a.paymentCents - b.paymentCents)[0]
     : cheapest;
-  const picked: { s: Scored; label: FitLabel }[] = [{ s: best, label: "best_cost" }];
+  const picked: { s: Scored; label: FitLabel }[] = [
+    { s: best, label: stretch ? "lowest_payment" : "best_cost" },
+  ];
   const taken = new Set([best.id]);
   const add = (s: Scored | undefined, label: FitLabel) => {
     if (s && !taken.has(s.id) && picked.length < FIT_MAX_OPTIONS) {
@@ -282,7 +357,8 @@ export function fit(input: FitInput): FitResult {
       picked.push({ s, label });
     }
   };
-  add([...eligible].sort((a, b) => a.paymentCents - b.paymentCents)[0], "lowest_payment");
+  if (!stretch)
+    add([...eligible].sort((a, b) => a.paymentCents - b.paymentCents)[0], "lowest_payment");
   add(
     [...pool].sort((a, b) => a.termMonths - b.termMonths || a.totalCostCents - b.totalCostCents)[0],
     "fastest",
@@ -307,16 +383,17 @@ export function fit(input: FitInput): FitResult {
   let pick = best.id;
   if (input.baseline && options.length < FIT_MAX_OPTIONS + 1) {
     const b = input.baseline;
+    const kept = keepCost(b);
     const keepOption: FitOption = {
       id: "keep",
       label: "keep",
       lender: "Keep what you have",
       aprBps: b.aprBps,
       rateType: null,
-      termMonths: b.remainingMonths,
+      termMonths: kept.months,
       paymentCents: b.monthlyCents,
       feeCents: 0,
-      totalCostCents: totalPaidCents(b.balanceCents, b.aprBps, b.remainingMonths),
+      totalCostCents: kept.totalCents,
       savesCents: 0,
       paymentChangeCents: 0,
       paymentShare:
@@ -325,10 +402,10 @@ export function fit(input: FitInput): FitResult {
           : null,
       breakEvenMonths: null,
       comfortable: true,
-      headline: `Keep ${b.label} - ${formatCents(b.monthlyCents)} a month for ${years(b.remainingMonths)} more`,
+      headline: `Keep ${b.label} - ${formatCents(b.monthlyCents)} a month for ${years(kept.months)} more`,
       details: [
         `${formatRate(b.aprBps)} on ${formatCents(b.balanceCents)}`,
-        `${formatCents(b.monthlyCents)} a month for ${b.remainingMonths} more months`,
+        `${formatCents(b.monthlyCents)} a month for ${kept.months} more months`,
       ],
     };
     if (keeps) {
@@ -337,6 +414,23 @@ export function fit(input: FitInput): FitResult {
     } else if (options.length < FIT_MAX_OPTIONS) {
       options.push(keepOption);
     }
+  }
+
+  if (payoff) {
+    options.unshift(payoff);
+    options.splice(FIT_MAX_OPTIONS + 1);
+    pick = payoff.id;
+    const w = [
+      { percent: 90, reason: "your balances as your accounts show them" },
+      ...(input.evidence ?? []),
+    ].reduce((a, b) => (b.percent < a.percent ? b : a));
+    return {
+      ...base,
+      options,
+      pick,
+      confidence: { percent: w.percent, reason: w.reason },
+      assumptions,
+    };
   }
 
   const evidence = [

@@ -1,4 +1,5 @@
 import type { DecisionId } from "@/planning/debt-decisions";
+import type { FitNeed } from "@/config/fit";
 import type { RewardCategory } from "@/config/credit-cards";
 
 // Questions about debts, understood by rules (spec Phase Y). Pure: normalized text in
@@ -61,6 +62,8 @@ export type DebtIntent =
   // "Should I pay off my card or invest?", "should I consolidate?", "should I close a card?":
   // a straight answer from the person's numbers (src/planning/debt-decisions.ts).
   | { kind: "debt_decision"; which: DecisionId }
+  // "What's the best loan for me?", "best car loan for $20,000": the fit engine's options.
+  | { kind: "loan_fit"; need: FitNeed; amountCents: number | null }
   // Spec step 228: "when does my PMI end by itself?", "is my escrow too high?", "HELOC or
   // cash-out refinance for a $40,000 kitchen?".
   | {
@@ -115,6 +118,7 @@ export const DEBT_KINDS = new Set<string>([
   "debt_review",
   "car_loan",
   "debt_decision",
+  "loan_fit",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -170,6 +174,20 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
     /\b(?:should|worth|better|good idea)\b.*\b(?:pay(?:ing)? (?:off|down)|extra (?:on|toward|payments? (?:on|to)))\b.*\bstudent (?:loans?|debt)\b|\bstudent (?:loans?|debt)\b.*\b(?:early|ahead of schedule|faster)\b|\bpay(?:ing)? (?:off|down) (?:my )?student (?:loans?|debt) (?:early|faster|ahead)\b/,
   ],
 ];
+
+// "What's the best loan for me?", "which loan should I get for a car?": the fit engine.
+const LOAN_FIT =
+  /\b(?:best|right|cheapest|perfect|smartest) (?:personal |car |auto |home |mortgage |consolidation )?loans?\b|\bwhich loan\b|\bwhat loan\b|\bloan options\b|\bwhat are my options (?:for|to borrow)\b|\bfind me a (?:car |personal |home )?loan\b|\bbest way to (?:borrow|finance)\b|\bhow should i (?:borrow|finance)\b/;
+const fitNeedOf = (text: string): FitNeed =>
+  /\bconsolidat\w*/.test(text)
+    ? "consolidation"
+    : /\brefinanc\w*|\brefi\b/.test(text)
+      ? "refinance"
+      : /\b(?:car|auto|truck|vehicle)\b/.test(text)
+        ? "car"
+        : /\b(?:home|house|mortgage|condo)\b/.test(text)
+          ? "home"
+          : "personal";
 
 const OWE =
   /\bhow much (?:do|does|did) (?:i|we) (?:still )?owe\b|\bhow much debt\b|\bwhat do (?:i|we) owe (?:in total|altogether|overall)\b|\b(?:my )?total (?:debt|owed)\b|\bwhat (?:are|is) (?:all )?my (?:debts?|loans)\b|\b(?:list|show)(?: me)? (?:all )?my (?:debts|loans)\b|\ball my debts?\b/;
@@ -398,6 +416,9 @@ export function parseDebtIntent(
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).
   if (/^(?:lower|reduce|cut|negotiate|bring down|shrink|cancel|refund)\b/.test(text)) return null;
+  if (LOAN_FIT.test(text) && !/\b(?:student)\b/.test(text)) {
+    return { kind: "loan_fit", need: fitNeedOf(text), amountCents };
+  }
   for (const [which, pattern] of DECISION_PATTERNS) {
     if (pattern.test(text)) return { kind: "debt_decision", which };
   }
