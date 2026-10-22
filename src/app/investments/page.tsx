@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
@@ -20,6 +20,7 @@ import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
+import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
@@ -85,6 +86,8 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
+  // Constant search (Phase AW): a cheap practice scan, after the page is sent.
+  after(() => scanOnOpenQuietly(user.id));
   const data = await loadInvestments(user.id);
   const [answers, simulated, level, returns, crypto, backtests] = await Promise.all([
     profileOf(user.id),
