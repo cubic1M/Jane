@@ -175,16 +175,6 @@ export async function runJaneAgent(
   const posted = await postMessages(userId, planned, { client, now });
   // What's important goes out as a notification, unless the person is looking (spec step 85).
   await queueChatNotificationsSafely(userId, { client, now, trigger });
-  // The brief is out; now the whole snapshot is built and kept for the chat, before the slow
-  // sector work, so the first question reads it instead of building it.
-  if (early)
-    await safely("Saving the snapshot", async () => {
-      const full = await loadDetectionInput(userId, { client, now });
-      await saveSnapshot(userId, await loadSnapshot(userId, { client, now, input: full }), {
-        client,
-        now,
-      });
-    });
   return { posted };
 }
 
@@ -250,4 +240,22 @@ export async function runJaneAgentForAll({
     }
   }
   return run;
+}
+
+// The whole snapshot, built and kept for the chat: its first question reads this instead of
+// building it. The first scan does it right after the first brief is out (the person is already
+// reading), before the slow sector work.
+export async function keepFullSnapshot(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<void> {
+  try {
+    const input = await loadDetectionInput(userId, { client, now });
+    await saveSnapshot(userId, await loadSnapshot(userId, { client, now, input }), {
+      client,
+      now,
+    });
+  } catch (error) {
+    console.error("Saving the snapshot failed", { userId, error: String(error) });
+  }
 }

@@ -30,6 +30,8 @@ import { loadReviewExtras, type ReviewExtras } from "@/lib/investments/yearly-re
 import { loadLocation, type LocationView } from "@/lib/investments/location";
 import { loadPlanMenu, type PlanMenuView } from "@/lib/investments/plan-menu";
 import { loadShortTerm, type ShortTermView } from "@/lib/investments/short-term";
+import { loadFamilyFile, type FamilyFileView } from "@/lib/investments/family-file";
+import { loadValues, type ValuesView } from "@/lib/investments/values";
 import { loadSuddenMoney, type SuddenMoneyView } from "@/lib/investments/sudden-money";
 import { automaticLog } from "@/lib/investments/automatic";
 import type { Bucket } from "@/planning/goal-buckets";
@@ -99,6 +101,10 @@ export type InvestmentSnapshot = {
   planMenu: Pick<PlanMenuView, "proposed" | "plan" | "pending">;
   // Spec step 234: money needed within three years, and its ladders.
   shortTerm: Pick<ShortTermView, "candidates">;
+  // Spec step 237: accounts whose beneficiaries are missing or out of date.
+  familyFile: Pick<FamilyFileView, "attention">;
+  // Spec step 236: the values list and what applying it would change.
+  values: Pick<ValuesView, "prefs" | "plan" | "note">;
   // Spec step 235: large deposits that aren't pay, and their plans.
   sudden: Pick<SuddenMoneyView, "items">;
   // Spec step 164: what Jane did by herself in the last month, and what she asked about.
@@ -187,6 +193,12 @@ export async function loadInvestmentSnapshot(
     })),
     shortTerm: await loadShortTerm(userId, { client, now }).then((s) => ({
       candidates: s.candidates,
+    })),
+    familyFile: await loadFamilyFile(userId, { client }).then((f) => ({ attention: f.attention })),
+    values: await loadValues(userId, { client, now }).then((v) => ({
+      prefs: v.prefs,
+      plan: v.plan,
+      note: v.note,
     })),
     sudden: await loadSuddenMoney(userId, { client, now }).then((s) => ({ items: s.items })),
     automatic: await automaticLog(userId, { client, now }),

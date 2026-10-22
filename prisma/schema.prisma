@@ -412,12 +412,14 @@ model User {
 
   costlyProducts CostlyProduct[]
 
-  planMenus         PlanMenu[]
-  planChanges       PlanChange[]
-  billLadders       BillLadder[]
-  suddenMoneys      SuddenMoney[]
-  valuesPreference  ValuesPreference?
-  practicePortfolio PracticePortfolio?
+  planMenus            PlanMenu[]
+  planChanges          PlanChange[]
+  billLadders          BillLadder[]
+  suddenMoneys         SuddenMoney[]
+  valuesPreference     ValuesPreference?
+  accountBeneficiaries AccountBeneficiary[]
+  familyFile           FamilyFile?
+  practicePortfolio    PracticePortfolio?
 
   @@map("users")
 }
@@ -531,6 +533,7 @@ model Account {
   investmentTransactions InvestmentTransaction[]
   // Spec step 133: orders placed in it.
   brokerageOrders        BrokerageOrder[]
+  beneficiaries          AccountBeneficiary[]
 
   @@index([userId])
   @@index([itemId])
@@ -4024,6 +4027,46 @@ model ValuesPreference {
   @@map("values_preferences")
 }
 
+// Spec step 237: who the person has named on an account that takes a beneficiary (or a
+// transfer-on-death registration). tier is primary or contingent; confirmedOn is the day they
+// last said the names are right, which life events are compared with.
+model AccountBeneficiary {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  accountId    String   @map("account_id")
+  name         String
+  relationship String
+  sharePct     Int      @map("share_pct")
+  tier         String   @default("primary")
+  confirmedOn  DateTime @map("confirmed_on") @db.Date
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@map("account_beneficiaries")
+}
+
+// Spec step 237: the person's family file. events are life events they told Jane about
+// (marriage, divorce, birth); picks are the sections they chose to share; contacts and
+// documents are what they typed.
+model FamilyFile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  events    Json     @default("[]")
+  picks     String[] @default([])
+  contacts  Json     @default("[]")
+  documents String   @default("")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("family_files")
+}
+
 // Spec step 290 (Phase AW, Stage A): a practice portfolio on paper. Nothing here is a real
 // account and none of it can reach the brokerage stand-in. cashCents and the positions are the
 // ledger's running state; every change is a PracticeTrade row, so the state can always be
@@ -4083,6 +4126,8 @@ model PracticeTrade {
   reason      String
   rule        String
   undone      Boolean  @default(false)
+  // Its card in the chat put away ("Got it", step 296).
+  dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(3)
 
   portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
@@ -4140,6 +4185,8 @@ model PracticeOpportunity {
   details     Json
   status      String
   tradeIds    String[] @map("trade_ids")
+  // Its card in the chat put away ("Got it", step 296).
+  dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(3)
 
   portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
