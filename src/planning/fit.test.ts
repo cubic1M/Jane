@@ -1,0 +1,253 @@
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+
+import { PEOPLE } from "@/config/people";
+import {
+  FIT_COMFORT_SHARE,
+  FIT_CREDIT_FLOOR,
+  FIT_MAX_OPTIONS,
+  FIT_MIN_OPTIONS,
+  FIT_NO_SCORE_EVIDENCE,
+  FIT_OFFER_EVIDENCE,
+  FIT_TERMS,
+  FIT_TROUBLE_COMFORT_FACTOR,
+} from "@/config/fit";
+import { demoLender } from "@/lib/lenders/demo";
+import type { LoanOffer } from "@/lib/lenders/partner";
+import { inputFor } from "@/profile/sample";
+import { fit, type FitInput, type FitPerson } from "./fit";
+import { fitPersonFrom } from "./fit-person";
+
+// Spec step 274: the fit engine, on the lender stand-in's offers and on made-up offers where
+// the stand-in doesn't have the case.
+
+const person = (over: Partial<FitPerson> = {}): FitPerson => ({
+  creditScore: 720,
+  incomeCents: 600_000,
+  debtPaymentsCents: 60_000,
+  cashCents: 1_000_000,
+  debtTrouble: false,
+  ...over,
+});
+
+async function offersFor(
+  product: "auto" | "personal" | "mortgage",
+  amountCents: number,
+  creditBand: "excellent" | "good" | "fair" = "good",
+): Promise<LoanOffer[]> {
+  const out: LoanOffer[] = [];
+  for (const termMonths of FIT_TERMS[product]) {
+    out.push(
+      ...(await demoLender.prequalify({
+        product,
+        amountCents,
+        termMonths,
+        creditBand,
+        month: "2026-10",
+      })),
+    );
+  }
+  return out;
+}
+const car = async (p: FitPerson, extra: Partial<FitInput> = {}) =>
+  fit({
+    need: "car",
+    product: "auto",
+    amountCents: 2_000_000,
+    person: p,
+    offers: await offersFor("auto", 2_000_000),
+    ...extra,
+  });
+
+describe("options for a new car loan", () => {
+  it("shows two to four options with a pick, each with a one-line headline and the maths", async () => {
+    const r = await car(person());
+    expect(r.options.length).toBeGreaterThanOrEqual(FIT_MIN_OPTIONS);
+    expect(r.options.length).toBeLessThanOrEqual(FIT_MAX_OPTIONS);
+    expect(r.pick).toBe(r.options[0].id);
+    expect(r.options[0].label).toBe("best_cost");
+    for (const o of r.options) {
+      expect(o.headline).toMatch(/^.+ \d+(\.\d+)?% - \$[\d,.]+ a month for \d+(\.\d)? yrs?$/);
+      expect(o.details).toHaveLength(3);
+      expect(o.details[2]).toMatch(/paid in all/);
+    }
+    expect(new Set(r.options.map((o) => o.id)).size).toBe(r.options.length);
+  });
+
+  it("picks on total cost with fees counted, not the lowest rate", () => {
+    const offer = (id: string, aprBps: number, feeCents: number): LoanOffer => ({
+      id,
+      lender: id,
+      product: "auto",
+      aprBps,
+      rateType: "fixed",
+      termMonths: 60,
+      feeCents,
+      feeLabel: "fee",
+      sourceUrl: "https://example.com",
+      demo: false,
+    });
+    const r = fit({
+      need: "car",
+      product: "auto",
+      amountCents: 1_000_000,
+      person: person(),
+      offers: [offer("lowrate", 500, 150_000), offer("cheap", 600, 0)],
+    });
+    expect(r.pick).toBe("cheap");
+    const low = r.options.find((o) => o.id === "lowrate")!;
+    const cheap = r.options.find((o) => o.id === "cheap")!;
+    expect(low.totalCostCents).toBeGreaterThan(cheap.totalCostCents);
+    expect(low.aprBps).toBeLessThan(cheap.aprBps);
+    expect(low.details[2]).toContain("including $1,500.00 in fees");
+  });
+
+  it("marks a payment over a comfortable share and picks only from the comfortable ones", async () => {
+    const r = await car(person({ incomeCents: 300_000, debtPaymentsCents: 0 }));
+    const share = FIT_COMFORT_SHARE.auto;
+    const pick = r.options.find((o) => o.id === r.pick)!;
+    expect(pick.comfortable).toBe(true);
+    expect(pick.paymentShare!).toBeLessThanOrEqual(share);
+    for (const o of r.options.filter((x) => !x.comfortable)) {
+      expect(o.paymentShare!).toBeGreaterThan(share);
+    }
+  });
+
+  it("picks the lowest payment and says so when nothing is comfortable", async () => {
+    const r = await car(person({ incomeCents: 150_000, debtPaymentsCents: 0 }));
+    expect(r.options.every((o) => !o.comfortable)).toBe(true);
+    const lowest = Math.min(...r.options.map((o) => o.paymentCents));
+    expect(r.options.find((o) => o.id === r.pick)!.paymentCents).toBe(lowest);
+    expect(r.assumptions.join(" ")).toContain("None of the options is comfortable");
+  });
+});
+
+describe("who is eligible", () => {
+  it("turns a score under the floor down with the reason, and says what would help", async () => {
+    const r = await car(person({ creditScore: FIT_CREDIT_FLOOR.auto - 20 }));
+    expect(r.options).toEqual([]);
+    expect(r.pick).toBeNull();
+    expect(r.ineligible[0].reason).toBe(
+      `Lenders usually want a score of ${FIT_CREDIT_FLOOR.auto} or more for this; yours is ${FIT_CREDIT_FLOOR.auto - 20}.`,
+    );
+    expect(r.whatWouldHelp[0]).toMatch(/^A score of 560 would open this up/);
+  });
+
+  it("turns down a payment that takes debt-to-income over the limit", async () => {
+    const r = await car(person({ debtPaymentsCents: 380_000 }));
+    expect(r.ineligible.length).toBeGreaterThan(0);
+    expect(r.ineligible[0].reason).toMatch(
+      /Your debt payments would be \d+% of your income, over the 50% lenders allow\./,
+    );
+    expect(r.whatWouldHelp.join(" ")).toMatch(/Paying down debt/);
+  });
+
+  it("needs an income to judge a payment against", async () => {
+    const r = await car(person({ incomeCents: null }));
+    expect(r.options).toEqual([]);
+    expect(r.ineligible[0].reason).toBe("I can't see an income to judge the payment against.");
+  });
+});
+
+describe("a refinance or a consolidation", () => {
+  const baseline = {
+    label: "your car loan",
+    balanceCents: 1_280_000,
+    aprBps: 1_790,
+    monthlyCents: 46_000,
+    remainingMonths: 36,
+  };
+  const refi = async (p: FitPerson, b = baseline) =>
+    fit({
+      need: "refinance",
+      product: "auto",
+      amountCents: b.balanceCents,
+      person: p,
+      offers: await offersFor("auto", b.balanceCents),
+      baseline: b,
+    });
+
+  it("shows what each saves over keeping the loan, and picks the best saving", async () => {
+    const r = await refi(person());
+    const pick = r.options.find((o) => o.id === r.pick)!;
+    expect(pick.savesCents!).toBeGreaterThan(100_000);
+    expect(pick.headline).toMatch(/^.+ \d+(\.\d+)?% - \$[\d,.]+ less over \d+(\.\d)? yrs?$/);
+    expect(pick.details.join(" ")).toContain("less than keeping your car loan");
+    expect(r.options.some((o) => o.label === "keep")).toBe(true);
+    expect(r.options.length).toBeLessThanOrEqual(FIT_MAX_OPTIONS + 1);
+  });
+
+  it("keeps what you have when no offer saves enough", async () => {
+    const r = await refi(person(), { ...baseline, aprBps: 400, balanceCents: 1_000_000 });
+    expect(r.pick).toBe("keep");
+    expect(r.options.find((o) => o.id === "keep")!.headline).toMatch(
+      /^Keep your car loan - \$460\.00 a month/,
+    );
+  });
+
+  it("never steers someone in debt trouble to a bigger payment than they have", async () => {
+    const r = await refi(person({ debtTrouble: true, incomeCents: 350_000 }));
+    if (r.pick !== "keep") {
+      const pick = r.options.find((o) => o.id === r.pick)!;
+      expect(pick.paymentCents).toBeLessThanOrEqual(baseline.monthlyCents);
+    }
+    for (const o of r.options.filter((x) => x.comfortable && x.id !== "keep")) {
+      expect(o.paymentShare!).toBeLessThanOrEqual(
+        FIT_COMFORT_SHARE.auto * FIT_TROUBLE_COMFORT_FACTOR,
+      );
+    }
+  });
+
+  it("counts the fee against the saving and says when it pays back", async () => {
+    const r = await refi(person());
+    const withFee = r.options.find((o) => o.feeCents > 0 && o.breakEvenMonths !== null);
+    if (withFee) expect(withFee.details.join(" ")).toMatch(/The fee pays back in \d+ months/);
+  });
+});
+
+describe("how sure the pick is", () => {
+  it("is capped by stand-in quotes, and lower still with no pulled score or thin income evidence", async () => {
+    expect((await car(person())).confidence).toEqual({
+      percent: FIT_OFFER_EVIDENCE.percent,
+      reason: FIT_OFFER_EVIDENCE.reason,
+    });
+    expect((await car(person({ creditScore: null }))).confidence).toEqual({
+      percent: FIT_NO_SCORE_EVIDENCE.percent,
+      reason: FIT_NO_SCORE_EVIDENCE.reason,
+    });
+    const thin = await car(person(), { evidence: [{ percent: 55, reason: "2 months of income" }] });
+    expect(thin.confidence).toEqual({ percent: 55, reason: "2 months of income" });
+  });
+});
+
+describe("the eight sample people, for a $5,000 personal loan", () => {
+  for (const p of PEOPLE) {
+    it(`${p.name}: options with a pick, or the reasons nothing fits`, async () => {
+      const input = inputFor(p.id);
+      const who = fitPersonFrom(input);
+      const r = fit({
+        need: "personal",
+        product: "personal",
+        amountCents: 500_000,
+        person: who,
+        offers: await offersFor("personal", 500_000),
+      });
+      if (r.options.length === 0) {
+        expect(r.ineligible.length).toBeGreaterThan(0);
+        expect(r.pick).toBeNull();
+        return;
+      }
+      expect(r.options.length).toBeGreaterThanOrEqual(1);
+      expect(r.options.map((o) => o.id)).toContain(r.pick);
+      const pick = r.options.find((o) => o.id === r.pick)!;
+      if (who.debtTrouble) {
+        // The person in trouble is only ever picked a payment inside the tighter share.
+        expect(pick.comfortable || r.assumptions.join(" ").includes("None of the options")).toBe(
+          true,
+        );
+      }
+      expect(r.confidence!.percent).toBeLessThanOrEqual(FIT_OFFER_EVIDENCE.percent);
+    });
+  }
+});
