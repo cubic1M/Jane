@@ -100,6 +100,9 @@ export const AUTOPILOT_LIMITS = {
   // At most this many trades a day for one portfolio.
   tradesPerDay: 12,
 } as const;
+// The limits one portfolio runs with: the hard limits, with the rebalance band and the per-fund
+// cap as the person set them (src/planning/practice-profile.ts), never above the hard ones.
+export type AutopilotLimits = { readonly [K in keyof typeof AUTOPILOT_LIMITS]: number };
 
 // The strategy universe (the strategy library, src/planning/strategies/): plain index ETFs a
 // level's strategy may hold, each with its sleeve (what it counts as against the level's stock

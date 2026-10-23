@@ -10,7 +10,7 @@ vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
 import { adviceMode } from "@/lib/advice-mode";
 import { logAudit } from "@/lib/audit";
 import { startPractice } from "@/lib/practice/portfolio";
-import { loadPreferences, savePreferences } from "@/lib/practice/preferences";
+import { loadPreferences, practiceProfileOf, savePreferences } from "@/lib/practice/preferences";
 import { applyPatch, DEFAULT_PREFERENCES } from "@/planning/practice-preferences";
 import { ACTION_HANDLERS } from "./actions";
 import { CHAT_TOOLS, runChatTool } from "./claude-tools";
@@ -31,6 +31,9 @@ describe("the practice settings tools go with the questions that need them", () 
     "stop the extra moves",
     "avoid oil companies",
     "I need this money in 2030",
+    "use the trend strategy for my practice portfolio",
+    "only index funds in my practice portfolio",
+    "rebalance my practice portfolio less often",
   ])("%s", (q) => {
     const names = toolsFor(CHAT_TOOLS, q, null, null, "2026-10-22").map((t) => t.name);
     expect(names).toContain("change_practice_settings");
@@ -129,6 +132,35 @@ describe.runIf(url)("practice settings in the chat", () => {
     await savePreferences(id, { avoid: ["fossil_fuels", "tobacco"] }, "page", { client, now: NOW });
     const less = await propose(id, { avoid_remove: ["fossil fuels"] });
     expect(less.ok && less.refs.practicePrefs).toEqual({ avoid: ["tobacco"] });
+  });
+
+  it('"use the trend strategy", "trade less often", "only index funds", "at most half in one fund"', async () => {
+    const id = await person();
+    const card = await propose(id, {
+      strategy: "trend",
+      rebalance_pace: "rarely",
+      universe: "funds_only",
+      max_fund_percent: 50,
+    });
+    expect(card.ok).toBe(true);
+    if (!card.ok) return;
+    expect(card.line).toContain("Strategy: Jane's pick for your level → Trend filter");
+    expect(card.line).toContain("How often to rebalance: Normal → Rarely");
+    expect(card.line).toContain("What Jane may buy: Funds and a few big companies → Funds only");
+    expect(card.line).toContain("Most in one fund: 80% (the limit) → 50%");
+    await tap(id, card.refs);
+    expect(await loadPreferences(id, { client })).toMatchObject({
+      strategy: "trend",
+      rebalancePace: "rarely",
+      universe: "funds_only",
+      maxFundPercent: 50,
+    });
+    const profile = await practiceProfileOf(id, { client, now: NOW });
+    expect(profile.limits).toMatchObject({ rebalanceBand: 0.08, perEtfShare: 0.5 });
+    expect(profile.strategy?.key).toBe("trend(months=6)");
+    // Over the hard limit is refused, as on the page.
+    const over = await propose(id, { max_fund_percent: 95 });
+    expect(over).toEqual({ ok: false, error: "Pick a share from 20% to 80%." });
   });
 
   it("goes through the same check as the settings page", async () => {

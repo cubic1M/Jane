@@ -122,6 +122,7 @@ export async function runAutopilot(
     weights: profile.weights,
     avoid: new Set(profile.avoid),
     cashBufferCents: profile.cashBufferCents,
+    limits: profile.limits,
   });
   if (!profile.trades) return { ran: true, deposit, fills: [], suggested: plan };
   const broker = practiceBroker();

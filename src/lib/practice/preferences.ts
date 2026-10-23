@@ -1,5 +1,5 @@
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
-import { DEFAULT_LEVEL } from "@/config/practice-preferences";
+import { DEFAULT_LEVEL, STRATEGY_CHOICES } from "@/config/practice-preferences";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -42,6 +42,10 @@ const SELECT = {
   harvestLosses: true,
   cashBufferCents: true,
   mode: true,
+  strategy: true,
+  rebalancePace: true,
+  universe: true,
+  maxFundPercent: true,
 } as const;
 
 export async function loadPreferences(
@@ -111,6 +115,10 @@ export async function savePreferences(
     harvestLosses: p.harvestLosses,
     cashBufferCents: p.cashBufferCents,
     mode: p.mode,
+    strategy: p.strategy,
+    rebalancePace: p.rebalancePace,
+    universe: p.universe,
+    maxFundPercent: p.maxFundPercent,
   };
   const db = scopedFor(userId, client);
   await db.practicePreferences.upsert({
@@ -165,8 +173,18 @@ export async function practiceProfileOf(
 // it is (no goal-date glide path, nothing avoided that moves the mix): the month's strategy
 // weights replace the mix's, and every hard limit and preference still applies to each trade.
 async function withStrategy(profile: PracticeProfile, options: Options): Promise<PracticeProfile> {
-  const today = await strategyToday(profile.level, options);
+  // The person chose the level's mix alone: no strategy on top.
+  if (profile.strategyChoice === "mix") return profile;
+  const choice = STRATEGY_CHOICES[profile.strategyChoice];
+  const today = await strategyToday(profile.level, {
+    ...options,
+    ...("id" in choice ? { pick: { id: choice.id, params: choice.params } } : {}),
+  });
   if (!today) return profile;
+  const whose =
+    today.source === "person"
+      ? "the strategy you chose"
+      : "the level's choice from the daily replay";
   const model = MODEL_PORTFOLIOS[profile.level].weights;
   const untouched =
     !profile.glide &&
@@ -175,9 +193,9 @@ async function withStrategy(profile: PracticeProfile, options: Options): Promise
     );
   const followed = today.follow && untouched;
   const note = followed
-    ? `This month the mix follows ${today.chosen.label.toLowerCase()} (${today.chosen.key}), the level's choice from the daily replay.`
+    ? `This month the mix follows ${today.chosen.label.toLowerCase()} (${today.chosen.key}), ${whose}.`
     : today.follow
-      ? "Your settings change the mix, so it stays as they set it rather than following the level's strategy."
+      ? `Your settings change the mix, so it stays as they set it rather than following ${whose}.`
       : today.why;
   return {
     ...profile,

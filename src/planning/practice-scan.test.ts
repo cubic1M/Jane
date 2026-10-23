@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { RiskLevel } from "@/config/investing";
 import {
   classTickers,
+  MODEL_PORTFOLIOS,
   OPPORTUNITY_LEVELS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
@@ -9,6 +10,7 @@ import {
   type PracticeClass,
 } from "@/config/portfolios";
 import {
+  DRIFT_STOCKS_BAND,
   OPPORTUNITY_RULES_OFF,
   rulesOnAt,
   SCAN_CAPS,
@@ -120,6 +122,17 @@ describe("the daily scan: drift-rebalance", () => {
       expect(d.past, day).toBe(false);
     }
     expect(kinds(await scanOn(3, "2026-10-08", held))).not.toContain("drift_rebalance");
+  });
+
+  it("follows the person's rebalance band: a wider one lets the 2020 shock pass", async () => {
+    const held = await boughtOn(3, "2020-02-18");
+    const prices = await pricesOn("2020-03-23");
+    const weights = MODEL_PORTFOLIOS[3].weights;
+    expect(drift(3, held.state, prices, weights).past).toBe(true);
+    expect(drift(3, held.state, prices, weights, 0.5).past).toBe(
+      // Stocks together past their own band still count.
+      Math.abs(drift(3, held.state, prices, weights).stocks - 0.6) > DRIFT_STOCKS_BAND,
+    );
   });
 });
 
