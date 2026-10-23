@@ -184,6 +184,7 @@ const STATUS: Record<string, string> = {
   proven_savings: "Adding up what I saved you…",
   autopilot_settings: "Checking what I may do by myself…",
   nightly_log: "Looking at last night's checks…",
+  what_jane_did: "Looking at what I did for you…",
   priorities: "Working out what matters most…",
   whole_picture: "Looking across everything…",
   balance_forecast: "Looking at where your balance is heading…",

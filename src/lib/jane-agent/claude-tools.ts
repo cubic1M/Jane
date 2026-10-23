@@ -67,6 +67,7 @@ import { quotesAnswer } from "./insurance/quotes";
 import { calculate, type CalcInput } from "./calculate";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
+import { loadTimeline } from "@/lib/timeline";
 import { ACTION_HANDLERS } from "./actions";
 import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
@@ -158,6 +159,7 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   net_worth: { label: "See net worth", href: "/net-worth" },
   investments: { label: "See what you own", href: "/investments" },
   settings: { label: "Settings", href: "/settings" },
+  jane: { label: "What Jane did", href: "/jane" },
   // Taxes (spec steps 118–127).
   taxes: { label: "See your taxes", href: "/taxes" },
   tax_profile: { label: "See my tax profile", href: "/taxes/profile" },
@@ -264,6 +266,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "autopilot_settings",
     description:
       'How much Jane may do by herself in each area (spec step 141): subscriptions and bills, insurance, debt, taxes, investing, goals and budgets. Each area\'s level (always ask, the safe stuff, everything allowed), its caps each time and each month, and what it used this month. Over a cap Jane asks. To change an area, the person types it ("let Jane handle insurance up to $50 a month") or uses Settings.',
+    input_schema: noInput,
+  },
+  {
+    name: "what_jane_did",
+    description:
+      "Everything Jane did for the person, newest first (spec step 56, the What Jane did page): what she did by herself under the person's autopilot or a standing rule, and what she did when they tapped, each with when, the area, why she was allowed to, the money involved, and whether it can still be undone (and where). Use for 'what have you done for me', 'why did you do that', 'did you do anything by yourself'. The changes the team works on are list_actions.",
     input_schema: noInput,
   },
   {
@@ -1101,6 +1109,21 @@ export async function runChatTool(
           why: r.why,
           findingId: r.kind === "finding" ? r.ref : null,
         })),
+      });
+    }
+    case "what_jane_did": {
+      const entries = await loadTimeline(userId, { client, limit: 20 });
+      return out({
+        entries: entries.map((e) => ({
+          on: e.at.toISOString().slice(0, 10),
+          area: e.sectorLabel,
+          by: e.by === "jane" ? "Jane, by herself" : "Jane, when you tapped",
+          what: e.what,
+          why: e.why,
+          money: e.cents === null ? null : money(e.cents),
+          canUndoAt: e.undoHref,
+        })),
+        page: "jane",
       });
     }
     case "nightly_log": {
