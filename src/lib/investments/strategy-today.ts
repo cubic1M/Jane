@@ -8,7 +8,7 @@ import { alignUniverse } from "@/planning/strategies/engine";
 import { followToday, type FollowToday } from "@/planning/strategies/follow";
 import { latestStrategies, type ChosenStrategy } from "./strategy-eval";
 
-// The strategy a level's practice portfolio follows today (Phase AW, Stage A): the weekly
+// The strategy a level's practice portfolio follows today (Phase AW, Stage A): the daily
 // evaluation's choice for the level (./strategy-eval.ts) and its weights for the month from the
 // stored closes. Null before the first evaluation. Remembered for the day, as every portfolio at
 // a level reads the same. Practice money only.
