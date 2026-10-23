@@ -174,9 +174,15 @@ export function basePremium(
       return DEMO_PRICING.rideshare.perYearCents * deductible * state;
     case "business": {
       const p = DEMO_PRICING.business;
+      // General liability at its level (none when set to 0), the property, and professional
+      // liability (spec step 201).
+      const general = num(coverage.generalLiability, p.defaults.generalLiability);
+      const level = p.liabilityLevels.find((l) => general >= l.atLeastCents)!.factor;
+      const professional = num(coverage.professionalLiability, p.defaults.professionalLiability);
       return (
-        (p.baseCents +
-          (num(coverage.businessProperty, p.defaults.businessProperty) * p.propertyBps) / 10_000) *
+        ((general > 0 ? p.baseCents * level : 0) +
+          (num(coverage.businessProperty, p.defaults.businessProperty) * p.propertyBps) / 10_000 +
+          (professional * p.professionalPerMillionCents) / 100_000_000) *
         state
       );
     }

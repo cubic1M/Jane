@@ -21,6 +21,9 @@ const LABELS: Record<NeedKind, string> = {
   auto_liability: "Car injury liability",
   home_liability: "Home liability",
   renters_liability: "Renters liability",
+  business_liability: "Business liability",
+  professional_liability: "Professional liability",
+  business_equipment: "Work equipment cover",
 };
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON =

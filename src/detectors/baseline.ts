@@ -71,6 +71,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
   freelancer: [
     "auto_insurance",
     "borrowing_power",
+    // Spec step 201: client work needs general and professional liability.
+    "business_insurance",
     "disability_insurance",
     "emergency_fund",
     "estimated_taxes",

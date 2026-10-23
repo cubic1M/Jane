@@ -368,6 +368,8 @@ export const PEOPLE: readonly Person[] = [
       "borrowing_power",
       // Spec step 244: WeWork and Adobe sit in a catch-all category.
       "month_close",
+      // Spec step 201: client work needs general and professional liability.
+      "business_insurance",
     ],
     mustNot: [
       "beneficiaries",

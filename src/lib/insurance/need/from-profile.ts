@@ -1,4 +1,6 @@
 import type { Profile, ProfileInput } from "@/profile/build";
+import { BUSINESS_SALES_DEPOSIT } from "@/config/insurance";
+import type { SelfEmployment } from "@/lib/insurance/business-rules";
 import { personalPay } from "@/profile/pay";
 import type { NeedInput } from "./types";
 
@@ -9,6 +11,28 @@ import type { NeedInput } from "./types";
 
 const yearsUntil = (today: string, day: string) =>
   (Date.parse(day) - Date.parse(today)) / (365.25 * 86_400_000);
+
+// Spec step 201: what the profile's transactions say about a business or side work, over the
+// months the profile covers (the tax profile's mileage isn't in it, so no miles).
+export function selfEmploymentFrom(profile: Profile, data: ProfileInput): SelfEmployment {
+  const sum = (f: (t: ProfileInput["transactions"][number]) => boolean) =>
+    data.transactions.filter(f).reduce((s, t) => s + Math.abs(t.amountCents), 0);
+  const months = Math.max(1, profile.months);
+  return {
+    declared: profile.facts.income_pattern.value === "business",
+    serviceCents: sum((t) => t.pfc === "INCOME_CONTRACTOR" && t.amountCents < 0),
+    gigCents: sum((t) => t.pfc === "INCOME_GIG_ECONOMY" && t.amountCents < 0),
+    salesCents: sum(
+      (t) =>
+        t.pfc === "INCOME_OTHER" && t.amountCents < 0 && BUSINESS_SALES_DEPOSIT.test(t.description),
+    ),
+    miles: 0,
+    equipmentCents: sum((t) => t.pfc === "GENERAL_MERCHANDISE_ELECTRONICS" && t.amountCents > 0),
+    gasMonthlyCents: Math.round(
+      sum((t) => t.pfc === "TRANSPORTATION_GAS" && t.amountCents > 0) / months,
+    ),
+  };
+}
 
 export function needInputFromProfile(profile: Profile, data: ProfileInput): NeedInput | null {
   const policies = data.extras?.coverPolicies;
@@ -37,5 +61,6 @@ export function needInputFromProfile(profile: Profile, data: ProfileInput): Need
     netWorthCents: assets - mortgage - otherDebt,
     workLifeCoverCents: 0,
     policies,
+    business: selfEmploymentFrom(profile, data),
   };
 }
