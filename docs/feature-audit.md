@@ -389,7 +389,7 @@ fit engine, suggestions).
 
 1. The weekly email's "Saved so far" uses `savedToDate`, the same total as `/jane` and Home,
    so it stops counting savings that never showed up. Done tonight in PR "Merge: saved
-   figures".
+   figures" (#543).
 2. Later: "confirmed" anywhere is `provenSavings`. The weekly figures say "back or agreed"
    for a company's promise until the bill shows it. One helper replaces the five copies of
    the rule.
@@ -435,7 +435,7 @@ end-to-end tests.
 - The price-rise thresholds (5% rise, steady price within 3%, two earlier charges) are written
   in both `config/detection.ts` and `config/changes.ts`.
 
-**Merge plan** (tonight, PR "Merge: changes and alerts")
+**Merge plan** (tonight, PR "Merge: changes and alerts", #541)
 
 1. A new subscription's heads-up is linked to its subscription card by the stream they share.
    The chat says it once: "X is a new regular charge… Did you mean to sign up? If not, I can
@@ -575,7 +575,7 @@ groups this evening. **Risk:** low to medium.
 
 **Merge plan**
 
-1. Tonight, PR "Merge: card rate requests": one lower-rate item and one sender, shared by both
+1. Tonight, PR "Merge: card rate requests" (#542): one lower-rate item and one sender, shared by both
    reviews. Both read "asked this month" first and "ask the next card" second, and neither
    sends again within the month. `/loans/review` shows the item once, in the yearly review
    when one is shown.
