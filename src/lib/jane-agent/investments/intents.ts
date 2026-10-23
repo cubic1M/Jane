@@ -42,6 +42,8 @@ export type InvestmentTopic =
   | "practice_pause"
   | "practice_resume"
   | "backtest"
+  // The strategy each level's practice autopilot follows (the daily replay's choice).
+  | "level_strategy"
   // The rule replay ("Did the extra rules help?"): the autopilot's own rules against plain
   // rebalancing and buy and hold, and the rules turned off.
   | "rule_replay";
@@ -217,6 +219,9 @@ const PRACTICE_RESUME =
   /^(?:please )?(?:resume|unpause|restart) (?:it|that|trading)$|\b(?:resume|unpause|restart) (?:the |my )?(?:practice|paper) (?:portfolio|trading|money)\b|\bresume (?:the |my )?opportunities\b/;
 const BACKTEST =
   /\bbacktests?\b|\bhow would (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? have (?:done|gone|performed)\b|\bhow did (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? (?:do|go|perform)\b/;
+// "Which strategy does my level use", "what strategy is the autopilot following".
+const LEVEL_STRATEGY =
+  /\b(?:which|what) (?:investing |investment )?strateg(?:y|ies)\b|\bstrateg(?:y|ies) (?:does|do|is|are) (?:my|the|each|every)\b|\bmy (?:level'?s? )?strategy\b/;
 // The rule replay: whether the autopilot's extra rules helped, and why one was turned off.
 // Before the model backtest, so "backtest the autopilot" gets the autopilot's own rules.
 const RULE_REPLAY =
@@ -231,6 +236,13 @@ function practiceIntent(text: string): InvestmentIntent | null {
   if (PRACTICE_RESUME.test(text)) return { ...base, topic: "practice_resume", which };
   if (PRACTICE_LOG.test(text)) {
     return { ...base, topic: "practice_log", ...(/\bwhy\b/.test(text) ? { explain: true } : {}) };
+  }
+  if (LEVEL_STRATEGY.test(text)) {
+    const name = LEVEL_NAME.exec(text)?.[1];
+    const level = ([1, 2, 3, 4, 5] as const).find(
+      (l) => RISK_LEVELS[l].label.toLowerCase() === name,
+    );
+    return { ...base, topic: "level_strategy", ...(level ? { level } : {}) };
   }
   if (RULE_REPLAY.test(text)) {
     const { level } = levelAndYear(text);

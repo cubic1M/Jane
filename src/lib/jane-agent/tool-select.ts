@@ -166,6 +166,11 @@ const SPECIFIC_LOOKUPS: readonly { when: RegExp; tools: readonly string[] }[] = 
     when: /\b(?:backtest\w*|replay\w*|would\b[^.?!]{0,40}\bhave (?:done|gone|fared|performed|lost|dropped|fallen))\b/i,
     tools: ["backtest_by_level"],
   },
+  // The strategy each level follows: "which strategy does my level use?".
+  {
+    when: /\b(?:which|what) (?:investing |investment )?strateg(?:y|ies)\b|\b(?:investing|investment|autopilot'?s?|level'?s?) strateg(?:y|ies)\b|\bmy strategy\b/i,
+    tools: ["backtest_by_level"],
+  },
   // The rule replay: "did the extra rules help?", "do the dip buys work?".
   {
     when: /\b(?:extra rules|autopilot'?s? rules|rules? (?:help|hurt|work)\w*|dip.?buy\w*)\b|\bautopilot\b[^.?!]{0,20}\bbacktest\w*|\b(?:turn|switch)\w* off\b[^.?!]{0,30}\b(?:tax.?loss|harvest\w*|swaps?|rules?)\b/i,

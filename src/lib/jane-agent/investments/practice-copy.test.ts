@@ -13,6 +13,7 @@ import {
   PRACTICE_ONLY_NOTE,
   practiceLogReply,
   practicePauseReply,
+  levelStrategyReply,
   ruleReplayReply,
 } from "./practice-copy";
 
@@ -191,6 +192,47 @@ describe("the practice portfolio in the chat", () => {
   });
 });
 
+describe("the strategy each level follows, in the chat", () => {
+  it.each([
+    ["which strategy does my level use", undefined],
+    ["what strategy is the autopilot following", undefined],
+    ["what strategy does high use", 4],
+  ])("reads %s as the level's strategy", (text, level) => {
+    expect(read(text)?.topic).toBe("level_strategy");
+    expect(read(text)?.level).toBe(level);
+  });
+
+  it("names the strategy and why, or says the replay hasn't run, never a forecast", () => {
+    const latest = {
+      ranAt: new Date("2026-10-19T11:00:00Z"),
+      source: "alpaca",
+      from: "2016-01-04",
+      to: "2026-10-16",
+      byLevel: {
+        3: {
+          level: 3,
+          id: "trend",
+          key: "trend(months=6)",
+          label: "Trend filter",
+          why: "It beat the level's mix on the later years.",
+        },
+      },
+    } as unknown as Parameters<typeof levelStrategyReply>[1];
+    const own = levelStrategyReply(true, latest, 3, true);
+    expect(own.body).toMatch(
+      /^Your level, Medium, follows the trend filter \(trend\(months=6\)\)\. It beat the level's mix/,
+    );
+    expect(own.body).toMatch(/not a forecast/);
+    expect(own.refs).toEqual({ advice: true });
+    expect(hrefs(own.actions)).toEqual(["/investments#level-strategies-heading"]);
+    // Before the daily replay: the committed research choice and its evidence.
+    expect(levelStrategyReply(true, null, 3, true).body).toMatch(
+      /^Your level, Medium, follows the trend filter \(trend\(months=6\)\)\. Chosen on Alpaca's closes/,
+    );
+    expect(levelStrategyReply(true, null, 5, false).body).toMatch(/^Very high follows its mix\./);
+    expect(levelStrategyReply(false, latest, 3, true).body).toMatch(/demo advice/);
+  });
+});
 describe("the rule replay in the chat", () => {
   it.each([
     ["did the extra rules help?", undefined],

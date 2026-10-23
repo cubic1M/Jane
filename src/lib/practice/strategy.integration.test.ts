@@ -14,7 +14,7 @@ import { runAutopilot } from "./autopilot";
 import { startPractice } from "./portfolio";
 import { practiceProfileOf, savePreferences } from "./preferences";
 
-// The practice autopilot follows its level's chosen strategy (the weekly evaluation's) against a
+// The practice autopilot follows its level's chosen strategy (the daily evaluation's) against a
 // real, migrated Postgres: it buys the strategy's mix for the month within every hard limit,
 // keeps the level's mix when the person's settings change it, and is as before with no choice.
 

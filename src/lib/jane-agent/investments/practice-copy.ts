@@ -3,6 +3,13 @@ import { SCAN_LABELS, SCAN_KINDS, type ScanKind } from "@/config/practice-scan";
 import { formatReturn } from "@/insights/returns";
 import { BACKTEST_NOT_A_FORECAST } from "@/config/backtest";
 import type { Backtests } from "@/lib/investments/backtest";
+import type { LatestStrategies } from "@/lib/investments/strategy-eval";
+import { keyOf } from "@/planning/strategies/select";
+import {
+  STRATEGY_LABELS,
+  STRATEGY_NOT_A_FORECAST,
+  STRATEGY_RESEARCH_CHOICE,
+} from "@/config/strategies";
 import type { LoadedRuleReplays, RuleVerdict } from "@/lib/investments/rule-replay";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
@@ -174,6 +181,40 @@ export function backtestReply(
   };
 }
 
+const STRATEGIES: MessageAction = {
+  id: "open",
+  label: "See every level",
+  kind: "link",
+  href: "/investments#level-strategies-heading",
+};
+
+// "Which strategy does my level use": the daily replay's choice for the level, and why.
+export function levelStrategyReply(
+  advice: boolean,
+  latest: LatestStrategies | null,
+  level: RiskLevel,
+  own: boolean,
+): Reply {
+  if (!advice)
+    return {
+      body: "The practice strategies are demo advice, for the demo bank's sample people only, so I can't show them for your real accounts.",
+      actions: [],
+      refs: {},
+    };
+  const name = own ? `Your level, ${RISK_LEVELS[level].label},` : RISK_LEVELS[level].label;
+  const research = STRATEGY_RESEARCH_CHOICE[level];
+  const c = latest?.byLevel[level] ?? {
+    id: research.id,
+    key: keyOf({ id: research.id, params: research.params }),
+    label: STRATEGY_LABELS[research.id],
+    why: research.why,
+  };
+  return {
+    body: `${name} follows ${c.id === "static" ? "its mix" : `the ${c.label.toLowerCase()} (${c.key})`}. ${c.why}\n${STRATEGY_NOT_A_FORECAST}`,
+    actions: [STRATEGIES],
+    refs: { advice: true },
+  };
+}
 const RULE_REPLAY: MessageAction = {
   id: "open",
   label: "See every level",

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { latestStrategies, type ChosenStrategy } from "./strategy-eval";
 
-// The weekly evaluation's results against a real, migrated Postgres: the latest run's choice per
+// The daily evaluation's results against a real, migrated Postgres: the latest run's choice per
 // level reads back as it was saved.
 
 const url = process.env.TEST_DATABASE_URL;

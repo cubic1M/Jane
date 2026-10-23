@@ -19,7 +19,12 @@ import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 
 const NOW = new Date("2026-10-21T15:00:00Z");
 // No stored history: the sample market.
-const client = { marketPrice: { findMany: async () => [] } } as unknown as PrismaClient;
+// No daily strategy replay yet, unless a test says otherwise.
+let latestRow: unknown = null;
+const client = {
+  marketPrice: { findMany: async () => [] },
+  strategyEvaluation: { findFirst: async () => latestRow },
+} as unknown as PrismaClient;
 const QUESTION = "how would a High portfolio have done in 2022";
 
 describe("backtest_by_level", () => {
@@ -122,6 +127,77 @@ describe("backtest_by_level", () => {
       expect(toolsFor(CHAT_TOOLS, q, null, null, asOf).map((t) => t.name)).toContain(
         "backtest_by_level",
       );
+  });
+
+  it("says which strategy each level follows, and why, from the daily replay", async () => {
+    vi.mocked(adviceMode).mockResolvedValue(true);
+    const none = JSON.parse(
+      (await runChatTool("u1", "backtest_by_level", { level: "High" }, { client, now: NOW }))
+        .content,
+    );
+    // Before the daily replay: the committed research choice.
+    expect(none.strategyEachLevelFollows.replay).toMatch(/hasn't run yet/);
+    expect(none.strategyEachLevelFollows.levels).toEqual([
+      expect.objectContaining({ level: "High", follows: "Trend filter" }),
+    ]);
+    const m = (sortino: number, maxDrawdown: number) => ({
+      from: "2022-01-03",
+      to: "2026-10-21",
+      cagr: 0.07,
+      vol: 0.08,
+      maxDrawdown,
+      sortino,
+      turnover: 3.8,
+      costShare: 0.001,
+      rebalances: 57,
+    });
+    latestRow = {
+      ranAt: new Date("2026-10-19T11:00:00Z"),
+      source: "alpaca",
+      fromDate: new Date("2016-01-04T00:00:00Z"),
+      toDate: new Date("2026-10-16T00:00:00Z"),
+      chosen: [
+        {
+          level: 4,
+          id: "trend",
+          params: { months: 6 },
+          key: "trend(months=6)",
+          label: "Trend filter",
+          why: "It beat the level's mix on the later years.",
+          train: m(1.5, 0.08),
+          test: m(0.56, 0.084),
+          baseline: { train: m(1.17, 0.27), test: m(0.49, 0.226) },
+        },
+      ],
+    };
+    const out = await runChatTool(
+      "u1",
+      "backtest_by_level",
+      { level: "High" },
+      { client, now: NOW },
+    );
+    latestRow = null;
+    const s = JSON.parse(out.content).strategyEachLevelFollows;
+    expect(s.notAForecast).toMatch(/not a forecast/);
+    expect(s.replay).toMatch(/Jan 4, 2016 to Oct 16, 2026/);
+    expect(s.levels).toEqual([
+      expect.objectContaining({
+        level: "High",
+        follows: "Trend filter",
+        strategy: "trend(months=6)",
+        laterYears: { worstDrop: "8.4%", yearly: "+7.0%", sortino: 0.56 },
+        levelsMixLaterYears: { worstDrop: "22.6%", yearly: "+7.0%", sortino: 0.49 },
+        budget: { worstDrop: "30.0%", volatility: "14.0%" },
+      }),
+    ]);
+  });
+
+  it("is sent for the strategy question", () => {
+    expect(
+      toolsFor(CHAT_TOOLS, "which strategy does my level use", null, null, "2026-10-21").map(
+        (t) => t.name,
+      ),
+    ).toContain("backtest_by_level");
   });
 
   it("gives no figures for a real account", async () => {

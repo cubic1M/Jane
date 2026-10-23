@@ -3,6 +3,7 @@ import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
+import { LevelStrategiesSection } from "@/components/level-strategies";
 import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
@@ -14,6 +15,7 @@ import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
 import { backtestsFor } from "@/lib/investments/backtest";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
+import { latestStrategies } from "@/lib/investments/strategy-eval";
 import { practiceProfileOf } from "@/lib/practice/preferences";
 import { autopilotOf } from "@/lib/autopilot";
 import { investmentsByHerself } from "@/lib/jane-agent/investments/replies";
@@ -89,6 +91,12 @@ function HoldingRow({ h }: { h: HoldingView }) {
 
 // "Did the extra rules help?": a few seconds of replay the first time, so it streams in after
 // the rest of the page.
+// The strategy each level follows (the daily replay's choice), with the person's own level.
+async function LevelStrategies({ userId }: { userId: string }) {
+  const [latest, profile] = await Promise.all([latestStrategies(), practiceProfileOf(userId)]);
+  return <LevelStrategiesSection latest={latest} level={profile.level} />;
+}
+
 async function RuleReplays({ userId }: { userId: string }) {
   const [replays, profile] = await Promise.all([ruleReplaysFor(userId), practiceProfileOf(userId)]);
   return replays.advice && replays.data ? (
@@ -502,6 +510,7 @@ async function InvestmentsContent() {
       )}
 
       {backtests.advice && <BacktestsSection backtests={backtests.backtests} />}
+      {backtests.advice && <LevelStrategies userId={user.id} />}
       {backtests.advice && (
         <Suspense
           fallback={<p className="text-sm text-zinc-500">Replaying the autopilot&apos;s rules…</p>}
