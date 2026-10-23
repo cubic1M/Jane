@@ -48,6 +48,9 @@ export type DecisionInput = {
     aprBps: number;
     savesCents: number;
   } | null;
+  // A 0% transfer that would have saved, left out because the score is under what those cards
+  // usually need (TRANSFER_MIN_SCORE); null when none was left out.
+  transferNeedsScore?: { score: number; minScore: number } | null;
   // The next payday, for a payday loan question.
   nextPayday: { date: string; days: number } | null;
   // Checking over the next month, day by day, with the bills and installments in it; and the
@@ -203,7 +206,9 @@ export function consolidate(i: DecisionInput): Decision {
       id: "consolidate",
       sentences: [
         first,
-        "I don't see an offer that beats your current rates once its fees are counted.",
+        i.transferNeedsScore
+          ? `A 0% transfer card would cost less, but those usually need a score of ${i.transferNeedsScore.minScore} or more and yours is ${i.transferNeedsScore.score}; no loan beats your rates once fees are counted.`
+          : "I don't see an offer that beats your current rates once its fees are counted.",
         ...(i.advice ? ["Paying the highest-rate card first is the cheaper move for now."] : []),
       ],
       href: "/loans/refinance",
