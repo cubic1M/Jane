@@ -60,7 +60,12 @@ export async function strategyToday(
     const data = stored ? alignUniverse(stored.bars) : null;
     out = data
       ? { chosen, source, ...followToday(chosen, data, level, today) }
-      : { chosen, source, follow: false, why: "No stored closes for the strategy's funds yet." };
+      : {
+          chosen,
+          source,
+          follow: false,
+          why: "Jane doesn't have enough recent prices for this strategy's funds yet, so the portfolio keeps the level's mix until the daily price load has them.",
+        };
   }
   if (kept.size > 50) kept.clear();
   kept.set(key, out);

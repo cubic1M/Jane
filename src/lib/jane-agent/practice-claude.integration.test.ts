@@ -72,6 +72,15 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
     }
     // Its figures are recorded for the guardrails.
     expect(out.cents.length).toBeGreaterThan(0);
+    // The ideas waiting (each with how sure Jane is) and what the person's answers changed.
+    expect(Array.isArray(data.ideasWaiting)).toBe(true);
+    for (const i of data.ideasWaiting) {
+      expect(i.confidencePercent).toBeGreaterThan(0);
+      expect(i.confidenceReason.length).toBeGreaterThan(0);
+    }
+    expect(data.ideasNote.length).toBeGreaterThan(0);
+    expect(data.whatYourAnswersChanged).toMatch(/^Nothing yet/);
+    expect(data).toHaveProperty("strategyToday");
   });
 
   it("offers a pause or resume button that sets the switch on a tap", async () => {
@@ -135,5 +144,9 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
       toolsFor(CHAT_TOOLS, text, null, null, "2026-10-16").map((t) => t.name);
     expect(names("what did you buy this week and why")).toContain("practice_portfolio");
     expect(names("pause it")).toContain("practice_portfolio");
+    expect(names("what strategy is my practice portfolio on")).toContain("practice_portfolio");
+    expect(names("what ideas do you have for my practice portfolio")).toContain(
+      "practice_portfolio",
+    );
   });
 });
