@@ -27,6 +27,7 @@ import { PRACTICE_DETECTORS } from "@/detectors/practice";
 import { PRACTICE_IDEA_DETECTORS } from "@/detectors/practice-ideas";
 import { PRICE_RISE_DETECTORS } from "@/detectors/price-rises";
 import { RENTING_DETECTORS } from "@/detectors/renting";
+import { RETIREMENT_DETECTORS } from "@/detectors/retirement";
 import { SPENDING_DETECTORS } from "@/detectors/spending";
 import { TAX_DETECTORS } from "@/detectors/taxes";
 import { TRADEOFF_DETECTORS } from "@/detectors/tradeoffs";
@@ -67,6 +68,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "two", detectors: TWO_DETECTORS },
   { key: "tradeoffs", detectors: TRADEOFF_DETECTORS },
   { key: "practiceIdeas", detectors: PRACTICE_IDEA_DETECTORS },
+  { key: "retirement", detectors: RETIREMENT_DETECTORS },
 ];
 
 export type FeatureNode = {

@@ -28,7 +28,8 @@ export type FamilyKey =
   | "planning"
   | "two"
   | "tradeoffs"
-  | "practiceIdeas";
+  | "practiceIdeas"
+  | "retirement";
 
 export const FAMILY_NAMES: Readonly<Record<FamilyKey, string>> = {
   money: "Fees and cushion",
@@ -54,6 +55,7 @@ export const FAMILY_NAMES: Readonly<Record<FamilyKey, string>> = {
   two: "Money for two",
   tradeoffs: "Goals that compete",
   practiceIdeas: "Practice ideas",
+  retirement: "The run-up to retirement",
 };
 
 // A family whose detectors land in more than one area is named for each.
@@ -66,6 +68,8 @@ export const FAMILY_NAMES_IN_AREA: Readonly<Partial<Record<`${AreaKey}/${FamilyK
   "investments/work": "Work and retirement",
   "money/work": "Uneven pay",
   "insurance/work": "Business cover",
+  "insurance/retirement": "Medicare",
+  "investments/retirement": "Social Security",
 };
 
 // Topic ids read as words ("pmi_removal" is "PMI removal"); these stay in capitals.
