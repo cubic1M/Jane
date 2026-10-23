@@ -1,3 +1,4 @@
+import { TAX_PLAN } from "@/config/tax-plan";
 import { CALENDAR_ITEMS, YEAR_END_FROM_DAY, type CalendarKey } from "@/config/tax-calendar";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -89,21 +90,23 @@ export async function loadYearEnd(
   const advice = plan.advice;
   const lines: string[] = [];
   const open = plan.moves.filter((m) => m.open && !m.handled);
-  for (const m of plan.moves.filter((x) => x.open && x.handled !== "no")) {
-    lines.push(`${m.title}, by ${dayLabel(m.deadline)}`);
-  }
+  const listed = plan.moves.filter((x) => x.open && x.handled !== "no");
+  for (const m of listed) lines.push(`${m.title}, by ${dayLabel(m.deadline)}`);
+  // A move already listed isn't said again as a count (docs/feature-audit.md, cluster 12): the
+  // plan's "Sell at a loss" is the harvest, and "Make this year's gifts" the giving.
+  const has = (key: string) => listed.some((m) => m.key === key);
   if (advice) {
     const [invest, giving, years] = await Promise.all([
       loadInvestmentTaxes(userId, year, { client, now }),
       loadGiving(userId, { client, now }),
       loadMultiYear(userId, { client, now }),
     ]);
-    if (invest.harvest.length > 0) {
+    if (invest.harvest.length > 0 && !has("harvest")) {
       lines.push(
         `${invest.harvest.length} ${invest.harvest.length === 1 ? "loss" : "losses"} you could harvest before December 31`,
       );
     }
-    if (giving.options.length > 0 && !giving.dismissed) {
+    if (giving.options.length > 0 && !giving.dismissed && !has("giving")) {
       lines.push(`${giving.options.length} ways to give that would lower your tax`);
     }
     if (years.moves[0]) lines.push(years.moves[0].title);
@@ -288,6 +291,11 @@ export async function loadTaxCalendar(
   };
 }
 
+// The tax plan's titles for the estimated payments' reminders.
+const ESTIMATE_TITLES = (["estimated_1", "estimated_2", "estimated_3", "estimated_4"] as const).map(
+  (k) => TAX_PLAN[k].title,
+);
+
 // Pays one estimated payment through the stand-in and records it where the quarterly plan
 // reads it. By Jane (within the caps) or on the person's tap (the planned amount, whatever
 // the caps). A due date can only be paid once.
@@ -331,6 +339,12 @@ export async function payEstimate(
       confirmation,
       via,
     },
+  });
+  // Its reminder on the deadlines (the tax plan's "Pay the … estimated tax payment", spec
+  // step 167) is done: paying never left it open to remind again (docs/feature-audit.md).
+  await db.deadlines.updateMany({
+    where: { dueOn: new Date(`${dueOn}T00:00:00Z`), doneAt: null, title: { in: ESTIMATE_TITLES } },
+    data: { doneAt: now },
   });
   // So the quarterly plan counts it.
   await recordTaxPayment(
