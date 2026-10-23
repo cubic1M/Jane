@@ -46,6 +46,12 @@ import type { FitView } from "@/lib/fit";
 import { fitCard } from "@/lib/fit-card";
 import type { OptionCard } from "@/lib/option-card";
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
+import {
+  homeMeasureOf,
+  homeVsBorrow,
+  mortgageOf,
+  type HomeMeasure,
+} from "@/planning/home-vs-borrow";
 import { FIT_LABEL_TEXT, type FitTerms } from "@/planning/fit";
 import { PMI_STEPS } from "@/planning/mortgage";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
@@ -907,7 +913,11 @@ export function carToolOutput(car: Car, money: (cents: number) => string) {
   };
 }
 
-export function homeToolOutput(home: HomeBuying, money: (cents: number) => string) {
+export function homeToolOutput(
+  home: HomeBuying,
+  money: (cents: number) => string,
+  mortgageCents: number | null = null,
+) {
   if (!home.costs || !home.affordability || !home.saving) {
     return { note: "Not enough income history to say what home fits." };
   }
@@ -948,6 +958,10 @@ export function homeToolOutput(home: HomeBuying, money: (cents: number) => strin
       closing: o.offer.feeLabel,
     })),
     assumptions: home.assumptions,
+    // "What could I borrow?" measures it another way: say both, with this sentence.
+    ...(homeVsBorrow(homeMeasureOf(home), mortgageCents)
+      ? { whyWhatYouCouldBorrowDiffers: homeVsBorrow(homeMeasureOf(home), mortgageCents) }
+      : {}),
   };
 }
 
@@ -1268,7 +1282,7 @@ export function debtTroubleToolOutput(data: DebtTrouble, money: (cents: number) 
       debt: d.name,
       kind: d.kindLabel,
       balance: money(d.balanceCents ?? 0),
-      whatToAsk: HARDSHIP_PROGRAMS[d.kind],
+      whatToAsk: HARDSHIP_PROGRAMS[d.kind].ask,
     })),
     debtManagementPlanSketch: data.dmp && {
       cardBalance: money(data.dmp.cardBalanceCents),
@@ -1456,9 +1470,16 @@ export function creditMonthlyToolOutput(d: CreditMonthly) {
   };
 }
 
-export function borrowingPowerToolOutput(d: BorrowingPower, money: (cents: number) => string) {
+export function borrowingPowerToolOutput(
+  d: BorrowingPower,
+  money: (cents: number) => string,
+  home: HomeMeasure | null = null,
+) {
   if (!d.available) return { note: "No lending partner for this person's accounts yet." };
+  const both = homeVsBorrow(home, mortgageOf(d.figures));
   return {
+    // "Can I afford a house?" measures it another way: say both, with this sentence.
+    ...(both ? { whyTheHomeYouCouldAffordDiffers: both } : {}),
     // The partner (the stand-in) is only there in demo advice mode, so these are demo advice.
     demoAdvice: true,
     label: DEMO_ADVICE_LABEL,

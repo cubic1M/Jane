@@ -22,7 +22,7 @@ vi.mock("@/lib/invites", async (importOriginal) => ({
   checkCode: vi.fn(),
 }));
 vi.mock("next-auth", () => ({ AuthError }));
-vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
+vi.mock("@/auth", () => ({ auth: vi.fn(async () => null), signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/session", () => ({ HOME_PATH: "/import" }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => {
@@ -30,7 +30,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { checkCode, redeemInvite } from "@/lib/invites";
 import { hit } from "@/lib/rate-limit";
 import { TERMS_VERSION } from "@/config/legal";
@@ -146,5 +146,26 @@ describe("auth actions", () => {
       "ABCD-EFGH-JKMN",
       expect.objectContaining({ httpOnly: true, maxAge: 900 }),
     );
+  });
+
+  // Spec step 138: from a Try Jane session, the sample person's session ends first, so a
+  // Google sign-up is never linked to the sample person (who is deleted after a day).
+  it("ends a sample person's session before signing up or in, and no one else's", async () => {
+    vi.mocked(auth).mockResolvedValueOnce({ user: { id: "trial_abc" } } as never);
+    await signInWithGoogle();
+    expect(signOut).toHaveBeenCalledWith({ redirect: false });
+    expect(vi.mocked(signOut).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(signIn).mock.invocationCallOrder[0],
+    );
+
+    vi.mocked(signOut).mockClear();
+    vi.mocked(auth).mockResolvedValueOnce({ user: { id: "trial_abc" } } as never);
+    await signInWithEmail(emailForm("maya@example.com"));
+    expect(signOut).toHaveBeenCalledWith({ redirect: false });
+
+    vi.mocked(signOut).mockClear();
+    vi.mocked(auth).mockResolvedValueOnce({ user: { id: "u1" } } as never);
+    await signInWithEmail(emailForm("maya@example.com"));
+    expect(signOut).not.toHaveBeenCalled();
   });
 });

@@ -17,6 +17,13 @@ import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { TransferError, loadTransfers, startTransfer } from "./balance-transfers";
+import {
+  addCardPromo,
+  loadCardInterest,
+  refreshCardInterest,
+  removeCardPromo,
+} from "./card-interest";
+import { cardInterestSource } from "./jane-agent/sources/card-interest";
 import { loadDebts } from "./debts";
 
 // Spec step 113 against a real, migrated Postgres, on the demo bank: 0% transfer offers for
@@ -119,6 +126,39 @@ describe.runIf(url)("balance transfers against a real database", () => {
     });
   });
 
+  it("is one 0% promotion on /loans/interest, with the transfer's deadline", async () => {
+    // docs/feature-audit.md, cluster 14: a transfer Jane arranged is also the card's promotion,
+    // tracked once, not typed in again.
+    const [t] = (await loadTransfers(userId, opts())).transfers;
+    const interest = await loadCardInterest(userId, opts());
+    const promos = interest.promos.filter((p) => p.cardName === t.cardName);
+    expect(promos).toEqual([
+      expect.objectContaining({
+        fromTransfer: true,
+        endsOn: t.promoEndsOn,
+        balanceCents: t.amountCents + t.feeCents,
+        deadlineRaised: true,
+      }),
+    ]);
+    // No second deadline for it, and the off-pace message is the transfer's own reminders.
+    await refreshCardInterest(userId, opts());
+    expect(await client.deadline.count({ where: { userId, doneAt: null } })).toBe(1);
+    expect(cardInterestSource.gather({ cardInterest: interest } as never, {} as never)).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ kind: "heads_up" })]),
+    );
+    // Typed in again, or removed from /loans/interest: it's the transfer.
+    const form = {
+      cardName: t.cardName,
+      balance: "100",
+      startedOn: t.promoEndsOn.slice(0, 4) + "-01-01",
+      endsOn: t.promoEndsOn,
+      goToApr: "25",
+      deferred: false,
+    };
+    await expect(addCardPromo(userId, form, opts())).rejects.toThrow("balance transfer");
+    await expect(removeCardPromo(userId, promos[0].id, opts())).rejects.toThrow("balance transfer");
+  });
+
   it("reminds 60, 30 and 7 days before the 0% ends, each once", async () => {
     const [t] = (await loadTransfers(userId, opts())).transfers;
     const end = Date.parse(`${t.promoEndsOn}T15:00:00Z`);
@@ -160,6 +200,8 @@ describe.runIf(url)("balance transfers against a real database", () => {
     const done = await takeChatAction(userId, message.id, "transfer.done", opts(now));
     expect(done.message.refs.note).toMatch(/is paid off before the 0% ended/);
     expect((await client.deadline.findFirstOrThrow({ where: { userId } })).doneAt).not.toBeNull();
+    // Its promotion is over too.
+    expect(await client.cardPromo.count({ where: { userId } })).toBe(0);
     expect(await fromSource(new Date(end - 2 * DAY))).toEqual([]);
   });
 });

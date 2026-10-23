@@ -1,3 +1,4 @@
+import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import { DID_LOOKBACK_DAYS, MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { RULE_UNDO_HOURS } from "@/config/rules";
 import { formatCents } from "@/lib/money";
@@ -41,7 +42,7 @@ export const didSource: MessageSource = {
         kind: "done",
         body:
           action.confirmedCents !== null && action.confirmedCents > 0
-            ? `Done: "${action.title}". ${formatCents(action.confirmedCents)} confirmed back or saved.`
+            ? `Done: "${action.title}". ${formatCents(action.confirmedCents)} ${BACK_OR_AGREED}.`
             : `Done: "${action.title}".`,
         refs: { actionId: action.actionId },
         actions: [{ id: "open", label: "See every step", kind: "link", href: "/actions" }],

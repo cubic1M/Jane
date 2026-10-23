@@ -21,6 +21,9 @@ export type DemoSeed = {
   // Spec step 252: which sample person this bank is (src/config/people.ts); the original
   // demo bank when left out.
   person?: string;
+  // Books QA: a second bank login of the same person (demo-people.ts DEMO_SECOND_LOGINS),
+  // which sees just the one account they share.
+  login?: string;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;

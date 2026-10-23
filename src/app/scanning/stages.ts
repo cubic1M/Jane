@@ -39,3 +39,23 @@ export function percentFor(done: number, creep: number): number {
   const next = STAGES[done].percent;
   return Math.round(base + (next - base) * 0.9 * Math.min(1, Math.max(0, creep)));
 }
+
+// What a slow scan offers instead of the bar: where this screen was heading. From Try Jane
+// (then=chat) that's the chat, which opens with Jane saying she's still looking.
+export function slowLink(next: "/report" | "/chat"): {
+  href: string;
+  label: string;
+  after: string;
+} {
+  return next === "/chat"
+    ? {
+        href: "/chat",
+        label: "Open the chat",
+        after: "and Jane will post what she finds as it's ready.",
+      }
+    : {
+        href: "/report",
+        label: "See your report",
+        after: "and savings will appear as soon as they're ready.",
+      };
+}

@@ -61,6 +61,63 @@ What it says:
   - dual momentum trades the most and does worst.
 - **Calendar against band rebalancing makes no real difference** (Sortino within 0.05 at every level).
 
+## Research rounds
+
+Each round is run with the research CLI (`STRATEGY_RESEARCH=all RESEARCH_SOURCE=fixture`
+locally, or the `strategy-research` workflow on Alpaca bars). Each is scored as above:
+walk-forward, chosen on 2016–2021, scored on 2022 to now.
+
+### Round 1, 2026-10-23 (fixture): the library as above
+The 6-month trend filter for Very low to High; the mix for Very high. The full tables are below.
+
+### Round 2, 2026-10-23 (fixture): how sensitive is the trend filter to its look-back?
+The trend filter on 2022 to now, by look-back in months (Sortino / worst drop):
+
+| Level | The mix | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 12 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Very low | −0.06 / 17.0% | −0.21 / 8.8% | −0.20 / 8.3% | −0.14 / 6.8% | **0.15 / 4.0%** | −0.09 / 4.6% | −0.10 / 4.6% | 0.02 / 4.6% | −0.29 / 9.0% | 0.11 / 5.8% |
+| Medium | 0.37 / 20.9% | 0.07 / 13.9% | 0.23 / 12.9% | 0.34 / 9.4% | **0.48 / 6.7%** | 0.34 / 7.5% | 0.34 / 7.5% | 0.38 / 7.5% | 0.02 / 14.9% | 0.45 / 10.4% |
+| Very high | 0.57 / 24.7% | 0.20 / 18.6% | 0.42 / 17.2% | 0.54 / 12.5% | **0.60 / 10.2%** | 0.53 / 10.4% | 0.53 / 10.4% | 0.53 / 10.4% | 0.15 / 20.4% | 0.58 / 14.6% |
+
+- **What holds across look-backs:** from 5 to 9 months the filter cut the worst drop to a third to a half of the mix's at every level.
+- **What doesn't:** its edge in Sortino over the mix is mostly the 6-month window. From 7 to 9 months it is level with the mix at Medium and Very high and below it at Very low.
+- **Tried and rejected:** a blend of look-backs (3, 4, 6, 8, 10 and 12 months, each fund held in proportion to the votes) did worse than 6 months on the later years at every level. It was below the mix's Sortino at Very low to High, with worst drops of 6–15%, because the short windows whipsaw. Not added to the library.
+- **Kept:** the 6-month filter is still the walk-forward pick from every start year. It is the weakest-supported part of the result, so the daily evaluation and the Alpaca runs re-check it on new data. If Alpaca's closes don't confirm it, the mix comes back by the same rule.
+
+### Round 3, 2026-10-23 (fixture): the filter on one sleeve only
+On 2022 to now (Sortino / worst drop), 6-month look-back:
+
+| Level | Both sleeves (the library's) | Bonds only | Stocks only |
+| --- | --- | --- | --- |
+| Very low | 0.15 / 4.0% | 0.28 / 8.0% | −0.27 / 10.8% |
+| Medium | 0.48 / 6.7% | 0.51 / 16.1% | 0.28 / 10.3% |
+| Very high | 0.60 / 10.2% | 0.58 / 23.7% | 0.57 / 11.0% |
+
+- **Bonds only** did well on the later years and isn't sensitive to its look-back (10 months is close). But it was weaker in training (Sortino 1.33 against 1.76 at Very low), and its 12.9% training drop breaks Very low's 8% budget. Walk-forward wouldn't choose it, and choosing it for its later years would be fitting them. Not adopted.
+- **Stocks only** trails the filter on both sleeves at every level. Not adopted.
+
+### Round 4, 2026-10-23 (Alpaca, IEX feed; workflow run 39935066721): too little history
+- **The data:** Alpaca's IEX feed has daily bars only from 2020-07-27 for every fund (1,551 shared trading days to 2026-10-22). So the "training" years are 17 months, the start years 2016–2018 all start in mid-2020, and the 6- and 12-month look-backs barely warm up.
+- **What it chose:** each level's training pick (inverse volatility at Very low to High, minimum variance at Very high) failed on the later years. Every level kept its mix, as the rule says when the evidence is too thin.
+- **The later years matched the fixture's for the mix** (Medium: worst drop 20.9%, 6.5% a year, Sortino 0.36), so the two data sources agree where they overlap.
+- **What changes:** the research workflow now asks Alpaca for the SIP feed by default, which goes back to 2016 on the free plan for bars older than 15 minutes. Production's stored history comes from the same IEX feed, so it has the same 2020 start, and the daily evaluation would keep every level on its mix until it has longer history. See round 5.
+
+### Round 5, 2026-10-23 (Alpaca, SIP feed, 2016-01-04 to 2026-10-22; workflow run 39939156383): the choice
+- **The data:** Alpaca's SIP feed (free for bars older than 15 minutes) has every fund from 2016-01-04, 2,717 shared trading days. A first SIP run asked for today's bars, which the free plan refuses. The Alpaca adapter read that refusal as "no bars", which #573 fixes.
+
+| Level | Chosen | Training 2016–2021: chosen / mix (worst drop, Sortino) | 2022 to now: chosen / mix (worst drop, a year, Sortino) | Turnover a year |
+| --- | --- | --- | --- | --- |
+| Very low | Trend filter, 6 months | 5.9%, 1.75 / 13.3%, 1.34 | 4.0%, 4.2%, 0.12 / 17.0%, 3.6%, −0.06 | 3.9× |
+| Low | Trend filter, 6 months | 6.6%, 1.72 / 18.0%, 1.24 | 5.2%, 5.1%, 0.31 / 19.3%, 4.9%, 0.17 | 4.0× |
+| Medium | Trend filter, 6 months | 7.1%, 1.62 / 22.0%, 1.18 | 6.8%, 6.0%, 0.44 / 20.9%, 6.5%, 0.35 | 3.9× |
+| High | Trend filter, 6 months | 8.4%, 1.53 / 26.6%, 1.16 | 8.5%, 6.9%, 0.52 / 22.6%, 8.0%, 0.47 | 3.8× |
+| Very high | The mix (band) | 31.3%, 1.09 | 24.7%, 9.5%, 0.55 | 0.25× |
+
+- **Alpaca's closes confirm the fixture's choice at every level,** and the picks are the same from every start year (2016, 2017, 2018). The numbers differ from the fixture's by a few hundredths.
+- **High only just passes:** its later-years Sortino is 0.52 against the mix's 0.47, a 10.6% gain against the 10% margin. Very high stays on the mix: the trend filter's 0.58 isn't 10% better than 0.55.
+- **What the trend filter gives up is return in rising years:** 1 to 1.6 points a year less than the mix in 2016–2021, in exchange for a worst drop about a third of the mix's on both stretches.
+- **This choice is committed** (`STRATEGY_RESEARCH_CHOICE` in `src/config/strategies.ts`) as what the autopilot follows until the daily evaluation has run on production's stored history. That history comes from the same Alpaca account; its load moves to the SIP feed so it reaches back to 2016 too.
+
 ## Every candidate, by level (training from 2016; "later" is 2022 to now)
 
 ### Very low: worst drop up to 8.0%, volatility up to 5.0%

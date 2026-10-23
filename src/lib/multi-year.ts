@@ -8,7 +8,10 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { RETIREMENT_AGE } from "@/config/retirement";
 import { db as defaultClient } from "@/lib/db";
+import { profileOf } from "@/lib/investments/profile";
+import { currentAge } from "@/planning/investor-profile";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
@@ -78,7 +81,7 @@ export async function loadMultiYear(
   const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const year = estimate.year;
   const db = scopedFor(userId, client);
-  const [advice, accounts, investments, profile, events] = await Promise.all([
+  const [advice, accounts, investments, profile, events, answers] = await Promise.all([
     loaded ? loaded.advice : adviceMode(userId, { client }),
     db.accounts.findMany({
       where: { type: "investment" },
@@ -87,14 +90,19 @@ export async function loadMultiYear(
     loadInvestmentTaxes(userId, year, { client, now }),
     db.taxProfiles.findFirst({ select: { retireYear: true, multiYearHandled: true } }),
     db.taxPlanEvents.findMany({ orderBy: [{ year: "asc" }, { createdAt: "asc" }, { id: "asc" }] }),
+    profileOf(userId, { client }),
   ]);
+  // Not told when they'll retire: at RETIREMENT_AGE from the age on their investor profile, as
+  // the long view assumes (docs/feature-audit.md, cluster 12); without an age, the default.
+  const age = currentAge(answers, now.toISOString().slice(0, 10));
+  const assumedRetireYear = age === null ? null : year + Math.max(0, RETIREMENT_AGE - age);
   const traditionalCents = accounts
     .filter((a) => TRADITIONAL_SUBTYPES.includes(a.subtype ?? ""))
     .reduce((s, a) => s + (a.currentBalanceCents ?? 0), 0);
   const plan: Plan = {
     startYear: year,
     base: estimate.input,
-    retireYear: profile?.retireYear ?? null,
+    retireYear: profile?.retireYear ?? assumedRetireYear,
     traditionalCents,
     unrealisedLongTermCents: Math.max(0, investments.unrealisedCents.longTerm),
     events: events.map((e) => ({

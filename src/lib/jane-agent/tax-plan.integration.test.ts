@@ -12,7 +12,7 @@ import { setAutopilot } from "@/lib/autopilot";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { runTaxAutopilot } from "@/lib/tax-autopilot";
-import { TaxPlanError, addPlanMove, loadTaxPlan } from "@/lib/tax-plan";
+import { TaxPlanError, addPlanMove, dismissPlanMove, loadTaxPlan } from "@/lib/tax-plan";
 import { takeChatAction } from "./actions";
 import { runChatTool } from "./claude-tools";
 import { loadSnapshot } from "./snapshot";
@@ -124,12 +124,17 @@ describe.runIf(url)("the year-round tax plan against a real database", { timeout
       addPlanMove(userId, RETIREMENT, { client, now: LINKED, via: "page" }),
     ).rejects.toThrow("already done");
 
-    const harvest = await post(userId, "plan:2026:harvest");
-    await takeChatAction(userId, harvest.id, "tax.plan_no", { client, now: LINKED });
+    // The harvest move is said once, by step 124's loss message (ownMessage): no plan message
+    // for it (docs/feature-audit.md, cluster 12). Said no to, neither comes up.
+    const candidates = await gather(userId);
+    expect(candidates.some((c) => c.dedupeKey === "plan:2026:harvest")).toBe(false);
+    expect(candidates.filter((c) => c.dedupeKey.startsWith("harvest:2026:"))).toHaveLength(1);
+    await dismissPlanMove(userId, "2026:harvest", { client, now: LINKED, via: "page" });
     expect(
       (await loadTaxPlan(userId, { client, now: LINKED })).moves.find((m) => m.key === "harvest")!
         .handled,
     ).toBe("no");
+    expect((await gather(userId)).some((c) => c.dedupeKey.startsWith("harvest:"))).toBe(false);
   });
 
   it("puts open moves on the deadlines by itself at Handle the safe stuff, and says so", async () => {
@@ -139,13 +144,17 @@ describe.runIf(url)("the year-round tax plan against a real database", { timeout
     expect(
       await client.deadline.count({ where: { userId, title: { endsWith: "(2026 taxes)" } } }),
     ).toBe(2);
-    const done = (await gather(userId)).filter((c) => c.dedupeKey.startsWith("plan:"));
-    expect(done.map((c) => [c.dedupeKey, c.kind])).toEqual([
-      [`plan:${RETIREMENT}`, "done"],
-      ["plan:2026:harvest", "done"],
-    ]);
-    expect(done[1].body).toMatch(/I've put it on your deadlines\.$/);
-    expect(done[1].refs.advice).toBe(true);
+    const said = await gather(userId);
+    const done = said.filter((c) => c.dedupeKey.startsWith("plan:"));
+    expect(done.map((c) => [c.dedupeKey, c.kind])).toEqual([[`plan:${RETIREMENT}`, "done"]]);
+    expect(done[0].body).toMatch(/I've put it on your deadlines\.$/);
+    // The harvest is said once, by its loss message, which says it's on the deadlines and
+    // doesn't offer to remind again.
+    const harvest = said.find((c) => c.dedupeKey.startsWith("harvest:2026:"))!;
+    expect(harvest.kind).toBe("heads_up");
+    expect(harvest.body).toMatch(/It's on your deadlines\.$/);
+    expect(harvest.refs.advice).toBe(true);
+    expect(harvest.actions.map((a) => a.id)).not.toContain("tax.save_task");
     // Once.
     expect((await runTaxAutopilot(userId, { client, now: LINKED })).planAdded).toBe(0);
   });
