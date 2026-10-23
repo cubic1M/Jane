@@ -57,6 +57,10 @@ const NEED_KINDS: readonly Need["kind"][] = [
   "auto_liability",
   "home_liability",
   "renters_liability",
+  // Spec step 201.
+  "business_liability",
+  "professional_liability",
+  "business_equipment",
 ];
 
 export const INSURANCE_TOOLS: Anthropic.Tool[] = [
@@ -99,7 +103,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_needs",
     description:
-      "What cover the person needs, worked out from their own numbers, what they have and the gap (spec step 278): term life (income, debts, schooling, less savings and cover), disability (about 60% of pay a month), umbrella, deductibles by their cash, and car, home and renters liability levels. It is the same working the page and the nightly detectors use. Use it for 'how much life insurance do I need'. The need is demo advice: say so with the label in demo advice mode. In demo advice mode it also prices options for the cover asked about (or the first one that is short): they are shown to the person as a pick-one card under your answer, so name Jane's pick and why in a sentence, never the whole list.",
+      "What cover the person needs, worked out from their own numbers, what they have and the gap (spec step 278): term life (income, debts, schooling, less savings and cover), disability (about 60% of pay a month), umbrella, deductibles by their cash, car, home and renters liability levels, and for a business or side work (spec step 201) general and professional liability and work equipment cover, which no personal policy gives. It is the same working the page and the nightly detectors use. Use it for 'how much life insurance do I need'. The need is demo advice: say so with the label in demo advice mode. In demo advice mode it also prices options for the cover asked about (or the first one that is short): they are shown to the person as a pick-one card under your answer, so name Jane's pick and why in a sentence, never the whole list.",
     input_schema: {
       type: "object",
       properties: {
