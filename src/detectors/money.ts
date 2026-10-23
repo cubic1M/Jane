@@ -4,6 +4,7 @@ import { bankFeesYear } from "@/planning/bank-fees";
 import { idleCashOf } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
+import { summarize } from "@/planning/costly-borrowing";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import {
@@ -283,33 +284,49 @@ const emergencyFund: Detector = {
 };
 
 const highCostLoans: Detector = {
-  covers: ["debt_trouble"],
+  covers: ["debt_trouble", "costly_borrowing"],
   capability: "debt",
   topic: "high_cost_loans",
   needs: [],
   detect({ profile, data }) {
-    const payments = tx(
-      data,
-      (t) => t.pfc === "LOAN_PAYMENTS_CASH_ADVANCES" || t.pfc === "LOAN_PAYMENTS_EWA",
+    // The same planner as the costly borrowing page (spec step 247), so the figures agree:
+    // payday loans and pay advance apps only (cash advances and overdrafts have their own).
+    const cards = new Set(data.accounts.filter((a) => a.type === "credit").map((a) => a.id));
+    const costly = summarize(
+      data.transactions.map((t, i) => ({
+        id: String(i),
+        date: t.date,
+        amountCents: t.amountCents,
+        description: t.description,
+        pfcDetailed: t.pfc,
+        card: cards.has(t.accountId),
+      })),
+      data.today,
     );
-    if (payments.length === 0) return null;
-    const repaid = outCents(payments);
+    const kinds = costly.kinds.filter((k) => k.kind === "payday" || k.kind === "pay_app");
+    const cost = kinds.reduce((s, k) => s + k.costCents, 0);
+    const count = kinds.reduce((s, k) => s + k.count, 0);
+    if (count === 0 || cost <= 0) return null;
+    const payday = kinds.some((k) => k.kind === "payday");
+    const what = payday ? "payday loans" : "pay advances";
     return {
       id: suggestionId("debt", "high_cost_loans"),
       capability: "debt",
       topic: "high_cost_loans",
-      title: "Replace the payday loan with something cheaper",
+      title: payday
+        ? "Replace the payday loan with something cheaper"
+        : "Replace the pay advance app with something cheaper",
       headline: headlineOf(
-        "Replace your payday loan",
-        Math.round(repaid * R.paydayFeeShare),
+        payday ? "Replace your payday loan" : "Replace your pay advances",
+        cost,
         "saves",
       ),
-      short: `You repaid ${formatCents(repaid)} in cash-advance loans in ${profile.months} months.`,
-      worthCents: Math.round(repaid * R.paydayFeeShare),
+      short: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months.`,
+      worthCents: cost,
       worthKind: "saves",
-      confidence: evidence("seen", profile.months, payments.length, "cash-advance repayments"),
+      confidence: evidence("seen", profile.months, count, what),
       urgency: "now",
-      why: `You repaid ${formatCents(repaid)} in cash-advance loans in ${profile.months} months; their fees are typically about a quarter of that.`,
+      why: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months${costly.cycle ? ", taken again and again" : ""}. A credit union small loan or a pay advance from work costs far less.`,
       action: { label: "See cheaper options", href: "/loans/costly" },
     };
   },

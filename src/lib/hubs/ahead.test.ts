@@ -67,7 +67,7 @@ describe("aheadTiles", () => {
     expect(aheadTiles(FULL).map((g) => [g.title, g.tiles.map((t) => t.href)])).toEqual([
       ["Coming up", ["/deadlines", "/budgets#yearly", "/debt"]],
       ["Get ready", ["/afford", "/life-events", "/taxes", "/tax-pack"]],
-      ["Look back", ["/check-in", "/year"]],
+      ["Look back", ["/monthly", "/year"]],
     ]);
   });
 
@@ -87,7 +87,7 @@ describe("aheadTiles", () => {
       status: "Moving, and 1 more checklist",
     });
     expect(t["Tax-time pack"]).toMatchObject({ value: "2026" });
-    expect(t["Monthly check-in"]).toMatchObject({ status: "How September 2026 went" });
+    expect(t["Monthly report"]).toMatchObject({ status: "How September 2026 went" });
     expect(t["Year in review"]).toMatchObject({ value: "2026" });
   });
 

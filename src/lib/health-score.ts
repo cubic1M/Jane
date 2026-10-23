@@ -7,6 +7,7 @@ import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
+import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import {
   healthChange,
   healthScore,
@@ -65,11 +66,16 @@ export async function healthInput(
       ? null
       : Math.round(months.reduce((s, m) => s + cents(m), 0) / months.length);
   const since = addDays(input.asOf, -HEALTH_SLIP_DAYS);
-  const goals = await listGoals(userId, { client, now });
+  const [goals, prefs] = await Promise.all([
+    listGoals(userId, { client, now }),
+    listPreferences(userId, { client }),
+  ]);
+  // Spec step 239: income the person corrected beats the average of the deposits.
+  const incomeSaid = incomeOverride(prefs);
   return {
     cashCents: cash.length === 0 ? null : cash.reduce((s, a) => s + a.currentBalanceCents!, 0),
     monthlySpendingCents: average((m) => m.spendingCents),
-    monthlyIncomeCents: average((m) => m.incomeCents),
+    monthlyIncomeCents: incomeSaid ?? average((m) => m.incomeCents),
     slips:
       input.transactions.length === 0
         ? null

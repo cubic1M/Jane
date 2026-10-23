@@ -6,6 +6,7 @@ import {
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
+import { ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
 import { NEWS_LOOKBACK_DAYS, SCAN_HISTORY_DAYS, type ScanKind } from "@/config/practice-scan";
 import { loadDetectionInput } from "@/detection/engine";
 import { paySchedules } from "@/detection/paydays";
@@ -37,6 +38,10 @@ import { scanPreferences } from "./opportunity-prefs";
 // (REAL_ACCOUNT_ADVICE is false).
 
 type Options = { client?: PrismaClient; now?: Date };
+// `act: false` is the cheap scan on opening a page: nothing is traded or held, and a flag
+// with trades is only recorded when the person is in suggest-only mode (otherwise the daily
+// run acts on it).
+type ScanOptions = Options & { act?: boolean };
 
 export type ScanOutcome = {
   kind: ScanKind;
@@ -91,7 +96,7 @@ async function paydayDayOf(userId: string, client: PrismaClient, now: Date) {
 
 export async function scanPractice(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), act = true }: ScanOptions = {},
 ): Promise<ScanResult> {
   let ledger;
   try {
@@ -128,7 +133,7 @@ export async function scanPractice(
   const [prefs, advice, paydayDay] = await Promise.all([
     scanPreferences(userId, { client }),
     adviceMode(userId, { client }),
-    portfolio.monthlyAddCents > 0 ? paydayDayOf(userId, client, now) : Promise.resolve(null),
+    act && portfolio.monthlyAddCents > 0 ? paydayDayOf(userId, client, now) : Promise.resolve(null),
   ]);
 
   const db = scopedFor(userId, client);
@@ -177,6 +182,7 @@ export async function scanPractice(
   const broker = practiceBroker();
   const outcomes: ScanOutcome[] = [];
   for (const flag of flags) {
+    if (!act && flag.trades.length > 0 && prefs.mode === "act") continue;
     const current = await loadLedger(userId, client);
     const tradesToday = await db.practiceTrades.count({
       where: {
@@ -193,6 +199,7 @@ export async function scanPractice(
       tradesToday,
       prefs.mode,
     );
+    if (!act && held) continue;
     const details = {
       figures: flag.figures,
       caps: flag.caps,
@@ -252,6 +259,38 @@ export async function scanPractice(
     outcomes.push({ kind: flag.kind, ticker: flag.ticker, status, trades: tradeIds.length });
   }
   return { scanned: true, flags: outcomes };
+}
+
+// Constant search: the cheap scan when the person opens the chat or the investing pages, at
+// most once every ON_OPEN_SCAN_MINUTES. Null when there's nothing to scan or it ran lately.
+export async function scanOnOpen(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<ScanResult | null> {
+  const portfolio = await scopedFor(userId, client).practicePortfolios.findFirst({
+    select: { id: true, paused: true },
+  });
+  if (!portfolio || portfolio.paused) return null;
+  const since = new Date(now.getTime() - ON_OPEN_SCAN_MINUTES * 60_000);
+  const { count } = await client.practicePortfolio.updateMany({
+    where: {
+      id: portfolio.id,
+      userId,
+      OR: [{ lightScannedAt: null }, { lightScannedAt: { lt: since } }],
+    },
+    data: { lightScannedAt: now },
+  });
+  if (count === 0) return null;
+  return scanPractice(userId, { client, now, act: false });
+}
+
+// Opening a page never waits on, or fails with, the scan.
+export async function scanOnOpenQuietly(userId: string) {
+  try {
+    await scanOnOpen(userId);
+  } catch (error) {
+    console.error("Practice scan on open failed", { error: String(error) });
+  }
 }
 
 // One portfolio's day: the monthly money in, the scan, then the autopilot.
