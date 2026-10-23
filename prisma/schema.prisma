@@ -4402,7 +4402,7 @@ model NewsSummaryCall {
   @@map("news_summary_calls")
 }
 
-// The weekly strategy evaluation (src/lib/investments/strategy-eval.ts, Phase AW, Stage A):
+// The daily strategy evaluation (src/lib/investments/strategy-eval.ts, Phase AW, Stage A):
 // every strategy in the library replayed for every level over the stored Alpaca history, and the
 // strategy each level's practice portfolio follows, with its numbers. Market data, not a
 // person's: no user_id. Practice money and demo advice only.
