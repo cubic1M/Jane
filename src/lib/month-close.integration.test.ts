@@ -13,6 +13,7 @@ import { takeChatAction } from "@/lib/jane-agent/actions";
 import { answerByRules } from "@/lib/jane-agent/answer";
 import { gather } from "@/lib/jane-agent/brain";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
+import { formatCents } from "@/lib/money";
 import { parseIntent } from "@/lib/jane-agent/intents";
 import { postMessages } from "@/lib/jane-agent/messages";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
@@ -181,5 +182,24 @@ describe.runIf(url)("the monthly close", { timeout: 120_000 }, () => {
       where: { userId, description: "WEWORK" },
     });
     expect(wework.categorySource).toBe("user");
+  });
+
+  it("snapshots the net worth the chat and the net worth page give, home included", async () => {
+    const { id: userId } = await person("close-worth");
+    await client.ownedAsset.create({
+      data: {
+        userId,
+        kind: "home",
+        name: "Home",
+        valueCents: 30_000_000,
+        valuedOn: new Date("2026-10-01T00:00:00Z"),
+      },
+    });
+    expect(await runMonthClose(userId, { client, now: NOW })).toBe("closed");
+    const closed = (await loadClose(userId, { client }))!;
+    const tool = JSON.parse(
+      (await runChatTool(userId, "net_worth", {}, { client, now: NOW })).content,
+    );
+    expect(formatCents(closed.figures.netWorthCents!)).toBe(tool.netWorth);
   });
 });
