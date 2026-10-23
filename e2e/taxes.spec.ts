@@ -245,3 +245,26 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   await expect(family.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   expect(await axe(page)).toEqual([]);
 });
+
+test("a sample draft return to check, for someone with no draft of their own", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  // Spec step 272, reached without a file: the stand-in's sample draft, read for the person.
+  await page.goto("/taxes/draft");
+  await page.getByRole("button", { name: "Check a sample draft" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Sample draft return.pdf: check what Jane read" }),
+  ).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+});

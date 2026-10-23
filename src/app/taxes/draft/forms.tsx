@@ -85,3 +85,23 @@ export function DraftForm({
     </form>
   );
 }
+
+// Sample data only: a sample draft to check, for a person with no draft of their own.
+export function SampleDraftButton() {
+  const [state, action, pending] = useActionState<DraftState, FormData>(draftAction, null);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-3">
+      <button type="submit" name="intent" value="sample" disabled={pending} className={BUTTON}>
+        Check a sample draft
+      </button>
+      <p
+        role="status"
+        className={
+          state ? (state.ok ? "text-sm text-emerald-800" : "text-sm text-red-700") : "sr-only"
+        }
+      >
+        {state?.message ?? ""}
+      </p>
+    </form>
+  );
+}
