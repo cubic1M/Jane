@@ -156,6 +156,9 @@ describe.runIf(url)("data export against a real database", () => {
     await client.booksIssue.create({
       data: { userId, kind: "off", key: "balance:a1", detail: {} },
     });
+    await client.monthClose.create({
+      data: { userId, month: "2026-09", status: "closed", uncertain: [], figures: {} },
+    });
     await client.suggestion.create({
       data: {
         userId,
@@ -305,6 +308,7 @@ describe.runIf(url)("data export against a real database", () => {
       "suggestions",
       "leanPlans",
       "booksIssues",
+      "monthCloses",
       "yearPlans",
       "unusualAnswers",
       "janeMessages",

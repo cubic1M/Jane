@@ -126,6 +126,8 @@ export type Intent =
   | FigureIntent
   // Spec step 238: "are my numbers right?"
   | { kind: "books" }
+  // Spec step 244: "is last month closed?"
+  | { kind: "month_close" }
   // Spec step 240: "my steady paycheck", "my income is uneven".
   | { kind: "steady_pay" }
   // Spec step 243: "is anything going up?", "when does my intro rate end?"
@@ -378,6 +380,8 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
+const CLOSE =
+  /\bclose (?:the|my|last|this) month\b|\bmonth[- ]end close\b|\bmonthly close\b|\bis (?:last |the )?month (?:closed|done)\b|\b(?:last|this) month'?s close\b|\bclosed (?:last )?month\b/;
 const PRICE_RISES =
   /\b(?:intro(?:ductory)?|promo(?:tional)?) (?:rate|price|offer|deal)s?\b|\b(?:any|which) (?:bills?|prices?|subscriptions?) (?:going|go) up\b|\bprices? (?:going|go) up\b|\bwhat(?:'s| is) (?:renewing|going up)\b|\b(?:annual|yearly) (?:renewals?|plans?) (?:coming|due)\b/;
 const BOOKS =
@@ -578,6 +582,7 @@ export function parseIntent(
   const figureHow = parseFigureHow(text);
   if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };
+  if (CLOSE.test(text)) return { kind: "month_close" };
   const saveMore = SAVE_MORE.exec(text);
   if (saveMore) {
     const cents = Math.round(Number(saveMore[1].replace(/,/g, "")) * 100);

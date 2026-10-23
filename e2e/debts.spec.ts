@@ -1045,6 +1045,9 @@ test("what you could borrow is shown with the day it was checked", async ({
   await expect(
     page.getByRole("heading", { level: 1, name: "What you could borrow" }),
   ).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  // A card limit is a guess from a year of income, to the nearest $100.
+  await expect(page.getByText(/with a limit around \$[\d,]*00\.00/)).toBeVisible();
   const list = page.getByRole("list", { name: "What you could borrow" });
   await expect(list.getByRole("listitem").filter({ has: page.getByRole("heading") })).toHaveCount(
     4,
