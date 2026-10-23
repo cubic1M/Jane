@@ -16,6 +16,25 @@ vi.mock("./insurance/quotes", async (original) => ({
   })),
 }));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
+// Phase AW: the practice-settings card has its own tests (./practice-tools.integration.test.ts).
+vi.mock("./practice-tools", async (original) => ({
+  ...(await original<typeof import("./practice-tools")>()),
+  proposePracticeChange: vi.fn(async () => ({
+    ok: true,
+    actions: [
+      { id: "practice.prefs_save", label: "Make the change", kind: "primary" },
+      {
+        id: "open",
+        label: "See practice settings",
+        kind: "link",
+        href: "/investments/practice/settings",
+      },
+    ],
+    refs: { practicePrefs: { appetite: "off" } },
+    line: "Change your practice settings:\n- Extra moves: Normal → Off",
+    cents: [],
+  })),
+}));
 // The decision tool's facts come from a real database elsewhere (decision.test.ts).
 vi.mock("./decision", async (original) => ({
   ...(await original<typeof import("./decision")>()),
@@ -406,6 +425,19 @@ describe("askClaudeInChat", () => {
     expect(withoutButtonTalk("I used propose_action. Lighthouse is cheaper.")).toBe(
       "Lighthouse is cheaper.",
     );
+  });
+
+  it("puts a practice-settings change under the answer as a card to confirm", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("change_practice_settings", { extra_moves: "off" }))
+      .mockResolvedValueOnce(final("Once you confirm, Jane will stop the extra moves."));
+    const result = await askClaudeInChat("u1", [], "stop the extra moves", options);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.actions.map((a) => a.id)).toEqual(["practice.prefs_save", "open"]);
+    expect(result.reply.refs).toMatchObject({ practicePrefs: { appetite: "off" } });
+    expect(result.reply.body).toContain("Extra moves: Normal → Off");
+    // Claude was told it's not done until the tap.
+    expect(lastToolResult(1).content).toMatch(/Never say it's done/);
   });
 
   it("keeps a failed button out of the text, and shortens an answer that repeats the card", async () => {

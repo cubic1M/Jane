@@ -1,5 +1,6 @@
 import type { SuggestionTopic } from "@/config/people";
 import type { FindingType } from "@/generated/prisma/client";
+import { PRACTICE_TOPIC } from "./practice-suggestions";
 
 // Ranking and reaching (spec step 255): how the nightly scan orders what the detectors found
 // and how much of it reaches a person each day.
@@ -121,7 +122,22 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "long_term_care",
   "medigap",
   "rmd",
+  // Spreading an inherited IRA's withdrawals; its deadline (inherited_ira) is a fact.
+  "inherited_ira_spread",
   "health_insurance",
   "education_529",
   "employer_match",
+  // Tax moves (taxes QA, 2026-10-22): the chat already holds these back from real accounts
+  // (src/lib/tax-decisions.ts), so the cards do too. Deadlines, penalties, records and what the
+  // law requires (file, Marketplace income, HSA excess, receipts) stay facts for everyone.
+  "roth_conversion",
+  "childcare_tax_break",
+  "year_end_moves",
+  "property_tax_check",
+  "tax_loss_harvest",
+  "s_corp_election",
+  "home_office_deduction",
+  "social_security_tax",
+  // The practice portfolio's ideas: demo advice only.
+  ...Object.values(PRACTICE_TOPIC),
 ];

@@ -26,11 +26,14 @@ import {
   violates,
 } from "./practice-autopilot";
 import { apply, type LedgerState } from "./practice-ledger";
+import { scanOpportunities } from "./practice-opportunities";
+import { DEFAULT_PREFERENCES, type PracticePreferences } from "./practice-preferences";
 import {
-  DEFAULT_SCAN_PREFERENCES,
-  scanOpportunities,
-  type ScanPreferences,
-} from "./practice-opportunities";
+  firstRefusal,
+  profileFor,
+  refusedByPreferences,
+  scanPreferencesFor,
+} from "./practice-profile";
 import {
   daysBefore,
   flagStatus,
@@ -71,9 +74,10 @@ export type ReplayInput = {
   strategy: Strategy;
   // For "rules": the scan kinds that may flag (drift always does).
   rules?: ReadonlySet<ScanKind>;
-  // The person's preferences the scan obeys (appetite, exclusions, tax sensitivity, cash
-  // buffer, suggest-only); left out, the defaults the live scan starts from.
-  prefs?: ScanPreferences;
+  // The person's practice preferences (B1's PracticePreferences): the profile built from them
+  // each day (profileFor) sets the mix, caps, never-buy list, cash kept and suggest-only, as it
+  // does for the live autopilot and scan. Left out, the defaults.
+  preferences?: PracticePreferences;
   // Each trade's cost in basis points of what changes hands, taken off the value as paid.
   tradeCostBps: number;
 };
@@ -182,7 +186,10 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
   const acted: Partial<Record<ScanKind, number>> = {};
   const held: Partial<Record<ScanKind, number>> = {};
   const suggested: Partial<Record<ScanKind, number>> = {};
-  const prefs = input.prefs ?? DEFAULT_SCAN_PREFERENCES;
+  const preferences = input.preferences ?? DEFAULT_PREFERENCES;
+  const prefs = scanPreferencesFor(preferences);
+  // The profile moves only with a goal date's glide path; otherwise it is the same every day.
+  const fixed = preferences.goalDate ? null : profileFor(preferences, { level, today: days[0] });
   const index: PathPoint[] = [];
   let indexValue = input.startCents;
   let lastValue = 0;
@@ -257,9 +264,10 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
     }
 
     const morning = portfolioValue(state, prices);
+    const profile = fixed ?? profileFor(preferences, { level, today });
     if (strategy === "hold") {
       // The targets with whatever cash is waiting, never a sale.
-      const weights = MODEL_PORTFOLIOS[level].weights;
+      const weights = profile.weights;
       const cash = state.cashCents;
       for (const c of CLASSES) {
         const amountCents = Math.floor(cash * weights[c]);
@@ -281,8 +289,13 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           if (!history[t]) heldHistory[t] = cursors.get(t)?.window(from) ?? [];
         const unpriced = [...PRACTICE_UNIVERSE].filter((t) => !prices[t]);
         const flags = scanOpportunities({
-          level,
+          level: profile.level,
           state,
+          weights: profile.weights,
+          caps: profile.caps,
+          opportunityMaxShare: profile.opportunityMaxShare,
+          avoid: profile.avoid,
+          cashBufferCents: profile.cashBufferCents,
           prices,
           history,
           trades: pastTrades,
@@ -306,7 +319,14 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           heldHistory,
         });
         for (const flag of flags) {
-          const { status } = flagStatus(flag, state, prices, tradesToday, prefs.mode);
+          const { status } = flagStatus(
+            flag,
+            state,
+            prices,
+            tradesToday,
+            prefs.mode,
+            firstRefusal(profile, flag),
+          );
           pastFlags.push({
             key: status === "held" ? `${flag.key}:held:${today}` : flag.key,
             kind: flag.kind,
@@ -317,7 +337,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           if (status === "suggested") suggested[flag.kind] = (suggested[flag.kind] ?? 0) + 1;
           if (status !== "acted") continue;
           acted[flag.kind] = (acted[flag.kind] ?? 0) + 1;
-          for (const t of flag.trades) place(t, t.rule);
+          for (const t of flag.trades) if (!refusedByPreferences(profile, t)) place(t, t.rule);
         }
       }
       // The autopilot: funds sold at a loss lately aren't bought back (no wash sale), and a fund
@@ -327,14 +347,19 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
       const blocked = washBlocked(recent, today);
       for (const t of MODEL_TICKERS) if (!prices[t]) blocked.add(t);
       const plan = planTrades({
-        level,
+        level: profile.level,
         state,
         prices,
         paused: false,
         tradesToday,
         blocked,
+        weights: profile.weights,
+        avoid: new Set(profile.avoid),
+        cashBufferCents: profile.cashBufferCents,
       });
-      for (const t of sellsFirst(plan)) place(t, t.rule);
+      // Suggest only: the plan is shown, never placed.
+      if (profile.trades)
+        for (const t of sellsFirst(plan)) if (!refusedByPreferences(profile, t)) place(t, t.rule);
     }
 
     maxTradesInADay = Math.max(maxTradesInADay, tradesToday);

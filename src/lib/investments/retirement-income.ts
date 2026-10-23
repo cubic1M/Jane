@@ -1,3 +1,4 @@
+import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import {
   DEFAULT_RETIREMENT_TAX_RATE,
   PLAN_WITHIN_YEARS,
@@ -61,6 +62,17 @@ export type RetirementIncomeView = {
   };
   rmd: { startAge: number; firstYearCents: number | null; birthYear: number } | null;
   draw: ReturnType<typeof drawOrder>;
+  // Spec step 271: the order tuned for taxes by the taxes side: pre-tax up to the most that keeps
+  // this year's income under Medicare's surcharge line (two years ahead), then taxable, then Roth;
+  // and how much of Social Security is taxable. Null outside demo advice.
+  taxTuned?: {
+    preTaxCapCents: number | null;
+    lineCents: number | null;
+    premiumYear: number;
+    linesEstimated: boolean;
+    ssTaxableCents: number;
+    nextDollarRate: number;
+  } | null;
   spendMonthlyCents: number;
   spendFrom: "you" | "pay" | "none";
   taxRate: number;
@@ -78,13 +90,14 @@ export async function loadRetirementIncome(
   { client = defaultClient, now = new Date(), investments: loaded }: Options = {},
 ): Promise<RetirementIncomeView> {
   const db = scopedFor(userId, client);
-  const [advice, answers, plan, saved, investments, estimate] = await Promise.all([
+  const [advice, answers, plan, saved, investments, estimate, taxes] = await Promise.all([
     adviceMode(userId, { client }),
     profileOf(userId, { client }),
     employerPlanFor(userId, client),
     db.retirementIncomes.findFirst(),
     loaded ?? loadInvestments(userId, { client, now }),
     loadTaxEstimate(userId, { client, now }).catch(() => null),
+    loadRetirementTaxes(userId, { client, now }).catch(() => null),
   ]);
   const age = currentAge(answers, now.toISOString().slice(0, 10));
   const retireAge = saved?.retireAge ?? Math.max(age ?? 0, RETIREMENT_AGE);
@@ -131,6 +144,17 @@ export async function loadRetirementIncome(
                 : null,
           },
     draw: drawOrder(balances),
+    taxTuned:
+      taxes && advice
+        ? {
+            preTaxCapCents: taxes.tuned.preTaxCapCents,
+            lineCents: taxes.irmaa.nextLineCents,
+            premiumYear: taxes.irmaa.premiumYear,
+            linesEstimated: taxes.irmaa.estimated,
+            ssTaxableCents: taxes.ss.taxableCents,
+            nextDollarRate: taxes.nextDollarRate,
+          }
+        : null,
     spendMonthlyCents: spend,
     spendFrom: saved?.spendMonthlyCents ? "you" : spendFromPay > 0 ? "pay" : "none",
     taxRate,

@@ -8,6 +8,7 @@ import {
 } from "@/config/practice-scan";
 import type { Bar } from "@/lib/market/types";
 import { SAMPLE_START, SampleMarketData } from "@/lib/market/sample";
+import { DEFAULT_PREFERENCES, type PracticePreferences } from "./practice-preferences";
 import { replayDays, replayRules, ruleEffect, stressDrop, type ReplayInput } from "./rule-replay";
 
 // The rule replay: the autopilot and the daily scan's own rules run day by day over history.
@@ -155,6 +156,29 @@ describe("replayRules on the sample market", () => {
     const low = replayRules({ ...base(bars), level: 3, headlines, rules: all })!;
     expect(high.acted.news_idea).toBeGreaterThan(0);
     expect(low.acted.news_idea).toBeUndefined();
+  });
+
+  it("follows the person's preferences, as the live autopilot and scan do", async () => {
+    const { bars, headlines } = await load("2026-10-30");
+    const run = (preferences: Partial<PracticePreferences>) =>
+      replayRules({
+        ...base(bars),
+        level: 5,
+        headlines,
+        rules: all,
+        preferences: { ...DEFAULT_PREFERENCES, ...preferences },
+      })!;
+    // Never bought: the US swap partner and every watched company.
+    const avoiding = run({ avoid: ["ITOT", "tech"] });
+    const banned = new Set(["ITOT", ...PRACTICE_STOCKS]);
+    expect(avoiding.trades.filter((t) => t.side === "buy" && banned.has(t.ticker))).toEqual([]);
+    expect(avoiding.trades.length).toBeGreaterThan(50);
+    // Suggest only: nothing placed, the ideas kept as suggestions.
+    const suggesting = run({ mode: "suggest" });
+    expect(suggesting.trades).toEqual([]);
+    // A drop limit lowers the level the mix is built from: less in stocks, a shallower worst drop.
+    const careful = run({ maxDropPercent: 20 });
+    expect(careful.worstDrop.fraction).toBeGreaterThan(run({}).worstDrop.fraction);
   });
 
   it("gives the same result for the same bars", async () => {

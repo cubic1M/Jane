@@ -40,7 +40,8 @@ describe("who the tax detectors reach", () => {
 
   it("Roth conversions: near or in retirement with a big pre-tax balance, never someone starting out", () => {
     const fired = PERSON_IDS.filter((id) => topics(id).includes("roth_conversion"));
-    expect(fired).toEqual(["preretire", "retiree"]);
+    // Not Ruth: on Social Security, a converted dollar is taxed at about 22% (step 271).
+    expect(fired).toEqual(["preretire"]);
     const s = run("preretire").find((x) => x.topic === "roth_conversion")!;
     expect(s.worthKind).toBe("saves");
     expect(s.confidence.percent).toBeLessThanOrEqual(65);
@@ -332,8 +333,12 @@ describe("business owners' tax structure", () => {
 
 describe("inherited money", () => {
   it("raises an inherited IRA for the couple who have one, never for a spouse's, and ranks it by years left", () => {
-    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira"))).toEqual(["preretire"]);
-    const s = run("preretire").find((x) => x.topic === "inherited_ira")!;
+    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira_spread"))).toEqual([
+      "preretire",
+    ]);
+    // The deadline needs the year the owner died; nobody has told it yet.
+    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira"))).toEqual([]);
+    const s = run("preretire").find((x) => x.topic === "inherited_ira_spread")!;
     expect(s.worthKind).toBe("saves");
     expect(s.worthCents).toBeGreaterThanOrEqual(50_000);
     expect(s.confidence.percent).toBeLessThanOrEqual(50);
@@ -342,19 +347,22 @@ describe("inherited money", () => {
       /within 10 years of the owner's death.*A tax professional should confirm/,
     );
     // From a spouse it is theirs to roll over: no deadline, nothing to spread.
-    expect(
-      topics("preretire", (d) => ({ ...d, told: { inherited_from_spouse: true } })),
-    ).not.toContain("inherited_ira");
+    const spouse = topics("preretire", (d) => ({ ...d, told: { inherited_from_spouse: true } }));
+    expect(spouse).not.toContain("inherited_ira");
+    expect(spouse).not.toContain("inherited_ira_spread");
     // Told the year, the date and the urgency follow.
     const told = (year: number) =>
-      run("preretire", (d) => ({ ...d, told: { inherited_ira_death_year: year } })).find(
-        (x) => x.topic === "inherited_ira",
+      run("preretire", (d) => ({ ...d, told: { inherited_ira_death_year: year } })).filter((x) =>
+        x.topic.startsWith("inherited_ira"),
       );
-    expect(told(2023)?.why).toContain("by December 31, 2033");
-    expect(told(2023)?.urgency).toBe("later");
-    expect(told(2018)?.urgency).toBe("soon");
-    expect(told(2016)?.urgency).toBe("now");
-    expect(told(2023)?.confidence.percent).toBeGreaterThan(50);
+    expect(told(2023).map((x) => x.topic)).toEqual(["inherited_ira_spread"]);
+    expect(told(2023)[0].why).toContain("by December 31, 2033");
+    expect(told(2023)[0].urgency).toBe("later");
+    expect(told(2018)[0].urgency).toBe("soon");
+    expect(told(2023)[0].confidence.percent).toBeGreaterThan(50);
+    // The last year is the deadline alone: a fact, with the 25% penalty.
+    expect(told(2016).map((x) => x.topic)).toEqual(["inherited_ira"]);
+    expect(told(2016)[0]).toMatchObject({ urgency: "now", worthKind: "risk" });
   });
 
   it("doesn't count an inherited IRA as money to convert to a Roth", () => {
@@ -369,5 +377,152 @@ describe("inherited money", () => {
       .reduce((sum, a) => sum + a.balanceCents, 0);
     const withIt = run("preretire").find((x) => x.topic === "roth_conversion")!;
     expect(withIt.why).toContain(`You have ${formatCents(own)} in pre-tax retirement`);
+  });
+});
+
+describe("health cover and taxes (step 269)", () => {
+  const withoutNewClient = (d: ProfileInput): ProfileInput => ({
+    ...d,
+    transactions: d.transactions.filter((t) => !/NORTHWIND/.test(t.description)),
+  });
+
+  it("warns Sam, whose income rose mid-year past the Marketplace credit's line, and no one else", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("ptc_repayment"))).toEqual(["freelancer"]);
+    const s = run("freelancer").find((x) => x.topic === "ptc_repayment")!;
+    expect(s).toMatchObject({ worthKind: "risk", urgency: "now" });
+    expect(s.worthCents).toBeGreaterThan(200_000);
+    expect(s.why).toMatch(/over the 400% line where the credit stops/);
+    expect(s.why).toMatch(/no cap from 2026/);
+    expect(s.confidence.percent).toBeLessThanOrEqual(50);
+    expect(s.confidence.reason).toMatch(/took it from your income in the year's first months/);
+  });
+
+  it("is raised by a mid-year rise in income, and not without it", () => {
+    expect(topics("freelancer", withoutNewClient)).not.toContain("ptc_repayment");
+  });
+
+  it("uses the advance credit the person told Jane, at a higher confidence", () => {
+    const told = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      told: { ...d.told, marketplace_aptc_monthly: 15_000 },
+    });
+    const s = run("freelancer", told).find((x) => x.topic === "ptc_repayment")!;
+    // Over the line, all of the told $150 a month comes back.
+    expect(s.worthCents).toBe(180_000);
+    expect(s.confidence.reason).not.toMatch(/first months/);
+  });
+
+  it("catches Priya's HSA deposits over the self-only limit, now", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("hsa_over_limit"))).toEqual(["equity"]);
+    const s = run("equity").find((x) => x.topic === "hsa_over_limit")!;
+    expect(s).toMatchObject({ worthKind: "risk", urgency: "now", worthCents: 9_600 });
+    expect(s.short).toMatch(/\$5,000\.00 in so far this year; the self-only limit is \$4,400\.00/);
+    // At 55 the catch-up lifts the limit to $5,400: only the pace to December is over.
+    const older = run("equity", (d) => ({ ...d, told: { ...d.told, age: 56 } })).find(
+      (x) => x.topic === "hsa_over_limit",
+    )!;
+    expect(older.urgency).toBe("soon");
+    expect(older.worthCents).toBe(3_600);
+  });
+
+  it("tells Ruth her year of care is worth itemizing; nobody else's spending clears the floor", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("medical_deduction"))).toEqual([
+      "retiree",
+    ]);
+    const s = run("retiree").find((x) => x.topic === "medical_deduction")!;
+    expect(s.worthKind).toBe("saves");
+    expect(s.worthCents).toBeGreaterThanOrEqual(10_000);
+    expect(s.why).toMatch(/\$18,150\.00 standard deduction/);
+    // Without the dental implants and hearing aids, the standard deduction wins.
+    expect(
+      topics("retiree", (d) => ({
+        ...d,
+        transactions: d.transactions.filter((t) => !/IMPLANT|HEARING/.test(t.description)),
+      })),
+    ).not.toContain("medical_deduction");
+  });
+});
+
+describe("disaster relief (step 270)", () => {
+  it("reaches the Reyes family in Harris County, and no one else", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("disaster_relief"))).toEqual(["family"]);
+    const s = run("family").find((x) => x.topic === "disaster_relief")!;
+    expect(s.title).toContain("Harris County");
+    expect(s.why).toContain("move to May 3, 2027");
+    expect(s.why).toContain("the estimated tax payment for 2026 (Jan 15, 2027)");
+    expect(s.why).toMatch(/You've paid \$36,200\.00 for repairs since, and \$5,000\.00 came back/);
+    expect(s.why).toContain("sample declaration");
+    // The flood loss over the floors, at their bracket, if they itemize.
+    expect(s.worthCents).toBeGreaterThan(200_000);
+    expect(s.headline).toMatch(/^Check your Harris County disaster relief, save \$[\d,]+$/);
+    expect(s.confidence).toEqual({
+      percent: 55,
+      reason: "I can't see whether you itemize or what insurance may still pay",
+    });
+  });
+
+  it("raises nothing without a feed (a real account) or a county", () => {
+    expect(
+      topics("family", (d) => ({ ...d, extras: { ...d.extras!, disasterRelief: [] } })),
+    ).not.toContain("disaster_relief");
+    expect(
+      topics("family", (d) => ({
+        ...d,
+        transactions: d.transactions.filter((t) => !/HARRIS COUNTY/.test(t.description)),
+      })),
+    ).not.toContain("disaster_relief");
+  });
+
+  it("promises nothing when the floors swallow the loss", () => {
+    const smaller = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      transactions: d.transactions.filter((t) => !/BAYOU FLOORING/.test(t.description)),
+    });
+    const s = run("family", smaller).find((x) => x.topic === "disaster_relief")!;
+    expect(s.worthCents).toBe(0);
+    expect(s.why).toContain("none of it is deductible");
+  });
+});
+
+describe("a draft return checked before filing (step 272)", () => {
+  const finding = (key: string, effect: "owes" | "saves", dollarsCents: number) => ({
+    key,
+    kind: "left_out" as const,
+    title: `${key} title`,
+    line: "Form 1040 line 1a",
+    draftCents: 0,
+    knownCents: dollarsCents,
+    effect,
+    dollarsCents,
+    why: "why",
+  });
+  const withDraft =
+    (findings: ReturnType<typeof finding>[]) =>
+    (d: ProfileInput): ProfileInput => ({
+      ...d,
+      extras: { ...d.extras!, draftReturn: { year: 2026, findings } },
+    });
+
+  it("raises nothing without a checked draft, or when the check found nothing", () => {
+    for (const id of PERSON_IDS) expect(topics(id)).not.toContain("draft_return_check");
+    expect(topics("freelancer", withDraft([]))).not.toContain("draft_return_check");
+  });
+
+  it("brings what the check found, now, with the dollars: a bill to avoid when any line owes", () => {
+    const s = run(
+      "freelancer",
+      withDraft([
+        finding("capitalGains", "owes", 16_737),
+        finding("federalWithheld", "saves", 100_000),
+      ]),
+    ).find((x) => x.topic === "draft_return_check")!;
+    expect(s).toMatchObject({ urgency: "now", worthKind: "risk", worthCents: 116_737 });
+    expect(s.title).toBe("Fix 2 things in your 2026 draft return before you file");
+    expect(s.headline).toBe("Fix your draft return, avoid up to $1,167");
+    expect(s.why).toContain("I don't file it.");
+    const saves = run("freelancer", withDraft([finding("estimatedPaid", "saves", 200_000)])).find(
+      (x) => x.topic === "draft_return_check",
+    )!;
+    expect(saves.worthKind).toBe("saves");
   });
 });

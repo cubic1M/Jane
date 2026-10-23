@@ -85,9 +85,12 @@ const SECTORS = {
       "crypto",
       "market_news",
       "backtest_by_level",
+      "practice_portfolio",
+      "practice_settings",
+      "change_practice_settings",
     ]),
     words:
-      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|news|headlines?|filings?|8-?k|10-?q|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk|what is a|profile|about me|goals?|buckets?|split|extra rules|dip.?buys?)\b/,
+      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|news|headlines?|filings?|8-?k|10-?q|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk\w*|what is a|profile|about me|goals?|buckets?|split|practice|paper money|extra moves?|avoid\w*|harvest\w*|cash buffer|suggest only|need (?:this|the|that|my) money|extra rules|dip.?buys?)\b/,
   },
 } as const;
 
@@ -130,6 +133,11 @@ const SPECIFIC_LOOKUPS: readonly { when: RegExp; tools: readonly string[] }[] = 
     tools: ["retirement_accounts"],
   },
   { when: /\b(?:diversif\w*|allocation|portfolio|rebalanc\w*)\b/i, tools: ["portfolio_review"] },
+  // Phase AW: the practice portfolio's settings ("make it less risky", "avoid oil companies").
+  {
+    when: /\b(?:practice|paper money|less risky|more risky|riskier|safer|extra moves?|avoid\w*|suggest only|cash buffer|need (?:this|the|that|my) money)\b/i,
+    tools: ["practice_settings"],
+  },
   // Spec step 295: "how would a High portfolio have done in 2022".
   {
     when: /\b(?:backtest\w*|replay\w*|would\b[^.?!]{0,40}\bhave (?:done|gone|fared|performed|lost|dropped|fallen))\b/i,

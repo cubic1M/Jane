@@ -52,7 +52,7 @@ and by email). The year in review becomes part of December's report.
 - **The year in review is hidden.** It's only on `/year` and the Ahead hub; nothing ever
   brings it to the person.
 
-**Merge plan** (PR "Merge: summaries")
+**Merge plan** (PR "Merge: summaries", #486)
 
 1. **One monthly report.** The report gains the check-in's pieces it lacked: spending
    against the month before, budgets kept, goals moved, net worth change, and the short
@@ -107,7 +107,7 @@ chat's "coming up" tool use the one `comingUp` list.
 - **Every reader builds its own list.** Today (`home.ts`), the Ahead hub, the calendar, the
   year plan and the chat each call the bills forecast and the deadline list themselves.
 
-**Merge plan** (PR "Merge: bills and deadlines")
+**Merge plan** (PR "Merge: bills and deadlines", #487)
 
 1. One loader, `src/lib/coming-up.ts` (`loadComingUp`), returns bills (forecast), deadlines
    (all deadline sources) and deposits as one dated list, with the same "a bill that is also
@@ -140,7 +140,7 @@ times. The action agent (three places), phone calls, the finding page and the te
 page each normalise the company name, load the whole directory, match it, and separately load
 how actions there usually go. The finding page and the team's page each do both lookups.
 
-**Merge plan** (PR "Merge: merchant directory")
+**Merge plan** (PR "Merge: merchant directory", #489)
 
 1. One function, `companyFacts(name)` in `src/lib/merchants.ts`: the directory row (with only
    a confirmed support email), plus how each kind of action usually goes there.
@@ -160,17 +160,19 @@ there's no key (dev and tests).
 
 | Step | Today | Where |
 | --- | --- | --- |
-| 23 Ask Jane | A **second chat** at `/ask`, with its own Claude tools, its own conversations table and its own API. Reachable only from a link under the chat for people who used it before. | `src/app/ask`, `src/lib/ask/*`, `/api/ask` |
+| 23 Ask Jane | A **second chat** at `/ask`, with its own Claude answer path, its own conversations table and its own API. Reachable only from a link under the chat for people who used it before. | `src/app/ask`, `src/lib/ask/*`, `/api/ask` |
 | 84, 88, 90, 189–193 | Intents, replies, the capability registry, two-part questions, pronoun follow-ups, the right buttons. | `src/lib/jane-agent/intents.ts`, `replies*.ts`, `capabilities/*`, `answer.ts`, `typing.ts` |
 | 87, 189, 195 | The question bank and the graders; the nightly run grades **Claude's** answers with it. | `src/lib/jane-agent/checks/*` |
 
 **What's duplicated**
 
-- **Two chats with two sets of Claude tools.** `/ask` (step 23) answers with its own eight
-  tools (`src/lib/ask/tools.ts`) that overlap the chat's ~125 tools, and its Claude spend is
-  **not** counted against the chat's monthly $8 guard (`CHAT_MONTHLY_CAP_CENTS`), only
-  against an hourly rate limit. Anyone with an old Ask conversation can still type new
-  questions there.
+- **Two chats, two Claude answer paths.** `/ask` (step 23) answers through its own path
+  (`src/lib/ask/answer.ts`, `/api/ask`), and its Claude spend is **not** counted against the
+  chat's monthly $8 guard (`CHAT_MONTHLY_CAP_CENTS`), only against an hourly rate limit. Anyone
+  with an old Ask conversation can still type new questions there.
+- **Not a duplicate (corrected after the merge):** Ask's eight read-only tools
+  (`src/lib/ask/tools.ts`) are not a second set. The chat's own Claude tools
+  (`src/lib/jane-agent/claude-tools.ts`) are built on them, so they stay.
 
 **What stays, and why**
 
@@ -182,13 +184,14 @@ there's no key (dev and tests).
 - **The right-button logic stays.** Buttons only ever come after a written answer, and taps
   still go through the rules.
 
-**Merge plan** (PR "Merge: rules-based chat")
+**Merge plan** (PR "Merge: rules-based chat", #491)
 
 1. `/ask` becomes a read-only archive of the person's earlier Ask Jane conversations: they can
    read and delete them, and a "Ask in the chat" link takes new questions to the one chat.
-2. Removed: the second Claude path (`src/lib/ask/answer.ts`, `src/lib/ask/tools.ts`,
-   `/api/ask`, the `AskChat` client). Kept: the conversations (in Download my data and
-   deleted with the account), and the `ask` config the chat's guardrails still use.
+2. Removed: the second Claude path (`src/lib/ask/answer.ts`, `/api/ask`, the `AskChat`
+   client). Kept: `src/lib/ask/tools.ts` (the chat's tools are built on it), the conversations
+   (in Download my data and deleted with the account), and the `ask` config the chat's tools
+   and guardrails still use.
 
 **What users will notice:** the old Ask Jane page no longer takes new questions; it points to
 the chat. **Risk:** low. Nobody new reaches `/ask`; the conversations stay readable.
@@ -223,7 +226,7 @@ every page and answer describes.
   follows the overall level, not the Taxes setting, so turning Taxes to "Always ask" doesn't
   change it.
 
-**Merge plan** (PR "Merge: autopilot")
+**Merge plan** (PR "Merge: autopilot", #497)
 
 1. One description per sector, keyed by the sector's own level (Always ask / The safe stuff /
    Everything allowed), in `src/config/autopilot-sectors.ts`, read through one helper
@@ -262,7 +265,7 @@ setting by hand. Page changes, so the PR runs end-to-end tests.
   suggestions. So the person can be told two different "first things". Claude's primer already
   merges the two (scan first), in its own code.
 
-**Merge plan** (PR "Merge: suggestions")
+**Merge plan** (PR "Merge: suggestions", #498)
 
 1. One ranked list, `topThings(snapshot)` in `src/lib/jane-agent/priorities.ts`: the scan's
    suggestions in the scan's order first (each with its confidence %), then the priority

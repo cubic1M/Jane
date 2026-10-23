@@ -45,4 +45,6 @@ export const DEBT_ACTION_IDS = [
   "caraddon.no",
   "caraddon.mine",
   "caraddon.team",
+  // Spec step 248: the person said yes to reporting their rent.
+  "rent.report_on",
 ] as const;
