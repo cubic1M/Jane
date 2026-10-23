@@ -45,7 +45,9 @@ export function w4Suggestion(view: TaxEstimateView, check: Actionable): W4Messag
       : `You're heading for ${balancePhrase(check.refundCents)} for ${view.year}. A new W-4 that withholds a little more would turn it into a small refund.`;
   const plan = now
     ? ` For your last ${check.paychecksLeft} ${check.paychecksLeft === 1 ? "paycheck" : "paychecks"} this year, put ${amount(now)} in ${stepName(now)} (${perPaycheck(now)}, leaving ${balancePhrase(now.refundAfterCents)}); from January, ${amount(check.fromJanuary)}.`
-    : ` From January, put ${amount(check.fromJanuary)} in ${stepName(check.fromJanuary)} (${perPaycheck(check.fromJanuary)}).`;
+    : check.paychecksLeft > 0
+      ? ` With ${check.paychecksLeft} ${check.paychecksLeft === 1 ? "paycheck" : "paychecks"} left this year, getting it back through them would take more deductions than your pay, so it comes as your refund in the spring. From January, put ${amount(check.fromJanuary)} in ${stepName(check.fromJanuary)} (${perPaycheck(check.fromJanuary)}).`
+      : ` From January, put ${amount(check.fromJanuary)} in ${stepName(check.fromJanuary)} (${perPaycheck(check.fromJanuary)}).`;
   const change = now ?? check.fromJanuary;
   return {
     body: `${opening}${plan} Want me to walk you through it?`,

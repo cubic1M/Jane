@@ -130,6 +130,33 @@ describe.runIf(url)("practice ideas as suggestions", () => {
     expect(await client.practiceTrade.count({ where: { userId } })).toBe(before + 2);
   });
 
+  it("checks the never-buy list as it stands when the person says Yes", async () => {
+    const userId = await person();
+    await suggestOnly(userId);
+    const ideas = await openPracticeIdeas(userId, { client, now: at("2026-10-15", "15:00:00") });
+    const harvest = ideas.find((i) => i.kind === "tax_loss_harvest")!;
+    // Since the idea was found, the fund it buys went on the never-buy list.
+    await client.practicePreferences.create({
+      data: {
+        userId,
+        monthlyAddCents: 50_000,
+        addDay: 1,
+        appetite: "normal",
+        avoid: ["ITOT"],
+        harvestLosses: true,
+        cashBufferCents: 0,
+        mode: "suggest",
+      },
+    });
+    const before = await client.practiceTrade.count({ where: { userId } });
+    const out = await answerPracticeIdea(userId, ideaKey(harvest), "yes", {
+      client,
+      now: at("2026-10-15", "15:00:00"),
+    });
+    expect(out?.note).toMatch(/never-buy list/);
+    expect(await client.practiceTrade.count({ where: { userId } })).toBe(before);
+  });
+
   it("opens the settings for an idea without trades, and does nothing while paused", async () => {
     const userId = await person();
     await client.investorProfile.create({ data: { userId, dropReaction: "sell" } });

@@ -1,5 +1,5 @@
 import { ROLLOVER_NOTE } from "@/config/old-accounts";
-import type { OldPlanView } from "@/lib/investments/old-accounts";
+import type { OldAccountsView, OldPlanView } from "@/lib/investments/old-accounts";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 
@@ -30,6 +30,10 @@ export const rollButton = (): MessageAction => ({
   label: "Roll it over",
   kind: "primary",
 });
+
+// 401(k)s already linked from past jobs, in the same words and figures as the suggestion.
+export const linkedLine = (l: NonNullable<OldAccountsView["linked"]>) =>
+  `You have ${l.count} 401(k) accounts; ${formatCents(l.totalCents)} sits in the older one${l.plans.length > 1 ? "s" : ""} (${l.plans.map((p) => p.name).join(", ")}). Rolling it into an IRA, moved directly and never withdrawn, would save about ${formatCents(l.savedCents)} a year in fees.`;
 
 export function summaryLine(plans: OldPlanView[]): string {
   if (plans.length === 0)

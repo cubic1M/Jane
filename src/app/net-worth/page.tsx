@@ -11,6 +11,8 @@ import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { requireUser } from "@/lib/session";
+import { BooksNotice } from "@/components/books-notice";
+import { openBooks } from "@/lib/books";
 
 const monthLabel = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
@@ -63,11 +65,15 @@ async function NetWorthContent() {
   return (
     <>
       <AppHeader user={user} />
+      <BooksNotice books={await openBooks(user.id)} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Net worth</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           What your accounts hold minus what you owe on cards and loans, from the balances your bank
-          reports.
+          reports.{" "}
+          <Link href="/figures/net_worth" className="font-medium text-emerald-700 hover:underline">
+            How did I get this?
+          </Link>
         </p>
       </div>
 

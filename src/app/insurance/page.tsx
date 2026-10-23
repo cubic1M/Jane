@@ -46,6 +46,7 @@ import { cardCover, conditionWords, limitWords } from "@/lib/insurance/card-cove
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { autopilotOf } from "@/lib/autopilot";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { autopilotReply } from "@/lib/jane-agent/insurance/autopilot";
 import {
   addPersonForm,
@@ -206,9 +207,11 @@ async function InsuranceContent({
   };
   const now = new Date();
   const asOf = now.toISOString().slice(0, 10);
-  const [{ policies, household, gaps, advice }, autopilot] = await Promise.all([
+  const [{ policies, household, gaps, advice }, autopilot, insuranceArea] = await Promise.all([
     loadInsurance(user.id, { now }),
     autopilotOf(user.id),
+    // Spec step 141: what the Insurance area may do by itself.
+    autopilotFor(user.id, "insurance", { now }),
   ]);
   // Read after loadInsurance, which reads any policy document not read yet.
   const [readings, cards, prepared, partner, negotiations] = await Promise.all([
@@ -257,12 +260,13 @@ async function InsuranceContent({
             policy documents
           </Link>{" "}
           and adds each one once you confirm what she read, and points out cover that looks missing.
-          She never buys, changes or cancels insurance without your tap.
+          Unless you let her switch for you in Settings, she never buys, changes or cancels
+          insurance without your tap.
         </p>
-        {/* Spec step 108: what Jane does with insurance by herself at their level. */}
+        {/* Spec steps 108 and 141: what Jane does with insurance by herself. */}
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          On autopilot: {autopilotReply(autopilot).body}{" "}
-          <Link href="/settings#autopilot" className={LINK}>
+          On autopilot: {autopilotReply(autopilot, insuranceArea).body}{" "}
+          <Link href="/settings#sectors" className={LINK}>
             Change it
           </Link>
         </p>

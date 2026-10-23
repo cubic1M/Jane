@@ -31,6 +31,7 @@ export function checkFrom(view: TaxEstimateView): WithholdingCheck {
     paychecksLeft: view.paychecks.left,
     withheldPerPaycheckCents: view.paychecks.withheldPerPaycheckCents,
     lastYearRefundCents: view.lastYearRefundCents,
+    wagesCents: view.input.income.wagesCents,
   });
 }
 
