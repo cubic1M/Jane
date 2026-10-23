@@ -15,6 +15,24 @@ export function feeComparison(input: { balanceCents: number; oldBps: number; new
   return { beforeCents: before, afterCents: after, savedCents: before - after };
 }
 
+// 401(k)s the person has linked from past jobs: every linked 401(k) but the biggest (taken as the
+// current job's), and what rolling them over would save at a typical old-plan fee gap. One rule
+// for the "old accounts" suggestion, its page and the chat, so their figures agree.
+export type LinkedPlan = { id: string; name: string; balanceCents: number };
+export function olderPlans(plans: readonly LinkedPlan[], gapBps: number) {
+  const older = [...plans]
+    .sort((a, b) => b.balanceCents - a.balanceCents)
+    .slice(1)
+    .filter((p) => p.balanceCents > 0);
+  const totalCents = older.reduce((s, p) => s + p.balanceCents, 0);
+  return {
+    plans: older,
+    count: plans.length,
+    totalCents,
+    savedCents: yearlyFee(totalCents, gapBps),
+  };
+}
+
 export const newSteps = (): Step[] => ROLLOVER_STEPS.map((s) => ({ ...s, doneOn: null }));
 
 const addDays = (day: string, n: number) =>

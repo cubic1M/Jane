@@ -32,6 +32,7 @@ import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
 import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
+import { CHANGE_PRACTICE_TOOL, proposePracticeChange } from "./practice-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
 import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
 import { GuardedText } from "./guarded-text";
@@ -192,6 +193,8 @@ const STATUS: Record<string, string> = {
   explain_figure: "Working out how I got that…",
   books_check: "Checking your numbers add up…",
   steady_pay: "Working out your steady paycheck…",
+  money_for_two: "Looking at what you share…",
+  goal_tradeoffs: "Weighing your goals against each other…",
   health_score: "Working out your money health score…",
   monthly_report: "Reading your monthly report…",
   what_if: "Running the what-if…",
@@ -831,6 +834,25 @@ async function askClaude(
               ? `It will be shown under your answer: ${drawBlock(built).alt}`
               : "There's nothing to show for that.",
             ...(built ? {} : { is_error: true }),
+          });
+          continue;
+        }
+        // Phase AW: a practice-settings change, as a card the person confirms (./practice-tools.ts).
+        if (block.name === CHANGE_PRACTICE_TOOL) {
+          const result = proposal
+            ? ({ ok: false, error: "You already offered a button for this answer." } as const)
+            : await proposePracticeChange(userId, block.input, { client, now });
+          if (result.ok) {
+            proposal = { ok: true, actions: result.actions, refs: result.refs, line: result.line };
+            allowedCents.push(...result.cents);
+          }
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: result.ok
+              ? `The change is ready as a card under your answer, for them to confirm:\n${result.line}\nNow write one sentence saying what will change once they tap to confirm. Never say it's done, and don't repeat the card's figures.`
+              : `${result.error}\n(Say this to the person in your own words; nothing was changed.)`,
+            ...(result.ok ? {} : { is_error: true }),
           });
           continue;
         }

@@ -2,6 +2,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { parseMoneyToCents } from "@/lib/money";
+import { GOAL_ORDER_FACT } from "@/config/tradeoffs";
+import { orderGoals, parseGoalOrder } from "@/planning/goal-tradeoffs";
 import { goalProgress, type GoalProgress } from "@/planning/goals";
 
 // Savings goals: adding, updating and listing them with their progress.
@@ -106,13 +108,22 @@ export async function listGoals(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<GoalView[]> {
   const db = scopedFor(userId, client);
-  const [goals, accounts] = await Promise.all([
+  const [goals, accounts, order] = await Promise.all([
     db.savingsGoals.findMany({ orderBy: [{ targetDate: "asc" }, { id: "asc" }] }),
     db.accounts.findMany({ select: { id: true, name: true, currentBalanceCents: true } }),
+    // Spec step 241: the order the person picked when goals competed; by date otherwise.
+    db.janePreferences.findFirst({
+      where: { kind: "fact", key: GOAL_ORDER_FACT },
+      select: { value: true },
+    }),
   ]);
   const byId = new Map(accounts.map((a) => [a.id, a]));
   const asOf = now.toISOString().slice(0, 10);
-  return goals.map((g) => {
+  const ordered = orderGoals(
+    goals,
+    parseGoalOrder((order?.value as { order?: unknown } | null)?.order),
+  );
+  return ordered.map((g) => {
     const account = g.accountId ? byId.get(g.accountId) : undefined;
     const saved =
       account?.currentBalanceCents !== undefined && account?.currentBalanceCents !== null

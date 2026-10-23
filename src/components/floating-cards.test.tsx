@@ -58,3 +58,29 @@ describe("options of one choice", () => {
     ).toBe("");
   });
 });
+
+describe("the confidence line", () => {
+  const card = (reason: string) =>
+    renderToStaticMarkup(
+      <FloatingCards
+        cards={[
+          {
+            id: "c",
+            headline: "A card",
+            details: { confidence: { percent: 35, reason } },
+            yesLabel: "Yes",
+          },
+        ]}
+        mode="pick"
+        label="Cards"
+        onAnswer={vi.fn()}
+      />,
+    );
+  it("ends the reason with one full stop, whether or not it came with one", () => {
+    expect(card("thin evidence")).toContain("thin evidence.");
+    // The practice scan's reasons end with a full stop already: no ". ." after them.
+    const html = card("One headline is thin evidence, so the position is kept small.");
+    expect(html).toContain("kept small.");
+    expect(html).not.toContain("kept small..");
+  });
+});

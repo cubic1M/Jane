@@ -93,6 +93,8 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   steady_hand: "a calm message after a market drop; it follows an event, not a profile",
   crypto: "reports linked crypto read-only; nothing to suggest",
   debt_autopilot: "reports what Jane does by herself for debts at the person's level",
+  credit_monthly:
+    "gathers the credit items the other detectors raise (refinance, car add-ons, costly borrowing, rent), once a month, into one message",
   debt_review:
     "gathers the debt items the other detectors already raise, once a year, into one message",
   credit_goals: "a score plan the person asks for with their own target and date",
@@ -103,6 +105,10 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
     "tracks an application the person started; the refinance and transfer detectors suggest them",
   market_news:
     "reads the practice portfolio's stored news summaries and filings when asked; the daily scan (spec step 292) brings news-driven ideas up by itself",
+  practice_settings:
+    "reads the practice portfolio's settings when asked; the practice-portfolio detector (step 296) brings investing up unasked",
+  change_practice_settings:
+    "prepares a settings change the person asked for, as a card they confirm; never suggests one by itself",
   backtest_by_level:
     "replays a risk level over past prices when the person asks how it would have done; the practice-portfolio detector (step 296) brings investing up unasked",
 };

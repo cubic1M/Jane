@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEMO_PAY_STUB } from "@/config/tax";
 import { demoPayroll } from "@/lib/payroll/demo";
 import {
+  businessSalesSoFar,
   otherIncomeSoFar,
   payFrequency,
   payFromStubs,
@@ -225,5 +226,51 @@ describe("how the estimate is said", () => {
     expect(balancePhrase(416_637)).toBe("a refund of about $4,166");
     expect(balancePhrase(-120_049)).toBe("about $1,200 to pay");
     expect(balancePhrase(3_000)).toBe("about even");
+  });
+});
+
+describe("a shop's card sales (taxes QA)", () => {
+  const row = (date: string, amountCents: number, description: string, pfcDetailed: string) => ({
+    date,
+    amountCents,
+    description,
+    pfcDetailed,
+    merchantName: null,
+  });
+
+  it("counts a shop's repeated card processor deposits as business sales, once, in the year", () => {
+    const week = (d: number) =>
+      row(`2026-03-${String(d).padStart(2, "0")}`, -980_000, "SQUARE DEPOSIT", "INCOME_OTHER");
+    expect(
+      businessSalesSoFar(
+        [
+          ...[2, 9, 16, 23, 30].map(week),
+          row("2026-04-09", -620_000, "SHOPIFY PAYOUT", "TRANSFER_IN_DEPOSIT"),
+          // A freelance payout is already freelance income; a refund or a transfer isn't a sale.
+          row("2026-03-10", -150_000, "STRIPE TRANSFER - ALDER DESIGN", "INCOME_CONTRACTOR"),
+          row("2026-03-11", -50_000, "SQUARE DEPOSIT", "INCOME_TAX_REFUND"),
+          row("2026-03-12", -40_000, "ZELLE FROM MOM", "TRANSFER_IN_DEPOSIT"),
+          row("2025-12-30", -700_000, "SQUARE DEPOSIT", "INCOME_OTHER"),
+        ],
+        2026,
+      ),
+    ).toBe(5 * 980_000 + 620_000);
+  });
+
+  it("leaves a one-off platform payout to side income (step 173)", () => {
+    expect(
+      businessSalesSoFar(
+        [
+          row("2026-03-02", -980_000, "SQUARE DEPOSIT", "INCOME_OTHER"),
+          row("2026-03-09", -620_000, "SHOPIFY PAYOUT", "TRANSFER_IN_DEPOSIT"),
+          // A freelance payout is already freelance income; a refund or a transfer isn't a sale.
+          row("2026-03-10", -150_000, "STRIPE TRANSFER - ALDER DESIGN", "INCOME_CONTRACTOR"),
+          row("2026-03-11", -50_000, "SQUARE DEPOSIT", "INCOME_TAX_REFUND"),
+          row("2026-03-12", -40_000, "ZELLE FROM MOM", "TRANSFER_IN_DEPOSIT"),
+          row("2025-12-30", -700_000, "SQUARE DEPOSIT", "INCOME_OTHER"),
+        ],
+        2026,
+      ),
+    ).toBe(0);
   });
 });

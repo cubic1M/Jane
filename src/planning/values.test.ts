@@ -129,3 +129,18 @@ describe("investing by your values", () => {
     expect(valuesPlan([BROKERAGE], { excludes: ["fossil_fuels"], themes: [] }).key).not.toBe(a);
   });
 });
+
+describe("what values never switch", () => {
+  it("leaves one company's shares (company stock) as they are: they read as US stocks but aren't a fund", () => {
+    const plan = valuesPlan(
+      [account("s", "stock plan", [holding("ACME", 250_000_00, { us_stocks: 1 })]), BROKERAGE],
+      ALL,
+    );
+    expect(plan.switches.map((s) => s.from.ticker)).not.toContain("ACME");
+    expect(plan.skipped).toContainEqual({
+      accountName: "stock plan s",
+      name: "ACME",
+      reason: "is one company's shares, not a fund, so it's left as it is",
+    });
+  });
+});

@@ -22,6 +22,7 @@ import { checkGoalDraft, loadCreditGoals, planFor } from "@/lib/credit-goals";
 import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { loadRenting } from "@/lib/renting";
 import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
+import { computeCreditMonthly, loadCreditMonthly } from "@/lib/credit-monthly";
 import { loadFamilyCredit } from "@/lib/family-credit";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
@@ -55,6 +56,7 @@ import { creditGoalReply } from "./credit-goal-replies";
 import { costlyReply } from "./costly-borrowing-replies";
 import { rentingReply } from "./renting-replies";
 import { borrowingReply } from "./borrowing-power-replies";
+import { creditMonthlyReply } from "./credit-monthly-replies";
 import { familyCreditReply } from "./family-credit-replies";
 import { mortgageMoneyReply } from "./mortgage-money-replies";
 import { carLoanReply } from "./car-loan-replies";
@@ -133,6 +135,11 @@ export async function answerDebt(
     }
     case "costly_borrowing":
       return costlyReply(await loadCostlyBorrowing(userId, { client, now }));
+    case "credit_monthly":
+      return creditMonthlyReply(
+        (await loadCreditMonthly(userId, { client })) ??
+          (await computeCreditMonthly(userId, { client, now })),
+      );
     case "borrowing_power":
       await ensureBorrowingChecked(userId, { client, now });
       return borrowingReply(await loadBorrowingPower(userId, { client, now }));

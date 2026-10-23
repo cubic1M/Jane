@@ -12,7 +12,7 @@ import { isStateCode } from "@/config/referrals";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
-import { autopilotOf } from "@/lib/autopilot";
+import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import {
@@ -87,16 +87,17 @@ export async function loadTaxProfile(
   return taxProfileView(stored, found);
 }
 
-// The profile Jane works with at the person's autopilot level (src/config/tax.ts).
+// The profile Jane works with at the Taxes area's autopilot level (spec step 141,
+// src/config/tax.ts usesFoundAnswers), and that setting, for saying what she does by herself.
 export async function loadWorkingProfile(
   userId: string,
   options: Options = {},
-): Promise<{ view: TaxProfileView; profile: WorkingProfile; autopilot: string | null }> {
-  const [view, autopilot] = await Promise.all([
+): Promise<{ view: TaxProfileView; profile: WorkingProfile; taxes: SectorAutopilot }> {
+  const [view, taxes] = await Promise.all([
     loadTaxProfile(userId, options),
-    autopilotOf(userId, { client: options.client ?? defaultClient }),
+    autopilotFor(userId, "taxes", { client: options.client ?? defaultClient, now: options.now }),
   ]);
-  return { view, profile: workingProfile(view, usesFoundAnswers(autopilot)), autopilot };
+  return { view, profile: workingProfile(view, usesFoundAnswers(taxes.level)), taxes };
 }
 
 // One answer, as the person gave it. Checked here, whatever the page or chat sent.
