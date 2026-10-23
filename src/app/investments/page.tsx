@@ -15,6 +15,7 @@ import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
 import { backtestsFor } from "@/lib/investments/backtest";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
+import { practiceProfileOf } from "@/lib/practice/preferences";
 import { autopilotOf } from "@/lib/autopilot";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
@@ -88,8 +89,10 @@ function HoldingRow({ h }: { h: HoldingView }) {
 // "Did the extra rules help?": a few seconds of replay the first time, so it streams in after
 // the rest of the page.
 async function RuleReplays({ userId }: { userId: string }) {
-  const replays = await ruleReplaysFor(userId);
-  return replays.advice && replays.data ? <RuleReplaySection data={replays.data} /> : null;
+  const [replays, profile] = await Promise.all([ruleReplaysFor(userId), practiceProfileOf(userId)]);
+  return replays.advice && replays.data ? (
+    <RuleReplaySection data={replays.data} level={profile.level} />
+  ) : null;
 }
 
 async function InvestmentsContent() {
