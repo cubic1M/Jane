@@ -1,4 +1,5 @@
 import {
+  HISTORY_FLOOR_BY_TOPIC,
   HISTORY_MAX_FACTOR,
   MONEY_GROUPS,
   HISTORY_MIN_FACTOR,
@@ -29,12 +30,14 @@ export type KindResults = readonly {
 
 export type Ranked = { suggestion: Suggestion; score: number };
 
-// What the person's own answers do to a topic: 1 with none, up with yes, down with no.
+// What the person's own answers do to a topic: 1 with none, up with yes, down with no. A
+// safety topic never falls below its floor (HISTORY_FLOOR_BY_TOPIC).
 export function historyFactor(topic: string, history: TopicHistory): number {
   const h = history[topic];
   if (!h) return 1;
   const factor = (1 + h.yes * YES_BOOST) * Math.pow(NO_PENALTY, h.no);
-  return Math.min(HISTORY_MAX_FACTOR, Math.max(HISTORY_MIN_FACTOR, factor));
+  const floor = HISTORY_FLOOR_BY_TOPIC[topic] ?? HISTORY_MIN_FACTOR;
+  return Math.min(HISTORY_MAX_FACTOR, Math.max(floor, factor));
 }
 
 // What happened after yes (step 207): finished actions of the matching kind of finding that

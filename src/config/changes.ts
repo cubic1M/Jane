@@ -1,4 +1,9 @@
 import type { FindingType } from "@/generated/prisma/client";
+import {
+  PRICE_INCREASE_MAX_PRIOR_SPREAD,
+  PRICE_INCREASE_MIN_PRIOR_CHARGES,
+  PRICE_INCREASE_THRESHOLD,
+} from "./detection";
 
 // Jane notices changes (spec step 97): what counts as a change worth a heads-up. The rules
 // are in src/insights/changes.ts; these are their thresholds.
@@ -8,11 +13,12 @@ export const CHANGE_RECENT_DAYS = 14;
 
 // A regular bill or subscription whose latest charge moved from its steady price by at
 // least this share and this much. The charges before it must be steady (within the spread),
-// so a bill that always varies (power, water) isn't flagged every month.
-export const BILL_CHANGE_MIN_SHARE = 0.05;
+// so a bill that always varies (power, water) isn't flagged every month. The same numbers as
+// the price-rise finding (docs/feature-audit.md, cluster 10), so a heads-up and its card agree.
+export const BILL_CHANGE_MIN_SHARE = PRICE_INCREASE_THRESHOLD;
 export const BILL_CHANGE_MIN_CENTS = 100;
-export const BILL_CHANGE_MAX_PRIOR_SPREAD = 0.03;
-export const BILL_CHANGE_MIN_PRIOR_CHARGES = 2;
+export const BILL_CHANGE_MAX_PRIOR_SPREAD = PRICE_INCREASE_MAX_PRIOR_SPREAD;
+export const BILL_CHANGE_MIN_PRIOR_CHARGES = PRICE_INCREASE_MIN_PRIOR_CHARGES;
 // The steady price is the average of up to this many charges before the latest.
 export const BILL_CHANGE_USUAL_CHARGES = 3;
 
@@ -59,6 +65,9 @@ export const BILL_CHANGE_FINDINGS: readonly FindingType[] = [
   "insurance_reshop",
   "bill_negotiation",
 ];
+// A new subscription is the subscription card on the same stream (docs/feature-audit.md,
+// cluster 10): one message asks whether they meant to sign up, and offers to cancel.
+export const NEW_SUBSCRIPTION_FINDINGS: readonly FindingType[] = ["subscription_review"];
 
 // "What changed?" in the chat lists at most this many.
 export const CHANGES_IN_REPLY = 5;
