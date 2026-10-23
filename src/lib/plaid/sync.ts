@@ -35,6 +35,7 @@ import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
+import { ensureDemoBalanceHistory } from "./demo-history";
 import { ensureDemoAssets } from "@/lib/plaid/demo-assets";
 import { ensureDemoInvestingFacts } from "@/lib/plaid/demo-investing";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
@@ -680,6 +681,13 @@ export async function syncItem(
   if (isDemoToken(accessToken) && !secondLogin && item.transactionsCursor === null) {
     await ensureDemoInvestingFacts(item.userId, item.id, { client, now }).catch((error) =>
       console.error("Seeding the sample person's investing facts failed", {
+        error: String(error),
+      }),
+    );
+    // The home hub's net worth line: a year of month-end balances, worked back from today's
+    // through their transactions (a real bank's history; real accounts build theirs daily).
+    await ensureDemoBalanceHistory(item.userId, item.id, { client, now }).catch((error) =>
+      console.error("Seeding the sample person's balance history failed", {
         error: String(error),
       }),
     );

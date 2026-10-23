@@ -78,12 +78,14 @@ async function netWorthOverYear(userId: string, { client, now }: Required<Option
     owned,
     crypto,
   );
+  // The line shows how the accounts moved: things owned count across the whole year at their
+  // value now, rather than appearing as a jump in the month they were first valued.
   const months = monthlyNetWorth(
     accounts,
     snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
     asOf,
     NET_WORTH_MONTHS,
-    owned,
+    owned.map((o) => ({ ...o, valuedOn: o.valuedOn < `${first}-01` ? o.valuedOn : `${first}-01` })),
   );
   return {
     todayCents: today.netCents,
