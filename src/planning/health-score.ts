@@ -3,6 +3,7 @@ import {
   HEALTH_CARDS_ZERO_MONTHS,
   HEALTH_CUSHION_FULL_MONTHS,
   HEALTH_MARGIN_FULL_RATE,
+  HEALTH_MARGIN_ZERO_RATE,
   HEALTH_MONTHS,
   HEALTH_POINTS_PER_SLIP,
   HEALTH_SLIP_DAYS,
@@ -45,6 +46,9 @@ export type HealthScore = {
   parts: HealthPartScore[];
   // Parts left out, and why.
   left: { part: HealthPart; label: string; why: string }[];
+  // The points the counted parts add up to, out of their weights; the score is this scaled
+  // to 100 when a part is left out.
+  counted: { points: number; max: number };
 };
 
 export const HEALTH_LABELS: Record<HealthPart, string> = {
@@ -58,6 +62,12 @@ export const HEALTH_LABELS: Record<HealthPart, string> = {
 const clamp = (x: number) => Math.min(1, Math.max(0, x));
 const one = (x: number) => (Math.round(x * 10) / 10).toString();
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+// Under a month of cover reads better in days ("about 0 months" explains nothing).
+const cover = (months: number) => {
+  if (months >= 1) return `about ${one(months)} ${months === 1 ? "month" : "months"}`;
+  const days = Math.round(months * 30);
+  return days < 1 ? "less than a day" : `about ${plural(days, "day")}`;
+};
 
 export const bandOf = (score: number) =>
   HEALTH_BANDS.find((b) => score >= b.min)?.label ?? HEALTH_BANDS.at(-1)!.label;
@@ -91,7 +101,9 @@ export function healthScore(input: HealthInput): HealthScore | null {
       part(
         "cushion",
         months / HEALTH_CUSHION_FULL_MONTHS,
-        `Your cash would cover about ${one(months)} ${months === 1 ? "month" : "months"} of spending.`,
+        months >= 1
+          ? `Your cash would cover ${cover(months)} of spending.`
+          : `Your ${formatCents(Math.max(0, input.cashCents))} in cash would cover ${cover(months)} of spending.`,
         `Building toward ${HEALTH_CUSHION_FULL_MONTHS} months raises this; an emergency fund goal does it a paycheck at a time.`,
       ),
     );
@@ -104,7 +116,7 @@ export function healthScore(input: HealthInput): HealthScore | null {
     parts.push(
       part(
         "margin",
-        rate / HEALTH_MARGIN_FULL_RATE,
+        (rate - HEALTH_MARGIN_ZERO_RATE) / (HEALTH_MARGIN_FULL_RATE - HEALTH_MARGIN_ZERO_RATE),
         rate >= 0
           ? `About ${Math.round(rate * 100)}% of what comes in is left after spending (last ${HEALTH_MONTHS} months).`
           : `Spending ran about ${Math.round(-rate * 100)}% above what came in over the last ${HEALTH_MONTHS} months.`,
@@ -161,9 +173,12 @@ export function healthScore(input: HealthInput): HealthScore | null {
   }
 
   if (parts.length === 0) return null;
-  const max = parts.reduce((s, p) => s + p.max, 0);
-  const score = Math.round((100 * parts.reduce((s, p) => s + p.points, 0)) / max);
-  return { score, band: bandOf(score), parts, left };
+  const counted = {
+    points: parts.reduce((s, p) => s + p.points, 0),
+    max: parts.reduce((s, p) => s + p.max, 0),
+  };
+  const score = Math.round((100 * counted.points) / counted.max);
+  return { score, band: bandOf(score), parts, left, counted };
 }
 
 export type HealthChange = { delta: number; biggest: { label: string; delta: number } | null };
