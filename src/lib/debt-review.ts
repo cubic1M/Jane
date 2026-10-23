@@ -4,7 +4,12 @@ import type { DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
-import { loadCardInterest, sendRateRequest, type CardInterest } from "@/lib/card-interest";
+import {
+  askNextRateHerself,
+  loadCardInterest,
+  rateStep,
+  type CardInterest,
+} from "@/lib/card-interest";
 import { loadCreditBuilding, runCreditBuilding, type CreditBuilding } from "@/lib/credit-building";
 import { loadCreditGoals, type CreditGoals } from "@/lib/credit-goals";
 import { dayLabel } from "@/lib/day-label";
@@ -13,7 +18,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
 import { loadHomeEquity, type HomeEquity } from "@/lib/home-equity";
 import { formatCents } from "@/lib/money";
-import { autopilotFor, mayAct, recordAct } from "@/lib/sector-autopilot";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
 import { reviewReason } from "@/planning/debt-review";
 
@@ -130,24 +135,24 @@ function promosItem(ci: CardInterest): ReviewItem {
   );
 }
 
+// The same step as the monthly check-up's (docs/feature-audit.md, cluster 14).
 function ratesItem(ci: CardInterest, asOf: string): ReviewItem {
   if (!ci.available)
     return item("rates", "ok", "Rate requests aren't available for your accounts yet.");
-  const next = ci.cards.find((c) => c.rate && !c.rate.sent);
-  const recent = ci.requests.filter((r) => Date.parse(asOf) - Date.parse(r.sentOn) <= 30 * DAY_MS);
-  if (next?.rate) {
-    return item(
-      "rates",
-      "tap",
-      `Ask ${next.name} for a lower rate: it could save about ${formatCents(next.rate.savingYearlyCents)} a year, and the request is written.`,
-      { kind: "ask", requestId: next.rate.id, card: next.name },
-    );
-  }
-  if (recent.length > 0) {
+  const step = rateStep(ci, asOf);
+  if (step?.kind === "asked") {
     return item(
       "rates",
       "done",
-      `Asked ${recent.map((r) => r.cardName).join(" and ")} for a lower rate this month; I'll tell you what they answer.`,
+      `Asked ${step.cards.join(" and ")} for a lower rate this month; I'll tell you what they answer.`,
+    );
+  }
+  if (step?.kind === "next") {
+    return item(
+      "rates",
+      "tap",
+      `Ask ${step.name} for a lower rate: it could save about ${formatCents(step.savingYearlyCents)} a year, and the request is written.`,
+      { kind: "ask", requestId: step.requestId, card: step.name },
     );
   }
   return item("rates", "ok", "No card has a lower rate worth asking for right now.");
@@ -292,17 +297,10 @@ export async function runDebtReview(
   const did: string[] = [];
   // A payment before a statement closes: the debt caps and the checking cushion decide.
   if (await runCreditBuilding(userId, { client, now })) did.push("a payment before a statement");
-  // Only at Handle everything: one lower-rate request to the lender stand-in, free to send.
-  const may = await mayAct(userId, "debt", { needs: "all", cents: 0 }, { client, now });
-  if (may.ok) {
-    const ci = await loadCardInterest(userId, { client, now, book });
-    const next = ci.cards.find((c) => c.rate && !c.rate.sent);
-    if (next?.rate) {
-      await sendRateRequest(userId, next.rate.id, { client, now });
-      await recordAct(userId, "debt", 0, `Asked ${next.name} for a lower rate`, { client, now });
-      did.push(`a lower-rate request to ${next.name}`);
-    }
-  }
+  // Only at Handle everything: one lower-rate request to the lender stand-in, free to send, and
+  // not if the monthly check-up sent one this month.
+  const asked = await askNextRateHerself(userId, { client, now, book });
+  if (asked) did.push(`a lower-rate request to ${asked}`);
   const owing = book.debts.filter((d) => (d.balanceCents ?? 0) > 0);
   const data = {
     reviewOn: new Date(`${isoDay(now)}T00:00:00Z`),

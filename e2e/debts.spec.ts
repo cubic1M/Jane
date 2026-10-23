@@ -826,6 +826,8 @@ test("the debt review lists every item, and the chat message keeps each button u
   );
   await expect(month.getByRole("heading", { name: "Costly borrowing" })).toBeVisible();
   await expect(month).toContainText("Every month, at your level:");
+  // The lower card rate is shown once, in the review above (docs/feature-audit.md, cluster 14).
+  await expect(month.getByRole("heading", { name: "A lower card rate" })).toHaveCount(0);
 
   // Asking in the chat shows the same items.
   await page.goto("/chat");

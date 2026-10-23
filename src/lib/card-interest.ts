@@ -7,6 +7,7 @@ import {
   RATE_ASK_CUT_BPS,
   RATE_ASK_MIN_APR_BPS,
   RATE_ASK_MIN_BALANCE_CENTS,
+  RATE_REQUEST_EVERY_DAYS,
 } from "@/config/card-interest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { DebtBook } from "@/insights/debts";
@@ -18,6 +19,7 @@ import { addDeadline, markDeadlineDone } from "@/lib/deadlines";
 import { debtsOr } from "@/lib/debts";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { lenderPartnerFor } from "@/lib/refinance";
+import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { nextStatementClose } from "@/planning/credit-building";
 import {
   interestCents,
@@ -304,6 +306,47 @@ export async function sendRateRequest(
   );
   await track(userId, "card_rate_requested");
   return { cardName: card.name };
+}
+
+// The lower-rate step the yearly debt review (spec step 230) and the monthly check-up (spec
+// step 251) share, so they never disagree (docs/feature-audit.md, cluster 14): a request sent
+// in the last RATE_REQUEST_EVERY_DAYS first ("I'll tell you what they answer"), else the next
+// card worth asking.
+export type RateStep =
+  | { kind: "asked"; cards: string[] }
+  | { kind: "next"; name: string; requestId: string; savingYearlyCents: number }
+  | null;
+
+export function rateStep(ci: CardInterest, asOf: string): RateStep {
+  if (!ci.available) return null;
+  const recent = ci.requests.filter(
+    (r) => Date.parse(asOf) - Date.parse(r.sentOn) <= RATE_REQUEST_EVERY_DAYS * DAY_MS,
+  );
+  if (recent.length > 0) return { kind: "asked", cards: recent.map((r) => r.cardName) };
+  const next = ci.cards.find((c) => c.rate && !c.rate.sent);
+  if (!next?.rate) return null;
+  return {
+    kind: "next",
+    name: next.name,
+    requestId: next.rate.id,
+    savingYearlyCents: next.rate.savingYearlyCents,
+  };
+}
+
+// Jane's own lower-rate request: only at Handle everything within the debt caps (it's free and
+// not a credit application), and at most one in RATE_REQUEST_EVERY_DAYS whichever review
+// sends it. Returns the card she asked, or null.
+export async function askNextRateHerself(
+  userId: string,
+  { client = defaultClient, now = new Date(), book }: Options = {},
+): Promise<string | null> {
+  const may = await mayAct(userId, "debt", { needs: "all", cents: 0 }, { client, now });
+  if (!may.ok) return null;
+  const step = rateStep(await loadCardInterest(userId, { client, now, book }), isoDay(now));
+  if (step?.kind !== "next") return null;
+  await sendRateRequest(userId, step.requestId, { client, now });
+  await recordAct(userId, "debt", 0, `Asked ${step.name} for a lower rate`, { client, now });
+  return step.name;
 }
 
 // The lender stand-in's answer: the same each time for a request.
