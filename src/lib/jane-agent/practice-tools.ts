@@ -6,6 +6,10 @@ import {
   AUTOPILOT_MODES,
   BROAD_FUND_NOTE,
   EXCLUSIONS,
+  MAX_FUND_RANGE,
+  REBALANCE_PACES,
+  STRATEGY_CHOICES,
+  UNIVERSES,
 } from "@/config/practice-preferences";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -40,13 +44,13 @@ export const PRACTICE_TOOLS: Anthropic.Tool[] = [
   {
     name: "practice_settings",
     description:
-      "The person's practice (paper money) portfolio settings and what they make the autopilot do: risk level, the largest drop they can live with, goal and date, monthly practice money and its day, extra moves (off, cautious, normal, adventurous), what is never bought, loss harvesting, cash kept, and suggest-only or act. Demo advice mode only. Read it before changing a setting.",
+      "The person's practice (paper money) portfolio settings and what they make the autopilot do: risk level, the largest drop they can live with, goal and date, monthly practice money and its day, extra moves (off, cautious, normal, adventurous), what is never bought, loss harvesting, cash kept, suggest-only or act, the strategy it follows (Jane's pick for the level, the level's mix alone, the trend filter or the volatility target), how often it rebalances, whether it may buy company shares or funds only, and the most in one fund. Demo advice mode only. Read it before changing a setting.",
     input_schema: { type: "object" as const, properties: {}, additionalProperties: false },
   },
   {
     name: CHANGE_PRACTICE_TOOL,
     description:
-      'Prepare a change to the practice portfolio settings as a card the person confirms with a tap; nothing changes until they do. Give only what they asked to change. "Make it less risky" is risk_step lower; "stop the extra moves" is extra_moves off; "avoid oil companies" is avoid_add fossil_fuels; "I need this money in 2030" is goal_date 2030-01-01; "just tell me first" is mode suggest. After calling it, write one sentence on what will change once they confirm; never say it is done. Demo advice mode only.',
+      'Prepare a change to the practice portfolio settings as a card the person confirms with a tap; nothing changes until they do. Give only what they asked to change. "Make it less risky" is risk_step lower; "stop the extra moves" is extra_moves off; "avoid oil companies" is avoid_add fossil_fuels; "I need this money in 2030" is goal_date 2030-01-01; "just tell me first" is mode suggest; "use the trend strategy" is strategy trend, "no strategy, just the mix" is strategy mix, "go back to your pick" is strategy level; "trade less often" is rebalance_pace rarely; "only index funds" or "no single stocks" is universe funds_only; "never more than half in one fund" is max_fund_percent 50. After calling it, write one sentence on what will change once they confirm; never say it is done. Demo advice mode only.',
     input_schema: {
       type: "object" as const,
       properties: {
@@ -71,6 +75,13 @@ export const PRACTICE_TOOLS: Anthropic.Tool[] = [
         harvest_losses: { type: "boolean" },
         cash_buffer: { type: "number", description: "Dollars always kept in cash." },
         mode: { type: "string", enum: Object.keys(AUTOPILOT_MODES) },
+        strategy: { type: "string", enum: Object.keys(STRATEGY_CHOICES) },
+        rebalance_pace: { type: "string", enum: Object.keys(REBALANCE_PACES) },
+        universe: { type: "string", enum: Object.keys(UNIVERSES) },
+        max_fund_percent: {
+          type: ["integer", "null"],
+          description: `The most of the portfolio in one fund, ${MAX_FUND_RANGE.min} to ${MAX_FUND_RANGE.max} whole percent; null for the limit.`,
+        },
       },
       additionalProperties: false,
     },
@@ -132,6 +143,10 @@ export async function patchFromInput(
   if ("harvest_losses" in a) patch.harvestLosses = a.harvest_losses;
   if ("cash_buffer" in a) patch.cashBufferCents = cents(a.cash_buffer);
   if ("mode" in a) patch.mode = a.mode;
+  if ("strategy" in a) patch.strategy = a.strategy;
+  if ("rebalance_pace" in a) patch.rebalancePace = a.rebalance_pace;
+  if ("universe" in a) patch.universe = a.universe;
+  if ("max_fund_percent" in a) patch.maxFundPercent = a.max_fund_percent;
   return patch;
 }
 

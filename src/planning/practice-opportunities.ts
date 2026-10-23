@@ -40,6 +40,7 @@ import type { PaySchedule } from "@/detection/paydays";
 import { portfolioValue, positionValue, type Prices } from "./practice-autopilot";
 import { apply, type LedgerState } from "./practice-ledger";
 import {
+  bandOf,
   classValue,
   drift,
   scanPortfolio,
@@ -237,7 +238,7 @@ function buyShort(
 ): ScanTrade[] {
   const total = portfolioValue(input.state, input.prices);
   const weights = weightsOf(input);
-  const d = drift(input.level, input.state, input.prices, weights);
+  const d = drift(input.level, input.state, input.prices, weights, bandOf(input));
   const short = CLASSES.map((c) => ({
     c,
     gap: Math.round(weights[c] * d.total) - classValue(input.state, input.prices, c),
@@ -273,10 +274,10 @@ function sharesFigures(
 // way to its band (1 = at the band).
 function nearness(input: OpportunityInput) {
   const weights = weightsOf(input);
-  const d = drift(input.level, input.state, input.prices, weights);
+  const d = drift(input.level, input.state, input.prices, weights, bandOf(input));
   const kindOff = Math.abs(d.shares[d.worst] - weights[d.worst]);
   const stocksOff = Math.abs(d.stocks - stocksOf(weights));
-  const kindRatio = kindOff / AUTOPILOT_LIMITS.rebalanceBand;
+  const kindRatio = kindOff / bandOf(input);
   const stocksRatio = stocksOff / DRIFT_STOCKS_BAND;
   const invested = CLASSES.some((c) => classValue(input.state, input.prices, c) > 0);
   return stocksRatio >= kindRatio
@@ -287,7 +288,7 @@ function nearness(input: OpportunityInput) {
         ratio: kindRatio,
         what: LABEL[d.worst],
         off: kindOff,
-        band: AUTOPILOT_LIMITS.rebalanceBand,
+        band: bandOf(input),
       };
 }
 
@@ -304,9 +305,7 @@ function newMoneyFlag(
   const stocksPast = Math.abs(n.d.stocks - stocksOf(weights)) > DRIFT_STOCKS_BAND;
   const wouldSell = CLASSES.reduce((s, c) => {
     const over = n.d.shares[c] - weights[c];
-    return over > AUTOPILOT_LIMITS.rebalanceBand || (stocksPast && over > 0)
-      ? s + Math.round(over * n.d.total)
-      : s;
+    return over > bandOf(input) || (stocksPast && over > 0) ? s + Math.round(over * n.d.total) : s;
   }, 0);
   const trades = buyShort(input, "new_money_rebalance", available, blocked);
   const spent = trades.reduce((s, t) => s + t.amountCents, 0);
@@ -315,7 +314,7 @@ function newMoneyFlag(
   for (const t of trades) {
     after = apply(after, { ...t, priceCents: input.prices[t.ticker] }, PRACTICE_UNIVERSE).state;
   }
-  const d2 = drift(input.level, after, input.prices, weights);
+  const d2 = drift(input.level, after, input.prices, weights, bandOf(input));
   const stillOver = CLASSES.reduce((s, c) => {
     const over = d2.shares[c] - weights[c];
     return d2.past && over > 0 ? s + Math.round(over * d2.total) : s;
@@ -742,7 +741,7 @@ export function scanOpportunities(input: OpportunityInput): ScanFlag[] {
     for (const t of newMoney.trades) {
       after = apply(after, { ...t, priceCents: input.prices[t.ticker] }, PRACTICE_UNIVERSE).state;
     }
-    if (!drift(input.level, after, input.prices, weightsOf(input)).past) {
+    if (!drift(input.level, after, input.prices, weightsOf(input), bandOf(input)).past) {
       base = base.filter((f) => f.kind !== "drift_rebalance");
     }
   }

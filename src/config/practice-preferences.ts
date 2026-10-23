@@ -75,6 +75,79 @@ export const TICKER_TAGS: Readonly<Record<string, readonly ExclusionKey[]>> = {
 export const BROAD_FUND_NOTE =
   "Whole-market index funds hold a little of every industry; Jane won't buy those companies' own shares, but keeps the broad funds unless you name one.";
 
+// The strategy the practice portfolio follows: Jane's pick for the level (the daily replay's
+// choice, src/lib/investments/strategy-today.ts), the level's mix alone, or one strategy from the
+// library the person picks, with fixed parameters from its grid (STRATEGY_GRID). A picked
+// strategy still keeps every hard limit, and the person's settings that move the mix (a goal
+// date, a whole kind avoided) still win over it.
+export const STRATEGY_CHOICES = {
+  level: {
+    label: "Jane's pick for your level",
+    description:
+      "The strategy the daily replay chose for your level on real prices, or the level's mix when none beat it.",
+  },
+  mix: {
+    label: "Just the level's mix",
+    description: "The level's mix, kept on target, with no strategy on top.",
+  },
+  trend: {
+    label: "Trend filter",
+    description:
+      "Each fund held only while its price is above its 6-month average; otherwise that share waits in short-term bills.",
+    id: "trend",
+    params: { months: 6 },
+  },
+  vol_target: {
+    label: "Volatility target",
+    description:
+      "Stocks scaled down when they've been jumpy over the last 3 months, the rest in short-term bills.",
+    id: "vol_target",
+    params: { windowDays: 63 },
+  },
+} as const;
+export type StrategyChoice = keyof typeof STRATEGY_CHOICES;
+
+// How far a kind may drift from its target before the autopilot rebalances: the person's pace.
+// Normal is the autopilot's own band (AUTOPILOT_LIMITS.rebalanceBand). Rarely means fewer trades
+// and more drift between them. FOR REVIEW.
+export const REBALANCE_PACES = {
+  often: { label: "Often", description: "When a kind is 3 points off its target.", band: 0.03 },
+  normal: {
+    label: "Normal",
+    description: `When a kind is ${Math.round(AUTOPILOT_LIMITS.rebalanceBand * 100)} points off its target.`,
+    band: AUTOPILOT_LIMITS.rebalanceBand,
+  },
+  rarely: {
+    label: "Rarely",
+    description: "When a kind is 8 points off its target: fewer trades, more drift in between.",
+    band: 0.08,
+  },
+} as const;
+export type RebalancePace = keyof typeof REBALANCE_PACES;
+
+// What the practice portfolio may buy: the funds and the few large companies news ideas pick
+// (PRACTICE_STOCKS), or the funds only.
+export const UNIVERSES = {
+  funds_and_stocks: {
+    label: "Funds and a few big companies",
+    description:
+      "The index funds, plus small positions in a few large companies when a news idea fits (High and Very high).",
+  },
+  funds_only: {
+    label: "Funds only",
+    description: "Only the index funds: Jane never buys a single company's shares.",
+  },
+} as const;
+export type Universe = keyof typeof UNIVERSES;
+
+// The most of the portfolio one fund may be, as the person sets it (whole percent): never above
+// the hard limit (AUTOPILOT_LIMITS.perEtfShare). What a lower cap keeps out of a fund stays as
+// cash.
+export const MAX_FUND_RANGE = {
+  min: 20,
+  max: Math.round(AUTOPILOT_LIMITS.perEtfShare * 100),
+} as const;
+
 // The largest drop a person can say they can live with, in whole percent.
 export const MAX_DROP_RANGE = { min: 5, max: 60 } as const;
 
@@ -100,6 +173,10 @@ export const PREFERENCE_DEFAULTS = {
   harvestLosses: true,
   cashBufferCents: 0,
   mode: "act" as AutopilotMode,
+  strategy: "level" as StrategyChoice,
+  rebalancePace: "normal" as RebalancePace,
+  universe: "funds_and_stocks" as Universe,
+  maxFundPercent: null as number | null,
 };
 
 // The level when nothing else says one (no choice, no portfolio, no questionnaire): Medium.

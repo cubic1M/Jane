@@ -9,6 +9,7 @@ import {
   PRACTICE_STOCKS,
   PRACTICE_UNIVERSE,
   type PracticeClass,
+  type AutopilotLimits,
 } from "@/config/portfolios";
 import {
   DIP_LOOKBACK_DAYS,
@@ -126,11 +127,15 @@ export type ScanInput = {
   avoid?: readonly string[];
   // Cash always kept: dips and ideas only spend the cash above it.
   cashBufferCents?: number;
+  // The person's limits (their rebalance pace's band); the hard ones without them.
+  limits?: AutopilotLimits;
 };
 
 const weightsOf = (input: Pick<ScanInput, "level" | "weights">) =>
   input.weights ?? MODEL_PORTFOLIOS[input.level].weights;
 const capsOf = (input: ScanInput, kind: ScanKind) => (input.caps ?? SCAN_CAPS)[kind];
+export const bandOf = (input: Pick<ScanInput, "limits">) =>
+  (input.limits ?? AUTOPILOT_LIMITS).rebalanceBand;
 
 const DAY_MS = 86_400_000;
 // The date this many days before (YYYY-MM-DD), remembered: the rule replay asks for the same
@@ -168,6 +173,7 @@ export function drift(
   state: LedgerState,
   prices: Prices,
   weights: Readonly<Record<PracticeClass, number>> = MODEL_PORTFOLIOS[level].weights,
+  band: number = AUTOPILOT_LIMITS.rebalanceBand,
 ) {
   const targetStocks = weights.us_stocks + weights.intl_stocks;
   const values = {} as Record<PracticeClass, number>;
@@ -186,10 +192,7 @@ export function drift(
     worst,
     // Off past the band: any one kind past the autopilot's band, or the stocks together past
     // the stocks band. Never before the model is bought.
-    past:
-      invested &&
-      (off(worst) > AUTOPILOT_LIMITS.rebalanceBand ||
-        Math.abs(stocks - targetStocks) > DRIFT_STOCKS_BAND),
+    past: invested && (off(worst) > band || Math.abs(stocks - targetStocks) > DRIFT_STOCKS_BAND),
   };
 }
 
@@ -226,7 +229,7 @@ function asTransactions(trades: readonly PastTrade[], ticker: string): InvTransa
 
 function driftFlag(input: ScanInput): ScanFlag | null {
   const weights = weightsOf(input);
-  const d = drift(input.level, input.state, input.prices, weights);
+  const d = drift(input.level, input.state, input.prices, weights, bandOf(input));
   if (!d.past) return null;
   const target = weights.us_stocks + weights.intl_stocks;
   const moved = Math.round(
@@ -251,7 +254,7 @@ function driftFlag(input: ScanInput): ScanFlag | null {
       })),
     ],
     caps: [
-      `Rebalanced past ${pct(AUTOPILOT_LIMITS.rebalanceBand)} off for one kind, or ${pct(DRIFT_STOCKS_BAND)} for stocks together`,
+      `Rebalanced past ${pct(bandOf(input))} off for one kind, or ${pct(DRIFT_STOCKS_BAND)} for stocks together`,
       `No trade over ${pct(AUTOPILOT_LIMITS.perTradeShare)} of the portfolio`,
       `At most ${AUTOPILOT_LIMITS.tradesPerDay} trades a day`,
     ],
@@ -551,11 +554,13 @@ export function heldBy(
   state: LedgerState,
   prices: Prices,
   tradesToday: number,
+  // The person's limits; the hard ones without them.
+  limits?: AutopilotLimits,
 ): string | null {
   let s = state;
   let n = tradesToday;
   for (const t of flag.trades) {
-    const why = violates(t, s, prices, n);
+    const why = violates(t, s, prices, n, undefined, 0, limits);
     if (why) return why;
     const priceCents = prices[t.ticker];
     if (!priceCents) return `no price for ${t.ticker}`;
@@ -582,9 +587,10 @@ export function flagStatus(
   mode: "act" | "suggest" = "act",
   // Why the person's preferences refuse one of its trades (firstRefusal), checked first.
   refused: string | null = null,
+  limits?: AutopilotLimits,
 ): { status: "acted" | "autopilot" | "held" | "suggested"; heldBy: string | null } {
   const held =
-    flag.trades.length > 0 ? (refused ?? heldBy(flag, state, prices, tradesToday)) : null;
+    flag.trades.length > 0 ? (refused ?? heldBy(flag, state, prices, tradesToday, limits)) : null;
   const status = held
     ? "held"
     : flag.kind === "drift_rebalance"
