@@ -215,6 +215,7 @@ export async function scanPractice(
       figures: flag.figures,
       caps: flag.caps,
       confidence: flag.confidence,
+      ask: flag.ask,
       heldBy: held,
       mode: prefs.mode,
       trades: flag.trades.map((t) => ({

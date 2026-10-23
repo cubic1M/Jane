@@ -211,7 +211,13 @@ export async function loadProfileInput(
         .filter((f) => f.kind === "cosigned")
         .reduce((s, f) => s + (f.monthlyPaymentCents ?? 0), 0),
     },
-    extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
+    extras: {
+      householdMembers,
+      ...(await sectorFigures(userId, client, now)),
+      practiceIdeas: await import("@/lib/practice/ideas").then((m) =>
+        m.openPracticeIdeas(userId, { client, now }),
+      ),
+    },
     healthPlan: healthPlanOf(healthPolicy),
     fsaElectionCents: fsa
       ? fsa.perPayCents * (PAY_PERIODS[fsa.payFrequency as keyof typeof PAY_PERIODS] ?? 12)
