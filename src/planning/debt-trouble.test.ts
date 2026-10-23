@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Debt } from "@/insights/debts";
-import { dmpSketch, overTheLine, paymentShare } from "./debt-trouble";
+import { dmpSketch, overTheLine, paymentShare, troubleReason } from "./debt-trouble";
 
 // Spec step 229: the share of income going to debt, and a sketch of a debt management plan.
 
@@ -56,5 +56,34 @@ describe("dmpSketch", () => {
     expect(s.monthsNow).toBeNull();
     expect(s.interestCutCents).toBe(0);
     expect(s.monthsAssumed).toBeGreaterThan(0);
+  });
+});
+
+// One judgement for "too much debt" (docs/feature-audit.md, cluster 14): the profile (and so the
+// hardship suggestion) and /loans/help both ask troubleReason.
+describe("troubleReason", () => {
+  const base = {
+    monthlyIncomeCents: 500_000,
+    cardDebtCents: 0,
+    paydayRepayments: 0,
+    paydayRepaidCents: 0,
+    debtPaymentsCents: 100_000,
+    cashCents: 1_000_000,
+  };
+  it("is a payday-loan cycle, then card debt worth months of income, then payments over the line", () => {
+    expect(troubleReason(base)).toBeNull();
+    // 5% of a year's income repaid in cash advances.
+    expect(troubleReason({ ...base, paydayRepayments: 4, paydayRepaidCents: 300_000 })).toBe(
+      "payday_cycle",
+    );
+    expect(troubleReason({ ...base, cardDebtCents: 1_500_000 })).toBe("card_debt");
+    expect(troubleReason({ ...base, debtPaymentsCents: 250_000, cashCents: 100_000 })).toBe(
+      "payments",
+    );
+    // Over 40%, but the cash carries three months of the payments.
+    expect(troubleReason({ ...base, debtPaymentsCents: 250_000 })).toBeNull();
+  });
+  it("is nothing without an income to compare with", () => {
+    expect(troubleReason({ ...base, monthlyIncomeCents: 0, cardDebtCents: 9_999_999 })).toBeNull();
   });
 });

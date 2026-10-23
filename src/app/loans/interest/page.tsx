@@ -154,12 +154,22 @@ async function InterestContent({
                         ? "You're on pace to clear it."
                         : `You pay ${formatCents(pr.plan.monthlyPaidCents)} a month: ${formatCents(pr.plan.shortCents)} short.${pr.deferred ? ` Missing it would charge about ${formatCents(pr.plan.costIfMissedCents)} in deferred interest.` : ""}${pr.deadlineRaised ? " It's on your deadlines." : ""}`}
                     </p>
-                    <form action={removePromoAction} className="mt-1">
-                      <input type="hidden" name="promoId" value={pr.id} />
-                      <button type="submit" className={LINK}>
-                        Remove
-                      </button>
-                    </form>
+                    {pr.fromTransfer ? (
+                      // One record of a promotion: a transfer Jane arranged is ended there.
+                      <Link
+                        href="/loans/refinance#transfers"
+                        className={`mt-1 inline-block ${LINK}`}
+                      >
+                        Your balance transfer
+                      </Link>
+                    ) : (
+                      <form action={removePromoAction} className="mt-1">
+                        <input type="hidden" name="promoId" value={pr.id} />
+                        <button type="submit" className={LINK}>
+                          Remove
+                        </button>
+                      </form>
+                    )}
                   </li>
                 ))}
               </ul>

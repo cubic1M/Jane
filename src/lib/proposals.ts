@@ -5,7 +5,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { irregularCosts } from "@/lib/irregular";
 import { loadInsightTransactions } from "@/insights/load";
-import { averageMonthlySpending } from "@/insights/spending";
+import { typicalMonthlySpending } from "@/insights/typical-month";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { BudgetError, setBudget } from "@/lib/budgets";
@@ -47,7 +47,7 @@ export async function currentProposals(
   // What the profile says about how they're paid and whether debt is a struggle; without it the
   // fund is three months of spending (src/lib/emergency-fund.ts).
   const profile = await fundProfile(userId, { client, now });
-  const monthlySpendingCents = averageMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
+  const monthlySpendingCents = typicalMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
 
   const byMerchant = new Map<string, { name: string; count: number }>();
   for (const t of uncategorized) {

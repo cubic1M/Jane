@@ -3,7 +3,7 @@ import { REFUND } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { fundProfile, fundTarget } from "@/lib/emergency-fund";
-import { averageMonthlySpending } from "@/insights/spending";
+import { typicalMonthlySpending } from "@/insights/typical-month";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
@@ -56,7 +56,7 @@ async function planInputs(userId: string, client: PrismaClient, now: Date) {
     }),
     listGoals(userId, { client, now }),
   ]);
-  const monthly = averageMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
+  const monthly = typicalMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
   // Their own emergency fund goal, else the fund sized for them, as on the cash page.
   const goal = goals.find((g) => /emergency/i.test(g.name));
   return {

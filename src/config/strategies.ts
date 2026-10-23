@@ -73,3 +73,34 @@ export const STRATEGY_MIN_SORTINO_GAIN = 0.1;
 
 export const STRATEGY_NOT_A_FORECAST =
   "A replay of the past, not a forecast: future results will be different.";
+
+// The daily evaluation (src/lib/investments/strategy-eval.ts) runs only on at least this many
+// shared trading days of stored history (about three years: a training span and later years).
+export const STRATEGY_EVAL_MIN_DAYS = 756;
+
+// The practice autopilot reads this many calendar days of stored closes to work out a level's
+// strategy for the month: the longest look-back (a year) with room for holidays.
+export const STRATEGY_FOLLOW_HISTORY_DAYS = 550;
+
+// The research choice per level (docs/backtests/strategies.md, round 5: Alpaca's SIP daily bars,
+// 2016-01-04 to 2026-10-22, the strategy-research workflow's run 39939156383; the keyless fixture
+// agrees). The practice autopilot follows it until the daily evaluation has run on production's
+// stored history (src/lib/investments/strategy-eval.ts), whose choice then wins. FOR REVIEW.
+const TREND_EVIDENCE = (drop: string, mixDrop: string, sortino: string, mixSortino: string) =>
+  `Chosen on Alpaca's closes for 2016 to 2021 from every start year, it then beat the level's mix on 2022 to October 2026: worst drop ${drop} against ${mixDrop}, Sortino ${sortino} against ${mixSortino}.`;
+export const STRATEGY_RESEARCH_CHOICE: Readonly<
+  Record<
+    RiskLevel,
+    { id: StrategyId; params: Readonly<Record<string, number | string>>; why: string }
+  >
+> = {
+  1: { id: "trend", params: { months: 6 }, why: TREND_EVIDENCE("4.0%", "17.0%", "0.12", "-0.06") },
+  2: { id: "trend", params: { months: 6 }, why: TREND_EVIDENCE("5.2%", "19.3%", "0.31", "0.17") },
+  3: { id: "trend", params: { months: 6 }, why: TREND_EVIDENCE("6.8%", "20.9%", "0.44", "0.35") },
+  4: { id: "trend", params: { months: 6 }, why: TREND_EVIDENCE("8.5%", "22.6%", "0.52", "0.47") },
+  5: {
+    id: "static",
+    params: { rebalance: "band" },
+    why: "On Alpaca's closes for 2022 to October 2026 the trend filter's Sortino (0.58) wasn't 10% better than the level's mix (0.55), so the mix stays.",
+  },
+};

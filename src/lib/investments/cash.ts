@@ -11,7 +11,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { fundProfile, fundTarget } from "@/lib/emergency-fund";
 import { fundBasis } from "@/planning/emergency-fund";
-import { averageMonthlySpending } from "@/insights/spending";
+import { typicalMonthlySpending } from "@/insights/typical-month";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -107,7 +107,7 @@ export async function loadCash(
       });
     }
   }
-  const monthlySpendingCents = averageMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
+  const monthlySpendingCents = typicalMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
   // Their own emergency fund goal, else the fund sized for them, as the drafted goal is.
   const goal = goals.find((g) => /emergency/i.test(g.name));
   const fund = goal

@@ -15,7 +15,8 @@ export const cardInterestSource: MessageSource = {
     if (!data?.available) return [];
     const out: Candidate[] = [];
     for (const p of data.promos) {
-      if (p.plan.ended || p.plan.onPace) continue;
+      // A balance transfer has its own reminders before the 0% ends (./transfers.ts).
+      if (p.plan.ended || p.plan.onPace || p.fromTransfer) continue;
       out.push({
         kind: "heads_up",
         body: `${p.cardName}'s 0% ends in ${p.plan.daysLeft} days and you're ${formatCents(p.plan.shortCents)} a month short of clearing it: ${formatCents(p.plan.monthlyNeededCents)} a month would. ${p.deferred ? `Interest from the start at ${(p.goToAprBps / 100).toFixed(2)}% is charged on what's left, about ${formatCents(p.plan.costIfMissedCents)} at your current pace. ` : ""}It's on your deadlines.`,

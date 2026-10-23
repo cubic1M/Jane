@@ -1317,6 +1317,52 @@ export function personTransactions(
   );
 }
 
+// Books QA (spec step 238): an account a sample person reaches through a second bank login, so
+// it comes in twice: the Reyes' savings, once through each parent's login. The second login
+// words any transactions its own way, so Jane can't prove the two copies the same and merge
+// them by herself; she asks.
+export const DEMO_SECOND_LOGINS: Readonly<
+  Partial<Record<PersonId, { login: string; account: string; prefix: string }>>
+> = {
+  family: { login: "joint", account: "savings", prefix: "JOINT ACCESS " },
+};
+
+const secondLoginOf = (demo: DemoSeed) =>
+  demo.login && demo.person ? DEMO_SECOND_LOGINS[demo.person as PersonId] : undefined;
+const secondLoginSeed = (demo: DemoSeed) => `${demo.seed}-${demo.login}`;
+
+// What a second login sees: only the shared account, under its own ids.
+export function secondLoginAccounts(demo: DemoSeed): AccountBase[] {
+  const login = secondLoginOf(demo);
+  if (!login) return [];
+  const base = { ...demo, login: undefined };
+  return personAccounts(base)
+    .filter((a) => a.account_id === accountId(demo.seed, login.account))
+    .map((a) => ({ ...a, account_id: accountId(secondLoginSeed(demo), login.account) }));
+}
+
+export function secondLoginTransactions(
+  demo: DemoSeed,
+  after: string | null,
+  through: string,
+): Transaction[] {
+  const login = secondLoginOf(demo);
+  if (!login) return [];
+  const base = { ...demo, login: undefined };
+  const shared = accountId(demo.seed, login.account);
+  return personTransactions(base, after, through)
+    .filter((t) => t.account_id === shared)
+    .map((t) => ({
+      ...t,
+      transaction_id: t.transaction_id.replace(
+        `demo-${demo.seed}-`,
+        `demo-${secondLoginSeed(demo)}-`,
+      ),
+      account_id: accountId(secondLoginSeed(demo), login.account),
+      name: `${login.prefix}${t.name}`,
+    }));
+}
+
 // Plaid-shaped accounts. An investment account's balance is filled in from what it holds.
 export function personAccounts(demo: DemoSeed): AccountBase[] {
   return defOf(demo).accounts.map(

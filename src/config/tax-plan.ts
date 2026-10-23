@@ -106,6 +106,9 @@ export const TAX_PLAN: Readonly<Record<PlanMoveKey, PlanMoveRule>> = {
     advice: true,
     opens: { md: "10-01", nextYear: false },
     deadline: { md: "12-31", nextYear: false },
+    // Step 124's message says it (the loss, the tax it saves, the wash-sale rule, Remind me)
+    // from the same day, for the same people: one message (docs/feature-audit.md, cluster 12).
+    ownMessage: true,
   },
   giving: {
     title: "Make this year's gifts before December 31",

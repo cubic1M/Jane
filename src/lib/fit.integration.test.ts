@@ -108,16 +108,20 @@ describe.runIf(url)("the fit engine against a real database", { timeout: 60_000 
     expect((await loadDecisionInput(chris, { client, now: NOW })).personalLoan).toBeNull();
   });
 
-  // Loans QA: the suggestion brought unasked says the same dollars as the options card, priced by
-  // the same score band and against the same card minimums.
-  it("brings the Reyes the consolidation the options card shows, to the cent", async () => {
+  // Loans QA: the suggestion brought unasked follows the options card, priced by the same score
+  // band and against the same card minimums. Books QA: with a typical month (their flood repairs left out of spending), the Reyes have the
+  // room to pay their cards down without a loan, which saves more than the best loan; the
+  // suggestion follows the card, so none is brought.
+  it("follows the options card for the Reyes: paying the cards down beats any loan", async () => {
     const card = await loadFit(reyes, { need: "consolidation" }, { client, now: NOW });
     const pick = card.options.find((o) => o.id === card.pick)!;
     const { suggestions } = await detectFor(reyes, { client, now: NOW });
-    const s = suggestions.find((x) => x.topic === "consolidation")!;
-    expect(s).toBeDefined();
-    expect(s.worthCents).toBe(pick.savesCents);
-    expect(s.why).toContain(pick.lender);
+    const s = suggestions.find((x) => x.topic === "consolidation");
+    expect(card.pick).toBe("payoff");
+    const loans = card.options.filter((o) => o.id !== "payoff" && o.id !== "keep");
+    const best = Math.max(...loans.map((o) => o.savesCents ?? 0));
+    expect(pick.savesCents).toBeGreaterThan(best);
+    expect(s).toBeUndefined();
   });
 
   it("is the same pick in the chat, Claude's tool and the debt decisions", async () => {

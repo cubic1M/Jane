@@ -18,6 +18,11 @@ on:
       from:
         description: "First day of bars to fetch (YYYY-MM-DD)"
         default: "2016-01-01"
+      feed:
+        description: "Alpaca feed: sip (full history; free for bars older than 15 minutes) or iex (from mid-2020 only)"
+        default: sip
+        type: choice
+        options: [sip, iex]
 
 permissions:
   contents: read
@@ -44,6 +49,7 @@ jobs:
           STRATEGY_RESEARCH: fetch
           RESEARCH_SOURCE: ${{ inputs.source }}
           RESEARCH_FROM: ${{ inputs.from }}
+          RESEARCH_FEED: ${{ inputs.feed }}
           RESEARCH_DIR: research
         run: |
           if [ "$RESEARCH_SOURCE" = "alpaca" ] && { [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; }; then

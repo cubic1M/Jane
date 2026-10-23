@@ -557,3 +557,26 @@ export const GOVERNMENT_PAYEE =
 // fee to ask back.
 export const PROCESSOR_FEE_PAYEE =
   /\b(?:square|stripe|paypal|shopify|clover|toast|adyen|braintree|authorize\.?net)\b.*\b(?:fees?|processing)\b|\bprocessing fees?\b|\bmerchant (?:services|fees?|account)\b|\bcard processing\b/i;
+
+// Books QA: a typical month. One-off charges (a flood's repairs, a move, a hospital bill) are
+// left out of the monthly spending Jane averages and quotes, so one unusual month doesn't make
+// every month look like it. A one-off is a charge of at least ONE_OFF_MIN_CENTS and
+// ONE_OFF_SHARE of a usual month's spending, in a category where one-offs happen, from a
+// merchant with no other charge that size in the history looked at. Bills (rent, insurance,
+// taxes, loans, tuition, childcare) are never one-offs, however rarely they come.
+export const ONE_OFF_MIN_CENTS = 100_000;
+export const ONE_OFF_SHARE = 0.25;
+export const ONE_OFF_PRIMARIES: readonly string[] = [
+  "HOME_IMPROVEMENT",
+  "MEDICAL",
+  "TRAVEL",
+  "GENERAL_MERCHANDISE",
+  "GENERAL_SERVICES",
+];
+export const ONE_OFF_NEVER_DETAILED: readonly string[] = [
+  "GENERAL_SERVICES_INSURANCE",
+  "GENERAL_SERVICES_EDUCATION",
+  "GENERAL_SERVICES_CHILDCARE",
+];
+// Another charge from the same merchant of at least this share of the amount makes it recur.
+export const ONE_OFF_REPEAT_SHARE = 0.5;
