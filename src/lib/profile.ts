@@ -4,6 +4,7 @@ import { PAY_PERIODS } from "@/config/benefits";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { copiesToLeaveOut } from "@/planning/books";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
@@ -32,8 +33,8 @@ export async function loadProfileInput(
   const today = dayOf(now);
   const since = new Date(now.getTime() - (PROFILE_MONTHS * 31 + 2) * 86_400_000);
   const [
-    transactions,
-    accounts,
+    allTransactions,
+    allAccounts,
     liabilities,
     holdings,
     prefs,
@@ -68,6 +69,8 @@ export async function loadProfileInput(
         subtype: true,
         currentBalanceCents: true,
         availableBalanceCents: true,
+        itemId: true,
+        mask: true,
       },
     }),
     db.liabilities.findMany({
@@ -123,6 +126,10 @@ export async function loadProfileInput(
       select: { perPayCents: true, payFrequency: true },
     }),
   ]);
+  // Books QA: an account linked twice (through two logins) counts once.
+  const copies = copiesToLeaveOut(allAccounts);
+  const accounts = allAccounts.filter((a) => !copies.has(a.id));
+  const transactions = allTransactions.filter((t) => !copies.has(t.accountId));
   // Other people in their household in Jane (spec step 264), not counting them.
   const householdMembers = membership
     ? await client.householdMember.count({

@@ -60,13 +60,16 @@ const SAMPLE_POLICIES: Readonly<Record<string, readonly NeedPolicy[]>> = {
   retiree: [house("retiree-home", 30_000_000, 100_000)],
 };
 
-// What the daily books check (spec step 238) left open for the sample people: the Reyes family's
-// joint savings is linked twice, once through each parent's bank login.
+// What the daily books check (spec step 238) leaves open for the sample people: the Reyes
+// family's savings comes in twice, once through each parent's bank login (the demo bank's
+// second login, DEMO_SECOND_LOGINS), and the copies can't be proven the same. The words are
+// the books check's own (src/lib/books.ts).
 const SAMPLE_BOOKS: Readonly<Record<string, NonNullable<ProfileInput["extras"]>["books"]>> = {
   family: [
     {
       kind: "duplicate",
-      words: "Your joint savings is linked twice, once through each of your bank logins.",
+      words:
+        "Demo Savings (ending 2002) looks like the same account linked twice, through two bank logins, but I can't prove the two copies match transaction for transaction, so I haven't merged them.",
       accountId: "demo-seedfamily-savings",
     },
   ],
