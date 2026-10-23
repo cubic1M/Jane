@@ -85,7 +85,8 @@ describe.runIf(url)("a follow-up right after a card", () => {
       ]),
     });
     expect(card.source).toBe("claude");
-    expect(card.reply.actions.some((a) => a.id === "insurance.shop_yes")).toBe(true);
+    expect(card.reply.actions.some((a) => a.id === "option.pick")).toBe(true);
+    expect(card.reply.refs.options?.topic).toMatch(/^switch:/);
     // The card is short: the pick, the saving, one line of why and what Yes does.
     expect(card.reply.body.length).toBeLessThan(700);
 

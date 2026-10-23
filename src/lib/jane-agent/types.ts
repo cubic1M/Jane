@@ -638,6 +638,8 @@ export type MultiStep =
       label: string;
       action: ActionId;
       actionLabel: string;
+      // What goes with the button: for a pick-one card (option.pick), the option picked.
+      choice?: string;
       body: string;
       refs: MessageRefs;
       actions: MessageAction[];

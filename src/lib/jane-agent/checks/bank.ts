@@ -829,7 +829,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     page: "/insurance",
     tool: "propose_action",
     profile: "demo_advice",
-    expect: { button: "insurance.shop_yes", avoid: /couldn't set up|where you stand/i },
+    // The switch is the pick-one card's (gap audit): its quotes picked with option.pick.
+    expect: { button: "option.pick", avoid: /couldn't set up|where you stand/i },
   },
   {
     id: "reshop-2",
@@ -1752,7 +1753,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: {
       intent: "insurance",
-      button: "insurance.shop_yes",
+      button: "option.pick",
       mentions: /same cover/,
       list: true,
     },

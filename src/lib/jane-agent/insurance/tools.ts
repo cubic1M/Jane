@@ -1,5 +1,6 @@
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { insuranceCard } from "@/lib/insurance/need/card";
+import { shopCard } from "@/lib/insurance/shop-card";
 import { loadNeeds, optionsForNeed, withNeeds } from "@/lib/insurance/need/load";
 import type { Need } from "@/lib/insurance/need/types";
 import type { OfferedOptions } from "@/lib/option-card";
@@ -738,9 +739,19 @@ async function quotesTool(
     })),
   );
   const current = (p: (typeof active)[number]) => yearlyPremium(p);
+  // The open reshop that saves the most, as the pick-one card under the answer (step 104).
+  const best = shops
+    .filter((s) => s.status === "open" && s.pick)
+    .sort((a, b) => (b.savingCents ?? 0) - (a.savingCents ?? 0))[0];
+  const bestPolicy = best ? active.find((p) => p.id === best.policyId) : undefined;
+  const card = best && bestPolicy ? shopCard(best, bestPolicy) : null;
   return {
+    ...(card ? { options: card } : {}),
     content: JSON.stringify({
       partnerAvailable: canQuote,
+      ...(card
+        ? { shownAsACard: `${card.title}: the quotes to switch to are on a card under your answer` }
+        : {}),
       policies: withQuotes
         .filter((w) => w.quotes.length > 0 || shops.some((s) => s.policyId === w.policy.id))
         .map(({ policy, quotes }) => ({
