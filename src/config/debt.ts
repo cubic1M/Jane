@@ -629,8 +629,18 @@ export const PRODUCT_FOR_DEBT: Readonly<Record<string, LoanProduct>> = {
   loan: "personal",
   card: "personal",
 };
-// A card has no end date, so its offers are compared over this many months.
+// A card has no end date: when its payment isn't known either, its offers are compared over
+// this many months.
 export const REFI_CARD_TERM_MONTHS = 36;
+// The terms lenders usually offer for each product, shortest and longest (the stand-in
+// catalog's range): a refinance is priced over the debt's own remaining months, kept inside
+// these (a card paid at its minimum can run for years; no lender lends that long).
+export const REFI_TERM_RANGE_MONTHS: Readonly<Record<LoanProduct, { min: number; max: number }>> = {
+  personal: { min: 24, max: 60 },
+  auto: { min: 12, max: 84 },
+  student: { min: 60, max: 240 },
+  mortgage: { min: 120, max: 360 },
+};
 // Jane asks the lender partner for offers this often, by herself.
 export const REFI_CHECK_DAYS = 30;
 // And brings one up only when it saves at least this much over the same term, fees in.

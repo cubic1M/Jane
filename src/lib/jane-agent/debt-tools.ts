@@ -272,7 +272,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "debt_decision",
     description:
-      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond a month of spending would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options), student_early, overdraft (whether checking is forecast to go below zero this month, when and by how much) bnpl (whether buy now, pay later suits them), save_each_month (what they keep now against the common 20% target) and rent_or_buy (their rent against the home the 28/36 rules allow). Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own. Start with the verdict in words; offer no button unless they asked you to do something; for any amount these sentences don't give, use the calculate tool.",
+      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond the emergency cushion would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options), student_early, overdraft (whether checking is forecast to go below zero this month, when and by how much) bnpl (whether buy now, pay later suits them), save_each_month (what they keep now against the common 20% target) and rent_or_buy (their rent against the home the 28/36 rules allow). Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own. Start with the verdict in words; offer no button unless they asked you to do something; for any amount these sentences don't give, use the calculate tool.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -510,7 +510,7 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
     fee: money(s.offer.feeCents),
     feeIs: s.offer.feeLabel,
     monthlyPayment: money(s.monthlyCents),
-    totalOverSameMonths: money(s.totalCents),
+    totalWithFees: money(s.totalCents),
     saving: money(s.savingCents),
     breakEvenMonths: s.breakEvenMonths,
     sample: s.offer.demo,
@@ -521,13 +521,19 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
       debt: c.debtName,
       balance: money(c.balanceCents),
       rate: formatRate(c.currentAprBps),
-      monthsLeft: c.termMonths,
+      // Offers are priced over the debt's own remaining months; keeping it is paying what the
+      // person pays now until it's gone (the same comparison as the loan_fit tool).
+      offersPricedOverMonths: c.termMonths,
+      keepingItTakesMonths: c.keepMonths,
       keepingItCosts: money(c.currentTotalCents),
       keepingMonthlyPayment: money(c.currentMonthlyCents),
       janesPick: c.pick && offer(c.pick),
       ...(c.cashPayoffCents
         ? {
-            payOffFromCashInstead: { saves: money(c.cashPayoffCents), keepsAMonthOfSpending: true },
+            payOffFromCashInstead: {
+              saves: money(c.cashPayoffCents),
+              keepsTheEmergencyCushion: true,
+            },
           }
         : {}),
       ...(c.turnedDown ? { lenderWouldLikelyDecline: c.turnedDown } : {}),

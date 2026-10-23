@@ -36,8 +36,11 @@ export type FitPerson = {
   // All debt payments a month before this loan.
   debtPaymentsCents: number;
   cashCents: number;
-  // A typical month of spending, to keep in cash; absent when not known.
+  // A typical month of spending; absent when not known.
   spendCents?: number;
+  // The emergency cushion to keep back before paying a debt off from cash
+  // (src/planning/emergency-fund.ts cashCushionCents); a month of spending when absent.
+  cushionCents?: number;
   debtTrouble: boolean;
 };
 
@@ -59,6 +62,10 @@ export type FitInput = {
   // Evidence behind the person's own facts (income seen, balances seen), as percentages with
   // their reasons; the pick is never surer than the least sure of these and the offers.
   evidence?: readonly { percent: number; reason: string }[];
+  // A refinance: the pick comes from offers over the debt's own remaining months (the horizon
+  // the offers page compares over, src/planning/refinance.ts), by the same rule: the cheapest
+  // that saves enough, fixed rates first. Other terms stay as the other options.
+  pickTermMonths?: number;
 };
 
 export type FitLabel =
@@ -270,12 +277,14 @@ const toOption = (o: Scored, label: FitLabel, input: FitInput): FitOption => ({
 });
 
 // Paying off what they have from cash they don't need: the cheapest way out when the cash covers
-// it and still leaves a month of spending. Null when it doesn't, or there is nothing to pay.
+// it and still keeps the emergency cushion, for any kind of debt (a card, a car loan, a student
+// loan: one rule). Null when it doesn't, or there is nothing to pay.
 function payoffOption(input: FitInput): FitOption | null {
   const b = input.baseline;
   const spend = input.person.spendCents;
   if (!b || spend === undefined) return null;
-  const spare = input.person.cashCents - spend * FIT_KEEP_CASH_MONTHS;
+  const cushion = input.person.cushionCents ?? spend * FIT_KEEP_CASH_MONTHS;
+  const spare = input.person.cashCents - cushion;
   if (spare < b.balanceCents) return null;
   const saves = keepCost(b).totalCents - b.balanceCents;
   if (saves < FIT_MIN_SAVING_CENTS) return null;
@@ -297,7 +306,7 @@ function payoffOption(input: FitInput): FitOption | null {
     headline: `Pay off ${b.label} with your cash - ${formatCents(saves)} less`,
     details: [
       `Uses ${formatCents(b.balanceCents)} of your ${formatCents(input.person.cashCents)} in cash`,
-      `Leaves ${formatCents(input.person.cashCents - b.balanceCents)}, at least a month of spending`,
+      `Leaves ${formatCents(input.person.cashCents - b.balanceCents)}, your emergency cushion of ${formatCents(cushion)} kept`,
       `${formatCents(saves)} less than keeping ${b.label} (${formatCents(b.monthlyCents)} a month for ${keepCost(b).months} more months)`,
     ],
   };
@@ -360,12 +369,21 @@ export function fit(input: FitInput): FitResult {
 
   // The pool the pick comes from: comfortable ones, or if none, the eligible with the lowest
   // payment (a stretch, said so).
-  const comfy = eligible.filter((s) => s.comfortable);
-  const pool = comfy.length ? comfy : eligible;
-  const cheapest = [...pool].sort((a, b) => a.totalCostCents - b.totalCostCents)[0];
+  const atTerm = input.pickTermMonths
+    ? eligible.filter((s) => s.termMonths === input.pickTermMonths)
+    : [];
+  const choosable = atTerm.length ? atTerm : eligible;
+  const comfy = choosable.filter((s) => s.comfortable);
+  const pool = comfy.length ? comfy : choosable;
+  const byCost = [...pool].sort((a, b) => a.totalCostCents - b.totalCostCents);
+  const cheapest = atTerm.length
+    ? (byCost.find(
+        (s) => s.rateType !== "variable" && (s.savesCents ?? 0) >= FIT_MIN_SAVING_CENTS,
+      ) ?? byCost[0])
+    : byCost[0];
   const stretch = comfy.length === 0;
   const best = stretch
-    ? [...eligible].sort((a, b) => a.paymentCents - b.paymentCents)[0]
+    ? [...choosable].sort((a, b) => a.paymentCents - b.paymentCents)[0]
     : cheapest;
   const interestOf = (s: Scored) => s.totalCostCents - s.feeCents - input.amountCents;
   const terms: FitTerms = {

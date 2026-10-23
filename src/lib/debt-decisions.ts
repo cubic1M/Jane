@@ -146,6 +146,7 @@ export async function loadDecisionInput(
     student: toLoan(student),
     liquidCents,
     monthlySpendCents: Math.round(spent / 3),
+    ...(fitView.cushionCents != null ? { cushionCents: fitView.cushionCents } : {}),
     consolidation,
     transferNeedsScore:
       transferBlocked && !consolidation ? { score: score!, minScore: TRANSFER_MIN_SCORE } : null,
