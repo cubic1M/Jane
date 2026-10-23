@@ -17,6 +17,7 @@ import { addDays } from "@/detection/units";
 import {
   billChanges,
   detectChanges,
+  employers,
   newFees,
   newSubscriptions,
   paceChanges,
@@ -274,5 +275,31 @@ describe("detectChanges", () => {
     ];
     const found = detectChanges(...withStreams(input({ transactions })));
     expect(found.map((c) => c.kind)).toEqual(["bill_changed", "new_fee"]);
+  });
+});
+
+// One definition of a paycheck (docs/feature-audit.md, cluster 11): the changes group paychecks
+// as step 182's paydays do, payroll words and all.
+describe("employers", () => {
+  it("is step 182's paychecks: by name or category, one employer however the bank words it", () => {
+    const pay = (date: string, description: string, pfcDetailed: string | null) =>
+      tx({ date, amountCents: -200_000, description, pfcDetailed });
+    const [acme, ...rest] = employers(
+      input({
+        transactions: [
+          pay("2026-09-01", "ACME CORP PAYROLL", "INCOME_SALARY"),
+          pay("2026-09-15", "ACME CORP DIRECT DEP", null),
+          // Interest is never a paycheck, whatever it's called.
+          tx({
+            date: "2026-09-30",
+            amountCents: -500,
+            description: "INTEREST PAYMENT",
+            pfcDetailed: "INCOME_INTEREST_EARNED",
+          }),
+        ],
+      }),
+    );
+    expect(rest).toEqual([]);
+    expect(acme.deposits.map((d) => d.date)).toEqual(["2026-09-01", "2026-09-15"]);
   });
 });

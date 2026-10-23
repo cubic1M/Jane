@@ -1,5 +1,6 @@
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { RULE_REPLAY_STRATEGY_LABELS } from "@/config/backtest";
+import type { RiskLevel } from "@/config/investing";
 import { formatReturn } from "@/insights/returns";
 import { longDate } from "@/lib/investments/backtest";
 import type {
@@ -49,7 +50,7 @@ function Figures({ s }: { s: StrategySummary }) {
   );
 }
 
-function Level({ l, open }: { l: LevelRuleReplay; open: boolean }) {
+function Level({ l, open, own }: { l: LevelRuleReplay; open: boolean; own: boolean }) {
   const gap = (l.strategies.rules.totalReturn - l.strategies.rebalance.totalReturn) * 100;
   return (
     <details
@@ -59,6 +60,7 @@ function Level({ l, open }: { l: LevelRuleReplay; open: boolean }) {
     >
       <summary className="cursor-pointer font-medium">
         {l.label}
+        {own && <span className="ml-1 text-xs font-normal text-zinc-500">(your level)</span>}
         <span className="ml-2 text-xs font-normal text-zinc-500">
           extra rules {points(gap)} against plain rebalancing
         </span>
@@ -85,7 +87,8 @@ function Level({ l, open }: { l: LevelRuleReplay; open: boolean }) {
   );
 }
 
-export function RuleReplaySection({ data }: { data: LoadedRuleReplays }) {
+// `level`: the person's own level, opened first and marked; left out, the first level opens.
+export function RuleReplaySection({ data, level }: { data: LoadedRuleReplays; level?: RiskLevel }) {
   const { replays: r } = data;
   if (r.levels.length === 0) return null;
   const a = r.assumptions;
@@ -104,7 +107,12 @@ export function RuleReplaySection({ data }: { data: LoadedRuleReplays }) {
       </div>
       <div className="flex flex-col gap-2">
         {r.levels.map((l, i) => (
-          <Level key={l.level} l={l} open={i === 0} />
+          <Level
+            key={l.level}
+            l={l}
+            open={level ? l.level === level : i === 0}
+            own={l.level === level}
+          />
         ))}
       </div>
       <div className="flex flex-col gap-1 text-xs text-zinc-500">

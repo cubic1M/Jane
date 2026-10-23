@@ -101,6 +101,10 @@ export const FINDING_KIND_OF_TOPIC: Partial<Record<SuggestionTopic, FindingType>
 // in "make a payoff plan", fees in bank fees, late fees and the hardship plan. Only the best of
 // those that share a group is kept, so the dollars are counted once.
 export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  // Extra cash (docs/feature-audit.md, cluster 13): move it to savings, or into T-bills if it's
+  // needed within a few years. The same money, so only the stronger is offered.
+  idle_cash: ["cash"],
+  short_term_cash: ["cash"],
   card_interest: ["interest"],
   debt_plan: ["interest"],
   hardship_plan: ["interest", "fees"],

@@ -1909,6 +1909,7 @@ const CASH_VIEW = {
   monthlySpendingCents: 300_000,
   emergencyTargetCents: 900_000,
   emergencyFromGoal: false,
+  emergencyBasis: "3 months of your own average spending",
   plan: CASH_PLAN,
 };
 

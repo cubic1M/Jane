@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { RETIREMENT_AGE } from "@/config/retirement";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -115,6 +116,21 @@ describe.runIf(url)("tax moves over the years against a real database", { timeou
     expect((await loadMultiYear(userId, { client, now: LINKED })).events).toEqual([]);
     await expect(removePlanEvent(userId, "nope", { client })).rejects.toBeInstanceOf(
       MultiYearError,
+    );
+  });
+
+  it("assumes retirement at the long view's age when the investor profile has one", async () => {
+    // /long-view retires them at RETIREMENT_AGE; /taxes/years agrees (docs/feature-audit.md,
+    // cluster 12) instead of assuming "15 years from now".
+    const userId = await person("years-age");
+    await client.investorProfile.create({
+      data: { userId, age: 50, ageOn: new Date("2026-01-01T00:00:00Z") },
+    });
+    const v = await loadMultiYear(userId, { client, now: LINKED });
+    expect(v.retireAssumed).toBe(true);
+    expect(v.retireYear).toBe(2026 + RETIREMENT_AGE - 50);
+    expect(v.assumptions[1]).toBe(
+      `You haven't told me when you plan to retire, so I assumed ${2026 + RETIREMENT_AGE - 50}.`,
     );
   });
 

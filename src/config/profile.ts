@@ -28,10 +28,14 @@ export const PENSION_PATTERN =
 // An employer that has paid in this many days is still an earner in the household.
 export const EARNER_ACTIVE_DAYS = 45;
 
-// Debt trouble: this many overdraft, insufficient-funds or late fees in the year, card debt
-// of this many months of income, or any payday loan.
-export const TROUBLE_FEES_MIN = 4;
+// Debt trouble (loans QA: it rests on the debts, not on fees): card debt of this many months of
+// income, debt payments at step 229's share of income (src/config/debt-trouble.ts), or payday
+// loans repaid at TROUBLE_PAYDAY_INCOME_SHARE of income. Overdraft and late fees are spending
+// findings of their own.
 export const TROUBLE_DEBT_MONTHS = 3;
+// Payday loans and pay advances count when their repayments in the year are at least this share
+// of a year's income: a cycle that eats the pay, not one small advance.
+export const TROUBLE_PAYDAY_INCOME_SHARE = 0.05;
 
 // Life stage.
 export const STARTING_MAX_INCOME_CENTS = 400_000;

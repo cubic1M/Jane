@@ -11,7 +11,6 @@ import {
   CURRENT_CASH_RATE_SOURCE,
   EMERGENCY_MAX_REACH_DAYS,
 } from "@/config/cash";
-import { EMERGENCY_FUND_MONTHS } from "@/config/proposals";
 import { loadCash } from "@/lib/investments/cash";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -113,7 +112,9 @@ async function CashContent({
                   {b.key === "emergency"
                     ? view.emergencyFromGoal
                       ? " (your emergency fund goal)"
-                      : ` (${EMERGENCY_FUND_MONTHS} months of your spending)`
+                      : view.emergencyBasis
+                        ? ` (${view.emergencyBasis})`
+                        : ""
                     : ""}
                 </span>
                 <span>{formatCents(b.cents)}</span>

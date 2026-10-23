@@ -16,6 +16,7 @@ import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { detectFor } from "@/lib/suggestions";
 import { loadDebtTrouble } from "./debt-trouble";
 
 // Spec step 229 against a real, migrated Postgres, on the demo bank (a mortgage, car, student
@@ -58,13 +59,32 @@ describe.runIf(url)("when debt is too much against a real database", { timeout: 
     const { itemId } = await linkDemoBank(userId, { client, now: LINKED });
     await syncItem(itemId, { client, api: plaid, now: LINKED });
   }, 120_000);
+  // The demo person's payments are over 40% of income, and their cash covers more than three
+  // months of them, so they aren't over the line (loans QA): set it under, for the message.
+  const lowCash = () =>
+    client.account.updateMany({
+      where: { userId, type: "depository" },
+      data: { currentBalanceCents: 100_000 },
+    });
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
     vi.unstubAllEnvs();
   });
 
+  it("isn't over the line while the cash carries three months of the payments", async () => {
+    const t = await loadDebtTrouble(userId, opts());
+    expect(t.share!).toBeGreaterThanOrEqual(0.4);
+    expect(t.over).toBe(false);
+    // Nor in debt trouble for the suggestions: four overdraft and late fees don't make it.
+    const topics = (await detectFor(userId, opts())).suggestions.map((x) => x.topic);
+    expect(topics).not.toContain("hardship_plan");
+    expect(topics).not.toContain("debt_plan");
+    expect(topics).toContain("bank_fees");
+  });
+
   it("works out the share of income from the person's own payments and pay", async () => {
+    await lowCash();
     const t = await loadDebtTrouble(userId, opts());
     expect(t.available).toBe(true);
     expect(t.incomeCents).toBeGreaterThan(400_000);

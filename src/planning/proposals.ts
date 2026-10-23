@@ -10,7 +10,7 @@ import {
   YEARLY_BILLS_GOAL_PATTERN,
 } from "@/config/irregular";
 import { UNCATEGORIZED } from "@/insights/labels";
-import { emergencyTarget } from "./emergency-fund";
+import { emergencyTarget, fundBasis } from "./emergency-fund";
 
 // What Jane proposes to set up, from the person's own numbers. Pure.
 
@@ -30,6 +30,9 @@ export type GoalProposal = {
   targetDate: string;
   // Their average monthly spending, the basis of the target.
   monthlySpendingCents: number;
+  // How an emergency fund was sized ("6 months of your own average spending"); goals drafted
+  // before it was kept say three months.
+  basis?: string;
   // For the "Yearly bills" goal (spec step 70): the monthly set-aside the target is made of.
   monthlySetAsideCents?: number;
 };
@@ -102,6 +105,7 @@ export function proposals(input: ProposalInput): Proposal[] {
         Math.ceil(fund.targetCents / EMERGENCY_FUND_ROUNDING_CENTS) * EMERGENCY_FUND_ROUNDING_CENTS,
       targetDate: addMonths(input.asOf, fund.targetMonths),
       monthlySpendingCents: input.monthlySpendingCents,
+      basis: fundBasis(fund),
     });
   }
 
