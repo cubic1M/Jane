@@ -36,6 +36,7 @@ import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
 import { ensureDemoAssets } from "@/lib/plaid/demo-assets";
+import { ensureDemoInvestingFacts } from "@/lib/plaid/demo-investing";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
@@ -663,6 +664,15 @@ export async function syncItem(
     item.investments ? saveInvestments(db, api, accessToken, item.id, now) : ("off" as const),
   ]);
   timing.mark("recurring_liabilities_investments");
+  // A sample person's values list and named beneficiaries (steps 236 and 237), once their
+  // accounts are in and before the detectors run. Never fails the sync.
+  if (isDemoToken(accessToken) && item.transactionsCursor === null) {
+    await ensureDemoInvestingFacts(item.userId, item.id, { client, now }).catch((error) =>
+      console.error("Seeding the sample person's investing facts failed", {
+        error: String(error),
+      }),
+    );
+  }
 
   await db.plaidItems.updateMany({
     where: { id: item.id },

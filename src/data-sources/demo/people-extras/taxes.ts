@@ -123,14 +123,15 @@ export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   equity: {
     monthly: [
       propertyTax(6800),
-      // Step 269: payroll deposits into her HSA at a pace over the self-only limit.
+      // Step 269: monthly transfers from checking into her HSA, at a pace over the self-only
+      // limit (taxes QA: as a transfer out, so a bank's transactions show it).
       {
         key: "taxes-hsa-in",
-        account: "hsa",
-        name: "PAYROLL HSA CONTRIBUTION",
+        account: "checking",
+        name: "TRANSFER TO HEALTHEQUITY HSA",
         merchant: null,
-        category: "TRANSFER_IN_ACCOUNT_TRANSFER",
-        amount: -500,
+        category: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+        amount: 500,
         days: [15],
       },
     ],

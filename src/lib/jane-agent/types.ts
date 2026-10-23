@@ -97,6 +97,8 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Phase AW: a change to the practice portfolio's settings, prepared in the chat (refs.practicePrefs).
+  "practice.prefs_save",
   // Spec step 88: a clarifying question's answers, one per meaning (refs.choices).
   "clarify.1",
   "clarify.2",
@@ -247,6 +249,9 @@ export const ACTION_IDS = [
   "invest.auto_leftover",
   "invest.auto_pause",
   "invest.auto_resume",
+  // Spec step 297: the practice portfolio's switch, offered by Claude (practice money only).
+  "practice.pause",
+  "practice.resume",
   // Spec step 158: start saving for college.
   "college.start",
   // Spec step 159: the HSA.
@@ -454,6 +459,9 @@ export type MessageRefs = {
   proposalKey?: string;
   // Spec step 83: the step only the person can do on an action (./agent-steps.ts).
   step?: string;
+  // Phase AW: the practice settings a "Make the change" tap saves, by field, as the card showed
+  // them (src/planning/practice-preferences.ts checks them again on the tap).
+  practicePrefs?: Record<string, string | number | boolean | string[] | null>;
   // Spec step 83: a deadline the person typed in (src/lib/deadlines.ts), to mark done.
   deadlineEntryId?: string;
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
@@ -560,6 +568,8 @@ export type MessageRefs = {
   iraCents?: number;
   // Spec step 211: the old plan a question or rollover button is about.
   oldPlanId?: string;
+  // Spec step 297: which practice switch a pause or resume button sets.
+  practiceWhich?: "all" | "opportunities";
   // Spec step 213: the child (and amount, cents) a button is about.
   familyChild?: string;
   familyPlan?: string;

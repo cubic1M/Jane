@@ -17,7 +17,7 @@ const PRACTICE: MessageAction = {
   kind: "link",
   href: "/investments/practice",
 };
-const PAUSE: MessageAction = {
+export const PAUSE: MessageAction = {
   id: "open",
   label: "Pause switch",
   kind: "link",
@@ -33,7 +33,7 @@ const BACKTESTS: MessageAction = {
 export const PRACTICE_ONLY_NOTE =
   "The practice portfolio is demo advice, for the demo bank's sample people only, so I can't run one on your real accounts.";
 
-const RULE_LABELS: Readonly<Record<string, string>> = {
+export const RULE_LABELS: Readonly<Record<string, string>> = {
   model_buy: "buying the model for your level",
   rebalance: "rebalancing back to your mix",
   ...Object.fromEntries(SCAN_KINDS.map((k) => [k, SCAN_LABELS[k as ScanKind].toLowerCase()])),
@@ -66,6 +66,8 @@ export function practiceLogReply(
   practice: { level: RiskLevel; paused: boolean } | null,
   trades: readonly PracticeTradeRow[],
   advice: boolean,
+  // "Why?": every trade with its reason, as many as fit.
+  explain = false,
 ): Reply {
   if (!advice) return { body: PRACTICE_ONLY_NOTE, actions: [], refs: {} };
   if (!practice) {
@@ -91,7 +93,7 @@ export function practiceLogReply(
   const lines = placed.map((t, i) => {
     const what = `${t.side === "buy" ? "bought" : "sold"} ${formatCents(t.amountCents)} of ${t.ticker}`;
     const rule = RULE_LABELS[t.rule] ?? t.rule;
-    return i === 0
+    return i === 0 || explain
       ? `- ${day(t.placedAt)}: ${what}. ${t.reason}`
       : `- ${day(t.placedAt)}: ${what} (${rule}).`;
   });

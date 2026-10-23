@@ -170,6 +170,16 @@ export function valuesPlan(accounts: InvestmentAccountView[], prefs: Prefs): Val
     const menu = isEmployerPlan(account.subtype) ? DEMO_EMPLOYER_PLAN_MENU : null;
     for (const h of account.holdings) {
       if (h.isCash || !h.ticker || h.valueCents <= 0) continue;
+      // Only funds are switched for a screened fund. One company's shares (company stock,
+      // RSUs) read as US stocks but aren't a fund: selling them is the company stock page's.
+      if (!FUND_FACTS[h.ticker] && !tagsOf(h.ticker)) {
+        skipped.push({
+          accountName: account.name,
+          name: h.name,
+          reason: "is one company's shares, not a fund, so it's left as it is",
+        });
+        continue;
+      }
       const cls = classOf(h.mix);
       if (!cls) {
         skipped.push({

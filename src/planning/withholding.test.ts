@@ -89,3 +89,25 @@ describe("withholdingCheck", () => {
     expect(perPaycheckEffect("4c", 5_000, 0.22, 24)).toBe(5_000);
   });
 });
+
+describe("a believable W-4 late in the year (taxes QA)", () => {
+  it("offers only the January change when this year's Step 4(b) would be more than the pay", () => {
+    const base = {
+      refundCents: 438_800,
+      withholdingKnown: true,
+      marginalRate: 0.12,
+      perYear: 26,
+      paychecksLeft: 4,
+      withheldPerPaycheckCents: 40_000,
+      lastYearRefundCents: null,
+    };
+    const capped = withholdingCheck({ ...base, wagesCents: 5_000_000 });
+    expect(capped.status).toBe("big_refund");
+    if (capped.status !== "big_refund") return;
+    expect(capped.thisYear).toBeNull();
+    expect(capped.fromJanuary.amountCents).toBeLessThanOrEqual(5_000_000);
+    // With pay big enough to carry it, this year's change stays.
+    const kept = withholdingCheck({ ...base, wagesCents: 50_000_000 });
+    expect(kept.status === "big_refund" && kept.thisYear?.step).toBe("4b");
+  });
+});
