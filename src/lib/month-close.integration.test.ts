@@ -17,6 +17,8 @@ import { parseIntent } from "@/lib/jane-agent/intents";
 import { postMessages } from "@/lib/jane-agent/messages";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { closeSource } from "@/lib/jane-agent/sources/close";
+import { reportSource } from "@/lib/jane-agent/sources/report";
+import { closeReply } from "@/lib/jane-agent/replies-close";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadClose, runMonthClose } from "./month-close";
@@ -122,11 +124,17 @@ describe.runIf(url)("the monthly close", { timeout: 120_000 }, () => {
     // The snapshot taken at the close stays as it was.
     expect(corrected.figures.netWorthCents).toBe(closed.figures.netWorthCents);
 
-    // Said in the chat once closed.
+    // Said in the chat once, in the month's report: the close has no message of its own when
+    // nothing needs a tap (its figures are the report's).
     const snapshot = (await loadSnapshot(userId, { client, now: NOW }))!;
-    const [done] = gather(snapshot, NOW, { trigger: "open", sources: [closeSource] });
-    expect(done.kind).toBe("done");
-    expect(done.body).toMatch(/^October 2026 is closed: \$[\d,]+\.\d\d came in/);
+    expect(gather(snapshot, NOW, { trigger: "open", sources: [closeSource] })).toEqual([]);
+    const [report] = gather(snapshot, NOW, { trigger: "open", sources: [reportSource] });
+    expect(report.body.split("\n")[0]).toBe("Your money report for October 2026 is ready.");
+    expect(report.body).toMatch(/\nOctober 2026 is closed\. (Your books added up\.|\d+ things?)/);
+    // Asked, the close still answers with its figures.
+    expect(closeReply(snapshot.close!).body).toMatch(
+      /^October 2026 is closed: \$[\d,]+\.\d\d came in/,
+    );
   });
 
   it("asks once about charges it wasn't sure of, and one tap closes the month", async () => {
