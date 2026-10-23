@@ -1,3 +1,4 @@
+import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import {
   AFFORD_GOAL_MONTHS,
   AFFORD_USUAL_MONTHS,
@@ -761,7 +762,7 @@ export function whatDidReply(did: JaneDid): Reply {
   const lines: string[] = [];
   if (did.finished.length > 0) {
     lines.push(
-      `This week I finished ${things(did.finished.length)}${did.confirmedCents > 0 ? `, with ${fmt(did.confirmedCents)} confirmed back or saved` : ""}: ${did.finished.map((f) => `"${f.title}"`).join(", ")}.`,
+      `This week I finished ${things(did.finished.length)}${did.confirmedCents > 0 ? `, with ${fmt(did.confirmedCents)} ${BACK_OR_AGREED}` : ""}: ${did.finished.map((f) => `"${f.title}"`).join(", ")}.`,
     );
   }
   if (did.working > 0) lines.push(`I'm working on ${things(did.working)}.`);

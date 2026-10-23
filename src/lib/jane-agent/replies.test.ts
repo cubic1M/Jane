@@ -535,7 +535,7 @@ describe("whatDidReply", () => {
     });
     expect(reply.body).toBe(
       [
-        `This week I finished 1 thing, with $89.99 confirmed back or saved: "Refund the double charge".`,
+        `This week I finished 1 thing, with $89.99 back or agreed: "Refund the double charge".`,
         "I'm working on 2 things.",
         "I wrote or called companies 3 times.",
         `1 thing waits on you. First: "Cancel Hulu": Confirm the cancellation email.`,
