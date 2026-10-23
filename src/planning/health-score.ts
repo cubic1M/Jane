@@ -9,6 +9,7 @@ import {
   HEALTH_WEIGHTS,
   type HealthPart,
 } from "@/config/health-score";
+import type { OneOff } from "@/insights/typical-month";
 import { formatCents } from "@/lib/money";
 
 // Money health score (spec step 146). Pure: one number from 0 to 100 out of a few parts,
@@ -27,6 +28,8 @@ export type HealthInput = {
   // Card balances carried; null when the person has no cards linked.
   cardBalanceCents: number | null;
   goals: { onTrack: number; total: number };
+  // One-off costs left out of the spending average (books QA), to say so.
+  oneOffs?: OneOff[];
 };
 
 export type HealthPartScore = {
@@ -105,9 +108,12 @@ export function healthScore(input: HealthInput): HealthScore | null {
       part(
         "margin",
         rate / HEALTH_MARGIN_FULL_RATE,
-        rate >= 0
+        (rate >= 0
           ? `About ${Math.round(rate * 100)}% of what comes in is left after spending (last ${HEALTH_MONTHS} months).`
-          : `Spending ran about ${Math.round(-rate * 100)}% above what came in over the last ${HEALTH_MONTHS} months.`,
+          : `Spending ran about ${Math.round(-rate * 100)}% above what came in over the last ${HEALTH_MONTHS} months.`) +
+          (input.oneOffs?.length
+            ? ` One-off costs (${formatCents(input.oneOffs.reduce((s, o) => s + o.amountCents, 0))}) are left out.`
+            : ""),
         `Keeping ${Math.round(HEALTH_MARGIN_FULL_RATE * 100)}% of what comes in gives full points; the savings in your plan help.`,
       ),
     );

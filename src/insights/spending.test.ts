@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  averageMonthlySpending,
-  kindOf,
-  monthsEnding,
-  spendingInsights,
-  type InsightTransaction,
-} from "./spending";
+import { kindOf, monthsEnding, spendingInsights, type InsightTransaction } from "./spending";
+import { typicalMonthlySpending } from "./typical-month";
 
 const t = (overrides: Partial<InsightTransaction>): InsightTransaction => ({
   date: "2026-10-05",
@@ -119,7 +114,7 @@ describe("spendingInsights", () => {
   });
 });
 
-describe("averageMonthlySpending", () => {
+describe("typicalMonthlySpending", () => {
   it("averages the complete months before this one, leaving this month out", () => {
     const rows = [
       t({ date: "2026-08-10", amountCents: 30_000 }),
@@ -127,7 +122,7 @@ describe("averageMonthlySpending", () => {
       // This month is still going: left out.
       t({ date: "2026-10-05", amountCents: 999_000 }),
     ];
-    expect(averageMonthlySpending(rows, "2026-10-18", 2)).toBe(40_000);
-    expect(averageMonthlySpending([], "2026-10-18", 2)).toBe(0);
+    expect(typicalMonthlySpending(rows, "2026-10-18", 2)).toBe(40_000);
+    expect(typicalMonthlySpending([], "2026-10-18", 2)).toBe(0);
   });
 });

@@ -4,12 +4,20 @@ import {
   WORKING_TRANSACTIONS,
   type FigureId,
 } from "@/config/figures";
-import { FORECAST_DAYS, NON_SPENDING_CATEGORIES, NON_SPENDING_PRIMARIES } from "@/config/detection";
+import {
+  FORECAST_DAYS,
+  NON_SPENDING_CATEGORIES,
+  NON_SPENDING_PRIMARIES,
+  ONE_OFF_MIN_CENTS,
+  ONE_OFF_PRIMARIES,
+  ONE_OFF_SHARE,
+} from "@/config/detection";
 import { HEALTH_WEIGHTS } from "@/config/health-score";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import { categoryLabel } from "@/insights/labels";
 import { netWorth } from "@/insights/net-worth";
+import { oneOffNote } from "@/insights/typical-month";
 import { kindOf } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -155,7 +163,7 @@ export async function explainFigure(
       value: value === null ? "unknown" : formatCents(value),
       summary:
         id === "monthly_spending"
-          ? `The average of your last full months' spending. ${monthName(month)}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
+          ? `The average of your last full months' spending. ${oneOffNote(health.oneOffs ?? []) ? `${oneOffNote(health.oneOffs ?? [])} ` : ""}${monthName(month)}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
           : said !== null
             ? `You told me you earn ${formatCents(said)} a month, so I use that instead of the average of your deposits.`
             : `The average of the paychecks and other deposits in your last full months. ${monthName(month)}'s biggest are below.`,
@@ -164,6 +172,12 @@ export async function explainFigure(
           label: id === "monthly_spending" ? "Average monthly spending" : "Average monthly income",
           value: value === null ? "unknown" : formatCents(value),
         },
+        ...(id === "monthly_spending"
+          ? (health.oneOffs ?? []).map((o) => ({
+              label: `Left out: ${o.merchant}, ${o.date} (a one-off)`,
+              value: formatCents(o.amountCents),
+            }))
+          : []),
         {
           label: `${monthName(month)}'s ${id === "monthly_spending" ? "spending" : "income"}, in the items below and the rest`,
           value: formatCents(Math.abs(wanted.reduce((s, t) => s + t.amountCents, 0))),
@@ -173,6 +187,10 @@ export async function explainFigure(
       rules: [
         { label: "Not counted as spending: categories", value: NON_SPENDING_PRIMARIES.join(", ") },
         { label: "Not counted as spending: payments", value: NON_SPENDING_CATEGORIES.join(", ") },
+        {
+          label: "One-off costs left out",
+          value: `from ${formatCents(ONE_OFF_MIN_CENTS)} and ${ONE_OFF_SHARE * 100}% of a usual month, in ${ONE_OFF_PRIMARIES.join(", ")}, from a merchant not charged that much again`,
+        },
       ],
     };
   }
