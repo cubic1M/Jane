@@ -317,16 +317,28 @@ function businessCover(input: CheckupInput): Recommendation[] {
       ? BUSINESS_PROFESSIONAL_YEARLY_CENTS
       : BUSINESS_CAR_USE_YEARLY_CENTS;
   };
-  const words: Record<string, { title: string; kind: PolicyKind }> = {
+  // One short sentence each (the gap's own words are on the insurance page): the chat's checkup
+  // lists up to three.
+  const words: Record<string, { title: string; kind: PolicyKind; risk: string }> = {
     business_liability: {
       title: `Add general liability insurance of ${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)}.`,
       kind: "business",
+      risk: "No personal policy pays if a client or customer is hurt, or their property damaged, through your work.",
     },
-    professional_liability: { title: "Add professional liability insurance.", kind: "business" },
-    car_business_use: { title: "Add business use to your car insurance.", kind: "auto" },
+    professional_liability: {
+      title: "Add professional liability insurance.",
+      kind: "business",
+      risk: "No personal policy pays if a client says your work cost them money.",
+    },
+    car_business_use: {
+      title: "Add business use to your car insurance.",
+      kind: "auto",
+      risk: "A personal car policy doesn't cover driving for work.",
+    },
     business_equipment: {
       title: "Add business property cover for your equipment.",
       kind: "business",
+      risk: "Home and renters policies cap work equipment, or leave it out.",
     },
   };
   return businessGaps(input.household.signals.selfEmployment, input.policies).flatMap(
@@ -342,7 +354,7 @@ function businessCover(input: CheckupInput): Recommendation[] {
           title: rule.title,
           costCents: cost,
           cost: costWords(cost),
-          risk: gap.why,
+          risk: rule.risk,
           cents: [
             cost,
             ...gap.cents,
