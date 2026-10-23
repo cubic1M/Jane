@@ -3,6 +3,7 @@ import {
   MAX_TEAM_TEXT,
   TURNAROUND_BUSINESS_DAYS,
 } from "@/config/concierge";
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { ActionStatus, ActionType, PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail, statusEmail } from "@/lib/action-emails";
 import { FINDING_STATUS } from "@/lib/action-status";
@@ -29,6 +30,9 @@ export const OPEN_ACTION_STATUSES: readonly ActionStatus[] = [
   "waiting_on_user",
 ];
 const CLOSED: readonly ActionStatus[] = ["done", "failed"];
+// Spec step 138: a person trying Jane is sample data and never contacts a company, so the
+// team never works their requests by hand: they're left out of the queue and its workload.
+const NOT_TRIAL = { not: { startsWith: TRIAL_ID_PREFIX } };
 
 const EVENT: Partial<Record<ActionStatus, string>> = {
   in_progress: "action_started",
@@ -197,6 +201,7 @@ export async function loadWorkload({
 }: Pick<Options, "client" | "now"> = {}): Promise<WorkloadRow[]> {
   const open = await client.action.findMany({
     where: {
+      userId: NOT_TRIAL,
       status: { in: [...OPEN_ACTION_STATUSES] },
       OR: [{ agentState: null }, { agentState: "handed_off" }],
     },
@@ -235,6 +240,7 @@ export async function listQueue(
 ) {
   const actions = await client.action.findMany({
     where: {
+      userId: NOT_TRIAL,
       ...(filter.type ? { type: filter.type } : {}),
       ...(filter.assignee
         ? { assignee: filter.assignee === "unassigned" ? null : filter.assignee }
