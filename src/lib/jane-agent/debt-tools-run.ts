@@ -154,6 +154,15 @@ export async function runDebtTool(
       if (typeof a.need !== "string" || !(FIT_NEEDS as readonly string[]).includes(a.need)) {
         return out({ error: "Pick a need: car, home, refinance, consolidation or personal." });
       }
+      // A new loan is priced for an amount: without one there is nothing to price, which is
+      // not the same as nothing fitting (gap audit: it said "Nothing fits right now").
+      const amount = typeof a.amount_dollars === "number" && a.amount_dollars > 0;
+      if (!amount && (a.need === "car" || a.need === "home" || a.need === "personal")) {
+        return out({
+          needsAmount: true,
+          note: `I need an amount to price a ${a.need === "personal" ? "personal loan" : `${a.need} loan`}: ask how much they want to borrow${a.need === "personal" ? "" : ` or the ${a.need}'s price`}, then call again with amount_dollars.`,
+        });
+      }
       const view = await loadFit(
         userId,
         {
