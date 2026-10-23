@@ -5,6 +5,7 @@ import { INSURANCE_EXTRAS } from "./insurance";
 import { INVESTING_EXTRAS } from "./investing";
 import { LOANS_EXTRAS } from "./loans";
 import { TAXES_EXTRAS } from "./taxes";
+import { WINS_EXTRAS } from "./wins";
 
 // One file per lane, merged into the sample people by ../demo-people.ts.
 export const PEOPLE_EXTRAS: readonly Partial<Record<PersonId, PersonExtra>>[] = [
@@ -13,4 +14,5 @@ export const PEOPLE_EXTRAS: readonly Partial<Record<PersonId, PersonExtra>>[] = 
   INSURANCE_EXTRAS,
   INVESTING_EXTRAS,
   CONTROLLER_EXTRAS,
+  WINS_EXTRAS,
 ];
