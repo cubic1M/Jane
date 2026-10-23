@@ -241,8 +241,11 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       await expect(redeemReplyLink(tokenOf(yes.url), { client, now })).rejects.toBeInstanceOf(
         ReplyLinkError,
       );
+      // Reopened (or reloaded straight after the tap): what the answer did.
       expect(await viewReplyLink(tokenOf(yes.url), { client, now })).toMatchObject({
         state: "used",
+        messageId: message.id,
+        answeredWith: "Yes",
       });
       // The same message's No no longer works: it's answered.
       expect(await viewReplyLink(tokenOf(no.url), { client, now })).toMatchObject({
