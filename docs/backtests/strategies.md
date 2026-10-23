@@ -96,6 +96,12 @@ On 2022 to now (Sortino / worst drop), 6-month look-back:
 - **Bonds only** did well on the later years and isn't sensitive to its look-back (10 months is close). But it was weaker in training (Sortino 1.33 against 1.76 at Very low), and its 12.9% training drop breaks Very low's 8% budget. Walk-forward wouldn't choose it, and choosing it for its later years would be fitting them. Not adopted.
 - **Stocks only** trails the filter on both sleeves at every level. Not adopted.
 
+### Round 4, 2026-10-23 (Alpaca, IEX feed; workflow run 39935066721): too little history
+- **The data:** Alpaca's IEX feed has daily bars only from 2020-07-27 for every fund (1,551 shared trading days to 2026-10-22). So the "training" years are 17 months, the start years 2016–2018 all start in mid-2020, and the 6- and 12-month look-backs barely warm up.
+- **What it chose:** each level's training pick (inverse volatility at Very low to High, minimum variance at Very high) failed on the later years. Every level kept its mix, as the rule says when the evidence is too thin.
+- **The later years matched the fixture's for the mix** (Medium: worst drop 20.9%, 6.5% a year, Sortino 0.36), so the two data sources agree where they overlap.
+- **What changes:** the research workflow now asks Alpaca for the SIP feed by default, which goes back to 2016 on the free plan for bars older than 15 minutes. Production's stored history comes from the same IEX feed, so it has the same 2020 start, and the daily evaluation would keep every level on its mix until it has longer history. See round 5.
+
 ## Every candidate, by level (training from 2016; "later" is 2022 to now)
 
 ### Very low: worst drop up to 8.0%, volatility up to 5.0%
