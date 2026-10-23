@@ -340,7 +340,8 @@ const debtPlan: Detector = {
   detect({ profile, data }) {
     const trouble = profile.facts.debt_trouble;
     if (trouble.value !== true) return null;
-    const interest = outCents(tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE"));
+    const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
+    const interest = outCents(charges);
     return {
       id: suggestionId("debt", "debt_plan"),
       capability: "debt",
@@ -350,7 +351,12 @@ const debtPlan: Detector = {
       short: `Your cards hold ${formatCents(profile.facts.card_debt_cents.value as number)} and cost you ${formatCents(interest)} a year.`,
       worthCents: interest,
       worthKind: "saves",
-      confidence: factEvidence(trouble),
+      // The plan rests on the debts themselves: the card balances and the interest they charge
+      // (loans QA: it cited the overdraft fees that made it trouble, which say nothing of them).
+      confidence: weakest([
+        factEvidence(profile.facts.card_debt_cents),
+        evidence("seen", profile.months, charges.length, "interest charges"),
+      ]),
       urgency: "now",
       rankCents: Math.round(interest * D.troublePlanRank),
       why: `Your cards hold ${formatCents(profile.facts.card_debt_cents.value as number)} and cost you ${formatCents(interest)} in interest a year.`,

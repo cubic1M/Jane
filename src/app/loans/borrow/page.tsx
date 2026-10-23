@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BORROW_LABELS, BORROW_SOURCES } from "@/config/borrowing-power";
 import { formatRate } from "@/insights/loans";
 import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
@@ -47,6 +48,7 @@ async function BorrowContent({ searchParams }: Pick<PageProps<"/loans/borrow">, 
         </p>
       ) : (
         <>
+          <DemoAdviceLabel />
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Checked {dayLabel(d.checkedOn, { year: true })}. {scoreLine(d)}
           </p>
