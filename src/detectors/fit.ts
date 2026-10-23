@@ -1,5 +1,6 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import {
+  FIT_ASSUMED_SCORE,
   FIT_CARD_PAYMENT_SHARE,
   FIT_CONSOLIDATION_MIN_APR_BPS,
   FIT_CONSOLIDATION_MIN_CENTS,
@@ -10,6 +11,7 @@ import { DEMO_LENDERS } from "@/data-sources/demo/demo-lenders";
 import { demoQuote } from "@/lib/lenders/demo";
 import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
+import { creditBandOf } from "@/planning/credit";
 import { fit } from "@/planning/fit";
 import { fitPersonFrom } from "@/planning/fit-person";
 import { type Detector, suggestionId } from "./contract";
@@ -42,8 +44,13 @@ const consolidation: Detector = {
     if (apr < FIT_CONSOLIDATION_MIN_APR_BPS) return null;
     const rated = cards;
     // The card payments seen are whole statements, new spending included, so they say nothing
-    // about what goes to the debt: the baseline is the minimum, the usual way to compare.
-    const monthlyCents = Math.round(owed * FIT_CARD_PAYMENT_SHARE);
+    // about what goes to the debt: the baseline is the minimum, the usual way to compare: the
+    // bank's minimums when it gives them, as the options card does (src/lib/fit.ts).
+    const minimums = cards.reduce(
+      (s, c) => s + (data.liabilities.find((l) => l.accountId === c.id)?.minimumCents ?? 0),
+      0,
+    );
+    const monthlyCents = minimums || Math.round(owed * FIT_CARD_PAYMENT_SHARE);
     const month = data.today.slice(0, 7);
     const offers: LoanOffer[] = DEMO_LENDERS.flatMap((l) =>
       FIT_TERMS.personal.flatMap(
@@ -52,7 +59,8 @@ const consolidation: Detector = {
             product: "personal",
             amountCents: owed,
             termMonths,
-            creditBand: "good",
+            // Priced by the person's pulled score, as the chat and the pages are.
+            creditBand: creditBandOf(data.creditScore ?? FIT_ASSUMED_SCORE),
             month,
           }) ?? [],
       ),
@@ -61,7 +69,7 @@ const consolidation: Detector = {
       need: "consolidation",
       product: "personal",
       amountCents: owed,
-      person: fitPersonFrom(data),
+      person: fitPersonFrom(data, data.creditScore ?? null),
       offers,
       baseline: {
         label:
