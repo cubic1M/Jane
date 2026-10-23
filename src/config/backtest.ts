@@ -77,3 +77,15 @@ export const RULE_REPLAY_STRATEGY_LABELS = {
 // real prices they track each other closely), so the sample can't judge tax-loss swaps.
 export const RULE_REPLAY_SAMPLE_NOTE =
   "Made-up prices: the sample's swap funds drift away from the main funds, so tax-loss swaps look worse here than they would on real prices.";
+
+// Tuning the rules (docs/backtests/log.md): every change to a rule's numbers is chosen on the
+// training years and kept only if it also wins on the later, held-out years (walk-forward), each
+// replayed from a fresh start with the same money in.
+export const RULE_TUNE_TRAIN = { from: "2016-01-04", to: "2021-12-31" } as const;
+export const RULE_TUNE_VALIDATE = { from: "2022-01-03", to: null } as const;
+// A level's objective: the yearly time-weighted return for each point of its worst drop, with
+// the worst drop no deeper than plain rebalancing's at the same level plus this many points.
+export const RULE_TUNE_DROP_SLACK_POINTS = 2;
+// A change is kept only when its objective beats the current settings' by at least this share,
+// in training and on the held-out years, and beats plain rebalancing's on the held-out years.
+export const RULE_TUNE_MIN_GAIN = 0.01;

@@ -15,7 +15,9 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { loadSelfEmployed } from "@/lib/self-employed";
+import { TAX_PLAN } from "@/config/tax-plan";
 import { TaxCalendarError, loadTaxCalendar, payEstimate, runTaxCalendar } from "@/lib/tax-calendar";
+import { loadYearPlan } from "@/lib/year-plan";
 import { runTaxAutopilot } from "@/lib/tax-autopilot";
 import { takeChatAction } from "./actions";
 import { runChatTool } from "./claude-tools";
@@ -144,6 +146,10 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     expect(est).toMatchObject({ status: "waiting" });
     expect(est.detail).toMatch(/^I'll pay \$[\d,.]+ before Sep 15\./);
 
+    // The tax plan's reminder for it, on the deadlines.
+    const reminder = await client.deadline.create({
+      data: { userId, title: TAX_PLAN.estimated_3.title, dueOn: new Date("2026-09-15T00:00:00Z") },
+    });
     const transactions = await client.transaction.count({ where: { userId } });
     const result = await runTaxAutopilot(userId, { client, now });
     expect(result.estimatesPaid).toBe(1);
@@ -171,6 +177,16 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     await expect(payEstimate(userId, "2026-09-15", { client, now, via: "tap" })).rejects.toThrow(
       "already paid",
     );
+    // Paying it ticks off its reminder, so it never reminds again (docs/feature-audit.md,
+    // cluster 12).
+    expect(
+      (await client.deadline.findUniqueOrThrow({ where: { id: reminder.id } })).doneAt,
+    ).not.toBeNull();
+    // The year plan counts the payments still planned, as the calendar says them: not $0.
+    const january = se.federal.payments.find((p) => p.date === "2027-01-15")!;
+    expect(january.cents).toBeGreaterThan(0);
+    const plan = (await loadYearPlan(userId, { client, now }))!;
+    expect(plan.months.find((m) => m.month === "2027-01")?.targets.taxes).toBe(january.cents);
   });
 
   it("asks for a tap above the cap, at the ask-first level and over the monthly cap, and pays nothing", async () => {
@@ -301,6 +317,10 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     const message = (await messageFrom(userId, now, "yearend:"))!;
     expect(message.body).toMatch(/^Here are the tax moves still open before December 31\.\n• /);
     expect(message.body).toContain("Want them on your deadlines?");
+    // Each move once: never as a move and again as a count (docs/feature-audit.md, cluster 12).
+    if (/Sell at a loss/.test(message.body)) expect(message.body).not.toMatch(/you could harvest/);
+    if (/Make this year's gifts/.test(message.body))
+      expect(message.body).not.toMatch(/ways to give/);
     expect(message.refs).toMatchObject({ advice: true });
     expect((message.actions as { id: string }[]).map((a) => a.id)).toContain("tax.yearend_plan");
     const before = await client.deadline.count({ where: { userId } });

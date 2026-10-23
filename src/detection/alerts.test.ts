@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { UNUSUAL_EXPECTED_FOR_BUSINESS } from "@/config/detection";
 import {
   AS_OF,
   CARD,
@@ -15,6 +16,7 @@ import {
 import {
   billReminderAlerts,
   detectAlerts,
+  dueReportedCategories,
   duplicateChargeAlerts,
   estimatedTaxAlerts,
   feeAlerts,
@@ -80,6 +82,20 @@ describe("large_charge", () => {
       run(input({ transactions: [...everyday, big({ pfcPrimary: "TRANSFER_OUT" })] })),
     ).toEqual([]);
     expect(run(input({ transactions: [...everyday.slice(0, 4), big()] }))).toEqual([]);
+  });
+
+  it("leaves out a business owner's payroll and suppliers, as unusual activity does (books QA)", () => {
+    const payroll = big({
+      amountCents: 430_000,
+      description: "GUSTO PAYROLL",
+      merchantName: "Gusto",
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING",
+    });
+    const data = input({ transactions: [...everyday, payroll] });
+    const streams = buildStreams(data);
+    expect(largeChargeAlerts(data, streams)).toHaveLength(1);
+    expect(largeChargeAlerts(data, streams, new Set(UNUSUAL_EXPECTED_FOR_BUSINESS))).toEqual([]);
   });
 
   it("ignores a large recurring bill like rent", () => {
@@ -306,6 +322,47 @@ describe("bill_due", () => {
       }),
     );
     expect(november.map((a) => a.key)).toEqual(["Geico:2026-11-17"]);
+  });
+
+  // Books QA: a card payment got the guessed bill reminder and the card's own due-date
+  // deadline, with different amounts. The bank's due date is the one reminder.
+  const cardPayment = [4, 3, 2, 1].map((m) =>
+    tx({
+      accountId: CHECKING.id,
+      date: monthsAgo(m, 16),
+      amountCents: 6_000 + m,
+      description: "CHASE CREDIT CRD AUTOPAY THANK YOU",
+      merchantName: null,
+      pfcPrimary: "LOAN_PAYMENTS",
+      pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    }),
+  );
+  const withCard = input({
+    accounts: [{ ...CHECKING, currentBalanceCents: 200_000 }],
+    transactions: [...geico, ...cardPayment],
+  });
+
+  it("leaves a card payment to the bank's due date, and keeps other bills", () => {
+    const titles = (due?: Set<string>) =>
+      billReminderAlerts(withCard, due).map((a) => a.title.split(",")[0]);
+    expect(titles()).toEqual(["Credit card payment", "Geico"]);
+    expect(titles(new Set(["LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"]))).toEqual(["Geico"]);
+  });
+
+  it("counts a payment as covered only when every such account reports a due date", () => {
+    const card = (nextDue: string | null) => ({ type: "credit", subtype: "credit card", nextDue });
+    const car = { type: "loan", subtype: "auto", nextDue: "2026-10-20" };
+    expect([...dueReportedCategories([card("2026-10-18"), car], AS_OF)].sort()).toEqual([
+      "LOAN_PAYMENTS_CAR_PAYMENT",
+      "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    ]);
+    // One card without a date, or a date already past, leaves card reminders on.
+    expect([...dueReportedCategories([card("2026-10-18"), card(null)], AS_OF)]).toEqual([]);
+    expect([...dueReportedCategories([card("2026-10-01")], AS_OF)]).toEqual([]);
+    // Accounts that aren't cards or loans don't count.
+    expect([
+      ...dueReportedCategories([{ type: "depository", subtype: "checking", nextDue: null }], AS_OF),
+    ]).toEqual([]);
   });
 });
 

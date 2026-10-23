@@ -19,6 +19,8 @@ import {
 } from "@/planning/practice-preferences";
 import { practiceLevel } from "@/planning/practice-level";
 import { profileFor, type PracticeProfile } from "@/planning/practice-profile";
+import { MODEL_PORTFOLIOS, type PracticeClass } from "@/config/portfolios";
+import { strategyToday } from "@/lib/investments/strategy-today";
 
 // The person's practice-portfolio preferences (Phase AW, Stage A): read with the defaults filled
 // in, and changed through the one check (applyPatch) from the settings page or the chat. Every
@@ -153,5 +155,40 @@ export async function practiceProfileOf(
         ? (portfolio.level as RiskLevel)
         : ((await questionnaireLevel(userId, { client, now })) ?? DEFAULT_LEVEL);
   }
-  return profileFor(prefs, { level, today: now.toISOString().slice(0, 10) });
+  return withStrategy(profileFor(prefs, { level, today: now.toISOString().slice(0, 10) }), {
+    client,
+    now,
+  });
+}
+
+// The level's chosen strategy, followed when the person's preferences leave the level's mix as
+// it is (no goal-date glide path, nothing avoided that moves the mix): the month's strategy
+// weights replace the mix's, and every hard limit and preference still applies to each trade.
+async function withStrategy(profile: PracticeProfile, options: Options): Promise<PracticeProfile> {
+  const today = await strategyToday(profile.level, options);
+  if (!today) return profile;
+  const model = MODEL_PORTFOLIOS[profile.level].weights;
+  const untouched =
+    !profile.glide &&
+    (Object.keys(model) as PracticeClass[]).every(
+      (c) => Math.abs(profile.weights[c] - model[c]) < 1e-9,
+    );
+  const followed = today.follow && untouched;
+  const note = followed
+    ? `This month the mix follows ${today.chosen.label.toLowerCase()} (${today.chosen.key}), the level's choice from the daily replay.`
+    : today.follow
+      ? "Your settings change the mix, so it stays as they set it rather than following the level's strategy."
+      : today.why;
+  return {
+    ...profile,
+    ...(followed && today.follow ? { weights: today.weights } : {}),
+    rules: [...profile.rules, note],
+    strategy: {
+      key: today.chosen.key,
+      label: today.chosen.label,
+      why: today.chosen.why,
+      followed,
+      note,
+    },
+  };
 }

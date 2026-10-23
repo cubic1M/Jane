@@ -8,11 +8,13 @@ export const closeSource: MessageSource = {
   key: "close",
   gather(snapshot) {
     const view = snapshot.close;
-    if (!view) return [];
+    // A closed month is said in the month's report message (./report.ts), which has the same
+    // figures: only a close that needs the person's tap is a message of its own.
+    if (!view || view.status !== "waiting") return [];
     const reply = closeReply(view);
     return [
       {
-        kind: view.status === "waiting" ? ("decision" as const) : ("done" as const),
+        kind: "decision" as const,
         body: reply.body,
         refs: reply.refs,
         actions: reply.actions,

@@ -13,6 +13,7 @@ import { dayLabel } from "@/lib/day-label";
 import { loadHomeBuying } from "@/lib/home-buying";
 import { loadFit } from "@/lib/fit";
 import { spendingInsights } from "@/insights/spending";
+import { typicalOf } from "@/insights/typical-month";
 import { addDays } from "@/detection/units";
 import {
   DECISIONS,
@@ -114,7 +115,11 @@ export async function loadDecisionInput(
   // Take-home and what's left after spending, from the last three full months with income.
   const lastFull = addDays(`${now.toISOString().slice(0, 7)}-01`, -1);
   const months = spendingInsights(
-    input.transactions.map((t) => ({ ...t, pending: false })),
+    // Books QA: a typical month, one-off costs left out.
+    typicalOf(
+      input.transactions.map((t) => ({ ...t, pending: false })),
+      input.asOf,
+    ),
     { asOf: lastFull, monthCount: 3 },
   ).months.filter((m) => m.incomeCents > 0);
   const avg = (f: (m: (typeof months)[number]) => number) =>

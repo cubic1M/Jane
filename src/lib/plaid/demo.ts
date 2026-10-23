@@ -20,6 +20,11 @@ import {
 } from "@/data-sources/demo/demo-bank";
 import { isPersonId, personById, type PersonId } from "@/config/people";
 import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
+import {
+  DEMO_SECOND_LOGINS,
+  secondLoginAccounts,
+  secondLoginTransactions,
+} from "@/data-sources/demo/demo-people";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -34,6 +39,14 @@ import { plaidEnabled } from "./client";
 // and daily refresh all work on it. It never talks to Plaid.
 
 const DEMO_ITEM_PREFIX = "demo-";
+// Books QA: a sample person's second bank login (DEMO_SECOND_LOGINS) is a demo item of its own,
+// "demo-<seed>-<login>". The person's demo bank is always the other one.
+const MAIN_DEMO_ITEM = {
+  plaidItemId: { startsWith: DEMO_ITEM_PREFIX },
+  NOT: Object.values(DEMO_SECOND_LOGINS).map((l) => ({
+    plaidItemId: { endsWith: `-${l!.login}` },
+  })),
+};
 const DEMO_TOKEN_PREFIX = "demo:";
 
 export const isDemoItemId = (plaidItemId: string) => plaidItemId.startsWith(DEMO_ITEM_PREFIX);
@@ -47,10 +60,53 @@ export function demoBankEnabled(): boolean {
 }
 
 function seedOf(accessToken: string): DemoSeed {
-  const [, seed, anchor, person] = accessToken.split(":");
+  const [, seed, anchor, person, login] = accessToken.split(":");
   if (!seed || !/^\d{4}-\d{2}-\d{2}$/.test(anchor ?? "")) throw new Error("Not a demo token");
-  // The fourth part is a sample person (spec step 252); the original demo bank has none.
-  return person && isPersonId(person) ? { seed, anchor, person } : { seed, anchor };
+  // The fourth part is a sample person (spec step 252); the original demo bank has none. The
+  // fifth is a second bank login of theirs (books QA).
+  if (!person || !isPersonId(person)) return { seed, anchor };
+  return login ? { seed, anchor, person, login } : { seed, anchor, person };
+}
+
+// Whether a demo token is a sample person's second bank login, which syncs only its accounts.
+export const isSecondLoginToken = (accessToken: string) =>
+  isDemoToken(accessToken) && Boolean(seedOf(accessToken).login);
+
+// A second login answers with just the shared account and its transactions.
+function secondLoginApi(demo: DemoSeed, now: Date): PlaidApi {
+  const through = yesterday(now);
+  const accounts = secondLoginAccounts(demo);
+  const api = {
+    transactionsSync: async ({ cursor }: { cursor?: string }) => {
+      const after = cursor && /^\d{4}-\d{2}-\d{2}$/.test(cursor) ? cursor : null;
+      return {
+        data: {
+          accounts,
+          added:
+            after !== null && after >= through ? [] : secondLoginTransactions(demo, after, through),
+          modified: [],
+          removed: [],
+          next_cursor: after !== null && after > through ? after : through,
+          has_more: false,
+        },
+      };
+    },
+    transactionsRecurringGet: async () => ({ data: { outflow_streams: [], inflow_streams: [] } }),
+    liabilitiesGet: async () => ({
+      data: { accounts, liabilities: { credit: [], mortgage: [], student: [] } },
+    }),
+    investmentsHoldingsGet: async () => ({ data: { accounts: [], holdings: [], securities: [] } }),
+    investmentsTransactionsGet: async () => ({
+      data: {
+        accounts: [],
+        investment_transactions: [],
+        securities: [],
+        total_investment_transactions: 0,
+      },
+    }),
+    itemRemove: async () => ({ data: {} }),
+  };
+  return api as unknown as PlaidApi;
 }
 
 const today = (now: Date) => now.toISOString().slice(0, 10);
@@ -71,6 +127,7 @@ export function demoPlaidApi(
   extras: readonly DemoExtra[] = [],
 ): PlaidApi {
   const demo = seedOf(accessToken);
+  if (demo.login) return secondLoginApi(demo, now);
   const through = yesterday(now);
   const holdings = demoHoldings(demo, through, orders, extras);
   const securities = demoSecurities(
@@ -189,7 +246,7 @@ export async function linkDemoBank(
   if (!demoBankEnabled()) throw new DemoBankError("The demo bank isn't available here.");
   const db = scopedFor(userId, client);
   const existing = await db.plaidItems.findFirst({
-    where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
+    where: MAIN_DEMO_ITEM,
     select: { id: true },
   });
   if (existing) return { itemId: existing.id, created: false };
@@ -236,7 +293,7 @@ export async function hasDemoBank(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<boolean> {
   const count = await scopedFor(userId, client).plaidItems.count({
-    where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
+    where: MAIN_DEMO_ITEM,
   });
   return count > 0;
 }
@@ -248,7 +305,7 @@ export async function demoAnchorFor(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<string | null> {
   const item = await scopedFor(userId, client).plaidItems.findFirst({
-    where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
+    where: MAIN_DEMO_ITEM,
     select: { accessTokenEncrypted: true },
   });
   if (!item) return null;
@@ -266,7 +323,7 @@ export async function demoPersonFor(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<PersonId | null> {
   const item = await scopedFor(userId, client).plaidItems.findFirst({
-    where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
+    where: MAIN_DEMO_ITEM,
     select: { accessTokenEncrypted: true },
   });
   if (!item) return null;
@@ -301,7 +358,7 @@ export async function addDemoExtra(
 ): Promise<string | null> {
   const db = scopedFor(userId, client);
   const item = await db.plaidItems.findFirst({
-    where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
+    where: MAIN_DEMO_ITEM,
     select: { id: true, demoExtras: true },
   });
   if (!item) return null;
@@ -317,5 +374,45 @@ export async function addDemoExtra(
       { demo: true, extra },
     );
   }
+  return item.id;
+}
+
+// Books QA: a sample person with a second bank login (the Reyes' joint savings, through each
+// parent's login) gets it as a second demo item, once, after their demo bank's first sync.
+// Returns the new item's id for the caller to sync, or null.
+export async function ensureDemoSecondLogin(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<string | null> {
+  const db = scopedFor(userId, client);
+  const main = await db.plaidItems.findFirst({
+    where: MAIN_DEMO_ITEM,
+    select: { accessTokenEncrypted: true },
+  });
+  if (!main) return null;
+  const demo = seedOf(decrypt(main.accessTokenEncrypted));
+  const login = demo.person ? DEMO_SECOND_LOGINS[demo.person as PersonId] : undefined;
+  if (!login) return null;
+  const plaidItemId = `${DEMO_ITEM_PREFIX}${demo.seed}-${login.login}`;
+  if (await db.plaidItems.findFirst({ where: { plaidItemId }, select: { id: true } })) return null;
+  const item = await db.plaidItems.create({
+    data: {
+      userId,
+      plaidItemId,
+      accessTokenEncrypted: encrypt(
+        `${DEMO_TOKEN_PREFIX}${demo.seed}:${demo.anchor}:${demo.person}:${login.login}`,
+      ),
+      institutionName: DEMO_INSTITUTION,
+      liabilities: false,
+      investments: false,
+    },
+    select: { id: true },
+  });
+  await logAudit(
+    { type: "user", id: userId },
+    "item_linked",
+    { type: "plaid_item", id: item.id },
+    { institution: DEMO_INSTITUTION, demo: true, login: login.login },
+  );
   return item.id;
 }

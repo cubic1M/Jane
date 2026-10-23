@@ -7,10 +7,11 @@ import {
   type CashPlaceKind,
 } from "@/config/cash";
 import { FUND_NAMES } from "@/config/funds";
-import { EMERGENCY_FUND_MONTHS } from "@/config/proposals";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
-import { spendingInsights } from "@/insights/spending";
+import { fundProfile, fundTarget } from "@/lib/emergency-fund";
+import { fundBasis } from "@/planning/emergency-fund";
+import { typicalMonthlySpending } from "@/insights/typical-month";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -40,6 +41,7 @@ export type CashView = {
   emergencyTargetCents: number;
   // From the person's own emergency fund goal, or months of their spending.
   emergencyFromGoal: boolean;
+  emergencyBasis: string | null;
   plan: (CashPlan & { key: string }) | null;
 };
 
@@ -105,16 +107,13 @@ export async function loadCash(
       });
     }
   }
-  const months = spendingInsights(transactions, {
-    asOf,
-    monthCount: BUDGET_SUGGESTION_MONTHS + 1,
-  }).months.slice(0, -1);
-  const monthlySpendingCents =
-    months.length === 0
-      ? 0
-      : Math.round(months.reduce((s, m) => s + m.spendingCents, 0) / months.length);
+  const monthlySpendingCents = typicalMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
+  // Their own emergency fund goal, else the fund sized for them, as the drafted goal is.
   const goal = goals.find((g) => /emergency/i.test(g.name));
-  const emergencyTargetCents = goal?.targetCents ?? monthlySpendingCents * EMERGENCY_FUND_MONTHS;
+  const fund = goal
+    ? null
+    : fundTarget(monthlySpendingCents, await fundProfile(userId, { client, now }));
+  const emergencyTargetCents = goal?.targetCents ?? fund?.targetCents ?? 0;
   const plan =
     places.length > 0 ? cashPlan({ places, monthlySpendingCents, emergencyTargetCents }) : null;
   return {
@@ -123,6 +122,8 @@ export async function loadCash(
     monthlySpendingCents,
     emergencyTargetCents,
     emergencyFromGoal: Boolean(goal),
+    // How the fund was sized when there's no goal ("6 months of your own average spending").
+    emergencyBasis: fund ? fundBasis(fund) : null,
     plan: plan && {
       ...plan,
       // The plan the person saw: the same moves.

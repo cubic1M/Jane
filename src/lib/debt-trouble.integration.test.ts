@@ -91,6 +91,7 @@ describe.runIf(url)("when debt is too much against a real database", { timeout: 
     expect(t.monthlyPaymentsCents).toBeGreaterThan(300_000);
     expect(t.share).toBeCloseTo(t.monthlyPaymentsCents / t.incomeCents!, 5);
     expect(t.over).toBe(true);
+    expect(t.reason).toBe("payments");
     expect(t.debts.map((d) => d.kind)).toContain("mortgage");
     expect(t.dmp!.cardBalanceCents).toBeGreaterThan(0);
   });
@@ -107,6 +108,13 @@ describe.runIf(url)("when debt is too much against a real database", { timeout: 
       local: { date: "2027-01-05", hour: 8 },
     });
     expect(next[0].dedupeKey).toBe("trouble:2027q1");
+    // The hardship suggestion says it with its button: the heads-up gives way (cluster 14).
+    const suggested = {
+      ...snapshot,
+      suggestions: [{ topic: "hardship_plan" }],
+    } as unknown as typeof snapshot;
+    expect(debtTroubleSource.gather(suggested, context)).toEqual([]);
+    expect(snapshot.debtTrouble?.reason).toBe("payments");
   });
 
   it("lays out the options in chat as facts, and the guardrails accept every word", async () => {

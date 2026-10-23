@@ -11,6 +11,7 @@ import type { DetectionInput } from "@/detection/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { DebtBook } from "@/insights/debts";
 import { spendingInsights } from "@/insights/spending";
+import { typicalOf } from "@/insights/typical-month";
 import { track } from "@/lib/analytics";
 import { creditBandFor } from "@/lib/credit";
 import { db as defaultClient } from "@/lib/db";
@@ -106,7 +107,11 @@ export async function loadHomeBuying(
   ]);
   const lastFull = addDays(`${asOf.slice(0, 7)}-01`, -1);
   const months = spendingInsights(
-    input.transactions.map((t) => ({ ...t, pending: false })),
+    // Books QA: a typical month, one-off costs left out.
+    typicalOf(
+      input.transactions.map((t) => ({ ...t, pending: false })),
+      input.asOf,
+    ),
     { asOf: lastFull, monthCount: MONTHS },
   ).months.filter((m) => m.incomeCents > 0);
   if (months.length === 0)

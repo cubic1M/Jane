@@ -67,6 +67,9 @@ const rentersInsurance: Detector = {
     const housing = profile.facts.housing;
     const cover = profile.facts.insurance_home;
     if (housing.value !== "rent" || cover.value !== false) return null;
+    // A new monthly cost isn't what someone struggling with debt needs from Jane first: the
+    // debt plan and relief come before it (and it waits until they're out of trouble).
+    if (profile.facts.debt_trouble.value === true) return null;
     return {
       id: suggestionId("insurance", "renters_insurance"),
       capability: "insurance",

@@ -17,8 +17,11 @@ export type HealthPart = keyof typeof HEALTH_WEIGHTS;
 
 // Full cushion points at this many months of spending in cash.
 export const HEALTH_CUSHION_FULL_MONTHS = 3;
-// Full margin points when this share of income is left after spending; none at zero.
+// Full margin points when this share of income is left after spending. None only once
+// spending runs this far above income, so breaking even or running a little over still
+// counts for something (a 0 should mean every part is truly at its worst).
 export const HEALTH_MARGIN_FULL_RATE = 0.2;
+export const HEALTH_MARGIN_ZERO_RATE = -0.3;
 // Full months of income and spending averaged for the margin and the cushion.
 export const HEALTH_MONTHS = 3;
 // Fees that mean a bill or balance slipped, and how far back they count.
@@ -28,10 +31,10 @@ export const HEALTH_SLIP_CATEGORIES: readonly string[] = [
   "BANK_FEES_INSUFFICIENT_FUNDS",
 ];
 export const HEALTH_SLIP_DAYS = 90;
-// Each such fee costs this many of onTime's points.
-export const HEALTH_POINTS_PER_SLIP = 7;
+// Each such fee costs this many of onTime's points (five in 90 days take them all).
+export const HEALTH_POINTS_PER_SLIP = 4;
 // No card-balance points once balances carried reach this many months of income.
-export const HEALTH_CARDS_ZERO_MONTHS = 1;
+export const HEALTH_CARDS_ZERO_MONTHS = 6;
 
 // Bands, kind words only. The lowest is still on the way, never a verdict.
 export const HEALTH_BANDS: readonly { min: number; label: string }[] = [

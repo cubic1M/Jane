@@ -1,3 +1,4 @@
+import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import { formatCents } from "@/lib/money";
 import type { LocalTime } from "../quiet-hours";
 import { weekDone } from "../replies-review";
@@ -26,7 +27,7 @@ export function lastWeekLine(snapshot: Snapshot, local: LocalTime, now: Date): s
     : [];
   const parts = [
     did.length > 0 ? `I ${did.join("; ")}` : null,
-    savedCents > 0 ? `${formatCents(savedCents)} was confirmed back or saved` : null,
+    savedCents > 0 ? `${formatCents(savedCents)} came ${BACK_OR_AGREED}` : null,
     covered.length > 0 ? `we covered ${covered.join(" and ")}` : null,
   ].filter(Boolean);
   if (parts.length === 0) return null;

@@ -88,9 +88,17 @@ import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { RULE_REPLAY_STRATEGY_LABELS } from "@/config/backtest";
+import {
+  RISK_BUDGETS,
+  STRATEGY_LABELS,
+  STRATEGY_NOT_A_FORECAST,
+  STRATEGY_RESEARCH_CHOICE,
+  STRATEGY_RESEARCH_RANGE,
+} from "@/config/strategies";
+import { latestStrategies } from "@/lib/investments/strategy-eval";
 import { backtestsFor, longDate } from "@/lib/investments/backtest";
 import { loadRuleReplays } from "@/lib/investments/rule-replay";
-import { RISK_LEVELS } from "@/config/investing";
+import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { formatReturn } from "@/insights/returns";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
@@ -461,7 +469,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "backtest_by_level",
     description:
-      "How each risk level's model portfolio (Very low, Low, Medium, High, Very high) would have done, replayed over past prices from the same sample amount: for \"how would a High portfolio have done in 2022\" or \"how bad did the drops get\". Gives where the prices came from (real stored history, or the sample market's made-up prices with a planted crash and recovery), the end value, the worst drop with its dates and when it got back, the best and worst whole year, and with year that year's return and its worst fall; plus the assumptions (fund costs, rebalancing band, no taxes). Leave level out for all five. With extra_rules, also the rule replay (\"Did the extra rules help?\"): the practice autopilot run day by day with the daily scan's own rules (dip buys, tax-loss swaps, news ideas at High and Very high) and every cap, against plain rebalancing and buy and hold, with each one's return, worst drop, 2020 and 2022 drops, trades and cost, and whether each rule helped, made it worse (and is turned off at that level) or wasn't replayed. Demo advice mode only. Always call it a replay of past or sample history, never a forecast or what will happen.",
+      "How each risk level's model portfolio (Very low, Low, Medium, High, Very high) would have done, replayed over past prices from the same sample amount: for \"how would a High portfolio have done in 2022\" or \"how bad did the drops get\". Gives where the prices came from (real stored history, or the sample market's made-up prices with a planted crash and recovery), the end value, the worst drop with its dates and when it got back, the best and worst whole year, and with year that year's return and its worst fall; plus the assumptions (fund costs, rebalancing band, no taxes). Leave level out for all five. Always also gives the strategy each level's practice autopilot follows (the daily replay's choice: the level's mix, a trend filter and so on), why, with its worst drop, yearly return and Sortino on the later years against the level's mix, and the level's risk budget. With extra_rules, also the rule replay (\"Did the extra rules help?\"): the practice autopilot run day by day with the daily scan's own rules (dip buys, tax-loss swaps, news ideas at High and Very high) and every cap, against plain rebalancing and buy and hold, with each one's return, worst drop, 2020 and 2022 drops, trades and cost, and whether each rule helped, made it worse (and is turned off at that level) or wasn't replayed. Demo advice mode only. Always call it a replay of past or sample history, never a forecast or what will happen.",
     input_schema: {
       type: "object",
       properties: {
@@ -814,6 +822,7 @@ export async function runChatTool(
                 toRaiseIt: p.next,
               })),
               notCounted: view.left.map((l) => ({ part: l.label, why: l.why })),
+              partsAddUpTo: `${view.counted.points} of ${view.counted.max}`,
               lastMonth: view.before && {
                 month: view.before.month,
                 score: view.before.score,
@@ -1224,6 +1233,52 @@ export async function runChatTool(
               levels.map((l) => l.level),
             )
           : null;
+      // The daily replay's choice per level (the practice autopilot follows it).
+      const strategiesFor = async (asked: RiskLevel[]) => {
+        const latest = await latestStrategies({ client });
+        if (!latest)
+          return {
+            replay: `Real prices from Alpaca, ${longDate(STRATEGY_RESEARCH_RANGE.from)} to ${longDate(STRATEGY_RESEARCH_RANGE.to)}, chosen on the years to 2021 and scored on the years after (the research run; the daily replay hasn't run yet)`,
+            notAForecast: STRATEGY_NOT_A_FORECAST,
+            levels: asked.map((l) => ({
+              level: RISK_LEVELS[l].label,
+              follows: STRATEGY_LABELS[STRATEGY_RESEARCH_CHOICE[l].id],
+              why: STRATEGY_RESEARCH_CHOICE[l].why,
+              budget: {
+                worstDrop: `${Math.round(RISK_BUDGETS[l].maxDrawdown * 1000) / 10}%`,
+                volatility: `${Math.round(RISK_BUDGETS[l].volCap * 1000) / 10}%`,
+              },
+            })),
+          };
+        const p = (n: number) => `${(Math.round(n * 1000) / 10).toFixed(1)}%`;
+        return {
+          replay: `Real prices from ${longDate(latest.from)} to ${longDate(latest.to)}, chosen on the years to 2021 and scored on the years after`,
+          notAForecast: STRATEGY_NOT_A_FORECAST,
+          levels: asked
+            .map((l) => latest.byLevel[l])
+            .filter((c): c is NonNullable<typeof c> => Boolean(c))
+            .map((c) => ({
+              level: RISK_LEVELS[c.level].label,
+              follows: c.label,
+              strategy: c.key,
+              why: c.why,
+              laterYears: {
+                worstDrop: p(c.test.maxDrawdown),
+                yearly: formatReturn(c.test.cagr),
+                sortino: Number(c.test.sortino.toFixed(2)),
+              },
+              levelsMixLaterYears: {
+                worstDrop: p(c.baseline.test.maxDrawdown),
+                yearly: formatReturn(c.baseline.test.cagr),
+                sortino: Number(c.baseline.test.sortino.toFixed(2)),
+              },
+              budget: {
+                worstDrop: p(RISK_BUDGETS[c.level].maxDrawdown),
+                volatility: p(RISK_BUDGETS[c.level].volCap),
+              },
+            })),
+        };
+      };
       const extraRules = replay && {
         replay: replay.label,
         to: replay.replays.to,
@@ -1260,6 +1315,7 @@ export async function runChatTool(
       };
       return out({
         ...(extraRules ? { didTheExtraRulesHelp: extraRules } : {}),
+        strategyEachLevelFollows: await strategiesFor(levels.map((l) => l.level)),
         replay: b.label,
         to: b.to,
         prices: b.note,

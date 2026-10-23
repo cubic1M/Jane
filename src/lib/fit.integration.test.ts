@@ -108,11 +108,16 @@ describe.runIf(url)("the fit engine against a real database", { timeout: 60_000 
     expect((await loadDecisionInput(chris, { client, now: NOW })).personalLoan).toBeNull();
   });
 
-  // Loans QA: the suggestion brought unasked says the same dollars as the options card, priced by
-  // the same score band and against the same card minimums.
-  it("brings the Reyes the consolidation the options card shows, to the cent", async () => {
+  // Loans QA: the suggestion brought unasked follows the options card, priced by the same score
+  // band and against the same card minimums. Books QA (#600): a typical month leaves their flood
+  // repairs out of spending. Loans QA (one cash rule): their cash still sits inside the 3-month
+  // emergency cushion, so the cards aren't paid from savings; one cheaper loan is the pick, and
+  // the suggestion says the same saving.
+  it("follows the options card for the Reyes, to the cent, with the cushion kept", async () => {
     const card = await loadFit(reyes, { need: "consolidation" }, { client, now: NOW });
     const pick = card.options.find((o) => o.id === card.pick)!;
+    expect(card.pick).not.toBe("payoff");
+    expect(card.cushionCents).toBeGreaterThan(0);
     const { suggestions } = await detectFor(reyes, { client, now: NOW });
     const s = suggestions.find((x) => x.topic === "consolidation")!;
     expect(s).toBeDefined();

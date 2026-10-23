@@ -49,6 +49,13 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(rules.getByText(/not a forecast/)).toBeVisible();
   await expect(rules.getByText("Plain rebalancing").first()).toBeVisible();
   await expect(rules.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  // The strategy each level follows (the research choice until the daily replay has run).
+  const strategies = page.getByRole("region", { name: "The strategy each level follows" });
+  await expect(strategies.getByText(/Alpaca's real prices from Jan 4, 2016/)).toBeVisible();
+  await expect(strategies.getByText(/not a forecast/)).toBeVisible();
+  await expect(
+    strategies.getByText("Demo advice: sample data, not financial advice"),
+  ).toBeVisible();
   // The filled-in page has no serious accessibility problems (e2e/accessibility.spec.ts
   // checks it empty).
   const axe = await new AxeBuilder({ page })

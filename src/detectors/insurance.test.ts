@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { PEOPLE } from "@/config/people";
+import { LOW_CONFIDENCE_PERCENT } from "@/config/suggestions";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { pickForToday, rankSuggestions } from "@/planning/suggestion-rank";
@@ -184,15 +185,25 @@ describe("the figures are the person's own", () => {
     expect(renters.worthIsExpected).toBeUndefined();
     const [ltc] = firedFor("preretire", "long_term_care");
     expect(ltc.worthCents).toBe(21_600_000);
-    // $30,000 at 3% a year is a $900 expected loss: it ranks, but not in Maya's top three, which
-    // are real money. An uninsured car is required, so it leads for Sam.
-    const top = (id: string) =>
-      pickForToday(rankSuggestions(reportFor(PEOPLE.find((x) => x.id === id)!).fired)).map(
-        (r) => r.suggestion.topic,
-      );
-    expect(top("renter")).not.toContain("renters_insurance");
-    expect(top("freelancer")[0]).toBe("auto_insurance");
-    expect(top("owner")[0]).toBe("business_insurance");
+    // $30,000 at 3% a year is a $900 expected loss, which ranks at 81% sure as $729: below
+    // Maya's 401(k) match, never as the whole $30,000.
+    const ranked = (id: string) =>
+      rankSuggestions(reportFor(PEOPLE.find((x) => x.id === id)!).fired);
+    const maya = ranked("renter");
+    const rentersAt = maya.findIndex((r) => r.suggestion.topic === "renters_insurance");
+    expect(maya[rentersAt].score).toBe(Math.round(3_000_000 * 0.03 * 0.81));
+    expect(rentersAt).toBeGreaterThan(
+      maya.findIndex((r) => r.suggestion.topic === "employer_match"),
+    );
+    // Sam's uninsured car is required, but Jane is only 49% sure of it: it waits behind every
+    // suggestion she is sure of. An uninsured business still leads for its owner.
+    const sam = ranked("freelancer").map((r) => r.suggestion);
+    const car = sam.findIndex((s) => s.topic === "auto_insurance");
+    expect(sam[car].confidence.percent).toBeLessThan(LOW_CONFIDENCE_PERCENT);
+    expect(sam.slice(0, car).every((s) => s.confidence.percent >= LOW_CONFIDENCE_PERCENT)).toBe(
+      true,
+    );
+    expect(pickForToday(ranked("owner"))[0].suggestion.topic).toBe("business_insurance");
   });
 });
 

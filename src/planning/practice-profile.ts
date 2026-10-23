@@ -61,6 +61,16 @@ export type PracticeProfile = {
   limits: typeof AUTOPILOT_LIMITS;
   // What the profile does, in plain sentences, for the page, the chat and the backtests.
   rules: string[];
+  // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
+  // whether the mix follows it this month, and why or why not. Absent before the first
+  // evaluation.
+  strategy?: {
+    key: string;
+    label: string;
+    why: string;
+    followed: boolean;
+    note: string;
+  };
 };
 
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];

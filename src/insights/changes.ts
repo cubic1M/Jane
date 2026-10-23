@@ -12,7 +12,6 @@ import {
   PACE_MIN_EXTRA_CENTS,
   PACE_MULTIPLE,
   PACE_USUAL_MONTHS,
-  PAYCHECK_CATEGORIES,
   PAYCHECK_LATE_DAYS,
   PAYCHECK_MIN_HISTORY,
   PAYCHECK_SMALLER_SHARE,
@@ -24,7 +23,8 @@ import {
   PRICE_INCREASE_EXCLUDED_PRIMARIES,
 } from "@/config/detection";
 import { byDate, inList } from "@/detection/helpers";
-import { merchantOf, type Stream } from "@/detection/streams";
+import { paychecksByEmployer } from "@/detection/paydays";
+import type { Stream } from "@/detection/streams";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { addDays, average, dayOfMonth, daysBetween, median } from "@/detection/units";
 import { formatCents } from "@/lib/money";
@@ -156,22 +156,10 @@ export function newSubscriptions(input: DetectionInput, streams: Stream[]): Chan
 
 export type Employer = { key: string; name: string; deposits: DetectionTransaction[] };
 
-// "ACME CORP PAYROLL" is Acme Corp: the words banks add to a paycheck aren't the employer.
-const PAY_WORDS = /\b(?:payroll|direct ?dep(?:osit)?|dir ?dep|salary|ppd|ach|pay)\b/gi;
-const employerOf = (text: string) => text.replace(PAY_WORDS, " ").replace(/\s+/g, " ").trim();
-
+// Every employer's paychecks, by step 182's definition (src/detection/paydays.ts), so the
+// changes, the lean plan and the paycheck split agree with when the next payday is.
 export function employers(input: DetectionInput): Employer[] {
-  const groups = new Map<string, Employer>();
-  for (const t of [...input.transactions].sort(byDate)) {
-    if (t.amountCents >= 0 || !inList(t.pfcDetailed, PAYCHECK_CATEGORIES)) continue;
-    const merchant = merchantOf(t);
-    const name = employerOf(merchant?.name ?? t.description) || t.description;
-    const key = employerOf(merchant?.key ?? t.description.toLowerCase()) || name.toLowerCase();
-    const group = groups.get(key) ?? { key, name, deposits: [] };
-    group.deposits.push(t);
-    groups.set(key, group);
-  }
-  return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+  return paychecksByEmployer(input);
 }
 
 // A paycheck that's late, smaller than usual, or from a new employer.
