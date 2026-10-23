@@ -525,6 +525,11 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
       keepingItCosts: money(c.currentTotalCents),
       keepingMonthlyPayment: money(c.currentMonthlyCents),
       janesPick: c.pick && offer(c.pick),
+      ...(c.cashPayoffCents
+        ? {
+            payOffFromCashInstead: { saves: money(c.cashPayoffCents), keepsAMonthOfSpending: true },
+          }
+        : {}),
       why: c.why,
       offers: c.offers.map(offer),
     })),

@@ -31,6 +31,12 @@ export function comparisonLines(c: RefinanceComparison): string[] {
   const lines = [
     `Your ${c.debtName}: ${formatCents(c.balanceCents)} at ${formatRate(c.currentAprBps)}. Paid off over its remaining ${months(c.termMonths)}, it costs ${formatCents(c.currentTotalCents)} in all.`,
   ];
+  if (c.cashPayoffCents) {
+    lines.push(
+      `Your cash covers it: paying it off from savings would save about ${formatCents(c.cashPayoffCents)} and still leave a month of spending, more than any loan.`,
+    );
+    return lines;
+  }
   if (!c.pick) {
     const best = c.offers[0];
     lines.push(
@@ -85,12 +91,15 @@ export function refinanceReply(target: string | null, refi: Refinance, book: Deb
     };
   }
   const picks = shown.filter((c) => c.pick);
+  const cash = shown.filter((c) => c.cashPayoffCents);
   const lines = [
     target
       ? "I checked sample offers from the stand-in lender catalog."
       : picks.length > 0
         ? `I checked sample offers from the stand-in lender catalog: ${picks.length} of your debts could cost less.`
-        : "I checked sample offers from the stand-in lender catalog: none of your debts would cost less by enough to switch.",
+        : cash.length > 0
+          ? "I checked sample offers from the stand-in lender catalog: your cash beats them."
+          : "I checked sample offers from the stand-in lender catalog: none of your debts would cost less by enough to switch.",
     ...shown.flatMap((c) => ["", ...comparisonLines(c)]),
     "",
     "Nothing is applied for until you say so.",
@@ -107,7 +116,7 @@ export function refinanceReply(target: string | null, refi: Refinance, book: Deb
       : [SEE_OFFERS],
     refs: only
       ? { advice: true, refinance: { debtKey: only.debtKey, lender: only.pick!.offer.lender } }
-      : picks.length > 0
+      : picks.length > 0 || cash.length > 0
         ? { advice: true }
         : {},
   };
