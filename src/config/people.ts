@@ -108,6 +108,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 243: an intro price ending, a yearly plan renewing.
+  "promo_ending",
   // Spec step 239: a headline figure resting on something only the person knows.
   "figure_check",
   // Phase AP (spec steps 238–244): Jane runs the money.
@@ -133,6 +135,18 @@ export const SUGGESTION_TOPICS = [
   "goal_tradeoffs",
   // Spec step 244: charges to confirm before last month can close.
   "month_close",
+  // Phase AW: the practice portfolio's ideas, one topic per kind (src/config/practice-suggestions.ts).
+  "practice_dip_buy",
+  "practice_tax_loss_harvest",
+  "practice_news_idea",
+  "practice_new_money",
+  "practice_cash_drag",
+  "practice_cheaper_fund",
+  "practice_payday_timing",
+  "practice_drift_warning",
+  "practice_glide_path",
+  "practice_risk_mismatch",
+  "practice_max_drop_near",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -415,6 +429,8 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
 
       "deductible_fit",
+      // Spec step 243: her fibre intro price ends and her storage plan renews.
+      "promo_ending",
       "hsa_over_limit",
     ],
     mustNot: [

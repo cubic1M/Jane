@@ -103,6 +103,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "insurance_shopping",
     "investment_fees",
     "mortgage_extra",
+    "promo_ending",
     "plan_menu",
     "property_tax_check",
     "refinance",

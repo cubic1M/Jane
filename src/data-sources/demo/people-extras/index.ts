@@ -1,5 +1,6 @@
 import type { PersonId } from "@/config/people";
 import type { PersonExtra } from "../demo-people";
+import { CONTROLLER_EXTRAS } from "./controller";
 import { INSURANCE_EXTRAS } from "./insurance";
 import { INVESTING_EXTRAS } from "./investing";
 import { LOANS_EXTRAS } from "./loans";
@@ -11,4 +12,5 @@ export const PEOPLE_EXTRAS: readonly Partial<Record<PersonId, PersonExtra>>[] = 
   TAXES_EXTRAS,
   INSURANCE_EXTRAS,
   INVESTING_EXTRAS,
+  CONTROLLER_EXTRAS,
 ];

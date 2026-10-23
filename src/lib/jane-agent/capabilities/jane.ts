@@ -38,6 +38,8 @@ import { loadClose } from "@/lib/month-close";
 import { closeReply } from "../replies-close";
 import { loadSteady } from "@/lib/steady-pay";
 import { steadyReply } from "../replies-steady";
+import { loadPriceRises } from "@/lib/price-rises";
+import { priceRisesReply } from "../replies-price-rises";
 import { loadMoneyForTwo } from "@/lib/money-for-two";
 import { moneyForTwoReply } from "../replies-two";
 import { loadTradeoffs } from "@/lib/goal-tradeoffs";
@@ -139,6 +141,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 240.
     case "steady_pay":
       return steadyReply(await loadSteady(userId, { client, now }));
+    // Spec step 243.
+    case "price_rises":
+      return priceRisesReply(await loadPriceRises(userId, { client, now }));
     // Spec step 242.
     case "money_for_two":
       return moneyForTwoReply(await loadMoneyForTwo(userId, { client, now }));

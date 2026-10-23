@@ -16,13 +16,12 @@ import { scopedFor } from "@/lib/db-scoped";
 import { marketData, type Bar, type Headline } from "@/lib/market";
 import { newsKey } from "@/lib/news/store";
 import { rulesSummary } from "@/lib/news/summarize";
-import { violates } from "@/planning/practice-autopilot";
-import { apply, type LedgerState } from "@/planning/practice-ledger";
 import { mainPaydayDay, scanOpportunities } from "@/planning/practice-opportunities";
 import { refusedByPreferences } from "@/planning/practice-profile";
-import type { ScanFlag, ScanHeadline } from "@/planning/practice-scan";
+import type { ScanHeadline } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
+import { tradesHeldBy } from "./limits";
 import { scanPreferences } from "./opportunity-prefs";
 import { practiceProfileOf } from "./preferences";
 
@@ -95,27 +94,6 @@ async function paydayDayOf(userId: string, client: PrismaClient, now: Date) {
     console.error("Practice scan: paydays unavailable", { error: String(error) });
     return null;
   }
-}
-
-// Whether a flag's trades, one after another, all keep the hard limits; the first broken one.
-function heldBy(
-  flag: ScanFlag,
-  state: LedgerState,
-  prices: Readonly<Record<string, number>>,
-  tradesToday: number,
-): string | null {
-  let s = state;
-  let n = tradesToday;
-  for (const t of flag.trades) {
-    const why = violates(t, s, prices, n);
-    if (why) return why;
-    const priceCents = prices[t.ticker];
-    if (!priceCents) return `no price for ${t.ticker}`;
-    const entry = { side: t.side, ticker: t.ticker, amountCents: t.amountCents, priceCents };
-    s = apply(s, entry, PRACTICE_UNIVERSE).state;
-    n += 1;
-  }
-  return null;
 }
 
 export async function scanPractice(
@@ -234,7 +212,9 @@ export async function scanPractice(
         .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
         .find((r) => r !== null) ?? null;
     const held =
-      flag.trades.length > 0 ? (refused ?? heldBy(flag, current.state, prices, tradesToday)) : null;
+      flag.trades.length > 0
+        ? (refused ?? tradesHeldBy(flag.trades, current.state, prices, tradesToday))
+        : null;
     if (!act && held) continue;
     const status: ScanOutcome["status"] = held
       ? "held"
@@ -247,6 +227,7 @@ export async function scanPractice(
       figures: flag.figures,
       caps: flag.caps,
       confidence: flag.confidence,
+      ask: flag.ask,
       heldBy: held,
       mode: prefs.mode,
       trades: flag.trades.map((t) => ({
