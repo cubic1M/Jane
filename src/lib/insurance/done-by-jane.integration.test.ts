@@ -17,7 +17,7 @@ import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { canFile, draftClaim, fileClaim, refreshClaimStatuses } from "./claim-filing";
 import { ClaimError, claimById, startClaim } from "./claims";
 import { NegotiationError, callCarrier, listNegotiations, negotiationsDue } from "./negotiate";
-import { listPolicies } from "./policies";
+import { EMPTY_POLICY_INPUT, listPolicies, updatePolicy } from "./policies";
 
 // Renewal negotiation and claims, done by Jane, against a real, migrated Postgres (spec step
 // 155): a renewal going up is called about only on the tap or within the person's autopilot
@@ -126,6 +126,65 @@ describe.runIf(url)("renewal calls and claims done by Jane, against a real datab
     // The cover the carrier offered to change was never taken.
     expect(after).toMatchObject({ deductibleCents: 50_000 });
     await expect(callCarrier(me, asked.id, opts())).rejects.toThrow(NegotiationError);
+  });
+
+  it("finds the rise on a policy found from payments once it's confirmed", async () => {
+    // Gap audit: Progressive at $118 a month for months, then $131. The policy found from the
+    // payments holds $131, so only its history shows the rise; and confirming it must make it
+    // active, or it's never checked.
+    const { userId: me, accountId } = await person();
+    const found = await client.insurancePolicy.create({
+      data: {
+        userId: me,
+        kind: "auto",
+        carrier: "Progressive",
+        source: "payments",
+        status: "found",
+        premiumCents: 13_100,
+        premiumFrequency: "monthly",
+        merchantKey: "progressive",
+      },
+    });
+    for (const [daysAgo, cents] of [
+      [100, 11_800],
+      [70, 11_800],
+      [40, 13_100],
+      [10, 13_100],
+    ] as const) {
+      await client.transaction.create({
+        data: {
+          userId: me,
+          accountId,
+          source: "plaid",
+          date: new Date(NOW.getTime() - daysAgo * DAY),
+          amountCents: cents,
+          description: "PROGRESSIVE AUTO",
+          merchantName: "Progressive",
+          pfcPrimary: "GENERAL_SERVICES",
+          pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+        },
+      });
+    }
+    expect(await negotiationsDue(me, opts())).toEqual([]);
+    await updatePolicy(
+      me,
+      found.id,
+      {
+        ...EMPTY_POLICY_INPUT,
+        kind: "auto",
+        carrier: "Progressive",
+        premium: "131",
+        premiumFrequency: "monthly",
+      },
+      opts(),
+    );
+    expect((await listPolicies(me, opts()))[0].status).toBe("active");
+    const [asked] = await negotiationsDue(me, opts());
+    expect(asked).toMatchObject({
+      status: "asked",
+      currentAnnualCents: 141_600,
+      renewalAnnualCents: 157_200,
+    });
   });
 
   it("calls by itself only within the person's autopilot limits", async () => {
