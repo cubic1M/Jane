@@ -233,12 +233,13 @@ export function SideChat() {
         {panel === "rail" ? (
           <button
             type="button"
-            aria-label={unread > 0 ? `Open chat, ${unread} new` : "Open chat"}
             onClick={() => sideChatStore.setPanel("open")}
             className="relative flex h-full w-full flex-col items-center gap-3 pt-3 hover:bg-zinc-50 dark:hover:bg-zinc-900"
           >
             <JaneAvatar />
             <UnreadDot count={unread} />
+            {/* Its name is its text: "Open chat", and how many are new. */}
+            <span className="sr-only">{unread > 0 ? `Open chat, ${unread} new` : "Open chat"}</span>
             <span
               aria-hidden
               className="text-xs font-medium text-zinc-600 [writing-mode:vertical-rl] dark:text-zinc-400"
@@ -338,7 +339,6 @@ export function SideChat() {
         ref={fab}
         id="jane-fab"
         type="button"
-        aria-label={unread > 0 ? `Chat with Jane, ${unread} new` : "Chat with Jane"}
         aria-expanded={sheetOpen}
         aria-haspopup="dialog"
         onClick={() => sideChatStore.setSheet("half")}
@@ -346,6 +346,10 @@ export function SideChat() {
       >
         <span aria-hidden className="text-lg font-bold">
           J_
+        </span>
+        {/* Its name is its text, so it matches what speech users say. */}
+        <span className="sr-only">
+          {unread > 0 ? `Chat with Jane, ${unread} new` : "Chat with Jane"}
         </span>
         <UnreadDot count={unread} />
       </button>

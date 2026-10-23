@@ -4,6 +4,9 @@ import { DOCUMENT_FILE_CSP, chatFrameHeaders, securityHeaders } from "./src/lib/
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
+  // The dev-only "N" badge sits bottom-left, over the floating cards' buttons and inside the
+  // side chat's frame; the error overlay still opens on an error.
+  devIndicators: false,
   // Load Plaid's SDK as a plain Node package; bundled, its HTTP client picks a
   // browser adapter and every request fails without a response.
   serverExternalPackages: ["plaid"],
