@@ -131,6 +131,18 @@ export const SUGGESTION_TOPICS = [
   "draft_return_check",
   // Spec step 241: goals that can't all be on time.
   "goal_tradeoffs",
+  // Phase AW: the practice portfolio's ideas, one topic per kind (src/config/practice-suggestions.ts).
+  "practice_dip_buy",
+  "practice_tax_loss_harvest",
+  "practice_news_idea",
+  "practice_new_money",
+  "practice_cash_drag",
+  "practice_cheaper_fund",
+  "practice_payday_timing",
+  "practice_drift_warning",
+  "practice_glide_path",
+  "practice_risk_mismatch",
+  "practice_max_drop_near",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 

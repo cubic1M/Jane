@@ -27,7 +27,13 @@ export async function practiceCards(
   const since = new Date(now.getTime() - PRACTICE_CARD_DAYS * 86_400_000);
   const [opportunities, trades] = await Promise.all([
     db.practiceOpportunities.findMany({
-      where: { scannedAt: { gte: since }, dismissedAt: null },
+      // Ideas still waiting for the person (or answered) are suggestions, not cards
+      // (src/detectors/practice-ideas.ts): only what was done or held shows here.
+      where: {
+        scannedAt: { gte: since },
+        dismissedAt: null,
+        status: { notIn: ["suggested", "declined", "accepted"] },
+      },
       orderBy: [{ scannedAt: "desc" }, { id: "desc" }],
     }),
     db.practiceTrades.findMany({
