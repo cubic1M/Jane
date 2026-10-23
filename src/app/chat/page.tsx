@@ -120,7 +120,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </Link>
       )}
 
-      {listed.length > 0 ? (
+      {listed.length > 0 && (
         <ol aria-label="Messages" className="flex flex-col gap-4">
           {listed.map((message) => (
             // Keyed by its state too: a tap on a floating card answers it on the server, and the
@@ -128,12 +128,11 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
             <ChatMessageItem key={`${message.id}:${message.status}`} initial={message} />
           ))}
         </ol>
-      ) : (
-        stacked.length === 0 && (
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Nothing new from me yet. I&apos;ll post here as soon as I spot something.
-          </p>
-        )
+      )}
+      {listed.length === 0 && stacked.length === 0 && (
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Nothing new from me yet. I&apos;ll post here as soon as I spot something.
+        </p>
       )}
 
       {/* The message box (spec step 84): typing to Jane, answered under it. */}

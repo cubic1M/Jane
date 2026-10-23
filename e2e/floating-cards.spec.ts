@@ -51,7 +51,9 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   // day's suggestions in its lines, is not it).
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
   const inList = (headline: string) =>
-    messages.filter({ hasText: headline }).filter({ hasNotText: /Good (morning|afternoon|evening)!/ });
+    messages
+      .filter({ hasText: headline })
+      .filter({ hasNotText: /Good (morning|afternoon|evening)!/ });
 
   // Short: a headline with one number, Yes and Not now, and More details closed.
   const showing = overlay.locator('[data-card-state="showing"]');
