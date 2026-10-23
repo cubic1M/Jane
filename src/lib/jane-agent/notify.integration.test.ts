@@ -22,9 +22,10 @@ import type { sendPush } from "@/lib/push";
 import { ChatActionError } from "./actions";
 import { markChatRead } from "./messages";
 import { AS_THEY_COME } from "./preferences";
-import { deliverChatNotifications, queueChatNotifications } from "./notify";
+import { deliverChatNotifications, notificationButtons, queueChatNotifications } from "./notify";
 import { createReplyLink, redeemReplyLink, ReplyLinkError, viewReplyLink } from "./reply-links";
 import { runJaneAgent } from "./run";
+import { parseRefs } from "./types";
 
 // Spec step 85 against a real, migrated Postgres (see
 // src/lib/jane-agent/agent.integration.test.ts): Jane's brain posts, a notification job is
@@ -195,16 +196,33 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
         { channel: "email", kind: emailed[0].kind },
       );
 
-      // A finding's Yes, as a one-tap link: opening it changes nothing. A change's heads-up
-      // asks the same as "Look into it" (its No is "That's expected"), and changes rank above
-      // findings, so the email may lead with one: either is the finding's question.
+      // A finding's question, as one-tap links: opening one changes nothing. The email lists
+      // each message's buttons in the order it sends the messages (most important first), so
+      // the first emailed message asking about a finding is found from the messages themselves:
+      // its first button says yes (a finding's Yes, or a change's "Look into it"), its No (or
+      // "That's expected") says no. Which messages lead depends on the day's other messages.
       const links = linksIn(email);
-      const yesAt = links.findIndex((l) => l.label === "Yes" || l.label === "Look into it");
-      const yes = links[yesAt];
-      // The same message's No comes after its Yes (and Jane's pick, if any).
-      const no = links
-        .slice(yesAt)
-        .find((l) => l.label === (yes.label === "Yes" ? "No" : "That's expected"))!;
+      const sent = await client.janeMessage.findMany({
+        where: { userId, notifiedVia: "email" },
+        orderBy: [{ priority: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+      });
+      let offset = 0;
+      let asked: { at: number; count: number } | undefined;
+      for (const m of sent) {
+        const count = notificationButtons(m, now).length;
+        const source = m.dedupeKey.split(":")[0];
+        const aboutFinding =
+          m.kind === "decision" &&
+          (source === "findings" || source === "changes") &&
+          parseRefs(m.refs).findingId !== undefined;
+        if (!asked && aboutFinding && count >= 2) asked = { at: offset, count };
+        offset += count;
+      }
+      expect(offset).toBe(links.length);
+      expect(asked, `emailed: ${sent.map((m) => m.dedupeKey).join(", ")}`).toBeDefined();
+      const own = links.slice(asked!.at, asked!.at + asked!.count);
+      const yes = own[0];
+      const no = own.find((l) => l.label === "No" || l.label === "That's expected")!;
       expect(yes.url).toMatch(/\/chat\/reply\?token=/);
       // Only the hash is stored.
       expect(await client.chatReplyLink.count({ where: { tokenHash: tokenOf(yes.url) } })).toBe(0);
