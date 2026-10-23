@@ -183,6 +183,20 @@ export async function startTransfer(
     },
     select: SELECT,
   });
+  // It's also the card's 0% promotion: one record, tracked for pace on /loans/interest with the
+  // transfer's own deadline, never a second one (docs/feature-audit.md, cluster 14).
+  await db.cardPromos.create({
+    data: {
+      userId,
+      cardName: offer.cardName,
+      balanceCents: debt.balanceCents + offer.feeCents,
+      startedOn: new Date(`${asOf}T00:00:00Z`),
+      endsOn: new Date(`${scored.promoEndsOn}T00:00:00Z`),
+      goToAprBps: offer.goToAprBps,
+      deadlineId: deadline?.id ?? null,
+      balanceTransferId: created.id,
+    },
+  });
   await track(userId, "balance_transfer_started", { promo_months: offer.promoMonths });
   return toView(created);
 }
@@ -206,6 +220,8 @@ export async function endTransfer(
     select: SELECT,
   });
   if (row.deadlineId) await markDeadlineDone(userId, row.deadlineId, { client, now });
+  // Its promotion is over too.
+  await db.cardPromos.deleteMany({ where: { balanceTransferId: row.id } });
   await track(userId, "balance_transfer_ended", { how });
   return toView(updated);
 }
