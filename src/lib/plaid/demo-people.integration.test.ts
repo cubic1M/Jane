@@ -9,6 +9,10 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { decrypt } from "@/lib/crypto";
+import { loadHubAreas } from "@/lib/hub/load";
+import { tilesView } from "@/lib/hub/view";
+import { runChatTool } from "@/lib/jane-agent/claude-tools";
+import { practiceIdeasView } from "@/lib/practice/ideas-view";
 import { isTrialUser, startTrial } from "@/lib/trial";
 import { syncItem } from "./sync";
 
@@ -55,6 +59,30 @@ describe.runIf(url)(
         expect(
           await client.account.count({ where: { userId: trial.userId } }),
         ).toBeGreaterThanOrEqual(3);
+
+        // Phase AW: the practice portfolio started by itself, weeks back, with trades to see,
+        // on the hub's Investing tile, on /investments and in the chat.
+        const userId = trial.userId;
+        const portfolio = await client.practicePortfolio.findFirstOrThrow({ where: { userId } });
+        expect(portfolio.startedAt.getTime()).toBeLessThan(LINKED.getTime() - 14 * 86_400_000);
+        expect(
+          await client.practiceTrade.count({ where: { userId, side: { in: ["buy", "sell"] } } }),
+        ).toBeGreaterThan(0);
+        const areas = await loadHubAreas(
+          userId,
+          { budgetsOver: 0, safeShort: false },
+          { client, now: LINKED },
+        );
+        const tile = tilesView(areas).find((t) => t.key === "investments")!;
+        expect(tile.healthWhy).not.toBe("Not set up");
+        expect(tile.caption).toMatch(/^Practice money/);
+        const view = await practiceIdeasView(userId, { client, now: LINKED });
+        expect(view.strategy?.label).toBeTruthy();
+        const chat = JSON.parse(
+          (await runChatTool(userId, "practice_portfolio", {}, { client, now: LINKED })).content,
+        );
+        expect(chat.positions.length).toBeGreaterThan(0);
+        expect(chat.strategyToday?.strategy).toBeTruthy();
       },
     );
   },

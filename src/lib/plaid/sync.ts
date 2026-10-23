@@ -775,6 +775,14 @@ export async function syncItem(
       runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
         client,
       }))(),
+    // Phase AW: a sample person's practice portfolio starts by itself, with a few weeks
+    // replayed, so the bot is there to look at before Jane's last words of the scan. Loaded
+    // here, not at the top: the practice run reaches this file again.
+    isDemoToken(accessToken) && result.firstSync
+      ? import("@/lib/practice/demo-start").then((m) =>
+          m.ensureDemoPractice(item.userId, { client, now }),
+        )
+      : null,
   ]);
   for (const result of sectors) {
     if (result.status === "rejected") {
