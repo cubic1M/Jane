@@ -1,5 +1,12 @@
+import { DETECTOR_RATES } from "@/config/detectors";
+import {
+  IRA_DISTRIBUTION,
+  RETIREMENT_DEPOSIT_WORDS,
+  SOCIAL_SECURITY_PAYEE,
+} from "@/config/retirement-taxes";
 import {
   FILING_STATUSES,
+  BUSINESS_SALES_CATEGORIES,
   INCOME_KINDS,
   TAXABLE_INVESTMENT_SUBTYPES,
   type FilingStatus,
@@ -24,6 +31,7 @@ import {
   NO_PAY,
   payFrequency,
   paychecksLeft,
+  businessSalesSoFar,
   otherIncomeSoFar,
   payFromStubs,
   payFromYtd,
@@ -35,7 +43,7 @@ import {
 } from "@/planning/tax-income";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { dayLabel } from "@/lib/day-label";
-import { stateName, type ProfileField } from "@/planning/tax-profile";
+import { guessFilingStatus, stateName, type ProfileField } from "@/planning/tax-profile";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
 // tax profile: what they'll owe or get back for the year, federal and state. Worked out
@@ -99,6 +107,9 @@ export async function loadTaxEstimate(
     // Spec step 121: last year's refund, as it arrived this year.
     "INCOME_TAX_REFUND",
   ];
+  const jointAccounts = await db.accounts.count({
+    where: { name: { contains: "joint", mode: "insensitive" } },
+  });
   const [
     { view, profile },
     demo,
@@ -115,7 +126,11 @@ export async function loadTaxEstimate(
     db.transactions.findMany({
       where: {
         pending: false,
-        pfcDetailed: { in: incomeCategories },
+        OR: [
+          { pfcDetailed: { in: incomeCategories } },
+          // A shop's card sales, often other income or a deposit (businessSalesSoFar).
+          { amountCents: { lt: 0 }, pfcDetailed: { in: [...BUSINESS_SALES_CATEGORIES] } },
+        ],
         date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 1, 1)) },
       },
       select: {
@@ -239,6 +254,19 @@ export async function loadTaxEstimate(
   const miles = stored?.businessMilesYear === year ? (stored.businessMiles ?? 0) : 0;
   const businessSoFar = tags.totals.business.totalCents + mileageDeduction(miles);
   const otherSoFar = otherIncomeSoFar(rows, cash, year, businessSoFar);
+  // A shop's card sales (taxes QA): profit is sales less the business expenses tagged; with
+  // none tagged, the share of sales the detectors assume, said as an assumption.
+  const sales = businessSalesSoFar(rows, year);
+  if (sales > 0) {
+    const profit =
+      businessSoFar > 0 ? sales : Math.round(sales * DETECTOR_RATES.tax.businessProfitShare);
+    otherSoFar.selfEmploymentCents += profit;
+    if (businessSoFar === 0) {
+      assumptions.push(
+        `Your card sales so far (${formatCents(sales)}) are business income. I've counted ${Math.round(DETECTOR_RATES.tax.businessProfitShare * 100)}% of them as profit until you tag your business expenses (rent, payroll, supplies), which makes it exact.`,
+      );
+    }
+  }
   // Spec step 124: gains realised this year in taxable investment accounts.
   const gains = (await loadInvestmentTaxes(userId, year, { client, now })).realisedCents;
   // Spec step 219: crypto sold by lot, ESPP sales and ISO exercises.
@@ -297,6 +325,42 @@ export async function loadTaxEstimate(
     paced.selfEmploymentCents > 0
       ? Math.min(homeOfficeDeduction(stored?.homeOfficeSqFt ?? null), paced.selfEmploymentCents)
       : 0;
+  // Taxes QA: Social Security and traditional IRA withdrawals, as they land in the accounts,
+  // projected to the year's end; only Social Security's taxable part counts (the engine).
+  const retirementRows = await db.transactions.findMany({
+    where: {
+      pending: false,
+      amountCents: { lt: 0 },
+      date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
+      OR: RETIREMENT_DEPOSIT_WORDS.map((w) => ({
+        description: { contains: w, mode: "insensitive" as const },
+      })),
+    },
+    select: { amountCents: true, description: true },
+  });
+  const paceYear = (cents: number) =>
+    elapsed > 0 && elapsed < 1 ? Math.round(cents / elapsed) : cents;
+  const benefits = paceYear(
+    retirementRows
+      .filter((t) => SOCIAL_SECURITY_PAYEE.test(t.description))
+      .reduce((s, t) => s - t.amountCents, 0),
+  );
+  const iraDraws = paceYear(
+    retirementRows
+      .filter((t) => IRA_DISTRIBUTION.test(t.description))
+      .reduce((s, t) => s - t.amountCents, 0),
+  );
+  paced.retirementCents += iraDraws;
+  if (benefits > 0) {
+    assumptions.push(
+      `Your Social Security comes to about ${formatCents(benefits)} this year; only the part your other income makes taxable is counted.`,
+    );
+  }
+  if (iraDraws > 0) {
+    assumptions.push(
+      `Withdrawals from your IRA (about ${formatCents(iraDraws)} this year) are taxed as income.`,
+    );
+  }
   const other = { ...paced, selfEmploymentCents: paced.selfEmploymentCents - homeOffice };
   const seen = taxPaymentsFor(rows, year);
   const typed = enteredTaxPayments(stored?.taxPayments, year);
@@ -311,9 +375,20 @@ export async function loadTaxEstimate(
     return elapsed > 0 && elapsed < 1 ? Math.round(ytd / elapsed) : ytd;
   };
 
-  const filingStatus: FilingStatus = profile.filingStatus ?? "single";
+  // Taxes QA: a couple's signs (a joint account, two employers) mean married filing jointly.
+  const guessed = profile.filingStatus
+    ? null
+    : guessFilingStatus({
+        jointAccounts,
+        payrollNames: paychecks.map((t) => t.description),
+      });
+  const filingStatus: FilingStatus = profile.filingStatus ?? guessed?.status ?? "single";
   if (!profile.filingStatus) {
-    assumptions.push("You haven't told me how you file, so I've estimated as single.");
+    assumptions.push(
+      guessed
+        ? `You haven't told me how you file. I see ${guessed.why}, so I've estimated as married filing jointly; tell me if that's wrong.`
+        : "You haven't told me how you file, so I've estimated as single.",
+    );
   }
   const state = profile.state ?? view.state.value;
   if (state && view.state.status !== "yours") {
@@ -349,6 +424,7 @@ export async function loadTaxEstimate(
     income: {
       ...other,
       otherCents: hobbyIncome,
+      socialSecurityBenefitsCents: benefits,
       wagesCents: wagesProjected + equity.ordinaryCents,
       socialSecurityWagesCents:
         pay.source === "none" ? wagesProjected : pay.projected.socialSecurityWagesCents,

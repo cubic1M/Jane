@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ROLLOVER_NOTE } from "@/config/old-accounts";
-import { arrivesOn, feeComparison, isComplete, stepsOn, yearlyFee } from "./rollover";
+import { arrivesOn, feeComparison, isComplete, olderPlans, stepsOn, yearlyFee } from "./rollover";
 
 // Spec step 211: fees before and after, and the tracked steps of a direct rollover.
 
@@ -35,5 +35,18 @@ describe("the rollover steps", () => {
     expect(stepsOn("2026-10-18", "2026-10-18")[1].label).toMatch(/the plan sends it, not you/);
     expect(ROLLOVER_NOTE).toMatch(/isn't a withdrawal and isn't taxed/);
     expect(ROLLOVER_NOTE).toMatch(/Jane never does that/);
+  });
+});
+
+describe("401(k)s linked from past jobs", () => {
+  const plan = (id: string, balanceCents: number) => ({ id, name: id, balanceCents });
+  it("are every linked 401(k) but the biggest, with the yearly saving at the fee gap", () => {
+    const older = olderPlans([plan("now", 41_155_000), plan("old", 2_389_200)], 50);
+    expect(older.plans.map((p) => p.id)).toEqual(["old"]);
+    expect(older).toMatchObject({ count: 2, totalCents: 2_389_200, savedCents: 11_946 });
+  });
+  it("are none with one plan, and leave out empty ones", () => {
+    expect(olderPlans([plan("now", 100_000)], 50).plans).toEqual([]);
+    expect(olderPlans([plan("now", 100_000), plan("empty", 0)], 50).totalCents).toBe(0);
   });
 });

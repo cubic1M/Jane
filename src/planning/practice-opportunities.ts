@@ -43,6 +43,7 @@ import {
   drift,
   scanPortfolio,
   washBlocked,
+  wholeDollars,
   type ScanFlag,
   type ScanInput,
   type ScanTrade,
@@ -334,6 +335,12 @@ function newMoneyFlag(
       `At most ${SCAN_CAPS.new_money_rebalance.perMonth} a month`,
     ],
     confidence: SCAN_CONFIDENCE.new_money_rebalance,
+    ask: {
+      headline: `Rebalance with ${wholeDollars(spent)} of new money, no sale`,
+      short: `Your mix is ${points(n.off)} points off on ${n.what}, and ${dollars(available)} of practice cash is waiting.`,
+      worthCents: spent,
+      worthKind: "risk",
+    },
   };
 }
 
@@ -381,6 +388,12 @@ function cashDragFlag(
       `At most ${SCAN_CAPS.cash_drag.perMonth} a month`,
     ],
     confidence: SCAN_CONFIDENCE.cash_drag,
+    ask: {
+      headline: `Invest idle practice cash, about ${wholeDollars(yearly)} a year more`,
+      short: `${dollars(available)} has waited ${daysBetween(lastBuy, input.today)} days above your buffer, earning nothing.`,
+      worthCents: yearly,
+      worthKind: "earns",
+    },
   };
 }
 
@@ -446,6 +459,15 @@ function cheaperFundFlags(
         `At most ${pct(caps.sizeShare)} of the portfolio, ${caps.perMonth} switches a month`,
       ],
       confidence: SCAN_CONFIDENCE.cheaper_fund,
+      ask: {
+        headline:
+          yearly >= 50
+            ? `Switch ${ticker} to ${twin}, save ${wholeDollars(yearly)} a year`
+            : `Switch ${ticker} to ${twin}, a cheaper twin fund`,
+        short: `${ticker} costs ${pct(fee / 10_000)} a year and ${twin} ${pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000)}, on ${dollars(amount)} of practice money.`,
+        worthCents: yearly,
+        worthKind: "saves",
+      },
     });
   }
   return flags;
@@ -497,6 +519,12 @@ function paydayFlag(input: OpportunityInput): ScanFlag | null {
       "A setting you change; nothing is bought or sold",
     ],
     confidence: SCAN_CONFIDENCE.payday_timing,
+    ask: {
+      headline: `Move your ${wholeDollars(input.monthlyAddCents)} practice money to the ${ordinal(target)}`,
+      short: `You're paid around the ${ordinal(input.paydayDay)}; your practice money lands on the ${ordinal(input.addDay)}.`,
+      worthCents: input.monthlyAddCents,
+      worthKind: "risk",
+    },
   };
 }
 
@@ -526,6 +554,12 @@ function driftWarningFlag(input: OpportunityInput): ScanFlag | null {
       "Nothing is bought or sold",
     ],
     confidence: SCAN_CONFIDENCE.drift_warning,
+    ask: {
+      headline: `Check your mix: ${wholeDollars(Math.round(n.off * n.d.total))} off, near the band`,
+      short: `${cap(n.what)} ${n.what === "stocks" ? "are" : "is"} ${points(n.off)} points off target; the band is ${points(n.band)}.`,
+      worthCents: Math.round(n.off * n.d.total),
+      worthKind: "risk",
+    },
   };
 }
 
@@ -537,6 +571,9 @@ function glideFlag(input: OpportunityInput): ScanFlag | null {
   if (input.level <= max) return null;
   const next = (input.level - 1) as RiskLevel;
   const years = Math.max(0, Math.round(yearsLeft * 10) / 10);
+  const shift = Math.round(
+    (stocksShare(input.level) - stocksShare(next)) * portfolioValue(input.state, input.prices),
+  );
   const reason = `Your goal date is ${goal}, about ${years} years away. With that long left the usual path holds ${levelName(max)} or safer, and you're at ${levelName(input.level)}, so the next step is ${levelName(next)}: ${pct(stocksShare(next))} in stocks instead of ${pct(stocksShare(input.level))}.`;
   return {
     kind: "glide_path",
@@ -558,6 +595,12 @@ function glideFlag(input: OpportunityInput): ScanFlag | null {
       "One level at a time; you change it in your settings",
     ],
     confidence: SCAN_CONFIDENCE.glide_path,
+    ask: {
+      headline: `Step down to ${levelName(next)}: ${wholeDollars(shift)} less in stocks`,
+      short: `Your goal is about ${years} years away; that allows ${levelName(max)} or safer.`,
+      worthCents: shift,
+      worthKind: "risk",
+    },
   };
 }
 
@@ -567,6 +610,7 @@ function mismatchFlag(input: OpportunityInput): ScanFlag | null {
   const could = heldStressDrop(input.state, input.prices);
   if (could <= limit + RISK_MISMATCH_TOLERANCE) return null;
   const safer = levelWithin(limit);
+  const loss = Math.round(could * portfolioValue(input.state, input.prices));
   // A safer level fits: otherwise the mix itself has drifted, and the rebalance handles it.
   if (safer >= input.level) return null;
   const reason = `You said you could take a drop of about ${pct(limit)}. In a crash like 2007-09 your mix as held could fall about ${pct(could)}. ${levelName(safer)} could fall about ${pct(stressDrop(MODEL_PORTFOLIOS[safer].weights))}, within what you said.`;
@@ -576,7 +620,7 @@ function mismatchFlag(input: OpportunityInput): ScanFlag | null {
     key: `risk_mismatch:${input.level}:${safer}:${input.today.slice(0, 7)}`,
     headline: `Your mix could fall ${pct(could)}; you said ${pct(limit)}`,
     reason,
-    amountCents: Math.round(could * portfolioValue(input.state, input.prices)),
+    amountCents: loss,
     trades: [],
     figures: [
       { label: "Drop you said you could take", value: pct(limit) },
@@ -591,6 +635,12 @@ function mismatchFlag(input: OpportunityInput): ScanFlag | null {
       "A past crash, not a forecast",
     ],
     confidence: SCAN_CONFIDENCE.risk_mismatch,
+    ask: {
+      headline: `Lower your risk: your mix could lose ${wholeDollars(loss)}`,
+      short: `In a 2007-09 crash your mix could fall ${pct(could)}; you said about ${pct(limit)}.`,
+      worthCents: loss,
+      worthKind: "risk",
+    },
   };
 }
 
@@ -627,6 +677,12 @@ function maxDropFlag(input: OpportunityInput): ScanFlag | null {
       "Nothing is bought or sold until you change the level",
     ],
     confidence: SCAN_CONFIDENCE.max_drop_near,
+    ask: {
+      headline: `Step down a level: down ${wholeDollars(r.peakCents - r.nowCents)}, near your limit`,
+      short: `Down ${pct(r.drop)} from the high; you said you could take about ${pct(limit)}.`,
+      worthCents: r.peakCents - r.nowCents,
+      worthKind: "risk",
+    },
   };
 }
 

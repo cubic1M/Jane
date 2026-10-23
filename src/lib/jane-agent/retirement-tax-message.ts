@@ -59,14 +59,18 @@ export function retirementReply(v: RetirementTaxView): Message {
       : "Social Security: I don't see it coming in yet. When it does, up to 85% of it is taxable once your other income passes the line.",
   );
   const i = v.irmaa;
-  lines.push(
-    `Medicare's surcharge: this year's income of about ${formatCents(v.magiCents)} sets your ${i.premiumYear} premiums. ${
-      i.tier > 0
-        ? `That's tier ${i.tier}: about ${formatCents(i.monthlyPerPersonCents)} a month more each for Part B and D.`
-        : "That's under the first line: no surcharge."
-    }${i.nextLineCents !== null && i.roomCents !== null ? ` The next line is ${formatCents(i.nextLineCents)}${i.estimated ? " (estimated)" : ""}, ${formatCents(i.roomCents)} away.` : ""}`,
-  );
-  if (v.advice) {
+  // Taxes QA: Medicare's line only for someone near or on Medicare (or already on Social
+  // Security); the tuned order only with pre-tax savings to draw from.
+  if (v.nearMedicare || v.ssBenefitsCents > 0)
+    lines.push(
+      `Medicare's surcharge: this year's income of about ${formatCents(v.magiCents)} sets your ${i.premiumYear} premiums. ${
+        i.tier > 0
+          ? `That's tier ${i.tier}: about ${formatCents(i.monthlyPerPersonCents)} a month more each for Part B and D.`
+          : "That's under the first line: no surcharge."
+      }${i.nextLineCents !== null && i.roomCents !== null ? ` The next line is ${formatCents(i.nextLineCents)}${i.estimated ? " (estimated)" : ""}, ${formatCents(i.roomCents)} away.` : ""}`,
+    );
+  const tuned = v.advice && v.balances.preTaxCents > 0 && (v.nearMedicare || v.ssBenefitsCents > 0);
+  if (tuned) {
     const t = v.tuned;
     lines.push(
       t.preTaxCapCents !== null
@@ -76,7 +80,8 @@ export function retirementReply(v: RetirementTaxView): Message {
   }
   return {
     body: `Here is how your retirement income is taxed.\n${lines.map((l) => `• ${l}`).join("\n")}`,
-    refs: v.advice ? { advice: true, taxYear: v.year } : { taxYear: v.year },
+    // Demo advice only when the tuned order (a recommendation) is in the answer.
+    refs: tuned ? { advice: true, taxYear: v.year } : { taxYear: v.year },
     actions: [paycheck],
   };
 }

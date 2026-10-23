@@ -4,7 +4,6 @@ import {
   MODEL_PORTFOLIOS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
-  stocksShare,
   type PracticeClass,
 } from "@/config/portfolios";
 import type { RiskLevel } from "@/config/investing";
@@ -25,7 +24,7 @@ export type PlannedTrade = {
   side: "buy" | "sell";
   amountCents: number;
   reason: string;
-  rule: "model_buy" | "rebalance";
+  rule: "model_buy" | "rebalance" | "cash_buffer";
 };
 
 export type Prices = Readonly<Record<string, number>>;
@@ -86,11 +85,23 @@ export function planTrades(input: {
   paused: boolean;
   tradesToday: number;
   blocked?: ReadonlySet<string>;
+  // From the person's preferences (src/planning/practice-profile.ts): the mix (the level's model
+  // when absent), tickers never bought, and cash always kept outside the model.
+  weights?: Readonly<Record<PracticeClass, number>>;
+  avoid?: ReadonlySet<string>;
+  cashBufferCents?: number;
 }): PlannedTrade[] {
   if (input.paused) return [];
-  const { state, prices } = input;
-  const blocked = input.blocked ?? new Set<string>();
-  const weights = MODEL_PORTFOLIOS[input.level].weights;
+  const { prices } = input;
+  const buffer = Math.max(0, input.cashBufferCents ?? 0);
+  // The buffer sits outside the model: the plan sees only the cash above it (less than none
+  // when the buffer was raised after the money was invested).
+  const state: LedgerState = { ...input.state, cashCents: input.state.cashCents - buffer };
+  const avoid = input.avoid ?? new Set<string>();
+  // Never bought: sold at a loss lately (a wash sale) or on the person's never-buy list.
+  const blocked = new Set([...(input.blocked ?? []), ...avoid]);
+  const weights = input.weights ?? MODEL_PORTFOLIOS[input.level].weights;
+  const targetStocks = weights.us_stocks + weights.intl_stocks;
   const held = (t: string) => positionValue(state, prices, t);
   const modelValue = (c: PracticeClass) => classTickers(c).reduce((s, t) => s + held(t), 0);
   // The fund a kind is held in (the larger, after a swap), and the one to buy more of.
@@ -115,7 +126,7 @@ export function planTrades(input: {
   // Stocks together past their band: every kind over its target goes back, not only those past
   // the band on their own.
   const stocks = (modelValue("us_stocks") + modelValue("intl_stocks")) / total;
-  const stocksPast = !first && Math.abs(stocks - stocksShare(input.level)) > DRIFT_STOCKS_BAND;
+  const stocksPast = !first && Math.abs(stocks - targetStocks) > DRIFT_STOCKS_BAND;
 
   const trades: PlannedTrade[] = [];
   let cash = state.cashCents;
@@ -136,12 +147,37 @@ export function planTrades(input: {
     if (t.side === "buy") bought[t.ticker] = (bought[t.ticker] ?? 0) + t.amountCents;
   };
 
+  // The cash buffer first: when cash is under it, sell what is most over its target.
+  const raised: Partial<Record<PracticeClass, number>> = {};
+  if (cash < 0) {
+    let short = -cash;
+    const order = [...CLASSES].sort((a, b) => gap(a) - gap(b));
+    for (const c of order) {
+      if (short <= 0) break;
+      const ticker = sellTicker(c);
+      const amount = Math.min(short, held(ticker));
+      if (amount < L.minTradeCents) continue;
+      const before = trades.length;
+      track({
+        ticker,
+        side: "sell",
+        amountCents: amount,
+        rule: "cash_buffer",
+        reason: `You asked to keep ${dollars(buffer)} in cash, so ${dollars(amount)} of ${LABEL[c]} was sold to make it up.`,
+      });
+      if (trades.length > before) {
+        short -= amount;
+        raised[c] = amount;
+      }
+    }
+  }
+
   // Rebalance: sell what is over its target by more than the band.
   for (const c of CLASSES) {
-    const over = -gap(c);
+    const over = -gap(c) - (raised[c] ?? 0);
     if ((over > band || stocksPast) && over >= L.minTradeCents) {
       const ticker = sellTicker(c);
-      const amount = Math.min(over, held(ticker));
+      const amount = Math.min(over, held(ticker) - (raised[c] ?? 0));
       track({
         ticker,
         side: "sell",
@@ -156,11 +192,21 @@ export function planTrades(input: {
     (x) => x.d >= L.minTradeCents,
   );
   const needed = deficits.reduce((s, x) => s + x.d, 0);
-  const spend = Math.min(cash, needed);
+  const spend = Math.max(0, Math.min(cash, needed));
   for (const { c, d } of deficits) {
-    const amount = Math.floor((spend * d) / needed);
     const ticker = buyTicker(c);
-    if (amount < L.minTradeCents || !ticker) continue;
+    if (!ticker) continue;
+    // Up to the per-position and per-trade caps, not past them (a mix that is mostly one kind,
+    // near a goal date).
+    const isStock = (PRACTICE_STOCKS as readonly string[]).includes(ticker);
+    const room = Math.min(
+      Math.round(whole * (isStock ? L.perStockShare : L.perEtfShare)) -
+        held(ticker) -
+        (bought[ticker] ?? 0),
+      Math.round(whole * L.perTradeShare),
+    );
+    const amount = Math.min(Math.floor((spend * d) / needed), room);
+    if (amount < L.minTradeCents) continue;
     track({
       ticker,
       side: "buy",

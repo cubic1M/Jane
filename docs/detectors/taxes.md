@@ -230,11 +230,13 @@ and `/taxes/business`; it is not a separate suggestion because the return alread
 
 | Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
 |---|---|---|---|---|---|---|
-| `inherited_ira` (covers `tax_inherited`) | an investment account whose name says "Inherited" or "Beneficiary" (custodians' wording); not from a spouse (told) | taking it out evenly over the years left against all at the end (same engine as step 120), or, in the last year, the 25% penalty on what's left | income as seen; capped at 50% when the year the owner died is unknown (full 10 years assumed), 70% when told (required yearly withdrawals and other income unseen) | later; soon at 3 years left, now at the last year | Dan and Lena (an IRA from Lena's mother) | everyone else; a spouse's IRA |
+| `inherited_ira` (covers `tax_inherited`) | an investment account whose name says "Inherited" or "Beneficiary" (custodians' wording); not from a spouse (told); the year the owner died (told) puts this year last | the 25% penalty on what's left after the deadline | income as seen; 70% (whether they are an exception to the 10-year rule is unseen) | now | nobody until told the year; Dan and Lena told 2016 | a spouse's IRA; any year before the last |
+| `inherited_ira_spread` (covers `tax_inherited`; demo advice, in `ADVICE_TOPICS`) | the same account, before the last year | taking it out evenly over the years left against all at the end (same engine as step 120) | income as seen; capped at 50% when the year the owner died is unknown (full 10 years assumed), 70% when told (required yearly withdrawals and other income unseen) | later; soon at 3 years left | Dan and Lena (an IRA from Lena's mother) | everyone else; a spouse's IRA; the last year; real accounts |
 
 Gifts over the annual exclusion ($19,000 a person) are a heads-up from the transactions (a message
 with no dollars: no tax is usually owed, the excess counts against a lifetime allowance), not a
-detector suggestion; the tool is covered by `inherited_ira`. An inherited IRA is never counted as
+detector suggestion; the tool is covered by `inherited_ira` and `inherited_ira_spread`. The deadline is a fact for
+everyone; spreading the withdrawals is a recommendation, so only demo advice mode gets it. An inherited IRA is never counted as
 money to convert to a Roth. Rules, limits and states with their own death taxes are in
 `src/config/inheritance.ts` with sources; the chat gives facts and points to a tax professional or
 estate lawyer.
