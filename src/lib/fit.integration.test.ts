@@ -109,19 +109,29 @@ describe.runIf(url)("the fit engine against a real database", { timeout: 60_000 
   });
 
   // Loans QA: the suggestion brought unasked follows the options card, priced by the same score
-  // band and against the same card minimums. Books QA: with a typical month (their flood repairs left out of spending), the Reyes have the
-  // room to pay their cards down without a loan, which saves more than the best loan; the
-  // suggestion follows the card, so none is brought.
-  it("follows the options card for the Reyes: paying the cards down beats any loan", async () => {
+  // band and against the same card minimums. Books QA (#600): a typical month leaves their flood
+  // repairs out of spending. Loans QA (one cash rule): their cash still sits inside the 3-month
+  // emergency cushion, so the cards aren't paid from savings; one cheaper loan is the pick, and
+  // the suggestion says the same saving.
+  it("follows the options card for the Reyes, to the cent, with the cushion kept", async () => {
     const card = await loadFit(reyes, { need: "consolidation" }, { client, now: NOW });
     const pick = card.options.find((o) => o.id === card.pick)!;
+    expect(card.pick).not.toBe("payoff");
+    expect(card.cushionCents).toBeGreaterThan(0);
     const { suggestions } = await detectFor(reyes, { client, now: NOW });
-    const s = suggestions.find((x) => x.topic === "consolidation");
-    expect(card.pick).toBe("payoff");
-    const loans = card.options.filter((o) => o.id !== "payoff" && o.id !== "keep");
-    const best = Math.max(...loans.map((o) => o.savesCents ?? 0));
-    expect(pick.savesCents).toBeGreaterThan(best);
-    expect(s).toBeUndefined();
+    const s = suggestions.find((x) => x.topic === "consolidation")!;
+    expect(s).toBeDefined();
+    expect(s.worthCents).toBe(pick.savesCents);
+    expect(s.why).toContain(pick.lender);
+  });
+
+  // Loans QA: a follow-up to the consolidation suggestion may come without a need.
+  it("prices the cards as one loan when Claude's tool is asked with no need", async () => {
+    const tool = JSON.parse(
+      (await runChatTool(reyes, "loan_fit", {}, { client, now: NOW })).content,
+    );
+    expect(tool.error).toBeUndefined();
+    expect(tool.need).toBe("consolidation");
   });
 
   it("is the same pick in the chat, Claude's tool and the debt decisions", async () => {

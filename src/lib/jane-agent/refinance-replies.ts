@@ -30,11 +30,11 @@ const offerLine = (s: ScoredOffer) =>
 // One debt's offers: the pick and why, the runners-up and, for a mortgage, the break-even.
 export function comparisonLines(c: RefinanceComparison): string[] {
   const lines = [
-    `Your ${c.debtName}: ${formatCents(c.balanceCents)} at ${formatRate(c.currentAprBps)}. Paid off over its remaining ${months(c.termMonths)}, it costs ${formatCents(c.currentTotalCents)} in all.`,
+    `Your ${c.debtName}: ${formatCents(c.balanceCents)} at ${formatRate(c.currentAprBps)}. Keeping it at ${formatCents(c.currentMonthlyCents)} a month, it's paid off in ${months(c.keepMonths)} and costs ${formatCents(c.currentTotalCents)} in all; offers are priced over ${months(c.termMonths)}.`,
   ];
   if (c.cashPayoffCents) {
     lines.push(
-      `Your cash covers it: paying it off from savings would save about ${formatCents(c.cashPayoffCents)} and still leave a month of spending, more than any loan.`,
+      `Your cash covers it: paying it off from savings would save about ${formatCents(c.cashPayoffCents)} and still keep your emergency cushion, more than any loan.`,
     );
     return lines;
   }
@@ -48,8 +48,8 @@ export function comparisonLines(c: RefinanceComparison): string[] {
     const best = c.offers[0];
     lines.push(
       best.savingCents > 0
-        ? `The best offer, ${best.offer.lender} at ${formatRate(best.offer.aprBps)}, saves only ${formatCents(best.savingCents)} over the same months, fees included: less than the ${formatCents(REFI_MIN_SAVING_CENTS)} I'd switch for.`
-        : `None of the ${c.offers.length} offers beats it over the same months, fees included.`,
+        ? `The best offer, ${best.offer.lender} at ${formatRate(best.offer.aprBps)}, saves only ${formatCents(best.savingCents)} against keeping it, fees included: less than the ${formatCents(REFI_MIN_SAVING_CENTS)} I'd switch for.`
+        : `None of the ${c.offers.length} offers beats keeping it, fees included.`,
     );
     return lines;
   }

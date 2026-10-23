@@ -34,6 +34,8 @@ export type DecisionInput = {
   student: DecisionLoan | null;
   // The total of the card limits the credit report shows, when known.
   totalLimitCents?: number | null;
+  // The emergency cushion to keep back before paying debt from cash (cashCushionCents).
+  cushionCents?: number;
   // Cash in checking and savings, and a typical month of spending.
   liquidCents: number;
   monthlySpendCents: number;
@@ -106,7 +108,9 @@ const rated = (cards: readonly DecisionCard[]) =>
 const total = (cards: readonly DecisionCard[]) => cards.reduce((s, c) => s + c.balanceCents, 0);
 const worst = (cards: readonly DecisionCard[]) =>
   [...rated(cards)].sort((a, b) => (b.aprBps ?? 0) - (a.aprBps ?? 0))[0] ?? null;
-const keepCents = (i: DecisionInput) => i.monthlySpendCents * KEEP_CASH_MONTHS;
+// Cash kept back before paying debt from savings: the emergency cushion (the fit engine's rule),
+// or a month of spending when it isn't known.
+const keepCents = (i: DecisionInput) => i.cushionCents ?? i.monthlySpendCents * KEEP_CASH_MONTHS;
 const spare = (i: DecisionInput) => Math.max(0, i.liquidCents - keepCents(i));
 const weightedApr = (cards: readonly DecisionCard[]) => {
   const r = rated(cards);
@@ -175,7 +179,7 @@ export function payOrInvest(i: DecisionInput): Decision {
         : `At ${pct(debt.aprBps)} it's near investing's range, so the minimum payment plus investing is reasonable too.`,
       cash
         ? `Keep about ${formatCents(keepCents(i))} in cash before either.`
-        : `You can put ${formatCents(Math.min(spare(i), debt.balanceCents))} toward it now and still keep a month of spending.`,
+        : `You can put ${formatCents(Math.min(spare(i), debt.balanceCents))} toward it now and still keep your ${formatCents(keepCents(i))} emergency cushion.`,
     ],
     href: "/loans/interest",
     advice: true,
@@ -193,7 +197,7 @@ export function consolidate(i: DecisionInput): Decision {
       id: "consolidate",
       sentences: [
         first,
-        `Your cash covers it: paying the cards off from savings would save about ${formatCents(i.cashPayoffSavesCents)} and still leave a month of spending.`,
+        `Your cash covers it: paying the cards off from savings would save about ${formatCents(i.cashPayoffSavesCents)} and still keep your ${formatCents(keepCents(i))} emergency cushion.`,
         ...(i.advice ? ["I'd do that instead of taking a loan."] : []),
       ],
       href: "/loans/refinance",
@@ -241,7 +245,7 @@ export function savingsOrDebt(i: DecisionInput): Decision {
       id: "savings_or_debt",
       sentences: [
         first,
-        `That's under the ${formatCents(keepCents(i))} a month of spending worth keeping, so there's nothing spare to put on the card.`,
+        `That's under your ${formatCents(keepCents(i))} emergency cushion, so there's nothing spare to put on the card.`,
       ],
       href: "/loans/interest",
       advice: i.advice,
@@ -251,7 +255,7 @@ export function savingsOrDebt(i: DecisionInput): Decision {
     id: "savings_or_debt",
     sentences: [
       first,
-      `Putting ${formatCents(extra)} on ${card.name} saves about ${formatCents(yearly)} a year in interest and still leaves a month of spending.`,
+      `Putting ${formatCents(extra)} on ${card.name} saves about ${formatCents(yearly)} a year in interest and still keeps your ${formatCents(keepCents(i))} emergency cushion.`,
       ...(i.advice ? ["Savings earn less than the card costs, so I'd do it."] : []),
     ],
     href: "/loans/interest",
@@ -345,7 +349,7 @@ export function personalLoan(i: DecisionInput): Decision {
       id: "personal_loan",
       sentences: [
         first,
-        `Your cash covers it: paying the cards off from savings would save about ${formatCents(i.cashPayoffSavesCents)} and still leave a month of spending.`,
+        `Your cash covers it: paying the cards off from savings would save about ${formatCents(i.cashPayoffSavesCents)} and still keep your ${formatCents(keepCents(i))} emergency cushion.`,
         ...(i.advice ? ["I'd do that instead of taking a loan."] : []),
       ],
       href: "/loans/refinance",

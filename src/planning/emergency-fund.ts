@@ -60,6 +60,14 @@ export function emergencyTarget(input: {
   };
 }
 
+// The cash to keep back before paying a debt off from savings (loans QA): the emergency
+// cushion the emergency-fund suggestion aims for, so paying off a card, a car loan or a student
+// loan from cash never spends it. A month of spending when there's no target (a pension that
+// covers spending).
+export function cashCushionCents(input: Parameters<typeof emergencyTarget>[0]): number {
+  return emergencyTarget(input)?.targetCents ?? Math.max(0, input.spendingCents);
+}
+
 // How a fund was sized, in words, for the drafted goal, the plan and the cash page:
 // "6 months of your own average spending".
 export function fundBasis(target: EmergencyTarget): string {

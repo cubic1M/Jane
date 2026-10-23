@@ -147,7 +147,7 @@ describe.runIf(url)("refinance offers against a real database", () => {
     });
     expect(reply.actions[0]).toMatchObject({ id: "loan.prepare" });
     const home = await sendToJane(userId, "refinance my mortgage", opts(later(0.001)));
-    expect(home.reply.body).toContain("None of the 2 offers beats it over the same months");
+    expect(home.reply.body).toContain("None of the 2 offers beats keeping it");
     expect(home.reply.refs.refinance).toBeUndefined();
     expect(home.reply.refs.advice).toBeUndefined();
   });

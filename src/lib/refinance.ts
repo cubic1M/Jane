@@ -1,4 +1,9 @@
-import { LENDER_PARTNER, REFI_CHECK_DAYS, type LoanProduct } from "@/config/debt";
+import {
+  LENDER_PARTNER,
+  REFI_CHECK_DAYS,
+  REFI_MIN_SAVING_CENTS,
+  type LoanProduct,
+} from "@/config/debt";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -34,9 +39,15 @@ export type TransferQuote = { debtKey: string; amountCents: number; offers: Tran
 // were checked (loans QA), so the offers page, the chat, Claude's tool and the proactive message
 // never pick a loan the fit engine would not, the same as the options card and "should I
 // consolidate?": a lender would likely turn the person down (their score, or debt payments over
-// the limit with the new loan), or a card their spare cash clears for less than any loan.
-// Only cards and personal loans are paid off from cash, never a mortgage, car or student loan.
-export type FitVerdict = { turnedDown: string | null; cashPayoffCents: number | null };
+// the limit with the new loan), or a debt their spare cash clears for less than any loan while
+// keeping their emergency cushion (one rule for cards, car and student loans alike).
+// pickLender: the lender of the fit engine's pick over the debt's own months, or null when it
+// picked none (keep what you have, or the above); the offers page names the same.
+export type FitVerdict = {
+  turnedDown: string | null;
+  cashPayoffCents: number | null;
+  pickLender?: string | null;
+};
 
 export type Quote = {
   debtKey: string;
@@ -90,8 +101,11 @@ export async function checkRates(
     const fit = await loadFit(userId, { need: "refinance", debtKey: q.debtKey }, { client, now });
     const payoff = fit.pick === "payoff" ? fit.options.find((o) => o.id === "payoff") : null;
     const anyLoan = fit.options.some((o) => o.id !== "keep" && o.id !== "payoff");
+    const picked = fit.options.find((o) => o.id === fit.pick);
     q.verdict = {
-      cashPayoffCents: payoff && q.product === "personal" ? (payoff.savesCents ?? 0) : null,
+      pickLender: picked && picked.id !== "keep" && picked.id !== "payoff" ? picked.lender : null,
+      // Any kind of debt, as the options card: the cash covers it and keeps the cushion.
+      cashPayoffCents: payoff ? (payoff.savesCents ?? 0) : null,
       turnedDown:
         fit.available && !anyLoan && !payoff && fit.ineligible.length > 0
           ? fit.ineligible[0].reason
@@ -134,7 +148,8 @@ export async function checkRates(
 // Offers kept before the fit engine's verdicts were stored: checked again, so no stale pick is
 // shown.
 const unjudged = (quotes: unknown) =>
-  Array.isArray(quotes) && quotes.some((q) => !(q as Quote).verdict);
+  Array.isArray(quotes) &&
+  quotes.some((q) => !(q as Quote).verdict || !("pickLender" in (q as Quote).verdict!));
 
 // Jane's monthly check, before her brain looks at the person's money: asks again once
 // REFI_CHECK_DAYS have passed. True when it asked.
@@ -178,13 +193,17 @@ export async function loadRefinance(
   const asOf = isoDay(now);
   const comparisons = quotes.flatMap((q) => {
     const debt = book.debts.find((d) => d.key === q.debtKey);
-    const comparison = debt && compareRefinance(debt, q.offers, asOf);
+    // The fit engine's pick when it was asked; offers kept before that pick here.
+    const pickLender =
+      q.verdict && "pickLender" in q.verdict ? (q.verdict.pickLender ?? null) : undefined;
+    const comparison = debt && compareRefinance(debt, q.offers, asOf, pickLender);
     if (!comparison || comparison.offers.length === 0) return [];
     const v = q.verdict;
-    if (comparison.pick && v?.cashPayoffCents) {
+    if (v?.cashPayoffCents) {
       return [{ ...comparison, pick: null, cashPayoffCents: v.cashPayoffCents }];
     }
-    if (comparison.pick && v?.turnedDown) {
+    // Only where an offer would otherwise be worth it: "the offers look cheaper, but...".
+    if (v?.turnedDown && comparison.offers.some((o) => o.savingCents >= REFI_MIN_SAVING_CENTS)) {
       return [{ ...comparison, pick: null, turnedDown: v.turnedDown }];
     }
     return [comparison];
