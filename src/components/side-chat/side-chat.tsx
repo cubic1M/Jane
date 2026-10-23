@@ -148,6 +148,8 @@ export function SideChat() {
       if (!isFrameMessage(event.data)) return;
       if (event.data.type === "jane:ready") {
         post(whereRef.current);
+        if (asking.current) post({ type: "jane:ask", text: asking.current });
+        asking.current = null;
         return;
       }
       if (event.data.type !== "jane:navigate") return;
@@ -158,6 +160,23 @@ export function SideChat() {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [router, wide]);
+
+  // "Ask Jane about this" (the feature map): the chat comes into view with the question in its
+  // message box, waiting for the framed chat if it isn't listening yet.
+  const asking = useRef<string | null>(null);
+  useEffect(() => {
+    const onAsk = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      if (loaded) post({ type: "jane:ask", text });
+      else asking.current = text;
+    };
+    window.addEventListener("jane:ask", onAsk);
+    return () => window.removeEventListener("jane:ask", onAsk);
+  }, [wide, loaded]);
 
   // Tell the framed chat where it is (docked, full or a sheet).
   useEffect(() => {

@@ -202,6 +202,38 @@ body {
   }
 }
 
+/* The feature map (src/components/feature-tree.tsx): the view zooms and pans with a spring,
+   edges draw themselves, and nodes pop in as a branch opens. Still for reduced motion. */
+.map-view {
+  transition: height 420ms var(--ease-spring);
+}
+.map-world {
+  transition: transform 450ms var(--ease-spring);
+}
+.map-edge {
+  stroke-dasharray: 1;
+  animation: hub-draw 500ms var(--ease-out-soft) both;
+}
+.map-pop {
+  animation: map-pop 280ms var(--ease-spring) both;
+}
+@keyframes map-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-view,
+  .map-world {
+    transition: none;
+  }
+  .map-edge,
+  .map-pop {
+    animation: none;
+  }
+}
+
 /* The chat inside the side panel (/chat?embed=1) has no footer of its own. */
 body:has([data-chat-embed]) > footer {
   display: none;
