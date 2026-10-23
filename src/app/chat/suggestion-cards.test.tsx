@@ -55,6 +55,47 @@ describe("reading a suggestion's body", () => {
   });
 });
 
+describe("a practice idea's card (Phase AW)", () => {
+  const idea = message(9, {
+    body: "Harvest a $412 loss in VTI, in practice\nWhy you: VTI is worth $4,100.00 against $4,512.00 paid; ITOT keeps the same mix.\n75% sure: The loss is there today.",
+    buttons: [{ id: "suggestion.yes", label: "Do it in practice", kind: "primary" }],
+    cardDetails: {
+      figures: [
+        { label: "Loss", value: "$412.00" },
+        { label: "Swapped into", value: "ITOT" },
+      ],
+      caps: ["At most 70% of the portfolio", "At most 2 swaps a month"],
+      whatYesDoes:
+        "Places it in your practice portfolio, within the caps. Practice money only: nothing real is bought or sold.",
+    },
+  });
+
+  it("shows the numbers, the caps, the confidence and what Yes really does under More details", () => {
+    const card = cardOf(idea);
+    expect(card.headline).toBe("Harvest a $412 loss in VTI, in practice");
+    expect(card.details.figures).toEqual([
+      { label: "Loss", value: "$412.00" },
+      { label: "Swapped into", value: "ITOT" },
+    ]);
+    expect(card.details.notes).toEqual([
+      "Cap: At most 70% of the portfolio",
+      "Cap: At most 2 swaps a month",
+      "Demo advice: sample data, not financial advice",
+    ]);
+    expect(card.details.confidence).toEqual({ percent: 75, reason: "The loss is there today" });
+    expect(card.details.whatYesDoes).toMatch(
+      /^Do it in practice\. Places it in your practice portfolio/,
+    );
+    expect(card.details.whatYesDoes).not.toMatch(/Nothing is bought or moved/);
+  });
+
+  it("leaves other suggestions' cards as they were", () => {
+    const card = cardOf(message(1));
+    expect(card.details.figures).toBeUndefined();
+    expect(card.details.whatYesDoes).toMatch(/Nothing is bought or moved/);
+  });
+});
+
 describe("the card", () => {
   it("is the headline, with the reasoning and what Yes does kept for More details", () => {
     const card = cardOf(message(1));

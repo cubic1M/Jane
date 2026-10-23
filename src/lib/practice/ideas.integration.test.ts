@@ -14,11 +14,12 @@ vi.mock("./opportunity-prefs", async (original) => {
 import {
   PRACTICE_SETTINGS_HREF,
   PRACTICE_TOPIC,
+  PRACTICE_YES_DOES,
   practiceIdeaId,
 } from "@/config/practice-suggestions";
 import { encrypt } from "@/lib/crypto";
 import { linkDemoBank } from "@/lib/plaid/demo";
-import { detectFor, scanSuggestions } from "@/lib/suggestions";
+import { detectFor, offeredToday, scanSuggestions } from "@/lib/suggestions";
 import { DEFAULT_SCAN_PREFERENCES } from "@/planning/practice-opportunities";
 import { runAutopilot, setPaused } from "./autopilot";
 import { practiceCards } from "./cards";
@@ -40,7 +41,7 @@ const at = (day: string, time = "21:30:00") => new Date(`${day}T${time}Z`);
 describe.runIf(url)("practice ideas as suggestions", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const person = async (bank: "demo" | "real" = "demo") => {
+  const person = async (bank: "demo" | "real" = "demo", level: 2 | 4 = 2) => {
     const user = await client.user.create({
       data: { email: `practice-ideas-${crypto.randomUUID()}@example.com` },
     });
@@ -56,8 +57,9 @@ describe.runIf(url)("practice ideas as suggestions", () => {
         },
       });
     }
-    // Low: the rule replay turned tax-loss swaps off from Medium up (OPPORTUNITY_RULES_OFF).
-    await startPractice(user.id, 2, { client, now: at("2026-09-01") });
+    // Low by default: the rule replay turned tax-loss swaps off from Medium up
+    // (OPPORTUNITY_RULES_OFF), and most ideas here are a harvest.
+    await startPractice(user.id, level, { client, now: at("2026-09-01") });
     await runAutopilot(user.id, { client, now: at("2026-09-01") });
     return user.id;
   };
@@ -93,6 +95,16 @@ describe.runIf(url)("practice ideas as suggestions", () => {
     expect(row).not.toBeNull();
     expect(row?.confidencePercent).toBe(harvest?.confidence.percent);
     expect(row?.why).toMatch(/The caps: /);
+    // Offered today, its card carries the numbers, the caps and what Yes does.
+    await client.suggestion.updateMany({
+      where: { id: row!.id },
+      data: { status: "selected", selectedOn: new Date("2026-10-15") },
+    });
+    const offered = await offeredToday(userId, { client, now: at("2026-10-15", "15:00:00") });
+    const card = offered.find((o) => o.key === row!.key)?.cardDetails;
+    expect(card?.figures.length).toBeGreaterThan(0);
+    expect(card?.caps.length).toBeGreaterThan(0);
+    expect(card?.whatYesDoes).toBe(PRACTICE_YES_DOES.trades);
     // A waiting idea is a suggestion, not one of the practice cards: it isn't shown twice.
     const waiting = await client.practiceOpportunity.findMany({
       where: { userId, status: "suggested" },
@@ -159,7 +171,8 @@ describe.runIf(url)("practice ideas as suggestions", () => {
   });
 
   it("opens the settings for an idea without trades, and does nothing while paused", async () => {
-    const userId = await person();
+    // High: a crash could take its mix past what "sell" can live with.
+    const userId = await person("demo", 4);
     await client.investorProfile.create({ data: { userId, dropReaction: "sell" } });
     await scanPractice(userId, { client, now: at("2026-10-14") });
     const ideas = await openPracticeIdeas(userId, { client, now: at("2026-10-15", "15:00:00") });

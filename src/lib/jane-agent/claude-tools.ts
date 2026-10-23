@@ -24,7 +24,9 @@ import { frequencyWords } from "@/lib/explain-input";
 import { FIGURE_IDS, type FigureId } from "@/config/figures";
 import { explainFigure } from "@/lib/figures";
 import { openBooks } from "@/lib/books";
+import { loadClose } from "@/lib/month-close";
 import { loadSteady } from "@/lib/steady-pay";
+import { loadPriceRises } from "@/lib/price-rises";
 import { loadMoneyForTwo } from "@/lib/money-for-two";
 import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import type { TradeOrder } from "@/planning/goal-tradeoffs";
@@ -358,6 +360,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "price_rises",
+    description:
+      "Price rises seen before they land (spec step 243): intro prices about to end (a new internet or phone bill whose price hasn't moved, about a year in) and yearly plans about to renew, within the next ten weeks, each with the date, the price now and the likely price after, the cheaper choice and what to say on the call, and how sure Jane is (the dates are estimates from the charges).",
+    input_schema: noInput,
+  },
+  {
     name: "explain_figure",
     description:
       'How a headline figure was worked out (spec step 239): the rows it adds up, the biggest transactions behind it, the rules and rates from config and the date, for safe_to_spend, monthly_spending, monthly_income, net_worth, health_score or debt_free. Use it for "how did you get that?". If the person says a figure is wrong, point them to the page (/figures/<figure>) where a category or their income can be corrected; the correction sticks and updates everything that used it.',
@@ -367,6 +375,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       required: ["figure"],
       additionalProperties: false,
     },
+  },
+  {
+    name: "month_close",
+    description:
+      "The monthly close (spec step 244): the latest month Jane closed (on the first of the next), or the one waiting on charges she wasn't sure of: what came in and went out, the top categories, net worth at the close, plan against actual, what worked, whether the books added up, and whether a correction changed it since. A closed month's figures only change when the person corrects something in it.",
+    input_schema: noInput,
   },
   {
     name: "books_check",
@@ -810,6 +824,22 @@ export async function runChatTool(
           : { score: null, why: "No accounts linked yet." },
       );
     }
+    case "price_rises": {
+      const rises = await loadPriceRises(userId, { client, now });
+      return out({
+        rises: rises.map((r) => ({
+          what: r.kind === "promo_end" ? "intro price ends" : "yearly plan renews",
+          name: r.name,
+          on: r.date,
+          daysLeft: r.daysLeft,
+          now: money(r.nowCents),
+          likelyAfter: money(r.thenCents),
+          cheaperChoice: r.cheaper,
+          callScript: r.script,
+          confidence: `${r.confidence.percent}% (${r.confidence.reason})`,
+        })),
+      });
+    }
     case "explain_figure": {
       const figure = (input as { figure?: unknown }).figure;
       if (typeof figure !== "string" || !(FIGURE_IDS as readonly string[]).includes(figure)) {
@@ -832,6 +862,31 @@ export async function runChatTool(
         rulesUsed: working.rules,
         canBeCorrected: working.corrections,
         page: `/figures/${working.id}`,
+      });
+    }
+    case "month_close": {
+      const view = await loadClose(userId, { client });
+      if (!view) return out({ view: null, why: "No month closed yet." });
+      const f = view.figures;
+      return out({
+        month: view.month,
+        status: view.status,
+        cameIn: money(f.incomeCents),
+        wentOut: money(f.spendingCents),
+        topCategories: f.topCategories.map((c) => ({
+          category: c.category,
+          amount: money(c.cents),
+        })),
+        netWorthAtClose: f.netWorthCents === null ? null : money(f.netWorthCents),
+        booksProblems: f.booksOpen,
+        plan: f.plan,
+        worked: f.worked,
+        waitingOn: view.uncertain.map((t) => ({
+          what: t.description,
+          on: t.date,
+          amount: money(t.amountCents),
+        })),
+        correctedSinceClose: view.correctedAt !== null,
       });
     }
     case "books_check": {

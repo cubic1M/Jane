@@ -108,6 +108,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 243: an intro price ending, a yearly plan renewing.
+  "promo_ending",
   // Spec step 239: a headline figure resting on something only the person knows.
   "figure_check",
   // Phase AP (spec steps 238–244): Jane runs the money.
@@ -131,6 +133,8 @@ export const SUGGESTION_TOPICS = [
   "draft_return_check",
   // Spec step 241: goals that can't all be on time.
   "goal_tradeoffs",
+  // Spec step 244: charges to confirm before last month can close.
+  "month_close",
   // Phase AW: the practice portfolio's ideas, one topic per kind (src/config/practice-suggestions.ts).
   "practice_dip_buy",
   "practice_tax_loss_harvest",
@@ -359,6 +363,8 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
       "practice_portfolio",
       "borrowing_power",
+      // Spec step 244: WeWork and Adobe sit in a catch-all category.
+      "month_close",
     ],
     mustNot: [
       "beneficiaries",
@@ -423,6 +429,8 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
 
       "deductible_fit",
+      // Spec step 243: her fibre intro price ends and her storage plan renews.
+      "promo_ending",
       "hsa_over_limit",
     ],
     mustNot: [

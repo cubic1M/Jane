@@ -5,10 +5,12 @@ import {
   PRACTICE_IDEA_DAYS,
   PRACTICE_SETTINGS_HREF,
   PRACTICE_TOPIC,
+  PRACTICE_YES_DOES,
 } from "@/config/practice-suggestions";
 import { SCAN_LABELS, type ScanKind } from "@/config/practice-scan";
 import type { WorthKind } from "@/detectors/contract";
 import type { PrismaClient } from "@/generated/prisma/client";
+import type { CardExtras } from "@/lib/jane-agent/types";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -73,6 +75,43 @@ export async function openPracticeIdeas(
       },
     ];
   });
+}
+
+// For the floating cards: each practice idea's numbers, caps and what its Yes does, by
+// suggestion key. Keys that aren't practice ideas are left out.
+export async function practiceCardDetails(
+  userId: string,
+  suggestionKeys: readonly string[],
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<Map<string, CardExtras>> {
+  const wanted = suggestionKeys.flatMap((key) => {
+    const parsed = parsePracticeIdeaId(key);
+    return parsed ? [{ key, opportunityKey: parsed.opportunityKey }] : [];
+  });
+  if (wanted.length === 0) return new Map();
+  const rows = await scopedFor(userId, client).practiceOpportunities.findMany({
+    where: { key: { in: wanted.map((w) => w.opportunityKey) } },
+    select: { key: true, kind: true, details: true },
+  });
+  const byKey = new Map(rows.map((r) => [r.key, r]));
+  const out = new Map<string, CardExtras>();
+  for (const w of wanted) {
+    const row = byKey.get(w.opportunityKey);
+    if (!row) continue;
+    const d = row.details as StoredDetails;
+    const trades = d.trades?.length ?? 0;
+    out.set(w.key, {
+      figures: d.figures ?? [],
+      caps: d.caps ?? [],
+      whatYesDoes:
+        trades > 0
+          ? PRACTICE_YES_DOES.trades
+          : row.kind === "drift_warning"
+            ? PRACTICE_YES_DOES.look
+            : PRACTICE_YES_DOES.settings,
+    });
+  }
+  return out;
 }
 
 export type IdeaAnswer = { note: string; href: string };

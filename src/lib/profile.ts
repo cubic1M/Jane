@@ -250,6 +250,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     draft,
     goals,
     plan,
+    lastClose,
   ] = await Promise.all([
     loadMatchPace(userId, { client, now }),
     hasStock
@@ -272,6 +273,11 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
     import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
+    // Spec step 244: last month's close, if it's begun.
+    db.monthCloses.findFirst({
+      where: { month: previousMonthOf(now) },
+      select: { status: true },
+    }),
   ]);
   const month = now.toISOString().slice(0, 7);
   const planMonths = Array.isArray(plan?.months)
@@ -283,6 +289,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    lastCloseStatus: (lastClose?.status === "closed" || lastClose?.status === "waiting"
+      ? lastClose.status
+      : null) as "closed" | "waiting" | null,
     books: books.open.map((o) => ({ kind: o.kind, words: o.words, accountId: o.accountId })),
     // What they own by its value (a home, a car), for the net worth an umbrella protects.
     ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
@@ -339,6 +348,8 @@ async function hsaContributionsOf(db: ReturnType<typeof scopedFor>, now: Date) {
   });
   return { cents: rows.reduce((s, r) => s + Math.abs(r.amountCents), 0), count: rows.length };
 }
+const previousMonthOf = (now: Date) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
 
 export async function loadProfile(userId: string, options: Options = {}): Promise<Profile> {
   return buildProfile(await loadProfileInput(userId, options));

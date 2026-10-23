@@ -4,8 +4,11 @@ import type { FindingType } from "@/generated/prisma/client";
 import type { Reply } from "./replies";
 
 // What Jane offers to do about a change, and says she did, for each finding a change can
-// lead to (src/lib/changes.ts).
-export const CHANGE_ASK: Partial<Record<FindingType, { offer: string; did: string }>> = {
+// lead to (src/lib/changes.ts). `yes` names the button that says yes, when "Look into it"
+// would undersell it.
+export const CHANGE_ASK: Partial<
+  Record<FindingType, { offer: string; did: string; yes?: string }>
+> = {
   price_increase: {
     offer: "Want me to ask them for your old price?",
     did: "I've already asked them for your old price.",
@@ -19,6 +22,12 @@ export const CHANGE_ASK: Partial<Record<FindingType, { offer: string; did: strin
     did: "I'm working on getting it lowered.",
   },
   bank_fees: { offer: "Want me to ask for it back?", did: "I've already asked for it back." },
+  // A new subscription and its subscription card, said once (docs/feature-audit.md, cluster 10).
+  subscription_review: {
+    offer: "Did you mean to sign up? If not, I can cancel it.",
+    did: "I'm cancelling it.",
+    yes: "Cancel it",
+  },
 };
 
 // A change in a line, with what Jane already did about it.
