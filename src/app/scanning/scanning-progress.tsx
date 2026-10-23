@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ScanProgress } from "@/lib/scan";
-import { monthsLabel, percentFor, STAGES, stagesDone } from "./stages";
+import { monthsLabel, percentFor, slowLink, STAGES, stagesDone } from "./stages";
 
 // The first scan as named steps and a bar that only moves forward, driven by what has
 // really finished (GET /api/detection/status). The chat opens as soon as the accounts and
@@ -125,10 +125,10 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ch
       {slow && !opens && (
         <p className="text-zinc-600 dark:text-zinc-400">
           This is taking longer than usual.{" "}
-          <Link href="/report" className="font-medium text-emerald-700 hover:underline">
-            See your report
+          <Link href={slowLink(next).href} className="font-medium text-emerald-700 hover:underline">
+            {slowLink(next).label}
           </Link>{" "}
-          and savings will appear as soon as they&apos;re ready.
+          {slowLink(next).after}
         </p>
       )}
     </div>
