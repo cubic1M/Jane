@@ -28,7 +28,8 @@ import { strategyToday } from "@/lib/investments/strategy-today";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export type ChangeSource = "page" | "chat";
+// "sample": a sample person's settings, saved as their portfolio starts (./demo-start.ts).
+export type ChangeSource = "page" | "chat" | "sample";
 
 const SELECT = {
   riskLevel: true,

@@ -25,7 +25,6 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "insurance_shopping",
     "liability_levels",
     "low_balance",
-    "practice_portfolio",
     "price_increase",
     "rent_reporting",
     "renters_insurance",
@@ -33,6 +32,9 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "trial_conversion",
     // Detector coverage: sample data added.
     "rent_increase",
+    // Phase AW: the ideas their auto-started practice portfolio has waiting.
+    "practice_payday_timing",
+    "practice_risk_mismatch",
   ],
   family: [
     "beneficiaries",
@@ -64,11 +66,16 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "medical_bills",
     "plan_menu",
     "pmi_removal",
-    "practice_portfolio",
     "property_tax_check",
     "rebalance",
     "student_forgiveness",
     "subscriptions",
+    // Phase AW: the ideas their auto-started practice portfolio has waiting.
+    "practice_dip_buy",
+    "practice_tax_loss_harvest",
+    "practice_new_money",
+    "practice_cash_drag",
+    "practice_drift_warning",
   ],
   freelancer: [
     "auto_insurance",
@@ -82,7 +89,6 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "home_office_deduction",
     "income_smoothing",
     "rent_reporting",
-    "practice_portfolio",
     "ptc_repayment",
     "month_close",
     "renters_insurance",
@@ -90,6 +96,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "student_repayment",
     "subscriptions",
     "vehicle_deduction",
+    // Phase AW: the ideas their auto-started practice portfolio has waiting.
+    "practice_news_idea",
   ],
   equity: [
     "asset_location",
@@ -151,6 +159,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "umbrella",
     // Detector coverage: sample data added.
     "cosign_risk",
+    // Phase AW: the ideas their auto-started practice portfolio has waiting.
+    "practice_glide_path",
   ],
   retiree: [
     "bill_negotiation",
@@ -173,6 +183,10 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "umbrella",
     // Detector coverage: sample data added.
     "inherited_ira",
+    // Phase AW: the ideas their auto-started practice portfolio has waiting.
+    "practice_dip_buy",
+    "practice_tax_loss_harvest",
+    "practice_cash_drag",
   ],
   debt: [
     "auto_refinance",
@@ -192,6 +206,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "low_balance",
     "rent_reporting",
     "subscriptions",
+    // Phase AW: the ideas their auto-started practice portfolio has waiting.
+    "practice_max_drop_near",
   ],
   owner: [
     "bill_negotiation",
@@ -205,11 +221,13 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "estimated_taxes",
     "figure_check",
     "health_insurance",
-    "practice_portfolio",
     "rent_reporting",
     "renters_insurance",
     "retirement_self_employed",
     "s_corp_election",
     "vehicle_deduction",
+    // Phase AW: the ideas their auto-started practice portfolio has waiting.
+    "practice_news_idea",
+    "practice_cheaper_fund",
   ],
 };

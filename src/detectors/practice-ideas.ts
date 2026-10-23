@@ -26,7 +26,8 @@ export function practiceWhy(idea: PracticeIdea): string {
   return [
     end(idea.short),
     `The rule: ${idea.label.toLowerCase()}.`,
-    `The numbers: ${idea.figures.map((f) => `${f.label} ${f.value}`).join("; ")}.`,
+    // A source's review note is for the team, not the person.
+    `The numbers: ${idea.figures.map((f) => `${f.label} ${f.value.replace(/;?\s*FOR REVIEW\.?/g, "")}`).join("; ")}.`,
     `The caps: ${idea.caps.join("; ")}.`,
     "Practice money only: nothing real is bought or sold.",
   ].join(" ");
