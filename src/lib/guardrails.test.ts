@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { APPROVED_DEBT_SENTENCES, COUNSEL_POINTER, DEBT_FACTS } from "@/config/debt-trouble";
+import { FEDERAL_ESTATE_FACT, STATE_DEATH_TAXES } from "@/config/inheritance";
 import {
   checkGuardrails,
   dollarFigures,
@@ -220,6 +221,9 @@ describe("the demo advice profile", () => {
       "Inherited stocks get a new cost basis: their value on the day the owner died.",
       "A gift over the annual exclusion takes a gift tax return (Form 709).",
       "An estate lawyer can say what applies to a particular family.",
+      // Answer-check sweep: the reviewed estate tax fact was refused for naming the estate tax.
+      FEDERAL_ESTATE_FACT,
+      ...Object.values(STATE_DEATH_TAXES),
     ])
       expect(demoIssues(text), text).toEqual([]);
   });

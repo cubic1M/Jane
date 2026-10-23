@@ -1,5 +1,9 @@
 import { PREMIUM_FREQUENCIES, type PremiumFrequency } from "@/config/documents";
-import { NEGOTIATE_MIN_RISE, NEGOTIATIONS_DAILY_LIMIT } from "@/config/insurance";
+import {
+  NEGOTIATE_HISTORY_DAYS,
+  NEGOTIATE_MIN_RISE,
+  NEGOTIATIONS_DAILY_LIMIT,
+} from "@/config/insurance";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
@@ -11,7 +15,7 @@ import { isQuotable, partnerFor, type InsurancePartner } from "./partner";
 import { listPolicies, yearlyPremium, type Policy } from "./policies";
 import { quotesFor } from "./quotes";
 import { listReadings } from "./readings";
-import { higherCharge, shopPolicy } from "./shop";
+import { higherCharge, policyCharges, shopPolicy } from "./shop";
 
 // Renewal negotiation (spec step 155). Before a renewal with a price rise (a renewal notice
 // Jane read, or a higher charge from the insurer), Jane asks the carrier for a better rate
@@ -70,7 +74,7 @@ export async function renewalRise(
   userId: string,
   policy: Policy,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ key: string; renewalAnnualCents: number } | null> {
+): Promise<{ key: string; renewalAnnualCents: number; fromAnnualCents?: number } | null> {
   const current = yearlyPremium(policy);
   if (current === null) return null;
   const notice = (await listReadings(userId, { client, status: "waiting" })).find(
@@ -97,8 +101,32 @@ export async function renewalRise(
       };
     }
   }
-  return rise && rise.renewalAnnualCents >= current * (1 + NEGOTIATE_MIN_RISE) ? rise : null;
+  if (rise) return rise.renewalAnnualCents >= current * (1 + NEGOTIATE_MIN_RISE) ? rise : null;
+  // A policy found from its payments already holds the new price: the rise is its latest charge
+  // against the ones before, as the suggestion to ask for a better rate reads it (gap audit).
+  if (policy.premiumFrequency && policy.premiumCents !== null) {
+    const [latest, ...earlier] = await policyCharges(userId, policy, {
+      client,
+      now,
+      days: NEGOTIATE_HISTORY_DAYS,
+    });
+    const before = median(earlier);
+    if (latest !== undefined && before > 0 && latest >= before * (1 + NEGOTIATE_MIN_RISE)) {
+      const perYear = PREMIUM_FREQUENCIES[policy.premiumFrequency].perYear;
+      return {
+        key: `charge:${policy.id}:${latest}`,
+        renewalAnnualCents: latest * perYear,
+        fromAnnualCents: before * perYear,
+      };
+    }
+  }
+  return null;
 }
+
+const median = (values: number[]) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+};
 
 export async function listNegotiations(
   userId: string,
@@ -146,7 +174,7 @@ export async function negotiationsDue(
         userId,
         policyId: policy.id,
         key: rise.key,
-        currentAnnualCents: yearlyPremium(policy)!,
+        currentAnnualCents: rise.fromAnnualCents ?? yearlyPremium(policy)!,
         renewalAnnualCents: rise.renewalAnnualCents,
         competingAnnualCents: same[0]?.annualPremiumCents ?? null,
         createdAt: now,

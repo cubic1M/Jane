@@ -43,6 +43,13 @@ export const GIFT_SPLIT_FACTOR = 2;
 export const ESTATE_EXCLUSION_CENTS = 1_500_000_000;
 export const ESTATE_SOURCE = "IRS: Estate tax, the basic exclusion amount for 2026";
 
+// The estate facts Jane says, word for word (planning/inheritance.ts estateFacts). The federal
+// line names the estate tax, which the legal guardrail blocks as advice in any other sentence,
+// so these exact sentences pass it (APPROVED_ESTATE_SENTENCES, src/lib/guardrails.ts).
+export const FEDERAL_ESTATE_FACT = `The federal estate tax only applies to estates over ${Math.round(ESTATE_EXCLUSION_CENTS / 100_000_000)} million dollars per person (more for a couple); most families owe none.`;
+export const ESTATE_LAWYER_POINTER =
+  "An estate lawyer can say what applies to a particular family.";
+
 // States with their own estate or inheritance tax, with the lowest threshold (an estate over
 // it is taxed) or who pays; rough, ESTIMATE TO VERIFY with the state.
 export const STATE_DEATH_TAXES: Readonly<Record<string, string>> = {
@@ -58,3 +65,9 @@ export const STATE_DEATH_TAXES: Readonly<Record<string, string>> = {
   KY: "Kentucky has an inheritance tax on heirs who aren't close family.",
   NE: "Nebraska has an inheritance tax, with the county collecting it.",
 };
+
+export const APPROVED_ESTATE_SENTENCES: readonly string[] = [
+  FEDERAL_ESTATE_FACT,
+  ...Object.values(STATE_DEATH_TAXES),
+  ESTATE_LAWYER_POINTER,
+];
