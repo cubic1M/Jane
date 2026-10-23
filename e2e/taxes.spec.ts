@@ -245,3 +245,31 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   await expect(family.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   expect(await axe(page)).toEqual([]);
 });
+
+test("retirement income, inherited money and disasters each have a page from /taxes", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  // Spec steps 271, 268 and 270: each reached from /taxes, with the chat's own lines.
+  for (const [link, heading, section] of [
+    ["See my retirement taxes", "Taxes on retirement income", /^Social Security: /],
+    ["See inherited money and gifts", "Inherited money and gifts", /new cost basis/],
+    ["See disaster relief", "Disasters and losses", /county|County/],
+  ] as const) {
+    await page.goto("/taxes");
+    await page.getByRole("link", { name: link }).click();
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    await expect(page.getByText(section).first()).toBeVisible();
+    expect(await axe(page)).toEqual([]);
+  }
+});

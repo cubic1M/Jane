@@ -147,7 +147,11 @@ const findRelief = (view: DisasterView, reliefId: string) => {
 export async function applyRelief(
   userId: string,
   reliefId: string,
-  { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "autopilot" },
+  {
+    client = defaultClient,
+    now = new Date(),
+    via,
+  }: Options & { via: "chat" | "page" | "autopilot" },
 ): Promise<Move[]> {
   const view = await loadDisasterRelief(userId, { client, now });
   const r = findRelief(view, reliefId);

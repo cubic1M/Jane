@@ -81,7 +81,7 @@ describe("strategyToday", () => {
     const empty = fakeClient(false);
     expect(await strategyToday(2, { client: empty.client, now })).toMatchObject({
       follow: false,
-      why: "No stored closes for the strategy's funds yet.",
+      why: "Jane doesn't have enough recent prices for this strategy's funds yet, so the portfolio keeps the level's mix until the daily price load has them.",
     });
   });
 });

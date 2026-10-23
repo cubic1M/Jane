@@ -3,11 +3,13 @@ import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { PracticeIdeasSection } from "@/components/practice-ideas";
 import { RISK_LEVELS } from "@/config/investing";
 import { MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/portfolios";
 import { adviceMode } from "@/lib/advice-mode";
 import { formatCents } from "@/lib/money";
 import { tradeLog } from "@/lib/practice/autopilot";
+import { practiceIdeasView } from "@/lib/practice/ideas-view";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
@@ -29,6 +31,11 @@ const MESSAGES: Record<string, string> = {
   nothing: "There's nothing to undo.",
   exists: "You already have a practice portfolio.",
   level: "Pick a level first.",
+  idea_done: "Done in your practice portfolio: it's in the log below.",
+  idea_held: "A cap stopped it, so nothing was done.",
+  idea_paused: "Your practice portfolio is paused, so nothing was done.",
+  idea_no: "OK, put away. Jane brings that kind of idea a little later now.",
+  idea_gone: "That idea has already moved on.",
 };
 const when = (d: Date) =>
   d.toLocaleString("en-US", {
@@ -53,7 +60,9 @@ async function Content({
   // Constant search (Phase AW): a cheap scan, after the page is sent; demo advice only.
   if (advice) after(() => scanOnOpenQuietly(user.id));
   const practice = advice ? await loadPractice(user.id) : null;
-  const log = practice ? await tradeLog(user.id) : [];
+  const [log, ideas] = practice
+    ? await Promise.all([tradeLog(user.id), practiceIdeasView(user.id)])
+    : [[], null];
   return (
     <>
       <AppHeader user={user} />
@@ -174,6 +183,7 @@ async function Content({
             </Link>
             <DemoAdviceLabel />
           </section>
+          {ideas && <PracticeIdeasSection view={ideas} />}
           <section className="flex flex-col gap-2">
             <h2 className="text-xl font-semibold">Everything Jane did</h2>
             <table className="w-full text-sm">

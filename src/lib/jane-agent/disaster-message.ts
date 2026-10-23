@@ -56,6 +56,16 @@ export function reliefMessage(v: DisasterView, r: ReliefView): Message {
   };
 }
 
+// One relief's lines, shared with /taxes/disasters so the page and the chat say the same.
+export function reliefLines(r: ReliefView): string[] {
+  return [
+    `${r.relief.title.replace(/ \(sample declaration\)$/, "")} from ${day(r.relief.incidentFrom)}: federal tax deadlines from then move to ${day(r.relief.postponedTo)}${r.computed.length ? ` (${r.computed.map((m) => `${m.title}, ${day(m.from)}`).join("; ")})` : ""}.${r.applied ? " I've moved the ones on your list." : r.moves.length ? ` ${r.moves.length} on your list can move.` : ""}`,
+    lossLine(r) + (r.recorded ? " It's recorded with your insurance claim, once." : "") + sample(r),
+  ];
+}
+
+const disasterLines = (v: DisasterView) => v.relief.flatMap(reliefLines);
+
 export function disasterReply(v: DisasterView): Message {
   if (!v.feed)
     return {
@@ -75,10 +85,7 @@ export function disasterReply(v: DisasterView): Message {
       refs: {},
       actions: [],
     };
-  const lines = v.relief.flatMap((r) => [
-    `${r.relief.title.replace(/ \(sample declaration\)$/, "")} from ${day(r.relief.incidentFrom)}: federal tax deadlines from then move to ${day(r.relief.postponedTo)}${r.computed.length ? ` (${r.computed.map((m) => `${m.title}, ${day(m.from)}`).join("; ")})` : ""}.${r.applied ? " I've moved the ones on your list." : r.moves.length ? ` ${r.moves.length} on your list can move.` : ""}`,
-    lossLine(r) + (r.recorded ? " It's recorded with your insurance claim, once." : "") + sample(r),
-  ]);
+  const lines = disasterLines(v);
   const first = v.relief[0];
   const actions: MessageAction[] = [];
   if (!first.applied && first.moves.length > 0)

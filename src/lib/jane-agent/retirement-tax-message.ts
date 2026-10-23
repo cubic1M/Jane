@@ -51,7 +51,8 @@ export function irmaaMessage(v: RetirementTaxView): Message | null {
   };
 }
 
-export function retirementReply(v: RetirementTaxView): Message {
+// The answer's lines, shared with /taxes/retirement so the page and the chat say the same.
+export function retirementLines(v: RetirementTaxView): { lines: string[]; tuned: boolean } {
   const lines: string[] = [];
   lines.push(
     v.ssBenefitsCents > 0
@@ -78,6 +79,11 @@ export function retirementReply(v: RetirementTaxView): Message {
         : "The order to draw: taxable accounts, then pre-tax, then Roth.",
     );
   }
+  return { lines, tuned };
+}
+
+export function retirementReply(v: RetirementTaxView): Message {
+  const { lines, tuned } = retirementLines(v);
   return {
     body: `Here is how your retirement income is taxed.\n${lines.map((l) => `• ${l}`).join("\n")}`,
     // Demo advice only when the tuned order (a recommendation) is in the answer.
