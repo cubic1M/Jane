@@ -121,7 +121,7 @@ describe.runIf(url)("guided flows against a real database", () => {
       orderBy: { createdAt: "desc" },
     });
     expect((decision.options as { switchTo?: string }).switchTo).toBeTruthy();
-  });
+  }, 60_000); // Several chat rounds against a real database: slow on CI runners.
 
   it("disputes a charge: asking for the money back, as the finding's own Yes", async () => {
     const first = await say("dispute a charge");
