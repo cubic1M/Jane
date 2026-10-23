@@ -30,12 +30,22 @@ const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export type TransferQuote = { debtKey: string; amountCents: number; offers: TransferOffer[] };
 
+// What the fit engine (src/planning/fit.ts) said about refinancing this debt when the offers
+// were checked (loans QA), so the offers page, the chat, Claude's tool and the proactive message
+// never pick a loan the fit engine would not, the same as the options card and "should I
+// consolidate?": a lender would likely turn the person down (their score, or debt payments over
+// the limit with the new loan), or a card their spare cash clears for less than any loan.
+// Only cards and personal loans are paid off from cash, never a mortgage, car or student loan.
+export type FitVerdict = { turnedDown: string | null; cashPayoffCents: number | null };
+
 export type Quote = {
   debtKey: string;
   product: LoanProduct;
   termMonths: number;
   amountCents: number;
   offers: LoanOffer[];
+  // Absent on offers checked before the fit engine was asked (they're checked again).
+  verdict?: FitVerdict;
 };
 
 // The partner for this person, or null: the stand-in only for demo-bank people in demo
@@ -74,6 +84,20 @@ export async function checkRates(
     };
     quotes.push({ debtKey: debt.key, ...request, offers: await found.partner.prequalify(request) });
   }
+  // The fit engine's verdict on each (imported here: src/lib/fit.ts reads this file's partner).
+  const { loadFit } = await import("@/lib/fit");
+  for (const q of quotes) {
+    const fit = await loadFit(userId, { need: "refinance", debtKey: q.debtKey }, { client, now });
+    const payoff = fit.pick === "payoff" ? fit.options.find((o) => o.id === "payoff") : null;
+    const anyLoan = fit.options.some((o) => o.id !== "keep" && o.id !== "payoff");
+    q.verdict = {
+      cashPayoffCents: payoff && q.product === "personal" ? (payoff.savesCents ?? 0) : null,
+      turnedDown:
+        fit.available && !anyLoan && !payoff && fit.ineligible.length > 0
+          ? fit.ineligible[0].reason
+          : null,
+    };
+  }
   // Spec step 113: 0% balance transfer cards for each card with a balance.
   const transfers: TransferQuote[] = [];
   for (const debt of book.debts) {
@@ -107,6 +131,11 @@ export async function checkRates(
   return quotes;
 }
 
+// Offers kept before the fit engine's verdicts were stored: checked again, so no stale pick is
+// shown.
+const unjudged = (quotes: unknown) =>
+  Array.isArray(quotes) && quotes.some((q) => !(q as Quote).verdict);
+
 // Jane's monthly check, before her brain looks at the person's money: asks again once
 // REFI_CHECK_DAYS have passed. True when it asked.
 export async function refreshRefinance(
@@ -114,9 +143,14 @@ export async function refreshRefinance(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<boolean> {
   const row = await scopedFor(userId, client).refinanceChecks.findFirst({
-    select: { checkedOn: true },
+    select: { checkedOn: true, quotes: true },
   });
-  if (row && now.getTime() - row.checkedOn.getTime() < REFI_CHECK_DAYS * DAY_MS) return false;
+  if (
+    row &&
+    !unjudged(row.quotes) &&
+    now.getTime() - row.checkedOn.getTime() < REFI_CHECK_DAYS * DAY_MS
+  )
+    return false;
   return (await checkRates(userId, { client, now })) !== null;
 }
 
@@ -145,7 +179,15 @@ export async function loadRefinance(
   const comparisons = quotes.flatMap((q) => {
     const debt = book.debts.find((d) => d.key === q.debtKey);
     const comparison = debt && compareRefinance(debt, q.offers, asOf);
-    return comparison && comparison.offers.length > 0 ? [comparison] : [];
+    if (!comparison || comparison.offers.length === 0) return [];
+    const v = q.verdict;
+    if (comparison.pick && v?.cashPayoffCents) {
+      return [{ ...comparison, pick: null, cashPayoffCents: v.cashPayoffCents }];
+    }
+    if (comparison.pick && v?.turnedDown) {
+      return [{ ...comparison, pick: null, turnedDown: v.turnedDown }];
+    }
+    return [comparison];
   });
   return {
     available: true,
@@ -162,7 +204,9 @@ export async function ensureChecked(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<boolean> {
-  const row = await scopedFor(userId, client).refinanceChecks.findFirst({ select: { id: true } });
-  if (row) return false;
+  const row = await scopedFor(userId, client).refinanceChecks.findFirst({
+    select: { quotes: true },
+  });
+  if (row && !unjudged(row.quotes)) return false;
   return (await checkRates(userId, { client, now })) !== null;
 }
