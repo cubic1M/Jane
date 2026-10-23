@@ -43,9 +43,13 @@ async function fetchBars(): Promise<BarsFile> {
   const feed = process.env.RESEARCH_FEED ?? process.env.ALPACA_DATA_FEED ?? "iex";
   const alpaca = new AlpacaMarketData({ id, secret }, undefined, undefined, feed);
   const from = process.env.RESEARCH_FROM ?? "2016-01-01";
-  const to = new Date().toISOString().slice(0, 10);
+  // To yesterday: the free plan's SIP feed refuses the latest 15 minutes.
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const bars: Record<string, Bar[]> = {};
-  for (const t of tickers) bars[t] = await alpaca.prices(t, from, to);
+  for (const t of tickers) {
+    bars[t] = await alpaca.prices(t, from, to);
+    if (bars[t].length === 0) throw new Error(`Alpaca (${feed}) gave no bars for ${t}.`);
+  }
   return { source: `alpaca (${feed})`, fetchedAt: new Date().toISOString(), bars };
 }
 
