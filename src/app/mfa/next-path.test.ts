@@ -9,7 +9,7 @@ describe("safeNext", () => {
 
   it("never sends anyone to another site", () => {
     for (const bad of ["//evil.example", "https://evil.example", "/\\evil.example", "evil", null]) {
-      expect(safeNext(bad, "user")).toBe("/chat");
+      expect(safeNext(bad, "user")).toBe("/home");
       expect(safeNext(bad, "admin")).toBe("/admin/queue");
     }
   });

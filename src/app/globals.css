@@ -68,6 +68,9 @@ body {
   body:has(#app-top-bar) {
     padding-top: 3.5rem;
     padding-right: 380px;
+  }
+  /* Animated only once the panel has taken over, so the first paint never slides. */
+  html[data-side-chat] body:has(#app-top-bar) {
     transition: padding-right 260ms var(--ease-out-soft);
   }
   html[data-side-chat="rail"] body:has(#app-top-bar) {
@@ -141,13 +144,61 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body:has(#app-top-bar),
+  html[data-side-chat] body:has(#app-top-bar),
   .side-chat,
   .side-chat-sheet,
   .side-chat-sheet[data-sheet="half"],
   .side-chat-sheet[data-sheet="full"],
   .side-chat-scrim {
     transition: none;
+  }
+}
+
+/* The hub's charts (src/components/hub): bars rise, runs grow, the line draws itself and tiles
+   pop in, once, as the page arrives. Still for reduced motion. */
+.hub-grow {
+  transform-origin: left;
+  animation: hub-grow 420ms var(--ease-out-soft) both;
+}
+.hub-rise {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: hub-rise 380ms var(--ease-spring) both;
+}
+.hub-draw {
+  stroke-dasharray: 1;
+  animation: hub-draw 800ms var(--ease-out-soft) both;
+}
+.hub-pop {
+  animation: hub-pop 260ms var(--ease-spring) both;
+}
+@keyframes hub-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes hub-rise {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes hub-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes hub-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-grow,
+  .hub-rise,
+  .hub-draw,
+  .hub-pop {
+    animation: none;
   }
 }
 

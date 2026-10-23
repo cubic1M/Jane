@@ -125,9 +125,11 @@ export function SideChat() {
   }, []);
 
   // The room beside the page (src/app/globals.css) follows the panel.
+  // Until someone is known to be signed in, the CSS default (docked) stands.
   useEffect(() => {
+    if (!userId) return;
     document.documentElement.dataset.sideChat = shows ? panel : "none";
-  }, [shows, panel]);
+  }, [userId, shows, panel]);
 
   // The framed chat asks the page to open a link: in the main window, not the panel.
   useEffect(() => {
