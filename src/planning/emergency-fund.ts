@@ -59,3 +59,13 @@ export function emergencyTarget(input: {
     name: "Emergency fund",
   };
 }
+
+// How a fund was sized, in words, for the drafted goal, the plan and the cash page:
+// "6 months of your own average spending".
+export function fundBasis(target: EmergencyTarget): string {
+  if (target.kind === "starter") return "a starter buffer while paying off debt comes first";
+  if (target.kind === "gap") {
+    return `${target.months} months of the gap between your spending and your income`;
+  }
+  return `${target.months} months of your own average spending`;
+}
