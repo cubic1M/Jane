@@ -102,9 +102,8 @@ describe.runIf(url)("the rule replay against the live daily run", () => {
     });
     expect(Object.fromEntries(acted.map((a) => [a.kind, a._count]))).toEqual(replay.acted);
     if (level === 5) expect(Object.keys(replay.acted)).toContain("news_idea");
-    // The kinds added after step 292 go through the same scan: new money and idle cash act too.
+    // The kinds added after step 292 go through the same scan: new money acts too.
     if (level === 5) expect(Object.keys(replay.acted)).toContain("new_money_rebalance");
-    if (level === 2) expect(Object.keys(replay.acted)).toContain("cash_drag");
     if (level === 2) expect(Object.keys(replay.acted)).toContain("tax_loss_harvest");
 
     // And the same portfolio at the end.

@@ -156,4 +156,28 @@ describe.runIf(url)("home summary against a real database", () => {
         (safe?.goalsCents ?? 0),
     );
   });
+
+  it("counts goals only up to what the year plan has room to save this month (books QA)", async () => {
+    // A kept plan for October with $60.00 of room after dated payments and extra debt.
+    const targets = {
+      saving: 0,
+      debt: 2_000,
+      investing: 0,
+      insurance: 1_000,
+      taxes: 0,
+      deadlines: 1_000,
+    };
+    const plan = await client.yearPlan.create({
+      data: {
+        userId,
+        startMonth: "2026-10",
+        months: [{ month: "2026-10", marginCents: 10_000, targets, actual: null, trimmed: true }],
+      },
+    });
+    const home = await homeSummary(userId, { client, now: NOW });
+    // The Trip goal wants $100.00 this month; the plan has room for $60.00.
+    expect(home?.safeToSpend?.goalsCents).toBe(6_000);
+    await client.yearPlan.delete({ where: { id: plan.id } });
+    expect((await homeSummary(userId, { client, now: NOW }))?.safeToSpend?.goalsCents).toBe(10_000);
+  });
 });

@@ -135,6 +135,8 @@ export type ProfileInput = {
       monthlyCents: number;
     }[];
     goalRoomCents?: number | null;
+    // Last month's close (spec step 244): closed, waiting or none yet. Absent: not loaded.
+    lastCloseStatus?: "closed" | "waiting" | null;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

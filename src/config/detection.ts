@@ -429,6 +429,12 @@ export const RENEWAL_ALERT_DAYS = 7;
 export const RENEWAL_FREQUENCIES: readonly Frequency[] = ["QUARTERLY", "ANNUALLY"];
 // A bill reminder comes this many days before the bill's expected date.
 export const BILL_REMINDER_DAYS = 3;
+// Recurring charges that aren't bills to pay (books QA): card interest is added to the card's
+// balance, which its own payment covers.
+export const NOT_BILL_CATEGORIES: readonly string[] = ["BANK_FEES_INTEREST_CHARGE"];
+// A card payment the bank names with the card company's "thank you" reads as what it is.
+export const CARD_PAYMENT_THANKS = /\bthank\s*you\b/i;
+export const CARD_PAYMENT_NAME = "Credit card payment";
 // A charge is unusually large when it is at least this much (in cents)...
 export const LARGE_CHARGE_MIN_CENTS = 50_000;
 // ...and at least this many times the account's typical (median) charge...
