@@ -1,5 +1,6 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
+import { BUSINESS_LUMPS } from "@/config/detectors";
 import { BUSINESS_SALES_DEPOSIT } from "@/config/insurance";
 import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
@@ -338,11 +339,67 @@ const concentration: Detector = {
   },
 };
 
+// A business's cash flow (detector coverage): sales come in every week, but sales or payroll tax
+// goes out in a lump every few months from the same account. Setting a share of each week's
+// sales aside keeps the lump from landing on a short week, and out of the owner's own money.
+const DAY = 86_400_000;
+const cashFlow: Detector = {
+  capability: "taxes",
+  topic: "cash_flow",
+  covers: [],
+  needs: ["income_pattern"],
+  detect({ profile, data }) {
+    if (!selfPaid(profile.facts.income_pattern.value)) return null;
+    const lumps = data.transactions
+      .filter(
+        (t) =>
+          t.amountCents > 0 &&
+          t.pfc === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" &&
+          BUSINESS_LUMPS.pattern.test(t.description),
+      )
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (lumps.length < BUSINESS_LUMPS.minPayments) return null;
+    const gaps = lumps
+      .slice(1)
+      .map((t, i) => (Date.parse(t.date) - Date.parse(lumps[i].date)) / DAY);
+    const every = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+    const average = Math.round(lumps.reduce((s, t) => s + t.amountCents, 0) / lumps.length);
+    const weekly = Math.round(average / Math.max(1, every / 7));
+    const last = lumps.at(-1)!;
+    const next = new Date(Date.parse(last.date) + every * DAY).toISOString().slice(0, 10);
+    const daysLeft = Math.round((Date.parse(next) - Date.parse(profile.today)) / DAY);
+    const months = Math.max(1, Math.round(every / 30));
+    const nextWords = new Date(`${next}T00:00:00Z`).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+    return {
+      id: suggestionId("taxes", "cash_flow"),
+      capability: "taxes",
+      topic: "cash_flow",
+      title: `Set aside about ${formatCents(weekly)} from each week's sales for the tax bill due every ${months === 1 ? "month" : `${months} months`}`,
+      headline: headlineOf("Set aside tax from each week's sales", average, "risk"),
+      short: `About ${formatCents(average)} of tax goes out every ${months} months; ${formatCents(weekly)} a week covers it.`,
+      worthCents: average,
+      worthKind: "risk",
+      confidence: weakest([
+        evidence("seen", profile.months, lumps.length, "tax payments"),
+        factEvidence(profile.facts.income_pattern),
+      ]),
+      urgency: daysLeft <= BUSINESS_LUMPS.soonDays ? "soon" : "later",
+      why: `Your business pays about ${formatCents(average)} of tax every ${months === 1 ? "month" : `${months} months`} (${lumps.length} payments in ${profile.months} months), the next about ${nextWords}, from the same account your weekly sales go into. Setting aside about ${formatCents(weekly)} from each week's sales keeps it from landing on a short week, and keeps it apart from your own money.`,
+      action: { label: "See business taxes", href: "/taxes/business" },
+    };
+  },
+};
+
 export const WORK_DETECTORS: readonly Detector[] = [
   estimatedTaxes,
   selfRetirement,
   incomeSmoothing,
   businessSeparation,
   businessInsurance,
+  cashFlow,
   concentration,
 ];
