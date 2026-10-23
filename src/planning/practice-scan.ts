@@ -215,6 +215,8 @@ function driftFlag(input: ScanInput): ScanFlag | null {
   const moved = Math.round(
     CLASSES.reduce((s, c) => s + Math.max(0, d.shares[c] - weights[c]), 0) * d.total,
   );
+  // Less than a trade's worth: the autopilot moves nothing, so there's nothing to say.
+  if (moved < AUTOPILOT_LIMITS.minTradeCents) return null;
   return {
     kind: "drift_rebalance",
     ticker: PRACTICE_ETFS[d.worst].ticker,
@@ -305,7 +307,10 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
       kind: "dip_buy",
       ticker: x.ticker,
       key: `dip_buy:${x.ticker}:${month}`,
-      headline: `Bought ${dollars(amount)} of ${x.ticker} on a ${pct(x.drop)} dip`,
+      headline:
+        buy === x.ticker
+          ? `Bought ${dollars(amount)} of ${x.ticker} on a ${pct(x.drop)} dip`
+          : `Bought ${dollars(amount)} of ${buy} on the ${x.ticker} dip`,
       reason,
       amountCents: amount,
       trades: [{ ticker: buy, side: "buy", amountCents: amount, rule: "dip_buy", reason }],
@@ -324,7 +329,10 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
       ],
       confidence: SCAN_CONFIDENCE.dip_buy,
       ask: {
-        headline: `Buy ${wholeDollars(amount)} of ${x.ticker} on its dip, in practice`,
+        headline:
+          buy === x.ticker
+            ? `Buy ${wholeDollars(amount)} of ${x.ticker} on its dip, in practice`
+            : `Buy ${wholeDollars(amount)} ${buy} on the ${x.ticker} dip, in practice`,
         short: `${x.ticker} is ${pct(x.drop)} below its recent high, and ${dollars(cash + amount)} is waiting to be invested.`,
         worthCents: amount,
         worthKind: "risk",

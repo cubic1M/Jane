@@ -26,7 +26,16 @@ export const PRACTICE_TOPIC: Readonly<
 };
 
 // An idea waits this many days for the person; after that the next scan has newer numbers.
+// While one waits, the scan doesn't ask again about the same thing (ideaSlot): the same kind
+// for the whole portfolio, or the same kind and holding.
 export const PRACTICE_IDEA_DAYS = 7;
+const PER_HOLDING: readonly string[] = ["dip_buy", "tax_loss_harvest", "news_idea", "cheaper_fund"];
+export const ideaSlot = (kind: string, ticker: string) =>
+  PER_HOLDING.includes(kind) ? `${kind}:${ticker}` : kind;
+
+// A practice idea with trades smaller than this isn't worth asking about (in act mode the
+// autopilot's own minimum applies instead).
+export const PRACTICE_IDEA_MIN_CENTS = 5_000;
 
 // Practice money is sample money, so its dollars are small next to the person's real money.
 // Each kind ranks as at least this many cents a year, so a practice idea can still reach the
