@@ -82,6 +82,12 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   await expect(profile.getByText("Head of household")).toBeVisible();
   await expect(profile.getByText("1 under 17, 0 other")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it")).toHaveCount(0);
+  // Spec step 267: the business page is one click from /taxes.
+  await expect(
+    page.getByRole("region", { name: "Business taxes" }).getByRole("link", {
+      name: "See my business taxes",
+    }),
+  ).toHaveAttribute("href", "/taxes/business");
 
   // Spec step 119: the forms to expect, ticked off from the page.
   const forms = page.getByRole("region", { name: /Tax forms to expect/ });

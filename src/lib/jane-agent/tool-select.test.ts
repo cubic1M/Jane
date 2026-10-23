@@ -86,6 +86,10 @@ describe("choosing tools for a question", () => {
     );
     expect(names("what's my credit score")).toContain("credit_score");
     expect(names("how am I doing")).not.toContain("credit_score");
+    // Spec step 169: claiming a child or a parent is a tax question with no tax words.
+    expect(names("can I claim my kids")).toContain("tax_family");
+    expect(names("can we claim my mom")).toContain("tax_family");
+    expect(names("how much did daycare cost us")).toContain("tax_family");
   });
 
   it("reads a short follow-up against the message before it", () => {
