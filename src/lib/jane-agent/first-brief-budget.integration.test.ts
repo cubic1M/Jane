@@ -58,7 +58,7 @@ describe.runIf(url)("the first brief's budget", { timeout: 120_000 }, () => {
     await runJaneAgent(userId, { client, now: NOW, trigger: "sync", early: true });
     expect(kept.calls).toBe(0);
     const agenda = await client.janeMessage.findMany({
-      where: { userId, body: { contains: "what I'd do first" } },
+      where: { userId, body: { contains: "from looking at your money" } },
     });
     expect(agenda.length).toBeGreaterThan(0);
 

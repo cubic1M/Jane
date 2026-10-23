@@ -3,6 +3,7 @@ import { loadDetectionInput } from "@/detection/engine";
 import { nextPayday } from "@/detection/paydays";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
+import { TRANSFER_MIN_SCORE } from "@/config/debt-decisions";
 import { loadTransfers } from "@/lib/balance-transfers";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -42,7 +43,7 @@ export async function loadDecisionInput(
     loadDetectionInput(userId, { client, now }),
     db.creditReports.findFirst({
       orderBy: [{ pulledOn: "desc" }, { createdAt: "desc" }],
-      select: { cardLimitCents: true },
+      select: { cardLimitCents: true, score: true },
     }),
     loadBnpl(userId, { client, now }),
   ]);
@@ -93,14 +94,18 @@ export async function loadDecisionInput(
           savesCents: fitted.savesCents ?? 0,
         }
       : null;
-  const viaTransfer = transfer
-    ? {
-        name: transfer.pick!.offer.cardName,
-        kind: "transfer" as const,
-        aprBps: 0,
-        savesCents: transfer.pick!.savingCents ?? 0,
-      }
-    : null;
+  // A 0% card is only the pick when the person's score is one those cards usually approve.
+  const score = report?.score ?? null;
+  const transferBlocked = transfer !== undefined && score !== null && score < TRANSFER_MIN_SCORE;
+  const viaTransfer =
+    transfer && !transferBlocked
+      ? {
+          name: transfer.pick!.offer.cardName,
+          kind: "transfer" as const,
+          aprBps: 0,
+          savesCents: transfer.pick!.savingCents ?? 0,
+        }
+      : null;
   const consolidation =
     viaTransfer && (!personalLoan || viaTransfer.savesCents >= personalLoan.savesCents)
       ? viaTransfer
@@ -142,6 +147,8 @@ export async function loadDecisionInput(
     liquidCents,
     monthlySpendCents: Math.round(spent / 3),
     consolidation,
+    transferNeedsScore:
+      transferBlocked && !consolidation ? { score: score!, minScore: TRANSFER_MIN_SCORE } : null,
     personalLoan,
     cashPayoffSavesCents:
       fitView.pick === "payoff"
