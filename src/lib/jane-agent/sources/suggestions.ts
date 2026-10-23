@@ -23,7 +23,11 @@ export const suggestionsSource: MessageSource = {
     return (snapshot.suggestions ?? []).map((s) => ({
       kind: "decision" as const,
       body: suggestionCard(s).join("\n"),
-      refs: { suggestion: s.key, ...(s.advice ? { advice: true as const } : {}) },
+      refs: {
+        suggestion: s.key,
+        ...(s.advice ? { advice: true as const } : {}),
+        ...(s.cardDetails ? { cardDetails: s.cardDetails } : {}),
+      },
       actions: [
         { id: "suggestion.yes" as const, label: s.actionLabel, kind: "primary" as const },
         { id: "snooze" as const, label: "Not now", kind: "secondary" as const },

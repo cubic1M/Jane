@@ -87,3 +87,16 @@ describe("costly short-term borrowing, brought unasked", () => {
     expect(s.worthCents).toBe(1_500);
   });
 });
+
+// Loans QA (from the chat QA): the payoff plan rests on the debts, not the fees that made Chris's
+// money count as trouble.
+describe("the payoff plan's evidence", () => {
+  it("bases Chris's payoff plan on his cards and their interest, not overdraft fees", () => {
+    const s = runDetectors({
+      profile: buildProfile(inputFor("debt")),
+      data: inputFor("debt"),
+    }).find((x) => x.topic === "debt_plan")!;
+    expect(s.confidence.reason).toMatch(/cards? linked|interest charges/);
+    expect(s.confidence.reason).not.toMatch(/overdraft|late fees|insufficient/);
+  });
+});

@@ -32,7 +32,16 @@ import { formatCents } from "@/lib/money";
 // hand-entered ones and sends the reminders.
 
 export type DeadlineKind =
-  "renewal" | "trial" | "return" | "payment" | "fsa" | "card_benefit" | "warranty" | "other";
+  | "renewal"
+  | "trial"
+  | "return"
+  | "payment"
+  | "fsa"
+  | "card_benefit"
+  | "warranty"
+  | "other"
+  // Spec step 243: an intro price ending, or a yearly plan renewing at its price.
+  | "price_rise";
 
 // Where a deadline came from.
 export type DeadlineOrigin = "transactions" | "loans" | "entered" | "documents" | "insurance";
@@ -64,6 +73,7 @@ export const DEADLINE_KIND_LABELS: Record<DeadlineKind, string> = {
   card_benefit: "Card benefit",
   warranty: "Warranty",
   other: "Reminder",
+  price_rise: "Price goes up",
 };
 
 export const shortDate = (date: string) =>

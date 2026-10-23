@@ -62,6 +62,7 @@ export async function exportUserData(
     unusualAnswers,
     yearPlans,
     booksIssues,
+    monthCloses,
     suggestions,
     leanPlans,
     whatIfPlans,
@@ -449,6 +450,10 @@ export async function exportUserData(
       orderBy: { createdAt: "asc" },
       select: { kind: true, key: true, detail: true, status: true, createdAt: true, fixedAt: true },
     }),
+    db.monthCloses.findMany({
+      orderBy: { month: "asc" },
+      select: { month: true, status: true, figures: true, closedAt: true, correctedAt: true },
+    }),
     db.suggestions.findMany({
       orderBy: { firstSeenAt: "asc" },
       select: {
@@ -705,6 +710,7 @@ export async function exportUserData(
     suggestions,
     leanPlans,
     booksIssues,
+    monthCloses,
     yearPlans,
     unusualAnswers,
     janeMessages,
