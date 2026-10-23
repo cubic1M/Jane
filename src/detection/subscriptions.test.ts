@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { AS_OF, CARD, input, plaidStream, sampleYear } from "./__fixtures__/build";
+import {
+  AS_OF,
+  CARD,
+  NETFLIX,
+  input,
+  monthly,
+  plaidStream,
+  sampleYear,
+} from "./__fixtures__/build";
 import { renewalAlerts } from "./alerts";
 import { detect } from "./detect";
 import { upcomingBills } from "./forecast";
@@ -34,6 +42,64 @@ describe("recurringCharges", () => {
       [...rows.map((r) => r.annualCostCents)].sort((a, b) => b - a),
     );
     expect(rows.find((r) => r.merchant === "Geico")?.subscription).toBe(false);
+  });
+});
+
+// Chat QA: Claude reads these as what the person pays regularly (its subscriptions tool and
+// the numbers sent with every question), as do /subscriptions and the money hub.
+describe("recurringCharges, as the person reads them", () => {
+  const rows = recurringCharges(
+    input({
+      transactions: [
+        ...monthly(4, 1549, NETFLIX),
+        ...monthly(4, 340_000, {
+          description: "CARD PAYMENT THANK YOU",
+          merchantName: null,
+          pfcPrimary: "LOAN_PAYMENTS",
+          pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+        }),
+        ...monthly(4, 4640, {
+          description: "INTEREST CHARGE",
+          merchantName: null,
+          pfcPrimary: "BANK_FEES",
+          pfcDetailed: "BANK_FEES_INTEREST_CHARGE",
+        }),
+        ...monthly(4, 50_000, {
+          description: "TRANSFER TO HEALTHEQUITY HSA",
+          merchantName: null,
+          pfcPrimary: "TRANSFER_OUT",
+          pfcDetailed: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+        }),
+        ...monthly(4, 20_000, {
+          description: "TRANSFER TO SAVINGS",
+          merchantName: null,
+          pfcPrimary: "TRANSFER_OUT",
+          pfcDetailed: "TRANSFER_OUT_SAVINGS",
+        }),
+        ...monthly(4, 145_000, {
+          description: "ZELLE TO PAT LANDLORD",
+          merchantName: null,
+          pfcPrimary: "TRANSFER_OUT",
+          pfcDetailed: "TRANSFER_OUT_TRANSFER_OUT_FROM_APPS",
+        }),
+      ],
+    }),
+  );
+  const names = rows.map((r) => r.merchant);
+
+  it("names a card payment by what it is, as the bills do", () => {
+    expect(names).toContain("Credit card payment");
+    expect(names.some((n) => /thank you/i.test(n))).toBe(false);
+  });
+
+  it("leaves out card interest and money moved to the person's own accounts", () => {
+    expect(names.some((n) => /interest/i.test(n))).toBe(false);
+    expect(names.some((n) => /hsa|savings/i.test(n))).toBe(false);
+  });
+
+  it("keeps a payment-app transfer, which can be rent to a person", () => {
+    expect(names.some((n) => /landlord/i.test(n))).toBe(true);
+    expect(rows.find((r) => r.merchant === NETFLIX.merchantName)).toBeDefined();
   });
 });
 

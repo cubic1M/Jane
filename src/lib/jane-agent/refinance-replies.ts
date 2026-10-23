@@ -3,6 +3,7 @@ import { findDebt, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
 import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
 import type { Transfers } from "@/lib/balance-transfers";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { shortMonth } from "@/planning/balance-transfer";
 import type { Refinance } from "@/lib/refinance";
@@ -91,7 +92,9 @@ export function refinanceReply(target: string | null, refi: Refinance, book: Deb
   }
   if (shown.length === 0) {
     return {
-      body: "I don't have any refinance offers to compare yet.",
+      body: refi.checkedOn
+        ? `I checked on ${dayLabel(refi.checkedOn, { year: true })}: none of the lenders I check take your debts at their balances or terms, so there's nothing to refinance. Paying the highest-rate one down directly is the way.`
+        : "I don't have any refinance offers to compare yet.",
       actions: [SEE_OFFERS],
       refs: {},
     };

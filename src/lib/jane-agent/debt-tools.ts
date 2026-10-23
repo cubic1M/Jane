@@ -1459,6 +1459,9 @@ export function creditMonthlyToolOutput(d: CreditMonthly) {
 export function borrowingPowerToolOutput(d: BorrowingPower, money: (cents: number) => string) {
   if (!d.available) return { note: "No lending partner for this person's accounts yet." };
   return {
+    // The partner (the stand-in) is only there in demo advice mode, so these are demo advice.
+    demoAdvice: true,
+    label: DEMO_ADVICE_LABEL,
     checkedOn: d.checkedOn,
     softChecksOnly: true,
     score: d.score === null ? "not pulled yet; a middling score is assumed" : d.score,
@@ -1549,6 +1552,14 @@ export function loanFitToolOutput(
 ) {
   if (!view.available)
     return { note: "No lending partner for this person's accounts yet, so there are no offers." };
+  // Something to borrow, but no lender quotes an amount this small: the same answer as the chat.
+  if (view.options.length === 0 && view.ineligible.length === 0 && view.baseline) {
+    return {
+      note: "Nothing fits right now.",
+      why: [`No lender prices a loan as small as ${money(view.amountCents)}.`],
+      whatWouldHelp: [`Paying ${view.baseline.label} down directly is simplest.`],
+    };
+  }
   if (view.options.length === 0) {
     return {
       note: "Nothing fits right now.",
