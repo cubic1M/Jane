@@ -28,6 +28,7 @@ import { booksSource } from "./books";
 import { questionsSource } from "./questions";
 import { suggestionsSource } from "./suggestions";
 import { steadySource } from "./steady";
+import { priceRisesSource } from "./price-rises";
 import { twoSource } from "./two";
 import { tradeoffsSource } from "./tradeoffs";
 import { unusualSource } from "./unusual";
@@ -78,6 +79,7 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   booksSource,
   suggestionsSource,
   steadySource,
+  priceRisesSource,
   twoSource,
   tradeoffsSource,
   questionsSource,
