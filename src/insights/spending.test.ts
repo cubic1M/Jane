@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { kindOf, monthsEnding, spendingInsights, type InsightTransaction } from "./spending";
+import {
+  averageMonthlySpending,
+  kindOf,
+  monthsEnding,
+  spendingInsights,
+  type InsightTransaction,
+} from "./spending";
 
 const t = (overrides: Partial<InsightTransaction>): InsightTransaction => ({
   date: "2026-10-05",
@@ -110,5 +116,18 @@ describe("spendingInsights", () => {
     expect(
       run([t({ pfcPrimary: null, pfcDetailed: null })]).categoriesByMonth["2026-10"][0].category,
     ).toBe("Uncategorized");
+  });
+});
+
+describe("averageMonthlySpending", () => {
+  it("averages the complete months before this one, leaving this month out", () => {
+    const rows = [
+      t({ date: "2026-08-10", amountCents: 30_000 }),
+      t({ date: "2026-09-10", amountCents: 50_000 }),
+      // This month is still going: left out.
+      t({ date: "2026-10-05", amountCents: 999_000 }),
+    ];
+    expect(averageMonthlySpending(rows, "2026-10-18", 2)).toBe(40_000);
+    expect(averageMonthlySpending([], "2026-10-18", 2)).toBe(0);
   });
 });

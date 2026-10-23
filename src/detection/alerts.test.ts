@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { UNUSUAL_EXPECTED_FOR_BUSINESS } from "@/config/detection";
 import {
   AS_OF,
   CARD,
@@ -80,6 +81,20 @@ describe("large_charge", () => {
       run(input({ transactions: [...everyday, big({ pfcPrimary: "TRANSFER_OUT" })] })),
     ).toEqual([]);
     expect(run(input({ transactions: [...everyday.slice(0, 4), big()] }))).toEqual([]);
+  });
+
+  it("leaves out a business owner's payroll and suppliers, as unusual activity does (books QA)", () => {
+    const payroll = big({
+      amountCents: 430_000,
+      description: "GUSTO PAYROLL",
+      merchantName: "Gusto",
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING",
+    });
+    const data = input({ transactions: [...everyday, payroll] });
+    const streams = buildStreams(data);
+    expect(largeChargeAlerts(data, streams)).toHaveLength(1);
+    expect(largeChargeAlerts(data, streams, new Set(UNUSUAL_EXPECTED_FOR_BUSINESS))).toEqual([]);
   });
 
   it("ignores a large recurring bill like rent", () => {

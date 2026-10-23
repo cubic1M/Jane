@@ -10,6 +10,10 @@ import type { DebtKind } from "@/insights/debts";
 // Lenders themselves start to worry around 43% (the CFPB's old qualified-mortgage line); 40%
 // leaves room to act first.
 export const TROUBLE_PAYMENT_SHARE = 0.4;
+// ...unless the cash on hand covers this many months of those payments (loans QA: a big
+// mortgage on a big income, with cash to carry it, isn't trouble). One rule for this message,
+// the profile's debt_trouble fact and everything that reads it.
+export const TROUBLE_CASH_MONTHS = 3;
 // Income is the average of this many full months before this one.
 export const TROUBLE_INCOME_MONTHS = 3;
 

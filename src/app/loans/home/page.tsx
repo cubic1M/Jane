@@ -6,7 +6,9 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { HOME_RULES_SOURCE } from "@/config/home-buying";
 import { formatRate } from "@/insights/loans";
 import { dayLabel } from "@/lib/day-label";
+import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
 import { loadHomeBuying } from "@/lib/home-buying";
+import { homeMeasureOf, homeVsBorrow, mortgageOf } from "@/planning/home-vs-borrow";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { startGoalAction } from "./actions";
@@ -31,11 +33,17 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
   const p = (k: string) => (Array.isArray(raw[k]) ? raw[k]?.[0] : (raw[k] as string | undefined));
   const down = Number(p("down"));
   const date = p("date");
-  const home = await loadHomeBuying(user.id, {
-    priceCents: dollars(p("price")),
-    downShare: down > 0 && down < 100 ? down / 100 : undefined,
-    targetDate: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined,
-  });
+  // What you could borrow, to set beside it (soft-checked when it hasn't been).
+  await ensureBorrowingChecked(user.id);
+  const [borrowing, home] = await Promise.all([
+    loadBorrowingPower(user.id),
+    loadHomeBuying(user.id, {
+      priceCents: dollars(p("price")),
+      downShare: down > 0 && down < 100 ? down / 100 : undefined,
+      targetDate: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined,
+    }),
+  ]);
+  const both = homeVsBorrow(homeMeasureOf(home), mortgageOf(borrowing.figures));
   const ready = home.available && home.costs && home.affordability && home.saving;
   return (
     <>
@@ -77,6 +85,14 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
               Up to about <strong>{formatCents(home.affordability!.maxPriceCents)}</strong>, with
               housing under {formatCents(home.affordability!.allowedHousingCents)} a month.
             </p>
+            {both && (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                {both}{" "}
+                <Link href="/loans/borrow" className="font-medium text-emerald-700 hover:underline">
+                  What you could borrow
+                </Link>
+              </p>
+            )}
             <table aria-label="Monthly cost" className="w-full text-left text-sm">
               <caption className="text-left font-medium">
                 A {formatCents(home.costs!.priceCents)} home, a month
