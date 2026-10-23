@@ -94,6 +94,8 @@ export function withholdingCheck(input: {
   withheldPerPaycheckCents: number;
   // A federal refund seen in the person's accounts for last year, if any (step 125).
   lastYearRefundCents: number | null;
+  // The year's wages: a Step 4(b) amount above them isn't a believable W-4 (taxes QA).
+  wagesCents?: number;
 }): WithholdingCheck {
   if (!input.perYear) return { status: "unknown", why: "no_pay" };
   if (!input.withholdingKnown) return { status: "unknown", why: "no_withholding" };
@@ -123,6 +125,15 @@ export function withholdingCheck(input: {
         refundAfterCents: refundCents + per * input.paychecksLeft,
       };
     }
+  }
+  // Taxes QA: late in the year, handing back a big refund through a few paychecks can take
+  // Step 4(b) deductions larger than the year's wages; then only the January change is offered.
+  if (
+    thisYear?.step === "4b" &&
+    input.wagesCents !== undefined &&
+    thisYear.amountCents > input.wagesCents
+  ) {
+    thisYear = null;
   }
   // A full year with the same pay: the whole year's gap spread over every paycheck.
   const fromJanuary = change(gap, perYear, perYear, input.marginalRate, refundCents);

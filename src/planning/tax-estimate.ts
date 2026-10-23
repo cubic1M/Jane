@@ -1,3 +1,4 @@
+import { socialSecurityTax } from "./retirement-taxes";
 import type { FilingStatus } from "@/config/tax";
 import {
   ADDITIONAL_MEDICARE,
@@ -50,6 +51,9 @@ export type EstimateIncome = {
   // Spec step 173: side income that is a hobby: taxed, with no expenses and no
   // self-employment tax.
   otherCents?: number;
+  // Social Security benefits for the year (taxes QA): only the part Publication 915 makes
+  // taxable at the other income counts.
+  socialSecurityBenefitsCents?: number;
 };
 
 export const NO_INCOME: EstimateIncome = {
@@ -119,6 +123,8 @@ export type TaxEstimate = {
   year: number;
   filingStatus: FilingStatus;
   totalIncomeCents: number;
+  // The part of Social Security counted in income (taxes QA).
+  socialSecurityTaxableCents: number;
   adjustments: { halfSelfEmploymentTaxCents: number; studentLoanInterestCents: number };
   agiCents: number;
   deduction: {
@@ -330,7 +336,15 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     inc.retirementCents +
     inc.unemploymentCents +
     (inc.otherCents ?? 0);
-  const beforeStudent = totalIncome - halfSe;
+  // Taxes QA: Social Security's taxable part, from provisional income (step 271's rule).
+  const ssTaxable = inc.socialSecurityBenefitsCents
+    ? socialSecurityTax({
+        benefitsCents: inc.socialSecurityBenefitsCents,
+        otherIncomeCents: totalIncome - halfSe,
+        status: status === "married_joint" ? "married_joint" : "single",
+      }).taxableCents
+    : 0;
+  const beforeStudent = totalIncome + ssTaxable - halfSe;
   const studentLoan = studentLoanDeduction(input.studentLoanInterestCents, beforeStudent, status);
   const agi = beforeStudent - studentLoan - (input.otherAdjustmentsCents ?? 0);
 
@@ -429,7 +443,8 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
   return {
     year: input.year,
     filingStatus: status,
-    totalIncomeCents: totalIncome,
+    totalIncomeCents: totalIncome + ssTaxable,
+    socialSecurityTaxableCents: ssTaxable,
     adjustments: { halfSelfEmploymentTaxCents: halfSe, studentLoanInterestCents: studentLoan },
     agiCents: agi,
     deduction: {

@@ -304,6 +304,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     disasterRelief: feed ? await feed.declarations() : [],
     // Spec step 272: the latest checked draft return.
     draftReturn: draft,
+    // Taxes QA: what an HSA's bank reports going into it this year.
+    hsaContributions: await hsaContributionsOf(db, now),
     hasPracticePortfolio: practice > 0,
   };
 }
@@ -320,6 +322,22 @@ function healthPlanOf(
     outOfPocketMaxCents: typeof c.outOfPocketMax === "number" ? c.outOfPocketMax : null,
     coinsurance: c.coinsurance,
   };
+}
+
+// This year's contributions on the person's HSA accounts, as the bank reports them on the
+// account (taxes QA). Null without an HSA.
+async function hsaContributionsOf(db: ReturnType<typeof scopedFor>, now: Date) {
+  const hsas = await db.accounts.findMany({ where: { subtype: "hsa" }, select: { id: true } });
+  if (hsas.length === 0) return null;
+  const rows = await db.investmentTransactions.findMany({
+    where: {
+      accountId: { in: hsas.map((a) => a.id) },
+      subtype: "contribution",
+      date: { gte: new Date(Date.UTC(now.getUTCFullYear(), 0, 1)), lte: now },
+    },
+    select: { amountCents: true },
+  });
+  return { cents: rows.reduce((s, r) => s + Math.abs(r.amountCents), 0), count: rows.length };
 }
 
 export async function loadProfile(userId: string, options: Options = {}): Promise<Profile> {

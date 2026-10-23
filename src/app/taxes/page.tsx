@@ -19,6 +19,7 @@ import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { checkFrom } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadWorkingProfile } from "@/lib/tax-profile";
+import { byHerself } from "@/lib/jane-agent/replies-autopilot";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
@@ -79,7 +80,7 @@ async function TaxesContent() {
   const now = new Date();
   // The year being gathered: last year until the end of April, then this one.
   const year = defaultTaxYear(now.toISOString().slice(0, 10));
-  const [{ view, autopilot }, tags, forms, estimate, advice] = await Promise.all([
+  const [{ view, taxes }, tags, forms, estimate, advice] = await Promise.all([
     loadWorkingProfile(user.id, { now }),
     loadTaxTags(user.id, year),
     // Spec step 166: with what Jane collected and how each checked.
@@ -389,12 +390,13 @@ async function TaxesContent() {
           What Jane does by herself
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-          {whatJaneDoes(autopilot).map((line) => (
+          {whatJaneDoes(taxes.level).map((line) => (
             <li key={line}>{line}</li>
           ))}
-          <li>Nothing is ever filed, signed or paid without your tap.</li>
+          {/* Spec step 141: what the Taxes area may do by itself, as Settings has it. */}
+          <li>{byHerself(taxes)} Nothing is ever filed or signed without your tap.</li>
         </ul>
-        <Link href="/settings#autopilot" className={`${LINK} text-sm`}>
+        <Link href="/settings#sectors" className={`${LINK} text-sm`}>
           Change your autopilot
         </Link>
       </section>

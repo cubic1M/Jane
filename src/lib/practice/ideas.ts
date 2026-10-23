@@ -14,9 +14,11 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
 import { positionValue } from "@/planning/practice-autopilot";
+import { refusedByPreferences } from "@/planning/practice-profile";
 import type { PracticeIdea } from "@/profile/build";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
-import { tradesHeldBy } from "./scan";
+import { practiceProfileOf } from "./preferences";
+import { tradesHeldBy } from "./limits";
 
 // The practice scan's ideas as suggestions (Phase AW, Stage A). The scan keeps a flag as
 // "suggested" when the person is in suggest-only mode or the kind only suggests; here those
@@ -146,8 +148,13 @@ export async function answerPracticeIdea(
       .map((t) => positionValue(ledger.state, prices, t.ticker) / t.amountCents),
   );
   const trades = stored.map((t) => ({ ...t, amountCents: Math.floor(t.amountCents * sellable) }));
-  // The caps again, on today's ledger and prices.
-  const held = tradesHeldBy(trades, ledger.state, prices, tradesToday);
+  // The never-buy list as it stands now (the person's Yes is the go-ahead, even in suggest-only
+  // mode), then the caps again, on today's ledger and prices.
+  const profile = await practiceProfileOf(userId, { client, now });
+  const held =
+    trades
+      .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
+      .find((r) => r !== null) ?? tradesHeldBy(trades, ledger.state, prices, tradesToday);
   if (held) {
     await db.practiceOpportunities.updateMany({ where: { id: row.id }, data: { status: "held" } });
     return { note: `A cap stopped it (${held}), so nothing was done.`, href: PRACTICE_HREF };
