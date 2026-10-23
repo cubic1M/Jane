@@ -96,6 +96,15 @@ describe("oneOffCharges", () => {
   });
 });
 
+describe("a short history", () => {
+  it("finds nothing (and doesn't fail) when everything is in this month", () => {
+    expect(
+      oneOffCharges([t({ date: "2026-10-02" }), repair("2026-10-05", "Servpro", 340_000)], ASOF),
+    ).toEqual([]);
+    expect(oneOffCharges([], ASOF)).toEqual([]);
+  });
+});
+
 describe("the typical month", () => {
   it("leaves the one-offs out of the average, and says so", () => {
     const all = [...everyday, ...flood];

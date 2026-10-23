@@ -47,7 +47,10 @@ export function oneOffCharges(transactions: InsightTransaction[], asOf: string):
   const [ay, am] = asOf.split("-").map(Number);
   const span = (ay - fy) * 12 + (am - fm) + 1;
   const full = spendingInsights(transactions, { asOf, monthCount: span }).months.slice(0, -1);
-  const usual = median(full.map((m) => m.spendingCents).filter((c) => c > 0));
+  // Without a full month there's no usual month to judge by.
+  const months = full.map((m) => m.spendingCents).filter((c) => c > 0);
+  if (months.length === 0) return [];
+  const usual = median(months);
   const floor = Math.max(ONE_OFF_MIN_CENTS, Math.round(usual * ONE_OFF_SHARE));
   const big = spending.filter((t) => t.amountCents >= floor && canBeOneOff(t));
   return big
