@@ -14,6 +14,7 @@ import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
 import { loadCar } from "@/lib/car";
 import { loadHomeBuying } from "@/lib/home-buying";
+import { homeMeasureOf, mortgageOf } from "@/planning/home-vs-borrow";
 import { loadMedicalBills } from "@/lib/medical-bills";
 import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { loadCardInterest } from "@/lib/card-interest";
@@ -112,7 +113,11 @@ export async function runDebtTool(
     case "borrowing_power":
       await ensureBorrowingChecked(userId, { client, now });
       return out(
-        borrowingPowerToolOutput(await loadBorrowingPower(userId, { client, now }), money),
+        borrowingPowerToolOutput(
+          await loadBorrowingPower(userId, { client, now }),
+          money,
+          homeMeasureOf(await loadHomeBuying(userId, {}, { client, now })),
+        ),
       );
     case "family_credit":
       return out(familyCreditToolOutput(await loadFamilyCredit(userId, { client, now }), money));
@@ -207,6 +212,7 @@ export async function runDebtTool(
     case "medical_bills":
       return out(medicalToolOutput(await loadMedicalBills(userId, { client, now }), money));
     case "home_purchase": {
+      await ensureBorrowingChecked(userId, { client, now });
       const price = (input as { price_cents?: unknown } | null)?.price_cents;
       return out(
         homeToolOutput(
@@ -216,6 +222,7 @@ export async function runDebtTool(
             { client, now },
           ),
           money,
+          mortgageOf((await loadBorrowingPower(userId, { client, now })).figures),
         ),
       );
     }
