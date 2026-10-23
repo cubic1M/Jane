@@ -17,6 +17,10 @@ export type AffordNumbers = {
   safe: { payday: string | null; balanceCents: number; safeCents: number } | null;
   // Expected deposits and regular bills on checking through the last month shown.
   flows: Flow[];
+  // Everyday spending a month besides those regular bills: the usual monthly spending What if
+  // uses (the health score's average), less the bills already in `flows`. Taken out of each
+  // month's end balance, so the two pages agree on when money runs short.
+  everydayMonthlyCents?: number;
   goals: (GoalInput & { id: string; name: string })[];
 };
 
@@ -155,10 +159,16 @@ export function affordCheck(numbers: AffordNumbers, change: AffordChange): Affor
   const inSafeWindow = (date: string) =>
     date >= asOf && (safe.payday ? date < safe.payday : date <= addDays(asOf, FORECAST_DAYS));
 
-  const months = affordWindow(asOf).months.map((month) => {
+  // Everyday spending through each month's end: the rest of this month, then whole months.
+  const everyday = numbers.everydayMonthlyCents ?? 0;
+  const daysIn = (month: string) => Number(monthEnd(month).slice(8, 10));
+  const thisMonth = monthOf(asOf);
+  const restOfThisMonth = (daysIn(thisMonth) - Number(asOf.slice(8, 10))) / daysIn(thisMonth);
+  const months = affordWindow(asOf).months.map((month, k) => {
     const end = monthEnd(month);
     const upTo = (flows: Flow[]) => total(flows.filter((f) => f.date <= end));
-    const beforeCents = safe.balanceCents + upTo(numbers.flows);
+    const spent = Math.round(everyday * (restOfThisMonth + k));
+    const beforeCents = safe.balanceCents + upTo(numbers.flows) - spent;
     return { month, beforeCents, afterCents: beforeCents + upTo(added) };
   });
   const firstBelow = (key: "beforeCents" | "afterCents") =>
