@@ -229,4 +229,47 @@ describe.runIf(url)("books that balance", { timeout: 120_000 }, () => {
       /^Yes, as far as I can tell/,
     );
   });
+
+  // Books QA: the Reyes' twice-linked savings was only in the harness's sample. The demo bank
+  // now links it through a second login, and the real check finds it (and the others' one
+  // login finds nothing): the copies are worded differently, so nothing is merged.
+  it("finds the Reyes family's savings linked twice through two logins, live", async () => {
+    const reyes = await client.user.create({
+      data: { email: `books-reyes-${crypto.randomUUID()}@example.com` },
+    });
+    const maya = await client.user.create({
+      data: { email: `books-maya-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(reyes.id, maya.id);
+    for (const [user, person] of [
+      [reyes.id, "family"],
+      [maya.id, "renter"],
+    ] as const) {
+      const { itemId } = await linkDemoBank(user, { client, now: NOW, person });
+      await syncItem(itemId, { client, api, now: NOW });
+    }
+    expect(await client.plaidItem.count({ where: { userId: reyes.id } })).toBe(2);
+    expect(await client.account.count({ where: { userId: reyes.id, mask: "2002" } })).toBe(2);
+
+    const view = await runBooksCheck(reyes.id, { client, now: NOW });
+    expect(view.merged).toBe(0);
+    expect(view.open.filter((i) => i.kind === "duplicate")).toEqual([
+      expect.objectContaining({
+        words: expect.stringMatching(/^Demo Savings \(ending 2002\) .*linked twice/),
+      }),
+    ]);
+    // A second sync of the demo bank doesn't link it a third time.
+    const main = await client.plaidItem.findFirst({
+      where: { userId: reyes.id, NOT: { plaidItemId: { endsWith: "-joint" } } },
+    });
+    await syncItem(main!.id, { client, api, now: NOW });
+    expect(await client.plaidItem.count({ where: { userId: reyes.id } })).toBe(2);
+
+    expect(await client.plaidItem.count({ where: { userId: maya.id } })).toBe(1);
+    expect(
+      (await runBooksCheck(maya.id, { client, now: NOW })).open.filter(
+        (i) => i.kind === "duplicate",
+      ),
+    ).toEqual([]);
+  });
 });
