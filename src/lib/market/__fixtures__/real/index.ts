@@ -8,19 +8,27 @@ export const REAL_FIXTURE_SOURCE =
 
 let cached: Record<string, Bar[]> | null = null;
 
-export function realFixtureBars(): Record<string, Bar[]> {
-  if (cached) return cached;
-  const [header, ...rows] = readFileSync(new URL("./closes.csv", import.meta.url), "utf8")
+// Each file is a date column, then one column per ticker in dollars (blank: no close).
+function read(file: string, into: Record<string, Bar[]>) {
+  const [header, ...rows] = readFileSync(new URL(file, import.meta.url), "utf8")
     .trim()
     .split("\n");
   const tickers = header.split(",").slice(1);
-  const bars: Record<string, Bar[]> = Object.fromEntries(tickers.map((t) => [t, []]));
+  for (const t of tickers) into[t] = [];
   for (const row of rows) {
     const [date, ...closes] = row.split(",");
     closes.forEach((c, i) => {
-      if (c) bars[tickers[i]].push({ date, closeCents: Math.round(Number(c) * 100) });
+      if (c) into[tickers[i]].push({ date, closeCents: Math.round(Number(c) * 100) });
     });
   }
+}
+
+// The practice tickers (closes.csv) and the rest of the strategy universe (universe.csv).
+export function realFixtureBars(): Record<string, Bar[]> {
+  if (cached) return cached;
+  const bars: Record<string, Bar[]> = {};
+  read("./closes.csv", bars);
+  read("./universe.csv", bars);
   cached = bars;
   return bars;
 }
