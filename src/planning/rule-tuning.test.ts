@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
 import { RULE_TUNE_DROP_SLACK_POINTS, RULE_TUNE_MIN_GAIN } from "@/config/backtest";
-import { PRACTICE_UNIVERSE } from "@/config/portfolios";
+import { PRACTICE_UNIVERSE, strategyTickers } from "@/config/portfolios";
 import { OPPORTUNITY_RULES_OFF } from "@/config/practice-scan";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import { ruleReplays } from "@/lib/investments/rule-replay";
@@ -62,9 +62,11 @@ describe("keep", () => {
 });
 
 describe("the real-closes fixture", () => {
-  it("has every practice ticker from Jan 4, 2016, oldest first", () => {
+  it("has every practice and strategy ticker from Jan 4, 2016, oldest first", () => {
     const bars = realFixtureBars();
-    expect(new Set(Object.keys(bars))).toEqual(new Set(PRACTICE_UNIVERSE));
+    expect(new Set(Object.keys(bars))).toEqual(
+      new Set([...PRACTICE_UNIVERSE, ...strategyTickers()]),
+    );
     for (const b of Object.values(bars)) {
       expect(b[0].date).toBe("2016-01-04");
       expect(b.length).toBeGreaterThan(2_700);
