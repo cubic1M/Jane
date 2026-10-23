@@ -124,6 +124,19 @@ async function TaxesContent() {
         </Link>
       </section>
 
+      <section aria-labelledby="business-heading" id="business" className={CARD}>
+        <h2 id="business-heading" className="text-xl font-semibold">
+          Business taxes
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          For your own business or side work: the qualified business income deduction, whether an S
+          corporation would save more than it costs, and the home office and miles.
+        </p>
+        <Link href="/taxes/business" className={LINK}>
+          See my business taxes
+        </Link>
+      </section>
+
       <section aria-labelledby="years-heading" id="years" className={CARD}>
         <h2 id="years-heading" className="text-xl font-semibold">
           Taxes over the years
