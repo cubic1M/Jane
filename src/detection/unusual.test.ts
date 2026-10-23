@@ -70,9 +70,28 @@ describe("unusualAlerts", () => {
         description: "CITY POWER",
         merchantName: "City Power",
         pfcPrimary: "RENT_AND_UTILITIES",
+        pfcDetailed: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
       });
     const alerts = run([power(95, 9_000), power(65, 9_200), power(35, 8_800), power(2, 16_000)]);
     expect(alerts.map((a) => a.title)).toEqual(["City Power bill is $70.00 higher than usual"]);
+  });
+
+  it("leaves a bill's price rise to its price-rise card (docs/feature-audit.md, cluster 10)", () => {
+    const internet = (days: number, cents: number) =>
+      charge(days, cents, {
+        description: "FASTNET",
+        merchantName: "FastNet",
+        pfcPrimary: "RENT_AND_UTILITIES",
+        pfcDetailed: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
+      });
+    // A steady $70 that jumps to $110: a price rise, said by its card and heads-up.
+    const steady = [internet(95, 7_000), internet(65, 7_000), internet(35, 7_000)];
+    expect(run([...steady, internet(2, 11_000)])).toEqual([]);
+    // A bill that was never one fixed price isn't a price rise, so a jump still asks.
+    const moving = [internet(95, 6_600), internet(65, 7_000), internet(35, 7_400)];
+    expect(run([...moving, internet(2, 12_000)]).map((a) => a.title)).toEqual([
+      "FastNet bill is $50.00 higher than usual",
+    ]);
   });
 
   it("stays quiet about a merchant the person said was them, up to twice the amount", () => {

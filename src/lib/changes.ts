@@ -1,4 +1,4 @@
-import { BILL_CHANGE_FINDINGS } from "@/config/changes";
+import { BILL_CHANGE_FINDINGS, NEW_SUBSCRIPTION_FINDINGS } from "@/config/changes";
 import type { FindingStatus, FindingType, PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import { buildStreams } from "@/detection/streams";
@@ -13,8 +13,9 @@ import { scopedFor } from "@/lib/db-scoped";
 //
 // Automation: a price rise on a bill or subscription is a price-rise finding (or a reshop or
 // bill negotiation for insurance and bills) on the same stream; a new fee adds to the
-// account's bank-fee finding. Detection runs the standing rules right after it finds them
-// (src/lib/standing-rules.ts), so at "Handle the safe stuff" and above Jane has already
+// account's bank-fee finding; a new subscription is its subscription card, so the chat asks
+// once (docs/feature-audit.md, cluster 10). Detection runs the standing rules right after it
+// finds them (src/lib/standing-rules.ts), so at "Handle the safe stuff" and above Jane has already
 // asked for the old price (small rises) or the fee back by herself: `handled` says so. At
 // "Ask me first", or for a reshop or a call (never by rule), "Look into it" is the one tap
 // (src/lib/jane-agent/actions/changes.ts).
@@ -31,7 +32,11 @@ export type ChangeFinding = {
   handledBy: "rule" | "person" | null;
 };
 
-export type ChangeView = Change & { finding: ChangeFinding | null };
+export type ChangeView = Change & {
+  finding: ChangeFinding | null;
+  // A late paycheck the lean-plan question (spec step 204) already asks about.
+  askedByLean?: boolean;
+};
 
 // The finding that acts on a change, by the key it shares with it.
 function findingKey(change: Change): { types: readonly FindingType[]; key: string } | null {
@@ -40,6 +45,9 @@ function findingKey(change: Change): { types: readonly FindingType[]; key: strin
   }
   if (change.kind === "new_fee" && change.accountId) {
     return { types: ["bank_fees"], key: `account:${change.accountId}` };
+  }
+  if (change.kind === "new_subscription" && change.streamKey) {
+    return { types: NEW_SUBSCRIPTION_FINDINGS, key: change.streamKey };
   }
   return null;
 }
@@ -53,7 +61,8 @@ export async function loadChanges(
   if (changes.length === 0) return [];
   const db = scopedFor(userId, client);
   const wanted = changes.flatMap((c) => findingKey(c) ?? []);
-  const [acks, findings] = await Promise.all([
+  const late = changes.filter((c) => c.kind === "paycheck_late").map((c) => c.key);
+  const [acks, findings, leans] = await Promise.all([
     db.changeAcks.findMany({
       where: { key: { in: changes.map((c) => c.key) } },
       select: { key: true },
@@ -75,8 +84,12 @@ export async function loadChanges(
             },
           },
         }),
+    late.length === 0
+      ? []
+      : db.leanPlans.findMany({ where: { changeKey: { in: late } }, select: { changeKey: true } }),
   ]);
   const expected = new Set(acks.map((a) => a.key));
+  const askedByLean = new Set(leans.map((l) => l.changeKey));
   return changes
     .filter((c) => !expected.has(c.key))
     .map((change) => {
@@ -87,6 +100,7 @@ export async function loadChanges(
       const decision = row?.decisions[0];
       return {
         ...change,
+        ...(askedByLean.has(change.key) ? { askedByLean: true } : {}),
         finding: row
           ? {
               id: row.id,
