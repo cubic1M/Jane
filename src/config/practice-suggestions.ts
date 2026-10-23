@@ -64,6 +64,14 @@ export const PRACTICE_URGENCY: Readonly<Record<keyof typeof PRACTICE_TOPIC, Urge
 export const PRACTICE_HREF = "/investments/practice";
 export const PRACTICE_SETTINGS_HREF = "/investments/practice/settings";
 
+// What Yes does on a practice idea's card, in a sentence.
+export const PRACTICE_YES_DOES = {
+  trades:
+    "Places it in your practice portfolio, within the caps. Practice money only: nothing real is bought or sold.",
+  settings: "Opens your practice settings, where you can change it. Nothing is bought or sold.",
+  look: "Opens your practice portfolio to see your mix. Nothing is bought or sold.",
+} as const;
+
 // A practice idea's suggestion key: "investing:<topic>:<the scan's key>", so each idea is its
 // own suggestion (a no puts away that idea, not the kind) and its topic carries the history.
 export const practiceIdeaId = (topic: string, opportunityKey: string) =>
