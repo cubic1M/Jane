@@ -4,12 +4,7 @@ import type { DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
-import {
-  askNextRateHerself,
-  loadCardInterest,
-  rateStep,
-  type CardInterest,
-} from "@/lib/card-interest";
+import { askNextRateHerself, loadCardInterest, type CardInterest } from "@/lib/card-interest";
 import { loadCreditBuilding, runCreditBuilding, type CreditBuilding } from "@/lib/credit-building";
 import { loadCreditGoals, type CreditGoals } from "@/lib/credit-goals";
 import { dayLabel } from "@/lib/day-label";
@@ -20,6 +15,7 @@ import { loadHomeEquity, type HomeEquity } from "@/lib/home-equity";
 import { formatCents } from "@/lib/money";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
+import { rateStep } from "@/planning/card-interest";
 import { reviewReason } from "@/planning/debt-review";
 
 // Debt on autopilot, round two (spec step 230): the yearly debt review. Once a year, and early

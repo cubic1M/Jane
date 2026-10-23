@@ -7,7 +7,6 @@ import {
   RATE_ASK_CUT_BPS,
   RATE_ASK_MIN_APR_BPS,
   RATE_ASK_MIN_BALANCE_CENTS,
-  RATE_REQUEST_EVERY_DAYS,
 } from "@/config/card-interest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { DebtBook } from "@/insights/debts";
@@ -26,6 +25,7 @@ import {
   payEarlySaving,
   promoPlan,
   rateAsk,
+  rateStep,
   type PromoPlan,
   type RateAsk,
 } from "@/planning/card-interest";
@@ -306,31 +306,6 @@ export async function sendRateRequest(
   );
   await track(userId, "card_rate_requested");
   return { cardName: card.name };
-}
-
-// The lower-rate step the yearly debt review (spec step 230) and the monthly check-up (spec
-// step 251) share, so they never disagree (docs/feature-audit.md, cluster 14): a request sent
-// in the last RATE_REQUEST_EVERY_DAYS first ("I'll tell you what they answer"), else the next
-// card worth asking.
-export type RateStep =
-  | { kind: "asked"; cards: string[] }
-  | { kind: "next"; name: string; requestId: string; savingYearlyCents: number }
-  | null;
-
-export function rateStep(ci: CardInterest, asOf: string): RateStep {
-  if (!ci.available) return null;
-  const recent = ci.requests.filter(
-    (r) => Date.parse(asOf) - Date.parse(r.sentOn) <= RATE_REQUEST_EVERY_DAYS * DAY_MS,
-  );
-  if (recent.length > 0) return { kind: "asked", cards: recent.map((r) => r.cardName) };
-  const next = ci.cards.find((c) => c.rate && !c.rate.sent);
-  if (!next?.rate) return null;
-  return {
-    kind: "next",
-    name: next.name,
-    requestId: next.rate.id,
-    savingYearlyCents: next.rate.savingYearlyCents,
-  };
 }
 
 // Jane's own lower-rate request: only at Handle everything within the debt caps (it's free and

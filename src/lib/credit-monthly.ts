@@ -11,12 +11,7 @@ import { formatRate } from "@/insights/loans";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadBorrowingPower, type BorrowingPower } from "@/lib/borrowing-power";
 import { loadCarLoan, type CarLoan } from "@/lib/car-loan";
-import {
-  askNextRateHerself,
-  loadCardInterest,
-  rateStep,
-  type CardInterest,
-} from "@/lib/card-interest";
+import { askNextRateHerself, loadCardInterest, type CardInterest } from "@/lib/card-interest";
 import { loadCostlyBorrowing, type CostlyBorrowing } from "@/lib/costly-borrowing";
 import { dayLabel } from "@/lib/day-label";
 import { track } from "@/lib/analytics";
@@ -29,6 +24,7 @@ import { loadRefinance } from "@/lib/refinance";
 import { loadRenting, type Renting } from "@/lib/renting";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
+import { rateStep } from "@/planning/card-interest";
 
 // Credit on autopilot, round three (spec step 251): every month, after her soft checks, Jane
 // goes over borrowing in one pass: a cheaper rate on each loan (the fit engine's pick, the same
