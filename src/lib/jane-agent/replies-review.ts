@@ -1,3 +1,4 @@
+import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import { REVIEW_DAYS } from "@/config/plan-upkeep";
 import { formatCents } from "@/lib/money";
 import type { TuneUpChange } from "@/planning/tune-up";
@@ -63,7 +64,7 @@ export function weeklyReview(snapshot: Snapshot, now: Date): Reply {
   const lines = [
     "Here's your week with Jane.",
     `- Done: ${did.length > 0 ? `I ${did.join("; ")}.` : "nothing finished this week. I'm still watching."}`,
-    `- Saved: ${savedCents > 0 ? `${formatCents(savedCents)} confirmed back or saved.` : "nothing confirmed yet this week."}`,
+    `- Saved: ${savedCents > 0 ? `${formatCents(savedCents)} ${BACK_OR_AGREED}.` : "nothing back or agreed yet this week."}`,
     `- Next week: ${next.length > 0 ? `${next.join(", ")}.` : "nothing due that I know of."}`,
     ...(decision ? [`- One to decide: ${decision.title}. ${decision.savings}.`] : []),
   ];

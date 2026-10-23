@@ -1,3 +1,4 @@
+import { BACK_OR_AGREED } from "@/lib/saved-amount";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { after, connection } from "next/server";
@@ -204,9 +205,7 @@ function JaneDidCard({ did }: { did: JaneDid }) {
   const lines = [
     did.finished.length > 0 &&
       `Finished ${things(did.finished.length)}${
-        did.confirmedCents > 0
-          ? `, with ${formatCents(did.confirmedCents)} confirmed back or saved`
-          : ""
+        did.confirmedCents > 0 ? `, with ${formatCents(did.confirmedCents)} ${BACK_OR_AGREED}` : ""
       }.`,
     did.contacts > 0 &&
       `Wrote or called ${did.contacts} ${did.contacts === 1 ? "time" : "times"} on your behalf.`,
@@ -252,8 +251,8 @@ function Totals({ home }: { home: HomeSummary }) {
       {home.savedToDateCents > 0 ? (
         <>
           {(home.plan.items > 0 ? home.moneyFoundCents > 0 : true) && " · "}
-          <span className="font-semibold">{formatCents(home.savedToDateCents)}</span> a year saved
-          so far
+          about <span className="font-semibold">{formatCents(home.savedToDateCents)}</span> a year
+          saved so far (expected)
         </>
       ) : (
         home.plan.items > 0 && (

@@ -16,6 +16,7 @@ import {
   changeActionStatus,
   getActionForAdmin,
   listQueue,
+  loadWorkload,
 } from "./concierge";
 import { recordDecision } from "./decisions";
 
@@ -46,13 +47,13 @@ describe.runIf(url)("concierge actions against a real database", () => {
   });
 
   let sequence = 0;
-  async function approvedAction() {
+  async function approvedAction(owner = userId) {
     // A kind the team always works by hand (the agent's kinds skip the queue).
     const f = findingOfType("insurance_reshop");
     sequence += 1;
     const finding = await client.finding.create({
       data: {
-        userId,
+        userId: owner,
         type: f.type,
         key: `${f.key}-${sequence}`,
         title: f.title,
@@ -64,7 +65,7 @@ describe.runIf(url)("concierge actions against a real database", () => {
       select: { ...CARD_SELECT, status: true },
     });
     const { actionId } = await recordDecision(
-      userId,
+      owner,
       { findingId: finding.id, choice: "yes", cardHash: cardHash(buildCard(finding)) },
       { client },
     );
@@ -170,6 +171,29 @@ describe.runIf(url)("concierge actions against a real database", () => {
     expect((await client.action.findUniqueOrThrow({ where: { id: actionId } })).status).toBe(
       "in_progress",
     );
+  });
+
+  // Spec step 138: a person trying Jane never contacts a company, so the team never sees
+  // their requests to work by hand.
+  it("leaves out a person trying Jane, from the queue and from the workload", async () => {
+    const trialId = `trial_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
+    await client.user.create({ data: { id: trialId, email: `${trialId}@try.jane.invalid` } });
+    try {
+      const trial = await approvedAction(trialId);
+      const real = await approvedAction();
+      // Both given to one team member of their own, so other tests' actions don't count.
+      const who = `qa-${crypto.randomUUID()}@example.com`;
+      await client.action.updateMany({
+        where: { id: { in: [trial.actionId, real.actionId] } },
+        data: { assignee: who },
+      });
+      const queue = await listQueue(ADMIN, { type: null, status: null, assignee: who }, { client });
+      expect(queue.map((a) => a.id)).toEqual([real.actionId]);
+      // Only the real person's action adds to that member's load.
+      expect((await loadWorkload({ client })).find((r) => r.assignee === who)?.open).toBe(1);
+    } finally {
+      await client.user.deleteMany({ where: { id: trialId } });
+    }
   });
 
   it("lists open actions oldest first and audit-logs every view", async () => {

@@ -1,3 +1,4 @@
+import { actionWorthCents } from "@/lib/saved-amount";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -136,8 +137,7 @@ export async function savedToDate(
   };
   return (
     done.reduce(
-      (sum, a) =>
-        sum + (a.refundCents ?? a.confirmedAnnualCents ?? estimate(a.decision.cardSnapshot)),
+      (sum, a) => sum + (actionWorthCents(a, estimate(a.decision.cardSnapshot)) ?? 0),
       0,
     ) + diy.reduce((sum, d) => sum + estimate(d.cardSnapshot), 0)
   );
