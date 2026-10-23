@@ -59,6 +59,15 @@ export function withTopic(
     // Taxes QA: "why?" after a tax answer is that answer's reason ("why" after "how much will I
     // owe" is why the bill or refund is what it is), never "Why what?".
     if (topic.kind === "tax") return taxWhy(topic) ?? intent;
+    // "Why?" after a decision is its reason, not the whole answer again (answer-check sweep).
+    if (topic.kind === "decision") {
+      return {
+        kind: "decision",
+        item: (topic.category as DecisionIntent["item"]) ?? null,
+        label: topic.target ?? null,
+        why: true,
+      };
+    }
     return withTopic({ kind: "follow_up", target: "it", month: null }, topic, asOf);
   }
   // A question that had no answer of its own isn't something "it" can point at.
@@ -73,14 +82,6 @@ export function withTopic(
         : { kind: "unknown" };
     }
     const target = intent.target ?? "";
-    // "Why?" after a decision is that decision again, with the reasoning.
-    if ((!target || isPronoun(target)) && topic.kind === "decision") {
-      return {
-        kind: "decision",
-        item: (topic.category as DecisionIntent["item"]) ?? null,
-        label: topic.target ?? null,
-      };
-    }
     // "Why?" after a decision is that decision again, with the reasoning.
     if ((!target || isPronoun(target)) && topic.kind === "decision") {
       return {

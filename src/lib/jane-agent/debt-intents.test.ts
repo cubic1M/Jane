@@ -510,6 +510,11 @@ describe("debt questions", () => {
       lumpCents: null,
       extraMonthlyCents: null,
     });
+    // With no amount, it's the pay-or-invest decision (answer-check sweep).
+    expect(intent("should I pay extra on my mortgage or invest?")).toEqual({
+      kind: "debt_decision",
+      which: "pay_or_invest",
+    });
     // The plain mortgage questions stay with step 115.
     expect(intent("can I get rid of PMI")).toEqual({ kind: "mortgage" });
     expect(intent("when will my mortgage be paid off")).toEqual({
