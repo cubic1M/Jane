@@ -27,6 +27,10 @@ test("the feature map opens branch by branch, by mouse and keyboard", async ({
   await page.getByRole("link", { name: "What Jane does ›" }).click();
   await expect(page).toHaveURL("/home/map");
   await expect(page.getByRole("heading", { level: 1, name: "What Jane does" })).toBeVisible();
+  // Hub QA: the area chips' screen-reader words widened the page on a 375px phone.
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+  ).toBeLessThanOrEqual(0);
 
   const tree = page.getByRole("tree", { name: "What Jane does: Spending & bills" });
   await expect(tree).toBeVisible();
@@ -73,7 +77,7 @@ test("the feature map opens branch by branch, by mouse and keyboard", async ({
   if (isMobile) await expect(page.getByRole("dialog", { name: "Chat with Jane" })).toBeVisible();
   const chat = page.frameLocator('iframe[title="Chat with Jane"]');
   await expect(chat.getByRole("textbox", { name: "Message Jane" })).toHaveValue(
-    /^What is .+, and does it apply to me\?$/,
+    /^Tell me about .+: does it apply to me\?$/,
     { timeout: 30_000 },
   );
   if (isMobile) await page.getByRole("dialog").getByRole("button", { name: "Close chat" }).click();

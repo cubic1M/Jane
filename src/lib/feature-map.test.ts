@@ -52,7 +52,7 @@ describe("the feature map's data", () => {
     for (const f of all) {
       expect(f.line.split(/\s+/).length, f.id).toBeLessThanOrEqual(14);
       expect(f.href.startsWith("/"), f.id).toBe(true);
-      expect(f.ask).toMatch(/^What is .+, and does it apply to me\?$/);
+      expect(f.ask).toMatch(/^Tell me about .+: does it apply to me\?$/);
     }
   });
 

@@ -145,7 +145,9 @@ export function buildFeatureMap({
                   : "Comes up when Jane spots it",
               forYou: reached.has(id),
               href: example?.href.startsWith("/") ? example.href : AREA_TAB[area].href,
-              ask: `What is ${name.toLowerCase()}, and does it apply to me?`,
+              // Reads right whatever the name ("subscriptions", "a second look"): hub QA found "What is
+              // subscriptions".
+              ask: `Tell me about ${name.toLowerCase()}: does it apply to me?`,
             },
           ];
         });

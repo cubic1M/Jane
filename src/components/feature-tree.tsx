@@ -144,7 +144,9 @@ export function FeatureTree({ maps, initial }: { maps: AreaMap[]; initial: AreaK
       <div
         role="group"
         aria-label="Areas"
-        className="-mx-4 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0"
+        // relative: the chips' screen-reader words are absolutely placed, and without a positioned
+        // parent they sat at the far end of this scroller and widened the page on a phone.
+        className="relative -mx-4 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0"
       >
         {maps.map((m) => (
           <button
