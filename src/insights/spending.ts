@@ -112,7 +112,8 @@ export function spendingInsights(
     ]),
   );
 
-  const [before, after] = months.slice(-2);
+  // The last two months compared; with only one month there's nothing to compare.
+  const [before, after] = months.length >= 2 ? months.slice(-2) : [];
   const changes = before
     ? [...new Set([...byCategory.get(before)!.keys(), ...byCategory.get(after)!.keys()])]
         .map((category) => {
@@ -138,21 +139,4 @@ export function spendingInsights(
     ),
     changes,
   };
-}
-
-// Average spending over the `months` complete months before the one `asOf` falls in: the one
-// monthly-spend figure the drafted goals, the emergency fund, the cash page and the refund
-// plan use (docs/feature-audit.md, cluster 13). Pass transactions covering months + 1.
-export function averageMonthlySpending(
-  transactions: InsightTransaction[],
-  asOf: string,
-  months: number,
-): number {
-  const complete = spendingInsights(transactions, { asOf, monthCount: months + 1 }).months.slice(
-    0,
-    -1,
-  );
-  return complete.length === 0
-    ? 0
-    : Math.round(complete.reduce((sum, m) => sum + m.spendingCents, 0) / complete.length);
 }

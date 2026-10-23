@@ -4,6 +4,7 @@ import { loadDetectionInput } from "@/detection/engine";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
 import { spendingInsights } from "@/insights/spending";
+import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
@@ -57,10 +58,14 @@ export async function healthInput(
   const cards = input.accounts.filter((a) => a.type === "credit");
   // Full months only: the ones before this one.
   const lastFull = addDays(`${monthOf(input.asOf)}-01`, -1);
-  const months = spendingInsights(
-    input.transactions.map((t) => ({ ...t, pending: false })),
-    { asOf: lastFull, monthCount: HEALTH_MONTHS },
-  ).months.filter((m) => m.spendingCents > 0 || m.incomeCents > 0);
+  // Books QA: a typical month, with one-off costs (a flood's repairs) left out of spending.
+  const all = input.transactions.map((t) => ({ ...t, pending: false }));
+  const oneOffs = oneOffCharges(all, input.asOf);
+  const months = spendingInsights(withoutOneOffs(all, oneOffs), {
+    asOf: lastFull,
+    monthCount: HEALTH_MONTHS,
+  }).months.filter((m) => m.spendingCents > 0 || m.incomeCents > 0);
+  const counted = new Set(months.map((m) => m.month));
   const average = (cents: (m: (typeof months)[number]) => number) =>
     months.length === 0
       ? null
@@ -94,6 +99,7 @@ export async function healthInput(
       total: goals.length,
       onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,
     },
+    oneOffs: oneOffs.filter((o) => counted.has(o.month)),
   };
 }
 
