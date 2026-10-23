@@ -100,6 +100,30 @@ function employerOf(t: DetectionTransaction): { key: string; name: string } {
 
 type Deposit = { date: string; amountCents: number; accountId: string };
 
+// Each employer's paychecks as they posted, oldest first, by the one definition of a paycheck
+// and of whose it is (above). The changes, the lean plan, the paycheck split and life events
+// read these, so a paycheck is the same thing everywhere (docs/feature-audit.md, cluster 11).
+export function paychecksByEmployer(
+  input: DetectionInput,
+): { key: string; name: string; deposits: DetectionTransaction[] }[] {
+  const groups = new Map<string, { key: string; name: string; deposits: DetectionTransaction[] }>();
+  for (const t of input.transactions.filter(isPaycheck).sort(byDate)) {
+    const { key, name } = employerOf(t);
+    const group = groups.get(key) ?? { key, name, deposits: [] };
+    group.deposits.push(t);
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+// How many paychecks a month each schedule brings, on average.
+export const PAYCHECKS_PER_MONTH: Record<PayFrequency, number> = {
+  WEEKLY: 52 / 12,
+  BIWEEKLY: 26 / 12,
+  SEMI_MONTHLY: 2,
+  MONTHLY: 1,
+};
+
 // Each employer's paychecks, oldest first; two deposits on one day (pay split between
 // accounts) are one paycheck.
 function byEmployer(input: DetectionInput) {

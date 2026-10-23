@@ -26,14 +26,9 @@ export const BILL_CHANGE_USUAL_CHARGES = 3;
 // whose history goes back further than that (a fresh import makes everything look new).
 export const NEW_SUBSCRIPTION_DAYS = 75;
 
-// Paychecks: deposits in these categories, grouped by employer. Needs this many paychecks
+// Paychecks (what counts as one, and whose: src/detection/paydays.ts). Needs this many paychecks
 // to know the pattern. Late: no paycheck this many days after the usual gap. Smaller: this
 // share below the usual amount (the median of the last few).
-export const PAYCHECK_CATEGORIES: readonly string[] = [
-  "INCOME_SALARY",
-  // Plaid's older name for it.
-  "INCOME_WAGES",
-];
 export const PAYCHECK_MIN_HISTORY = 3;
 export const PAYCHECK_LATE_DAYS = 3;
 export const PAYCHECK_SMALLER_SHARE = 0.1;
