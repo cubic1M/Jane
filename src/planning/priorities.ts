@@ -9,7 +9,8 @@ import { formatCents } from "@/lib/money";
 // The next best thing to do (spec step 143). Pure: candidates in, ranked with their scores
 // and the reason each sits where it does. Weights in src/config/priorities.ts.
 
-export type PriorityKind = "finding" | "offer" | "task" | "deadline" | "plan";
+// "suggestion": the nightly scan's (spec step 255), which lead the list in the scan's own order.
+export type PriorityKind = "finding" | "offer" | "task" | "deadline" | "plan" | "suggestion";
 
 export type PriorityItem = {
   key: string;
@@ -26,8 +27,12 @@ export type PriorityItem = {
   dueOn?: string | null;
   confidence: keyof typeof CONFIDENCE_SCORE;
   href: string;
-  // What the item is, for buttons (a finding's id, a shop's id).
+  // What the item is, for buttons (a finding's id, a shop's id, a suggestion's key).
   ref?: string;
+  // A suggestion's worth is a loss avoided, not money saved.
+  risk?: boolean;
+  // How sure Jane is of a suggestion, as a percentage with its reason (spec step 254).
+  sure?: { percent: number; reason: string };
 };
 
 export type Ranked = PriorityItem & { score: number; urgencyScore: number; why: string };

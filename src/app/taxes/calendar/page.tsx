@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { loadTaxFound } from "@/lib/tax-scan";
 import { requireUser } from "@/lib/session";
@@ -67,6 +68,7 @@ async function Content() {
                 </li>
               ))}
             </ul>
+            {of(v.month).some((f) => f.advice) && <DemoAdviceLabel />}
           </>
         )}
         {v.yearEnd && (
@@ -97,6 +99,7 @@ async function Content() {
                     .join("; ")}
                 </span>
               )}
+              {m.month !== v.month && of(m.month).some((f) => f.advice) && <DemoAdviceLabel />}
             </li>
           ))}
         </ol>

@@ -38,6 +38,9 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
   // Already handled, by autopilot (a standing rule) or the person's own yes: "I did this"
   // (./did.ts) says so, with Undo, and "what changed?" too.
   if (change.finding?.handledBy) return null;
+  // A late paycheck: the lean-plan question (./lean.ts) says it, once
+  // (docs/feature-audit.md, cluster 10).
+  if (change.askedByLean) return null;
   // An open finding: one tap starts it.
   const planned = change.finding
     ? snapshot.findings.find((f) => f.findingId === change.finding!.id)
@@ -50,7 +53,11 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
       kind: "decision",
       body: `${change.title} ${ask.offer}`,
       refs: { ...refs, findingId: planned.findingId, fingerprint: planned.fingerprint },
-      actions: [lookInto, expected, open("Open", `/report/${planned.findingId}`)],
+      actions: [
+        ask.yes ? { ...lookInto, label: ask.yes } : lookInto,
+        expected,
+        open("Open", `/report/${planned.findingId}`),
+      ],
     };
   }
 

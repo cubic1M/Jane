@@ -63,15 +63,15 @@ const MARK = {
 export function calendarReply(v: TaxCalendarView, found: readonly TaxFound[] = []): Message {
   const lines = v.items.map((i) => `${i.title} (${MARK[i.status]}): ${i.detail}`);
   // Spec step 273: what every tax detector found for them, in this month.
-  for (const f of found.filter((x) => x.month === v.month))
-    lines.push(`${f.headline} (${f.percent}% sure)`);
+  const mine = found.filter((x) => x.month === v.month);
+  for (const f of mine) lines.push(`${f.headline} (${f.percent}% sure)`);
   return {
     body: `Here is your tax calendar for ${v.label}.\n${lines.map((l) => `• ${l}`).join("\n")}\n${
       v.acts
         ? "I do the safe parts myself, and ask for a tap on anything that moves money above your cap."
         : "You asked me to ask first, so I check each one with you."
     }`,
-    refs: {},
+    refs: mine.some((f) => f.advice) ? { advice: true } : {},
     actions: [{ id: "open", label: "See the whole year", kind: "link", href: CALENDAR_HREF }],
   };
 }

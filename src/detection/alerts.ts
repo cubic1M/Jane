@@ -19,7 +19,7 @@ import { formatCents } from "@/lib/money";
 import { nextEstimatedTaxDate } from "@/planning/tax-pack";
 import { estimatedTaxAlertCopy } from "@/planning/tax-pack-copy";
 import { byDate, inList, inLookback, isProcessorFee, isRenewable } from "./helpers";
-import { unusualAlerts } from "./unusual";
+import { parseKey, unusualAlerts } from "./unusual";
 import { expectedDates, forecastAccounts, upcomingBills } from "./forecast";
 import { duplicatePairs } from "./rules/duplicate-charge";
 import { buildStreams, merchantOf, type Stream } from "./streams";
@@ -264,6 +264,28 @@ export function estimatedTaxAlerts(input: DetectionInput): AlertCandidate[] {
   const date = nextEstimatedTaxDate(input.asOf);
   if (date > addDays(input.asOf, ESTIMATED_TAX_ALERT_DAYS)) return [];
   return [{ type: "estimated_tax", key: date, ...estimatedTaxAlertCopy(shortDate(date)) }];
+}
+
+// One alert per charge (docs/feature-audit.md, cluster 10). A charge the unusual rules ask
+// "Was this you?" about doesn't also get the large-charge alert: that one asks the same, with
+// the buttons and the teaching. A charge that is "Charged twice?" (a refund card) doesn't also
+// get the unusual "charged twice this month". Run on the alerts the person wants, so turning
+// one kind off never silences the other.
+export function onePerCharge(alerts: AlertCandidate[]): AlertCandidate[] {
+  const chargedTwice = new Set(
+    alerts.filter((a) => a.type === "duplicate_charge").map((a) => a.key),
+  );
+  const kept = alerts.filter((a) => {
+    if (a.type !== "unusual_activity") return true;
+    const parsed = parseKey(a.key);
+    return !(parsed?.rule === "double" && chargedTwice.has(parsed.transactionId));
+  });
+  const wasThisYou = new Set(
+    kept.flatMap((a) =>
+      a.type === "unusual_activity" ? (parseKey(a.key)?.transactionId ?? []) : [],
+    ),
+  );
+  return kept.filter((a) => !(a.type === "large_charge" && wasThisYou.has(a.key)));
 }
 
 // Every alert for this scan, in a stable order.

@@ -12,7 +12,10 @@ import {
   SUDDEN_MIN_CENTS,
 } from "@/config/sudden-money";
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
-import { VALUES_EXCLUSIONS, VALUES_FUNDS, type Exclusion } from "@/config/values";
+import { VALUES_EXCLUSIONS, type Exclusion } from "@/config/values";
+import type { InvestmentAccountView } from "@/insights/investments";
+import { valuesPlan } from "@/planning/values";
+import type { DetectorContext } from "./contract";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import {
@@ -203,6 +206,47 @@ const beneficiaries: Detector = {
   },
 };
 
+// The person's investment accounts in the shape the values planner reads, from the detector's
+// input: each holding with its fund facts (what it holds and costs), when Jane has them.
+function accountViews(data: DetectorContext["data"]): InvestmentAccountView[] {
+  return data.accounts
+    .filter((a) => a.type === "investment")
+    .map((a) => ({
+      id: a.id,
+      name: a.name ?? a.subtype ?? "Account",
+      kind: "investment" as const,
+      label: a.subtype ?? "",
+      subtype: a.subtype,
+      balanceCents: a.balanceCents,
+      holdingsCents: 0,
+      holdingsMatch: true,
+      institution: null,
+      holdings: (data.holdings ?? [])
+        .filter((h) => h.accountId === a.id)
+        .map((h, i) => {
+          const facts = h.ticker ? FUND_FACTS[h.ticker] : undefined;
+          return {
+            id: `${a.id}:${i}`,
+            accountId: a.id,
+            name: (h.ticker ? FUND_NAMES[h.ticker] : undefined) ?? h.ticker ?? "Cash",
+            ticker: h.ticker ?? null,
+            type: null,
+            isCash: h.isCash ?? false,
+            quantity: 0,
+            priceCents: 0,
+            valueCents: h.valueCents,
+            costBasisCents: h.basisCents ?? null,
+            gainCents: null,
+            expenseRatioBps: facts?.expenseRatioBps ?? null,
+            category: null,
+            mix: facts?.mix ?? { other: 1 },
+            source: "",
+            factsSource: null,
+          };
+        }),
+    }));
+}
+
 const valuesFunds: Detector = {
   capability: "investing",
   topic: "values_funds",
@@ -213,14 +257,11 @@ const valuesFunds: Detector = {
       Object.hasOwn(VALUES_EXCLUSIONS, k),
     );
     if (list.length === 0) return null;
-    const matches = (ticker: string) => {
-      const f = VALUES_FUNDS.find((x) => x.ticker === ticker);
-      return !!f && list.every((e) => f.excludes.includes(e));
-    };
-    const offending = (data.holdings ?? []).filter(
-      (h) => h.ticker && !h.isCash && h.valueCents > 0 && !matches(h.ticker),
-    );
-    const total = offending.reduce((s, h) => s + h.valueCents, 0);
+    // Exactly what the values page would switch (planning/values.ts): funds only, one kind of
+    // investment each, nothing multi-asset or a single company's shares.
+    const plan = valuesPlan(accountViews(data), { excludes: list, themes: [] });
+    const offending = plan.switches;
+    const total = plan.movedCents;
     if (total === 0) return null;
     return {
       id: suggestionId("investing", "values_funds"),

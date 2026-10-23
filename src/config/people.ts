@@ -108,6 +108,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 243: an intro price ending, a yearly plan renewing.
+  "promo_ending",
   // Spec step 239: a headline figure resting on something only the person knows.
   "figure_check",
   // Phase AP (spec steps 238–244): Jane runs the money.
@@ -117,16 +119,34 @@ export const SUGGESTION_TOPICS = [
   "s_corp_election",
   "home_office_deduction",
   "vehicle_deduction",
+  // An inherited IRA: the deadline (a fact) and spreading the withdrawals (demo advice).
   "inherited_ira",
+  "inherited_ira_spread",
   "ptc_repayment",
   "hsa_over_limit",
   "medical_deduction",
   "disaster_relief",
   "social_security_tax",
   "irmaa_watch",
+  // Spec step 242: how a couple splits shared bills.
+  "bill_split",
   "draft_return_check",
   // Spec step 241: goals that can't all be on time.
   "goal_tradeoffs",
+  // Spec step 244: charges to confirm before last month can close.
+  "month_close",
+  // Phase AW: the practice portfolio's ideas, one topic per kind (src/config/practice-suggestions.ts).
+  "practice_dip_buy",
+  "practice_tax_loss_harvest",
+  "practice_news_idea",
+  "practice_new_money",
+  "practice_cash_drag",
+  "practice_cheaper_fund",
+  "practice_payday_timing",
+  "practice_drift_warning",
+  "practice_glide_path",
+  "practice_risk_mismatch",
+  "practice_max_drop_near",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -228,6 +248,7 @@ export const PEOPLE: readonly Person[] = [
       "home_office_deduction",
       "vehicle_deduction",
       "inherited_ira",
+      "inherited_ira_spread",
       "plan_menu",
       "short_term_cash",
       "sudden_money",
@@ -306,6 +327,7 @@ export const PEOPLE: readonly Person[] = [
       "home_office_deduction",
       "vehicle_deduction",
       "inherited_ira",
+      "inherited_ira_spread",
       "ptc_repayment",
       "social_security_tax",
       "irmaa_watch",
@@ -341,6 +363,8 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
       "practice_portfolio",
       "borrowing_power",
+      // Spec step 244: WeWork and Adobe sit in a catch-all category.
+      "month_close",
     ],
     mustNot: [
       "beneficiaries",
@@ -360,6 +384,7 @@ export const PEOPLE: readonly Person[] = [
       "tax_loss_harvest",
       "s_corp_election",
       "inherited_ira",
+      "inherited_ira_spread",
       "plan_menu",
       "short_term_cash",
       "sudden_money",
@@ -404,6 +429,8 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
 
       "deductible_fit",
+      // Spec step 243: her fibre intro price ends and her storage plan renews.
+      "promo_ending",
       "hsa_over_limit",
     ],
     mustNot: [
@@ -422,6 +449,7 @@ export const PEOPLE: readonly Person[] = [
       "home_office_deduction",
       "vehicle_deduction",
       "inherited_ira",
+      "inherited_ira_spread",
       "household_setup",
       "life_checklist",
       "ptc_repayment",
@@ -457,11 +485,13 @@ export const PEOPLE: readonly Person[] = [
       "family_loans",
       "property_tax_check",
       "charity_receipts",
-      "inherited_ira",
+      "inherited_ira_spread",
       "plan_menu",
       "short_term_cash",
       "household_setup",
       "irmaa_watch",
+      // Spec step 242: Dan earns about twice what Lena does.
+      "bill_split",
       // Spec step 241: the trip to Japan and the kitchen can't both be on time.
       "goal_tradeoffs",
     ],
@@ -545,6 +575,7 @@ export const PEOPLE: readonly Person[] = [
       "home_office_deduction",
       "vehicle_deduction",
       "inherited_ira",
+      "inherited_ira_spread",
       "household_setup",
       "life_checklist",
 
@@ -612,6 +643,7 @@ export const PEOPLE: readonly Person[] = [
       "home_office_deduction",
       "vehicle_deduction",
       "inherited_ira",
+      "inherited_ira_spread",
       "plan_menu",
       "short_term_cash",
       "sudden_money",
@@ -674,6 +706,7 @@ export const PEOPLE: readonly Person[] = [
       "tax_loss_harvest",
       "home_office_deduction",
       "inherited_ira",
+      "inherited_ira_spread",
       "plan_menu",
       "short_term_cash",
       "sudden_money",

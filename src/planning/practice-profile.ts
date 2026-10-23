@@ -239,3 +239,16 @@ export function profileFor(
     rules,
   };
 }
+
+// The last check before any practice order, from the autopilot or the scan: why the person's
+// preferences refuse it, or null. Suggest only refuses every order; a buy of anything on the
+// never-buy list is refused. The hard limits are checked separately (violates) and always apply.
+export function refusedByPreferences(
+  profile: Pick<PracticeProfile, "trades" | "avoid">,
+  order: { ticker: string; side: "buy" | "sell" },
+): string | null {
+  if (!profile.trades) return "suggest only";
+  if (order.side === "buy" && profile.avoid.includes(order.ticker.toUpperCase()))
+    return "on your never-buy list";
+  return null;
+}

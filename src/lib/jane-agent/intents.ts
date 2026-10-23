@@ -126,8 +126,14 @@ export type Intent =
   | FigureIntent
   // Spec step 238: "are my numbers right?"
   | { kind: "books" }
+  // Spec step 244: "is last month closed?"
+  | { kind: "month_close" }
   // Spec step 240: "my steady paycheck", "my income is uneven".
   | { kind: "steady_pay" }
+  // Spec step 243: "is anything going up?", "when does my intro rate end?"
+  | { kind: "price_rises" }
+  // Spec step 242: "how should we split the bills?", "our money date".
+  | { kind: "money_for_two" }
   // Spec step 241: "which goal first?", "can I do both?"
   | { kind: "goal_tradeoffs" }
   // Spec step 203: "what if I lose my job?"; step 209: "where will I be in 30 years?"
@@ -374,8 +380,14 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
+const CLOSE =
+  /\bclose (?:the|my|last|this) month\b|\bmonth[- ]end close\b|\bmonthly close\b|\bis (?:last |the )?month (?:closed|done)\b|\b(?:last|this) month'?s close\b|\bclosed (?:last )?month\b/;
+const PRICE_RISES =
+  /\b(?:intro(?:ductory)?|promo(?:tional)?) (?:rate|price|offer|deal)s?\b|\b(?:any|which) (?:bills?|prices?|subscriptions?) (?:going|go) up\b|\bprices? (?:going|go) up\b|\bwhat(?:'s| is) (?:renewing|going up)\b|\b(?:annual|yearly) (?:renewals?|plans?) (?:coming|due)\b/;
 const BOOKS =
   /\b(?:is|are) my (?:data|numbers|figures|balances|books|accounts) (?:all )?(?:right|correct|accurate|up to date|ok|okay)\b|\bdo my (?:books|numbers|balances) (?:balance|add up)\b|\bany (?:problems|issues) with my (?:data|accounts|numbers)\b|\bhow (?:accurate|reliable) (?:is|are) (?:my|the) (?:data|numbers|figures)\b/;
+const TWO =
+  /\bmoney date\b|\bsplit (?:the |our )?(?:bills|rent|costs|expenses)\b|\bsplit (?:by|according to) income\b|\bhow (?:should|do) we split\b|\bjoint goals?\b|\b(?:my|our) partner'?s? (?:tap|approval|ok)\b|\bmoney (?:as a couple|with my partner|for two)\b/;
 const TRADEOFFS =
   /\bwhich goal\b.*\b(?:first|matters most)\b|\bgoals? (?:compete|competing|conflict|clash)\b|\btrade[- ]?offs? (?:between|in|for) (?:my )?goals?\b|\bwhich (?:should|do) i save for first\b|\b(?:can|could) i (?:afford|do|save for) both (?:goals|of them|at once)\b|\bprioriti[sz]e my goals\b|\border (?:of|for) my goals\b/;
 const STEADY =
@@ -570,6 +582,7 @@ export function parseIntent(
   const figureHow = parseFigureHow(text);
   if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };
+  if (CLOSE.test(text)) return { kind: "month_close" };
   const saveMore = SAVE_MORE.exec(text);
   if (saveMore) {
     const cents = Math.round(Number(saveMore[1].replace(/,/g, "")) * 100);
@@ -585,6 +598,8 @@ export function parseIntent(
   const profile = parseProfile(text);
   if (profile) return profile;
   if (STEADY.test(text)) return { kind: "steady_pay" };
+  if (PRICE_RISES.test(text)) return { kind: "price_rises" };
+  if (TWO.test(text)) return { kind: "money_for_two" };
   if (TRADEOFFS.test(text)) return { kind: "goal_tradeoffs" };
   if (NET_WORTH.test(text)) return { kind: "net_worth" };
   if (BALANCE_FORECAST.test(text)) return { kind: "balance_forecast" };

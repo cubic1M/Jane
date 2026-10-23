@@ -9,6 +9,7 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadProfileInput } from "@/lib/profile";
+import type { CardExtras } from "@/lib/jane-agent/types";
 import { scrub } from "@/lib/scrub";
 import { resultsByKind } from "@/lib/worked";
 import { buildProfile } from "@/profile/build";
@@ -49,6 +50,8 @@ export type OfferedSuggestion = {
   more: { label: string; href: string }[];
   // Whether it is a recommendation on investments, taxes, insurance or loans (demo advice).
   advice: boolean;
+  // A practice idea's numbers, caps and what its Yes does, for the card's More details.
+  cardDetails?: CardExtras;
 };
 
 export type ScanResult = { fired: number; selected: string[] };
@@ -58,7 +61,7 @@ export type ScanResult = { fired: number; selected: string[] };
 export async function detectFor(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ suggestions: Suggestion[]; advice: boolean }> {
+): Promise<{ suggestions: Suggestion[]; advice: boolean; today: string }> {
   const [input, advice] = await Promise.all([
     loadProfileInput(userId, { client, now }),
     adviceMode(userId, { client }),
@@ -71,7 +74,7 @@ export async function detectFor(
       error: scrub(String(error)),
     }),
   ).filter((s) => advice || !(ADVICE_TOPICS as readonly string[]).includes(s.topic));
-  return { suggestions, advice };
+  return { suggestions, advice, today: input.today };
 }
 
 const isIdea = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
@@ -273,6 +276,13 @@ export async function offeredToday(
         })
       : [];
   const partOf = new Map(parts.map((p) => [p.key, p]));
+  // Loaded when needed: the practice modules reach this file again (through the profile).
+  const { practiceCardDetails } = await import("@/lib/practice/ideas");
+  const practice = await practiceCardDetails(
+    userId,
+    rows.map((r) => r.key),
+    { client },
+  );
   return rows.map((r) => {
     const mine = isIdea(r.key) ? partsOfIdea(r.key).flatMap((k) => partOf.get(k) ?? []) : [];
     const topics = mine.length > 0 ? mine.map((p) => p.topic) : [r.topic];
@@ -292,6 +302,7 @@ export async function offeredToday(
       actionHref: mine[0]?.actionHref ?? r.actionHref,
       more: mine.slice(1).map((p) => ({ label: p.actionLabel, href: p.actionHref })),
       advice: topics.some((t) => (ADVICE_TOPICS as readonly string[]).includes(t)),
+      ...(practice.has(r.key) ? { cardDetails: practice.get(r.key) } : {}),
     };
   });
 }

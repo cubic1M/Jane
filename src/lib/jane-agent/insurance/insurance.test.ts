@@ -516,16 +516,33 @@ describe("insurance on autopilot (spec step 108)", () => {
     });
   });
 
-  it("says the level and that buying always takes a tap", () => {
-    expect(autopilotReply("safe").body).toMatch(
+  it("says the level, then what the Insurance area lets Jane buy by herself", () => {
+    const ask = {
+      sector: "insurance",
+      level: "ask",
+      actionCapCents: 0,
+      monthlyCapCents: 0,
+    } as const;
+    expect(autopilotReply("safe", ask).body).toMatch(
       /^With insurance, I do this by myself at "Handle the safe stuff"\. I watch every renewal/,
     );
-    expect(autopilotReply(null).body).toContain("at no autopilot level yet");
+    expect(autopilotReply(null, ask).body).toContain("at no autopilot level yet");
     for (const level of ["ask", "safe", "all", "custom", null]) {
-      expect(autopilotReply(level).body).toMatch(
-        /I never buy, change or cancel cover without your tap\.$/,
+      expect(autopilotReply(level, ask).body).toMatch(
+        /Insurance is set to always ask: I don't switch to a cheaper policy with the same cover or change anything else without your tap\.$/,
       );
     }
+    // Spec step 141: at "Everything allowed" for insurance, the switch happens by itself.
+    expect(
+      autopilotReply("all", {
+        ...ask,
+        level: "all",
+        actionCapCents: 10_000,
+        monthlyCapCents: 30_000,
+      }).body,
+    ).toMatch(
+      /I switch to a cheaper policy with the same cover by myself, up to \$100\.00 each time and \$300\.00 a month, and ask you about anything over that\.$/,
+    );
   });
 
   it("gives a catalog carrier's claims line", () => {

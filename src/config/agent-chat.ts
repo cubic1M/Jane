@@ -48,10 +48,16 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   lean: 1,
   // Spec step 238.
   books: 1,
+  // Spec step 244.
+  close: 1,
   // Spec step 255: the top few suggestions of the day (src/config/suggestions.ts).
   suggestions: 3,
   // Spec step 240.
   steady: 1,
+  // Spec step 243.
+  price_rises: 2,
+  // Spec step 242: the big moves waiting for a tap, and the money date.
+  two: 3,
   // Spec step 241.
   tradeoffs: 1,
   // Spec step 257: one question about the person at a time.
@@ -171,10 +177,17 @@ export const MESSAGE_PRIORITY = {
   lean: 92,
   // Spec step 238: data that does not add up; a broken link is asked for at once.
   books: 90,
+  // Spec step 244: the month's close, after what needs the person today.
+  close: 54,
   // Spec step 255: what Jane worked out for this person, just below a finding to decide.
   suggestions: 58,
   // Spec step 240: a steady paycheck, once a month.
   steady: 86,
+  // Spec step 243: a price about to go up, a month or more ahead.
+  price_rises: 48,
+  // Spec step 242: a partner's big move waiting for this person's tap; the monthly money date.
+  two: 88,
+  two_date: 40,
   // Spec step 241: goals that can't all be on time, until the person picks an order.
   tradeoffs: 52,
   // Spec step 257: a question that unlocks suggestions, after those it would unlock.

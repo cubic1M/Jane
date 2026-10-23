@@ -171,6 +171,10 @@ const rows: Row[] = [
   ["figures", "/figures/safe_to_spend", "explain_figure", "how did you get my safe to spend"],
   ["figures", "/figures/monthly_spending", "explain_figure", "how did you work out my spending"],
   ["figures", "/figures/net_worth", "explain_figure", "show me the working for my net worth"],
+  // The monthly close (spec step 244).
+  ["close", "/monthly", "month_close", "is last month closed"],
+  ["close", "/monthly", "month_close", "how did the monthly close go"],
+  ["close", "/monthly", "month_close", "close the month"],
   // Books that balance (spec step 238).
   ["books", "/net-worth", "books_check", "are my numbers right"],
   ["books", "/net-worth", "books_check", "do my books balance"],
@@ -188,6 +192,14 @@ const rows: Row[] = [
   ],
   ["steady", "/transfers", "steady_pay", "my income is uneven"],
   ["steady", "/transfers", "steady_pay", "what is my steady pay"],
+  // Price rises seen before they land (spec step 243).
+  ["price_rises", "/deadlines", "price_rises", "is any of my bills going up"],
+  ["price_rises", "/deadlines", "price_rises", "when does my intro rate end"],
+  ["price_rises", "/deadlines", "price_rises", "what's renewing soon"],
+  // Money for two (spec step 242).
+  ["two", "/household", "money_for_two", "how should we split the bills"],
+  ["two", "/household", "money_for_two", "what's our money date"],
+  ["two", "/household", "money_for_two", "should we split by income"],
   // Goals that trade off openly (spec step 241).
   ["tradeoffs", "/goals", "goal_tradeoffs", "which goal should i save for first"],
   ["tradeoffs", "/goals", "goal_tradeoffs", "can i afford both goals"],

@@ -220,7 +220,13 @@ export async function loadProfileInput(
         .filter((f) => f.kind === "cosigned")
         .reduce((s, f) => s + (f.monthlyPaymentCents ?? 0), 0),
     },
-    extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
+    extras: {
+      householdMembers,
+      ...(await sectorFigures(userId, client, now)),
+      practiceIdeas: await import("@/lib/practice/ideas").then((m) =>
+        m.openPracticeIdeas(userId, { client, now }),
+      ),
+    },
     healthPlan: healthPlanOf(healthPolicy),
     fsaElectionCents: fsa
       ? fsa.perPayCents * (PAY_PERIODS[fsa.payFrequency as keyof typeof PAY_PERIODS] ?? 12)
@@ -249,9 +255,11 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     owned,
     feed,
     books,
+    split,
     draft,
     goals,
     plan,
+    lastClose,
   ] = await Promise.all([
     loadMatchPace(userId, { client, now }),
     hasStock
@@ -265,10 +273,20 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
     // Spec step 238: what the daily books check left open.
     import("@/lib/books").then((m) => m.openBooks(userId, { client })),
+    // Spec step 242: whether the household chose how bills split.
+    client.householdMember.findUnique({
+      where: { userId },
+      select: { household: { select: { splitSetAt: true } } },
+    }),
     import("@/lib/draft-return").then((m) => m.latestDraftCheck(userId, { client })),
     // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
     import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
+    // Spec step 244: last month's close, if it's begun.
+    db.monthCloses.findFirst({
+      where: { month: previousMonthOf(now) },
+      select: { status: true },
+    }),
   ]);
   const month = now.toISOString().slice(0, 7);
   const planMonths = Array.isArray(plan?.months)
@@ -280,9 +298,13 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    lastCloseStatus: (lastClose?.status === "closed" || lastClose?.status === "waiting"
+      ? lastClose.status
+      : null) as "closed" | "waiting" | null,
     books: books.open.map((o) => ({ kind: o.kind, words: o.words, accountId: o.accountId })),
     // What they own by its value (a home, a car), for the net worth an umbrella protects.
     ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
+    splitChosen: split?.household.splitSetAt != null,
     goals: goals.flatMap((g) => tradeGoalOf(g) ?? []),
     goalRoomCents: planMonths.some((m) => m.month === month)
       ? roomFromPlan(planMonths, month)[0]
@@ -300,6 +322,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     disasterRelief: feed ? await feed.declarations() : [],
     // Spec step 272: the latest checked draft return.
     draftReturn: draft,
+    // Taxes QA: what an HSA's bank reports going into it this year.
+    hsaContributions: await hsaContributionsOf(db, now),
     hasPracticePortfolio: practice > 0,
   };
 }
@@ -317,6 +341,24 @@ function healthPlanOf(
     coinsurance: c.coinsurance,
   };
 }
+
+// This year's contributions on the person's HSA accounts, as the bank reports them on the
+// account (taxes QA). Null without an HSA.
+async function hsaContributionsOf(db: ReturnType<typeof scopedFor>, now: Date) {
+  const hsas = await db.accounts.findMany({ where: { subtype: "hsa" }, select: { id: true } });
+  if (hsas.length === 0) return null;
+  const rows = await db.investmentTransactions.findMany({
+    where: {
+      accountId: { in: hsas.map((a) => a.id) },
+      subtype: "contribution",
+      date: { gte: new Date(Date.UTC(now.getUTCFullYear(), 0, 1)), lte: now },
+    },
+    select: { amountCents: true },
+  });
+  return { cents: rows.reduce((s, r) => s + Math.abs(r.amountCents), 0), count: rows.length };
+}
+const previousMonthOf = (now: Date) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
 
 export async function loadProfile(userId: string, options: Options = {}): Promise<Profile> {
   return buildProfile(await loadProfileInput(userId, options));

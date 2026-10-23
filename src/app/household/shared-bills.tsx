@@ -13,13 +13,18 @@ export function SharedBills({
   owedToMeCents,
   charges,
   split: splitIds,
+  myShareBps,
 }: {
   partnerEmail: string;
   owedToMeCents: number;
   charges: ShareableCharge[];
   // Charge id -> shared charge id, for the ones already split.
   split: Map<string, { sharedChargeId: string; partnerShareBps: number }>;
+  // Spec step 242: my share of a shared bill under the household's rule (half, or by income).
+  myShareBps: number;
 }) {
+  // What the one who didn't pay owes, in percent.
+  const owed = (mine: boolean) => Math.round((mine ? 10_000 - myShareBps : myShareBps) / 100);
   const name = (c: ShareableCharge) =>
     c.merchant ?? normalizeMerchant(c.description)?.name ?? c.description;
   return (
@@ -75,9 +80,11 @@ export function SharedBills({
                 ) : (
                   <form action={split}>
                     <input type="hidden" name="transactionId" value={c.id} />
-                    <input type="hidden" name="percent" value="50" />
+                    <input type="hidden" name="percent" value={String(owed(c.mine))} />
                     <button type="submit" className={BUTTON}>
-                      Split half
+                      {owed(c.mine) === 50
+                        ? "Split half"
+                        : `Split ${100 - owed(c.mine)}/${owed(c.mine)}`}
                       <span className="sr-only">
                         {" "}
                         of {name(c)} on {c.date}

@@ -2,12 +2,14 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { scopedDb, sharedReadFor } from "@/lib/db-scoped";
 import { householdOf } from "@/lib/household";
+import { loadMoneyForTwo } from "@/lib/money-for-two";
 import { formatCents } from "@/lib/money";
 import { savingsPhrase } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
 import { HOUSEHOLD_MAX_MEMBERS } from "@/config/household";
 import { leave, share } from "./actions";
 import { InviteForm } from "./forms";
+import { MoneyForTwo } from "./money-for-two";
 import { SharedBills } from "./shared-bills";
 import { shareableCharges, sharedBills } from "@/lib/shared-bills";
 
@@ -21,13 +23,19 @@ const label = (a: { name: string; mask: string | null }) =>
 async function Household() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [household, accounts, shared] = await Promise.all([
+  const [household, accounts, shared, two, myGoals] = await Promise.all([
     householdOf(user.id),
     mine.accounts.findMany({
       select: { id: true, name: true, mask: true, sharedWithHousehold: true },
       orderBy: { name: "asc" },
     }),
     sharedReadFor(user.id),
+    // Spec step 242: money for two, and the goals they could make joint.
+    loadMoneyForTwo(user.id),
+    mine.savingsGoals.findMany({
+      select: { id: true, name: true, sharedWithHousehold: true },
+      orderBy: { targetDate: "asc" },
+    }),
   ]);
   const partnerFindings = await shared.findings();
   const bills = await sharedBills(user.id);
@@ -115,8 +123,11 @@ async function Household() {
           owedToMeCents={bills.owedToMeCents}
           charges={shareable}
           split={splitMap}
+          myShareBps={two?.myShareBps ?? 5_000}
         />
       )}
+
+      {two && <MoneyForTwo view={two} myGoals={myGoals} />}
 
       {partners.length > 0 && (
         <section className={CARD}>

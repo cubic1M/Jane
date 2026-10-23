@@ -17,6 +17,7 @@ import {
   UNEVEN_DEPOSITS_MIN,
   TROUBLE_DEBT_MONTHS,
 } from "@/config/profile";
+import type { WorthKind } from "@/detectors/contract";
 import type { Relief } from "@/config/disasters";
 import type { DraftFinding } from "@/planning/draft-return";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
@@ -114,6 +115,9 @@ export type ProfileInput = {
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
+    // This year's contributions an HSA's bank reports on the account itself (investment
+    // transactions, taxes QA). Absent: not loaded; null: no HSA.
+    hsaContributions?: { cents: number; count: number } | null;
     // The latest confirmed draft return's check (spec step 272): what it found, by line, with the
     // tax each changes. Null: no checked draft. Absent: not loaded.
     draftReturn?: { year: number; findings: readonly DraftFinding[] } | null;
@@ -121,6 +125,8 @@ export type ProfileInput = {
     ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.
     hasPracticePortfolio?: boolean;
+    // Whether the household chose how shared bills split (spec step 242). Absent: not loaded.
+    splitChosen?: boolean;
     // Savings goals still on the way (spec step 241), in the order they're funded, and the
     // room the year plan has for them this month. Absent: not loaded.
     goals?: readonly {
@@ -131,6 +137,8 @@ export type ProfileInput = {
       monthlyCents: number;
     }[];
     goalRoomCents?: number | null;
+    // Last month's close (spec step 244): closed, waiting or none yet. Absent: not loaded.
+    lastCloseStatus?: "closed" | "waiting" | null;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;
@@ -138,6 +146,8 @@ export type ProfileInput = {
       assumed: boolean;
       stockCents: number;
     } | null;
+    // The practice scan's ideas waiting for the person, newest first. Absent: not loaded.
+    practiceIdeas?: readonly PracticeIdea[];
   };
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;
@@ -164,6 +174,25 @@ export type ProfileInput = {
     // The co-signed loans' payments a month: lenders count them as the person's own debt.
     cosignedPaymentCents?: number;
   };
+};
+
+// One idea from the practice portfolio's scan waiting for the person (Phase AW, Stage A): a flag
+// kept as "suggested", with its short forms, numbers, caps and how sure Jane is.
+export type PracticeIdea = {
+  key: string;
+  kind: string;
+  scannedAt: string;
+  // What the kind is called ("Put idle cash to work").
+  label: string;
+  headline: string;
+  short: string;
+  worthCents: number;
+  worthKind: WorthKind;
+  figures: readonly { label: string; value: string }[];
+  caps: readonly string[];
+  confidence: { percent: number; reason: string };
+  // How many practice trades a Yes places (0: it opens the settings instead).
+  trades: number;
 };
 
 export type FactValue = string | number | boolean | null;
