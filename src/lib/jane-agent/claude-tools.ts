@@ -814,6 +814,7 @@ export async function runChatTool(
                 toRaiseIt: p.next,
               })),
               notCounted: view.left.map((l) => ({ part: l.label, why: l.why })),
+              partsAddUpTo: `${view.counted.points} of ${view.counted.max}`,
               lastMonth: view.before && {
                 month: view.before.month,
                 score: view.before.score,

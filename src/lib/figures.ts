@@ -5,7 +5,14 @@ import {
   type FigureId,
 } from "@/config/figures";
 import { FORECAST_DAYS, NON_SPENDING_CATEGORIES, NON_SPENDING_PRIMARIES } from "@/config/detection";
-import { HEALTH_WEIGHTS } from "@/config/health-score";
+import {
+  HEALTH_CARDS_ZERO_MONTHS,
+  HEALTH_CUSHION_FULL_MONTHS,
+  HEALTH_MARGIN_FULL_RATE,
+  HEALTH_MARGIN_ZERO_RATE,
+  HEALTH_POINTS_PER_SLIP,
+  HEALTH_WEIGHTS,
+} from "@/config/health-score";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import { categoryLabel } from "@/insights/labels";
@@ -226,7 +233,9 @@ export async function explainFigure(
       ...empty,
       value: `${health.score} out of 100`,
       summary:
-        "Each part scores out of its weight; parts I can't see yet are left out and the rest is scaled to 100.",
+        health.counted.max === 100
+          ? `Each part scores out of its weight, and the parts add up to ${health.score}.`
+          : `Each part scores out of its weight. The parts I can count add up to ${health.counted.points} of ${health.counted.max}, which is ${health.score} out of 100; parts I can't see yet are left out, not counted against you.`,
       rows: [
         ...health.parts.map((p) => ({
           label: `${p.label} (out of ${p.max})`,
@@ -234,11 +243,21 @@ export async function explainFigure(
           note: p.why,
         })),
         ...health.left.map((l) => ({ label: `${l.label}: left out`, value: "–", note: l.why })),
+        { label: `Total (out of ${health.counted.max})`, value: String(health.counted.points) },
       ],
-      rules: Object.entries(HEALTH_WEIGHTS).map(([part, weight]) => ({
-        label: `Weight: ${part}`,
-        value: String(weight),
-      })),
+      rules: [
+        ...Object.entries(HEALTH_WEIGHTS).map(([part, weight]) => ({
+          label: `Weight: ${part}`,
+          value: String(weight),
+        })),
+        { label: "Full cushion at", value: `${HEALTH_CUSHION_FULL_MONTHS} months of spending` },
+        {
+          label: "Room each month",
+          value: `full at ${HEALTH_MARGIN_FULL_RATE * 100}% left, none at ${-HEALTH_MARGIN_ZERO_RATE * 100}% over`,
+        },
+        { label: "Each late or overdraft fee", value: `${HEALTH_POINTS_PER_SLIP} points` },
+        { label: "No card points at", value: `${HEALTH_CARDS_ZERO_MONTHS} months of income` },
+      ],
     };
   }
 
