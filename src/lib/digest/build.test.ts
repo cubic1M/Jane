@@ -8,6 +8,7 @@ const input = (overrides: Partial<DigestInput> = {}): DigestInput => ({
   now: NOW,
   lastSentAt: daysAgo(7),
   moneyFoundCents: 50_000,
+  savedToDateCents: 0,
   membershipOffer: false,
   actions: [],
   findings: [],
@@ -39,9 +40,11 @@ describe("buildDigest", () => {
     expect(digest).toMatchObject({ newFindings: [], plan: { items: 1 } });
   });
 
-  it("totals what was saved this week and to date from finished actions", () => {
+  it("totals what was saved this week, and says the same saved-so-far as /jane", () => {
     const digest = buildDigest(
       input({
+        // savedToDate's total (docs/feature-audit.md, cluster 9), not a sum of its own.
+        savedToDateCents: 35_976,
         actions: [
           action({}),
           action({ title: "Cancel Netflix", annualSavingsCents: 21_588, completedAt: daysAgo(40) }),

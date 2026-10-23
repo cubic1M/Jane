@@ -21,12 +21,15 @@ import {
   largeChargeAlerts,
   lowBalanceAlerts,
   newSubscriptionAlerts,
+  onePerCharge,
   priceIncreaseAlerts,
+  type AlertCandidate,
   type AlertContext,
 } from "./alerts";
 import { detect } from "./detect";
 import { buildStreams } from "./streams";
 import type { DetectionInput } from "./types";
+import { keyOf } from "./unusual";
 import { addDays } from "./units";
 
 const LATER_SCAN: AlertContext = { knownFindings: new Set(), firstScan: false };
@@ -364,5 +367,51 @@ describe("fee alerts and a payment processor", () => {
     });
     expect(keys(feeAlerts(input({ transactions: [square] })))).toEqual([]);
     expect(keys(feeAlerts(input({ transactions: [square, overdraft] })))).toEqual([overdraft.id]);
+  });
+});
+
+// docs/feature-audit.md, cluster 10: one charge, one alert.
+describe("onePerCharge", () => {
+  const alert = (type: AlertCandidate["type"], key: string): AlertCandidate => ({
+    type,
+    key,
+    title: type,
+    body: "",
+  });
+
+  it("asks 'Was this you?' about a big first charge, without the large-charge alert too", () => {
+    const jewels = tx({
+      accountId: CARD.id,
+      date: addDays(AS_OF, -1),
+      amountCents: 90_000,
+      description: "NEW JEWELLERS",
+      merchantName: "New Jewellers",
+      pfcPrimary: "GENERAL_MERCHANDISE",
+    });
+    const data = input({ transactions: [...everyday, jewels] });
+    const all = detectAlerts(data, detect(data), LATER_SCAN);
+    const about = (alerts: AlertCandidate[]) =>
+      alerts.filter((a) => a.key.endsWith(jewels.id)).map((a) => a.type);
+    // Both rules see it...
+    expect(about(all).sort()).toEqual(["large_charge", "unusual_activity"]);
+    // ...and it's said once, with "This was me" and "Not me".
+    expect(about(onePerCharge(all))).toEqual(["unusual_activity"]);
+  });
+
+  it("keeps 'Charged twice?' (and its refund card) over the unusual double", () => {
+    const double = alert("unusual_activity", keyOf("double", "streamco", "tx_2"));
+    const twice = alert("duplicate_charge", "tx_2");
+    expect(onePerCharge([double, twice])).toEqual([twice]);
+    // A different charge isn't touched.
+    const other = alert("unusual_activity", keyOf("double", "streamco", "tx_9"));
+    expect(onePerCharge([other, twice])).toEqual([other, twice]);
+  });
+
+  it("keeps the large-charge alert when it's the only one about the charge", () => {
+    // E.g. the person turned unusual-activity alerts off: the large charge still alerts.
+    const large = alert("large_charge", "tx_1");
+    expect(onePerCharge([large])).toEqual([large]);
+    const spikeElsewhere = alert("unusual_activity", keyOf("spike", "shop", "tx_5"));
+    expect(onePerCharge([large, spikeElsewhere])).toEqual([large, spikeElsewhere]);
   });
 });

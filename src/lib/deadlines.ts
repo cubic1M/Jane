@@ -31,6 +31,7 @@ import { openEnrollmentDates } from "@/lib/insurance/health";
 import { listBenefits, openEnrollmentAtWork } from "@/lib/insurance/benefits";
 import { listPolicies, nextRenewal } from "@/lib/insurance/policies";
 import { loadInsurance } from "@/lib/insurance/profile";
+import { priceRiseDeadlines } from "@/lib/price-rises";
 
 // Deadlines (spec step 71): loads each source's data, keeps the deadlines the person types
 // in, and raises the deadline_soon reminders (src/insights/deadlines.ts decides which).
@@ -216,6 +217,8 @@ export const DEADLINE_SOURCES: readonly DeadlineSource[] = [
   insuranceDeadlines,
   openEnrollmentDeadlines,
   workEnrollmentDeadlines,
+  // Spec step 243: intro prices ending and yearly plans renewing.
+  priceRiseDeadlines,
 ];
 
 // Everything coming up, soonest first. A source that fails is left out (and logged) so

@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { PEOPLE } from "@/config/people";
-import { SUGGESTIONS_PER_DAY } from "@/config/suggestions";
+import {
+  HISTORY_FLOOR_BY_TOPIC,
+  HISTORY_MIN_FACTOR,
+  SAFETY_HISTORY_FLOOR,
+  SUGGESTIONS_PER_DAY,
+} from "@/config/suggestions";
 import type { Suggestion } from "@/detectors/contract";
 import { reportFor } from "@/detectors/harness";
 import {
@@ -68,6 +73,38 @@ describe("ranking suggestions", () => {
     const b = make({ topic: "card_interest" });
     const out = rankSuggestions([a, b], { history: { card_interest: { yes: 0, no: 1 } } });
     expect(out[0].suggestion.topic).toBe("bank_fees");
+  });
+
+  it("learns per practice kind: declined kinds fall, accepted rise, safety kinds never vanish", () => {
+    const declined = { practice_news_idea: { yes: 0, no: 5 } };
+    expect(historyFactor("practice_news_idea", declined)).toBe(HISTORY_MIN_FACTOR);
+    expect(
+      historyFactor("practice_cheaper_fund", { practice_cheaper_fund: { yes: 3, no: 0 } }),
+    ).toBeGreaterThan(1);
+    // Declined ten times, a safety kind keeps its floor.
+    for (const topic of Object.keys(HISTORY_FLOOR_BY_TOPIC)) {
+      expect(historyFactor(topic, { [topic]: { yes: 0, no: 10 } })).toBe(SAFETY_HISTORY_FLOOR);
+    }
+    expect(SAFETY_HISTORY_FLOOR).toBeGreaterThan(HISTORY_MIN_FACTOR);
+    expect(Object.keys(HISTORY_FLOOR_BY_TOPIC).sort()).toEqual([
+      "practice_drift_warning",
+      "practice_glide_path",
+      "practice_max_drop_near",
+      "practice_risk_mismatch",
+    ]);
+    // The same worth: after five noes a news idea ranks below a safety idea declined as often.
+    const news = make({ id: "investing:practice_news_idea:a", topic: "practice_news_idea" });
+    const safety = make({
+      id: "investing:practice_drift_warning:b",
+      topic: "practice_drift_warning",
+    });
+    const history = {
+      practice_news_idea: { yes: 0, no: 5 },
+      practice_drift_warning: { yes: 0, no: 5 },
+    };
+    expect(rankSuggestions([news, safety], { history })[0].suggestion.topic).toBe(
+      "practice_drift_warning",
+    );
   });
 
   it("ranks a kind whose actions never showed a saving lower, and one that worked higher", () => {

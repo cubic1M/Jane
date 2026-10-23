@@ -1,4 +1,9 @@
-import { PAY_EARLY_DAYS, PROMO_PACE_SHARE, RATE_ASK_CUT_BPS } from "@/config/card-interest";
+import {
+  PAY_EARLY_DAYS,
+  PROMO_PACE_SHARE,
+  RATE_ASK_CUT_BPS,
+  RATE_REQUEST_EVERY_DAYS,
+} from "@/config/card-interest";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 
@@ -123,3 +128,38 @@ export const promoLine = (name: string, plan: PromoPlan, endsOn: string) =>
   plan.ended
     ? `${name}'s 0% ended on ${dayLabel(endsOn, { year: true })}.`
     : `${name}'s 0% ends on ${dayLabel(endsOn, { year: true })} (${plan.daysLeft} days): ${formatCents(plan.monthlyNeededCents)} a month clears it.`;
+
+// The lower-rate step the yearly debt review (spec step 230) and the monthly check-up (spec
+// step 251) share, so they never disagree (docs/feature-audit.md, cluster 14): a request sent
+// in the last RATE_REQUEST_EVERY_DAYS first ("I'll tell you what they answer"), else the next
+// card worth asking. Takes the card interest view (src/lib/card-interest.ts).
+export type RateStep =
+  | { kind: "asked"; cards: string[] }
+  | { kind: "next"; name: string; requestId: string; savingYearlyCents: number }
+  | null;
+
+export function rateStep(
+  ci: {
+    available: boolean;
+    cards: {
+      name: string;
+      rate: { id: string; savingYearlyCents: number; sent: unknown } | null;
+    }[];
+    requests: { sentOn: string; cardName: string }[];
+  },
+  asOf: string,
+): RateStep {
+  if (!ci.available) return null;
+  const recent = ci.requests.filter(
+    (r) => Date.parse(asOf) - Date.parse(r.sentOn) <= RATE_REQUEST_EVERY_DAYS * DAY_MS,
+  );
+  if (recent.length > 0) return { kind: "asked", cards: recent.map((r) => r.cardName) };
+  const next = ci.cards.find((c) => c.rate && !c.rate.sent);
+  if (!next?.rate) return null;
+  return {
+    kind: "next",
+    name: next.name,
+    requestId: next.rate.id,
+    savingYearlyCents: next.rate.savingYearlyCents,
+  };
+}
