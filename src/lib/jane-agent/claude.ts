@@ -30,7 +30,7 @@ import type { PolicyKind } from "@/config/insurance";
 import { quotesAnswer } from "./insurance/quotes";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
-import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
+import { areaTools, isArea, lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { CHANGE_PRACTICE_TOOL, proposePracticeChange } from "./practice-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
@@ -204,6 +204,7 @@ const STATUS: Record<string, string> = {
   my_profile: "Remembering what I know about you…",
   propose_action: "Getting a button ready…",
   show_block: "Drawing it…",
+  open_area: "Looking into it…",
 };
 export const statusFor = (tool: string) =>
   STATUS[tool] ?? INVESTMENT_TOOL_STATUS[tool] ?? "Looking that up…";
@@ -368,6 +369,8 @@ type ChatTiming = {
   tools: { name: string; ms: number }[];
   // How many tool definitions the request carried (the question's sectors, not all of them).
   toolsSent: number;
+  // Areas Claude opened itself (open_area), the ones the question's words didn't pick.
+  areasOpened: string[];
   // Why the answer came from the rules instead (no text, numbers only).
   reason: string | null;
   // Each round: how it ended, the tools it asked for (the button and picture tools too), how
@@ -411,6 +414,7 @@ export async function askClaudeInChat(
     outputTokens: 0,
     tools: [],
     toolsSent: 0,
+    areasOpened: [],
     reason: null,
     rounds: [],
     retries: 0,
@@ -604,7 +608,7 @@ async function askClaude(
   const actionRequest = ACTION_REQUEST.test(question);
   // A question that only asks for information isn't sent the button tool at all, so the answer
   // has to be written in words (it can still link with show_block's pictures).
-  const tools = toolsFor(
+  let tools = toolsFor(
     CHAT_TOOLS,
     question,
     [...history].reverse().find((m) => m.role === "user")?.content ?? null,
@@ -643,6 +647,8 @@ async function askClaude(
   // The turns allowed: one more, once, when the last answer was only about a button and has to
   // be written again in words.
   let turnLimit = maxTurns;
+  // Whether Claude asked for an area's tools (open_area): that step gets a turn of its own, once.
+  let areaOpened = false;
   let buttonRewrites = 0;
   let shapeRewritten = false;
   for (let turn = 0; turn < turnLimit; turn += 1) {
@@ -886,6 +892,32 @@ async function askClaude(
                 : "The button is ready. Now write your answer in words, with the figures from the results, and don't mention the button."
               : `${result.error}\n(This is for you. Never tell the person a button could not be set up; answer their question in words.)`,
             ...(result.ok ? {} : { is_error: true }),
+          });
+          continue;
+        }
+        // An area's tools the words didn't pick: added for the next step.
+        if (block.name === "open_area") {
+          const area = (block.input as { area?: unknown } | null)?.area;
+          const added = isArea(area)
+            ? areaTools(CHAT_TOOLS, area).filter((t) => !tools.some((s) => s.name === t.name))
+            : [];
+          if (added.length > 0) {
+            tools = [...tools, ...added];
+            timing.areasOpened.push(area as string);
+            if (!areaOpened) {
+              areaOpened = true;
+              turnLimit += 1;
+            }
+          }
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: !isArea(area)
+              ? "Pick one area: debt, insurance, tax or investing."
+              : added.length > 0
+                ? `The ${area} tools are ready for your next step: ${added.map((t) => t.name).join(", ")}.`
+                : `You already have the ${area} tools.`,
+            ...(isArea(area) ? {} : { is_error: true }),
           });
           continue;
         }
