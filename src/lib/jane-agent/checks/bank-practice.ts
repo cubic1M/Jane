@@ -55,6 +55,18 @@ export const PRACTICE_QUESTIONS: readonly CheckQuestion[] = [
     ...PRACTICE,
   },
   {
+    id: "prac-9",
+    text: "did the extra rules help?",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      mentions: /\bYour level, Medium\b[\s\S]*Plain rebalancing[\s\S]*not a forecast/i,
+      link: "/investments",
+      avoid: /\bwill (?:grow|rise|return|make)\b/i,
+    },
+    ...PRACTICE,
+  },
+  {
     id: "prac-6",
     text: "show my practice trades",
     needs: "rules",

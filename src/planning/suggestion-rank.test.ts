@@ -181,6 +181,15 @@ describe("money that two suggestions touch is counted once", () => {
     expect(worthOnce([a, b])).toBe(50_000);
     expect(worthOnce([a, make({ topic: "idle_cash", worthCents: 7_000 })])).toBe(57_000);
   });
+
+  it("offers one of the two extra-cash ideas, the stronger (cluster 13)", () => {
+    const idle = make({ topic: "idle_cash", worthCents: 30_000 });
+    const tBills = make({ topic: "short_term_cash", worthCents: 12_000 });
+    expect(mergeOverlaps(rankSuggestions([tBills, idle])).map((r) => r.suggestion.topic)).toEqual([
+      "idle_cash",
+    ]);
+    expect(worthOnce([idle, tBills])).toBe(30_000);
+  });
 });
 
 describe("a loss avoided is worth its expected value in a year", () => {

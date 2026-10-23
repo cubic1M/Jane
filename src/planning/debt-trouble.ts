@@ -1,4 +1,8 @@
-import { DMP_ASSUMED_APR_BPS, TROUBLE_PAYMENT_SHARE } from "@/config/debt-trouble";
+import {
+  DMP_ASSUMED_APR_BPS,
+  TROUBLE_CASH_MONTHS,
+  TROUBLE_PAYMENT_SHARE,
+} from "@/config/debt-trouble";
 import type { Debt } from "@/insights/debts";
 import { payoffPlan, type DebtCard } from "./debt";
 
@@ -10,8 +14,15 @@ export function paymentShare(monthlyPaymentsCents: number, incomeCents: number |
   return incomeCents && incomeCents > 0 ? monthlyPaymentsCents / incomeCents : null;
 }
 
-export const overTheLine = (share: number | null) =>
-  share !== null && share >= TROUBLE_PAYMENT_SHARE;
+// Debt payments at TROUBLE_PAYMENT_SHARE of income or more, without the cash to carry them for
+// TROUBLE_CASH_MONTHS. Without the cash figure, the share alone.
+export const overTheLine = (
+  share: number | null,
+  money?: { paymentsCents: number; cashCents: number },
+) =>
+  share !== null &&
+  share >= TROUBLE_PAYMENT_SHARE &&
+  (!money || money.cashCents < money.paymentsCents * TROUBLE_CASH_MONTHS);
 
 export type DmpSketch = {
   cardBalanceCents: number;

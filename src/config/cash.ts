@@ -5,6 +5,10 @@
 
 export const CASH_RATES_AS_OF = "2026-10-01";
 
+// What a high-yield savings account pays a year (basis points): the one rate every page,
+// finding and suggestion uses for it (docs/feature-audit.md, cluster 13), idle cash included.
+export const HIGH_YIELD_SAVINGS_BPS = 400;
+
 // Where cash sits today, by kind of account: what it typically earns a year (basis points).
 export const CURRENT_CASH_RATE_BPS = {
   checking: 7,
@@ -31,7 +35,7 @@ export const CASH_HOMES: readonly CashHome[] = [
   {
     key: "high_yield_savings",
     name: "High-yield savings",
-    rateBps: 400,
+    rateBps: HIGH_YIELD_SAVINGS_BPS,
     reachDays: 2,
     insured: true,
     note: "Insured by the FDIC; a transfer back takes a day or two",

@@ -1,3 +1,4 @@
+import { BACK_OR_AGREED, SAVED_SO_FAR_LABEL } from "@/lib/saved-amount";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { formatCents } from "@/lib/money";
 import type { DigestPayload } from "./build";
@@ -70,7 +71,7 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
         did.finished > 0 &&
           `Finished ${did.finished} ${did.finished === 1 ? "thing" : "things"}${
             did.confirmedCents > 0
-              ? `, with ${formatCents(did.confirmedCents)} confirmed back or saved`
+              ? `, with ${formatCents(did.confirmedCents)} ${BACK_OR_AGREED}`
               : ""
           }.`,
         did.contacts > 0 &&
@@ -162,7 +163,7 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
       ? `You saved about ${formatCents(p.savedThisWeekCents)} a year this week`
       : "Your week in money";
   const totals = [
-    `Saved so far: about ${formatCents(p.savedToDateCents)} a year`,
+    `${SAVED_SO_FAR_LABEL}: about ${formatCents(p.savedToDateCents)} a year`,
     `Still to look at: ${formatCents(p.moneyFoundCents)} a year`,
   ];
   const body = sections(p, links);

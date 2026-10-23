@@ -1,3 +1,5 @@
+import { HIGH_YIELD_SAVINGS_BPS } from "./cash";
+
 // Numbers the detectors (spec step 254) use: what counts as enough to suggest, and the rates
 // that turn what Jane sees into dollars a year. Never inline in src/detectors.
 
@@ -16,7 +18,7 @@ export const DETECTOR_RATES = {
   // Moving the rest to a high-yield account earns the difference in the rates below.
   idleMonthsKept: 6,
   idleMinExcessCents: 1_000_000,
-  highYieldBps: 400,
+  highYieldBps: HIGH_YIELD_SAVINGS_BPS,
   currentCashBps: 10,
   // Emergency fund: months of spending to hold, by how steady the income is.
   emergencyMonthsSteady: 3,

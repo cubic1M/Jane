@@ -1,3 +1,4 @@
+import { actionWorthCents } from "@/lib/saved-amount";
 import { createHash, randomBytes } from "node:crypto";
 import { CHARGES_PER_YEAR, type Frequency } from "@/config/detection";
 import { CANCEL_GRACE_DAYS, LOWER_BILL_LOOK_DAYS, SHARE_TOKEN_BYTES } from "@/config/saved";
@@ -199,7 +200,7 @@ export async function provenSavings(
     (action.savingMissedAt && done ? notShown : estimated).push({
       actionId: action.id,
       title,
-      cents: action.confirmedAnnualCents ?? action.refundCents ?? estimate,
+      cents: actionWorthCents(action, estimate) ?? 0,
       why:
         action.savingMissedAt && done
           ? "It never showed up in your transactions, so it doesn't count as saved."

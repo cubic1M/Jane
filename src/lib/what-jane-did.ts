@@ -1,3 +1,4 @@
+import { actionWorthCents } from "@/lib/saved-amount";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -63,7 +64,7 @@ export async function whatJaneDid(
   const rows = finished.map((a) => ({
     actionId: a.id,
     title: titleOf(a.decision.cardSnapshot),
-    confirmedCents: a.refundCents ?? a.confirmedAnnualCents ?? null,
+    confirmedCents: actionWorthCents(a),
     completedAt: a.completedAt,
   }));
   return {
