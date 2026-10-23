@@ -14,6 +14,7 @@ import { scrub } from "@/lib/scrub";
 import { resultsByKind } from "@/lib/worked";
 import { buildProfile } from "@/profile/build";
 import {
+  byRank,
   mergeOverlaps,
   pickForToday,
   rankSuggestions,
@@ -262,10 +263,11 @@ export async function offeredToday(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<OfferedSuggestion[]> {
-  const rows = await scopedFor(userId, client).suggestions.findMany({
-    where: { status: "selected", selectedOn: new Date(dayOf(now)) },
-    orderBy: [{ score: "desc" }, { key: "asc" }],
-  });
+  const rows = (
+    await scopedFor(userId, client).suggestions.findMany({
+      where: { status: "selected", selectedOn: new Date(dayOf(now)) },
+    })
+  ).sort((a, b) => byRank({ ...a, id: a.key }, { ...b, id: b.key }));
   // An idea's buttons are those of the suggestions it combines.
   const partKeys = rows.filter((r) => isIdea(r.key)).flatMap((r) => partsOfIdea(r.key));
   const parts =

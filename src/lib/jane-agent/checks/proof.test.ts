@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { formatProof, type PersonProof } from "./proof";
+import { formatProof, inputFor, type PersonProof } from "./proof";
 
 // Spec step 266: the proof's write-up, one table for everyone and a section each.
 
@@ -72,5 +72,15 @@ describe("the proof on every person", () => {
     );
     expect(doc).toContain("> a \\| b");
     expect(doc).toContain("| x y | yes | 1 \\| 2 |");
+  });
+});
+
+// A card's tool that needs an input is asked about the card's own topic (the consolidation card
+// asks loan_fit about "consolidation"); a tool with no required input is asked nothing.
+describe("inputFor", () => {
+  it("passes the card's topic to a required choice it is one of, and nothing else", () => {
+    expect(inputFor("loan_fit", "consolidation")).toEqual({ need: "consolidation" });
+    expect(inputFor("loan_fit", "employer_match")).toEqual({});
+    expect(inputFor("subscriptions", "subscriptions")).toEqual({});
   });
 });
