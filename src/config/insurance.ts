@@ -487,6 +487,15 @@ export const INSURANCE_AUTOPILOT: Record<"ask" | "safe" | "all" | "custom" | "no
 // At "handle everything", a ready pick's quotes are refreshed this many days before they
 // expire, so the one tap always works.
 export const PICK_REFRESH_DAYS = 5;
+// Spec step 202: what "Keep me covered" may do. These leave the cover exactly as it is. A
+// higher deductible lowers it, and a safe-driver program shares driving data, so both always
+// wait for the person's own tap.
+export const KEEP_COVERED_SAVING_KINDS: readonly SavingKind[] = [
+  "pay_in_full",
+  "autopay",
+  "paperless",
+  "bundle",
+];
 
 // --- Health plans (spec step 149) ----------------------------------------------------------
 // Marketplace plans are compared on what they'd cost in a year: the premium plus what the
