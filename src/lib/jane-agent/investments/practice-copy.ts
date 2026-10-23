@@ -2,6 +2,8 @@ import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { SCAN_LABELS, SCAN_KINDS, type ScanKind } from "@/config/practice-scan";
 import { formatReturn } from "@/insights/returns";
 import type { Backtests } from "@/lib/investments/backtest";
+import type { LatestStrategies } from "@/lib/investments/strategy-eval";
+import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
@@ -168,6 +170,41 @@ export function backtestReply(
   return {
     body: `${lead}${lines.join("\n")}\n${b.label}, with fund costs and rebalancing, no taxes. ${b.notAForecast}`,
     actions: [BACKTESTS],
+    refs: { advice: true },
+  };
+}
+
+const STRATEGIES: MessageAction = {
+  id: "open",
+  label: "See every level",
+  kind: "link",
+  href: "/investments#level-strategies-heading",
+};
+
+// "Which strategy does my level use": the weekly replay's choice for the level, and why.
+export function levelStrategyReply(
+  advice: boolean,
+  latest: LatestStrategies | null,
+  level: RiskLevel,
+  own: boolean,
+): Reply {
+  if (!advice)
+    return {
+      body: "The practice strategies are demo advice, for the demo bank's sample people only, so I can't show them for your real accounts.",
+      actions: [],
+      refs: {},
+    };
+  const name = own ? `Your level, ${RISK_LEVELS[level].label},` : RISK_LEVELS[level].label;
+  const c = latest?.byLevel[level];
+  if (!c)
+    return {
+      body: `${name} follows its mix for now: the weekly replay of each level's strategies hasn't run yet. ${STRATEGY_NOT_A_FORECAST}`,
+      actions: [STRATEGIES],
+      refs: { advice: true },
+    };
+  return {
+    body: `${name} follows ${c.id === "static" ? "its mix" : `the ${c.label.toLowerCase()} (${c.key})`}. ${c.why}\n${STRATEGY_NOT_A_FORECAST}`,
+    actions: [STRATEGIES],
     refs: { advice: true },
   };
 }
