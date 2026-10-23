@@ -132,3 +132,46 @@ test("a pick on the options card is instant, and the next card follows within 10
   await page.reload();
   await expect(page.getByRole("region", { name: title })).toHaveCount(0);
 });
+
+// Gap audit: switching to cheaper insurance is a pick-one card too, Jane's pick first and the
+// other cheaper quotes after; a pick starts the switch.
+test("cheaper car insurance comes as a pick-one card, and a pick starts the switch", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await expect(async () => {
+    if (page.url().endsWith("/connect")) {
+      await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
+    }
+    await expect(page).toHaveURL("/chat", { timeout: 15_000 });
+  }).toPass({ timeout: 90_000 });
+  await waitForFullScan(user.userId);
+  await page.reload();
+
+  const ask = page.getByRole("textbox", { name: "Message Jane" });
+  await ask.fill("find me cheaper car insurance");
+  await ask.press("Enter");
+  const card = page.getByRole("region", { name: /^Switch your .+ car insurance$/ });
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  const showing = card.locator('[data-card-state="showing"]');
+  await expect(showing.getByText("Jane's pick")).toBeVisible();
+  const headline = (await showing.getByRole("heading", { level: 3 }).textContent()) ?? "";
+  expect(headline).toMatch(/, \$[\d,]+\/yr$/);
+  const carrier = headline.split(",")[0];
+
+  const started = Date.now();
+  await showing.getByRole("button", { name: "Pick this one" }).click();
+  await expect(card).toHaveCount(0, { timeout: 100 });
+  expect(Date.now() - started).toBeLessThan(1_000);
+  // Behind it, the switch started, and the chat's history says what was chosen.
+  const answer = page.getByRole("listitem").filter({ hasText: "You chose:" }).last();
+  await expect(answer).toContainText(carrier, { timeout: 30_000 });
+  await expect(answer).toContainText("I'm switching you now");
+});

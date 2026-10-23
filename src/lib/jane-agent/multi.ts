@@ -161,11 +161,14 @@ export async function planReply(
       return cannot(`for "${partText(part)}",`, why);
     }
     const about = await aboutOf(userId, reply.refs, options.client);
+    // A pick-one card's Yes is Jane's pick, its first option (the person asked for it done).
+    const pick = yes.id === "option.pick" ? reply.refs.options?.options[0] : undefined;
     steps.push({
       kind: "chat",
       label: about.title ?? firstSentence(reply.body),
       action: yes.id as ActionId,
-      actionLabel: yes.label,
+      actionLabel: pick ? `Pick ${pick.label}` : yes.label,
+      ...(pick ? { choice: pick.id } : {}),
       body: reply.body,
       refs: reply.refs,
       actions: reply.actions,

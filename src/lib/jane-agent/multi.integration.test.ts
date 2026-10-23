@@ -168,7 +168,7 @@ describe.runIf(url)(
       );
       const lines = reply.body.split("\n");
       expect(lines[1]).toMatch(
-        /^1\. Yes, switch: I found car insurance \$[\d,]+\.\d\d a year cheaper/,
+        /^1\. Pick [^:]+: I found car insurance \$[\d,]+\.\d\d a year cheaper/,
       );
       const shop = await client.insuranceShop.findFirstOrThrow({
         where: {

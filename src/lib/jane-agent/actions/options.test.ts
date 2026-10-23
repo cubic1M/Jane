@@ -5,6 +5,12 @@ vi.mock("@/lib/insurance/need/pick", async (original) => ({
   ...(await original<typeof import("@/lib/insurance/need/pick")>()),
   pickOption: vi.fn(),
 }));
+// Self-contained: loading the real module here would load this file's subject before the mock.
+vi.mock("@/lib/insurance/accept", () => ({
+  AcceptShopError: class AcceptShopError extends Error {},
+  acceptShop: vi.fn(),
+  insuranceSwitchOf: vi.fn(() => null),
+}));
 vi.mock("@/lib/fit-pick", async (original) => ({
   ...(await original<typeof import("@/lib/fit-pick")>()),
   pickFitOption: vi.fn(),
@@ -12,6 +18,7 @@ vi.mock("@/lib/fit-pick", async (original) => ({
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { FitPickError, pickFitOption } from "@/lib/fit-pick";
+import { AcceptShopError, acceptShop } from "@/lib/insurance/accept";
 import { PickError, pickOption } from "@/lib/insurance/need/pick";
 import type { OfferedOptions } from "@/lib/option-card";
 import type { ChatMessage } from "../types";
@@ -76,6 +83,7 @@ const run = (handler: typeof optionPick, m: ChatMessage, choice?: string) =>
 beforeEach(() => {
   vi.mocked(pickOption).mockReset();
   vi.mocked(pickFitOption).mockReset();
+  vi.mocked(acceptShop).mockReset();
 });
 
 describe("option.pick", () => {
@@ -130,6 +138,28 @@ describe("option.pick", () => {
     await expect(run(optionPick, message(card("loan")), "o1")).rejects.toMatchObject({
       code: "not_open",
     });
+  });
+});
+
+describe("option.pick on a reshop's quotes", () => {
+  it("switches to the picked quote through acceptShop and starts the agent", async () => {
+    vi.mocked(acceptShop).mockResolvedValue({ decisionId: "d1", actionId: "a1", agentJobId: "j1" });
+    const outcome = await run(
+      optionPick,
+      message(card("insurance", { topic: "switch:shop1" })),
+      "o2",
+    );
+    expect(acceptShop).toHaveBeenCalledWith("u1", "shop1", { client, now, quoteId: "o2" });
+    expect(pickOption).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({ answeredWith: "Harbor (rated A-)", agentJobIds: ["j1"] });
+    expect(outcome.note).toMatch(/^Done\. I'm switching you now/);
+  });
+
+  it("says why when the quote can't be switched to any more", async () => {
+    vi.mocked(acceptShop).mockRejectedValue(new AcceptShopError("These quotes have expired."));
+    await expect(
+      run(optionPick, message(card("insurance", { topic: "switch:shop1" })), "o1"),
+    ).rejects.toMatchObject({ code: "not_open", message: "These quotes have expired." });
   });
 });
 
