@@ -300,3 +300,53 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
     expect(out.folded).toHaveLength(keys.length + 1);
   });
 });
+
+// The month's report is offered for its first days only, so a busy morning never pushes it off
+// the agenda (QA of the consolidation merges, docs/feature-audit.md).
+describe("the month's report on a busy agenda", () => {
+  const brief: Candidate & { source: string } = {
+    kind: "brief",
+    body: "",
+    refs: {},
+    actions: [],
+    dedupeKey: "brief:x",
+    priority: MESSAGE_PRIORITY.brief,
+    source: "brief",
+  };
+  const note = (n: number): Candidate & { source: string } => ({
+    kind: "done",
+    body: `Something else worth knowing, number ${n}.`,
+    refs: {},
+    actions: [],
+    dedupeKey: `did:${n}`,
+    priority: MESSAGE_PRIORITY.report + 10,
+    source: "did",
+  });
+  const report: Candidate & { source: string } = {
+    kind: "done",
+    body: "Your money report for October 2026 is ready.\nSaved: $120.00 confirmed this month.",
+    refs: {},
+    actions: [{ id: "open", label: "See October 2026", kind: "link", href: "/monthly?m=2026-10" }],
+    dedupeKey: "report:2026-10",
+    priority: MESSAGE_PRIORITY.report,
+    source: "report",
+  };
+
+  it("always has its line and its link, posted hidden behind the agenda", () => {
+    const local = { date: "2026-11-02", hour: 9, minute: 0 } as never;
+    const { agenda, folded } = agendaOf(
+      brief,
+      [note(1), note(2), note(3), note(4), report],
+      snapshot(),
+      local,
+      MORNING,
+    );
+    const lines = agenda.body.split("\n");
+    expect(lines).toContain("- Your money report for October 2026 is ready.");
+    expect(lines.filter((l) => l.startsWith("- Something else"))).toHaveLength(3);
+    expect(agenda.actions).toContainEqual(
+      expect.objectContaining({ label: "See October 2026", href: "/monthly?m=2026-10" }),
+    );
+    expect(folded.map((f) => f.dedupeKey)).toContain("report:2026-10");
+  });
+});
