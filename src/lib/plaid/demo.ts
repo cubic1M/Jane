@@ -277,6 +277,12 @@ export async function linkDemoBank(
       })),
     });
   }
+  // Spec step 139: a sample person comes with what Jane already did for them, so "What Jane
+  // saved you" has their own confirmed wins (src/lib/sample-wins.ts). Never a real account.
+  if (person) {
+    const { seedSampleWins } = await import("@/lib/sample-wins");
+    await seedSampleWins(userId, person, { client, now });
+  }
   await logAudit(
     { type: "user", id: userId },
     "item_linked",
