@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
 
-import { PRACTICE_ETFS, PRACTICE_UNIVERSE } from "@/config/portfolios";
+import { PRACTICE_ETFS, PRACTICE_UNIVERSE, strategyTickers } from "@/config/portfolios";
 import { OPPORTUNITY_RULES_OFF } from "@/config/practice-scan";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -137,10 +137,13 @@ describe("ruleReplaysFor", () => {
 });
 
 describe("the daily history load", () => {
-  it("stores every practice ticker, the model funds first, so every rule can be replayed", () => {
+  it("stores every practice and strategy ticker, the model funds first, each once", () => {
     const tickers = historyTickers();
     expect(tickers.slice(0, 4)).toEqual(MAIN);
-    expect(new Set(tickers)).toEqual(new Set(PRACTICE_UNIVERSE));
-    expect(tickers).toHaveLength(PRACTICE_UNIVERSE.size);
+    const all = new Set([...PRACTICE_UNIVERSE, ...strategyTickers()]);
+    expect(new Set(tickers)).toEqual(all);
+    expect(tickers).toHaveLength(all.size);
+    for (const t of ["VBR", "VEA", "VWO", "VNQ", "SHY", "IEF", "TLT", "TIP", "GLD"])
+      expect(tickers).toContain(t);
   });
 });
