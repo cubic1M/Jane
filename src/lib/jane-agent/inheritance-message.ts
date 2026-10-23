@@ -56,6 +56,12 @@ export function inheritanceReply(v: InheritanceView): Message {
       `Gifts: ${formatCents(g.cents)} to ${g.recipient} this year, over the ${formatCents(v.exclusionCents)} exclusion, which takes a gift tax return (Form 709).`,
     );
   }
+  // Taxes QA: "what's the 10-year rule" with no inherited IRA got no word about the rule.
+  if (v.inherited.length === 0) {
+    lines.push(
+      `The 10-year rule: most people who inherit an IRA from someone other than their spouse must empty it by the end of the 10th year after the owner died, and pay income tax on each withdrawal. If the owner had already started required withdrawals, there are yearly ones too. The exceptions: ${ELIGIBLE_BENEFICIARIES.join("; ")}.`,
+    );
+  }
   lines.push(
     "Inherited stocks and property get a new cost basis: their value on the day the owner died. Selling soon after has little or no gain to tax.",
   );

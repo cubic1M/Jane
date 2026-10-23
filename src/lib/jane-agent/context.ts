@@ -1,3 +1,4 @@
+import type { DecisionTopic } from "@/config/tax-decisions";
 import type { DecisionIntent } from "./decision-intents";
 import { PRONOUNS, type ActVerb, type Intent } from "./intents";
 import { levelAndYear } from "./investments/intents";
@@ -55,6 +56,9 @@ export function withTopic(
     if (!topic) return intent;
     // The last question had no answer of its own to explain: Claude is told what it was about.
     if (topic.kind === "asked") return intent;
+    // Taxes QA: "why?" after a tax answer is that answer's reason ("why" after "how much will I
+    // owe" is why the bill or refund is what it is), never "Why what?".
+    if (topic.kind === "tax") return taxWhy(topic) ?? intent;
     return withTopic({ kind: "follow_up", target: "it", month: null }, topic, asOf);
   }
   // A question that had no answer of its own isn't something "it" can point at.
@@ -161,6 +165,13 @@ export function topicOf(intent: Intent): Topic | null {
     case "cost":
     case "about":
       return { kind: intent.kind, target: intent.target };
+    case "tax":
+      // Only the answers that need nothing else to be asked again (taxes QA).
+      return intent.ask === "decide"
+        ? { kind: "tax", category: "decide", target: intent.topic }
+        : TAX_ASKED_AGAIN.has(intent.ask)
+          ? { kind: "tax", category: intent.ask }
+          : null;
     case "spending":
       return {
         kind: "spending",
@@ -170,6 +181,39 @@ export function topicOf(intent: Intent): Topic | null {
     default:
       return null;
   }
+}
+
+// Tax answers "why?" can point back at by asking again: their answers carry their reasons.
+const TAX_ASKED_AGAIN: ReadonlySet<string> = new Set([
+  "estimate",
+  "withholding",
+  "savings",
+  "business",
+  "inherited",
+  "health",
+  "disaster",
+  "retirement",
+  "draft",
+  "calendar",
+  "years",
+  "property",
+  "home",
+  "family",
+  "equity",
+]);
+const WHY_OF_DECISION: Readonly<Record<string, DecisionTopic>> = {
+  owe: "refund_why",
+  refund: "refund_why",
+};
+
+function taxWhy(topic: Topic): Intent | null {
+  if (topic.category === "decide" && topic.target) {
+    const asked = topic.target as DecisionTopic;
+    return { kind: "tax", ask: "decide", topic: WHY_OF_DECISION[asked] ?? asked };
+  }
+  return topic.category && TAX_ASKED_AGAIN.has(topic.category)
+    ? ({ kind: "tax", ask: topic.category } as Intent)
+    : null;
 }
 
 // How a sector's answer is named when the next message points back at it ("how do I improve
