@@ -1,11 +1,13 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { PrismaClient, type Prisma } from "@/generated/prisma/client";
+import { PrismaClient, type FindingType, type Prisma } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 
 import { track } from "@/lib/analytics";
+import { ACTION_FOR_FINDING } from "@/lib/cards";
+import { savedToDate } from "@/lib/membership/service";
 import { findingOfType } from "../__fixtures__/findings";
 import { runDigests } from "./send";
 
@@ -193,5 +195,64 @@ describe.runIf(url)("runDigests against a real database", () => {
     );
     expect(preview?.text).toContain("Your goals\n- Trip: 40%");
     expect(preview?.text).toContain("Net worth\n- -$300.00, down $50.00 this week");
+  });
+
+  // docs/feature-audit.md, cluster 9: the email's "Saved so far" is /jane's and Home's total,
+  // so a saving that never showed up in the transactions (spec step 207) doesn't count.
+  it("says the same saved-so-far as /jane, without savings that never showed up", async () => {
+    await person("saver", { finding: true });
+    const userId = ids.saver;
+    const fees = await client.finding.findFirstOrThrow({ where: { userId } });
+    const d = findingOfType("duplicate_charge");
+    const dup = await client.finding.create({
+      data: {
+        userId,
+        type: d.type,
+        key: d.key,
+        title: d.title,
+        annualSavingsCents: d.annualSavingsCents,
+        amountCents: d.amountCents,
+        confidence: d.confidence,
+        evidence: d.evidence as Prisma.InputJsonObject,
+      },
+    });
+    const done = async (
+      finding: { id: string; type: FindingType; title: string },
+      data: { completedAt: Date; confirmedAnnualCents: number; savingMissedAt?: Date },
+    ) => {
+      const decision = await client.decision.create({
+        data: {
+          userId,
+          findingId: finding.id,
+          choice: "yes",
+          cardSnapshot: { title: finding.title, annualSavingsCents: 1, findingType: finding.type },
+        },
+      });
+      await client.action.create({
+        data: {
+          userId,
+          decisionId: decision.id,
+          type: ACTION_FOR_FINDING[finding.type],
+          status: "done",
+          ...data,
+        },
+      });
+    };
+    // Finished this week: counts.
+    await done(fees, {
+      completedAt: new Date("2026-10-17T00:00:00Z"),
+      confirmedAnnualCents: 5_000,
+    });
+    // Finished in July, and the saving never showed up.
+    await done(dup, {
+      completedAt: new Date("2026-07-01T00:00:00Z"),
+      confirmedAnnualCents: 9_000,
+      savingMissedAt: new Date("2026-09-15T00:00:00Z"),
+    });
+
+    const run = await runDigests({ client, now: MONDAY, dryRun: true, send });
+    const preview = run.previews.find((p) => p.userId === userId);
+    expect(await savedToDate(userId, { client })).toBe(5_000);
+    expect(preview?.text).toContain("Saved so far: about $50.00 a year");
   });
 });

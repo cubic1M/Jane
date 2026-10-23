@@ -180,6 +180,33 @@ describe.runIf(url)("the daily scan of a practice portfolio", () => {
     expect(details.trades.length).toBe(2);
   });
 
+  it("asks once about the same thing while it waits, and never about pocket change", async () => {
+    const userId = await person(4, "2026-09-01");
+    const suggestOnly = () =>
+      vi.mocked(scanPreferences).mockResolvedValueOnce({
+        ...DEFAULT_SCAN_PREFERENCES,
+        mode: "suggest",
+      });
+    suggestOnly();
+    await scanPractice(userId, { client, now: at("2026-10-13") });
+    suggestOnly();
+    await scanPractice(userId, { client, now: at("2026-10-14") });
+    suggestOnly();
+    await scanPractice(userId, { client, now: at("2026-10-15") });
+    const rows = await client.practiceOpportunity.findMany({
+      where: { userId, status: "suggested" },
+    });
+    // One harvest idea per fund and one new-money idea, however many days the scan ran.
+    const slots = rows.map((r) =>
+      r.kind === "tax_loss_harvest" ? `${r.kind}:${r.ticker}` : r.kind,
+    );
+    expect(new Set(slots).size).toBe(slots.length);
+    for (const r of rows) {
+      const d = r.details as { trades: unknown[] };
+      if (d.trades.length > 0) expect(r.amountCents).toBeGreaterThanOrEqual(5_000);
+    }
+  });
+
   it("keeps the new kinds with their numbers: the stated drop near, in the 2020 shock", async () => {
     const userId = await person(4, "2020-02-18");
     await client.investorProfile.create({ data: { userId, dropReaction: "worry" } });

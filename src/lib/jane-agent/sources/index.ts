@@ -25,9 +25,11 @@ import { healthSource } from "./health";
 import { attentionSource } from "./attention";
 import { leanSource } from "./lean";
 import { booksSource } from "./books";
+import { closeSource } from "./close";
 import { questionsSource } from "./questions";
 import { suggestionsSource } from "./suggestions";
 import { steadySource } from "./steady";
+import { priceRisesSource } from "./price-rises";
 import { twoSource } from "./two";
 import { tradeoffsSource } from "./tradeoffs";
 import { unusualSource } from "./unusual";
@@ -76,8 +78,10 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   attentionSource,
   leanSource,
   booksSource,
+  closeSource,
   suggestionsSource,
   steadySource,
+  priceRisesSource,
   twoSource,
   tradeoffsSource,
   questionsSource,

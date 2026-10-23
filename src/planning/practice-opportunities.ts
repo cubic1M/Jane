@@ -1,5 +1,5 @@
 import type { RiskLevel } from "@/config/investing";
-import { RISK_LEVELS } from "@/config/investing";
+import { GLIDE_PATH_SOURCE, RISK_LEVELS } from "@/config/investing";
 import {
   AUTOPILOT_LIMITS,
   classOf,
@@ -17,9 +17,9 @@ import {
   CASH_DRAG_RATE,
   CASH_DRAG_RATE_SOURCE,
   CHEAPER_FUND_MIN_BPS,
+  LEVEL_WORST_DROP_SOURCE,
   DEFAULT_CASH_BUFFER_CENTS,
   DRIFT_WARNING_SHARE,
-  GLIDE_PATH,
   MAX_DROP_LOOKBACK_DAYS,
   MAX_DROP_NEAR_SHARE,
   OPPORTUNITY_KINDS,
@@ -33,6 +33,7 @@ import {
   STRESS_DROP_SOURCE,
   type OpportunityKind,
 } from "@/config/practice-opportunities";
+import { LEVEL_WORST_DROP_PERCENT } from "@/config/practice-preferences";
 import { DRIFT_STOCKS_BAND, rulesOnAt, SCAN_CAPS, SCAN_CONFIDENCE } from "@/config/practice-scan";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PaySchedule } from "@/detection/paydays";
@@ -105,6 +106,8 @@ export type OpportunityInput = ScanInput & {
   // Daily closes for every ticker held (opportunity stocks too), oldest first, ending today;
   // ScanInput.history covers the model funds only.
   heldHistory?: ScanInput["history"];
+  // The day practice money last went in (YYYY-MM-DD), or null.
+  lastDepositOn?: string | null;
 };
 
 // Kinds that never trade: they suggest, or open the settings.
@@ -135,35 +138,42 @@ const SUFFIX: Readonly<Record<number, string>> = { 1: "st", 2: "nd", 3: "rd" };
 const ordinal = (n: number) =>
   `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (SUFFIX[n % 10] ?? "th")}`;
 const levelName = (l: RiskLevel) => RISK_LEVELS[l].label;
+// The person's mix: their level's model after their preferences (the goal date's glide path and
+// what they avoid, src/planning/practice-profile.ts), the same targets the autopilot keeps.
+const weightsOf = (input: Pick<OpportunityInput, "level" | "weights">) =>
+  input.weights ?? MODEL_PORTFOLIOS[input.level].weights;
+const stocksOf = (w: Readonly<Record<PracticeClass, number>>) => w.us_stocks + w.intl_stocks;
 
-// How far a mix (shares by kind) could fall in a crash like 2007-09.
+// How far a mix could fall, on one measure with the practice settings: each level's worst drop
+// in the sample replay (LEVEL_WORST_DROP_PERCENT, step 295, the same figures that pick the level
+// for a stated drop). A mix between models is placed by how it would fare in a crash like
+// 2007-09 (STRESS_DROP) relative to its level's model, so a mix on its model reads exactly its
+// level's figure, and one that has drifted toward stocks reads proportionally more.
 export function stressDrop(shares: Readonly<Record<PracticeClass, number>>): number {
   return CLASSES.reduce((s, c) => s + shares[c] * STRESS_DROP[c], 0);
 }
 
-// The same for the portfolio as held: every holding by its kind (an opportunity stock counts as
-// US stocks), cash waiting at none.
-export function heldStressDrop(state: LedgerState, prices: Prices): number {
+export const levelWorstDrop = (l: RiskLevel) => LEVEL_WORST_DROP_PERCENT[l] / 100;
+
+// The portfolio as held, on that measure: every holding by its kind (an opportunity stock
+// counts as US stocks), cash waiting at none.
+export function heldDrop(level: RiskLevel, state: LedgerState, prices: Prices): number {
   const total = portfolioValue(state, prices);
   if (total <= 0) return 0;
   const shares = { us_stocks: 0, intl_stocks: 0, bonds: 0, cash: 0 };
   for (const t of Object.keys(state.positions)) {
     shares[classOf(t) ?? "us_stocks"] += positionValue(state, prices, t) / total;
   }
-  return stressDrop(shares);
+  const model = stressDrop(MODEL_PORTFOLIOS[level].weights);
+  return model > 0 ? (stressDrop(shares) / model) * levelWorstDrop(level) : 0;
 }
 
-// The highest level whose model could fall no further than `limit`, or 1.
+// The highest level whose worst drop is within `limit`, or 1: the settings' own rule.
 export function levelWithin(limit: number): RiskLevel {
   for (const l of [5, 4, 3, 2] as const) {
-    if (stressDrop(MODEL_PORTFOLIOS[l].weights) <= limit) return l;
+    if (levelWorstDrop(l) <= limit) return l;
   }
   return 1;
-}
-
-// The highest level for the years left until the goal date.
-export function glideMax(yearsLeft: number): RiskLevel {
-  return (GLIDE_PATH.find((g) => yearsLeft >= g.minYears) ?? GLIDE_PATH.at(-1)!).maxLevel;
 }
 
 // The portfolio as held today, valued on each of the last days every holding has a close, and
@@ -226,8 +236,8 @@ function buyShort(
   blocked: ReadonlySet<string>,
 ): ScanTrade[] {
   const total = portfolioValue(input.state, input.prices);
-  const d = drift(input.level, input.state, input.prices);
-  const weights = MODEL_PORTFOLIOS[input.level].weights;
+  const weights = weightsOf(input);
+  const d = drift(input.level, input.state, input.prices, weights);
   const short = CLASSES.map((c) => ({
     c,
     gap: Math.round(weights[c] * d.total) - classValue(input.state, input.prices, c),
@@ -249,8 +259,10 @@ function buyShort(
   return trades;
 }
 
-function sharesFigures(level: RiskLevel, shares: Record<PracticeClass, number>) {
-  const weights = MODEL_PORTFOLIOS[level].weights;
+function sharesFigures(
+  weights: Readonly<Record<PracticeClass, number>>,
+  shares: Record<PracticeClass, number>,
+) {
   return CLASSES.map((c) => ({
     label: cap(LABEL[c]),
     value: `${pct(shares[c])} (target ${pct(weights[c])})`,
@@ -260,10 +272,10 @@ function sharesFigures(level: RiskLevel, shares: Record<PracticeClass, number>) 
 // How near the band the mix is: the furthest-off kind, or stocks together, as a share of the
 // way to its band (1 = at the band).
 function nearness(input: OpportunityInput) {
-  const d = drift(input.level, input.state, input.prices);
-  const weights = MODEL_PORTFOLIOS[input.level].weights;
+  const weights = weightsOf(input);
+  const d = drift(input.level, input.state, input.prices, weights);
   const kindOff = Math.abs(d.shares[d.worst] - weights[d.worst]);
-  const stocksOff = Math.abs(d.stocks - stocksShare(input.level));
+  const stocksOff = Math.abs(d.stocks - stocksOf(weights));
   const kindRatio = kindOff / AUTOPILOT_LIMITS.rebalanceBand;
   const stocksRatio = stocksOff / DRIFT_STOCKS_BAND;
   const invested = CLASSES.some((c) => classValue(input.state, input.prices, c) > 0);
@@ -286,10 +298,10 @@ function newMoneyFlag(
 ): ScanFlag | null {
   const n = nearness(input);
   if (!n.invested || (!n.d.past && n.ratio < DRIFT_WARNING_SHARE)) return null;
-  const weights = MODEL_PORTFOLIOS[input.level].weights;
+  const weights = weightsOf(input);
   // What the autopilot would sell today: every kind over its target past the band (all of
   // them when stocks together are past theirs).
-  const stocksPast = Math.abs(n.d.stocks - stocksShare(input.level)) > DRIFT_STOCKS_BAND;
+  const stocksPast = Math.abs(n.d.stocks - stocksOf(weights)) > DRIFT_STOCKS_BAND;
   const wouldSell = CLASSES.reduce((s, c) => {
     const over = n.d.shares[c] - weights[c];
     return over > AUTOPILOT_LIMITS.rebalanceBand || (stocksPast && over > 0)
@@ -303,7 +315,7 @@ function newMoneyFlag(
   for (const t of trades) {
     after = apply(after, { ...t, priceCents: input.prices[t.ticker] }, PRACTICE_UNIVERSE).state;
   }
-  const d2 = drift(input.level, after, input.prices);
+  const d2 = drift(input.level, after, input.prices, weights);
   const stillOver = CLASSES.reduce((s, c) => {
     const over = d2.shares[c] - weights[c];
     return d2.past && over > 0 ? s + Math.round(over * d2.total) : s;
@@ -324,7 +336,7 @@ function newMoneyFlag(
     amountCents: spent,
     trades: trades.map((t) => ({ ...t, reason })),
     figures: [
-      ...sharesFigures(input.level, n.d.shares),
+      ...sharesFigures(weightsOf(input), n.d.shares),
       { label: "Cash waiting", value: dollars(available) },
       { label: "Sale avoided", value: dollars(Math.max(0, wouldSell - stillOver)) },
     ],
@@ -353,10 +365,13 @@ function cashDragFlag(
   if (available < Math.max(CASH_DRAG_MIN_CENTS, Math.round(CASH_DRAG_MIN_SHARE * total))) {
     return null;
   }
-  // Only once the cash has sat: no buy in the last few days, and the model already bought.
+  // Only once the cash has sat: nothing bought or put in for a few days (new practice money is
+  // the autopilot's to invest first), and the model already bought.
   const buys = input.trades.filter((t) => t.side === "buy").map((t) => t.placedAt.slice(0, 10));
-  const lastBuy = buys.sort().at(-1);
-  if (!lastBuy || daysBetween(lastBuy, input.today) < CASH_DRAG_MIN_DAYS) return null;
+  const lastBuy = [...buys, input.lastDepositOn ?? ""].sort().at(-1);
+  if (!buys.length || !lastBuy || daysBetween(lastBuy, input.today) < CASH_DRAG_MIN_DAYS) {
+    return null;
+  }
   const trades = buyShort(input, "cash_drag", available, blocked);
   const spent = trades.reduce((s, t) => s + t.amountCents, 0);
   if (spent === 0) return null;
@@ -541,10 +556,10 @@ function driftWarningFlag(input: OpportunityInput): ScanFlag | null {
     amountCents: Math.round(n.off * n.d.total),
     trades: [],
     figures: [
-      ...sharesFigures(input.level, n.d.shares),
+      ...sharesFigures(weightsOf(input), n.d.shares),
       {
         label: "Stocks together",
-        value: `${pct(n.d.stocks)} (target ${pct(stocksShare(input.level))})`,
+        value: `${pct(n.d.stocks)} (target ${pct(stocksOf(weightsOf(input)))})`,
       },
       { label: "Of the way to the band", value: pct(Math.min(1, n.ratio)) },
     ],
@@ -563,41 +578,43 @@ function driftWarningFlag(input: OpportunityInput): ScanFlag | null {
   };
 }
 
+// The goal date's glide path is applied by the practice settings (step 157's, in
+// src/planning/practice-profile.ts): the person's mix holds fewer stocks than their level's
+// model as the date nears. Jane tells them each time it steps down, with the numbers.
 function glideFlag(input: OpportunityInput): ScanFlag | null {
   const goal = input.prefs.goalDate;
-  if (!goal || input.level <= 1) return null;
-  const yearsLeft = daysBetween(input.today, goal) / 365.25;
-  const max = glideMax(yearsLeft);
-  if (input.level <= max) return null;
-  const next = (input.level - 1) as RiskLevel;
-  const years = Math.max(0, Math.round(yearsLeft * 10) / 10);
-  const shift = Math.round(
-    (stocksShare(input.level) - stocksShare(next)) * portfolioValue(input.state, input.prices),
-  );
-  const reason = `Your goal date is ${goal}, about ${years} years away. With that long left the usual path holds ${levelName(max)} or safer, and you're at ${levelName(input.level)}, so the next step is ${levelName(next)}: ${pct(stocksShare(next))} in stocks instead of ${pct(stocksShare(input.level))}.`;
+  if (!goal) return null;
+  const model = stocksShare(input.level);
+  const now = stocksOf(weightsOf(input));
+  if (now >= model - 0.005) return null;
+  const years = Math.max(0, Math.round((daysBetween(input.today, goal) / 365.25) * 10) / 10);
+  const shift = Math.round((model - now) * portfolioValue(input.state, input.prices));
+  const reason = `Your goal date is ${goal}, about ${years} years away, so your practice mix now holds ${pct(now)} in stocks instead of ${levelName(input.level)}'s ${pct(model)}, moving toward bonds and cash as the date nears. The autopilot keeps to it; nothing else changes.`;
   return {
     kind: "glide_path",
     ticker: PRACTICE_ETFS.bonds.ticker,
-    key: `glide_path:${input.level}:${next}`,
-    headline: `Step down to ${levelName(next)}: goal in ${years} years`,
+    // Once for each step the glide takes.
+    key: `glide_path:${goal}:${Math.round(now * 100)}`,
+    headline: `Your mix steps toward bonds: goal in ${years} years`,
     reason,
-    amountCents: 0,
+    amountCents: shift,
     trades: [],
     figures: [
       { label: "Goal date", value: goal },
       { label: "Years left", value: String(years) },
-      { label: "Your level", value: levelName(input.level) },
-      { label: "Highest level for the years left", value: levelName(max) },
-      { label: "Stocks at the next level", value: pct(stocksShare(next)) },
+      { label: "Stocks now", value: pct(now) },
+      { label: `Stocks at ${levelName(input.level)}`, value: pct(model) },
+      { label: "Glide path from", value: GLIDE_PATH_SOURCE },
     ],
     caps: [
-      ...GLIDE_PATH.map((g) => `${g.minYears}+ years: up to ${levelName(g.maxLevel)}`),
-      "One level at a time; you change it in your settings",
+      "The mix only ever gets safer as the date nears",
+      "You change the goal date or the level in your settings",
+      "The autopilot's own limits apply to the moves",
     ],
     confidence: SCAN_CONFIDENCE.glide_path,
     ask: {
-      headline: `Step down to ${levelName(next)}: ${wholeDollars(shift)} less in stocks`,
-      short: `Your goal is about ${years} years away; that allows ${levelName(max)} or safer.`,
+      headline: `Note the glide: ${wholeDollars(shift)} less in stocks, goal near`,
+      short: `Your goal is about ${years} years away; stocks are ${pct(now)} instead of ${pct(model)}.`,
       worthCents: shift,
       worthKind: "risk",
     },
@@ -607,13 +624,13 @@ function glideFlag(input: OpportunityInput): ScanFlag | null {
 function mismatchFlag(input: OpportunityInput): ScanFlag | null {
   const limit = input.prefs.maxDropShare;
   if (limit === null || input.level <= 1) return null;
-  const could = heldStressDrop(input.state, input.prices);
+  const could = heldDrop(input.level, input.state, input.prices);
   if (could <= limit + RISK_MISMATCH_TOLERANCE) return null;
   const safer = levelWithin(limit);
   const loss = Math.round(could * portfolioValue(input.state, input.prices));
   // A safer level fits: otherwise the mix itself has drifted, and the rebalance handles it.
   if (safer >= input.level) return null;
-  const reason = `You said you could take a drop of about ${pct(limit)}. In a crash like 2007-09 your mix as held could fall about ${pct(could)}. ${levelName(safer)} could fall about ${pct(stressDrop(MODEL_PORTFOLIOS[safer].weights))}, within what you said.`;
+  const reason = `You said you could take a drop of about ${pct(limit)}. On the worst stretch of Jane's replays, your mix as held could fall about ${pct(could)}. ${levelName(safer)} fell at most ${pct(levelWorstDrop(safer))}, within what you said.`;
   return {
     kind: "risk_mismatch",
     ticker: PRACTICE_ETFS.us_stocks.ticker,
@@ -624,20 +641,20 @@ function mismatchFlag(input: OpportunityInput): ScanFlag | null {
     trades: [],
     figures: [
       { label: "Drop you said you could take", value: pct(limit) },
-      { label: "Your mix in a 2007-09 crash", value: pct(could) },
+      { label: "Your mix at its worst in the replays", value: pct(could) },
       { label: "Your level", value: levelName(input.level) },
       { label: "A level within your limit", value: levelName(safer) },
-      { label: "Crash figures from", value: STRESS_DROP_SOURCE },
+      { label: "Figures from", value: `${LEVEL_WORST_DROP_SOURCE}; ${STRESS_DROP_SOURCE}` },
     ],
     caps: [
       `Only when the mix is more than ${pct(RISK_MISMATCH_TOLERANCE)} past your limit`,
       `At most ${SCAN_CAPS.risk_mismatch.perMonth} a month; you change the level in your settings`,
-      "A past crash, not a forecast",
+      "Past replays, not a forecast",
     ],
     confidence: SCAN_CONFIDENCE.risk_mismatch,
     ask: {
       headline: `Lower your risk: your mix could lose ${wholeDollars(loss)}`,
-      short: `In a 2007-09 crash your mix could fall ${pct(could)}; you said about ${pct(limit)}.`,
+      short: `At its worst in the replays your mix could fall ${pct(could)}; you said about ${pct(limit)}.`,
       worthCents: loss,
       worthKind: "risk",
     },
@@ -725,7 +742,7 @@ export function scanOpportunities(input: OpportunityInput): ScanFlag[] {
     for (const t of newMoney.trades) {
       after = apply(after, { ...t, priceCents: input.prices[t.ticker] }, PRACTICE_UNIVERSE).state;
     }
-    if (!drift(input.level, after, input.prices).past) {
+    if (!drift(input.level, after, input.prices, weightsOf(input)).past) {
       base = base.filter((f) => f.kind !== "drift_rebalance");
     }
   }

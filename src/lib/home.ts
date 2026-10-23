@@ -11,6 +11,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
 import { listGoals } from "@/lib/goals";
+import { roomFromPlan } from "@/planning/goal-tradeoffs";
 import { safeToSpend } from "@/planning/safe-to-spend";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
@@ -60,7 +61,11 @@ export async function homeSummary(
       db.budgets.findMany({ select: { category: true, amountCents: true } }),
     ]);
   const janeDid = await whatJaneDid(userId, { client, now });
-  const goals = await listGoals(userId, { client, now });
+  const [goals, plan] = await Promise.all([
+    listGoals(userId, { client, now }),
+    // The year plan as last kept (spec step 205): what this month has room to save.
+    db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
+  ]);
   const asOf = now.toISOString().slice(0, 10);
   const budget =
     budgets.length === 0
@@ -81,6 +86,19 @@ export async function homeSummary(
   // Yearly bills (spec step 70): this month's set-aside is its own line, so a "Yearly
   // bills" goal isn't counted again under goals.
   const setAsideCents = irregularCosts(input).monthlyCents;
+  // Goals are counted at what they need this month, but never past what the plan has room to
+  // save (books QA): goals that can't all be funded wait their turn (spec step 241) rather than
+  // make the person look short.
+  const goalsWant = goals.reduce(
+    (sum, g) =>
+      sum +
+      (g.progress.status === "on_the_way" &&
+      !(setAsideCents > 0 && YEARLY_BILLS_GOAL_PATTERN.test(g.name))
+        ? g.progress.monthlyCents
+        : 0),
+    0,
+  );
+  const goalsCents = Math.min(goalsWant, savingRoomOf(plan?.months, asOf.slice(0, 7)) ?? goalsWant);
 
   const updated = [lastSync?.lastSyncedAt, lastImport?.createdAt]
     .filter((d): d is Date => d instanceof Date)
@@ -107,15 +125,7 @@ export async function homeSummary(
             (sum, p) => sum + Math.max(0, p.leftCents),
             0,
           ),
-          goalsCents: goals.reduce(
-            (sum, g) =>
-              sum +
-              (g.progress.status === "on_the_way" &&
-              !(setAsideCents > 0 && YEARLY_BILLS_GOAL_PATTERN.test(g.name))
-                ? g.progress.monthlyCents
-                : 0),
-            0,
-          ),
+          goalsCents,
           setAsideCents,
         })
       : null,
@@ -153,3 +163,11 @@ export async function homeSummary(
 }
 
 export type HomeSummary = NonNullable<Awaited<ReturnType<typeof homeSummary>>>;
+
+// What this month has room to save in the kept year plan (spec step 241's room: the margin less
+// dated payments and extra debt payments), or null without a plan for this month.
+function savingRoomOf(months: unknown, month: string): number | null {
+  if (!Array.isArray(months)) return null;
+  const rows = months as Parameters<typeof roomFromPlan>[0];
+  return rows.some((m) => m.month === month) ? roomFromPlan(rows, month)[0] : null;
+}

@@ -19,6 +19,7 @@ import { setAutopilot } from "@/lib/autopilot";
 import { pullCredit } from "@/lib/credit";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { runCreditMonthly } from "@/lib/credit-monthly";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { loadDebtReview, runDebtReview } from "./debt-review";
 
@@ -200,6 +201,16 @@ describe.runIf(url)("the yearly debt review against a real database", { timeout:
     const rates = (await loadDebtReview(id, opts())).items.find((i) => i.key === "rates")!;
     expect(rates.status).toBe("done");
     expect(rates.text).toMatch(/^Asked .* for a lower rate this month/);
+
+    // docs/feature-audit.md, cluster 14: next month's check-up, within the month, sends no
+    // second request and says the same as the review.
+    const month = (await runCreditMonthly(id, opts(new Date(NEAR.getTime() + 7 * DAY))))!;
+    expect(month.did).toEqual([]);
+    expect(await client.cardRateRequest.count({ where: { userId: id } })).toBe(1);
+    expect(month.items.find((i) => i.key === "card_rate")).toMatchObject({
+      status: "done",
+      text: rates.text,
+    });
   });
 
   it("comes early after a raise, a new loan, and once a year", async () => {
