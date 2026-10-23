@@ -62,6 +62,8 @@ export type ProfileLiability = {
   aprBps: number | null;
   hasPmi: boolean | null;
   payoffDate: string | null;
+  // What's due each month as the bank says (a card's minimum); absent when not loaded.
+  minimumCents?: number | null;
 };
 // What the person told Jane: corrections on the profile and answers in other places.
 export type Told = Partial<Record<FactKey, string | number | boolean>>;
@@ -158,6 +160,9 @@ export type ProfileInput = {
     coinsurance: number;
   } | null;
   fsaElectionCents?: number | null;
+  // The latest credit score pulled (spec step 116), so detectors price loans by the same band
+  // as the chat and the pages; null before a pull, absent when not loaded (the sample people).
+  creditScore?: number | null;
   // The person turned rent reporting on (spec step 248).
   rentReportingOn?: boolean;
   // Spec step 249: people the person has an authorized user or first card for, and what they
