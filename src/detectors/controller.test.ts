@@ -63,3 +63,23 @@ describe("books that balance (step 238)", () => {
     expect(run("data_problems", { ...data, extras: undefined })).toBeNull();
   });
 });
+
+describe("the monthly close (step 244)", () => {
+  it("asks Sam to confirm WeWork and Adobe so September can close", () => {
+    const s = run("month_close", inputFor("freelancer"));
+    expect(s?.title).toBe("Confirm 2 charges so September 2026 can close");
+    expect(s?.short).toMatch(/^Wework \$285\.00, Adobe Creative Cloud \$59\.99/);
+    expect(s?.worthCents).toBe(34_499);
+    expect(s?.action.href).toBe("/monthly#close");
+  });
+
+  it("is quiet once the month is closed, and for people with nothing unsure", () => {
+    const data = inputFor("freelancer");
+    expect(
+      run("month_close", { ...data, extras: { ...data.extras!, lastCloseStatus: "closed" } }),
+    ).toBeNull();
+    for (const id of PERSON_IDS.filter((p) => p !== "freelancer")) {
+      expect(run("month_close", inputFor(id)), id).toBeNull();
+    }
+  });
+});
