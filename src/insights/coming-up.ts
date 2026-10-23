@@ -18,7 +18,8 @@ export type ComingUpRow = {
   href: "/bills" | "/deadlines";
 };
 
-const sameThing = (bill: ComingUpBill, deadline: Deadline) =>
+// A bill that is the same thing as a deadline on the same day (a yearly renewal, a card payment).
+export const sameThing = (bill: ComingUpBill, deadline: Deadline) =>
   bill.date === deadline.date &&
   (deadline.title.toLowerCase().startsWith(bill.merchant.toLowerCase()) ||
     deadline.amountCents === bill.amountCents);

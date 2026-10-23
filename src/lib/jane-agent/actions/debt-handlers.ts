@@ -14,6 +14,7 @@ import { creditCardApply } from "./credit-cards";
 import { debtPlanAvalanche, debtPlanSnowball } from "./debt-plan";
 import type { ActionHandler } from "./handler";
 import { loanAccept, loanPrepare, loanSubmit, loanWithdraw } from "./loans";
+import { rentReportOn } from "./renting";
 import { studentNext } from "./student";
 import { transferDone, transferStart } from "./transfers";
 
@@ -49,4 +50,5 @@ export const DEBT_ACTION_HANDLERS: Readonly<
   "caraddon.no": carAddonNo,
   "caraddon.mine": carAddonMine,
   "caraddon.team": carAddonTeam,
+  "rent.report_on": rentReportOn,
 };

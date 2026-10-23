@@ -1,8 +1,10 @@
 import {
   CHAT_CRON_LIMIT,
   CHAT_HISTORY_HOURS,
+  CHAT_SOURCE_MONTHLY_LIMITS,
   CHAT_TYPING_PAUSE_MINUTES,
 } from "@/config/agent-chat";
+import { localTime } from "./quiet-hours";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { refreshDebts } from "@/lib/debt-refresh";
@@ -16,6 +18,7 @@ import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
 import { checkResults } from "@/lib/worked";
+import { runBooksCheck } from "@/lib/books";
 import { runSteadyPay } from "@/lib/steady-pay";
 import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
@@ -91,6 +94,8 @@ export async function runJaneAgent(
       })(),
       // Spec step 205: the year's plan, re-planned from what happened and kept.
       safely("Year plan", () => loadYearPlan(userId, { client, now, input, keep: true })),
+      // Spec step 238: balances against transactions, duplicate links, stale or broken links.
+      safely("Books check", () => runBooksCheck(userId, { client, now })),
       // Spec step 240: deposits from uneven income set aside and swept; the month's steady paycheck.
       safely("Steady paycheck", () => runSteadyPay(userId, { client, now, input })),
       // Spec step 207: finished actions checked against the transactions; a saving that never
@@ -125,7 +130,9 @@ export async function runJaneAgent(
   const settings: BrainSettings = { trigger, agenda: posting === "daily" };
   const db = scopedFor(userId, client);
   const keys = gather(snapshot, now, settings).map((c) => c.dedupeKey);
-  const [seen, recent] = await Promise.all([
+  // Spec step 273: what each monthly-limited source posted since the first of this month.
+  const monthStart = new Date(`${localTime(now, snapshot.timezone).date.slice(0, 7)}-01T00:00:00Z`);
+  const [seen, recent, ...monthly] = await Promise.all([
     keys.length === 0
       ? []
       : db.janeMessages.findMany({
@@ -140,11 +147,25 @@ export async function runJaneAgent(
       },
       select: { kind: true, dedupeKey: true, createdAt: true },
     }),
+    ...Object.keys(CHAT_SOURCE_MONTHLY_LIMITS).map((source) =>
+      db.janeMessages.count({
+        where: {
+          dedupeKey: { startsWith: `${source}:` },
+          kind: { in: ["decision", "done", "heads_up"] },
+          // A line folded into the day's agenda (or behind a bundle) was said too.
+          createdAt: { gte: monthStart },
+        },
+      }),
+    ),
   ]);
+  const thisMonth = Object.fromEntries(
+    Object.keys(CHAT_SOURCE_MONTHLY_LIMITS).map((source, i) => [source, monthly[i] as number]),
+  );
   const planned = plan(
     snapshot,
     {
       recent,
+      thisMonth,
       seenKeys: seen.map((s) => s.dedupeKey),
       // Spec step 83: what the person said "Not now" to, and until when.
       snoozed: seen.flatMap((s) =>
