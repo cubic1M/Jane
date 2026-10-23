@@ -70,7 +70,7 @@ describe.runIf(url)("the history load", () => {
       { client, now: new Date("2016-02-10T12:00:00Z") },
       { from: "2016-01-04", tickers: ["VTI"] },
     );
-    expect(first[0]).toMatchObject({ ticker: "VTI", from: "2016-01-04", to: "2016-02-10" });
+    expect(first[0]).toMatchObject({ ticker: "VTI", from: "2016-01-04", to: "2016-02-09" });
     expect(first[0].added).toBeGreaterThan(25);
     const again = await loadHistory(
       feed,
@@ -83,9 +83,11 @@ describe.runIf(url)("the history load", () => {
       { client, now: new Date("2016-02-17T12:00:00Z") },
       { from: "2016-01-04", tickers: ["VTI"] },
     );
-    expect(later[0]).toMatchObject({ to: "2016-02-17" });
+    expect(later[0]).toMatchObject({ to: "2016-02-16" });
     expect(later[0].added).toBe(5);
-    expect(feed.calls[feed.calls.length - 1]).toEqual(["VTI", "2016-02-11", "2016-02-17"]);
+    expect(feed.calls[feed.calls.length - 1]).toEqual(["VTI", "2016-02-10", "2016-02-16"]);
+    // Never today: the free SIP feed refuses the latest bars.
+    expect(feed.calls.every(([, , to]) => to < "2016-02-17")).toBe(true);
     const load = await client.marketHistoryLoad.findUniqueOrThrow({
       where: { ticker_source: { ticker: "VTI", source: "alpaca-test" } },
     });

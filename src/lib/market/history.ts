@@ -50,7 +50,9 @@ export async function loadHistory(
     throw new HistoryError(
       "Only a real market feed can load history: the sample market is never stored.",
     );
-  const to = day(now);
+  // To yesterday: a day's close is final only after the market shuts, and Alpaca's free SIP feed
+  // refuses bars from the latest 15 minutes (a request that runs to today is refused whole).
+  const to = day(new Date(now.getTime() - 86_400_000));
   const report: LoadReport = [];
   for (const ticker of tickers) {
     const done = await client.marketHistoryLoad.findUnique({
