@@ -190,8 +190,14 @@ export function paycheckChanges(input: DetectionInput): Change[] {
     const gaps = deposits.slice(1).map((d, i) => daysBetween(deposits[i].date, d.date));
     const due = addDays(last.date, Math.round(median(gaps)));
     const late = addDays(due, PAYCHECK_LATE_DAYS);
+    // Real-user QA: only when the account's data runs past the day it was late. A CSV import
+    // stops on the day it was exported, so a paycheck after that isn't missing, just not
+    // imported yet (a synced bank has the days since).
+    const seenUntil = input.transactions
+      .filter((t) => t.accountId === last.accountId)
+      .reduce((m, t) => (t.date > m ? t.date : m), last.date);
     // Late for a while, not forever: after that it's no longer news.
-    if (input.asOf > late && input.asOf <= addDays(due, CHANGE_RECENT_DAYS)) {
+    if (seenUntil > late && input.asOf > late && input.asOf <= addDays(due, CHANGE_RECENT_DAYS)) {
       out.push({
         ...base,
         kind: "paycheck_late",

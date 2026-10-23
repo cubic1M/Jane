@@ -100,8 +100,14 @@ describe("paycheckChanges", () => {
   const changes = (transactions: DetectionTransaction[]) =>
     paycheckChanges(input({ transactions }));
 
+  // The account kept moving after the day it was due: the data runs past it.
+  const coffee = tx({ description: "BLUE BOTTLE COFFEE", date: "2026-10-14", amountCents: 575 });
+
   it("says a paycheck is late a few days after it was due", () => {
-    const [change] = changes(paychecks("2026-09-24", [245_000, 245_000, 245_000, 245_000]));
+    const [change] = changes([
+      ...paychecks("2026-09-24", [245_000, 245_000, 245_000, 245_000]),
+      coffee,
+    ]);
     expect(change).toMatchObject({
       kind: "paycheck_late",
       key: "late:acme corp:2026-10-08",
@@ -109,6 +115,20 @@ describe("paycheckChanges", () => {
       title:
         "Your paycheck from Acme Corp hasn't come in. It usually arrives around Oct 8; the last one was on Sep 24.",
     });
+  });
+
+  // Real-user QA: a CSV import exported on Oct 9 has no paycheck after it, but that one isn't
+  // missing: it just isn't imported yet.
+  it("doesn't call it late when the data stops before it was due", () => {
+    expect(changes(paychecks("2026-09-24", [245_000, 245_000, 245_000, 245_000]))).toEqual([]);
+    const exported = tx({
+      description: "BLUE BOTTLE COFFEE",
+      date: "2026-10-09",
+      amountCents: 575,
+    });
+    expect(
+      changes([...paychecks("2026-09-24", [245_000, 245_000, 245_000, 245_000]), exported]),
+    ).toEqual([]);
   });
 
   it("doesn't call it late before then, or forever after", () => {
