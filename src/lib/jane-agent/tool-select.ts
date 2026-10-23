@@ -173,7 +173,7 @@ const SPECIFIC_LOOKUPS: readonly { when: RegExp; tools: readonly string[] }[] = 
   },
   // The rule replay: "did the extra rules help?", "do the dip buys work?".
   {
-    when: /\b(?:extra rules|autopilot'?s? rules|rules? (?:help|hurt|work)\w*|dip.?buy\w*)\b/i,
+    when: /\b(?:extra rules|autopilot'?s? rules|rules? (?:help|hurt|work)\w*|dip.?buy\w*)\b|\bautopilot\b[^.?!]{0,20}\bbacktest\w*|\b(?:turn|switch)\w* off\b[^.?!]{0,30}\b(?:tax.?loss|harvest\w*|swaps?|rules?)\b/i,
     tools: ["backtest_by_level"],
   },
 ];

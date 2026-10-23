@@ -25,7 +25,7 @@ function describe(p: BudgetProposal | GoalProposal): string {
   if (p.monthlySetAsideCents !== undefined) {
     return `I could start a "${p.name}" goal: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}. Your yearly and irregular bills come to ${formatCents(p.monthlySetAsideCents)} a month, so that's a year of it: math from your data, not advice.`;
   }
-  return `I could start an "${p.name}" goal: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}. That's ${EMERGENCY_FUND_MONTHS} months of your own average spending (${formatCents(p.monthlySpendingCents)} a month): math from your data, not advice.`;
+  return `I could start an "${p.name}" goal: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}. That's ${p.basis ?? `${EMERGENCY_FUND_MONTHS} months of your own average spending`} (${formatCents(p.monthlySpendingCents)} a month): math from your data, not advice.`;
 }
 
 const amountOf = (p: BudgetProposal | GoalProposal) =>

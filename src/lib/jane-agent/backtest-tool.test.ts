@@ -118,7 +118,12 @@ describe("backtest_by_level", () => {
 
   it("sends the tool for the rule replay question", () => {
     const asOf = "2026-10-21";
-    for (const q of ["did the extra rules help?", "do the dip buys work"])
+    for (const q of [
+      "did the extra rules help?",
+      "do the dip buys work",
+      "is the autopilot backtested",
+      "why did you turn off tax-loss harvesting",
+    ])
       expect(toolsFor(CHAT_TOOLS, q, null, null, asOf).map((t) => t.name)).toContain(
         "backtest_by_level",
       );

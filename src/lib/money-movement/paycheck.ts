@@ -9,6 +9,8 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import type { DetectionInput } from "@/detection/types";
 import { addDays, daysBetween, median } from "@/detection/units";
+import { PAYCHECKS_PER_MONTH } from "@/config/detection";
+import { paySchedules } from "@/detection/paydays";
 import { employers } from "@/insights/changes";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -55,15 +57,22 @@ const movesOf = (value: Prisma.JsonValue): PlanMove[] =>
 export function latestPaycheck(input: DetectionInput) {
   const from = addDays(input.asOf, -PAYCHECK_PLAN_DAYS);
   let latest: { id: string; date: string; cents: number; perMonth: number } | null = null;
+  const schedules = paySchedules(input);
   for (const employer of employers(input)) {
     const last = employer.deposits.at(-1)!;
     if (last.date <= from || last.date > input.asOf) continue;
     if (latest && last.date <= latest.date) continue;
+    // From the employer's pay schedule (spec step 182): a weekly paycheck comes 4.33 times a
+    // month, not 4. Without a schedule yet, from the usual gap.
+    const schedule = schedules.find((x) => x.key === `employer:${employer.key}`);
     const gaps = employer.deposits
       .slice(1)
       .map((d, i) => daysBetween(employer.deposits[i].date, d.date));
-    const perMonth =
-      gaps.length > 0 ? Math.max(1, Math.round(30 / median(gaps))) : DEFAULT_PAYCHECKS_PER_MONTH;
+    const perMonth = schedule
+      ? PAYCHECKS_PER_MONTH[schedule.frequency]
+      : gaps.length > 0
+        ? Math.max(1, Math.round(30 / median(gaps)))
+        : DEFAULT_PAYCHECKS_PER_MONTH;
     latest = { id: last.id, date: last.date, cents: -last.amountCents, perMonth };
   }
   return latest;

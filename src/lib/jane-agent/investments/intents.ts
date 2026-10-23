@@ -43,7 +43,10 @@ export type InvestmentTopic =
   | "practice_resume"
   | "backtest"
   // The strategy each level's practice autopilot follows (the daily replay's choice).
-  | "level_strategy";
+  | "level_strategy"
+  // The rule replay ("Did the extra rules help?"): the autopilot's own rules against plain
+  // rebalancing and buy and hold, and the rules turned off.
+  | "rule_replay";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -219,6 +222,10 @@ const BACKTEST =
 // "Which strategy does my level use", "what strategy is the autopilot following".
 const LEVEL_STRATEGY =
   /\b(?:which|what) (?:investing |investment )?strateg(?:y|ies)\b|\bstrateg(?:y|ies) (?:does|do|is|are) (?:my|the|each|every)\b|\bmy (?:level'?s? )?strategy\b/;
+// The rule replay: whether the autopilot's extra rules helped, and why one was turned off.
+// Before the model backtest, so "backtest the autopilot" gets the autopilot's own rules.
+const RULE_REPLAY =
+  /\b(?:extra|opportunity|autopilot'?s?) rules?\b|\brules? (?:help|hurt|work|earn)\w*\b|\bdip.?buys? (?:help|work|worth)\w*\b|\b(?:backtest|replay)\w* (?:the |my )?(?:autopilot|rules)\b|\b(?:autopilot|rules?)\b[^.?!]{0,20}\b(?:backtest|replay)\w*|\bautopilot\b[^.?!]{0,40}\b(?:buy and hold|plain rebalancing)\b|\b(?:which|what) rules? (?:did you|are|were|have you) (?:turn|switch)\w* off\b|\bwhy (?:did you |is |are |was |were )?(?:you )?(?:turn|switch)\w* off\b[^.?!]{0,30}\b(?:tax.?loss|harvest\w*|swaps?|dip|news|rules?)\b/;
 const LEVEL_NAME = /\b(very low|very high|low|medium|high)\b/;
 const YEAR = /\b((?:19|20)\d\d)\b/;
 
@@ -236,6 +243,10 @@ function practiceIntent(text: string): InvestmentIntent | null {
       (l) => RISK_LEVELS[l].label.toLowerCase() === name,
     );
     return { ...base, topic: "level_strategy", ...(level ? { level } : {}) };
+  }
+  if (RULE_REPLAY.test(text)) {
+    const { level } = levelAndYear(text);
+    return { ...base, topic: "rule_replay", ...(level ? { level } : {}) };
   }
   if (!BACKTEST.test(text)) return null;
   return { ...base, topic: "backtest", ...levelAndYear(text) };

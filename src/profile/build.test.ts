@@ -113,10 +113,41 @@ describe("how the percentage spreads with the evidence", () => {
     }
   });
 
-  it("counts debt trouble's evidence once: Chris has 11 fees, not all his signals added up", () => {
+  it("counts debt trouble's evidence once: Chris's payday loans, not all his signals added up", () => {
     const fact = buildProfile(inputFor("debt")).facts.debt_trouble;
     expect(fact.value).toBe(true);
-    expect(fact.evidence).toMatch(/^11 overdraft, insufficient-funds or late fees in 12 months/);
+    expect(fact.evidence).toMatch(/^12 cash-advance repayments in 12 months/);
+  });
+
+  // Loans QA: debt trouble rests on the debts (balances, rates, payments against income), not
+  // on overdraft and late fees, which are spending findings of their own.
+  it("isn't debt trouble from fees alone", () => {
+    const maya = inputFor("renter");
+    const checking = maya.accounts.find((a) => a.type === "depository")!.id;
+    const fees = Array.from({ length: 6 }, (_, i) => ({
+      date: `2026-0${i + 3}-15`,
+      amountCents: 3_400,
+      description: "OVERDRAFT FEE",
+      pfc: "BANK_FEES_OVERDRAFT_FEES",
+      accountId: checking,
+    }));
+    const p = buildProfile({ ...maya, transactions: [...maya.transactions, ...fees] });
+    expect(p.facts.debt_trouble.value).toBe(false);
+  });
+
+  it("is debt trouble when payments pass 40% of income without the cash to carry them", () => {
+    const priya = inputFor("equity");
+    // Her mortgage alone is over 40% of take-home, and her cash carries it: not trouble.
+    expect(buildProfile(priya).facts.debt_trouble.value).toBe(false);
+    const broke = {
+      ...priya,
+      accounts: priya.accounts.map((a) =>
+        a.type === "depository" ? { ...a, balanceCents: 0 } : a,
+      ),
+    };
+    const fact = buildProfile(broke).facts.debt_trouble;
+    expect(fact.value).toBe(true);
+    expect(fact.evidence).toMatch(/debt payments over 40% of income, without the cash/);
   });
 });
 

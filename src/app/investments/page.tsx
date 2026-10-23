@@ -98,8 +98,10 @@ async function LevelStrategies({ userId }: { userId: string }) {
 }
 
 async function RuleReplays({ userId }: { userId: string }) {
-  const replays = await ruleReplaysFor(userId);
-  return replays.advice && replays.data ? <RuleReplaySection data={replays.data} /> : null;
+  const [replays, profile] = await Promise.all([ruleReplaysFor(userId), practiceProfileOf(userId)]);
+  return replays.advice && replays.data ? (
+    <RuleReplaySection data={replays.data} level={profile.level} />
+  ) : null;
 }
 
 async function InvestmentsContent() {

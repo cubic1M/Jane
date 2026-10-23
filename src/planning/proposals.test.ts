@@ -46,6 +46,7 @@ describe("set-up proposals", () => {
       targetCents: 960_000,
       targetDate: "2027-10-18",
       monthlySpendingCents: 320_000,
+      basis: "3 months of your own average spending",
     });
     expect(
       proposals(input({ goalNames: ["My emergency savings"] })).some((p) => p.kind === "goal"),
@@ -117,17 +118,23 @@ describe("the emergency fund proposal", () => {
   const fund = (over: Partial<ProposalInput> = {}) =>
     proposals(input(over)).find((p) => p.kind === "goal" && p.key === "goal:emergency_fund");
   it("is three months of spending without a profile", () => {
-    expect(fund()).toMatchObject({ targetCents: 960_000, name: "Emergency fund" });
+    expect(fund()).toMatchObject({
+      targetCents: 960_000,
+      name: "Emergency fund",
+      basis: "3 months of your own average spending",
+    });
   });
-  it("is six months for Sam, whose pay moves around", () => {
+  it("is six months for Sam, whose pay moves around, and says so", () => {
+    // The plan and the chat used to say three months whatever the size (cluster 13).
     expect(
       fund({ profile: { pattern: "uneven", debtTrouble: false, incomeCents: 453_781 } }),
-    ).toMatchObject({ targetCents: 1_920_000 });
+    ).toMatchObject({ targetCents: 1_920_000, basis: "6 months of your own average spending" });
   });
   it("is a small starter buffer for Chris, who is overdrawn and in debt trouble", () => {
     const f = fund({ profile: { pattern: "salary", debtTrouble: true, incomeCents: 242_000 } });
     expect(f).toMatchObject({ targetCents: 100_000, name: "Emergency starter buffer" });
     expect(f).toMatchObject({ targetDate: "2027-04-18" });
+    expect(f).toMatchObject({ basis: "a starter buffer while paying off debt comes first" });
   });
   it("is nothing for Ruth when her pension covers what she spends", () => {
     expect(
