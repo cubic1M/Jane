@@ -3,6 +3,7 @@ import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
+import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
@@ -12,6 +13,7 @@ import { formatReturn } from "@/insights/returns";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
 import { backtestsFor } from "@/lib/investments/backtest";
+import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { autopilotOf } from "@/lib/autopilot";
 import { investmentsByHerself } from "@/lib/jane-agent/investments/replies";
 import { autopilotFor } from "@/lib/sector-autopilot";
@@ -82,6 +84,13 @@ function HoldingRow({ h }: { h: HoldingView }) {
       </p>
     </li>
   );
+}
+
+// "Did the extra rules help?": a few seconds of replay the first time, so it streams in after
+// the rest of the page.
+async function RuleReplays({ userId }: { userId: string }) {
+  const replays = await ruleReplaysFor(userId);
+  return replays.advice && replays.data ? <RuleReplaySection data={replays.data} /> : null;
 }
 
 async function InvestmentsContent() {
@@ -490,6 +499,13 @@ async function InvestmentsContent() {
       )}
 
       {backtests.advice && <BacktestsSection backtests={backtests.backtests} />}
+      {backtests.advice && (
+        <Suspense
+          fallback={<p className="text-sm text-zinc-500">Replaying the autopilot&apos;s rules…</p>}
+        >
+          <RuleReplays userId={user.id} />
+        </Suspense>
+      )}
     </>
   );
 }

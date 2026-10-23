@@ -90,7 +90,7 @@ const SECTORS = {
       "change_practice_settings",
     ]),
     words:
-      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|news|headlines?|filings?|8-?k|10-?q|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk\w*|what is a|profile|about me|goals?|buckets?|split|practice|paper money|extra moves?|avoid\w*|harvest\w*|cash buffer|suggest only|need (?:this|the|that|my) money)\b/,
+      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|news|headlines?|filings?|8-?k|10-?q|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk\w*|what is a|profile|about me|goals?|buckets?|split|practice|paper money|extra moves?|avoid\w*|harvest\w*|cash buffer|suggest only|need (?:this|the|that|my) money|extra rules|dip.?buys?)\b/,
   },
 } as const;
 
@@ -164,6 +164,11 @@ const SPECIFIC_LOOKUPS: readonly { when: RegExp; tools: readonly string[] }[] = 
   // Spec step 295: "how would a High portfolio have done in 2022".
   {
     when: /\b(?:backtest\w*|replay\w*|would\b[^.?!]{0,40}\bhave (?:done|gone|fared|performed|lost|dropped|fallen))\b/i,
+    tools: ["backtest_by_level"],
+  },
+  // The rule replay: "did the extra rules help?", "do the dip buys work?".
+  {
+    when: /\b(?:extra rules|autopilot'?s? rules|rules? (?:help|hurt|work)\w*|dip.?buy\w*)\b/i,
     tools: ["backtest_by_level"],
   },
 ];

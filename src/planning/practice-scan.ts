@@ -7,6 +7,7 @@ import {
   OPPORTUNITY_LEVELS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
+  PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
 import {
@@ -19,6 +20,7 @@ import {
   NEWS_GOOD,
   NEWS_LOOKBACK_DAYS,
   OPPORTUNITY_MAX_SHARE,
+  rulesOnAt,
   SCAN_CAPS,
   SCAN_CONFIDENCE,
   SCAN_KINDS,
@@ -29,8 +31,8 @@ import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { WorthKind } from "@/detectors/contract";
 import type { Bar, Headline } from "@/lib/market/types";
 import { lotsFor, unrealised, washReplacements, type InvTransaction } from "./investment-taxes";
-import { portfolioValue, positionValue, type Prices } from "./practice-autopilot";
-import type { LedgerState } from "./practice-ledger";
+import { portfolioValue, positionValue, violates, type Prices } from "./practice-autopilot";
+import { apply, LedgerError, type LedgerState } from "./practice-ledger";
 
 // The daily scan of a practice portfolio (spec step 292, Phase AW, Stage A). Pure: from what the
 // ledger holds, the market data and the trades so far, four kinds of flag, each with what Jane
@@ -112,6 +114,9 @@ export type ScanInput = {
   usedThisMonth: Readonly<Partial<Record<ScanKind, number>>>;
   // Keys already acted on.
   seen: ReadonlySet<string>;
+  // The opportunity rules that may flag (drift always may). Left out: every rule not turned off
+  // at the level (rulesOnAt, src/config/practice-scan.ts). The rule replay passes its own set.
+  rules?: ReadonlySet<ScanKind>;
   // From the person's preferences (src/planning/practice-profile.ts); without them, the level's
   // model and the usual caps. Caps here are already held to the hard caps.
   weights?: Readonly<Record<PracticeClass, number>>;
@@ -128,10 +133,22 @@ const weightsOf = (input: Pick<ScanInput, "level" | "weights">) =>
 const capsOf = (input: ScanInput, kind: ScanKind) => (input.caps ?? SCAN_CAPS)[kind];
 
 const DAY_MS = 86_400_000;
-const daysBefore = (iso: string, days: number) =>
-  new Date(Date.parse(`${iso}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
-const dollars = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// The date this many days before (YYYY-MM-DD), remembered: the rule replay asks for the same
+// few dates thousands of times.
+const before = new Map<string, string>();
+export function daysBefore(iso: string, days: number): string {
+  const key = `${iso}:${days}`;
+  let out = before.get(key);
+  if (out === undefined) {
+    out = new Date(Date.parse(`${iso}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
+    if (before.size > 100_000) before.clear();
+    before.set(key, out);
+  }
+  return out;
+}
+// One formatter, made once: the rule replay formats thousands of reasons.
+const USD = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const dollars = (cents: number) => `$${USD.format(cents / 100)}`;
 const pct = (n: number) => `${(Math.round(n * 1000) / 10).toString()}%`;
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 const LABEL: Record<PracticeClass, string> = {
@@ -508,20 +525,94 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
 export function scanPortfolio(input: ScanInput): ScanFlag[] {
   const total = portfolioValue(input.state, input.prices);
   if (total <= 0) return [];
+  const on = input.rules ?? rulesOnAt(input.level);
   // Never bought: sold at a loss lately (a wash sale) or on the person's never-buy list.
   const blocked = new Set([...washBlocked(input.trades, input.today), ...(input.avoid ?? [])]);
-  const harvests = harvestFlags(input, total, blocked);
+  const harvests = on.has("tax_loss_harvest") ? harvestFlags(input, total, blocked) : [];
   // What is swapped out today isn't bought back or sold again today.
   const after = new Set([...blocked, ...harvests.map((f) => f.ticker)]);
   const all = [
     driftFlag(input),
     ...harvests,
-    ...dipFlags(input, total, after),
-    ...newsFlags(input, total, after),
+    ...(on.has("dip_buy") ? dipFlags(input, total, after) : []),
+    ...(on.has("news_idea") ? newsFlags(input, total, after) : []),
   ].filter((f): f is ScanFlag => f !== null && !input.seen.has(f.key));
   // The monthly count cap for each kind.
   const left = Object.fromEntries(
     SCAN_KINDS.map((k) => [k, capsOf(input, k).perMonth - (input.usedThisMonth[k] ?? 0)]),
   ) as Record<ScanKind, number>;
   return all.filter((f) => (left[f.kind] -= 1) >= 0);
+}
+
+// Whether a flag's trades, one after another, all keep the hard limits; the first broken one.
+// The live scan (src/lib/practice/scan.ts) and the rule replay both decide with this.
+export function heldBy(
+  flag: { trades: readonly { ticker: string; side: "buy" | "sell"; amountCents: number }[] },
+  state: LedgerState,
+  prices: Prices,
+  tradesToday: number,
+): string | null {
+  let s = state;
+  let n = tradesToday;
+  for (const t of flag.trades) {
+    const why = violates(t, s, prices, n);
+    if (why) return why;
+    const priceCents = prices[t.ticker];
+    if (!priceCents) return `no price for ${t.ticker}`;
+    const entry = { side: t.side, ticker: t.ticker, amountCents: t.amountCents, priceCents };
+    try {
+      s = apply(s, entry, PRACTICE_UNIVERSE).state;
+    } catch (error) {
+      if (error instanceof LedgerError) return error.message;
+      throw error;
+    }
+    n += 1;
+  }
+  return null;
+}
+
+// What happens to a flag: held by a limit, left to the autopilot (drift), kept as a suggestion
+// (a kind that never trades, or the person's suggest-only mode), or acted on. The live scan
+// (src/lib/practice/scan.ts) and the rule replay both decide with this.
+export function flagStatus(
+  flag: Pick<ScanFlag, "kind"> & Parameters<typeof heldBy>[0],
+  state: LedgerState,
+  prices: Prices,
+  tradesToday: number,
+  mode: "act" | "suggest" = "act",
+  // Why the person's preferences refuse one of its trades (firstRefusal), checked first.
+  refused: string | null = null,
+): { status: "acted" | "autopilot" | "held" | "suggested"; heldBy: string | null } {
+  const held =
+    flag.trades.length > 0 ? (refused ?? heldBy(flag, state, prices, tradesToday)) : null;
+  const status = held
+    ? "held"
+    : flag.kind === "drift_rebalance"
+      ? "autopilot"
+      : flag.trades.length === 0 || mode === "suggest"
+        ? "suggested"
+        : "acted";
+  return { status, heldBy: held };
+}
+
+// A flag kept from an earlier scan, as the scan reads it back.
+export type PastFlag = { key: string; kind: string; scannedAt: string; status: string };
+
+// How many of each kind acted (or went to the autopilot) this calendar month, and the keys
+// already acted on: a held flag counts for neither, so it can act on a later day.
+export function monthUse(
+  past: readonly PastFlag[],
+  today: string,
+): { usedThisMonth: Partial<Record<ScanKind, number>>; seen: Set<string> } {
+  const month = today.slice(0, 7);
+  const usedThisMonth: Partial<Record<ScanKind, number>> = {};
+  for (const p of past) {
+    if (p.scannedAt.slice(0, 7) < month || p.status === "held") continue;
+    const kind = p.kind as ScanKind;
+    usedThisMonth[kind] = (usedThisMonth[kind] ?? 0) + 1;
+  }
+  return {
+    usedThisMonth,
+    seen: new Set(past.filter((p) => p.status !== "held").map((p) => p.key)),
+  };
 }

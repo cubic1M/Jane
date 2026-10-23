@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AUTOPILOT_LIMITS, MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/portfolios";
 import { apply, type LedgerState } from "./practice-ledger";
-import { planTrades, portfolioValue, violates } from "./practice-autopilot";
+import { monthlyDue, planTrades, portfolioValue, sellsFirst, violates } from "./practice-autopilot";
 
 const PRICES = { VTI: 30_000, VXUS: 6_000, BND: 8_000, BIL: 9_150, TSLA: 20_000, ITOT: 12_000 };
 const UNIVERSE = new Set(["VTI", "VXUS", "BND", "BIL", "TSLA", "ITOT"]);
@@ -149,5 +149,26 @@ describe("autopilot for the practice portfolio", () => {
     const trades = planTrades({ level: 3, state, prices: up, paused: false, tradesToday: 0 });
     expect(trades.filter((t) => t.side === "sell").map((t) => t.ticker)).toEqual(["VTI", "VXUS"]);
     expect(trades.every((t) => t.rule === "rebalance")).toBe(true);
+  });
+});
+
+describe("monthlyDue and sellsFirst", () => {
+  const due = { monthlyAddCents: 50_000, addDay: 5, today: "2026-10-05", addedThisMonth: false };
+  it("puts the monthly money in once a month, on or after its day", () => {
+    expect(monthlyDue(due)).toBe(true);
+    expect(monthlyDue({ ...due, today: "2026-10-04" })).toBe(false);
+    expect(monthlyDue({ ...due, today: "2026-10-31" })).toBe(true);
+    expect(monthlyDue({ ...due, addedThisMonth: true })).toBe(false);
+    expect(monthlyDue({ ...due, monthlyAddCents: 0 })).toBe(false);
+  });
+
+  it("places sales before buys, keeping each side's order", () => {
+    const plan = [
+      { side: "buy" as const, ticker: "A" },
+      { side: "sell" as const, ticker: "B" },
+      { side: "buy" as const, ticker: "C" },
+      { side: "sell" as const, ticker: "D" },
+    ];
+    expect(sellsFirst(plan).map((t) => t.ticker)).toEqual(["B", "D", "A", "C"]);
   });
 });
