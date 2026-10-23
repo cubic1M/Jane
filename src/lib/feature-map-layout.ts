@@ -79,16 +79,19 @@ export function layoutMap(map: AreaMap, open: string | null, viewWidth: number):
     });
     width = featureX + feature.w;
     height = Math.max(height, top + columnH);
-    // A phone shows the features with an edge of their branch; wider screens the branch too.
+    // The whole tree when it fits; else a phone shows the features with an edge of their
+    // branch, and wider screens the branch too.
     focus =
-      viewWidth < MAP_NARROW_PX
-        ? { x: featureX - 24, y: top, w: feature.w + 24, h: columnH }
-        : {
-            x: branchX,
-            y: Math.min(box.y, top),
-            w: featureX + feature.w - branchX,
-            h: Math.max(box.y + box.h, top + columnH) - Math.min(box.y, top),
-          };
+      width <= viewWidth
+        ? { x: 0, y: 0, w: width, h: height }
+        : viewWidth < MAP_NARROW_PX
+          ? { x: featureX - 24, y: top, w: feature.w + 24, h: columnH }
+          : {
+              x: branchX,
+              y: Math.min(box.y, top),
+              w: featureX + feature.w - branchX,
+              h: Math.max(box.y + box.h, top + columnH) - Math.min(box.y, top),
+            };
   }
   return { nodes, edges, width, height, focus };
 }

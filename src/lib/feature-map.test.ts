@@ -105,7 +105,7 @@ describe("the feature map's layout", () => {
 
   it("opens a branch beside it, its features centred on it and joined to it", () => {
     const branch = money.branches[0];
-    const open = layoutMap(money, branch.id, 1000);
+    const open = layoutMap(money, branch.id, 700);
     const features = open.nodes.filter((n) => n.level === 3);
     expect(features.map((n) => n.id)).toEqual(branch.features.map((f) => f.id));
     expect(features.every((n) => n.y >= 0)).toBe(true);
@@ -115,8 +115,11 @@ describe("the feature map's layout", () => {
       branch.features.length,
     );
     expect(open.height).toBeGreaterThanOrEqual(features.at(-1)!.y + features.at(-1)!.h);
-    // The camera frames the branch and its features.
+    // Too wide to show it all: the camera frames the branch and its features.
     expect(open.focus.x).toBe(box.x);
+    // Wide enough: the whole tree, the area included.
+    const wide = layoutMap(money, branch.id, 1200);
+    expect(wide.focus).toEqual({ x: 0, y: 0, w: wide.width, h: wide.height });
   });
 
   it("zooms to the features alone on a phone", () => {
