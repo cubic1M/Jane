@@ -20,7 +20,7 @@ import { isDemoItemId } from "@/lib/plaid/demo";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { budgetSummary, overBudgetAlerts } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { detectAlerts } from "./alerts";
+import { detectAlerts, dueReportedCategories } from "./alerts";
 import { detect } from "./detect";
 import { withDirectory } from "./merchants";
 import { atLeast } from "./helpers";
@@ -395,6 +395,23 @@ export async function runDetection(
       firstScan: firstRun.count > 0,
       taught: await loadTaught(userId, { client }),
       expected: await expectedFor(userId, { client, now }),
+      dueReported: dueReportedCategories(
+        (
+          await db.accounts.findMany({
+            where: { type: { in: ["credit", "loan"] } },
+            select: {
+              type: true,
+              subtype: true,
+              liability: { select: { nextPaymentDueDate: true } },
+            },
+          })
+        ).map((a) => ({
+          type: a.type,
+          subtype: a.subtype,
+          nextDue: a.liability?.nextPaymentDueDate ? isoDate(a.liability.nextPaymentDueDate) : null,
+        })),
+        input.asOf,
+      ),
     });
     const budgets = await db.budgets.findMany({ select: { category: true, amountCents: true } });
     const overBudget =

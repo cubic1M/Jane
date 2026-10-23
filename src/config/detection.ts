@@ -443,6 +443,18 @@ export const NOT_BILL_CATEGORIES: readonly string[] = ["BANK_FEES_INTEREST_CHARG
 // A card payment the bank names with the card company's "thank you" reads as what it is.
 export const CARD_PAYMENT_THANKS = /\bthank\s*you\b/i;
 export const CARD_PAYMENT_NAME = "Credit card payment";
+// The payment category for a card or loan, by account type, then subtype (Plaid's detailed
+// categories). When the bank reports the due date of every such account, the deadline is the
+// one reminder for that payment and the guessed bill reminder is left out (books QA: two
+// reminders, with different amounts, for one card payment).
+export const PAYMENT_CATEGORY_BY_ACCOUNT: Readonly<Record<string, string>> = {
+  credit: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+  auto: "LOAN_PAYMENTS_CAR_PAYMENT",
+  student: "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+  mortgage: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+  "home equity": "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+  personal: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+};
 // Money moved between the person's own accounts (chat QA): saving, investing or into an HSA.
 // Never a recurring charge. Payment-app transfers and wires stay: they can be rent to a person.
 export const OWN_ACCOUNT_TRANSFERS: readonly string[] = [
