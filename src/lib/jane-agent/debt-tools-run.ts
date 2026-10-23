@@ -39,7 +39,6 @@ import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
 import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
-import { withCashPayoffs } from "@/lib/refinance-cash";
 import {
   DEBT_TOOLS,
   debtsToolOutput,
@@ -267,15 +266,7 @@ export async function runDebtTool(
     case "loan_applications":
       return out(applicationsToolOutput(await listApplications(userId, { client }), money));
     case "refinance_offers":
-      return out(
-        refinanceToolOutput(
-          await withCashPayoffs(userId, await loadRefinance(userId, { client, now }), {
-            client,
-            now,
-          }),
-          money,
-        ),
-      );
+      return out(refinanceToolOutput(await loadRefinance(userId, { client, now }), money));
     case "payoff_plan": {
       const payoff = await loadPayoff(userId, { client, now, extraCents: extraFromInput(input) });
       return out(payoffToolOutput(payoff, now.toISOString().slice(0, 10), money));

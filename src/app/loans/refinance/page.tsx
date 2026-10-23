@@ -7,7 +7,6 @@ import { REFI_MIN_SAVING_CENTS } from "@/config/debt";
 import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { ensureChecked, loadRefinance } from "@/lib/refinance";
-import { withCashPayoffs } from "@/lib/refinance-cash";
 import { requireUser } from "@/lib/session";
 import type { RefinanceComparison } from "@/planning/refinance";
 import { listApplications, statusLine } from "@/lib/loan-applications";
@@ -49,6 +48,11 @@ function Comparison({ c }: { c: RefinanceComparison }) {
           </p>
           <DemoAdviceLabel />
         </div>
+      ) : c.turnedDown ? (
+        <p className="text-sm">
+          The offers look cheaper, but a lender would likely turn this down: {c.turnedDown} Jane
+          wouldn&apos;t apply now.
+        </p>
       ) : c.pick ? (
         <div className="flex flex-col gap-1 rounded-lg bg-emerald-50 p-3 text-sm dark:bg-emerald-950">
           <p className="font-medium">
@@ -251,7 +255,7 @@ async function RefinanceContent({
   // Opened before Jane's first monthly check: she checks now.
   await ensureChecked(user.id);
   const [refi, apps, transfers] = await Promise.all([
-    loadRefinance(user.id).then((r) => withCashPayoffs(user.id, r)),
+    loadRefinance(user.id),
     listApplications(user.id),
     loadTransfers(user.id),
   ]);
