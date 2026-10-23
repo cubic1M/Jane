@@ -1,0 +1,120 @@
+name: Strategy research
+
+# The practice strategies replayed on real Alpaca daily bars, on demand (Phase AW, Stage A):
+# every strategy in the library x every level x its small grid x several start years, chosen
+# walk-forward (src/planning/strategies/select.ts). Results and a summary are uploaded as the
+# "strategy-research" artifact; read them with `gh run download`. Nothing is committed from here,
+# and nothing trades: practice research only. Run with `gh workflow run strategy-research.yml
+# --ref <branch>`; the branch must have src/lib/investments/strategy-research.cli.test.ts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "alpaca (the repo's Alpaca secrets) or fixture (the committed keyless closes)"
+        default: alpaca
+        type: choice
+        options: [alpaca, fixture]
+      from:
+        description: "First day of bars to fetch (YYYY-MM-DD)"
+        default: "2016-01-01"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: strategy-research-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bars:
+    name: Fetch daily bars
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Fetch the strategy universe's bars
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          STRATEGY_RESEARCH: fetch
+          RESEARCH_SOURCE: ${{ inputs.source }}
+          RESEARCH_FROM: ${{ inputs.from }}
+          RESEARCH_DIR: research
+        run: |
+          if [ "$RESEARCH_SOURCE" = "alpaca" ] && { [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; }; then
+            echo "::error::Alpaca secrets not set (ALPACA_API_KEY_ID, ALPACA_API_SECRET_KEY). Add them as repository secrets, or run with source=fixture."
+            exit 1
+          fi
+          npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bars
+          path: research/bars.json
+          retention-days: 3
+
+  level:
+    name: Level ${{ matrix.level }}
+    needs: bars
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        level: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: bars
+          path: research
+      - name: Replay every strategy for the level
+        env:
+          STRATEGY_RESEARCH: level
+          RESEARCH_LEVEL: ${{ matrix.level }}
+          RESEARCH_DIR: research
+        run: npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: level-${{ matrix.level }}
+          path: research/level-${{ matrix.level }}.json
+          retention-days: 7
+
+  summary:
+    name: Summary
+    needs: level
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: level-*
+          path: research
+          merge-multiple: true
+      - name: Summarise
+        env:
+          STRATEGY_RESEARCH: summary
+          RESEARCH_DIR: research
+        run: |
+          npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
+          cat research/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strategy-research
+          path: |
+            research/results.json
+            research/summary.md
+          retention-days: 30

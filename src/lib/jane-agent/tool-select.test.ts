@@ -4,7 +4,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { QUESTIONS } from "./checks/bank";
 import { CHAT_TOOLS } from "./claude-tools";
-import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
+import { OPEN_AREA_TOOL, areaTools, lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 
 // Claude is sent the general tools and only the sectors a question is about: faster to start
 // and cheaper, and every question in the bank still gets the tool it should reach.
@@ -101,5 +101,37 @@ describe("choosing tools for a question", () => {
       if (!names(q.text, before).includes(q.tool)) missed.push(`${q.id} "${q.text}" -> ${q.tool}`);
     }
     expect(missed, missed.join("\n")).toEqual([]);
+  });
+});
+
+// Casual questions often name no area ("my car got rear ended"): Claude then opens the area itself.
+describe("open_area", () => {
+  const breakpoint = (tools: ReturnType<typeof toolsFor>) =>
+    tools.findIndex((t) => "cache_control" in t && t.cache_control);
+
+  it("is in every request, in the cached general part, with one fixed definition", () => {
+    for (const question of [
+      "how am I doing",
+      "how are my crypto gains taxed",
+      "my car got rear ended",
+    ]) {
+      const tools = toolsFor(CHAT_TOOLS, question, null, null, ASOF);
+      const at = tools.findIndex((t) => t.name === "open_area");
+      expect(at).toBeGreaterThanOrEqual(0);
+      expect(at).toBeLessThanOrEqual(breakpoint(tools));
+      expect(tools[at].input_schema).toEqual(OPEN_AREA_TOOL.input_schema);
+    }
+  });
+
+  it("is how a question in no area's words reaches that area's tools", () => {
+    for (const [question, area, tool] of [
+      ["my car got rear ended what do i do", "insurance", "insurance_policies"],
+      ["how much will uncle sam take this year", "tax", "tax_estimate"],
+      ["should i lease or buy a car", "debt", "car_purchase"],
+      ["when can i stop working", "investing", "retirement_plan"],
+    ] as const) {
+      expect(names(question)).not.toContain(tool);
+      expect(areaTools(CHAT_TOOLS, area).map((t) => t.name)).toContain(tool);
+    }
   });
 });
