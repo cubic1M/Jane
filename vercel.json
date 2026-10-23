@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/practice-scan",
       "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/cron/strategy-eval",
+      "schedule": "30 9 * * *"
     }
   ],
   "git": {

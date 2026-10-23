@@ -14,8 +14,9 @@ import { loadTransfers, type Transfers } from "@/lib/balance-transfers";
 import { shortMonth } from "@/planning/balance-transfer";
 import { applyAction, checkNow, endTransferAction, startTransferAction } from "./actions";
 
-// Refinance offers (spec step 111): for each loan and card, the offers Jane checked,
-// compared with keeping it over the same months, fees included. Sample offers from the
+// Refinance offers (spec step 111): for each loan and card, the offers Jane checked, each over
+// the debt's own remaining months, compared with keeping it (paying what you pay now until it's
+// gone), fees included: the same comparison as the loan options card. Sample offers from the
 // stand-in lender catalog, for demo-bank people only.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
@@ -34,12 +35,27 @@ function Comparison({ c }: { c: RefinanceComparison }) {
       <div className="flex flex-col gap-1">
         <h2 className="font-semibold">{c.debtName}</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {formatCents(c.balanceCents)} at {formatRate(c.currentAprBps)}. Keeping it costs{" "}
-          {formatCents(c.currentTotalCents)} over the next {c.termMonths} months (
-          {formatCents(c.currentMonthlyCents)} a month).
+          {formatCents(c.balanceCents)} at {formatRate(c.currentAprBps)}. Keeping it, at{" "}
+          {formatCents(c.currentMonthlyCents)} a month, it&apos;s paid off in {c.keepMonths} months
+          and costs {formatCents(c.currentTotalCents)} in all. Offers are priced over {c.termMonths}{" "}
+          months.
         </p>
       </div>
-      {c.pick ? (
+      {c.cashPayoffCents ? (
+        <div className="flex flex-col gap-1 rounded-lg bg-emerald-50 p-3 text-sm dark:bg-emerald-950">
+          <p className="font-medium">Jane&apos;s pick: pay it off from your cash</p>
+          <p>
+            Paying it off from savings would save about {formatCents(c.cashPayoffCents)} and still
+            keep your emergency cushion, more than any loan.
+          </p>
+          <DemoAdviceLabel />
+        </div>
+      ) : c.turnedDown ? (
+        <p className="text-sm">
+          The offers look cheaper, but a lender would likely turn this down: {c.turnedDown} Jane
+          wouldn&apos;t apply now.
+        </p>
+      ) : c.pick ? (
         <div className="flex flex-col gap-1 rounded-lg bg-emerald-50 p-3 text-sm dark:bg-emerald-950">
           <p className="font-medium">
             Jane&apos;s pick: {c.pick.offer.lender} at {formatRate(c.pick.offer.aprBps)}{" "}
@@ -65,7 +81,7 @@ function Comparison({ c }: { c: RefinanceComparison }) {
         </div>
       ) : (
         <p className="text-sm">
-          No offer saves {formatCents(REFI_MIN_SAVING_CENTS)} or more over the same months, fees
+          No offer saves {formatCents(REFI_MIN_SAVING_CENTS)} or more against keeping it, fees
           included, so Jane wouldn&apos;t switch.
         </p>
       )}
@@ -254,9 +270,10 @@ async function RefinanceContent({
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Refinance offers</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Jane checks rates for your loans and cards every month and compares each offer with
-          keeping what you have, over the same months, fees included. Checking is a soft check: it
-          doesn&apos;t affect a credit score, and nothing is applied for until you say so.
+          Jane checks rates for your loans and cards every month and compares each offer, over the
+          debt&apos;s own remaining months, with keeping what you have, fees included. Checking is a
+          soft check: it doesn&apos;t affect a credit score, and nothing is applied for until you
+          say so.
         </p>
       </div>
       {!refi.available ? (

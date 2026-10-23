@@ -3,6 +3,7 @@ import { findDebt, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
 import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
 import type { Transfers } from "@/lib/balance-transfers";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { shortMonth } from "@/planning/balance-transfer";
 import type { Refinance } from "@/lib/refinance";
@@ -29,14 +30,26 @@ const offerLine = (s: ScoredOffer) =>
 // One debt's offers: the pick and why, the runners-up and, for a mortgage, the break-even.
 export function comparisonLines(c: RefinanceComparison): string[] {
   const lines = [
-    `Your ${c.debtName}: ${formatCents(c.balanceCents)} at ${formatRate(c.currentAprBps)}. Paid off over its remaining ${months(c.termMonths)}, it costs ${formatCents(c.currentTotalCents)} in all.`,
+    `Your ${c.debtName}: ${formatCents(c.balanceCents)} at ${formatRate(c.currentAprBps)}. Keeping it at ${formatCents(c.currentMonthlyCents)} a month, it's paid off in ${months(c.keepMonths)} and costs ${formatCents(c.currentTotalCents)} in all; offers are priced over ${months(c.termMonths)}.`,
   ];
+  if (c.cashPayoffCents) {
+    lines.push(
+      `Your cash covers it: paying it off from savings would save about ${formatCents(c.cashPayoffCents)} and still keep your emergency cushion, more than any loan.`,
+    );
+    return lines;
+  }
+  if (c.turnedDown) {
+    lines.push(
+      `The offers look cheaper, but a lender would likely turn this down: ${c.turnedDown} So I wouldn't apply now.`,
+    );
+    return lines;
+  }
   if (!c.pick) {
     const best = c.offers[0];
     lines.push(
       best.savingCents > 0
-        ? `The best offer, ${best.offer.lender} at ${formatRate(best.offer.aprBps)}, saves only ${formatCents(best.savingCents)} over the same months, fees included: less than the ${formatCents(REFI_MIN_SAVING_CENTS)} I'd switch for.`
-        : `None of the ${c.offers.length} offers beats it over the same months, fees included.`,
+        ? `The best offer, ${best.offer.lender} at ${formatRate(best.offer.aprBps)}, saves only ${formatCents(best.savingCents)} against keeping it, fees included: less than the ${formatCents(REFI_MIN_SAVING_CENTS)} I'd switch for.`
+        : `None of the ${c.offers.length} offers beats keeping it, fees included.`,
     );
     return lines;
   }
@@ -79,18 +92,25 @@ export function refinanceReply(target: string | null, refi: Refinance, book: Deb
   }
   if (shown.length === 0) {
     return {
-      body: "I don't have any refinance offers to compare yet.",
+      body: refi.checkedOn
+        ? `I checked on ${dayLabel(refi.checkedOn, { year: true })}: none of the lenders I check take your debts at their balances or terms, so there's nothing to refinance. Paying the highest-rate one down directly is the way.`
+        : "I don't have any refinance offers to compare yet.",
       actions: [SEE_OFFERS],
       refs: {},
     };
   }
   const picks = shown.filter((c) => c.pick);
+  const cash = shown.filter((c) => c.cashPayoffCents);
   const lines = [
     target
       ? "I checked sample offers from the stand-in lender catalog."
       : picks.length > 0
         ? `I checked sample offers from the stand-in lender catalog: ${picks.length} of your debts could cost less.`
-        : "I checked sample offers from the stand-in lender catalog: none of your debts would cost less by enough to switch.",
+        : cash.length > 0
+          ? "I checked sample offers from the stand-in lender catalog: your cash beats them."
+          : shown.some((c) => c.turnedDown)
+            ? "I checked sample offers from the stand-in lender catalog: a lender would likely turn you down for now."
+            : "I checked sample offers from the stand-in lender catalog: none of your debts would cost less by enough to switch.",
     ...shown.flatMap((c) => ["", ...comparisonLines(c)]),
     "",
     "Nothing is applied for until you say so.",
@@ -107,7 +127,7 @@ export function refinanceReply(target: string | null, refi: Refinance, book: Deb
       : [SEE_OFFERS],
     refs: only
       ? { advice: true, refinance: { debtKey: only.debtKey, lender: only.pick!.offer.lender } }
-      : picks.length > 0
+      : picks.length > 0 || cash.length > 0
         ? { advice: true }
         : {},
   };

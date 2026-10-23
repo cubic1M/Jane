@@ -1,4 +1,5 @@
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
+import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
 import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
@@ -60,13 +61,16 @@ const SAMPLE_POLICIES: Readonly<Record<string, readonly NeedPolicy[]>> = {
   retiree: [house("retiree-home", 30_000_000, 100_000)],
 };
 
-// What the daily books check (spec step 238) left open for the sample people: the Reyes family's
-// joint savings is linked twice, once through each parent's bank login.
+// What the daily books check (spec step 238) leaves open for the sample people: the Reyes
+// family's savings comes in twice, once through each parent's bank login (the demo bank's
+// second login, DEMO_SECOND_LOGINS), and the copies can't be proven the same. The words are
+// the books check's own (src/lib/books.ts).
 const SAMPLE_BOOKS: Readonly<Record<string, NonNullable<ProfileInput["extras"]>["books"]>> = {
   family: [
     {
       kind: "duplicate",
-      words: "Your joint savings is linked twice, once through each of your bank logins.",
+      words:
+        "Demo Savings (ending 2002) looks like the same account linked twice, through two bank logins, but I can't prove the two copies match transaction for transaction, so I haven't merged them.",
       accountId: "demo-seedfamily-savings",
     },
   ],
@@ -158,14 +162,15 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
           : Math.round((a.balances.current ?? 0) * 100),
       limitCents: a.balances.limit != null ? Math.round(a.balances.limit * 100) : null,
     })),
-    liabilities: [
-      ...(demoLiabilities(demo, SAMPLE_TODAY).mortgage ?? []).map((m) => ({
-        accountId: m.account_id,
-        kind: "mortgage",
-        aprBps: Math.round((m.interest_rate.percentage ?? 0) * 100),
-        hasPmi: m.has_pmi,
-        payoffDate: m.maturity_date ?? null,
-      })),
-    ],
+    // Every liability the bank reports, normalised as a live sync does (cards' rates and
+    // minimums included), so the harness sees what a linked person's profile sees (loans QA).
+    liabilities: normalizeLiabilities(demoLiabilities(demo, SAMPLE_TODAY)).map((l) => ({
+      accountId: l.accountRef,
+      kind: l.kind,
+      aprBps: l.aprBps,
+      hasPmi: l.hasPmi,
+      payoffDate: l.payoffDate,
+      minimumCents: l.minimumPaymentCents,
+    })),
   };
 }

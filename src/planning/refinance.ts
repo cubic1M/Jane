@@ -1,6 +1,7 @@
 import {
   PRODUCT_FOR_DEBT,
   REFI_CARD_TERM_MONTHS,
+  REFI_TERM_RANGE_MONTHS,
   REFI_MIN_SAVING_CENTS,
   REFI_PREFER_FIXED,
   REFI_RUNNERS_UP,
@@ -12,8 +13,10 @@ import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
 import { payoffPlan } from "./debt";
 
-// Refinance offers compared (spec step 111): for one debt, what keeping it costs over its
-// remaining term against what each offer would cost over the same term, fees included.
+// Refinance offers compared (spec step 111): for one debt, what keeping it costs (paying what
+// the person pays now until it's gone, the same as the fit engine's "keep") against what each
+// offer would cost over the debt's own remaining months, fees included (loans QA: one horizon
+// for this page, the options card and the chat, so the same saving shows everywhere).
 // The same month-by-month interest as the debt planner (./debt.ts). The pick is the lowest
 // total cost; it's only worth bringing up when it saves REFI_MIN_SAVING_CENTS. Pure.
 
@@ -70,15 +73,69 @@ export function remainingMonths(debt: Debt, asOf: string): number | null {
   return plan.ok ? plan.months : null;
 }
 
-// What can be refinanced: a loan or card with a balance, a rate and a term to compare over.
+// Keeping a debt: its payment each month and everything paid until it's gone. A loan with a
+// payoff date runs to it (its real term); otherwise at the payment the bank reports (what
+// really happens: a card at its minimum can take years); otherwise a level payment over the
+// months left.
+export type KeepPath = { monthlyCents: number; months: number; totalCents: number };
+
+export function keepPath(debt: Debt, asOf: string): KeepPath | null {
+  if (!debt.balanceCents || debt.aprBps === null) return null;
+  // A loan with a payoff date: its real term, at the level payment that ends it then.
+  if (debt.kind !== "card" && debt.payoffDate) {
+    const months = remainingMonths(debt, asOf);
+    if (months) {
+      return {
+        monthlyCents: levelPaymentCents(debt.balanceCents, debt.aprBps, months),
+        months,
+        totalCents: totalPaidCents(debt.balanceCents, debt.aprBps, months),
+      };
+    }
+  }
+  // Monthly, as the fit engine counts it (src/lib/fit.ts): a payment every two weeks is two.
+  const payment = debt.paymentCents
+    ? debt.paymentCents * (debt.paymentEvery === "two_weeks" ? 2 : 1)
+    : 0;
+  if (payment > 0) {
+    const plan = payoffPlan(
+      [
+        {
+          id: "d",
+          name: "d",
+          balanceCents: debt.balanceCents,
+          aprBps: debt.aprBps,
+          minimumCents: payment,
+        },
+      ],
+      payment,
+      "avalanche",
+    );
+    if (plan.ok)
+      return { monthlyCents: payment, months: plan.months, totalCents: plan.totalPaidCents };
+  }
+  const months = remainingMonths(debt, asOf);
+  if (!months) return null;
+  return {
+    monthlyCents: levelPaymentCents(debt.balanceCents, debt.aprBps, months),
+    months,
+    totalCents: totalPaidCents(debt.balanceCents, debt.aprBps, months),
+  };
+}
+
+// What can be refinanced: a loan or card with a balance and a rate, the months a new loan is
+// priced over (the debt's own remaining months, inside the terms lenders offer), and what
+// keeping it costs.
 export function refinanceable(
   debt: Debt,
   asOf: string,
-): { product: LoanProduct; termMonths: number } | null {
+): { product: LoanProduct; termMonths: number; keep: KeepPath } | null {
   const product = PRODUCT_FOR_DEBT[debt.kind];
-  if (!product || !debt.balanceCents || debt.aprBps === null) return null;
-  const termMonths = remainingMonths(debt, asOf);
-  return termMonths ? { product, termMonths } : null;
+  if (!product) return null;
+  const keep = keepPath(debt, asOf);
+  if (!keep) return null;
+  const range = REFI_TERM_RANGE_MONTHS[product];
+  const termMonths = Math.min(range.max, Math.max(range.min, keep.months));
+  return { product, termMonths, keep };
 }
 
 export type ScoredOffer = {
@@ -98,8 +155,9 @@ export type RefinanceComparison = {
   termMonths: number;
   balanceCents: number;
   currentAprBps: number;
-  // Keeping it: the level payment over the same months, and everything paid.
+  // Keeping it: what is paid each month now, the months until it's gone, and everything paid.
   currentMonthlyCents: number;
+  keepMonths: number;
   currentTotalCents: number;
   // Lowest total cost first.
   offers: ScoredOffer[];
@@ -108,20 +166,30 @@ export type RefinanceComparison = {
   runnersUp: ScoredOffer[];
   // Why the pick, in at most three lines.
   why: string[];
+  // Paying it off from spare cash saves this much, more than any loan: no loan is picked
+  // (src/lib/refinance.ts, the fit engine's verdict). Absent when not looked at.
+  cashPayoffCents?: number | null;
+  // Why a lender would likely turn the person down for it (their score, their debt payments),
+  // from the fit engine: no pick is made. Absent when not looked at.
+  turnedDown?: string | null;
 };
 
+// `pickLender`: the fit engine's pick when it was asked (src/lib/refinance.ts keeps its verdict),
+// so this page and the options card name the same loan; null when it picked none; absent to
+// pick here, by the same rule (the cheapest that saves enough, fixed rates first).
 export function compareRefinance(
   debt: Debt,
   offers: readonly LoanOffer[],
   asOf: string,
+  pickLender?: string | null,
 ): RefinanceComparison | null {
   const what = refinanceable(debt, asOf);
   if (!what) return null;
   const balanceCents = debt.balanceCents!;
   const currentAprBps = debt.aprBps!;
-  const { termMonths } = what;
-  const currentMonthlyCents = levelPaymentCents(balanceCents, currentAprBps, termMonths);
-  const currentTotalCents = totalPaidCents(balanceCents, currentAprBps, termMonths);
+  const { termMonths, keep } = what;
+  const currentMonthlyCents = keep.monthlyCents;
+  const currentTotalCents = keep.totalCents;
   const scored = offers
     // Each offer's rate over the debt's own remaining months, whatever term it was quoted at
     // (a month's payments may have passed since): the same term on both sides.
@@ -144,13 +212,17 @@ export function compareRefinance(
     .sort((a, b) => a.totalCents - b.totalCents || a.offer.lender.localeCompare(b.offer.lender));
   const enough = scored.filter((o) => o.savingCents >= REFI_MIN_SAVING_CENTS);
   const pick =
-    (REFI_PREFER_FIXED ? enough.find((o) => o.offer.rateType === "fixed") : undefined) ??
-    enough[0] ??
-    null;
+    pickLender === null
+      ? null
+      : pickLender !== undefined
+        ? (scored.find((o) => o.offer.lender === pickLender) ?? null)
+        : ((REFI_PREFER_FIXED ? enough.find((o) => o.offer.rateType === "fixed") : undefined) ??
+          enough[0] ??
+          null);
   const cheapest = pick !== null && pick !== scored[0];
   const why = pick
     ? [
-        `The lowest total cost${cheapest ? " at a fixed rate" : ""} over the same ${termMonths} months: ${formatCents(pick.savingCents)} less, fees included.`,
+        `The lowest total cost${cheapest ? " at a fixed rate" : ""}: ${formatCents(pick.savingCents)} less than keeping it, fees included, over ${termMonths} months.`,
         `${formatRate(pick.offer.aprBps)} ${pick.offer.rateType} instead of ${formatRate(currentAprBps)}, so the payment goes from ${formatCents(currentMonthlyCents)} to ${formatCents(pick.monthlyCents)} a month${cheapest ? "; a variable rate could go up" : ""}.`,
         pick.offer.feeCents === 0
           ? "No fee to pay up front."
@@ -167,6 +239,7 @@ export function compareRefinance(
     balanceCents,
     currentAprBps,
     currentMonthlyCents,
+    keepMonths: keep.months,
     currentTotalCents,
     offers: scored,
     pick,

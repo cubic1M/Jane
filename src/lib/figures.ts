@@ -4,12 +4,27 @@ import {
   WORKING_TRANSACTIONS,
   type FigureId,
 } from "@/config/figures";
-import { FORECAST_DAYS, NON_SPENDING_CATEGORIES, NON_SPENDING_PRIMARIES } from "@/config/detection";
-import { HEALTH_WEIGHTS } from "@/config/health-score";
+import {
+  FORECAST_DAYS,
+  NON_SPENDING_CATEGORIES,
+  NON_SPENDING_PRIMARIES,
+  ONE_OFF_MIN_CENTS,
+  ONE_OFF_PRIMARIES,
+  ONE_OFF_SHARE,
+} from "@/config/detection";
+import {
+  HEALTH_CARDS_ZERO_MONTHS,
+  HEALTH_CUSHION_FULL_MONTHS,
+  HEALTH_MARGIN_FULL_RATE,
+  HEALTH_MARGIN_ZERO_RATE,
+  HEALTH_POINTS_PER_SLIP,
+  HEALTH_WEIGHTS,
+} from "@/config/health-score";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import { categoryLabel } from "@/insights/labels";
 import { netWorth } from "@/insights/net-worth";
+import { oneOffNote } from "@/insights/typical-month";
 import { kindOf } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -155,7 +170,7 @@ export async function explainFigure(
       value: value === null ? "unknown" : formatCents(value),
       summary:
         id === "monthly_spending"
-          ? `The average of your last full months' spending. ${monthName(month)}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
+          ? `The average of your last full months' spending. ${oneOffNote(health.oneOffs ?? []) ? `${oneOffNote(health.oneOffs ?? [])} ` : ""}${monthName(month)}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
           : said !== null
             ? `You told me you earn ${formatCents(said)} a month, so I use that instead of the average of your deposits.`
             : `The average of the paychecks and other deposits in your last full months. ${monthName(month)}'s biggest are below.`,
@@ -164,6 +179,12 @@ export async function explainFigure(
           label: id === "monthly_spending" ? "Average monthly spending" : "Average monthly income",
           value: value === null ? "unknown" : formatCents(value),
         },
+        ...(id === "monthly_spending"
+          ? (health.oneOffs ?? []).map((o) => ({
+              label: `Left out: ${o.merchant}, ${o.date} (a one-off)`,
+              value: formatCents(o.amountCents),
+            }))
+          : []),
         {
           label: `${monthName(month)}'s ${id === "monthly_spending" ? "spending" : "income"}, in the items below and the rest`,
           value: formatCents(Math.abs(wanted.reduce((s, t) => s + t.amountCents, 0))),
@@ -173,6 +194,10 @@ export async function explainFigure(
       rules: [
         { label: "Not counted as spending: categories", value: NON_SPENDING_PRIMARIES.join(", ") },
         { label: "Not counted as spending: payments", value: NON_SPENDING_CATEGORIES.join(", ") },
+        {
+          label: "One-off costs left out",
+          value: `from ${formatCents(ONE_OFF_MIN_CENTS)} and ${ONE_OFF_SHARE * 100}% of a usual month, in ${ONE_OFF_PRIMARIES.join(", ")}, from a merchant not charged that much again`,
+        },
       ],
     };
   }
@@ -226,7 +251,9 @@ export async function explainFigure(
       ...empty,
       value: `${health.score} out of 100`,
       summary:
-        "Each part scores out of its weight; parts I can't see yet are left out and the rest is scaled to 100.",
+        health.counted.max === 100
+          ? `Each part scores out of its weight, and the parts add up to ${health.score}.`
+          : `Each part scores out of its weight. The parts I can count add up to ${health.counted.points} of ${health.counted.max}, which is ${health.score} out of 100; parts I can't see yet are left out, not counted against you.`,
       rows: [
         ...health.parts.map((p) => ({
           label: `${p.label} (out of ${p.max})`,
@@ -234,11 +261,21 @@ export async function explainFigure(
           note: p.why,
         })),
         ...health.left.map((l) => ({ label: `${l.label}: left out`, value: "–", note: l.why })),
+        { label: `Total (out of ${health.counted.max})`, value: String(health.counted.points) },
       ],
-      rules: Object.entries(HEALTH_WEIGHTS).map(([part, weight]) => ({
-        label: `Weight: ${part}`,
-        value: String(weight),
-      })),
+      rules: [
+        ...Object.entries(HEALTH_WEIGHTS).map(([part, weight]) => ({
+          label: `Weight: ${part}`,
+          value: String(weight),
+        })),
+        { label: "Full cushion at", value: `${HEALTH_CUSHION_FULL_MONTHS} months of spending` },
+        {
+          label: "Room each month",
+          value: `full at ${HEALTH_MARGIN_FULL_RATE * 100}% left, none at ${-HEALTH_MARGIN_ZERO_RATE * 100}% over`,
+        },
+        { label: "Each late or overdraft fee", value: `${HEALTH_POINTS_PER_SLIP} points` },
+        { label: "No card points at", value: `${HEALTH_CARDS_ZERO_MONTHS} months of income` },
+      ],
     };
   }
 

@@ -97,6 +97,14 @@ export function duplicateAccounts(accounts: Acct[]): { keep: Acct; duplicate: Ac
   return out;
 }
 
+// Books QA: the copies of an account linked twice, which the figures leave out so the account
+// counts once (its balance and transactions not twice) until Jane merges it or the person
+// removes the copy.
+export const copiesToLeaveOut = (
+  accounts: Pick<Acct, "id" | "itemId" | "mask" | "type" | "subtype">[],
+): Set<string> =>
+  new Set(duplicateAccounts(accounts.map((a) => ({ ...a, name: "" }))).map((d) => d.duplicate.id));
+
 const same = (a: Tx, b: Tx) =>
   a.date === b.date &&
   a.amountCents === b.amountCents &&

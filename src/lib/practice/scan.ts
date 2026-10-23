@@ -5,13 +5,13 @@ import {
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
-import { MAX_DROP_LOOKBACK_DAYS, ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
+import { ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
 import {
   ideaSlot,
   PRACTICE_IDEA_DAYS,
   PRACTICE_IDEA_MIN_CENTS,
 } from "@/config/practice-suggestions";
-import { DIP_LOOKBACK_DAYS, NEWS_LOOKBACK_DAYS, type ScanKind } from "@/config/practice-scan";
+import { NEWS_LOOKBACK_DAYS, SCAN_HISTORY_DAYS, type ScanKind } from "@/config/practice-scan";
 import { loadDetectionInput } from "@/detection/engine";
 import { paySchedules } from "@/detection/paydays";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -22,11 +22,10 @@ import { marketData, type Bar, type Headline } from "@/lib/market";
 import { newsKey } from "@/lib/news/store";
 import { rulesSummary } from "@/lib/news/summarize";
 import { mainPaydayDay, scanOpportunities } from "@/planning/practice-opportunities";
-import { refusedByPreferences } from "@/planning/practice-profile";
-import type { ScanHeadline } from "@/planning/practice-scan";
+import { firstRefusal, refusedByPreferences } from "@/planning/practice-profile";
+import { flagStatus, monthUse, type ScanHeadline } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
-import { tradesHeldBy } from "./limits";
 import { scanPreferences } from "./opportunity-prefs";
 import { practiceProfileOf } from "./preferences";
 
@@ -123,8 +122,7 @@ export async function scanPractice(
     const bar = await feed.latest(ticker, today);
     if (bar) prices[ticker] = bar.closeCents;
   }
-  // Enough calendar days to hold the dip's and the max drop's look-backs in trading days.
-  const from = daysBefore(today, Math.max(DIP_LOOKBACK_DAYS, MAX_DROP_LOOKBACK_DAYS) * 2 + 10);
+  const from = daysBefore(today, SCAN_HISTORY_DAYS);
   const history: Record<string, Bar[]> = {};
   for (const c of Object.keys(PRACTICE_ETFS) as PracticeClass[]) {
     for (const ticker of classTickers(c)) history[ticker] = await feed.prices(ticker, from, today);
@@ -176,13 +174,10 @@ export async function scanPractice(
     orderBy: { placedAt: "desc" },
     select: { placedAt: true },
   });
-  const monthStart = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
-  const usedThisMonth: Partial<Record<ScanKind, number>> = {};
-  for (const p of past) {
-    if (p.scannedAt < monthStart || p.status === "held") continue;
-    const kind = p.kind as ScanKind;
-    usedThisMonth[kind] = (usedThisMonth[kind] ?? 0) + 1;
-  }
+  const { usedThisMonth, seen } = monthUse(
+    past.map((p) => ({ ...p, scannedAt: p.scannedAt.toISOString() })),
+    today,
+  );
 
   const found = scanOpportunities({
     level: profile.level,
@@ -199,7 +194,7 @@ export async function scanPractice(
     today,
     opportunitiesPaused: portfolio.opportunitiesPaused,
     usedThisMonth,
-    seen: new Set(past.filter((p) => p.status !== "held").map((p) => p.key)),
+    seen,
     prefs,
     monthlyAddCents: portfolio.monthlyAddCents,
     addDay: portfolio.addDay,
@@ -225,22 +220,15 @@ export async function scanPractice(
       },
     });
     // The preferences' last check (never-buy list), then the hard limits.
-    const refused =
-      flag.trades
-        .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
-        .find((r) => r !== null) ?? null;
-    const held =
-      flag.trades.length > 0
-        ? (refused ?? tradesHeldBy(flag.trades, current.state, prices, tradesToday))
-        : null;
+    const { status, heldBy: held } = flagStatus(
+      flag,
+      current.state,
+      prices,
+      tradesToday,
+      prefs.mode,
+      firstRefusal(profile, flag),
+    );
     if (!act && held) continue;
-    const status: ScanOutcome["status"] = held
-      ? "held"
-      : flag.kind === "drift_rebalance"
-        ? "autopilot"
-        : flag.trades.length === 0 || prefs.mode === "suggest"
-          ? "suggested"
-          : "acted";
     // One question at a time about the same thing, and none about pocket change.
     if (
       status === "suggested" &&

@@ -69,7 +69,7 @@ async function HelpContent() {
                   <span className="font-medium">
                     {d.name} ({formatCents(d.balanceCents ?? 0)}):
                   </span>{" "}
-                  {HARDSHIP_PROGRAMS[d.kind]}
+                  {HARDSHIP_PROGRAMS[d.kind].ask}
                 </li>
               ))}
             </ul>

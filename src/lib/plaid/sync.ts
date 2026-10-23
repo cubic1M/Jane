@@ -40,7 +40,13 @@ import { ensureDemoInvestingFacts } from "@/lib/plaid/demo-investing";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
-import { demoExtrasOf, demoPlaidApi, isDemoToken } from "./demo";
+import {
+  demoExtrasOf,
+  demoPlaidApi,
+  ensureDemoSecondLogin,
+  isDemoToken,
+  isSecondLoginToken,
+} from "./demo";
 import { postScanningHello } from "@/lib/jane-agent/open";
 import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
@@ -606,6 +612,9 @@ export async function syncItem(
   if (!item) throw new Error("Plaid item not found");
   const db = scopedFor(item.userId, client);
   const accessToken = decrypt(item.accessTokenEncrypted);
+  // Books QA: a sample person's second bank login only brings its accounts and transactions;
+  // the demo bank's own sync does everything else.
+  const secondLogin = isSecondLoginToken(accessToken);
   timing.mark("item");
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
   // Everything the demo bank needs before it can answer, together (each is a round trip):
@@ -648,7 +657,9 @@ export async function syncItem(
   // transactions are saved: neither waits on the other.
   const [counts] = await Promise.all([
     saveTransactions(db, accountIds, sync),
-    isDemoToken(accessToken) ? ensureDemoAssets(item.userId, item.id, { client, now }) : null,
+    isDemoToken(accessToken) && !secondLogin
+      ? ensureDemoAssets(item.userId, item.id, { client, now })
+      : null,
   ]);
   // From here the chat can open (accounts and transactions are in).
   timing.mark("save_transactions");
@@ -666,12 +677,22 @@ export async function syncItem(
   timing.mark("recurring_liabilities_investments");
   // A sample person's values list and named beneficiaries (steps 236 and 237), once their
   // accounts are in and before the detectors run. Never fails the sync.
-  if (isDemoToken(accessToken) && item.transactionsCursor === null) {
+  if (isDemoToken(accessToken) && !secondLogin && item.transactionsCursor === null) {
     await ensureDemoInvestingFacts(item.userId, item.id, { client, now }).catch((error) =>
       console.error("Seeding the sample person's investing facts failed", {
         error: String(error),
       }),
     );
+    // Books QA: the Reyes' joint savings comes in again through the other parent's login,
+    // before detection and the books check look at their accounts.
+    const second = await ensureDemoSecondLogin(item.userId, { client });
+    if (second) {
+      await syncItem(second, { client, now }).catch((error) =>
+        console.error("Syncing the sample person's second login failed", {
+          error: String(error),
+        }),
+      );
+    }
   }
 
   await db.plaidItems.updateMany({
@@ -687,6 +708,7 @@ export async function syncItem(
     liabilities,
     investments,
   };
+  if (secondLogin) return result;
   if (result.firstSync) {
     await track(item.userId, "first_sync_completed", {
       accounts: result.accounts,

@@ -1,3 +1,5 @@
+import { ESTIMATED_TAX_DATES } from "./tax-pack";
+
 // The year-round tax plan (spec step 167): each tax move, when Jane brings it up and its
 // deadline. FOR REVIEW, like src/config/tax-rates.ts. Dates are MM-DD of the tax year, or
 // of the year after it (nextYear). A move is never offered past its deadline.
@@ -39,6 +41,17 @@ export type PlanMoveRule = {
   ownMessage?: true;
 };
 
+// An estimated payment's dates, from the IRS dates kept once in ./tax-pack.ts: due on the date,
+// brought up from the 1st of its month.
+function estimateDates(n: number): { opens: PlanDate; deadline: PlanDate } {
+  const { month, day, nextYear } = ESTIMATED_TAX_DATES[n];
+  const mm = String(month).padStart(2, "0");
+  return {
+    opens: { md: `${mm}-01`, nextYear },
+    deadline: { md: `${mm}-${String(day).padStart(2, "0")}`, nextYear },
+  };
+}
+
 export const TAX_PLAN: Readonly<Record<PlanMoveKey, PlanMoveRule>> = {
   workplace_retirement: {
     title: "Put more into your 401(k) before your last paycheck",
@@ -67,29 +80,25 @@ export const TAX_PLAN: Readonly<Record<PlanMoveKey, PlanMoveRule>> = {
   estimated_1: {
     title: "Pay the first estimated tax payment",
     advice: false,
-    opens: { md: "04-01", nextYear: false },
-    deadline: { md: "04-15", nextYear: false },
+    ...estimateDates(0),
     ownMessage: true,
   },
   estimated_2: {
     title: "Pay the second estimated tax payment",
     advice: false,
-    opens: { md: "06-01", nextYear: false },
-    deadline: { md: "06-15", nextYear: false },
+    ...estimateDates(1),
     ownMessage: true,
   },
   estimated_3: {
     title: "Pay the third estimated tax payment",
     advice: false,
-    opens: { md: "09-01", nextYear: false },
-    deadline: { md: "09-15", nextYear: false },
+    ...estimateDates(2),
     ownMessage: true,
   },
   estimated_4: {
     title: "Pay the last estimated tax payment",
     advice: false,
-    opens: { md: "01-01", nextYear: true },
-    deadline: { md: "01-15", nextYear: true },
+    ...estimateDates(3),
     ownMessage: true,
   },
   harvest: {
@@ -97,6 +106,9 @@ export const TAX_PLAN: Readonly<Record<PlanMoveKey, PlanMoveRule>> = {
     advice: true,
     opens: { md: "10-01", nextYear: false },
     deadline: { md: "12-31", nextYear: false },
+    // Step 124's message says it (the loss, the tax it saves, the wash-sale rule, Remind me)
+    // from the same day, for the same people: one message (docs/feature-audit.md, cluster 12).
+    ownMessage: true,
   },
   giving: {
     title: "Make this year's gifts before December 31",

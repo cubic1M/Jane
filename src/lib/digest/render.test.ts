@@ -120,7 +120,7 @@ describe("renderDigest", () => {
       LINKS,
     );
     expect(email.text).toContain("What Jane did for you this week");
-    expect(email.text).toContain("Finished 2 things, with $64.20 confirmed back or saved.");
+    expect(email.text).toContain("Finished 2 things, with $64.20 back or agreed.");
     expect(email.text).toContain("Wrote or called 3 times on your behalf.");
     expect(email.text).toContain("1 thing needs something from you.");
     const quiet = renderDigest(

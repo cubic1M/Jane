@@ -5,6 +5,7 @@ import { previousMonth } from "@/insights/check-in";
 import { netWorth } from "@/insights/net-worth";
 import { track } from "@/lib/analytics";
 import { openBooks } from "@/lib/books";
+import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { localDate } from "@/lib/digest/week";
@@ -66,7 +67,7 @@ async function figuresFor(
   keep?: Pick<CloseFigures, "netWorthCents" | "booksOpen">,
 ): Promise<CloseFigures> {
   const db = scopedFor(userId, client);
-  const [txns, accounts, books, report] = await Promise.all([
+  const [txns, accounts, books, report, owned, crypto] = await Promise.all([
     monthTxns(userId, month, client),
     keep
       ? null
@@ -75,6 +76,9 @@ async function figuresFor(
         }),
     keep ? null : openBooks(userId, { client }),
     storedReport(userId, month, { client }),
+    // What they own and their crypto, as the net worth page and the chat count them.
+    keep ? [] : db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
+    keep ? 0 : cryptoTotal(userId, { client }),
   ]);
   const r = report?.report;
   return {
@@ -90,6 +94,8 @@ async function figuresFor(
               type: a.type,
               balanceCents: a.currentBalanceCents,
             })),
+            owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+            crypto,
           ).netCents
         : null,
     booksOpen: keep

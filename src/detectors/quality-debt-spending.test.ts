@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { PEOPLE } from "@/config/people";
-import { rankSuggestions } from "@/planning/suggestion-rank";
+import { mergeOverlaps, rankSuggestions } from "@/planning/suggestion-rank";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { runDetectors } from "./index";
@@ -22,15 +22,21 @@ const mine = (topics: readonly string[], list: ReturnType<typeof run>) =>
 
 describe("ranking for the person's life", () => {
   it("puts a plan and relief ahead of tips for Chris, who is in debt trouble", () => {
-    const top = ranked("debt")
-      .slice(0, 3)
-      .map((s) => s.topic);
-    expect(top).toEqual(["debt_plan", "hardship_plan", "high_cost_loans"]);
-    // The tips that need spare cash or a new card come after, though their dollars are true.
-    const order: string[] = ranked("debt").map((s) => s.topic);
-    for (const tip of ["card_interest", "balance_transfer", "credit_building"]) {
-      expect(order.indexOf(tip), tip).toBeGreaterThan(order.indexOf("high_cost_loans"));
+    // What Chris is shown: suggestions on the same money count once, so the card tips go
+    // into the debt plan, and his top three are the plan, the payday loan and his shortfall.
+    const shown = mergeOverlaps(rankSuggestions(run("debt"))).map((r) => r.suggestion.topic);
+    expect(shown.slice(0, 3)).toEqual(["debt_plan", "high_cost_loans", "low_balance"]);
+    // The tips that need spare cash or a new card are never in his top three, and Jane
+    // doesn't suggest a new cost like renters insurance while he is struggling.
+    for (const tip of [
+      "card_interest",
+      "balance_transfer",
+      "credit_building",
+      "renters_insurance",
+    ]) {
+      expect(shown.slice(0, 3), tip).not.toContain(tip);
     }
+    expect(run("debt").some((s) => s.topic === "renters_insurance")).toBe(false);
   });
 
   it("leads with the card interest for Maya, who is paying it and can act", () => {

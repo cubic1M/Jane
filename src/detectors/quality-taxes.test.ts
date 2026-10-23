@@ -4,6 +4,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { PERSON_IDS, type PersonId } from "@/config/people";
 import { rankSuggestions } from "@/planning/suggestion-rank";
+import { LOW_CONFIDENCE_PERCENT } from "@/config/suggestions";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { runDetectors } from "./index";
@@ -48,8 +49,10 @@ describe("dollars", () => {
     expect(s.worthCents).toBe(647_900);
     expect(s.rankCents).toBe(Math.round(647_900 * 0.3));
     expect(s.why).toMatch(/penalty of about \$518\.32 on top/);
+    // Ranked by what it can cost (dollars x how sure), it comes fifth for Priya: after her
+    // company stock, the refinance, idle cash and an umbrella policy, each worth more.
     const top = ranked("equity")
-      .slice(0, 4)
+      .slice(0, 5)
       .map((x) => x.topic);
     expect(top).toContain("withholding_gap");
   });
@@ -150,14 +153,24 @@ describe("a sensible top three, in the person's life", () => {
   it("shows each person their biggest tax item near the top", () => {
     const rank = (id: PersonId, t: string, change?: (d: ProfileInput) => ProfileInput) =>
       ranked(id, change).findIndex((s) => s.topic === t);
-    expect(rank("equity", "withholding_gap")).toBeLessThan(4);
-    expect(rank("preretire", "roth_conversion")).toBeLessThan(3);
+    expect(rank("equity", "withholding_gap")).toBeLessThan(5);
+    // A Roth conversion Jane is 43% sure of waits behind everything she is sure of, and
+    // leads what she isn't.
+    const preretire = ranked("preretire");
+    const roth = rank("preretire", "roth_conversion");
+    expect(preretire[roth].confidence.percent).toBeLessThan(LOW_CONFIDENCE_PERCENT);
+    expect(
+      preretire.slice(0, roth).every((s) => s.confidence.percent >= LOW_CONFIDENCE_PERCENT),
+    ).toBe(true);
     expect(rank("owner", "estimated_taxes")).toBeLessThan(4);
     // In December the Reyes family's biggest tax item is their flood (step 270: deadlines
-    // moved, a casualty loss), at the top; their year-end moves follow the insurance gaps and
-    // the FSA money that expires Dec 31 (step 259).
-    expect(rank("family", "disaster_relief", inDecember)).toBe(0);
-    expect(rank("family", "year_end_moves", inDecember)).toBeLessThan(7);
+    // moved, a casualty loss), second only to life cover for the children, which is worth
+    // more; their year-end moves follow the insurance gaps and the FSA money that expires
+    // Dec 31 (step 259).
+    expect(rank("family", "disaster_relief", inDecember)).toBe(1);
+    expect(rank("family", "life_insurance", inDecember)).toBe(0);
+    // Ranked by what they're worth now that urgency only breaks ties: eighth.
+    expect(rank("family", "year_end_moves", inDecember)).toBeLessThan(8);
   });
 
   it("keeps the small, unsure ones low: receipts, an appeal nobody has priced, a filing nudge", () => {

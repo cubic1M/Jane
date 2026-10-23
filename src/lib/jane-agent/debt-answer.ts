@@ -12,6 +12,7 @@ import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
 import { loadCar } from "@/lib/car";
 import { loadHomeBuying } from "@/lib/home-buying";
+import { homeMeasureOf, mortgageOf } from "@/planning/home-vs-borrow";
 import { loadMedicalBills } from "@/lib/medical-bills";
 import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { loadCardInterest } from "@/lib/card-interest";
@@ -142,7 +143,10 @@ export async function answerDebt(
       );
     case "borrowing_power":
       await ensureBorrowingChecked(userId, { client, now });
-      return borrowingReply(await loadBorrowingPower(userId, { client, now }));
+      return borrowingReply(
+        await loadBorrowingPower(userId, { client, now }),
+        homeMeasureOf(await loadHomeBuying(userId, {}, { client, now })),
+      );
     case "family_credit":
       return familyCreditReply(await loadFamilyCredit(userId, { client, now }));
     case "renting":
@@ -207,6 +211,8 @@ export async function answerDebt(
     case "medical_bills":
       return medicalReply(await loadMedicalBills(userId, { client, now }));
     case "home_afford":
+      // What you could borrow is soft-checked when it hasn't been, to set beside it.
+      await ensureBorrowingChecked(userId, { client, now });
       return homeReply(
         await loadHomeBuying(
           userId,
@@ -214,6 +220,7 @@ export async function answerDebt(
           { client, now },
         ),
         intent.priceCents !== null,
+        mortgageOf((await loadBorrowingPower(userId, { client, now })).figures),
       );
     case "car_afford":
       return carReply(

@@ -90,7 +90,7 @@ describe("what can be refinanced, over which months", () => {
   });
 
   it("maps debts to loan products, and skips what can't be compared", () => {
-    expect(refinanceable(CAR, AS_OF)).toEqual({ product: "auto", termMonths: 36 });
+    expect(refinanceable(CAR, AS_OF)).toMatchObject({ product: "auto", termMonths: 36 });
     expect(refinanceable(debt({ key: "c", kind: "card", payoffDate: null }), AS_OF)?.product).toBe(
       "personal",
     );
@@ -127,7 +127,7 @@ describe("comparing offers", () => {
     expect(c.offers[1].breakEvenMonths).toBeGreaterThan(0);
     expect(c.pick?.offer.id).toBe("free");
     expect(c.why).toEqual([
-      `The lowest total cost over the same 36 months: $${(free.savingCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} less, fees included.`,
+      `The lowest total cost: $${(free.savingCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} less than keeping it, fees included, over 36 months.`,
       `5.49% fixed instead of 6.90%, so the payment goes from $${(c.currentMonthlyCents / 100).toFixed(2)} to $${(free.monthlyCents / 100).toFixed(2)} a month.`,
       "No fee to pay up front.",
     ]);
@@ -145,7 +145,9 @@ describe("comparing offers", () => {
     expect(c.offers[0].offer.id).toBe("var");
     expect(c.pick?.offer.id).toBe("fixed");
     expect(c.runnersUp.map((s) => s.offer.id)).toEqual(["var"]);
-    expect(c.why[0]).toMatch(/^The lowest total cost at a fixed rate over the same 36 months/);
+    expect(c.why[0]).toMatch(
+      /^The lowest total cost at a fixed rate: \$[\d,.]+ less than keeping it, fees included, over 36 months\.$/,
+    );
     expect(c.why[1]).toMatch(/; a variable rate could go up\.$/);
   });
 

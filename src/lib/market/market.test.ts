@@ -3,7 +3,7 @@ import { AlpacaMarketData, barsUrl, newsUrl, parseBars, parseNews } from "./alpa
 import { EdgarMarketData, parseSubmissions, submissionsUrl } from "./edgar";
 import { marketData, WATCH_CIKS } from "./index";
 import { PRACTICE_TICKERS, SampleMarketData } from "./sample";
-import { MarketDataNotConfigured } from "./types";
+import { MarketDataError, MarketDataNotConfigured } from "./types";
 
 // Spec step 289: the sample market is the same for the same date, has its planted events, and
 // swapping in the real adapters needs only keys; the adapters are checked on recorded responses
@@ -158,6 +158,29 @@ describe("the Alpaca adapter's history, page by page", () => {
       "2026-10-02",
     );
     expect(fetcher.mock.calls[0][0]).toContain("feed=sip");
+  });
+});
+
+describe("the Alpaca adapter when Alpaca refuses", () => {
+  it("fails with Alpaca's reason instead of reading an error as no bars", async () => {
+    const fetcher = vi.fn(async (_u: string, _i: { headers: Record<string, string> }) => ({
+      ok: false,
+      status: 403,
+      json: async () => ({ message: "subscription does not permit querying recent SIP data" }),
+    }));
+    const a = new AlpacaMarketData(
+      { id: "key-id", secret: "key-secret" },
+      fetcher,
+      undefined,
+      "sip",
+    );
+    const error = await a.prices("VTI", "2016-01-04", "2026-10-22").catch((e: Error) => e);
+    expect(error).toBeInstanceOf(MarketDataError);
+    expect((error as Error).message).toBe(
+      "Alpaca answered 403: subscription does not permit querying recent SIP data.",
+    );
+    expect((error as Error).message).not.toMatch(/key-id|key-secret/);
+    await expect(a.news(["AAPL"], "2026-10-01", "2026-10-02")).rejects.toThrow(MarketDataError);
   });
 });
 

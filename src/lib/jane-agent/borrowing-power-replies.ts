@@ -1,6 +1,7 @@
 import { BORROW_LABELS } from "@/config/borrowing-power";
 import { formatRate } from "@/insights/loans";
 import type { BorrowingPower, Figure } from "@/lib/borrowing-power";
+import { homeVsBorrow, mortgageOf, type HomeMeasure } from "@/planning/home-vs-borrow";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
@@ -34,7 +35,8 @@ export function scoreLine(d: BorrowingPower): string {
     : "I haven't pulled your score yet, so these assume a middling one.";
 }
 
-export function borrowingReply(d: BorrowingPower): Reply {
+// `home`: the 28/36 home size "can I afford a house?" shows, so the two sizes are said together.
+export function borrowingReply(d: BorrowingPower, home: HomeMeasure | null = null): Reply {
   if (!d.available || d.checkedOn === null) {
     return {
       body: "I can't check what you could borrow yet: there's no lending partner for your accounts. When there is, I'll keep a soft-check estimate for a mortgage, a car loan, a personal loan and a card here.",
@@ -47,6 +49,8 @@ export function borrowingReply(d: BorrowingPower): Reply {
     ...d.figures.map(figureLine),
     scoreLine(d),
   ];
+  const both = homeVsBorrow(home, mortgageOf(d.figures));
+  if (both) lines.push(both);
   const helps = d.figures.flatMap((f) => (f.available ? f.improve.slice(0, 1) : []));
   if (helps[0]) lines.push(`What would help: ${helps[0]}`);
   lines.push(
