@@ -13,6 +13,8 @@ import { openProposals, recentAutoCategories, refreshProposals } from "@/lib/pro
 import { categoryOptions } from "@/lib/categories";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { EMERGENCY_FUND_MONTHS } from "@/config/proposals";
+
+const sentenceStart = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 import type { Proposal } from "@/planning/proposals";
 import { PlanItem } from "./plan-item";
 import { RuleApprovals } from "./rule-approvals";
@@ -200,7 +202,7 @@ function setupView(p: Proposal): SetupView {
     return {
       key: p.key,
       title: `Start an emergency fund: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}`,
-      basis: `${EMERGENCY_FUND_MONTHS} months of your own average spending (${formatCents(p.monthlySpendingCents)} a month). Math from your data, not advice.`,
+      basis: `${sentenceStart(p.basis ?? `${EMERGENCY_FUND_MONTHS} months of your own average spending`)} (${formatCents(p.monthlySpendingCents)} a month). Math from your data, not advice.`,
       fields: [
         { kind: "amount", label: "Amount ($)", value: String(p.targetCents / 100) },
         { kind: "date", label: "By", value: p.targetDate },

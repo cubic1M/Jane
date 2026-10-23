@@ -1,3 +1,5 @@
+import { HIGH_YIELD_SAVINGS_BPS } from "./cash";
+
 // Short-term money, placed safely (spec step 234, demo advice): money needed within three
 // years, compared after tax. The rates are stand-ins with their date, until a rates partner is
 // connected. FOR REVIEW: ESTIMATE TO VERIFY each against current published rates.
@@ -27,7 +29,7 @@ export const PRODUCTS: readonly Product[] = [
   {
     key: "hysa",
     name: "High-yield savings",
-    rateBps: 400,
+    rateBps: HIGH_YIELD_SAVINGS_BPS,
     lockMonths: 0,
     stateTaxed: true,
     note: "FDIC insured; reach it any day; the rate can change",
