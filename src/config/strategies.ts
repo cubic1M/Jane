@@ -77,3 +77,7 @@ export const STRATEGY_NOT_A_FORECAST =
 // The weekly evaluation (src/lib/investments/strategy-eval.ts) runs only on at least this many
 // shared trading days of stored history (about three years: a training span and later years).
 export const STRATEGY_EVAL_MIN_DAYS = 756;
+
+// The practice autopilot reads this many calendar days of stored closes to work out a level's
+// strategy for the month: the longest look-back (a year) with room for holidays.
+export const STRATEGY_FOLLOW_HISTORY_DAYS = 550;
