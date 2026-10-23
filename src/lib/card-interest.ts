@@ -18,12 +18,14 @@ import { addDeadline, markDeadlineDone } from "@/lib/deadlines";
 import { debtsOr } from "@/lib/debts";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { lenderPartnerFor } from "@/lib/refinance";
+import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { nextStatementClose } from "@/planning/credit-building";
 import {
   interestCents,
   payEarlySaving,
   promoPlan,
   rateAsk,
+  rateStep,
   type PromoPlan,
   type RateAsk,
 } from "@/planning/card-interest";
@@ -304,6 +306,22 @@ export async function sendRateRequest(
   );
   await track(userId, "card_rate_requested");
   return { cardName: card.name };
+}
+
+// Jane's own lower-rate request: only at Handle everything within the debt caps (it's free and
+// not a credit application), and at most one in RATE_REQUEST_EVERY_DAYS whichever review
+// sends it. Returns the card she asked, or null.
+export async function askNextRateHerself(
+  userId: string,
+  { client = defaultClient, now = new Date(), book }: Options = {},
+): Promise<string | null> {
+  const may = await mayAct(userId, "debt", { needs: "all", cents: 0 }, { client, now });
+  if (!may.ok) return null;
+  const step = rateStep(await loadCardInterest(userId, { client, now, book }), isoDay(now));
+  if (step?.kind !== "next") return null;
+  await sendRateRequest(userId, step.requestId, { client, now });
+  await recordAct(userId, "debt", 0, `Asked ${step.name} for a lower rate`, { client, now });
+  return step.name;
 }
 
 // The lender stand-in's answer: the same each time for a request.
