@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScanProgress } from "@/lib/scan";
-import { monthsLabel, percentFor, STAGES, stagesDone } from "./stages";
+import { monthsLabel, percentFor, slowLink, STAGES, stagesDone } from "./stages";
 
 const none: ScanProgress = {
   accounts: false,
@@ -49,5 +49,12 @@ describe("the scan's stages", () => {
     }
     expect(percentFor(0, 0)).toBe(0);
     expect(percentFor(STAGES.length, 0)).toBe(100);
+  });
+});
+
+describe("a slow scan", () => {
+  it("offers where the screen was heading: the chat from Try Jane, else the report", () => {
+    expect(slowLink("/chat")).toMatchObject({ href: "/chat", label: "Open the chat" });
+    expect(slowLink("/report")).toMatchObject({ href: "/report", label: "See your report" });
   });
 });
