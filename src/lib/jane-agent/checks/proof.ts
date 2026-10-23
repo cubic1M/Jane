@@ -5,7 +5,7 @@ import { reportFor, topThreeFor } from "@/detectors/harness";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { offeredToday, scanSuggestions } from "@/lib/suggestions";
 import { answerByRules } from "../answer";
-import { runChatTool } from "../claude-tools";
+import { CHAT_TOOLS, runChatTool } from "../claude-tools";
 import { parseIntent } from "../intents";
 import { cardsLine } from "../agenda";
 import { chatFeed } from "../messages";
@@ -77,6 +77,19 @@ async function ask(
   };
 }
 
+// What a card's tool is asked: nothing, or for a tool that needs an input, the card's own
+// topic where it is one of that input's choices (the consolidation card asks loan_fit about
+// need "consolidation", as the chat would).
+export function inputFor(tool: string, topic: string): Record<string, string> {
+  const schema = CHAT_TOOLS.find((t) => t.name === tool)?.input_schema as
+    { required?: string[]; properties?: Record<string, { enum?: readonly string[] }> } | undefined;
+  const input: Record<string, string> = {};
+  for (const field of schema?.required ?? []) {
+    if (schema?.properties?.[field]?.enum?.includes(topic)) input[field] = topic;
+  }
+  return input;
+}
+
 export async function proveOn(
   person: Person,
   { client, now }: { client: PrismaClient; now: Date },
@@ -106,7 +119,7 @@ export async function proveOn(
       for (const name of detector?.covers ?? []) {
         const started = Date.now();
         try {
-          const out = await runChatTool(userId, name, {}, { client, now });
+          const out = await runChatTool(userId, name, inputFor(name, s.topic), { client, now });
           const parsed = JSON.parse(out.content) as { error?: unknown };
           tools.push({
             name,
