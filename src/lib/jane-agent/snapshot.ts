@@ -6,7 +6,7 @@ import type { AlertType, FindingType, PrismaClient } from "@/generated/prisma/cl
 import type { ComingUpRow } from "@/insights/coming-up";
 import type { Deadline } from "@/insights/deadlines";
 import type { LifeGuess } from "@/insights/life-signals";
-import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
+import { newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
 import { lastControllerRun, type LastRun } from "@/lib/controller-log";
 import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
@@ -395,7 +395,9 @@ export async function loadSnapshot(
     budgetsOver: home.budgetsOver,
     goalsBehind: home.goalsBehind,
     urgentAlerts: alerts
-      .filter((a) => isUrgent(a.type) && !ALERTS_SAID_ELSEWHERE.includes(a.type))
+      // Each alert says whether it is urgent: a bill reminder only when the balance could fall
+      // short that day, not every bill due this week.
+      .filter((a) => a.urgent && !ALERTS_SAID_ELSEWHERE.includes(a.type))
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     unusual: alerts
       .filter((a) => a.type === "unusual_activity")
