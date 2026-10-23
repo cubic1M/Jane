@@ -190,15 +190,16 @@ describe("the daily scan obeys preferences", () => {
     expect(tech.some((f) => f.kind === "news_idea")).toBe(false);
   });
 
+  // Low: the rule replay turned tax-loss swaps off from Medium up (OPPORTUNITY_RULES_OFF).
   it("doesn't harvest into an avoided fund, or at all with harvesting off", async () => {
-    const held = withCash(await boughtOn(4, "2026-09-01"), 50_000);
-    const usual = await scanWith(prefs(), 4, "2026-10-14", held);
+    const held = withCash(await boughtOn(2, "2026-09-01"), 50_000);
+    const usual = await scanWith(prefs(), 2, "2026-10-14", held);
     expect(usual.some((f) => f.kind === "tax_loss_harvest" && f.ticker === "VTI")).toBe(true);
-    const noItot = await scanWith(prefs({ avoid: ["ITOT"] }), 4, "2026-10-14", held);
+    const noItot = await scanWith(prefs({ avoid: ["ITOT"] }), 2, "2026-10-14", held);
     expect(noItot.some((f) => f.trades.some((t) => t.side === "buy" && t.ticker === "ITOT"))).toBe(
       false,
     );
-    const off = await scanWith(prefs({ harvestLosses: false }), 4, "2026-10-14", held);
+    const off = await scanWith(prefs({ harvestLosses: false }), 2, "2026-10-14", held);
     expect(off.some((f) => f.kind === "tax_loss_harvest")).toBe(false);
   });
 
