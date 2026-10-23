@@ -14,6 +14,7 @@ import { FAMILY_CREDIT_DETECTORS } from "./family-credit";
 import { RENTING_DETECTORS } from "./renting";
 import { PRACTICE_DETECTORS } from "./practice";
 import { BORROWING_POWER_DETECTORS } from "./borrowing-power";
+import { PRACTICE_IDEA_DETECTORS } from "./practice-ideas";
 import { SPENDING_DETECTORS } from "./spending";
 import { TAX_DETECTORS } from "./taxes";
 import { TWO_DETECTORS } from "./two";
@@ -47,6 +48,7 @@ export const DETECTORS: readonly Detector[] = [
   ...PLANNING_DETECTORS,
   ...TWO_DETECTORS,
   ...TRADEOFF_DETECTORS,
+  ...PRACTICE_IDEA_DETECTORS,
 ];
 
 export const detectorsFor = (capability: string) =>

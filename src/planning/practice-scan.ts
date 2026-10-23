@@ -26,6 +26,7 @@ import {
 } from "@/config/practice-scan";
 import { HARVEST_MIN_LOSS_CENTS } from "@/config/tax";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
+import type { WorthKind } from "@/detectors/contract";
 import type { Bar, Headline } from "@/lib/market/types";
 import { lotsFor, unrealised, washReplacements, type InvTransaction } from "./investment-taxes";
 import { portfolioValue, positionValue, type Prices } from "./practice-autopilot";
@@ -69,7 +70,15 @@ export type ScanFlag = {
   figures: { label: string; value: string }[];
   caps: string[];
   confidence: { percent: number; reason: string };
+  // The flag as a suggestion asks it (suggest-only mode, or a kind that only suggests), in the
+  // detector contract's short forms: a headline that starts with a verb and carries the worth
+  // in whole dollars, one line with the person's own number, and the worth that ranks it.
+  ask: { headline: string; short: string; worthCents: number; worthKind: WorthKind };
 };
+
+// Whole dollars, as a suggestion's headline carries them.
+export const wholeDollars = (cents: number) =>
+  `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
 // A practice trade, as the scan reads it from the ledger's log.
 export type PastTrade = {
@@ -228,6 +237,12 @@ function driftFlag(input: ScanInput): ScanFlag | null {
       `At most ${AUTOPILOT_LIMITS.tradesPerDay} trades a day`,
     ],
     confidence: SCAN_CONFIDENCE.drift_rebalance,
+    ask: {
+      headline: `Rebalance ${wholeDollars(moved)} back to your mix`,
+      short: `Stocks are ${pct(d.stocks)} of your practice portfolio; your level aims for ${pct(target)}.`,
+      worthCents: moved,
+      worthKind: "risk",
+    },
   };
 }
 
@@ -308,6 +323,12 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
         `At most ${caps.perMonth} dip buys a month`,
       ],
       confidence: SCAN_CONFIDENCE.dip_buy,
+      ask: {
+        headline: `Buy ${wholeDollars(amount)} of ${x.ticker} on its dip, in practice`,
+        short: `${x.ticker} is ${pct(x.drop)} below its recent high, and ${dollars(cash + amount)} is waiting to be invested.`,
+        worthCents: amount,
+        worthKind: "risk",
+      },
     });
   }
   return flags;
@@ -378,6 +399,12 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
         `At most ${caps.perMonth} swaps a month`,
       ],
       confidence: SCAN_CONFIDENCE.tax_loss_harvest,
+      ask: {
+        headline: `Harvest a ${wholeDollars(harvested)} loss in ${ticker}, in practice`,
+        short: `${ticker} is worth ${dollars(valueCents)} against ${dollars(position.costBasisCents)} paid; ${swap} keeps the same mix.`,
+        worthCents: harvested,
+        worthKind: "risk",
+      },
     });
   }
   return flags;
@@ -459,6 +486,12 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
         `At most ${caps.perMonth} ideas a month; High and Very high only`,
       ],
       confidence: SCAN_CONFIDENCE.news_idea,
+      ask: {
+        headline: `Try a small ${wholeDollars(amount)} ${h.ticker} position, in practice`,
+        short: `${h.ticker} news on ${h.date}; kept to ${pct(caps.positionShare)} of your practice portfolio.`,
+        worthCents: amount,
+        worthKind: "risk",
+      },
     });
   }
   return flags;

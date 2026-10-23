@@ -22,6 +22,8 @@ import {
 } from "./practice-opportunities";
 import { OPPORTUNITY_KINDS, SAFETY_KINDS } from "@/config/practice-opportunities";
 import { SCAN_CAPS, type ScanKind } from "@/config/practice-scan";
+import type { Suggestion } from "@/detectors/contract";
+import { shortFormProblems } from "@/detectors/harness";
 import type { Bar } from "@/lib/market";
 import { SampleMarketData } from "@/lib/market/sample";
 import { planTrades, portfolioValue, positionValue } from "./practice-autopilot";
@@ -134,6 +136,15 @@ async function scanOn(
   });
 }
 
+// The suggestion's short forms (docs/detectors.md), and about eight words for the card.
+function expectShortForms(f: {
+  kind: ScanKind;
+  ask: { headline: string; short: string; worthCents: number };
+}) {
+  expect(shortFormProblems(f.ask as unknown as Suggestion), f.kind).toEqual([]);
+  expect(f.ask.headline.split(" ").length, f.ask.headline).toBeLessThanOrEqual(9);
+}
+
 const kinds = (flags: { kind: ScanKind }[]) => flags.map((f) => f.kind);
 const one = <F extends { kind: ScanKind }>(flags: F[], kind: ScanKind) =>
   flags.filter((f) => f.kind === kind);
@@ -195,6 +206,7 @@ describe("cash drag", () => {
     expect(flag.trades.every((t) => own.has(t.ticker))).toBe(true);
     expect(flag.amountCents).toBeLessThanOrEqual(50_000);
     expect(flag.headline).toMatch(/^Invest \$/);
+    expectShortForms(flag);
   });
 
   it("doesn't fire just after a buy, under the minimum, or within the buffer", async () => {
@@ -238,6 +250,7 @@ describe("a cheaper equivalent fund", () => {
     ]);
     expect(flag.trades[0].amountCents).toBe(flag.trades[1].amountCents);
     expect(flag.figures.find((f) => f.label === "Saved a year")).toBeDefined();
+    expectShortForms(flag);
   });
 
   it("never sells at a gain when taxes matter, unless the person said they don't", async () => {
@@ -291,6 +304,7 @@ describe("contribution timing after a payday", () => {
     const [flag] = one(await scanOn(3, "2026-10-08", held, { paydayDay: 15 }), "payday_timing");
     expect(flag).toBeDefined();
     expect(flag.headline).toBe("Move practice money to the 16th, after payday");
+    expectShortForms(flag);
     expect(flag.trades).toEqual([]);
   });
 
@@ -340,6 +354,7 @@ describe("a drift warning before the band is hit", () => {
     expect(flag).toBeDefined();
     expect(flag.trades).toEqual([]);
     expect(flag.headline).toMatch(/points off; band is 5$/);
+    expectShortForms(flag);
     expect(kinds(flags)).not.toContain("drift_rebalance");
   });
 
@@ -525,6 +540,7 @@ describe("caps and the card's needs", () => {
 
   it("gives every flag numbers, caps and a confidence with its reason; safety kinds never trade", async () => {
     const flags = await everything();
+    expect(new Set(kinds(flags)).size).toBeGreaterThanOrEqual(8);
     for (const f of flags) {
       expect(f.headline.length).toBeLessThanOrEqual(60);
       expect(f.reason.length).toBeGreaterThan(30);
@@ -535,6 +551,7 @@ describe("caps and the card's needs", () => {
       expect(f.confidence.reason.length).toBeGreaterThan(20);
       expect(f.trades.every((t) => t.rule === f.kind && t.reason === f.reason)).toBe(true);
       if ((SAFETY_KINDS as readonly string[]).includes(f.kind)) expect(f.trades).toEqual([]);
+      expectShortForms(f);
     }
   });
 
