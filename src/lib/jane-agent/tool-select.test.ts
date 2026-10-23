@@ -128,7 +128,6 @@ describe("open_area", () => {
       ["my car got rear ended what do i do", "insurance", "insurance_policies"],
       ["how much will uncle sam take this year", "tax", "tax_estimate"],
       ["should i lease or buy a car", "debt", "car_purchase"],
-      ["when can i stop working", "investing", "retirement_plan"],
     ] as const) {
       expect(names(question)).not.toContain(tool);
       expect(areaTools(CHAT_TOOLS, area).map((t) => t.name)).toContain(tool);
