@@ -71,6 +71,7 @@ import {
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, healthHeadline, proposeAction } from "./claude-tools";
+import { chatTools } from "./tool-select";
 import { loadSnapshot, type Snapshot } from "./snapshot";
 
 // Spec step 84: free questions go to Claude with read-only tools over the person's own data
@@ -188,14 +189,14 @@ describe("askClaudeInChat", () => {
       thinking: { type: "adaptive" },
       output_config: { effort: "low" },
     });
-    // The general tools, and none of a sector's when the question isn't about one.
-    const sent = (create.mock.calls[0][0] as { tools: { name: string }[] }).tools.map(
-      (t) => t.name,
-    );
-    expect(sent).toContain("safe_to_spend");
-    // An information question isn't sent the button tool, so it has to answer in words.
-    expect(sent).not.toContain("propose_action");
-    expect(sent.length).toBeLessThan(CHAT_TOOLS.length / 2);
+    // Every tool, in the one fixed order that caches (./tool-select.ts).
+    const request = create.mock.calls[0][0] as {
+      tools: { name: string }[];
+      system: { text: string }[];
+    };
+    expect(request.tools.map((t) => t.name)).toEqual(chatTools(CHAT_TOOLS).map((t) => t.name));
+    // An information question is told to answer in words, with no button.
+    expect(request.system[1].text).toMatch(/only asks for information: answer in words/);
   });
 
   it("writes the answer again in words when the last one was only about a button", async () => {
@@ -471,9 +472,8 @@ describe("askClaudeInChat", () => {
       tools: { name: string }[];
       system: { text: string }[];
     };
-    expect(request.tools.map((t) => t.name)).not.toContain("propose_action");
     expect(JSON.stringify(request.system)).toMatch(
-      /already prepared[\s\S]*\$408\.00 a year cheaper/,
+      /already prepared[\s\S]*\$408\.00 a year cheaper[\s\S]*do not call propose_action/,
     );
     expect(result.reply.actions.map((a) => a.id)).toEqual([
       "insurance.shop_yes",
@@ -1274,9 +1274,8 @@ describe("speed and failures", () => {
       cachedInputTokens: 700,
       outputTokens: 20,
     });
-    // What the request carried: the question's tools, not all of them.
-    expect(logged.toolsSent).toBeGreaterThan(0);
-    expect(logged.toolsSent).toBeLessThan(CHAT_TOOLS.length);
+    // What the request carried: every tool, the same each time so it's cached.
+    expect(logged.toolsSent).toBe(chatTools(CHAT_TOOLS).length);
     for (const key of ["primerMs", "firstEventMs", "firstTextMs", "totalMs"]) {
       expect(typeof logged[key], key).toBe("number");
     }
@@ -1346,8 +1345,8 @@ describe("show_block", () => {
   });
 });
 
-// A question whose words name no area gets only the general tools; Claude opens the area it
-// needs (open_area) and has its tools in the next step.
+// A question whose words name no area: Claude can ask which tools an area has (open_area). The
+// tools themselves never change, so the cached start of the request doesn't either.
 describe("open_area", () => {
   beforeEach(() => {
     create.mockReset();
@@ -1359,7 +1358,7 @@ describe("open_area", () => {
   const toolNames = (call: number) =>
     (create.mock.calls[call][0] as { tools: { name: string }[] }).tools.map((t) => t.name);
 
-  it("adds the area's tools for the next step, with a turn of its own", async () => {
+  it("lists the area's tools for the next step, with a turn of its own", async () => {
     create
       .mockResolvedValueOnce(toolUse("open_area", { area: "insurance" }))
       .mockResolvedValueOnce(toolUse("open_area", { area: "insurance" }))
@@ -1368,24 +1367,76 @@ describe("open_area", () => {
       ...options,
       maxTurns: 2,
     });
-    expect(toolNames(0)).not.toContain("insurance_policies");
-    expect(toolNames(1)).toContain("insurance_policies");
-    expect(lastToolResult(1).content).toMatch(/^The insurance tools are ready/);
-    // Asked again, nothing is added twice.
+    expect(toolNames(0)).toContain("insurance_policies");
+    expect(lastToolResult(1).content).toMatch(
+      /^The insurance tools, for your next step: .*insurance_policies/,
+    );
+    // Asked again, it's said once.
     expect(lastToolResult(2).content).toBe("You already have the insurance tools.");
-    expect(new Set(toolNames(2)).size).toBe(toolNames(2).length);
+    expect(toolNames(1)).toEqual(toolNames(0));
+    expect(toolNames(2)).toEqual(toolNames(0));
     // Two turns allowed, one more for the opened area: the answer still came.
     expect(result.kind).toBe("answer");
     expect(result.reply.body).toContain("Call your insurer");
   });
 
-  it("refuses an area it doesn't know, and adds nothing", async () => {
+  it("refuses an area it doesn't know", async () => {
     create
       .mockResolvedValueOnce(toolUse("open_area", { area: "astrology" }))
       .mockResolvedValueOnce(final("I can't look into that."));
     await askClaudeInChat("u1", [], "what does my horoscope say about money", options);
     expect(lastToolResult(1)).toMatchObject({ is_error: true });
     expect(toolNames(1)).toEqual(toolNames(0));
+  });
+});
+
+// The Anthropic console showed a low cache hit rate: each question was sent its own tools, which
+// come before the instructions, so the instructions were never read from the cache. The start of
+// every request (all the tools, then the instructions) is now the same bytes for every question,
+// with a breakpoint after each; what varies goes after them.
+describe("prompt caching", () => {
+  beforeEach(() => {
+    create.mockReset();
+    sent.length = 0;
+    forgetPrimer();
+    resetClaudeHealth();
+    vi.mocked(loadSnapshot).mockReset().mockResolvedValue(snapshot);
+  });
+  type Request = {
+    tools: { name: string; cache_control?: unknown }[];
+    system: { text: string; cache_control?: unknown }[];
+  };
+  const request = (call: number) => create.mock.calls[call][0] as Request;
+  const prefix = (r: Request) => JSON.stringify({ tools: r.tools, system: r.system[0] });
+
+  it("sends a byte-identical cached start for two different questions", async () => {
+    create.mockResolvedValue(final("Your numbers look fine."));
+    // An information question about nothing in particular, a request to act, a tax question.
+    await askClaudeInChat("u1", [], "how am i doing", options);
+    await askClaudeInChat("u1", [], "cancel hulu", options);
+    await askClaudeInChat("u1", [], "how are my crypto gains taxed", options);
+    const [a, b, c] = [request(0), request(1), request(2)];
+    expect(prefix(b)).toBe(prefix(a));
+    expect(prefix(c)).toBe(prefix(a));
+    // The breakpoints: after the last tool (shared by both instruction modes) and after the
+    // instructions; nothing after them is marked.
+    const marked = a.tools.flatMap((t, i) => (t.cache_control ? [i] : []));
+    expect(marked).toEqual([a.tools.length - 1]);
+    expect(a.system[0].cache_control).toEqual({ type: "ephemeral" });
+    expect(a.system.slice(1).every((block) => !block.cache_control)).toBe(true);
+    // What varies is after the breakpoint: the question's areas and whether it gets a button.
+    expect(a.system[1].text).toMatch(/no one area/);
+    expect(a.system[1].text).toMatch(/don't call propose_action/);
+    expect(b.system[1].text).not.toMatch(/don't call propose_action/);
+    expect(c.system[1].text).toMatch(/these areas: .*tax/);
+  });
+
+  it("keeps the same start in every round of a question", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("open_area", { area: "tax" }))
+      .mockResolvedValueOnce(final("Here's what you'll owe."));
+    await askClaudeInChat("u1", [], "how much will uncle sam take", options);
+    expect(prefix(request(1))).toBe(prefix(request(0)));
   });
 });
 
