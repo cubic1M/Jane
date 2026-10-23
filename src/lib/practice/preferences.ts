@@ -175,7 +175,7 @@ async function withStrategy(profile: PracticeProfile, options: Options): Promise
     );
   const followed = today.follow && untouched;
   const note = followed
-    ? `This month the mix follows ${today.chosen.label.toLowerCase()} (${today.chosen.key}), the level's choice from the weekly replay.`
+    ? `This month the mix follows ${today.chosen.label.toLowerCase()} (${today.chosen.key}), the level's choice from the daily replay.`
     : today.follow
       ? "Your settings change the mix, so it stays as they set it rather than following the level's strategy."
       : today.why;
