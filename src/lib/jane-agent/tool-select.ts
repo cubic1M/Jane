@@ -96,6 +96,29 @@ const SECTORS = {
 
 type SectorName = keyof typeof SECTORS;
 
+export const AREAS = Object.keys(SECTORS) as SectorName[];
+export const isArea = (value: unknown): value is SectorName =>
+  typeof value === "string" && (AREAS as string[]).includes(value);
+
+// The words above only guess which areas a question needs: "my car got rear ended" or "how much
+// will uncle sam take" name none of them. So Claude can ask for an area's tools itself; they come
+// with its next step (./claude.ts). One fixed definition, sent with the general tools, so the
+// cached start of every request stays the same.
+export const OPEN_AREA_TOOL: Anthropic.Tool = {
+  name: "open_area",
+  description:
+    "Get the tools for one area of the person's money when the question needs an area whose tools you don't have yet; they are added for your next step. debt: loans, credit cards, card interest, credit score, buying or leasing a car or a home, getting out of debt. insurance: their policies and cover, claims, accidents, what happens to their family if they die, or if they get sick or can't work. tax: what they'll owe or get back, withholding, write-offs, deadlines. investing: retirement and when they can stop working, stocks, funds, crypto, savings rates, where extra cash should go.",
+  input_schema: {
+    type: "object",
+    properties: { area: { type: "string", enum: [...AREAS] } },
+    required: ["area"],
+  },
+};
+
+// One area's tools, for open_area.
+export const areaTools = (all: readonly Anthropic.Tool[], area: SectorName) =>
+  all.filter((tool) => sectorOf(tool.name) === area);
+
 function sectorOf(name: string): SectorName | null {
   for (const [sector, def] of Object.entries(SECTORS) as [
     SectorName,
@@ -203,7 +226,10 @@ export function toolsFor(
     const sector = sectorOf(tool.name);
     return sector === null || wanted.has(sector);
   });
-  const general = kept.filter((t) => sectorOf(t.name) === null && t.name !== "propose_action");
+  const general = [
+    ...kept.filter((t) => sectorOf(t.name) === null && t.name !== "propose_action"),
+    OPEN_AREA_TOOL,
+  ];
   const button = buttons ? kept.filter((t) => t.name === "propose_action") : [];
   const sectors = kept.filter((t) => sectorOf(t.name) !== null);
   const cached = general.map((t, i) =>

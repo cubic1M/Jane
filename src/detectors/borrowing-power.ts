@@ -1,4 +1,5 @@
 import {
+  BORROW_DETECT_COVER_SHARE,
   BORROW_DETECT_DOWN_SHARE,
   BORROW_PROBE_CENTS,
   BORROW_ROUND_CENTS,
@@ -48,26 +49,30 @@ const borrowingPower: Detector = {
       return null;
     }
     if (profile.facts.debt_trouble.value === true) return null;
-    const person = fitPersonFrom(data);
+    // Priced by the person's pulled score, as /loans/borrow is.
+    const score = data.creditScore ?? null;
+    const person = fitPersonFrom(data, score);
     const month = data.today.slice(0, 7);
     const target = targetAmount(
       person,
       "mortgage",
-      mortgageQuotes(BORROW_PROBE_CENTS.mortgage, null, month),
+      mortgageQuotes(BORROW_PROBE_CENTS.mortgage, score, month),
     );
     if (!target || target.amountCents <= 0) return null;
     let amount = target.amountCents;
-    let offers = mortgageQuotes(amount, null, month);
+    let offers = mortgageQuotes(amount, score, month);
     for (let i = 0; i < BORROW_STEP_TRIES && offers.length === 0 && amount > 0; i++) {
       amount =
         Math.floor((amount * BORROW_STEP_DOWN) / BORROW_ROUND_CENTS.mortgage) *
         BORROW_ROUND_CENTS.mortgage;
-      offers = mortgageQuotes(amount, null, month);
+      offers = mortgageQuotes(amount, score, month);
     }
     const figure = priced(person, "mortgage", amount, offers, target.limit);
     if (!figure.available || figure.aprBps === null) return null;
     const cash = liquidCents(data);
-    if (cash < figure.amountCents * BORROW_DETECT_DOWN_SHARE) return null;
+    // The most the savings put a down payment on, rounded down to $1,000.
+    const covers = Math.floor(cash / BORROW_DETECT_DOWN_SHARE / 100_000) * 100_000;
+    if (covers < figure.amountCents * BORROW_DETECT_COVER_SHARE) return null;
     // Comparing lenders: a year of payments at the dearest quote against the cheapest.
     const rates = offers.map((o) => o.aprBps);
     const payment = (bps: number) => levelPaymentCents(figure.amountCents, bps, 360);
@@ -90,7 +95,7 @@ const borrowingPower: Detector = {
         ...(pattern.value === "uneven" ? [BORROW_UNEVEN_EVIDENCE] : []),
       ]),
       urgency: "later",
-      why: `You rent, and lenders would count your pay. A mortgage of about ${formatCents(figure.amountCents)} would keep the payment (${formatCents(figure.paymentCents)} a month) inside what lenders allow and what stays comfortable, and you have ${formatCents(cash)} in cash toward a down payment. Quotes differ by lender: the dearest would cost about ${formatCents(worth)} more a year than the cheapest. Checking is a soft pull and doesn't touch your score.`,
+      why: `You rent, and lenders would count your pay. A mortgage of about ${formatCents(figure.amountCents)} would keep the payment (${formatCents(figure.paymentCents)} a month) inside what lenders allow and what stays comfortable, and your ${formatCents(cash)} in cash covers a ${Math.round(BORROW_DETECT_DOWN_SHARE * 1000) / 10}% down payment on ${covers >= figure.amountCents ? "that" : `up to about ${formatCents(covers)}`}. Quotes differ by lender: the dearest would cost about ${formatCents(worth)} more a year than the cheapest. Checking is a soft pull and doesn't touch your score.`,
       action: { label: "See what you could borrow", href: "/loans/borrow" },
     };
   },

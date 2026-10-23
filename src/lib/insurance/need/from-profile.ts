@@ -1,4 +1,5 @@
 import type { Profile, ProfileInput } from "@/profile/build";
+import { personalPay } from "@/profile/pay";
 import type { NeedInput } from "./types";
 
 // The need calculators' input from a person's profile (spec step 277), so a detector, the chat
@@ -14,7 +15,8 @@ export function needInputFromProfile(profile: Profile, data: ProfileInput): Need
   if (!policies) return null;
   const sum = (f: (a: ProfileInput["accounts"][number]) => boolean) =>
     data.accounts.filter(f).reduce((s, a) => s + a.balanceCents, 0);
-  const income = profile.facts.monthly_income.value;
+  // What they take home: a business owner's sales aren't pay (books QA).
+  const pay = personalPay(profile).monthlyCents;
   const mortgage = sum((a) => a.subtype === "mortgage");
   const otherDebt = sum(
     (a) => (a.type === "loan" && a.subtype !== "mortgage") || a.type === "credit",
@@ -24,7 +26,7 @@ export function needInputFromProfile(profile: Profile, data: ProfileInput): Need
     (data.extras?.ownedValueCents ?? 0);
   const payoff = data.liabilities.find((l) => l.kind === "mortgage")?.payoffDate ?? null;
   return {
-    yearlyPayCents: typeof income === "number" && income > 0 ? income * 12 : null,
+    yearlyPayCents: pay !== null ? pay * 12 : null,
     // The profile knows whether there are children, not how many: at least one depends on them.
     dependants: profile.facts.has_children.value === true ? 1 : 0,
     mortgageCents: mortgage,

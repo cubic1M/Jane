@@ -100,9 +100,10 @@ describe.runIf(url)("the practice portfolio", () => {
       now: NOW,
     });
 
+    // Every trade here is placed at NOW: the id breaks the tie, as the ledger's own reads do.
     const trades = await client.practiceTrade.findMany({
       where: { userId },
-      orderBy: { placedAt: "asc" },
+      orderBy: [{ placedAt: "asc" }, { id: "asc" }],
     });
     expect(trades.every((t) => t.reason !== "" && t.rule !== "")).toBe(true);
     const entries: Entry[] = trades.map((t) =>
@@ -116,7 +117,11 @@ describe.runIf(url)("the practice portfolio", () => {
           },
     );
     const view = await loadPractice(userId, { client, now: NOW });
-    expect(balances(view!.startingCents, entries.slice(1), view!.state)).toBe(true);
+    // The starting money is startingCents; everything after it must balance. Picked out by its
+    // rule, never by position: trades placed at the same instant can come back in any order.
+    const afterStart = entries.filter((_, i) => trades[i].rule !== "start");
+    expect(afterStart).toHaveLength(entries.length - 1);
+    expect(balances(view!.startingCents, afterStart, view!.state)).toBe(true);
     const rebuilt = replay(0, entries, PRACTICE_UNIVERSE);
     expect(rebuilt.cashCents).toBe(view!.state.cashCents);
     expect(Object.keys(rebuilt.positions).sort()).toEqual(
