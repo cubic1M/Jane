@@ -13,6 +13,13 @@ import {
   EXCLUSIONS,
   LEVEL_WORST_DROP_PERCENT,
   MAX_DROP_RANGE,
+  MAX_FUND_RANGE,
+  REBALANCE_PACES,
+  STRATEGY_CHOICES,
+  UNIVERSES,
+  type RebalancePace,
+  type StrategyChoice,
+  type Universe,
 } from "@/config/practice-preferences";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadPreferences, practiceProfileOf, questionnaireLevel } from "@/lib/practice/preferences";
@@ -22,7 +29,8 @@ import { savePracticeSettings } from "./actions";
 
 // What the person wants from the practice portfolio (Phase AW, Stage A), in plain words: how much
 // risk, a goal and its date, the monthly practice money, extra moves, what never to buy, loss
-// harvesting, cash to keep, and whether Jane acts or only suggests. The same settings change from
+// harvesting, cash to keep, whether Jane acts or only suggests, and how she invests: the
+// strategy, how often she rebalances, what she may buy and the most in one fund. The same settings change from
 // the chat. Practice money and demo advice only; the hard limits always win.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
@@ -225,6 +233,66 @@ async function Content({
               />
             </label>
           </div>
+        </fieldset>
+
+        <fieldset className={SECTION}>
+          <legend className="px-1 font-semibold">How Jane invests</legend>
+          <p className={HINT}>
+            {PREFERENCE_LABELS.strategy}
+            {profile.strategy ? `: today, ${profile.strategy.note}` : "."}
+          </p>
+          {(Object.keys(STRATEGY_CHOICES) as StrategyChoice[]).map((c) => (
+            <label key={c} className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="strategy"
+                value={c}
+                defaultChecked={prefs.strategy === c}
+                className="mt-1 shrink-0"
+              />
+              <span>
+                <strong>{STRATEGY_CHOICES[c].label}</strong>: {STRATEGY_CHOICES[c].description}
+              </span>
+            </label>
+          ))}
+          <label className="flex flex-col gap-1 text-sm">
+            {PREFERENCE_LABELS.rebalancePace}
+            <select name="rebalancePace" defaultValue={prefs.rebalancePace} className={FIELD}>
+              {(Object.keys(REBALANCE_PACES) as RebalancePace[]).map((r) => (
+                <option key={r} value={r}>
+                  {REBALANCE_PACES[r].label}: {REBALANCE_PACES[r].description}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {PREFERENCE_LABELS.universe}
+            <select name="universe" defaultValue={prefs.universe} className={FIELD}>
+              {(Object.keys(UNIVERSES) as Universe[]).map((u) => (
+                <option key={u} value={u}>
+                  {UNIVERSES[u].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className={HINT}>{UNIVERSES[prefs.universe].description}</p>
+          <label className="flex flex-col gap-1 text-sm">
+            {PREFERENCE_LABELS.maxFundPercent} (%)
+            <input
+              type="number"
+              name="maxFundPercent"
+              min={MAX_FUND_RANGE.min}
+              max={MAX_FUND_RANGE.max}
+              step={1}
+              defaultValue={prefs.maxFundPercent ?? ""}
+              placeholder={`${MAX_FUND_RANGE.max} (the limit)`}
+              className={FIELD}
+            />
+          </label>
+          <p className={HINT}>
+            What a lower cap keeps out of a fund stays as cash. It can only be lower than the hard
+            limit of {MAX_FUND_RANGE.max}%.
+          </p>
         </fieldset>
 
         <fieldset className={SECTION}>

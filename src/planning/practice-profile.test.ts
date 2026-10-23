@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AUTOPILOT_LIMITS, PRACTICE_ETFS, type PracticeClass } from "@/config/portfolios";
+import {
+  AUTOPILOT_LIMITS,
+  PRACTICE_ETFS,
+  PRACTICE_STOCKS,
+  type PracticeClass,
+} from "@/config/portfolios";
 import {
   APPETITE_ORDER,
   LEVEL_WORST_DROP_PERCENT,
@@ -9,7 +14,14 @@ import {
 } from "@/config/practice-preferences";
 import { SCAN_CAPS, SCAN_KINDS } from "@/config/practice-scan";
 import { DEFAULT_PREFERENCES, type PracticePreferences } from "./practice-preferences";
-import { avoidedTickers, glideWeights, levelForDrop, profileFor } from "./practice-profile";
+import {
+  avoidedTickers,
+  glideWeights,
+  levelForDrop,
+  profileFor,
+  refusedByPreferences,
+  scanPreferencesFor,
+} from "./practice-profile";
 
 const TODAY = "2026-10-22";
 const prefs = (p: Partial<PracticePreferences> = {}): PracticePreferences => ({
@@ -100,13 +112,58 @@ describe("profileFor", () => {
     });
   });
 
+  describe("the person's strategy, rebalance pace, universe and cap on one fund", () => {
+    it("sets the band and lowers the per-fund cap, never above the hard limits", () => {
+      const p = profileFor(prefs({ rebalancePace: "rarely", maxFundPercent: 40 }), {
+        level: 3,
+        today: TODAY,
+      });
+      expect(p.limits.rebalanceBand).toBe(0.08);
+      expect(p.limits.perEtfShare).toBe(0.4);
+      expect(p.limits.perStockShare).toBe(AUTOPILOT_LIMITS.perStockShare);
+      expect(p.rules).toContain("Rebalanced rarely: when a kind is 8 points off its target.");
+      expect(p.rules.some((r) => r.startsWith("No fund over 40%"))).toBe(true);
+      for (const pace of ["often", "normal", "rarely"] as const)
+        for (const cap of [null, 20, 80])
+          expect(
+            profileFor(prefs({ rebalancePace: pace, maxFundPercent: cap }), {
+              level: 3,
+              today: TODAY,
+            }).limits.perEtfShare,
+          ).toBeLessThanOrEqual(AUTOPILOT_LIMITS.perEtfShare);
+    });
+
+    it("with funds only, never buys a company's shares and has no news ideas", () => {
+      const p = profileFor(prefs({ universe: "funds_only" }), { level: 5, today: TODAY });
+      for (const t of PRACTICE_STOCKS) expect(p.avoid).toContain(t);
+      expect(p.opportunityKinds).not.toContain("news_idea");
+      expect(refusedByPreferences(p, { ticker: "AAPL", side: "buy" })).toBe(
+        "on your never-buy list",
+      );
+      expect(refusedByPreferences(p, { ticker: "VTI", side: "buy" })).toBeNull();
+      expect(scanPreferencesFor(prefs({ universe: "funds_only" })).excludedTickers).toEqual(
+        expect.arrayContaining([...PRACTICE_STOCKS]),
+      );
+      // The default keeps the companies open at High and Very high.
+      expect(profileFor(prefs(), { level: 5, today: TODAY }).avoid).toEqual([]);
+    });
+
+    it("carries the strategy choice, and says when the person chose the mix alone", () => {
+      expect(profileFor(prefs(), { level: 3, today: TODAY }).strategyChoice).toBe("level");
+      const mix = profileFor(prefs({ strategy: "mix" }), { level: 3, today: TODAY });
+      expect(mix.strategyChoice).toBe("mix");
+      expect(mix.rules).toContain("Just the level's mix, as you chose: no strategy on top.");
+    });
+  });
+
   describe("hard caps always win", () => {
     it.each(APPETITE_ORDER)(
       "at %s, no cap passes the hard caps or the autopilot's limits",
       (appetite) => {
         for (const level of [1, 2, 3, 4, 5] as const) {
           const p = profileFor(prefs({ appetite }), { level, today: TODAY });
-          expect(p.limits).toBe(AUTOPILOT_LIMITS);
+          // With the defaults, the person's limits are the hard ones.
+          expect(p.limits).toEqual(AUTOPILOT_LIMITS);
           expect(p.opportunityMaxShare).toBeLessThanOrEqual(OPPORTUNITY_HARD_MAX_SHARE);
           for (const kind of SCAN_KINDS) {
             const hard = OPPORTUNITY_HARD_CAPS[kind];

@@ -37,7 +37,11 @@ export function followToday(
   const month = today.slice(0, 7);
   let t = data.dates.findIndex((d) => d >= `${month}-01`);
   if (t < 0) t = data.dates.length;
-  if (t < 2) return { follow: false, why: "Not enough stored closes before this month." };
+  if (t < 2)
+    return {
+      follow: false,
+      why: "Jane doesn't have enough recent prices before this month yet, so the portfolio keeps the level's mix.",
+    };
   const weights = targetWeights(chosen.id, chosen.params, {
     date: data.dates[t] ?? today,
     closes: data.closes,

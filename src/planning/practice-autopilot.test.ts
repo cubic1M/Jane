@@ -69,6 +69,46 @@ describe("autopilot for the practice portfolio", () => {
     ).toEqual([]);
   });
 
+  it("rebalances at the person's pace, and keeps one fund under their cap", () => {
+    const { state } = run(3, empty(1_000_000));
+    // US stocks up 18%: about 4 points over their target, inside the usual 5-point band.
+    const up = { ...PRICES, VTI: 35_400 };
+    const plan = (rebalanceBand: number) =>
+      planTrades({
+        level: 3,
+        state,
+        prices: up,
+        paused: false,
+        tradesToday: 0,
+        limits: { ...AUTOPILOT_LIMITS, rebalanceBand },
+      });
+    expect(plan(AUTOPILOT_LIMITS.rebalanceBand)).toEqual([]);
+    expect(plan(0.03).some((t) => t.side === "sell" && t.ticker === "VTI")).toBe(true);
+
+    // At most 30% in one fund: US stocks stop there, the rest of their share stays as cash.
+    const capped = planTrades({
+      level: 3,
+      state: empty(1_000_000),
+      prices: PRICES,
+      paused: false,
+      tradesToday: 0,
+      limits: { ...AUTOPILOT_LIMITS, perEtfShare: 0.3 },
+    });
+    const vti = capped.filter((t) => t.ticker === "VTI").reduce((s, t) => s + t.amountCents, 0);
+    expect(vti).toBeLessThanOrEqual(300_000);
+    expect(vti).toBeGreaterThan(250_000);
+    // A person's limit never raises a hard one.
+    const loose = planTrades({
+      level: 3,
+      state: empty(1_000_000),
+      prices: PRICES,
+      paused: false,
+      tradesToday: 0,
+      limits: { ...AUTOPILOT_LIMITS, perEtfShare: 1, perTradeShare: 1 },
+    });
+    for (const t of loose) expect(t.amountCents).toBeLessThanOrEqual(700_000);
+  });
+
   it("adds new cash to what is under target, never borrowing", () => {
     const { state } = run(2, empty(1_000_000));
     const more = { ...state, cashCents: state.cashCents + 100_000 };

@@ -1,9 +1,10 @@
 import {
-  AUTOPILOT_LIMITS as L,
+  AUTOPILOT_LIMITS as HARD,
   classTickers,
   MODEL_PORTFOLIOS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
+  type AutopilotLimits,
   type PracticeClass,
 } from "@/config/portfolios";
 import type { RiskLevel } from "@/config/investing";
@@ -53,6 +54,20 @@ export function portfolioValue(state: LedgerState, prices: Prices): number {
   );
 }
 
+// A person's limits (src/planning/practice-profile.ts) held to the hard ones: a cap can only be
+// lowered. The rebalance band is the person's pace.
+export function withinHard(limits: AutopilotLimits | undefined): AutopilotLimits {
+  if (!limits) return HARD;
+  return {
+    ...limits,
+    minTradeCents: Math.max(HARD.minTradeCents, limits.minTradeCents),
+    perTradeShare: Math.min(HARD.perTradeShare, limits.perTradeShare),
+    perEtfShare: Math.min(HARD.perEtfShare, limits.perEtfShare),
+    perStockShare: Math.min(HARD.perStockShare, limits.perStockShare),
+    tradesPerDay: Math.min(HARD.tradesPerDay, limits.tradesPerDay),
+  };
+}
+
 // Why a trade can't be made, or null. The same checks the runner applies before it places one.
 export function violates(
   trade: Pick<PlannedTrade, "ticker" | "side" | "amountCents">,
@@ -64,7 +79,10 @@ export function violates(
   totalCents = portfolioValue(state, prices),
   // Bought earlier in the same plan, not yet in the state.
   alreadyBought = 0,
+  // The person's limits; the hard ones without them.
+  limits?: AutopilotLimits,
 ): string | null {
+  const L = withinHard(limits);
   if (tradesToday >= L.tradesPerDay) return `already ${L.tradesPerDay} trades today`;
   const total = totalCents;
   if (trade.side === "buy" && trade.amountCents > state.cashCents) return "would need to borrow";
@@ -90,8 +108,11 @@ export function planTrades(input: {
   weights?: Readonly<Record<PracticeClass, number>>;
   avoid?: ReadonlySet<string>;
   cashBufferCents?: number;
+  // The person's limits (their rebalance band and cap on one fund); the hard ones without them.
+  limits?: AutopilotLimits;
 }): PlannedTrade[] {
   if (input.paused) return [];
+  const L = withinHard(input.limits);
   const { prices } = input;
   const buffer = Math.max(0, input.cashBufferCents ?? 0);
   // The buffer sits outside the model: the plan sees only the cash above it (less than none
@@ -140,6 +161,7 @@ export function planTrades(input: {
       input.tradesToday + trades.length,
       whole,
       bought[t.ticker] ?? 0,
+      L,
     );
     if (v) return;
     trades.push(t);

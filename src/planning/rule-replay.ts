@@ -276,7 +276,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
         const amountCents = Math.floor(cash * weights[c]);
         const t = { ticker: PRACTICE_ETFS[c].ticker, side: "buy" as const, amountCents };
         if (amountCents < AUTOPILOT_LIMITS.minTradeCents) continue;
-        if (violates(t, state, prices, tradesToday, morning)) continue;
+        if (violates(t, state, prices, tradesToday, morning, 0, profile.limits)) continue;
         place(t, "hold");
       }
     } else {
@@ -299,6 +299,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           opportunityMaxShare: profile.opportunityMaxShare,
           avoid: profile.avoid,
           cashBufferCents: profile.cashBufferCents,
+          limits: profile.limits,
           prices,
           history,
           trades: pastTrades,
@@ -330,6 +331,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
             tradesToday,
             prefs.mode,
             firstRefusal(profile, flag),
+            profile.limits,
           );
           pastFlags.push({
             key: status === "held" ? `${flag.key}:held:${today}` : flag.key,
@@ -360,6 +362,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
         weights: profile.weights,
         avoid: new Set(profile.avoid),
         cashBufferCents: profile.cashBufferCents,
+        limits: profile.limits,
       });
       // Suggest only: the plan is shown, never placed.
       if (profile.trades)
