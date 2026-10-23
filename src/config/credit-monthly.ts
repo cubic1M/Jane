@@ -23,6 +23,3 @@ export const MONTHLY_ITEM_TITLES: Readonly<Record<MonthlyItemKey, string>> = {
 
 // The loans the check-up asks the fit engine to price a refinance for.
 export const MONTHLY_REFI_KINDS = ["mortgage", "auto", "student", "personal"] as const;
-
-// A lower-rate request is sent by Jane, at Handle everything, at most once in this many days.
-export const MONTHLY_RATE_REQUEST_DAYS = 30;

@@ -17,6 +17,10 @@ export const RATE_ASK_MIN_BALANCE_CENTS = 20_000;
 // The cut the stand-in lender grants when it says yes.
 export const RATE_ASK_CUT_BPS = 300;
 export const RATE_ANSWER_DAYS = 2;
+// Jane sends a lower-rate request by herself (at Handle everything) at most once in this many
+// days, whether the yearly debt review or the monthly check-up gets there first; until then
+// both say the one she sent (docs/feature-audit.md, cluster 14).
+export const RATE_REQUEST_EVERY_DAYS = 30;
 export const CARD_RATE_PARTNER = "demo";
 // Out of 10, how many requests the stand-in grants.
 export const DEMO_RATE_GRANT_TENTHS = 6;
