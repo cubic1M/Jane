@@ -6,6 +6,11 @@ import {
   type PracticeClass,
 } from "@/config/portfolios";
 import { MAX_DROP_LOOKBACK_DAYS, ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
+import {
+  ideaSlot,
+  PRACTICE_IDEA_DAYS,
+  PRACTICE_IDEA_MIN_CENTS,
+} from "@/config/practice-suggestions";
 import { DIP_LOOKBACK_DAYS, NEWS_LOOKBACK_DAYS, type ScanKind } from "@/config/practice-scan";
 import { loadDetectionInput } from "@/detection/engine";
 import { paySchedules } from "@/detection/paydays";
@@ -157,7 +162,19 @@ export async function scanPractice(
   });
   const past = await db.practiceOpportunities.findMany({
     where: { portfolioId: portfolio.id },
-    select: { key: true, kind: true, scannedAt: true, status: true },
+    select: { key: true, kind: true, ticker: true, scannedAt: true, status: true },
+  });
+  // What the person is still being asked about: not asked again while it waits.
+  const waitingSince = new Date(now.getTime() - PRACTICE_IDEA_DAYS * 86_400_000);
+  const waiting = new Set(
+    past
+      .filter((p) => p.status === "suggested" && p.scannedAt >= waitingSince)
+      .map((p) => ideaSlot(p.kind, p.ticker)),
+  );
+  const lastDeposit = await db.practiceTrades.findFirst({
+    where: { portfolioId: portfolio.id, undone: false, side: "deposit" },
+    orderBy: { placedAt: "desc" },
+    select: { placedAt: true },
   });
   const monthStart = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
   const usedThisMonth: Partial<Record<ScanKind, number>> = {};
@@ -188,6 +205,7 @@ export async function scanPractice(
     addDay: portfolio.addDay,
     paydayDay,
     heldHistory,
+    lastDepositOn: lastDeposit?.placedAt.toISOString().slice(0, 10) ?? null,
   });
   // A real account gets no ideas: only the autopilot's own rebalance.
   const flags = advice ? found : found.filter((f) => f.kind === "drift_rebalance");
@@ -223,6 +241,14 @@ export async function scanPractice(
         : flag.trades.length === 0 || prefs.mode === "suggest"
           ? "suggested"
           : "acted";
+    // One question at a time about the same thing, and none about pocket change.
+    if (
+      status === "suggested" &&
+      (waiting.has(ideaSlot(flag.kind, flag.ticker)) ||
+        (flag.trades.length > 0 && flag.amountCents < PRACTICE_IDEA_MIN_CENTS))
+    ) {
+      continue;
+    }
     const details = {
       figures: flag.figures,
       caps: flag.caps,
