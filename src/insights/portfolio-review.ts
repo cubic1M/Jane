@@ -1,3 +1,4 @@
+import { MIN_ORDER_CENTS } from "@/config/brokerage";
 import { ASSET_CLASSES, CORE_FUNDS, FUND_NAMES, type AssetClass } from "@/config/funds";
 import {
   CASH_DRAG_POINTS,
@@ -132,15 +133,18 @@ export function reviewPortfolio(
   const recommendations: Recommendation[] = [];
   const offTarget = mix.some((m) => m.offTarget);
   if (offTarget) {
+    // Each class's move as small as an order the rebalance would place; the whole move worth
+    // making (MIN_MOVE_CENTS), as the rebalance plan trades it.
     const moves = mix
-      .filter((m) => Math.abs(m.changeCents) >= MIN_MOVE_CENTS && m.assetClass !== "other")
+      .filter((m) => Math.abs(m.changeCents) >= MIN_ORDER_CENTS && m.assetClass !== "other")
       .sort((a, b) => a.changeCents - b.changeCents);
     const sells = moves.filter((m) => m.changeCents < 0);
     const buys = moves.filter((m) => m.changeCents > 0);
     const worst = [...mix].sort(
       (a, b) => Math.abs(b.share - b.targetShare) - Math.abs(a.share - a.targetShare),
     )[0];
-    if (sells.length > 0 && buys.length > 0) {
+    const moving = sells.reduce((s, m) => s - m.changeCents, 0);
+    if (sells.length > 0 && buys.length > 0 && moving >= MIN_MOVE_CENTS) {
       const funds = buys.flatMap((m) => {
         const ticker = CORE_FUNDS[m.assetClass as keyof typeof CORE_FUNDS];
         return ticker ? [`${FUND_NAMES[ticker]} for ${classWords(m.label)}`] : [];

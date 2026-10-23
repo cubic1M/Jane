@@ -7,7 +7,7 @@ import {
   DEMO_BENEFICIARIES_MISSING,
   DEMO_VALUES_EXCLUDES,
 } from "@/data-sources/demo/people-extras/investing";
-import type { PersonId } from "@/config/people";
+import { isPersonId, personById, type PersonId } from "@/config/people";
 import { SAMPLE_RELIEF } from "@/config/disasters";
 import { goalProgress } from "@/planning/goals";
 import { tradeGoalOf } from "@/planning/goal-tradeoffs";
@@ -94,9 +94,12 @@ const HEALTH_PLANS: Readonly<
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };
   const holdings = demoHoldings(demo, SAMPLE_TODAY);
+  // Spec step 129: their investor profile comes with the demo bank (src/lib/plaid/demo.ts), so
+  // their age and how they'd take a fall are told, as src/lib/profile.ts reads them.
+  const investor = isPersonId(person) ? personById(person)?.investor : undefined;
   return {
     today: SAMPLE_TODAY,
-    told,
+    told: investor ? { age: investor.age, risk: investor.dropReaction, ...told } : told,
     extras: {
       householdMembers: 0,
       coverPolicies: SAMPLE_POLICIES[person] ?? [],

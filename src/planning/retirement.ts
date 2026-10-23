@@ -167,7 +167,8 @@ export function retirementPlan(input: RetirementInput): RetirementPlan {
       });
     }
   }
-  if (catchUpCents > 0) {
+  // Catch-up room is for people still saving towards retirement, not someone past it.
+  if (catchUpCents > 0 && years > 0) {
     changes.push({
       what: `Use catch-up contributions: from ${CATCH_UP_AGE} you can put in ${dollars(catchUpCents)} a year above the usual limit.`,
       why: "It's extra room to save, only for people your age.",

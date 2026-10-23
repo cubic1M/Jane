@@ -1,3 +1,5 @@
+import type { DropReaction, Goal, Horizon } from "@/config/investing";
+
 // The eight sample people (spec step 252): different lives to prove suggestions on, not one.
 // Each has a written list of what Jane should suggest and what she must not; the detector
 // harness (step 254) checks every detector against these lists. The demo bank data for each
@@ -181,8 +183,17 @@ export type Person = {
   facts: PersonFacts;
   should: readonly SuggestionTopic[];
   mustNot: readonly SuggestionTopic[];
-  // The question worth asking them first (step 257): the fact whose answer unlocks most.
-  firstQuestion: string;
+  // The question worth asking them first (step 257): the fact whose answer unlocks most, or
+  // null when nothing left to ask is worth a question.
+  firstQuestion: string | null; // Their answers to the investor profile's four questions (spec step 129), saved when their
+  // demo bank is linked, as if they had answered them: Try Jane people get the portfolio
+  // review, rebalance plan, goal buckets and retirement plan from the start.
+  investor: {
+    age: number;
+    horizon: Horizon;
+    dropReaction: DropReaction;
+    goals: readonly Goal[];
+  };
 };
 
 export const PEOPLE: readonly Person[] = [
@@ -261,6 +272,8 @@ export const PEOPLE: readonly Person[] = [
       "irmaa_watch",
     ],
     firstQuestion: "employer_match",
+    // 24 with decades to go; a first home is the nearer goal.
+    investor: { age: 24, horizon: "over_20", dropReaction: "worry", goals: ["retirement", "home"] },
   },
   {
     id: "family",
@@ -336,6 +349,13 @@ export const PEOPLE: readonly Person[] = [
       "irmaa_watch",
     ],
     firstQuestion: "employer_match",
+    // Late 30s, two kids: retirement and their schooling.
+    investor: {
+      age: 38,
+      horizon: "over_20",
+      dropReaction: "worry",
+      goals: ["retirement", "education"],
+    },
   },
   {
     id: "freelancer",
@@ -397,6 +417,8 @@ export const PEOPLE: readonly Person[] = [
       "irmaa_watch",
     ],
     firstQuestion: "filing_status",
+    // Mid 30s, saving for retirement on their own (no employer plan).
+    investor: { age: 34, horizon: "over_20", dropReaction: "fine", goals: ["retirement"] },
   },
   {
     id: "equity",
@@ -460,6 +482,13 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
     ],
     firstQuestion: "employer_match",
+    // Early 40s, a big salary and stock: growing it, ready to buy a dip.
+    investor: {
+      age: 41,
+      horizon: "10_to_20",
+      dropReaction: "buy",
+      goals: ["growth", "retirement"],
+    },
   },
   {
     id: "preretire",
@@ -518,7 +547,14 @@ export const PEOPLE: readonly Person[] = [
       "life_checklist",
       "ptc_repayment",
     ],
-    firstQuestion: "age_band",
+    firstQuestion: "employer_match",
+    // 63, stopping work in a few years: retirement income soon, and Medicare's income line ahead.
+    investor: {
+      age: 63,
+      horizon: "3_to_10",
+      dropReaction: "worry",
+      goals: ["retirement", "income"],
+    },
   },
   {
     id: "retiree",
@@ -590,7 +626,9 @@ export const PEOPLE: readonly Person[] = [
       "roth_conversion",
       "practice_portfolio",
     ],
-    firstQuestion: "age_band",
+    firstQuestion: null,
+    // 71 and drawing from an IRA: income to live on, and a fall would be a worry.
+    investor: { age: 71, horizon: "3_to_10", dropReaction: "worry", goals: ["income"] },
   },
   {
     id: "debt",
@@ -664,6 +702,8 @@ export const PEOPLE: readonly Person[] = [
       "borrowing_power",
     ],
     firstQuestion: "hardship_reason",
+    // Late 20s, stretched: a fall would scare them into selling.
+    investor: { age: 27, horizon: "over_20", dropReaction: "sell", goals: ["retirement"] },
   },
   {
     id: "owner",
@@ -722,6 +762,13 @@ export const PEOPLE: readonly Person[] = [
       "life_checklist",
     ],
     firstQuestion: "business_structure",
+    // Mid 40s, the shop's profits to grow for retirement.
+    investor: {
+      age: 45,
+      horizon: "10_to_20",
+      dropReaction: "fine",
+      goals: ["retirement", "growth"],
+    },
   },
 ];
 

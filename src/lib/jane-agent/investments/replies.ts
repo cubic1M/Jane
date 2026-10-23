@@ -308,6 +308,9 @@ export function retirementReply(
     retirement: RetirementPlan | null;
   },
   advice: boolean,
+  // Spec step 212: for someone near retirement or in it, the paycheck their savings could pay,
+  // which is the answer to "when can I stop working".
+  income: RetirementIncomeView | null = null,
 ): Reply {
   const link: MessageAction = {
     id: "open",
@@ -339,14 +342,17 @@ export function retirementReply(
   }
   const plan = data.retirement;
   const lines = [projectionLine(plan), matchLine(plan)].filter(Boolean).join(" ");
+  const paycheck = income?.advice && income.applies ? paycheckLine(income) : null;
   const changes =
     plan.changes.length === 0
-      ? "Nothing to change: keep going as you are."
+      ? plan.years === 0
+        ? ""
+        : "Nothing to change: keep going as you are."
       : `What I'd change:\n${plan.changes.map((c, i) => `${i + 1}. ${c.what} ${c.why}`).join("\n")}`;
   const roth = plan.rothOrTraditional ? `\n${ROTH_WORDS[plan.rothOrTraditional]}` : "";
   return {
-    body: `${lines}\n${changes}${roth}`,
-    actions: [link, learnLink("the-match")],
+    body: [lines, paycheck, changes].filter(Boolean).join("\n") + roth,
+    actions: paycheck ? [link, RI_LINK] : [link, learnLink("the-match")],
     refs: { advice: true },
   };
 }
@@ -370,6 +376,14 @@ export function rebalanceReply(
       body: "To work out your recommended mix I need four quick answers first.",
       actions: ask.actions,
       refs: ask.refs,
+    };
+  }
+  // Nothing invested yet: there's no mix to be on or off target.
+  if (plan.before.every((m) => m.share === 0)) {
+    return {
+      body: "You don't have any investments to rebalance yet. Once money is in an investment or retirement account, I'll keep it at your mix.",
+      actions: [SEE],
+      refs: {},
     };
   }
   if (plan.orders.length === 0) {
