@@ -41,7 +41,10 @@ export type InvestmentTopic =
   | "practice_log"
   | "practice_pause"
   | "practice_resume"
-  | "backtest";
+  | "backtest"
+  // The rule replay ("Did the extra rules help?"): the autopilot's own rules against plain
+  // rebalancing and buy and hold, and the rules turned off.
+  | "rule_replay";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -214,6 +217,10 @@ const PRACTICE_RESUME =
   /^(?:please )?(?:resume|unpause|restart) (?:it|that|trading)$|\b(?:resume|unpause|restart) (?:the |my )?(?:practice|paper) (?:portfolio|trading|money)\b|\bresume (?:the |my )?opportunities\b/;
 const BACKTEST =
   /\bbacktests?\b|\bhow would (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? have (?:done|gone|performed)\b|\bhow did (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? (?:do|go|perform)\b/;
+// The rule replay: whether the autopilot's extra rules helped, and why one was turned off.
+// Before the model backtest, so "backtest the autopilot" gets the autopilot's own rules.
+const RULE_REPLAY =
+  /\b(?:extra|opportunity|autopilot'?s?) rules?\b|\brules? (?:help|hurt|work|earn)\w*\b|\bdip.?buys? (?:help|work|worth)\w*\b|\b(?:backtest|replay)\w* (?:the |my )?(?:autopilot|rules)\b|\b(?:autopilot|rules?)\b[^.?!]{0,20}\b(?:backtest|replay)\w*|\bautopilot\b[^.?!]{0,40}\b(?:buy and hold|plain rebalancing)\b|\b(?:which|what) rules? (?:did you|are|were|have you) (?:turn|switch)\w* off\b|\bwhy (?:did you |is |are |was |were )?(?:you )?(?:turn|switch)\w* off\b[^.?!]{0,30}\b(?:tax.?loss|harvest\w*|swaps?|dip|news|rules?)\b/;
 const LEVEL_NAME = /\b(very low|very high|low|medium|high)\b/;
 const YEAR = /\b((?:19|20)\d\d)\b/;
 
@@ -224,6 +231,10 @@ function practiceIntent(text: string): InvestmentIntent | null {
   if (PRACTICE_RESUME.test(text)) return { ...base, topic: "practice_resume", which };
   if (PRACTICE_LOG.test(text)) {
     return { ...base, topic: "practice_log", ...(/\bwhy\b/.test(text) ? { explain: true } : {}) };
+  }
+  if (RULE_REPLAY.test(text)) {
+    const { level } = levelAndYear(text);
+    return { ...base, topic: "rule_replay", ...(level ? { level } : {}) };
   }
   if (!BACKTEST.test(text)) return null;
   return { ...base, topic: "backtest", ...levelAndYear(text) };
