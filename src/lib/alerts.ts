@@ -218,15 +218,7 @@ export async function newestUnreadAlerts(
     where: { readAt: null, type: { in: await shownTypes(userId, client) } },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     take: limit,
-    select: {
-      id: true,
-      type: true,
-      key: true,
-      title: true,
-      body: true,
-      urgent: true,
-      createdAt: true,
-    },
+    select: { id: true, type: true, key: true, title: true, body: true, createdAt: true },
   });
 }
 
