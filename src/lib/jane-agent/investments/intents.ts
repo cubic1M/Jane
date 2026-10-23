@@ -42,7 +42,7 @@ export type InvestmentTopic =
   | "practice_pause"
   | "practice_resume"
   | "backtest"
-  // The strategy each level's practice autopilot follows (the weekly replay's choice).
+  // The strategy each level's practice autopilot follows (the daily replay's choice).
   | "level_strategy";
 
 export type InvestmentIntent = {

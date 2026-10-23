@@ -449,7 +449,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "backtest_by_level",
     description:
-      "How each risk level's model portfolio (Very low, Low, Medium, High, Very high) would have done, replayed over past prices from the same sample amount: for \"how would a High portfolio have done in 2022\" or \"how bad did the drops get\". Gives where the prices came from (real stored history, or the sample market's made-up prices with a planted crash and recovery), the end value, the worst drop with its dates and when it got back, the best and worst whole year, and with year that year's return and its worst fall; plus the assumptions (fund costs, rebalancing band, no taxes). Leave level out for all five. Always also gives the strategy each level's practice autopilot follows (the weekly replay's choice: the level's mix, a trend filter and so on), why, with its worst drop, yearly return and Sortino on the later years against the level's mix, and the level's risk budget. With extra_rules, also the rule replay (\"Did the extra rules help?\"): the practice autopilot run day by day with the daily scan's own rules (dip buys, tax-loss swaps, news ideas at High and Very high) and every cap, against plain rebalancing and buy and hold, with each one's return, worst drop, 2020 and 2022 drops, trades and cost, and whether each rule helped, made it worse (and is turned off at that level) or wasn't replayed. Demo advice mode only. Always call it a replay of past or sample history, never a forecast or what will happen.",
+      "How each risk level's model portfolio (Very low, Low, Medium, High, Very high) would have done, replayed over past prices from the same sample amount: for \"how would a High portfolio have done in 2022\" or \"how bad did the drops get\". Gives where the prices came from (real stored history, or the sample market's made-up prices with a planted crash and recovery), the end value, the worst drop with its dates and when it got back, the best and worst whole year, and with year that year's return and its worst fall; plus the assumptions (fund costs, rebalancing band, no taxes). Leave level out for all five. Always also gives the strategy each level's practice autopilot follows (the daily replay's choice: the level's mix, a trend filter and so on), why, with its worst drop, yearly return and Sortino on the later years against the level's mix, and the level's risk budget. With extra_rules, also the rule replay (\"Did the extra rules help?\"): the practice autopilot run day by day with the daily scan's own rules (dip buys, tax-loss swaps, news ideas at High and Very high) and every cap, against plain rebalancing and buy and hold, with each one's return, worst drop, 2020 and 2022 drops, trades and cost, and whether each rule helped, made it worse (and is turned off at that level) or wasn't replayed. Demo advice mode only. Always call it a replay of past or sample history, never a forecast or what will happen.",
     input_schema: {
       type: "object",
       properties: {
@@ -1171,12 +1171,12 @@ export async function runChatTool(
               levels.map((l) => l.level),
             )
           : null;
-      // The weekly replay's choice per level (the practice autopilot follows it).
+      // The daily replay's choice per level (the practice autopilot follows it).
       const strategiesFor = async (asked: RiskLevel[]) => {
         const latest = await latestStrategies({ client });
         if (!latest)
           return {
-            note: "The weekly replay of each level's strategies hasn't run yet, so every level follows its mix.",
+            note: "The daily replay of each level's strategies hasn't run yet, so every level follows its mix.",
           };
         const p = (n: number) => `${(Math.round(n * 1000) / 10).toFixed(1)}%`;
         return {

@@ -49,7 +49,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(rules.getByText(/not a forecast/)).toBeVisible();
   await expect(rules.getByText("Plain rebalancing").first()).toBeVisible();
   await expect(rules.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
-  // The strategy each level follows (the weekly replay's choice; none yet on a fresh database).
+  // The strategy each level follows (the daily replay's choice; none yet on a fresh database).
   const strategies = page.getByRole("region", { name: "The strategy each level follows" });
   await expect(strategies.getByText(/every level follows its mix/)).toBeVisible();
   await expect(strategies.getByText(/not a forecast/)).toBeVisible();

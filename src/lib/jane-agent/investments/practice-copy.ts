@@ -181,7 +181,7 @@ const STRATEGIES: MessageAction = {
   href: "/investments#level-strategies-heading",
 };
 
-// "Which strategy does my level use": the weekly replay's choice for the level, and why.
+// "Which strategy does my level use": the daily replay's choice for the level, and why.
 export function levelStrategyReply(
   advice: boolean,
   latest: LatestStrategies | null,
@@ -198,7 +198,7 @@ export function levelStrategyReply(
   const c = latest?.byLevel[level];
   if (!c)
     return {
-      body: `${name} follows its mix for now: the weekly replay of each level's strategies hasn't run yet. ${STRATEGY_NOT_A_FORECAST}`,
+      body: `${name} follows its mix for now: the daily replay of each level's strategies hasn't run yet. ${STRATEGY_NOT_A_FORECAST}`,
       actions: [STRATEGIES],
       refs: { advice: true },
     };

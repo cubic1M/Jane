@@ -28,14 +28,14 @@ export function LevelStrategiesSection({
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {latest ? (
             <>
-              Each week Jane replays seven ways of running each level on real prices from{" "}
+              Each day Jane replays seven ways of running each level on real prices from{" "}
               {longDate(latest.from)} to {longDate(latest.to)}, chooses on the earlier years and
               keeps a strategy only if it then beat the level&apos;s mix on the later ones. The
               practice autopilot follows the choice. {STRATEGY_NOT_A_FORECAST}
             </>
           ) : (
             <>
-              The weekly replay of each level&apos;s strategies hasn&apos;t run yet, so every level
+              The daily replay of each level&apos;s strategies hasn&apos;t run yet, so every level
               follows its mix. {STRATEGY_NOT_A_FORECAST}
             </>
           )}

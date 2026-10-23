@@ -7,7 +7,7 @@ import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import type { LatestStrategies } from "@/lib/investments/strategy-eval";
 import { LevelStrategiesSection } from "./level-strategies";
 
-// "The strategy each level follows" on the investments page: the weekly replay's choice per
+// "The strategy each level follows" on the investments page: the daily replay's choice per
 // level with its numbers against the mix, the person's level marked, demo advice, never a forecast.
 
 const m = (cagr: number, maxDrawdown: number, sortino: number) => ({
@@ -62,7 +62,7 @@ describe("LevelStrategiesSection", () => {
     expect(html.replaceAll("not a forecast", "")).not.toMatch(/forecast/i);
   });
 
-  it("says every level follows its mix before the first weekly replay", () => {
+  it("says every level follows its mix before the first daily replay", () => {
     const html = renderToStaticMarkup(<LevelStrategiesSection latest={null} />);
     expect(html).toMatch(/hasn(&#x27;|')t run yet, so every level follows its mix/);
     expect(html).not.toContain("data-level=");

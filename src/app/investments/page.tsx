@@ -91,7 +91,7 @@ function HoldingRow({ h }: { h: HoldingView }) {
 
 // "Did the extra rules help?": a few seconds of replay the first time, so it streams in after
 // the rest of the page.
-// The strategy each level follows (the weekly replay's choice), with the person's own level.
+// The strategy each level follows (the daily replay's choice), with the person's own level.
 async function LevelStrategies({ userId }: { userId: string }) {
   const [latest, profile] = await Promise.all([latestStrategies(), practiceProfileOf(userId)]);
   return <LevelStrategiesSection latest={latest} level={profile.level} />;

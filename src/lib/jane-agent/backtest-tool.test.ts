@@ -19,7 +19,7 @@ import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 
 const NOW = new Date("2026-10-21T15:00:00Z");
 // No stored history: the sample market.
-// No weekly strategy replay yet, unless a test says otherwise.
+// No daily strategy replay yet, unless a test says otherwise.
 let latestRow: unknown = null;
 const client = {
   marketPrice: { findMany: async () => [] },
@@ -124,7 +124,7 @@ describe("backtest_by_level", () => {
       );
   });
 
-  it("says which strategy each level follows, and why, from the weekly replay", async () => {
+  it("says which strategy each level follows, and why, from the daily replay", async () => {
     vi.mocked(adviceMode).mockResolvedValue(true);
     const none = JSON.parse(
       (await runChatTool("u1", "backtest_by_level", { level: "High" }, { client, now: NOW }))
