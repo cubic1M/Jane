@@ -909,6 +909,8 @@ export function carToolOutput(car: Car, money: (cents: number) => string) {
       totalCost: money(o.totalCents),
       fees: o.offer.feeLabel,
     })),
+    // Lenders cap car loans: the most one would quote, when it's under what was checked.
+    mostALenderWouldLend: car.lenderLimitCents === null ? undefined : money(car.lenderLimitCents),
     dealer: car.dealer && {
       verdict: car.dealer.verdict,
       monthly: money(car.dealer.monthlyCents),
