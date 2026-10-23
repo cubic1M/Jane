@@ -10,10 +10,17 @@ import { PRACTICE_TOPIC } from "./practice-suggestions";
 // the rest wait and are ranked again tomorrow.
 export const SUGGESTIONS_PER_DAY = 3;
 
-// Score = what it's worth a year x how sure Jane is x how urgent x what the person's own
-// answers say. Risk avoided counts for a fraction of a saving: a large exposure still
-// outranks small savings, but a made-up headline figure cannot bury everything else.
+// Score = what the person can expect to gain: what it's worth a year x how sure Jane is, x
+// what the person's own answers say. Risk avoided counts for a fraction of a saving: a large
+// exposure still outranks small savings, but a made-up headline figure cannot bury everything
+// else. Urgency doesn't multiply the score; it breaks ties (now, then soon, then later).
 export const URGENCY_WEIGHT = { now: 3, soon: 2, later: 1 } as const;
+// Suggestions Jane is less sure of than this come after all the others, whatever their
+// dollars: a guess never leads (onboarding QA: a 49% card led over an 81% one).
+export const LOW_CONFIDENCE_PERCENT = 50;
+// Expected gains are estimates: two within about this ratio of each other count as a tie,
+// which urgency breaks. Bands of this width keep the order the same whichever two are compared.
+export const RANK_TIE_RATIO = 1.1;
 export const WORTH_WEIGHT = { saves: 1, earns: 1, risk: 0.02 } as const;
 
 // A loss avoided is ranked by its expected value in a year: the loss times how likely it is in

@@ -6,6 +6,7 @@ import { PEOPLE } from "@/config/people";
 import {
   HISTORY_FLOOR_BY_TOPIC,
   HISTORY_MIN_FACTOR,
+  LOW_CONFIDENCE_PERCENT,
   SAFETY_HISTORY_FLOOR,
   SUGGESTIONS_PER_DAY,
 } from "@/config/suggestions";
@@ -37,22 +38,72 @@ const make = (over: Partial<Suggestion> & { topic: Suggestion["topic"] }): Sugge
 });
 
 describe("ranking suggestions", () => {
-  it("orders by dollars x confidence x urgency", () => {
+  it("orders by what the person can expect to gain: dollars x confidence", () => {
     const big = make({ topic: "bank_fees", worthCents: 200_000 });
     const sure = make({
       topic: "card_interest",
       worthCents: 100_000,
       confidence: { percent: 95, reason: "r" },
     });
-    const unsure = make({
+    const halfSure = make({
       topic: "idle_cash",
       worthCents: 100_000,
       confidence: { percent: 50, reason: "r" },
     });
+    // Urgency no longer multiplies: $1,000 at 80% is still under $1,000 at 95%.
     const urgent = make({ topic: "late_fees", worthCents: 100_000, urgency: "now" });
-    const ranked = rankSuggestions([unsure, sure, urgent, big]).map((r) => r.suggestion.topic);
-    expect(ranked).toEqual(["bank_fees", "late_fees", "card_interest", "idle_cash"]);
-    expect(scoreOf(big)).toBe(Math.round(200_000 * 0.8 * 2));
+    const ranked = rankSuggestions([halfSure, sure, urgent, big]).map((r) => r.suggestion.topic);
+    expect(ranked).toEqual(["bank_fees", "card_interest", "late_fees", "idle_cash"]);
+    expect(scoreOf(big)).toBe(Math.round(200_000 * 0.8));
+    expect(scoreOf(urgent)).toBe(scoreOf(make({ topic: "late_fees", worthCents: 100_000 })));
+  });
+
+  it(`puts what Jane is less than ${LOW_CONFIDENCE_PERCENT}% sure of after everything else`, () => {
+    // Onboarding QA: a 49%-sure card led over an 81% one because its dollars were bigger.
+    const guess = make({
+      topic: "auto_insurance",
+      worthCents: 10_000_000,
+      confidence: { percent: LOW_CONFIDENCE_PERCENT - 1, reason: "r" },
+    });
+    const small = make({
+      topic: "estimated_taxes",
+      worthCents: 10_000,
+      confidence: { percent: 81, reason: "r" },
+    });
+    expect(scoreOf(guess)).toBeGreaterThan(scoreOf(small));
+    expect(rankSuggestions([guess, small]).map((r) => r.suggestion.topic)).toEqual([
+      "estimated_taxes",
+      "auto_insurance",
+    ]);
+  });
+
+  it("counts gains a few percent apart as a tie, which urgency breaks, but not bigger gaps", () => {
+    // Onboarding QA: the Reyes family's $1,468 consolidation (later) against their $1,403
+    // PMI removal (soon), estimates under 5% apart.
+    const later = make({ topic: "consolidation", worthCents: 146_837, urgency: "later" });
+    const soon = make({ topic: "pmi_removal", worthCents: 140_270, urgency: "soon" });
+    expect(rankSuggestions([later, soon]).map((r) => r.suggestion.topic)).toEqual([
+      "pmi_removal",
+      "consolidation",
+    ]);
+    // Twice the gain is not a tie: dollars decide.
+    const big = make({ topic: "consolidation", worthCents: 280_000, urgency: "later" });
+    expect(rankSuggestions([big, soon]).map((r) => r.suggestion.topic)).toEqual([
+      "consolidation",
+      "pmi_removal",
+    ]);
+  });
+
+  it("breaks a tie by urgency: now, then soon, then later", () => {
+    const at = (topic: Suggestion["topic"], urgency: Suggestion["urgency"]) =>
+      make({ topic, worthCents: 100_000, urgency });
+    expect(
+      rankSuggestions([
+        at("bank_fees", "later"),
+        at("late_fees", "now"),
+        at("idle_cash", "soon"),
+      ]).map((r) => r.suggestion.urgency),
+    ).toEqual(["now", "soon", "later"]);
   });
 
   it("counts a risk avoided for a fraction of a saving", () => {
@@ -208,7 +259,7 @@ describe("expected values and requirements in ranking", () => {
     const loss = make({ topic: "life_insurance", worthKind: "risk", worthCents: 500_000 });
     const expected = { ...loss, worthIsExpected: true };
     expect(scoreOf(expected)).toBeGreaterThan(scoreOf(loss));
-    expect(scoreOf(expected)).toBe(Math.round(500_000 * 0.8 * 2));
+    expect(scoreOf(expected)).toBe(Math.round(500_000 * 0.8));
     expect(scoreOf({ ...expected, required: true })).toBe(scoreOf(expected) * 3);
   });
 });
