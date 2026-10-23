@@ -525,6 +525,12 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
       keepingItCosts: money(c.currentTotalCents),
       keepingMonthlyPayment: money(c.currentMonthlyCents),
       janesPick: c.pick && offer(c.pick),
+      ...(c.cashPayoffCents
+        ? {
+            payOffFromCashInstead: { saves: money(c.cashPayoffCents), keepsAMonthOfSpending: true },
+          }
+        : {}),
+      ...(c.turnedDown ? { lenderWouldLikelyDecline: c.turnedDown } : {}),
       why: c.why,
       offers: c.offers.map(offer),
     })),
@@ -1546,6 +1552,14 @@ export function loanFitToolOutput(
 ) {
   if (!view.available)
     return { note: "No lending partner for this person's accounts yet, so there are no offers." };
+  // Something to borrow, but no lender quotes an amount this small: the same answer as the chat.
+  if (view.options.length === 0 && view.ineligible.length === 0 && view.baseline) {
+    return {
+      note: "Nothing fits right now.",
+      why: [`No lender prices a loan as small as ${money(view.amountCents)}.`],
+      whatWouldHelp: [`Paying ${view.baseline.label} down directly is simplest.`],
+    };
+  }
   if (view.options.length === 0) {
     return {
       note: "Nothing fits right now.",

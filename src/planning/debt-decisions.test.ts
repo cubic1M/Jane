@@ -106,6 +106,22 @@ describe("consolidate and a personal loan", () => {
       /Clearwater at 11\.99% would save about \$900\.00/,
     );
   });
+  // Loans QA: a 0% card left out for a score those cards don't usually approve is said, not
+  // picked.
+  it("says why a 0% transfer card isn't the pick for a low score", () => {
+    const d = consolidate({
+      ...base,
+      consolidation: null,
+      personalLoan: null,
+      transferNeedsScore: { score: 560, minScore: 670 },
+    });
+    expect(d.sentences[1]).toBe(
+      "A 0% transfer card would cost less, but those usually need a score of 670 or more and yours is 560; no loan beats your rates once fees are counted.",
+    );
+    expect(d.sentences[2]).toMatch(/highest-rate card first/);
+    expect(d.sentences.join(" ")).not.toMatch(/I'd do it/);
+  });
+
   it("says there's no offer worth taking when none saves, and the math only when not demo advice", () => {
     const none = { ...base, consolidation: null, personalLoan: null };
     expect(consolidate(none).sentences[1]).toMatch(/beats your current rates once its fees/);
@@ -314,5 +330,38 @@ describe("when cash alone clears the cards for less than any loan", () => {
       expect(d.sentences[2]).toBe("I'd do that instead of taking a loan.");
       expect(decide({ ...cash, advice: false }).sentences).toHaveLength(2);
     }
+  });
+});
+
+// Loans QA: a card with a balance but no rate (a CSV import) is debt, not "nothing to pay down".
+describe("a card owed without a rate", () => {
+  const unrated = {
+    ...noAdvice,
+    cards: [{ name: "Card", balanceCents: 600_000, aprBps: null, limitCents: null }],
+    student: null,
+    consolidation: null,
+    personalLoan: null,
+  };
+  it("asks for the rate instead of saying there's no debt, with nothing weighed", () => {
+    for (const id of [
+      "consolidate",
+      "pay_or_invest",
+      "savings_or_debt",
+      "personal_loan",
+    ] as const) {
+      const d = DECISIONS[id](unrated);
+      expect(d.sentences, id).toEqual([
+        "You owe $6,000.00 on Card, but I don't have its rate.",
+        "Tell me the rate (it's on the statement, as the purchase APR) and I'll work this out with your numbers.",
+      ]);
+      expect(d.nothingWeighed, id).toBe(true);
+    }
+  });
+  it("still says there's nothing to pay down when nothing is owed", () => {
+    const d = DECISIONS.consolidate({ ...unrated, cards: [] });
+    expect(d.sentences[0]).toBe(
+      "I don't see a debt with a balance, so there's nothing to pay down.",
+    );
+    expect(d.nothingWeighed).toBe(true);
   });
 });

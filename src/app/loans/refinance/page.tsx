@@ -39,7 +39,21 @@ function Comparison({ c }: { c: RefinanceComparison }) {
           {formatCents(c.currentMonthlyCents)} a month).
         </p>
       </div>
-      {c.pick ? (
+      {c.cashPayoffCents ? (
+        <div className="flex flex-col gap-1 rounded-lg bg-emerald-50 p-3 text-sm dark:bg-emerald-950">
+          <p className="font-medium">Jane&apos;s pick: pay it off from your cash</p>
+          <p>
+            Paying it off from savings would save about {formatCents(c.cashPayoffCents)} and still
+            leave a month of spending, more than any loan.
+          </p>
+          <DemoAdviceLabel />
+        </div>
+      ) : c.turnedDown ? (
+        <p className="text-sm">
+          The offers look cheaper, but a lender would likely turn this down: {c.turnedDown} Jane
+          wouldn&apos;t apply now.
+        </p>
+      ) : c.pick ? (
         <div className="flex flex-col gap-1 rounded-lg bg-emerald-50 p-3 text-sm dark:bg-emerald-950">
           <p className="font-medium">
             Jane&apos;s pick: {c.pick.offer.lender} at {formatRate(c.pick.offer.aprBps)}{" "}

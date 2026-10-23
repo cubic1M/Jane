@@ -148,6 +148,10 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "s_corp_election",
   "home_office_deduction",
   "social_security_tax",
+  // Loans QA (2026-10-23): these price a loan from the stand-in lender catalog, which only
+  // demo-bank people have; a real account has no lending partner, so no loan pick either.
+  "consolidation",
+  "borrowing_power",
   // The practice portfolio's ideas: demo advice only.
   ...Object.values(PRACTICE_TOPIC),
 ];

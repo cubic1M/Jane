@@ -41,6 +41,14 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(backtests.getByText(/Replay of sample history since Jan 2, 2018/)).toBeVisible();
   await expect(backtests.getByText(/not a forecast/)).toBeVisible();
   await expect(backtests.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  // The autopilot's own rules replayed against plain rebalancing and buy and hold, per level.
+  const rules = page.getByRole("region", { name: "Did the extra rules help?" });
+  await expect(rules.getByText(/Replay of sample history since Jan 2, 2018/)).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(rules.getByText(/not a forecast/)).toBeVisible();
+  await expect(rules.getByText("Plain rebalancing").first()).toBeVisible();
+  await expect(rules.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // The filled-in page has no serious accessibility problems (e2e/accessibility.spec.ts
   // checks it empty).
   const axe = await new AxeBuilder({ page })

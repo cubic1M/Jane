@@ -30,8 +30,9 @@ export type PlannedTrade = {
 export type Prices = Readonly<Record<string, number>>;
 
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
-const dollars = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// One formatter, made once: the rule replay formats thousands of reasons.
+const USD = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const dollars = (cents: number) => `$${USD.format(cents / 100)}`;
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const LABEL: Record<PracticeClass, string> = {
   us_stocks: "US stocks",
@@ -217,4 +218,23 @@ export function planTrades(input: {
     });
   }
   return trades;
+}
+
+// Sales first, so their cash pays for the buys. The live autopilot and the rule replay both
+// place a plan in this order.
+export function sellsFirst<T extends { side: "buy" | "sell" }>(plan: readonly T[]): T[] {
+  return [...plan].sort((a, b) => (a.side === b.side ? 0 : a.side === "sell" ? -1 : 1));
+}
+
+// Whether the monthly practice money goes in today: once a calendar month, on or after the
+// chosen day of the month, and never when there is none.
+export function monthlyDue(input: {
+  monthlyAddCents: number;
+  addDay: number;
+  // YYYY-MM-DD.
+  today: string;
+  addedThisMonth: boolean;
+}): boolean {
+  if (input.monthlyAddCents <= 0 || input.addedThisMonth) return false;
+  return Number(input.today.slice(8, 10)) >= input.addDay;
 }

@@ -71,14 +71,16 @@ describe.runIf(url)("the practice autopilot obeys preferences", () => {
     await client.$disconnect();
   });
 
+  // Low: the rule replay turned tax-loss swaps off from Medium up (OPPORTUNITY_RULES_OFF), and
+  // this autumn's dip is a harvest.
   it("suggest only places no practice trades, and says what it would have done", async () => {
-    const fresh = await person(4, { mode: "suggest" }, false);
+    const fresh = await person(2, { mode: "suggest" }, false);
     const first = await runAutopilot(fresh, { client, now: at("2026-09-01") });
     expect(first.ran && first.fills).toEqual([]);
     expect(first.ran && first.suggested.length).toBeGreaterThan(0);
     expect(await tradesSince(fresh, "2026-09-01")).toEqual([]);
 
-    const userId = await person(4, { mode: "suggest" });
+    const userId = await person(2, { mode: "suggest" });
     const day = await runPracticeDay(userId, { client, now: at("2026-10-14") });
     expect(await tradesSince(userId, "2026-10-14")).toEqual([]);
     const flags = day?.scan.scanned ? day.scan.flags : [];
@@ -102,7 +104,7 @@ describe.runIf(url)("the practice autopilot obeys preferences", () => {
     ).toEqual([]);
 
     // A fresh portfolio in act mode acts on the same planted dip.
-    const actor = await person(4);
+    const actor = await person(2);
     const acted = await scanPractice(actor, { client, now: at("2026-10-14") });
     expect(acted.scanned && acted.flags.some((f) => f.status === "acted")).toBe(true);
   });
