@@ -74,7 +74,7 @@ export const STRATEGY_MIN_SORTINO_GAIN = 0.1;
 export const STRATEGY_NOT_A_FORECAST =
   "A replay of the past, not a forecast: future results will be different.";
 
-// The weekly evaluation (src/lib/investments/strategy-eval.ts) runs only on at least this many
+// The daily evaluation (src/lib/investments/strategy-eval.ts) runs only on at least this many
 // shared trading days of stored history (about three years: a training span and later years).
 export const STRATEGY_EVAL_MIN_DAYS = 756;
 

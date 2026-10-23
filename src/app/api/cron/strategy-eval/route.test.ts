@@ -12,7 +12,7 @@ import { recordRun } from "@/lib/health";
 import { runStrategyEvaluation } from "@/lib/investments/strategy-eval";
 import { GET } from "./route";
 
-// The weekly strategy evaluation: only Vercel Cron (with the secret) can run it, and it is on
+// The daily strategy evaluation: only Vercel Cron (with the secret) can run it, and it is on
 // the schedule, after the daily history load.
 
 const call = (authorization?: string) =>
@@ -42,15 +42,17 @@ describe("GET /api/cron/strategy-eval", () => {
     expect(recordRun).toHaveBeenCalledWith("strategy-eval", expect.any(Function));
   });
 
-  it("is scheduled weekly, after the daily history load", () => {
+  it("is scheduled daily, after the daily history load", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
       crons: { path: string; schedule: string }[];
     };
     const job = config.crons.find((c) => c.path === "/api/cron/strategy-eval");
     const load = config.crons.find((c) => c.path === "/api/cron/market-history");
-    expect(job?.schedule).toMatch(/^\d+ \d+ \* \* [0-6]$/);
-    expect(Number(job!.schedule.split(" ")[1])).toBeGreaterThan(
-      Number(load!.schedule.split(" ")[1]),
-    );
+    expect(job?.schedule).toMatch(/^\d+ \d+ \* \* \*$/);
+    const minutes = (cron: string) => {
+      const [m, h] = cron.split(" ").map(Number);
+      return h * 60 + m;
+    };
+    expect(minutes(job!.schedule)).toBeGreaterThan(minutes(load!.schedule));
   });
 });

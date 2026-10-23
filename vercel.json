@@ -19,7 +19,7 @@
     },
     {
       "path": "/api/cron/strategy-eval",
-      "schedule": "0 11 * * 1"
+      "schedule": "30 9 * * *"
     }
   ],
   "git": {
