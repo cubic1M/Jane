@@ -1,4 +1,4 @@
-import { PRACTICE_ETFS, PRACTICE_UNIVERSE } from "@/config/portfolios";
+import { PRACTICE_ETFS, PRACTICE_UNIVERSE, strategyTickers } from "@/config/portfolios";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import type { Bar, MarketData } from "./types";
@@ -21,9 +21,12 @@ const nextDay = (iso: string) => day(new Date(dateOf(iso).getTime() + 86_400_000
 // The model funds first (the backtests need them), then everything else the practice portfolio
 // may hold: the swap partners and the watched companies, so the rule replay can test the tax-loss
 // swaps and the news ideas on real prices too.
+// The strategy universe too (STRATEGY_ASSETS), so the weekly strategy evaluation runs on Alpaca's
+// closes for every fund a level's strategy may hold.
 export const historyTickers = () => {
   const main = Object.values(PRACTICE_ETFS).map((e) => e.ticker as string);
-  return [...main, ...[...PRACTICE_UNIVERSE].filter((t) => !main.includes(t)).sort()];
+  const rest = new Set([...PRACTICE_UNIVERSE, ...strategyTickers()]);
+  return [...main, ...[...rest].filter((t) => !main.includes(t)).sort()];
 };
 
 export class HistoryError extends Error {}
