@@ -10,19 +10,42 @@ import type { DebtKind } from "@/insights/debts";
 // Lenders themselves start to worry around 43% (the CFPB's old qualified-mortgage line); 40%
 // leaves room to act first.
 export const TROUBLE_PAYMENT_SHARE = 0.4;
+// ...unless the cash on hand covers this many months of those payments (loans QA: a big
+// mortgage on a big income, with cash to carry it, isn't trouble). One rule for this message,
+// the profile's debt_trouble fact and everything that reads it.
+export const TROUBLE_CASH_MONTHS = 3;
 // Income is the average of this many full months before this one.
 export const TROUBLE_INCOME_MONTHS = 3;
 
-// What to ask each kind of lender, in the person's own debts.
-export const HARDSHIP_PROGRAMS: Readonly<Record<DebtKind, string>> = {
-  card: "ask for a hardship program, which many issuers offer: a lower rate or a smaller payment for a few months. Call the number on the back of your card.",
-  mortgage:
-    "ask about forbearance or a payment plan (loss mitigation). A HUD-approved housing counselor can help you ask, free.",
-  student:
-    "federal loans have income-driven plans, deferment and forbearance, all through studentaid.gov. Private lenders set their own hardship options.",
-  auto: "ask about moving the due date or extending the term. Call before you miss a payment, not after.",
-  loan: "ask for a hardship plan or a lower payment. Call before you miss one.",
-  bnpl: "contact the provider before a due date; many will agree to a new one.",
+// What to ask each kind of lender, in the person's own debts: the one hardship catalog, for
+// /loans/help, the lean plan when income stops (spec step 204) and the chat
+// (docs/feature-audit.md, cluster 11). A stand-in: what lenders of each kind commonly offer, said
+// as what to ask. A real catalog (per lender) replaces it when a partner is connected.
+export const HARDSHIP_PROGRAMS: Readonly<Record<DebtKind, { name: string; ask: string }>> = {
+  card: {
+    name: "Card hardship program",
+    ask: "Ask for a hardship program, which many issuers offer: a lower rate or a smaller or paused payment for a few months, and no late fee while it's in place. Call the number on the back of your card.",
+  },
+  mortgage: {
+    name: "Mortgage forbearance or payment plan",
+    ask: "Ask your servicer about forbearance or a payment plan (loss mitigation), as soon as you know and before a payment is missed. A HUD-approved housing counselor can help you ask, free.",
+  },
+  student: {
+    name: "Student loan deferment or income-driven plan",
+    ask: "Federal loans have income-driven plans, which can set the payment near zero, and deferment (including for unemployment) and forbearance, all through studentaid.gov. Private lenders set their own hardship options.",
+  },
+  auto: {
+    name: "Auto loan hardship options",
+    ask: "Ask about a payment deferral, moving the due date or extending the term. Call before you miss a payment, not after.",
+  },
+  loan: {
+    name: "Loan hardship options",
+    ask: "Ask for a hardship plan: a deferred or lower payment for a few months. It's easier to ask before a payment is missed.",
+  },
+  bnpl: {
+    name: "Buy now, pay later",
+    ask: "Contact the provider before a due date; many will agree to a new one.",
+  },
 };
 export const HARDSHIP_FINDER = {
   label: "Find a HUD-approved housing counselor (CFPB)",

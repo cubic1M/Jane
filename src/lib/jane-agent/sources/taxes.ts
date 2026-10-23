@@ -282,10 +282,22 @@ export const taxesSource: MessageSource = {
       if (tax.advice && estimate) {
         const today = context.local.date;
         if (today.slice(5) >= HARVEST_FROM && today.startsWith(String(estimate.year))) {
-          for (const chance of inv.harvest.slice(0, 1)) {
+          // It's also the tax plan's "Sell at a loss" move, which posts nothing of its own
+          // (ownMessage): said no to there, it isn't said here; put on the deadlines (by Jane or
+          // the person), this says so instead of offering to remind.
+          const move = tax.plan?.moves.find((m) => m.key === "harvest");
+          for (const chance of move?.handled === "no" ? [] : inv.harvest.slice(0, 1)) {
+            const message = harvestMessage(chance, estimate);
+            const added = move?.handled === "added";
             out.push({
-              kind: "decision",
-              ...harvestMessage(chance, estimate),
+              kind: added ? "heads_up" : "decision",
+              ...message,
+              ...(added
+                ? {
+                    body: `${message.body} It's on your deadlines.`,
+                    actions: message.actions.filter((a) => a.id !== "tax.save_task"),
+                  }
+                : {}),
               dedupeKey: `harvest:${estimate.year}:${chance.holding.securityId}`,
               priority: TAX_MESSAGE_PRIORITY.harvest,
             });

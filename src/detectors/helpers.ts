@@ -1,4 +1,7 @@
+import { categoryOf } from "@/categorize/taxonomy";
 import { DETECTOR_RATES } from "@/config/detectors";
+import type { InsightTransaction } from "@/insights/spending";
+import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { confidenceOf, counted, type Source } from "@/profile/confidence";
 import type { Fact, ProfileInput, ProfileTx } from "@/profile/build";
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
@@ -13,12 +16,37 @@ export const outCents = (list: readonly ProfileTx[]) =>
 export const monthsOf = (data: ProfileInput, months: number) =>
   data.transactions.length ? months : 0;
 
-// Everything spent in a month, on average: money out except transfers (which stay Jane's).
+// Books QA: the person's one-off costs (a flood's repairs), found once per profile and left out
+// of the typical month (src/insights/typical-month.ts).
+const oneOffCache = new WeakMap<readonly ProfileTx[], Set<ProfileTx>>();
+export function oneOffsOf(data: ProfileInput): Set<ProfileTx> {
+  const cached = oneOffCache.get(data.transactions);
+  if (cached) return cached;
+  const rows = data.transactions.map((t) => ({
+    date: t.date,
+    amountCents: t.amountCents,
+    description: t.description,
+    merchantName: null,
+    pfcPrimary: t.pfc ? (categoryOf(t.pfc)?.primary ?? null) : null,
+    pfcDetailed: t.pfc,
+    pending: false,
+    source: t,
+  })) satisfies (InsightTransaction & { source: ProfileTx })[];
+  const kept = new Set(withoutOneOffs(rows, oneOffCharges(rows, data.today)).map((r) => r.source));
+  const found = new Set(data.transactions.filter((t) => !kept.has(t)));
+  oneOffCache.set(data.transactions, found);
+  return found;
+}
+
+// Everything spent in a typical month, on average: money out except transfers (which stay
+// Jane's) and one-off costs.
 export function monthlySpendCents(data: ProfileInput, months: number): number {
+  const oneOffs = oneOffsOf(data);
   const spent = tx(
     data,
     (t) =>
       t.amountCents > 0 &&
+      !oneOffs.has(t) &&
       !(t.pfc ?? "").startsWith("TRANSFER") &&
       t.pfc !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
   ).reduce((s, t) => s + t.amountCents, 0);

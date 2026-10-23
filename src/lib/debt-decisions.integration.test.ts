@@ -77,6 +77,18 @@ describe.runIf(url)("debt decisions against a real database", { timeout: 60_000 
     expect(i.monthlySpendCents).toBeGreaterThan(100_000);
   });
 
+  // Loans QA: Chris's score (560) is under what 0% transfer cards usually approve, so the answer
+  // to "should I consolidate?" never picks one for him.
+  it("doesn't pick a 0% transfer card for Chris's score, and says why", async () => {
+    const i = await loadDecisionInput(chris, { client, now: NOW });
+    expect(i.consolidation).toBeNull();
+    expect(i.transferNeedsScore).toEqual({ score: expect.any(Number), minScore: 670 });
+    expect(i.transferNeedsScore!.score).toBeLessThan(670);
+    const reply = await ask(chris, "should I consolidate my debt?");
+    expect(reply.body).toContain("those usually need a score of 670 or more");
+    expect(reply.body).not.toMatch(/at 0% would save/);
+  });
+
   it("answers each decision in three sentences or fewer, with the demo advice label", async () => {
     for (const q of [
       "should I pay off my card or invest?",

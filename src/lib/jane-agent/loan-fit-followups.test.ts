@@ -257,4 +257,18 @@ describe("following up on the best loan, with a faked Claude", () => {
       vi.mocked(adviceMode).mockResolvedValue(true);
     }
   });
+
+  // Gap audit: with no amount it used to answer "Nothing fits right now", which isn't true.
+  it("asks for the amount when a car, home or personal loan has none, and prices nothing", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("loan_fit", { need: "car" }))
+      .mockResolvedValueOnce(final("How much is the car you have in mind?"));
+    await askClaudeInChat("u1", [], "what's the best car loan for me?", options);
+    const out = JSON.parse(
+      (create.mock.calls[1][0].messages.at(-1)!.content as { content: string }[])[0].content,
+    ) as { needsAmount?: boolean; note?: string };
+    expect(out.needsAmount).toBe(true);
+    expect(out.note).toMatch(/ask how much .* or the car's price/);
+    expect(loadFit).not.toHaveBeenCalled();
+  });
 });

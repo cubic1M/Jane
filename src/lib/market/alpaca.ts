@@ -1,5 +1,5 @@
 import type { Bar, Headline, MarketData } from "./types";
-import { MarketDataNotConfigured, type Filing } from "./types";
+import { MarketDataError, MarketDataNotConfigured, type Filing } from "./types";
 
 // Alpaca market data and news (spec step 289). A stub for Stage B: the request URLs and the
 // parsing of its responses are written and tested against recorded responses, and nothing calls
@@ -60,7 +60,21 @@ export function parseNews(json: AlpacaNews): Headline[] {
 type Fetcher = (
   url: string,
   init: { headers: Record<string, string> },
-) => Promise<{ json(): Promise<unknown> }>;
+) => Promise<{ ok?: boolean; status?: number; json(): Promise<unknown> }>;
+
+// The body of an answer, or an error with Alpaca's reason when it refused (a 403 for a feed the
+// plan doesn't cover, a 401 for a bad key): never read as an empty answer.
+async function bodyOf(res: Awaited<ReturnType<Fetcher>>): Promise<unknown> {
+  const json = await res.json().catch(() => null);
+  if (res.ok === false) {
+    const reason =
+      json && typeof json === "object" && "message" in json ? String(json.message) : "";
+    throw new MarketDataError(
+      `Alpaca answered ${res.status ?? "an error"}${reason ? `: ${reason}` : ""}.`,
+    );
+  }
+  return json;
+}
 
 export class AlpacaMarketData implements MarketData {
   readonly name = "alpaca";
@@ -86,7 +100,7 @@ export class AlpacaMarketData implements MarketData {
       const res = await this.fetcher(barsUrl([ticker], from, to, this.feed, token), {
         headers: this.headers(),
       });
-      const json = (await res.json()) as AlpacaBars;
+      const json = (await bodyOf(res)) as AlpacaBars;
       out.push(...parseBars(json, ticker));
       token = nextPage(json);
       if (!token) break;
@@ -104,7 +118,7 @@ export class AlpacaMarketData implements MarketData {
 
   async news(tickers: readonly string[], from: string, to: string): Promise<Headline[]> {
     const res = await this.fetcher(newsUrl(tickers, from, to), { headers: this.headers() });
-    return parseNews((await res.json()) as AlpacaNews);
+    return parseNews((await bodyOf(res)) as AlpacaNews);
   }
 
   async filings(ticker: string, from: string, to: string): Promise<Filing[]> {

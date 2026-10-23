@@ -6,6 +6,8 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BORROW_LABELS, BORROW_SOURCES } from "@/config/borrowing-power";
 import { formatRate } from "@/insights/loans";
 import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
+import { loadHomeBuying } from "@/lib/home-buying";
+import { homeMeasureOf, homeVsBorrow, mortgageOf } from "@/planning/home-vs-borrow";
 import { dayLabel } from "@/lib/day-label";
 import { scoreLine } from "@/lib/jane-agent/borrowing-power-replies";
 import { formatCents } from "@/lib/money";
@@ -26,7 +28,8 @@ async function BorrowContent({ searchParams }: Pick<PageProps<"/loans/borrow">, 
   await connection();
   const raw = await searchParams;
   await ensureBorrowingChecked(user.id);
-  const d = await loadBorrowingPower(user.id);
+  const [d, home] = await Promise.all([loadBorrowingPower(user.id), loadHomeBuying(user.id)]);
+  const both = homeVsBorrow(homeMeasureOf(home), mortgageOf(d.figures));
   return (
     <>
       <AppHeader user={user} />
@@ -94,6 +97,14 @@ async function BorrowContent({ searchParams }: Pick<PageProps<"/loans/borrow">, 
               </li>
             ))}
           </ul>
+          {both && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {both}{" "}
+              <Link href="/loans/home" className={LINK}>
+                Buying a home
+              </Link>
+            </p>
+          )}
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             These are estimates from the lender stand-in, not offers. To compare options for a loan
             you want now, see{" "}

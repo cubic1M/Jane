@@ -115,7 +115,10 @@ describe.runIf(url)("buying a home against a real database", { timeout: 30_000 }
     expect(reply.body).toMatch(
       /That assumes 10% down \(\$40,000\.00\) on a 30-year loan at \d+\.\d\d%/,
     );
-    expect(reply.body).toMatch(/so about \$52,000\.00 up front with closing costs\./);
+    // Then what you could borrow, measured the other way, in the same sentence (loans QA).
+    expect(reply.body).toMatch(
+      /so about \$52,000\.00 up front with closing costs(?:; keeping the mortgage payment to a comfortable 30% of your take-home, rather than the 28\/36 rules on your gross pay, borrows about \$[\d,]+\.00 instead)\./,
+    );
     expect(parseRefs(reply.refs).advice).toBe(true);
     const goal = parseActions(reply.actions).find((a) => a.id === "home.goal");
     expect(goal?.label).toBe("Start a $52,000.00 down payment goal");

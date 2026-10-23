@@ -118,7 +118,10 @@ describe.runIf(url)("refinance offers against a real database", () => {
     const messages = gather(snapshot!, LINKED, { trigger: "sync" }).filter(
       (m) => m.source === "refinance",
     );
-    expect(messages.length).toBe(3);
+    // The car and student loans; the card isn't offered, because the demo person's spare cash
+    // clears it for less than any loan (the fit engine's pick, loans QA).
+    expect(messages.length).toBe(2);
+    expect(messages.some((m) => m.body.includes("Demo Credit Card"))).toBe(false);
     const car = messages.find((m) => m.body.includes("Demo Car Loan"))!;
     expect(car).toMatchObject({ kind: "decision", refs: { advice: true } });
     expect(car.dedupeKey).toMatch(/^refinance:offer:account:\w+:demo-harbor-\d+-36$/);
@@ -144,7 +147,7 @@ describe.runIf(url)("refinance offers against a real database", () => {
     });
     expect(reply.actions[0]).toMatchObject({ id: "loan.prepare" });
     const home = await sendToJane(userId, "refinance my mortgage", opts(later(0.001)));
-    expect(home.reply.body).toContain("None of the 2 offers beats it over the same months");
+    expect(home.reply.body).toContain("None of the 2 offers beats keeping it");
     expect(home.reply.refs.refinance).toBeUndefined();
     expect(home.reply.refs.advice).toBeUndefined();
   });

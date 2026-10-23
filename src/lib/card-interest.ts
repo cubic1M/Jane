@@ -76,6 +76,8 @@ export type PromoView = {
   goToAprBps: number;
   plan: PromoPlan;
   deadlineRaised: boolean;
+  // A balance transfer Jane arranged: ended on the transfer, not removed here.
+  fromTransfer: boolean;
 };
 
 export type CardInterest = {
@@ -190,6 +192,7 @@ export async function loadCardInterest(
       deferred: p.deferred,
       goToAprBps: p.goToAprBps,
       deadlineRaised: p.deadlineId !== null,
+      fromTransfer: p.balanceTransferId !== null,
       plan: promoPlan({
         balanceCents: p.balanceCents,
         startedOn: isoDay(p.startedOn),
@@ -241,7 +244,23 @@ export async function addCardPromo(
   if (!Number.isFinite(apr) || apr <= 0 || apr > 60) {
     throw new CardInterestError("Enter the rate charged after the promotion, like 26.99.");
   }
-  await scopedFor(userId, client).cardPromos.create({
+  const db = scopedFor(userId, client);
+  // The same promotion twice (a transfer Jane arranged, typed in again) is one record.
+  const same = await db.cardPromos.findFirst({
+    where: {
+      cardName: { equals: cardName, mode: "insensitive" },
+      endsOn: new Date(`${form.endsOn}T00:00:00Z`),
+    },
+    select: { balanceTransferId: true },
+  });
+  if (same) {
+    throw new CardInterestError(
+      same.balanceTransferId
+        ? "That's the balance transfer you started: it's already on your list."
+        : "That promotion is already on your list.",
+    );
+  }
+  await db.cardPromos.create({
     data: {
       userId,
       cardName,
@@ -264,9 +283,14 @@ export async function removeCardPromo(
   const db = scopedFor(userId, client);
   const promo = await db.cardPromos.findFirst({
     where: { id: promoId },
-    select: { deadlineId: true },
+    select: { deadlineId: true, balanceTransferId: true },
   });
   if (!promo) throw new CardInterestError("That promotion isn't on your list.");
+  if (promo.balanceTransferId) {
+    throw new CardInterestError(
+      "That one is your balance transfer: mark it paid off or stopped on the transfer.",
+    );
+  }
   await db.cardPromos.deleteMany({ where: { id: promoId } });
   if (promo.deadlineId) await markDeadlineDone(userId, promo.deadlineId, { client, now });
 }

@@ -13,6 +13,7 @@ import { loadPayoff } from "@/lib/debt-plan";
 import { listDeadlines } from "@/lib/deadlines";
 import { listGoals } from "@/lib/goals";
 import { healthInput } from "@/lib/health-score";
+import { loadSelfEmployed } from "@/lib/self-employed";
 import {
   addMonths,
   yearPlan,
@@ -68,7 +69,7 @@ export async function loadYearPlan(
   const startMonth = inForce?.startMonth ?? currentMonth;
   const lastMonth = addMonths(startMonth, YEAR_PLAN_MONTHS - 1);
 
-  const [health, goals, payoff, auto, deadlines, transfers, runs] = await Promise.all([
+  const [health, goals, payoff, auto, deadlines, transfers, runs, estimates] = await Promise.all([
     healthInput(userId, input, { client, now }),
     listGoals(userId, { client, now }),
     loadPayoff(userId, { client, now }),
@@ -94,6 +95,12 @@ export async function loadYearPlan(
       },
       select: { paydayOn: true, amountCents: true },
     }),
+    // The estimated tax payments the tax calendar plans (spec step 223), as it says them: the
+    // taxes sector's amounts, not $0 because their reminders carry no amount
+    // (docs/feature-audit.md, cluster 12). A problem there leaves them out.
+    loadSelfEmployed(userId, { client, now })
+      .then((se) => (se.federal.needed ? se.federal.payments : []))
+      .catch(() => []),
   ]);
 
   const actuals: YearInput["actuals"] = {};
@@ -120,17 +127,25 @@ export async function loadYearPlan(
       debt: payoff.stored?.extraCents ?? 0,
       investing: (auto?.amountCents ?? 0) * INVESTING_PAYDAYS_PER_MONTH,
     },
-    fixed: deadlines.flatMap((d) => {
-      const sector = sectorOf(d);
-      const month = monthOf(d.date);
-      return sector &&
-        d.amountCents &&
-        d.amountCents > 0 &&
-        month >= currentMonth &&
-        month <= lastMonth
-        ? [{ month, sector, cents: d.amountCents }]
-        : [];
-    }),
+    fixed: [
+      ...estimates.flatMap((p) => {
+        const month = monthOf(p.date);
+        return month >= currentMonth && month <= lastMonth
+          ? [{ month, sector: "taxes" as const, cents: p.cents }]
+          : [];
+      }),
+      ...deadlines.flatMap((d) => {
+        const sector = sectorOf(d);
+        const month = monthOf(d.date);
+        return sector &&
+          d.amountCents &&
+          d.amountCents > 0 &&
+          month >= currentMonth &&
+          month <= lastMonth
+          ? [{ month, sector, cents: d.amountCents }]
+          : [];
+      }),
+    ],
     past,
     actuals,
   };

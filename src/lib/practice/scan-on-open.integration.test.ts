@@ -52,8 +52,9 @@ describe.runIf(url)("the practice scan on opening a page", () => {
     await client.$disconnect();
   });
 
+  // Low: the rule replay turned tax-loss swaps off from Medium up (OPPORTUNITY_RULES_OFF).
   it("records the safety idea, trades nothing, and leaves the trades to the daily run", async () => {
-    const userId = await person(4, "2020-02-18");
+    const userId = await person(2, "2020-02-18");
     const fetch = vi.spyOn(globalThis, "fetch");
     const before = await trades(userId);
     const open = await scanOnOpen(userId, { client, now: at("2020-03-23", "15:00:00") });
@@ -89,7 +90,7 @@ describe.runIf(url)("the practice scan on opening a page", () => {
   });
 
   it("records the trades as suggestions in suggest-only mode, still placing none", async () => {
-    const userId = await person(4, "2026-09-01");
+    const userId = await person(2, "2026-09-01");
     vi.mocked(scanPreferences).mockResolvedValueOnce({
       ...DEFAULT_SCAN_PREFERENCES,
       mode: "suggest",

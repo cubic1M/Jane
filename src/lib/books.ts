@@ -168,7 +168,7 @@ export async function runBooksCheck(
         key: `dup:${duplicate.id}`,
         accountId: duplicate.id,
         detail: { keep: keep.id },
-        words: `${duplicate.name} (ending ${duplicate.mask}) looks like the same account as another you linked, but the two don't match transaction for transaction, so I haven't merged them.`,
+        words: `${duplicate.name} (ending ${duplicate.mask}) looks like the same account linked twice, through two bank logins, but I can't prove the two copies match transaction for transaction, so I haven't merged them.`,
       });
     }
   }

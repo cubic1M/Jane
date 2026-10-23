@@ -30,6 +30,17 @@ export function closedBody(view: CloseView): string {
     .join(" ");
 }
 
+// The close, as a line of the month's report message: the report has the figures, so the chat
+// says the month is closed and whether the books added up, once (docs/feature-audit.md).
+export function closedNote(view: CloseView): string {
+  return [
+    `${monthName(view.month)} is closed.`,
+    view.figures.booksOpen > 0
+      ? `${view.figures.booksOpen} thing${view.figures.booksOpen === 1 ? "" : "s"} in your accounts didn't add up, so those figures are marked.`
+      : "Your books added up.",
+  ].join(" ");
+}
+
 export function waitingBody(view: CloseView): string {
   const lines = view.uncertain.map(
     (t) => `• ${t.description} on ${t.date}: ${formatCents(t.amountCents)}`,

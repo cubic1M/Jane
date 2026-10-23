@@ -3,7 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { STRATEGIST_CAPABILITY } from "@/config/strategist";
-import { ADVICE_TOPICS } from "@/config/suggestions";
+import { ADVICE_TOPICS, LOW_CONFIDENCE_PERCENT } from "@/config/suggestions";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -160,9 +160,14 @@ describe.runIf(url)("Claude as strategist", { timeout: 120_000 }, () => {
   it("joins the ranking: offered with its parts' buttons, and its parts aren't offered beside it", async () => {
     const userId = await person("family");
     await scanSuggestions(userId, { client, now: NOW });
-    // The two best-ranked suggestions tonight: an idea that combines them outranks each alone.
+    // The two best-ranked suggestions tonight that Jane is sure of: an idea that combines them
+    // outranks each alone (an idea is as sure as its weakest part, so a guess can't be in it).
     const best = await client.suggestion.findMany({
-      where: { userId, status: { in: ["waiting", "selected"] } },
+      where: {
+        userId,
+        status: { in: ["waiting", "selected"] },
+        confidencePercent: { gte: LOW_CONFIDENCE_PERCENT },
+      },
       orderBy: { score: "desc" },
       take: 2,
       select: { key: true },

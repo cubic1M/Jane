@@ -110,14 +110,24 @@ export function expectedIncome(input: DetectionInput, until: string): Expected[]
   );
 }
 
-export function upcomingBills(input: DetectionInput, days: number): Expected[] {
+// Books QA: card interest isn't a bill (the card's own payment covers it), and a card payment
+// the bank names "... thank you" reads as what it is. Shared with the recurring charges.
+export const isBillStream = (s: Stream) => !NOT_BILL_CATEGORIES.includes(s.pfcDetailed ?? "");
+export const billName = (s: Stream) =>
+  s.pfcDetailed === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" && CARD_PAYMENT_THANKS.test(s.merchant)
+    ? CARD_PAYMENT_NAME
+    : s.merchant;
+
+// `remindedElsewhere`: payment categories whose due date the bank reports, left out.
+export function upcomingBills(
+  input: DetectionInput,
+  days: number,
+  remindedElsewhere: ReadonlySet<string> = new Set(),
+): Expected[] {
   const bills = buildStreams(input)
-    .filter((s) => !NOT_BILL_CATEGORIES.includes(s.pfcDetailed ?? ""))
-    .map((s) =>
-      s.pfcDetailed === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" && CARD_PAYMENT_THANKS.test(s.merchant)
-        ? { ...s, merchant: CARD_PAYMENT_NAME }
-        : s,
-    );
+    .filter(isBillStream)
+    .filter((s) => !remindedElsewhere.has(s.pfcDetailed ?? ""))
+    .map((s) => ({ ...s, merchant: billName(s) }));
   return expand(bills, input.asOf, addDays(input.asOf, days));
 }
 

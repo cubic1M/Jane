@@ -4,6 +4,8 @@ import {
   MONEY_GROUPS,
   HISTORY_MIN_FACTOR,
   FINDING_KIND_OF_TOPIC,
+  LOW_CONFIDENCE_PERCENT,
+  RANK_TIE_RATIO,
   NO_PENALTY,
   SUGGESTIONS_PER_DAY,
   URGENCY_WEIGHT,
@@ -50,7 +52,8 @@ export function workedFactor(topic: string, results: KindResults): number {
   return r.notShown > 0 ? WORKED_DOWN_FACTOR : 1;
 }
 
-// dollars x confidence x urgency, adjusted by the person's answers. A whole number.
+// What the person can expect to gain: dollars x confidence, adjusted by the person's answers
+// and what worked before. A whole number.
 export function scoreOf(
   s: Suggestion,
   history: TopicHistory = {},
@@ -61,14 +64,41 @@ export function scoreOf(
       (s.worthIsExpected ? s.worthCents : rankValue(s.topic, s.worthKind, s.worthCents))) *
       (s.required ? REQUIRED_BOOST : 1) *
       (s.confidence.percent / 100) *
-      URGENCY_WEIGHT[s.urgency] *
       historyFactor(s.topic, history) *
       workedFactor(s.topic, results),
   );
 }
 
-// Highest first; ties by id so the order never changes between runs. `blocked` are
-// suggestions never to show (a no) or not to show again yet.
+// The order cards are shown in, from what's stored with each: what Jane is sure enough of
+// (LOW_CONFIDENCE_PERCENT) before any guess, then the most a person can expect to gain (the
+// score), with urgency breaking a tie (now, then soon, then later; gains in the same
+// RANK_TIE_RATIO band count as tied), then the exact score, then the id so the order never
+// changes between runs. The nightly scan and the chat's read-back both use it.
+export type RankKey = { id: string; confidencePercent: number; score: number; urgency: string };
+
+const urgencyWeight = (u: string) => URGENCY_WEIGHT[u as keyof typeof URGENCY_WEIGHT] ?? 0;
+const band = (score: number) =>
+  score > 0 ? Math.floor(Math.log(score) / Math.log(RANK_TIE_RATIO)) : -Infinity;
+
+export function byRank(a: RankKey, b: RankKey): number {
+  const sure = (k: RankKey) => (k.confidencePercent >= LOW_CONFIDENCE_PERCENT ? 1 : 0);
+  return (
+    sure(b) - sure(a) ||
+    (band(b.score) === band(a.score) ? 0 : band(b.score) > band(a.score) ? 1 : -1) ||
+    urgencyWeight(b.urgency) - urgencyWeight(a.urgency) ||
+    b.score - a.score ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+const keyOf = (r: Ranked): RankKey => ({
+  id: r.suggestion.id,
+  confidencePercent: r.suggestion.confidence.percent,
+  score: r.score,
+  urgency: r.suggestion.urgency,
+});
+
+// Best first (byRank). `blocked` are suggestions never to show (a no) or not to show again yet.
 export function rankSuggestions(
   suggestions: readonly Suggestion[],
   {
@@ -80,7 +110,7 @@ export function rankSuggestions(
   return suggestions
     .filter((s) => !blocked.has(s.id))
     .map((suggestion) => ({ suggestion, score: scoreOf(suggestion, history, results) }))
-    .sort((a, b) => b.score - a.score || a.suggestion.id.localeCompare(b.suggestion.id));
+    .sort((a, b) => byRank(keyOf(a), keyOf(b)));
 }
 
 // The ones that reach the person today.

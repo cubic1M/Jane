@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HARDSHIP_PROGRAMS } from "@/config/debt-trouble";
 import { leanMessage, leanPlan } from "./lean-plan";
 
 const input = {
@@ -10,8 +11,8 @@ const input = {
     { name: "Gym", monthlyCents: 4_500 },
   ],
   debts: [
-    { name: "Demo Credit Card", kind: "credit" },
-    { name: "Demo Student Loan", kind: "student" },
+    { name: "Demo Credit Card", kind: "card" as const },
+    { name: "Demo Student Loan", kind: "student" as const },
   ],
   stateName: "California",
 };
@@ -26,13 +27,19 @@ describe("leanPlan", () => {
     expect(plan.waitable.map((w) => w.name)).toEqual(["Gym", "Netflix"]);
   });
 
-  it("gives each debt a hardship option and falls back for unknown kinds", () => {
-    const plan = leanPlan({ ...input, debts: [...input.debts, { name: "Odd", kind: "other" }] });
+  it("gives each debt its kind's hardship option, from the one catalog /loans/help uses", () => {
+    // A card is a card (the lean plan's own catalog said "credit", so cards fell back to a loan's
+    // option), and buy now, pay later has its own (docs/feature-audit.md, cluster 11).
+    const plan = leanPlan({
+      ...input,
+      debts: [...input.debts, { name: "Pay in 4", kind: "bnpl" as const }],
+    });
     expect(plan.hardship.map((h) => h.program)).toEqual([
       "Card hardship program",
       "Student loan deferment or income-driven plan",
-      "Loan hardship options",
+      "Buy now, pay later",
     ]);
+    expect(plan.hardship[0].ask).toBe(HARDSHIP_PROGRAMS.card.ask);
   });
 
   it("names the state for the unemployment steps", () => {

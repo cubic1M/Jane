@@ -75,6 +75,9 @@ export const BORROW_MOVE_BPS = 25;
 // payment, is brought what a mortgage would look like; and what comparing lenders is worth: the
 // gap between the dearest and the cheapest stand-in rate on that amount, a year.
 export const BORROW_DETECT_DOWN_SHARE = 0.035;
+// The cash has to cover that down payment on at least this share of the mortgage that fits, so
+// the suggestion doesn't flicker on and off as a month's pay moves the amount a little.
+export const BORROW_DETECT_COVER_SHARE = 0.5;
 // Uneven pay: lenders usually want two years of tax returns, so the amount is less sure.
 export const BORROW_UNEVEN_EVIDENCE = {
   percent: 60,

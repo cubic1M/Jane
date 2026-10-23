@@ -1,3 +1,5 @@
+import { CREDIT_BANDS } from "@/config/debt";
+
 // Straight answers to the money decisions people ask about debt and credit (the chat's
 // decision questions): pay a card or invest, consolidate, use savings on debt, close a card,
 // a payday loan, a student loan early. Every answer is built from the person's own numbers
@@ -11,6 +13,10 @@ export const INVEST_RANGE = {
   highBps: 800,
   note: "Investing has historically returned roughly 4% to 8% a year over long periods, with some losing years along the way.",
 } as const;
+
+// 0% balance transfer cards are usually only approved for good credit: below this score the
+// consolidate answer doesn't pick one (it says why instead). The "good" band's floor.
+export const TRANSFER_MIN_SCORE = CREDIT_BANDS.good;
 
 // How sure Jane is of each answer, and why (shown as "80% sure: ..." under the answer).
 export const DECISION_CONFIDENCE: Readonly<Record<string, { percent: number; reason: string }>> = {

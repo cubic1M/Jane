@@ -14,6 +14,7 @@ import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
 import { loadCar } from "@/lib/car";
 import { loadHomeBuying } from "@/lib/home-buying";
+import { homeMeasureOf, mortgageOf } from "@/planning/home-vs-borrow";
 import { loadMedicalBills } from "@/lib/medical-bills";
 import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { loadCardInterest } from "@/lib/card-interest";
@@ -112,7 +113,11 @@ export async function runDebtTool(
     case "borrowing_power":
       await ensureBorrowingChecked(userId, { client, now });
       return out(
-        borrowingPowerToolOutput(await loadBorrowingPower(userId, { client, now }), money),
+        borrowingPowerToolOutput(
+          await loadBorrowingPower(userId, { client, now }),
+          money,
+          homeMeasureOf(await loadHomeBuying(userId, {}, { client, now })),
+        ),
       );
     case "family_credit":
       return out(familyCreditToolOutput(await loadFamilyCredit(userId, { client, now }), money));
@@ -138,8 +143,25 @@ export async function runDebtTool(
     }
     case "loan_fit": {
       const a = (input ?? {}) as { need?: unknown; amount_dollars?: unknown; debt_key?: unknown };
+      // No need given (a follow-up to the consolidation suggestion Jane brings unasked): the
+      // person's cards as one loan, when they owe on any.
+      if (a.need === undefined) {
+        const owesOnCards = (await loadDebts(userId, { client, now })).debts.some(
+          (d) => d.kind === "card" && (d.balanceCents ?? 0) > 0,
+        );
+        if (owesOnCards) a.need = "consolidation";
+      }
       if (typeof a.need !== "string" || !(FIT_NEEDS as readonly string[]).includes(a.need)) {
         return out({ error: "Pick a need: car, home, refinance, consolidation or personal." });
+      }
+      // A new loan is priced for an amount: without one there is nothing to price, which is
+      // not the same as nothing fitting (gap audit: it said "Nothing fits right now").
+      const amount = typeof a.amount_dollars === "number" && a.amount_dollars > 0;
+      if (!amount && (a.need === "car" || a.need === "home" || a.need === "personal")) {
+        return out({
+          needsAmount: true,
+          note: `I need an amount to price a ${a.need === "personal" ? "personal loan" : `${a.need} loan`}: ask how much they want to borrow${a.need === "personal" ? "" : ` or the ${a.need}'s price`}, then call again with amount_dollars.`,
+        });
       }
       const view = await loadFit(
         userId,
@@ -207,6 +229,7 @@ export async function runDebtTool(
     case "medical_bills":
       return out(medicalToolOutput(await loadMedicalBills(userId, { client, now }), money));
     case "home_purchase": {
+      await ensureBorrowingChecked(userId, { client, now });
       const price = (input as { price_cents?: unknown } | null)?.price_cents;
       return out(
         homeToolOutput(
@@ -216,6 +239,7 @@ export async function runDebtTool(
             { client, now },
           ),
           money,
+          mortgageOf((await loadBorrowingPower(userId, { client, now })).figures),
         ),
       );
     }

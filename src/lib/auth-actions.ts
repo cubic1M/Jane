@@ -3,16 +3,26 @@
 import { AuthError } from "next-auth";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
 import { INVITE_COOKIE } from "@/lib/auth-gate";
 import { checkCode, normalizeCode, redeemInvite, type CodeCheck } from "@/lib/invites";
 import { hit, ipKey } from "@/lib/rate-limit";
 import { TERMS_COOKIE } from "@/lib/terms";
 import { HOME_PATH } from "@/lib/session";
+import { isTrialUser } from "@/lib/trial-ids";
+
+// Signing up or in from a Try Jane session (spec step 138) starts the person's own account.
+// The sample person's session ends first: with it still there, Auth.js would link a Google
+// sign-in to the sample person, who is deleted after TRIAL_HOURS.
+async function leaveTrial(): Promise<void> {
+  const session = await auth();
+  if (isTrialUser(session?.user?.id)) await signOut({ redirect: false });
+}
 
 // signIn() finishes by throwing a redirect, so only Auth.js errors are caught here.
 async function signInOrShowError(provider: string, options: Record<string, string>) {
+  await leaveTrial();
   try {
     await signIn(provider, { ...options, redirectTo: HOME_PATH });
   } catch (error) {

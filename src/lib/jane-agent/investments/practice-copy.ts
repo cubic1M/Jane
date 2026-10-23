@@ -1,7 +1,16 @@
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { SCAN_LABELS, SCAN_KINDS, type ScanKind } from "@/config/practice-scan";
 import { formatReturn } from "@/insights/returns";
+import { BACKTEST_NOT_A_FORECAST } from "@/config/backtest";
 import type { Backtests } from "@/lib/investments/backtest";
+import type { LatestStrategies } from "@/lib/investments/strategy-eval";
+import { keyOf } from "@/planning/strategies/select";
+import {
+  STRATEGY_LABELS,
+  STRATEGY_NOT_A_FORECAST,
+  STRATEGY_RESEARCH_CHOICE,
+} from "@/config/strategies";
+import type { LoadedRuleReplays, RuleVerdict } from "@/lib/investments/rule-replay";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
@@ -168,6 +177,99 @@ export function backtestReply(
   return {
     body: `${lead}${lines.join("\n")}\n${b.label}, with fund costs and rebalancing, no taxes. ${b.notAForecast}`,
     actions: [BACKTESTS],
+    refs: { advice: true },
+  };
+}
+
+const STRATEGIES: MessageAction = {
+  id: "open",
+  label: "See every level",
+  kind: "link",
+  href: "/investments#level-strategies-heading",
+};
+
+// "Which strategy does my level use": the daily replay's choice for the level, and why.
+export function levelStrategyReply(
+  advice: boolean,
+  latest: LatestStrategies | null,
+  level: RiskLevel,
+  own: boolean,
+): Reply {
+  if (!advice)
+    return {
+      body: "The practice strategies are demo advice, for the demo bank's sample people only, so I can't show them for your real accounts.",
+      actions: [],
+      refs: {},
+    };
+  const name = own ? `Your level, ${RISK_LEVELS[level].label},` : RISK_LEVELS[level].label;
+  const research = STRATEGY_RESEARCH_CHOICE[level];
+  const c = latest?.byLevel[level] ?? {
+    id: research.id,
+    key: keyOf({ id: research.id, params: research.params }),
+    label: STRATEGY_LABELS[research.id],
+    why: research.why,
+  };
+  return {
+    body: `${name} follows ${c.id === "static" ? "its mix" : `the ${c.label.toLowerCase()} (${c.key})`}. ${c.why}\n${STRATEGY_NOT_A_FORECAST}`,
+    actions: [STRATEGIES],
+    refs: { advice: true },
+  };
+}
+const RULE_REPLAY: MessageAction = {
+  id: "open",
+  label: "See every level",
+  kind: "link",
+  href: "/investments#rule-replay-heading",
+};
+
+// "Did the extra rules help?": for one level (the person's own unless they named one), the
+// autopilot with its rules against plain rebalancing and buy and hold, then each rule's verdict.
+export function ruleReplayReply(
+  data: { advice: false } | { advice: true; data: LoadedRuleReplays | null },
+  level: RiskLevel,
+  own: boolean,
+): Reply {
+  if (!data.advice) {
+    return {
+      body: "Replays of the autopilot's rules are demo advice, for the demo bank's sample people only, so I can't show them for your real accounts.",
+      actions: [],
+      refs: {},
+    };
+  }
+  const l = data.data?.replays.levels.find((x) => x.level === level);
+  if (!data.data || !l) {
+    return { body: "I don't have a replay of the rules for that level.", actions: [], refs: {} };
+  }
+  const name = RISK_LEVELS[level].label;
+  const s = l.strategies;
+  const gap = (s.rules.totalReturn - s.rebalance.totalReturn) * 100;
+  const against =
+    Math.abs(gap) < 0.05
+      ? "level with plain rebalancing"
+      : `${Math.abs(gap).toFixed(1)} points ${gap > 0 ? "ahead of" : "behind"} plain rebalancing`;
+  // The rules grouped by what they did, in a few words each.
+  const group = (status: RuleVerdict["status"]) =>
+    l.verdicts.filter((v) => v.status === status).map((v) => v.label.toLowerCase());
+  const groups = (
+    [
+      ["Helped", group("helped")],
+      ["Made it worse", group("hurt")],
+      ["Turned off here, as worse on real prices", group("off")],
+      ["No real difference", group("no_difference")],
+      ["Not replayed", group("not_replayed")],
+    ] as const
+  )
+    .filter(([, rules]) => rules.length > 0)
+    .map(([label, rules]) => `${label}: ${rules.join("; ")}.`);
+  const d = data.data;
+  return {
+    body: [
+      `${own ? `Your level, ${name}` : name}: the autopilot with its extra rules came out ${against}, ${formatReturn(s.rules.totalReturn)} against ${formatReturn(s.rebalance.totalReturn)}.`,
+      `Buy and hold made ${formatReturn(s.hold.totalReturn)}, with a ${s.hold.worstDrop < s.rules.worstDrop ? "deeper" : "shallower"} worst drop (${formatReturn(s.hold.worstDrop)} against ${formatReturn(s.rules.worstDrop)}).`,
+      groups.join(" "),
+      `${d.label}, ${formatCents(d.replays.assumptions.monthlyAddCents)} a month. ${BACKTEST_NOT_A_FORECAST}`,
+    ].join("\n"),
+    actions: [RULE_REPLAY],
     refs: { advice: true },
   };
 }
