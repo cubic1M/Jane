@@ -1,4 +1,6 @@
 import { adviceMode } from "@/lib/advice-mode";
+import { loadPractice } from "@/lib/practice/portfolio";
+import { PRACTICE_ONLY_NOTE } from "./investments/practice-copy";
 import { dollarFigures } from "@/lib/guardrails";
 import { decisionReply, loadDecisionFacts } from "./decision";
 import { parseDecision } from "./decision-intents";
@@ -68,6 +70,7 @@ import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { NEWS_TOOLS, isNewsTool, runNewsTool } from "./news-tools";
+import { PRACTICE_TOOLS, isPracticeTool, runPracticeTool } from "./practice-tools";
 import { rebalanceOffer } from "./investments/replies";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
@@ -106,6 +109,9 @@ export const PROPOSABLE: readonly ActionId[] = [
   "goal.start",
   // Spec step 133.
   "invest.rebalance",
+  // Spec step 297: the practice portfolio's switch.
+  "practice.pause",
+  "practice.resume",
 ];
 
 // Shopping a policy for the person: Jane gets the quotes now and, in demo advice, offers the
@@ -395,7 +401,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "propose_action",
     description:
-      "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), invest.rebalance (demo advice mode: place the orders that move to the recommended mix, in the simulated brokerage), open (a link to a page; give page).",
+      "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), invest.rebalance (demo advice mode: place the orders that move to the recommended mix, in the simulated brokerage), practice.pause / practice.resume (demo advice mode: pause or resume Jane in the practice portfolio; give which: all, or opportunities for the small extra positions only), open (a link to a page; give page).",
     input_schema: {
       type: "object",
       properties: {
@@ -407,6 +413,11 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
             "For insurance.reshop: which policy to shop (car, home, renters, life, pet).",
         },
         finding_id: { type: "string" },
+        which: {
+          type: "string",
+          enum: ["all", "opportunities"],
+          description: "For practice.pause / practice.resume: all trading, or opportunities only.",
+        },
         goal_name: { type: "string" },
         goal_amount: { type: "number" },
         goal_month: { type: "string" },
@@ -461,6 +472,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...INVESTMENT_TOOLS,
   // Spec step 293: the practice portfolio's news.
   ...NEWS_TOOLS,
+  // Phase AW: the practice portfolio's settings, read and changed with a confirmation card.
+  ...PRACTICE_TOOLS,
 ];
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -478,6 +491,7 @@ export async function runChatTool(
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   if (isNewsTool(name)) return runNewsTool(userId, name, input, { client, now });
+  if (isPracticeTool(name)) return runPracticeTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
@@ -1423,6 +1437,33 @@ export async function proposeAction(
     }
     const reply = rebalanceOffer(plan);
     return { ok: true, actions: reply.actions, refs: reply.refs, line: reply.body };
+  }
+
+  if (id === "practice.pause" || id === "practice.resume") {
+    if (!(await adviceMode(userId, { client }))) return refuse(PRACTICE_ONLY_NOTE);
+    const view = await loadPractice(userId, { client, now });
+    if (!view) return refuse("There's no practice portfolio to pause or resume.");
+    const which = str(args.which) === "opportunities" ? "opportunities" : "all";
+    const pausing = id === "practice.pause";
+    const already = which === "all" ? view.paused : view.opportunitiesPaused;
+    const what = which === "all" ? "the practice portfolio" : "opportunities";
+    if (already === pausing) {
+      return refuse(
+        `${what[0].toUpperCase()}${what.slice(1)} is already ${pausing ? "paused" : "running"}.`,
+      );
+    }
+    return {
+      ok: true,
+      actions: [
+        {
+          id,
+          label: `${pausing ? "Pause" : "Resume"} ${which === "all" ? "Jane" : "opportunities"}`,
+          kind: "primary",
+        },
+      ],
+      refs: { advice: true, practiceWhich: which },
+      line: null,
+    };
   }
 
   // goal.start

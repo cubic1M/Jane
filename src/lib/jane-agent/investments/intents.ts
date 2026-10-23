@@ -56,6 +56,8 @@ export type InvestmentIntent = {
   which?: "all" | "opportunities";
   level?: RiskLevel;
   year?: number;
+  // "Why?" about the practice trades: every trade's reason, not just the first.
+  explain?: boolean;
 };
 
 const ACCOUNT_WORDS =
@@ -72,6 +74,8 @@ const HOLDINGS = new RegExp(
     `\\bwhat'?s in my (?:${ACCOUNT_WORDS}|investments?)\\b`,
     `\\bhow much (?:do i have |is there |money is |is |have i got )?(?:in|on) (?:my )?(?:${ACCOUNT_WORDS}|investments?)\\b`,
     `\\bhow (?:much|big) is my (?:${ACCOUNT_WORDS})\\b`,
+    "\\bhow much (?:money )?(?:do i have|have i got|have i|is|i have) invested\\b",
+    "\\b(?:total|all) (?:of )?(?:my )?investments\\b",
     "^(?:investments|holdings|portfolio|my 401\\(?k\\)?)$",
   ].join("|"),
 );
@@ -209,7 +213,7 @@ const PRACTICE_PAUSE =
 const PRACTICE_RESUME =
   /^(?:please )?(?:resume|unpause|restart) (?:it|that|trading)$|\b(?:resume|unpause|restart) (?:the |my )?(?:practice|paper) (?:portfolio|trading|money)\b|\bresume (?:the |my )?opportunities\b/;
 const BACKTEST =
-  /\bbacktests?\b|\bhow would (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? have (?:done|gone|performed)\b/;
+  /\bbacktests?\b|\bhow would (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? have (?:done|gone|performed)\b|\bhow did (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? (?:do|go|perform)\b/;
 const LEVEL_NAME = /\b(very low|very high|low|medium|high)\b/;
 const YEAR = /\b((?:19|20)\d\d)\b/;
 
@@ -218,17 +222,20 @@ function practiceIntent(text: string): InvestmentIntent | null {
   const which = /\bopportunities\b/.test(text) ? ("opportunities" as const) : ("all" as const);
   if (PRACTICE_PAUSE.test(text)) return { ...base, topic: "practice_pause", which };
   if (PRACTICE_RESUME.test(text)) return { ...base, topic: "practice_resume", which };
-  if (PRACTICE_LOG.test(text)) return { ...base, topic: "practice_log" };
+  if (PRACTICE_LOG.test(text)) {
+    return { ...base, topic: "practice_log", ...(/\bwhy\b/.test(text) ? { explain: true } : {}) };
+  }
   if (!BACKTEST.test(text)) return null;
+  return { ...base, topic: "backtest", ...levelAndYear(text) };
+}
+
+// The risk level and year a replay question names, either or both ("what about very low",
+// "and in 2020").
+export function levelAndYear(text: string): { level?: RiskLevel; year?: number } {
   const name = LEVEL_NAME.exec(text)?.[1];
   const level = ([1, 2, 3, 4, 5] as const).find((l) => RISK_LEVELS[l].label.toLowerCase() === name);
   const year = YEAR.exec(text)?.[1];
-  return {
-    ...base,
-    topic: "backtest",
-    ...(level ? { level } : {}),
-    ...(year ? { year: Number(year) } : {}),
-  };
+  return { ...(level ? { level } : {}), ...(year ? { year: Number(year) } : {}) };
 }
 
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {

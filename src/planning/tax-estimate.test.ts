@@ -296,3 +296,35 @@ describe("state estimates", () => {
     expect(Object.keys(STATE_TAX)).toHaveLength(51);
   });
 });
+
+describe("Social Security in the estimate (taxes QA)", () => {
+  const ruth = (benefits: number): EstimateInput => ({
+    year: 2026,
+    filingStatus: "single",
+    childrenUnder17: 0,
+    otherDependants: 0,
+    state: null,
+    income: { ...NO_INCOME, retirementCents: $(28_080), socialSecurityBenefitsCents: $(benefits) },
+    studentLoanInterestCents: 0,
+    mortgageInterestCents: 0,
+    charityCents: 0,
+    medicalCents: 0,
+    otherStateLocalTaxCents: 0,
+    federalWithheldCents: 0,
+    federalEstimatedPaidCents: 0,
+    stateWithheldCents: 0,
+    stateEstimatedPaidCents: 0,
+  });
+
+  it("counts only the taxable part, from provisional income (Publication 915)", () => {
+    const e = estimateTaxes(ruth(32_160));
+    expect(e.socialSecurityTaxableCents).toBe($(13_136));
+    expect(e.agiCents).toBe($(28_080) + $(13_136));
+    expect(e.totalTaxCents).toBeGreaterThan(estimateTaxes(ruth(0)).totalTaxCents);
+  });
+
+  it("counts none of it under the first line", () => {
+    const low = { ...ruth(20_000), income: { ...ruth(20_000).income, retirementCents: $(5_000) } };
+    expect(estimateTaxes(low).socialSecurityTaxableCents).toBe(0);
+  });
+});

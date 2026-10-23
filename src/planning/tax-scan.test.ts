@@ -50,4 +50,15 @@ describe("tax suggestions ranked with the rest of the scan", () => {
     expect(new Set(found.map((f) => f.rank)).size).toBe(2);
     expect(found.find((f) => f.topic === "irmaa_watch")!.month).toBe(10);
   });
+
+  it("marks recommendations as demo advice and facts as not", () => {
+    const found = taxFound(
+      [s({ topic: "roth_conversion" }), s({ topic: "irmaa_watch", worthKind: "risk" })],
+      10,
+    );
+    expect(Object.fromEntries(found.map((f) => [f.topic, f.advice]))).toEqual({
+      roth_conversion: true,
+      irmaa_watch: false,
+    });
+  });
 });

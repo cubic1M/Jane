@@ -139,8 +139,8 @@ export async function answerTaxIntent(
       };
     }
     case "profile": {
-      const { view, autopilot } = await loadWorkingProfile(userId, { client, now });
-      return taxProfileReply(view, autopilot);
+      const { view, taxes } = await loadWorkingProfile(userId, { client, now });
+      return taxProfileReply(view, taxes.level);
     }
     case "set_filing":
       return setFilingReply(intent.status);

@@ -333,8 +333,12 @@ describe("business owners' tax structure", () => {
 
 describe("inherited money", () => {
   it("raises an inherited IRA for the couple who have one, never for a spouse's, and ranks it by years left", () => {
-    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira"))).toEqual(["preretire"]);
-    const s = run("preretire").find((x) => x.topic === "inherited_ira")!;
+    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira_spread"))).toEqual([
+      "preretire",
+    ]);
+    // The deadline needs the year the owner died; nobody has told it yet.
+    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira"))).toEqual([]);
+    const s = run("preretire").find((x) => x.topic === "inherited_ira_spread")!;
     expect(s.worthKind).toBe("saves");
     expect(s.worthCents).toBeGreaterThanOrEqual(50_000);
     expect(s.confidence.percent).toBeLessThanOrEqual(50);
@@ -343,19 +347,22 @@ describe("inherited money", () => {
       /within 10 years of the owner's death.*A tax professional should confirm/,
     );
     // From a spouse it is theirs to roll over: no deadline, nothing to spread.
-    expect(
-      topics("preretire", (d) => ({ ...d, told: { inherited_from_spouse: true } })),
-    ).not.toContain("inherited_ira");
+    const spouse = topics("preretire", (d) => ({ ...d, told: { inherited_from_spouse: true } }));
+    expect(spouse).not.toContain("inherited_ira");
+    expect(spouse).not.toContain("inherited_ira_spread");
     // Told the year, the date and the urgency follow.
     const told = (year: number) =>
-      run("preretire", (d) => ({ ...d, told: { inherited_ira_death_year: year } })).find(
-        (x) => x.topic === "inherited_ira",
+      run("preretire", (d) => ({ ...d, told: { inherited_ira_death_year: year } })).filter((x) =>
+        x.topic.startsWith("inherited_ira"),
       );
-    expect(told(2023)?.why).toContain("by December 31, 2033");
-    expect(told(2023)?.urgency).toBe("later");
-    expect(told(2018)?.urgency).toBe("soon");
-    expect(told(2016)?.urgency).toBe("now");
-    expect(told(2023)?.confidence.percent).toBeGreaterThan(50);
+    expect(told(2023).map((x) => x.topic)).toEqual(["inherited_ira_spread"]);
+    expect(told(2023)[0].why).toContain("by December 31, 2033");
+    expect(told(2023)[0].urgency).toBe("later");
+    expect(told(2018)[0].urgency).toBe("soon");
+    expect(told(2023)[0].confidence.percent).toBeGreaterThan(50);
+    // The last year is the deadline alone: a fact, with the 25% penalty.
+    expect(told(2016).map((x) => x.topic)).toEqual(["inherited_ira"]);
+    expect(told(2016)[0]).toMatchObject({ urgency: "now", worthKind: "risk" });
   });
 
   it("doesn't count an inherited IRA as money to convert to a Roth", () => {
