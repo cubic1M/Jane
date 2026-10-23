@@ -18,6 +18,7 @@ import {
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { inList } from "./helpers";
+import { priceIncrease } from "./rules/price-increase";
 import { buildStreams, merchantOf, type Stream } from "./streams";
 import type { DetectionInput, DetectionTransaction } from "./types";
 import { addDays, daysBetween, median } from "./units";
@@ -129,9 +130,12 @@ export function unusualAlerts(
     });
   }
 
-  // 3. A regular bill much higher than usual.
+  // 3. A regular bill much higher than usual. Not one that's a price rise (a phone or internet
+  // bill with a steady price): its price-rise card and heads-up say it already
+  // (docs/feature-audit.md, cluster 10).
   for (const s of streams) {
     if (!s.active || !s.pfcPrimary || !UNUSUAL_BILL_PRIMARIES.includes(s.pfcPrimary)) continue;
+    if (priceIncrease(input, [s]).length > 0) continue;
     const last = s.charges.at(-1);
     const merchantKey = s.merchantKey;
     if (

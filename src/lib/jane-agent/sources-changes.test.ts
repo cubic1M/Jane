@@ -96,6 +96,54 @@ describe("the changes source", () => {
     ).toHaveLength(1);
   });
 
+  it("says a new subscription and its subscription card once (docs/feature-audit.md, cluster 10)", () => {
+    const card: SnapshotFinding = {
+      ...finding,
+      findingId: "f2",
+      type: "subscription_review",
+      title: "Review your Peacock subscription",
+      fingerprint: "fp2",
+    };
+    const s = snapshot(
+      [
+        change({
+          kind: "new_subscription",
+          key: "new:merchant:peacock",
+          title: "Peacock is a new regular charge: $7.99, since Sep 20.",
+          streamKey: "merchant:peacock",
+          finding: { id: "f2", type: "subscription_review", status: "new", handledBy: null },
+        }),
+      ],
+      { findings: [card] },
+    );
+    const [message] = fromChanges(s);
+    expect(message).toMatchObject({
+      kind: "decision",
+      body: "Peacock is a new regular charge: $7.99, since Sep 20. Did you mean to sign up? If not, I can cancel it.",
+      refs: { findingId: "f2", fingerprint: "fp2" },
+    });
+    expect(message.actions.map((a) => [a.id, a.label])).toEqual([
+      ["change.look", "Cancel it"],
+      ["change.expected", "That's expected"],
+      ["open", "Open"],
+    ]);
+    // The card isn't asked again on its own.
+    expect(gather(s, MORNING, SYNC).filter((m) => m.source === "findings")).toEqual([]);
+  });
+
+  it("leaves a late paycheck to the lean-plan question (docs/feature-audit.md, cluster 10)", () => {
+    const late = change({
+      kind: "paycheck_late",
+      key: "late:acme:2026-10-15",
+      title: "Your paycheck is late.",
+    });
+    expect(fromChanges(snapshot([{ ...late, askedByLean: true }]))).toEqual([]);
+    // "What changed?" still lists it.
+    expect(changesReply([{ ...late, askedByLean: true }]).body).toBe(
+      "One thing changed lately.\n- Your paycheck is late.",
+    );
+  });
+
   it("stays quiet about one autopilot or the person already acted on", () => {
     for (const handledBy of ["rule", "person"] as const) {
       const s = snapshot([change({ finding: { ...open, handledBy } })], { findings: [finding] });
