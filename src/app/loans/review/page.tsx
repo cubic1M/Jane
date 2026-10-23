@@ -37,6 +37,12 @@ async function ReviewContent() {
     await Promise.all([ensureChecked(user.id), ensureBorrowingChecked(user.id)]);
   }
   const monthly = kept ?? (await computeCreditMonthly(user.id));
+  // The lower card rate is one step in both lists (docs/feature-audit.md, cluster 14): shown
+  // once, in the review when it's there.
+  const rateShown = data.available && data.items.some((i) => i.key === "rates");
+  const monthlyItems = rateShown
+    ? monthly.items.filter((i) => i.key !== "card_rate")
+    : monthly.items;
   const autopilot = DEBT_AUTOPILOT[data.level].find((s) => s.step === 230);
   const monthlyAutopilot = DEBT_AUTOPILOT[data.level].find((s) => s.step === 251);
   return (
@@ -103,7 +109,7 @@ async function ReviewContent() {
                 : "Jane's monthly pass hasn't run yet; this is how things stand today."}
             </p>
             <ul aria-label="Check-up items" className="flex flex-col gap-3">
-              {monthly.items.map((i) => (
+              {monthlyItems.map((i) => (
                 <li key={i.key} className={CARD}>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <h3 className="font-semibold">{i.title}</h3>
