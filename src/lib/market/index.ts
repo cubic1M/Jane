@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { AlpacaMarketData } from "./alpaca";
 import { EdgarMarketData } from "./edgar";
 import { SampleMarketData } from "./sample";
@@ -15,7 +16,15 @@ export const WATCH_CIKS: Readonly<Record<string, string>> = {
   TSLA: "0001318605",
 };
 
+// A replay's own market data (./memo.ts), for everything it calls while it runs.
+const replayFeed = new AsyncLocalStorage<MarketData>();
+export function withMarketData<T>(feed: MarketData, run: () => Promise<T>): Promise<T> {
+  return replayFeed.run(feed, run);
+}
+
 export function marketData(env: Record<string, string | undefined> = process.env): MarketData {
+  const replay = replayFeed.getStore();
+  if (replay) return replay;
   const id = env.ALPACA_API_KEY_ID;
   const secret = env.ALPACA_API_SECRET_KEY;
   if (!id || !secret) return new SampleMarketData();
