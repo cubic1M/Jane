@@ -4,8 +4,10 @@ import { AppHeader } from "@/components/app-header";
 import { previousMonth } from "@/insights/check-in";
 import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { formatCents } from "@/lib/money";
+import { loadClose, type CloseView } from "@/lib/month-close";
 import { storedReport } from "@/lib/monthly-report-store";
 import { requireUser } from "@/lib/session";
+import { categoryWords } from "@/planning/month-close";
 import { monthName, reportLines } from "@/planning/monthly-report";
 
 // The month's one report (spec step 148), with the monthly check-in folded in (spec step 45;
@@ -40,7 +42,11 @@ async function MonthlyContent({
   const stored = await storedReport(user.id, asked);
   const month = asked ?? stored?.month ?? latest;
   const report = stored?.month === month ? stored.report : null;
-  const checkIn = await loadCheckIn(user.id, month);
+  const [checkIn, close] = await Promise.all([
+    loadCheckIn(user.id, month),
+    // Spec step 244: the month as Jane closed it (or is closing it).
+    loadClose(user.id, { month }),
+  ]);
   const summary = report?.summary ?? (await summaryFor(user.id, checkIn));
   const before = previousMonth(`${month}-01`);
   const after = month < latest ? monthAfter(month) : null;
@@ -98,6 +104,8 @@ async function MonthlyContent({
           </div>
         ))}
       </section>
+
+      {close && <MonthClose view={close} />}
 
       {report && (
         <ul className="flex flex-col gap-3">
@@ -186,6 +194,55 @@ async function MonthlyContent({
         </section>
       )}
     </>
+  );
+}
+
+// Spec step 244: the month as Jane closed it. Its figures are kept; only a correction changes them.
+function MonthClose({ view }: { view: CloseView }) {
+  const f = view.figures;
+  return (
+    <section
+      id="close"
+      className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+    >
+      <h2 className="text-xl font-semibold">
+        {monthName(view.month)}: {view.status === "closed" ? "closed" : "closing"}
+      </h2>
+      {view.status === "waiting" ? (
+        <p className="text-sm">
+          Waiting on {view.uncertain.length} charge{view.uncertain.length === 1 ? "" : "s"} I
+          wasn&apos;t sure of. Answer in the chat, or{" "}
+          <Link href="/transactions" className={LINK}>
+            fix their categories
+          </Link>
+          .
+        </p>
+      ) : (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+          <dt className={MUTED}>Came in</dt>
+          <dd>{formatCents(f.incomeCents)}</dd>
+          <dt className={MUTED}>Went out</dt>
+          <dd>{formatCents(f.spendingCents)}</dd>
+          {f.netWorthCents !== null && (
+            <>
+              <dt className={MUTED}>Net worth at the close</dt>
+              <dd>{formatCents(f.netWorthCents)}</dd>
+            </>
+          )}
+          {f.topCategories.map((c) => (
+            <div key={c.category} className="contents">
+              <dt className={MUTED}>{categoryWords(c.category)}</dt>
+              <dd>{formatCents(c.cents)}</dd>
+            </div>
+          ))}
+          <dt className={MUTED}>Books</dt>
+          <dd>{f.booksOpen === 0 ? "Added up" : `${f.booksOpen} marked`}</dd>
+        </dl>
+      )}
+      {view.correctedAt && (
+        <p className={MUTED}>Updated after your correction on {view.correctedAt.slice(0, 10)}.</p>
+      )}
+    </section>
   );
 }
 

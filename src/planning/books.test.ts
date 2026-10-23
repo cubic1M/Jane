@@ -7,6 +7,7 @@ import {
   reconcile,
   type Acct,
   type Tx,
+  unmatchedToSay,
 } from "./books";
 
 // Spec step 238, pure: balances against transactions, the same account linked twice, two
@@ -174,5 +175,45 @@ describe("linkProblems", () => {
     const { broken, stale } = linkProblems(links, "2026-10-19");
     expect(broken.map((l) => l.id)).toEqual(["1"]);
     expect(stale.map((l) => l.id)).toEqual(["2"]);
+  });
+});
+
+describe("unmatched transfers worth saying (books QA)", () => {
+  const out = (id: string, date: string, description: string): Tx => ({
+    id,
+    accountId: "chk",
+    date,
+    amountCents: 50_000,
+    description,
+    pfcPrimary: "TRANSFER_OUT",
+  });
+  const account = (subtype: string): Acct => ({
+    id: subtype,
+    itemId: "i",
+    name: subtype,
+    mask: null,
+    type: "investment",
+    subtype,
+  });
+
+  it("counts a contribution to a linked HSA or IRA as arrived", () => {
+    const sent = [out("a", "2026-09-15", "TRANSFER TO HEALTHEQUITY HSA")];
+    expect(unmatchedToSay(sent, [account("hsa")])).toEqual([]);
+    expect(unmatchedToSay(sent, [account("brokerage")])).toEqual(sent);
+    expect(
+      unmatchedToSay([out("b", "2026-09-15", "VANGUARD ROTH IRA CONTRIB")], [account("roth")]),
+    ).toEqual([]);
+  });
+
+  it("says the same payee once, by its latest transfer", () => {
+    const said = unmatchedToSay(
+      [
+        out("a", "2026-09-15", "ZELLE TO ALEX"),
+        out("b", "2026-10-15", "ZELLE TO ALEX"),
+        out("c", "2026-10-02", "WIRE TO TITLE CO"),
+      ],
+      [],
+    );
+    expect(said.map((t) => t.id)).toEqual(["c", "b"]);
   });
 });

@@ -19,6 +19,7 @@ import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
 import { checkResults } from "@/lib/worked";
 import { runBooksCheck } from "@/lib/books";
+import { runMonthClose } from "@/lib/month-close";
 import { runSteadyPay } from "@/lib/steady-pay";
 import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
@@ -106,6 +107,8 @@ export async function runJaneAgent(
       // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
       runTaxAutopilotSafely(userId, { client, now }),
     ]);
+  // Spec step 244: last month closed once the books are checked and its report is made.
+  if (!early) await safely("Monthly close", () => runMonthClose(userId, { client, now }));
   // Spec step 265: a first chat leads with suggestions, so a person Jane has said nothing to
   // yet is scanned now rather than at tonight's run.
   if ((await scopedFor(userId, client).janeMessages.count()) === 0) {

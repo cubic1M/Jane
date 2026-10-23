@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { RATE_ASK_CUT_BPS } from "@/config/card-interest";
 import { nextStatementClose } from "./credit-building";
-import { daysBetween, interestCents, payEarlySaving, promoPlan, rateAsk } from "./card-interest";
+import {
+  daysBetween,
+  interestCents,
+  payEarlySaving,
+  promoPlan,
+  rateAsk,
+  rateStep,
+} from "./card-interest";
 
 describe("interest and paying earlier", () => {
   it("charges the daily share of the yearly rate", () => {
@@ -121,5 +128,43 @@ describe("the request for a lower rate", () => {
     expect(ask.body).toContain("22.99%");
     expect(ask.script).toContain("Call the number on the back");
     expect(ask.script).toContain("$72.32 a year");
+  });
+});
+
+// docs/feature-audit.md, cluster 14: the yearly debt review and the monthly check-up read the
+// same lower-rate step, so the page never shows "Ask X" next to "Asked Y this month".
+describe("the lower-rate step", () => {
+  const card = (name: string, sent: boolean) => ({
+    name,
+    rate: {
+      id: `rate-${name}`,
+      savingYearlyCents: 9_000,
+      sent: sent ? { sentOn: "2026-10-20" } : null,
+    },
+  });
+  const view = (cards: ReturnType<typeof card>[], requests: string[][] = []) => ({
+    available: true,
+    cards,
+    requests: requests.map(([cardName, sentOn]) => ({ cardName, sentOn })),
+  });
+
+  it("says the request sent this month first, before the next card to ask", () => {
+    const ci = view([card("Visa", true), card("Amex", false)], [["Visa", "2026-10-20"]]);
+    expect(rateStep(ci, "2026-10-27")).toEqual({ kind: "asked", cards: ["Visa"] });
+  });
+
+  it("offers the next card once the last request is over a month old", () => {
+    const ci = view([card("Visa", true), card("Amex", false)], [["Visa", "2026-09-01"]]);
+    expect(rateStep(ci, "2026-10-27")).toEqual({
+      kind: "next",
+      name: "Amex",
+      requestId: "rate-Amex",
+      savingYearlyCents: 9_000,
+    });
+  });
+
+  it("has nothing to say when no card is worth asking, or rate requests aren't available", () => {
+    expect(rateStep(view([card("Visa", true)], [["Visa", "2026-08-01"]]), "2026-10-27")).toBeNull();
+    expect(rateStep({ ...view([card("Amex", false)]), available: false }, "2026-10-27")).toBeNull();
   });
 });
