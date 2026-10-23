@@ -61,8 +61,15 @@ export function Sparkline({
 }) {
   if (points.length < 2) return null;
   const values = points.map((p) => p.value);
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
+  // A small change stays small: the line's height covers at least 5% of the value, so a 1% move
+  // doesn't look like a climb.
+  const span = Math.max(
+    Math.max(...values) - Math.min(...values),
+    Math.abs(Math.max(...values)) * 0.05,
+  );
+  const mid = (Math.max(...values) + Math.min(...values)) / 2;
+  const lo = mid - span / 2;
+  const hi = mid + span / 2;
   const pad = 4;
   const x = (i: number) => pad + (i / (points.length - 1)) * (width - pad * 2);
   const y = (v: number) =>
@@ -76,16 +83,15 @@ export function Sparkline({
       role="img"
       aria-label={label}
       viewBox={`0 0 ${width} ${height}`}
-      className="h-10 w-full max-w-48 overflow-visible"
+      className="hub-pop h-10 w-full max-w-48 overflow-visible"
       preserveAspectRatio="none"
     >
       <path
         d={d}
-        pathLength={1}
         fill="none"
         strokeWidth={2}
         vectorEffect="non-scaling-stroke"
-        className="hub-draw stroke-emerald-700 dark:stroke-emerald-400"
+        className="stroke-emerald-700 dark:stroke-emerald-400"
       />
       {points.map((p, i) => (
         <circle
