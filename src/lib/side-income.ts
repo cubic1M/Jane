@@ -152,7 +152,10 @@ export async function loadSideIncome(
   const gigCents = platforms.reduce((s, p) => s + p.payoutsCents, 0);
 
   let bothWays: SideIncomeView["bothWays"] = null;
-  if (gigCents >= SIDE_INCOME_MIN_CENTS) {
+  // Hobby or business is a question about income on the side: someone who lives on their gig
+  // and freelance income runs a business (taxes QA: Sam was told a hobby would cost less).
+  const mainCents = estimate.input.income.wagesCents + estimate.input.income.retirementCents;
+  if (gigCents >= SIDE_INCOME_MIN_CENTS && mainCents > gigCents) {
     const input = estimate.input;
     // As a business: the payouts less the business expenses tagged; as a hobby: all of it,
     // with no expenses and no self-employment tax.

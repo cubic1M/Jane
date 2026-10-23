@@ -68,6 +68,20 @@ export const INCOME_KINDS = {
   { label: string; seen: string; form: string; categories: readonly PfcDetailed[] }
 >;
 export type IncomeKind = keyof typeof INCOME_KINDS;
+
+// A shop's sales arrive from its card processor ("SQUARE DEPOSIT", "SHOPIFY PAYOUT"), often
+// categorized as other income: counted as business income (taxes QA, 2026-10-22). Freelance
+// payouts already in INCOME_KINDS.self_employed's categories aren't counted twice.
+// A shop deposits its sales again and again; a one-off platform payout is side income (step 173).
+export const BUSINESS_SALES_MIN_DEPOSITS = 6;
+export const BUSINESS_SALES_CATEGORIES = [
+  "INCOME_OTHER",
+  "INCOME_OTHER_INCOME",
+  "TRANSFER_IN_DEPOSIT",
+  "TRANSFER_IN_OTHER_TRANSFER_IN",
+] as const;
+export const BUSINESS_SALES_PAYEE =
+  /\b(?:SQUARE|SQ \*|SHOPIFY|TOAST|CLOVER|STRIPE|ETSY|AMAZON PAYMENTS|PAYPAL)\b[^]*\b(?:DEPOSIT|PAYOUT|TRANSFER|SETTLEMENT)\b/i;
 export const INCOME_KIND_ORDER = Object.keys(INCOME_KINDS) as IncomeKind[];
 export const isIncomeKind = (value: unknown): value is IncomeKind =>
   typeof value === "string" && Object.hasOwn(INCOME_KINDS, value);

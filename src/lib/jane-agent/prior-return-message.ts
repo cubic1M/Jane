@@ -89,7 +89,7 @@ export function lastReturnReply(
       body:
         waiting.length > 0
           ? "I've read a return you uploaded; confirm it and I'll check it against your accounts."
-          : "Upload a copy of a return you filed (Documents, kind \"Tax return\"). I'll read it, you confirm it, and I'll look for money left behind.",
+          : 'Upload a copy of a return you filed (Documents, kind "Tax return"). I\'ll read it, you confirm it, and I\'ll look for money left behind. To check one before you file, upload the draft as "Draft tax return" instead and I\'ll check every line.',
       refs: {},
       actions: [{ id: "open", label: "Last year's return", kind: "link", href: RETURN_HREF }],
     };

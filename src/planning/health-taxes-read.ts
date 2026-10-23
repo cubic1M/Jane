@@ -131,16 +131,23 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
         })
       : null;
 
-  // HSA deposits: money into a linked HSA, or (with none linked) money out to one by name.
+  // HSA deposits (taxes QA: a bank's transactions never include an investment account's, so
+  // money into a linked HSA wasn't seen in the app). The HSA's own contributions when its bank
+  // reports them (extras.hsaContributions); otherwise money into a linked HSA's account, or out
+  // of the person's other accounts to an HSA by name: never both, so nothing counts twice.
+  const reported = data.extras?.hsaContributions;
   const hsaIds = new Set(data.accounts.filter((a) => a.subtype === "hsa").map((a) => a.id));
   const puts = data.transactions.filter(
     (t) =>
       t.date.startsWith(String(year)) &&
-      (hsaIds.size > 0
-        ? hsaIds.has(t.accountId) && t.amountCents < 0
+      (hsaIds.has(t.accountId)
+        ? t.amountCents < 0
         : t.amountCents > 0 && HSA_DEPOSIT.test(t.description)),
   );
-  const contributed = puts.reduce((s, t) => s + Math.abs(t.amountCents), 0);
+  const fromRows = puts.reduce((s, t) => s + Math.abs(t.amountCents), 0);
+  const useReported = reported !== undefined && reported !== null && reported.count > 0;
+  const contributed = useReported ? reported.cents : fromRows;
+  const depositCount = useReported ? reported.count : puts.length;
   const projected = Math.round(contributed + (contributed / month) * (12 - month));
   const family = status === "married_joint";
   const limit = hsaLimitFor(family, toldNumber(f.age.value));
@@ -188,7 +195,7 @@ export function readHealthTaxes(profile: Profile, data: ProfileInput): HealthTax
       check,
     },
     hsa: {
-      deposits: puts.length,
+      deposits: depositCount,
       contributedCents: contributed,
       projectedCents: projected,
       family,

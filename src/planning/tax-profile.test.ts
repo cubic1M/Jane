@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   findTaxFacts,
+  guessFilingStatus,
   incomeLine,
   listOf,
   taxProfileView,
@@ -211,5 +212,29 @@ describe("wording", () => {
     );
     expect(listOf(["a"])).toBe("a");
     expect(listOf(["a", "b", "c"])).toBe("a, b and c");
+  });
+});
+
+describe("how a couple is estimated before they say how they file (taxes QA)", () => {
+  it("guesses married filing jointly from a joint account or two employers, and says why", () => {
+    expect(
+      guessFilingStatus({
+        jointAccounts: 1,
+        payrollNames: ["SPRINGFIELD SCHOOLS PAYROLL", "NORTHWIND HEALTH PAYROLL"],
+      }),
+    ).toEqual({
+      status: "married_joint",
+      why: "a joint account and two employers' paychecks",
+    });
+    expect(guessFilingStatus({ jointAccounts: 1, payrollNames: [] })?.why).toBe("a joint account");
+  });
+
+  it("guesses nothing for one person with one employer", () => {
+    expect(
+      guessFilingStatus({
+        jointAccounts: 0,
+        payrollNames: ["ACME CORP PAYROLL", "ACME CORP PAYROLL PPD"],
+      }),
+    ).toBeNull();
   });
 });

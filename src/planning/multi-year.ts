@@ -239,12 +239,20 @@ export function findMoves(plan: Plan, base = project(plan)): Move[] {
       if (amount < MIN_CONVERSION_CENTS) continue;
       const adjust: Adjust = { conversions: { [row.year]: amount } };
       const e = effect(adjust);
+      // Taxes QA: what the conversion costs this year, Social Security's taxable part included,
+      // so the reason gives the real rate rather than the bracket's.
+      const rateNow = Math.round(
+        ((taxFor(plan, row.year, adjust).totalTaxCents - row.totalTaxCents) / amount) * 100,
+      );
       if (e >= MOVE_MIN_CENTS) {
         cands.push({
           key: `roth:${row.year}`,
           kind: "roth",
           title: `Convert ${dollars(amount)} to a Roth IRA in ${row.year}`,
-          why: `${row.year} has room in the 12% bracket (${dollars(row.headroom12Cents)} left). Converting now is taxed at the low rate; the same money would be taxed later at a higher one when you withdraw it.`,
+          why:
+            rateNow > 13
+              ? `${row.year} has room in the 12% bracket (${dollars(row.headroom12Cents)} left), but with your Social Security each converted dollar also makes more of it taxable, so converting costs about ${rateNow}% this year. Over the years it still comes out ahead, because the same money would be taxed at more than that when you withdraw it.`
+              : `${row.year} has room in the 12% bracket (${dollars(row.headroom12Cents)} left). Converting now is taxed at the low rate; the same money would be taxed later at a higher one when you withdraw it.`,
           year: row.year,
           fromYear: null,
           amountCents: amount,
