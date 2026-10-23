@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
+import { SideChat } from "@/components/side-chat/side-chat";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,6 +37,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <SiteFooter />
+        {/* Docked beside every signed-in page, and kept when the page changes. */}
+        <SideChat />
         <ServiceWorker />
       </body>
     </html>

@@ -1,8 +1,8 @@
-// The main menu (spec steps 79, 81, 86), reorganised: the chat first, then a Details menu
-// with one entry per place: Today, Money, the four "Grow and protect" sectors (Investments,
-// Loans and debt, Insurance, Taxes), Ahead and What Jane did. Each lands on a hub that links
-// its own sub-pages. A page's sub-pages (/report/abc, /settings/two-factor) belong with it.
-// Ask left the menu for the chat's message box, and still lights up Chat.
+// The main menu (spec steps 79, 81, 86; the home hub, docs/design/home-hub.md): the area tabs
+// along the top (Home, Spending & bills, Insurance, Loans & credit, Taxes, Investing, Plans &
+// goals), each landing on a hub that links its own sub-pages. The chat is the side panel, not a
+// tab; What Jane did and Settings are in the profile menu. A page's sub-pages (/report/abc,
+// /settings/two-factor) belong with it. Ask lights up Chat.
 
 export type TabKey =
   | "chat"
@@ -23,21 +23,21 @@ export type Tab = {
   // The pages it covers, its own first. Its sub-pages are listed on the page itself (a hub
   // page links each of them), not in the menu.
   paths: readonly string[];
-  // A heading the menu shows above a run of tabs with the same one.
+  // Kept for lanes that still pass it; the top bar doesn't group tabs.
   group?: string;
 };
 
 // THE MENU, in order. Every signed-in page belongs to exactly one tab (the tests read
 // src/app and fail on a page that doesn't), so a lane adding a page adds its path to its
-// sector's tab here and nowhere else; a new sector adds a tab. Settings isn't a tab: it's
-// in the profile menu, and lights that up. Documents, things you own and the household are
-// under it, linked from Money and Settings.
+// area's tab here and nowhere else. Settings isn't a tab: it's in the profile menu with What
+// Jane did, and lights that up. Documents, things you own and the household are under it,
+// linked from Spending & bills and Settings.
 export const TABS: readonly Tab[] = [
   { key: "chat", label: "Chat", href: "/chat", paths: ["/chat", "/ask"] },
-  { key: "today", label: "Today", href: "/home", paths: ["/home"] },
+  { key: "today", label: "Home", href: "/home", paths: ["/home"] },
   {
     key: "money",
-    label: "Money",
+    label: "Spending & bills",
     href: "/money",
     paths: [
       "/money",
@@ -53,27 +53,13 @@ export const TABS: readonly Tab[] = [
       "/figures",
     ],
   },
-  {
-    key: "investments",
-    label: "Investments",
-    href: "/investments",
-    paths: ["/investments"],
-    group: "Grow and protect",
-  },
+  { key: "insurance", label: "Insurance", href: "/insurance", paths: ["/insurance"] },
   {
     key: "loans",
-    label: "Loans and debt",
+    label: "Loans & credit",
     href: "/loans",
     // The payoff planner (/debt) is the debt half of this tab.
     paths: ["/loans", "/debt"],
-    group: "Grow and protect",
-  },
-  {
-    key: "insurance",
-    label: "Insurance",
-    href: "/insurance",
-    paths: ["/insurance"],
-    group: "Grow and protect",
   },
   {
     key: "taxes",
@@ -81,11 +67,16 @@ export const TABS: readonly Tab[] = [
     href: "/taxes",
     // The tax-time pack is the taxes tab's own page.
     paths: ["/taxes", "/tax-pack"],
-    group: "Grow and protect",
+  },
+  {
+    key: "investments",
+    label: "Investing (practice)",
+    href: "/investments",
+    paths: ["/investments"],
   },
   {
     key: "ahead",
-    label: "Ahead",
+    label: "Plans & goals",
     href: "/ahead",
     paths: [
       "/ahead",
@@ -131,8 +122,11 @@ export function tabsClaiming(pathname: string): TabKey[] {
   );
 }
 
-// Spec step 86: the tabs behind the Details menu, in menu order.
-export const DETAIL_TABS: readonly Tab[] = TABS.filter((tab) => tab.key !== "chat");
+// The area tabs along the top, in order: every place but the chat (the side panel) and What
+// Jane did (in the profile menu, with Settings).
+export const AREA_TABS: readonly Tab[] = TABS.filter(
+  (tab) => tab.key !== "chat" && tab.key !== "jane",
+);
 
-// Whether a page is one of the details (anything in the menu but Chat).
-export const isDetail = (pathname: string) => DETAIL_TABS.some((t) => t.key === tabFor(pathname));
+// The profile menu's places, besides Sign out.
+export const PROFILE_TABS: readonly Tab[] = [TABS.find((tab) => tab.key === "jane")!, SETTINGS_TAB];

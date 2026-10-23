@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DETAIL_TABS, SETTINGS_TAB, TABS, isDetail, tabFor, tabsClaiming } from "./navigation";
+import { AREA_TABS, PROFILE_TABS, SETTINGS_TAB, TABS, tabFor, tabsClaiming } from "./navigation";
 
 // Spec step 79: every signed-in page belongs to exactly one tab. The page list is read
 // from src/app, so a new page without a tab fails here.
@@ -119,45 +119,47 @@ describe("navigation", () => {
     expect(tabFor("/plans")).toBeNull();
   });
 
-  it("shows two places in the bar, Chat first, each linking to its own first page", () => {
-    expect(TABS[0].label).toBe("Chat");
+  it("keeps the chat as a tab of its own, each tab linking to its own first page", () => {
+    expect(TABS[0].key).toBe("chat");
     for (const tab of [...TABS, SETTINGS_TAB]) expect(tab.paths[0]).toBe(tab.href);
   });
 
-  // The Details menu is short: one entry per place, the sectors under one heading.
-  it("lists one entry per place in Details, in the agreed order", () => {
-    expect(DETAIL_TABS.map((t) => t.label)).toEqual([
-      "Today",
-      "Money",
-      "Investments",
-      "Loans and debt",
+  // The home hub (docs/design/home-hub.md): the areas along the top, in the agreed order.
+  it("lists the areas along the top in the agreed order", () => {
+    expect(AREA_TABS.map((t) => t.label)).toEqual([
+      "Home",
+      "Spending & bills",
       "Insurance",
+      "Loans & credit",
       "Taxes",
-      "Ahead",
-      "What Jane did",
+      "Investing (practice)",
+      "Plans & goals",
     ]);
-    expect(DETAIL_TABS.length).toBeLessThanOrEqual(12);
-    expect(DETAIL_TABS.filter((t) => t.group).map((t) => t.group)).toEqual(
-      Array(4).fill("Grow and protect"),
-    );
+    expect(AREA_TABS.map((t) => t.href)).toEqual([
+      "/home",
+      "/money",
+      "/insurance",
+      "/loans",
+      "/taxes",
+      "/investments",
+      "/ahead",
+    ]);
   });
 
-  it("reaches every signed-in page from the chat, Details, Settings or a place's hub", () => {
+  it("puts What Jane did and Settings in the profile menu, and every tab somewhere", () => {
+    expect(PROFILE_TABS.map((t) => t.label)).toEqual(["What Jane did", "Settings"]);
+    const shown = [...AREA_TABS, ...PROFILE_TABS].map((t) => t.key);
+    for (const tab of TABS.filter((t) => t.key !== "chat"))
+      expect(shown, tab.key).toContain(tab.key);
+  });
+
+  it("reaches every signed-in page from the top bar, the profile menu or an area's hub", () => {
     const menuPaths = [...TABS, SETTINGS_TAB].flatMap((t) => t.paths);
     for (const route of all.filter((r) => !outside(r))) {
       expect(
         menuPaths.some((path) => route === path || route.startsWith(`${path}/`)),
         route,
       ).toBe(true);
-    }
-  });
-
-  it("knows which pages are details", () => {
-    for (const path of ["/home", "/plan", "/report/abc", "/bills", "/afford", "/debt", "/taxes"]) {
-      expect(isDetail(path), path).toBe(true);
-    }
-    for (const path of ["/chat", "/ask", "/settings", "/login"]) {
-      expect(isDetail(path), path).toBe(false);
     }
   });
 });
