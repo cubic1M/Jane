@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/app-header";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
-import { toView, type MessageView } from "@/lib/jane-agent/view";
+import { inTheList, toView, type MessageView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
 import { practiceCards } from "@/lib/practice/cards";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
@@ -53,6 +53,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   ]);
   const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
   if (!chat) redirect("/connect");
+  // The floating cards are the one place a waiting suggestion shows.
+  const listed = inTheList(chat.messages, stacked);
   const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
   // Constant search (Phase AW): a cheap practice scan, after the page is sent.
@@ -69,6 +71,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </p>
       </div>
 
+      {/* Every message counts here, the floating ones too: the pulse counts them all. */}
       {chat.scanning && <ScanRefresher shown={chat.hasEarlier ? -1 : chat.messages.length} />}
 
       {/* Spec step 96: search everything said here, and what the person pinned. */}
@@ -117,18 +120,19 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </Link>
       )}
 
-      {chat.messages.length === 0 ? (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Nothing new from me yet. I&apos;ll post here as soon as I spot something.
-        </p>
-      ) : (
+      {listed.length > 0 && (
         <ol aria-label="Messages" className="flex flex-col gap-4">
-          {chat.messages.map((message) => (
+          {listed.map((message) => (
             // Keyed by its state too: a tap on a floating card answers it on the server, and the
             // reload shows that here.
             <ChatMessageItem key={`${message.id}:${message.status}`} initial={message} />
           ))}
         </ol>
+      )}
+      {listed.length === 0 && stacked.length === 0 && (
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Nothing new from me yet. I&apos;ll post here as soon as I spot something.
+        </p>
       )}
 
       {/* The message box (spec step 84): typing to Jane, answered under it. */}
