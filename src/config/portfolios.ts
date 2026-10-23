@@ -100,3 +100,85 @@ export const AUTOPILOT_LIMITS = {
   // At most this many trades a day for one portfolio.
   tradesPerDay: 12,
 } as const;
+
+// The strategy universe (the strategy library, src/planning/strategies/): plain index ETFs a
+// level's strategy may hold, each with its sleeve (what it counts as against the level's stock
+// share) and the practice kind it sits in. The four model funds are the static mix's; the rest
+// let a strategy diversify, follow trends or step aside. No leveraged, inverse or option ETFs.
+// Every ticker is loaded into market_prices by the daily history job (src/lib/market/history.ts).
+export type StrategySleeve = "stocks" | "bonds" | "real" | "cash";
+export type StrategyAsset = {
+  ticker: string;
+  name: string;
+  sleeve: StrategySleeve;
+  // The practice kind it is held in (null: not yet held by the practice autopilot).
+  practiceClass: PracticeClass | null;
+};
+export const STRATEGY_ASSETS = {
+  us_total: {
+    ticker: "VTI",
+    name: "Total US Stock Market ETF",
+    sleeve: "stocks",
+    practiceClass: "us_stocks",
+  },
+  us_small_value: {
+    ticker: "VBR",
+    name: "Small-Cap Value ETF",
+    sleeve: "stocks",
+    practiceClass: "us_stocks",
+  },
+  intl_total: {
+    ticker: "VXUS",
+    name: "Total International Stock ETF",
+    sleeve: "stocks",
+    practiceClass: "intl_stocks",
+  },
+  intl_developed: {
+    ticker: "VEA",
+    name: "Developed Markets ETF",
+    sleeve: "stocks",
+    practiceClass: "intl_stocks",
+  },
+  emerging: {
+    ticker: "VWO",
+    name: "Emerging Markets ETF",
+    sleeve: "stocks",
+    practiceClass: "intl_stocks",
+  },
+  reits: { ticker: "VNQ", name: "Real Estate ETF", sleeve: "stocks", practiceClass: "us_stocks" },
+  bonds_total: {
+    ticker: "BND",
+    name: "Total US Bond Market ETF",
+    sleeve: "bonds",
+    practiceClass: "bonds",
+  },
+  treasury_short: {
+    ticker: "SHY",
+    name: "1-3 Year Treasury Bond ETF",
+    sleeve: "bonds",
+    practiceClass: "bonds",
+  },
+  treasury_mid: {
+    ticker: "IEF",
+    name: "7-10 Year Treasury Bond ETF",
+    sleeve: "bonds",
+    practiceClass: "bonds",
+  },
+  treasury_long: {
+    ticker: "TLT",
+    name: "20+ Year Treasury Bond ETF",
+    sleeve: "bonds",
+    practiceClass: "bonds",
+  },
+  tips: { ticker: "TIP", name: "TIPS Bond ETF", sleeve: "bonds", practiceClass: "bonds" },
+  gold: { ticker: "GLD", name: "Gold Shares", sleeve: "real", practiceClass: null },
+  tbills: {
+    ticker: "BIL",
+    name: "1-3 Month Treasury Bill ETF",
+    sleeve: "cash",
+    practiceClass: "cash",
+  },
+} as const satisfies Record<string, StrategyAsset>;
+export type StrategyAssetId = keyof typeof STRATEGY_ASSETS;
+export const STRATEGY_ASSET_IDS = Object.keys(STRATEGY_ASSETS) as StrategyAssetId[];
+export const strategyTickers = () => STRATEGY_ASSET_IDS.map((a) => STRATEGY_ASSETS[a].ticker);
