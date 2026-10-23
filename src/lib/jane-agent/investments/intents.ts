@@ -95,7 +95,7 @@ const REVIEW =
 
 // Spec step 132: on track for retirement?
 const RETIREMENT =
-  /\bretire(?:ment)?\b(?! account)|\b(?:401\(?k\)?|employer) match\b|\bmatch(?:ing)? (?:on|in|from) my 401\(?k\)?\b|\broth (?:or|vs\.?|versus) traditional\b|\btraditional (?:or|vs\.?|versus) roth\b|\bcatch[- ]up contributions?\b|\bhow much should i (?:put|contribute|save) (?:in|into|to) my (?:401\(?k\)?|ira)\b|\bnest egg\b/;
+  /\bretire(?:ment)?\b(?! account)|\b(?:401\(?k\)?|employer) match\b|\bmatch(?:ing)? (?:on|in|from) my 401\(?k\)?\b|\broth (?:or|vs\.?|versus) traditional\b|\btraditional (?:or|vs\.?|versus) roth\b|\bcatch[- ]up contributions?\b|\bhow much should i (?:put|contribute|save) (?:in|into|to) my (?:401\(?k\)?|ira)\b|\bnest egg\b|\bwhen (?:can|could|will|should) (?:i|we) (?:stop working|quit working|stop work|afford to stop working)\b|\b(?:can|could) (?:i|we) (?:afford to )?stop working\b/;
 
 // Spec step 133: move to the recommended mix.
 const REBALANCE =

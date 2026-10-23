@@ -432,6 +432,8 @@ export const PEOPLE: readonly Person[] = [
       // Spec step 243: her fibre intro price ends and her storage plan renews.
       "promo_ending",
       "hsa_over_limit",
+      // Spec step 266: about $1M she could be sued for, past what home cover's liability reaches.
+      "umbrella",
     ],
     mustNot: [
       "beneficiaries",

@@ -80,6 +80,9 @@ import { syncItem } from "@/lib/plaid/sync";
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-16T15:00:00Z");
 
+// The agenda's line about the day's suggestions, which float over the chat as cards.
+const ON_THE_CARDS = /suggestions? for you, from looking at your money/;
+
 describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
@@ -154,21 +157,23 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     const messages = await client.janeMessage.findMany({
       where: { userId: trial.userId },
       orderBy: { createdAt: "asc" },
-      select: { body: true, kind: true, createdAt: true },
+      select: { body: true, kind: true, createdAt: true, refs: true },
     });
     // Strictly first: its time is before everything else Jane posted in the sync (no tie).
     expect(messages[0].body).toBe(SCANNING_HELLO);
     expect(messages[0].createdAt.getTime()).toBeLessThan(messages[1].createdAt.getTime());
     // Exactly: "still looking", then Jane's welcome, then the agenda that leads with the scan's
-    // suggestions and their percentage.
+    // suggestions (on the cards, each with its percentage).
     const at = (test: (body: string) => boolean) => messages.findIndex((m) => test(m.body));
     const looking = at((b) => b === SCANNING_HELLO);
     const welcome = at((b) => /^Hi, I'm Jane\. I look at your money/.test(b));
-    const agenda = at((b) => /what I'd do first/.test(b));
+    const agenda = at((b) => ON_THE_CARDS.test(b));
     expect(looking, messages.map((m) => m.body.slice(0, 30)).join(" | ")).toBe(0);
     expect(welcome).toBeGreaterThan(looking);
     expect(agenda).toBeGreaterThan(welcome);
-    expect(messages[agenda].body).toMatch(/% sure|not sure/);
+    const suggestions = messages.filter((m) => (m.refs as { suggestion?: string }).suggestion);
+    expect(suggestions.length).toBeGreaterThan(0);
+    for (const m of suggestions) expect(m.body).toMatch(/% sure|not sure/);
   });
 
   it("builds the first brief from a light snapshot, the whole one right after", async () => {
@@ -195,7 +200,7 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     const bodies = (
       await client.janeMessage.findMany({ where: { userId: trial.userId }, select: { body: true } })
     ).map((m) => m.body);
-    expect(bodies.some((b) => /what I'd do first/.test(b))).toBe(true);
+    expect(bodies.some((b) => ON_THE_CARDS.test(b))).toBe(true);
   });
 
   it("still finishes the scan and says its piece when a sector's work fails", async () => {
@@ -215,7 +220,7 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     const bodies = (
       await client.janeMessage.findMany({ where: { userId: trial.userId }, select: { body: true } })
     ).map((m) => m.body);
-    expect(bodies.some((b) => /what I'd do first/.test(b))).toBe(true);
+    expect(bodies.some((b) => ON_THE_CARDS.test(b))).toBe(true);
   });
 
   it("opens at once with 'still looking', without running the whole agent, while it scans", async () => {

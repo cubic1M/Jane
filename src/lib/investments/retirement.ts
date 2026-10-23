@@ -21,12 +21,22 @@ export async function loadRetirement(
     client = defaultClient,
     now = new Date(),
     investments: loaded,
-  }: { client?: PrismaClient; now?: Date; investments?: Investments } = {},
+    guessedAge = null,
+  }: {
+    client?: PrismaClient;
+    now?: Date;
+    investments?: Investments;
+    // An age standing for the person's stage of life, used when they haven't finished the
+    // investor profile (the chat's planner, which says it is a guess).
+    guessedAge?: number | null;
+  } = {},
 ): Promise<{
   profile: ProfileSummary;
   balanceCents: number;
   accounts: string[];
   retirement: RetirementPlan | null;
+  // True when the plan was worked out with guessedAge, not the person's own answers.
+  ageGuessed?: boolean;
 }> {
   const investments = loaded ?? (await loadInvestments(userId, { client, now }));
   const retirementAccounts = investments.accounts.filter((a) => isRetirement(a.subtype));
@@ -52,13 +62,15 @@ export async function loadRetirement(
     contributions
       .filter((c) => EMPLOYER_CONTRIBUTION.test(c.name) === employer)
       .reduce((s, c) => s - c.amountCents, 0);
-  const age = currentAge(answers, asOf);
+  const told = profile.complete ? currentAge(answers, asOf) : null;
+  const age = told ?? guessedAge;
   return {
     profile,
     balanceCents,
     accounts: retirementAccounts.map((a) => a.name),
+    ageGuessed: told === null && guessedAge !== null,
     retirement:
-      profile.complete && age !== null && retirementAccounts.length > 0
+      age !== null && retirementAccounts.length > 0
         ? retirementPlan({
             age,
             balanceCents,
