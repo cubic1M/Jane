@@ -34,7 +34,7 @@ import {
   type OpportunityKind,
 } from "@/config/practice-opportunities";
 import { LEVEL_WORST_DROP_PERCENT } from "@/config/practice-preferences";
-import { DRIFT_STOCKS_BAND, SCAN_CAPS, SCAN_CONFIDENCE } from "@/config/practice-scan";
+import { DRIFT_STOCKS_BAND, rulesOnAt, SCAN_CAPS, SCAN_CONFIDENCE } from "@/config/practice-scan";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PaySchedule } from "@/detection/paydays";
 import { portfolioValue, positionValue, type Prices } from "./practice-autopilot";
@@ -716,6 +716,8 @@ export function scanOpportunities(input: OpportunityInput): ScanFlag[] {
   const total = portfolioValue(input.state, input.prices);
   if (total <= 0) return [];
   const prefs = input.prefs;
+  // The kinds on (rulesOnAt, or the rule replay's own set), as for the step 292 kinds.
+  const on = input.rules ?? rulesOnAt(input.level);
   let base = scanPortfolio(input).filter((f) => allowedByPrefs(f, prefs));
 
   // Cash the step 292 flags leave, above the buffer.
@@ -732,7 +734,7 @@ export function scanOpportunities(input: OpportunityInput): ScanFlag[] {
     ...prefs.excludedTickers.map((t) => t.toUpperCase()),
   ]);
   // Dip buys and news ideas spend the same cash; new money only takes what is left.
-  const newMoney = newMoneyFlag(input, available, blocked);
+  const newMoney = on.has("new_money_rebalance") ? newMoneyFlag(input, available, blocked) : null;
   if (newMoney) {
     available -= newMoney.amountCents;
     // The rebalance flag stays only when the new money doesn't bring the mix back.
@@ -753,7 +755,7 @@ export function scanOpportunities(input: OpportunityInput): ScanFlag[] {
     glideFlag(input),
     mismatchFlag(input),
     maxDropFlag(input),
-  ].filter((f): f is ScanFlag => f !== null && !input.seen.has(f.key));
+  ].filter((f): f is ScanFlag => f !== null && on.has(f.kind) && !input.seen.has(f.key));
   const left = Object.fromEntries(
     OPPORTUNITY_KINDS.map((k) => [k, SCAN_CAPS[k].perMonth - (input.usedThisMonth[k] ?? 0)]),
   ) as Record<OpportunityKind, number>;

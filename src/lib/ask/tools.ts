@@ -9,6 +9,7 @@ import { addDays, isoDate } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { categoryLabel } from "@/insights/labels";
 import { monthsEnding, spendingInsights } from "@/insights/spending";
+import { oneOffCharges } from "@/insights/typical-month";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -191,17 +192,44 @@ export async function runAskTool(
           pending: true,
         },
       });
-      const insights = spendingInsights(
-        rows.map((t) => ({ ...t, date: isoDate(t.date) })),
-        { asOf: today, monthCount: INSIGHT_MONTHS },
-      );
+      const dated = rows.map((t) => ({ ...t, date: isoDate(t.date) }));
+      const insights = spendingInsights(dated, { asOf: today, monthCount: INSIGHT_MONTHS });
+      // Books QA: one-off costs, so an unusual month is said as one, not as the usual.
+      const oneOffs = oneOffCharges(dated, today);
+      const oneOffsIn = (month: string) =>
+        oneOffs
+          .filter((o) => o.month === month)
+          .map((o) => ({ what: o.merchant, date: o.date, amount: money(o.amountCents) }));
+      const leftOutIn = (month: string) =>
+        oneOffs.filter((o) => o.month === month).reduce((sum, o) => sum + o.amountCents, 0);
       if (name === "monthly_totals") {
+        const full = insights.months.slice(0, -1);
         return out({
           months: insights.months.map((m) => ({
             month: m.month,
             spending: money(m.spendingCents),
             income: money(m.incomeCents),
+            ...(leftOutIn(m.month) > 0
+              ? {
+                  unusual: true,
+                  oneOffs: oneOffsIn(m.month),
+                  withoutOneOffs: money(m.spendingCents - leftOutIn(m.month)),
+                }
+              : {}),
           })),
+          typicalMonthSpending:
+            full.length === 0
+              ? null
+              : money(
+                  Math.round(
+                    full.reduce((sum, m) => sum + m.spendingCents - leftOutIn(m.month), 0) /
+                      full.length,
+                  ),
+                ),
+          note:
+            oneOffs.length > 0
+              ? "Months marked unusual had one-off costs; a typical month leaves them out. Say so when quoting an average."
+              : undefined,
         });
       }
       const month = MONTH.test(str(args.month)) ? str(args.month) : today.slice(0, 7);
@@ -216,6 +244,7 @@ export async function runAskTool(
           category: c.category,
           amount: money(c.cents),
         })),
+        ...(leftOutIn(month) > 0 ? { unusual: true, oneOffs: oneOffsIn(month) } : {}),
       });
     }
 

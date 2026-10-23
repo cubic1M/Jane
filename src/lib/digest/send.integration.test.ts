@@ -253,6 +253,6 @@ describe.runIf(url)("runDigests against a real database", () => {
     const run = await runDigests({ client, now: MONDAY, dryRun: true, send });
     const preview = run.previews.find((p) => p.userId === userId);
     expect(await savedToDate(userId, { client })).toBe(5_000);
-    expect(preview?.text).toContain("Saved so far: about $50.00 a year");
+    expect(preview?.text).toContain("Saved so far (expected): about $50.00 a year");
   });
 });

@@ -20,7 +20,7 @@ import {
 } from "./practice-opportunities";
 import { OPPORTUNITY_KINDS, SAFETY_KINDS } from "@/config/practice-opportunities";
 import { LEVEL_WORST_DROP_PERCENT } from "@/config/practice-preferences";
-import { SCAN_CAPS, type ScanKind } from "@/config/practice-scan";
+import { SCAN_CAPS, SCAN_KINDS, type ScanKind } from "@/config/practice-scan";
 import type { Suggestion } from "@/detectors/contract";
 import { shortFormProblems } from "@/detectors/harness";
 import type { Bar } from "@/lib/market";
@@ -110,6 +110,8 @@ const withCash = (held: Held, cents: number): Held => ({
   state: { ...held.state, cashCents: held.state.cashCents + cents },
 });
 
+// Every rule, whatever OPPORTUNITY_RULES_OFF turns off at a level: these tests are about the
+// rules themselves (the switch has its own tests in ./practice-scan.test.ts).
 async function scanOn(
   level: RiskLevel,
   day: string,
@@ -131,6 +133,7 @@ async function scanOn(
     monthlyAddCents: 50_000,
     addDay: 1,
     paydayDay: null,
+    rules: new Set(SCAN_KINDS),
     ...extra,
     prefs: { ...DEFAULT_SCAN_PREFERENCES, ...prefs },
   });

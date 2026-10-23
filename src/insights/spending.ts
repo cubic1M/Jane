@@ -112,7 +112,8 @@ export function spendingInsights(
     ]),
   );
 
-  const [before, after] = months.slice(-2);
+  // The last two months compared; with only one month there's nothing to compare.
+  const [before, after] = months.length >= 2 ? months.slice(-2) : [];
   const changes = before
     ? [...new Set([...byCategory.get(before)!.keys(), ...byCategory.get(after)!.keys()])]
         .map((category) => {

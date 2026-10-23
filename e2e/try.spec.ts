@@ -21,6 +21,16 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
   await expect(page.getByText(/^Good (morning|afternoon|evening)!/).first()).toBeVisible({
     timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
   });
+
+  // The banner's "Sign up" reaches the form to start their own account, not back to the chat.
+  await page
+    .getByRole("note")
+    .filter({ hasText: "sample person" })
+    .getByRole("link", { name: "Sign up" })
+    .click();
+  await expect(page).toHaveURL(/\/signup$/);
+  await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Email me a sign-up link" })).toBeVisible();
 });
 
 // Five fresh visitors in a row (each their own browser and address): every click reaches the

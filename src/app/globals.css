@@ -326,9 +326,15 @@ textarea {
     right: 0;
   }
 }
-/* On Home the hub shows the suggestions, so the docked chat beside it leaves them out. */
-html[data-chat-embed-home] [data-floating-cards="queue"] {
+/* In the side panel (/chat?embed=1) the suggestions wait until the page beside it says where it
+   is: on Home the hub shows them, so the chat beside it leaves them out; anywhere else, or
+   full screen, they show (src/app/chat/embed-bridge.tsx sets data-chat-embed-cards). Hidden by
+   default, so a slow start never shows them twice. */
+body:has([data-chat-embed]) [data-floating-cards="queue"] {
   display: none;
+}
+html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="queue"] {
+  display: flex;
 }
 
 .floating-card-in {

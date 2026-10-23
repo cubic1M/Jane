@@ -308,6 +308,9 @@ export const PEOPLE: readonly Person[] = [
       "fsa_deadline",
       "deductible_met",
       "medical_bill_dispute",
+      // Loans QA: their cash stays a 3-month cushion, so the 21.49% card is better as one
+      // cheaper loan than paid from savings.
+      "consolidation",
     ],
     mustNot: [
       "values_funds",
@@ -432,6 +435,8 @@ export const PEOPLE: readonly Person[] = [
       // Spec step 243: her fibre intro price ends and her storage plan renews.
       "promo_ending",
       "hsa_over_limit",
+      // Spec step 266: about $1M she could be sued for, past what home cover's liability reaches.
+      "umbrella",
     ],
     mustNot: [
       "beneficiaries",
@@ -687,6 +692,9 @@ export const PEOPLE: readonly Person[] = [
       // Spec step 239: her shop's sales are counted as her income.
       "figure_check",
       "practice_portfolio",
+      // Loans QA: her cash is kept as a 6-month cushion for uneven business income, so her
+      // 23.49% card is better as one cheaper loan than paid from savings.
+      "consolidation",
     ],
     mustNot: [
       "beneficiaries",

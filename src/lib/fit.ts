@@ -10,6 +10,7 @@ import type { LoanOffer } from "@/lib/lenders/partner";
 import { loadProfileInput } from "@/lib/profile";
 import { lenderPartnerFor } from "@/lib/refinance";
 import { fit, type FitBaseline, type FitResult } from "@/planning/fit";
+import { refinanceable } from "@/planning/refinance";
 import { fitPersonFrom } from "@/planning/fit-person";
 
 // The perfect fit for borrowing (spec step 281), for one person: the need, what they have now,
@@ -38,6 +39,8 @@ export type FitView = FitResult & {
   baseline: FitBaseline | null;
   // The debt a refinance replaces (its key), so a pick can be priced again; null otherwise.
   debtKey: string | null;
+  // The emergency cushion kept back before paying a debt off from cash (one rule everywhere).
+  cushionCents?: number | null;
 };
 
 const baselineOf = (debt: Debt, asOf: string): FitBaseline | null => {
@@ -70,6 +73,8 @@ export async function loadFit(
   const person = fitPersonFrom(input, report?.score ?? null);
 
   let product: LoanProduct;
+  // A refinance is picked over the debt's own remaining months, as the offers page compares it.
+  let pickTermMonths: number | undefined;
   let baseline: FitBaseline | null = null;
   let debtKey: string | null = null;
   let amountCents = want.amountCents ?? 0;
@@ -79,6 +84,9 @@ export async function loadFit(
       .sort((a, b) => (b.aprBps ?? 0) - (a.aprBps ?? 0));
     const debt = want.debtKey ? debts.find((d) => d.key === want.debtKey) : debts[0];
     baseline = debt ? baselineOf(debt, asOf) : null;
+    // Keeping it, as the offers page counts it (src/planning/refinance.ts): one horizon.
+    const keep = debt ? refinanceable(debt, asOf)?.keep : undefined;
+    if (baseline && keep) baseline = { ...baseline, monthlyCents: keep.monthlyCents };
     debtKey = baseline && debt ? debt.key : null;
     product =
       debt?.kind === "mortgage"
@@ -89,6 +97,7 @@ export async function loadFit(
             ? "student"
             : "personal";
     amountCents = baseline?.balanceCents ?? 0;
+    pickTermMonths = debt ? refinanceable(debt, asOf)?.termMonths : undefined;
   } else if (want.need === "consolidation") {
     product = FIT_PRODUCT.consolidation;
     const cards = book.debts.filter(
@@ -128,12 +137,14 @@ export async function loadFit(
     checkedOn: asOf,
     baseline,
     debtKey,
+    cushionCents: person.cushionCents ?? null,
   };
   if (!found || amountCents <= 0) return empty;
   if ((want.need === "refinance" || want.need === "consolidation") && !baseline) return empty;
 
   const offers: LoanOffer[] = [];
-  for (const termMonths of FIT_TERMS[product]) {
+  const terms = [...new Set([...FIT_TERMS[product], ...(pickTermMonths ? [pickTermMonths] : [])])];
+  for (const termMonths of terms) {
     offers.push(
       ...(await found.partner.prequalify({
         product,
@@ -144,6 +155,22 @@ export async function loadFit(
       })),
     );
   }
-  const result = fit({ need: want.need, product, amountCents, person, offers, baseline });
-  return { ...result, available: true, advice: true, checkedOn: asOf, baseline, debtKey };
+  const result = fit({
+    need: want.need,
+    product,
+    amountCents,
+    person,
+    offers,
+    baseline,
+    pickTermMonths,
+  });
+  return {
+    ...result,
+    available: true,
+    advice: true,
+    checkedOn: asOf,
+    baseline,
+    debtKey,
+    cushionCents: person.cushionCents ?? null,
+  };
 }

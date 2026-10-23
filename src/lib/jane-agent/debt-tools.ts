@@ -46,6 +46,12 @@ import type { FitView } from "@/lib/fit";
 import { fitCard } from "@/lib/fit-card";
 import type { OptionCard } from "@/lib/option-card";
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
+import {
+  homeMeasureOf,
+  homeVsBorrow,
+  mortgageOf,
+  type HomeMeasure,
+} from "@/planning/home-vs-borrow";
 import { FIT_LABEL_TEXT, type FitTerms } from "@/planning/fit";
 import { PMI_STEPS } from "@/planning/mortgage";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
@@ -272,7 +278,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "debt_decision",
     description:
-      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond a month of spending would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options), student_early, overdraft (whether checking is forecast to go below zero this month, when and by how much) bnpl (whether buy now, pay later suits them), save_each_month (what they keep now against the common 20% target) and rent_or_buy (their rent against the home the 28/36 rules allow). Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own. Start with the verdict in words; offer no button unless they asked you to do something; for any amount these sentences don't give, use the calculate tool.",
+      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond the emergency cushion would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options), student_early, overdraft (whether checking is forecast to go below zero this month, when and by how much) bnpl (whether buy now, pay later suits them), save_each_month (what they keep now against the common 20% target) and rent_or_buy (their rent against the home the 28/36 rules allow). Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own. Start with the verdict in words; offer no button unless they asked you to do something; for any amount these sentences don't give, use the calculate tool.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -510,7 +516,7 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
     fee: money(s.offer.feeCents),
     feeIs: s.offer.feeLabel,
     monthlyPayment: money(s.monthlyCents),
-    totalOverSameMonths: money(s.totalCents),
+    totalWithFees: money(s.totalCents),
     saving: money(s.savingCents),
     breakEvenMonths: s.breakEvenMonths,
     sample: s.offer.demo,
@@ -521,10 +527,22 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
       debt: c.debtName,
       balance: money(c.balanceCents),
       rate: formatRate(c.currentAprBps),
-      monthsLeft: c.termMonths,
+      // Offers are priced over the debt's own remaining months; keeping it is paying what the
+      // person pays now until it's gone (the same comparison as the loan_fit tool).
+      offersPricedOverMonths: c.termMonths,
+      keepingItTakesMonths: c.keepMonths,
       keepingItCosts: money(c.currentTotalCents),
       keepingMonthlyPayment: money(c.currentMonthlyCents),
       janesPick: c.pick && offer(c.pick),
+      ...(c.cashPayoffCents
+        ? {
+            payOffFromCashInstead: {
+              saves: money(c.cashPayoffCents),
+              keepsTheEmergencyCushion: true,
+            },
+          }
+        : {}),
+      ...(c.turnedDown ? { lenderWouldLikelyDecline: c.turnedDown } : {}),
       why: c.why,
       offers: c.offers.map(offer),
     })),
@@ -901,7 +919,11 @@ export function carToolOutput(car: Car, money: (cents: number) => string) {
   };
 }
 
-export function homeToolOutput(home: HomeBuying, money: (cents: number) => string) {
+export function homeToolOutput(
+  home: HomeBuying,
+  money: (cents: number) => string,
+  mortgageCents: number | null = null,
+) {
   if (!home.costs || !home.affordability || !home.saving) {
     return { note: "Not enough income history to say what home fits." };
   }
@@ -942,6 +964,10 @@ export function homeToolOutput(home: HomeBuying, money: (cents: number) => strin
       closing: o.offer.feeLabel,
     })),
     assumptions: home.assumptions,
+    // "What could I borrow?" measures it another way: say both, with this sentence.
+    ...(homeVsBorrow(homeMeasureOf(home), mortgageCents)
+      ? { whyWhatYouCouldBorrowDiffers: homeVsBorrow(homeMeasureOf(home), mortgageCents) }
+      : {}),
   };
 }
 
@@ -1262,7 +1288,7 @@ export function debtTroubleToolOutput(data: DebtTrouble, money: (cents: number) 
       debt: d.name,
       kind: d.kindLabel,
       balance: money(d.balanceCents ?? 0),
-      whatToAsk: HARDSHIP_PROGRAMS[d.kind],
+      whatToAsk: HARDSHIP_PROGRAMS[d.kind].ask,
     })),
     debtManagementPlanSketch: data.dmp && {
       cardBalance: money(data.dmp.cardBalanceCents),
@@ -1450,9 +1476,16 @@ export function creditMonthlyToolOutput(d: CreditMonthly) {
   };
 }
 
-export function borrowingPowerToolOutput(d: BorrowingPower, money: (cents: number) => string) {
+export function borrowingPowerToolOutput(
+  d: BorrowingPower,
+  money: (cents: number) => string,
+  home: HomeMeasure | null = null,
+) {
   if (!d.available) return { note: "No lending partner for this person's accounts yet." };
+  const both = homeVsBorrow(home, mortgageOf(d.figures));
   return {
+    // "Can I afford a house?" measures it another way: say both, with this sentence.
+    ...(both ? { whyTheHomeYouCouldAffordDiffers: both } : {}),
     // The partner (the stand-in) is only there in demo advice mode, so these are demo advice.
     demoAdvice: true,
     label: DEMO_ADVICE_LABEL,
@@ -1546,6 +1579,14 @@ export function loanFitToolOutput(
 ) {
   if (!view.available)
     return { note: "No lending partner for this person's accounts yet, so there are no offers." };
+  // Something to borrow, but no lender quotes an amount this small: the same answer as the chat.
+  if (view.options.length === 0 && view.ineligible.length === 0 && view.baseline) {
+    return {
+      note: "Nothing fits right now.",
+      why: [`No lender prices a loan as small as ${money(view.amountCents)}.`],
+      whatWouldHelp: [`Paying ${view.baseline.label} down directly is simplest.`],
+    };
+  }
   if (view.options.length === 0) {
     return {
       note: "Nothing fits right now.",

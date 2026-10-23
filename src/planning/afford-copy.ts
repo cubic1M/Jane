@@ -9,7 +9,7 @@ export const AFFORD_COPY = {
   intro:
     "Enter a purchase or a change to what goes out each month. We show what it does to safe to spend, your goals and your checking balance over the next 12 months.",
   disclaimer:
-    "This is math, not a recommendation. It counts your checking balance, expected deposits and regular bills, not everyday spending. Bills are estimates from your past charges.",
+    "This is math, not a recommendation. It counts your checking balance, expected deposits, regular bills and your usual everyday spending, the same figures What if uses. Bills and spending are estimates from your past months.",
   kinds: {
     purchase: "A one-time purchase",
     more: "More going out each month",

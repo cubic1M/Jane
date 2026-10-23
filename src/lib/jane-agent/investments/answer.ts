@@ -37,10 +37,19 @@ import { loadRetirement } from "@/lib/investments/retirement";
 import { profileSummary } from "@/planning/investor-profile";
 import { loadReview } from "@/lib/investments/review";
 import { backtestsFor } from "@/lib/investments/backtest";
+import { latestStrategies } from "@/lib/investments/strategy-eval";
+import { ruleReplaysFor } from "@/lib/investments/rule-replay";
+import { practiceProfileOf } from "@/lib/practice/preferences";
 import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
 import { setPaused, tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
-import { backtestReply, practiceLogReply, practicePauseReply } from "./practice-copy";
+import {
+  backtestReply,
+  levelStrategyReply,
+  practiceLogReply,
+  practicePauseReply,
+  ruleReplayReply,
+} from "./practice-copy";
 import {
   accountsReply,
   autoInvestReply,
@@ -108,9 +117,24 @@ export async function answerInvestments(
       await setPaused(userId, which, pausing, { client });
       return practicePauseReply(pausing ? "paused" : "resumed", which, true);
     }
+    case "level_strategy": {
+      const [advice, latest] = await Promise.all([
+        adviceMode(userId, { client }),
+        latestStrategies({ client }),
+      ]);
+      const level = intent.level ?? (await practiceProfileOf(userId, { client, now })).level;
+      return levelStrategyReply(advice, latest, level, intent.level === undefined);
+    }
     case "backtest": {
       const data = await backtestsFor(userId, { client, now });
       return backtestReply(data, intent.level ?? null, intent.year ?? null);
+    }
+    case "rule_replay": {
+      // The level they named, else their own (chosen, the practice portfolio's, the
+      // questionnaire's, then Medium).
+      const level = intent.level ?? (await practiceProfileOf(userId, { client, now })).level;
+      const data = await ruleReplaysFor(userId, { client, now }, [level]);
+      return ruleReplayReply(data, level, intent.level === undefined);
     }
     case "holdings":
       return holdingsReply(await loadInvestments(userId, { client, now }), intent.account);

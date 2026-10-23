@@ -49,8 +49,8 @@ export function EmbedBridge() {
       } else if (event.data.type === "jane:panel") {
         root.dataset.chatEmbed = event.data.state;
         // Beside Home the hub shows the suggestions; full screen, the chat shows them again.
-        if (event.data.home && event.data.state !== "full") root.dataset.chatEmbedHome = "";
-        else delete root.dataset.chatEmbedHome;
+        if (event.data.home && event.data.state !== "full") delete root.dataset.chatEmbedCards;
+        else root.dataset.chatEmbedCards = "";
       }
     };
     // The panel growing or shrinking keeps the end of the chat in view if it was.
@@ -75,7 +75,7 @@ export function EmbedBridge() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       delete root.dataset.chatEmbed;
-      delete root.dataset.chatEmbedHome;
+      delete root.dataset.chatEmbedCards;
     };
   }, [router]);
 

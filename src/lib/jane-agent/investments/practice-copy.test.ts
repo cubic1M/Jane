@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
+
+import type { PrismaClient } from "@/generated/prisma/client";
+import { loadRuleReplays } from "@/lib/investments/rule-replay";
 import { normalize } from "../intents";
 import type { MessageAction } from "../types";
 import { parseInvestmentIntent } from "./intents";
@@ -7,6 +13,8 @@ import {
   PRACTICE_ONLY_NOTE,
   practiceLogReply,
   practicePauseReply,
+  levelStrategyReply,
+  ruleReplayReply,
 } from "./practice-copy";
 
 // Spec step 297: the chat's rule answers about the practice portfolio. Practice money only:
@@ -181,5 +189,96 @@ describe("the practice portfolio in the chat", () => {
     expect(reply.body).toMatch(/not a forecast/);
     expect(backtestReply({ advice: true, backtests }, 4, 1999).body).toMatch(/doesn't cover 1999/);
     expect(backtestReply({ advice: false }, 4, 2022).body).toMatch(/demo advice/);
+  });
+});
+
+describe("the strategy each level follows, in the chat", () => {
+  it.each([
+    ["which strategy does my level use", undefined],
+    ["what strategy is the autopilot following", undefined],
+    ["what strategy does high use", 4],
+  ])("reads %s as the level's strategy", (text, level) => {
+    expect(read(text)?.topic).toBe("level_strategy");
+    expect(read(text)?.level).toBe(level);
+  });
+
+  it("names the strategy and why, or says the replay hasn't run, never a forecast", () => {
+    const latest = {
+      ranAt: new Date("2026-10-19T11:00:00Z"),
+      source: "alpaca",
+      from: "2016-01-04",
+      to: "2026-10-16",
+      byLevel: {
+        3: {
+          level: 3,
+          id: "trend",
+          key: "trend(months=6)",
+          label: "Trend filter",
+          why: "It beat the level's mix on the later years.",
+        },
+      },
+    } as unknown as Parameters<typeof levelStrategyReply>[1];
+    const own = levelStrategyReply(true, latest, 3, true);
+    expect(own.body).toMatch(
+      /^Your level, Medium, follows the trend filter \(trend\(months=6\)\)\. It beat the level's mix/,
+    );
+    expect(own.body).toMatch(/not a forecast/);
+    expect(own.refs).toEqual({ advice: true });
+    expect(hrefs(own.actions)).toEqual(["/investments#level-strategies-heading"]);
+    // Before the daily replay: the committed research choice and its evidence.
+    expect(levelStrategyReply(true, null, 3, true).body).toMatch(
+      /^Your level, Medium, follows the trend filter \(trend\(months=6\)\)\. Chosen on Alpaca's closes/,
+    );
+    expect(levelStrategyReply(true, null, 5, false).body).toMatch(/^Very high follows its mix\./);
+    expect(levelStrategyReply(false, latest, 3, true).body).toMatch(/demo advice/);
+  });
+});
+describe("the rule replay in the chat", () => {
+  it.each([
+    ["did the extra rules help?", undefined],
+    ["did the extra rules help at Very high", 5],
+    ["do the dip buys work", undefined],
+    ["were the opportunity rules worth it", undefined],
+    ["backtest the autopilot", undefined],
+    ["is the autopilot backtested", undefined],
+    ["how did the autopilot do against buy and hold", undefined],
+    ["which rules did you turn off", undefined],
+    ["why did you turn off tax-loss harvesting", undefined],
+  ])("reads %s as the rule replay", (text, level) => {
+    expect(read(text)?.topic).toBe("rule_replay");
+    expect(read(text)?.level).toBe(level);
+  });
+
+  it("leaves the model backtest and the trade log alone", () => {
+    expect(read("how would a High portfolio have done in 2022")).toMatchObject({
+      topic: "backtest",
+      level: 4,
+      year: 2022,
+    });
+    expect(read("what did you buy this week and why")?.topic).toBe("practice_log");
+  });
+
+  it("answers for the person's own level: three replays, each rule, never a forecast", async () => {
+    const client = {
+      marketPrice: { findMany: async () => [] },
+      marketNews: { findMany: async () => [] },
+    } as unknown as PrismaClient;
+    const data = (await loadRuleReplays({ client, now: at("2026-10-21") }, [4]))!;
+    const reply = ruleReplayReply({ advice: true, data }, 4, true);
+    expect(reply.body).toMatch(
+      /^Your level, High: the autopilot with its extra rules came out .* plain rebalancing, [+−][\d.]+% against [+−][\d.]+%\.\nBuy and hold made [+−][\d.]+%, with a (?:deeper|shallower) worst drop/,
+    );
+    expect(reply.body).toMatch(
+      /Replay of sample history since Jan 2, 2018, \$500\.00 a month\. A replay/,
+    );
+    expect(reply.body).toMatch(/Turned off here, as worse on real prices: harvest a loss\./);
+    expect(reply.body.length).toBeLessThanOrEqual(700);
+    expect(reply.body).toMatch(/not a forecast/);
+    expect(reply.body.replace(/not a forecast/g, "")).not.toMatch(/forecast/i);
+    expect(reply.refs).toEqual({ advice: true });
+    expect(hrefs(reply.actions)).toEqual(["/investments#rule-replay-heading"]);
+    expect(ruleReplayReply({ advice: true, data }, 4, false).body).toMatch(/^High: /);
+    expect(ruleReplayReply({ advice: true, data }, 2, true).body).toMatch(/don't have a replay/);
+    expect(ruleReplayReply({ advice: false }, 4, true).body).toMatch(/demo advice/);
   });
 });

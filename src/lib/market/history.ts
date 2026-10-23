@@ -1,9 +1,9 @@
-import { PRACTICE_ETFS } from "@/config/portfolios";
+import { PRACTICE_ETFS, PRACTICE_UNIVERSE, strategyTickers } from "@/config/portfolios";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import type { Bar, MarketData } from "./types";
 
-// The one-time history load (spec step 289, Phase AW): daily closes for every model portfolio ETF
+// The one-time history load (spec step 289, Phase AW): daily closes for every practice ticker
 // pulled from the market data and stored with their source and date range, so backtests run on
 // real history ("real history since <date>") and fall back to the sample market only when none
 // is stored. Only a real (not simulated) market data can load: the sample is never stored as
@@ -18,7 +18,16 @@ const day = (d: Date) => d.toISOString().slice(0, 10);
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const nextDay = (iso: string) => day(new Date(dateOf(iso).getTime() + 86_400_000));
 
-export const historyTickers = () => Object.values(PRACTICE_ETFS).map((e) => e.ticker);
+// The model funds first (the backtests need them), then everything else the practice portfolio
+// may hold: the swap partners and the watched companies, so the rule replay can test the tax-loss
+// swaps and the news ideas on real prices too.
+// The strategy universe too (STRATEGY_ASSETS), so the weekly strategy evaluation runs on Alpaca's
+// closes for every fund a level's strategy may hold.
+export const historyTickers = () => {
+  const main = Object.values(PRACTICE_ETFS).map((e) => e.ticker as string);
+  const rest = new Set([...PRACTICE_UNIVERSE, ...strategyTickers()]);
+  return [...main, ...[...rest].filter((t) => !main.includes(t)).sort()];
+};
 
 export class HistoryError extends Error {}
 
@@ -41,7 +50,9 @@ export async function loadHistory(
     throw new HistoryError(
       "Only a real market feed can load history: the sample market is never stored.",
     );
-  const to = day(now);
+  // To yesterday: a day's close is final only after the market shuts, and Alpaca's free SIP feed
+  // refuses bars from the latest 15 minutes (a request that runs to today is refused whole).
+  const to = day(new Date(now.getTime() - 86_400_000));
   const report: LoadReport = [];
   for (const ticker of tickers) {
     const done = await client.marketHistoryLoad.findUnique({

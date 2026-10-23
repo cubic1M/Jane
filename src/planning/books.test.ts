@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  copiesToLeaveOut,
   duplicateAccounts,
   linkProblems,
   matchTransfers,
@@ -89,6 +90,18 @@ describe("duplicateAccounts", () => {
       acct("f", "i2", null),
     ]);
     expect(found.map((f) => [f.keep.id, f.duplicate.id])).toEqual([["a", "b"]]);
+  });
+
+  // Books QA: until it's merged, the figures count an account linked twice once.
+  it("leaves out only the copy, so the account counts once", () => {
+    expect([
+      ...copiesToLeaveOut([
+        acct("a", "i1", "1234"),
+        acct("b", "i2", "1234"),
+        acct("c", "i2", "9999"),
+      ]),
+    ]).toEqual(["b"]);
+    expect([...copiesToLeaveOut([acct("a", "i1", "1234"), acct("b", "i1", "1234")])]).toEqual([]);
   });
 });
 

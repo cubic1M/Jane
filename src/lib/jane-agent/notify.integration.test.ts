@@ -20,7 +20,10 @@ import { syncItem } from "@/lib/plaid/sync";
 import type { sendEmail } from "@/lib/email";
 import type { sendPush } from "@/lib/push";
 import { ChatActionError } from "./actions";
-import { markChatRead } from "./messages";
+import { gather } from "./brain";
+import { markChatRead, postMessages } from "./messages";
+import { loadSnapshot } from "./snapshot";
+import { headsUpsSource } from "./sources/heads-ups";
 import { AS_THEY_COME } from "./preferences";
 import { deliverChatNotifications, queueChatNotifications } from "./notify";
 import { createReplyLink, redeemReplyLink, ReplyLinkError, viewReplyLink } from "./reply-links";
@@ -169,6 +172,22 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
     it("emails what's waiting from the daily run, and a one-tap link answers its message once", async () => {
       const { push, send } = fakes();
       const now = at(2 * HOUR);
+      // An email holds five messages. With bill reminders urgent only when money could run short,
+      // the demo bank's two deadline heads-ups now get posted and would fill the batch ahead of
+      // the finding this test answers; the person dismissed them earlier.
+      const earlier = at(HOUR);
+      await postMessages(
+        userId,
+        gather((await loadSnapshot(userId, { client, now: earlier }))!, earlier, {
+          trigger: "open",
+          sources: [headsUpsSource],
+        }),
+        { client, now: earlier },
+      );
+      await client.janeMessage.updateMany({
+        where: { userId, kind: "heads_up" },
+        data: { status: "dismissed" },
+      });
       const jobId = await queueChatNotifications(userId, {
         client,
         now,

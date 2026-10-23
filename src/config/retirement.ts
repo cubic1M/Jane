@@ -18,6 +18,16 @@ export const LIMITS_SOURCE = "IRS Notice 2025-67 (2026 limits)";
 // When the projection stops: the full Social Security retirement age for anyone born in
 // 1960 or later (Social Security Administration).
 export const RETIREMENT_AGE = 67;
+// When the person hasn't said their age, the retirement planner can still answer from their
+// accounts with an age that stands for their stage of life (Jane's profile works the stage out
+// from their data). Each is the middle of its stage. FOR REVIEW. Shown as a guess, with a
+// request for their age and goals to sharpen it.
+export const STAGE_AGES: Readonly<Record<string, number>> = {
+  starting: 27,
+  raising: 38,
+  peak: 46,
+  approaching: 58,
+};
 export const RETIREMENT_AGE_SOURCE =
   "Social Security's full retirement age for people born in 1960 or later";
 
