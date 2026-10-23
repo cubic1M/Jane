@@ -4,7 +4,14 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { QUESTIONS } from "./checks/bank";
 import { CHAT_TOOLS } from "./claude-tools";
-import { OPEN_AREA_TOOL, areaTools, lookupsFor, sectorsFor, toolsFor } from "./tool-select";
+import {
+  OPEN_AREA_TOOL,
+  areaTools,
+  chatTools,
+  lookupsFor,
+  sectorsFor,
+  toolsFor,
+} from "./tool-select";
 
 // Claude is sent the general tools and only the sectors a question is about: faster to start
 // and cheaper, and every question in the bank still gets the tool it should reach.
@@ -132,5 +139,28 @@ describe("open_area", () => {
       expect(names(question)).not.toContain(tool);
       expect(areaTools(CHAT_TOOLS, area).map((t) => t.name)).toContain(tool);
     }
+  });
+});
+
+// Prompt caching: every request carries the same tools, in the same order, as the same bytes.
+describe("every request's tools", () => {
+  it("are all of them and open_area, each once, with one breakpoint after the last", () => {
+    const tools = chatTools(CHAT_TOOLS);
+    const names = tools.map((t) => t.name);
+    expect(new Set(names).size).toBe(names.length);
+    expect([...names].sort()).toEqual([...CHAT_TOOLS.map((t) => t.name), "open_area"].sort());
+    const marked = tools.flatMap((t, i) => ("cache_control" in t && t.cache_control ? [i] : []));
+    expect(marked).toEqual([tools.length - 1]);
+    // The general tools first, then the button tool, then each area's.
+    expect(names.indexOf("open_area")).toBeLessThan(names.indexOf("propose_action"));
+    expect(names.indexOf("propose_action")).toBeLessThan(names.indexOf("insurance_policies"));
+    expect(tools.find((t) => t.name === "open_area")?.input_schema).toEqual(
+      OPEN_AREA_TOOL.input_schema,
+    );
+  });
+
+  it("are the same bytes every time", () => {
+    expect(JSON.stringify(chatTools(CHAT_TOOLS))).toBe(JSON.stringify(chatTools(CHAT_TOOLS)));
+    expect(chatTools(CHAT_TOOLS)).toBe(chatTools(CHAT_TOOLS));
   });
 });
