@@ -1,7 +1,6 @@
 import { COSTLY_CREEP_MIN_CENTS } from "@/config/costly-borrowing";
 import {
   MONTHLY_ITEM_TITLES,
-  MONTHLY_RATE_REQUEST_DAYS,
   MONTHLY_REFI_KINDS,
   type MonthlyItemKey,
 } from "@/config/credit-monthly";
@@ -12,7 +11,7 @@ import { formatRate } from "@/insights/loans";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadBorrowingPower, type BorrowingPower } from "@/lib/borrowing-power";
 import { loadCarLoan, type CarLoan } from "@/lib/car-loan";
-import { loadCardInterest, sendRateRequest, type CardInterest } from "@/lib/card-interest";
+import { askNextRateHerself, loadCardInterest, type CardInterest } from "@/lib/card-interest";
 import { loadCostlyBorrowing, type CostlyBorrowing } from "@/lib/costly-borrowing";
 import { dayLabel } from "@/lib/day-label";
 import { track } from "@/lib/analytics";
@@ -23,8 +22,9 @@ import { loadFit } from "@/lib/fit";
 import { formatCents } from "@/lib/money";
 import { loadRefinance } from "@/lib/refinance";
 import { loadRenting, type Renting } from "@/lib/renting";
-import { autopilotFor, mayAct, recordAct } from "@/lib/sector-autopilot";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
+import { rateStep } from "@/planning/card-interest";
 
 // Credit on autopilot, round three (spec step 251): every month, after her soft checks, Jane
 // goes over borrowing in one pass: a cheaper rate on each loan (the fit engine's pick, the same
@@ -43,7 +43,6 @@ type Parts = {
 };
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook; parts?: Parts };
 
-const DAY_MS = 86_400_000;
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 export type MonthlyItem = {
@@ -202,28 +201,25 @@ function rentItem(r: Renting): MonthlyItem | null {
   return item("rent", "ok", "Your rent and deposits are in order.");
 }
 
+// The same step as the yearly debt review's (docs/feature-audit.md, cluster 14).
 function cardRateItem(
   ci: CardInterest,
   asOf: string,
   level: CreditMonthly["level"],
 ): MonthlyItem | null {
-  if (!ci.available) return null;
-  const recent = ci.requests.filter(
-    (r) => Date.parse(asOf) - Date.parse(r.sentOn) <= MONTHLY_RATE_REQUEST_DAYS * DAY_MS,
-  );
-  if (recent.length > 0) {
+  const step = rateStep(ci, asOf);
+  if (step?.kind === "asked") {
     return item(
       "card_rate",
       "done",
-      `Asked ${recent.map((r) => r.cardName).join(" and ")} for a lower rate this month; I'll tell you what they answer.`,
+      `Asked ${step.cards.join(" and ")} for a lower rate this month; I'll tell you what they answer.`,
     );
   }
-  const next = ci.cards.find((c) => c.rate && !c.rate.sent);
-  if (!next?.rate) return null;
+  if (step?.kind !== "next") return null;
   return item(
     "card_rate",
     "tap",
-    `Ask ${next.name} for a lower rate: about ${formatCents(next.rate.savingYearlyCents)} a year${level === "all" ? "" : ". At Handle everything I'd send it myself"}.`,
+    `Ask ${step.name} for a lower rate: about ${formatCents(step.savingYearlyCents)} a year${level === "all" ? "" : ". At Handle everything I'd send it myself"}.`,
     { href: "/loans/interest", label: "Ask for a lower rate" },
   );
 }
@@ -280,19 +276,8 @@ export async function runCreditMonthly(
   if (watch?.monthlyOn && isoDay(watch.monthlyOn).slice(0, 7) === asOf.slice(0, 7)) return null;
   const did: string[] = [];
   const book = await debtsOr(undefined, userId, { client, now });
-  const may = await mayAct(userId, "debt", { needs: "all", cents: 0 }, { client, now });
-  if (may.ok) {
-    const ci = await loadCardInterest(userId, { client, now, book });
-    const recent = ci.requests.some(
-      (r) => Date.parse(asOf) - Date.parse(r.sentOn) <= MONTHLY_RATE_REQUEST_DAYS * DAY_MS,
-    );
-    const next = ci.cards.find((c) => c.rate && !c.rate.sent);
-    if (!recent && next?.rate) {
-      await sendRateRequest(userId, next.rate.id, { client, now });
-      await recordAct(userId, "debt", 0, `Asked ${next.name} for a lower rate`, { client, now });
-      did.push(`a lower-rate request to ${next.name}`);
-    }
-  }
+  const asked = await askNextRateHerself(userId, { client, now, book });
+  if (asked) did.push(`a lower-rate request to ${asked}`);
   const monthly = await computeCreditMonthly(userId, { client, now, book });
   const kept = { month: monthly.month, items: monthly.items, did };
   const data = {

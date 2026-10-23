@@ -179,6 +179,8 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
   let maxOpportunityShare = 0;
   let maxTradesInADay = 0;
   let lastAddMonth = "";
+  // The day practice money last went in: the start, then each month's add.
+  let lastDepositOn = days[0];
   const pastTrades: PastTrade[] = [];
   const pastFlags: PastFlag[] = [];
   const trades: ReplayTrade[] = [];
@@ -261,6 +263,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
       putIn += input.monthlyAddCents;
       flow = input.monthlyAddCents;
       lastAddMonth = month;
+      lastDepositOn = today;
     }
 
     const morning = portfolioValue(state, prices);
@@ -317,6 +320,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           // kind only ever suggests.
           paydayDay: null,
           heldHistory,
+          lastDepositOn,
         });
         for (const flag of flags) {
           const { status } = flagStatus(

@@ -14,6 +14,15 @@ export const TRANSFER_MATCH_DAYS = 4;
 // Transfers out with no match are worth saying (money going somewhere Jane can't see) from
 // this amount.
 export const UNMATCHED_TRANSFER_MIN_CENTS = 50_000;
+// A transfer out whose description names a kind of account the person has linked arrived
+// there, even when the bank reports it as an investment transaction (an HSA or IRA
+// contribution) rather than a deposit: the word, and the account subtypes it means.
+export const TRANSFER_TO_LINKED: Readonly<Record<string, readonly string[]>> = {
+  hsa: ["hsa"],
+  ira: ["ira", "roth", "roth ira", "traditional ira"],
+  "401k": ["401k", "403b"],
+  brokerage: ["brokerage"],
+};
 // Two accounts are the same when they share an account number's last digits, type and
 // subtype. Plaid types of accounts whose balance owed is positive.
 export const BOOKS_DEBT_TYPES: readonly string[] = ["credit", "loan"];

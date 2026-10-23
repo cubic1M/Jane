@@ -12,10 +12,12 @@ import { takeChatAction } from "@/lib/jane-agent/actions";
 import { gather } from "@/lib/jane-agent/brain";
 import { postMessages } from "@/lib/jane-agent/messages";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
+import { changesSource } from "@/lib/jane-agent/sources/changes";
 import { leanSource } from "@/lib/jane-agent/sources/lean";
 import { runPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { loadChanges } from "./changes";
 import { leanActive, loadLeanPlan, openLean, runLeanCheck } from "./lean-plan";
 
 // Spec step 204 against a real, migrated Postgres, with the demo bank: a paycheck late only
@@ -87,6 +89,18 @@ describe.runIf(url)("when income stops", { timeout: 120_000 }, () => {
       expect.objectContaining({ status: "proposed" }),
     ]);
     expect(await leanActive(userId, { client })).toBe(false);
+  });
+
+  it("says a late paycheck once: the question, not also the heads-up (feature audit, cluster 10)", async () => {
+    const late = (await loadChanges(userId, { client, now: LATE })).find(
+      (c) => c.kind === "paycheck_late",
+    );
+    expect(late).toMatchObject({ askedByLean: true });
+    const snapshot = (await loadSnapshot(userId, { client, now: LATE }))!;
+    const said = gather(snapshot, LATE, { trigger: "open", sources: [changesSource, leanSource] });
+    expect(said.filter((c) => c.body.includes("hasn't come in"))).toEqual([
+      expect.objectContaining({ dedupeKey: expect.stringMatching(/^lean:ask:/) }),
+    ]);
   });
 
   it("a yes pauses automatic transfers and gives the plan; pay back ends it", async () => {
