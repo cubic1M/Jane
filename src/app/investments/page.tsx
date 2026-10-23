@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
 import { LevelStrategiesSection } from "@/components/level-strategies";
+import { PracticeIdeasSummary } from "@/components/practice-ideas-summary";
 import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
@@ -16,6 +17,7 @@ import { loadReturns } from "@/lib/investments/returns";
 import { backtestsFor } from "@/lib/investments/backtest";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
+import { practiceIdeasView } from "@/lib/practice/ideas-view";
 import { practiceProfileOf } from "@/lib/practice/preferences";
 import { autopilotOf } from "@/lib/autopilot";
 import { investmentsByHerself } from "@/lib/jane-agent/investments/replies";
@@ -95,6 +97,12 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function LevelStrategies({ userId }: { userId: string }) {
   const [latest, profile] = await Promise.all([latestStrategies(), practiceProfileOf(userId)]);
   return <LevelStrategiesSection latest={latest} level={profile.level} />;
+}
+
+// Jane's practice ideas, once the practice portfolio has started (demo advice only).
+async function PracticeIdeas({ userId }: { userId: string }) {
+  const started = await scopedFor(userId).practicePortfolios.findFirst({ select: { id: true } });
+  return started ? <PracticeIdeasSummary view={await practiceIdeasView(userId)} /> : null;
 }
 
 async function RuleReplays({ userId }: { userId: string }) {
@@ -510,6 +518,7 @@ async function InvestmentsContent() {
       )}
 
       {backtests.advice && <BacktestsSection backtests={backtests.backtests} />}
+      {backtests.advice && <PracticeIdeas userId={user.id} />}
       {backtests.advice && <LevelStrategies userId={user.id} />}
       {backtests.advice && (
         <Suspense

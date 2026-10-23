@@ -45,4 +45,12 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   await expect(page.getByRole("status")).toHaveText(/OK, put away/);
   await expect(ideas.getByText(/Nothing to decide right now/)).toBeVisible();
   await expect(ideas.getByText(/You said no once, but it's a safety check/)).toBeVisible();
+
+  // The investments page sums it up and links back.
+  await page.goto("/investments");
+  const summary = page.getByRole("region", { name: "Jane's practice ideas" });
+  await expect(summary.getByText(/strategy today:/)).toBeVisible();
+  await expect(summary.getByText(/Nothing to decide right now/)).toBeVisible();
+  await expect(summary.getByText(/still brought \(a safety check\)/)).toBeVisible();
+  await expect(summary.getByRole("link", { name: "Your practice portfolio →" })).toBeVisible();
 });
