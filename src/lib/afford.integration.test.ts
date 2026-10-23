@@ -4,10 +4,16 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { affordCheck } from "@/planning/afford";
+import { PEOPLE } from "@/config/people";
+import { syncItem } from "@/lib/plaid/sync";
+import { startTrial } from "@/lib/trial";
+import { affordCheck, affordWindow } from "@/planning/afford";
+import { project } from "@/planning/what-if";
 import { loadAffordNumbers } from "./afford";
 import { homeSummary } from "./home";
+import { loadBaseline } from "./what-if";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -80,6 +86,8 @@ describe.runIf(url)("can-I-afford-this numbers against a real database", () => {
     // Netflix from Nov 15, 2026 through Sep 15, 2027: the last month shown.
     expect(numbers.flows).toHaveLength(11);
     expect(numbers.flows[0]).toEqual({ date: "2026-11-15", amountCents: -1549 });
+    // Netflix is all they spend, and it's a regular bill: no everyday spending besides it.
+    expect(numbers.everydayMonthlyCents).toBe(0);
     expect(numbers.goals).toEqual([
       expect.objectContaining({ name: "Trip", targetCents: 120_000, savedCents: 0 }),
     ]);
@@ -99,9 +107,60 @@ describe.runIf(url)("can-I-afford-this numbers against a real database", () => {
   it("has no checking numbers for someone without accounts", async () => {
     expect(await loadAffordNumbers(emptyId, { client, now: NOW })).toEqual({
       asOf: "2026-10-20",
+      everydayMonthlyCents: 0,
       safe: null,
       flows: [],
       goals: [],
     });
+  });
+});
+
+// "Can I afford a car at $850 a month?" (docs/feature-audit.md, cluster 11) on the eight sample
+// people: /afford counts the same everyday spending as What if, so What if never says cash runs
+// out while /afford says checking is fine. /afford starts from checking alone and What if from all
+// cash, so /afford may run short first, never later.
+describe.runIf(url)("/afford and What if agree on the eight sample people", () => {
+  let client: PrismaClient;
+  const made: string[] = [];
+  beforeAll(() => {
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 7).toString("base64"));
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("PLAID_CLIENT_ID", "");
+    vi.stubEnv("PLAID_SECRET", "");
+    client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  });
+  afterAll(async () => {
+    await client.user.deleteMany({ where: { id: { in: made } } });
+    await client.$disconnect();
+    vi.unstubAllEnvs();
+  });
+
+  it.each(PEOPLE.map((p) => p.id))("%s", { timeout: 120_000 }, async (id) => {
+    const trial = await startTrial({ client, now: NOW, defer: true, person: id });
+    made.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: NOW });
+    const numbers = await loadAffordNumbers(trial.userId, { client, now: NOW });
+    const afford = affordCheck(numbers, {
+      kind: "monthly",
+      amountCents: 85_000,
+      startMonth: "2026-11",
+    });
+    const baseline = (await loadBaseline(trial.userId, { client, now: NOW }))!;
+    const whatIf = project(baseline, {
+      incomeLossShare: 0,
+      months: 0,
+      extraMonthlyCents: 85_000,
+      savedMonthlyCents: 0,
+      oneTimeCents: 0,
+    });
+    // What if's month 1 is November; /afford's months start with October.
+    const runsOut =
+      whatIf.runsOutMonth !== null && whatIf.runsOutMonth <= 11
+        ? affordWindow("2026-10-20").months[whatIf.runsOutMonth]
+        : null;
+    if (runsOut && numbers.safe) {
+      expect(afford.firstShort?.after, `${id}: What if runs out in ${runsOut}`).not.toBeNull();
+      expect(afford.firstShort!.after! <= runsOut).toBe(true);
+    }
   });
 });

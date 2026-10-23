@@ -237,3 +237,29 @@ describe("affordCheck goal effects", () => {
     );
   });
 });
+
+// Everyday spending (docs/feature-audit.md, cluster 11): each month's end balance takes out the
+// usual spending besides the regular bills, as What if does, so a monthly cost runs short on
+// both pages in the same month.
+describe("everyday spending", () => {
+  it("comes out of every month's end: the rest of this month, then whole months", () => {
+    // Oct 20 of 31 days: 11 days left this month.
+    const result = affordCheck(numbers({ everydayMonthlyCents: 31_000 }), {
+      kind: "purchase",
+      amountCents: 0,
+      date: AS_OF,
+    });
+    expect(result.months![0].beforeCents).toBe(BEFORE[0] - 11_000);
+    expect(result.months![1].beforeCents).toBe(BEFORE[1] - 11_000 - 31_000);
+  });
+
+  it("makes a monthly cost run short that bills alone never would", () => {
+    const car = { kind: "monthly" as const, amountCents: 45_000, startMonth: "2026-11" };
+    // Bills alone: $500 a month left, so a $450 car still leaves $50.
+    expect(affordCheck(numbers(), car).firstShort!.after).toBeNull();
+    // With $300 of everyday spending, the car takes $250 a month out of the $2,000.
+    const short = affordCheck(numbers({ everydayMonthlyCents: 30_000 }), car).firstShort!;
+    expect(short.before).toBeNull();
+    expect(short.after).not.toBeNull();
+  });
+});
