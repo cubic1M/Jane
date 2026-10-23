@@ -5,7 +5,10 @@
 
 export type Header = { key: string; value: string };
 
-export function contentSecurityPolicy(isDev: boolean): string {
+export function contentSecurityPolicy(
+  isDev: boolean,
+  { frameAncestors = "'none'" }: { frameAncestors?: string } = {},
+): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
     "script-src": [
@@ -23,11 +26,12 @@ export function contentSecurityPolicy(isDev: boolean): string {
       "https://sandbox.plaid.com",
       ...(isDev ? ["ws:"] : []),
     ],
-    "frame-src": ["https://cdn.plaid.com"],
+    // Our own chat, docked beside every page (docs/design/home-hub.md), and Plaid Link.
+    "frame-src": ["'self'", "https://cdn.plaid.com"],
     // The service worker (public/sw.js) and the web app manifest.
     "worker-src": ["'self'"],
     "manifest-src": ["'self'"],
-    "frame-ancestors": ["'none'"],
+    "frame-ancestors": [frameAncestors],
     "form-action": ["'self'"],
     "base-uri": ["'self'"],
     "object-src": ["'none'"],
@@ -53,6 +57,19 @@ export function securityHeaders(isDev: boolean): Header[] {
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  ];
+}
+
+// The chat's pages (/chat and under it) may be framed by our own pages only: the side chat
+// shows /chat?embed=1 in a frame. Every other page still refuses to be framed at all.
+// next.config.ts sets these after the site-wide headers, which they replace.
+export function chatFrameHeaders(isDev: boolean): Header[] {
+  return [
+    {
+      key: "Content-Security-Policy",
+      value: contentSecurityPolicy(isDev, { frameAncestors: "'self'" }),
+    },
+    { key: "X-Frame-Options", value: "SAMEORIGIN" },
   ];
 }
 

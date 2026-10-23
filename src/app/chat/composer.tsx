@@ -180,7 +180,7 @@ export function ChatComposer({
         ref={form}
         action={action}
         onSubmit={send}
-        className="flex scroll-mb-[calc(4.5rem+env(safe-area-inset-bottom))] flex-col gap-1 sm:scroll-mb-4"
+        className="flex scroll-mb-[calc(1rem+env(safe-area-inset-bottom))] flex-col gap-1"
       >
         <div className="flex min-h-12 items-center gap-2 border border-zinc-400 px-3 focus-within:border-emerald-700 dark:border-zinc-600">
           <span aria-hidden="true" className="text-emerald-700">

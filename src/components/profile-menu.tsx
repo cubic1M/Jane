@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { SETTINGS_TAB, tabFor } from "@/config/navigation";
+import { PROFILE_TABS, tabFor } from "@/config/navigation";
 import { signOutToHome } from "@/lib/auth-actions";
 
-// The profile menu (spec step 79): who's signed in, Settings and Sign out. Settings lives
-// here rather than in the main menu; its pages (and /connect, /import) light the icon up.
+// The profile menu (spec step 79): who's signed in, What Jane did, Settings and Sign out. These
+// live here rather than in the area tabs; their pages (and /connect, /import) light the icon up.
 export function ProfileMenu({ email }: { email: string | null | undefined }) {
-  const inSettings = tabFor(usePathname()) === "settings";
+  const tab = tabFor(usePathname());
+  const inSettings = PROFILE_TABS.some((t) => t.key === tab);
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -33,7 +34,7 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
   }, [open]);
 
   return (
-    <div ref={wrapper} className="relative ml-auto shrink-0">
+    <div ref={wrapper} className="relative shrink-0">
       <button
         type="button"
         aria-label="Your account and settings"
@@ -66,14 +67,17 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
       >
         {/* Long emails wrap instead of pushing the page sideways on a phone. */}
         <p className="break-all px-3 py-2 text-zinc-600 dark:text-zinc-400">Signed in as {email}</p>
-        <Link
-          href={SETTINGS_TAB.href}
-          aria-current={inSettings ? "page" : undefined}
-          onClick={() => setOpen(false)}
-          className="flex min-h-11 items-center rounded-lg px-3 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          Settings
-        </Link>
+        {PROFILE_TABS.map((t) => (
+          <Link
+            key={t.key}
+            href={t.href}
+            aria-current={tab === t.key ? "page" : undefined}
+            onClick={() => setOpen(false)}
+            className="flex min-h-11 items-center px-3 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            {t.label}
+          </Link>
+        ))}
         <form action={signOutToHome}>
           <button
             type="submit"

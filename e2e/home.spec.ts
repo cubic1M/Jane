@@ -50,48 +50,43 @@ test("new people land on Connect; once data is in, Home matches the report", asy
   );
   expect(overflow).toBeLessThanOrEqual(0);
 
-  // Spec step 79: on a phone the main menu is a bar along the bottom, and the end of the
-  // page scrolls clear of it. Spec step 86: it's Chat and a Details menu with one entry per
-  // place; on Today, Details and Today are lit up.
+  // The area tabs along the top (docs/design/home-hub.md), Home lit up; on a phone they
+  // scroll sideways, and the chat is the Jane button, which the end of the page clears.
   const nav = page.getByRole("navigation", { name: "Main" });
-  // What screen readers hear: the ASCII glyphs and brackets are hidden from them.
-  await expect(nav.getByRole("link")).toHaveCount(1);
-  await expect(nav.getByRole("link").first()).toHaveAccessibleName("Chat");
-  const details = nav.getByRole("button", { name: "Details" });
-  await expect(details).toHaveAttribute("aria-current", "true");
-  await details.click();
-  await expect(details).toHaveAttribute("aria-expanded", "true");
   for (const name of [
-    "Today",
-    "Money",
-    "Investments",
-    "Loans and debt",
+    "Home",
+    "Spending & bills",
     "Insurance",
+    "Loans & credit",
     "Taxes",
-    "Ahead",
-    "What Jane did",
+    "Investing (practice)",
+    "Plans & goals",
   ]) {
-    await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+    await expect(nav.getByRole("link", { name, exact: true })).toHaveCount(1);
   }
-  await expect(nav.getByRole("link", { name: "Today", exact: true })).toHaveAttribute(
+  await expect(nav.getByRole("link")).toHaveCount(7);
+  await expect(nav.getByRole("link", { name: "Home", exact: true })).toHaveAttribute(
     "aria-current",
     "page",
   );
-  await page.keyboard.press("Escape");
-  await expect(nav.getByRole("link")).toHaveCount(1);
+  const jane = page.getByRole("button", { name: /^Chat with Jane/ });
+  await expect(jane).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  const navTop = (await nav.boundingBox())?.y ?? 0;
+  const janeTop = (await jane.boundingBox())?.y ?? 0;
   const footerBottom = await page
     .locator("footer")
     .evaluate((footer) => footer.getBoundingClientRect().bottom);
-  expect(footerBottom).toBeLessThanOrEqual(navTop + 1);
+  expect(footerBottom).toBeLessThanOrEqual(janeTop + 1);
 
-  // Settings is in the profile menu, and lights it up.
+  // What Jane did and Settings are in the profile menu, and light it up.
   await page.getByRole("button", { name: "Your account and settings" }).click();
+  await expect(page.getByRole("link", { name: "What Jane did", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page).toHaveURL("/settings");
   await expect(
     page.getByRole("navigation", { name: "Settings sections" }).getByRole("link"),
   ).toHaveText(["Accounts", "Notifications", "Autopilot", "Privacy and security"]);
-  await expect(details).not.toHaveAttribute("aria-current");
+  await expect(nav.getByRole("link", { name: "Home", exact: true })).not.toHaveAttribute(
+    "aria-current",
+  );
 });
