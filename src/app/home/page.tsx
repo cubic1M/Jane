@@ -17,12 +17,17 @@ import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
+import { stackedSuggestions } from "@/lib/jane-agent/messages";
+import { timezoneOf } from "@/lib/jane-agent/open";
+import { toView } from "@/lib/jane-agent/view";
+import { SuggestionCards } from "../chat/suggestion-cards";
 import { FirstWeekChecklist } from "./checklist";
 
 // Home, the hub (docs/design/home-hub.md; it was Today, spec step 79): graphs first, few
 // words. The hero row (safe to spend, net worth, saved), the next 30 days of bills and
 // paydays, and a tile per area with its health, one number and a tiny chart. What needs the
-// person shows only when there is something. The chat is docked beside it (the side chat).
+// person shows only when there is something. The day's suggestions pop up at the bottom of the
+// hub (the chat beside it leaves them out here). The chat is docked beside it (the side chat).
 
 function NeedsYou({
   waiting,
@@ -70,11 +75,15 @@ async function HubContent() {
   const top = await loadHubTop(user.id);
   if (!top) redirect("/connect");
   const { home } = top;
-  const [checklist, autopilot, books] = await Promise.all([
+  const [checklist, autopilot, books, stackedRows, zone] = await Promise.all([
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
+    // The day's suggestions still waiting, as the chat shows them.
+    stackedSuggestions(user.id),
+    timezoneOf(user.id),
   ]);
+  const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
@@ -108,6 +117,8 @@ async function HubContent() {
           Manage accounts
         </Link>
       </p>
+
+      <SuggestionCards messages={suggestions} />
     </>
   );
 }

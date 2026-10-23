@@ -112,7 +112,16 @@ export function SideChat() {
 
   const post = (message: FrameMessage) =>
     frame.current?.contentWindow?.postMessage(message, window.location.origin);
-  const where: FrameMessage = { type: "jane:panel", state: wide ? panel : "sheet" };
+  const where: FrameMessage = {
+    type: "jane:panel",
+    state: wide ? panel : "sheet",
+    home: pathname === "/home",
+  };
+  // The latest, for the frame's "ready" (which can arrive between renders).
+  const whereRef = useRef(where);
+  useEffect(() => {
+    whereRef.current = where;
+  });
 
   useEffect(() => {
     const ready = () => setIdle(true);
@@ -136,7 +145,12 @@ export function SideChat() {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.source !== frame.current?.contentWindow) return;
-      if (!isFrameMessage(event.data) || event.data.type !== "jane:navigate") return;
+      if (!isFrameMessage(event.data)) return;
+      if (event.data.type === "jane:ready") {
+        post(whereRef.current);
+        return;
+      }
+      if (event.data.type !== "jane:navigate") return;
       router.push(event.data.href);
       if (!wide) sideChatStore.setSheet("closed");
       else if (sideChatStore.get().panel === "full") sideChatStore.setPanel("open");
@@ -149,7 +163,7 @@ export function SideChat() {
   useEffect(() => {
     if (loaded) post(where);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, wide, panel]);
+  }, [loaded, wide, panel, pathname]);
 
   // Out of sight, the unread dot is checked on focus and every minute.
   useEffect(() => {
