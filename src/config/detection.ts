@@ -341,6 +341,13 @@ export const PAYDAY_GAP_DAYS = {
   SEMI_MONTHLY: 15,
   MONTHLY: 31,
 } as const;
+// How many paychecks a month each schedule brings, on average (the paycheck split, spec step 206).
+export const PAYCHECKS_PER_MONTH = {
+  WEEKLY: 52 / 12,
+  BIWEEKLY: 26 / 12,
+  SEMI_MONTHLY: 2,
+  MONTHLY: 1,
+} as const;
 
 // --- Refunds: double charges, charges after cancelling, trial conversions -----------
 
