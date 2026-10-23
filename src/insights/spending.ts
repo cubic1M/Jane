@@ -139,3 +139,20 @@ export function spendingInsights(
     changes,
   };
 }
+
+// Average spending over the `months` complete months before the one `asOf` falls in: the one
+// monthly-spend figure the drafted goals, the emergency fund, the cash page and the refund
+// plan use (docs/feature-audit.md, cluster 13). Pass transactions covering months + 1.
+export function averageMonthlySpending(
+  transactions: InsightTransaction[],
+  asOf: string,
+  months: number,
+): number {
+  const complete = spendingInsights(transactions, { asOf, monthCount: months + 1 }).months.slice(
+    0,
+    -1,
+  );
+  return complete.length === 0
+    ? 0
+    : Math.round(complete.reduce((sum, m) => sum + m.spendingCents, 0) / complete.length);
+}

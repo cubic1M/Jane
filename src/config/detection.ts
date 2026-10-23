@@ -1,4 +1,5 @@
 import type { FindingType } from "@/generated/prisma/client";
+import { HIGH_YIELD_SAVINGS_BPS } from "./cash";
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 import type { CardBenefitKind, Peril } from "./card-benefits";
 
@@ -258,10 +259,10 @@ export const IDLE_CASH_SUBTYPES: readonly string[] = ["checking", "savings"];
 export const IDLE_CASH_MONTHS_OF_SPENDING = 3;
 // Ignore excess cash below this (in cents): the yearly difference would be pocket change.
 export const IDLE_CASH_MIN_EXCESS_CENTS = 100_000;
-// Yearly rates in basis points (100 = 1%). Conservative on purpose: a lowish reference
-// high-yield savings rate and a generous guess at what the money earns today.
+// Yearly rates in basis points (100 = 1%): the high-yield savings rate the cash page shows
+// (src/config/cash.ts, one rate everywhere) and a generous guess at what the money earns today.
 // Review against current published savings rates before the beta.
-export const REFERENCE_HIGH_YIELD_RATE_BPS = 350;
+export const REFERENCE_HIGH_YIELD_RATE_BPS = HIGH_YIELD_SAVINGS_BPS;
 export const ASSUMED_CURRENT_RATE_BPS = 50;
 // Spending history needed for medium and high confidence in the monthly average.
 export const IDLE_CASH_MEDIUM_CONFIDENCE_MONTHS = 3;
