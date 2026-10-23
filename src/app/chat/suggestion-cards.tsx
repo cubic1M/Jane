@@ -51,7 +51,8 @@ export function cardOf(message: MessageView): FloatingCardData {
     id: message.id,
     headline: parts.headline,
     details: {
-      why: parts.why ?? undefined,
+      // The whole reason, so the headline's figure is explained; the short line otherwise.
+      why: message.cardWhy ?? parts.why ?? undefined,
       figures: extra && extra.figures.length > 0 ? extra.figures : undefined,
       confidence:
         parts.percent !== null && parts.reason

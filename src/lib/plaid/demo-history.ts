@@ -26,9 +26,11 @@ export function pastMonthEnds(asOf: string, months: number): string[] {
 
 // Each account's balance at the end of each past month: today's balance with the
 // transactions since then undone. Plaid's amounts are money out positive: out of a bank
-// account it lowered the balance, on a card or loan it raised what's owed. Only months the
-// account's transactions reach back to, and only accounts that move through transactions
-// (banks, cards and loans; investment balances stay out).
+// account it lowered the balance, on a card or loan it raised what's owed. Every bank, card and
+// loan account counts in every month, as it does in today's net worth: one with nothing to undo
+// (savings no transaction touched, a mortgage paid from another bank) is at today's balance
+// (visitor walk: leaving them out drew a line $400k off the headline). Investment balances
+// stay out: the returns read snapshots as real values (the hub's line counts them flat).
 export function pastMonthEndBalances(
   accounts: readonly HistoryAccount[],
   transactions: readonly HistoryTransaction[],
@@ -41,11 +43,8 @@ export function pastMonthEndBalances(
     if (a.currentBalanceCents === null) continue;
     if (a.type !== "depository" && !DEBT_TYPES.has(a.type)) continue;
     const own = transactions.filter((t) => t.accountId === a.id);
-    if (own.length === 0) continue;
-    const first = own.reduce((d, t) => (t.date < d ? t.date : d), own[0].date);
     const sign = DEBT_TYPES.has(a.type) ? -1 : 1;
     for (const end of ends) {
-      if (end < first) continue;
       const since = own.filter((t) => t.date > end).reduce((sum, t) => sum + t.amountCents, 0);
       out.push({ accountId: a.id, date: end, balanceCents: a.currentBalanceCents + sign * since });
     }

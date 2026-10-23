@@ -99,7 +99,11 @@ export async function openChat(
   }
   const feed = await chatFeed(userId, { client, pages, now });
   return {
-    messages: feed.messages.map((m) => toView(m, now, timezone)),
+    // With the scan done, "still going through your accounts, stay on this page" is no longer
+    // true: the chat leaves it out (visitor walk: it sat above Jane's second hello for good).
+    messages: feed.messages
+      .filter((m) => !(m.kind === "brief" && m.body === SCANNING_HELLO))
+      .map((m) => toView(m, now, timezone)),
     hasEarlier: feed.hasEarlier,
     scanning: false,
   };
