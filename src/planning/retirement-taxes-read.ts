@@ -67,15 +67,21 @@ export function readRetirementTaxes(profile: Profile, data: ProfileInput): Retir
   const ss = yearOf(ssRows);
   const pension = yearOf(pensionRows);
   const ira = yearOf(iraRows);
-  // Working income: take-home pay grossed up; retirement income as it arrives.
+  // Working income: take-home pay grossed up; a business's or freelancer's deposits at the profit
+  // share the other tax readers use (taxes QA); retirement income as it arrives.
+  const monthly = typeof f.monthly_income.value === "number" ? f.monthly_income.value : 0;
   const wages =
     f.income_pattern.value === "pension"
       ? 0
-      : Math.round(
-          (typeof f.monthly_income.value === "number" ? f.monthly_income.value : 0) *
-            12 *
-            T.netToGross,
-        );
+      : f.income_pattern.value === "business"
+        ? Math.round(monthly * 12 * T.businessProfitShare)
+        : f.income_pattern.value === "uneven"
+          ? Math.round(monthly * 12 * T.freelanceProfitShare)
+          : Math.round(
+              (typeof f.monthly_income.value === "number" ? f.monthly_income.value : 0) *
+                12 *
+                T.netToGross,
+            );
   const other = wages + pension + ira;
   const sub = (s: string | null) => (s ?? "").toLowerCase();
   const sum = (kinds: string[]) =>

@@ -188,6 +188,10 @@ const rows: Row[] = [
   ],
   ["steady", "/transfers", "steady_pay", "my income is uneven"],
   ["steady", "/transfers", "steady_pay", "what is my steady pay"],
+  // Money for two (spec step 242).
+  ["two", "/household", "money_for_two", "how should we split the bills"],
+  ["two", "/household", "money_for_two", "what's our money date"],
+  ["two", "/household", "money_for_two", "should we split by income"],
   // Goals that trade off openly (spec step 241).
   ["tradeoffs", "/goals", "goal_tradeoffs", "which goal should i save for first"],
   ["tradeoffs", "/goals", "goal_tradeoffs", "can i afford both goals"],
@@ -583,6 +587,7 @@ const rows: Row[] = [
   ["debt", "/loans/helping", "family_credit", "first credit card for my college student"],
   ["debt", "/loans/borrow", "borrowing_power", "how much could i borrow for a car"],
   ["debt", "/loans/borrow", "borrowing_power", "can i get prequalified for a loan"],
+  ["debt", "/loans/review", "credit_monthly", "show me my monthly credit check-up"],
   ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
   ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],

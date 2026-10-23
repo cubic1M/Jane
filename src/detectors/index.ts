@@ -16,6 +16,7 @@ import { PRACTICE_DETECTORS } from "./practice";
 import { BORROWING_POWER_DETECTORS } from "./borrowing-power";
 import { SPENDING_DETECTORS } from "./spending";
 import { TAX_DETECTORS } from "./taxes";
+import { TWO_DETECTORS } from "./two";
 import { TRADEOFF_DETECTORS } from "./tradeoffs";
 import { WORK_DETECTORS } from "./work";
 import type { Detector, DetectorContext, Suggestion } from "./contract";
@@ -44,6 +45,7 @@ export const DETECTORS: readonly Detector[] = [
   ...CONTROLLER_DETECTORS,
   ...PRACTICE_DETECTORS,
   ...PLANNING_DETECTORS,
+  ...TWO_DETECTORS,
   ...TRADEOFF_DETECTORS,
 ];
 

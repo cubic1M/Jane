@@ -62,6 +62,9 @@ export const IRMAA_LOOKBACK_YEARS = 2;
 // share of their pre-tax savings.
 export const IRMAA_WATCH = { fromAge: 63, minPreTaxCents: $(100_000), roomShare: 0.2 } as const;
 
+// Words that find Social Security deposits and IRA withdrawals in a bank's descriptions (the
+// patterns below then decide which is which).
+export const RETIREMENT_DEPOSIT_WORDS = ["SSA", "SOC SEC", "SOCIAL SECURITY", "IRA DIST", "RMD"];
 // Social Security deposits.
 export const SOCIAL_SECURITY_PAYEE = /\bSSA\b|SOC SEC|SOCIAL SECURITY/i;
 // Withdrawals from a traditional IRA that land in the person's accounts.
