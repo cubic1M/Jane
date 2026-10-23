@@ -2,7 +2,9 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
+import { loadTaxFound } from "@/lib/tax-scan";
 import { requireUser } from "@/lib/session";
 
 // The tax year that runs itself (spec step 223): what Jane does each month, and where this
@@ -21,7 +23,8 @@ const STATUS = {
 async function Content() {
   const user = await requireUser();
   await connection();
-  const v = await loadTaxCalendar(user.id);
+  const [v, found] = await Promise.all([loadTaxCalendar(user.id), loadTaxFound(user.id)]);
+  const of = (month: number) => found.filter((f) => f.month === month);
   return (
     <>
       <AppHeader user={user} />
@@ -50,6 +53,24 @@ async function Content() {
             </li>
           ))}
         </ul>
+        {of(v.month).length > 0 && (
+          <>
+            <h3 className="font-semibold">What Jane found for you this month</h3>
+            <ul className="flex flex-col gap-2 text-sm">
+              {of(v.month).map((f) => (
+                <li key={f.topic} className="flex flex-col">
+                  <Link href={f.href} className={LINK}>
+                    {f.headline}
+                  </Link>
+                  <span>
+                    {f.short} {f.percent}% sure; number {f.rank} of everything Jane found for you.
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {of(v.month).some((f) => f.advice) && <DemoAdviceLabel />}
+          </>
+        )}
         {v.yearEnd && (
           <>
             <h3 className="font-semibold">Year-end moves</h3>
@@ -70,6 +91,15 @@ async function Content() {
             <li key={m.month} className="flex flex-col">
               <strong>{m.label}</strong>
               <span>{m.items.map((i) => (v.acts ? i.auto : i.ask)).join(" ")}</span>
+              {m.month !== v.month && of(m.month).length > 0 && (
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  For you:{" "}
+                  {of(m.month)
+                    .map((f) => f.headline)
+                    .join("; ")}
+                </span>
+              )}
+              {m.month !== v.month && of(m.month).some((f) => f.advice) && <DemoAdviceLabel />}
             </li>
           ))}
         </ol>

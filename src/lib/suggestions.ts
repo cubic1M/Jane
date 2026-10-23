@@ -62,7 +62,7 @@ export type ScanResult = { fired: number; selected: string[] };
 export async function detectFor(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ suggestions: Suggestion[]; advice: boolean }> {
+): Promise<{ suggestions: Suggestion[]; advice: boolean; today: string }> {
   const [input, advice] = await Promise.all([
     loadProfileInput(userId, { client, now }),
     adviceMode(userId, { client }),
@@ -75,7 +75,7 @@ export async function detectFor(
       error: scrub(String(error)),
     }),
   ).filter((s) => advice || !(ADVICE_TOPICS as readonly string[]).includes(s.topic));
-  return { suggestions, advice };
+  return { suggestions, advice, today: input.today };
 }
 
 const isIdea = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);

@@ -60,10 +60,9 @@ export const PRACTICE_URGENCY: Readonly<Record<keyof typeof PRACTICE_TOPIC, Urge
   max_drop_near: "now",
 };
 
-// Where the buttons go: the practice page, and its settings (session B1's page; the anchor
-// until it lands).
+// Where the buttons go: the practice page, and its settings page.
 export const PRACTICE_HREF = "/investments/practice";
-export const PRACTICE_SETTINGS_HREF = "/investments/practice#settings";
+export const PRACTICE_SETTINGS_HREF = "/investments/practice/settings";
 
 // What Yes does on a practice idea's card, in a sentence.
 export const PRACTICE_YES_DOES = {

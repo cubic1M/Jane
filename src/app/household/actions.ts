@@ -11,6 +11,14 @@ import {
   leaveHousehold,
   setAccountSharing,
 } from "@/lib/household";
+import {
+  MoneyForTwoError,
+  approveBigMove,
+  declineBigMove,
+  setBigMoveLimit,
+  setGoalSharing,
+  setSplitRule,
+} from "@/lib/money-for-two";
 import { requireUser } from "@/lib/session";
 import { SharedBillError, settleUp, splitCharge, unsplitCharge } from "@/lib/shared-bills";
 
@@ -99,4 +107,51 @@ export async function settle(): Promise<void> {
   const user = await requireUser();
   await settleUp(user.id);
   revalidatePath("/household");
+}
+
+// Money for two (spec step 242): either partner's tap sets how bills split for both.
+export async function chooseSplit(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await setSplitRule(user.id, String(formData.get("rule") ?? ""));
+  } catch (error) {
+    if (!(error instanceof MoneyForTwoError)) throw error;
+  }
+  revalidatePath("/household");
+}
+
+export async function chooseBigMove(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const dollars = Number(String(formData.get("amount") ?? "").replace(/[$,\s]/g, ""));
+  try {
+    await setBigMoveLimit(user.id, Math.round(dollars * 100));
+  } catch (error) {
+    if (!(error instanceof MoneyForTwoError)) throw error;
+  }
+  revalidatePath("/household");
+}
+
+export async function shareGoal(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await setGoalSharing(
+    user.id,
+    String(formData.get("goalId") ?? ""),
+    formData.get("shared") === "true",
+  );
+  revalidatePath("/household");
+  revalidatePath("/goals");
+}
+
+// The second tap on a partner's big move.
+export async function answerBigMove(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const id = String(formData.get("transferId") ?? "");
+  try {
+    if (formData.get("answer") === "approve") await approveBigMove(user.id, id);
+    else await declineBigMove(user.id, id);
+  } catch (error) {
+    if (!(error instanceof MoneyForTwoError)) throw error;
+  }
+  revalidatePath("/household");
+  revalidatePath("/transfers");
 }

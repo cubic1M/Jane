@@ -97,6 +97,8 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Phase AW: a change to the practice portfolio's settings, prepared in the chat (refs.practicePrefs).
+  "practice.prefs_save",
   // Spec step 88: a clarifying question's answers, one per meaning (refs.choices).
   "clarify.1",
   "clarify.2",
@@ -208,6 +210,10 @@ export const ACTION_IDS = [
   "tax.notice_mine",
   // Spec step 218: the IP PIN, and the steps after a sign of tax identity theft.
   "tax.ippin_remind",
+  "tax.disaster_move",
+  "tax.disaster_loss",
+  "tax.draft_confirm",
+  "tax.draft_dismiss",
   "tax.ippin_have",
   "tax.identity_open",
   "tax.identity_not",
@@ -243,6 +249,9 @@ export const ACTION_IDS = [
   "invest.auto_leftover",
   "invest.auto_pause",
   "invest.auto_resume",
+  // Spec step 297: the practice portfolio's switch, offered by Claude (practice money only).
+  "practice.pause",
+  "practice.resume",
   // Spec step 158: start saving for college.
   "college.start",
   // Spec step 159: the HSA.
@@ -330,6 +339,14 @@ export const ACTION_IDS = [
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
+  // Spec step 242: money for two.
+  "two.split_income",
+  "two.split_even",
+  "two.approve",
+  "two.decline",
+  // Spec step 241: goals that trade off openly.
+  "tradeoffs.pick",
+  "tradeoffs.keep",
   "steady.pay",
   "steady.skip",
   "steady.on",
@@ -443,10 +460,15 @@ export type MessageRefs = {
   previousActions?: MessageAction[];
   // A line under the answer: what happened when the button was tapped.
   note?: string;
+  // Spec step 241: the goal order a "Use this order" button picks (goal ids, comma-joined).
+  goalOrder?: string;
   // Spec step 83: a set-up suggestion (src/lib/proposals.ts), by its key.
   proposalKey?: string;
   // Spec step 83: the step only the person can do on an action (./agent-steps.ts).
   step?: string;
+  // Phase AW: the practice settings a "Make the change" tap saves, by field, as the card showed
+  // them (src/planning/practice-preferences.ts checks them again on the tap).
+  practicePrefs?: Record<string, string | number | boolean | string[] | null>;
   // Spec step 83: a deadline the person typed in (src/lib/deadlines.ts), to mark done.
   deadlineEntryId?: string;
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
@@ -526,6 +548,10 @@ export type MessageRefs = {
   identitySign?: string;
   identitySource?: string;
   identityStep?: string;
+  // Spec step 270: the disaster relief (its id) a message is about.
+  disasterRelief?: string;
+  // Spec step 272: the draft return (its id) a message is about.
+  draftReturn?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -549,6 +575,8 @@ export type MessageRefs = {
   iraCents?: number;
   // Spec step 211: the old plan a question or rollover button is about.
   oldPlanId?: string;
+  // Spec step 297: which practice switch a pause or resume button sets.
+  practiceWhich?: "all" | "opportunities";
   // Spec step 213: the child (and amount, cents) a button is about.
   familyChild?: string;
   familyPlan?: string;

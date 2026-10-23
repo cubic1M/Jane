@@ -29,6 +29,7 @@ import { loadValues } from "@/lib/investments/values";
 import { loadSuddenMoney } from "@/lib/investments/sudden-money";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { autopilotOf } from "@/lib/autopilot";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -91,7 +92,7 @@ export async function answerInvestments(
       const since = now.getTime() - PRACTICE_LOG_DAYS * 86_400_000;
       const log = view ? await tradeLog(userId, { client }) : [];
       const week = log.filter((t) => !t.undone && t.placedAt.getTime() >= since);
-      return practiceLogReply(view, week, advice);
+      return practiceLogReply(view, week, advice, intent.explain ?? false);
     }
     case "practice_pause":
     case "practice_resume": {
@@ -192,7 +193,10 @@ export async function answerInvestments(
     case "returns":
       return returnsReply(await loadReturns(userId, { client, now }));
     case "autopilot":
-      return autopilotReply(await autopilotOf(userId, { client }));
+      return autopilotReply(
+        await autopilotOf(userId, { client }),
+        await autopilotFor(userId, "investing", { client, now }),
+      );
     case "accounts":
       return accountsReply(await loadAccountPlan(userId, { client, now }));
     case "auto_invest":

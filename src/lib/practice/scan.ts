@@ -1,4 +1,3 @@
-import type { RiskLevel } from "@/config/investing";
 import {
   classTickers,
   PRACTICE_ETFS,
@@ -17,13 +16,14 @@ import { scopedFor } from "@/lib/db-scoped";
 import { marketData, type Bar, type Headline } from "@/lib/market";
 import { newsKey } from "@/lib/news/store";
 import { rulesSummary } from "@/lib/news/summarize";
-import { violates } from "@/planning/practice-autopilot";
-import { apply, LedgerError, type LedgerState } from "@/planning/practice-ledger";
 import { mainPaydayDay, scanOpportunities } from "@/planning/practice-opportunities";
-import type { ScanFlag, ScanHeadline } from "@/planning/practice-scan";
+import { refusedByPreferences } from "@/planning/practice-profile";
+import type { ScanHeadline } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
+import { tradesHeldBy } from "./limits";
 import { scanPreferences } from "./opportunity-prefs";
+import { practiceProfileOf } from "./preferences";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
 // Cron (/api/cron/practice-scan). For each portfolio that isn't paused: the monthly practice
@@ -96,32 +96,6 @@ async function paydayDayOf(userId: string, client: PrismaClient, now: Date) {
   }
 }
 
-// Whether trades, one after another, all keep the hard limits; the first broken one.
-export function tradesHeldBy(
-  trades: readonly Pick<ScanFlag["trades"][number], "ticker" | "side" | "amountCents">[],
-  state: LedgerState,
-  prices: Readonly<Record<string, number>>,
-  tradesToday: number,
-): string | null {
-  let s = state;
-  let n = tradesToday;
-  for (const t of trades) {
-    const why = violates(t, s, prices, n);
-    if (why) return why;
-    const priceCents = prices[t.ticker];
-    if (!priceCents) return `no price for ${t.ticker}`;
-    const entry = { side: t.side, ticker: t.ticker, amountCents: t.amountCents, priceCents };
-    try {
-      s = apply(s, entry, PRACTICE_UNIVERSE).state;
-    } catch (error) {
-      if (error instanceof LedgerError) return error.message;
-      throw error;
-    }
-    n += 1;
-  }
-  return null;
-}
-
 export async function scanPractice(
   userId: string,
   { client = defaultClient, now = new Date(), act = true }: ScanOptions = {},
@@ -159,8 +133,11 @@ export async function scanPractice(
     feed.name,
     client,
   );
+  // The person's preferences (src/planning/practice-profile.ts): the mix, the caps their
+  // appetite allows, what is never bought, the cash kept and whether Jane acts.
+  const profile = await practiceProfileOf(userId, { client, now });
   const [prefs, advice, paydayDay] = await Promise.all([
-    scanPreferences(userId, { client }),
+    scanPreferences(userId, { client, now }),
     adviceMode(userId, { client }),
     act && portfolio.monthlyAddCents > 0 ? paydayDayOf(userId, client, now) : Promise.resolve(null),
   ]);
@@ -191,8 +168,13 @@ export async function scanPractice(
   }
 
   const found = scanOpportunities({
-    level: portfolio.level as RiskLevel,
+    level: profile.level,
     state,
+    weights: profile.weights,
+    caps: profile.caps,
+    opportunityMaxShare: profile.opportunityMaxShare,
+    avoid: profile.avoid,
+    cashBufferCents: profile.cashBufferCents,
     prices,
     history,
     trades: trades.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),
@@ -224,8 +206,15 @@ export async function scanPractice(
         placedAt: { gte: dayStart },
       },
     });
+    // The preferences' last check (never-buy list), then the hard limits.
+    const refused =
+      flag.trades
+        .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
+        .find((r) => r !== null) ?? null;
     const held =
-      flag.trades.length > 0 ? tradesHeldBy(flag.trades, current.state, prices, tradesToday) : null;
+      flag.trades.length > 0
+        ? (refused ?? tradesHeldBy(flag.trades, current.state, prices, tradesToday))
+        : null;
     if (!act && held) continue;
     const status: ScanOutcome["status"] = held
       ? "held"
@@ -274,6 +263,7 @@ export async function scanPractice(
     }
     const tradeIds: string[] = [];
     for (const t of flag.trades) {
+      if (refusedByPreferences(profile, t)) continue;
       const fill = await broker.placeOrder(
         userId,
         {
