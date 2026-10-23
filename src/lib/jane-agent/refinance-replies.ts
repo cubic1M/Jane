@@ -38,6 +38,12 @@ export function comparisonLines(c: RefinanceComparison): string[] {
     );
     return lines;
   }
+  if (c.turnedDown) {
+    lines.push(
+      `The offers look cheaper, but a lender would likely turn this down: ${c.turnedDown} So I wouldn't apply now.`,
+    );
+    return lines;
+  }
   if (!c.pick) {
     const best = c.offers[0];
     lines.push(
@@ -102,7 +108,9 @@ export function refinanceReply(target: string | null, refi: Refinance, book: Deb
         ? `I checked sample offers from the stand-in lender catalog: ${picks.length} of your debts could cost less.`
         : cash.length > 0
           ? "I checked sample offers from the stand-in lender catalog: your cash beats them."
-          : "I checked sample offers from the stand-in lender catalog: none of your debts would cost less by enough to switch.",
+          : shown.some((c) => c.turnedDown)
+            ? "I checked sample offers from the stand-in lender catalog: a lender would likely turn you down for now."
+            : "I checked sample offers from the stand-in lender catalog: none of your debts would cost less by enough to switch.",
     ...shown.flatMap((c) => ["", ...comparisonLines(c)]),
     "",
     "Nothing is applied for until you say so.",
