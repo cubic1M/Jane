@@ -44,6 +44,8 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   // The filled-in page has no serious accessibility problems (e2e/accessibility.spec.ts
   // checks it empty).
   const axe = await new AxeBuilder({ page })
+    // The side chat is the chat page itself, checked on its own (/chat).
+    .exclude('iframe[title="Chat with Jane"]')
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
   expect(axe.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual(

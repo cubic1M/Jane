@@ -11,6 +11,8 @@ async function violations(page: Page, path: string) {
   await page.goto(path);
   await page.waitForLoadState("networkidle");
   const results = await new AxeBuilder({ page })
+    // The side chat is the chat page itself, checked on its own (/chat).
+    .exclude('iframe[title="Chat with Jane"]')
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
   return results.violations
