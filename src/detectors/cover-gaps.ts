@@ -3,6 +3,7 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { SAVING_RATES } from "@/config/insurance";
 import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
+import { personalPay } from "@/profile/pay";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, factEvidence, headlineOf, outCents } from "./helpers";
 import { AUTO_HOME, CAPS, capped, combine, premiums } from "./insurance";
@@ -34,7 +35,13 @@ const disabilityGap: Detector = {
     const need = found.needs.find((n) => n.kind === "disability");
     if (!need || need.gapCents <= 0) return null;
     const yearly = need.gapCents * 12;
-    const short = `You earn about ${formatCents(Math.round((found.input.yearlyPayCents ?? 0) / 12))} a month, with no disability cover on file.`;
+    const monthly = formatCents(Math.round((found.input.yearlyPayCents ?? 0) / 12));
+    const share = personalPay(profile).assumedShare;
+    const earn =
+      share === null
+        ? `You earn about ${monthly} a month`
+        : `Your business makes you about ${monthly} a month (${Math.round(share * 100)}% of sales, my estimate)`;
+    const short = `${earn}, with no disability cover on file.`;
     return {
       id: suggestionId("insurance", "disability_insurance"),
       capability: "insurance",
@@ -50,7 +57,7 @@ const disabilityGap: Detector = {
         "disability cover through your job doesn't show in your bank data",
       ),
       urgency: "later",
-      why: `You earn about ${formatCents(Math.round((found.input.yearlyPayCents ?? 0) / 12))} a month and I see no disability policy. ${need.summary} A year without pay would cost ${formatCents(yearly)} of it.`,
+      why: `${earn} and I see no disability policy. ${need.summary} A year without pay would cost ${formatCents(yearly)} of it.`,
       action: OPTIONS("disability"),
     };
   },
