@@ -195,18 +195,22 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
         { channel: "email", kind: emailed[0].kind },
       );
 
-      // A finding's Yes, as a one-tap link: opening it changes nothing.
+      // A finding's Yes, as a one-tap link: opening it changes nothing. A change's heads-up
+      // asks the same as "Look into it" (its No is "That's expected"), and changes rank above
+      // findings, so the email may lead with one: either is the finding's question.
       const links = linksIn(email);
-      const yesAt = links.findIndex((l) => l.label === "Yes");
+      const yesAt = links.findIndex((l) => l.label === "Yes" || l.label === "Look into it");
       const yes = links[yesAt];
       // The same message's No comes after its Yes (and Jane's pick, if any).
-      const no = links.slice(yesAt).find((l) => l.label === "No")!;
+      const no = links
+        .slice(yesAt)
+        .find((l) => l.label === (yes.label === "Yes" ? "No" : "That's expected"))!;
       expect(yes.url).toMatch(/\/chat\/reply\?token=/);
       // Only the hash is stored.
       expect(await client.chatReplyLink.count({ where: { tokenHash: tokenOf(yes.url) } })).toBe(0);
       expect(await viewReplyLink(tokenOf(yes.url), { client, now })).toMatchObject({
         state: "ready",
-        label: "Yes",
+        label: yes.label,
       });
       expect(await viewReplyLink(tokenOf(yes.url), { client, now })).toMatchObject({
         state: "ready",
@@ -214,7 +218,11 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
 
       // The confirm button: the same answer as the chat's, once.
       const { message } = await redeemReplyLink(tokenOf(yes.url), { client, now });
-      expect(message).toMatchObject({ kind: "decision", status: "answered", answeredWith: "Yes" });
+      expect(message).toMatchObject({
+        kind: "decision",
+        status: "answered",
+        answeredWith: yes.label,
+      });
       const { findingId } = message.refs;
       expect(
         await client.decision.findFirstOrThrow({ where: { userId, findingId } }),
