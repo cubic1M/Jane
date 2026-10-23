@@ -38,6 +38,8 @@ export const ACTION_IDS = [
   "insurance.shop_yes",
   "insurance.shop_no",
   "insurance.checkup_seen",
+  // Spec step 202: the yearly review's "Keep me covered".
+  "insurance.keep_covered",
   "insurance.claim_start",
   "insurance.claim_step",
   "insurance.claim_close",

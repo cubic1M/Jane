@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
-import { DOCUMENT_FILE_CSP, securityHeaders } from "./src/lib/security-headers";
+import { DOCUMENT_FILE_CSP, chatFrameHeaders, securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
+  // The dev-only "N" badge sits bottom-left, over the floating cards' buttons and inside the
+  // side chat's frame; the error overlay still opens on an error.
+  devIndicators: false,
   // Load Plaid's SDK as a plain Node package; bundled, its HTTP client picks a
   // browser adapter and every request fails without a response.
   serverExternalPackages: ["plaid"],
@@ -16,6 +19,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders(process.env.NODE_ENV === "development") },
+      // The side chat frames the chat's pages, from our own pages only.
+      { source: "/chat", headers: chatFrameHeaders(process.env.NODE_ENV === "development") },
+      { source: "/chat/:path*", headers: chatFrameHeaders(process.env.NODE_ENV === "development") },
       // Later entries win: uploaded documents get their own sandboxed policy (spec step 68).
       {
         source: "/api/documents/:documentId",

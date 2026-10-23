@@ -3,12 +3,12 @@ import { capabilityFor } from "./capabilities";
 import type { Topic } from "./context";
 import { parseIntent } from "./intents";
 
-// Which of Claude's ~125 tools a free question is sent with. All of them is ~20,000 tokens of
-// definitions in every request: slow to start and costly. The general tools (spending, bills,
-// goals, net worth, findings, the whole picture, decisions, buttons) always go; the four
-// sectors' tools (debt and credit, insurance, taxes, investing) go when the question or the
-// conversation is about that sector: what the rules read it as, the last topic, or its words.
-// A question about none of them gets the general tools, which can still answer it.
+// Which of Claude's tools a free question is about. The general tools (spending, bills, goals,
+// net worth, findings, the whole picture, decisions, buttons) always; the four sectors' tools
+// (debt and credit, insurance, taxes, investing) when the question or the conversation is about
+// that sector: what the rules read it as, the last topic, or its words. Every request carries
+// all the tools, in one fixed order, so its start is cached (chatTools below); this says which
+// areas the question is about, as a hint after the cached part (./claude.ts).
 
 const SECTORS = {
   debt: {
@@ -54,7 +54,7 @@ const SECTORS = {
     tools: new Set<string>(),
     prefix: "tax_",
     words:
-      /\b(?:tax\w*|refunds?|w-?4|withh\w*|deduct\w*|1099|irs|filing|returns?|brackets?|roth|hsa|estimated|accountant|write.?offs?|dependents?|forms?|documents?|file|expenses?|tags?|profile|about me|donat\w*|charit\w*|s corp|llc|home office|set aside)\b/,
+      /\b(?:tax\w*|refunds?|w-?4|withh\w*|deduct\w*|1099|irs|filing|returns?|brackets?|roth|hsa|estimated|accountant|write.?offs?|dependents?|forms?|documents?|file|expenses?|tags?|profile|about me|donat\w*|charit\w*|s corp|llc|home office|set aside|child ?care|daycare|claim\w* (?:my |our |the )?(?:kids?|children|child|son|daughter|parents?|mom|dad))\b/,
   },
   investing: {
     tools: new Set([
@@ -101,13 +101,12 @@ export const isArea = (value: unknown): value is SectorName =>
   typeof value === "string" && (AREAS as string[]).includes(value);
 
 // The words above only guess which areas a question needs: "my car got rear ended" or "how much
-// will uncle sam take" name none of them. So Claude can ask for an area's tools itself; they come
-// with its next step (./claude.ts). One fixed definition, sent with the general tools, so the
-// cached start of every request stays the same.
+// will uncle sam take" name none of them. So Claude can ask which tools an area has (./claude.ts).
+// One fixed definition, in every request's cached tools.
 export const OPEN_AREA_TOOL: Anthropic.Tool = {
   name: "open_area",
   description:
-    "Get the tools for one area of the person's money when the question needs an area whose tools you don't have yet; they are added for your next step. debt: loans, credit cards, card interest, credit score, buying or leasing a car or a home, getting out of debt. insurance: their policies and cover, claims, accidents, what happens to their family if they die, or if they get sick or can't work. tax: what they'll owe or get back, withholding, write-offs, deadlines. investing: retirement and when they can stop working, stocks, funds, crypto, savings rates, where extra cash should go.",
+    "List the tools for one area of the person's money, when the question needs an area and you aren't sure which tools it has. debt: loans, credit cards, card interest, credit score, buying or leasing a car or a home, getting out of debt. insurance: their policies and cover, claims, accidents, what happens to their family if they die, or if they get sick or can't work. tax: what they'll owe or get back, withholding, write-offs, deadlines. investing: retirement and when they can stop working, stocks, funds, crypto, savings rates, where extra cash should go.",
   input_schema: {
     type: "object",
     properties: { area: { type: "string", enum: [...AREAS] } },
@@ -214,7 +213,27 @@ export function sectorsFor(
   return wanted;
 }
 
-// The tools for a question, in an order that caches well: the general tools every question gets
+// Every request's tools: all of them, in one fixed order, built once, so the start of every
+// request (the tools, then the instructions) is the same bytes whatever the question and is read
+// from the cache. A breakpoint after the last tool lets both instruction modes (with and
+// without demo advice) share the cached tools. What varies per question goes after the cached
+// instructions instead: the areas it is about and whether a button may be offered (./claude.ts).
+let stable: Anthropic.Tool[] | null = null;
+let stableFrom: readonly Anthropic.Tool[] | null = null;
+export function chatTools(all: readonly Anthropic.Tool[]): Anthropic.Tool[] {
+  if (stable && stableFrom === all) return stable;
+  const general = all.filter((t) => sectorOf(t.name) === null && t.name !== "propose_action");
+  const button = all.filter((t) => t.name === "propose_action");
+  const sectors = AREAS.flatMap((area) => areaTools(all, area));
+  const ordered = [...general, OPEN_AREA_TOOL, ...button, ...sectors];
+  stable = ordered.map((t, i) =>
+    i === ordered.length - 1 ? { ...t, cache_control: { type: "ephemeral" as const } } : t,
+  );
+  stableFrom = all;
+  return stable;
+}
+
+// The tools a question is about, in an order that caches well: the general tools every question gets
 // come first and end in a cache breakpoint, so every request shares that cached start whatever
 // sector it is about; then the button tool (only when `buttons`), then the sector's tools. The
 // request's own system prompt follows them (./claude.ts).

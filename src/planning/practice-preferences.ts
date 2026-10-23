@@ -9,6 +9,13 @@ import {
   EXCLUSIONS,
   GOAL_MAX_YEARS,
   MAX_DROP_RANGE,
+  MAX_FUND_RANGE,
+  REBALANCE_PACES,
+  STRATEGY_CHOICES,
+  UNIVERSES,
+  type RebalancePace,
+  type StrategyChoice,
+  type Universe,
   MONTHLY_ADD_MAX_CENTS,
   PREFERENCE_DEFAULTS,
   type Appetite,
@@ -34,6 +41,13 @@ export type PracticePreferences = {
   harvestLosses: boolean;
   cashBufferCents: number;
   mode: AutopilotMode;
+  // The strategy followed (STRATEGY_CHOICES), how far a kind drifts before a rebalance, what may
+  // be bought, and the most of the portfolio one fund may be (whole percent; null for the hard
+  // limit).
+  strategy: StrategyChoice;
+  rebalancePace: RebalancePace;
+  universe: Universe;
+  maxFundPercent: number | null;
 };
 
 export type PreferenceField = keyof PracticePreferences;
@@ -51,6 +65,10 @@ export const PREFERENCE_FIELDS: readonly PreferenceField[] = [
   "harvestLosses",
   "cashBufferCents",
   "mode",
+  "strategy",
+  "rebalancePace",
+  "universe",
+  "maxFundPercent",
 ];
 
 export const DEFAULT_PREFERENCES: PracticePreferences = {
@@ -141,6 +159,25 @@ function check(
       return typeof v === "string" && Object.hasOwn(AUTOPILOT_MODES, v)
         ? { value: v }
         : { error: "Pick suggest only or act within the limits." };
+    case "strategy":
+      return typeof v === "string" && Object.hasOwn(STRATEGY_CHOICES, v)
+        ? { value: v }
+        : {
+            error: "Pick Jane's pick, the level's mix, the trend filter or the volatility target.",
+          };
+    case "rebalancePace":
+      return typeof v === "string" && Object.hasOwn(REBALANCE_PACES, v)
+        ? { value: v }
+        : { error: "Pick often, normal or rarely." };
+    case "universe":
+      return typeof v === "string" && Object.hasOwn(UNIVERSES, v)
+        ? { value: v }
+        : { error: "Pick funds only, or funds and a few big companies." };
+    case "maxFundPercent":
+      if (v === null) return { value: null };
+      return isInt(v) && v >= MAX_FUND_RANGE.min && v <= MAX_FUND_RANGE.max
+        ? { value: v }
+        : { error: `Pick a share from ${MAX_FUND_RANGE.min}% to ${MAX_FUND_RANGE.max}%.` };
   }
 }
 
@@ -186,6 +223,10 @@ export function fromRow(row: {
   harvestLosses: boolean;
   cashBufferCents: number;
   mode: string;
+  strategy: string;
+  rebalancePace: string;
+  universe: string;
+  maxFundPercent: number | null;
 }): PracticePreferences {
   const d = DEFAULT_PREFERENCES;
   return {
@@ -203,6 +244,19 @@ export function fromRow(row: {
     harvestLosses: row.harvestLosses,
     cashBufferCents: row.cashBufferCents,
     mode: Object.hasOwn(AUTOPILOT_MODES, row.mode) ? (row.mode as AutopilotMode) : d.mode,
+    strategy: Object.hasOwn(STRATEGY_CHOICES, row.strategy)
+      ? (row.strategy as StrategyChoice)
+      : d.strategy,
+    rebalancePace: Object.hasOwn(REBALANCE_PACES, row.rebalancePace)
+      ? (row.rebalancePace as RebalancePace)
+      : d.rebalancePace,
+    universe: Object.hasOwn(UNIVERSES, row.universe) ? (row.universe as Universe) : d.universe,
+    maxFundPercent:
+      row.maxFundPercent !== null &&
+      row.maxFundPercent >= MAX_FUND_RANGE.min &&
+      row.maxFundPercent <= MAX_FUND_RANGE.max
+        ? row.maxFundPercent
+        : null,
   };
 }
 
@@ -246,6 +300,16 @@ export function sayPreference(p: PracticePreferences, field: PreferenceField): s
       return dollars(p.cashBufferCents);
     case "mode":
       return AUTOPILOT_MODES[p.mode].label;
+    case "strategy":
+      return STRATEGY_CHOICES[p.strategy].label;
+    case "rebalancePace":
+      return REBALANCE_PACES[p.rebalancePace].label;
+    case "universe":
+      return UNIVERSES[p.universe].label;
+    case "maxFundPercent":
+      return p.maxFundPercent === null
+        ? `${MAX_FUND_RANGE.max}% (the limit)`
+        : `${p.maxFundPercent}%`;
   }
 }
 
@@ -261,6 +325,10 @@ export const PREFERENCE_LABELS: Readonly<Record<PreferenceField, string>> = {
   harvestLosses: "Harvest losses for taxes",
   cashBufferCents: "Cash to keep",
   mode: "Autopilot",
+  strategy: "Strategy",
+  rebalancePace: "How often to rebalance",
+  universe: "What Jane may buy",
+  maxFundPercent: "Most in one fund",
 };
 
 // What a change does, one line per field: "Risk level: Medium → Low".
@@ -288,6 +356,7 @@ const dollarsToCents = (v: unknown) => {
 export function parsePreferenceForm(form: FormLike): PreferencePatch {
   const level = text(form.get("riskLevel"));
   const drop = text(form.get("maxDropPercent"));
+  const fund = text(form.get("maxFundPercent"));
   const tickers = text(form.get("avoidTickers"))
     .split(/[\s,]+/)
     .filter(Boolean);
@@ -303,5 +372,9 @@ export function parsePreferenceForm(form: FormLike): PreferencePatch {
     harvestLosses: form.get("harvestLosses") === "on",
     cashBufferCents: dollarsToCents(form.get("cashBuffer")),
     mode: text(form.get("mode")),
+    strategy: text(form.get("strategy")),
+    rebalancePace: text(form.get("rebalancePace")),
+    universe: text(form.get("universe")),
+    maxFundPercent: fund === "" ? null : num(fund),
   };
 }

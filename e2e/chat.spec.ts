@@ -107,10 +107,12 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(autopilot.getByRole("status")).toContainText("I'll handle the safe stuff");
   await expect(autopilot.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
 
-  // Chat is the first tab and lit up; the message box is at the end.
+  // The chat's own page is the chat expanded (docs/design/home-hub.md): the area tabs are
+  // above it with none lit up, and no side chat beside it. The message box is at the end.
   const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByRole("link").first()).toHaveAccessibleName("Chat");
-  await expect(nav.getByRole("link", { name: "Chat" })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Home", exact: true })).toBeAttached();
+  await expect(nav.locator('[aria-current="page"]')).toHaveCount(0);
+  await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toHaveCount(0);
   await expect(ask).toHaveAttribute("placeholder", "Ask Jane anything");
 
   // Typing a question (spec step 84): it shows as the person's message, with Jane's answer
@@ -195,10 +197,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
-  // Opened at the end: the message box sits above the tab bar.
+  // Opened at the end: the whole message box is on screen (no tab bar along the bottom now).
   await page.goto("/chat");
-  await expect(ask).toBeInViewport();
-  const navTop = (await nav.boundingBox())?.y ?? 0;
-  const box = await ask.boundingBox();
-  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(navTop + 1);
+  await expect(ask).toBeInViewport({ ratio: 1 });
 });

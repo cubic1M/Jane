@@ -30,7 +30,7 @@ import type { PolicyKind } from "@/config/insurance";
 import { quotesAnswer } from "./insurance/quotes";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
-import { areaTools, isArea, lookupsFor, sectorsFor, toolsFor } from "./tool-select";
+import { areaTools, chatTools, isArea, lookupsFor, sectorsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { CHANGE_PRACTICE_TOOL, proposePracticeChange } from "./practice-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
@@ -604,20 +604,24 @@ async function askClaude(
   // Only the last few turns: a long thread slows every follow-up. The topic of the last
   // answer is in the numbers sent with the question, so a short follow-up keeps its context.
   const messages = conversation(history.slice(-CHAT_CLAUDE_HISTORY), question);
-  // Only the general tools and the sectors this question is about (./tool-select.ts).
+  // Every tool, in one fixed order, so the start of the request is cached whatever the question
+  // (./tool-select.ts). What this question is about goes after the cached instructions: its areas,
+  // and whether it may get a button.
   const actionRequest = ACTION_REQUEST.test(question);
-  // A question that only asks for information isn't sent the button tool at all, so the answer
-  // has to be written in words (it can still link with show_block's pictures).
-  let tools = toolsFor(
-    CHAT_TOOLS,
-    question,
-    [...history].reverse().find((m) => m.role === "user")?.content ?? null,
-    topic,
-    now.toISOString().slice(0, 10),
-    // The button tool only for a request to act, and not when the card is already prepared.
-    { buttons: actionRequest && !prepared },
-  );
+  const tools = chatTools(CHAT_TOOLS);
   timing.toolsSent = tools.length;
+  const areas = [
+    ...sectorsFor(
+      question,
+      [...history].reverse().find((m) => m.role === "user")?.content ?? null,
+      topic,
+      now.toISOString().slice(0, 10),
+    ),
+  ];
+  // A question that only asks for information is told to answer in words (a button it offers
+  // anyway keeps only its links, below); one whose card is prepared already has its button.
+  const buttons = actionRequest && !prepared;
+  const focusLine = `\n\nThis question is about ${areas.length > 0 ? `these areas: ${areas.join(", ")}; use their tools and the general ones` : "no one area: the general tools answer most questions, and open_area lists an area's tools if it needs one"}.${buttons || prepared ? "" : " It only asks for information: answer in words, and don't call propose_action."}`;
   let proposal: Extract<Proposal, { ok: true }> | null = prepared
     ? { ok: true, actions: prepared.actions, refs: prepared.refs, line: prepared.body }
     : null;
@@ -632,15 +636,17 @@ async function askClaude(
     profile,
   );
   const system: Anthropic.TextBlockParam[] = [
-    // The instructions and tools are the same for everyone in each mode, so they're cached.
+    // The tools and instructions are the same bytes for every question in each mode, so they're
+    // cached (the tools' own breakpoint is shared by both modes).
     {
       type: "text",
       text: advice ? SYSTEM_DEMO_ADVICE : SYSTEM,
       cache_control: { type: "ephemeral" },
     },
+    // Everything below changes with the person and the question, after the cached part.
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${focusLine}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}`,
     },
   ];
 
@@ -895,15 +901,12 @@ async function askClaude(
           });
           continue;
         }
-        // An area's tools the words didn't pick: added for the next step.
+        // An area the words didn't pick: its tools, by name (every request has them all).
         if (block.name === "open_area") {
           const area = (block.input as { area?: unknown } | null)?.area;
-          const added = isArea(area)
-            ? areaTools(CHAT_TOOLS, area).filter((t) => !tools.some((s) => s.name === t.name))
-            : [];
-          if (added.length > 0) {
-            tools = [...tools, ...added];
-            timing.areasOpened.push(area as string);
+          const listed = isArea(area) && !timing.areasOpened.includes(area);
+          if (listed) {
+            timing.areasOpened.push(area);
             if (!areaOpened) {
               areaOpened = true;
               turnLimit += 1;
@@ -914,8 +917,10 @@ async function askClaude(
             tool_use_id: block.id,
             content: !isArea(area)
               ? "Pick one area: debt, insurance, tax or investing."
-              : added.length > 0
-                ? `The ${area} tools are ready for your next step: ${added.map((t) => t.name).join(", ")}.`
+              : listed
+                ? `The ${area} tools, for your next step: ${areaTools(CHAT_TOOLS, area)
+                    .map((t) => t.name)
+                    .join(", ")}.`
                 : `You already have the ${area} tools.`,
             ...(isArea(area) ? {} : { is_error: true }),
           });

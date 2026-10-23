@@ -1,5 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
+import { BUSINESS_SALES_DEPOSIT } from "@/config/insurance";
+import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, factEvidence, tx, weakest, headlineOf } from "./helpers";
@@ -203,14 +205,74 @@ const businessSeparation: Detector = {
   },
 };
 
+// Spec step 201: a business or side work needs cover no personal policy gives. From the need
+// calculators (src/lib/insurance/need), the same working as the page and the chat: general
+// liability for clients or customers, professional liability for work done for clients, and
+// work equipment. Without the policies loaded, a business owner with no business insurance
+// charge in their payments.
+const BUSINESS_NEEDS: readonly string[] = [
+  "business_liability",
+  "professional_liability",
+  "business_equipment",
+];
+const NEED_WORDS: Record<string, string> = {
+  business_liability: "general",
+  professional_liability: "professional",
+  business_equipment: "equipment",
+};
 const businessInsurance: Detector = {
-  covers: ["insurance_risks"],
+  covers: ["insurance_risks", "insurance_needs"],
   capability: "insurance",
   topic: "business_insurance",
   needs: ["income_pattern"],
   detect({ profile, data }) {
     const pattern = profile.facts.income_pattern;
     const income = profile.facts.monthly_income;
+    const input = needInputFromProfile(profile, data);
+    if (input) {
+      const short = computeNeeds(input).filter(
+        (n) => BUSINESS_NEEDS.includes(n.kind) && n.gapCents > 0,
+      );
+      if (short.length === 0) return null;
+      const work = input.business!;
+      const yearly = (cents: number) => Math.round((cents * 12) / Math.max(1, profile.months));
+      const shop = work.salesCents > work.serviceCents;
+      const seen = data.transactions.filter(
+        (t) =>
+          t.amountCents < 0 &&
+          (t.pfc === "INCOME_CONTRACTOR" ||
+            t.pfc === "INCOME_GIG_ECONOMY" ||
+            (t.pfc === "INCOME_OTHER" && BUSINESS_SALES_DEPOSIT.test(t.description))),
+      ).length;
+      // "no general or professional liability cover", "no equipment cover".
+      const missing = short.map((n) => NEED_WORDS[n.kind]);
+      const liability = missing.filter((m) => m !== "equipment");
+      const list = [
+        ...(liability.length > 0 ? [`${liability.join(" or ")} liability`] : []),
+        ...(missing.includes("equipment") ? ["equipment"] : []),
+      ].join(" or ");
+      return {
+        id: suggestionId("insurance", "business_insurance"),
+        capability: "insurance",
+        topic: "business_insurance",
+        title: shop
+          ? "Check your business has liability and property cover"
+          : "Get cover for the work you do for clients",
+        headline: headlineOf("Check your business cover", R.businessClaimCents, "risk"),
+        short: `${shop ? `Your business takes about ${formatCents(yearly(work.salesCents))} a year in card sales` : `You earn about ${formatCents(yearly(work.serviceCents))} a year from client work`} with no ${list} cover.`,
+        worthCents: R.businessClaimCents,
+        // A business with no liability cover at all can be ended by one claim.
+        required: short.some((n) => n.kind === "business_liability" && n.haveCents === 0),
+        worthKind: "risk",
+        confidence: weakest([
+          evidence("seen", profile.months, seen, "business income deposits"),
+          ...(pattern.value === "business" ? [factEvidence(pattern)] : []),
+        ]),
+        urgency: "soon",
+        why: `${short[0].summary} ${shop ? "A customer hurt at your business, or by what you sell," : "A client who says your work cost them money, or who is hurt while you work,"} is a claim your home, renters and car policies don't pay. One in a given year is unlikely (about ${Math.round(CHANCE.business_insurance * 100)}%), but it can cost ${formatCents(R.businessClaimCents)} or more.`,
+        action: { label: "See options", href: `/insurance?need=${short[0].kind}#options` },
+      };
+    }
     if (pattern.value !== "business") return null;
     const cover = tx(
       data,
@@ -227,7 +289,6 @@ const businessInsurance: Detector = {
       headline: headlineOf("Check your business cover", R.businessClaimCents, "risk"),
       short: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no insurance charge.`,
       worthCents: R.businessClaimCents,
-      // A business with no liability cover at all can be ended by one claim.
       required: true,
       worthKind: "risk",
       confidence: weakest([

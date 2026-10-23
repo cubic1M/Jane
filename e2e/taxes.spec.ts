@@ -16,6 +16,8 @@ test.afterEach(async () => {
 async function axe(page: Page) {
   await page.waitForLoadState("networkidle");
   const results = await new AxeBuilder({ page })
+    // The side chat is the chat page itself, checked on its own (/chat).
+    .exclude('iframe[title="Chat with Jane"]')
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
   return results.violations
@@ -82,6 +84,12 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   await expect(profile.getByText("Head of household")).toBeVisible();
   await expect(profile.getByText("1 under 17, 0 other")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it")).toHaveCount(0);
+  // Spec step 267: the business page is one click from /taxes.
+  await expect(
+    page.getByRole("region", { name: "Business taxes" }).getByRole("link", {
+      name: "See my business taxes",
+    }),
+  ).toHaveAttribute("href", "/taxes/business");
 
   // Spec step 119: the forms to expect, ticked off from the page.
   const forms = page.getByRole("region", { name: /Tax forms to expect/ });
@@ -242,4 +250,32 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   await expect(family.getByRole("heading", { name: "Claiming your children" })).toBeVisible();
   await expect(family.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   expect(await axe(page)).toEqual([]);
+});
+
+test("retirement income, inherited money and disasters each have a page from /taxes", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  // Spec steps 271, 268 and 270: each reached from /taxes, with the chat's own lines.
+  for (const [link, heading, section] of [
+    ["See my retirement taxes", "Taxes on retirement income", /^Social Security: /],
+    ["See inherited money and gifts", "Inherited money and gifts", /new cost basis/],
+    ["See disaster relief", "Disasters and losses", /county|County/],
+  ] as const) {
+    await page.goto("/taxes");
+    await page.getByRole("link", { name: link }).click();
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    await expect(page.getByText(section).first()).toBeVisible();
+    expect(await axe(page)).toEqual([]);
+  }
 });

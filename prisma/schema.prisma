@@ -4317,6 +4317,12 @@ model PracticePreferences {
   cashBufferCents Int       @map("cash_buffer_cents")
   // suggest (no practice trades) or act (within the caps, practice ledger only).
   mode            String
+  // STRATEGY_CHOICES, REBALANCE_PACES and UNIVERSES keys (src/config/practice-preferences.ts),
+  // and the most of the portfolio one fund may be, in whole percent (null: the hard limit).
+  strategy        String    @default("level")
+  rebalancePace   String    @default("normal") @map("rebalance_pace")
+  universe        String    @default("funds_and_stocks")
+  maxFundPercent  Int?      @map("max_fund_percent")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
