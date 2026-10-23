@@ -11,22 +11,24 @@ import {
 import {
   DEFAULT_SCAN_PREFERENCES,
   addDayAfter,
-  glideMax,
-  heldStressDrop,
+  heldDrop,
   levelWithin,
   mainPaydayDay,
   scanOpportunities,
-  stressDrop,
   type OpportunityInput,
   type ScanPreferences,
 } from "./practice-opportunities";
 import { OPPORTUNITY_KINDS, SAFETY_KINDS } from "@/config/practice-opportunities";
+import { LEVEL_WORST_DROP_PERCENT } from "@/config/practice-preferences";
 import { SCAN_CAPS, type ScanKind } from "@/config/practice-scan";
+import type { Suggestion } from "@/detectors/contract";
+import { shortFormProblems } from "@/detectors/harness";
 import type { Bar } from "@/lib/market";
 import { SampleMarketData } from "@/lib/market/sample";
 import { planTrades, portfolioValue, positionValue } from "./practice-autopilot";
 import { apply, type LedgerState } from "./practice-ledger";
-import { drift, type PastTrade } from "./practice-scan";
+import { glideWeights, levelForDrop } from "./practice-profile";
+import { drift, scanPortfolio, type PastTrade } from "./practice-scan";
 
 // The kinds after step 292: each fires on a planted case and not otherwise, the caps hold, the
 // person's preferences are obeyed, and the safety kinds never trade.
@@ -134,6 +136,15 @@ async function scanOn(
   });
 }
 
+// The suggestion's short forms (docs/detectors.md), and about eight words for the card.
+function expectShortForms(f: {
+  kind: ScanKind;
+  ask: { headline: string; short: string; worthCents: number };
+}) {
+  expect(shortFormProblems(f.ask as unknown as Suggestion), f.kind).toEqual([]);
+  expect(f.ask.headline.split(" ").length, f.ask.headline).toBeLessThanOrEqual(9);
+}
+
 const kinds = (flags: { kind: ScanKind }[]) => flags.map((f) => f.kind);
 const one = <F extends { kind: ScanKind }>(flags: F[], kind: ScanKind) =>
   flags.filter((f) => f.kind === kind);
@@ -182,6 +193,25 @@ describe("rebalance through new money instead of selling", () => {
   });
 });
 
+describe("the person's own mix", () => {
+  it("aims new money at the mix the settings keep (after the glide path), not the plain model", async () => {
+    const held = withCash(await boughtOn(4, "2026-09-01"), 100_000);
+    const weights = glideWeights(4, "2028-01-01", "2026-10-08").weights;
+    const [flag] = one(
+      await scanOn(4, "2026-10-08", held, { weights }, { goalDate: "2028-01-01" }),
+      "new_money_rebalance",
+    );
+    // The glided mix holds less in stocks than the High model: new money goes only to kinds
+    // the glided mix is short of, and some of it to a kind the plain model wouldn't add to.
+    const model = MODEL_PORTFOLIOS[4].weights;
+    const classOfTicker = (t: string) =>
+      (Object.keys(PRACTICE_ETFS) as PracticeClass[]).find((c) => classTickers(c).includes(t))!;
+    const bought = flag.trades.map((t) => classOfTicker(t.ticker));
+    expect(bought.some((c) => weights[c] > model[c])).toBe(true);
+    expect(bought).not.toContain("us_stocks");
+  });
+});
+
 describe("cash drag", () => {
   it("fires when cash above the buffer has sat for days, buying the level's own mix", async () => {
     const held = withCash(await boughtOn(3, "2026-09-01"), 50_000);
@@ -195,6 +225,19 @@ describe("cash drag", () => {
     expect(flag.trades.every((t) => own.has(t.ticker))).toBe(true);
     expect(flag.amountCents).toBeLessThanOrEqual(50_000);
     expect(flag.headline).toMatch(/^Invest \$/);
+    expectShortForms(flag);
+  });
+
+  it("doesn't count new practice money as idle: the days run from the last deposit", async () => {
+    const held = withCash(await boughtOn(3, "2026-09-01"), 50_000);
+    expect(
+      kinds(await scanOn(3, "2026-10-01", held, { lastDepositOn: "2026-10-01" })),
+    ).not.toContain("cash_drag");
+    const [later] = one(
+      await scanOn(3, "2026-10-08", held, { lastDepositOn: "2026-10-01" }),
+      "cash_drag",
+    );
+    expect(later.reason).toMatch(/waited 7 days/);
   });
 
   it("doesn't fire just after a buy, under the minimum, or within the buffer", async () => {
@@ -238,6 +281,7 @@ describe("a cheaper equivalent fund", () => {
     ]);
     expect(flag.trades[0].amountCents).toBe(flag.trades[1].amountCents);
     expect(flag.figures.find((f) => f.label === "Saved a year")).toBeDefined();
+    expectShortForms(flag);
   });
 
   it("never sells at a gain when taxes matter, unless the person said they don't", async () => {
@@ -291,6 +335,7 @@ describe("contribution timing after a payday", () => {
     const [flag] = one(await scanOn(3, "2026-10-08", held, { paydayDay: 15 }), "payday_timing");
     expect(flag).toBeDefined();
     expect(flag.headline).toBe("Move practice money to the 16th, after payday");
+    expectShortForms(flag);
     expect(flag.trades).toEqual([]);
   });
 
@@ -340,6 +385,7 @@ describe("a drift warning before the band is hit", () => {
     expect(flag).toBeDefined();
     expect(flag.trades).toEqual([]);
     expect(flag.headline).toMatch(/points off; band is 5$/);
+    expectShortForms(flag);
     expect(kinds(flags)).not.toContain("drift_rebalance");
   });
 
@@ -359,51 +405,74 @@ describe("a drift warning before the band is hit", () => {
 });
 
 describe("the goal-date glide path", () => {
-  it("steps one level down when the goal is closer than the level allows", async () => {
+  // The practice settings apply step 157's glide path to the mix (practice-profile.ts); the
+  // scan says so each time it steps down.
+  const glided = (level: RiskLevel, goalDate: string | null, today: string) =>
+    glideWeights(level, goalDate, today).weights;
+
+  it("tells the person when their mix steps toward bonds as the goal nears", async () => {
     const held = await boughtOn(4, "2026-09-01");
+    const weights = glided(4, "2029-10-01", "2026-10-08");
     const [flag] = one(
-      await scanOn(4, "2026-10-08", held, {}, { goalDate: "2032-10-01" }),
+      await scanOn(4, "2026-10-08", held, { weights }, { goalDate: "2029-10-01" }),
       "glide_path",
     );
     expect(flag).toBeDefined();
-    expect(flag.key).toBe("glide_path:4:3");
     expect(flag.trades).toEqual([]);
-    // A year left: still one step at a time.
-    const [near] = one(
-      await scanOn(4, "2026-10-08", held, {}, { goalDate: "2027-10-01" }),
-      "glide_path",
+    expect(flag.key).toBe(
+      `glide_path:2029-10-01:${Math.round((weights.us_stocks + weights.intl_stocks) * 100)}`,
     );
-    expect(near.key).toBe("glide_path:4:3");
+    expect(flag.figures.find((f) => f.label === "Stocks at High")?.value).toBe("75%");
+    expectShortForms(flag);
   });
 
-  it("stays quiet with years to go, or no goal date", async () => {
+  it("stays quiet with years to go, or no goal date: the mix is the level's own", async () => {
     const held = await boughtOn(5, "2026-09-01");
     for (const goalDate of ["2050-01-01", null]) {
-      expect(kinds(await scanOn(5, "2026-10-08", held, {}, { goalDate }))).not.toContain(
+      const weights = glided(5, goalDate, "2026-10-08");
+      expect(kinds(await scanOn(5, "2026-10-08", held, { weights }, { goalDate }))).not.toContain(
         "glide_path",
       );
     }
   });
-
-  it("follows the ladder in config", () => {
-    expect([20, 12, 7, 3, 1].map(glideMax)).toEqual([5, 4, 3, 2, 1]);
-  });
 });
 
 describe("more risk than you said", () => {
-  it("flags a Very high mix for someone who said 25%, and names a level within it", async () => {
+  it("flags a Very high mix for someone who said 25%, and names the level the settings would pick", async () => {
     const held = await boughtOn(5, "2026-09-01");
     const prices = await pricesOn("2026-10-08");
-    expect(heldStressDrop(held.state, prices)).toBeGreaterThan(0.4);
+    // On its model, a level reads exactly its worst replay drop.
+    expect(heldDrop(5, held.state, prices)).toBeCloseTo(LEVEL_WORST_DROP_PERCENT[5] / 100, 1);
     const [flag] = one(
       await scanOn(5, "2026-10-08", held, {}, { maxDropShare: 0.25 }),
       "risk_mismatch",
     );
     expect(flag).toBeDefined();
     expect(flag.trades).toEqual([]);
-    const safer = levelWithin(0.25);
-    expect(safer).toBeLessThan(5);
-    expect(stressDrop(MODEL_PORTFOLIOS[safer].weights)).toBeLessThanOrEqual(0.25);
+    expect(levelWithin(0.25)).toBe(levelForDrop(5, 25));
+    expect(flag.figures.find((f) => f.label === "A level within your limit")?.value).toBe("Medium");
+  });
+
+  it("never contradicts the settings: a level they pick for a stated drop is within it", async () => {
+    for (const level of [1, 2, 3, 4, 5] as const) {
+      const limit = LEVEL_WORST_DROP_PERCENT[level];
+      expect(levelForDrop(5, limit)).toBe(level);
+      const held = await boughtOn(level, "2026-09-01");
+      expect(
+        kinds(await scanOn(level, "2026-09-01", held, {}, { maxDropShare: limit / 100 })),
+        `level ${level}`,
+      ).not.toContain("risk_mismatch");
+    }
+  });
+
+  it("leaves a drifted mix to the rebalance when the level itself fits", async () => {
+    const held = await boughtOn(3, "2026-09-01");
+    const total = portfolioValue(held.state, await pricesOn("2026-09-01"));
+    const drifted = await move(held, "2026-09-01", "BND", "VTI", Math.round(0.3 * total));
+    const limit = LEVEL_WORST_DROP_PERCENT[3] / 100;
+    const flags = kinds(await scanOn(3, "2026-09-01", drifted, {}, { maxDropShare: limit }));
+    expect(flags).toContain("drift_rebalance");
+    expect(flags).not.toContain("risk_mismatch");
   });
 
   it("stays quiet within the stated drop, or with none stated", async () => {
@@ -525,6 +594,7 @@ describe("caps and the card's needs", () => {
 
   it("gives every flag numbers, caps and a confidence with its reason; safety kinds never trade", async () => {
     const flags = await everything();
+    expect(new Set(kinds(flags)).size).toBeGreaterThanOrEqual(8);
     for (const f of flags) {
       expect(f.headline.length).toBeLessThanOrEqual(60);
       expect(f.reason.length).toBeGreaterThan(30);
@@ -535,6 +605,7 @@ describe("caps and the card's needs", () => {
       expect(f.confidence.reason.length).toBeGreaterThan(20);
       expect(f.trades.every((t) => t.rule === f.kind && t.reason === f.reason)).toBe(true);
       if ((SAFETY_KINDS as readonly string[]).includes(f.kind)) expect(f.trades).toEqual([]);
+      expectShortForms(f);
     }
   });
 
@@ -549,6 +620,43 @@ describe("caps and the card's needs", () => {
         }
       }
       expect(state.cashCents).toBeGreaterThanOrEqual(0);
+    }
+  });
+});
+
+describe("step 292 kinds, after the QA pass", () => {
+  it("says nothing about a rebalance smaller than a trade", async () => {
+    const held = await boughtOn(3, "2026-09-01", 10_000);
+    const prices = await pricesOn("2026-09-01");
+    const total = portfolioValue(held.state, prices);
+    const drifted = await move(held, "2026-09-01", "BND", "VTI", Math.round(0.06 * total));
+    expect(drift(3, drifted.state, prices).past).toBe(true);
+    const flags = scanPortfolio({
+      level: 3,
+      state: drifted.state,
+      prices,
+      history: await historyTo("2026-09-01"),
+      trades: drifted.trades,
+      headlines: [],
+      today: "2026-09-01",
+      opportunitiesPaused: false,
+      usedThisMonth: {},
+      seen: new Set(),
+    });
+    expect(kinds(flags)).not.toContain("drift_rebalance");
+  });
+
+  it("names the fund a dip buy really buys when it isn't the one that dipped", async () => {
+    // International stocks held in IXUS, at a loss in this autumn's dip: the dip buy goes into
+    // VXUS (buying IXUS would turn the loss still to harvest into a wash sale).
+    const held = await boughtOn(3, "2026-08-03");
+    const vxus = positionValue(held.state, await pricesOn("2026-08-03"), "VXUS");
+    const swapped = withCash(await move(held, "2026-08-03", "VXUS", "IXUS", vxus - 100), 50_000);
+    const flags = one(await scanOn(3, "2026-10-15", swapped), "dip_buy");
+    for (const f of flags) {
+      const bought = f.trades[0].ticker;
+      expect(f.ask.headline).toContain(bought);
+      expect(f.headline).toContain(bought);
     }
   });
 });

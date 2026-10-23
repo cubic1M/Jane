@@ -6,6 +6,11 @@ import {
   type PracticeClass,
 } from "@/config/portfolios";
 import { MAX_DROP_LOOKBACK_DAYS, ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
+import {
+  ideaSlot,
+  PRACTICE_IDEA_DAYS,
+  PRACTICE_IDEA_MIN_CENTS,
+} from "@/config/practice-suggestions";
 import { DIP_LOOKBACK_DAYS, NEWS_LOOKBACK_DAYS, type ScanKind } from "@/config/practice-scan";
 import { loadDetectionInput } from "@/detection/engine";
 import { paySchedules } from "@/detection/paydays";
@@ -16,13 +21,12 @@ import { scopedFor } from "@/lib/db-scoped";
 import { marketData, type Bar, type Headline } from "@/lib/market";
 import { newsKey } from "@/lib/news/store";
 import { rulesSummary } from "@/lib/news/summarize";
-import { violates } from "@/planning/practice-autopilot";
-import { apply, type LedgerState } from "@/planning/practice-ledger";
 import { mainPaydayDay, scanOpportunities } from "@/planning/practice-opportunities";
 import { refusedByPreferences } from "@/planning/practice-profile";
-import type { ScanFlag, ScanHeadline } from "@/planning/practice-scan";
+import type { ScanHeadline } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
+import { tradesHeldBy } from "./limits";
 import { scanPreferences } from "./opportunity-prefs";
 import { practiceProfileOf } from "./preferences";
 
@@ -97,27 +101,6 @@ async function paydayDayOf(userId: string, client: PrismaClient, now: Date) {
   }
 }
 
-// Whether a flag's trades, one after another, all keep the hard limits; the first broken one.
-function heldBy(
-  flag: ScanFlag,
-  state: LedgerState,
-  prices: Readonly<Record<string, number>>,
-  tradesToday: number,
-): string | null {
-  let s = state;
-  let n = tradesToday;
-  for (const t of flag.trades) {
-    const why = violates(t, s, prices, n);
-    if (why) return why;
-    const priceCents = prices[t.ticker];
-    if (!priceCents) return `no price for ${t.ticker}`;
-    const entry = { side: t.side, ticker: t.ticker, amountCents: t.amountCents, priceCents };
-    s = apply(s, entry, PRACTICE_UNIVERSE).state;
-    n += 1;
-  }
-  return null;
-}
-
 export async function scanPractice(
   userId: string,
   { client = defaultClient, now = new Date(), act = true }: ScanOptions = {},
@@ -179,7 +162,19 @@ export async function scanPractice(
   });
   const past = await db.practiceOpportunities.findMany({
     where: { portfolioId: portfolio.id },
-    select: { key: true, kind: true, scannedAt: true, status: true },
+    select: { key: true, kind: true, ticker: true, scannedAt: true, status: true },
+  });
+  // What the person is still being asked about: not asked again while it waits.
+  const waitingSince = new Date(now.getTime() - PRACTICE_IDEA_DAYS * 86_400_000);
+  const waiting = new Set(
+    past
+      .filter((p) => p.status === "suggested" && p.scannedAt >= waitingSince)
+      .map((p) => ideaSlot(p.kind, p.ticker)),
+  );
+  const lastDeposit = await db.practiceTrades.findFirst({
+    where: { portfolioId: portfolio.id, undone: false, side: "deposit" },
+    orderBy: { placedAt: "desc" },
+    select: { placedAt: true },
   });
   const monthStart = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
   const usedThisMonth: Partial<Record<ScanKind, number>> = {};
@@ -210,6 +205,7 @@ export async function scanPractice(
     addDay: portfolio.addDay,
     paydayDay,
     heldHistory,
+    lastDepositOn: lastDeposit?.placedAt.toISOString().slice(0, 10) ?? null,
   });
   // A real account gets no ideas: only the autopilot's own rebalance.
   const flags = advice ? found : found.filter((f) => f.kind === "drift_rebalance");
@@ -234,7 +230,9 @@ export async function scanPractice(
         .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
         .find((r) => r !== null) ?? null;
     const held =
-      flag.trades.length > 0 ? (refused ?? heldBy(flag, current.state, prices, tradesToday)) : null;
+      flag.trades.length > 0
+        ? (refused ?? tradesHeldBy(flag.trades, current.state, prices, tradesToday))
+        : null;
     if (!act && held) continue;
     const status: ScanOutcome["status"] = held
       ? "held"
@@ -243,10 +241,19 @@ export async function scanPractice(
         : flag.trades.length === 0 || prefs.mode === "suggest"
           ? "suggested"
           : "acted";
+    // One question at a time about the same thing, and none about pocket change.
+    if (
+      status === "suggested" &&
+      (waiting.has(ideaSlot(flag.kind, flag.ticker)) ||
+        (flag.trades.length > 0 && flag.amountCents < PRACTICE_IDEA_MIN_CENTS))
+    ) {
+      continue;
+    }
     const details = {
       figures: flag.figures,
       caps: flag.caps,
       confidence: flag.confidence,
+      ask: flag.ask,
       heldBy: held,
       mode: prefs.mode,
       trades: flag.trades.map((t) => ({

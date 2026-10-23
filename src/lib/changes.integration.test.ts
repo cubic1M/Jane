@@ -107,8 +107,11 @@ describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_00
     const shopping = changes.find((c) => c.kind === "category_pace" && c.category === "Shopping");
     expect(shopping?.title).toMatch(/^You've spent \$[\d,]+\.\d\d on Shopping so far this month\./);
     expect(shopping?.amountCents).toBeGreaterThan(134_900);
-    // Peacock started two months ago.
-    expect(changes.find((c) => c.kind === "new_subscription")?.merchant).toBe("Peacock");
+    // Peacock started two months ago. Its subscription card is the same thing, so the two
+    // are said once (docs/feature-audit.md, cluster 10).
+    const peacock = changes.find((c) => c.kind === "new_subscription");
+    expect(peacock?.merchant).toBe("Peacock");
+    expect(peacock?.finding).toMatchObject({ type: "subscription_review", handledBy: null });
     // The demo payroll is steady: nothing late, smaller or new.
     expect(kinds.some((k) => k.startsWith("paycheck") || k === "new_employer")).toBe(false);
   });

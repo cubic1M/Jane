@@ -8,7 +8,7 @@ const drawn = (value: unknown): DrawnBlock | null => {
   const block = parseBlock(value);
   return block ? drawBlock(block) : null;
 };
-import type { ActionId, ChatMessage, MessageKind, MessageStatus } from "./types";
+import type { ActionId, CardExtras, ChatMessage, MessageKind, MessageStatus } from "./types";
 
 // A message as the chat shows it (spec step 81): plain data for the page. An open message
 // shows its buttons; an answered one shows what was chosen instead, keeping only its
@@ -40,6 +40,8 @@ export type MessageView = {
   // Options of one choice (refs.options), while the message is open: the floating pick card.
   // Its buttons (option.pick, option.later) are the card's, not the message's.
   options: OptionSet | null;
+  // A suggestion card's extra details (refs.cardDetails), or null.
+  cardDetails?: CardExtras | null;
 };
 
 const TAGS: Record<MessageKind, string> = {
@@ -93,5 +95,6 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
       message.status === "open" && message.refs.options?.options?.length
         ? toOptionSet(message.refs.options)
         : null,
+    cardDetails: message.refs.cardDetails ?? null,
   };
 }
