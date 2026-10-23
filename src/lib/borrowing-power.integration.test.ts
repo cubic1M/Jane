@@ -8,7 +8,9 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
+import { parseRefs } from "@/lib/jane-agent/types";
 import { borrowingPowerSource } from "@/lib/jane-agent/sources/borrowing-power";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
@@ -120,8 +122,14 @@ describe.runIf(url)("what you could borrow against a real database", { timeout: 
     expect(reply.body).toMatch(/^Here's what you could likely get, from soft checks on /);
     expect(reply.body).toContain("A mortgage: up to about $");
     expect(reply.body).toMatch(/Priced by your score of \d+ from Oct 18, 2026\./);
+    // A card's limit is a guess to the nearest $100, from a year of income, not cents of it.
+    expect(reply.body).toMatch(/with a limit around \$[\d,]*00\.00 /);
+    expect(reply.body).not.toMatch(/limit around \$\d{1,3}\.\d\d /);
+    // The lender and rate are picks: demo advice, labelled.
+    expect(parseRefs(reply.refs).advice).toBe(true);
     const tool = JSON.parse((await runChatTool(userId, "borrowing_power", {}, opts())).content);
     expect(tool.softChecksOnly).toBe(true);
+    expect(tool).toMatchObject({ demoAdvice: true, label: DEMO_ADVICE_LABEL });
     expect(tool.figures[0]).toMatchObject({ product: "mortgage", checkedOn: tool.checkedOn });
   });
 

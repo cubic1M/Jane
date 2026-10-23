@@ -192,6 +192,7 @@ const STATUS: Record<string, string> = {
   money_moves: "Checking what money moved…",
   explain_figure: "Working out how I got that…",
   books_check: "Checking your numbers add up…",
+  month_close: "Looking at last month's close…",
   steady_pay: "Working out your steady paycheck…",
   price_rises: "Looking for prices about to go up…",
   money_for_two: "Looking at what you share…",

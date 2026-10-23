@@ -6,7 +6,7 @@ import type { AlertType, FindingType, PrismaClient } from "@/generated/prisma/cl
 import type { ComingUpRow } from "@/insights/coming-up";
 import type { Deadline } from "@/insights/deadlines";
 import type { LifeGuess } from "@/insights/life-signals";
-import { newestUnreadAlerts } from "@/lib/alerts";
+import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
 import { lastControllerRun, type LastRun } from "@/lib/controller-log";
 import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
@@ -15,6 +15,7 @@ import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
 import { resultsByKind, type KindResult } from "@/lib/worked";
 import { openBooks, type BooksView } from "@/lib/books";
+import { loadClose, type CloseView } from "@/lib/month-close";
 import { offeredToday, type OfferedSuggestion } from "@/lib/suggestions";
 import { loadSteady, type SteadyView } from "@/lib/steady-pay";
 import { loadPriceRises } from "@/lib/price-rises";
@@ -132,6 +133,8 @@ export type Snapshot = {
   whatIf?: AdoptedPlan[];
   // Spec step 238: what doesn't add up in the person's data. Optional, like changes.
   books?: BooksView;
+  // Spec step 244: the latest monthly close. Optional, like changes.
+  close?: CloseView | null;
   // Spec step 255: the suggestions chosen for today. Optional, like changes.
   suggestions?: OfferedSuggestion[];
   // Spec step 240: the steady paycheck from uneven income. Optional, like changes.
@@ -337,6 +340,7 @@ export async function loadSnapshot(
     priceRises,
     two,
     tradeoffs,
+    close,
   ] = await Promise.all([
     light ? NO_MORE : loadMore(userId, { client, now, input }),
     light ? {} : loadTaxSnapshot(userId, { client, now }),
@@ -357,6 +361,7 @@ export async function loadSnapshot(
     light ? [] : loadPriceRises(userId, { client, now }),
     loadMoneyForTwo(userId, { client, now }),
     light ? null : loadTradeoffs(userId, { client, now, input }),
+    loadClose(userId, { client }),
   ]);
 
   return {
@@ -401,9 +406,7 @@ export async function loadSnapshot(
     budgetsOver: home.budgetsOver,
     goalsBehind: home.goalsBehind,
     urgentAlerts: alerts
-      // Each alert says whether it is urgent: a bill reminder only when the balance could fall
-      // short that day, not every bill due this week.
-      .filter((a) => a.urgent && !ALERTS_SAID_ELSEWHERE.includes(a.type))
+      .filter((a) => isUrgent(a.type) && !ALERTS_SAID_ELSEWHERE.includes(a.type))
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     unusual: alerts
       .filter((a) => a.type === "unusual_activity")
@@ -429,6 +432,7 @@ export async function loadSnapshot(
     priceRises,
     two,
     tradeoffs,
+    close,
     lean: light
       ? { open: [], ended: [] }
       : {
