@@ -60,6 +60,14 @@ describe("reconcile", () => {
     expect(reconcile("depository", snaps, [])).toMatchObject({ kind: "gap", offByCents: -20_000 });
   });
 
+  // Real-user QA: a 401(k) or a brokerage account moves with prices, and a loan with interest,
+  // with no transactions of their own: not a problem with the books.
+  it("leaves investment and loan accounts out", () => {
+    expect(reconcile("depository", snaps, [])).toMatchObject({ kind: "gap" });
+    expect(reconcile("investment", snaps, [])).toBeNull();
+    expect(reconcile("loan", snaps, [])).toBeNull();
+  });
+
   it("lets a dollar of rounding go", () => {
     expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-05", 19_950)])).toBeNull();
   });
