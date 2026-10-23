@@ -285,7 +285,7 @@ describe("I did this", () => {
     expect(messages).toHaveLength(1);
     expect(messages[0]).toMatchObject({
       kind: "done",
-      body: 'Done: "Charged twice at Target". $64.20 confirmed back or saved.',
+      body: 'Done: "Charged twice at Target". $64.20 back or agreed.',
       dedupeKey: "did:action:a1",
     });
   });

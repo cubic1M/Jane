@@ -1,3 +1,4 @@
+import { SAVED_SO_FAR_LABEL } from "@/lib/saved-amount";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
@@ -265,7 +266,7 @@ async function JaneContent() {
       >
         {done.savedToDateCents > 0 && (
           <p className="text-lg">
-            Saved so far: <strong>{formatCents(done.savedToDateCents)}</strong>
+            {SAVED_SO_FAR_LABEL}: about <strong>{formatCents(done.savedToDateCents)}</strong> a year
           </p>
         )}
         {done.items.length === 0 ? (

@@ -173,7 +173,7 @@ describe("the weekly review", () => {
       [
         "Here's your week with Jane.",
         '- Done: I finished 1 thing ("Refund the overdraft fee"); said yes to 1 thing under your rules; tuned your budgets for the month.',
-        "- Saved: $34.00 confirmed back or saved.",
+        "- Saved: $34.00 back or agreed.",
         "- Next week: 1 bill due, 2 things on your plan.",
         "- One to decide: Netflix went up from $15.49 to $17.99. Could save about $30.00 a year.",
       ].join("\n"),
@@ -210,7 +210,7 @@ describe("the weekly review", () => {
       lastWeek: { start: "2026-10-19", asked: 5, yes: 2, no: 1, done: 1 },
     });
     const line =
-      'The week of Oct 19: I finished 1 thing ("Refund the overdraft fee"); said yes to 1 thing under your rules; $34.00 was confirmed back or saved; we covered 5 questions you asked and 3 decisions (2 yes, 1 no).';
+      'The week of Oct 19: I finished 1 thing ("Refund the overdraft fee"); said yes to 1 thing under your rules; $34.00 came back or agreed; we covered 5 questions you asked and 3 decisions (2 yes, 1 no).';
     const [brief] = from(s, "brief", MONDAY);
     expect(brief.body.split("\n")).toContain(line);
     // The day as one agenda message (spec step 184) carries it too.
@@ -238,7 +238,7 @@ describe("the weekly review", () => {
       [
         "Here's your week with Jane.",
         "- Done: nothing finished this week. I'm still watching.",
-        "- Saved: nothing confirmed yet this week.",
+        "- Saved: nothing back or agreed yet this week.",
         "- Next week: nothing due that I know of.",
       ].join("\n"),
     );
