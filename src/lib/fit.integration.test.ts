@@ -14,6 +14,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadDecisionInput } from "./debt-decisions";
 import { loadFit } from "./fit";
+import { detectFor } from "./suggestions";
 
 // Spec step 283 against a real, migrated Postgres, on Chris's and the Reyes' demo banks: the
 // fit engine's options for each need, and the same pick in the chat, Claude's tool and the
@@ -105,6 +106,18 @@ describe.runIf(url)("the fit engine against a real database", { timeout: 60_000 
       /^Nothing fits for consolidating your debt right now: Lenders usually want a score of 600/,
     );
     expect((await loadDecisionInput(chris, { client, now: NOW })).personalLoan).toBeNull();
+  });
+
+  // Loans QA: the suggestion brought unasked says the same dollars as the options card, priced by
+  // the same score band and against the same card minimums.
+  it("brings the Reyes the consolidation the options card shows, to the cent", async () => {
+    const card = await loadFit(reyes, { need: "consolidation" }, { client, now: NOW });
+    const pick = card.options.find((o) => o.id === card.pick)!;
+    const { suggestions } = await detectFor(reyes, { client, now: NOW });
+    const s = suggestions.find((x) => x.topic === "consolidation")!;
+    expect(s).toBeDefined();
+    expect(s.worthCents).toBe(pick.savesCents);
+    expect(s.why).toContain(pick.lender);
   });
 
   it("is the same pick in the chat, Claude's tool and the debt decisions", async () => {

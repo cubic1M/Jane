@@ -71,7 +71,14 @@ export async function loadProfileInput(
       },
     }),
     db.liabilities.findMany({
-      select: { accountId: true, kind: true, aprBps: true, hasPmi: true, payoffDate: true },
+      select: {
+        accountId: true,
+        kind: true,
+        aprBps: true,
+        hasPmi: true,
+        payoffDate: true,
+        minimumPaymentCents: true,
+      },
     }),
     db.holdings.findMany({
       select: {
@@ -102,7 +109,7 @@ export async function loadProfileInput(
     }),
     db.creditReports.findFirst({
       orderBy: [{ pulledOn: "desc" }, { createdAt: "desc" }],
-      select: { cardLimitCents: true },
+      select: { cardLimitCents: true, score: true },
     }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
@@ -195,7 +202,9 @@ export async function loadProfileInput(
       aprBps: l.aprBps,
       hasPmi: l.hasPmi,
       payoffDate: l.payoffDate ? dayOf(l.payoffDate) : null,
+      minimumCents: l.minimumPaymentCents,
     })),
+    creditScore: report?.score ?? null,
     valuesExcludes: values?.excludes ?? [],
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
