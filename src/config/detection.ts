@@ -1,4 +1,5 @@
 import type { FindingType } from "@/generated/prisma/client";
+import { HIGH_YIELD_SAVINGS_BPS } from "./cash";
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 import type { CardBenefitKind, Peril } from "./card-benefits";
 
@@ -258,10 +259,10 @@ export const IDLE_CASH_SUBTYPES: readonly string[] = ["checking", "savings"];
 export const IDLE_CASH_MONTHS_OF_SPENDING = 3;
 // Ignore excess cash below this (in cents): the yearly difference would be pocket change.
 export const IDLE_CASH_MIN_EXCESS_CENTS = 100_000;
-// Yearly rates in basis points (100 = 1%). Conservative on purpose: a lowish reference
-// high-yield savings rate and a generous guess at what the money earns today.
+// Yearly rates in basis points (100 = 1%): the high-yield savings rate the cash page shows
+// (src/config/cash.ts, one rate everywhere) and a generous guess at what the money earns today.
 // Review against current published savings rates before the beta.
-export const REFERENCE_HIGH_YIELD_RATE_BPS = 350;
+export const REFERENCE_HIGH_YIELD_RATE_BPS = HIGH_YIELD_SAVINGS_BPS;
 export const ASSUMED_CURRENT_RATE_BPS = 50;
 // Spending history needed for medium and high confidence in the monthly average.
 export const IDLE_CASH_MEDIUM_CONFIDENCE_MONTHS = 3;
@@ -340,6 +341,13 @@ export const PAYDAY_GAP_DAYS = {
   BIWEEKLY: 14,
   SEMI_MONTHLY: 15,
   MONTHLY: 31,
+} as const;
+// How many paychecks a month each schedule brings, on average (the paycheck split, spec step 206).
+export const PAYCHECKS_PER_MONTH = {
+  WEEKLY: 52 / 12,
+  BIWEEKLY: 26 / 12,
+  SEMI_MONTHLY: 2,
+  MONTHLY: 1,
 } as const;
 
 // --- Refunds: double charges, charges after cancelling, trial conversions -----------
@@ -435,6 +443,18 @@ export const NOT_BILL_CATEGORIES: readonly string[] = ["BANK_FEES_INTEREST_CHARG
 // A card payment the bank names with the card company's "thank you" reads as what it is.
 export const CARD_PAYMENT_THANKS = /\bthank\s*you\b/i;
 export const CARD_PAYMENT_NAME = "Credit card payment";
+// The payment category for a card or loan, by account type, then subtype (Plaid's detailed
+// categories). When the bank reports the due date of every such account, the deadline is the
+// one reminder for that payment and the guessed bill reminder is left out (books QA: two
+// reminders, with different amounts, for one card payment).
+export const PAYMENT_CATEGORY_BY_ACCOUNT: Readonly<Record<string, string>> = {
+  credit: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+  auto: "LOAN_PAYMENTS_CAR_PAYMENT",
+  student: "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+  mortgage: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+  "home equity": "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+  personal: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+};
 // Money moved between the person's own accounts (chat QA): saving, investing or into an HSA.
 // Never a recurring charge. Payment-app transfers and wires stay: they can be rent to a person.
 export const OWN_ACCOUNT_TRANSFERS: readonly string[] = [

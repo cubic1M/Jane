@@ -13,6 +13,7 @@ import {
   LARGE_CHARGE_MIN_HISTORY,
   NON_SPENDING_CATEGORIES,
   NON_RENEWING_PRIMARIES,
+  PAYMENT_CATEGORY_BY_ACCOUNT,
 } from "@/config/detection";
 import { ESTIMATED_TAX_ALERT_DAYS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import { formatCents } from "@/lib/money";
@@ -50,6 +51,9 @@ export type AlertContext = {
   // Spec step 253: detailed categories this person's profile makes expected (a business
   // owner's payroll and suppliers), which are never unusual.
   expected?: ReadonlySet<string>;
+  // Books QA: card and loan payment categories whose due date the bank reports. The
+  // deadline reminds about those, so no second bill reminder.
+  dueReported?: ReadonlySet<string>;
 };
 
 const shortDate = (date: string) =>
@@ -151,9 +155,16 @@ function oneOffSpending(input: DetectionInput, streams: Stream[]): DetectionTran
 
 // A recent charge far above the account's typical charge. Needs enough history to know
 // what typical is.
-export function largeChargeAlerts(input: DetectionInput, streams: Stream[]): AlertCandidate[] {
+export function largeChargeAlerts(
+  input: DetectionInput,
+  streams: Stream[],
+  // Kinds of payment the person's profile makes expected (a business owner's payroll and
+  // suppliers, as the unusual-activity check uses them): never a large charge to worry about.
+  expected: ReadonlySet<string> = new Set(),
+): AlertCandidate[] {
   const byAccount = new Map<string, DetectionTransaction[]>();
   for (const t of oneOffSpending(input, streams)) {
+    if (t.pfcDetailed && expected.has(t.pfcDetailed)) continue;
     byAccount.set(t.accountId, [...(byAccount.get(t.accountId) ?? []), t]);
   }
   return [...byAccount.values()].flatMap((charges) => {
@@ -203,15 +214,37 @@ export function lowBalanceAlerts(candidates: Candidate[]): AlertCandidate[] {
     });
 }
 
+// The card and loan payment categories the bank's due dates already cover: those where every
+// account of that kind reports an upcoming due date (one without leaves the bill reminder on).
+export function dueReportedCategories(
+  accounts: { type: string; subtype: string | null; nextDue: string | null }[],
+  asOf: string,
+): Set<string> {
+  const byCategory = new Map<string, boolean>();
+  for (const a of accounts) {
+    const category =
+      PAYMENT_CATEGORY_BY_ACCOUNT[a.type] ?? PAYMENT_CATEGORY_BY_ACCOUNT[a.subtype ?? ""];
+    if (!category) continue;
+    const reported = a.nextDue !== null && a.nextDue >= asOf;
+    byCategory.set(category, (byCategory.get(category) ?? true) && reported);
+  }
+  return new Set([...byCategory].filter(([, all]) => all).map(([category]) => category));
+}
+
 // A regular bill due in the next BILL_REMINDER_DAYS, one per bill per due date. Urgent
-// only when its account is forecast below the cushion on that day.
-export function billReminderAlerts(input: DetectionInput): AlertCandidate[] {
+// only when its account is forecast below the cushion on that day. A card or loan payment
+// whose due date the bank reports is left to that deadline; money running short before it
+// is still the low-balance alert's.
+export function billReminderAlerts(
+  input: DetectionInput,
+  dueReported: ReadonlySet<string> = new Set(),
+): AlertCandidate[] {
   const until = addDays(input.asOf, BILL_REMINDER_DAYS);
   const forecasts = forecastAccounts(input, BILL_REMINDER_DAYS);
   const balanceOn = (accountId: string | null, date: string) =>
     forecasts.find((f) => f.accountId === accountId)?.days.find((d) => d.date === date)
       ?.balanceCents;
-  return upcomingBills(input, BILL_REMINDER_DAYS)
+  return upcomingBills(input, BILL_REMINDER_DAYS, dueReported)
     .filter((b) => b.date > input.asOf && b.date <= until)
     .map((b): AlertCandidate => {
       const balance = balanceOn(b.accountId, b.date);
@@ -296,13 +329,13 @@ export function detectAlerts(
 ): AlertCandidate[] {
   const streams = buildStreams(input);
   return [
-    ...largeChargeAlerts(input, streams),
+    ...largeChargeAlerts(input, streams, context.expected),
     ...duplicateChargeAlerts(input),
     ...lowBalanceAlerts(candidates),
     ...feeAlerts(input),
     ...priceIncreaseAlerts(input, candidates),
     ...newSubscriptionAlerts(input, candidates, context),
-    ...billReminderAlerts(input),
+    ...billReminderAlerts(input, context.dueReported),
     ...renewalAlerts(input, streams),
     ...estimatedTaxAlerts(input),
     ...unusualAlerts(input, streams, context.taught, context.expected),

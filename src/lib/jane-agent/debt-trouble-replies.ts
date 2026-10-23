@@ -1,3 +1,4 @@
+import { TROUBLE_DEBT_MONTHS } from "@/config/profile";
 import {
   COUNSELOR_REFERRALS,
   COUNSEL_POINTER,
@@ -31,6 +32,12 @@ export function headline(data: DebtTrouble): string {
   const pay = formatCents(data.monthlyPaymentsCents);
   if (data.share === null || data.incomeCents === null) {
     return `Your debt payments are ${pay} a month, and I can't see your income yet to compare them.`;
+  }
+  if (data.reason === "payday_cycle") {
+    return `You've been repaying cash advances, a cycle that's hard to get out of, alongside ${pay} a month of debt payments (${pct(data.share)} of your ${formatCents(data.incomeCents)} income). It's worth looking at your options.`;
+  }
+  if (data.reason === "card_debt") {
+    return `Your cards hold ${formatCents(data.cardDebtCents)}, more than ${TROUBLE_DEBT_MONTHS} months of your ${formatCents(data.incomeCents)} income, and your debt payments are ${pay} a month. It's worth looking at your options.`;
   }
   return data.over
     ? `Your debt payments are ${pay} a month, ${pct(data.share)} of your ${formatCents(data.incomeCents)} income, which is over the ${pct(TROUBLE_PAYMENT_SHARE)} mark where it's worth looking at your options.`

@@ -1015,19 +1015,22 @@ model CreditDispute {
 // it ends, and whether unpaid interest from the start is charged if it isn't cleared by then
 // (deferred interest). Jane turns the end into a deadline when the pace is short.
 model CardPromo {
-  id           String   @id @default(cuid())
-  userId       String   @map("user_id")
-  cardName     String   @map("card_name")
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  cardName          String   @map("card_name")
   // What's left to clear, as the person typed it.
-  balanceCents Int      @map("balance_cents")
-  startedOn    DateTime @map("started_on") @db.Date
-  endsOn       DateTime @map("ends_on") @db.Date
+  balanceCents      Int      @map("balance_cents")
+  startedOn         DateTime @map("started_on") @db.Date
+  endsOn            DateTime @map("ends_on") @db.Date
   // The rate charged after the promotion, or from the start if interest is deferred.
-  goToAprBps   Int      @map("go_to_apr_bps")
-  deferred     Boolean  @default(false)
+  goToAprBps        Int      @map("go_to_apr_bps")
+  deferred          Boolean  @default(false)
   // The deadline Jane put on the deadlines list when the pace fell short.
-  deadlineId   String?  @map("deadline_id")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  deadlineId        String?  @map("deadline_id")
+  // The balance transfer this promotion is (spec step 113), when Jane arranged it: one record
+  // of a 0% promotion, whichever way it came (docs/feature-audit.md, cluster 14).
+  balanceTransferId String?  @unique @map("balance_transfer_id")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -4222,22 +4225,22 @@ model FamilyFile {
 // ledger's running state; every change is a PracticeTrade row, so the state can always be
 // rebuilt from the trades. level is the risk level 1-5 (Very low to Very high).
 model PracticePortfolio {
-  id                  String   @id @default(cuid())
-  userId              String   @unique @map("user_id")
+  id                  String    @id @default(cuid())
+  userId              String    @unique @map("user_id")
   level               Int
-  startingCents       Int      @map("starting_cents")
-  cashCents           Int      @map("cash_cents")
+  startingCents       Int       @map("starting_cents")
+  cashCents           Int       @map("cash_cents")
   // Monthly practice deposit and the day of the month it lands (0 = none).
-  monthlyAddCents     Int      @default(0) @map("monthly_add_cents")
-  addDay              Int      @default(1) @map("add_day")
-  paused              Boolean  @default(false)
+  monthlyAddCents     Int       @default(0) @map("monthly_add_cents")
+  addDay              Int       @default(1) @map("add_day")
+  paused              Boolean   @default(false)
   // Opportunities (small capped positions, High and Very high only) paused on their own.
-  opportunitiesPaused Boolean  @default(false) @map("opportunities_paused")
+  opportunitiesPaused Boolean   @default(false) @map("opportunities_paused")
   // The last cheap scan when the person opened the chat or the investing pages (no more than
   // one an hour), claimed before it runs so two opens scan once.
   lightScannedAt      DateTime? @map("light_scanned_at") @db.Timestamptz(3)
-  startedAt           DateTime @map("started_at") @db.Timestamptz(3)
-  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  startedAt           DateTime  @map("started_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   positions     PracticePosition[]

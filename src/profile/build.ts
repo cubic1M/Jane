@@ -1,3 +1,5 @@
+import { FIT_CARD_PAYMENT_SHARE } from "@/config/fit";
+import { troubleReason } from "@/planning/debt-trouble";
 import {
   AGE_BAND_FROM,
   APPROACHING_ASSETS_CENTS,
@@ -13,7 +15,6 @@ import {
   TOLD_AGE_APPROACHING_FROM,
   TOLD_AGE_RETIRED_FROM,
   TOLD_AGE_STARTING_BELOW,
-  TROUBLE_FEES_MIN,
   UNEVEN_DEPOSITS_MIN,
   TROUBLE_DEBT_MONTHS,
 } from "@/config/profile";
@@ -241,6 +242,11 @@ const inYear = (txs: readonly ProfileTx[], today: string) => {
   return txs.filter((t) => t.date > cutoff && t.date <= today);
 };
 
+// Debt payments are averaged over this many days before today.
+const TROUBLE_PAYMENT_DAYS = 90;
+const addDaysIso = (day: string, days: number) =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+
 const yearsUntil = (today: string, day: string) =>
   (Date.parse(day) - Date.parse(today)) / (365.25 * 86_400_000);
 
@@ -405,32 +411,60 @@ export function buildProfile(input: ProfileInput): Profile {
     .filter((a) => cardIds.has(a.id))
     .reduce((s, a) => s + Math.max(0, a.balanceCents), 0);
   set("card_debt_cents", cardDebt, "seen", "cards linked", cardIds.size);
-  const fees = count(
-    (t) =>
-      t.pfc === "BANK_FEES_OVERDRAFT_FEES" ||
-      t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS" ||
-      t.pfc === "BANK_FEES_LATE_FEES",
-  );
   const payday = count(
     (t) => t.pfc === "LOAN_PAYMENTS_CASH_ADVANCES" || t.pfc === "LOAN_PAYMENTS_EWA",
   );
   set("has_payday_loan", payday > 0, "seen", "cash-advance repayments", payday);
-  const overweight = monthlyIncome > 0 && cardDebt >= monthlyIncome * TROUBLE_DEBT_MONTHS;
-  // The evidence is the signal that decided it, counted once (overdraft and late fees, else
-  // cash-advance repayments, else the card debt), not all of them added together.
+  const paydayRepaid = txs
+    .filter(
+      (t) =>
+        (t.pfc === "LOAN_PAYMENTS_CASH_ADVANCES" || t.pfc === "LOAN_PAYMENTS_EWA") &&
+        t.amountCents > 0,
+    )
+    .reduce((s, t) => s + t.amountCents, 0);
+  // Debt payments against income, by step 229's rule (src/config/debt-trouble.ts): every loan
+  // payment seen in the last three months (a card's is its minimum, not a statement paid in
+  // full) at or above TROUBLE_PAYMENT_SHARE of take-home.
+  const since = addDaysIso(today, -TROUBLE_PAYMENT_DAYS);
+  const loanPaid = txs
+    .filter(
+      (t) =>
+        (t.pfc ?? "").startsWith("LOAN_PAYMENTS_") &&
+        t.pfc !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" &&
+        t.amountCents > 0 &&
+        t.date > since,
+    )
+    .reduce((s, t) => s + t.amountCents, 0);
+  const debtPayments =
+    Math.round((loanPaid * 30) / TROUBLE_PAYMENT_DAYS) +
+    Math.round(cardDebt * FIT_CARD_PAYMENT_SHARE);
+  const liquid = accounts
+    .filter((a) => a.type === "depository")
+    .reduce((s, a) => s + Math.max(0, a.balanceCents), 0);
+  // Debt trouble rests on the debts themselves (loans QA): payday loans, card balances against
+  // income, debt payments against income, by the one judgement /loans/help makes too
+  // (troubleReason). Overdraft and late fees are a spending finding (bank_fees, late_fees), not
+  // debt trouble by themselves. The evidence is the signal that decided it, counted once.
+  const reason = troubleReason({
+    monthlyIncomeCents: monthlyIncome,
+    cardDebtCents: cardDebt,
+    paydayRepayments: payday,
+    paydayRepaidCents: paydayRepaid,
+    debtPaymentsCents: debtPayments,
+    cashCents: liquid,
+  });
   const troubleSignal =
-    fees >= TROUBLE_FEES_MIN
-      ? { what: "overdraft, insufficient-funds or late fees", n: fees }
-      : payday > 0
-        ? { what: "cash-advance repayments", n: payday }
-        : { what: "months of income owed on cards", n: overweight ? TROUBLE_DEBT_MONTHS : 0 };
-  set(
-    "debt_trouble",
-    fees >= TROUBLE_FEES_MIN || payday > 0 || overweight,
-    "seen",
-    troubleSignal.what,
-    troubleSignal.n,
-  );
+    reason === "payday_cycle"
+      ? { what: "cash-advance repayments", n: payday }
+      : reason === "card_debt"
+        ? { what: "months of income owed on cards", n: TROUBLE_DEBT_MONTHS }
+        : reason === "payments"
+          ? {
+              what: "months of debt payments over 40% of income, without the cash to carry them",
+              n: 3,
+            }
+          : { what: "debt signals", n: 0 };
+  set("debt_trouble", reason !== null, "seen", troubleSignal.what, troubleSignal.n);
 
   // --- Accounts and cover -----------------------------------------------------------
   const has = (subtype: string) => accounts.some((a) => a.subtype === subtype);

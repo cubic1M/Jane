@@ -118,9 +118,15 @@ export const billName = (s: Stream) =>
     ? CARD_PAYMENT_NAME
     : s.merchant;
 
-export function upcomingBills(input: DetectionInput, days: number): Expected[] {
+// `remindedElsewhere`: payment categories whose due date the bank reports, left out.
+export function upcomingBills(
+  input: DetectionInput,
+  days: number,
+  remindedElsewhere: ReadonlySet<string> = new Set(),
+): Expected[] {
   const bills = buildStreams(input)
     .filter(isBillStream)
+    .filter((s) => !remindedElsewhere.has(s.pfcDetailed ?? ""))
     .map((s) => ({ ...s, merchant: billName(s) }));
   return expand(bills, input.asOf, addDays(input.asOf, days));
 }

@@ -5,7 +5,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { irregularCosts } from "@/lib/irregular";
 import { loadInsightTransactions } from "@/insights/load";
-import { spendingInsights } from "@/insights/spending";
+import { averageMonthlySpending } from "@/insights/spending";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { BudgetError, setBudget } from "@/lib/budgets";
@@ -13,7 +13,7 @@ import { CategoryError, merchantRuleKey, setMerchantCategory } from "@/lib/categ
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { GoalError, addGoal } from "@/lib/goals";
-import { loadProfile } from "@/lib/profile";
+import { fundProfile } from "@/lib/emergency-fund";
 import { proposals, type Proposal } from "@/planning/proposals";
 
 // Set-up Jane proposes on the plan (spec step 55): budgets from the person's own averages,
@@ -45,25 +45,9 @@ export async function currentProposals(
   ]);
   const summary = budgetSummary(transactions, budgets, asOf);
   // What the profile says about how they're paid and whether debt is a struggle; without it the
-  // fund is three months of spending.
-  const profile = await loadProfile(userId, { client, now })
-    .then((p) => ({
-      pattern:
-        typeof p.facts.income_pattern.value === "string" ? p.facts.income_pattern.value : null,
-      debtTrouble: p.facts.debt_trouble.value === true,
-      incomeCents:
-        typeof p.facts.monthly_income.value === "number" ? p.facts.monthly_income.value : null,
-    }))
-    .catch(() => undefined);
-  // Average spending over the complete months before this one.
-  const months = spendingInsights(transactions, {
-    asOf,
-    monthCount: BUDGET_SUGGESTION_MONTHS + 1,
-  }).months.slice(0, -1);
-  const monthlySpendingCents =
-    months.length === 0
-      ? 0
-      : Math.round(months.reduce((sum, m) => sum + m.spendingCents, 0) / months.length);
+  // fund is three months of spending (src/lib/emergency-fund.ts).
+  const profile = await fundProfile(userId, { client, now });
+  const monthlySpendingCents = averageMonthlySpending(transactions, asOf, BUDGET_SUGGESTION_MONTHS);
 
   const byMerchant = new Map<string, { name: string; count: number }>();
   for (const t of uncategorized) {

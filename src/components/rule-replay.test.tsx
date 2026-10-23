@@ -36,4 +36,12 @@ describe("RuleReplaySection", () => {
     expect(html).toContain("$500.00 added each month");
     expect(html).toMatch(/sample&#x27;s swap funds drift away/);
   });
+
+  it("opens the person's own level first and marks it", async () => {
+    const data = (await loadRuleReplays({ client, now: new Date("2026-10-21T15:00:00Z") }))!;
+    const html = renderToStaticMarkup(<RuleReplaySection data={data} level={4} />);
+    expect(html.match(/<details open=""[^>]*data-level="(\d)"/)?.[1]).toBe("4");
+    expect(html.match(/<details open=""/g)).toHaveLength(1);
+    expect(html).toMatch(/High<span[^>]*>\(your level\)<\/span>/);
+  });
 });

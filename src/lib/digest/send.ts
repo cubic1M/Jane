@@ -1,3 +1,4 @@
+import { actionWorthCents } from "@/lib/saved-amount";
 import { ALERT_TYPES, ALERTS_PAGE_LIMIT } from "@/config/alerts";
 import { moneyFound } from "@/detection/engine";
 import { alertPrefs } from "@/lib/alerts";
@@ -104,9 +105,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       ...titleOf(a.decision.cardSnapshot),
       // A refund seen in the transactions, or a lower price confirmed on a call, counts for
       // what actually happened.
-      ...((a.refundCents ?? a.confirmedAnnualCents) !== null
-        ? { annualSavingsCents: a.refundCents ?? a.confirmedAnnualCents }
-        : {}),
+      ...(actionWorthCents(a) !== null ? { annualSavingsCents: actionWorthCents(a) } : {}),
     })),
     findings,
     alerts,

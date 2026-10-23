@@ -90,7 +90,15 @@ export function agendaOf<T extends Planned>(
   // they appear: the agenda only says they're there, and they never take one of its Yes slots.
   const lead = ordered.filter((c) => suggested(c));
   const yes = ordered.filter((c) => yesOf(c) && !suggested(c)).slice(0, AGENDA_MAX_YES);
-  const others = ordered.filter((c) => !yesOf(c) && !suggested(c)).slice(0, AGENDA_MAX_LINES);
+  // The month's report is said once and only offered for its first days, so it always has its
+  // line: on a busy morning it would otherwise wait behind newer things until it went stale.
+  const report = ordered.filter((c) => c.source === "report");
+  const others = [
+    ...report,
+    ...ordered
+      .filter((c) => !yesOf(c) && !suggested(c) && c.source !== "report")
+      .slice(0, AGENDA_MAX_LINES),
+  ];
 
   const run = snapshot.lastRun;
   const changed = run?.steps.filter((s) => s.changed > 0) ?? [];
@@ -157,6 +165,8 @@ export function agendaOf<T extends Planned>(
           },
         ]
       : []),
+    // The report's own button (its link), on the agenda that says it.
+    ...report.flatMap((c) => c.actions.filter((a) => a.kind === "link")),
     { id: "open", label: "See today", kind: "link", href: "/home" },
   ];
   return {
