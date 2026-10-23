@@ -31,6 +31,10 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   const showing = overlay.locator('[data-card-state="showing"]');
   const viewport = page.viewportSize()!;
 
+  // The page has settled (the Jane button or the docked chat is in).
+  if (isMobile) await expect(page.getByRole("button", { name: /^Chat with Jane/ })).toBeVisible();
+  else await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toBeVisible();
+
   // Shut: a headline, Yes and Not now, and a third of the screen at most.
   const shut = (await showing.boundingBox())!;
   expect(shut.height).toBeLessThan(viewport.height / 3);
