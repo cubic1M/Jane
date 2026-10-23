@@ -311,7 +311,9 @@ describe("paying off with cash, and what keeping costs", () => {
       totalCostCents: 300_000,
     });
     expect(r.options[0].headline).toMatch(/^Pay off your card with your cash - \$[\d,.]+ less$/);
-    expect(r.options[0].details[1]).toBe("Leaves $6,000.00, at least a month of spending");
+    expect(r.options[0].details[1]).toBe(
+      "Leaves $6,000.00, your emergency cushion of $2,500.00 kept",
+    );
     expect(r.options.length).toBeGreaterThan(1);
     expect(r.confidence).toEqual({
       percent: 90,

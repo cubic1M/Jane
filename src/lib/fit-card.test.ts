@@ -323,11 +323,12 @@ describe("the eight sample people", () => {
         }
         expectGoodCard(withAdvice!, view, true);
         expectGoodCard(without!, view, false);
-        // Cash pays it off and still leaves a month of spending: that is the pick.
+        // Cash pays it off and still keeps the emergency cushion: that is the pick.
         const covers =
           b !== null &&
           who.spendCents !== undefined &&
-          who.cashCents - who.spendCents * FIT_KEEP_CASH_MONTHS >= b.balanceCents &&
+          who.cashCents - (who.cushionCents ?? who.spendCents * FIT_KEEP_CASH_MONTHS) >=
+            b.balanceCents &&
           keepCost(b).totalCents - b.balanceCents >= FIT_MIN_SAVING_CENTS;
         expect(withAdvice!.options[0].id === "payoff").toBe(covers);
         if (covers) expect(withAdvice!.options[0].isPick).toBe(true);

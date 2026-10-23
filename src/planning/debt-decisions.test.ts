@@ -60,7 +60,7 @@ describe("pay a card or invest", () => {
       "Paying it down is a certain 31.99% return, more than investing's usual best, so I'd pay it off first.",
     );
     expect(d.sentences[2]).toBe(
-      "You can put $1,490.00 toward it now and still keep a month of spending.",
+      "You can put $1,490.00 toward it now and still keep your $3,000.00 emergency cushion.",
     );
     expect(d.advice).toBe(true);
   });
@@ -140,12 +140,12 @@ describe("savings or debt", () => {
       "You have $9,000.00 in cash and $6,210.00 on cards, the worst at 31.99%.",
     );
     expect(d.sentences[1]).toBe(
-      "Putting $6,000.00 on Store Card saves about $1,919.40 a year in interest and still leaves a month of spending.",
+      "Putting $6,000.00 on Store Card saves about $1,919.40 a year in interest and still keeps your $3,000.00 emergency cushion.",
     );
   });
   it("has nothing spare when cash is under a month of spending", () => {
     const d = savingsOrDebt({ ...base, liquidCents: 200_000 });
-    expect(d.sentences[1]).toMatch(/under the \$3,000\.00 a month of spending worth keeping/);
+    expect(d.sentences[1]).toMatch(/under your \$3,000\.00 emergency cushion/);
   });
 });
 
@@ -325,7 +325,7 @@ describe("when cash alone clears the cards for less than any loan", () => {
     for (const decide of [consolidate, personalLoan]) {
       const d = decide(cash);
       expect(d.sentences[1]).toBe(
-        "Your cash covers it: paying the cards off from savings would save about $2,400.00 and still leave a month of spending.",
+        "Your cash covers it: paying the cards off from savings would save about $2,400.00 and still keep your $3,000.00 emergency cushion.",
       );
       expect(d.sentences[2]).toBe("I'd do that instead of taking a loan.");
       expect(decide({ ...cash, advice: false }).sentences).toHaveLength(2);
