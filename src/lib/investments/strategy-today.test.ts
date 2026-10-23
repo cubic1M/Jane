@@ -23,7 +23,7 @@ function fakeClient(withRows: boolean) {
   const bars = realFixtureBars();
   const findMany = vi.fn(
     async ({ where }: { where: { ticker: string; date: { gte: Date; lte: Date } } }) =>
-      withRows && strategyTickers().includes(where.ticker)
+      withRows && (strategyTickers() as string[]).includes(where.ticker)
         ? bars[where.ticker]
             .map((b) => ({
               date: new Date(`${b.date}T00:00:00Z`),

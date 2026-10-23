@@ -29,7 +29,7 @@ const TREND: StrategyToday = {
     key: "trend(months=6)",
     label: "Trend filter",
     why: "It beat the level's mix on the later years.",
-  } as StrategyToday["chosen"],
+  } as unknown as StrategyToday["chosen"],
   follow: true,
   weights: { us_stocks: 0.3, intl_stocks: 0.15, bonds: 0, cash: 0.55 },
   signalDate: "2026-09-01",
