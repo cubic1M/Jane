@@ -47,13 +47,13 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   // Floating: fixed over the page, not part of the message list.
   expect(await overlay.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
   expect(await page.getByRole("list", { name: "Messages" }).locator(overlay).count()).toBe(0);
-  // The suggestion's own message in the list, if it is there (the agenda, which names the
-  // day's suggestions in its lines, is not it).
+  // The suggestion's message in the list, if it is there.
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
-  const inList = (headline: string) =>
-    messages
-      .filter({ hasText: headline })
-      .filter({ hasNotText: /Good (morning|afternoon|evening)!/ });
+  const inList = (headline: string) => messages.filter({ hasText: headline });
+  // The agenda only says the suggestions are on the cards: none of their lines or buttons.
+  const agenda = messages.filter({ hasText: /Good (morning|afternoon|evening)!/ });
+  await expect(agenda).toContainText(/on the cards? at the bottom\./);
+  await expect(agenda.getByRole("button", { name: /Not for me:/ })).toHaveCount(0);
 
   // Short: a headline with one number, Yes and Not now, and More details closed.
   const showing = overlay.locator('[data-card-state="showing"]');
