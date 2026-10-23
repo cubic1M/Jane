@@ -242,13 +242,15 @@ export function cardFigure(
     };
   }
   const gross = (person.incomeCents * 12) / FIT_NET_TO_GROSS;
-  const limitCents = Math.round((gross * CARD_LIMIT_SHARE[band]) / 10_000) * 100;
+  // Rounded to the nearest $100: it's a guess.
+  const limitFor = (b: Band) => Math.round((gross * CARD_LIMIT_SHARE[b]) / 10_000) * 10_000;
+  const limitCents = limitFor(band);
   const improve: string[] = [];
   const up = nextBand(band);
   const nextApr = nextBandAprBps?.length ? Math.min(...nextBandAprBps) : null;
   if (up && nextApr !== null && nextApr < apr) {
     improve.push(
-      `A score of ${up.score} or more would likely mean about ${pct(nextApr)} and a limit nearer ${formatCents(Math.round((gross * CARD_LIMIT_SHARE[up.band]) / 10_000) * 100)}.`,
+      `A score of ${up.score} or more would likely mean about ${pct(nextApr)} and a limit nearer ${formatCents(limitFor(up.band))}.`,
     );
   }
   improve.push("Paying the card in full each month means the rate never applies.");

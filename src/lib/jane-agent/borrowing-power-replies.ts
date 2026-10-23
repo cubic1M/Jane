@@ -52,5 +52,6 @@ export function borrowingReply(d: BorrowingPower): Reply {
   lines.push(
     "These are estimates from the lender stand-in, not offers. Applying is a separate step, and only on your tap.",
   );
-  return { body: lines.join("\n"), actions: [BORROW_PAGE], refs: {} };
+  // The lender and rate are the stand-in's picks, shown only in demo advice mode: labelled.
+  return { body: lines.join("\n"), actions: [BORROW_PAGE], refs: { advice: true } };
 }
