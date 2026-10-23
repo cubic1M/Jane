@@ -124,6 +124,13 @@ test("refinance offers compare total cost and pick one, labelled", async ({
   await expect(car).toContainText("Jane's pick: Harbor Auto Refi");
   await expect(car.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   await expect(car.getByRole("table")).toContainText("In all, with fees");
+  // Loans QA: the card the demo person's cash pays off for less than any loan isn't refinanced.
+  const card = page
+    .getByRole("list", { name: "Offers by debt" })
+    .getByRole("listitem")
+    .filter({ hasText: "Demo Credit Card" });
+  await expect(card).toContainText("Jane's pick: pay it off from your cash");
+  await expect(card.getByRole("button", { name: /^Apply with/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Check rates now" }).click();
   await expect(page.getByRole("status")).toHaveText("Checked just now.");
 });
