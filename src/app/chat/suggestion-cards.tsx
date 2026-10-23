@@ -41,19 +41,28 @@ const ACTION_FOR: Record<CardAnswer, string> = {
 export function cardOf(message: MessageView): FloatingCardData {
   const parts = cardParts(message.body);
   const yes = message.buttons.find((b) => b.id === "suggestion.yes");
+  // A practice idea (Phase AW) also has its numbers and caps, and its own Yes.
+  const extra = message.cardDetails;
+  const notes = [
+    ...(extra?.caps ?? []).map((c) => `Cap: ${c}`),
+    ...(message.advice ? ["Demo advice: sample data, not financial advice"] : []),
+  ];
   return {
     id: message.id,
     headline: parts.headline,
     details: {
       why: parts.why ?? undefined,
+      figures: extra && extra.figures.length > 0 ? extra.figures : undefined,
       confidence:
         parts.percent !== null && parts.reason
           ? { percent: parts.percent, reason: parts.reason }
           : undefined,
-      whatYesDoes: yes
-        ? `${yes.label}. Nothing is bought or moved: Yes takes you to the page where you finish it.`
-        : undefined,
-      notes: message.advice ? ["Demo advice: sample data, not financial advice"] : undefined,
+      whatYesDoes: extra
+        ? `${yes ? `${yes.label}. ` : ""}${extra.whatYesDoes}`
+        : yes
+          ? `${yes.label}. Nothing is bought or moved: Yes takes you to the page where you finish it.`
+          : undefined,
+      notes: notes.length > 0 ? notes : undefined,
     },
     yesLabel: "Yes",
     notNowLabel: "Not now",

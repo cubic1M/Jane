@@ -5,6 +5,7 @@ import {
   TRANSFER_IN,
   TRANSFER_MATCH_DAYS,
   TRANSFER_OUT,
+  TRANSFER_TO_LINKED,
   UNMATCHED_TRANSFER_MIN_CENTS,
 } from "@/config/books";
 
@@ -173,4 +174,27 @@ export function linkProblems(links: Link[], asOf: string): { broken: Link[]; sta
       (l.lastSyncedAt ?? l.createdAt.slice(0, 10)) < addDays(asOf, -BOOKS_STALE_DAYS),
   );
   return { broken, stale };
+}
+
+// Transfers out with no other side, as the person should hear about them (books QA): one that
+// names a kind of account they've linked went there (an HSA or IRA contribution arrives as an
+// investment transaction, not a deposit), and the same payee month after month is one thing to
+// say, by its latest transfer.
+export function unmatchedToSay(unmatched: readonly Tx[], accounts: readonly Acct[]): Tx[] {
+  const linked = new Set(accounts.map((a) => (a.subtype ?? "").toLowerCase()));
+  const toLinked = (t: Tx) =>
+    Object.entries(TRANSFER_TO_LINKED).some(
+      ([word, subtypes]) =>
+        new RegExp(`\\b${word}\\b`, "i").test(t.description) && subtypes.some((s) => linked.has(s)),
+    );
+  const latest = new Map<string, Tx>();
+  for (const t of unmatched) {
+    if (toLinked(t)) continue;
+    const payee = t.description.trim().toLowerCase();
+    const seen = latest.get(payee);
+    if (!seen || t.date > seen.date) latest.set(payee, t);
+  }
+  return [...latest.values()].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
+  );
 }

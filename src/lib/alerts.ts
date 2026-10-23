@@ -7,7 +7,7 @@ import {
   URGENT_ALERT_TYPES,
   type AlertDelivery,
 } from "@/config/alerts";
-import type { AlertCandidate } from "@/detection/alerts";
+import { onePerCharge, type AlertCandidate } from "@/detection/alerts";
 import type { AlertType, PrismaClient } from "@/generated/prisma/client";
 import { renderAlertEmail } from "@/lib/alert-email";
 import { track } from "@/lib/analytics";
@@ -70,7 +70,9 @@ export async function raiseAlerts(
   if (!user || user.deletedAt) return { raised: 0, emailed: 0 };
   const prefs = alertPrefs(user.alertPrefs);
 
-  const wanted = alerts.filter((a) => prefs[a.type] !== "off");
+  const asked = alerts.filter((a) => prefs[a.type] !== "off");
+  // One alert per charge (docs/feature-audit.md, cluster 10).
+  const wanted = onePerCharge(asked);
   if (wanted.length === 0) return { raised: 0, emailed: 0 };
 
   const created = await scopedFor(userId, client).alerts.createManyAndReturn({
@@ -86,7 +88,12 @@ export async function raiseAlerts(
   if (created.length > 0) {
     const byType = Object.fromEntries(ALERT_TYPES.map((t) => [t, 0])) as Record<AlertType, number>;
     for (const row of created) byType[row.type] += 1;
-    await track(userId, "alerts_raised", { ...byType, total: created.length });
+    await track(userId, "alerts_raised", {
+      ...byType,
+      total: created.length,
+      // Alerts folded into another one about the same charge.
+      merged: asked.length - wanted.length,
+    });
   }
   const emailed = await emailUrgentAlerts(userId, { client, now, send, push });
   return { raised: created.length, emailed };
@@ -211,7 +218,15 @@ export async function newestUnreadAlerts(
     where: { readAt: null, type: { in: await shownTypes(userId, client) } },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     take: limit,
-    select: { id: true, type: true, key: true, title: true, body: true, createdAt: true },
+    select: {
+      id: true,
+      type: true,
+      key: true,
+      title: true,
+      body: true,
+      urgent: true,
+      createdAt: true,
+    },
   });
 }
 

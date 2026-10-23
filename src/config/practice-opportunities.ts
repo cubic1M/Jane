@@ -1,5 +1,4 @@
 import type { PracticeClass } from "@/config/portfolios";
-import type { RiskLevel } from "@/config/investing";
 
 // More kinds of opportunity for the practice portfolio's daily scan (Phase AW, Stage A, after
 // step 292). Practice money and the sample market only: every number here is demo advice,
@@ -149,21 +148,13 @@ export const PAYDAY_ADD_OFFSET_DAYS = 1;
 export const PAYDAY_ADD_MAX_DAY = 28;
 export const PAYDAY_TIMING_MIN_GAP_DAYS = 4;
 
-// The glide path: the highest level for the years left until the goal date. The usual
-// target-date ladder (more bonds as the date gets close), FOR REVIEW. The step is one level at
-// a time.
-export const GLIDE_PATH: readonly { minYears: number; maxLevel: RiskLevel }[] = [
-  { minYears: 15, maxLevel: 5 },
-  { minYears: 10, maxLevel: 4 },
-  { minYears: 5, maxLevel: 3 },
-  { minYears: 2, maxLevel: 2 },
-  { minYears: 0, maxLevel: 1 },
-];
-
 // How far each kind fell in a bad crash, as a share: the 2007-09 crisis, peak to trough
 // (US stocks about 51%, international stocks about 58%; US bonds about 4% at their worst in
-// late 2008; Treasury bills not at all). Used to say how far a mix could fall, not when.
-// FOR REVIEW. Opportunity stocks count as US stocks.
+// late 2008; Treasury bills not at all). Only the shape of a mix between levels comes from
+// these: the drop itself is on the practice settings' measure, each level's worst drop in the
+// sample replay (LEVEL_WORST_DROP_PERCENT in ./practice-preferences.ts), so "more risk than you
+// said" and the level the settings pick always agree. FOR REVIEW. Opportunity stocks count as
+// US stocks.
 export const STRESS_DROP: Readonly<Record<PracticeClass, number>> = {
   us_stocks: 0.51,
   intl_stocks: 0.58,
@@ -172,6 +163,8 @@ export const STRESS_DROP: Readonly<Record<PracticeClass, number>> = {
 };
 export const STRESS_DROP_SOURCE =
   "Peak to trough, October 2007 to March 2009: US total market, MSCI ex-US, US aggregate bonds; FOR REVIEW";
+export const LEVEL_WORST_DROP_SOURCE =
+  "Each level's worst drop in the sample replay (step 295), as the practice settings use it";
 // The mix may sit this far over the stated drop before it counts as more risk than said.
 export const RISK_MISMATCH_TOLERANCE = 0.02;
 

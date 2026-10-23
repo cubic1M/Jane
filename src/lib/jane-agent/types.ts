@@ -339,6 +339,8 @@ export const ACTION_IDS = [
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
+  // Spec step 243: a price rise the person called about.
+  "price.called",
   // Spec step 242: money for two.
   "two.split_income",
   "two.split_even",
@@ -362,6 +364,12 @@ export type MessageAction =
   | { id: "open"; label: string; kind: "link"; href: string };
 
 // What a message is about. Every field is optional; each source and action uses its own.
+export type CardExtras = {
+  figures: { label: string; value: string }[];
+  caps: string[];
+  whatYesDoes: string;
+};
+
 export type MessageRefs = {
   findingId?: string;
   // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
@@ -404,6 +412,9 @@ export type MessageRefs = {
   carAddon?: { key?: string; id?: string };
   // Spec step 255: the suggestion (by its key) a button is about.
   suggestion?: string;
+  // What a suggestion's floating card shows under More details beyond its why: a practice
+  // idea's numbers and caps, and what its Yes does (Phase AW).
+  cardDetails?: CardExtras;
   // Spec step 257: the profile fact the answer buttons are for.
   askFact?: string;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
