@@ -16,6 +16,8 @@ import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { booksSource } from "@/lib/jane-agent/sources/books";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { loadDetectionInput } from "@/detection/engine";
+import { loadProfileInput } from "@/lib/profile";
 import { openBooks, runBooksCheck } from "./books";
 
 // Spec step 238 against a real, migrated Postgres, with the demo bank plus one of each
@@ -250,6 +252,16 @@ describe.runIf(url)("books that balance", { timeout: 120_000 }, () => {
     }
     expect(await client.plaidItem.count({ where: { userId: reyes.id } })).toBe(2);
     expect(await client.account.count({ where: { userId: reyes.id, mask: "2002" } })).toBe(2);
+    // Until it's fixed, every figure counts the savings once (not $9,100 twice).
+    const counted = (await loadDetectionInput(reyes.id, { client, now: NOW })).accounts.filter(
+      (a) => a.subtype === "savings",
+    );
+    expect(counted).toHaveLength(1);
+    expect(
+      (await loadProfileInput(reyes.id, { client, now: NOW })).accounts.filter(
+        (a) => a.subtype === "savings",
+      ),
+    ).toHaveLength(1);
 
     const view = await runBooksCheck(reyes.id, { client, now: NOW });
     expect(view.merged).toBe(0);

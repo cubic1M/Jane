@@ -29,6 +29,7 @@ import { buildStreams } from "./streams";
 import { SUBSCRIPTION_PROMPT_VERSION, checkSubscriptions } from "@/lib/subscription-check";
 import type { Candidate, DetectionInput } from "./types";
 import { isoDate, monthsBefore } from "./units";
+import { copiesToLeaveOut } from "@/planning/books";
 
 // Findings the person can still act on, and the ones where they've said yes.
 const OPEN_STATUSES: FindingStatus[] = ["new", "shown", "approved", "in_progress"];
@@ -142,7 +143,7 @@ async function loadInput(
   client: PrismaClient,
 ): Promise<DetectionInput> {
   const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
-  const [accounts, transactions, streams, cancelled, directory] = await Promise.all([
+  const [allAccounts, allTransactions, streams, cancelled, directory] = await Promise.all([
     db.accounts.findMany({
       select: {
         id: true,
@@ -150,6 +151,8 @@ async function loadInput(
         type: true,
         subtype: true,
         currentBalanceCents: true,
+        itemId: true,
+        mask: true,
         item: { select: { plaidItemId: true } },
       },
       orderBy: { id: "asc" },
@@ -188,6 +191,11 @@ async function loadInput(
     // The merchant directory is shared, not user data, so it's read without scoping.
     client.merchant.findMany({ select: { key: true, name: true, aliases: true, category: true } }),
   ]);
+
+  // Books QA: an account linked twice (through two logins) counts once.
+  const copies = copiesToLeaveOut(allAccounts);
+  const accounts = allAccounts.filter((a) => !copies.has(a.id));
+  const transactions = allTransactions.filter((t) => !copies.has(t.accountId));
 
   // Company names and categories from the merchant directory (detection/merchants.ts).
   return withDirectory(
