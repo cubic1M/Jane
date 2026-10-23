@@ -3,7 +3,12 @@ import { SCAN_LABELS, SCAN_KINDS, type ScanKind } from "@/config/practice-scan";
 import { formatReturn } from "@/insights/returns";
 import type { Backtests } from "@/lib/investments/backtest";
 import type { LatestStrategies } from "@/lib/investments/strategy-eval";
-import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
+import { keyOf } from "@/planning/strategies/select";
+import {
+  STRATEGY_LABELS,
+  STRATEGY_NOT_A_FORECAST,
+  STRATEGY_RESEARCH_CHOICE,
+} from "@/config/strategies";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
@@ -195,13 +200,13 @@ export function levelStrategyReply(
       refs: {},
     };
   const name = own ? `Your level, ${RISK_LEVELS[level].label},` : RISK_LEVELS[level].label;
-  const c = latest?.byLevel[level];
-  if (!c)
-    return {
-      body: `${name} follows its mix for now: the daily replay of each level's strategies hasn't run yet. ${STRATEGY_NOT_A_FORECAST}`,
-      actions: [STRATEGIES],
-      refs: { advice: true },
-    };
+  const research = STRATEGY_RESEARCH_CHOICE[level];
+  const c = latest?.byLevel[level] ?? {
+    id: research.id,
+    key: keyOf({ id: research.id, params: research.params }),
+    label: STRATEGY_LABELS[research.id],
+    why: research.why,
+  };
   return {
     body: `${name} follows ${c.id === "static" ? "its mix" : `the ${c.label.toLowerCase()} (${c.key})`}. ${c.why}\n${STRATEGY_NOT_A_FORECAST}`,
     actions: [STRATEGIES],

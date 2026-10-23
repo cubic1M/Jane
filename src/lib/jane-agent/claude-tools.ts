@@ -88,7 +88,13 @@ import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { RULE_REPLAY_STRATEGY_LABELS } from "@/config/backtest";
-import { RISK_BUDGETS, STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
+import {
+  RISK_BUDGETS,
+  STRATEGY_LABELS,
+  STRATEGY_NOT_A_FORECAST,
+  STRATEGY_RESEARCH_CHOICE,
+  STRATEGY_RESEARCH_RANGE,
+} from "@/config/strategies";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
 import { backtestsFor, longDate } from "@/lib/investments/backtest";
 import { loadRuleReplays } from "@/lib/investments/rule-replay";
@@ -1231,7 +1237,17 @@ export async function runChatTool(
         const latest = await latestStrategies({ client });
         if (!latest)
           return {
-            note: "The daily replay of each level's strategies hasn't run yet, so every level follows its mix.",
+            replay: `Real prices from Alpaca, ${longDate(STRATEGY_RESEARCH_RANGE.from)} to ${longDate(STRATEGY_RESEARCH_RANGE.to)}, chosen on the years to 2021 and scored on the years after (the research run; the daily replay hasn't run yet)`,
+            notAForecast: STRATEGY_NOT_A_FORECAST,
+            levels: asked.map((l) => ({
+              level: RISK_LEVELS[l].label,
+              follows: STRATEGY_LABELS[STRATEGY_RESEARCH_CHOICE[l].id],
+              why: STRATEGY_RESEARCH_CHOICE[l].why,
+              budget: {
+                worstDrop: `${Math.round(RISK_BUDGETS[l].maxDrawdown * 1000) / 10}%`,
+                volatility: `${Math.round(RISK_BUDGETS[l].volCap * 1000) / 10}%`,
+              },
+            })),
           };
         const p = (n: number) => `${(Math.round(n * 1000) / 10).toFixed(1)}%`;
         return {

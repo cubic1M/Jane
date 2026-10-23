@@ -218,7 +218,11 @@ describe("the strategy each level follows, in the chat", () => {
     expect(own.body).toMatch(/not a forecast/);
     expect(own.refs).toEqual({ advice: true });
     expect(hrefs(own.actions)).toEqual(["/investments#level-strategies-heading"]);
-    expect(levelStrategyReply(true, null, 3, true).body).toMatch(/follows its mix for now/);
+    // Before the daily replay: the committed research choice and its evidence.
+    expect(levelStrategyReply(true, null, 3, true).body).toMatch(
+      /^Your level, Medium, follows the trend filter \(trend\(months=6\)\)\. Chosen on Alpaca's closes/,
+    );
+    expect(levelStrategyReply(true, null, 5, false).body).toMatch(/^Very high follows its mix\./);
     expect(levelStrategyReply(false, latest, 3, true).body).toMatch(/demo advice/);
   });
 });

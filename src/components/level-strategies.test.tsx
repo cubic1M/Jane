@@ -62,10 +62,15 @@ describe("LevelStrategiesSection", () => {
     expect(html.replaceAll("not a forecast", "")).not.toMatch(/forecast/i);
   });
 
-  it("says every level follows its mix before the first daily replay", () => {
-    const html = renderToStaticMarkup(<LevelStrategiesSection latest={null} />);
-    expect(html).toMatch(/hasn(&#x27;|')t run yet, so every level follows its mix/);
-    expect(html).not.toContain("data-level=");
+  it("shows the committed research choice before the first daily replay", () => {
+    const html = renderToStaticMarkup(<LevelStrategiesSection latest={null} level={3} />);
+    expect(html).toContain("Alpaca&#x27;s real prices from");
+    expect(html).toContain("Jan 4, 2016");
+    expect(html.match(/data-level=/g)).toHaveLength(5);
+    expect(html).toContain('data-strategy="trend"');
+    expect(html).toContain('data-strategy="static"');
+    expect(html).toContain("(your level)");
+    expect(html).toContain("worst drop 6.8% against 20.9%");
     expect(html).toContain(DEMO_ADVICE_LABEL);
   });
 });

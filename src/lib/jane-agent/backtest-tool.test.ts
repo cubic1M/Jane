@@ -130,7 +130,11 @@ describe("backtest_by_level", () => {
       (await runChatTool("u1", "backtest_by_level", { level: "High" }, { client, now: NOW }))
         .content,
     );
-    expect(none.strategyEachLevelFollows.note).toMatch(/hasn't run yet/);
+    // Before the daily replay: the committed research choice.
+    expect(none.strategyEachLevelFollows.replay).toMatch(/hasn't run yet/);
+    expect(none.strategyEachLevelFollows.levels).toEqual([
+      expect.objectContaining({ level: "High", follows: "Trend filter" }),
+    ]);
     const m = (sortino: number, maxDrawdown: number) => ({
       from: "2022-01-03",
       to: "2026-10-21",

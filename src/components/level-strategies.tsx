@@ -1,6 +1,12 @@
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
-import { RISK_BUDGETS, STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
+import {
+  RISK_BUDGETS,
+  STRATEGY_LABELS,
+  STRATEGY_NOT_A_FORECAST,
+  STRATEGY_RESEARCH_CHOICE,
+  STRATEGY_RESEARCH_RANGE,
+} from "@/config/strategies";
 import { formatReturn } from "@/insights/returns";
 import { longDate } from "@/lib/investments/backtest";
 import type { LatestStrategies } from "@/lib/investments/strategy-eval";
@@ -35,12 +41,39 @@ export function LevelStrategiesSection({
             </>
           ) : (
             <>
-              The daily replay of each level&apos;s strategies hasn&apos;t run yet, so every level
-              follows its mix. {STRATEGY_NOT_A_FORECAST}
+              Jane replayed seven ways of running each level on Alpaca&apos;s real prices from{" "}
+              {longDate(STRATEGY_RESEARCH_RANGE.from)} to {longDate(STRATEGY_RESEARCH_RANGE.to)},
+              chose on the earlier years and kept a strategy only if it then beat the level&apos;s
+              mix on the later ones. The practice autopilot follows the choice until the daily
+              replay has run. {STRATEGY_NOT_A_FORECAST}
             </>
           )}
         </p>
       </div>
+      {!latest && (
+        <ul className="flex flex-col gap-2 text-sm">
+          {LEVELS.map((l) => {
+            const c = STRATEGY_RESEARCH_CHOICE[l];
+            return (
+              <li
+                key={l}
+                data-level={l}
+                data-strategy={c.id}
+                className="flex flex-col gap-1 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+              >
+                <p className="font-medium">
+                  {RISK_LEVELS[l].label}
+                  {l === level && (
+                    <span className="ml-1 text-xs font-normal text-zinc-500">(your level)</span>
+                  )}
+                  : {STRATEGY_LABELS[c.id]}
+                </p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">{c.why}</p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       {latest && (
         <ul className="flex flex-col gap-2 text-sm">
           {LEVELS.map((l) => {

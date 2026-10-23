@@ -86,6 +86,7 @@ export const STRATEGY_FOLLOW_HISTORY_DAYS = 550;
 // 2016-01-04 to 2026-10-22, the strategy-research workflow's run 39939156383; the keyless fixture
 // agrees). The practice autopilot follows it until the daily evaluation has run on production's
 // stored history (src/lib/investments/strategy-eval.ts), whose choice then wins. FOR REVIEW.
+export const STRATEGY_RESEARCH_RANGE = { from: "2016-01-04", to: "2026-10-22" } as const;
 const TREND_EVIDENCE = (drop: string, mixDrop: string, sortino: string, mixSortino: string) =>
   `Chosen on Alpaca's closes for 2016 to 2021 from every start year, it then beat the level's mix on 2022 to October 2026: worst drop ${drop} against ${mixDrop}, Sortino ${sortino} against ${mixSortino}.`;
 export const STRATEGY_RESEARCH_CHOICE: Readonly<
