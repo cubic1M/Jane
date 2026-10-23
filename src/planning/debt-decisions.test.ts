@@ -316,3 +316,36 @@ describe("when cash alone clears the cards for less than any loan", () => {
     }
   });
 });
+
+// Loans QA: a card with a balance but no rate (a CSV import) is debt, not "nothing to pay down".
+describe("a card owed without a rate", () => {
+  const unrated = {
+    ...noAdvice,
+    cards: [{ name: "Card", balanceCents: 600_000, aprBps: null, limitCents: null }],
+    student: null,
+    consolidation: null,
+    personalLoan: null,
+  };
+  it("asks for the rate instead of saying there's no debt, with nothing weighed", () => {
+    for (const id of [
+      "consolidate",
+      "pay_or_invest",
+      "savings_or_debt",
+      "personal_loan",
+    ] as const) {
+      const d = DECISIONS[id](unrated);
+      expect(d.sentences, id).toEqual([
+        "You owe $6,000.00 on Card, but I don't have its rate.",
+        "Tell me the rate (it's on the statement, as the purchase APR) and I'll work this out with your numbers.",
+      ]);
+      expect(d.nothingWeighed, id).toBe(true);
+    }
+  });
+  it("still says there's nothing to pay down when nothing is owed", () => {
+    const d = DECISIONS.consolidate({ ...unrated, cards: [] });
+    expect(d.sentences[0]).toBe(
+      "I don't see a debt with a balance, so there's nothing to pay down.",
+    );
+    expect(d.nothingWeighed).toBe(true);
+  });
+});
