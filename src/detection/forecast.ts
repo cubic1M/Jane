@@ -1,4 +1,9 @@
-import { FORECAST_SUBTYPES } from "@/config/detection";
+import {
+  CARD_PAYMENT_NAME,
+  CARD_PAYMENT_THANKS,
+  FORECAST_SUBTYPES,
+  NOT_BILL_CATEGORIES,
+} from "@/config/detection";
 import { expectedPaydays, isPaycheck } from "./paydays";
 import { buildStreams, detectRecurring, fromPlaidStream, type Stream } from "./streams";
 import type { DetectionInput, DetectionTransaction } from "./types";
@@ -106,7 +111,14 @@ export function expectedIncome(input: DetectionInput, until: string): Expected[]
 }
 
 export function upcomingBills(input: DetectionInput, days: number): Expected[] {
-  return expand(buildStreams(input), input.asOf, addDays(input.asOf, days));
+  const bills = buildStreams(input)
+    .filter((s) => !NOT_BILL_CATEGORIES.includes(s.pfcDetailed ?? ""))
+    .map((s) =>
+      s.pfcDetailed === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" && CARD_PAYMENT_THANKS.test(s.merchant)
+        ? { ...s, merchant: CARD_PAYMENT_NAME }
+        : s,
+    );
+  return expand(bills, input.asOf, addDays(input.asOf, days));
 }
 
 export function forecastAccounts(input: DetectionInput, days: number): AccountForecast[] {

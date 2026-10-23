@@ -24,6 +24,7 @@ import { frequencyWords } from "@/lib/explain-input";
 import { FIGURE_IDS, type FigureId } from "@/config/figures";
 import { explainFigure } from "@/lib/figures";
 import { openBooks } from "@/lib/books";
+import { loadClose } from "@/lib/month-close";
 import { loadSteady } from "@/lib/steady-pay";
 import { loadPriceRises } from "@/lib/price-rises";
 import { loadMoneyForTwo } from "@/lib/money-for-two";
@@ -372,6 +373,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       required: ["figure"],
       additionalProperties: false,
     },
+  },
+  {
+    name: "month_close",
+    description:
+      "The monthly close (spec step 244): the latest month Jane closed (on the first of the next), or the one waiting on charges she wasn't sure of: what came in and went out, the top categories, net worth at the close, plan against actual, what worked, whether the books added up, and whether a correction changed it since. A closed month's figures only change when the person corrects something in it.",
+    input_schema: noInput,
   },
   {
     name: "books_check",
@@ -848,6 +855,31 @@ export async function runChatTool(
         rulesUsed: working.rules,
         canBeCorrected: working.corrections,
         page: `/figures/${working.id}`,
+      });
+    }
+    case "month_close": {
+      const view = await loadClose(userId, { client });
+      if (!view) return out({ view: null, why: "No month closed yet." });
+      const f = view.figures;
+      return out({
+        month: view.month,
+        status: view.status,
+        cameIn: money(f.incomeCents),
+        wentOut: money(f.spendingCents),
+        topCategories: f.topCategories.map((c) => ({
+          category: c.category,
+          amount: money(c.cents),
+        })),
+        netWorthAtClose: f.netWorthCents === null ? null : money(f.netWorthCents),
+        booksProblems: f.booksOpen,
+        plan: f.plan,
+        worked: f.worked,
+        waitingOn: view.uncertain.map((t) => ({
+          what: t.description,
+          on: t.date,
+          amount: money(t.amountCents),
+        })),
+        correctedSinceClose: view.correctedAt !== null,
       });
     }
     case "books_check": {

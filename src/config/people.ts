@@ -133,6 +133,8 @@ export const SUGGESTION_TOPICS = [
   "draft_return_check",
   // Spec step 241: goals that can't all be on time.
   "goal_tradeoffs",
+  // Spec step 244: charges to confirm before last month can close.
+  "month_close",
   // Phase AW: the practice portfolio's ideas, one topic per kind (src/config/practice-suggestions.ts).
   "practice_dip_buy",
   "practice_tax_loss_harvest",
@@ -361,6 +363,8 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
       "practice_portfolio",
       "borrowing_power",
+      // Spec step 244: WeWork and Adobe sit in a catch-all category.
+      "month_close",
     ],
     mustNot: [
       "beneficiaries",
