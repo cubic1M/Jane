@@ -26,6 +26,11 @@ export const TRANSFER_TO_LINKED: Readonly<Record<string, readonly string[]>> = {
 // Two accounts are the same when they share an account number's last digits, type and
 // subtype. Plaid types of accounts whose balance owed is positive.
 export const BOOKS_DEBT_TYPES: readonly string[] = ["credit", "loan"];
+// The accounts whose balance moves only by their own transactions, so a balance that moves
+// otherwise is a problem: checking, savings and cards. An investment account's value moves with
+// prices, and a loan's with interest, its payments often showing on the paying account instead
+// (real-user QA: a 401(k) that rose $1,227.67 in a day was "changed with no transactions").
+export const BOOKS_RECONCILED_TYPES: readonly string[] = ["depository", "credit"];
 // Plaid primary categories of transfers between accounts.
 export const TRANSFER_OUT = "TRANSFER_OUT";
 export const TRANSFER_IN = "TRANSFER_IN";
