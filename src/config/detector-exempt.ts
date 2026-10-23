@@ -35,8 +35,6 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
     "a general calculator for the numbers an answer needs (a percent of a balance, months to pay off); not a feature, so there is nothing to suggest",
   insurance_claim_worth:
     "answers a question that comes with an amount the person gives, and adds its line to a claim draft; the claim detector (insurance_claim) covers a repair Jane sees",
-  insurance_health_year:
-    "tracks a plan's deductible, out-of-pocket maximum and FSA from the plan's terms, which only the person's insurance page holds; its dispute card and FSA deadline arrive as messages",
   insurance_household:
     "needs the people the person lists on their insurance page and the policies they share; the profile holds neither, so a household gap can't be judged from the bank",
   tax_profile:
@@ -89,10 +87,14 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   goal_buckets: "shows which investments belong to which goal the person set",
   family_investing: "shows custodial and family accounts the person set up",
   property: "reports a rental property's numbers the person entered",
+  honest_performance:
+    "reports 1, 3 and 5 year returns after fees and taxes (step 233); a report, never a promise",
   yearly_review: "rolls up what the other investing detectors found, once a year",
   steady_hand: "a calm message after a market drop; it follows an event, not a profile",
   crypto: "reports linked crypto read-only; nothing to suggest",
   debt_autopilot: "reports what Jane does by herself for debts at the person's level",
+  credit_monthly:
+    "gathers the credit items the other detectors raise (refinance, car add-ons, costly borrowing, rent), once a month, into one message",
   debt_review:
     "gathers the debt items the other detectors already raise, once a year, into one message",
   credit_goals: "a score plan the person asks for with their own target and date",

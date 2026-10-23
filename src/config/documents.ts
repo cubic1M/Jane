@@ -5,6 +5,7 @@ export const DOCUMENT_KINDS = {
   warranty: "Warranty",
   receipt: "Receipt",
   tax_return: "Tax return",
+  draft_return: "Draft tax return (not filed yet)",
   tax_notice: "Tax notice",
   other: "Something else",
 } as const;

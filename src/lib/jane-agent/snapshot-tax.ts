@@ -1,3 +1,4 @@
+import { loadProfileInput } from "@/lib/profile";
 import {
   TAX_FORMS_ASK_FROM,
   TAX_FORMS_ASK_UNTIL,
@@ -33,6 +34,12 @@ import { loadMultiYear, type MultiYearView } from "@/lib/multi-year";
 import { loadPropertyTax, type PropertyTaxView } from "@/lib/property-tax";
 import { loadAccountantPage, type AccountantPageView } from "@/lib/accountant";
 import { loadTaxCalendar, type TaxCalendarView } from "@/lib/tax-calendar";
+import { loadBusinessStructure, type BusinessView } from "@/lib/business-structure";
+import { loadInheritance, type InheritanceView } from "@/lib/inheritance";
+import { loadHealthTaxes, type HealthTaxView } from "@/lib/health-taxes";
+import { loadDisasterRelief, type DisasterView } from "@/lib/disasters";
+import { loadRetirementTaxes, type RetirementTaxView } from "@/lib/retirement-taxes";
+import { listDraftReturns, type DraftReturnView } from "@/lib/draft-return";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
@@ -101,6 +108,18 @@ export type TaxSnapshot = {
     accountant?: AccountantPageView;
     // Spec step 223: the tax calendar for this month.
     calendar?: TaxCalendarView;
+    // Spec step 267: the S corporation question and the business deductions.
+    business?: BusinessView;
+    // Spec step 268: an inherited IRA and gifts over the exclusion.
+    inheritance?: InheritanceView;
+    // Spec step 269: the Marketplace credit, the HSA limit and the medical floor.
+    health?: HealthTaxView;
+    // Spec step 270: disaster relief for their county, and the loss since.
+    disaster?: DisasterView;
+    // Spec step 271: Social Security's taxable part, Medicare's surcharge line, the tuned order.
+    retirement?: RetirementTaxView;
+    // Spec step 272: draft returns read or checked before filing.
+    drafts?: DraftReturnView[];
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -137,11 +156,12 @@ export async function loadTaxSnapshot(
     loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
   ]);
   const noticeViews = await listTaxNotices(userId, { client });
-  const [equity, identity, sideIncome, home] = await Promise.all([
+  const [equity, identity, sideIncome, home, input] = await Promise.all([
     loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
     loadIdentity(userId, { client, now }),
     loadSideIncome(userId, { client, now, loaded: { estimate } }),
     loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
+    loadProfileInput(userId, { client, now }),
   ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
@@ -206,6 +226,17 @@ export async function loadTaxSnapshot(
         loaded: { estimate, advice, equity, identity, notices: noticeViews, side: sideIncome },
         withQuestions: false,
       }),
+      // Spec step 273: the profile's rows loaded once for the four that read them.
+      health: await loadHealthTaxes(userId, { client, now, loaded: { advice, input } }),
+      disaster: await loadDisasterRelief(userId, { client, now, loaded: { estimate, input } }),
+      retirement: await loadRetirementTaxes(userId, { client, now, loaded: { advice, input } }),
+      drafts: (await listDraftReturns(userId, { client })).filter((d) => d.status !== "dismissed"),
+      inheritance: await loadInheritance(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, input },
+      }),
+      business: await loadBusinessStructure(userId, { client, now, loaded: { estimate, advice } }),
       calendar: await loadTaxCalendar(userId, {
         client,
         now,

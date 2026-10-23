@@ -1,5 +1,4 @@
 import { briefSource } from "./brief";
-import { weekSource } from "./week";
 import { DEBT_SOURCES } from "./debt-sources";
 import { didSource } from "./did";
 import { findingsSource } from "./findings";
@@ -15,7 +14,6 @@ import { thingsSource } from "./things";
 import { taxesSource } from "./taxes";
 import { changesSource } from "./changes";
 import { lifeSource } from "./life";
-import { reviewSource } from "./review";
 import { upkeepSource } from "./upkeep";
 import { foundPoliciesSource } from "./found-policies";
 import { savedSource } from "./saved";
@@ -26,10 +24,13 @@ import { billPaySource } from "./billpay";
 import { healthSource } from "./health";
 import { attentionSource } from "./attention";
 import { leanSource } from "./lean";
+import { booksSource } from "./books";
 import { questionsSource } from "./questions";
 import { suggestionsSource } from "./suggestions";
 import { steadySource } from "./steady";
 import { priceRisesSource } from "./price-rises";
+import { twoSource } from "./two";
+import { tradeoffsSource } from "./tradeoffs";
 import { unusualSource } from "./unusual";
 import { reportSource } from "./report";
 import { investmentsSource } from "./investments";
@@ -39,8 +40,6 @@ import { investmentsSource } from "./investments";
 // src/config/agent-chat.ts (CHAT_SOURCE_LIMITS).
 export const MESSAGE_SOURCES: readonly MessageSource[] = [
   briefSource,
-  // Spec step 96.
-  weekSource,
   // Loans and debt (spec Phase Y, ./debt-sources.ts).
   ...DEBT_SOURCES,
   findingsSource,
@@ -63,7 +62,6 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   lifeSource,
   // Spec step 101.
   upkeepSource,
-  reviewSource,
   // Spec step 99.
   foundPoliciesSource,
   // Spec step 139.
@@ -78,9 +76,12 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   healthSource,
   attentionSource,
   leanSource,
+  booksSource,
   suggestionsSource,
   steadySource,
   priceRisesSource,
+  twoSource,
+  tradeoffsSource,
   questionsSource,
   unusualSource,
   reportSource,

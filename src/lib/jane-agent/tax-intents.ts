@@ -78,6 +78,19 @@ export type TaxIntent =
   | { kind: "tax"; ask: "accountant" }
   // Spec step 223: the tax calendar.
   | { kind: "tax"; ask: "calendar" }
+  // Spec step 267: business owners' tax structure.
+  | { kind: "tax"; ask: "business" }
+  // Spec step 268: inherited money and gifts.
+  | { kind: "tax"; ask: "inherited" }
+  // Spec step 269: the tax side of health insurance.
+  | { kind: "tax"; ask: "health" }
+  // Spec step 270: disaster relief and losses, and the county the person lives in.
+  | { kind: "tax"; ask: "disaster" }
+  // Spec step 271: taxes on retirement income.
+  | { kind: "tax"; ask: "retirement" }
+  // Spec step 272: a draft return, checked before filing.
+  | { kind: "tax"; ask: "draft" }
+  | { kind: "tax"; ask: "set_county"; county: string }
   | { kind: "tax"; ask: "retire_year"; year: number }
   // Spec step 218: a sign of identity theft, or the IP PIN.
   | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
@@ -232,6 +245,19 @@ const ACCOUNTANT_ASK =
   /\baccountants?\b.*\b(?:link|share|send|give|hand|access|answer)\w*\b|\b(?:share|send|give|hand)\b.*\b(?:accountant|cpa|tax (?:preparer|pro|professional))\b|\b(?:do|should) i (?:need|use|hire|get) (?:an? )?(?:accountant|cpa|tax (?:preparer|pro|professional))\b|\bwork(?:ing)? with (?:an? |my )?(?:accountant|cpa)\b|\bmy (?:accountant|cpa) (?:wrote|answered|replied|said)\b/;
 const CALENDAR_ASK =
   /\btax year (?:calendar|runs)\b|\b(?:taxes|tax stuff)\b.*\bthis month\b|\bwhat(?:'s| is)? (?:due|coming up) (?:for|with) (?:my )?taxes\b|\btax(?:es)? on autopilot\b|\bhow does jane (?:handle|run|do) my taxes\b/;
+const BUSINESS_ASK =
+  /\bs[- ]?corp(?:oration)?\b|\bqbi\b|\bqualified business income\b|\bpass[- ]?through\b|\bshould i (?:incorporate|form an llc|become an llc|elect)\b|\bllc\b.*\btax/;
+const INHERITED_ASK =
+  /\binherit(?:ed|ing)?\b[^.?!]{0,30}\b(?:ira|401\(?k\)?|403\(?b\)?|retirement account|roth)\b|\binherit\w*\b[^.?!]{0,40}\b(?:tax(?:es|ed)?|irs|deadline|10 years?)\b|\bbeneficiary ira\b|\bstep(?:ped)?[- ]?up\b.*\bbasis\b|\bgift tax\b|\bform 709\b|\bannual (?:gift )?exclusion\b|\bestate tax\b|\b10[- ]year rule\b/;
+const HEALTH_ASK =
+  /\bpremium tax credit\b|\b(?:marketplace|obamacare|aca|healthcare\.gov)\b.*\b(?:subsid(?:y|ies)|credit|repay|pay (?:it )?back|tax)|\b(?:subsid(?:y|ies)|advance credit|aptc)\b.*\b(?:repay|pay (?:it )?back|owe|tax)|\bhsa\b.*\b(?:too much|over the limit|excess|limit|max(?:imum)?)\b|\b(?:put|contribut\w*) too much\b.*\bhsa\b|\bmedical (?:expenses|costs|bills)\b.*\b(?:deduct(?:ion|ions|ed|ing)?|tax\w*|write off)\b|\bdeduct(?:ion|ions|ed|ing)?\b.*\b(?:medical|dental|doctor|hospital)\b|\bmedical (?:expense )?deduction\b|\bform 8962\b/;
+const DISASTER_ASK =
+  /\bcasualty loss\b|\bdisaster (?:relief|loss|postpone\w*|extension|area)\b|\bfema\b|\b(?:hurricane|wildfire|fire|flood|tornado|storm|earthquake|disaster)\b.*\b(?:tax(?:es)?|irs|deadline|deduct(?:ion|ions|ed|ing)?|write off|more time|extension)\b|\b(?:tax(?:es)?|irs|deadline|deduct(?:ion|ions|ed|ing)?)\b.*\b(?:hurricane|wildfire|flood|tornado|storm|earthquake|disaster)\b/;
+const RETIREMENT_ASK =
+  /\birmaa\b|\bmedicare\b.*\b(?:surcharge|premiums? (?:go up|higher|more)|income)\b|\b(?:social security|ss benefits?)\b.*\b(?:tax(?:ed|es|able)?|withhold\w*|w-?4v)\b|\b(?:tax(?:ed|es|able)?)\b.*\bsocial security\b|\bwhich account\b.*\b(?:withdraw|draw|take)\b|\bwithdrawal order\b|\btax torpedo\b/;
+const DRAFT_ASK =
+  /\bdraft (?:tax )?return\b|\b(?:check|review|look over|double[- ]check|go over)\b.*\b(?:my )?(?:tax )?(?:return|1040|taxes)\b.*\bbefore (?:i|we) (?:file|submit|send)\b|\bbefore (?:i|we) file\b.*\b(?:check|review|look)\b|\b(?:turbotax|h&r block|taxact|my accountant)\b.*\b(?:check|review|right|mistakes?)\b/;
+const SET_COUNTY = /\bi live in ([a-z][a-z .'-]{1,30}?) county\b/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
@@ -328,6 +354,14 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
   const retire = text.match(RETIRE_YEAR);
   if (retire) return { kind: "tax", ask: "retire_year", year: Number(retire[1]) };
+  const county = SET_COUNTY.exec(text);
+  if (county) return { kind: "tax", ask: "set_county", county: county[1].trim() };
+  if (DRAFT_ASK.test(text)) return { kind: "tax", ask: "draft" };
+  if (DISASTER_ASK.test(text)) return { kind: "tax", ask: "disaster" };
+  if (RETIREMENT_ASK.test(text)) return { kind: "tax", ask: "retirement" };
+  if (HEALTH_ASK.test(text)) return { kind: "tax", ask: "health" };
+  if (INHERITED_ASK.test(text)) return { kind: "tax", ask: "inherited" };
+  if (BUSINESS_ASK.test(text)) return { kind: "tax", ask: "business" };
   if (CALENDAR_ASK.test(text)) return { kind: "tax", ask: "calendar" };
   if (ACCOUNTANT_ASK.test(text)) return { kind: "tax", ask: "accountant" };
   if (PROPERTY_ASK.test(text)) return { kind: "tax", ask: "property" };

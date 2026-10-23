@@ -94,7 +94,10 @@ async function JaneContent() {
         // Spec step 146: the money health score, every part explained.
         <Section title="Money health" links={[]} id="health">
           <p>
-            {scoreLine(snapshot.health)} {changeLine(snapshot.health)}
+            {scoreLine(snapshot.health)} {changeLine(snapshot.health)}{" "}
+            <Link href="/figures/health_score" className={LINK}>
+              How did I get this?
+            </Link>
           </p>
           <ul className="flex flex-col gap-2">
             {snapshot.health.parts.map((p) => (

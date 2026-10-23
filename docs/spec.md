@@ -4887,3 +4887,55 @@ This replaces "rules first" (steps 191 and 193). It is the chat's architecture:
    through the real Claude path, including the casual phrasings and follow-ups, and records understood,
    figures right, follow-ups, first-words and full-answer times against the depth bar.
 
+
+## Floating cards: suggestions and choices over the chat (founder, 2026-10-21)
+
+Every suggestion is a card floating above the chat (an overlay, never inline), one at a time.
+Yes, Not now or the ✕ takes the card away with a short slide and the next slides in. A small
+counter ("3 left"), a swipe on a phone and the arrow keys on a desktop move between the cards.
+Every tap is answered on screen within 100 ms; the server work follows in the background
+(`e2e/floating-cards.spec.ts` checks it).
+
+- **The card is short.** One headline of about eight words with exactly one number ("Cancel
+  Planet Fitness, save $588/yr"), then Yes and Not now. The headline is
+  `cardHeadline(headline)` (`src/detectors/contract.ts`: "a year" becomes "/yr"); every
+  detector's headline is checked for at most 9 words in that form and one dollar figure
+  (`shortFormProblems`).
+- **More details** opens the full reasoning: why, the figures used, how sure Jane is with the
+  reason, and what Yes does. It is on the page with the card, only hidden, so it opens at once.
+  A "Don't suggest this again" sits inside it (that is the old "Not for me", for good); Not now
+  is the `snooze` action (back tomorrow).
+- **One component for every lane.** `src/components/floating-cards.tsx` takes cards in the
+  shape of `src/lib/floating-cards.ts` and tells the caller what was answered
+  (`onAnswer(id, "yes" | "not_now" | "never")`) as soon as it is tapped. The suggestions use it
+  in `src/app/chat/suggestion-cards.tsx`.
+
+### Option cards: pick one of N
+
+The same component with `mode="pick"` shows the options of one choice (insurance plans to switch
+to, loan offers), one card each. A lane builds an `OptionSet`:
+
+```ts
+type OptionSet = {
+  title: string; // the choice: "Car insurance quotes"
+  options: OptionCardData[];
+};
+type OptionCardData = {
+  id: string; // stable, so the pick can be recorded
+  headline: string; // about 8 words, one number: "Switch to Lighthouse, save $408/yr"
+  summary: string; // one line: why it is better or worse than the others
+  details: {
+    why?: string; // why this person, with their own number
+    figures?: { label: string; value: string }[]; // the figures used
+    confidence?: { percent: number; reason: string };
+    whatYesDoes?: string; // one sentence
+    notes?: string[]; // the demo-advice label
+  };
+  yesLabel: string; // "Pick this one"
+  notNowLabel?: string;
+};
+```
+
+The counter reads "1 of 3". Yes on an option picks it and the whole set is done (the caller
+records the pick, `onAnswer(id, "yes")`); Not now or the ✕ puts the whole set off
+(`onAnswer(id, "not_now")`). Options are ordered best first by the lane (by dollars saved).

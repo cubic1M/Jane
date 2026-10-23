@@ -7,6 +7,7 @@ import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
 import { findingNo, findingPick, findingYes } from "./finding";
+import { optionLater, optionPick } from "./options";
 import {
   insuranceGapNo,
   insuranceQuotes,
@@ -94,6 +95,8 @@ import {
   taxIpPinHave,
   taxIpPinRemind,
 } from "./tax-identity";
+import { taxDisasterLoss, taxDisasterMove } from "./tax-disaster";
+import { taxDraftConfirm, taxDraftDismiss } from "./tax-draft";
 import { taxEquityAside } from "./tax-equity";
 import { taxYearsPlan } from "./tax-years";
 import { taxAccountantSeen } from "./tax-accountant";
@@ -139,6 +142,12 @@ import {
   costlyNo,
   reviewHarvest,
   locationFree,
+  menuConfirm,
+  menuChange,
+  ladderBuild,
+  suddenKinds,
+  suddenStage,
+  valuesApply,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -159,6 +168,8 @@ import { askAnswer } from "./ask";
 import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { priceCalled } from "./price-rises";
+import { twoApprove, twoDecline, twoSplitEven, twoSplitIncome } from "./two";
+import { tradeoffsKeep, tradeoffsPick } from "./tradeoffs";
 import { unusualMe, unusualNotMe } from "./unusual";
 import {
   bundleNo1,
@@ -183,6 +194,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   ...DEBT_ACTION_HANDLERS,
   "finding.no": findingNo,
   "finding.pick": findingPick,
+  "option.pick": optionPick,
+  "option.later": optionLater,
   // Insurance (spec Phase X).
   "insurance.gap_no": insuranceGapNo,
   "insurance.quotes": insuranceQuotes,
@@ -328,6 +341,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.notice_team": taxNoticeTeam,
   "tax.notice_mine": taxNoticeMine,
   "tax.ippin_remind": taxIpPinRemind,
+  "tax.disaster_move": taxDisasterMove,
+  "tax.disaster_loss": taxDisasterLoss,
+  "tax.draft_confirm": taxDraftConfirm,
+  "tax.draft_dismiss": taxDraftDismiss,
   "tax.ippin_have": taxIpPinHave,
   "tax.identity_open": taxIdentityOpen,
   "tax.identity_not": taxIdentityNot,
@@ -375,6 +392,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "costly.no": costlyNo,
   "review.harvest": reviewHarvest,
   "location.free": locationFree,
+  "menu.confirm": menuConfirm,
+  "menu.change": menuChange,
+  "ladder.build": ladderBuild,
+  ...suddenKinds,
+  "sudden.stage": suddenStage,
+  "values.apply": valuesApply,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
@@ -420,6 +443,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "steady.skip": steadySkip,
   "steady.on": steadyOn,
   "price.called": priceCalled,
+  "two.split_income": twoSplitIncome,
+  "two.split_even": twoSplitEven,
+  "two.approve": twoApprove,
+  "two.decline": twoDecline,
+  "tradeoffs.pick": tradeoffsPick,
+  "tradeoffs.keep": tradeoffsKeep,
   "unusual.me": unusualMe,
   "unusual.not_me": unusualNotMe,
 };
@@ -433,6 +462,8 @@ type Options = {
   client?: PrismaClient;
   now?: Date;
   defer?: (work: () => Promise<unknown>) => void;
+  // What was chosen with the button (option.pick: the option's id); the handler checks it.
+  choice?: string;
 };
 
 // A tap on a button. Checked here, whatever the page sent: the message is the person's
@@ -442,7 +473,7 @@ export async function takeChatAction(
   userId: string,
   messageId: string,
   actionId: string,
-  { client = defaultClient, now = new Date(), defer }: Options = {},
+  { client = defaultClient, now = new Date(), defer, choice }: Options = {},
 ): Promise<{
   message: ChatMessage;
   agentJobIds: (string | undefined)[];
@@ -470,7 +501,7 @@ export async function takeChatAction(
     throw new ChatActionError("expired", "It's too late to undo this one.");
   }
 
-  const outcome = await handler.run({ userId, message, action, client, now });
+  const outcome = await handler.run({ userId, message, action, client, now, choice });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
   await markPrimerStale(userId, { client });

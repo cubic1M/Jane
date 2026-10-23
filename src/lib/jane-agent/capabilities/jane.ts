@@ -30,10 +30,18 @@ import { loadTimeline } from "@/lib/timeline";
 import { timelineReply } from "../replies-timeline";
 import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
+import { explainFigure } from "@/lib/figures";
+import { figureReply, whichFigureReply } from "../replies-figures";
+import { openBooks } from "@/lib/books";
+import { booksReply } from "../replies-books";
 import { loadSteady } from "@/lib/steady-pay";
 import { steadyReply } from "../replies-steady";
 import { loadPriceRises } from "@/lib/price-rises";
 import { priceRisesReply } from "../replies-price-rises";
+import { loadMoneyForTwo } from "@/lib/money-for-two";
+import { moneyForTwoReply } from "../replies-two";
+import { loadTradeoffs } from "@/lib/goal-tradeoffs";
+import { tradeoffsReply } from "../replies-tradeoffs";
 import { whatIf } from "@/lib/what-if";
 import { loadLongView } from "@/lib/long-view";
 import { loadProfile } from "@/lib/profile";
@@ -101,6 +109,14 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       const snapshot = await loadSnapshotFast(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : [], intent.explain, intent.one);
     }
+    // Spec step 239.
+    case "figure_how":
+      return intent.figure
+        ? figureReply(await explainFigure(userId, intent.figure, { client, now }))
+        : whichFigureReply();
+    // Spec step 238.
+    case "books":
+      return booksReply(await openBooks(userId, { client }));
     // Spec step 203.
     case "what_if":
       return whatIfReply(
@@ -123,6 +139,12 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 243.
     case "price_rises":
       return priceRisesReply(await loadPriceRises(userId, { client, now }));
+    // Spec step 242.
+    case "money_for_two":
+      return moneyForTwoReply(await loadMoneyForTwo(userId, { client, now }));
+    // Spec step 241.
+    case "goal_tradeoffs":
+      return tradeoffsReply(await loadTradeoffs(userId, { client, now }));
     case "health":
       return healthReply(await healthFor(userId, { client, now }));
     case "checked":
