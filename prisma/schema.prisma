@@ -4428,3 +4428,24 @@ model NewsSummaryCall {
   @@index([calledAt])
   @@map("news_summary_calls")
 }
+
+// The daily strategy evaluation (src/lib/investments/strategy-eval.ts, Phase AW, Stage A):
+// every strategy in the library replayed for every level over the stored Alpaca history, and the
+// strategy each level's practice portfolio follows, with its numbers. Market data, not a
+// person's: no user_id. Practice money and demo advice only.
+model StrategyEvaluation {
+  id        String   @id @default(cuid())
+  ranAt     DateTime @map("ran_at") @db.Timestamptz(3)
+  // Where the closes came from ("alpaca" in production).
+  source    String
+  fromDate  DateTime @map("from_date") @db.Date
+  toDate    DateTime @map("to_date") @db.Date
+  // Per level: the strategy chosen, why, and its numbers against the level's mix.
+  chosen    Json
+  // Per level: every candidate's numbers on the training and the later years, by start year.
+  results   Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([ranAt])
+  @@map("strategy_evaluations")
+}
