@@ -347,6 +347,8 @@ export const ACTION_IDS = [
   // Spec step 241: goals that trade off openly.
   "tradeoffs.pick",
   "tradeoffs.keep",
+  // Spec step 244: the monthly close's one tap.
+  "close.confirm",
   "steady.pay",
   "steady.skip",
   "steady.on",
@@ -453,6 +455,8 @@ export type MessageRefs = {
   note?: string;
   // Spec step 241: the goal order a "Use this order" button picks (goal ids, comma-joined).
   goalOrder?: string;
+  // Spec step 244: the month a "Looks right" on the monthly close closes (YYYY-MM).
+  closeMonth?: string;
   // Spec step 83: a set-up suggestion (src/lib/proposals.ts), by its key.
   proposalKey?: string;
   // Spec step 83: the step only the person can do on an action (./agent-steps.ts).

@@ -126,6 +126,8 @@ export type Intent =
   | FigureIntent
   // Spec step 238: "are my numbers right?"
   | { kind: "books" }
+  // Spec step 244: "is last month closed?"
+  | { kind: "month_close" }
   // Spec step 240: "my steady paycheck", "my income is uneven".
   | { kind: "steady_pay" }
   // Spec step 242: "how should we split the bills?", "our money date".
@@ -376,6 +378,8 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
+const CLOSE =
+  /\bclose (?:the|my|last|this) month\b|\bmonth[- ]end close\b|\bmonthly close\b|\bis (?:last |the )?month (?:closed|done)\b|\b(?:last|this) month'?s close\b|\bclosed (?:last )?month\b/;
 const BOOKS =
   /\b(?:is|are) my (?:data|numbers|figures|balances|books|accounts) (?:all )?(?:right|correct|accurate|up to date|ok|okay)\b|\bdo my (?:books|numbers|balances) (?:balance|add up)\b|\bany (?:problems|issues) with my (?:data|accounts|numbers)\b|\bhow (?:accurate|reliable) (?:is|are) (?:my|the) (?:data|numbers|figures)\b/;
 const TWO =
@@ -574,6 +578,7 @@ export function parseIntent(
   const figureHow = parseFigureHow(text);
   if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };
+  if (CLOSE.test(text)) return { kind: "month_close" };
   const saveMore = SAVE_MORE.exec(text);
   if (saveMore) {
     const cents = Math.round(Number(saveMore[1].replace(/,/g, "")) * 100);

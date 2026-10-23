@@ -172,6 +172,7 @@ import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { twoApprove, twoDecline, twoSplitEven, twoSplitIncome } from "./two";
 import { tradeoffsKeep, tradeoffsPick } from "./tradeoffs";
+import { closeConfirm } from "./close";
 import { unusualMe, unusualNotMe } from "./unusual";
 import {
   bundleNo1,
@@ -453,6 +454,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "two.decline": twoDecline,
   "tradeoffs.pick": tradeoffsPick,
   "tradeoffs.keep": tradeoffsKeep,
+  "close.confirm": closeConfirm,
   "unusual.me": unusualMe,
   "unusual.not_me": unusualNotMe,
 };

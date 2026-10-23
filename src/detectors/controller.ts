@@ -1,7 +1,10 @@
 import { BOOKS_URGENT_KINDS, BOOKS_WORRYING_KINDS } from "@/config/books";
+import { previousMonth } from "@/insights/check-in";
 import { formatCents } from "@/lib/money";
+import { uncertainOf } from "@/planning/month-close";
+import { monthName } from "@/planning/monthly-report";
 import { type Detector, suggestionId } from "./contract";
-import { dollars, evidence } from "./helpers";
+import { dollars, evidence, nice } from "./helpers";
 
 // Detectors for Jane running the money (Phase AP, spec steps 238–244): the books, the
 // figures, the paycheck, goals, two people, price rises and the month's close. Pure; see
@@ -54,4 +57,50 @@ const books: Detector = {
   },
 };
 
-export const CONTROLLER_DETECTORS: readonly Detector[] = [books];
+// Spec step 244: last month can't close by itself, because some charges sit in a catch-all
+// category Jane isn't sure of. One tap (or a fix) closes it.
+const monthClose: Detector = {
+  covers: ["month_close"],
+  capability: "close",
+  topic: "month_close",
+  needs: [],
+  detect({ profile, data }) {
+    if (data.extras?.lastCloseStatus === "closed") return null;
+    const month = previousMonth(profile.today);
+    const unsure = uncertainOf(
+      data.transactions.map((t, i) => ({
+        id: String(i),
+        date: t.date,
+        amountCents: t.amountCents,
+        description: t.description,
+        pfcPrimary: null,
+        pfcDetailed: t.pfc,
+        categorySource: null,
+      })),
+      month,
+    );
+    if (unsure.length === 0) return null;
+    const total = unsure.reduce((s, t) => s + t.amountCents, 0);
+    const names = unsure.map((t) => `${nice(t.description)} ${formatCents(t.amountCents)}`);
+    return {
+      id: suggestionId("close", "month_close"),
+      capability: "close",
+      topic: "month_close",
+      title: `Confirm ${unsure.length === 1 ? "one charge" : `${unsure.length} charges`} so ${monthName(month)} can close`,
+      headline: `Confirm ${unsure.length} charge${unsure.length === 1 ? "" : "s"} to close ${monthName(month).split(" ")[0]}: ${dollars(total)}`,
+      short:
+        `${names.join(", ")}: I'm not sure what ${unsure.length === 1 ? "it was" : "they were"}.`.slice(
+          0,
+          120,
+        ),
+      worthCents: total,
+      worthKind: "risk",
+      confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charge"),
+      urgency: "soon",
+      why: `I close each month on the first of the next. In ${monthName(month)}, ${names.join(" and ")} sit in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
+      action: { label: "Confirm the charges", href: "/monthly#close" },
+    };
+  },
+};
+
+export const CONTROLLER_DETECTORS: readonly Detector[] = [books, monthClose];

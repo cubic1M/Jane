@@ -107,6 +107,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["explain_figure"],
     answer: janeAnswer,
   },
+  // Spec step 244: the monthly close.
+  {
+    id: "close",
+    bank: ["close"],
+    kinds: ["month_close"],
+    tools: ["month_close"],
+    answer: janeAnswer,
+  },
   // Spec step 238: are the numbers right.
   {
     id: "books",

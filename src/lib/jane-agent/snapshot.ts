@@ -15,6 +15,7 @@ import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
 import { resultsByKind, type KindResult } from "@/lib/worked";
 import { openBooks, type BooksView } from "@/lib/books";
+import { loadClose, type CloseView } from "@/lib/month-close";
 import { offeredToday, type OfferedSuggestion } from "@/lib/suggestions";
 import { loadSteady, type SteadyView } from "@/lib/steady-pay";
 import { loadMoneyForTwo, type MoneyForTwoView } from "@/lib/money-for-two";
@@ -130,6 +131,8 @@ export type Snapshot = {
   whatIf?: AdoptedPlan[];
   // Spec step 238: what doesn't add up in the person's data. Optional, like changes.
   books?: BooksView;
+  // Spec step 244: the latest monthly close. Optional, like changes.
+  close?: CloseView | null;
   // Spec step 255: the suggestions chosen for today. Optional, like changes.
   suggestions?: OfferedSuggestion[];
   // Spec step 240: the steady paycheck from uneven income. Optional, like changes.
@@ -332,6 +335,7 @@ export async function loadSnapshot(
     question,
     two,
     tradeoffs,
+    close,
   ] = await Promise.all([
     light ? NO_MORE : loadMore(userId, { client, now, input }),
     light ? {} : loadTaxSnapshot(userId, { client, now }),
@@ -351,6 +355,7 @@ export async function loadSnapshot(
     nextQuestion(userId, { client, now }),
     loadMoneyForTwo(userId, { client, now }),
     light ? null : loadTradeoffs(userId, { client, now, input }),
+    loadClose(userId, { client }),
   ]);
 
   return {
@@ -420,6 +425,7 @@ export async function loadSnapshot(
     question,
     two,
     tradeoffs,
+    close,
     lean: light
       ? { open: [], ended: [] }
       : {

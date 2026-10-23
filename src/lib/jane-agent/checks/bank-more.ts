@@ -171,6 +171,10 @@ const rows: Row[] = [
   ["figures", "/figures/safe_to_spend", "explain_figure", "how did you get my safe to spend"],
   ["figures", "/figures/monthly_spending", "explain_figure", "how did you work out my spending"],
   ["figures", "/figures/net_worth", "explain_figure", "show me the working for my net worth"],
+  // The monthly close (spec step 244).
+  ["close", "/monthly", "month_close", "is last month closed"],
+  ["close", "/monthly", "month_close", "how did the monthly close go"],
+  ["close", "/monthly", "month_close", "close the month"],
   // Books that balance (spec step 238).
   ["books", "/net-worth", "books_check", "are my numbers right"],
   ["books", "/net-worth", "books_check", "do my books balance"],
