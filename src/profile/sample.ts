@@ -1,4 +1,5 @@
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
+import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
 import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
@@ -158,14 +159,15 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
           : Math.round((a.balances.current ?? 0) * 100),
       limitCents: a.balances.limit != null ? Math.round(a.balances.limit * 100) : null,
     })),
-    liabilities: [
-      ...(demoLiabilities(demo, SAMPLE_TODAY).mortgage ?? []).map((m) => ({
-        accountId: m.account_id,
-        kind: "mortgage",
-        aprBps: Math.round((m.interest_rate.percentage ?? 0) * 100),
-        hasPmi: m.has_pmi,
-        payoffDate: m.maturity_date ?? null,
-      })),
-    ],
+    // Every liability the bank reports, normalised as a live sync does (cards' rates and
+    // minimums included), so the harness sees what a linked person's profile sees (loans QA).
+    liabilities: normalizeLiabilities(demoLiabilities(demo, SAMPLE_TODAY)).map((l) => ({
+      accountId: l.accountRef,
+      kind: l.kind,
+      aprBps: l.aprBps,
+      hasPmi: l.hasPmi,
+      payoffDate: l.payoffDate,
+      minimumCents: l.minimumPaymentCents,
+    })),
   };
 }

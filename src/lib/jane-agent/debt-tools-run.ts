@@ -138,6 +138,14 @@ export async function runDebtTool(
     }
     case "loan_fit": {
       const a = (input ?? {}) as { need?: unknown; amount_dollars?: unknown; debt_key?: unknown };
+      // No need given (a follow-up to the consolidation suggestion Jane brings unasked): the
+      // person's cards as one loan, when they owe on any.
+      if (a.need === undefined) {
+        const owesOnCards = (await loadDebts(userId, { client, now })).debts.some(
+          (d) => d.kind === "card" && (d.balanceCents ?? 0) > 0,
+        );
+        if (owesOnCards) a.need = "consolidation";
+      }
       if (typeof a.need !== "string" || !(FIT_NEEDS as readonly string[]).includes(a.need)) {
         return out({ error: "Pick a need: car, home, refinance, consolidation or personal." });
       }

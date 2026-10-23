@@ -120,6 +120,15 @@ describe.runIf(url)("the fit engine against a real database", { timeout: 60_000 
     expect(s.why).toContain(pick.lender);
   });
 
+  // Loans QA: a follow-up to the consolidation suggestion may come without a need.
+  it("prices the cards as one loan when Claude's tool is asked with no need", async () => {
+    const tool = JSON.parse(
+      (await runChatTool(reyes, "loan_fit", {}, { client, now: NOW })).content,
+    );
+    expect(tool.error).toBeUndefined();
+    expect(tool.need).toBe("consolidation");
+  });
+
   it("is the same pick in the chat, Claude's tool and the debt decisions", async () => {
     const v = await loadFit(reyes, { need: "consolidation" }, { client, now: NOW });
     expect(v.pick).not.toBeNull();
