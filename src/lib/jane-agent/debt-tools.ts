@@ -1282,7 +1282,7 @@ export function debtTroubleToolOutput(data: DebtTrouble, money: (cents: number) 
       debt: d.name,
       kind: d.kindLabel,
       balance: money(d.balanceCents ?? 0),
-      whatToAsk: HARDSHIP_PROGRAMS[d.kind],
+      whatToAsk: HARDSHIP_PROGRAMS[d.kind].ask,
     })),
     debtManagementPlanSketch: data.dmp && {
       cardBalance: money(data.dmp.cardBalanceCents),

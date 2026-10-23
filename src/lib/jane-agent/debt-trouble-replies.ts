@@ -40,7 +40,9 @@ export function headline(data: DebtTrouble): string {
 export function hardshipLines(data: DebtTrouble): string[] {
   return data.debts
     .slice(0, SHOWN_DEBTS)
-    .map((d) => `- ${d.name} (${formatCents(d.balanceCents ?? 0)}): ${HARDSHIP_PROGRAMS[d.kind]}`);
+    .map(
+      (d) => `- ${d.name} (${formatCents(d.balanceCents ?? 0)}): ${HARDSHIP_PROGRAMS[d.kind].ask}`,
+    );
 }
 
 export function dmpLines(data: DebtTrouble): string[] {

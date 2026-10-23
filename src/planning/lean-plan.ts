@@ -1,10 +1,6 @@
-import {
-  HARDSHIP_DEFAULT,
-  HARDSHIP_PROGRAMS,
-  LEAN_MAX_WAITABLE,
-  UNEMPLOYMENT_DIRECTORY,
-  UNEMPLOYMENT_STEPS,
-} from "@/config/lean-plan";
+import { HARDSHIP_PROGRAMS } from "@/config/debt-trouble";
+import { LEAN_MAX_WAITABLE, UNEMPLOYMENT_DIRECTORY, UNEMPLOYMENT_STEPS } from "@/config/lean-plan";
+import type { DebtKind } from "@/insights/debts";
 import { formatCents } from "@/lib/money";
 
 // When income stops (spec step 204). Pure: the cash, the forecast's bills and the debts in,
@@ -18,7 +14,7 @@ export type LeanInput = {
   // Bills the forecast expects over the next 30 days.
   forecastBillsCents: number;
   waitable: { name: string; monthlyCents: number }[];
-  debts: { name: string; kind: string }[];
+  debts: { name: string; kind: DebtKind }[];
   stateName: string | null;
 };
 
@@ -51,7 +47,7 @@ export function leanPlan(input: LeanInput): LeanPlan {
     waitableCents,
     runwayWithoutWaitMonths: runway(Math.max(0, outflow - waitableCents)),
     hardship: input.debts.map((d) => {
-      const program = HARDSHIP_PROGRAMS[d.kind] ?? HARDSHIP_DEFAULT;
+      const program = HARDSHIP_PROGRAMS[d.kind];
       return { debt: d.name, program: program.name, ask: program.ask };
     }),
     unemployment: {
