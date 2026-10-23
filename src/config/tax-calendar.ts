@@ -89,6 +89,9 @@ export const YEAR_END_FROM_DAY = 1;
 export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   estimated_taxes: 1,
   business_separation: 1,
+  // A business's quarterly sales or payroll tax: set aside from January's sales (detector
+  // coverage); a payment due within a month makes it "soon" any month.
+  cash_flow: 1,
   identity_ip_pin: 1,
   charity_receipts: 1,
   social_security_tax: 1,
