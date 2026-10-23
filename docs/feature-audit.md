@@ -229,9 +229,9 @@ every page and answer describes.
 **Merge plan** (PR "Merge: autopilot", #497)
 
 1. One description per sector, keyed by the sector's own level (Always ask / The safe stuff /
-   Everything allowed), in `src/config/autopilot-sectors.ts`, read through one helper
-   (`sectorDoes`) in `src/lib/sector-autopilot.ts`. Insurance, investing and taxes switch to
-   it, like debt already does. Pages and chat answers then always match what Jane really does.
+   Everything allowed), as one sentence from one helper (`byHerself` in
+   `src/lib/jane-agent/replies-autopilot.ts`, as built). Insurance, investing and taxes switch
+   to it, like debt already does. Pages and chat answers then always match what Jane really does.
 2. Taxes' "use what I found" reads the Taxes sector. By default this is the same answer as
    today (the sector defaults follow the overall level), and a per-sector choice now counts.
 3. The yearly reviews (216, 223, 230, and 202 when it's built) stay: each holds sector-specific checks and its
@@ -267,7 +267,7 @@ setting by hand. Page changes, so the PR runs end-to-end tests.
 
 **Merge plan** (PR "Merge: suggestions", #498)
 
-1. One ranked list, `topThings(snapshot)` in `src/lib/jane-agent/priorities.ts`: the scan's
+1. One ranked list, `rankedFor(snapshot)` in `src/lib/jane-agent/priorities.ts` (as built): the scan's
    suggestions in the scan's order first (each with its confidence %), then the priority
    engine's items, without repeats.
 2. The brief's "Start with", `/jane`, the monthly report, Claude's primer and its tool, and the
@@ -332,4 +332,270 @@ savings stay separate: they're about paying less for cover the person keeps.
 | Weekly "what Jane did" in three places | The digest email, the weekly review and `/jane`'s timeline. | Covered by cluster 2 (the chat review folds into the brief). |
 | "What I checked last night" (142) | Its own message when the agenda is off; a line in the agenda when it's on (the default). | Keep: off-agenda people still need it. |
 | Alerts page (17) vs the chat's heads-ups | Urgent alerts are both on `/alerts` and a chat heads-up. | Keep: `/alerts` is the history, the chat is the moment. Already deduped by alert id. |
-| Unusual activity (208) vs alerts (17) | Unusual-activity alerts are a kind of alert, shown once in the chat with "This was me". | Already one source (the alerts table). Nothing to do. |
+| Unusual activity (208) vs alerts (17) | Unusual-activity alerts are a kind of alert, shown once in the chat with "This was me". | Stored in one table, but the rules still overlap: one charge can raise two urgent alerts. Corrected in round two, cluster 10. |
+
+---
+
+# Round two (2026-10-23): checked again, and six more overlaps
+
+All six merges above are on main: summaries (#486), bills and deadlines (#487), merchant
+directory (#489), rules-based chat (#491), autopilot (#497) and suggestions (#498). A second
+pass checked that each one still holds after the day's other work. It does: the check-in
+email and the two weekly chat messages are gone, `/check-in` sends people to `/monthly`,
+`/ask` is read-only, the calendar reads the one coming-up list, the company lookup is shared,
+and the one ranked list is `rankedFor`. Two helper names in the plans above were corrected
+to what was actually built.
+
+The second pass then looked across the whole roadmap for overlaps the first one missed. It
+found six more (clusters 9 to 14). In each, the person is told the same thing twice, or gets
+two answers to one question that can disagree. No module in any of them is fully replaced
+by another one, so nothing can simply be deleted. Every merge below joins two paths into one,
+or makes one step skip what another already said.
+
+Tonight's merges are the ones with the most visible repeats and low risk. Each is its own
+pull request titled "Merge: …". The rest are planned here for a later night. Some of them
+touch code that other sessions are changing right now (taxes, practice investing, the loans
+fit engine, suggestions).
+
+---
+
+## Cluster 9: "saved" figures
+
+**Target:** "confirmed" means one thing everywhere: shown in the person's own transactions.
+
+| Step | Today | Where |
+| --- | --- | --- |
+| 56 What Jane did | The weekly "finished 3 things, $X confirmed back or saved" on Home, in the weekly email, in "what did you do?", in the "Done" message and in the brief's "Last week" line. "Confirmed" here means a refund **or a lower price the company agreed to on a call**. | `src/lib/what-jane-did.ts` |
+| 139 What Jane saved you | `/saved`, the share link, the milestone message, the chat and the monthly report. Only what the transactions show counts as confirmed. Everything else is an estimate, shown apart. | `src/lib/savings-proof.ts` |
+| 207 What worked | Marks a finished action whose saving never showed up, so it stops counting. | `src/lib/worked.ts` |
+| Saved to date | "Saved so far" on `/jane`, Home's "a year saved", the year in review. Adds estimates and do-it-yourself changes. | `savedToDate` in `src/lib/membership/service.ts` |
+
+**What the person sees that doesn't match**
+
+- **"Confirmed" means two things.** `/saved` lists a lower price the company agreed to as an
+  estimate until the lower bill arrives. Home, the weekly email and the chat already call it
+  "confirmed".
+- **Two "saved so far" totals.** `/jane` and Home use `savedToDate`. It leaves out a saving
+  step 207 marked "never showed up" and adds the do-it-yourself changes the person finished. The weekly
+  email adds up its own total from every finished action: it still counts savings that never
+  showed up and leaves out do-it-yourself changes. So the email and `/jane` can show
+  different "saved so far" numbers.
+- **December's report shows two saved totals side by side:** "$X confirmed in all" and
+  "changes you finished save about $Y a year".
+- The rule "a refund, else the confirmed lower price, else the estimate" is written in five
+  places.
+
+**Merge plan**
+
+1. The weekly email's "Saved so far" uses `savedToDate`, the same total as `/jane` and Home,
+   so it stops counting savings that never showed up. Done tonight in PR "Merge: saved
+   figures".
+2. Later: "confirmed" anywhere is `provenSavings`. The weekly figures say "back or agreed"
+   for a company's promise until the bill shows it. One helper replaces the five copies of
+   the rule.
+3. Later: `savedToDate` is labelled "expected a year" wherever it's shown, so two totals never
+   look like the same number.
+
+**What users will notice:** the weekly email's "Saved so far" matches `/jane`. **Risk:** low
+for step 1. The later steps change wording on Home, `/jane` and the email, so they need
+end-to-end tests.
+
+---
+
+## Cluster 10: changes, alerts and unusual activity
+
+**Target:** one thing happened, so one message.
+
+| Step | Today | Where |
+| --- | --- | --- |
+| 4 Price rise, new subscription, fees | Findings: a decision card each. | `src/detection/rules/price-increase.ts`, `subscription-review.ts`, `fee-totals.ts` |
+| 17 Alerts | `price_increase`, `new_subscription` and `fee_charged` alerts (on `/alerts` and in the weekly email). `large_charge` and `duplicate_charge` are urgent: emailed and said in the chat. | `src/detection/alerts.ts` |
+| 97 Jane notices changes | A chat heads-up for each price change, new subscription, new fee, late or smaller paycheck, and spending pace. It finds price rises again with its own copy of the numbers. | `src/insights/changes.ts`, `src/lib/changes.ts`, `sources/changes.ts` |
+| 204 When income stops | A chat question for every late paycheck: "Want me to switch to a lean plan?" | `src/lib/lean-plan.ts`, `sources/lean.ts` |
+| 208 Spotting the unusual | Urgent "Was this you?" alerts (a charge far above usual, a large first charge, a bill much higher than usual, a monthly charge twice), with "This was me" / "Not me". | `src/detection/unusual.ts`, `sources/unusual.ts` |
+
+**What the person sees twice**
+
+- **A new subscription is two chat messages:** "X is a new regular charge. Did you mean to
+  sign up?" and "Review your X subscription". The change and its finding were never linked,
+  although price rises and fees already are.
+- **A phone or internet bill that jumps gets four things:** a price-rise card, a price-rise
+  heads-up (the chat folds these two into one), a `price_increase` alert, and an urgent "Was
+  this you?" email and chat message. The unusual-bill rule counts every utility. The
+  price-rise rule leaves out only rent, power and water, so phone and internet fall under both.
+- **One big charge can be two urgent emails and two chat messages:** "$600 at X, much more
+  than you usually spend" (large charge) and "$600 at X, a first charge. Was this you?"
+  (unusual). Both rules look at the same transaction.
+- **A monthly charge taken twice can be two alerts:** "Charged twice?" (with a refund card)
+  and "X charged twice this month" (unusual).
+- **A late paycheck is two chat messages:** "Your paycheck from X hasn't come in…" (the
+  change) and "Your paycheck from X hasn't come in; want a lean plan?" The nightly run
+  creates the lean question for every late-paycheck change, so the pair always arrives
+  together.
+- The price-rise thresholds (5% rise, steady price within 3%, two earlier charges) are written
+  in both `config/detection.ts` and `config/changes.ts`.
+
+**Merge plan** (tonight, PR "Merge: changes and alerts")
+
+1. A new subscription's heads-up is linked to its subscription card by the stream they share.
+   The chat says it once: "X is a new regular charge… Did you mean to sign up? If not, I can
+   cancel it." It has **Cancel it** (the card's Yes) and **That's expected** (the card's No).
+2. The unusual-bill rule skips a bill the price-rise rule already covers. That bill keeps its
+   price-rise card and heads-up. A bill that varies (power, water) or isn't steady still gets
+   "Was this you?".
+3. One alert per charge: a charge that gets a "Was this you?" alert doesn't also get the
+   large-charge alert. A charge that gets "Charged twice?" doesn't also get the unusual
+   "charged twice this month".
+4. A late paycheck says only the lean-plan question. The heads-up stays in "What changed?".
+5. The changes code reads the price-rise thresholds from `config/detection.ts`. The values are
+   the same, so nothing changes, and they can't drift apart.
+
+**Kept, and why:** a price **drop** ("Good news: X went down") is only in changes. `/alerts`
+stays the full history. "What changed?" still lists every change. The new-subscription,
+price-rise and fee alerts stay on `/alerts` and in the weekly email; that's the record, and
+it isn't sent as a message.
+
+**What users will notice:** fewer repeat messages and emails, with every finding and button
+still there. **Risk:** low to medium. The alert rules change, so the PR moves and adds tests
+for each case. No page changes.
+
+---
+
+## Cluster 11: money until payday and "can I afford it?"
+
+| Step | Today | Where |
+| --- | --- | --- |
+| 44 Safe to spend | Home and Claude's `safe_to_spend` tool. Built once and reused. | `src/planning/safe-to-spend.ts` |
+| 69 Can I afford this? | `/afford` and the chat's afford answer: checking plus expected deposits minus regular bills. | `src/lib/afford.ts`, `src/planning/afford.ts` |
+| 203 What if | `/what-if` (car, job loss, move…) and Claude's `what_if` tool: all cash minus average spending, with fixed car defaults. | `src/lib/what-if.ts`, `src/planning/what-if.ts` |
+| 182 Paydays | When the next paycheck lands (pay schedules, payroll words, split deposits). | `src/detection/paydays.ts` |
+| 204, 206 Lean plan, paycheck split | Both find paychecks with a second, simpler detector in changes. | `employers()` in `src/insights/changes.ts` |
+| 177 When money is tight | `/loans/tight`, hardship requests. | `src/lib/tight-money.ts` |
+
+**What doesn't match**
+
+- **"Can I afford a car at $850 a month?"** can stay above zero on `/afford` and show "cash
+  runs out in month N" on `/what-if`. They start from different cash and count spending
+  differently. Claude has two more car tools on top (`car_purchase`, `decision`).
+- **"How long does my cash last?"** gives different month counts in the lean plan and in
+  what-if job loss.
+- **Two paycheck detectors.** Step 182's is the careful one. The paycheck split and the lean
+  plan use the simpler copy, which counts a weekly paycheck as 4 a month (not 4.33).
+- **Three hardship catalogs** with their own wording: tight money, the lean plan and debt
+  trouble.
+
+**Merge plan (later)**
+
+1. `/afford` and what-if's car scenario share one cash starting point and one monthly-spend
+   figure. `/afford` stays the quick yes/no and what-if the month-by-month view.
+2. The paycheck split and the lean plan read step 182's paydays.
+3. One hardship catalog in config, read by all three.
+
+**Risk:** medium. These change figures people act on, so each gets its own PR with
+before-and-after tests on the eight sample people. The late-paycheck double message is
+already fixed in cluster 10.
+
+---
+
+## Cluster 12: the tax year and the long view
+
+| Step | Today | Where |
+| --- | --- | --- |
+| 124, 167, 168 Harvest, tax plan, giving | Harvest message; the year's tax moves (one message each); giving message. | `sources/taxes.ts`, `src/lib/tax-plan.ts` |
+| 223 Tax calendar | Estimated payments (paid by itself where allowed), the December year-end message. | `src/lib/tax-calendar.ts` |
+| 220 Tax moves over several years | `/taxes/years`, one message. | `src/lib/multi-year.ts` |
+| 205 Year's money plan | `/plan`, the report's "Your plan" line. | `src/lib/year-plan.ts` |
+| 209 Long view | `/long-view`, Claude's `long_view` tool. | `src/lib/long-view.ts` |
+
+**What doesn't match**
+
+- **One loss harvest can show up in four places:** its own message, the tax plan's "Sell at a
+  loss" move, and twice inside the December year-end message (the move, then "N losses you
+  could harvest"). Giving and the top multi-year move repeat the same way.
+- **An estimated payment Jane pays stays open on `/deadlines`.** Paying it never ticks off the
+  deadline the tax plan added, so its reminder can still fire.
+- **`/plan` shows $0 for taxes in April while the tax calendar says "I'll pay $2,400 before
+  Apr 15".** The year plan only counts tax deadlines that carry an amount, and none do.
+- **Two retirement ages:** 67 on `/long-view`, "15 years from now" on `/taxes/years`.
+- The estimated-tax due dates are stored twice (`config/tax-pack.ts`, `config/tax-plan.ts`).
+
+**Merge plan (later):** the year-end message links to the moves instead of repeating them.
+Paying an estimate ticks off its deadline. The year plan reads the tax calendar's amounts.
+One retirement age from the investor profile. One list of due dates. **Not tonight:** the
+taxes quality pass is changing this code right now. **Risk:** medium (tax figures).
+
+---
+
+## Cluster 13: extra cash and the emergency fund
+
+| Step | Today | Where |
+| --- | --- | --- |
+| Idle cash (finding and suggestion) | Anything above **3 months** of spending; move it to high-yield savings. | `src/planning/idle-cash.ts` |
+| 234 Short-term money | A `short_term_cash` suggestion for anything above **6 months**; Treasury bills, CDs. | `src/detectors/planning.ts`, `/investments/short-term` |
+| 162 Cash done right | **1 month** in checking, then the emergency fund, then the rest; a money market fund and a ladder. | `src/lib/investments/cash.ts`, `/investments/cash` |
+| 55 Drafted goals | The emergency fund goal from `emergencyTarget()`: tailored (6 months for uneven pay, a $1,000 starter…). | `src/planning/proposals.ts` |
+
+**What doesn't match**
+
+- **Two suggestions about the same extra cash,** with different amounts, can both show on the
+  same day. Their earnings are counted twice in the day's total, because they aren't in the
+  same suggestion group.
+- **Three emergency fund targets:** tailored in the plan, a goal matched by the word
+  "emergency" (or a flat 3 months) on the cash page, a flat 3 months in the tax refund plan.
+- Average monthly spending is copied three times. The high-yield rate is 3.5% in one config
+  and 4% in three others.
+
+**Merge plan (later):** the two cash suggestions join one group, so only the stronger shows.
+The cash page and the refund plan use `emergencyTarget()`. One shared monthly-spend helper and
+one savings rate. **Not tonight:** the practice-investing session changed the suggestion
+groups this evening. **Risk:** low to medium.
+
+---
+
+## Cluster 14: card interest and credit
+
+| Step | Today | Where |
+| --- | --- | --- |
+| 4 Card interest finding | Interest actually charged; the team asks the card for a lower rate. | `src/detection/rules/card-interest.ts` |
+| 224 Less interest on every card | `/loans/interest`: per-card rate requests to the lender stand-in. | `src/lib/card-interest.ts` |
+| 230 Debt yearly review | The review items on `/loans/review`, including "Ask X for a lower rate"; sends one request by itself at "Everything allowed". | `src/lib/debt-review.ts` |
+| 251 Monthly credit check-up | The check-up items on the same page, including "Ask X for a lower rate"; also sends one request by itself. | `src/lib/credit-monthly.ts` |
+| 113, 175, 229 | Balance transfers, statement-close payments, too much debt. | `src/lib/balance-transfers.ts`, `credit-building.ts`, `debt-trouble.ts` |
+
+**What doesn't match**
+
+- **`/loans/review` shows the lower-rate item twice,** once in each list, checked in opposite
+  order. With two cards and one already asked, one item says "Ask X" and the other "Asked Y
+  this month".
+- **Two automatic senders.** The yearly review sends a rate request without checking whether
+  the monthly check-up sent one days ago.
+- "Pay before the statement closes" comes from four places with different amounts. A 0%
+  promotion entered in two places is tracked twice. "Too much debt" is judged by two
+  different tests.
+
+**Merge plan**
+
+1. Tonight, PR "Merge: card rate requests": one lower-rate item and one sender, shared by both
+   reviews. Both read "asked this month" first and "ask the next card" second, and neither
+   sends again within the month. `/loans/review` shows the item once, in the yearly review
+   when one is shown.
+2. Later: one statement-close helper; one 0% promotion record; the hardship suggestion uses
+   `/loans/help`'s test. The monthly check-up reads the loans fit engine, which another session
+   is changing, so only the rate item is touched tonight.
+
+**What users will notice:** one lower-rate item on `/loans/review`, and never two requests to
+card companies in the same month. **Risk:** low. The page changes, so the PR runs end-to-end
+tests.
+
+---
+
+## Round two: what stays on purpose
+
+- **Price drops, `/alerts` and "What changed?"** stay (cluster 10). Each is the only place
+  for something.
+- **`/afford` and `/what-if`** both stay (cluster 11). One is the quick check, the other the
+  month-by-month story. They should agree, not merge.
+- **`/year`, `/long-view` and the year plan** stay (cluster 12). The keepsake, the
+  thirty-year view and this year's plan are different questions.
+- **`/investments/cash` and `/investments/short-term`** stay (cluster 13). One is where cash
+  lives, the other what to buy with money needed in under three years.
