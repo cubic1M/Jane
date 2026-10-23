@@ -171,10 +171,11 @@ describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_00
     await setAutopilot(userId, "ask", { client, now: LINKED });
     await runJaneAgent(userId, { client, now: NEXT_DAY, trigger: "cron" });
     const posted = await changeMessages(userId);
-    // The day's limit leaves room for one change: the demo car's insurance (spec step 154) now
-    // takes the slot the overdraft fee had.
+    // Within the day's limit: bill reminders only take a slot when money could run short, so
+    // both changes get one.
     expect(posted.map((m) => m.body)).toEqual([
       "Netflix went up from $15.49 to $17.99. Want me to ask them for your old price?",
+      "An overdraft fee of $34.00 on Demo Checking, on Oct 13. Want me to ask for it back?",
     ]);
     // Its finding isn't asked about twice.
     const findingId = parseRefs(posted[0].refs).findingId;
