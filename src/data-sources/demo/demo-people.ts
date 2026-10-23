@@ -1235,8 +1235,10 @@ const DEFS: Record<PersonId, Def> = {
 // editing this file together: one file per lane in ./people-extras, each a map from person id
 // to extra recurring charges, one-offs, accounts, cards and holdings, merged here. Keys
 // (transaction keys, account keys) must be unique across all files.
+// A lane's additions to a sample person. `student` gives a student loan the lane added its
+// terms (spec step 266: without them the debt tools can't see a loan the detectors count).
 export type PersonExtra = Partial<
-  Pick<Def, "accounts" | "monthly" | "once" | "cards" | "positions">
+  Pick<Def, "accounts" | "monthly" | "once" | "cards" | "positions" | "student">
 >;
 
 const merged = (id: PersonId): Def => {
@@ -1249,6 +1251,7 @@ const merged = (id: PersonId): Def => {
     once: [...base.once, ...extras.flatMap((e) => e.once ?? [])],
     cards: [...base.cards, ...extras.flatMap((e) => e.cards ?? [])],
     positions: [...base.positions, ...extras.flatMap((e) => e.positions ?? [])],
+    student: base.student ?? extras.find((e) => e.student)?.student,
   };
 };
 
@@ -1312,6 +1315,52 @@ export function personTransactions(
   return out.sort(
     (a, b) => a.date.localeCompare(b.date) || a.transaction_id.localeCompare(b.transaction_id),
   );
+}
+
+// Books QA (spec step 238): an account a sample person reaches through a second bank login, so
+// it comes in twice: the Reyes' savings, once through each parent's login. The second login
+// words any transactions its own way, so Jane can't prove the two copies the same and merge
+// them by herself; she asks.
+export const DEMO_SECOND_LOGINS: Readonly<
+  Partial<Record<PersonId, { login: string; account: string; prefix: string }>>
+> = {
+  family: { login: "joint", account: "savings", prefix: "JOINT ACCESS " },
+};
+
+const secondLoginOf = (demo: DemoSeed) =>
+  demo.login && demo.person ? DEMO_SECOND_LOGINS[demo.person as PersonId] : undefined;
+const secondLoginSeed = (demo: DemoSeed) => `${demo.seed}-${demo.login}`;
+
+// What a second login sees: only the shared account, under its own ids.
+export function secondLoginAccounts(demo: DemoSeed): AccountBase[] {
+  const login = secondLoginOf(demo);
+  if (!login) return [];
+  const base = { ...demo, login: undefined };
+  return personAccounts(base)
+    .filter((a) => a.account_id === accountId(demo.seed, login.account))
+    .map((a) => ({ ...a, account_id: accountId(secondLoginSeed(demo), login.account) }));
+}
+
+export function secondLoginTransactions(
+  demo: DemoSeed,
+  after: string | null,
+  through: string,
+): Transaction[] {
+  const login = secondLoginOf(demo);
+  if (!login) return [];
+  const base = { ...demo, login: undefined };
+  const shared = accountId(demo.seed, login.account);
+  return personTransactions(base, after, through)
+    .filter((t) => t.account_id === shared)
+    .map((t) => ({
+      ...t,
+      transaction_id: t.transaction_id.replace(
+        `demo-${demo.seed}-`,
+        `demo-${secondLoginSeed(demo)}-`,
+      ),
+      account_id: accountId(secondLoginSeed(demo), login.account),
+      name: `${login.prefix}${t.name}`,
+    }));
 }
 
 // Plaid-shaped accounts. An investment account's balance is filled in from what it holds.

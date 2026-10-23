@@ -45,3 +45,7 @@ export interface MarketData {
 
 // Thrown by a real adapter that has no key: nothing calls out without one.
 export class MarketDataNotConfigured extends Error {}
+
+// Thrown when a real adapter's service refuses a request (a bad key, a feed the plan doesn't
+// include): the reason, never the keys. Nothing is read as "no data" instead.
+export class MarketDataError extends Error {}

@@ -64,7 +64,8 @@ describe.runIf(url)("the daily scan of a practice portfolio", () => {
   });
 
   it("harvests losses and buys the dip in this autumn's dip, once, without a wash sale", async () => {
-    const userId = await person(4, "2026-09-01");
+    // Low: the rule replay turned harvesting off from Medium up (OPPORTUNITY_RULES_OFF).
+    const userId = await person(2, "2026-09-01");
     const day = await runPracticeDay(userId, { client, now: at("2026-10-14") });
     expect(day?.scan.scanned).toBe(true);
     const flags = day!.scan.scanned ? day!.scan.flags : [];
@@ -137,6 +138,14 @@ describe.runIf(url)("the daily scan of a practice portfolio", () => {
     expect(scan.scanned && scan.flags.some((f) => f.kind === "news_idea")).toBe(false);
   });
 
+  it("doesn't harvest where the rule replay turned harvesting off", async () => {
+    const userId = await person(4, "2026-09-01");
+    const day = await runPracticeDay(userId, { client, now: at("2026-10-14") });
+    const flags = day?.scan.scanned ? day.scan.flags : [];
+    expect(flags.some((f) => f.kind === "dip_buy")).toBe(true);
+    expect(flags.some((f) => f.kind === "tax_loss_harvest")).toBe(false);
+  });
+
   it("gives a real account no ideas: the autopilot's rebalance only", async () => {
     const userId = await person(4, "2026-09-01", "real");
     await addPracticeMoney(userId, 50_000, "Practice money for the test.", "test", {
@@ -152,7 +161,8 @@ describe.runIf(url)("the daily scan of a practice portfolio", () => {
   });
 
   it("suggests and trades nothing in suggest-only mode, keeping each flag's trades for later", async () => {
-    const userId = await person(4, "2026-09-01");
+    // Low: the rule replay turned harvesting off from Medium up (OPPORTUNITY_RULES_OFF).
+    const userId = await person(2, "2026-09-01");
     vi.mocked(scanPreferences).mockResolvedValueOnce({
       ...DEFAULT_SCAN_PREFERENCES,
       mode: "suggest",

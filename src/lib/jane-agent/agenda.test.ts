@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AGENDA_MAX_YES, MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { agendaOf, lineOf } from "./agenda";
+import { agendaOf, cardsLine, lineOf } from "./agenda";
 import { plan, type BrainSettings, type History } from "./brain";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 import type { Candidate } from "./types";
@@ -240,34 +240,113 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
     source: "suggestions",
   });
 
-  it("puts each suggestion first with its dollars, why you, and confidence with its reason", () => {
-    const local = { date: "2026-10-19", hour: 9, minute: 0 } as never;
+  const brief: Candidate & { source: string } = {
+    kind: "brief",
+    body: "",
+    refs: {},
+    actions: [],
+    dedupeKey: "brief:x",
+    priority: 1_000,
+    source: "brief",
+  };
+  const local = { date: "2026-10-19", hour: 9, minute: 0 } as never;
+
+  it("says the suggestions are on the cards, once, and doesn't repeat them or their buttons", () => {
     const out = agendaOf<Candidate & { source: string }>(
-      {
-        kind: "brief",
-        body: "",
-        refs: {},
-        actions: [],
-        dedupeKey: "brief:x",
-        priority: 1_000,
-        source: "brief",
-      },
+      brief,
       [posted(suggestion)],
       withSuggestion,
       local,
       new Date("2026-10-19T16:00:00Z"),
     );
     const lines = out.agenda.body.split("\n");
-    expect(lines).toContain("Here's what I'd do first, from looking at your money:");
-    expect(lines.find((l) => l.startsWith("- Move idle cash"))).toBe(
-      "- Move idle cash to a higher rate, earn $360/yr. Why you: You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
-    );
-    expect(out.agenda.actions.map((a) => a.id)).toEqual(
-      expect.arrayContaining(["bundle.1", "bundle.no.1"]),
-    );
-    expect(out.agenda.refs.items?.[0]).toMatchObject({
-      action: "suggestion.yes",
-      no: "suggestion.no",
+    expect(lines).toContain(cardsLine(1));
+    expect(out.agenda.body).not.toContain("Move idle cash");
+    expect(out.agenda.body).not.toContain("85% sure");
+    expect(out.agenda.actions.map((a) => a.id)).not.toContain("bundle.1");
+    expect(out.agenda.actions.map((a) => a.id)).not.toContain("bundle.no.1");
+    expect(out.agenda.refs.items).toBeUndefined();
+    // Posted hidden behind the agenda: the overlay shows it, and the list doesn't.
+    expect(out.folded.map((c) => c.dedupeKey)).toContain(posted(suggestion).dedupeKey);
+  });
+
+  it("leaves its Yes slots to what isn't on the cards", () => {
+    const refund: Candidate & { source: string } = {
+      kind: "decision",
+      body: "Charged twice? $64.20 at Target. Want me to handle it?",
+      refs: { findingId: "t" },
+      actions: [{ id: "finding.yes", label: "Yes", kind: "primary" }],
+      dedupeKey: "finding:t",
+      priority: 50,
+      source: "findings",
+    };
+    const keys = ["a", "b", "c", "d", "e", "f"].map((k) => `${k}:x`);
+    const many = snapshot({
+      ...busy,
+      suggestions: keys.map((key) => ({ ...suggestion, key })),
     });
+    const out = agendaOf<Candidate & { source: string }>(
+      brief,
+      [...keys.map((key) => posted({ ...suggestion, key })), refund],
+      many,
+      local,
+      new Date("2026-10-19T16:00:00Z"),
+    );
+    expect(out.agenda.body.split("\n")).toContain(cardsLine(keys.length));
+    expect(out.agenda.body).toContain("One more thing needs your yes:");
+    expect(out.agenda.refs.items).toEqual([
+      { dedupeKey: "finding:t", label: expect.stringMatching(/^Yes: /), action: "finding.yes" },
+    ]);
+    expect(out.folded).toHaveLength(keys.length + 1);
+  });
+});
+
+// The month's report is offered for its first days only, so a busy morning never pushes it off
+// the agenda (QA of the consolidation merges, docs/feature-audit.md).
+describe("the month's report on a busy agenda", () => {
+  const brief: Candidate & { source: string } = {
+    kind: "brief",
+    body: "",
+    refs: {},
+    actions: [],
+    dedupeKey: "brief:x",
+    priority: MESSAGE_PRIORITY.brief,
+    source: "brief",
+  };
+  const note = (n: number): Candidate & { source: string } => ({
+    kind: "done",
+    body: `Something else worth knowing, number ${n}.`,
+    refs: {},
+    actions: [],
+    dedupeKey: `did:${n}`,
+    priority: MESSAGE_PRIORITY.report + 10,
+    source: "did",
+  });
+  const report: Candidate & { source: string } = {
+    kind: "done",
+    body: "Your money report for October 2026 is ready.\nSaved: $120.00 confirmed this month.",
+    refs: {},
+    actions: [{ id: "open", label: "See October 2026", kind: "link", href: "/monthly?m=2026-10" }],
+    dedupeKey: "report:2026-10",
+    priority: MESSAGE_PRIORITY.report,
+    source: "report",
+  };
+
+  it("always has its line and its link, posted hidden behind the agenda", () => {
+    const local = { date: "2026-11-02", hour: 9, minute: 0 } as never;
+    const { agenda, folded } = agendaOf(
+      brief,
+      [note(1), note(2), note(3), note(4), report],
+      snapshot(),
+      local,
+      MORNING,
+    );
+    const lines = agenda.body.split("\n");
+    expect(lines).toContain("- Your money report for October 2026 is ready.");
+    expect(lines.filter((l) => l.startsWith("- Something else"))).toHaveLength(3);
+    expect(agenda.actions).toContainEqual(
+      expect.objectContaining({ label: "See October 2026", href: "/monthly?m=2026-10" }),
+    );
+    expect(folded.map((f) => f.dedupeKey)).toContain("report:2026-10");
   });
 });

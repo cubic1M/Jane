@@ -23,6 +23,7 @@ export async function debtDecide(c: DecideContext): Promise<Decision | null> {
   return {
     body: d.sentences.join(" "),
     actions: [decisionLink(d.href)],
-    confidence: DECISION_CONFIDENCE[id],
+    // A "how sure" line only when something was weighed.
+    ...(d.nothingWeighed ? {} : { confidence: DECISION_CONFIDENCE[id] }),
   };
 }

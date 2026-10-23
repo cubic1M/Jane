@@ -40,9 +40,13 @@ describe("consolidating cards", () => {
     expect(s.rankCents!).toBeGreaterThanOrEqual(0);
   });
 
-  it("is for no one else among the eight, and never for someone in debt trouble", () => {
+  it("is for the people with it on their list, and never for someone in debt trouble", () => {
+    // Maya, the Reyes and Jo owe on cards at 21% to 27% and keep their cash as an emergency
+    // cushion (loans QA: one cash rule), so one cheaper loan is the idea.
     for (const p of PEOPLE) {
-      expect(fire(p.id).length > 0, p.name).toBe(p.id === "renter");
+      expect(fire(p.id).length > 0, p.name).toBe(
+        (p.should as readonly string[]).includes("consolidation"),
+      );
     }
     const data = inputFor("renter");
     const trouble = { ...data, told: { ...data.told, debt_trouble: true } };
@@ -60,10 +64,11 @@ describe("consolidating cards", () => {
         ),
       })),
     ).toEqual([]);
+    // A card rate a personal loan doesn't beat by enough.
     expect(
       fire("renter", (d) => ({
         ...d,
-        transactions: d.transactions.filter((t) => t.pfc !== "BANK_FEES_INTEREST_CHARGE"),
+        liabilities: d.liabilities.map((l) => (l.kind === "credit" ? { ...l, aprBps: 1_200 } : l)),
       })),
     ).toEqual([]);
   });

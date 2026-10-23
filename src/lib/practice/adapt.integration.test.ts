@@ -10,15 +10,9 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 import {
   PRACTICE_RANK_FLOOR_CENTS,
   PRACTICE_TOPIC,
-  PRACTICE_URGENCY,
   practiceIdeaId,
 } from "@/config/practice-suggestions";
-import {
-  HISTORY_MIN_FACTOR,
-  NO_PENALTY,
-  SAFETY_HISTORY_FLOOR,
-  URGENCY_WEIGHT,
-} from "@/config/suggestions";
+import { HISTORY_MIN_FACTOR, NO_PENALTY, SAFETY_HISTORY_FLOOR } from "@/config/suggestions";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { answerSuggestion, scanSuggestions } from "@/lib/suggestions";
 import { startPractice } from "./portfolio";
@@ -132,10 +126,9 @@ describe.runIf(url)("practice ideas adapt to the person's answers", () => {
     // The declined ideas are never offered again.
     for (const key of old) expect(rows.find((r) => r.key === key)?.status).toBe("no");
     // The next of each kind is: the news idea far down, the safety one at its floor.
+    // What it can be expected to gain (urgency only breaks ties), times the person's answers.
     const expected = (kind: Kind, history: number) =>
-      Math.round(
-        PRACTICE_RANK_FLOOR_CENTS[kind] * 0.7 * URGENCY_WEIGHT[PRACTICE_URGENCY[kind]] * history,
-      );
+      Math.round(PRACTICE_RANK_FLOOR_CENTS[kind] * 0.7 * history);
     expect(score(news)).toBe(expected("news_idea", Math.max(HISTORY_MIN_FACTOR, NO_PENALTY ** 3)));
     expect(score(drift)).toBe(expected("drift_warning", SAFETY_HISTORY_FLOOR));
     expect(score(drift)).toBeGreaterThan(score(news));

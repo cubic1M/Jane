@@ -15,7 +15,9 @@ import { borrowingPowerSource } from "@/lib/jane-agent/sources/borrowing-power";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { demoLender } from "@/lib/lenders/demo";
+import { formatCents } from "@/lib/money";
 import { linkDemoBank } from "@/lib/plaid/demo";
+import { detectFor } from "@/lib/suggestions";
 import { syncItem } from "@/lib/plaid/sync";
 import {
   checkBorrowing,
@@ -131,6 +133,41 @@ describe.runIf(url)("what you could borrow against a real database", { timeout: 
     expect(tool.softChecksOnly).toBe(true);
     expect(tool).toMatchObject({ demoAdvice: true, label: DEMO_ADVICE_LABEL });
     expect(tool.figures[0]).toMatchObject({ product: "mortgage", checkedOn: tool.checkedOn });
+  });
+
+  // Loans QA: the suggestion brought unasked names the mortgage /loans/borrow shows.
+  it("brings Sam the same mortgage the page shows", async () => {
+    // The same day for both: the stand-in's rates move month to month.
+    const d = (await checkBorrowing(userId, opts()))!;
+    const mortgage = d.figures.find((f) => f.product === "mortgage")!;
+    const { suggestions } = await detectFor(userId, opts());
+    const s = suggestions.find((x) => x.topic === "borrowing_power")!;
+    expect(mortgage.product === "mortgage" && s.short).toContain(
+      formatCents(mortgage.product === "mortgage" ? mortgage.amountCents : 0),
+    );
+  });
+
+  // Loans QA: Sam never sees a $450,000 home in one place and a $324,000 mortgage in another
+  // without the sentence saying why.
+  it("says the 28/36 home and the mortgage together, in both answers and both tools", async () => {
+    const d = (await checkBorrowing(userId, opts()))!;
+    const mortgage = d.figures.find((f) => f.product === "mortgage")!;
+    const amount = mortgage.product === "mortgage" ? mortgage.amountCents : 0;
+    const both =
+      /Two measures, two sizes: the usual 28\/36 rules on your gross pay put a home at about \$[\d,]+\.00 \(a \$[\d,]+\.00 loan with 10% down, taxes and insurance counted\), while keeping the mortgage payment to a comfortable 30% of your take-home, inside what lenders allow, borrows about \$[\d,]+\.00\./;
+    // The home answer keeps to three sentences: the other measure is a clause in the second.
+    const home = await sendToJane(userId, "can I afford a house?", opts());
+    expect(home.reply.body).toContain(
+      `; keeping the mortgage payment to a comfortable 30% of your take-home, rather than the 28/36 rules on your gross pay, borrows about ${formatCents(amount)} instead.`,
+    );
+    const borrow = await sendToJane(userId, "what could I borrow?", opts());
+    expect(borrow.reply.body).toMatch(both);
+    const homeTool = JSON.parse((await runChatTool(userId, "home_purchase", {}, opts())).content);
+    expect(homeTool.whyWhatYouCouldBorrowDiffers).toMatch(both);
+    const borrowTool = JSON.parse(
+      (await runChatTool(userId, "borrowing_power", {}, opts())).content,
+    );
+    expect(borrowTool.whyTheHomeYouCouldAffordDiffers).toMatch(both);
   });
 
   it("checks nothing for someone without a demo bank", async () => {

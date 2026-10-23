@@ -41,7 +41,7 @@ const at = (day: string, time = "21:30:00") => new Date(`${day}T${time}Z`);
 describe.runIf(url)("practice ideas as suggestions", () => {
   let client: PrismaClient;
   const created: string[] = [];
-  const person = async (bank: "demo" | "real" = "demo") => {
+  const person = async (bank: "demo" | "real" = "demo", level: 2 | 4 = 2) => {
     const user = await client.user.create({
       data: { email: `practice-ideas-${crypto.randomUUID()}@example.com` },
     });
@@ -57,7 +57,9 @@ describe.runIf(url)("practice ideas as suggestions", () => {
         },
       });
     }
-    await startPractice(user.id, 4, { client, now: at("2026-09-01") });
+    // Low by default: the rule replay turned tax-loss swaps off from Medium up
+    // (OPPORTUNITY_RULES_OFF), and most ideas here are a harvest.
+    await startPractice(user.id, level, { client, now: at("2026-09-01") });
     await runAutopilot(user.id, { client, now: at("2026-09-01") });
     return user.id;
   };
@@ -169,7 +171,8 @@ describe.runIf(url)("practice ideas as suggestions", () => {
   });
 
   it("opens the settings for an idea without trades, and does nothing while paused", async () => {
-    const userId = await person();
+    // High: a crash could take its mix past what "sell" can live with.
+    const userId = await person("demo", 4);
     await client.investorProfile.create({ data: { userId, dropReaction: "sell" } });
     await scanPractice(userId, { client, now: at("2026-10-14") });
     const ideas = await openPracticeIdeas(userId, { client, now: at("2026-10-15", "15:00:00") });

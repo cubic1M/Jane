@@ -16,6 +16,7 @@ import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { detectFor } from "@/lib/suggestions";
 import { loadDebtTrouble } from "./debt-trouble";
 
 // Spec step 229 against a real, migrated Postgres, on the demo bank (a mortgage, car, student
@@ -58,19 +59,39 @@ describe.runIf(url)("when debt is too much against a real database", { timeout: 
     const { itemId } = await linkDemoBank(userId, { client, now: LINKED });
     await syncItem(itemId, { client, api: plaid, now: LINKED });
   }, 120_000);
+  // The demo person's payments are over 40% of income, and their cash covers more than three
+  // months of them, so they aren't over the line (loans QA): set it under, for the message.
+  const lowCash = () =>
+    client.account.updateMany({
+      where: { userId, type: "depository" },
+      data: { currentBalanceCents: 100_000 },
+    });
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
     vi.unstubAllEnvs();
   });
 
+  it("isn't over the line while the cash carries three months of the payments", async () => {
+    const t = await loadDebtTrouble(userId, opts());
+    expect(t.share!).toBeGreaterThanOrEqual(0.4);
+    expect(t.over).toBe(false);
+    // Nor in debt trouble for the suggestions: four overdraft and late fees don't make it.
+    const topics = (await detectFor(userId, opts())).suggestions.map((x) => x.topic);
+    expect(topics).not.toContain("hardship_plan");
+    expect(topics).not.toContain("debt_plan");
+    expect(topics).toContain("bank_fees");
+  });
+
   it("works out the share of income from the person's own payments and pay", async () => {
+    await lowCash();
     const t = await loadDebtTrouble(userId, opts());
     expect(t.available).toBe(true);
     expect(t.incomeCents).toBeGreaterThan(400_000);
     expect(t.monthlyPaymentsCents).toBeGreaterThan(300_000);
     expect(t.share).toBeCloseTo(t.monthlyPaymentsCents / t.incomeCents!, 5);
     expect(t.over).toBe(true);
+    expect(t.reason).toBe("payments");
     expect(t.debts.map((d) => d.kind)).toContain("mortgage");
     expect(t.dmp!.cardBalanceCents).toBeGreaterThan(0);
   });
@@ -87,6 +108,13 @@ describe.runIf(url)("when debt is too much against a real database", { timeout: 
       local: { date: "2027-01-05", hour: 8 },
     });
     expect(next[0].dedupeKey).toBe("trouble:2027q1");
+    // The hardship suggestion says it with its button: the heads-up gives way (cluster 14).
+    const suggested = {
+      ...snapshot,
+      suggestions: [{ topic: "hardship_plan" }],
+    } as unknown as typeof snapshot;
+    expect(debtTroubleSource.gather(suggested, context)).toEqual([]);
+    expect(snapshot.debtTrouble?.reason).toBe("payments");
   });
 
   it("lays out the options in chat as facts, and the guardrails accept every word", async () => {

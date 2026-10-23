@@ -6,6 +6,7 @@ import {
 import { formatCents } from "@/lib/money";
 import { CATEGORY_LABELS } from "./labels";
 import { monthsEnding, spendingInsights, type InsightTransaction } from "./spending";
+import { oneOffCharges, withoutOneOffs } from "./typical-month";
 
 // Budgets against this month's spending. Spending comes from spendingInsights, so a
 // category's total here is exactly the one on /insights (same rules for transfers, card
@@ -49,6 +50,13 @@ export function budgetSummary(
     insights.categoriesByMonth[m]?.find((c) => c.category === category)?.cents ?? 0;
 
   const past = months.slice(0, -1);
+  // Suggestions start from a typical month: one-off costs (books QA) would make a budget of them.
+  const typical = spendingInsights(
+    withoutOneOffs(transactions, oneOffCharges(transactions, asOf)),
+    { asOf, monthCount: months.length },
+  );
+  const typicalIn = (m: string, category: string) =>
+    typical.categoriesByMonth[m]?.find((c) => c.category === category)?.cents ?? 0;
   const categories = [
     ...new Set(months.flatMap((m) => (insights.categoriesByMonth[m] ?? []).map((c) => c.category))),
   ].sort();
@@ -57,7 +65,7 @@ export function budgetSummary(
     categories
       .filter((category) => !fixed.has(category))
       .map((category) => {
-        const average = past.reduce((sum, m) => sum + spentIn(m, category), 0) / past.length;
+        const average = past.reduce((sum, m) => sum + typicalIn(m, category), 0) / past.length;
         const rounded =
           Math.ceil(average / BUDGET_SUGGESTION_ROUNDING_CENTS) * BUDGET_SUGGESTION_ROUNDING_CENTS;
         return [category, rounded];

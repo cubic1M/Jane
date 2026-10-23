@@ -25,6 +25,7 @@ import {
   type ScanKind,
 } from "@/config/practice-scan";
 import { glideMix, yearsUntil } from "./goal-buckets";
+import type { ScanPreferences } from "./practice-opportunities";
 import { avoidLabel, type PracticePreferences } from "./practice-preferences";
 
 // What the autopilot and the daily scan do for one person (Phase AW, Stage A): their preferences
@@ -60,6 +61,16 @@ export type PracticeProfile = {
   limits: typeof AUTOPILOT_LIMITS;
   // What the profile does, in plain sentences, for the page, the chat and the backtests.
   rules: string[];
+  // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
+  // whether the mix follows it this month, and why or why not. Absent before the first
+  // evaluation.
+  strategy?: {
+    key: string;
+    label: string;
+    why: string;
+    followed: boolean;
+    note: string;
+  };
 };
 
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
@@ -251,4 +262,43 @@ export function refusedByPreferences(
   if (order.side === "buy" && profile.avoid.includes(order.ticker.toUpperCase()))
     return "on your never-buy list";
   return null;
+}
+
+// The first of a flag's trades the person's preferences refuse (the never-buy list), or null.
+// Suggest only is the scan's own status, so it is left out here. The live scan and the rule
+// replay both ask this before the hard limits.
+export function firstRefusal(
+  profile: Pick<PracticeProfile, "avoid">,
+  flag: { trades: readonly { ticker: string; side: "buy" | "sell" }[] },
+): string | null {
+  return (
+    flag.trades
+      .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
+      .find((r) => r !== null) ?? null
+  );
+}
+
+const APPETITE: Readonly<Record<PracticePreferences["appetite"], ScanPreferences["appetite"]>> = {
+  off: "none",
+  cautious: "low",
+  normal: "normal",
+  adventurous: "high",
+};
+
+// The person's preferences in the daily scan's terms. The drop they can live with falls back to
+// `fallbackDropShare` (the investor profile's answer, read by src/lib/practice/opportunity-prefs.ts)
+// when they haven't said one. The live scan and the rule replay both build it here.
+export function scanPreferencesFor(
+  prefs: PracticePreferences,
+  fallbackDropShare: number | null = null,
+): ScanPreferences {
+  return {
+    maxDropShare: prefs.maxDropPercent === null ? fallbackDropShare : prefs.maxDropPercent / 100,
+    goalDate: prefs.goalDate,
+    appetite: APPETITE[prefs.appetite],
+    excludedTickers: avoidedTickers(prefs.avoid),
+    taxSensitive: prefs.harvestLosses,
+    cashBufferCents: prefs.cashBufferCents,
+    mode: prefs.mode,
+  };
 }

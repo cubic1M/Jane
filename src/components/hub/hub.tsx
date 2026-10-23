@@ -87,6 +87,8 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
           {dollars(saved.cents)}
           <span className="text-base font-normal text-zinc-500">/yr</span>
         </p>
+        {/* What was said yes to, at its expected yearly value (one meaning of "saved", #587). */}
+        {saved.label === "Saved so far" && <p className="text-xs text-zinc-500">Expected</p>}
         {saved.label === "Saved so far" && (
           <Meter
             share={saved.share}

@@ -4905,6 +4905,9 @@ Every tap is answered on screen within 100 ms; the server work follows in the ba
   reason, and what Yes does. It is on the page with the card, only hidden, so it opens at once.
   A "Don't suggest this again" sits inside it (that is the old "Not for me", for good); Not now
   is the `snooze` action (back tomorrow).
+- **One place.** While a suggestion waits in the cards, the chat's message list leaves its
+  message out (`inTheList`, `src/lib/jane-agent/view.ts`). Once it is answered the message is in
+  the list again as history: what Jane suggested and what the person chose.
 - **One component for every lane.** `src/components/floating-cards.tsx` takes cards in the
   shape of `src/lib/floating-cards.ts` and tells the caller what was answered
   (`onAnswer(id, "yes" | "not_now" | "never")`) as soon as it is tapped. The suggestions use it

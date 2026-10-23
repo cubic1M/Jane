@@ -124,6 +124,13 @@ test("refinance offers compare total cost and pick one, labelled", async ({
   await expect(car).toContainText("Jane's pick: Harbor Auto Refi");
   await expect(car.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   await expect(car.getByRole("table")).toContainText("In all, with fees");
+  // Loans QA: the card the demo person's cash pays off for less than any loan isn't refinanced.
+  const card = page
+    .getByRole("list", { name: "Offers by debt" })
+    .getByRole("listitem")
+    .filter({ hasText: "Demo Credit Card" });
+  await expect(card).toContainText("Jane's pick: pay it off from your cash");
+  await expect(card.getByRole("button", { name: /^Apply with/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Check rates now" }).click();
   await expect(page.getByRole("status")).toHaveText("Checked just now.");
 });
@@ -442,6 +449,8 @@ test("buying a home shows the plan, its assumptions, and starts the goal on the 
   await expect(costs).toContainText("Mortgage insurance (PMI)");
   await expect(page.getByRole("region", { name: "Saving for it" })).toContainText("$52,000.00");
   await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("28%");
+  // Loans QA: the 28/36 home and what you could borrow, said together with why they differ.
+  await expect(page.getByText(/^Two measures, two sizes: the usual 28\/36 rules/)).toBeVisible();
   const start = page.getByRole("button", { name: /^Start a \$52,000\.00 goal/ });
   await start.scrollIntoViewIfNeeded();
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
@@ -1048,6 +1057,7 @@ test("what you could borrow is shown with the day it was checked", async ({
   await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // A card limit is a guess from a year of income, to the nearest $100.
   await expect(page.getByText(/with a limit around \$[\d,]*00\.00/)).toBeVisible();
+  await expect(page.getByText(/^Two measures, two sizes: the usual 28\/36 rules/)).toBeVisible();
   const list = page.getByRole("list", { name: "What you could borrow" });
   await expect(list.getByRole("listitem").filter({ has: page.getByRole("heading") })).toHaveCount(
     4,

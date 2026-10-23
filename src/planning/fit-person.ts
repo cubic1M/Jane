@@ -1,6 +1,7 @@
 import { FIT_CARD_PAYMENT_SHARE } from "@/config/fit";
 import { liquidCents, monthlySpendCents } from "@/detectors/helpers";
 import { buildProfile, type ProfileInput } from "@/profile/build";
+import { cashCushionCents } from "./emergency-fund";
 import type { FitPerson } from "./fit";
 
 // The person the fit engine (./fit.ts) works for, read from what the profile already holds:
@@ -40,6 +41,15 @@ export function fitPersonFrom(input: ProfileInput, creditScore: number | null = 
       Math.round(paid / MONTHS) + cardMinimums + (input.familyCredit?.cosignedPaymentCents ?? 0),
     cashCents: liquidCents(input),
     spendCents: monthlySpendCents(input, profile.months),
+    cushionCents: cashCushionCents({
+      spendingCents: monthlySpendCents(input, profile.months),
+      incomeCents: typeof income === "number" ? income : null,
+      pattern:
+        typeof profile.facts.income_pattern.value === "string"
+          ? profile.facts.income_pattern.value
+          : null,
+      debtTrouble: profile.facts.debt_trouble.value === true,
+    }),
     debtTrouble: profile.facts.debt_trouble.value === true,
   };
 }

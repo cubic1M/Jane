@@ -46,3 +46,46 @@ export const SAMPLE_HISTORY_NOTE =
   "The sample market's made-up prices, with a planted crash and recovery; not real prices.";
 export const REAL_HISTORY_NOTE =
   "Daily closes from the market data, adjusted for splits and dividends.";
+
+// The rule replay ("Did the extra rules help?", src/planning/rule-replay.ts): the autopilot and
+// the daily scan's own rules run day by day over the same history, against plain rebalancing and
+// buy and hold. Each starts with BACKTEST_START_CENTS and gets the practice portfolio's monthly
+// money (PRACTICE_MONTHLY_ADD_CENTS) on this day of the month, as the live autopilot does.
+export const RULE_REPLAY_ADD_DAY = 1;
+// Each trade's cost, in basis points of what changes hands: half the bid-ask spread of a liquid
+// ETF or large company, roughly. The model ETFs trade commission-free; the spread is still paid.
+// Taken off the value as it is paid. FOR REVIEW.
+export const RULE_REPLAY_TRADE_COST_BPS = 2;
+// A rule made results worse at a level when, with it, the time-weighted return over the whole
+// replay was lower, or the worst drop deeper, than without it by more than this many percentage
+// points. Smaller differences are noise from trade timing.
+export const RULE_REPLAY_WORSE_POINTS = 0.25;
+// The two stress periods each replay reports: its worst fall inside each.
+export const RULE_REPLAY_STRESS: readonly { label: string; from: string; to: string }[] = [
+  { label: "2020", from: "2020-01-01", to: "2020-12-31" },
+  { label: "2022", from: "2022-01-01", to: "2022-12-31" },
+];
+export const RULE_REPLAY_NOTE =
+  "A replay of the autopilot's own rules over past prices, not a forecast: future results will be different. Returns are time-weighted (the monthly money doesn't count as gain) and before taxes, so a harvested loss shows only its trading cost here.";
+// What each replay is called on the page and in the chat.
+export const RULE_REPLAY_STRATEGY_LABELS = {
+  rules: "Autopilot with the extra rules",
+  rebalance: "Plain rebalancing",
+  hold: "Buy and hold",
+} as const;
+// On the sample market the swap funds' made-up prices wander away from the main funds' (on
+// real prices they track each other closely), so the sample can't judge tax-loss swaps.
+export const RULE_REPLAY_SAMPLE_NOTE =
+  "Made-up prices: the sample's swap funds drift away from the main funds, so tax-loss swaps look worse here than they would on real prices.";
+
+// Tuning the rules (docs/backtests/log.md): every change to a rule's numbers is chosen on the
+// training years and kept only if it also wins on the later, held-out years (walk-forward), each
+// replayed from a fresh start with the same money in.
+export const RULE_TUNE_TRAIN = { from: "2016-01-04", to: "2021-12-31" } as const;
+export const RULE_TUNE_VALIDATE = { from: "2022-01-03", to: null } as const;
+// A level's objective: the yearly time-weighted return for each point of its worst drop, with
+// the worst drop no deeper than plain rebalancing's at the same level plus this many points.
+export const RULE_TUNE_DROP_SLACK_POINTS = 2;
+// A change is kept only when its objective beats the current settings' by at least this share,
+// in training and on the held-out years, and beats plain rebalancing's on the held-out years.
+export const RULE_TUNE_MIN_GAIN = 0.01;
