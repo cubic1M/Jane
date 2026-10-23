@@ -121,7 +121,9 @@ describe.runIf(url)("what you could borrow against a real database", { timeout: 
 
   it("answers in the chat and gives Claude the same figures with their dates", async () => {
     const { reply } = await sendToJane(userId, "what could I borrow?", opts());
-    expect(reply.body).toMatch(/^Here's what you could likely get, from soft checks on /);
+    expect(reply.body).toMatch(
+      /^You could likely get \d of the 4 kinds of credit I checked, from soft checks on /,
+    );
     expect(reply.body).toContain("A mortgage: up to about $");
     expect(reply.body).toMatch(/Priced by your score of \d+ from Oct 18, 2026\./);
     // A card's limit is a guess to the nearest $100, from a year of income, not cents of it.

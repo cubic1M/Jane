@@ -18,6 +18,8 @@ export type DecisionIntent = {
   item: DecisionItem | null;
   // What they called it, for the answer's words ("bitcoin", "a house").
   label: string | null;
+  // "Why?" right after the answer: the reason on its own, not the whole answer again.
+  why?: boolean;
 };
 
 const CRYPTO = /\b(?:crypto\w*|bitcoin|btc|ether\w*|eth|solana|doge\w*|stablecoins?|nfts?)\b/;

@@ -160,7 +160,9 @@ export async function answerTaxIntent(
         (await listDraftReturns(userId, { client })).filter((d) => d.status !== "dismissed"),
       );
     case "retirement":
-      return retirementReply(await loadRetirementTaxes(userId, { client, now }));
+      return retirementReply(await loadRetirementTaxes(userId, { client, now }), {
+        medicare: intent.medicare === true,
+      });
     case "disaster":
       return disasterReply(await loadDisasterRelief(userId, { client, now }));
     case "set_county": {

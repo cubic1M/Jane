@@ -524,9 +524,11 @@ describe("insurance on autopilot (spec step 108)", () => {
       monthlyCapCents: 0,
     } as const;
     expect(autopilotReply("safe", ask).body).toMatch(
-      /^With insurance, I do this by myself at "Handle the safe stuff"\. I watch every renewal/,
+      /^With insurance, here's what I do by myself at "Handle the safe stuff"\. I watch every renewal/,
     );
-    expect(autopilotReply(null, ask).body).toContain("at no autopilot level yet");
+    expect(autopilotReply(null, ask).body).toMatch(
+      /^With insurance, here's what I do by myself\. I watch/,
+    );
     for (const level of ["ask", "safe", "all", "custom", null]) {
       expect(autopilotReply(level, ask).body).toMatch(
         /Insurance is set to always ask: I don't switch to a cheaper policy with the same cover or change anything else without your tap\.$/,

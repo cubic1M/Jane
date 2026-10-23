@@ -16,14 +16,14 @@ export function autopilotReply(
 ): Reply {
   const key =
     level === "ask" || level === "safe" || level === "all" || level === "custom" ? level : "none";
-  const name =
+  const at =
     key === "custom"
-      ? "your own rules"
+      ? " under your own rules"
       : key === "none"
-        ? "no autopilot level yet"
-        : `"${AUTOPILOT_LEVELS[key].label}"`;
+        ? ""
+        : ` at "${AUTOPILOT_LEVELS[key].label}"`;
   return {
-    body: `With insurance, I do this by myself at ${name}. ${INSURANCE_AUTOPILOT[key]} ${byHerself(insurance)}`,
+    body: `With insurance, here's what I do by myself${at}. ${INSURANCE_AUTOPILOT[key]} ${byHerself(insurance)}`,
     actions: [
       { id: "open", label: "See your insurance", kind: "link", href: "/insurance" },
       { id: "open", label: "Autopilot settings", kind: "link", href: "/settings#autopilot" },

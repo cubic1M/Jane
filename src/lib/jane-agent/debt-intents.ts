@@ -454,6 +454,12 @@ export function parseDebtIntent(
   if (CAR_LOAN.test(text)) return { kind: "car_loan" };
   if (COSTLY.test(text)) return { kind: "costly_borrowing" };
   if (RENTING.test(text)) return { kind: "renting" };
+  // "Pay extra on my mortgage or invest?" with no amount is the pay-or-invest decision, worked
+  // out with the person's own numbers; with an amount it's the step 246 comparison.
+  const payOrInvest = DECISION_PATTERNS.find(([which]) => which === "pay_or_invest")![1];
+  if (amountCents === null && !/\brecast/.test(text) && payOrInvest.test(text)) {
+    return { kind: "debt_decision", which: "pay_or_invest" };
+  }
   if (MORTGAGE_MONEY.test(text) && !/\b(?:paid off|payoff date|when will)\b/.test(text)) {
     const monthly = PER_MONTH.test(text);
     return {
