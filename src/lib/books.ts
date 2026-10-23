@@ -8,6 +8,7 @@ import {
   duplicateAccounts,
   linkProblems,
   matchTransfers,
+  unmatchedToSay,
   provenSame,
   reconcile,
   type Tx,
@@ -238,11 +239,12 @@ export async function runBooksCheck(
       words: `${l.name} hasn't updated since ${l.lastSyncedAt ?? "it was linked"}, so what I show from there may be out of date.`,
     });
   }
-  const unmatched = matchTransfers(txns.map(asTx)).unmatchedOut.slice(-3);
+  const unmatched = unmatchedToSay(matchTransfers(txns.map(asTx)).unmatchedOut, accounts).slice(-3);
   for (const t of unmatched) {
     found.push({
       kind: "transfer",
-      key: `transfer:${t.id}`,
+      // One per payee: the same transfer every month is one thing to say.
+      key: `transfer:${t.description.trim().toLowerCase()}`,
       accountId: t.accountId,
       detail: { amountCents: t.amountCents, date: t.date },
       words: `A transfer of ${formatCents(t.amountCents)} on ${t.date} ("${t.description}") left one of your accounts with no matching deposit in another. If it went to an account I can't see, that's fine; link it to count it.`,

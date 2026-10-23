@@ -12,6 +12,10 @@ export type DigestInput = {
   // When the last digest went out; null for someone's first.
   lastSentAt: Date | null;
   moneyFoundCents: number;
+  // "Saved so far": the same total as /jane and Home (savedToDate in
+  // src/lib/membership/service.ts), so the email never shows a different number
+  // (docs/feature-audit.md, cluster 9).
+  savedToDateCents: number;
   // Whether the membership offer is due (src/lib/membership/offer.ts).
   membershipOffer: boolean;
   actions: {
@@ -101,7 +105,7 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
   }
   return {
     savedThisWeekCents: total(finishedThisWeek),
-    savedToDateCents: total(done),
+    savedToDateCents: input.savedToDateCents,
     moneyFoundCents: input.moneyFoundCents,
     finishedThisWeek: finishedThisWeek.map(({ title, annualSavingsCents }) => ({
       title,

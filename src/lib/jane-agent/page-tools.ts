@@ -15,7 +15,7 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   budgets: ["budgets"],
   "check-in": ["plan_upkeep"],
   connect: ["explainer"],
-  deadlines: ["coming_up"],
+  deadlines: ["coming_up", "price_rises"],
   debt: ["debts", "payoff_plan", "balance_transfers"],
   documents: ["tax_forms", "insurance_documents"],
   // Spec step 239: how a figure was worked out.
@@ -40,7 +40,7 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
     "student_loans",
     "credit_score",
   ],
-  monthly: ["monthly_report", "plan_upkeep"],
+  monthly: ["monthly_report", "plan_upkeep", "month_close"],
   money: ["net_worth"],
   "net-worth": ["net_worth"],
   plan: ["open_findings"],

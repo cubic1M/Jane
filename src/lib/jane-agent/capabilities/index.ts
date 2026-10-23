@@ -107,6 +107,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["explain_figure"],
     answer: janeAnswer,
   },
+  // Spec step 244: the monthly close.
+  {
+    id: "close",
+    bank: ["close"],
+    kinds: ["month_close"],
+    tools: ["month_close"],
+    answer: janeAnswer,
+  },
   // Spec step 238: are the numbers right.
   {
     id: "books",
@@ -144,6 +152,14 @@ export const CAPABILITIES: readonly Capability[] = [
     bank: ["steady"],
     kinds: ["steady_pay"],
     tools: ["steady_pay"],
+    answer: janeAnswer,
+  },
+  // Spec step 243: price rises seen before they land.
+  {
+    id: "price_rises",
+    bank: ["price_rises"],
+    kinds: ["price_rises"],
+    tools: ["price_rises"],
     answer: janeAnswer,
   },
   // Spec step 242: money for two.
