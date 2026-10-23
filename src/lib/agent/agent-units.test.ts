@@ -48,6 +48,22 @@ describe("reading replies", () => {
     expect(readReplyByRules(body).outcome).toBe(outcome);
   });
 
+  // Gap audit: the stand-in answered a cancellation with "unable to offer a refund".
+  it("answers each kind of request in its own words, and the rules read each one", () => {
+    for (const [type, done, refused] of [
+      ["cancel_subscription", /cancelled the subscription/, /unable to cancel/],
+      ["negotiate_bill", /lower rate/, /unable to change the price/],
+      ["request_refund", /refund has been processed/, /unable to offer a refund/],
+    ] as const) {
+      const yes = simulatedBody("done", type, "Hulu");
+      const no = simulatedBody("refused", type, "Hulu");
+      expect(yes, type).toMatch(done);
+      expect(no, type).toMatch(refused);
+      expect(readReplyByRules(yes).outcome, type).toBe("done");
+      expect(readReplyByRules(no).outcome, type).toBe("refused");
+    }
+  });
+
   it("sums up a reply with the sentence that says what happened", () => {
     expect(readReplyByRules(simulatedBody("done", "request_refund", "Target")).summary).toBe(
       "Your refund has been processed for the charges listed.",
