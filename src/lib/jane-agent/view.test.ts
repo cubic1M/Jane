@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { OfferedOptions } from "@/lib/option-card";
 import { parseActions, toChatMessage, type ChatMessage } from "./types";
-import { toView } from "./view";
+import { inTheList, toView } from "./view";
 
 // Spec step 81: an open message shows its buttons; an answered one shows the answer, keeps
 // its links, and keeps Undo only while Undo works.
@@ -164,5 +164,44 @@ describe("a reply with options (refs.options)", () => {
     expect(toView(reply("answered"), NOW, null).options).toBeNull();
     expect(toView(reply("dismissed"), NOW, null).options).toBeNull();
     expect(toView(message(), NOW, null).options).toBeNull();
+  });
+});
+
+describe("the list and the floating cards (suggestions in one place)", () => {
+  const suggestion = (id: string, over: Partial<ChatMessage> = {}) =>
+    toView(
+      message({
+        id,
+        body: "Cancel Hulu, save $215/yr\nWhy you: no plays since June.\n90% sure: no plays.",
+        refs: { suggestion: "subscription:hulu" },
+        actions: [
+          { id: "suggestion.yes", label: "Cancel Hulu", kind: "primary" },
+          { id: "snooze", label: "Not now", kind: "secondary" },
+        ],
+        ...over,
+      }),
+      NOW,
+      null,
+    );
+  const brief = toView(message({ id: "b1", kind: "brief", actions: [] }), NOW, null);
+
+  it("leaves out a suggestion while it waits in the floating cards", () => {
+    const waiting = suggestion("s1");
+    expect(inTheList([brief, waiting], [waiting]).map((m) => m.id)).toEqual(["b1"]);
+  });
+
+  it("keeps an answered suggestion in the history, with what was chosen", () => {
+    const answered = suggestion("s1", { status: "answered", answeredWith: "Cancel Hulu" });
+    const listed = inTheList([brief, answered], [suggestion("s1")]);
+    expect(listed.map((m) => m.id)).toEqual(["b1", "s1"]);
+    expect(listed[1]).toMatchObject({ answeredWith: "Cancel Hulu", buttons: [] });
+  });
+
+  it("keeps everything else, in order, open messages and suggestions not floating too", () => {
+    const decision = toView(message({ id: "d1" }), NOW, null);
+    const older = suggestion("s0");
+    const all = [brief, older, decision];
+    expect(inTheList(all, [suggestion("s1")])).toEqual(all);
+    expect(inTheList(all, [])).toEqual(all);
   });
 });

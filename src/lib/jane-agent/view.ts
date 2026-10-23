@@ -51,6 +51,17 @@ const TAGS: Record<MessageKind, string> = {
   user: "you",
 };
 
+// The messages the chat's list shows. A suggestion waiting in the floating cards is answered
+// there, so the list leaves it out rather than show it twice; once answered it is in the list
+// again, as history, with what was chosen.
+export function inTheList(
+  messages: readonly MessageView[],
+  floating: readonly MessageView[],
+): MessageView[] {
+  const waiting = new Set(floating.map((m) => m.id));
+  return messages.filter((m) => !(m.status === "open" && waiting.has(m.id)));
+}
+
 export function toView(message: ChatMessage, now: Date, timezone: string | null): MessageView {
   const undoUntil = message.refs.undoUntil ?? null;
   const undoOpen = undoUntil === null || new Date(undoUntil) > now;
