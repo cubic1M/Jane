@@ -48,6 +48,9 @@ export type DecisionInput = {
     aprBps: number;
     savesCents: number;
   } | null;
+  // A 0% transfer that would have saved, left out because the score is under what those cards
+  // usually need (TRANSFER_MIN_SCORE); null when none was left out.
+  transferNeedsScore?: { score: number; minScore: number } | null;
   // The next payday, for a payday loan question.
   nextPayday: { date: string; days: number } | null;
   // Checking over the next month, day by day, with the bills and installments in it; and the
@@ -90,6 +93,8 @@ export type Decision = {
   href: string;
   // Needs demo advice labelling: the answer picks one.
   advice: boolean;
+  // Nothing was weighed (no debt, or no rate to work with), so there's no confidence to show.
+  nothingWeighed?: true;
 };
 
 const pct = (bps: number) => {
@@ -116,7 +121,27 @@ const noDebt = (id: DecisionId, href = "/loans"): Decision => ({
   sentences: ["I don't see a debt with a balance, so there's nothing to pay down."],
   href,
   advice: false,
+  nothingWeighed: true,
 });
+
+// Cards with a balance but no rate (a CSV import, or a bank that doesn't say): ask for it
+// rather than say there's no debt. Falls back to noDebt when there are no cards owing at all.
+const noRate = (i: DecisionInput, id: DecisionId, href = "/loans"): Decision => {
+  const owing = i.cards.filter((c) => c.balanceCents > 0);
+  if (owing.length === 0) return noDebt(id, href);
+  return {
+    id,
+    sentences: [
+      owing.length === 1
+        ? `You owe ${formatCents(owing[0].balanceCents)} on ${owing[0].name}, but I don't have its rate.`
+        : `You owe ${formatCents(total(owing))} across ${owing.length} cards, but I don't have their rates.`,
+      "Tell me the rate (it's on the statement, as the purchase APR) and I'll work this out with your numbers.",
+    ],
+    href: "/loans",
+    advice: false,
+    nothingWeighed: true,
+  };
+};
 
 // "Should I pay off my card or invest?" The debt's rate against what investing has returned.
 export function payOrInvest(i: DecisionInput): Decision {
@@ -126,7 +151,7 @@ export function payOrInvest(i: DecisionInput): Decision {
     : i.mortgage && i.mortgage.aprBps !== null && i.mortgage.balanceCents > 0
       ? { name: i.mortgage.name, balanceCents: i.mortgage.balanceCents, aprBps: i.mortgage.aprBps }
       : null;
-  if (!debt) return noDebt("pay_or_invest");
+  if (!debt) return noRate(i, "pay_or_invest");
   const first = `${debt.name} costs ${pct(debt.aprBps)} a year on ${formatCents(debt.balanceCents)}, and ${INVEST_RANGE.note.charAt(0).toLowerCase()}${INVEST_RANGE.note.slice(1)}`;
   const beats = debt.aprBps > INVEST_RANGE.highBps;
   if (!i.advice) {
@@ -160,7 +185,7 @@ export function payOrInvest(i: DecisionInput): Decision {
 // "Should I consolidate my debt?"
 export function consolidate(i: DecisionInput): Decision {
   const cards = rated(i.cards);
-  if (cards.length === 0) return noDebt("consolidate");
+  if (cards.length === 0) return noRate(i, "consolidate");
   const avg = weightedApr(cards)!;
   const first = `You owe ${formatCents(total(cards))} across ${cards.length} ${cards.length === 1 ? "card" : "cards"} at ${pct(avg)} on average.`;
   if (i.cashPayoffSavesCents && i.cashPayoffSavesCents > 0) {
@@ -181,7 +206,9 @@ export function consolidate(i: DecisionInput): Decision {
       id: "consolidate",
       sentences: [
         first,
-        "I don't see an offer that beats your current rates once its fees are counted.",
+        i.transferNeedsScore
+          ? `A 0% transfer card would cost less, but those usually need a score of ${i.transferNeedsScore.minScore} or more and yours is ${i.transferNeedsScore.score}; no loan beats your rates once fees are counted.`
+          : "I don't see an offer that beats your current rates once its fees are counted.",
         ...(i.advice ? ["Paying the highest-rate card first is the cheaper move for now."] : []),
       ],
       href: "/loans/refinance",
@@ -205,7 +232,7 @@ export function consolidate(i: DecisionInput): Decision {
 // "Should I use my savings to pay off debt?"
 export function savingsOrDebt(i: DecisionInput): Decision {
   const card = worst(i.cards);
-  if (!card) return noDebt("savings_or_debt");
+  if (!card) return noRate(i, "savings_or_debt");
   const extra = Math.min(spare(i), total(i.cards));
   const yearly = Math.round((extra * (card.aprBps ?? 0)) / 10_000);
   const first = `You have ${formatCents(i.liquidCents)} in cash and ${formatCents(total(i.cards))} on cards, the worst at ${pct(card.aprBps!)}.`;
@@ -309,7 +336,7 @@ export function payoffHurts(i: DecisionInput): Decision {
 // "Should I take a personal loan to pay off my cards?"
 export function personalLoan(i: DecisionInput): Decision {
   const cards = rated(i.cards);
-  if (cards.length === 0) return noDebt("personal_loan");
+  if (cards.length === 0) return noRate(i, "personal_loan");
   const avg = weightedApr(cards)!;
   const c = i.personalLoan ?? null;
   const first = `Your cards average ${pct(avg)} on ${formatCents(total(cards))}.`;
