@@ -111,6 +111,9 @@ export type RefinanceComparison = {
   // Paying it off from spare cash saves this much, more than any loan: no loan is picked
   // (src/lib/refinance-cash.ts). Absent when not looked at.
   cashPayoffCents?: number | null;
+  // Why a lender would likely turn the person down for it (their score, their debt payments),
+  // from the fit engine: no pick is made. Absent when not looked at.
+  turnedDown?: string | null;
 };
 
 export function compareRefinance(

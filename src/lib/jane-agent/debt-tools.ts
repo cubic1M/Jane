@@ -530,6 +530,7 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
             payOffFromCashInstead: { saves: money(c.cashPayoffCents), keepsAMonthOfSpending: true },
           }
         : {}),
+      ...(c.turnedDown ? { lenderWouldLikelyDecline: c.turnedDown } : {}),
       why: c.why,
       offers: c.offers.map(offer),
     })),
