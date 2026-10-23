@@ -1,5 +1,6 @@
 import { TROUBLE_INCOME_MONTHS } from "@/config/debt-trouble";
 import { loadDetectionInput } from "@/detection/engine";
+import { scopedFor } from "@/lib/db-scoped";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -63,12 +64,17 @@ export async function loadDebtTrouble(
     ? Math.round(months.reduce((s, m) => s + m.incomeCents, 0) / months.length)
     : null;
   const share = paymentShare(book.monthlyCents, incomeCents);
+  const cash = await scopedFor(userId, client).accounts.findMany({
+    where: { type: "depository" },
+    select: { currentBalanceCents: true },
+  });
+  const cashCents = cash.reduce((s, a) => s + Math.max(0, a.currentBalanceCents ?? 0), 0);
   return {
     available: true,
     incomeCents,
     monthlyPaymentsCents: book.monthlyCents,
     share,
-    over: overTheLine(share),
+    over: overTheLine(share, { paymentsCents: book.monthlyCents, cashCents }),
     debts: owing.map((d) => ({
       key: d.key,
       name: d.name,
