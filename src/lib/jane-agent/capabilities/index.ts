@@ -146,6 +146,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["steady_pay"],
     answer: janeAnswer,
   },
+  // Spec step 243: price rises seen before they land.
+  {
+    id: "price_rises",
+    bank: ["price_rises"],
+    kinds: ["price_rises"],
+    tools: ["price_rises"],
+    answer: janeAnswer,
+  },
   // Spec step 242: money for two.
   {
     id: "two",

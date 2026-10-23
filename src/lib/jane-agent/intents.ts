@@ -128,6 +128,8 @@ export type Intent =
   | { kind: "books" }
   // Spec step 240: "my steady paycheck", "my income is uneven".
   | { kind: "steady_pay" }
+  // Spec step 243: "is anything going up?", "when does my intro rate end?"
+  | { kind: "price_rises" }
   // Spec step 242: "how should we split the bills?", "our money date".
   | { kind: "money_for_two" }
   // Spec step 241: "which goal first?", "can I do both?"
@@ -376,6 +378,8 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
+const PRICE_RISES =
+  /\b(?:intro(?:ductory)?|promo(?:tional)?) (?:rate|price|offer|deal)s?\b|\b(?:any|which) (?:bills?|prices?|subscriptions?) (?:going|go) up\b|\bprices? (?:going|go) up\b|\bwhat(?:'s| is) (?:renewing|going up)\b|\b(?:annual|yearly) (?:renewals?|plans?) (?:coming|due)\b/;
 const BOOKS =
   /\b(?:is|are) my (?:data|numbers|figures|balances|books|accounts) (?:all )?(?:right|correct|accurate|up to date|ok|okay)\b|\bdo my (?:books|numbers|balances) (?:balance|add up)\b|\bany (?:problems|issues) with my (?:data|accounts|numbers)\b|\bhow (?:accurate|reliable) (?:is|are) (?:my|the) (?:data|numbers|figures)\b/;
 const TWO =
@@ -589,6 +593,7 @@ export function parseIntent(
   const profile = parseProfile(text);
   if (profile) return profile;
   if (STEADY.test(text)) return { kind: "steady_pay" };
+  if (PRICE_RISES.test(text)) return { kind: "price_rises" };
   if (TWO.test(text)) return { kind: "money_for_two" };
   if (TRADEOFFS.test(text)) return { kind: "goal_tradeoffs" };
   if (NET_WORTH.test(text)) return { kind: "net_worth" };
