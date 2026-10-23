@@ -44,6 +44,7 @@ import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
 import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
+import { STAGE_AGES } from "@/config/retirement";
 import { tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
@@ -449,11 +450,20 @@ export async function runInvestmentTool(
       });
     }
     case "retirement_plan": {
-      const [data, advice] = await Promise.all([
+      const [first, advice] = await Promise.all([
         loadRetirement(userId, { client, now }),
         adviceMode(userId, { client }),
       ]);
       if (!advice) return out({ note: "The retirement planner is for demo advice mode only." });
+      // No age from the investor profile: answer anyway, with an age standing for the stage of
+      // life Jane works out from their data, said as a guess.
+      let data = first;
+      if (!first.retirement && first.accounts.length > 0) {
+        const { loadProfile } = await import("@/lib/profile");
+        const stage = (await loadProfile(userId, { client, now })).facts.life_stage.value;
+        const guessedAge = typeof stage === "string" ? (STAGE_AGES[stage] ?? null) : null;
+        if (guessedAge !== null) data = await loadRetirement(userId, { client, now, guessedAge });
+      }
       const plan = data.retirement;
       if (!plan) {
         return out({
@@ -466,6 +476,11 @@ export async function runInvestmentTool(
         high: money(r.highCents),
       });
       return out({
+        ...(data.ageGuessed
+          ? {
+              estimate: `Worked out from their accounts, with their age guessed from their stage of life (about ${plan.retirementAge - plan.years}): say it's an estimate, and ask their age and goals to sharpen it.`,
+            }
+          : {}),
         balanceNow: money(data.balanceCents),
         accounts: data.accounts,
         retirementAge: plan.retirementAge,

@@ -15,7 +15,9 @@ import { borrowingPowerSource } from "@/lib/jane-agent/sources/borrowing-power";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { demoLender } from "@/lib/lenders/demo";
+import { formatCents } from "@/lib/money";
 import { linkDemoBank } from "@/lib/plaid/demo";
+import { detectFor } from "@/lib/suggestions";
 import { syncItem } from "@/lib/plaid/sync";
 import {
   checkBorrowing,
@@ -131,6 +133,18 @@ describe.runIf(url)("what you could borrow against a real database", { timeout: 
     expect(tool.softChecksOnly).toBe(true);
     expect(tool).toMatchObject({ demoAdvice: true, label: DEMO_ADVICE_LABEL });
     expect(tool.figures[0]).toMatchObject({ product: "mortgage", checkedOn: tool.checkedOn });
+  });
+
+  // Loans QA: the suggestion brought unasked names the mortgage /loans/borrow shows.
+  it("brings Sam the same mortgage the page shows", async () => {
+    // The same day for both: the stand-in's rates move month to month.
+    const d = (await checkBorrowing(userId, opts()))!;
+    const mortgage = d.figures.find((f) => f.product === "mortgage")!;
+    const { suggestions } = await detectFor(userId, opts());
+    const s = suggestions.find((x) => x.topic === "borrowing_power")!;
+    expect(mortgage.product === "mortgage" && s.short).toContain(
+      formatCents(mortgage.product === "mortgage" ? mortgage.amountCents : 0),
+    );
   });
 
   it("checks nothing for someone without a demo bank", async () => {

@@ -34,6 +34,7 @@ import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
+import { withCashPayoffs } from "@/lib/refinance-cash";
 import type { DebtIntent } from "./debt-intents";
 import { debtReply, payoffReply } from "./debt-replies";
 import { loanStatusReply, refinanceReply, transferReply } from "./refinance-replies";
@@ -90,7 +91,11 @@ export async function answerDebt(
         await checkRates(userId, { client, now });
         refi = await loadRefinance(userId, { client, now });
       }
-      return refinanceReply(intent.target, refi, await loadDebts(userId, { client, now }));
+      return refinanceReply(
+        intent.target,
+        await withCashPayoffs(userId, refi, { client, now }),
+        await loadDebts(userId, { client, now }),
+      );
     }
     case "debt_autopilot":
       return debtAutopilotReply(await loadDebtAutopilot(userId, { client, now }));
