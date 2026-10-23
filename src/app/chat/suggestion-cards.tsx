@@ -103,8 +103,8 @@ export function SuggestionCards({ messages }: { messages: MessageView[] }) {
           });
         }}
       />
-      {/* Room at the end of the chat so the message box is never under a card. */}
-      {open > 0 && <div aria-hidden="true" className="h-64 sm:h-56" />}
+      {/* Room at the end of the page so the message box is never under a card. */}
+      {open > 0 && <div aria-hidden="true" className="h-28" />}
     </>
   );
 }

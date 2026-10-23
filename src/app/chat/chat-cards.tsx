@@ -70,7 +70,7 @@ export function ChatCards({
             label={set.title}
             onAnswer={(id, how) => onAnswer(options, id, how)}
           />
-          <div aria-hidden="true" className="h-64 sm:h-56" />
+          <div aria-hidden="true" className="h-32" />
         </>
       ) : suggestions.length > 0 ? (
         <SuggestionCards messages={suggestions} />
