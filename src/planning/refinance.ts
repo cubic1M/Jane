@@ -108,6 +108,9 @@ export type RefinanceComparison = {
   runnersUp: ScoredOffer[];
   // Why the pick, in at most three lines.
   why: string[];
+  // Paying it off from spare cash saves this much, more than any loan: no loan is picked
+  // (src/lib/refinance-cash.ts). Absent when not looked at.
+  cashPayoffCents?: number | null;
 };
 
 export function compareRefinance(

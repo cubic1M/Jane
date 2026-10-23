@@ -19,7 +19,8 @@
     "checks:answers": "ANSWER_CHECKS=1 vitest run src/lib/jane-agent/checks/cli.test.ts --silent=false",
     "checks:baseline": "CHAT_BASELINE=1 vitest run src/lib/jane-agent/checks/baseline.cli.test.ts --silent=false",
     "checks:eval": "CHAT_EVAL=1 vitest run src/lib/jane-agent/checks/eval.cli.test.ts --silent=false",
-    "checks:nightly": "CHAT_NIGHTLY=1 vitest run src/lib/jane-agent/checks/nightly.cli.test.ts --silent=false"
+    "checks:nightly": "CHAT_NIGHTLY=1 vitest run src/lib/jane-agent/checks/nightly.cli.test.ts --silent=false",
+    "checks:proof": "CHAT_PROOF=1 vitest run src/lib/jane-agent/checks/proof.cli.test.ts --silent=false"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

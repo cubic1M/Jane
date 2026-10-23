@@ -1346,6 +1346,49 @@ describe("show_block", () => {
   });
 });
 
+// A question whose words name no area gets only the general tools; Claude opens the area it
+// needs (open_area) and has its tools in the next step.
+describe("open_area", () => {
+  beforeEach(() => {
+    create.mockReset();
+    sent.length = 0;
+    forgetPrimer();
+    resetClaudeHealth();
+    vi.mocked(loadSnapshot).mockReset().mockResolvedValue(snapshot);
+  });
+  const toolNames = (call: number) =>
+    (create.mock.calls[call][0] as { tools: { name: string }[] }).tools.map((t) => t.name);
+
+  it("adds the area's tools for the next step, with a turn of its own", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("open_area", { area: "insurance" }))
+      .mockResolvedValueOnce(toolUse("open_area", { area: "insurance" }))
+      .mockResolvedValueOnce(final("Call your insurer to start a claim, and I can help track it."));
+    const result = await askClaudeInChat("u1", [], "my car got rear ended what do i do", {
+      ...options,
+      maxTurns: 2,
+    });
+    expect(toolNames(0)).not.toContain("insurance_policies");
+    expect(toolNames(1)).toContain("insurance_policies");
+    expect(lastToolResult(1).content).toMatch(/^The insurance tools are ready/);
+    // Asked again, nothing is added twice.
+    expect(lastToolResult(2).content).toBe("You already have the insurance tools.");
+    expect(new Set(toolNames(2)).size).toBe(toolNames(2).length);
+    // Two turns allowed, one more for the opened area: the answer still came.
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toContain("Call your insurer");
+  });
+
+  it("refuses an area it doesn't know, and adds nothing", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("open_area", { area: "astrology" }))
+      .mockResolvedValueOnce(final("I can't look into that."));
+    await askClaudeInChat("u1", [], "what does my horoscope say about money", options);
+    expect(lastToolResult(1)).toMatchObject({ is_error: true });
+    expect(toolNames(1)).toEqual(toolNames(0));
+  });
+});
+
 describe("plain text", () => {
   it("drops markdown marks and keeps the words", () => {
     expect(plainText("**Card use:** keep it under 30%.\n## Next\n* pay it\n`$5`")).toBe(

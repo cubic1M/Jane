@@ -33,6 +33,26 @@ describe("what you could borrow, brought unasked", () => {
     expect(s.action.href).toBe("/loans/borrow");
   });
 
+  // Loans QA: a month's uneven pay moves the mortgage that fits a little; the suggestion holds
+  // while the savings cover the down payment on at least half of it, and says how much.
+  it("holds for Sam while his savings cover the down payment on half the mortgage", () => {
+    const sam = inputFor("freelancer");
+    const withCash = (cents: number): ProfileInput => ({
+      ...sam,
+      accounts: sam.accounts
+        .map((a) => (a.type === "depository" ? { ...a, balanceCents: 0 } : a))
+        .concat({ id: "cash", type: "depository", subtype: "savings", balanceCents: cents }),
+    });
+    const full = fire(withCash(2_000_000))!;
+    expect(full.why).toMatch(/covers a 3\.5% down payment on that\./);
+    const amount = Number(full.short.match(/about \$([\d,]+)\.00/)![1].replace(/,/g, "")) * 100;
+    // Enough for half of it: still brought, with the smaller home it covers.
+    const half = fire(withCash(Math.ceil((amount * 0.5 * 0.035) / 100_000) * 100_000 + 100_000))!;
+    expect(half.why).toMatch(/covers a 3\.5% down payment on up to about \$[\d,]+\.00\./);
+    // Less than half: not yet.
+    expect(fire(withCash(Math.floor(amount * 0.4 * 0.035)))).toBeNull();
+  });
+
   it("waits for a down payment: Maya rents on a wage with $1,760 in cash", () => {
     const maya = inputFor("renter");
     expect(fire(maya)).toBeNull();

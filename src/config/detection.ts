@@ -435,6 +435,13 @@ export const NOT_BILL_CATEGORIES: readonly string[] = ["BANK_FEES_INTEREST_CHARG
 // A card payment the bank names with the card company's "thank you" reads as what it is.
 export const CARD_PAYMENT_THANKS = /\bthank\s*you\b/i;
 export const CARD_PAYMENT_NAME = "Credit card payment";
+// Money moved between the person's own accounts (chat QA): saving, investing or into an HSA.
+// Never a recurring charge. Payment-app transfers and wires stay: they can be rent to a person.
+export const OWN_ACCOUNT_TRANSFERS: readonly string[] = [
+  "TRANSFER_OUT_ACCOUNT_TRANSFER",
+  "TRANSFER_OUT_SAVINGS",
+  "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+];
 // A charge is unusually large when it is at least this much (in cents)...
 export const LARGE_CHARGE_MIN_CENTS = 50_000;
 // ...and at least this many times the account's typical (median) charge...

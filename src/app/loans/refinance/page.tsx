@@ -7,6 +7,7 @@ import { REFI_MIN_SAVING_CENTS } from "@/config/debt";
 import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { ensureChecked, loadRefinance } from "@/lib/refinance";
+import { withCashPayoffs } from "@/lib/refinance-cash";
 import { requireUser } from "@/lib/session";
 import type { RefinanceComparison } from "@/planning/refinance";
 import { listApplications, statusLine } from "@/lib/loan-applications";
@@ -39,7 +40,16 @@ function Comparison({ c }: { c: RefinanceComparison }) {
           {formatCents(c.currentMonthlyCents)} a month).
         </p>
       </div>
-      {c.pick ? (
+      {c.cashPayoffCents ? (
+        <div className="flex flex-col gap-1 rounded-lg bg-emerald-50 p-3 text-sm dark:bg-emerald-950">
+          <p className="font-medium">Jane&apos;s pick: pay it off from your cash</p>
+          <p>
+            Paying it off from savings would save about {formatCents(c.cashPayoffCents)} and still
+            leave a month of spending, more than any loan.
+          </p>
+          <DemoAdviceLabel />
+        </div>
+      ) : c.pick ? (
         <div className="flex flex-col gap-1 rounded-lg bg-emerald-50 p-3 text-sm dark:bg-emerald-950">
           <p className="font-medium">
             Jane&apos;s pick: {c.pick.offer.lender} at {formatRate(c.pick.offer.aprBps)}{" "}
@@ -241,7 +251,7 @@ async function RefinanceContent({
   // Opened before Jane's first monthly check: she checks now.
   await ensureChecked(user.id);
   const [refi, apps, transfers] = await Promise.all([
-    loadRefinance(user.id),
+    loadRefinance(user.id).then((r) => withCashPayoffs(user.id, r)),
     listApplications(user.id),
     loadTransfers(user.id),
   ]);
