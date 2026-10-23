@@ -53,7 +53,7 @@ async function CarContent({ searchParams }: Pick<PageProps<"/loans/car">, "searc
           running costs in, and what each lender would charge.
         </p>
       </div>
-      {!car.available || car.offers.length === 0 ? (
+      {!car.available ? (
         <p className="text-zinc-600 dark:text-zinc-400">
           Car loan offers come from a lending partner, and there isn&apos;t one for your accounts
           yet.{" "}
@@ -111,6 +111,15 @@ async function CarContent({ searchParams }: Pick<PageProps<"/loans/car">, "searc
             <h2 id="offers" className="text-xl font-semibold">
               Preapproval offers
             </h2>
+            {car.offers.length === 0 && (
+              <p role="status" className="text-amber-800 dark:text-amber-300">
+                No lender I check lends {formatCents(car.costs.financedCents)} for a car
+                {car.lenderLimitCents !== null
+                  ? `; the most one would quote is about ${formatCents(car.lenderLimitCents)}`
+                  : ""}
+                . A lower price or a bigger down payment brings offers.
+              </p>
+            )}
             <ul aria-label="Offers" className="flex flex-col gap-2 text-sm">
               {car.offers.map((o, i) => (
                 <li

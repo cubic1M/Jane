@@ -166,6 +166,52 @@ describe.runIf(url)("buying a car against a real database", { timeout: 30_000 },
     expect(await client.loanApplication.count({ where: { userId: id } })).toBe(0);
   });
 
+  it("prices the most a lender lends when the car is more than any car loan", async () => {
+    // A high earner (gap audit: the owner was told there was no lending partner): the
+    // comfortable car finances more than the stand-in's car lenders lend.
+    const id = await demoPerson("car-rich");
+    const account = await client.account.findFirstOrThrow({
+      where: { userId: id, type: "depository" },
+    });
+    await client.transaction.createMany({
+      data: ["2026-07-15", "2026-08-15", "2026-09-15"].map((day, i) => ({
+        userId: id,
+        accountId: account.id,
+        source: "plaid",
+        plaidTransactionId: `rich-pay-${i}-${id}`,
+        date: new Date(`${day}T00:00:00Z`),
+        amountCents: -4_000_000,
+        description: "BIG CO PAYROLL",
+        pfcPrimary: "INCOME",
+        pfcDetailed: "INCOME_WAGES",
+      })),
+    });
+    const car = await loadCar(id, {}, opts());
+    expect(car.available).toBe(true);
+    expect(car.lenderLimitCents).not.toBeNull();
+    expect(car.offers.length).toBeGreaterThan(0);
+    expect(car.costs!.financedCents).toBe(car.lenderLimitCents);
+    expect(car.comfortPriceCents!).toBeGreaterThan(car.costs!.priceCents);
+    const { reply } = await sendToJane(id, "how much car can I afford?", {
+      client,
+      now: later(),
+    });
+    expect(reply.body).toMatch(/the most the lenders I check would lend for a car is about \$/);
+    expect(reply.body).toMatch(/The cheapest preapproval is /);
+
+    // A price no lender takes: the costs still show, with the most a lender would quote.
+    const asked = await loadCar(id, { priceCents: 30_000_000 }, opts());
+    expect(asked.offers).toEqual([]);
+    expect(asked.costs!.priceCents).toBe(30_000_000);
+    expect(asked.lenderLimitCents!).toBeLessThan(asked.costs!.financedCents);
+    const { reply: priced } = await sendToJane(id, "can I afford a $300,000 car?", {
+      client,
+      now: later(),
+    });
+    expect(priced.body).toMatch(/No lender I check lends \$270,000\.00 for a car; the most one/);
+    expect(priced.body).not.toMatch(/lending partner/);
+  });
+
   it("gives a real account nothing", async () => {
     const realId = await person("car-real");
     expect((await loadCar(realId, {}, opts())).available).toBe(false);

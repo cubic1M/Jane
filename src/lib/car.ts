@@ -11,6 +11,7 @@ import {
   CAR_REGISTRATION_YEARLY_SHARE,
   CAR_TERMS_MONTHS,
 } from "@/config/car";
+import { BORROW_ROUND_CENTS, BORROW_STEP_DOWN, BORROW_STEP_TRIES } from "@/config/borrowing-power";
 import { loadDetectionInput } from "@/detection/engine";
 import { addDays } from "@/detection/units";
 import type { DetectionInput } from "@/detection/types";
@@ -68,6 +69,8 @@ export type Car = {
   allowanceCents: number | null;
   withinBudget: boolean | null;
   offers: ScoredCarOffer[];
+  // The most a lender quoted, when they don't lend what was asked (or what's comfortable).
+  lenderLimitCents: number | null;
   dealer: DealerCheck | null;
   // Every assumption, in words.
   assumptions: string[];
@@ -87,6 +90,7 @@ const none = (termMonths: number): Car => ({
   allowanceCents: null,
   withinBudget: null,
   offers: [],
+  lenderLimitCents: null,
   dealer: null,
   assumptions: [],
   insuranceFromPolicy: false,
@@ -177,11 +181,31 @@ export async function loadCar(
     fuelMonthlyCents,
   });
   // With no price asked about, the figures are for the comfortable car, not the ceiling.
-  const priceCents = question.priceCents ?? comfortPriceCents;
-  const downCents = question.downCents ?? Math.round(priceCents * downShare);
-  const financed = Math.max(0, priceCents - downCents);
+  const asked = question.priceCents !== undefined || question.downCents !== undefined;
+  let priceCents = question.priceCents ?? comfortPriceCents;
+  let downCents = question.downCents ?? Math.round(priceCents * downShare);
+  let financed = Math.max(0, priceCents - downCents);
   const dealerTerm = question.dealer?.termMonths ?? termMonths;
-  const offers = financed > 0 ? await offersFor(financed, dealerTerm) : [];
+  let offers = financed > 0 ? await offersFor(financed, dealerTerm) : [];
+  // Lenders cap what they lend: with no offer at this amount, step down until one quotes it
+  // (borrowing power's rule), for the most they'd lend. With no price asked, that car is the one
+  // checked, so a high earner isn't told there's no lender.
+  let lenderLimitCents: number | null = null;
+  for (let i = 0, amount = financed; i < BORROW_STEP_TRIES && offers.length === 0; i++) {
+    amount =
+      Math.floor((amount * BORROW_STEP_DOWN) / BORROW_ROUND_CENTS.auto) * BORROW_ROUND_CENTS.auto;
+    if (amount <= 0) break;
+    const quoted = await offersFor(amount, dealerTerm);
+    if (quoted.length === 0) continue;
+    lenderLimitCents = amount;
+    if (!asked) {
+      offers = quoted;
+      financed = amount;
+      priceCents = Math.round(amount / (1 - downShare));
+      downCents = priceCents - amount;
+    }
+    break;
+  }
   const costs = carCosts({
     priceCents,
     downCents,
@@ -208,12 +232,18 @@ export async function loadCar(
     allowanceCents,
     withinBudget: costs.allInCents <= allowanceCents,
     offers,
+    lenderLimitCents,
     dealer,
     insuranceFromPolicy: current !== null,
     assumptions: [
       `Income: ${formatCents(monthlyIncomeCents)} a month, your average over the last ${months.length} full ${months.length === 1 ? "month" : "months"}.`,
       `All-in cost at most ${Math.round(CAR_COST_MAX_SHARE * 100)}% of income (${formatCents(allowanceCents)} a month): payment, insurance, fuel, upkeep and registration.`,
-      `A ${formatCents(downCents)} down payment, a ${termMonths}-month loan at ${(aprBps / 100).toFixed(2)}%, the best preapproval offer for your credit.`,
+      `A ${formatCents(downCents)} down payment, a ${termMonths}-month loan at ${((offers[0]?.offer.aprBps ?? aprBps) / 100).toFixed(2)}%, the best preapproval offer for your credit.`,
+      ...(lenderLimitCents !== null && !asked
+        ? [
+            `A ${formatCents(lenderLimitCents)} loan, the most the lenders I check would quote for a car; the comfortable car on your income costs more.`,
+          ]
+        : []),
       current
         ? `Insurance: your current auto premium, scaled to the price of the car.`
         : `Insurance: ${(CAR_INSURANCE_DEFAULT_YEARLY_SHARE * 100).toFixed(0)}% of the price a year, since you have no auto policy on file.`,

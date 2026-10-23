@@ -1,5 +1,8 @@
 import { DISABILITY_PAY_SHARE } from "@/config/benefits";
 import {
+  BUSINESS_EQUIPMENT_MIN_CENTS,
+  BUSINESS_LIABILITY_TARGET_CENTS,
+  BUSINESS_PROFESSIONAL_TARGET_CENTS,
   DEDUCTIBLE_CASH_SHARE,
   DEDUCTIBLE_LADDERS,
   DISABILITY_NEED,
@@ -8,6 +11,11 @@ import {
   UMBRELLA_ASSETS_CENTS,
   UMBRELLA_NEED,
 } from "@/config/insurance";
+import {
+  doesServiceWork,
+  needsGeneralLiability,
+  runsBusiness,
+} from "@/lib/insurance/business-rules";
 import { lifeNeed } from "@/lib/insurance/life-need";
 import { formatCents } from "@/lib/money";
 import type { Need, NeedInput, NeedLine, NeedPolicy } from "./types";
@@ -260,6 +268,78 @@ export function liabilityNeedsFor(input: NeedInput): Need[] {
   return out;
 }
 
+// Spec step 201: cover for a business or side work, which no personal policy gives. General
+// liability for clients or customers, professional liability for work done for clients, and
+// property cover for work equipment. Only a business policy counts.
+export function businessNeedsFor(input: NeedInput): Need[] {
+  const work = input.business;
+  if (!work || !runsBusiness(work)) return [];
+  const business = of(input, "business");
+  const best = (key: string) => Math.max(0, ...business.map((p) => num(p.coverage[key])));
+  const policyId = business[0]?.id ?? null;
+  const need = (
+    kind: Need["kind"],
+    needCents: number,
+    haveCents: number,
+    label: string,
+    summary: string,
+  ): Need => ({
+    kind,
+    applies: true,
+    unit: "total",
+    needCents,
+    haveCents,
+    gapCents: Math.max(0, needCents - haveCents),
+    lines: [{ label, cents: needCents, adds: true }],
+    summary,
+    policyId,
+  });
+  const out: Need[] = [];
+  if (needsGeneralLiability(work)) {
+    const have = best("generalLiability");
+    out.push(
+      need(
+        "business_liability",
+        BUSINESS_LIABILITY_TARGET_CENTS,
+        have,
+        "General liability clients and landlords usually ask for",
+        have >= BUSINESS_LIABILITY_TARGET_CENTS
+          ? `Your business policy's ${formatCents(have)} of general liability meets the ${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)} I'd size.`
+          : `${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)} of general liability for your business; ${have > 0 ? `yours is ${formatCents(have)}` : "your personal policies don't cover it"}.`,
+      ),
+    );
+  }
+  if (doesServiceWork(work)) {
+    const have = best("professionalLiability");
+    out.push(
+      need(
+        "professional_liability",
+        BUSINESS_PROFESSIONAL_TARGET_CENTS,
+        have,
+        "Professional liability for work done for clients",
+        have >= BUSINESS_PROFESSIONAL_TARGET_CENTS
+          ? `Your ${formatCents(have)} of professional liability meets the ${formatCents(BUSINESS_PROFESSIONAL_TARGET_CENTS)} I'd size.`
+          : `${formatCents(BUSINESS_PROFESSIONAL_TARGET_CENTS)} of professional liability, for a client who says your work cost them money; ${have > 0 ? `yours is ${formatCents(have)}` : "you have none"}.`,
+      ),
+    );
+  }
+  if (work.equipmentCents >= BUSINESS_EQUIPMENT_MIN_CENTS) {
+    const have = best("businessProperty");
+    out.push(
+      need(
+        "business_equipment",
+        work.equipmentCents,
+        have,
+        "Work equipment bought this year",
+        have >= work.equipmentCents
+          ? `Your ${formatCents(have)} of business property cover meets the ${formatCents(work.equipmentCents)} of equipment you bought.`
+          : `Cover for the ${formatCents(work.equipmentCents)} of work equipment you bought; home and renters policies cap it or leave it out.`,
+      ),
+    );
+  }
+  return out;
+}
+
 // Every need that applies to this person, in the order they're shown.
 export function computeNeeds(input: NeedInput): Need[] {
   return [
@@ -267,6 +347,7 @@ export function computeNeeds(input: NeedInput): Need[] {
     disabilityNeedFor(input),
     umbrellaNeedFor(input),
     ...liabilityNeedsFor(input),
+    ...businessNeedsFor(input),
     ...deductibleNeedsFor(input),
   ].filter((n) => n.applies);
 }

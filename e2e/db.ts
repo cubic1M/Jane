@@ -253,3 +253,41 @@ export async function waitForFullScan(userId: string, timeoutMs = 150_000): Prom
     await client.end();
   }
 }
+
+// A practice idea waiting for the person (Phase AW): a drift warning, as the practice scan
+// keeps one in suggest-only mode.
+export async function addPracticeIdea(userId: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT id FROM practice_portfolios WHERE user_id = $1`, [
+      userId,
+    ]);
+    await client.query(
+      `INSERT INTO practice_opportunities
+        (id, portfolio_id, user_id, scanned_at, kind, ticker, key, amount_cents, headline, reason,
+         confidence, details, status, trade_ids)
+       VALUES ($1, $2, $3, now(), 'drift_warning', 'VTI', 'drift_warning:e2e', 50000,
+         'A practice idea', 'For the end-to-end test.', 70, $4, 'suggested', '{}')`,
+      [
+        `e2e-idea-${userId}`,
+        rows[0].id,
+        userId,
+        JSON.stringify({
+          ask: {
+            headline: "Check your mix: stocks are drifting toward the band",
+            short: "Stocks are 4.2 points off target; the band is 5.",
+            worthCents: 50000,
+            worthKind: "risk",
+          },
+          figures: [{ label: "Stocks", value: "64.2%" }],
+          caps: ["At most 2 a month"],
+          confidence: { percent: 70, reason: "a fixed measure of the mix" },
+          trades: [],
+        }),
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+}

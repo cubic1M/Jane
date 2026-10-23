@@ -72,6 +72,7 @@ async function runStep(
   const { message: answered } = await takeChatAction(userId, row.id, step.action, {
     client,
     now,
+    ...(step.choice ? { choice: step.choice } : {}),
   });
   return { status: "done", note: answered.refs.note ?? "Done." };
 }

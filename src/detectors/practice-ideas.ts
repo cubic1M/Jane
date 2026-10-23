@@ -32,40 +32,47 @@ export function practiceWhy(idea: PracticeIdea): string {
   ].join(" ");
 }
 
-function practiceDetector(kind: Kind): Detector {
+// One idea as its suggestion: the detectors' output, and what the practice page records when
+// the person answers an idea there before the nightly scan has.
+export function practiceSuggestion(idea: PracticeIdea): Suggestion | null {
+  if (!Object.hasOwn(PRACTICE_TOPIC, idea.kind)) return null;
+  const kind = idea.kind as Kind;
   const topic = PRACTICE_TOPIC[kind];
   return {
+    id: practiceIdeaId(topic, idea.key),
     capability: "investing",
     topic,
+    title: `${idea.headline.replace(/[.!?]+$/, "")}.`,
+    headline: idea.headline,
+    short: idea.short,
+    worthCents: idea.worthCents,
+    worthKind: idea.worthKind,
+    confidence: idea.confidence,
+    urgency: PRACTICE_URGENCY[kind],
+    why: practiceWhy(idea),
+    action:
+      idea.trades > 0
+        ? { label: "Do it in practice", href: PRACTICE_HREF }
+        : kind === "drift_warning"
+          ? { label: "See your mix", href: PRACTICE_HREF }
+          : { label: "Open practice settings", href: PRACTICE_SETTINGS_HREF },
+    // Sample money ranks at least its kind's floor (src/config/practice-suggestions.ts).
+    rankCents: Math.max(
+      rankValue(topic, idea.worthKind, idea.worthCents),
+      PRACTICE_RANK_FLOOR_CENTS[kind],
+    ),
+  };
+}
+
+function practiceDetector(kind: Kind): Detector {
+  return {
+    capability: "investing",
+    topic: PRACTICE_TOPIC[kind],
     needs: [],
     covers: [],
     detect({ data }): Suggestion | null {
       const idea = (data.extras?.practiceIdeas ?? []).find((i) => i.kind === kind);
-      if (!idea) return null;
-      return {
-        id: practiceIdeaId(topic, idea.key),
-        capability: "investing",
-        topic,
-        title: `${idea.headline.replace(/[.!?]+$/, "")}.`,
-        headline: idea.headline,
-        short: idea.short,
-        worthCents: idea.worthCents,
-        worthKind: idea.worthKind,
-        confidence: idea.confidence,
-        urgency: PRACTICE_URGENCY[kind],
-        why: practiceWhy(idea),
-        action:
-          idea.trades > 0
-            ? { label: "Do it in practice", href: PRACTICE_HREF }
-            : kind === "drift_warning"
-              ? { label: "See your mix", href: PRACTICE_HREF }
-              : { label: "Open practice settings", href: PRACTICE_SETTINGS_HREF },
-        // Sample money ranks at least its kind's floor (src/config/practice-suggestions.ts).
-        rankCents: Math.max(
-          rankValue(topic, idea.worthKind, idea.worthCents),
-          PRACTICE_RANK_FLOOR_CENTS[kind],
-        ),
-      };
+      return idea ? practiceSuggestion(idea) : null;
     },
   };
 }
