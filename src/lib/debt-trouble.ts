@@ -8,7 +8,13 @@ import type { Debt, DebtBook } from "@/insights/debts";
 import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { debtsOr } from "@/lib/debts";
-import { dmpSketch, overTheLine, paymentShare, type DmpSketch } from "@/planning/debt-trouble";
+import {
+  dmpSketch,
+  paymentShare,
+  troubleReason,
+  type DmpSketch,
+  type TroubleReason,
+} from "@/planning/debt-trouble";
 
 // When debt is too much (spec step 229), for one person: what their debt payments are as a
 // share of their income, what to ask each lender, a sketch of a debt management plan from
@@ -25,7 +31,12 @@ export type DebtTrouble = {
   incomeCents: number | null;
   monthlyPaymentsCents: number;
   share: number | null;
+  // Over the line, by the one judgement the profile and the hardship suggestion use
+  // (troubleReason): a payday-loan cycle, card debt worth months of income, or payments.
   over: boolean;
+  reason: TroubleReason | null;
+  // What's on the cards, for the card-debt reason.
+  cardDebtCents: number;
   // Each debt, to ask for hardship help: the debts with a balance, biggest first.
   debts: Pick<
     Debt,
@@ -49,6 +60,8 @@ export async function loadDebtTrouble(
       monthlyPaymentsCents: 0,
       share: null,
       over: false,
+      reason: null,
+      cardDebtCents: 0,
       debts: [],
       dmp: null,
     };
@@ -69,12 +82,30 @@ export async function loadDebtTrouble(
     select: { currentBalanceCents: true },
   });
   const cashCents = cash.reduce((s, a) => s + Math.max(0, a.currentBalanceCents ?? 0), 0);
+  const cardDebtCents = owing
+    .filter((d) => d.kind === "card")
+    .reduce((s, d) => s + (d.balanceCents ?? 0), 0);
+  const payday = input.transactions.filter(
+    (t) =>
+      (t.pfcDetailed === "LOAN_PAYMENTS_CASH_ADVANCES" || t.pfcDetailed === "LOAN_PAYMENTS_EWA") &&
+      t.amountCents > 0,
+  );
+  const reason = troubleReason({
+    monthlyIncomeCents: incomeCents ?? 0,
+    cardDebtCents,
+    paydayRepayments: payday.length,
+    paydayRepaidCents: payday.reduce((s, t) => s + t.amountCents, 0),
+    debtPaymentsCents: book.monthlyCents,
+    cashCents,
+  });
   return {
     available: true,
     incomeCents,
     monthlyPaymentsCents: book.monthlyCents,
     share,
-    over: overTheLine(share, { paymentsCents: book.monthlyCents, cashCents }),
+    over: reason !== null,
+    reason,
+    cardDebtCents,
     debts: owing.map((d) => ({
       key: d.key,
       name: d.name,
