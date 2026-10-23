@@ -163,3 +163,70 @@ describe("refunds in the priorities", () => {
     ).toMatch(/gets the most back \(\$215\.88\)/);
   });
 });
+
+// One ranked list (docs/feature-audit.md, cluster 8): the nightly scan's suggestions lead it,
+// so the brief, /jane, the monthly report and the chat all name the same first thing.
+describe("the one ranked list", () => {
+  const suggestion = {
+    id: "s1",
+    key: "idle_cash",
+    topic: "cash",
+    title: "Move idle cash to a higher rate",
+    headline: "Move idle cash to a higher rate, earn $360 a year",
+    short: "You keep $9,000 in cash; about $8,000 is more than you need",
+    why: "You keep $9,000 in checking.",
+    worthCents: 36_000,
+    worthKind: "yearly",
+    confidencePercent: 85,
+    confidenceReason: "12 months of balances",
+    actionLabel: "Move it",
+    actionHref: "/report/cash1",
+    more: [],
+    advice: false,
+  };
+  const withScan = snapshot({
+    suggestions: [suggestion],
+    findings: [
+      finding({ findingId: "f1", annualSavingsCents: 90_000 }),
+      // The finding the suggestion opens: listed once, as the suggestion.
+      finding({ findingId: "cash1", title: "Idle cash", type: "idle_cash" }),
+    ],
+  });
+
+  it("leads with the scan's suggestions, then the rest without repeats", () => {
+    const ranked = rankedFor(withScan);
+    expect(ranked.map((r) => r.key)).toEqual(["suggestion:idle_cash", "finding:f1"]);
+    expect(ranked[0]).toMatchObject({
+      kind: "suggestion",
+      href: "/report/cash1",
+      valueCents: 36_000,
+      sure: { percent: 85, reason: "12 months of balances" },
+      confidence: "high",
+      why: "You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
+    });
+    // Second now, though the biggest saving of the rest.
+    expect(ranked[1].why).toMatch(/^Because /);
+    // With no suggestions, step 143's order as before.
+    expect(rankedFor(snapshot({ findings: withScan.findings }))[0].why).toMatch(/^First because/);
+  });
+
+  it("is what the brief starts with and what 'what should I do first' answers", () => {
+    const [brief] = gather(withScan, MORNING, SYNC).filter((m) => m.source === "brief");
+    expect(brief.body).toContain(
+      "Start with: Move idle cash to a higher rate. You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
+    );
+    const one = prioritiesReply(rankedFor(withScan), false, true);
+    expect(one.body).toMatch(/^Move idle cash to a higher rate\. You keep \$9,000/);
+    expect(one.body).toContain("It's worth about $360.00 a year.");
+    const why = prioritiesReply(rankedFor(withScan), true);
+    expect(why.body).toMatch(
+      /^Move idle cash to a higher rate is first: it's the best thing I found looking across your money\./,
+    );
+    const risk = rankedFor(
+      snapshot({ suggestions: [{ ...suggestion, worthKind: "risk", worthCents: 50_000 }] }),
+    );
+    expect(prioritiesReply(risk, false, true).body).toContain(
+      "It could spare you a loss of about $500.00.",
+    );
+  });
+});

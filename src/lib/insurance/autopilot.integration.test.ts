@@ -13,6 +13,7 @@ import { runJaneAgent } from "@/lib/jane-agent/run";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { parseRefs } from "@/lib/jane-agent/types";
 import { ensureDemoPolicies } from "./profile";
+import { autopilotFor, setSectorAutopilot } from "@/lib/sector-autopilot";
 import { reshopPerson, shopById } from "./shop";
 
 // Insurance on autopilot against a real, migrated Postgres (spec step 108): at "handle
@@ -102,12 +103,35 @@ describe.runIf(url)("insurance on autopilot, against a real database", () => {
       client,
       now: NOW,
     });
-    expect(reply.body).toBe(autopilotReply("all").body);
+    // The Insurance area keeps its default ("always ask") at "handle everything": the answer
+    // says so, as Settings has it (spec step 141; docs/feature-audit.md, cluster 1).
+    const area = await autopilotFor(all, "insurance", { client, now: NOW });
+    expect(area.level).toBe("ask");
+    expect(reply.body).toBe(autopilotReply("all", area).body);
     expect(reply.body).toContain(INSURANCE_AUTOPILOT.all);
+    expect(reply.body).toMatch(/Insurance is set to always ask: I don't switch/);
     const tool = JSON.parse(
       (await runChatTool(all, "insurance_policies", {}, { client, now: NOW })).content,
     );
-    expect(tool.whatJaneDoesByHerself).toBe(autopilotReply("all").body);
+    expect(tool.whatJaneDoesByHerself).toBe(reply.body);
+  });
+
+  it("says it switches by itself once the Insurance area allows everything", async () => {
+    const all = await demoPerson("all");
+    await setSectorAutopilot(
+      all,
+      "insurance",
+      { level: "all", actionCapCents: 20_000, monthlyCapCents: 50_000 },
+      { client, now: NOW },
+    );
+    const { reply } = await sendToJane(all, "what do you do with my insurance on your own", {
+      client,
+      now: NOW,
+    });
+    expect(reply.body).toContain(
+      "Insurance is set to everything allowed: I switch to a cheaper policy with the same cover by myself, up to $200.00 each time and $500.00 a month, and ask you about anything over that.",
+    );
+    expect(reply.body).not.toContain("buying still take");
   });
 
   it("says how to reach the insurer", async () => {

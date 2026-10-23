@@ -157,6 +157,9 @@ export const MIN_TAX_DRAG_CENTS = 1_000;
 // step 57), shown on /investments and said in the chat. Anything that buys, sells or moves
 // money waits for the person's tap at every level; automatic investing runs only after the
 // person has started it with a tap.
+// What Jane keeps up with investments at each step 57 level. Whether she trades by herself
+// (spec step 164) is the Investing area's own setting (spec step 141), said after these by
+// byHerself (src/lib/jane-agent/replies-autopilot.ts).
 export const INVESTMENT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all" | "custom" | "none", readonly string[]>
 > = {
@@ -177,7 +180,6 @@ export const INVESTMENT_AUTOPILOT: Readonly<
     "I keep what you own up to date on every sync and tell you once a month how it's going.",
     "I watch your mix every day and have the orders ready when it drifts; you tap once to place them.",
     "Once you've started automatic investing, I invest every payday and pause by myself when safe to spend is low.",
-    "Buying, selling and moving money always wait for your tap, at every level.",
   ],
   custom: [
     "I keep what you own up to date on every sync and tell you once a month how it's going.",

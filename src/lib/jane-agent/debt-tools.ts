@@ -34,6 +34,7 @@ import type { MortgageMoneyView } from "@/lib/mortgage-money";
 import type { CarLoan } from "@/lib/car-loan";
 import type { Renting } from "@/lib/renting";
 import type { BorrowingPower } from "@/lib/borrowing-power";
+import type { CreditMonthly } from "@/lib/credit-monthly";
 import type { FamilyCredit } from "@/lib/family-credit";
 import type { DebtReview } from "@/lib/debt-review";
 import type { DebtTrouble } from "@/lib/debt-trouble";
@@ -216,6 +217,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "renting",
     description:
       "Renting, counted: the person's rent as found in their payments (monthly amount, any increase against what is usual, using a stand-in local trend), whether their rent is being reported to the credit bureaus (only ever after their own yes; the monthly fee and what reporting can and can't do are stated), and any security deposits they have told Jane about with the day each is due back after moving out (days from the state's law, with the citation, to be confirmed against the lease). Facts and the person's own choices; Jane reports nothing and sends nothing herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_monthly",
+    description:
+      "The monthly credit check-up Jane does by herself: the day she did it and, for this month, each item with its status (done by Jane, needs the person, or fine): her soft checks of loan rates and what the person could borrow, a cheaper rate on a loan (the fit engine's refinance pick with fees counted), car loan add-ons worth cancelling with the refund, costly borrowing creeping back in the last 30 days, a security deposit due back or a rent rise worth asking about, and a lower-rate request to a card (sent by Jane only at Handle everything, once a month). Each item that needs the person names the page where they act. Nothing that runs a hard credit check, applies for credit, opens an account or cancels cover happens without the person's tap.",
     input_schema: noInput,
   },
   {
@@ -486,6 +493,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   costly_borrowing: "Looking for costly borrowing…",
   renting: "Looking at your rent…",
   borrowing_power: "Checking what you could borrow…",
+  credit_monthly: "Going over this month's credit check-up…",
   family_credit: "Looking at helping with credit…",
   debt_decision: "Working it out with your numbers…",
   loan_fit: "Finding the loan that fits you…",
@@ -1421,6 +1429,24 @@ export function rentingToolOutput(d: Renting, money: (cents: number) => string) 
       rule: x.view.rule.note,
       source: x.view.rule.source,
     })),
+  };
+}
+
+export function creditMonthlyToolOutput(d: CreditMonthly) {
+  if (!d.available) return { note: "Nothing on credit to check this month." };
+  return {
+    month: d.month,
+    doneOn: d.checkedOn ?? "worked out just now; Jane's own pass hasn't run this month",
+    level: d.level,
+    items: d.items.map((i) => ({
+      title: i.title,
+      status:
+        i.status === "tap" ? "needs the person" : i.status === "done" ? "done by Jane" : "fine",
+      text: i.text,
+      ...(i.link ? { page: i.link.href } : {}),
+    })),
+    janeDidByHerself: d.did,
+    noHardPullsWithoutATap: true,
   };
 }
 

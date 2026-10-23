@@ -243,3 +243,27 @@ export function listOf(items: string[]): string {
   if (items.length <= 1) return items.join("");
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
+
+// Taxes QA (2026-10-22): before the person says how they file, a couple's taxes were estimated
+// as single, which overstated them and drove a W-4 change to withhold more. A joint account or
+// two employers' paychecks (the same signal the profile uses for a couple, step 253) mean they
+// are estimated as married filing jointly, said as an assumption. Null: no such sign.
+export function guessFilingStatus(input: {
+  jointAccounts: number;
+  payrollNames: readonly string[];
+}): { status: "married_joint"; why: string } | null {
+  const employers = new Set(
+    input.payrollNames.map((n) =>
+      n
+        .replace(/\s+PAYROLL.*$/i, "")
+        .trim()
+        .toUpperCase(),
+    ),
+  );
+  const signs = [
+    input.jointAccounts > 0 ? "a joint account" : null,
+    employers.size >= 2 ? "two employers' paychecks" : null,
+  ].filter((s): s is string => s !== null);
+  if (signs.length === 0) return null;
+  return { status: "married_joint", why: signs.join(" and ") };
+}

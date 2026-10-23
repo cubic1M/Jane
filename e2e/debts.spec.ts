@@ -817,6 +817,15 @@ test("the debt review lists every item, and the chat message keeps each button u
   await expect(items.getByRole("heading", { name: "Lower-rate requests" })).toBeVisible();
   await expect(items.getByRole("heading", { name: "PMI and escrow" })).toBeVisible();
   await expect(page.getByRole("note").filter({ hasText: "At your level" })).toBeVisible();
+  // Spec step 251: this month's credit check-up, done after Jane's soft checks.
+  const month = page.getByRole("region", { name: "This month's check-up" });
+  await expect(month.getByRole("heading", { name: "Rates and what you could borrow" })).toBeVisible(
+    {
+      timeout: 30_000,
+    },
+  );
+  await expect(month.getByRole("heading", { name: "Costly borrowing" })).toBeVisible();
+  await expect(month).toContainText("Every month, at your level:");
 
   // Asking in the chat shows the same items.
   await page.goto("/chat");
