@@ -826,6 +826,8 @@ test("the debt review lists every item, and the chat message keeps each button u
   );
   await expect(month.getByRole("heading", { name: "Costly borrowing" })).toBeVisible();
   await expect(month).toContainText("Every month, at your level:");
+  // The lower card rate is shown once, in the review above (docs/feature-audit.md, cluster 14).
+  await expect(month.getByRole("heading", { name: "A lower card rate" })).toHaveCount(0);
 
   // Asking in the chat shows the same items.
   await page.goto("/chat");
@@ -1043,6 +1045,9 @@ test("what you could borrow is shown with the day it was checked", async ({
   await expect(
     page.getByRole("heading", { level: 1, name: "What you could borrow" }),
   ).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  // A card limit is a guess from a year of income, to the nearest $100.
+  await expect(page.getByText(/with a limit around \$[\d,]*00\.00/)).toBeVisible();
   const list = page.getByRole("list", { name: "What you could borrow" });
   await expect(list.getByRole("listitem").filter({ has: page.getByRole("heading") })).toHaveCount(
     4,
