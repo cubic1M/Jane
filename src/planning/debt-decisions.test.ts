@@ -106,6 +106,22 @@ describe("consolidate and a personal loan", () => {
       /Clearwater at 11\.99% would save about \$900\.00/,
     );
   });
+  // Loans QA: a 0% card left out for a score those cards don't usually approve is said, not
+  // picked.
+  it("says why a 0% transfer card isn't the pick for a low score", () => {
+    const d = consolidate({
+      ...base,
+      consolidation: null,
+      personalLoan: null,
+      transferNeedsScore: { score: 560, minScore: 670 },
+    });
+    expect(d.sentences[1]).toBe(
+      "A 0% transfer card would cost less, but those usually need a score of 670 or more and yours is 560; no loan beats your rates once fees are counted.",
+    );
+    expect(d.sentences[2]).toMatch(/highest-rate card first/);
+    expect(d.sentences.join(" ")).not.toMatch(/I'd do it/);
+  });
+
   it("says there's no offer worth taking when none saves, and the math only when not demo advice", () => {
     const none = { ...base, consolidation: null, personalLoan: null };
     expect(consolidate(none).sentences[1]).toMatch(/beats your current rates once its fees/);
