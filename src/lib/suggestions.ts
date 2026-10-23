@@ -10,7 +10,6 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadProfileInput } from "@/lib/profile";
 import type { CardExtras } from "@/lib/jane-agent/types";
-import { practiceCardDetails } from "@/lib/practice/ideas";
 import { scrub } from "@/lib/scrub";
 import { resultsByKind } from "@/lib/worked";
 import { buildProfile } from "@/profile/build";
@@ -277,6 +276,8 @@ export async function offeredToday(
         })
       : [];
   const partOf = new Map(parts.map((p) => [p.key, p]));
+  // Loaded when needed: the practice modules reach this file again (through the profile).
+  const { practiceCardDetails } = await import("@/lib/practice/ideas");
   const practice = await practiceCardDetails(
     userId,
     rows.map((r) => r.key),
