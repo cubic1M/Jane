@@ -17,6 +17,7 @@ import { resultsByKind, type KindResult } from "@/lib/worked";
 import { openBooks, type BooksView } from "@/lib/books";
 import { offeredToday, type OfferedSuggestion } from "@/lib/suggestions";
 import { loadSteady, type SteadyView } from "@/lib/steady-pay";
+import { loadMoneyForTwo, type MoneyForTwoView } from "@/lib/money-for-two";
 import { loadTradeoffs, type TradeoffView } from "@/lib/goal-tradeoffs";
 import { nextQuestion, type OpenQuestion } from "@/lib/questions";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
@@ -133,6 +134,8 @@ export type Snapshot = {
   suggestions?: OfferedSuggestion[];
   // Spec step 240: the steady paycheck from uneven income. Optional, like changes.
   steady?: SteadyView | null;
+  // Spec step 242: money for two. Optional, like changes.
+  two?: MoneyForTwoView | null;
   // Spec step 241: goals that trade off. Optional, like changes.
   tradeoffs?: TradeoffView | null;
   // Spec step 257: the one question worth asking now. Optional, like changes.
@@ -327,6 +330,7 @@ export async function loadSnapshot(
     suggestions,
     steady,
     question,
+    two,
     tradeoffs,
   ] = await Promise.all([
     light ? NO_MORE : loadMore(userId, { client, now, input }),
@@ -345,6 +349,7 @@ export async function loadSnapshot(
     offeredToday(userId, { client, now }),
     light ? null : loadSteady(userId, { client, now, input }),
     nextQuestion(userId, { client, now }),
+    loadMoneyForTwo(userId, { client, now }),
     light ? null : loadTradeoffs(userId, { client, now, input }),
   ]);
 
@@ -413,6 +418,7 @@ export async function loadSnapshot(
     suggestions,
     steady,
     question,
+    two,
     tradeoffs,
     lean: light
       ? { open: [], ended: [] }

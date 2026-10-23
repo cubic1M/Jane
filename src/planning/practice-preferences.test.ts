@@ -8,6 +8,7 @@ import {
   DEFAULT_PREFERENCES,
   describeChanges,
   fromRow,
+  parsePreferenceForm,
   PREFERENCE_FIELDS,
   PREFERENCE_LABELS,
   sayPreference,
@@ -149,5 +150,61 @@ describe("practice preferences", () => {
       expect(TICKER_TAGS[t], t).toBeDefined();
     }
     for (const t of PRACTICE_STOCKS) expect(TICKER_TAGS[t]).toBeDefined();
+  });
+});
+
+describe("the settings page's form", () => {
+  const form = (fields: Record<string, string | string[]>) => {
+    const f = new FormData();
+    for (const [k, v] of Object.entries(fields)) {
+      for (const x of Array.isArray(v) ? v : [v]) f.append(k, x);
+    }
+    return f;
+  };
+  const full = {
+    riskLevel: "2",
+    maxDropPercent: "",
+    goal: "home",
+    goalDate: "2030-06-01",
+    monthlyAdd: "250.50",
+    addDay: "15",
+    appetite: "cautious",
+    avoid: ["tobacco", "fossil_fuels"],
+    avoidTickers: "tsla, VXUS",
+    harvestLosses: "on",
+    cashBuffer: "$1,000",
+    mode: "suggest",
+  };
+
+  it("reads every field and passes the same check as the chat", () => {
+    const patch = parsePreferenceForm(form(full));
+    const r = applyPatch(base(), patch, TODAY);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.preferences).toEqual({
+      riskLevel: 2,
+      maxDropPercent: null,
+      goal: "home",
+      goalDate: "2030-06-01",
+      monthlyAddCents: 25_050,
+      addDay: 15,
+      appetite: "cautious",
+      avoid: ["tobacco", "fossil_fuels", "TSLA", "VXUS"],
+      harvestLosses: true,
+      cashBufferCents: 100_000,
+      mode: "suggest",
+    });
+  });
+
+  it("an empty level follows the questionnaire, an unticked box is off, and bad numbers are refused", () => {
+    const patch = parsePreferenceForm(form({ ...full, riskLevel: "", harvestLosses: [] }));
+    expect(patch.riskLevel).toBeNull();
+    expect(patch.harvestLosses).toBe(false);
+    expect(applyPatch(base(), parsePreferenceForm(form({ ...full, addDay: "" })), TODAY).ok).toBe(
+      false,
+    );
+    expect(
+      applyPatch(base(), parsePreferenceForm(form({ ...full, monthlyAdd: "lots" })), TODAY).ok,
+    ).toBe(false);
   });
 });

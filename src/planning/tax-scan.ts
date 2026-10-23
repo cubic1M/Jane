@@ -1,3 +1,4 @@
+import { ADVICE_TOPICS } from "@/config/suggestions";
 import { TAX_TOPIC_MONTH } from "@/config/tax-calendar";
 import type { Suggestion } from "@/detectors/contract";
 import { rankSuggestions } from "@/planning/suggestion-rank";
@@ -19,6 +20,8 @@ export type TaxFound = {
   rank: number;
   // The calendar month it goes in (1 to 12).
   month: number;
+  // A recommendation (demo advice): shown with the label, and never to a real account.
+  advice: boolean;
 };
 
 // The month a suggestion goes in, from today's month.
@@ -46,6 +49,7 @@ export function taxFound(all: readonly Suggestion[], todayMonth: number): TaxFou
             href: r.suggestion.action.href,
             rank: i + 1,
             month: monthFor(r.suggestion.topic, r.suggestion.urgency, todayMonth),
+            advice: (ADVICE_TOPICS as readonly string[]).includes(r.suggestion.topic),
           },
         ]
       : [],

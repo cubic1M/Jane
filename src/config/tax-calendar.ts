@@ -109,4 +109,5 @@ export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
   tax_loss_harvest: 12,
   medical_deduction: 12,
   inherited_ira: 12,
+  inherited_ira_spread: 12,
 };

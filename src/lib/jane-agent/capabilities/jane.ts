@@ -36,6 +36,8 @@ import { openBooks } from "@/lib/books";
 import { booksReply } from "../replies-books";
 import { loadSteady } from "@/lib/steady-pay";
 import { steadyReply } from "../replies-steady";
+import { loadMoneyForTwo } from "@/lib/money-for-two";
+import { moneyForTwoReply } from "../replies-two";
 import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import { tradeoffsReply } from "../replies-tradeoffs";
 import { whatIf } from "@/lib/what-if";
@@ -132,6 +134,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 240.
     case "steady_pay":
       return steadyReply(await loadSteady(userId, { client, now }));
+    // Spec step 242.
+    case "money_for_two":
+      return moneyForTwoReply(await loadMoneyForTwo(userId, { client, now }));
     // Spec step 241.
     case "goal_tradeoffs":
       return tradeoffsReply(await loadTradeoffs(userId, { client, now }));

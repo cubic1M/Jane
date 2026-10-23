@@ -37,6 +37,16 @@ describe("the practice portfolio detector", () => {
     }
   });
 
+  it("never promises to avoid a real loss: the dollars are a dip on practice money", () => {
+    for (const id of WHO) {
+      const [s] = run(inputFor(id));
+      expect(s.headline, id).not.toMatch(/avoid/i);
+      expect(s.headline, id).toMatch(/practice money/);
+      // They may hold a 401(k); what they don't have is a brokerage account.
+      expect(s.short, id).toMatch(/no brokerage account/);
+    }
+  });
+
   it("stays quiet once the person has a practice portfolio, or invests on their own", () => {
     const data = inputFor("renter");
     const extras = { householdMembers: 0, ...data.extras, hasPracticePortfolio: true };

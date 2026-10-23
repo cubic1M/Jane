@@ -112,6 +112,9 @@ export type ProfileInput = {
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
+    // This year's contributions an HSA's bank reports on the account itself (investment
+    // transactions, taxes QA). Absent: not loaded; null: no HSA.
+    hsaContributions?: { cents: number; count: number } | null;
     // The latest confirmed draft return's check (spec step 272): what it found, by line, with the
     // tax each changes. Null: no checked draft. Absent: not loaded.
     draftReturn?: { year: number; findings: readonly DraftFinding[] } | null;
@@ -119,6 +122,8 @@ export type ProfileInput = {
     ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.
     hasPracticePortfolio?: boolean;
+    // Whether the household chose how shared bills split (spec step 242). Absent: not loaded.
+    splitChosen?: boolean;
     // Savings goals still on the way (spec step 241), in the order they're funded, and the
     // room the year plan has for them this month. Absent: not loaded.
     goals?: readonly {

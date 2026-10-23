@@ -723,40 +723,55 @@ const vehicleDeduction: Detector = {
 // An inherited IRA has to be empty by the end of the 10th year after the owner died; taking it
 // out evenly keeps each year in a lower bracket than taking it all at the end (steps 220 and
 // 268). Found by the account's name; the year the owner died is something only the person can
-// say.
+// say. Two detectors read it: the deadline in the last year (a fact, for everyone) and spreading
+// the withdrawals before then (a recommendation, demo advice only; taxes QA, 2026-10-22).
+function inheritedIraOf({ profile, data }: Parameters<Detector["detect"]>[0]) {
+  const income = profile.facts.monthly_income;
+  const died = profile.facts.inherited_ira_death_year;
+  if (profile.facts.inherited_from_spouse.value === true) return null;
+  const accounts = data.accounts.filter(
+    (a) => a.type === "investment" && INHERITED_NAME.test(a.name ?? "") && a.balanceCents > 0,
+  );
+  if (accounts.length === 0) return null;
+  const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
+  const year = Number(profile.today.slice(0, 4));
+  const knownYear = typeof died.value === "number" ? died.value : null;
+  const emptyBy = knownYear !== null ? mustBeEmptyBy(knownYear) : null;
+  const yearsLeft = emptyBy !== null ? Math.max(1, emptyBy - year + 1) : INHERITED_IRA_YEARS;
+  const status = statusOf(profile.facts.household.value);
+  const base = soleInput(0, profile.facts.household.value, year);
+  const spread = spreadIra({
+    balanceCents: balance,
+    yearsLeft,
+    base: {
+      ...base,
+      filingStatus: status,
+      income: {
+        ...base.income,
+        wagesCents: grossIncome(profile, data),
+        socialSecurityWagesCents: grossIncome(profile, data),
+      },
+    },
+  });
+  return { income, balance, knownYear, emptyBy, yearsLeft, spread };
+}
+
+const INHERITED_NEEDS: Detector["needs"] = [
+  "inherited_ira_death_year",
+  "inherited_from_spouse",
+  "monthly_income",
+  "household",
+];
+
 const inheritedIra: Detector = {
   capability: "taxes",
   topic: "inherited_ira",
   covers: ["tax_inherited"],
-  needs: ["inherited_ira_death_year", "inherited_from_spouse", "monthly_income", "household"],
-  detect({ profile, data }) {
-    const income = profile.facts.monthly_income;
-    const died = profile.facts.inherited_ira_death_year;
-    if (profile.facts.inherited_from_spouse.value === true) return null;
-    const accounts = data.accounts.filter(
-      (a) => a.type === "investment" && INHERITED_NAME.test(a.name ?? "") && a.balanceCents > 0,
-    );
-    if (accounts.length === 0) return null;
-    const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
-    const year = Number(profile.today.slice(0, 4));
-    const knownYear = typeof died.value === "number" ? died.value : null;
-    const emptyBy = knownYear !== null ? mustBeEmptyBy(knownYear) : null;
-    const yearsLeft = emptyBy !== null ? Math.max(1, emptyBy - year + 1) : INHERITED_IRA_YEARS;
-    const status = statusOf(profile.facts.household.value);
-    const base = soleInput(0, profile.facts.household.value, year);
-    const spread = spreadIra({
-      balanceCents: balance,
-      yearsLeft,
-      base: {
-        ...base,
-        filingStatus: status,
-        income: {
-          ...base.income,
-          wagesCents: grossIncome(profile, data),
-          socialSecurityWagesCents: grossIncome(profile, data),
-        },
-      },
-    });
+  needs: INHERITED_NEEDS,
+  detect(input) {
+    const ira = inheritedIraOf(input);
+    if (!ira) return null;
+    const { income, balance, emptyBy, yearsLeft } = ira;
     // In the last year there is nothing left to spread: what matters is emptying it, because
     // the money not taken out by the deadline costs 25% of what is left.
     if (emptyBy !== null && yearsLeft <= 1) {
@@ -783,11 +798,26 @@ const inheritedIra: Detector = {
         action: { label: "See what applies", href: "/profile" },
       };
     }
+    return null;
+  },
+};
+
+const inheritedIraSpread: Detector = {
+  capability: "taxes",
+  topic: "inherited_ira_spread",
+  covers: ["tax_inherited"],
+  needs: INHERITED_NEEDS,
+  detect(input) {
+    const ira = inheritedIraOf(input);
+    if (!ira) return null;
+    const { income, balance, knownYear, emptyBy, yearsLeft, spread } = ira;
+    // The last year is the deadline's (inheritedIra): nothing is left to spread.
+    if (emptyBy !== null && yearsLeft <= 1) return null;
     if (!spread.worthRaising) return null;
     return {
-      id: suggestionId("taxes", "inherited_ira"),
+      id: suggestionId("taxes", "inherited_ira_spread"),
       capability: "taxes",
-      topic: "inherited_ira",
+      topic: "inherited_ira_spread",
       title: "Plan how you take money out of your inherited IRA",
       headline: headlineOf("Spread your inherited IRA withdrawals", spread.savesCents, "saves"),
       short: `About ${formatCents(spread.perYearCents)} a year from your ${formatCents(balance)} inherited IRA keeps brackets low.`,
@@ -1148,6 +1178,7 @@ export const TAX_DETECTORS: readonly Detector[] = [
   hsaOverLimit,
   medicalDeductionDetector,
   inheritedIra,
+  inheritedIraSpread,
   sCorpElection,
   homeOffice,
   vehicleDeduction,
