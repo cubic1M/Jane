@@ -7,6 +7,7 @@ import { offeredToday, scanSuggestions } from "@/lib/suggestions";
 import { answerByRules } from "../answer";
 import { runChatTool } from "../claude-tools";
 import { parseIntent } from "../intents";
+import { cardsLine } from "../agenda";
 import { chatFeed } from "../messages";
 import { runJaneAgent } from "../run";
 import { MORE_ROWS } from "./bank-more";
@@ -141,12 +142,20 @@ export async function proveOn(
       questions.push(await ask(userId, text, { client, now }));
 
     const offeredTopics = offered.slice(0, 3).map((s) => s.key.split(":")[1]);
+    // The suggestions lead on the floating cards (the one place they show, #544), and the first
+    // chat says once that they're there.
+    const cards = (
+      await client.janeMessage.findMany({
+        where: { userId, status: "open", refs: { path: ["suggestion"], string_contains: ":" } },
+        select: { body: true },
+      })
+    )
+      .map((m) => m.body)
+      .join("\n");
     const leads =
       offered.length > 0 &&
-      // The agenda may shorten the dollars ("a year" to "/yr"): the words before them lead.
-      offered
-        .slice(0, 3)
-        .every((s) => (brief?.body ?? "").includes((s.headline || s.title).split(",")[0]));
+      (brief?.body ?? "").includes(cardsLine(offered.length)) &&
+      offered.slice(0, 3).every((s) => cards.includes((s.headline || s.title).split(",")[0]));
     const problems = [
       ...suggestions.filter((s) => s.mustNot).map((s) => `must-not suggestion ${s.key}`),
       ...suggestions.filter((s) => !s.onList).map((s) => `off-list suggestion ${s.key}`),
