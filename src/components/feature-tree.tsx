@@ -325,12 +325,6 @@ export function FeatureTree({ maps, initial }: { maps: AreaMap[]; initial: AreaK
               <p className="text-sm text-zinc-600 dark:text-zinc-400">{pickedFeature.line}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link
-                href={pickedFeature.href}
-                className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-emerald-700 hover:underline"
-              >
-                Open the page ›
-              </Link>
               <button
                 type="button"
                 onClick={() =>
@@ -340,6 +334,12 @@ export function FeatureTree({ maps, initial }: { maps: AreaMap[]; initial: AreaK
               >
                 Ask Jane about this
               </button>
+              <Link
+                href={pickedFeature.href}
+                className="inline-flex min-h-11 items-center px-3 text-sm font-semibold text-emerald-700 hover:underline"
+              >
+                Open the page ›
+              </Link>
             </div>
           </div>
         ) : (
