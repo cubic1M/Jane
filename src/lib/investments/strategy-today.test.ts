@@ -65,18 +65,55 @@ describe("strategyToday", () => {
     expect(today?.follow && today.signalDate).toBe("2022-06-01");
   });
 
-  it("follows nothing for the mix, a level with no choice, or closes not stored yet", async () => {
+  it("follows nothing for the mix or closes not stored yet; the research choice before an evaluation", async () => {
     const stored = fakeClient(true);
     const now = new Date("2022-06-16T21:30:00Z");
     expect(await strategyToday(5, { client: stored.client, now })).toMatchObject({
       follow: false,
       why: "The level's mix is the choice.",
     });
-    expect(await strategyToday(3, { client: stored.client, now })).toBeNull();
+    // A level the evaluation has no choice for: the committed research choice.
+    expect(await strategyToday(3, { client: stored.client, now })).toMatchObject({
+      source: "research",
+      chosen: { key: "trend(months=6)", label: "Trend filter" },
+      follow: true,
+    });
     const empty = fakeClient(false);
     expect(await strategyToday(2, { client: empty.client, now })).toMatchObject({
       follow: false,
       why: "No stored closes for the strategy's funds yet.",
+    });
+  });
+});
+
+describe("strategyToday before the first evaluation", () => {
+  it("follows the committed research choice (STRATEGY_RESEARCH_CHOICE)", async () => {
+    const bars = realFixtureBars();
+    const client = {
+      marketPrice: {
+        findMany: async ({
+          where,
+        }: {
+          where: { ticker: string; date: { gte: Date; lte: Date } };
+        }) =>
+          (bars[where.ticker] ?? [])
+            .map((b) => ({
+              date: new Date(`${b.date}T00:00:00Z`),
+              closeCents: b.closeCents,
+              source: "alpaca",
+            }))
+            .filter((r) => r.date >= where.date.gte && r.date <= where.date.lte),
+      },
+      strategyEvaluation: { findFirst: async () => null },
+    } as unknown as PrismaClient;
+    const now = new Date("2022-06-17T21:30:00Z");
+    const low = await strategyToday(2, { client, now });
+    expect(low).toMatchObject({ source: "research", chosen: { id: "trend" }, follow: true });
+    expect(low?.chosen.why).toMatch(/Alpaca's closes/);
+    expect(await strategyToday(5, { client, now })).toMatchObject({
+      source: "research",
+      chosen: { id: "static" },
+      follow: false,
     });
   });
 });
