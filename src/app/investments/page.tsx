@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
-import { INVESTMENT_AUTOPILOT } from "@/config/investing";
 import { explainer } from "@/config/learn";
 import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
@@ -14,12 +13,15 @@ import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
 import { backtestsFor } from "@/lib/investments/backtest";
 import { autopilotOf } from "@/lib/autopilot";
+import { investmentsByHerself } from "@/lib/jane-agent/investments/replies";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
+import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
@@ -85,13 +87,17 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
+  // Constant search (Phase AW): a cheap practice scan, after the page is sent.
+  after(() => scanOnOpenQuietly(user.id));
   const data = await loadInvestments(user.id);
-  const [answers, simulated, level, returns, crypto, backtests] = await Promise.all([
+  const [answers, simulated, level, investing, returns, crypto, backtests] = await Promise.all([
     profileOf(user.id),
     // Spec step 133: holdings shaped by simulated orders say so.
     scopedFor(user.id).brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
     // Spec step 137: what Jane does by herself at the person's autopilot level.
     autopilotOf(user.id),
+    // Spec step 141: what the Investing area may do by itself.
+    autopilotFor(user.id, "investing"),
     // Spec step 156: how they've done.
     loadReturns(user.id, { investments: data }),
     // Spec step 161: crypto, read-only, counted in the mix.
@@ -99,12 +105,7 @@ async function InvestmentsContent() {
     // Spec step 295: each risk level replayed over past prices (demo advice only).
     backtestsFor(user.id),
   ]);
-  const byHerself =
-    INVESTMENT_AUTOPILOT[
-      (level && Object.hasOwn(INVESTMENT_AUTOPILOT, level)
-        ? level
-        : "none") as keyof typeof INVESTMENT_AUTOPILOT
-    ];
+  const byHerself = investmentsByHerself(level, investing);
   const profile = profileSummary(answers, data.asOf);
   const max = Math.max(1, ...data.months.map((m) => m.totalCents ?? 0));
 
@@ -273,6 +274,44 @@ async function InvestmentsContent() {
             : bonds where interest isn&apos;t taxed, without changing your mix.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/plan-menu" className={LINK}>
+              Your workplace plan&apos;s funds
+            </Link>
+            : the cheapest mix of the funds your 401(k) offers.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/performance" className={LINK}>
+              How your money really did
+            </Link>
+            : 1, 3 and 5 years, after fees and taxes, against a simple mix with your risk.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/short-term" className={LINK}>
+              Short-term money
+            </Link>
+            : bills, CDs, I bonds and savings compared after tax, with a ladder that matures on
+            time.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/sudden-money" className={LINK}>
+              Sudden money
+            </Link>
+            : a bonus, an inheritance or a sale, with tax first and a plan in order.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/values" className={LINK}>
+              Investing by your values
+            </Link>
+            : leave out fossil fuels, weapons or tobacco, with the cost and diversification shown.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/family-file" className={LINK}>
+              The family looked after
+            </Link>
+            : who is named on each account, what a life change makes out of date, and a file to
+            share.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             <Link href="/investments/practice" className={LINK}>
               Practice portfolio
             </Link>
@@ -409,7 +448,7 @@ async function InvestmentsContent() {
                 <li key={line}>{line}</li>
               ))}
             </ul>
-            <Link href="/settings" className={`text-sm ${LINK}`}>
+            <Link href="/settings#sectors" className={`text-sm ${LINK}`}>
               Change your autopilot
             </Link>
           </section>

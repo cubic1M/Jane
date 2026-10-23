@@ -36,12 +36,13 @@ import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
 import { ensureDemoAssets } from "@/lib/plaid/demo-assets";
+import { ensureDemoInvestingFacts } from "@/lib/plaid/demo-investing";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoExtrasOf, demoPlaidApi, isDemoToken } from "./demo";
 import { postScanningHello } from "@/lib/jane-agent/open";
-import { runJaneAgentSafely } from "@/lib/jane-agent/run";
+import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
 import { phaseTimer } from "@/lib/trial-timing";
@@ -80,6 +81,9 @@ type Options = {
   // findings are posted right after detection, before the slower sector work, and again
   // after it. Other syncs run Jane once, at the end.
   progressive?: boolean;
+  // Called once, on a first scan, as soon as accounts and transactions are saved: the chat can
+  // open (the sample person's click waits for exactly this, then goes straight to the chat).
+  onReady?: () => void;
 };
 
 async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
@@ -576,7 +580,13 @@ export async function syncDemoInvestments(
 
 export async function syncItem(
   itemId: string,
-  { client = defaultClient, api = plaid(), now = new Date(), progressive = false }: Options = {},
+  {
+    client = defaultClient,
+    api = plaid(),
+    now = new Date(),
+    progressive = false,
+    onReady,
+  }: Options = {},
 ): Promise<SyncResult> {
   // The first scan's phases, logged once as trial_timing (where the first minute goes).
   const timing = phaseTimer("first_sync");
@@ -642,7 +652,10 @@ export async function syncItem(
   ]);
   // From here the chat can open (accounts and transactions are in).
   timing.mark("save_transactions");
-  if (progressive && item.transactionsCursor === null) timing.log("chat_ready");
+  if (progressive && item.transactionsCursor === null) {
+    timing.log("chat_ready");
+    onReady?.();
+  }
   // Independent of each other (their own tables), so together: the investments alone were
   // five seconds on live for a person with holdings, with the brief waiting behind them.
   const [recurring, liabilities, investments] = await Promise.all([
@@ -651,6 +664,15 @@ export async function syncItem(
     item.investments ? saveInvestments(db, api, accessToken, item.id, now) : ("off" as const),
   ]);
   timing.mark("recurring_liabilities_investments");
+  // A sample person's values list and named beneficiaries (steps 236 and 237), once their
+  // accounts are in and before the detectors run. Never fails the sync.
+  if (isDemoToken(accessToken) && item.transactionsCursor === null) {
+    await ensureDemoInvestingFacts(item.userId, item.id, { client, now }).catch((error) =>
+      console.error("Seeding the sample person's investing facts failed", {
+        error: String(error),
+      }),
+    );
+  }
 
   await db.plaidItems.updateMany({
     where: { id: item.id },
@@ -695,8 +717,11 @@ export async function syncItem(
     await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
     timing.mark("first_brief");
     timing.log("first_brief");
-    // The brief is in the chat: the scan is over for the person (the page stops reloading
-    // itself); the sectors' work and Jane's last words still follow and show on the next look.
+    // The brief is in the chat. The whole snapshot is kept now, for the chat's first question,
+    // before the slow sector work; then the scan is over for the person (the page stops
+    // reloading itself). Marking it done earlier let the open chat start its own run while
+    // the scan was still working, and the end-to-end flows that wait for its findings failed.
+    await keepFullSnapshot(item.userId, { client, now });
     await markScanDone(item.userId, { client, now }).catch((error) =>
       console.error("Marking the scan done failed", { error: String(error) }),
     );

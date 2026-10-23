@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { SAMPLE_EMPLOYER_PLANS, paydayContribution } from "./demo-employer-plans";
 import { PEOPLE, SUGGESTION_TOPICS } from "@/config/people";
 import { addDays, demoAccounts, demoLiabilities, demoTransactions } from "./demo-bank";
 import { demoHoldings, demoInvestmentTransactions } from "./demo-holdings";
@@ -51,22 +50,7 @@ describe("the eight sample people", () => {
     );
     const holdings = demoHoldings(demo, THROUGH);
     for (const h of holdings) expect(investmentIds.has(h.account_id)).toBe(true);
-    // Only their 401(k) contributions, from their plan (spec step 266), into that account.
-    const moves = demoInvestmentTransactions(demo, "2025-10-01", THROUGH);
-    const plan = SAMPLE_EMPLOYER_PLANS[id];
-    if (!plan) expect(moves).toEqual([]);
-    else {
-      const { employee, match } = paydayContribution(plan);
-      expect(new Set(moves.map((m) => m.subtype))).toEqual(new Set(["contribution"]));
-      expect(new Set(moves.map((m) => m.account_id)).size).toBe(1);
-      expect(investmentIds.has(moves[0].account_id)).toBe(true);
-      const mine = moves.filter((m) => m.name === "EMPLOYEE CONTRIBUTION");
-      expect(mine.every((m) => m.amount === -employee)).toBe(true);
-      expect(
-        moves.filter((m) => m.name === "EMPLOYER MATCH").every((m) => m.amount === -match),
-      ).toBe(true);
-      expect(mine.every((m) => /-(01|15)$/.test(m.date))).toBe(true);
-    }
+    expect(demoInvestmentTransactions(demo, "2025-10-01", THROUGH)).toEqual([]);
     // Every investment account holds something, even if only cash.
     expect(new Set(holdings.map((h) => h.account_id)).size).toBe(investmentIds.size);
   });

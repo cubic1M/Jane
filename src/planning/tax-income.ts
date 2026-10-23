@@ -1,5 +1,11 @@
 import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
-import { INCOME_KINDS, PAY_FREQUENCIES } from "@/config/tax";
+import {
+  BUSINESS_SALES_CATEGORIES,
+  BUSINESS_SALES_MIN_DEPOSITS,
+  BUSINESS_SALES_PAYEE,
+  INCOME_KINDS,
+  PAY_FREQUENCIES,
+} from "@/config/tax";
 import type { PayStub } from "@/lib/payroll/types";
 import type { EstimateIncome } from "./tax-estimate";
 
@@ -262,6 +268,22 @@ export function projectOther(soFar: OtherIncome, year: number, today: string): O
     retirementCents: pace(soFar.retirementCents),
     unemploymentCents: pace(soFar.unemploymentCents),
   };
+}
+
+// A shop's card sales so far in the year (BUSINESS_SALES_PAYEE), not already counted as
+// freelance income.
+export function businessSalesSoFar(transactions: IncomeTransaction[], year: number): number {
+  const freelance: readonly string[] = categories("self_employed");
+  const sales = transactions.filter(
+    (t) =>
+      Number(t.date.slice(0, 4)) === year &&
+      t.amountCents < 0 &&
+      !freelance.includes(t.pfcDetailed ?? "") &&
+      (BUSINESS_SALES_CATEGORIES as readonly string[]).includes(t.pfcDetailed ?? "") &&
+      BUSINESS_SALES_PAYEE.test(t.description),
+  );
+  if (sales.length < BUSINESS_SALES_MIN_DEPOSITS) return 0;
+  return sales.reduce((sum, t) => sum - t.amountCents, 0);
 }
 
 const FEDERAL_PAYEE = /\b(?:IRS|USATAXPYMT|US TREASURY|U\.S\. TREASURY|EFTPS)\b/i;

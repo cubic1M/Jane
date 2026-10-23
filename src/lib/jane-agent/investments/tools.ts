@@ -2,15 +2,15 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { formatBps } from "@/insights/investments";
 import type { ToolOutput } from "@/lib/ask/tools";
-import { GOALS, HORIZONS } from "@/config/investing";
+import { GOALS, HORIZONS, RISK_LEVELS } from "@/config/investing";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { EXPLAINERS, REVIEW_NOTE, explainer } from "@/config/learn";
-import { INVESTMENT_AUTOPILOT } from "@/config/investing";
 import { autopilotOf } from "@/lib/autopilot";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
-import { overviewReply } from "./replies";
+import { investmentsByHerself, overviewReply } from "./replies";
 import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadReturns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
@@ -27,6 +27,12 @@ import { loadProperty } from "@/lib/investments/property";
 import { loadCostlyProducts } from "@/lib/investments/costly-products";
 import { reviewFor } from "./review-copy";
 import { loadLocation } from "@/lib/investments/location";
+import { loadPlanMenu } from "@/lib/investments/plan-menu";
+import { loadHonest } from "@/lib/investments/honest";
+import { loadShortTerm } from "@/lib/investments/short-term";
+import { loadFamilyFile } from "@/lib/investments/family-file";
+import { loadValues } from "@/lib/investments/values";
+import { loadSuddenMoney } from "@/lib/investments/sudden-money";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -37,6 +43,10 @@ import { loadReview } from "@/lib/investments/review";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
+import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
+import { tradeLog } from "@/lib/practice/autopilot";
+import { loadPractice } from "@/lib/practice/portfolio";
+import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
 
 // Claude's tools for investment questions in Jane's chat (spec step 128 on): read-only,
 // scoped to the person, and every dollar figure recorded for the guardrails. Each later
@@ -185,6 +195,42 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "plan_menu",
+    description:
+      "The person's workplace plan (401(k) or 403(b)) fund list as they confirmed it from the plan's fee disclosure, each fund's cost, and in demo advice mode the cheapest mix of those funds for their target with the fee saving in dollars a year, and a target-date fund's fee against building its mix by hand. Only funds on the confirmed list may ever be named as suggestions. A change goes to the payroll stand-in on the person's tap, never by you.",
+    input_schema: noInput,
+  },
+  {
+    name: "honest_performance",
+    description:
+      "How the person's investments really did over 1, 3 and 5 years: before fees, after fees, after fees and taxes, their money's return counting when it went in and out, a simple benchmark mix with their risk level (index funds, from config), the gap, and the reasons it adds up from: fund costs, cash held, tax on payouts, timing, and the mix itself. Report only what happened. NEVER forecast, predict or imply future returns.",
+    input_schema: noInput,
+  },
+  {
+    name: "family_file",
+    description:
+      "Which of the person's accounts name a beneficiary and which don't, or have names that are out of date after a marriage, divorce or birth; whether transfer-on-death could be set up; and what the person has picked to share in their family file. Facts only. For wills and trusts say only the facts and that an estate-planning attorney in their state is the person to ask; never advise on whether to make one, which kind, or what it should say.",
+    input_schema: noInput,
+  },
+  {
+    name: "values_investing",
+    description:
+      "What the person leaves out of their funds (fossil fuels, weapons, tobacco) or leans towards (clean energy), and what applying it to the funds they hold would change: which funds switch, the fee change in dollars a year, any tax on a sale in a taxable account, and what it does to diversification (fewer holdings). It never changes the stocks-and-bonds mix. The switch is the person's own tap on Jane's message; never trade yourself. Recommendations only in demo advice mode.",
+    input_schema: noInput,
+  },
+  {
+    name: "short_term_money",
+    description:
+      "Money the person needs within three years (goals due soon with money saved, and the emergency fund above its floor): high-yield savings, Treasury bills, CDs and I bonds compared after tax at their own federal and state rates (Treasury interest is free of state tax), listing only places that can't lock the money past its date, and a Treasury bill ladder that matures when it's needed and rolls itself over until then. The emergency fund's floor stays in savings. The person taps to build a ladder; never do it yourself.",
+    input_schema: noInput,
+  },
+  {
+    name: "sudden_money",
+    description:
+      "A large deposit that isn't pay (a bonus, inheritance, home or other sale, gift), once the person has said which, and its staged plan in order: the tax to set aside first (figured by kind, with its source), high-interest debt, the emergency fund, retirement limits, goals, then investing, each part with its amount. Every part is the person's own tap on Jane's message; never move money yourself. No tax advice beyond the set-aside shown.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -200,6 +246,13 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     name: "crypto",
     description:
       "The person's crypto, read-only from their exchanges and wallets: each connection with its source and when it was read, each asset's amount, price and value, the total and its share of everything invested. In demo advice mode, two flags: a share above about 5%, and exchange fees well above low-cost exchanges'. Jane never buys, sells or moves crypto, at any level: there's no way to, so never offer to.",
+    input_schema: noInput,
+  },
+  // Spec step 297: the practice portfolio, for "what did you buy this week and why".
+  {
+    name: "practice_portfolio",
+    description:
+      "The person's practice portfolio (demo advice mode only): a paper portfolio Jane runs on practice money, never real money, at a risk level (Very low to Very high). Gives the level, what it's worth and started with, cash, each position, whether Jane is paused (all trading, or opportunities only), and this week's trades with the rule and the reason for each. Say plainly that it's practice money and nothing real was bought or sold. To pause or resume it, offer practice.pause or practice.resume with propose_action; you can't change it yourself.",
     input_schema: noInput,
   },
   {
@@ -231,6 +284,12 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  sudden_money: "Planning your windfall…",
+  short_term_money: "Comparing safe places for money you need soon…",
+  values_investing: "Checking your funds against your values…",
+  family_file: "Checking who is named on your accounts…",
+  honest_performance: "Comparing you with a benchmark…",
+  plan_menu: "Looking at your plan's funds…",
   asset_location: "Checking which account holds what…",
   yearly_review: "Putting your investing review together…",
   costly_products: "Adding up what your products cost…",
@@ -512,14 +571,12 @@ export async function runInvestmentTool(
       });
     }
     case "investments_overview": {
-      const [snapshot, level] = await Promise.all([
+      const [snapshot, level, investing] = await Promise.all([
         loadInvestmentSnapshot(userId, { client, now }),
         autopilotOf(userId, { client }),
+        autopilotFor(userId, "investing", { client, now }),
       ]);
       const note = overviewReply(snapshot);
-      const key = (
-        level && Object.hasOwn(INVESTMENT_AUTOPILOT, level) ? level : "none"
-      ) as keyof typeof INVESTMENT_AUTOPILOT;
       money(snapshot.totalCents);
       if (snapshot.month.previousCents !== null) {
         money(snapshot.month.previousCents);
@@ -530,7 +587,7 @@ export async function runInvestmentTool(
       return out({
         note: note.body,
         ordersReady: snapshot.advice ? (snapshot.rebalance?.orders.length ?? 0) : 0,
-        whatJaneDoesByHerself: INVESTMENT_AUTOPILOT[key],
+        whatJaneDoesByHerself: investmentsByHerself(level, investing),
       });
     }
     case "investment_returns": {
@@ -787,6 +844,140 @@ export async function runInvestmentTool(
           : { note: "needs two or more investment accounts" },
       );
     }
+    case "plan_menu": {
+      const v = await loadPlanMenu(userId, { client, now });
+      return out({
+        confirmedMenu:
+          v.menu &&
+          v.menu.funds.map((f) => ({
+            ticker: f.ticker,
+            name: f.name,
+            costPercent: f.expenseBps / 100,
+            kind: f.kind,
+          })),
+        waitingForConfirmation: v.proposed !== null,
+        suggestion: !v.advice
+          ? "advice only in demo advice mode"
+          : v.plan && {
+              costsNowAYear: money(Math.round((v.plan.balanceCents * v.plan.currentBps) / 10_000)),
+              cheapestMix: v.plan.suggested.map((a) => ({
+                ticker: a.ticker,
+                sharePercent: Math.round(a.share * 100),
+                costPercent: a.expenseBps / 100,
+              })),
+              savesAYear: money(v.plan.savingCents),
+              targetDateFunds: v.plan.targetDates
+                .filter(Boolean)
+                .map((t) => ({ ticker: t!.ticker, savingBuildingItByHand: money(t!.savingCents) })),
+            },
+      });
+    }
+    case "honest_performance": {
+      const v = await loadHonest(userId, { client, now });
+      return out({
+        periods: v.rows.map((r) => ({
+          period: r.label,
+          from: r.from,
+          shorterHistory: r.shorter,
+          beforeFeesPercent: Math.round(r.beforeFees * 1000) / 10,
+          afterFeesAndTaxesPercent: Math.round(r.afterTaxes * 1000) / 10,
+          yourMoneyPercent:
+            r.moneyWeighted === null ? null : Math.round(r.moneyWeighted * 1000) / 10,
+          benchmarkPercent: Math.round(r.benchmark * 1000) / 10,
+          gapPoints: Math.round(r.gap * 1000) / 10,
+          reasonsPoints: r.reasons.map((x) => ({
+            reason: x.label,
+            points: Math.round(x.points * 1000) / 10,
+          })),
+        })),
+        forecast: "never",
+      });
+    }
+    case "family_file": {
+      const v = await loadFamilyFile(userId, { client });
+      return out({
+        accounts: v.checks.map((c) => ({
+          account: c.accountName,
+          kind:
+            c.type === "tod"
+              ? "can be set up to pass to someone (transfer-on-death)"
+              : "takes a beneficiary",
+          named: c.names,
+          problems: c.problems,
+          since: c.because,
+        })),
+        lifeEvents: v.events,
+        sharing: v.picks,
+        about_wills_and_trusts: [...v.facts, v.pointer],
+      });
+    }
+    case "values_investing": {
+      const v = await loadValues(userId, { client, now });
+      return out({
+        leaveOut: v.prefs.excludes,
+        leanTowards: v.prefs.themes,
+        plan:
+          v.advice && v.plan
+            ? {
+                switches: v.plan.switches.map((s) => ({
+                  account: s.accountName,
+                  from: s.from.name,
+                  to: s.legs.map((l) => l.name),
+                  feeChangeAYear: money(s.feeDeltaCents),
+                })),
+                totalFeeChangeAYear: money(v.plan.feeDeltaCents),
+                gainRealised: money(v.plan.gainCents),
+                diversification: v.plan.diversification,
+                notes: v.plan.notes,
+              }
+            : "only in demo advice mode",
+      });
+    }
+    case "short_term_money": {
+      const v = await loadShortTerm(userId, { client, now });
+      if (!v.advice) return out({ advice: "only in demo advice mode" });
+      return out({
+        yourRates: {
+          federalPercent: Math.round(v.fed * 100),
+          statePercent: Math.round(v.state * 100),
+        },
+        money: v.candidates.map((c) => ({
+          for: c.name,
+          amount: money(c.amountCents),
+          neededBy: c.endsOn,
+          afterTaxPercent: c.options.map((o) => ({
+            where: o.product.name,
+            percent: o.afterTaxBps / 100,
+          })),
+          ladderExtraAYear: c.ladder ? money(c.gainCents) : null,
+          alreadyLaddered: c.hasLadder,
+        })),
+        ladders: v.ladders.map((l) => ({
+          name: l.name,
+          amount: money(l.amountCents),
+          cashOn: l.endsOn,
+          rolledOver: l.events.length,
+          status: l.status,
+        })),
+      });
+    }
+    case "sudden_money": {
+      const v = await loadSuddenMoney(userId, { client, now });
+      return out({
+        deposits: v.items.map((i) => ({
+          amount: money(i.amountCents),
+          on: i.depositedOn,
+          kind: i.kind ?? "not yet said",
+          taxSetAside:
+            i.tax && v.advice
+              ? { amount: money(i.tax.cents), note: i.tax.note, source: i.tax.source }
+              : null,
+          stages: v.advice
+            ? i.stages.map((s) => ({ stage: s.title, amount: money(s.cents), done: s.done }))
+            : "advice only in demo advice mode",
+        })),
+      });
+    }
     case "steady_hand": {
       const view = await loadSteadyHand(userId, { client, now });
       return out(
@@ -842,6 +1033,39 @@ export async function runInvestmentTool(
                 moreAYear: money(m.gainCents),
               })),
             },
+      });
+    }
+    case "practice_portfolio": {
+      if (!(await adviceMode(userId, { client }))) return out({ note: PRACTICE_ONLY_NOTE });
+      const view = await loadPractice(userId, { client, now });
+      if (!view) {
+        return out({
+          note: "No practice portfolio yet. It can be started on the practice portfolio page, with practice money only.",
+        });
+      }
+      const since = now.getTime() - PRACTICE_LOG_DAYS * 86_400_000;
+      const week = (await tradeLog(userId, { client })).filter(
+        (t) =>
+          !t.undone && (t.side === "buy" || t.side === "sell") && t.placedAt.getTime() >= since,
+      );
+      return out({
+        practiceMoneyOnly: "A paper portfolio on practice money: nothing real was bought or sold.",
+        level: RISK_LEVELS[view.level].label,
+        worth: money(view.totalCents),
+        startedWith: money(view.startingCents),
+        startedOn: view.startedAt.toISOString().slice(0, 10),
+        cash: money(view.state.cashCents),
+        positions: view.holdings.map((h) => ({ ticker: h.ticker, value: money(h.valueCents) })),
+        paused: view.paused,
+        opportunitiesPaused: view.opportunitiesPaused,
+        thisWeek: week.map((t) => ({
+          on: t.placedAt.toISOString().slice(0, 10),
+          side: t.side,
+          ticker: t.ticker,
+          amount: money(t.amountCents),
+          rule: RULE_LABELS[t.rule] ?? t.rule,
+          reason: t.reason,
+        })),
       });
     }
     case "crypto": {

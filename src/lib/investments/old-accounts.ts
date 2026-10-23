@@ -1,4 +1,7 @@
+import { coreFundsFor } from "@/planning/values";
+import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
+import { DETECTOR_RATES } from "@/config/detectors";
 import { OLD_PLAN_LOCATOR } from "@/config/old-accounts";
 import { FUND_FACTS, FUND_NAMES } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -9,7 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { brokeragePartner } from "@/lib/brokerage/partner";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { addDemoExtra, hasDemoBank } from "@/lib/plaid/demo";
+import { addDemoExtra, demoPersonFor, hasDemoBank } from "@/lib/plaid/demo";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { contributionBuys } from "@/planning/auto-invest";
 import { profileSummary } from "@/planning/investor-profile";
@@ -18,6 +21,7 @@ import {
   feeComparison,
   isComplete,
   newSteps,
+  olderPlans,
   stepsOn,
   type Step,
 } from "@/planning/rollover";
@@ -35,9 +39,12 @@ export class OldAccountsError extends Error {}
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-// Past employers from payroll history: a stand-in for demo-bank people.
+// Past employers from payroll history: a stand-in for the original demo bank's person. The sample
+// people's written lives (src/config/people.ts) have no past employer to ask about; their old
+// 401(k)s, where they have one, are linked accounts.
 async function payrollHistory(userId: string, client: PrismaClient): Promise<string[]> {
   if (!demoOptionsAllowed() || !(await hasDemoBank(userId, { client }))) return [];
+  if (await demoPersonFor(userId, { client })) return [];
   return ["Globex Industries"];
 }
 
@@ -68,7 +75,14 @@ export type OldPlanView = {
   arrivesOn: string | null;
 };
 
-export type OldAccountsView = { advice: boolean; plans: OldPlanView[]; demo: boolean };
+export type OldAccountsView = {
+  advice: boolean;
+  plans: OldPlanView[];
+  demo: boolean;
+  // 401(k)s already linked from past jobs (the same rule and saving as the "old accounts"
+  // suggestion). Optional so older callers and fixtures still type.
+  linked?: ReturnType<typeof olderPlans>;
+};
 
 // The index fund a rollover is invested in; its fee is the "after".
 const NEW_FUND = "KTSIX";
@@ -130,12 +144,20 @@ export async function loadOldAccounts(
   await syncPastEmployers(userId, { client });
   await settleRollovers(userId, { client, now });
   const db = scopedFor(userId, client);
-  const [advice, rows, demo] = await Promise.all([
+  const [advice, rows, demo, plans401k] = await Promise.all([
     adviceMode(userId, { client }),
     db.oldPlans.findMany({ orderBy: { createdAt: "asc" } }),
     hasDemoBank(userId, { client }),
+    db.accounts.findMany({
+      where: { subtype: "401k" },
+      select: { id: true, name: true, currentBalanceCents: true },
+    }),
   ]);
-  return { advice, plans: rows.map(viewOf), demo };
+  const linked = olderPlans(
+    plans401k.map((a) => ({ id: a.id, name: a.name, balanceCents: a.currentBalanceCents ?? 0 })),
+    DETECTOR_RATES.oldPlanFeeGapBps,
+  );
+  return { advice, plans: rows.map(viewOf), demo, linked };
 }
 
 // "Did you have a 401(k) at X?" Yes asks the locator; No closes it.
@@ -244,7 +266,11 @@ export async function settleRollovers(
     if (claimed.count === 0) continue;
     const answers = await profileOf(userId, { client });
     const profile = profileSummary(answers, iso(now));
-    const buys = contributionBuys(row.balanceCents, profile.complete ? profile.riskLevel : 3);
+    const buys = contributionBuys(
+      row.balanceCents,
+      profile.complete ? profile.riskLevel : 3,
+      coreFundsFor(await loadPrefs(userId, { client })),
+    );
     const batchId = randomUUID();
     await brokeragePartner().placeOrders(
       userId,

@@ -1,3 +1,4 @@
+import type { SectorLevel } from "@/config/autopilot-sectors";
 import { FILING_STATUSES, INCOME_KINDS, whatJaneDoes, type FilingStatus } from "@/config/tax";
 import { stateName, type FieldStatus, type TaxProfileView } from "@/planning/tax-profile";
 import { TAX_TAG_ORDER, TAX_TAGS, UNTAGGED, type TaxTagKind } from "@/config/tax";
@@ -48,7 +49,7 @@ const WHERE: Readonly<Record<FieldStatus, string>> = {
 };
 
 // "Here's your tax profile: …", with the next question's buttons when one is waiting.
-export function taxProfileReply(view: TaxProfileView, autopilot: string | null): Reply {
+export function taxProfileReply(view: TaxProfileView, taxesLevel: SectorLevel): Reply {
   const kids = view.dependants;
   const lines = [
     `- How you file: ${view.filingStatus.value ? FILING_STATUSES[view.filingStatus.value] : "not set yet"}`,
@@ -64,7 +65,7 @@ export function taxProfileReply(view: TaxProfileView, autopilot: string | null):
         : "none seen yet"
     }`,
   ];
-  const doing = whatJaneDoes(autopilot)[0];
+  const doing = whatJaneDoes(taxesLevel)[0];
   const question = nextQuestion(view);
   const set = [view.filingStatus, view.dependants, view.state, view.incomeKinds].filter(
     (f) => f.status === "yours",
@@ -300,7 +301,16 @@ export function bracketReply(view: TaxEstimateView): Reply {
 export function withholdingReply(view: WithholdingView): Reply {
   const { check, estimate } = view;
   switch (check.status) {
-    case "unknown":
+    case "unknown": {
+      // Taxes QA: self-employment income has no withholding; the answer is the quarterly plan.
+      const owed = -estimate.estimate.refundCents;
+      if (check.why === "no_pay" && estimate.input.income.selfEmploymentCents > 0) {
+        return {
+          body: `Nobody withholds tax from self-employment income, so you pay it yourself in quarterly estimated payments.${owed > 0 ? ` By my estimate about ${formatCents(owed)} is still to pay for ${estimate.year}.` : ` By my estimate you've paid enough for ${estimate.year}.`}`,
+          actions: [link("See the quarterly plan", "/taxes/self-employed")],
+          refs: {},
+        };
+      }
       return {
         body:
           check.why === "no_pay"
@@ -309,6 +319,7 @@ export function withholdingReply(view: WithholdingView): Reply {
         actions: [link("Add pay stub figures", `${PROFILE_HREF}#pay-stub`)],
         refs: {},
       };
+    }
     case "on_track":
       return {
         body: onTrackLine(estimate, check.refundCents),

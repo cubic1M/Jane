@@ -104,6 +104,8 @@ export async function loadSelfEmployed(
   // Spec step 173: rental profit has no tax taken out either, so it's on the quarterly plan.
   const active =
     freelanceIn > 0 ||
+    // A shop's card sales count too (taxes QA).
+    estimate.input.income.selfEmploymentCents > 0 ||
     estimate.input.income.rentalCents > 0 ||
     (profile?.incomeKinds.some((k) => k === "self_employed" || k === "rental") ?? false);
 

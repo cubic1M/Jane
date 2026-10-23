@@ -46,10 +46,16 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   attention: 1,
   // Spec step 204.
   lean: 1,
+  // Spec step 238.
+  books: 1,
   // Spec step 255: the top few suggestions of the day (src/config/suggestions.ts).
   suggestions: 3,
   // Spec step 240.
   steady: 1,
+  // Spec step 242: the big moves waiting for a tap, and the money date.
+  two: 3,
+  // Spec step 241.
+  tradeoffs: 1,
   // Spec step 257: one question about the person at a time.
   questions: 1,
   // Spec step 208.
@@ -83,8 +89,6 @@ export const MESSAGE_PRIORITY = {
   // Loans and debt (spec Phase Y, src/config/debt.ts).
   ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
-  // Spec step 96: the week's summary comes first, at the top of the week.
-  week: 1_001,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
   // Spec step 104: a cheaper policy for the same cover, after news (a change Jane noticed)
@@ -146,8 +150,8 @@ export const MESSAGE_PRIORITY = {
   change: 66,
   // Spec step 100: a life event spotted, once, before set-up suggestions.
   life_event: 67,
-  // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions; the
-  // weekly review comes right after the brief.
+  // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions. (The
+  // weekly review is a line of the Monday brief: ./sources/last-week.ts.)
   upkeep: 64,
   // Spec step 99: a policy found from payments, to confirm.
   found_policy: 63,
@@ -167,17 +171,23 @@ export const MESSAGE_PRIORITY = {
   attention: 30,
   // Spec step 204: income stopped; right after urgent things.
   lean: 92,
+  // Spec step 238: data that does not add up; a broken link is asked for at once.
+  books: 90,
   // Spec step 255: what Jane worked out for this person, just below a finding to decide.
   suggestions: 58,
   // Spec step 240: a steady paycheck, once a month.
   steady: 86,
+  // Spec step 242: a partner's big move waiting for this person's tap; the monthly money date.
+  two: 88,
+  two_date: 40,
+  // Spec step 241: goals that can't all be on time, until the person picks an order.
+  tradeoffs: 52,
   // Spec step 257: a question that unlocks suggestions, after those it would unlock.
   questions: 36,
   // Spec step 208: a charge that may not be theirs; as urgent as an alert.
   unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.
   report: 40,
-  review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
   // Spec step 129: the investor-profile questions, which later investment steps wait on.
@@ -224,6 +234,14 @@ export const MESSAGE_PRIORITY = {
   yearly_review: 43,
   // Spec step 231: the right investment in the right account (demo advice).
   location: 34,
+  // Spec step 232: the plan's fund list to confirm, and its cheapest mix (demo advice).
+  plan_menu: 35,
+  // Spec step 234: short-term money placed safely (demo advice).
+  short_term: 36,
+  values: 34,
+  family_file: 31,
+  // Spec step 235: a large deposit that isn't pay comes up high, with its question.
+  sudden_money: 52,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,
@@ -241,9 +259,18 @@ export const CHAT_HISTORY_HOURS = 48;
 
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
+// Sources that speak at most this often a month (spec step 273: taxes on autopilot), counting
+// what was posted this calendar month; a message at or above `urgentFrom` priority always goes,
+// and so does a question the person answers to keep their figures right (one carrying any of
+// `questionRefs`, like the tax profile's field or a new kind of income).
+export const CHAT_SOURCE_MONTHLY_LIMITS: Readonly<
+  Record<string, { limit: number; urgentFrom: number; questionRefs: readonly string[] }>
+> = {
+  taxes: { limit: 1, urgentFrom: 80, questionRefs: ["taxField", "incomeKind", "taxState"] },
+};
+
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
   "autopilot",
-  "review",
   "welcome",
   // Spec step 208: a charge that may not be theirs shouldn't wait for a quiet day; the source
   // itself brings up at most UNUSUAL_CHAT_MAX at a time.

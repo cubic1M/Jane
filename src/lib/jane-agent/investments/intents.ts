@@ -1,3 +1,5 @@
+import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
+
 // Questions about investments, understood by rules (spec step 128 on). Pure: the
 // normalized text in (./../intents.ts normalize), the topic out, or null when it isn't
 // about investments. Each investment step adds its topics here.
@@ -28,7 +30,18 @@ export type InvestmentTopic =
   | "property"
   | "costly_products"
   | "yearly_review"
-  | "location";
+  | "location"
+  | "plan_menu"
+  | "honest_performance"
+  | "short_term"
+  | "values"
+  | "family_file"
+  | "sudden_money"
+  // Spec step 297: the practice portfolio (Phase AW, Stage A).
+  | "practice_log"
+  | "practice_pause"
+  | "practice_resume"
+  | "backtest";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -38,6 +51,13 @@ export type InvestmentIntent = {
   // Spec step 158: a child's age and the kind of college, when the person said them.
   childAge?: number;
   collegeType?: "public" | "private";
+  // Spec step 297: which switch (the whole practice portfolio, or opportunities alone), and the
+  // risk level and year a replay was asked about.
+  which?: "all" | "opportunities";
+  level?: RiskLevel;
+  year?: number;
+  // "Why?" about the practice trades: every trade's reason, not just the first.
+  explain?: boolean;
 };
 
 const ACCOUNT_WORDS =
@@ -54,6 +74,8 @@ const HOLDINGS = new RegExp(
     `\\bwhat'?s in my (?:${ACCOUNT_WORDS}|investments?)\\b`,
     `\\bhow much (?:do i have |is there |money is |is |have i got )?(?:in|on) (?:my )?(?:${ACCOUNT_WORDS}|investments?)\\b`,
     `\\bhow (?:much|big) is my (?:${ACCOUNT_WORDS})\\b`,
+    "\\bhow much (?:money )?(?:do i have|have i got|have i|is|i have) invested\\b",
+    "\\b(?:total|all) (?:of )?(?:my )?investments\\b",
     "^(?:investments|holdings|portfolio|my 401\\(?k\\)?)$",
   ].join("|"),
 );
@@ -158,7 +180,73 @@ const YEARLY_REVIEW =
 const LOCATION =
   /\b(?:which|what) (?:account|accounts) (?:should|do i) (?:hold|keep|put) (?:my )?(?:bonds|stocks|funds)\b|\bwhere should i (?:hold|keep) (?:my )?(?:bonds|stocks)\b|\btax[- ]efficient (?:placement|investing|fund placement)\b|\bbonds? in (?:my )?(?:401\(?k\)?|ira|taxable)\b|\bright (?:investment|investments) in the right account\b/;
 
+// Spec step 232: the workplace plan's funds.
+const PLAN_MENU =
+  /\b(?:401\(?k\)?|403\(?b\)?|plan|workplace plan)(?:'s)? (?:fund (?:list|menu|options|lineup)|funds|investment options|menu)\b|\bwhich funds? (?:should|do) i (?:pick|choose|use|buy) (?:in|for) (?:my )?(?:401\(?k\)?|403\(?b\)?|plan)\b|\btarget[- ]date fund (?:fees?|vs|versus|or)\b|\bfee disclosure\b|\bcheapest (?:mix|funds?) (?:in|for|from) (?:my )?(?:401\(?k\)?|plan)\b/;
+
+// Spec step 233: how the money really did, against a benchmark.
+const HONEST =
+  /\b(?:beat|beating|beaten) the market\b|\bbenchmark\b|\bafter[- ](?:fees|tax|taxes) (?:return|performance)\b|\breal (?:return|performance)\b|\b(?:3|three|5|five)[- ]?year (?:return|performance)\b|\bwhy (?:did|have) my investments (?:underperform|lag)\w*\b/;
+
+// Spec step 234: money needed soon, and Treasury bills, CDs and I bonds.
+const SHORT_TERM =
+  /\bcd ladder\b|\bi[- ]bonds?\b|\bwhere (?:should|can) i (?:put|park|keep) (?:money|cash) (?:i|that i|for something i) (?:need|will need) (?:soon|in|within)\b|\bshort[- ]term (?:money|savings|investing)\b|\bsafest place (?:for|to) (?:money|cash)\b/;
+
+// Spec step 235: a bonus, an inheritance or a sale.
+const SUDDEN =
+  /\b(?:i )?(?:got|received|just got|came into|am getting|will get|inherited) (?:a |an |some )?(?:big |large )?(?:bonus|inheritance|windfall|lump sum|settlement)\b|\bwhat (?:should|do) i do with (?:a |my |the )?(?:bonus|inheritance|windfall|lump sum|settlement|money from (?:the sale|selling))\b|\bsudden money\b|\bwindfall\b|\bi (?:sold|am selling) (?:my |the )?(?:house|home|business|stock)\b/;
+
+// Spec step 236: leaving things out of funds, or leaning towards a theme.
+const VALUES =
+  /\b(?:esg|socially responsible|sustainable (?:investing|funds?)|fossil[- ]free|divest(?:ing)?|invest(?:ing)? (?:by|with|in line with|according to) my values)\b|\b(?:no|without|avoid|exclude|screen out)\s+(?:fossil fuels?|oil and gas|weapons|guns|tobacco)\b|\bclean energy (?:fund|investing)\b|\b(?:don'?t|do not) want to (?:invest|own|hold)[^.?!]{0,20}(?:fossil|oil|tobacco|weapons|guns)\b/;
+
+// Spec step 237: beneficiaries, transfer-on-death and the family file; also "do I need a will".
+const FAMILY_FILE =
+  /\bbeneficiar(?:y|ies)\b|\btransfer[- ]on[- ]death\b|\bwhat (?:would|will) my (?:family|spouse|kids|children) need\b|\bfamily file\b|\bif something (?:happens|happened) to me\b|\b(?:do i need|should i (?:have|make|get|write)) a (?:will|trust)\b|\bwills? and trusts?\b/;
+
+// Spec step 297: the practice portfolio. "Pause it" on its own is the practice portfolio's
+// switch; the autopilot has its own words ("pause the autopilot").
+const PRACTICE_LOG =
+  /\bwhat (?:did|have) (?:you|jane) (?:buy|bought|sell|sold|trade|traded)\b|\b(?:practice|paper) (?:portfolio )?(?:trades|log)\b|\bwhy did (?:you|jane) (?:buy|sell)\b/;
+const PRACTICE_PAUSE =
+  /^(?:please )?(?:pause|stop) (?:it|that|trading)$|\b(?:pause|stop) (?:the |my )?(?:practice|paper) (?:portfolio|trading|money)\b|\bpause (?:the |my )?opportunities\b/;
+const PRACTICE_RESUME =
+  /^(?:please )?(?:resume|unpause|restart) (?:it|that|trading)$|\b(?:resume|unpause|restart) (?:the |my )?(?:practice|paper) (?:portfolio|trading|money)\b|\bresume (?:the |my )?opportunities\b/;
+const BACKTEST =
+  /\bbacktests?\b|\bhow would (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? have (?:done|gone|performed)\b|\bhow did (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? (?:do|go|perform)\b/;
+const LEVEL_NAME = /\b(very low|very high|low|medium|high)\b/;
+const YEAR = /\b((?:19|20)\d\d)\b/;
+
+function practiceIntent(text: string): InvestmentIntent | null {
+  const base = { kind: "investments" as const, account: null };
+  const which = /\bopportunities\b/.test(text) ? ("opportunities" as const) : ("all" as const);
+  if (PRACTICE_PAUSE.test(text)) return { ...base, topic: "practice_pause", which };
+  if (PRACTICE_RESUME.test(text)) return { ...base, topic: "practice_resume", which };
+  if (PRACTICE_LOG.test(text)) {
+    return { ...base, topic: "practice_log", ...(/\bwhy\b/.test(text) ? { explain: true } : {}) };
+  }
+  if (!BACKTEST.test(text)) return null;
+  return { ...base, topic: "backtest", ...levelAndYear(text) };
+}
+
+// The risk level and year a replay question names, either or both ("what about very low",
+// "and in 2020").
+export function levelAndYear(text: string): { level?: RiskLevel; year?: number } {
+  const name = LEVEL_NAME.exec(text)?.[1];
+  const level = ([1, 2, 3, 4, 5] as const).find((l) => RISK_LEVELS[l].label.toLowerCase() === name);
+  const year = YEAR.exec(text)?.[1];
+  return { ...(level ? { level } : {}), ...(year ? { year: Number(year) } : {}) };
+}
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  const practice = practiceIntent(text);
+  if (practice) return practice;
+  if (FAMILY_FILE.test(text)) return { kind: "investments", topic: "family_file", account: null };
+  if (VALUES.test(text)) return { kind: "investments", topic: "values", account: null };
+  if (SUDDEN.test(text)) return { kind: "investments", topic: "sudden_money", account: null };
+  if (SHORT_TERM.test(text)) return { kind: "investments", topic: "short_term", account: null };
+  if (HONEST.test(text)) return { kind: "investments", topic: "honest_performance", account: null };
+  if (PLAN_MENU.test(text)) return { kind: "investments", topic: "plan_menu", account: null };
   if (LOCATION.test(text)) return { kind: "investments", topic: "location", account: null };
   if (YEARLY_REVIEW.test(text))
     return { kind: "investments", topic: "yearly_review", account: null };

@@ -143,7 +143,10 @@ export async function proveOn(
     const offeredTopics = offered.slice(0, 3).map((s) => s.key.split(":")[1]);
     const leads =
       offered.length > 0 &&
-      offered.slice(0, 3).every((s) => (brief?.body ?? "").includes(s.headline || s.title));
+      // The agenda may shorten the dollars ("a year" to "/yr"): the words before them lead.
+      offered
+        .slice(0, 3)
+        .every((s) => (brief?.body ?? "").includes((s.headline || s.title).split(",")[0]));
     const problems = [
       ...suggestions.filter((s) => s.mustNot).map((s) => `must-not suggestion ${s.key}`),
       ...suggestions.filter((s) => !s.onList).map((s) => `off-list suggestion ${s.key}`),

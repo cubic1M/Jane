@@ -10,6 +10,7 @@ import type { Snapshot } from "./snapshot";
 import { billsDueSoon, greeting, safeLine } from "./sources/brief";
 import { shortName } from "./sources/findings";
 import { suggestionCard } from "./sources/suggestions";
+import { lastWeekLine } from "./sources/last-week";
 import { inDays } from "./sources/source";
 import type { OfferedSuggestion } from "@/lib/suggestions";
 import type { ActionId, Candidate, MessageAction } from "./types";
@@ -77,6 +78,7 @@ export function agendaOf<T extends Planned>(
   held: readonly T[],
   snapshot: Snapshot,
   local: LocalTime,
+  now: Date,
 ): Agenda<T> {
   // Spec step 265: the nightly scan's suggestions come first, then everything else that needs
   // a yes (the order of the scan: its best first).
@@ -107,14 +109,18 @@ export function agendaOf<T extends Planned>(
     : null;
   const bills = billsDueSoon(snapshot);
   const safe = safeLine(snapshot, local.date);
+  // On the first day of the week, how last week went (the weekly review, in the brief).
+  const week = lastWeekLine(snapshot, local, now);
 
   const quiet = yes.length === 0 && others.length === 0 && bills.length === 0;
   const lines: string[] = [];
   if (quiet) {
     // A day with nothing to do: one short line.
     lines.push(`${greeting(local.hour)} Nothing needs you today.${safe ? ` ${safe}` : ""}`);
+    if (week) lines.push(week);
   } else {
     lines.push(safe ? `${greeting(local.hour)} ${safe}` : greeting(local.hour));
+    if (week) lines.push(week);
     if (overnight) lines.push(overnight);
     if (lead.length > 0) {
       lines.push(

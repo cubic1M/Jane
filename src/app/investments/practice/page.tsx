@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -9,6 +9,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { formatCents } from "@/lib/money";
 import { tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
+import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { pauseSwitch, runNow, startPracticePortfolio, undoLast } from "./actions";
 
@@ -49,6 +50,8 @@ async function Content({
   const { done: rawDone } = await searchParams;
   const done = Array.isArray(rawDone) ? rawDone[0] : rawDone;
   const advice = await adviceMode(user.id);
+  // Constant search (Phase AW): a cheap scan, after the page is sent; demo advice only.
+  if (advice) after(() => scanOnOpenQuietly(user.id));
   const practice = advice ? await loadPractice(user.id) : null;
   const log = practice ? await tradeLog(user.id) : [];
   return (
@@ -106,6 +109,9 @@ async function Content({
           <button type="submit" className={`${BUTTON} self-start`}>
             Start with practice money
           </button>
+          <Link href="/investments/practice/settings" className={`text-sm ${LINK}`}>
+            Set your goal, extra moves and what to avoid first →
+          </Link>
           <DemoAdviceLabel />
         </form>
       )}
@@ -128,12 +134,24 @@ async function Content({
                 </li>
               ))}
             </ul>
-            <div className="flex flex-wrap gap-2">
+            {/* The pause switch: a card in the chat opens it here (step 296). */}
+            <div id="pause" className="flex scroll-mt-20 flex-wrap gap-2">
               <form action={pauseSwitch}>
                 <input type="hidden" name="which" value="all" />
                 <input type="hidden" name="paused" value={practice.paused ? "0" : "1"} />
                 <button type="submit" className={OUTLINE}>
                   {practice.paused ? "Resume Jane" : "Pause Jane"}
+                </button>
+              </form>
+              <form action={pauseSwitch}>
+                <input type="hidden" name="which" value="opportunities" />
+                <input
+                  type="hidden"
+                  name="paused"
+                  value={practice.opportunitiesPaused ? "0" : "1"}
+                />
+                <button type="submit" className={OUTLINE}>
+                  {practice.opportunitiesPaused ? "Resume opportunities" : "Pause opportunities"}
                 </button>
               </form>
               <form action={runNow}>
@@ -148,6 +166,12 @@ async function Content({
               </form>
             </div>
             {practice.paused && <p className="text-sm">Paused: no trades until you resume.</p>}
+            {!practice.paused && practice.opportunitiesPaused && (
+              <p className="text-sm">Opportunities paused: Jane only keeps the model on target.</p>
+            )}
+            <Link href="/investments/practice/settings" className={`text-sm ${LINK}`}>
+              Settings: risk, goal, extra moves, what to avoid →
+            </Link>
             <DemoAdviceLabel />
           </section>
           <section className="flex flex-col gap-2">

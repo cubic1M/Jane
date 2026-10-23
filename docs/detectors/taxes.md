@@ -209,3 +209,114 @@ message is covered by `year_end_moves` for the one move a profile can show (a wo
 room); the losses to harvest and gifts in the same message need rows the sample people lack (above). The accountant link (222) shares what the others find, so it
 takes no detector of its own; the accountant's "people usually bring one" message is derived from the factors the other detectors
 already see, and has no dollar value.
+
+## Phase AT (round four)
+
+### Step 267: business owners' tax structure
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `s_corp_election` (covers `tax_business`) | self-paid; profit (deposits × 85% for a freelancer, × 15% for a shop) where an S corporation saves at least $1,000 after $2,700 of payroll and filing costs, from the same estimate engine | tax as a sole proprietor less tax as an S corporation (salary at the middle of 40% to 60% of profit, both halves of payroll tax, the 20% deduction on what's left, the costs) | income pattern and income as seen; capped at 55% for a shop (deposits are sales) and 65% for a freelancer (costs assumed) | soon from January 1 to March 15 (Form 2553), else later | Jo | Sam (profit too small), anyone with a salary and no business |
+| `home_office_deduction` | self-paid, no commercial or studio rent, so working from home is likely | 150 sq ft × $5, at their bracket plus the 15.3% on 92.35% self-employment tax | capped at 55%: where they work and whether it is on file are unseen | later | Sam | Jo (rents a shop), employees |
+| `vehicle_deduction` | self-paid and buying gas regularly (6+ fills) | 4,000 miles × the standard rate, at their bracket plus self-employment tax | capped at 45%: how much driving is for the business is unseen | later | Sam, Jo | people with no fuel purchases, employees |
+
+Where a person also has a job, the Social Security tax is already paid on that salary, which shrinks
+what an S corporation can save; the chat answer and tool use the full estimate (so they see it), the
+detector only reaches people whose pay is all self-employment. The qualified business income
+deduction is worked out in the same place (`structureFor`) and shown in the chat answer, the tool
+and `/taxes/business`; it is not a separate suggestion because the return already takes it.
+
+### Step 268: inherited money and gifts
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `inherited_ira` (covers `tax_inherited`) | an investment account whose name says "Inherited" or "Beneficiary" (custodians' wording); not from a spouse (told); the year the owner died (told) puts this year last | the 25% penalty on what's left after the deadline | income as seen; 70% (whether they are an exception to the 10-year rule is unseen) | now | nobody until told the year; Dan and Lena told 2016 | a spouse's IRA; any year before the last |
+| `inherited_ira_spread` (covers `tax_inherited`; demo advice, in `ADVICE_TOPICS`) | the same account, before the last year | taking it out evenly over the years left against all at the end (same engine as step 120) | income as seen; capped at 50% when the year the owner died is unknown (full 10 years assumed), 70% when told (required yearly withdrawals and other income unseen) | later; soon at 3 years left | Dan and Lena (an IRA from Lena's mother) | everyone else; a spouse's IRA; the last year; real accounts |
+
+Gifts over the annual exclusion ($19,000 a person) are a heads-up from the transactions (a message
+with no dollars: no tax is usually owed, the excess counts against a lifetime allowance), not a
+detector suggestion; the tool is covered by `inherited_ira` and `inherited_ira_spread`. The deadline is a fact for
+everyone; spreading the withdrawals is a recommendation, so only demo advice mode gets it. An inherited IRA is never counted as
+money to convert to a Roth. Rules, limits and states with their own death taxes are in
+`src/config/inheritance.ts` with sources; the chat gives facts and points to a tax professional or
+estate lawyer.
+
+### Step 269: health cover and taxes
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `ptc_repayment` (covers `tax_health`) | 3+ Marketplace premiums this year (payee names in `src/config/health-taxes.ts`); income read month by month (profit for the self-employed), projected at the pace of the last 3 months | the advance credit that would come back with the return: the advance (told, or what the income of the year's first 3 months allowed) less the credit at the projected income; all of it over 400% of the poverty line; no cap from 2026 | income pattern and income as seen; 50% when the advance is worked out, 75% when told | later; soon from July; now from October | Sam (a retainer client since July puts him over 400%) | anyone without a Marketplace plan; steady income |
+| `hsa_over_limit` (covers `tax_health`) | has an HSA; deposits into it this year (or out to one by name when none is linked), projected to December | the 6% excise a year on what's over (the tax on it isn't avoidable, so not counted) | the HSA fact; deposits seen; capped at 70% (cover taken from the household, an employer's deposits unseen) | now when already over, soon when the pace will be | Priya ($500 a month against the $4,400 self-only limit) | no HSA; under the limit; the catch-up from 55 counted |
+| `medical_deduction` (covers `tax_health`) | medical payments this year (not the vet) and health premiums (Medicare, supplement, drug plan, Marketplace) | what itemizing with the medical costs over 7.5% of income saves against the standard deduction (with the 65+ addition) at the person's bracket; property tax and gifts counted with it | income as seen; payments seen; capped at 60% (insurance may still pay some, income estimated) | later; soon from November | Ruth (dental implants and hearing aids this year) | anyone whose costs stay under the floor or whose standard deduction is still bigger |
+
+The three share one reading (`src/planning/health-taxes-read.ts`), used by the detectors, the chat's
+messages and answer, the `tax_health` tool and `/taxes/health`, so the figures match. The
+Marketplace figures (poverty line, the 2026 applicable percentage table, the 400% line, the end of
+the repayment cap) are in `src/config/health-taxes.ts` with sources; the HSA limits, the 7.5% floor
+and the 65+ standard deduction are in `src/config/tax-rates.ts`. Telling the Marketplace or an HSA
+provider is the person's: Jane contacts no one. What to do about the credit is demo advice.
+
+### Step 270: disasters and losses
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `disaster_relief` (covers `tax_disaster`) | the county (told, or named by the property tax payee) covered by a declaration in the person's disaster feed (the stand-in's samples for demo-bank people, none for real accounts) whose postponed date is ahead | the casualty loss over the floors at the person's bracket: repairs since the incident less FEMA or insurance paid back, less $100 and 10% of income (a qualified disaster: $500, no 10%); 0 when the floors swallow it | the county fact; capped at 70% (county matched by name, state unknown) and 55% when there is a loss (itemizing and what insurance still pays unseen) | now when a moved federal date is within 45 days, else soon | the Reyes family (Harris County flood: $36,200 of repairs, $5,000 from FEMA) | anyone without a feed or a county; a county no declaration covers |
+
+A postponement moves every tax deadline on the person's list from the incident date up to the
+postponed date (titles about taxes, IRS forms, estimated payments, IRA or HSA contributions, the IP
+PIN), not done ones or other deadlines: by itself at the levels that let Jane act (the tax autopilot),
+on the "Move my tax deadlines" tap at "ask first", once per disaster. The dates Jane works out
+(estimated payments, filing day with the prior year's IRA and HSA contributions) are shown moved.
+The loss is recorded once per disaster and insurance claim (`DisasterLoss`, unique key), so it is
+never counted twice. Rules and the sample feed are in `src/config/disasters.ts` with sources; swap
+the stand-in (`src/lib/disaster-feed`) for the IRS disaster relief page and FEMA's OpenFEMA API.
+
+### Step 271: taxes on retirement income
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `social_security_tax` (covers `tax_retirement`) | 3+ Social Security deposits in the last year; the taxable part (Publication 915's 50% and 85% lines) over the floor | the tax on the taxable part at the person's bracket, which nothing withholds without Form W-4V (risk) | deposits seen; capped at 55% (withholding unseen) | later; soon from October | Ruth ($13,136 of her $32,160 is taxable; her next IRA dollar is taxed at about 22%, not 12%) | anyone without Social Security |
+| `irmaa_watch` (covers `tax_retirement`) | near Medicare (told 63+, or near or in retirement), $100,000+ pre-tax, and the room under the next surcharge line (income of this year sets premiums two years ahead) under a fifth of the pre-tax savings, or already over a line | what crossing the next line adds a year to Part B and D for the household (risk) | income as seen; 50% without the age (Medicare then unknown), 70% with it | later; soon from October | Dan and Lena ($76,120 under the 2028 couple's line, with $575,513 pre-tax) | the young, the small savers, anyone with plenty of room |
+
+The Roth conversion detector now uses the real rate on a converted dollar for someone on Social
+Security (the bracket plus up to 85 cents more of benefits taxed): at Ruth's income that's about 22%,
+so a conversion saves nothing and is no longer raised. Surcharge lines and amounts are by year in
+`src/config/retirement-taxes.ts` (2025 and 2026 published; later years grown 2.5% a year and marked
+estimated). The order to draw from step 212 is tuned here (taxable first, pre-tax only as far as
+the room under the line allows, then Roth) and handed to the investing side's retirement paycheck
+(`RetirementIncomeView.taxTuned`, shown on `/investments/retirement-income` in demo advice mode).
+
+### Step 272: the return, checked before you file
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `draft_return_check` (covers `tax_draft_check`) | a confirmed draft return (uploaded to Documents as "Draft tax return", read, and confirmed by the person) whose check found something | the federal tax the findings change, added up: a bill to avoid (risk) when any line owes, else money back (saves) | 80%: the person confirmed what Jane read, and each line is checked against their collected forms, accounts and estimate | now (before filing) | anyone with a checked draft that has findings; in the samples, a demo draft (tests) | anyone without a confirmed draft, or whose draft checks out |
+
+The check, line by line (`src/planning/draft-return.ts`): income missing (interest, dividends, capital
+gains, business income, wages under the W-2s), figures that don't match the forms (withholding),
+deductions or credits left out (student loan interest, itemizing, education and care credits, the
+same checks as step 172) and estimated payments left off, each with its line and the tax it changes
+(nothing under $25). The demo draft (the stand-in reader for demo-bank people without a key) is
+built from the person's own forms with three mistakes planted, and the check finds all three. Jane
+never files or changes a draft: the cards point to the software or the preparer. The detector is
+seasonal by nature (drafts come in filing season), so the eight samples at their October date carry
+none; the tests attach a checked draft.
+
+### Step 273: taxes on autopilot, round three
+
+Every tax detector's suggestion is on the year's tax calendar (`/taxes/calendar`, the `tax_calendar`
+tool and the calendar answer): from the same scan as everything else, ranked with all of the
+person's suggestions (its place in that list is shown), and put in the month it matters most
+(`TAX_TOPIC_MONTH` in `src/config/tax-calendar.ts`: the S corporation election in February, the
+draft check in March, December's last chances; urgent ones this month, "soon" ones this month or
+next). A test fails for a tax detector with no month.
+
+In the chat, taxes speak at most once a calendar month (`CHAT_SOURCE_MONTHLY_LIMITS`), the most
+important message first; anything at priority 80 or above (a payment due, a letter from the IRS,
+an identity case, a draft to fix, a disaster postponement) still goes at once. Lines folded into
+the day's agenda count as said.
+
+The reach scoreboard (`/admin/reach`, "Taxes, tool by tool", `src/detectors/tax-reach.ts`) runs the
+eight sample people's year moved to each month, so seasonal detectors show when they reach whom.
+Every tax tool reaches a sample person, never suggests by itself (`TOOL_EXEMPT`), or needs something
+only the person can give first (`TAX_REACH_NEEDS_PERSON`: the draft return); a test holds this.

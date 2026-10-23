@@ -1,7 +1,6 @@
 import type { Holding, InvestmentTransaction, Security } from "plaid";
 import { accountId, addDays, demoAccounts, type DemoExtra, type DemoSeed } from "./demo-bank";
 import { isPersonSeed, personPositions } from "./demo-people";
-import { SAMPLE_EMPLOYER_PLANS, paydayContribution } from "./demo-employer-plans";
 import { demoPrice } from "./demo-prices";
 
 // What the demo bank's investment accounts hold (spec step 128), shaped like Plaid
@@ -92,6 +91,37 @@ const SECURITIES: Readonly<Record<string, DemoSecurity>> = {
     subtype: "mutual fund",
   },
   KDVX: { ticker: "KDVX", name: "Keystone US Dividend Index ETF", type: "etf", subtype: "etf" },
+  // Spec step 236: screened funds, for investing by your values.
+  KUFFX: {
+    ticker: "KUFFX",
+    name: "Keystone US Fossil-Free Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KUSEX: {
+    ticker: "KUSEX",
+    name: "Keystone US Screened Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KUCEX: {
+    ticker: "KUCEX",
+    name: "Keystone US Clean Energy Tilt Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KISEX: {
+    ticker: "KISEX",
+    name: "Keystone International Screened Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KBSEX: {
+    ticker: "KBSEX",
+    name: "Keystone Screened Bond Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
   CASH: { ticker: null, name: "Cash", type: "cash", subtype: "cash", cash: true },
 };
 
@@ -171,6 +201,11 @@ export const DEMO_PRICES: Readonly<Record<string, number>> = {
   KDVX: 41.25,
   // Spec step 162: the money market fund, a dollar a share.
   KMMXX: 1,
+  KUFFX: 61.1,
+  KUSEX: 33.8,
+  KUCEX: 27.6,
+  KISEX: 22.4,
+  KBSEX: 10.2,
 };
 
 // A demo security's price on `day` for a demo bank linked on `anchor`.
@@ -556,7 +591,7 @@ export function demoInvestmentTransactions(
   end: string,
   extras: readonly DemoExtra[] = [],
 ): InvestmentTransaction[] {
-  if (isPersonSeed(demo)) return personContributions(demo, start, end);
+  if (isPersonSeed(demo)) return [];
   return days(start, end).flatMap((day) =>
     eventsOn(day, demo.anchor, extras).map(
       (e): InvestmentTransaction =>
@@ -577,44 +612,6 @@ export function demoInvestmentTransactions(
         }) as InvestmentTransaction,
     ),
   );
-}
-
-// A sample person's 401(k) contributions each payday (the 1st and 15th), from their plan
-// (./demo-employer-plans.ts): theirs and the employer's match. Cash in only: their holdings are
-// what their definition says.
-function personContributions(demo: DemoSeed, start: string, end: string): InvestmentTransaction[] {
-  const plan = SAMPLE_EMPLOYER_PLANS[demo.person as keyof typeof SAMPLE_EMPLOYER_PLANS];
-  if (!plan) return [];
-  const { employee, match } = paydayContribution(plan);
-  return days(start, end)
-    .filter((day) => day.endsWith("-01") || day.endsWith("-15"))
-    .flatMap((day) =>
-      (
-        [
-          ["contribution", "EMPLOYEE CONTRIBUTION", employee],
-          ["match", "EMPLOYER MATCH", match],
-        ] as const
-      )
-        .filter(([, , amount]) => amount > 0)
-        .map(
-          ([key, name, amount]): InvestmentTransaction =>
-            ({
-              investment_transaction_id: `demo-${demo.seed}-inv-${key}-${day}`,
-              account_id: accountId(demo.seed, "retirement"),
-              security_id: null,
-              date: day,
-              name,
-              quantity: 0,
-              amount: -amount,
-              price: 0,
-              fees: null,
-              type: "cash",
-              subtype: "contribution",
-              iso_currency_code: "USD",
-              unofficial_currency_code: null,
-            }) as InvestmentTransaction,
-        ),
-    );
 }
 
 // A simulated order the person placed through the stand-in brokerage (spec step 133),
