@@ -1,4 +1,9 @@
-import { LENDER_PARTNER, REFI_CHECK_DAYS, type LoanProduct } from "@/config/debt";
+import {
+  LENDER_PARTNER,
+  REFI_CHECK_DAYS,
+  REFI_MIN_SAVING_CENTS,
+  type LoanProduct,
+} from "@/config/debt";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -197,7 +202,8 @@ export async function loadRefinance(
     if (v?.cashPayoffCents) {
       return [{ ...comparison, pick: null, cashPayoffCents: v.cashPayoffCents }];
     }
-    if (v?.turnedDown) {
+    // Only where an offer would otherwise be worth it: "the offers look cheaper, but...".
+    if (v?.turnedDown && comparison.offers.some((o) => o.savingCents >= REFI_MIN_SAVING_CENTS)) {
       return [{ ...comparison, pick: null, turnedDown: v.turnedDown }];
     }
     return [comparison];

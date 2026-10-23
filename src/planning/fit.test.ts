@@ -224,11 +224,30 @@ describe("a refinance or a consolidation", () => {
       const pick = r.options.find((o) => o.id === r.pick)!;
       expect(pick.paymentCents).toBeLessThanOrEqual(baseline.monthlyCents);
     }
+    // Comfortable: inside the tighter share, or no more than the payment they have now (a
+    // refinance that lowers it never makes it less comfortable; loans QA).
     for (const o of r.options.filter((x) => x.comfortable && x.id !== "keep")) {
-      expect(o.paymentShare!).toBeLessThanOrEqual(
-        FIT_COMFORT_SHARE.auto * FIT_TROUBLE_COMFORT_FACTOR,
-      );
+      expect(
+        o.paymentShare! <= FIT_COMFORT_SHARE.auto * FIT_TROUBLE_COMFORT_FACTOR ||
+          o.paymentCents <= baseline.monthlyCents,
+      ).toBe(true);
     }
+  });
+
+  it("picks a refinance that lowers the payment even when it's over the comfortable share", async () => {
+    // Chris's car: $12,800 at 17.90%, $462 a month on $2,420 of take-home (19%).
+    const chris = person({ debtTrouble: true, incomeCents: 242_000, creditScore: 560 });
+    const car = {
+      label: "your car loan",
+      balanceCents: 1_280_000,
+      aprBps: 1_790,
+      monthlyCents: 46_211,
+    };
+    const r = await refi(chris, car);
+    const pick = r.options.find((o) => o.id === r.pick)!;
+    expect(pick.id).not.toBe("keep");
+    expect(pick.paymentCents).toBeLessThanOrEqual(car.monthlyCents);
+    expect(pick.savesCents!).toBeGreaterThan(100_000);
   });
 
   it("counts the fee against the saving and says when it pays back", async () => {

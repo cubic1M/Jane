@@ -205,7 +205,10 @@ function score(input: FitInput, offer: LoanOffer): Scored {
   const comfortable =
     why === null &&
     paymentShare !== null &&
-    paymentShare <= comfortShare &&
+    // Within the comfortable share, or (loans QA) no more than they already pay for what this
+    // replaces: a refinance that lowers the payment never makes it less comfortable.
+    (paymentShare <= comfortShare ||
+      (baseline !== null && baseline !== undefined && paymentCents <= baseline.monthlyCents)) &&
     // Someone in trouble is never steered to a bigger payment than they have now.
     !(person.debtTrouble && baseline && paymentCents > baseline.monthlyCents);
   return {
