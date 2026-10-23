@@ -47,6 +47,32 @@ describe("upcomingBills", () => {
   });
 });
 
+describe("upcomingBills, as the person reads them (books QA)", () => {
+  it("names a card payment by what it is, and leaves card interest out", () => {
+    const bills = upcomingBills(
+      input({
+        transactions: [
+          ...monthly(4, 1549, NETFLIX),
+          ...monthly(4, 9000, {
+            description: "CARD PAYMENT THANK YOU",
+            merchantName: null,
+            pfcPrimary: "LOAN_PAYMENTS",
+            pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+          }),
+          ...monthly(4, 4640, {
+            description: "INTEREST CHARGE",
+            merchantName: null,
+            pfcPrimary: "BANK_FEES",
+            pfcDetailed: "BANK_FEES_INTEREST_CHARGE",
+          }),
+        ],
+      }),
+      31,
+    );
+    expect(bills.map((b) => b.merchant).sort()).toEqual(["Credit card payment", "Netflix"]);
+  });
+});
+
 describe("incomeStreams", () => {
   it("finds recurring pay, even when the amount varies a little", () => {
     const [pay] = incomeStreams(
