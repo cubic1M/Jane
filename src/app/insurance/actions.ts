@@ -23,7 +23,12 @@ import {
   dismissCoverEvent,
 } from "@/lib/insurance/cover-changes";
 import { parseCoverEventRef } from "@/lib/jane-agent/insurance/cover-words";
-import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insurance/negotiate";
+import {
+  NegotiationError,
+  callCarrier,
+  declineNegotiation,
+  negotiationsDue,
+} from "@/lib/insurance/negotiate";
 import { SavingError, applySaving, dismissSaving } from "@/lib/insurance/savings";
 import { RiskError, answerRisk } from "@/lib/insurance/risks";
 import {
@@ -82,6 +87,12 @@ export async function savePolicy(_previous: PolicyState, formData: FormData): Pr
     if (error instanceof PolicyError) return { message: error.message, input };
     throw error;
   }
+  // A policy just confirmed (or added) whose premium went up shows under "Renewals going up"
+  // at once, with its call, instead of after the night's run (gap audit: the "ask your insurer
+  // for a better rate" suggestion led here to nothing for a found policy).
+  await negotiationsDue(user.id).catch((error) =>
+    console.error("Renewal check after saving a policy failed", { error: String(error) }),
+  );
   refreshOthers();
   redirect(`/insurance?saved=${policyId ? "updated" : "added"}`);
 }
