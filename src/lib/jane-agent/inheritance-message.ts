@@ -42,7 +42,8 @@ export function giftsMessage(v: InheritanceView): Message | null {
   };
 }
 
-export function inheritanceReply(v: InheritanceView): Message {
+// The answer's lines, shared with /taxes/inherited so the page and the chat say the same.
+export function inheritanceLines(v: InheritanceView): string[] {
   const lines: string[] = [];
   for (const i of v.inherited) {
     lines.push(
@@ -66,6 +67,11 @@ export function inheritanceReply(v: InheritanceView): Message {
     "Inherited stocks and property get a new cost basis: their value on the day the owner died. Selling soon after has little or no gain to tax.",
   );
   lines.push(...v.estate);
+  return lines;
+}
+
+export function inheritanceReply(v: InheritanceView): Message {
+  const lines = inheritanceLines(v);
   return {
     body: `Here is what I can say about inherited money and gifts.\n${lines.map((l) => `• ${l}`).join("\n")}`,
     refs: {},

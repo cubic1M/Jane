@@ -163,6 +163,45 @@ async function TaxesContent() {
         </Link>
       </section>
 
+      <section aria-labelledby="retirement-heading" id="retirement" className={CARD}>
+        <h2 id="retirement-heading" className="text-xl font-semibold">
+          Taxes on retirement income
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          How much of your Social Security is taxable, Medicare&apos;s income surcharge two years
+          ahead, and the order to draw from your accounts.
+        </p>
+        <Link href="/taxes/retirement" className={LINK}>
+          See my retirement taxes
+        </Link>
+      </section>
+
+      <section aria-labelledby="inherited-heading" id="inherited" className={CARD}>
+        <h2 id="inherited-heading" className="text-xl font-semibold">
+          Inherited money and gifts
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          An inherited IRA&apos;s deadline, gifts that need a gift tax return, the step-up in basis
+          and the estate tax facts.
+        </p>
+        <Link href="/taxes/inherited" className={LINK}>
+          See inherited money and gifts
+        </Link>
+      </section>
+
+      <section aria-labelledby="disasters-heading" id="disasters" className={CARD}>
+        <h2 id="disasters-heading" className="text-xl font-semibold">
+          Disasters and losses
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          When the IRS postpones deadlines for your county, Jane moves yours, and keeps a loss
+          insurance didn&apos;t cover with the claim.
+        </p>
+        <Link href="/taxes/disasters" className={LINK}>
+          See disaster relief
+        </Link>
+      </section>
+
       <section aria-labelledby="calendar-heading" id="calendar" className={CARD}>
         <h2 id="calendar-heading" className="text-xl font-semibold">
           Your tax calendar
