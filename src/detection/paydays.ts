@@ -116,14 +116,6 @@ export function paychecksByEmployer(
   return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
 
-// How many paychecks a month each schedule brings, on average.
-export const PAYCHECKS_PER_MONTH: Record<PayFrequency, number> = {
-  WEEKLY: 52 / 12,
-  BIWEEKLY: 26 / 12,
-  SEMI_MONTHLY: 2,
-  MONTHLY: 1,
-};
-
 // Each employer's paychecks, oldest first; two deposits on one day (pay split between
 // accounts) are one paycheck.
 function byEmployer(input: DetectionInput) {
