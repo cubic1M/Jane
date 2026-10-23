@@ -151,9 +151,16 @@ function oneOffSpending(input: DetectionInput, streams: Stream[]): DetectionTran
 
 // A recent charge far above the account's typical charge. Needs enough history to know
 // what typical is.
-export function largeChargeAlerts(input: DetectionInput, streams: Stream[]): AlertCandidate[] {
+export function largeChargeAlerts(
+  input: DetectionInput,
+  streams: Stream[],
+  // Kinds of payment the person's profile makes expected (a business owner's payroll and
+  // suppliers, as the unusual-activity check uses them): never a large charge to worry about.
+  expected: ReadonlySet<string> = new Set(),
+): AlertCandidate[] {
   const byAccount = new Map<string, DetectionTransaction[]>();
   for (const t of oneOffSpending(input, streams)) {
+    if (t.pfcDetailed && expected.has(t.pfcDetailed)) continue;
     byAccount.set(t.accountId, [...(byAccount.get(t.accountId) ?? []), t]);
   }
   return [...byAccount.values()].flatMap((charges) => {
@@ -296,7 +303,7 @@ export function detectAlerts(
 ): AlertCandidate[] {
   const streams = buildStreams(input);
   return [
-    ...largeChargeAlerts(input, streams),
+    ...largeChargeAlerts(input, streams, context.expected),
     ...duplicateChargeAlerts(input),
     ...lowBalanceAlerts(candidates),
     ...feeAlerts(input),
