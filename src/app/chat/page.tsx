@@ -70,8 +70,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   }
   const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
-  // Constant search (Phase AW): a cheap practice scan, after the page is sent.
-  after(() => scanOnOpenQuietly(user.id));
+  // Constant search (Phase AW): a cheap practice scan, after the page is sent. Not for the side
+  // panel, which loads with every page: the chat's own page and Jane's runs do it.
+  if (!embed) after(() => scanOnOpenQuietly(user.id));
 
   return (
     <>
