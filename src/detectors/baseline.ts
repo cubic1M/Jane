@@ -31,6 +31,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "renters_insurance",
     "subscriptions",
     "trial_conversion",
+    // Detector coverage: sample data added.
+    "rent_increase",
   ],
   family: [
     "beneficiaries",
@@ -147,6 +149,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "short_term_cash",
     "social_security_timing",
     "umbrella",
+    // Detector coverage: sample data added.
+    "cosign_risk",
   ],
   retiree: [
     "bill_negotiation",
@@ -167,6 +171,8 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "short_term_cash",
     "subscriptions",
     "umbrella",
+    // Detector coverage: sample data added.
+    "inherited_ira",
   ],
   debt: [
     "auto_refinance",

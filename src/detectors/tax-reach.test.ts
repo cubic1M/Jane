@@ -57,7 +57,7 @@ describe("the tax reach scoreboard", () => {
     expect(who("tax_disaster")).toEqual(["family"]);
     expect(who("tax_retirement")).toEqual(["preretire", "retiree"]);
     expect(who("tax_business")).toEqual(["freelancer", "owner"]);
-    expect(who("tax_inherited")).toEqual(["preretire"]);
+    expect(who("tax_inherited")).toEqual(["preretire", "retiree"]);
     // Seasonal: the IP PIN only from January to April.
     const pin = of("tax_identity").reached[0];
     expect(pin.months.every((m) => ["Jan", "Feb", "Mar", "Apr"].includes(m))).toBe(true);
