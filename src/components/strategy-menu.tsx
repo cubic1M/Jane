@@ -94,7 +94,7 @@ function CryptoMenu() {
 
 const BUTTON = "h-9 self-start rounded-lg px-3 text-sm font-medium";
 const PRIMARY = `${BUTTON} bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300`;
-const SECONDARY = SECONDARY;
+const SECONDARY = `${BUTTON} border border-zinc-300 dark:border-zinc-700`;
 const followable = (id: MenuStrategyId): id is MenuStrategyId & StrategyChoice =>
   Object.hasOwn(STRATEGY_CHOICES, id);
 

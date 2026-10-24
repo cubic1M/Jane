@@ -13,5 +13,6 @@ export async function usePracticeStrategy(formData: FormData): Promise<void> {
   if (Object.hasOwn(STRATEGY_CHOICES, strategy)) {
     await savePreferences(user.id, { strategy }, "page");
   }
-  redirect("/investments#strategy-menu-heading");
+  // Back to the same card: the investing tree opens on More strategies.
+  redirect("/investments?focus=strategies:menu");
 }
