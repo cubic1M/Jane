@@ -2,10 +2,7 @@ import Link from "next/link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { formatCents } from "@/lib/money";
 import { itemId } from "@/lib/area-pages/insurance";
-import { insuranceCard } from "@/lib/insurance/need/card";
-import { coverEvents } from "@/lib/insurance/cover-changes";
-import { openedGaps } from "@/lib/insurance/need/rework";
-import { loadNeeds, optionsForNeed } from "@/lib/insurance/need/load";
+import { isShort, needKey, type Coverage } from "@/lib/area-pages/insurance-coverage";
 import type { Need } from "@/lib/insurance/need/types";
 import { pickCoverForm } from "./actions";
 
@@ -18,31 +15,6 @@ import { pickCoverForm } from "./actions";
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON =
   "inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800";
-
-export const needKey = (n: Pick<Need, "kind" | "policyId">) =>
-  `${n.kind}${n.policyId ? `-${n.policyId}` : ""}`;
-
-export const isShort = (n: Need) => (n.direction ? n.direction !== "ok" : n.gapCents > 0);
-
-export type Coverage = Awaited<ReturnType<typeof loadCoverage>>;
-
-// The needs, which of them a life event opened, and the options card for the one asked for.
-export async function loadCoverage(
-  userId: string,
-  { advice, selected, policyId }: { advice: boolean; selected: string; policyId: string },
-) {
-  const needs = (await loadNeeds(userId)) ?? [];
-  if (needs.length === 0) return { needs, opened: new Set<string>(), card: null, open: null };
-  const events = (await coverEvents(userId)).map((e) => e.event);
-  const opened = new Set(openedGaps(needs, events).map((g) => needKey(g.need)));
-  const open = needs.find((n) => n.kind === selected && (!policyId || n.policyId === policyId));
-  const found =
-    open && advice
-      ? await optionsForNeed(userId, open.kind, { policyId: policyId || undefined })
-      : null;
-  const card = found ? insuranceCard(found.set, found.need, advice) : null;
-  return { needs, opened, card, open: open ?? null };
-}
 
 // A need's item on the tree: "See options" (demo advice only), and the options card once asked.
 export function NeedDetail({

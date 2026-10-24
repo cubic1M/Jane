@@ -129,23 +129,28 @@ export const OPPORTUNITY_RULES: readonly OpportunityRule[] = [
 // - Dip buys: helped at Very low (+0.45 points of return) and High (+0.85); within 0.25 points
 //   elsewhere. Kept on everywhere.
 // - Tax-loss swaps: within 0.25 points at Very low (-0.01) and Low (-0.23); worse at Medium,
-//   High and Very high (below), so turned off there. Re-run the same day after swaps became
-//   watched daily (#483): still worse, by a little less. The replay is before tax: the
-//   harvested losses would lower a real tax bill, which it doesn't count. Worth another look
-//   with a tax model before Stage B.
+//   High and Very high, so turned off there. Re-run the same day after swaps became watched
+//   daily (#483): still worse, by a little less. Re-run again once everyday buys went to each
+//   kind's own fund and the swap partner only for the wash-sale window (buyFundFor): at Medium
+//   and Very high still a little worse on both counts; at High 0.18 points more return with a
+//   deeper worst drop, well under the 1% gain (RULE_TUNE_MIN_GAIN) a rule needs to be kept, so
+//   it stays off (below). The replay is before tax: the harvested losses would lower a real tax
+//   bill, which it doesn't count. Worth another look with a tax model before Stage B.
 // - New money, idle cash and cheaper twin funds (#483): no difference at any level (0.00 to
 //   +0.01 points): the autopilot would have invested the same cash the same day. Kept on.
 // - News ideas: not replayed. Headlines are stored only since step 293 (October 2026), so there
 //   is no past news to replay; they stay on at High and Very high, untested, at 1% a position.
 export type RuleOff = { rule: OpportunityRule; evidence: string };
-const HARVEST_OFF = (returnPoints: string, dropPoints: string): RuleOff => ({
+// `returnPoints` is the replay with swaps less the replay without them (negative: less return),
+// `dropPoints` how much deeper its worst drop was.
+const HARVEST_OFF = (returnPoints: number, dropPoints: number): RuleOff => ({
   rule: "tax_loss_harvest",
-  evidence: `on real history from Jan 4, 2016 to Oct 14, 2026, the replay with tax-loss swaps returned ${returnPoints} points less, with a worst drop ${dropPoints} points deeper, than the same replay without them (before tax).`,
+  evidence: `on real history from Jan 4, 2016 to Oct 14, 2026, the replay with tax-loss swaps returned ${Math.abs(returnPoints).toFixed(2)} points ${returnPoints < 0 ? "less" : "more"}, with a worst drop ${dropPoints.toFixed(2)} points deeper, than the same replay without them (before tax)${returnPoints < 0 ? "" : ": not the gain a rule needs to be kept"}.`,
 });
 export const OPPORTUNITY_RULES_OFF: Readonly<Partial<Record<RiskLevel, readonly RuleOff[]>>> = {
-  3: [HARVEST_OFF("0.46", "0.07")],
-  4: [HARVEST_OFF("0.40", "0.09")],
-  5: [HARVEST_OFF("0.44", "0.11")],
+  3: [HARVEST_OFF(-0.01, 0.03)],
+  4: [HARVEST_OFF(0.18, 0.04)],
+  5: [HARVEST_OFF(-0.04, 0.05)],
 };
 
 // The scan kinds that may flag at a level: drift always, and each opportunity rule not turned off.

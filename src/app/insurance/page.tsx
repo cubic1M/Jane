@@ -5,8 +5,10 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { ReactNode } from "react";
 import { AreaPage } from "@/components/area-page/area-page";
-import { insuranceTree, itemId } from "@/lib/area-pages/insurance";
-import { NeedDetail, NeedWorking, loadCoverage, needKey } from "./perfect-coverage";
+import { itemId } from "@/lib/area-pages/insurance";
+import { NeedDetail, NeedWorking } from "./perfect-coverage";
+import { needKey } from "@/lib/area-pages/insurance-coverage";
+import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
 import { ViewTracker } from "@/components/view-tracker";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
@@ -31,21 +33,12 @@ import {
   type Policy,
 } from "@/lib/insurance/policies";
 import { isQuotable } from "@/lib/insurance/partner";
-import { loadInsurance } from "@/lib/insurance/profile";
-import { listReadings } from "@/lib/insurance/readings";
-import { listCoverChanges } from "@/lib/insurance/cover-changes";
-import { listNegotiations } from "@/lib/insurance/negotiate";
-import { refreshSavings } from "@/lib/insurance/savings";
-import { listRisks, refreshRisks } from "@/lib/insurance/risks";
-import { loadFamily } from "@/lib/insurance/family";
-import { loadHealthYear } from "@/lib/insurance/health-year";
 import { healthYearLines } from "@/lib/jane-agent/insurance/health-year";
 import { riskQuestion } from "@/lib/jane-agent/insurance/risk-words";
-import { lowering, savingLine } from "@/lib/jane-agent/insurance/saving-words";
+import { lowering } from "@/lib/jane-agent/insurance/saving-words";
 import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
-import { partnerFor } from "@/lib/insurance/partner";
-import { coverBody, coverActions, coverEventRef } from "@/lib/jane-agent/insurance/cover-words";
-import { cardCover, conditionWords, limitWords } from "@/lib/insurance/card-cover";
+import { coverBody, coverActions } from "@/lib/jane-agent/insurance/cover-words";
+import { conditionWords, limitWords } from "@/lib/insurance/card-cover";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { autopilotOf } from "@/lib/autopilot";
@@ -211,97 +204,43 @@ async function InsuranceContent({
   };
   const now = new Date();
   const asOf = now.toISOString().slice(0, 10);
-  const [{ policies, household, gaps, advice }, autopilot, insuranceArea] = await Promise.all([
-    loadInsurance(user.id, { now }),
+  const [loaded, autopilot, insuranceArea] = await Promise.all([
+    loadInsuranceArea(user.id, {
+      now,
+      refresh: true,
+      need: one("need"),
+      policyId: one("policy"),
+    }),
     autopilotOf(user.id),
     // Spec step 141: what the Insurance area may do by itself.
     autopilotFor(user.id, "insurance", { now }),
   ]);
-  // Read after loadInsurance, which reads any policy document not read yet.
-  const [readings, cards, prepared, partner, negotiations] = await Promise.all([
-    listReadings(user.id, { status: "waiting" }),
-    cardCover(user.id),
-    listCoverChanges(user.id, { status: "prepared" }),
-    partnerFor(user.id),
-    listNegotiations(user.id),
-  ]);
-  // Spec step 196: looked at again whenever the page opens.
-  const savings = await refreshSavings(user.id);
-  // Spec step 198: the household's cover, what's shared with them and who is covered.
-  const family = await loadFamily(user.id);
-  const healthYear = await loadHealthYear(user.id);
+  const {
+    policies,
+    household,
+    gaps,
+    advice,
+    readings,
+    cards,
+    partner,
+    savings,
+    family,
+    healthYear,
+    risks,
+    renewals,
+    changeGroups,
+    payingTwice,
+    coverage,
+    policyById,
+    area,
+  } = loaded;
   const familyError = one("family");
-  // Spec step 197: the questions about how they live, read from their payments.
-  await refreshRisks(user.id);
-  const risks = await listRisks(user.id, { status: "asked" });
-  const policyById = (id: string) => policies.find((p) => p.id === id);
-  const renewals = negotiations.filter((n) => n.status !== "declined").slice(-3);
-  // Spec step 154: one group per life event.
-  const changeGroups = [
-    ...prepared
-      .reduce((groups, c) => {
-        const ref = coverEventRef(c.event, c.eventKey);
-        return groups.set(ref, [...(groups.get(ref) ?? []), c]);
-      }, new Map<string, typeof prepared>())
-      .entries(),
-  ];
-  const payingTwice = cards.duplicates.filter((d) => d.status === "new" || d.status === "shown");
   const saved = SAVED[one("saved")];
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
     fact.from === "you" && fact.value !== null ? String(fact.value) : "";
   const totalLine = premiumTotalLine(policies);
-  const coverage = await loadCoverage(user.id, {
-    advice,
-    selected: one("need"),
-    policyId: one("policy"),
-  });
   const result = one("picked");
-
-  // The tree (docs/design/area-pages.md): the same records, a few words and a figure each.
-  const area = insuranceTree({
-    asOf,
-    needs: coverage.needs.map((n) => ({ ...n, opened: coverage.opened.has(needKey(n)) })),
-    policies: policies.map((p) => ({
-      id: p.id,
-      kind: p.kind,
-      carrier: p.carrier,
-      status: p.status,
-      yearlyCents: yearlyPremium(p),
-      renewsOn: nextRenewal(p, asOf),
-    })),
-    gaps,
-    savings: savings.map((s) => ({ ...s, line: savingLine(s, policyById(s.policyId)) })),
-    renewals: renewals.map((n) => ({
-      ...n,
-      carrier: policyById(n.policyId)?.carrier ?? "Your insurer",
-      line: (n.status === "asked"
-        ? askCallBody(n, policyById(n.policyId))
-        : callResultBody(n, policyById(n.policyId))
-      ).split("\n")[0],
-    })),
-    changes: changeGroups.map(([ref, changes]) => ({
-      ref,
-      event: changes[0].event,
-      intro: coverBody(changes[0].event, changes, policies, partner !== null).split("\n")[0],
-      count: changes.length,
-    })),
-    readings,
-    payingTwice,
-    cards: cards.cards.map((c) => ({
-      accountId: c.accountId,
-      card: c.card,
-      benefits: c.benefits.length,
-    })),
-    household: family.rows.map((r) => ({ name: r.name, policies: r.policies.length })),
-    risks: risks.map((r) => ({ id: r.id, kind: r.kind, question: riskQuestion(r) })),
-    health: healthYear
-      ? {
-          metCents: healthYear.progress.deductibleMetCents,
-          deductibleCents: healthYear.plan.deductibleCents,
-        }
-      : null,
-  });
 
   // Each item's detail: its actions (and its own card), and what sits behind More.
   const details: Record<string, ReactNode> = {};

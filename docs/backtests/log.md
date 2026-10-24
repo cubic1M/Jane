@@ -214,3 +214,24 @@ For later (not built here):
 - **News ideas need stored past headlines** before they can be replayed.
 - **Per-person evaluation** (risk, worst drop they can stomach, goal date, monthly amount) is the
   next round, once the preference type lands (B1).
+
+## 2026-10-24: everyday buys go to each kind's own fund
+
+The practice autopilot used to buy whichever fund of a kind was held more, or the swap partner
+whenever the main fund was at a loss. So after a tax-loss swap, or in any dip, rebalances bought
+ITOT instead of VTI. Now `buyFundFor` (src/planning/practice-autopilot.ts) buys the kind's own
+fund. The partner is used only for the wash-sale window: when the own fund was sold at a loss
+lately (or is never bought), or when the person's losses are being harvested and the own fund is
+held at a loss (buying it would make a harvest within 30 days a wash sale). The dip buys and
+opportunity buys use the same rule.
+
+The rule replay re-run on the fixture (2016 to October 14, 2026), tax-loss swaps against none:
+
+| Level | Return points | Worst drop, points deeper | |
+| --- | --- | --- | --- |
+| Medium | −0.01 | 0.03 | stays off |
+| High | +0.18 | 0.04 | stays off: far under the 1% gain a rule needs, and a deeper drop |
+| Very high | −0.04 | 0.05 | stays off |
+
+`src/planning/rule-tuning.test.ts` now checks that each switched-off rule is never better on both
+return and worst drop, and that the evidence quotes the replay's own numbers.

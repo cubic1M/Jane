@@ -15,6 +15,7 @@ import { logAudit } from "@/lib/audit";
 import { autopilotFor, type SectorAutopilot } from "@/lib/sector-autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { readPeople } from "@/lib/insurance/family-rules";
 import {
   findTaxFacts,
   taxProfileView,
@@ -51,7 +52,7 @@ export async function loadTaxFacts(
 ): Promise<{ found: FoundFacts; stored: StoredTaxProfile | null }> {
   const db = scopedFor(userId, client);
   const since = new Date(Date.parse(`${iso(now)}T00:00:00Z`) - TAX_PROFILE_LOOKBACK_DAYS * DAY_MS);
-  const [transactions, accounts, user, newBaby, stored] = await Promise.all([
+  const [transactions, accounts, user, newBaby, stored, insurance] = await Promise.all([
     db.transactions.findMany({
       where: { pending: false, date: { gte: since } },
       select: {
@@ -67,6 +68,8 @@ export async function loadTaxFacts(
     client.user.findUnique({ where: { id: userId }, select: { state: true } }),
     db.lifeEvents.count({ where: { kind: "new_baby" } }),
     db.taxProfiles.findFirst({ select: PROFILE_SELECT }),
+    // The household listed for insurance: the children in it are the dependants Jane offers.
+    db.insuranceProfiles.findFirst({ select: { people: true } }),
   ]);
   return {
     found: findTaxFacts({
@@ -74,6 +77,7 @@ export async function loadTaxFacts(
       accounts,
       settingsState: user?.state ?? null,
       newBaby: newBaby > 0,
+      household: readPeople(insurance?.people),
     }),
     stored,
   };
@@ -176,10 +180,25 @@ export async function saveTaxAnswers(
 // "That's right" on what Jane found: saves what she showed as the person's answer.
 export async function confirmFound(
   userId: string,
-  field: Extract<ProfileField, "incomeKinds" | "state">,
+  field: Extract<ProfileField, "incomeKinds" | "state" | "dependants">,
   options: Options & { via: "chat" | "page" },
 ): Promise<TaxProfileView> {
   const view = await loadTaxProfile(userId, options);
+  // "Yes, these are my dependants": the children in the household listed for insurance.
+  if (field === "dependants") {
+    const d = view.dependants;
+    if (d.status !== "found" || d.childrenUnder17 === null || d.otherDependants === null) {
+      throw new TaxProfileError(
+        "There are no dependants to confirm. Add them on your tax profile.",
+      );
+    }
+    await saveTaxAnswers(
+      userId,
+      [{ field, childrenUnder17: d.childrenUnder17, otherDependants: d.otherDependants }],
+      options,
+    );
+    return loadTaxProfile(userId, options);
+  }
   if (field === "state") {
     if (view.state.status !== "found" || !view.state.value) {
       throw new TaxProfileError("There's no state to confirm. Pick one on your tax profile.");
