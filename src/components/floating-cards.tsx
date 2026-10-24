@@ -162,7 +162,8 @@ export function FloatingCards({
   const accent =
     mode === "pick"
       ? "border-emerald-700 bg-white dark:bg-zinc-950"
-      : "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-zinc-900";
+      : // Jane's own cards: inverted, so they never look like an answer.
+        "invert-scope border-2 border-zinc-500";
 
   return (
     <section
@@ -218,9 +219,9 @@ export function FloatingCards({
             <div className="flex items-start gap-2 pt-3 pl-3">
               <span
                 aria-hidden="true"
-                className={`mt-0.5 text-sm ${mode === "pick" ? "text-emerald-700" : "text-amber-700"}`}
+                className={`mt-0.5 shrink-0 text-xs font-semibold tracking-wider ${mode === "pick" ? "text-emerald-700" : ""}`}
               >
-                {mode === "pick" ? "◆" : "✦"}
+                {mode === "pick" ? "◆" : "[JANE]"}
               </span>
               <div className="min-w-0 flex-1">
                 {current.badge && (

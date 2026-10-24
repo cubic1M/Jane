@@ -276,7 +276,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
       why: `About ${dollars(s.estimate.adjustments.studentLoanInterestCents)} of student loan interest comes off your income. Your servicer's 1098-E shows the exact amount.`,
       // What taking it away would cost.
       estimateCents: -saved((i) => ({ ...i, studentLoanInterestCents: 0 })),
-      action: { kind: "link", label: "See tax forms", href: "/taxes#forms" },
+      action: { kind: "link", label: "See tax forms", href: "/taxes?focus=records:forms" },
     });
   }
 

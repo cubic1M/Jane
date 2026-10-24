@@ -13,14 +13,14 @@ Insurance is the first area built this way. This doc is the pattern every other 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ Insurance                         Checkup · Claims · …       │  h1, one line, nav links
-│ ◆ Renewal going up $240/yr  ◆ Card cover paid twice $96/yr   │  "What matters now": ≤ 3 chips
+│ ● Renewal going up $240/yr  ● Card cover paid twice $96/yr   │  "What matters now": ≤ 3 chips
 │ ┌────────────┐   ┌─────────────────────────┐   ┌───────────┐ │
-│ │ Insurance  │──▶│ ◆ Renewals going up   1 │──▶│ ◆ Car  +$240│
-│ │ 2 urgent · │   │ ▲ Your policies       3 │   └───────────┘ │  the area's tree
-│ │ 4 to look  │   │ ■ Your health plan    1 │                 │
+│ │ Insurance  │──▶│ ● Renewals going up   1 │──▶│ ● Car  +$240│
+│ │ 2 urgent · │   │ ◐ Your policies       3 │   └───────────┘ │  the area's tree
+│ │ 4 to look  │   │ ○ Your health plan    1 │                 │
 │ └────────────┘   └─────────────────────────┘                 │
 │ ┌─ Renewals going up ───────────────────────────────────────┐│
-│ │ ◆ Car                                         +$240/yr     ││  the detail of the one
+│ │ ● Car                                         +$240/yr     ││  the detail of the one
 │ │ Your car renewal goes up $240. Jane can call them.        ││  thing picked: summary,
 │ │ [Call them]                                   More ▸       ││  actions, "More"
 │ └────────────────────────────────────────────────────────────┘│
@@ -52,14 +52,13 @@ Long words never get cut down to fit: what doesn't fit moves into "More".
 
 ## Status
 
-Every node has one of three statuses, shown as a shape and spoken as words, never colour
-alone (`STATUS` in `src/components/tree/interactive-tree.tsx`):
+Every node has one of three statuses, shown as a glyph and spoken as words, never colour (`STATUS` in `src/components/tree/interactive-tree.tsx`):
 
 | Status | Shape | Words | Means |
 | --- | --- | --- | --- |
-| `good` | ■ | Good | Nothing to do |
-| `look` | ▲ | Needs a look | Worth a look; nothing is lost by waiting a week |
-| `act` | ◆ | Urgent | Money is being lost or cover is missing now |
+| `good` | ○ | Good | Nothing to do |
+| `look` | ◐ | Needs a look | Worth a look; nothing is lost by waiting a week |
+| `act` | ● (bold) | Urgent | Money is being lost or cover is missing now |
 
 A branch takes the worst status of its items (`worst()`), and its line says "N urgent" or
 "N things to look at". The root's line counts both, or says "All good".
@@ -128,6 +127,48 @@ opens a branch or picks an item. The detail region is `aria-live="polite"`.
 
 On a phone, or when a branch has many items, the canvas pans so the items fill the view and the
 branches are off to the left. An "All of <area>" button above the tree brings them back.
+
+## Visual language: monochrome terminal
+
+The founder's words: "the entire design of the website should be this ascii, cool, almost spyware
+like", and "remove the green on every part of the site. I want a black and white and gray color
+scheme". Jane looks like a surveillance console, in black, white and greys only, in light and
+dark mode alike.
+
+**Colour.** None. `src/app/globals.css` remaps every Tailwind palette (emerald, amber, red, sky,
+zinc and the rest, every shade from 50 to 950) to a grey of the same lightness. Existing classes
+stay, and contrast between shades stays as designed. New code uses `neutral-*` or `zinc-*`.
+`src/app/monochrome.test.ts` fails on three things:
+- a palette shade that isn't remapped;
+- a hex colour that isn't a grey (`#737373`; emails and icons included);
+- a file with more colour-named classes than it had in `src/app/monochrome-baseline.json`.
+
+**Meaning lives in shape, words and weight:**
+
+| What | How |
+| --- | --- |
+| Status | ● urgent (bold), ◐ worth a look, ○ fine, plus words for screen readers |
+| Up and down | ▲ / ▼ and a + / − sign |
+| Jane's own cards (suggestions) | Inverted (`.invert-scope`): white on black in light mode, black on white in dark mode, a heavy dashed border and a `[JANE]` tag, so they never look like an answer |
+| Primary button | Inverted: the text colour as its background (any `bg-emerald-600/700/800`) |
+| Secondary button | Bracketed outline: `[Ask me first]` |
+| Error | `role="alert"` with a heavy border and an `[ERROR]` tag |
+| Net worth line | The text colour on the page background, with a dashed baseline |
+
+**Terminal details:**
+- Monospace everywhere, square corners and dashed borders (already global).
+- Bracketed labels for actions: `[OPEN]`, `[ASK]`.
+- Small uppercase tags for states: `LIVE`, `SCANNING`, `3 FLAGS`.
+- `> ` before page titles and `# ` before section headings.
+- A blinking cursor on headings.
+- Tree edges drawn as dotted lines.
+- Tabular figures for numbers.
+- Optionally, a faint scanline or grid texture, and a short "decrypting" reveal of text on first load.
+
+**Never at the cost of reading:**
+- AA contrast for every grey pair (the axe tests check).
+- Effects never cover text.
+- All motion stops under `prefers-reduced-motion`.
 
 ## Jane's pop-ups: no cards in the chat
 

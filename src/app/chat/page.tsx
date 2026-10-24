@@ -155,7 +155,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
           ))}
         </ol>
       )}
-      {listed.length === 0 && stacked.length === 0 && (
+      {listed.length === 0 && stacked.length === 0 && !chat.scanning && (
         <p className="text-zinc-600 dark:text-zinc-400">
           Nothing new from me yet. I&apos;ll post here as soon as I spot something.
         </p>

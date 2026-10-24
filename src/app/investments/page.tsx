@@ -435,16 +435,16 @@ async function InvestmentsContent({
           more.
         </p>
         <nav aria-label="Investing pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/investments/practice" className={LINK}>
+          <Link prefetch={false} href="/investments/practice" className={LINK}>
             Practice portfolio
           </Link>
-          <Link href="/investments/review" className={LINK}>
+          <Link prefetch={false} href="/investments/review" className={LINK}>
             Portfolio review
           </Link>
-          <Link href="/investments/fees" className={LINK}>
+          <Link prefetch={false} href="/investments/fees" className={LINK}>
             Fees
           </Link>
-          <Link href="/investments/profile" className={LINK}>
+          <Link prefetch={false} href="/investments/profile" className={LINK}>
             Investor profile
           </Link>
         </nav>
