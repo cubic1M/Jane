@@ -8,7 +8,7 @@ import { RecordsButton } from "./records-button";
 // sources, what's still needed, and how long to keep each year's records.
 
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-const LINK = "text-emerald-700 underline";
+const LINK = "underline underline-offset-2";
 
 const day = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -82,7 +82,7 @@ export function RecordsSection({ view }: { view: AuditRecordsView }) {
                 </ul>
               </details>
               {i.needs.map((n) => (
-                <span key={n} className="text-amber-800 dark:text-amber-300">
+                <span key={n} className="font-medium">
                   Still needed: {n}
                 </span>
               ))}
