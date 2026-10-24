@@ -54,6 +54,29 @@ describe("past month-end balances", () => {
     ]);
   });
 
+  it("keeps an account at today's balance when its transactions don't explain it", () => {
+    // Only charges on the card, never its payments: working back, it would have owed less
+    // than nothing.
+    const out = pastMonthEndBalances(
+      [{ id: "card", type: "credit", currentBalanceCents: 5_000 }],
+      [{ accountId: "card", date: "2026-09-20", amountCents: 12_000 }],
+      "2026-10-23",
+      2,
+    );
+    expect(out).toEqual([
+      { accountId: "card", date: "2026-08-31", balanceCents: 5_000 },
+      { accountId: "card", date: "2026-09-30", balanceCents: 5_000 },
+    ]);
+    // A bank account worked back into a deep overdraft is the same.
+    const bank = pastMonthEndBalances(
+      [{ id: "chk", type: "depository", currentBalanceCents: 10_000 }],
+      [{ accountId: "chk", date: "2026-09-20", amountCents: -500_000 }],
+      "2026-10-23",
+      1,
+    );
+    expect(bank).toEqual([{ accountId: "chk", date: "2026-09-30", balanceCents: 10_000 }]);
+  });
+
   it("keeps untouched accounts at today's balance, and leaves out investments and no balance", () => {
     // Every bank account the headline counts is in every month, or the line drifts off it.
     expect(

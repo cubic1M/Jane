@@ -1,4 +1,4 @@
-import { NET_WORTH_MONTHS } from "@/config/net-worth";
+import { DEMO_HISTORY_LOWEST_BANK_CENTS, NET_WORTH_MONTHS } from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -43,11 +43,19 @@ export function pastMonthEndBalances(
     if (a.currentBalanceCents === null) continue;
     if (a.type !== "depository" && !DEBT_TYPES.has(a.type)) continue;
     const own = transactions.filter((t) => t.accountId === a.id);
-    const sign = DEBT_TYPES.has(a.type) ? -1 : 1;
-    for (const end of ends) {
+    const debt = DEBT_TYPES.has(a.type);
+    const sign = debt ? -1 : 1;
+    const worked = ends.map((end) => {
       const since = own.filter((t) => t.date > end).reduce((sum, t) => sum + t.amountCents, 0);
-      out.push({ accountId: a.id, date: end, balanceCents: a.currentBalanceCents + sign * since });
-    }
+      return { accountId: a.id, date: end, balanceCents: a.currentBalanceCents! + sign * since };
+    });
+    // Transactions that don't explain the balance (phone walk: a shop owner's card "owed"
+    // -$51,991 a year ago, and their net worth line started at -$174,403): today's balance.
+    const lowest = debt ? 0 : DEMO_HISTORY_LOWEST_BANK_CENTS;
+    const credible = worked.every((b) => b.balanceCents >= lowest);
+    out.push(
+      ...(credible ? worked : worked.map((b) => ({ ...b, balanceCents: a.currentBalanceCents! }))),
+    );
   }
   return out;
 }
