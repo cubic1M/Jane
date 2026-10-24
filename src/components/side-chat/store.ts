@@ -1,5 +1,6 @@
 import {
   DEFAULT_PANEL,
+  EMBED_PATH,
   panelKey,
   parsePanelState,
   type PanelState,
@@ -18,9 +19,19 @@ export type SideChatSnapshot = {
   panel: PanelState;
   sheet: SheetState;
   unread: number;
+  // What the framed chat shows: its newest messages, or what a /chat link asked for.
+  src: string;
 };
 
-const SERVER: SideChatSnapshot = { userId: null, panel: DEFAULT_PANEL, sheet: "closed", unread: 0 };
+const SERVER: SideChatSnapshot = {
+  userId: null,
+  panel: DEFAULT_PANEL,
+  sheet: "closed",
+  unread: 0,
+  src: EMBED_PATH,
+};
+// A /chat link opened the chat before the page said who is signed in: open it then too.
+let openOnRegister = false;
 let snapshot: SideChatSnapshot = SERVER;
 const listeners = new Set<() => void>();
 
@@ -58,7 +69,21 @@ export const sideChatStore = {
   // An app header is on screen: this person is signed in.
   register(userId: string) {
     if (snapshot.userId === userId) return;
-    set({ userId, panel: parsePanelState(read(panelKey(userId))), sheet: "closed", unread: 0 });
+    const panel = parsePanelState(read(panelKey(userId)));
+    set({
+      userId,
+      panel: openOnRegister && panel === "rail" ? "open" : panel,
+      sheet: openOnRegister ? "half" : "closed",
+      unread: 0,
+    });
+    openOnRegister = false;
+  },
+
+  // A /chat link (src/lib/side-chat.ts, openedChat): the chat comes into view showing `src`,
+  // docked beside the page on a computer, the half sheet on a phone.
+  openChat(src: string) {
+    set({ src, sheet: "half", panel: snapshot.panel === "rail" ? "open" : snapshot.panel });
+    if (!snapshot.userId) openOnRegister = true;
   },
 
   setPanel(panel: PanelState) {

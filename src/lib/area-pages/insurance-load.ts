@@ -32,23 +32,35 @@ export async function loadInsuranceArea(
   const asOf = now.toISOString().slice(0, 10);
   const { policies, household, gaps, advice } = await loadInsurance(userId, { now });
   // Read after loadInsurance, which reads any policy document not read yet.
-  const [readings, cards, prepared, partner, negotiations] = await Promise.all([
+  // Everything else at once: none of it needs another part (each step waits on the database).
+  const [
+    readings,
+    cards,
+    prepared,
+    partner,
+    negotiations,
+    savings,
+    family,
+    healthYear,
+    risks,
+    coverage,
+  ] = await Promise.all([
     listReadings(userId, { status: "waiting" }),
     cardCover(userId),
     listCoverChanges(userId, { status: "prepared" }),
     partnerFor(userId),
     listNegotiations(userId),
+    // Spec step 196: looked at again whenever the page opens.
+    refresh ? refreshSavings(userId) : listSavings(userId, { status: "offered" }),
+    // Spec step 198: the household's cover, what's shared with them and who is covered.
+    loadFamily(userId),
+    loadHealthYear(userId),
+    // Spec step 197: the questions about how they live, read from their payments.
+    (refresh ? refreshRisks(userId) : Promise.resolve()).then(() =>
+      listRisks(userId, { status: "asked" }),
+    ),
+    loadCoverage(userId, { advice, selected: need, policyId }),
   ]);
-  // Spec step 196: looked at again whenever the page opens.
-  const savings = refresh
-    ? await refreshSavings(userId)
-    : await listSavings(userId, { status: "offered" });
-  // Spec step 198: the household's cover, what's shared with them and who is covered.
-  const family = await loadFamily(userId);
-  const healthYear = await loadHealthYear(userId);
-  // Spec step 197: the questions about how they live, read from their payments.
-  if (refresh) await refreshRisks(userId);
-  const risks = await listRisks(userId, { status: "asked" });
   const policyById = (id: string) => policies.find((p) => p.id === id);
   const renewals = negotiations.filter((n) => n.status !== "declined").slice(-3);
   // Spec step 154: one group per life event.
@@ -61,7 +73,6 @@ export async function loadInsuranceArea(
       .entries(),
   ];
   const payingTwice = cards.duplicates.filter((d) => d.status === "new" || d.status === "shown");
-  const coverage = await loadCoverage(userId, { advice, selected: need, policyId });
 
   // The tree: the same records, a few words and a figure each.
   const area = insuranceTree({

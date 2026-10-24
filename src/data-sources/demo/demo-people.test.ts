@@ -74,9 +74,10 @@ describe("the eight sample people", () => {
     expect(
       demoAccounts(seedOf("equity")).find((a) => a.subtype === "savings")?.balances.current,
     ).toBeGreaterThan(80_000);
-    // The couple near retirement: two paychecks and a nearly paid-off home.
+    // The couple near retirement: two paychecks and a nearly paid-off home (its payment ends
+    // it about five years on).
     expect(demoLiabilities(seedOf("preretire"), THROUGH).mortgage?.[0].maturity_date).toMatch(
-      /^2031/,
+      /^2032/,
     );
     // Ruth: Social Security, a pension, IRA withdrawals, Medicare.
     for (const pattern of [/SSA TREAS/, /TEACHERS RETIREMENT/, /IRA DISTRIBUTION/, /MEDICARE/]) {

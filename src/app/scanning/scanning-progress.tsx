@@ -23,7 +23,7 @@ const HAND_OFF_MS = 0;
 // After this long, offer the report anyway rather than leave someone staring at a bar.
 const SLOW_MS = 25_000;
 
-export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/chat" }) {
+export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/home" }) {
   const router = useRouter();
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [percent, setPercent] = useState(0);
@@ -31,7 +31,7 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ch
   const stageSince = useRef<{ done: number; at: number } | null>(null);
   const done = stagesDone(progress);
   // Where this screen hands off: the chat once transactions are in, the report once found.
-  const opens = next === "/chat" ? done >= 2 : done >= 3;
+  const opens = next === "/home" ? done >= 2 : done >= 3;
 
   useEffect(() => {
     if (!opens) return;

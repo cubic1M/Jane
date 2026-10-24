@@ -101,6 +101,7 @@ export async function loadHubAreas(
                 payoffDate: true,
                 isOverdue: true,
                 pastDueCents: true,
+                originationPrincipalCents: true,
                 ytdInterestPaidCents: true,
                 description: true,
               },
