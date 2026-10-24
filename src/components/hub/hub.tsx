@@ -13,8 +13,8 @@ const CARD_LINK =
   "text-sm font-medium text-zinc-600 after:absolute after:inset-0 hover:text-emerald-700 dark:text-zinc-400";
 
 const dollars = (cents: number) => formatCents(cents).replace(/\.\d\d$/, "");
-// The hero: the net worth chart on top (the founder's "graph like Robinhood"), then safe to
-// spend and money found side by side.
+// The hero: the net worth chart on top, the biggest thing on Home (the founder's "graph like
+// Robinhood"), then safe to spend and money found side by side, smaller.
 export function HeroRow({
   hero,
   planItems,
@@ -36,7 +36,7 @@ export function HeroRow({
             </Link>
             <p
               data-hub-number="safe"
-              className={`text-4xl font-semibold tracking-tight tabular-nums ${safe.short ? "text-red-700" : ""}`}
+              className={`text-2xl font-semibold tracking-tight tabular-nums ${safe.short ? "text-red-700" : ""}`}
             >
               {safe.short ? `Short ${dollars(safe.cents)}` : dollars(safe.cents)}
             </p>
@@ -62,7 +62,7 @@ export function HeroRow({
           </Link>
           <p
             data-hub-number="saved"
-            className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl"
+            className="text-2xl font-semibold tracking-tight tabular-nums"
           >
             {saved.label === "Money found" && saved.cents === 0 && planItems > 0 ? (
               // As the report says it when nothing has a sure dollar figure yet.

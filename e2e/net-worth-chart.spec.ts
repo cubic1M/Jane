@@ -92,3 +92,51 @@ test("the net worth chart scrubs, changes range and returns to today", async ({
   );
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test("expanded, the chart marks what moved the money, each with its card", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  userId = await demoPerson(context, page, baseURL);
+  await page.goto("/home");
+
+  const chart = page.locator("[data-net-worth-chart]");
+  await expect(chart).toBeVisible();
+  // No markers until it's expanded: the hero stays a clean line.
+  await expect(chart.locator("[data-net-worth-event]")).toHaveCount(0);
+  const expand = chart.getByRole("button", { name: /EXPAND/ });
+  await expand.click();
+  await expect(chart.getByRole("button", { name: /CLOSE/ })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+
+  // A sample person's year has paydays, bills and purchases: a handful of days, never a crowd.
+  const marks = chart.locator("[data-net-worth-event]");
+  await expect(marks.first()).toBeVisible();
+  const count = await marks.count();
+  expect(count).toBeGreaterThan(2);
+  expect(count).toBeLessThanOrEqual(12);
+
+  // Its card: the date, what happened and ± how much, linked to where to see it.
+  const first = marks.first();
+  await expect(first).toHaveAttribute("aria-label", /^[A-Z][a-z]{2} \d{1,2}, \d{4}: .+/);
+  await first.focus();
+  const card = chart.locator("[data-net-worth-event-card]");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText(/\d{4}/);
+  await expect(card.getByRole("link").first()).toHaveAttribute(
+    "href",
+    /^\/(transactions|loans|investments|actions)/,
+  );
+  await expect(card).toContainText(/[+−]\$[\d,]+|\$[\d,]+ moved/);
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+
+  // A shorter range marks only its own days.
+  await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^1M/ }).click();
+  expect(await marks.count()).toBeLessThanOrEqual(count);
+});

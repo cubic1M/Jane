@@ -15,6 +15,7 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
+import { netWorthEvents } from "@/lib/hub/net-worth-events";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
@@ -88,6 +89,10 @@ async function HubContent() {
     netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0),
   ]);
   const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
+  // What moved it: the chart's events, from its first day.
+  const events = line[0]
+    ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
+    : [];
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
@@ -101,7 +106,7 @@ async function HubContent() {
       <HeroRow
         hero={heroView(top.hero)}
         planItems={home.plan.items}
-        chart={<NetWorthChart points={line} />}
+        chart={<NetWorthChart points={line} events={events} />}
       />
 
       <CashFlowStrip
