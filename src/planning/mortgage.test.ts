@@ -1,15 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PMI_ASK_LTV } from "@/config/debt";
 import { payoffPlan } from "./debt";
-import {
-  breakEvenMonths,
-  escrowChange,
-  extraPrincipal,
-  loanToValue,
-  percent,
-  pmiLetter,
-  pmiStatus,
-} from "./mortgage";
+import { breakEvenMonths, escrowChange, extraPrincipal, percent } from "./mortgage";
 
 describe("refinance break-even", () => {
   it("is the closing costs over the monthly saving, rounded up", () => {
@@ -24,41 +15,10 @@ describe("refinance break-even", () => {
   });
 });
 
-describe("PMI", () => {
-  it("compares the loan with the home's value", () => {
-    expect(loanToValue(31_240_000, 45_000_000)).toBeCloseTo(0.694, 3);
-    expect(loanToValue(31_240_000, null)).toBeNull();
+describe("percentages", () => {
+  // PMI itself is ./home-equity.ts's: one rule, against the home's original value.
+  it("rounds a share to a tenth of a percent", () => {
     expect(percent(0.6942)).toBe("69.4%");
-  });
-
-  it("can come off under 80% of the value; not before, and not without one", () => {
-    expect(pmiStatus(true, 31_240_000, 45_000_000)).toMatchObject({ kind: "can_ask" });
-    expect(pmiStatus(true, 31_240_000, 38_000_000)).toEqual({
-      kind: "not_yet",
-      ltv: 31_240_000 / 38_000_000,
-      balanceAtAskCents: Math.floor(38_000_000 * PMI_ASK_LTV),
-    });
-    expect(pmiStatus(true, 31_240_000, null)).toEqual({ kind: "unknown", why: "no_value" });
-    expect(pmiStatus(null, 31_240_000, 45_000_000)).toEqual({
-      kind: "unknown",
-      why: "not_reported",
-    });
-    expect(pmiStatus(false, 31_240_000, 45_000_000)).toEqual({ kind: "none" });
-  });
-
-  it("drafts a written request with the figures", () => {
-    const letter = pmiLetter({
-      name: "Sam Demo",
-      loanName: "Demo Home Loan",
-      balanceCents: 31_240_000,
-      homeValueCents: 45_000_000,
-      ltv: 31_240_000 / 45_000_000,
-    });
-    expect(letter).toContain("cancel the private mortgage insurance on my loan (Demo Home Loan)");
-    expect(letter).toContain(
-      "$312,400.00, which is 69.4% of my home's current value of about $450,000.00",
-    );
-    expect(letter.endsWith("Sam Demo")).toBe(true);
   });
 });
 
