@@ -194,8 +194,8 @@ understand, with users having the ability to click more details to see more."
 It floats as a card over the page or the chat, taking no room in the chat's list
 (`isPopup` in `src/lib/jane-agent/popups.ts`). The day's suggestions come first, then the day's
 brief, then the rest, newest first, with "+N" for the cards waiting behind. Her answers to what
-the person typed stay in the conversation: anything she sends within five minutes of their
-message is an answer (`ANSWER_WINDOW_MS`).
+the person typed stay in the conversation: her first message after theirs, within five minutes,
+is the answer (`ANSWER_WINDOW_MS`); anything else she posts meanwhile floats.
 
 **The card:**
 - **Headline:** eight words at most (`POPUP_HEADLINE_WORDS`; the detectors' `HEADLINE_MAX_WORDS`

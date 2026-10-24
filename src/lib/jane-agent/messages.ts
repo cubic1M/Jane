@@ -402,22 +402,24 @@ export async function openPopupMessages(
     take: POPUP_LIMIT * 3,
   });
   // An answer to what the person typed (a finding with Yes and No after "cancel hulu") stays in
-  // the conversation: only what Jane brings up on her own floats.
-  const typed = await scopedFor(userId, client).janeMessages.findMany({
-    where: {
-      kind: "user",
-      createdAt: { gte: new Date(now.getTime() - POPUP_DAYS * 24 * 60 * 60 * 1000), lte: now },
-    },
-    select: { createdAt: true },
+  // the conversation: Jane's first message after each thing they typed, within the window.
+  // Anything else she posts meanwhile (the scan finishing) is hers, and floats.
+  const since = new Date(now.getTime() - POPUP_DAYS * 24 * 60 * 60 * 1000);
+  const timeline = await scopedFor(userId, client).janeMessages.findMany({
+    where: { createdAt: { gte: since, lte: now } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, kind: true, createdAt: true },
   });
-  const answers = (row: { createdAt: Date }) =>
-    typed.some(
-      (t) =>
-        t.createdAt <= row.createdAt &&
-        row.createdAt.getTime() - t.createdAt.getTime() <= ANSWER_WINDOW_MS,
-    );
-  return rows.filter((r) => !answers(r)).map(toChatMessage);
+  const answers = new Set<string>();
+  timeline.forEach((m, i) => {
+    if (m.kind !== "user") return;
+    const next = timeline.slice(i + 1).find((n) => n.kind !== "user");
+    if (next && next.createdAt.getTime() - m.createdAt.getTime() <= ANSWER_WINDOW_MS) {
+      answers.add(next.id);
+    }
+  });
+  return rows.filter((r) => !answers.has(r.id)).map(toChatMessage);
 }
 
-// A message of Jane's this soon after the person typed is her answer to it.
+// Jane's first message this soon after the person typed is her answer to it.
 export const ANSWER_WINDOW_MS = 5 * 60 * 1000;
