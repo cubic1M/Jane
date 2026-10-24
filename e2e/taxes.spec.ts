@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { areaTree, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { landInChat } from "./chat-page";
 
 // Taxes (spec steps 118–127): what Jane found in the demo bank is shown as found, and the
 // person's answers are saved from the profile page. No serious accessibility problems.
@@ -37,32 +39,41 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taxes: 2026");
-  // Spec step 120: the estimate, from the demo bank's sample pay stubs.
+  // Spec step 120: the estimate, from the demo bank's sample pay stubs. The page is a tree
+  // (docs/design/area-pages.md): each section is the detail of the item picked.
+  await pickItem(page, "Taxes", "This year's numbers", "Your 2026 estimate");
   const estimate = page.getByRole("region", { name: "Your 2026 estimate" });
   await expect(estimate.getByText(/^Federal: a refund of about \$[\d,]+\.$/)).toBeVisible();
   await expect(estimate.getByText(/^California: /)).toBeVisible();
   await expect(estimate.getByText("Estimate", { exact: true })).toBeVisible();
   // Spec step 121: what to put on a new W-4, as labelled demo advice.
+  await pickItem(page, "Taxes", "This year's numbers", "Withholding");
   const withholding = page.getByRole("region", { name: "Withholding" });
   await expect(withholding.getByText("What to put on a new W-4")).toBeVisible();
   await expect(withholding.getByRole("note")).toHaveText(
     "Demo advice: sample data, not financial advice",
   );
   // Spec step 122: ways to pay less, each an estimate with its button.
-  const savings = page.getByRole("region", { name: "Ways to pay less" });
-  await expect(savings.getByRole("heading", { name: /into your 401\(k\)/ })).toBeVisible();
+  const savings = await pickItem(page, "Taxes", "Pay less tax", "Save more for retirement");
+  await expect(savings.getByText(/401\(k\)/).first()).toBeVisible();
   await expect(savings.getByRole("button", { name: "Remind me" })).toBeVisible();
+  await expect(savings.getByRole("note")).toHaveText(
+    "Demo advice: sample data, not financial advice",
+  );
   // Spec step 124: gains from the demo brokerage, and its wash sale.
+  await pickItem(page, "Taxes", "This year's numbers", "Investments");
   const investments = page.getByRole("region", { name: "Investments" });
   await expect(investments.getByText(/^Wash sale: PDIFX sold at a loss/)).toBeVisible();
+  await pickItem(page, "Taxes", "About you", "State");
   const profile = page.getByRole("region", { name: "Your tax profile" });
   await expect(profile.getByText("California")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it").first()).toBeVisible();
-  // Spec step 141: what the Taxes area may do by itself, as Settings has it.
+  // Spec step 141: what the Taxes area may do by itself, as Settings has it, below the tree.
+  await page.getByText("What Jane does by herself", { exact: true }).first().click();
   const byHerself = page.getByRole("region", { name: "What Jane does by herself" });
   await expect(byHerself).toContainText("Taxes is set to");
   await expect(byHerself).toContainText("Nothing is ever filed or signed without your tap.");
@@ -81,17 +92,19 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   expect(await axe(page)).toEqual([]);
 
   await page.goto("/taxes");
+  await pickItem(page, "Taxes", "About you", "How you file");
   await expect(profile.getByText("Head of household")).toBeVisible();
   await expect(profile.getByText("1 under 17, 0 other")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it")).toHaveCount(0);
   // Spec step 267: the business page is one click from /taxes.
-  await expect(
-    page.getByRole("region", { name: "Business taxes" }).getByRole("link", {
-      name: "See my business taxes",
-    }),
-  ).toHaveAttribute("href", "/taxes/business");
+  const cases = await pickItem(page, "Taxes", "Special cases", "Business taxes");
+  await expect(cases.getByRole("link", { name: "See my business taxes" })).toHaveAttribute(
+    "href",
+    "/taxes/business",
+  );
 
   // Spec step 119: the forms to expect, ticked off from the page.
+  await pickItem(page, "Taxes", "Records and forms", "Forms to expect");
   const forms = page.getByRole("region", { name: /Tax forms to expect/ });
   await expect(forms.getByText("ACME CORP PAYROLL")).toBeVisible();
   await forms.getByRole("button", { name: "I have it: W-2 from ACME CORP PAYROLL" }).click();
@@ -112,7 +125,7 @@ test("tax tags: Jane's tags, her questions, and tagging a work expense", async (
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes/tags");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tax tags: 2026");
@@ -155,7 +168,7 @@ test("state taxes: a mid-year move splits the estimate, each state with its sour
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes/profile#states");
   const where = page.locator("#states");
@@ -167,7 +180,8 @@ test("state taxes: a mid-year move splits the estimate, each state with its sour
   await expect(where.getByRole("status")).toHaveText("Saved. Your state estimate uses it now.");
   expect(await axe(page)).toEqual([]);
 
-  await page.goto("/taxes");
+  // An old link to the section opens its item on the tree.
+  await page.goto("/taxes#estimate");
   const estimate = page.getByRole("region", { name: "Your 2026 estimate" });
   await expect(estimate.getByText(/^California and New York: /)).toBeVisible();
   await estimate.getByText("How Jane worked it out").click();
@@ -202,11 +216,14 @@ test("the tax plan: moves by deadline, and one on the deadlines with a tap", asy
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
+  // Jane's messages link to /taxes#plan: it opens the plan's branch on the tree.
   await page.goto("/taxes#plan");
-  const plan = page.getByRole("region", { name: /tax plan$/ });
-  await expect(plan.getByRole("heading", { name: "File your return" })).toBeVisible();
+  await expect(
+    areaTree(page, "Taxes").locator('[role="treeitem"][aria-level="2"]', { hasText: "Due soon" }),
+  ).toHaveAttribute("aria-expanded", "true");
+  const plan = await pickItem(page, "Taxes", "Due soon", "first-open");
   const add = plan.getByRole("button", { name: /^Add to my deadlines: / }).first();
   await expect(add).toBeVisible();
   await add.click();
@@ -227,7 +244,7 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes/profile#family");
   const form = page.locator("#family");
@@ -264,7 +281,7 @@ test("a sample draft return to check, for someone with no draft of their own", a
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Spec step 272, reached without a file: the stand-in's sample draft, read for the person.
   await page.goto("/taxes/draft");
@@ -287,16 +304,30 @@ test("retirement income, inherited money and disasters each have a page from /ta
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Spec steps 271, 268 and 270: each reached from /taxes, with the chat's own lines.
-  for (const [link, heading, section] of [
-    ["See my retirement taxes", "Taxes on retirement income", /^Social Security: /],
-    ["See inherited money and gifts", "Inherited money and gifts", /new cost basis/],
-    ["See disaster relief", "Disasters and losses", /county|County/],
+  for (const [item, link, heading, section] of [
+    [
+      "Retirement income",
+      "See my retirement taxes",
+      "Taxes on retirement income",
+      /^Social Security: /,
+    ],
+    [
+      "Inherited money and gifts",
+      "See inherited money and gifts",
+      "Inherited money and gifts",
+      /new cost basis/,
+    ],
+    ["Disasters and losses", "See disaster relief", "Disasters and losses", /county|County/],
   ] as const) {
     await page.goto("/taxes");
-    await page.getByRole("link", { name: link }).click();
+    await (
+      await pickItem(page, "Taxes", "Special cases", item)
+    )
+      .getByRole("link", { name: link })
+      .click();
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
     await expect(page.getByText(section).first()).toBeVisible();
     expect(await axe(page)).toEqual([]);

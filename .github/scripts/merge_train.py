@@ -15,7 +15,9 @@ import os
 import subprocess
 import sys
 
-REQUIRED = ("Lint, typecheck and unit tests", "Secret scan")
+# The checks main's ruleset requires. "End-to-end tests" passes when its shards did, or when
+# a PR without the "e2e" label skipped them.
+REQUIRED = ("Lint, typecheck and unit tests", "Secret scan", "End-to-end tests")
 FAILED = {"FAILURE", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE"}
 UP_TO_DATE = {"BLOCKED", "UNSTABLE", "CLEAN", "HAS_HOOKS"}
 

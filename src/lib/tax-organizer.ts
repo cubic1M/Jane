@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { INCOME_KINDS, UNTAGGED, isTaxTagKind, type TaxTagKind } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadEquityIncome } from "@/lib/equity-income";
@@ -35,6 +36,13 @@ export async function loadOverrides(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<TagOverrides> {
+  return client === defaultClient ? overridesOnce(userId) : overridesFrom(userId, client);
+}
+
+// Read once per server render (React's cache): /taxes's sections each ask (31 times).
+const overridesOnce = cache((userId: string) => overridesFrom(userId, defaultClient));
+
+async function overridesFrom(userId: string, client: PrismaClient): Promise<TagOverrides> {
   const db = scopedFor(userId, client);
   const since = new Date(Date.now() - 400 * 86_400_000);
   const [rows, profile, freelance] = await Promise.all([

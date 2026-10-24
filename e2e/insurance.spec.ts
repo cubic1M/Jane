@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
+import { landInChat } from "./chat-page";
 
 // Insurance (spec step 102): a person says they rent, sees the missing renters cover, adds
 // their policy and the gap goes. The page is the area tree (docs/design/area-pages.md): each
@@ -72,7 +73,7 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   // The chat opens once the first brief is in; Jane shops the insurance in the work after it.
   await waitForFullScan(userId!);
 
@@ -138,7 +139,7 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   // The chat opens once the first brief is in; Jane shops the insurance in the work after it.
   await waitForFullScan(userId!);
   // Jane's pick is made by the first scan's work after the brief, which can finish a little
@@ -234,7 +235,7 @@ test("a demo-bank person sizes, applies for and buys life cover, a tap at a time
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/insurance/life");
   await page.getByLabel("How many people depend on your income?").selectOption("2");
@@ -268,7 +269,7 @@ test("a move gets its insurance changes ready, made on one tap (step 154)", asyn
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/life-events");
   await page.getByRole("button", { name: "Start the moving checklist" }).click();
@@ -305,7 +306,7 @@ test("Jane files a small claim only after the person checks it (step 155)", asyn
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/insurance/claims");
   await page.getByLabel("It's on").selectOption({ label: "GEICO car insurance" });
@@ -341,7 +342,7 @@ test("a demo-bank person pays less for the same cover with one tap (step 196)", 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/insurance");
   // A higher deductible lowers the cover, so it says what a claim would cost.
@@ -384,7 +385,7 @@ test("a demo-bank person answers a question about how they live, and a yes opens
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/insurance");
   const uber = await pickItem(
@@ -457,7 +458,7 @@ test("a demo-bank person sees their health plan's year and a dispute card (step 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/insurance");
   const year = await pickItem(
@@ -483,7 +484,7 @@ test("a demo-bank person goes from a gap to a picked option, and it reaches the 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   await waitForFullScan(userId!);
   await page.goto("/insurance");
   await pickItem(page, "Insurance", "Your perfect coverage", "first-open");

@@ -29,60 +29,64 @@ export async function homeSummary(
   const accounts = await db.accounts.count();
   if (accounts === 0) return null;
 
-  const [found, saved, waiting, openActions, open, input, lastSync, lastImport, alerts, budgets] =
-    await Promise.all([
-      moneyFound(userId, { client }),
-      savedToDate(userId, { client }),
-      db.actions.findMany({
-        where: { status: "waiting_on_user" },
-        select: { id: true, userTodo: true, decision: { select: { cardSnapshot: true } } },
-        orderBy: { updatedAt: "asc" },
-      }),
-      db.actions.count({
-        where: { status: { in: ["queued", "in_progress", "waiting_on_user"] } },
-      }),
-      // Jane's plan: every open finding is an item on it.
-      db.findings.findMany({
-        where: { status: { in: ["new", "shown"] } },
-        select: { status: true, annualSavingsCents: true, type: true, evidence: true },
-      }),
-      loadDetectionInput(userId, { client, now }),
-      db.plaidItems.findFirst({
-        where: { lastSyncedAt: { not: null } },
-        orderBy: { lastSyncedAt: "desc" },
-        select: { lastSyncedAt: true },
-      }),
-      db.transactions.findFirst({
-        where: { source: "csv" },
-        orderBy: { createdAt: "desc" },
-        select: { createdAt: true },
-      }),
-      unreadAlertCount(userId, { client }),
-      db.budgets.findMany({ select: { category: true, amountCents: true } }),
-    ]);
-  const janeDid = await whatJaneDid(userId, { client, now });
-  const [goals, plan] = await Promise.all([
+  // One round of reads, then one more for what needs the detection input: each step waits on the
+  // database, so independent reads go together (speed pass, 2026-10-24).
+  const [
+    found,
+    saved,
+    waiting,
+    openActions,
+    open,
+    input,
+    lastSync,
+    lastImport,
+    alerts,
+    budgets,
+    janeDid,
+    goals,
+    plan,
+  ] = await Promise.all([
+    moneyFound(userId, { client }),
+    savedToDate(userId, { client }),
+    db.actions.findMany({
+      where: { status: "waiting_on_user" },
+      select: { id: true, userTodo: true, decision: { select: { cardSnapshot: true } } },
+      orderBy: { updatedAt: "asc" },
+    }),
+    db.actions.count({
+      where: { status: { in: ["queued", "in_progress", "waiting_on_user"] } },
+    }),
+    // Jane's plan: every open finding is an item on it.
+    db.findings.findMany({
+      where: { status: { in: ["new", "shown"] } },
+      select: { status: true, annualSavingsCents: true, type: true, evidence: true },
+    }),
+    loadDetectionInput(userId, { client, now }),
+    db.plaidItems.findFirst({
+      where: { lastSyncedAt: { not: null } },
+      orderBy: { lastSyncedAt: "desc" },
+      select: { lastSyncedAt: true },
+    }),
+    db.transactions.findFirst({
+      where: { source: "csv" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+    unreadAlertCount(userId, { client }),
+    db.budgets.findMany({ select: { category: true, amountCents: true } }),
+    whatJaneDid(userId, { client, now }),
     listGoals(userId, { client, now }),
     // The year plan as last kept (spec step 205): what this month has room to save.
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
   ]);
   // The person's own day, as the bills and safe to spend read it (src/lib/today.ts).
   const asOf = input.asOf;
-  const budget =
-    budgets.length === 0
-      ? null
-      : budgetSummary(
-          await loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
-          budgets,
-          asOf,
-        );
-  // Bills and deadlines from the one coming-up source, reusing the transactions loaded above.
-  const { bills, deposits, deadlines } = await loadComingUp(userId, {
-    client,
-    now,
-    days: COMING_UP_DAYS,
-    input,
-  });
+  const [budgetRows, { bills, deposits, deadlines }] = await Promise.all([
+    budgets.length === 0 ? null : loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+    // Bills and deadlines from the one coming-up source, reusing the transactions loaded above.
+    loadComingUp(userId, { client, now, days: COMING_UP_DAYS, input }),
+  ]);
+  const budget = budgetRows === null ? null : budgetSummary(budgetRows, budgets, asOf);
 
   // Yearly bills (spec step 70): this month's set-aside is its own line, so a "Yearly
   // bills" goal isn't counted again under goals.

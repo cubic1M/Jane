@@ -10,6 +10,7 @@ import {
 } from "@/config/portfolios";
 import {
   NEWS_LOOKBACK_DAYS,
+  rulesOnAt,
   SCAN_HISTORY_DAYS,
   SCAN_KINDS,
   type ScanKind,
@@ -27,6 +28,7 @@ import {
   violates,
 } from "./practice-autopilot";
 import { apply, type LedgerState } from "./practice-ledger";
+import { themeExits } from "./themes";
 import { scanOpportunities } from "./practice-opportunities";
 import { DEFAULT_PREFERENCES, type PracticePreferences } from "./practice-preferences";
 import {
@@ -391,18 +393,24 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
       const recent = pastTrades.filter((t) => t.side === "sell" && t.placedAt >= since);
       const blocked = washBlocked(recent, today);
       for (const t of MODEL_TICKERS) if (!prices[t]) blocked.add(t);
-      const plan = planTrades({
-        level: profile.level,
-        state,
-        prices,
-        paused: false,
-        tradesToday,
-        blocked,
-        weights: profile.weights,
-        avoid: new Set(profile.avoid),
-        cashBufferCents: profile.cashBufferCents,
-        limits: profile.limits,
-      });
+      const exits = themeExits(state, prices, pastTrades, today);
+      const plan = [
+        ...exits,
+        ...planTrades({
+          level: profile.level,
+          state,
+          prices,
+          paused: false,
+          tradesToday: tradesToday + exits.length,
+          blocked,
+          weights: profile.weights,
+          avoid: new Set(profile.avoid),
+          cashBufferCents: profile.cashBufferCents,
+          limits: profile.limits,
+          harvesting:
+            profile.harvestLosses && (rules ?? rulesOnAt(profile.level)).has("tax_loss_harvest"),
+        }),
+      ];
       // Suggest only: the plan is shown, never placed.
       if (profile.trades)
         for (const t of sellsFirst(plan)) if (!refusedByPreferences(profile, t)) place(t, t.rule);
