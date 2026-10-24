@@ -19,6 +19,7 @@ import { demoPracticeChangeDay } from "@/profile/sample-practice";
 import { startPractice } from "./portfolio";
 import { questionnaireLevel, savePreferences } from "./preferences";
 import { runPracticeDay } from "./scan";
+import { postThemeAlertsSafely } from "./theme-alerts";
 
 // A sample person's practice portfolio, started by Jane at their first scan (Phase AW, Stage A).
 // For a Try Jane visitor the bot, its strategy and its ideas are there from the first screen,
@@ -112,7 +113,7 @@ export async function startDemoPractice(
 export async function replayDemoPractice(
   userId: string,
   plan: DemoPracticePlan,
-  { client = defaultClient }: Pick<Options, "client"> = {},
+  { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {
   const save = saveFor(userId, client);
   const pending = [...plan.pending];
@@ -127,6 +128,8 @@ export async function replayDemoPractice(
       if (run?.scan.scanned) trades += run.scan.flags.reduce((s, f) => s + f.trades, 0);
     }
   });
+  // A news theme's idea from the last day goes out as an alert, now, not on the past days.
+  await postThemeAlertsSafely(userId, { client, now });
   return trades;
 }
 
@@ -138,6 +141,6 @@ export async function ensureDemoPractice(
   if (!(await adviceMode(userId, { client }))) return { started: false, why: "not_demo" };
   const plan = await startDemoPractice(userId, { client, now });
   if (!plan) return { started: false, why: "exists" };
-  const trades = await replayDemoPractice(userId, plan, { client });
+  const trades = await replayDemoPractice(userId, plan, { client, now });
   return { started: true, level: plan.level, days: plan.days.length, trades };
 }

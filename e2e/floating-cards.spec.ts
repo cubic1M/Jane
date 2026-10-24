@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
+import { landInChat } from "./chat-page";
 
 // The day's suggestions as floating cards over the chat (founder request): one at a time, a
 // card above the page and not in it, a short card with Yes and Not now, More details already
@@ -31,7 +32,7 @@ test("suggestions float over the chat one at a time, and every tap answers at on
     if (page.url().endsWith("/connect")) {
       await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
     }
-    await expect(page).toHaveURL("/chat", { timeout: 15_000 });
+    await landInChat(page, 15_000);
   }).toPass({ timeout: 90_000 });
   await waitForFullScan(user.userId);
   await page.reload();

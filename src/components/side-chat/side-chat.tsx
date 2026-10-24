@@ -1,10 +1,10 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SIDE_CHAT_MIN_WIDTH_PX, UNREAD_POLL_MS } from "@/config/side-chat";
 import {
-  EMBED_PATH,
+  openedChat,
   isFrameMessage,
   panelShowsOn,
   sheetShare,
@@ -85,7 +85,7 @@ function UnreadDot({ count }: { count: number }) {
 }
 
 export function SideChat() {
-  const { userId, panel, sheet, unread } = useSideChat();
+  const { userId, panel, sheet, unread, src } = useSideChat();
   const pathname = usePathname();
   const router = useRouter();
   const wide = useWide();
@@ -109,6 +109,15 @@ export function SideChat() {
     velocity: number;
   } | null>(null);
   const mountFrame = idle && shows && (inView || loaded);
+  // Opened from a /chat link (src/lib/side-chat.ts): the chat comes into view showing what the
+  // link asked for, and the address is tidied so a reload doesn't open it again.
+  const search = useSearchParams();
+  useEffect(() => {
+    const opened = openedChat(window.location.search, window.location.hash);
+    if (!opened) return;
+    sideChatStore.openChat(opened.src);
+    window.history.replaceState(null, "", `${window.location.pathname}${opened.address}`);
+  }, [pathname, search]);
 
   const post = (message: FrameMessage) =>
     frame.current?.contentWindow?.postMessage(message, window.location.origin);
@@ -243,7 +252,7 @@ export function SideChat() {
   const iframe = mountFrame && (
     <iframe
       ref={frame}
-      src={EMBED_PATH}
+      src={src}
       title="Chat with Jane"
       onLoad={() => {
         setLoaded(true);

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { openBranch } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { landInChat } from "./chat-page";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -24,7 +25,7 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   // Spec step 82: the scan ends in Jane's chat (e2e/chat.spec.ts); the report is a tap away.
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   await page.goto("/report");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("We found");
   await expect(page.getByRole("link", { name: /Netflix went up/ })).toBeVisible();
