@@ -27,6 +27,7 @@ import {
   SCAN_KINDS,
   type ScanKind,
 } from "@/config/practice-scan";
+import { ASK_FIRST_KINDS } from "@/config/practice-opportunities";
 import { ideaSlot, PRACTICE_IDEA_MIN_CENTS } from "@/config/practice-suggestions";
 import { HARVEST_MIN_LOSS_CENTS } from "@/config/tax";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
@@ -604,7 +605,9 @@ export function flagStatus(
     ? "held"
     : flag.kind === "drift_rebalance"
       ? "autopilot"
-      : flag.trades.length === 0 || mode === "suggest"
+      : flag.trades.length === 0 ||
+          mode === "suggest" ||
+          (ASK_FIRST_KINDS as readonly string[]).includes(flag.kind)
         ? "suggested"
         : "acted";
   return { status, heldBy: held };

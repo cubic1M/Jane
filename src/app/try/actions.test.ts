@@ -61,7 +61,7 @@ describe("tryJane", () => {
 
   it("sets the session cookie for a day and opens the chat", async () => {
     headerValues.set("user-agent", "Browser");
-    expect(await tryJane(null, agreed())).toEqual({ next: "/chat" });
+    expect(await tryJane(null, agreed())).toEqual({ next: "/home" });
     expect(hit).toHaveBeenCalledWith("trial", "iphash");
     expect(startTrial).toHaveBeenCalledWith({ userAgent: "Browser", defer: true });
     expect(set).toHaveBeenCalledWith("authjs.session-token", "tok", {
@@ -79,7 +79,7 @@ describe("tryJane", () => {
   // The scan starts at once and the click waits only until the chat can open; the rest of the
   // scan and the cleanup carry on after the response.
   it("starts the scan now, opens the chat when it is ready, and cleans up after", async () => {
-    expect(await tryJane(null, agreed())).toEqual({ next: "/chat" });
+    expect(await tryJane(null, agreed())).toEqual({ next: "/home" });
     expect(syncItem).toHaveBeenCalledWith("item_1", {
       progressive: true,
       onReady: expect.any(Function),
@@ -92,7 +92,7 @@ describe("tryJane", () => {
 
   it("shows /scanning when the scan fails before the chat can open", async () => {
     vi.mocked(syncItem).mockRejectedValueOnce(new Error("boom"));
-    expect(await tryJane(null, agreed())).toEqual({ next: "/scanning?then=chat" });
+    expect(await tryJane(null, agreed())).toEqual({ next: "/scanning?then=home" });
   });
 
   it("still cleans up when the first sync fails", async () => {

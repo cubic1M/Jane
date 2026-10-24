@@ -789,7 +789,7 @@ export async function syncItem(
     // Spec step 106: and checks the cover once a year and after a life event.
     insuranceAfterSync(item.userId, { client, now }),
     // The sample person's practice days, replayed (src/lib/practice/demo-start.ts).
-    practice ? practice.m.replayDemoPractice(item.userId, practice.plan, { client }) : null,
+    practice ? practice.m.replayDemoPractice(item.userId, practice.plan, { client, now }) : null,
     // Card text from Claude, as a job: retried later if it fails, without failing the sync.
     (async () =>
       runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {

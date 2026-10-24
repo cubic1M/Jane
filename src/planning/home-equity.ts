@@ -4,6 +4,7 @@ import {
   PMI_ASK_CONDITIONS,
   PMI_ASK_LTV,
   PMI_AUTO_LTV,
+  DEFAULT_TERM_YEARS,
   PROJECT_PRODUCTS,
   type ProjectProduct,
 } from "@/config/home-equity";
@@ -326,6 +327,12 @@ export function compareProject(input: ProjectInput): ProjectOption[] {
 // The cheapest available option.
 export const cheapest = (options: readonly ProjectOption[]): ProjectOption | null =>
   options.filter((o) => o.available).sort((a, b) => a.totalCostCents - b.totalCostCents)[0] ?? null;
+
+// The mortgage's term from the bank's description ("Conventional 30 year fixed").
+export const mortgageTermYears = (description: string | null) => {
+  const m = /(\d{1,2})[- ]?year/i.exec(description ?? "");
+  return m ? Number(m[1]) : DEFAULT_TERM_YEARS;
+};
 
 // Principal and interest a month on the person's mortgage, from how it began (the escrow is
 // the rest of the payment). Null when the bank doesn't say how it began.

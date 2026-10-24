@@ -1,12 +1,11 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
-import { MORTGAGE_PAGE, pmiLines } from "../mortgage-replies";
+import { MORTGAGE_PAGE } from "../mortgage-replies";
 import type { Candidate } from "../types";
-import { snoozeButton, type MessageSource } from "./source";
+import type { MessageSource } from "./source";
 
-// The mortgage (spec step 115). Jane raises PMI removal once, when the home's value the
-// person gave puts the loan under 80%, with the steps and a request she drafted; and an
-// escrow change in the payment, once per change.
+// The mortgage (spec step 115): an escrow change in the payment, once per change. PMI removal
+// is raised by the home-equity source (./home-equity.ts), by the one PMI rule.
 
 export const mortgageSource: MessageSource = {
   key: "mortgage",
@@ -14,27 +13,6 @@ export const mortgageSource: MessageSource = {
     const m = snapshot.mortgage;
     if (!m) return [];
     const out: Candidate[] = [];
-    if (m.pmi.kind === "can_ask" && m.loan.accountId) {
-      out.push({
-        kind: "decision",
-        body: [...pmiLines(m), "I've drafted the request for you to send your servicer."].join(
-          "\n",
-        ),
-        refs: {},
-        actions: [
-          {
-            id: "open",
-            label: "See the steps and the request",
-            kind: "link",
-            href: "/loans/mortgage#pmi",
-          },
-          snoozeButton(),
-        ],
-        // Once per loan: PMI removal is raised a single time.
-        dedupeKey: `pmi:${m.loan.accountId}`,
-        priority: MESSAGE_PRIORITY.mortgage_pmi,
-      });
-    }
     if (m.escrow) {
       out.push({
         kind: "heads_up",
