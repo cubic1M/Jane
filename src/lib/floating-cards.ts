@@ -13,6 +13,8 @@ export type CardMode = "queue" | "pick";
 export type CardDetails = {
   // Why this person, in a sentence with their own number.
   why?: string;
+  // The whole message, when the headline is a cut of it (a decision, a heads-up): no label.
+  about?: string;
   // The figures used, each labelled.
   figures?: { label: string; value: string }[];
   // How sure Jane is, and the reason.
@@ -35,6 +37,10 @@ export type FloatingCardData = {
   badge?: string;
   yesLabel: string;
   notNowLabel?: string;
+  // Other answers than Yes (something Jane asked to decide between), behind More details.
+  choices?: { id: string; label: string }[];
+  // Not one of the day's suggestions: no "Don't suggest this again".
+  noNever?: boolean;
 };
 
 export type CardsState = {

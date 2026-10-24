@@ -111,6 +111,41 @@ export type CashEvent = {
 
 export type CashFlowView = { days: number; events: CashEvent[] };
 
+// The strip's markers: a day's events of one kind are one marker (tap audit: two bills on Nov 1
+// drew on top of each other and only one could be tapped), its card listing them all, sized
+// by the biggest. In date order, paydays before bills before dates on the same day.
+export type CashGroup = {
+  key: string;
+  kind: CashEvent["kind"];
+  day: number;
+  date: string;
+  weight: number;
+  events: CashEvent[];
+};
+
+export function cashGroups(events: readonly CashEvent[]): CashGroup[] {
+  const order: Record<CashEvent["kind"], number> = { pay: 0, bill: 1, deadline: 2 };
+  const groups = new Map<string, CashGroup>();
+  for (const e of events) {
+    const key = `${e.kind}|${e.day}`;
+    const g = groups.get(key);
+    if (g) {
+      g.events.push(e);
+      g.weight = Math.max(g.weight, e.weight);
+    } else {
+      groups.set(key, {
+        key,
+        kind: e.kind,
+        day: e.day,
+        date: e.date,
+        weight: e.weight,
+        events: [e],
+      });
+    }
+  }
+  return [...groups.values()].sort((a, b) => a.day - b.day || order[a.kind] - order[b.kind]);
+}
+
 export type TileChart =
   | { kind: "bars"; values: number[]; labels: string[] }
   | { kind: "squares"; filled: number; hollow: number }

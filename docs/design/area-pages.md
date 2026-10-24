@@ -178,3 +178,64 @@ stay, and contrast between shades stays as designed. New code uses `neutral-*` o
 - AA contrast for every grey pair (the axe tests check).
 - Effects never cover text.
 - All motion stops under `prefers-reduced-motion`.
+
+## Jane's pop-ups: no cards in the chat
+
+The founder: "replace all the yellow cards in the chat as pop up ones that do not take any space
+in the chat area. The yellow cards should also be very concise and easy and direct to
+understand, with users having the ability to click more details to see more."
+
+**What floats.** Everything Jane brings up on her own that waits on the person:
+- the day's suggestions;
+- the morning brief and agenda;
+- something to decide, like the autopilot question;
+- a heads-up with a button.
+
+It floats as a card over the page or the chat, taking no room in the chat's list
+(`isPopup` in `src/lib/jane-agent/popups.ts`). The day's suggestions come first, then the day's
+brief, then the rest, newest first, with "+N" for the cards waiting behind. Her answers to what
+the person typed stay in the conversation: her first message after theirs, within five minutes,
+is the answer (`ANSWER_WINDOW_MS`); anything else she posts meanwhile floats.
+
+**The card:**
+- **Headline:** eight words at most (`POPUP_HEADLINE_WORDS`; the detectors' `HEADLINE_MAX_WORDS`
+  is 8 too, starting with a verb), with one number.
+- **Buttons:** one action (the message's main button) and Not now (its own `snooze` when it has
+  one). An X puts it off too.
+- **More details:** expands in place with a height animation. It holds the reasoning and how
+  sure Jane is (a suggestion), or the whole message and its other choices (a decision).
+
+**After it's answered** it's back in the list as one line of history (`data-history`): what it
+was, what was chosen, and the whole message behind More details. There's no gap or placeholder
+while it floats.
+
+**Where it shows:**
+- The chat (`/chat?embed=1` in the side panel).
+- Home, which loads the same pop-ups (`openPopupMessages`).
+- Any page's side chat.
+
+## Motion
+
+One spec for everything that moves (`--motion-*` and `--ease-*` in `src/app/globals.css`, and
+`MOTION` in `src/config/motion.ts` for the Web Animations API):
+
+| Token | Value | For |
+| --- | --- | --- |
+| `--motion-fast` | 150 ms | Fades, the reduced-motion stand-ins |
+| `--motion-base` | 200 ms | A card leaving, a page arriving, a detail shutting |
+| `--motion-slow` | 250 ms | Pop-ups rising, the side chat and sheet, the tree's camera, a detail opening, lines drawing |
+| `--ease-spring` | `cubic-bezier(0.2, 0.9, 0.3, 1.15)` | Things that arrive (pop-ups, the panel, nodes) |
+| `--ease-out-soft` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | Everything else |
+
+- **Pop-ups:** spring in from below. Yes slides them off right and Not now left, while the
+  next rises in the same frame.
+- **More details:** opens by animating its measured height.
+- **Pages:** fade and rise a few pixels on every navigation (`src/app/template.tsx`). The
+  animation leaves no transform behind, so fixed pop-ups stay put.
+- **Side chat:** docks, folds and expands, and the sheet snaps, on `--motion-slow` with the spring.
+- **Tree and net worth chart:** the tree's camera glides, and the net worth line draws itself
+  in on a range change, both on `--motion-slow`.
+- **Loading:** content that loads late has a skeleton or a held space (the tiles, the tree)
+  rather than a jump.
+- **Reduced motion:** all of it stops under `prefers-reduced-motion: reduce`. Things appear in
+  place, and a short fade is the most that remains.

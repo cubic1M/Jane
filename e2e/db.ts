@@ -329,7 +329,7 @@ export async function addThemeIdea(userId: string): Promise<void> {
         userId,
         JSON.stringify({
           ask: {
-            headline: "Try $400 of ITA on the news, in practice",
+            headline: "Try $400 of ITA on news, in practice",
             short:
               "After news today: it beat the market in 5 of 7 past events; out in about a month.",
             worthCents: 40000,

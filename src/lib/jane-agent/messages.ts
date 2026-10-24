@@ -379,3 +379,47 @@ export async function stackedSuggestions(
   // In the order the day's best came in: the first card is the best.
   return rows.reverse().map(toChatMessage);
 }
+
+// Jane's own open messages that wait on the person (something to decide, a heads-up with a
+// button), for the pop-ups (src/lib/jane-agent/popups.ts): newest first, at most POPUP_LIMIT,
+// from the last POPUP_DAYS. The day's suggestions are stackedSuggestions' (the caller leaves
+// them out: a JSON path filter here would drop every message without the field).
+export const POPUP_LIMIT = 12;
+export const POPUP_DAYS = 14;
+
+export async function openPopupMessages(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<ChatMessage[]> {
+  const rows = await scopedFor(userId, client).janeMessages.findMany({
+    where: {
+      status: "open",
+      kind: { in: ["decision", "heads_up", "brief", "done"] },
+      createdAt: { gte: new Date(now.getTime() - POPUP_DAYS * 24 * 60 * 60 * 1000), lte: now },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: MESSAGE_SELECT,
+    take: POPUP_LIMIT * 3,
+  });
+  // An answer to what the person typed (a finding with Yes and No after "cancel hulu") stays in
+  // the conversation: Jane's first message after each thing they typed, within the window.
+  // Anything else she posts meanwhile (the scan finishing) is hers, and floats.
+  const since = new Date(now.getTime() - POPUP_DAYS * 24 * 60 * 60 * 1000);
+  const timeline = await scopedFor(userId, client).janeMessages.findMany({
+    where: { createdAt: { gte: since, lte: now } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, kind: true, createdAt: true },
+  });
+  const answers = new Set<string>();
+  timeline.forEach((m, i) => {
+    if (m.kind !== "user") return;
+    const next = timeline.slice(i + 1).find((n) => n.kind !== "user");
+    if (next && next.createdAt.getTime() - m.createdAt.getTime() <= ANSWER_WINDOW_MS) {
+      answers.add(next.id);
+    }
+  });
+  return rows.filter((r) => !answers.has(r.id)).map(toChatMessage);
+}
+
+// Jane's first message this soon after the person typed is her answer to it.
+export const ANSWER_WINDOW_MS = 5 * 60 * 1000;

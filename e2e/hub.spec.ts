@@ -53,7 +53,16 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await page.keyboard.press("ArrowRight");
   await expect(marks.nth(1)).toBeFocused();
   await expect(page.getByRole("tooltip")).not.toHaveText(first ?? "");
-  await expect(marks.nth(1)).toHaveAccessibleName(/, (bill|payday|date), [A-Z][a-z]{2} \d+/);
+  // One event: "Rent, bill, Nov 1, $1,200.00"; a day's events of one kind are one mark that
+  // lists them: "2 bills, Nov 1: Rent $1,200.00; Phone $80.00".
+  await expect(marks.nth(1)).toHaveAccessibleName(
+    /, (bill|payday|date), [A-Z][a-z]{2} \d+|^\d+ (bill|payday|date)s, [A-Z][a-z]{2} \d+: /,
+  );
+  // No two marks on the same spot: each can be tapped (tap audit).
+  const spots = await marks.evaluateAll((els) =>
+    els.map((el) => `${el.getAttribute("data-kind")}|${(el as HTMLElement).style.left}`),
+  );
+  expect(new Set(spots).size).toBe(spots.length);
 
   // A tile per area, in tab order, each with a health word or what to set up, and a chart.
   const tiles = page.getByRole("region", { name: "Your areas" }).getByRole("listitem");

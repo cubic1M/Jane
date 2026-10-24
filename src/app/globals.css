@@ -343,9 +343,15 @@ body {
    less when it is folded to a rail (html[data-side-chat], set by the panel), and none on the
    chat's own pages (marked [data-chat-page] by the area tabs as they render). On a phone the
    page keeps room at the bottom for the Jane button. */
+/* The motion spec (docs/design/area-pages.md, "Motion"): three durations and two easings for
+   everything that moves; src/config/motion.ts has the same for JavaScript. All of it stops
+   under prefers-reduced-motion. */
 :root {
   --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15);
   --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 250ms;
 }
 
 @media (min-width: 1024px) {
@@ -355,7 +361,7 @@ body {
   }
   /* Animated only once the panel has taken over, so the first paint never slides. */
   html[data-side-chat] body:has(#app-top-bar) {
-    transition: padding-right 260ms var(--ease-out-soft);
+    transition: padding-right var(--motion-slow) var(--ease-out-soft);
   }
   html[data-side-chat="rail"] body:has(#app-top-bar) {
     padding-right: 56px;
@@ -379,8 +385,8 @@ body {
   top: 3.5rem;
   width: 380px;
   transition:
-    width 260ms var(--ease-spring),
-    top 260ms var(--ease-spring);
+    width var(--motion-slow) var(--ease-spring),
+    top var(--motion-slow) var(--ease-spring);
 }
 .side-chat[data-side-chat="rail"] {
   width: 56px;
@@ -398,14 +404,14 @@ body {
   height: calc(var(--sheet-share) * 100dvh);
   visibility: hidden;
   transition:
-    height 280ms var(--ease-spring),
-    visibility 0s linear 280ms;
+    height var(--motion-slow) var(--ease-spring),
+    visibility 0s linear var(--motion-slow);
 }
 .side-chat-sheet[data-sheet="half"],
 .side-chat-sheet[data-sheet="full"] {
   visibility: visible;
   transition:
-    height 280ms var(--ease-spring),
+    height var(--motion-slow) var(--ease-spring),
     visibility 0s;
 }
 .side-chat-sheet[data-sheet="half"] {
@@ -420,7 +426,7 @@ body {
 .side-chat-scrim {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 200ms ease-out;
+  transition: opacity var(--motion-base) ease-out;
 }
 .side-chat-scrim[data-open] {
   opacity: 1;
@@ -442,19 +448,19 @@ body {
    pop in, once, as the page arrives. Still for reduced motion. */
 .hub-grow {
   transform-origin: left;
-  animation: hub-grow 420ms var(--ease-out-soft) both;
+  animation: hub-grow var(--motion-slow) var(--ease-out-soft) both;
 }
 .hub-rise {
   transform-box: fill-box;
   transform-origin: bottom;
-  animation: hub-rise 380ms var(--ease-spring) both;
+  animation: hub-rise var(--motion-slow) var(--ease-spring) both;
 }
 .hub-draw {
   stroke-dasharray: 1;
-  animation: hub-draw 800ms var(--ease-out-soft) both;
+  animation: hub-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 .hub-pop {
-  animation: hub-pop 260ms var(--ease-spring) both;
+  animation: hub-pop var(--motion-slow) var(--ease-spring) both;
 }
 @keyframes hub-grow {
   from {
@@ -489,17 +495,17 @@ body {
 /* The feature map (src/components/feature-tree.tsx): the view zooms and pans with a spring,
    edges draw themselves, and nodes pop in as a branch opens. Still for reduced motion. */
 .map-view {
-  transition: height 420ms var(--ease-spring);
+  transition: height var(--motion-slow) var(--ease-spring);
 }
 .map-world {
-  transition: transform 450ms var(--ease-spring);
+  transition: transform var(--motion-slow) var(--ease-spring);
 }
 .map-edge {
   stroke-dasharray: 1;
-  animation: hub-draw 500ms var(--ease-out-soft) both;
+  animation: hub-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 .map-pop {
-  animation: map-pop 280ms var(--ease-spring) both;
+  animation: map-pop var(--motion-slow) var(--ease-spring) both;
 }
 @keyframes map-pop {
   from {
@@ -883,9 +889,13 @@ html[data-giant-picked] [data-floating-cards="queue"] {
 
 /* The hub's net worth chart (src/components/hub/net-worth-chart.tsx): the line draws itself in
    when the range changes. Still for reduced motion. */
+/* Expanding grows the chart smoothly rather than jumping. */
+.nw-box {
+  transition: height var(--motion-slow) var(--ease-spring);
+}
 .nw-line {
   stroke-dasharray: 1;
-  animation: nw-draw 650ms var(--ease-out-soft) both;
+  animation: nw-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 @keyframes nw-draw {
   from {
@@ -893,7 +903,27 @@ html[data-giant-picked] [data-floating-cards="queue"] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .nw-box {
+    transition: none;
+  }
   .nw-line {
+    animation: none;
+  }
+}
+
+/* A page arriving: a fade and a few pixels' rise (src/app/template.tsx). "backwards" so
+   nothing is left transformed once it has played. */
+.page-in {
+  animation: page-in var(--motion-base) var(--ease-out-soft) backwards;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-in {
     animation: none;
   }
 }
@@ -901,7 +931,7 @@ html[data-giant-picked] [data-floating-cards="queue"] {
 /* The first scan's loading bar (src/components/scan-bar.tsx): it fades out at 100%; under
    reduced motion it just goes. */
 .scan-bar {
-  transition: opacity 600ms ease-out;
+  transition: opacity var(--motion-slow) var(--ease-out-soft);
 }
 .scan-bar-out {
   opacity: 0;
@@ -1046,18 +1076,18 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
 }
 
 .floating-card-in {
-  animation: floating-card-in 260ms var(--ease-spring) both;
+  animation: floating-card-in var(--motion-slow) var(--ease-spring) both;
 }
 .floating-card-out {
-  animation: floating-card-out 200ms ease-in both;
+  animation: floating-card-out var(--motion-base) ease-in both;
 }
 .floating-card-out-yes {
-  animation: floating-card-out-yes 200ms ease-in both;
+  animation: floating-card-out-yes var(--motion-base) ease-in both;
 }
 .floating-card-edge {
   transition:
-    transform 260ms var(--ease-spring),
-    opacity 200ms ease-out;
+    transform var(--motion-slow) var(--ease-spring),
+    opacity var(--motion-base) ease-out;
 }
 
 @keyframes floating-card-in {
@@ -1086,7 +1116,7 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
 
 @media (prefers-reduced-motion: reduce) {
   .floating-card-in {
-    animation: floating-card-fade 120ms linear both;
+    animation: floating-card-fade var(--motion-fast) linear both;
   }
   .floating-card-out,
   .floating-card-out-yes {

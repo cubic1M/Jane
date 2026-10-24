@@ -33,7 +33,8 @@ import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
-import { stackedSuggestions } from "@/lib/jane-agent/messages";
+import { openPopupMessages, POPUP_LIMIT, stackedSuggestions } from "@/lib/jane-agent/messages";
+import { isPopup, popupOrder } from "@/lib/jane-agent/popups";
 import { timezoneOf } from "@/lib/jane-agent/open";
 import { toView } from "@/lib/jane-agent/view";
 import { SuggestionCards } from "../chat/suggestion-cards";
@@ -130,7 +131,7 @@ async function HubContent() {
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+  const [top, checklist, autopilot, books, stackedRows, zone, popupRows] = await Promise.all([
     loadHubTop(user.id),
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
@@ -138,12 +139,20 @@ async function HubContent() {
     // The day's suggestions still waiting, as the chat shows them.
     stackedSuggestions(user.id),
     timezoneOf(user.id),
+    // Anything else Jane brought up that waits on the person: a pop-up here too.
+    openPopupMessages(user.id),
   ]);
   if (!top) redirect("/connect");
   const { home } = top;
   // Net worth every day since the first day with Jane, ending at the hub's own figure.
   const line = await netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0);
-  const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
+  const now = new Date();
+  const suggestions = [
+    ...stackedRows.map((m) => toView(m, now, zone)),
+    ...popupOrder(
+      popupRows.map((m) => toView(m, now, zone)).filter((m) => isPopup(m) && !m.suggestion),
+    ).slice(0, POPUP_LIMIT),
+  ];
   // What moved it: the chart's events, from its first day.
   const events = line[0]
     ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
