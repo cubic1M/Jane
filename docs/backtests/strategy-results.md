@@ -1,6 +1,50 @@
 # Strategy results
 
-Every strategy in [the catalog](strategy-catalog.md), replayed on Alpaca SIP daily closes, 2016-01-04 to 2026-10-23, after costs. A replay of the past, not a forecast; practice money and demo advice only.
+## Summary (October 24, 2026, after ten batches)
+
+**What was tested.**
+- 56 public, rules-based strategies ([the catalog](strategy-catalog.md)): fixed mixes, tactical asset allocation, risk-based allocation, factor tilts and rotation, trend and volatility control, portfolio insurance, seasonality, mean reversion, combinations of the best, and overlays on the level's own mix. That is 86 trials, every strategy at every setting.
+- Each was replayed on Alpaca's daily closes, 2016 to October 2026, after costs, at all five risk levels.
+- Each was scored out of sample twice: an anchored walk-forward from 2020, which must also beat the mix measured from 2021 and from 2022; and a setting chosen to 2021, then scored from 2022.
+- Separately: five day-trading rules on 5-minute bars, three crypto rules, every strategy through 2008, the 2020 crash and 2022 on a longer history ([strategy-regimes.md](strategy-regimes.md)), and the watch list across a wider range of settings ([strategy-sensitivity.md](strategy-sensitivity.md)).
+
+**The rule, set before any results.** Recommendable needs all of these:
+- at least a 95% chance that the edge over the level's mix is real (the deflated Sharpe ratio, after the haircut for all 86 trials);
+- more return for the risk than the mix since 2020, from 2021 and from 2022, with more return and not just less risk;
+- no more risk than the level's budget or its own mix.
+
+The regime test is descriptive. Most of these strategies were designed by their authors on data that includes 2008, so it isn't independent evidence, and the rule wasn't changed after seeing it.
+
+**Recommended: none, at any level.** Nothing beat its level's mix by enough to rule out luck after testing this many. The mix stays the default.
+
+**Worth watching.** Each beat the mix out of sample and inside the risk budget, but the edge may still be luck. Each can be followed in practice from the picker, where its evidence is shown.
+
+| Strategy | Levels | Chance the edge is real | Through the 2008 crash (Medium mix −36.1%) | Settings ahead of the mix |
+| --- | --- | --- | --- | --- |
+| Hybrid asset allocation (HAA) | all five | 5–10% | +5.9% | 10 of 10 |
+| Watch-list blend (HAA, EAA, aggressive GTAA) | all five | 6–10% | +11.1% | – |
+| Elastic asset allocation (EAA) | all but Very high | 4–7% | +13.0% | 8 of 8 |
+| Faber's aggressive GTAA | all but Very high | 4–8% | +13.2% | 10 of 10 |
+| Sector rotation | all five | 2–23% | −31.7% | 6 of 8 |
+| HAA with the No-Brainer | all but Very high | 7–14% | −23.4% | – |
+
+Mostly at the lower levels, some fixed mixes also passed everything but the haircut: 60/40, the permanent portfolio, the golden butterfly and the No-Brainer.
+
+**What failed.**
+- Most of the rest did no better than simply keeping the level's mix once costs and out-of-sample years were counted. That includes:
+  - every factor tilt;
+  - minimum variance, maximum diversification and HRP;
+  - CPPI, TIPP and volatility targeting;
+  - sell in May, turn of the month and the mean-reversion rules;
+  - the Larry portfolio, bond rotation, and the trend and momentum overlays on the mix.
+- Day trading: every rule lost money after slippage (−8.0% to 0.0% a year from 2024), while holding SPY made 19.9% a year. It's shown as tested and not offered.
+- Crypto (Very high only): the trend and momentum rules beat holding for the risk, but still fell about half at their worst. They stay a small, capped sleeve.
+
+A replay of the past, not a forecast; practice money and demo advice only.
+
+## The full results
+
+Every strategy in [the catalog](strategy-catalog.md), replayed on Alpaca SIP daily closes, 2016-01-04 to 2026-10-23, after costs. A replay of the past, not a forecast; practice money and demo advice only. Through 2008, the 2020 crash and 2022 on a longer history: [strategy-regimes.md](strategy-regimes.md).
 
 - **Walk-forward:** each year from 2020 is scored with the setting (and, for whole portfolios, the blend with bills that matches the level's volatility) chosen by Sortino on the years before it.
 - **Several start years:** the walk-forward must also beat the mix measured from 2021 and 2022.

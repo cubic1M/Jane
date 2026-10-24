@@ -262,3 +262,6 @@ The founder asked for every well-documented, rules-based strategy, backtested th
   - HAA with the No-Brainer fell 23% in the 2008 crash, its fixed half doing what fixed mixes do.
   - This doesn't change the verdicts: on the out-of-sample years the edge still doesn't clear the haircut.
 - Batch 9 tried new variants on the earlier ideas: factor rotation, and low volatility, HRP and maximum diversification each with a trend filter (run 40085267743). None is worth watching; the watch list is unchanged after 86 trials.
+- The crypto rules re-run on Alpaca's own crypto bars (from 2021, run 40084765919): trend and momentum beat holding for the risk, as on the Yahoo fixture, but still fell 46% and 50% at their worst.
+- Batch 10 checked the watch list across wider settings (run 40085916843, [strategy-sensitivity.md](strategy-sensitivity.md)). HAA, EAA and Faber's aggressive GTAA beat the mix at every setting tried, sector rotation at 6 of 8, DAA at 4 of 8. The edge isn't one lucky setting, but it still doesn't clear the haircut.
+- Final: nothing is recommendable under the rule set before the results; the watch list is above. See the summary at the top of [strategy-results.md](strategy-results.md).
