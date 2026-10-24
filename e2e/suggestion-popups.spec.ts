@@ -35,6 +35,21 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   if (isMobile) await expect(page.getByRole("button", { name: /^Chat with Jane/ })).toBeVisible();
   else await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toBeVisible();
 
+  // On a small phone they start folded into one line at the very bottom, beside the Jane
+  // button, so the net worth isn't covered (QA round 6); a tap opens them.
+  if (isMobile) {
+    const fold = overlay.locator('[data-card-state="folded"]');
+    await expect(fold).toHaveText(/^\[JANE\]\d+ for you▲$/);
+    await expect(showing).toHaveCount(0);
+    const box = (await fold.boundingBox())!;
+    const figure = (await page.locator('[data-hub-number="net-worth"]').boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(figure.y + figure.height);
+    const jane = (await page.getByRole("button", { name: /^Chat with Jane/ }).boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(jane.x + 1);
+    await fold.click();
+    await expect(fold).toHaveCount(0);
+  }
+
   // Shut: a headline, Yes and Not now, and a third of the screen at most.
   const shut = (await showing.boundingBox())!;
   expect(shut.height).toBeLessThan(viewport.height / 3);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   answer,
   counter,
@@ -41,6 +41,21 @@ const PRIMARY = `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`;
 const SECONDARY = `${BUTTON} border border-zinc-400 bg-white hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:hover:bg-zinc-900`;
 
 export type CardAnswer = "yes" | "not_now" | "never";
+
+// A small phone: there, Home's cards start folded into one line at the bottom (QA round 6: the
+// card covered the net-worth figure on a 375 x 812 phone), and a tap opens them.
+const PHONE = "(max-width: 639px)";
+const subscribePhone = (onChange: () => void) => {
+  const query = window.matchMedia(PHONE);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+const usePhone = () =>
+  useSyncExternalStore(
+    subscribePhone,
+    () => window.matchMedia(PHONE).matches,
+    () => false,
+  );
 
 const reducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -101,6 +116,7 @@ export function FloatingCards({
   onAnswer,
   neverLabel,
   links,
+  foldOnPhone = false,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
@@ -113,17 +129,23 @@ export function FloatingCards({
   neverLabel?: string;
   // Page links to show inside a card's details, by card id.
   links?: Record<string, { label: string; href: string }[]>;
+  // Start folded into one line at the bottom on a small phone, until it's tapped (Home, where
+  // the cards would cover the net worth).
+  foldOnPhone?: boolean;
 }) {
   const [state, setState] = useState(initialState);
   // Cards that just left, kept for the length of their exit slide, and which way they went.
   const [leaving, setLeaving] = useState<(FloatingCardData & { way: "yes" | "no" })[]>([]);
   const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const phone = usePhone();
+  const [unfolded, setUnfolded] = useState(false);
   const current = currentCard(cards, state);
   const left = waiting(cards, state);
   const open = current !== null && detailsOpen === current.id;
   // Cards waiting behind the one showing, drawn as edges under it.
   const behind = Math.max(0, left.length - 1);
+  const folded = foldOnPhone && phone && !unfolded && current !== null;
 
   function respond(card: FloatingCardData, how: CardAnswer, choice?: string) {
     // The set first, so the next card is on screen in the same frame; then the caller's work.
@@ -144,7 +166,7 @@ export function FloatingCards({
 
   // Arrow keys move between cards unless someone is typing; Escape puts the card off.
   useEffect(() => {
-    if (!current) return;
+    if (!current || folded) return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
@@ -164,6 +186,30 @@ export function FloatingCards({
       ? "border-emerald-700 bg-white dark:bg-zinc-950"
       : // Jane's own cards: inverted, so they never look like an answer.
         "invert-scope border-2 border-zinc-500";
+
+  if (folded) {
+    return (
+      <section
+        aria-label={label}
+        data-floating-cards={mode}
+        className="floating-cards floating-cards-folded pointer-events-none fixed inset-x-0 z-40 flex px-3"
+      >
+        <button
+          type="button"
+          data-card-state="folded"
+          aria-expanded={false}
+          onClick={() => setUnfolded(true)}
+          className="floating-card-in invert-scope pointer-events-auto inline-flex min-h-11 items-center gap-2 border-2 border-zinc-500 px-3 text-sm font-semibold shadow-lg"
+        >
+          <span aria-hidden="true" className="text-xs tracking-wider">
+            [JANE]
+          </span>
+          {left.length} for you
+          <span aria-hidden="true">▲</span>
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section
