@@ -51,7 +51,7 @@ export function StatusMark({ status }: { status?: TreeStatus }) {
 
 function Badge({ text }: { text: string }) {
   return (
-    <span className="shrink-0 bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
+    <span className="shrink-0 border border-current px-1.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase">
       {text}
     </span>
   );
@@ -199,7 +199,7 @@ export function InteractiveTree({
             onPick(null);
             focusOn(open);
           }}
-          className="inline-flex min-h-11 items-center gap-1 self-start text-sm font-medium text-emerald-700 hover:underline"
+          className="inline-flex min-h-11 items-center gap-1 self-start text-sm font-medium hover:underline"
         >
           <span aria-hidden="true">‹</span> All of {data.label}
         </button>
@@ -258,7 +258,7 @@ export function InteractiveTree({
                       onOpen(null);
                       onPick(null);
                     }}
-                    className={`${NODE} cursor-pointer border-emerald-700 bg-emerald-700 text-white`}
+                    className={`${NODE} cursor-pointer border-zinc-950 bg-zinc-950 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-950`}
                   >
                     <span className="text-sm font-semibold">{data.label}</span>
                     <span className="text-xs opacity-90">{data.sub}</span>
@@ -281,8 +281,8 @@ export function InteractiveTree({
                     }}
                     className={`${NODE} map-pop cursor-pointer ${
                       isOpen
-                        ? "border-emerald-700 bg-white dark:bg-zinc-950"
-                        : "border-zinc-300 bg-white hover:border-emerald-700 dark:border-zinc-700 dark:bg-zinc-950"
+                        ? "border-2 border-zinc-950 bg-white dark:border-zinc-50 dark:bg-zinc-950"
+                        : "border-zinc-300 bg-white hover:border-zinc-950 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:border-zinc-50"
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -306,7 +306,7 @@ export function InteractiveTree({
                       )}
                       <span
                         aria-hidden="true"
-                        className={`text-emerald-700 transition-transform duration-200 motion-reduce:transition-none ${isOpen ? "rotate-90" : ""}`}
+                        className={`transition-transform duration-200 motion-reduce:transition-none ${isOpen ? "rotate-90" : ""}`}
                       >
                         ▸
                       </span>
@@ -334,8 +334,8 @@ export function InteractiveTree({
                   }}
                   className={`${NODE} map-pop cursor-pointer ${
                     isPicked
-                      ? "border-emerald-700 bg-emerald-50 dark:bg-emerald-950"
-                      : "border-zinc-300 bg-white hover:border-emerald-700 dark:border-zinc-700 dark:bg-zinc-950"
+                      ? "border-2 border-zinc-950 bg-zinc-100 dark:border-zinc-50 dark:bg-zinc-900"
+                      : "border-zinc-300 bg-white hover:border-zinc-950 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:border-zinc-50"
                   }`}
                   style={{ ...common.style, animationDelay: `${Math.min(row.index, 12) * 25}ms` }}
                 >
