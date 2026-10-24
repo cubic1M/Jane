@@ -107,7 +107,10 @@ function IntradayMenu() {
       <h3 id="intraday-menu-heading" className="font-semibold">
         Day trading (Very high only)
       </h3>
-      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{INTRADAY_WARNING}</p>
+      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+        <span aria-hidden="true">▲ </span>
+        {INTRADAY_WARNING}
+      </p>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         A small sleeve, {Math.round((INTRADAY_SLEEVE_BY_LEVEL[5] ?? 0) * 100)}% of the portfolio at
         most, in and out of the S&amp;P 500 fund (SPY) the same day. Each rule&apos;s setting was

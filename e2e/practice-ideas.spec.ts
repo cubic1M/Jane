@@ -79,7 +79,7 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   ).toBeVisible();
   // Day trading, at Very high only: the warning first, each rule against holding.
   await expect(menu.getByRole("heading", { name: "Day trading (Very high only)" })).toBeVisible();
-  await expect(menu.getByText(/^Most people who day trade lose money/)).toBeVisible();
+  await expect(menu.getByText(/Most people who day trade lose money/)).toBeVisible();
   const vwap = menu.getByRole("listitem").filter({ hasText: "VWAP reversion" });
   await expect(
     vwap.getByRole("img", { name: /^VWAP reversion: \$100 became \$\d+ since 2024/ }),
