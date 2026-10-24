@@ -147,6 +147,21 @@ describe("the engine", () => {
     expect(run.values.at(-1)).toBeCloseTo(run.values[run.start], 10);
   });
 
+  it("an overlay on a steadily rising mix keeps the mix itself", () => {
+    const u = universe(0);
+    const rising = {
+      ...u,
+      closes: Object.fromEntries(
+        Object.keys(u.closes).map((x) => [x, u.closes[x].map((_, i) => 10_000 * 1.0004 ** i)]),
+      ),
+    };
+    const { results } = runCatalog(rising, ["mix_trend_overlay"]);
+    const r = results.find((x) => x.level === 3)!;
+    expect(r.walk).not.toBeNull();
+    // Always on: the same yearly return as the mix, to a hair (only the first buy's cost).
+    expect(r.walk!.cagr).toBeCloseTo(r.mixWalk!.cagr, 3);
+  });
+
   it("scores every strategy at every level, out of sample, with the haircut", () => {
     const u = universe();
     const { results, trials } = runCatalog(u);

@@ -10,6 +10,7 @@ import {
   CATALOG_SLIPPAGE_BPS,
   CATALOG_TRAIN_END,
   CATALOG_WALK_FROM_YEAR,
+  OVERLAY_FUNDS,
   type CatalogId,
 } from "@/config/strategy-catalog";
 import { RISK_BUDGETS, STRATEGY_TRADE_COST_BPS } from "@/config/strategies";
@@ -71,10 +72,10 @@ export type StandaloneRun = {
 };
 
 // A strategy on its own, after costs.
-export function standalone(id: CatalogId, p: number, u: Universe): StandaloneRun | null {
+export function standalone(id: CatalogId, p: number, u: Universe, fund = 0): StandaloneRun | null {
   const cost = (STRATEGY_TRADE_COST_BPS + CATALOG_SLIPPAGE_BPS) / 10_000;
   const units: Record<string, number> = {};
-  const ctx: Context = { value: 1, held: {}, memo: {} };
+  const ctx: Context = { value: 1, held: {}, memo: { fund } };
   const values = new Array<number>(u.dates.length).fill(Number.NaN);
   let start = -1;
   let traded = 0;
@@ -132,12 +133,18 @@ function levelReturns(
   s: readonly number[],
   level: RiskLevel,
   k: number,
+  // An overlay's own run for each of the mix's funds (that fund or bills, after costs).
+  parts?: Readonly<Record<string, readonly number[]>>,
 ) {
   const kind = CATALOG[id].kind;
   const bills = daily(u.closes[CATALOG_MIX_FUNDS.cash]);
   if (kind === "portfolio") return s.map((x, t) => k * x + (1 - k) * bills[t]);
   const w = mixWeights(level);
   const r = Object.fromEntries(Object.keys(w).map((x) => [x, daily(u.closes[x])]));
+  if (kind === "overlay" && parts)
+    return u.dates.map((_, t) =>
+      Object.entries(w).reduce((a, [x, wi]) => a + wi * (parts[x] ? parts[x][t] : r[x][t]), 0),
+    );
   if (kind === "equity") {
     const us = w[CATALOG_MIX_FUNDS.us_stocks];
     return u.dates.map(
@@ -252,7 +259,13 @@ export type CatalogResult = {
   curve: number[];
 };
 
-type Trial = { id: CatalogId; p: number; s: number[]; run: StandaloneRun };
+type Trial = {
+  id: CatalogId;
+  p: number;
+  s: number[];
+  run: StandaloneRun;
+  parts?: Record<string, number[]>;
+};
 
 function blend(
   u: Universe,
@@ -286,7 +299,7 @@ function evaluate(u: Universe, trials: readonly Trial[], level: RiskLevel, mix: 
       if (i1 - i0 < DAYS) continue;
       const k = kind === "portfolio" ? blend(u, trial.s, level, mix, i0, i1) : 1;
       if (k === null) continue;
-      const m = metricsOver(u, levelReturns(u, id, trial.s, level, k), i0, i1);
+      const m = metricsOver(u, levelReturns(u, id, trial.s, level, k, trial.parts), i0, i1);
       if (m && (!best || m.sortino > best.score)) best = { trial, k, score: m.sortino };
     }
     return best;
@@ -300,14 +313,19 @@ function evaluate(u: Universe, trials: readonly Trial[], level: RiskLevel, mix: 
     const pick = choose(i0 - 1);
     if (!pick) continue;
     chosen.push({ year: y, param: pick.trial.p, k: Math.round(pick.k * 1000) / 1000 });
-    const r = levelReturns(u, id, pick.trial.s, level, pick.k);
+    const r = levelReturns(u, id, pick.trial.s, level, pick.k, pick.trial.parts);
     for (let t = i0; t <= i1; t += 1) walk[t] = r[t];
   }
   const walkFrom = walk.findIndex((x) => Number.isFinite(x));
   const fixed = choose(indexOfDate(u, `${CATALOG_TRAIN_END.slice(0, 4)}-12-31`) - 1);
   const laterFrom = indexOfDate(u, `${Number(CATALOG_TRAIN_END.slice(0, 4)) + 1}-01-01`);
   const later = fixed
-    ? metricsOver(u, levelReturns(u, id, fixed.trial.s, level, fixed.k), laterFrom, last)
+    ? metricsOver(
+        u,
+        levelReturns(u, id, fixed.trial.s, level, fixed.k, fixed.trial.parts),
+        laterFrom,
+        last,
+      )
     : null;
   return {
     walk,
@@ -328,6 +346,26 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
   const trials: Trial[] = [];
   for (const id of ids)
     for (const p of CATALOG[id].grid) {
+      if (CATALOG[id].kind === "overlay") {
+        // One run per fund of the mix; the trial starts when all of them have.
+        const runs = OVERLAY_FUNDS.map((_, f) => standalone(id, p, u, f));
+        if (runs.some((x) => x === null)) continue;
+        const ok = runs as StandaloneRun[];
+        const start = Math.max(...ok.map((x) => x.start));
+        const parts = Object.fromEntries(
+          OVERLAY_FUNDS.map((fund, f) => [
+            fund,
+            daily(ok[f].values).map((x, t) => (t > start ? x : Number.NaN)),
+          ]),
+        );
+        const run: StandaloneRun = {
+          start,
+          values: ok[0].values,
+          turnover: mean(ok.map((x) => x.turnover)),
+        };
+        trials.push({ id, p, run, s: parts[OVERLAY_FUNDS[0]], parts });
+        continue;
+      }
       const run = standalone(id, p, u);
       if (run) trials.push({ id, p, run, s: daily(run.values) });
     }
@@ -341,7 +379,7 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
     // The haircut: how much the trials' excess Sharpe ratios vary, over the whole history each
     // has, at their own settings, and how many there were.
     const trialSharpes = trials.flatMap((trial) => {
-      const r = levelReturns(u, trial.id, trial.s, level, 1);
+      const r = levelReturns(u, trial.id, trial.s, level, 1, trial.parts);
       const ex = r.map((x, t) => x - mix[t]).filter((x) => Number.isFinite(x));
       return ex.length > DAYS && sd(ex) > 0 ? [mean(ex) / sd(ex)] : [];
     });

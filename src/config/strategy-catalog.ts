@@ -13,7 +13,9 @@ export type CatalogKind =
   // years before (never levered).
   | "portfolio"
   // A small sleeve beside the mix, taken from its bonds.
-  | "sleeve";
+  | "sleeve"
+  // A rule over the level's own mix: each of its funds held, or swapped for bills, by the rule.
+  | "overlay";
 
 export type CatalogFamily =
   | "static"
@@ -24,7 +26,8 @@ export type CatalogFamily =
   | "rotation"
   | "protection"
   | "seasonal"
-  | "reversion";
+  | "reversion"
+  | "combination";
 
 export type CatalogEntry = {
   label: string;
@@ -804,10 +807,89 @@ export const CATALOG = {
     grid: [1.5, 2],
     tickers: ["SPY", "BIL"],
   },
+  watch_blend: {
+    label: "Watch-list blend",
+    family: "combination",
+    kind: "portfolio",
+    source: {
+      title:
+        "The catalog's own: the three tactical strategies worth watching after batch 5, together",
+      url: "https://papers.ssrn.com/abstract=4346906",
+    },
+    rules:
+      "A third each of HAA (top 4), EAA (S = 2) and Faber's aggressive GTAA (top 3), each run by its own rules; rebalanced monthly.",
+    param: "none",
+    grid: [0],
+    tickers: [
+      ...new Set([
+        "SPY",
+        "IWM",
+        "EFA",
+        "EEM",
+        "VNQ",
+        "DBC",
+        "IEF",
+        "TLT",
+        "TIP",
+        "BIL",
+        "QQQ",
+        "VGK",
+        "EWJ",
+        "GLD",
+        "SHY",
+        "LQD",
+      ]),
+    ],
+  },
+  haa_no_brainer: {
+    label: "HAA with the No-Brainer",
+    family: "combination",
+    kind: "portfolio",
+    source: {
+      title: "The catalog's own: half the tactical HAA, half Bernstein's fixed No-Brainer",
+      url: "https://portfoliocharts.com/portfolios/no-brainer-portfolio/",
+    },
+    rules:
+      "Half in HAA (top 4) by its own rules, half in the No-Brainer's four funds at 25% each; rebalanced monthly.",
+    param: "none",
+    grid: [0],
+    tickers: ["SPY", "IWM", "EFA", "EEM", "VNQ", "DBC", "IEF", "TLT", "TIP", "BIL", "IJR", "SHY"],
+  },
+  mix_trend_overlay: {
+    label: "Your mix with a trend filter",
+    family: "combination",
+    kind: "overlay",
+    source: {
+      title: "Faber (2007)'s 10-month rule laid over the level's own mix",
+      url: "https://papers.ssrn.com/abstract=962461",
+    },
+    rules:
+      "The level's own mix, each of its US stocks, foreign stocks and bonds funds (VTI, VXUS, BND) held only while it closes a month above its N-month average, else in bills (BIL).",
+    param: "months in the average",
+    grid: [10],
+    tickers: ["VTI", "VXUS", "BND", "BIL"],
+  },
+  mix_momentum_overlay: {
+    label: "Your mix with absolute momentum",
+    family: "combination",
+    kind: "overlay",
+    source: {
+      title: "Antonacci (2012)'s absolute momentum laid over the level's own mix",
+      url: "https://alphaarchitect.com/2012/07/risk-premia-harvesting-through-momentum/",
+    },
+    rules:
+      "The level's own mix, each of VTI, VXUS and BND held only while its last N months beat bills (BIL), else in bills.",
+    param: "months of look-back",
+    grid: [12],
+    tickers: ["VTI", "VXUS", "BND", "BIL"],
+  },
 } as const satisfies Record<string, CatalogEntry>;
 
 export type CatalogId = keyof typeof CATALOG;
 export const CATALOG_IDS = Object.keys(CATALOG) as CatalogId[];
+
+// The level mix's funds an overlay rules over (the cash share stays in bills).
+export const OVERLAY_FUNDS = ["VTI", "VXUS", "BND"] as const;
 
 // Every ticker the catalog reads, with the level mix's own.
 export const catalogTickers = (): string[] =>

@@ -1,6 +1,7 @@
 import {
   CATALOG,
   CATALOG_MAX_WEIGHT,
+  OVERLAY_FUNDS,
   SECTORS,
   TEN,
   type CatalogId,
@@ -327,6 +328,36 @@ export function decide(
       picks.forEach((f, i) => add(w, f, share * mv[i]));
       if (share < 1) add(w, rest, 1 - share);
       return w;
+    }
+    case "watch_blend":
+    case "haa_no_brainer": {
+      if (!isMonthEnd(u, t)) return null;
+      const fresh = (): Context => ({ value: ctx.value, held: {}, memo: {} });
+      const parts =
+        id === "watch_blend"
+          ? [
+              decide("haa", 4, u, t, fresh()),
+              decide("eaa", 2, u, t, fresh()),
+              decide("faber_gtaa_top", 3, u, t, fresh()),
+            ]
+          : [decide("haa", 4, u, t, fresh()), decide("no_brainer", 0, u, t, fresh())];
+      if (parts.some((x) => x === null)) return null;
+      const w: Weights = {};
+      for (const part of parts as Weights[])
+        for (const [x, v] of Object.entries(part)) add(w, x, v / parts.length);
+      return w;
+    }
+    case "mix_trend_overlay":
+    case "mix_momentum_overlay": {
+      // One of the mix's funds at a time (ctx.memo.fund, set by the engine): it, or bills.
+      const fund = OVERLAY_FUNDS[ctx.memo.fund ?? 0];
+      const back = p * MONTH;
+      if (!isMonthEnd(u, t) || !has(u, [fund, "BIL"], t, back)) return null;
+      const on =
+        id === "mix_trend_overlay"
+          ? c(u, fund)[t] > sma(c(u, fund), t, back)!
+          : ret(c(u, fund), t, back)! > ret(c(u, "BIL"), t, back)!;
+      return { [on ? fund : "BIL"]: 1 };
     }
     case "adaptive_aa": {
       if (!isMonthEnd(u, t) || !has(u, TEN, t, 251)) return null;

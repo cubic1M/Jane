@@ -14,12 +14,14 @@ const FAMILIES: Readonly<Record<CatalogFamily, string>> = {
   protection: "Volatility and drawdown control",
   seasonal: "Seasonality",
   reversion: "Mean reversion",
+  combination: "Combinations of the watch list",
 };
 
 const KINDS = {
   equity: "replaces the level mix's US-stocks share",
   portfolio: "a whole portfolio, blended with bills to the level's volatility",
   sleeve: "a 10% sleeve taken from the mix's bonds",
+  overlay: "a rule over the level's own mix, fund by fund",
 } as const;
 
 export function catalogMarkdown(): string {

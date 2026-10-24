@@ -413,3 +413,37 @@ Also tested, separately and at Very high only: the five day-trading rules on 5-m
 - **Setting:** standard deviations: 1.5, 2
 - **Funds:** SPY, BIL
 - **At each level:** replaces the level mix's US-stocks share
+
+## Combinations of the watch list
+
+### Watch-list blend (`watch_blend`)
+
+- **Source:** [The catalog's own: the three tactical strategies worth watching after batch 5, together](https://papers.ssrn.com/abstract=4346906)
+- **Rules:** A third each of HAA (top 4), EAA (S = 2) and Faber's aggressive GTAA (top 3), each run by its own rules; rebalanced monthly.
+- **Setting:** none
+- **Funds:** SPY, IWM, EFA, EEM, VNQ, DBC, IEF, TLT, TIP, BIL, QQQ, VGK, EWJ, GLD, SHY, LQD
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
+### HAA with the No-Brainer (`haa_no_brainer`)
+
+- **Source:** [The catalog's own: half the tactical HAA, half Bernstein's fixed No-Brainer](https://portfoliocharts.com/portfolios/no-brainer-portfolio/)
+- **Rules:** Half in HAA (top 4) by its own rules, half in the No-Brainer's four funds at 25% each; rebalanced monthly.
+- **Setting:** none
+- **Funds:** SPY, IWM, EFA, EEM, VNQ, DBC, IEF, TLT, TIP, BIL, IJR, SHY
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
+### Your mix with a trend filter (`mix_trend_overlay`)
+
+- **Source:** [Faber (2007)'s 10-month rule laid over the level's own mix](https://papers.ssrn.com/abstract=962461)
+- **Rules:** The level's own mix, each of its US stocks, foreign stocks and bonds funds (VTI, VXUS, BND) held only while it closes a month above its N-month average, else in bills (BIL).
+- **Setting:** months in the average: 10
+- **Funds:** VTI, VXUS, BND, BIL
+- **At each level:** a rule over the level's own mix, fund by fund
+
+### Your mix with absolute momentum (`mix_momentum_overlay`)
+
+- **Source:** [Antonacci (2012)'s absolute momentum laid over the level's own mix](https://alphaarchitect.com/2012/07/risk-premia-harvesting-through-momentum/)
+- **Rules:** The level's own mix, each of VTI, VXUS and BND held only while its last N months beat bills (BIL), else in bills.
+- **Setting:** months of look-back: 12
+- **Funds:** VTI, VXUS, BND, BIL
+- **At each level:** a rule over the level's own mix, fund by fund
