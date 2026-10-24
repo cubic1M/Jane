@@ -38,7 +38,7 @@ test("the net worth chart scrubs, changes range and returns to today", async ({
     "aria-pressed",
     "true",
   );
-  await expect(change).toContainText(/^[+−]\$[\d,]+ \([+−][\d.]+%\) Since you started$/);
+  await expect(change).toContainText(/^[▲▼] [+−]\$[\d,]+ \([+−][\d.]+%\) Since you started$/);
   await expect(ranges.getByRole("button", { name: /^1W/ })).toBeVisible();
 
   // A shorter range: its own change.
