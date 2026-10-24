@@ -61,6 +61,7 @@ import {
 } from "./actions";
 import { HouseholdForm, PolicyForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Insurance (spec step 102): every policy in one place, the household facts that matter
 // and the gaps, in plain words. Every figure comes from a policy record. Laid out as the area
@@ -665,7 +666,7 @@ async function InsuranceContent({
 export default function InsurancePage({ searchParams }: PageProps<"/insurance">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <InsuranceContent searchParams={searchParams} />
       </Suspense>
     </main>

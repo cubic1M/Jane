@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { sendLetterAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Collections and credit report errors (spec step 181): what's on the report that may need
 // fixing, the letters Jane wrote (each citing its rule, with its deadline), and what came
@@ -124,7 +125,7 @@ async function ReportContent({ searchParams }: Pick<PageProps<"/loans/report">, 
 export default function ReportPage({ searchParams }: PageProps<"/loans/report">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ReportContent searchParams={searchParams} />
       </Suspense>
     </main>

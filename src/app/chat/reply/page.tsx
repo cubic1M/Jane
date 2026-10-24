@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { viewReplyLink } from "@/lib/jane-agent/reply-links";
 import { getCurrentUser } from "@/lib/session";
 import { ReplyForm } from "./reply-form";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The link is private to the person: never indexed.
 export const metadata = { title: "Answer Jane", robots: { index: false, follow: false } };
@@ -103,7 +104,7 @@ async function Content({
 export default function ReplyPage({ searchParams }: PageProps<"/chat/reply">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-4 py-16">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </main>

@@ -29,6 +29,54 @@ export function popupOrder(popups: readonly MessageView[]): MessageView[] {
   return [...popups.filter((m) => m.kind === "brief"), ...popups.filter((m) => m.kind !== "brief")];
 }
 
+// One stack of cards (founder: "don't let the suggestion cards repeat"): the day's suggestions,
+// then the other pop-ups in their order, up to `limit`; one card per message and per headline,
+// so a finding a source also posted as a decision shows once.
+export function popupStack(
+  suggestions: readonly MessageView[],
+  others: readonly MessageView[],
+  limit: number,
+): MessageView[] {
+  const seenIds = new Set<string>();
+  const seenHeadlines = new Set<string>();
+  const out: MessageView[] = [];
+  const add = (m: MessageView) => {
+    const headline = m.body.split("\n")[0].trim().toLowerCase();
+    if (seenIds.has(m.id) || seenHeadlines.has(headline)) return false;
+    seenIds.add(m.id);
+    seenHeadlines.add(headline);
+    out.push(m);
+    return true;
+  };
+  for (const m of suggestions) add(m);
+  let extra = 0;
+  for (const m of popupOrder(others.filter((o) => isPopup(o) && !o.suggestion))) {
+    if (extra >= limit) break;
+    if (add(m)) extra += 1;
+  }
+  return out;
+}
+
+// The chat's list (founder: the cards are "right above the chat ... but not in the chat"): no
+// suggestion at all, waiting or answered, and nothing that's floating; no gaps, no placeholders.
+export function chatList(
+  messages: readonly MessageView[],
+  stack: readonly MessageView[],
+): MessageView[] {
+  const floating = new Set(stack.map((p) => p.id));
+  const headlines = new Set(stack.map((p) => p.body.split("\n")[0].trim().toLowerCase()));
+  return messages.filter(
+    (m) =>
+      !m.suggestion &&
+      !floating.has(m.id) &&
+      !(
+        m.status === "open" &&
+        m.fromJane &&
+        headlines.has(m.body.split("\n")[0].trim().toLowerCase())
+      ),
+  );
+}
+
 // The chat's list without what's floating: no gaps, no placeholders.
 export function withoutPopups(
   messages: readonly MessageView[],
@@ -59,14 +107,24 @@ export type PopupCard = FloatingCardData & {
   choices: { id: string; label: string }[];
 };
 
+// The first sentence of the first line, whole.
+export function firstSentence(text: string): string {
+  const first = text.trim().split("\n")[0].trim();
+  const end = /[.!?](?=\s+\S)/.exec(first);
+  return end ? first.slice(0, end.index + 1) : first;
+}
+
 export function popupCard(m: MessageView): PopupCard {
   const live = m.buttons.filter((b) => !b.id.startsWith("undo."));
   const snooze = live.find((b) => b.id === "snooze") ?? null;
   const rest = live.filter((b) => b !== snooze);
   const main = rest.find((b) => b.kind === "primary") ?? rest[0] ?? snooze!;
-  const headline = concise(m.body);
+  // Its first sentence in full, never cut short (founder: "slightly bigger so that the info
+  // isn't all gone"); the rest of the message behind More details.
+  const headline = firstSentence(m.body);
   const full = m.body.trim();
-  const more = headline === full.split("\n")[0].trim() ? full.split("\n").slice(1).join(" ") : full;
+  // Its lines kept: each is a paragraph behind More details.
+  const more = full.slice(full.indexOf(headline) + headline.length).replace(/[ \t]+/g, " ");
   return {
     id: m.id,
     headline,

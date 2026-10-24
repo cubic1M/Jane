@@ -8,6 +8,7 @@ import { listAccountSummaries } from "@/lib/accounts";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 async function ImportContent() {
   const user = await requireUser();
@@ -55,7 +56,7 @@ async function ImportContent() {
 export default function ImportPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ImportContent />
       </Suspense>
     </main>

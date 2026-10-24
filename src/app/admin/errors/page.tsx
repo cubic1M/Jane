@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Recent server errors, already scrubbed of personal data (src/lib/error-log.ts).
 async function Errors() {
@@ -43,7 +44,7 @@ async function Errors() {
 export default function ErrorsPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Errors />
       </Suspense>
     </main>

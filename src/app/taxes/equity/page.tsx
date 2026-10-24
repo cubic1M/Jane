@@ -9,6 +9,7 @@ import { loadEquityTax } from "@/lib/equity-tax";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { AsideButton, EventForm, RemoveButton } from "./forms";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Crypto and equity pay (spec step 219): the tax on each, what to set aside (demo advice).
 
@@ -156,7 +157,7 @@ async function Content() {
 export default function EquityPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content />
       </Suspense>
     </main>

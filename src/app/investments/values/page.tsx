@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { saveValues, switchFunds } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Investing by your values (spec step 236, demo advice): leave out fossil fuels, weapons or
 // tobacco, or lean towards a theme, inside each kind of investment so the risk target holds.
@@ -156,7 +157,7 @@ async function Content({
 export default function ValuesPage(props: PageProps<"/investments/values">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

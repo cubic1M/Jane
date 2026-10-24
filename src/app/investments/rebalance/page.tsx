@@ -9,6 +9,7 @@ import { loadRebalance, recentOrders } from "@/lib/investments/rebalance";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { RebalanceButton } from "./rebalance-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Rebalance with one tap (spec step 133): the orders that move each account to the target
 // mix, the mix before and after, and the confirmations. Orders go to the simulated
@@ -154,7 +155,7 @@ async function RebalanceContent({
 export default function RebalancePage(props: PageProps<"/investments/rebalance">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <RebalanceContent searchParams={props.searchParams} />
       </Suspense>
     </main>

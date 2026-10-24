@@ -14,6 +14,7 @@ import {
   settleLoanAction,
 } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Money between family and friends (spec step 226): who owes whom, kept kindly. A transfer is
 // a loan only after the person says so, Jane never messages the other person, and a reminder
@@ -208,7 +209,7 @@ async function FamilyContent({ searchParams }: Pick<PageProps<"/loans/family">, 
 export default function FamilyPage({ searchParams }: PageProps<"/loans/family">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <FamilyContent searchParams={searchParams} />
       </Suspense>
     </main>

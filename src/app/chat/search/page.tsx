@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { timezoneOf } from "@/lib/jane-agent/open";
 import { searchChat } from "@/lib/jane-agent/search";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Searching Jane's chat (spec step 96): words (a merchant is a word), an amount or a day,
 // over the person's own messages only. Each result opens the chat at that message.
@@ -89,7 +90,7 @@ async function Results({
 export default function ChatSearchPage({ searchParams }: PageProps<"/chat/search">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-4 py-6 sm:px-6 sm:py-10">
-      <Suspense fallback={<p className="text-zinc-500">Searching…</p>}>
+      <Suspense fallback={<LoadingBar label="Searching" />}>
         <Results searchParams={searchParams} />
       </Suspense>
     </main>

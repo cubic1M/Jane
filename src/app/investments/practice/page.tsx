@@ -22,6 +22,7 @@ import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { pauseSwitch, runNow, startPracticePortfolio, undoLast } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The practice portfolio (spec steps 288 to 294, Phase AW, Stage A): a paper portfolio run by
 // Jane on practice money, with its trade log and a pause switch. Nothing here is a real account
@@ -243,7 +244,7 @@ async function Content({
 export default function PracticePage(props: PageProps<"/investments/practice">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

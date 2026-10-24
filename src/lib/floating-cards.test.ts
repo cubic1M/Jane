@@ -5,6 +5,7 @@ import {
   currentCard,
   initialState,
   move,
+  paragraphs,
   waiting,
   type FloatingCardData,
 } from "./floating-cards";
@@ -62,5 +63,31 @@ describe("options to pick one from", () => {
   it("puts the whole set off with Not now", () => {
     const state = answer(cards, initialState, "pick", "a");
     expect(waiting(cards, state)).toHaveLength(0);
+  });
+});
+
+describe("a card's details as paragraphs", () => {
+  it("makes each line its own paragraph and skips blank lines", () => {
+    expect(paragraphs("Your rent is due Friday.\n\nIt's $1,850.")).toEqual([
+      { kind: "p", text: "Your rent is due Friday." },
+      { kind: "p", text: "It's $1,850." },
+    ]);
+  });
+
+  it("turns dashes and bullets into one list", () => {
+    expect(paragraphs("Three things:\n- Cancel Hulu\n• Call the bank\n- Pay rent")).toEqual([
+      { kind: "p", text: "Three things:" },
+      { kind: "list", items: ["Cancel Hulu", "Call the bank", "Pay rent"] },
+    ]);
+  });
+
+  it("splits a long run into groups of two sentences, keeping $3.50 whole", () => {
+    const text =
+      "It costs $3.50 a day. That's $1,277 a year. Most people keep it. You barely use it.";
+    expect(paragraphs(text)).toEqual([
+      { kind: "p", text: "It costs $3.50 a day. That's $1,277 a year." },
+      { kind: "p", text: "Most people keep it. You barely use it." },
+    ]);
+    expect(paragraphs("One. Two. Three.")).toEqual([{ kind: "p", text: "One. Two. Three." }]);
   });
 });

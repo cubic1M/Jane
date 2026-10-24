@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { containScroll } from "@/lib/contain-scroll";
 import { chatInFrame, isFrameMessage, leavesFrame, type FrameMessage } from "@/lib/side-chat";
 
 // The chat inside the side panel (/chat?embed=1, docs/design/home-hub.md). A link to another
@@ -104,9 +105,10 @@ export function EmbedBridge() {
         findAsked(event.data.text);
       } else if (event.data.type === "jane:panel") {
         root.dataset.chatEmbed = event.data.state;
-        // Beside Home the hub shows the suggestions; full screen, the chat shows them again.
-        if (event.data.home && event.data.state !== "full") delete root.dataset.chatEmbedCards;
-        else root.dataset.chatEmbedCards = "";
+        // On a computer the dock above the panel has Jane's cards, so the chat leaves them out;
+        // in the phone's sheet they sit over its message box.
+        if (event.data.state === "sheet") root.dataset.chatEmbedCards = "";
+        else delete root.dataset.chatEmbedCards;
       }
     };
     // The panel growing or shrinking keeps the end of the chat in view if it was.
@@ -125,7 +127,10 @@ export function EmbedBridge() {
     // Listening now: ask the page where the panel is.
     window.parent.postMessage({ type: "jane:ready" }, origin);
     window.addEventListener("resize", onResize);
+    // Scrolling past the chat's ends never scrolls the page around the panel.
+    const releaseScroll = containScroll(document);
     return () => {
+      releaseScroll();
       window.removeEventListener("click", onClick, true);
       window.removeEventListener("message", onMessage);
       window.removeEventListener("scroll", onScroll);

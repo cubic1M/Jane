@@ -25,6 +25,7 @@ import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
 // it and where each number came from, and the balances month by month. The page is a tree
@@ -334,9 +335,7 @@ async function InvestmentsContent({
       <BacktestsSection backtests={backtests.backtests} />
     );
   details[itemId("strategies", "rules")] = (
-    <Suspense
-      fallback={<p className="text-sm text-zinc-500">Replaying the autopilot&apos;s rules…</p>}
-    >
+    <Suspense fallback={<LoadingBar label="Replaying the autopilot's rules" />}>
       <RuleReplays userId={user.id} />
     </Suspense>
   );
@@ -435,7 +434,7 @@ async function InvestmentsContent({
 export default function InvestmentsPage({ searchParams }: PageProps<"/investments">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <InvestmentsContent searchParams={searchParams} />
       </Suspense>
     </main>

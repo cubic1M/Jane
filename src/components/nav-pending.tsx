@@ -2,11 +2,12 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Spinner } from "./submit-button";
+import { createPortal } from "react-dom";
+import { LoadingBar } from "./loading-bar";
 
 // Every tap on a link answers at once (the founder's "every button is an instant response"):
-// from the tap until the next page is on screen, a thin bar across the top and a spinner with
-// "Loading" in the corner. Most pages are prefetched and come in a frame later; on a slow
+// from the tap until the next page is on screen, the ASCII loading bar under the top bar (in
+// the flow, so it covers nothing; founder: "it should always show a loading bar"). Most pages are prefetched and come in a frame later; on a slow
 // network or a page that wasn't, this is what the person sees instead of nothing. It clears
 // when the address changes, and on its own after a while in case the link went nowhere.
 
@@ -72,13 +73,21 @@ export function NavPending() {
   }, [pending]);
 
   if (!pending) return null;
+  // Under the top bar, in the flow (the app header's #page-loading): the ASCII bar, covering
+  // nothing. A page without the app header gets a hairline along the top edge.
+  const slot = document.getElementById("page-loading");
+  if (slot) {
+    return createPortal(
+      <div data-nav-pending="">
+        <LoadingBar label="Loading" />
+      </div>,
+      slot,
+    );
+  }
   return (
     // Visual only: Next's route announcer tells screen readers about the new page.
     <div aria-hidden data-nav-pending="" className="pointer-events-none fixed inset-x-0 top-0 z-50">
       <div className="h-0.5 bg-zinc-900 dark:bg-zinc-100" />
-      <p className="absolute top-1 right-2 bg-white px-1.5 font-mono text-xs text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-        <Spinner /> Loading
-      </p>
     </div>
   );
 }
