@@ -61,8 +61,8 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
   );
   const loans = await pickItem(page, "Spending & bills", "What you have", "Loans and cards");
   await expect(loans).toContainText(/Owed across \d+ accounts/);
-  const bills = await pickItem(page, "Spending & bills", "Coming up", "The next month of bills");
-  await expect(bills).toContainText(DOLLARS);
+  const month = await pickItem(page, "Spending & bills", "Coming up", "The next month of bills");
+  await expect(month).toContainText(DOLLARS);
   await page
     .getByRole("navigation", { name: "Spending and bills pages" })
     .getByRole("link", { name: "Coming up" })
