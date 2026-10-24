@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { Debt, DebtBook } from "@/insights/debts";
+import { loanPaymentCents, type Debt, type DebtBook } from "@/insights/debts";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
@@ -115,8 +115,8 @@ export async function loadMortgage(
           })
         : null,
     extra:
-      loan.aprBps !== null && loan.paymentCents !== null
-        ? extraPrincipal(balanceCents, loan.aprBps, loan.paymentCents)
+      loan.aprBps !== null && loanPaymentCents(loan) !== null
+        ? extraPrincipal(balanceCents, loan.aprBps, loanPaymentCents(loan)!)
         : null,
     // An escrow change only reads as one on a fixed rate (a variable rate moves the payment).
     escrow:

@@ -533,6 +533,10 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
       keepingItTakesMonths: c.keepMonths,
       keepingItCosts: money(c.currentTotalCents),
       keepingMonthlyPayment: money(c.currentMonthlyCents),
+      // A mortgage's payments here are principal and interest; the escrow stays as it is.
+      ...(c.escrowCents !== undefined
+        ? { paymentsArePrincipalAndInterest: true, escrowThatStays: money(c.escrowCents) }
+        : {}),
       janesPick: c.pick && offer(c.pick),
       ...(c.cashPayoffCents
         ? {

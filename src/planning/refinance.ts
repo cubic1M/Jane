@@ -7,7 +7,7 @@ import {
   REFI_RUNNERS_UP,
   type LoanProduct,
 } from "@/config/debt";
-import type { Debt } from "@/insights/debts";
+import { loanPaymentCents, type Debt } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
 import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
@@ -48,15 +48,12 @@ const monthsBetween = (from: string, to: string) => {
   return (ty - fy) * 12 + (tm - fm);
 };
 
-// The months left on a debt: to its payoff date, or for a loan without one, at its
-// payment; a card has none, so its offers are compared over REFI_CARD_TERM_MONTHS.
-export function remainingMonths(debt: Debt, asOf: string): number | null {
-  if (debt.kind === "card") return REFI_CARD_TERM_MONTHS;
-  if (debt.payoffDate) {
-    const months = monthsBetween(asOf, debt.payoffDate);
-    return months > 0 ? months : null;
-  }
-  if (debt.balanceCents === null || debt.aprBps === null || debt.paymentCents === null) return null;
+// Paying a debt at its payment (loanPaymentCents: one figure for every page): the months
+// and everything paid until it's gone. Null when there's no payment or it doesn't pay the
+// debt off.
+function atPayment(debt: Debt): { payment: number; months: number; totalCents: number } | null {
+  const payment = loanPaymentCents(debt);
+  if (!payment || debt.balanceCents === null || debt.aprBps === null) return null;
   const plan = payoffPlan(
     [
       {
@@ -64,55 +61,35 @@ export function remainingMonths(debt: Debt, asOf: string): number | null {
         name: "d",
         balanceCents: debt.balanceCents,
         aprBps: debt.aprBps,
-        minimumCents: debt.paymentCents,
+        minimumCents: payment,
       },
     ],
-    debt.paymentCents,
+    payment,
     "avalanche",
   );
-  return plan.ok ? plan.months : null;
+  return plan.ok ? { payment, months: plan.months, totalCents: plan.totalPaidCents } : null;
 }
 
-// Keeping a debt: its payment each month and everything paid until it's gone. A loan with a
-// payoff date runs to it (its real term); otherwise at the payment the bank reports (what
-// really happens: a card at its minimum can take years); otherwise a level payment over the
-// months left.
+// The months left on a loan: at its payment, else to its payoff date; a card has none, so
+// its offers are compared over REFI_CARD_TERM_MONTHS.
+export function remainingMonths(debt: Debt, asOf: string): number | null {
+  if (debt.kind === "card") return REFI_CARD_TERM_MONTHS;
+  const paid = atPayment(debt);
+  if (paid) return paid.months;
+  if (!debt.payoffDate) return null;
+  const months = monthsBetween(asOf, debt.payoffDate);
+  return months > 0 ? months : null;
+}
+
+// Keeping a debt: its payment each month and everything paid until it's gone. At the payment
+// the bank reports, the same "your payment" every page shows (a card at its minimum can take
+// years); else a level payment to the loan's payoff date.
 export type KeepPath = { monthlyCents: number; months: number; totalCents: number };
 
 export function keepPath(debt: Debt, asOf: string): KeepPath | null {
   if (!debt.balanceCents || debt.aprBps === null) return null;
-  // A loan with a payoff date: its real term, at the level payment that ends it then.
-  if (debt.kind !== "card" && debt.payoffDate) {
-    const months = remainingMonths(debt, asOf);
-    if (months) {
-      return {
-        monthlyCents: levelPaymentCents(debt.balanceCents, debt.aprBps, months),
-        months,
-        totalCents: totalPaidCents(debt.balanceCents, debt.aprBps, months),
-      };
-    }
-  }
-  // Monthly, as the fit engine counts it (src/lib/fit.ts): a payment every two weeks is two.
-  const payment = debt.paymentCents
-    ? debt.paymentCents * (debt.paymentEvery === "two_weeks" ? 2 : 1)
-    : 0;
-  if (payment > 0) {
-    const plan = payoffPlan(
-      [
-        {
-          id: "d",
-          name: "d",
-          balanceCents: debt.balanceCents,
-          aprBps: debt.aprBps,
-          minimumCents: payment,
-        },
-      ],
-      payment,
-      "avalanche",
-    );
-    if (plan.ok)
-      return { monthlyCents: payment, months: plan.months, totalCents: plan.totalPaidCents };
-  }
+  const paid = atPayment(debt);
+  if (paid) return { monthlyCents: paid.payment, months: paid.months, totalCents: paid.totalCents };
   const months = remainingMonths(debt, asOf);
   if (!months) return null;
   return {
@@ -164,6 +141,9 @@ export type RefinanceComparison = {
   // The cheapest that saves at least REFI_MIN_SAVING_CENTS, fixed rates first.
   pick: ScoredOffer | null;
   runnersUp: ScoredOffer[];
+  // A mortgage: the escrow in its payment, which a refinance doesn't change. Then
+  // currentMonthlyCents (like every offer's payment) is principal and interest only.
+  escrowCents?: number;
   // Why the pick, in at most three lines.
   why: string[];
   // Paying it off from spare cash saves this much, more than any loan: no loan is picked
@@ -245,5 +225,8 @@ export function compareRefinance(
     pick,
     runnersUp: pick ? scored.filter((o) => o !== pick).slice(0, REFI_RUNNERS_UP) : [],
     why,
+    ...(debt.principalAndInterestCents && debt.paymentCents
+      ? { escrowCents: debt.paymentCents - debt.principalAndInterestCents }
+      : {}),
   };
 }

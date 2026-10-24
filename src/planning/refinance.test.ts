@@ -7,6 +7,7 @@ import type { LoanOffer } from "@/lib/lenders/partner";
 import { payoffPlan } from "./debt";
 import {
   compareRefinance,
+  keepPath,
   levelPaymentCents,
   refinanceable,
   remainingMonths,
@@ -23,7 +24,9 @@ const debt = (over: Partial<Debt> & Pick<Debt, "key" | "kind">): Debt => ({
   aprBps: 690,
   rateType: "fixed",
   aprFrom: "bank",
-  paymentCents: 49_410,
+  // The level payment that ends it at its payoff date, 36 months on: a loan that agrees with
+  // itself.
+  paymentCents: 55_559,
   paymentEvery: "month",
   paymentFrom: "bank",
   nextDue: null,
@@ -87,6 +90,34 @@ describe("what can be refinanced, over which months", () => {
       paymentCents: 10_000,
     });
     expect(remainingMonths(noDate, AS_OF)).toBe(10);
+  });
+
+  // Loans QA: "your payment" is one figure. A bank's payment that doesn't match its payoff date
+  // is still what's compared (it was $496.72 here against $468 on every other page), and a
+  // mortgage pays its loan down with its principal and interest, not the escrow.
+  it("keeps the payment the bank reports, and a mortgage's without its escrow", () => {
+    const car = debt({
+      key: "car2",
+      kind: "auto",
+      balanceCents: 2_140_000,
+      aprBps: 540,
+      paymentCents: 46_800,
+    });
+    expect(keepPath(car, AS_OF)?.monthlyCents).toBe(46_800);
+    expect(remainingMonths(car, AS_OF)).toBe(52);
+    const home = debt({
+      key: "home",
+      kind: "mortgage",
+      balanceCents: 33_800_000,
+      aprBps: 325,
+      paymentCents: 241_260,
+      principalAndInterestCents: 161_897,
+      payoffDate: "2052-10-01",
+    });
+    expect(keepPath(home, AS_OF)?.monthlyCents).toBe(161_897);
+    // Without a payment that pays it off, the level payment to the payoff date.
+    const short = debt({ key: "s", kind: "auto", paymentCents: 1_000 });
+    expect(keepPath(short, AS_OF)?.monthlyCents).toBe(levelPaymentCents(1_802_000, 690, 36));
   });
 
   it("maps debts to loan products, and skips what can't be compared", () => {
