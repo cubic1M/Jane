@@ -14,7 +14,7 @@ const PAGE = {
   id: "open",
   label: "Your health year",
   kind: "link",
-  href: "/insurance#health-year",
+  href: "/insurance?focus=health",
 } as const;
 
 // Pure: the lines of the answer.
