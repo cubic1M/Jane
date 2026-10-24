@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { ActionStatus } from "@/generated/prisma/client";
-import { ACTION_STATUS_LABELS } from "@/lib/action-status";
+import { TEAM_STATUS_LABELS } from "@/lib/action-status";
 import { updateAction, type FormState } from "./actions";
 
 const FIELD =
@@ -37,7 +37,7 @@ export function StatusForm({
         <select name="status" defaultValue={status} className={FIELD}>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {ACTION_STATUS_LABELS[s].label}
+              {TEAM_STATUS_LABELS[s]}
             </option>
           ))}
         </select>
@@ -75,7 +75,7 @@ export function StatusForm({
         </label>
       )}
       <label className="flex flex-col gap-1 text-sm font-medium">
-        What the person needs to do (required for Waiting on you; shown to them)
+        What the person needs to do (required for Waiting on the person; shown to them)
         <textarea
           name="userTodo"
           value={todo}

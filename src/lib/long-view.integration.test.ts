@@ -69,6 +69,12 @@ describe.runIf(url)("the long view", { timeout: 120_000 }, () => {
       "high",
       "extra",
     ]);
+    // Money reads as money (area plan walk: "Saved each month : 2619").
+    const value = (label: string) => view.assumptions.find((a) => a.label === label)!.value;
+    expect(value("Saved each month")).toMatch(
+      /^-?\$[\d,]+ a month \(income less spending\); -?\$[\d,]+ of it invested$/,
+    );
+    expect(value("Extra invested each month")).toBe("$0 a month");
   });
 
   it("changes with the assumptions the person edits, and refuses nonsense", async () => {
@@ -94,6 +100,7 @@ describe.runIf(url)("the long view", { timeout: 120_000 }, () => {
     const view = (await loadLongView(userId, {}, { client, now: NOW }))!;
     expect(view.advice).toBe(true);
     expect(view.levers.length).toBeGreaterThan(0);
+    for (const l of view.levers) expect(l.words).toMatch(/^(Investing|Paying) \$100 more a month/);
     const reply = longViewReply(view);
     expect(reply.body).toMatch(
       /^If things carry on as they are, your net worth could be .* in 10 years, .* in 20 years, .* in 30 years, in today's dollars\./,

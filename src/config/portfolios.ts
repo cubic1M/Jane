@@ -1,4 +1,5 @@
 import { TARGET_MIXES, type RiskLevel } from "@/config/investing";
+import { THEMES } from "@/config/themes";
 
 // The practice portfolios (spec step 288, Phase AW, Stage A): one model portfolio of diversified
 // index ETFs for each of the five risk levels (Very low to Very high), run on practice money
@@ -74,9 +75,16 @@ export function classOf(ticker: string): PracticeClass | null {
   return CLASS_KEYS.find((c) => classTickers(c).includes(t)) ?? null;
 }
 
+// The funds the news themes buy (src/config/themes.ts): a small slice beside the plan, outside
+// the model's mix, as an opportunity stock is.
+export const THEME_FUNDS: readonly string[] = [
+  ...new Set(Object.values(THEMES).map((t) => t.ticker)),
+];
+
 export const PRACTICE_UNIVERSE: ReadonlySet<string> = new Set([
   ...CLASS_KEYS.flatMap((c) => classTickers(c)),
   ...PRACTICE_STOCKS,
+  ...THEME_FUNDS,
 ]);
 
 // Practice money a new portfolio starts with: a stated sample amount, never linked to anything.
@@ -85,7 +93,7 @@ export const PRACTICE_MONTHLY_ADD_CENTS = 50_000;
 // A sample person's practice portfolio starts by itself at their first scan, this many days
 // back, and those days are replayed (src/lib/practice/demo-start.ts), so there are trades, ideas
 // and a strategy to look at from the first screen. Real people start theirs themselves.
-export const DEMO_PRACTICE_REPLAY_DAYS = 28;
+export const DEMO_PRACTICE_REPLAY_DAYS = 42;
 
 // Autopilot for the practice portfolio (spec step 291). Hard limits: nothing here can be turned
 // up by the person or by a card; they live in code review. No leverage, no options and no
@@ -101,6 +109,8 @@ export const AUTOPILOT_LIMITS = {
   perEtfShare: 0.8,
   // A single company's stock (an opportunity, step 292) is never more than this share.
   perStockShare: 0.03,
+  // A news theme's fund (THEME_FUNDS) is never more than this share.
+  perThemeShare: 0.06,
   // At most this many trades a day for one portfolio.
   tradesPerDay: 12,
 } as const;

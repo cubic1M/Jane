@@ -29,5 +29,5 @@ export async function linkDemo(): Promise<void> {
       }
     });
   }
-  redirect("/scanning?then=chat");
+  redirect("/scanning?then=home");
 }

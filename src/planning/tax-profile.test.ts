@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  dependantsFromHousehold,
+  dependantsWords,
   findTaxFacts,
   guessFilingStatus,
   incomeLine,
@@ -236,5 +238,46 @@ describe("how a couple is estimated before they say how they file (taxes QA)", (
         payrollNames: ["ACME CORP PAYROLL", "ACME CORP PAYROLL PPD"],
       }),
     ).toBeNull();
+  });
+});
+
+// The children in the household listed for insurance, offered as the person's dependants
+// (area plan walk: a family paying $16,500 of childcare was estimated with none).
+describe("dependants Jane finds", () => {
+  const household = [
+    { relation: "spouse", age: 40 },
+    { relation: "child", age: 4 },
+    { relation: "child", age: null },
+    { relation: "child", age: 19 },
+  ];
+
+  it("counts children under 17 (an age not given counts) and older ones as other", () => {
+    expect(dependantsFromHousehold(household)).toEqual({
+      childrenUnder17: 2,
+      otherDependants: 1,
+      from: "the household on your insurance page",
+    });
+    expect(dependantsFromHousehold([{ relation: "spouse", age: 40 }])).toBeNull();
+    expect(dependantsWords(2, 1)).toBe("2 children under 17 and 1 other dependant");
+    expect(dependantsWords(1, 0)).toBe("1 child under 17");
+  });
+
+  it("shows them as found until answered, and counts them only when found answers are used", () => {
+    const view = taxProfileView(null, facts(PAY, { household }));
+    expect(view.dependants).toMatchObject({
+      status: "found",
+      childrenUnder17: 2,
+      otherDependants: 1,
+      from: "the household on your insurance page",
+    });
+    expect(workingProfile(view, true)).toMatchObject({ childrenUnder17: 2, otherDependants: 1 });
+    expect(workingProfile(view, false)).toMatchObject({ childrenUnder17: 0, otherDependants: 0 });
+    expect(workingProfile(view, true).unconfirmed).toContain("dependants");
+    // An answer wins.
+    const answered = taxProfileView(
+      stored({ childrenUnder17: 1, otherDependants: 0, answered: ["dependants"] }),
+      facts(PAY, { household }),
+    );
+    expect(answered.dependants).toMatchObject({ status: "yours", childrenUnder17: 1 });
   });
 });

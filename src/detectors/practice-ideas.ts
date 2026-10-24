@@ -26,7 +26,8 @@ export function practiceWhy(idea: PracticeIdea): string {
   return [
     end(idea.short),
     `The rule: ${idea.label.toLowerCase()}.`,
-    `The numbers: ${idea.figures.map((f) => `${f.label} ${f.value}`).join("; ")}.`,
+    // A source's review note is for the team, not the person.
+    `The numbers: ${idea.figures.map((f) => `${f.label} ${f.value.replace(/;?\s*FOR REVIEW\.?/g, "")}`).join("; ")}.`,
     `The caps: ${idea.caps.join("; ")}.`,
     "Practice money only: nothing real is bought or sold.",
   ].join(" ");
@@ -69,7 +70,8 @@ function practiceDetector(kind: Kind): Detector {
     capability: "investing",
     topic: PRACTICE_TOPIC[kind],
     needs: [],
-    covers: [],
+    // The theme ideas are what the chat's news_themes tool tells about.
+    covers: kind === "theme_idea" ? ["news_themes"] : [],
     detect({ data }): Suggestion | null {
       const idea = (data.extras?.practiceIdeas ?? []).find((i) => i.kind === kind);
       return idea ? practiceSuggestion(idea) : null;

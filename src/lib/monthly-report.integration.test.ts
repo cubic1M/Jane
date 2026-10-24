@@ -18,6 +18,7 @@ import { rankedFor } from "@/lib/jane-agent/priorities";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { reportSource } from "@/lib/jane-agent/sources/report";
 import { listTransfers } from "@/lib/money-movement/transfers";
+import { loadNetWorthHistory } from "@/lib/net-worth-history";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { provenSavings } from "@/lib/savings-proof";
@@ -96,7 +97,7 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(stored.month).toBe("2026-09");
     const { report } = stored;
 
-    const checkIn = await loadCheckIn(userId, "2026-09", { client });
+    const checkIn = await loadCheckIn(userId, "2026-09", { client, now: NOW });
     expect(report.earnedCents).toBe(checkIn.incomeCents);
     expect(report.earnedCents).toBeGreaterThan(0);
     expect(report.paidDownCents).toBe(checkIn.debtPaymentsCents);
@@ -123,6 +124,11 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     });
     expect(report.spent!.cents).toBeGreaterThan(0);
     expect(report.netWorth).toEqual(checkIn.netWorth);
+    // The same net worth as the hub and /net-worth for those months (area plan walk: it once
+    // counted only accounts with a balance history).
+    const history = (await loadNetWorthHistory(userId, { client, now: NOW }))!;
+    const at = (m: string) => history.months.find((x) => x.month === m)!.netCents;
+    expect(checkIn.netWorth).toEqual({ startCents: at("2026-08"), endCents: at("2026-09") });
     expect(report.budgets).toEqual({
       kept: checkIn.budgets.filter((b) => b.kept).length,
       over: checkIn.budgets.filter((b) => !b.kept).map((b) => b.category),
