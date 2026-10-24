@@ -230,15 +230,32 @@ const DEFS: Record<PersonId, Def> = {
     ],
     monthly: [
       R("pay", "checking", "BRIGHTLY INC PAYROLL", "INCOME_SALARY", -1640, [1, 15], null),
-      R(
-        "rent",
-        "checking",
-        "OAKWOOD APARTMENTS",
-        "RENT_AND_UTILITIES_RENT",
-        1450,
-        [1],
-        "Oakwood Apartments",
-      ),
+      // Detector coverage (rent_increase): the lease renewed 40 days before the sample was linked,
+      // from $1,320 to $1,450 a month, 9.8%, well past the usual rise.
+      {
+        ...R(
+          "rent",
+          "checking",
+          "OAKWOOD APARTMENTS",
+          "RENT_AND_UTILITIES_RENT",
+          1320,
+          [1],
+          "Oakwood Apartments",
+        ),
+        span: { until: -40 },
+      },
+      {
+        ...R(
+          "rent-renewed",
+          "checking",
+          "OAKWOOD APARTMENTS",
+          "RENT_AND_UTILITIES_RENT",
+          1450,
+          [1],
+          "Oakwood Apartments",
+        ),
+        span: { from: -40 },
+      },
       R(
         "student",
         "checking",

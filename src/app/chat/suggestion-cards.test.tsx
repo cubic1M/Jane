@@ -107,6 +107,12 @@ describe("the card", () => {
     });
     expect(card.details.whatYesDoes).toMatch(/^Cancel it\. Nothing is bought or moved/);
   });
+
+  it("explains the headline's figure with the whole reason when there is one", () => {
+    const why =
+      "Your company stock is $259,160.00, 64% of everything you invest. If it fell by 30% you would lose $77,748.00, and your job rides on the same company.";
+    expect(cardOf(message(1, { cardWhy: why })).details.why).toBe(why);
+  });
 });
 
 describe("the overlay", () => {

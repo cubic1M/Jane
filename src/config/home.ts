@@ -1,8 +1,10 @@
 // What the home dashboard shows.
 
-// Where signed-in users go after sign-in: Jane's chat (spec step 81). /chat and /home send
-// people without accounts to /connect.
-export const HOME_PATH = "/chat";
+// Where signed-in users go after sign-in: the home hub with the chat docked beside it
+// (docs/design/home-hub.md; it was the chat, spec step 81). /chat and /home send people
+// without accounts to /connect. Linking the demo bank and Try Jane still open the chat
+// itself, where Jane says hello.
+export const HOME_PATH = "/home";
 
 // "Coming up" on Today (spec step 79): bills and deadlines in the next this-many days (a
 // month, including the same date next month), at most this many of them.

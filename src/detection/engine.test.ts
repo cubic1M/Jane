@@ -202,7 +202,8 @@ describe("sumMoneyFound", () => {
 describe("runDetection", () => {
   const updateMany = vi.fn();
   const client = {
-    user: { updateMany },
+    // No timezone stored: the person's day is US Pacific (src/lib/today.ts).
+    user: { updateMany, findUnique: async () => ({ timezone: null }) },
     merchant: { findMany: async () => [] },
   } as unknown as PrismaClient;
   const now = new Date("2026-10-15T18:30:00Z");
@@ -368,7 +369,8 @@ describe("runDetection asking Claude about unclear merchants", () => {
   const now = new Date("2026-10-15T12:00:00Z");
   const updateMany = vi.fn();
   const client = {
-    user: { updateMany },
+    // No timezone stored: the person's day is US Pacific (src/lib/today.ts).
+    user: { updateMany, findUnique: async () => ({ timezone: null }) },
     merchant: { findMany: async () => [] },
   } as unknown as PrismaClient;
   const CANVA = {

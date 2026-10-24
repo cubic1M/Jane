@@ -87,7 +87,8 @@ export type TaxIntent =
   // Spec step 270: disaster relief and losses, and the county the person lives in.
   | { kind: "tax"; ask: "disaster" }
   // Spec step 271: taxes on retirement income.
-  | { kind: "tax"; ask: "retirement" }
+  // medicare: the question names Medicare's surcharge, so the answer explains it at any age.
+  | { kind: "tax"; ask: "retirement"; medicare?: boolean }
   // Spec step 272: a draft return, checked before filing.
   | { kind: "tax"; ask: "draft" }
   | { kind: "tax"; ask: "set_county"; county: string }
@@ -358,7 +359,10 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (county) return { kind: "tax", ask: "set_county", county: county[1].trim() };
   if (DRAFT_ASK.test(text)) return { kind: "tax", ask: "draft" };
   if (DISASTER_ASK.test(text)) return { kind: "tax", ask: "disaster" };
-  if (RETIREMENT_ASK.test(text)) return { kind: "tax", ask: "retirement" };
+  if (RETIREMENT_ASK.test(text))
+    return /\birmaa\b|\bmedicare\b/.test(text)
+      ? { kind: "tax", ask: "retirement", medicare: true }
+      : { kind: "tax", ask: "retirement" };
   if (HEALTH_ASK.test(text)) return { kind: "tax", ask: "health" };
   if (INHERITED_ASK.test(text)) return { kind: "tax", ask: "inherited" };
   if (BUSINESS_ASK.test(text)) return { kind: "tax", ask: "business" };

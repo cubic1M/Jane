@@ -128,10 +128,10 @@ describe.runIf(url)("the coverage checkup against a real database", () => {
     const message = (await client.janeMessage.findMany({ where: { userId } })).find(
       (m) => parseRefs(m.refs).insuranceCheckupId,
     );
-    expect(message?.kind).toBe("heads_up");
-    expect(message?.body.split("\n")[0]).toBe(
-      "I checked your insurance for the year. 2 things are worth a look:",
-    );
+    // The checkup is the yearly review (spec step 202), with a button for each item.
+    expect(message?.kind).toBe("decision");
+    expect(message?.body.split("\n")[0]).toBe("Your yearly insurance review.");
+    expect(message?.body).toMatch(/2 changes from your coverage checkup: Raise the deductible/);
     expect(parseRefs(message?.refs).advice).toBe(true);
     const { message: answered } = await takeChatAction(
       userId,

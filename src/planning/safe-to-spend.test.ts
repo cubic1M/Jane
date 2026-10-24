@@ -78,6 +78,18 @@ describe("safeToSpend", () => {
     expect(safe.bills.map((b) => b.date)).toEqual(["2026-10-20"]);
   });
 
+  it("counts a bill due today that hasn't come out yet", () => {
+    const today = [3, 2, 1].map((m) =>
+      tx({ ...GEICO, date: monthsAgo(m, 15), amountCents: 9_800 }),
+    );
+    const safe = safeToSpend(data([...pay, ...today, ...netflix]), {
+      budgetsLeftCents: 0,
+      goalsCents: 0,
+    });
+    expect(safe.bills.map((b) => [b.merchant, b.date])).toEqual([["Geico", "2026-10-15"]]);
+    expect(safe.safeCents).toBe(150_000 - 9_800);
+  });
+
   it("can come out negative", () => {
     expect(
       safeToSpend(data(), { budgetsLeftCents: 200_000, goalsCents: 0 }).safeCents,

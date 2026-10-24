@@ -35,6 +35,7 @@ import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
+import { ensureDemoBalanceHistory } from "./demo-history";
 import { ensureDemoAssets } from "@/lib/plaid/demo-assets";
 import { ensureDemoInvestingFacts } from "@/lib/plaid/demo-investing";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
@@ -683,6 +684,13 @@ export async function syncItem(
         error: String(error),
       }),
     );
+    // The home hub's net worth line: a year of month-end balances, worked back from today's
+    // through their transactions (a real bank's history; real accounts build theirs daily).
+    await ensureDemoBalanceHistory(item.userId, item.id, { client, now }).catch((error) =>
+      console.error("Seeding the sample person's balance history failed", {
+        error: String(error),
+      }),
+    );
     // Books QA: the Reyes' joint savings comes in again through the other parent's login,
     // before detection and the books check look at their accounts.
     const second = await ensureDemoSecondLogin(item.userId, { client });
@@ -767,6 +775,14 @@ export async function syncItem(
       runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
         client,
       }))(),
+    // Phase AW: a sample person's practice portfolio starts by itself, with a few weeks
+    // replayed, so the bot is there to look at before Jane's last words of the scan. Loaded
+    // here, not at the top: the practice run reaches this file again.
+    isDemoToken(accessToken) && result.firstSync
+      ? import("@/lib/practice/demo-start").then((m) =>
+          m.ensureDemoPractice(item.userId, { client, now }),
+        )
+      : null,
   ]);
   for (const result of sectors) {
     if (result.status === "rejected") {

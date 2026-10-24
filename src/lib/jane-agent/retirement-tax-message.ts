@@ -1,4 +1,4 @@
-import { SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
+import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
 import { formatCents } from "@/lib/money";
 import type { RetirementTaxView } from "@/lib/retirement-taxes";
 import { roundDollars } from "@/planning/tax-estimate-copy";
@@ -51,7 +51,11 @@ export function irmaaMessage(v: RetirementTaxView): Message | null {
   };
 }
 
-export function retirementReply(v: RetirementTaxView): Message {
+// The answer's lines, shared with /taxes/retirement so the page and the chat say the same.
+export function retirementLines(
+  v: RetirementTaxView,
+  { medicare = false }: { medicare?: boolean } = {},
+): { lines: string[]; tuned: boolean } {
   const lines: string[] = [];
   lines.push(
     v.ssBenefitsCents > 0
@@ -61,6 +65,12 @@ export function retirementReply(v: RetirementTaxView): Message {
   const i = v.irmaa;
   // Taxes QA: Medicare's line only for someone near or on Medicare (or already on Social
   // Security); the tuned order only with pre-tax savings to draw from.
+  // Asked about it by name, someone not near Medicare yet gets what it is (answer-check sweep:
+  // "what is irmaa" didn't mention Medicare).
+  if (medicare && !v.nearMedicare && v.ssBenefitsCents === 0)
+    lines.push(
+      `Medicare's surcharge (IRMAA): once you're on Medicare, your income from two years before sets your Part B and D premiums, and above a line they cost more. It starts to matter from about ${IRMAA_WATCH.fromAge}, so there's nothing to watch yet.`,
+    );
   if (v.nearMedicare || v.ssBenefitsCents > 0)
     lines.push(
       `Medicare's surcharge: this year's income of about ${formatCents(v.magiCents)} sets your ${i.premiumYear} premiums. ${
@@ -78,6 +88,11 @@ export function retirementReply(v: RetirementTaxView): Message {
         : "The order to draw: taxable accounts, then pre-tax, then Roth.",
     );
   }
+  return { lines, tuned };
+}
+
+export function retirementReply(v: RetirementTaxView, asked: { medicare?: boolean } = {}): Message {
+  const { lines, tuned } = retirementLines(v, asked);
   return {
     body: `Here is how your retirement income is taxed.\n${lines.map((l) => `• ${l}`).join("\n")}`,
     // Demo advice only when the tuned order (a recommendation) is in the answer.

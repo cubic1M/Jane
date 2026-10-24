@@ -10,6 +10,10 @@ import type { MessageAction, MessageRefs } from "./types";
 
 export const INHERITED_HREF = "/profile";
 
+// The heirs the 10-year rule doesn't apply to, in a line (ELIGIBLE_BENEFICIARIES has them in full).
+const RULE_EXCEPTIONS =
+  "A spouse, a minor child, a disabled or chronically ill heir, or one close to the owner's age has other rules.";
+
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 export function inheritedIraMessage(v: InheritanceView, ira: InheritedIra): Message | null {
@@ -42,7 +46,8 @@ export function giftsMessage(v: InheritanceView): Message | null {
   };
 }
 
-export function inheritanceReply(v: InheritanceView): Message {
+// The answer's lines, shared with /taxes/inherited so the page and the chat say the same.
+export function inheritanceLines(v: InheritanceView): string[] {
   const lines: string[] = [];
   for (const i of v.inherited) {
     lines.push(
@@ -59,13 +64,19 @@ export function inheritanceReply(v: InheritanceView): Message {
   // Taxes QA: "what's the 10-year rule" with no inherited IRA got no word about the rule.
   if (v.inherited.length === 0) {
     lines.push(
-      `The 10-year rule: most people who inherit an IRA from someone other than their spouse must empty it by the end of the 10th year after the owner died, and pay income tax on each withdrawal. If the owner had already started required withdrawals, there are yearly ones too. The exceptions: ${ELIGIBLE_BENEFICIARIES.join("; ")}.`,
+      // Answer-check sweep: kept under the length a chat answer allows.
+      `The 10-year rule: most people who inherit an IRA from someone other than their spouse must empty it by the end of the 10th year after the owner died,, paying income tax on each withdrawal. ${RULE_EXCEPTIONS}`,
     );
   }
   lines.push(
     "Inherited stocks and property get a new cost basis: their value on the day the owner died. Selling soon after has little or no gain to tax.",
   );
   lines.push(...v.estate);
+  return lines;
+}
+
+export function inheritanceReply(v: InheritanceView): Message {
+  const lines = inheritanceLines(v);
   return {
     body: `Here is what I can say about inherited money and gifts.\n${lines.map((l) => `• ${l}`).join("\n")}`,
     refs: {},

@@ -5,6 +5,8 @@ import {
   MODEL_PORTFOLIOS,
   OPPORTUNITY_LEVELS,
   PRACTICE_ETFS,
+  PRACTICE_STOCKS,
+  type AutopilotLimits,
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
@@ -13,10 +15,14 @@ import {
   APPETITES,
   AVOIDED_CLASS_FALLBACK,
   LEVEL_WORST_DROP_PERCENT,
+  MAX_FUND_RANGE,
   OPPORTUNITY_HARD_CAPS,
   OPPORTUNITY_HARD_MAX_SHARE,
   OPPORTUNITY_MIN_APPETITE,
+  REBALANCE_PACES,
+  STRATEGY_CHOICES,
   TICKER_TAGS,
+  UNIVERSES,
 } from "@/config/practice-preferences";
 import {
   OPPORTUNITY_MAX_SHARE,
@@ -58,7 +64,12 @@ export type PracticeProfile = {
   harvestLosses: boolean;
   cashBufferCents: number;
   monthly: { amountCents: number; day: number };
-  limits: typeof AUTOPILOT_LIMITS;
+  // The hard limits, with the person's rebalance band and per-fund cap (never above them).
+  limits: AutopilotLimits;
+  // Which strategy the person chose (STRATEGY_CHOICES); withStrategy (src/lib/practice/
+  // preferences.ts) follows it.
+  strategyChoice: PracticePreferences["strategy"];
+  universe: PracticePreferences["universe"];
   // What the profile does, in plain sentences, for the page, the chat and the backtests.
   rules: string[];
   // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
@@ -92,13 +103,31 @@ export function levelForDrop(chosen: RiskLevel, maxDropPercent: number | null): 
   return 1;
 }
 
-// Every ticker the practice portfolio could buy that the person said never to buy.
-export function avoidedTickers(avoid: readonly string[]): string[] {
+// Every ticker the practice portfolio could buy that the person said never to buy: what they
+// named or grouped, and every company's shares when they chose funds only.
+export function avoidedTickers(
+  avoid: readonly string[],
+  universe: PracticePreferences["universe"] = "funds_and_stocks",
+): string[] {
   const groups = new Set(avoid);
+  const stocks = new Set<string>(universe === "funds_only" ? PRACTICE_STOCKS : []);
   const tickers = new Set([...PRACTICE_UNIVERSE, ...Object.keys(TICKER_TAGS)]);
   return [...tickers].filter(
-    (t) => groups.has(t) || (TICKER_TAGS[t] ?? []).some((tag) => groups.has(tag)),
+    (t) => stocks.has(t) || groups.has(t) || (TICKER_TAGS[t] ?? []).some((tag) => groups.has(tag)),
   );
+}
+
+// The limits for one person: the hard ones, with their rebalance pace's band and their cap on
+// one fund, which can only lower the hard cap.
+export function limitsFor(
+  prefs: Pick<PracticePreferences, "rebalancePace" | "maxFundPercent">,
+): AutopilotLimits {
+  const fund = prefs.maxFundPercent === null ? 1 : prefs.maxFundPercent / 100;
+  return {
+    ...AUTOPILOT_LIMITS,
+    rebalanceBand: REBALANCE_PACES[prefs.rebalancePace].band,
+    perEtfShare: Math.min(AUTOPILOT_LIMITS.perEtfShare, fund),
+  };
 }
 
 // The mix as the goal nears: the level's own mix until the glide path (step 157's) holds fewer
@@ -139,7 +168,11 @@ function withoutAvoided(weights: Record<PracticeClass, number>, avoid: ReadonlyS
   return { weights: out, moved };
 }
 
-function opportunityCaps(appetite: PracticePreferences["appetite"], level: RiskLevel) {
+function opportunityCaps(
+  appetite: PracticePreferences["appetite"],
+  level: RiskLevel,
+  universe: PracticePreferences["universe"],
+) {
   const scale = APPETITES[appetite].scale;
   const caps = {} as Record<ScanKind, Caps>;
   const kinds: ScanKind[] = [];
@@ -153,8 +186,9 @@ function opportunityCaps(appetite: PracticePreferences["appetite"], level: RiskL
     const hard = OPPORTUNITY_HARD_CAPS[kind] ?? base;
     const allowed =
       APPETITE_ORDER.indexOf(appetite) >= APPETITE_ORDER.indexOf(min) &&
-      // News ideas stay at High and Very high, whatever the appetite.
-      (kind !== "news_idea" || OPPORTUNITY_LEVELS.includes(level));
+      // News ideas stay at High and Very high, whatever the appetite, and buy a company's
+      // shares, so never with funds only.
+      (kind !== "news_idea" || (OPPORTUNITY_LEVELS.includes(level) && universe !== "funds_only"));
     caps[kind] = allowed
       ? {
           sizeShare: Math.min(base.sizeShare * scale, hard.sizeShare),
@@ -179,9 +213,10 @@ export function profileFor(
   const chosenLevel = prefs.riskLevel ?? context.level;
   const level = levelForDrop(chosenLevel, prefs.maxDropPercent);
   const glide = glideWeights(level, prefs.goalDate, context.today);
-  const avoid = avoidedTickers(prefs.avoid);
+  const avoid = avoidedTickers(prefs.avoid, prefs.universe);
+  const limits = limitsFor(prefs);
   const { weights, moved } = withoutAvoided(glide.weights, new Set(avoid));
-  const opp = opportunityCaps(prefs.appetite, level);
+  const opp = opportunityCaps(prefs.appetite, level, prefs.universe);
   const trades = prefs.mode === "act";
 
   const rules: string[] = [];
@@ -222,6 +257,18 @@ export function profileFor(
   if (prefs.cashBufferCents > 0) {
     rules.push(`$${(prefs.cashBufferCents / 100).toLocaleString("en-US")} is always kept in cash.`);
   }
+  rules.push(
+    `Rebalanced ${REBALANCE_PACES[prefs.rebalancePace].label.toLowerCase()}: when a kind is ${Math.round(limits.rebalanceBand * 100)} points off its target.`,
+  );
+  if (prefs.maxFundPercent !== null && prefs.maxFundPercent < MAX_FUND_RANGE.max) {
+    rules.push(
+      `No fund over ${prefs.maxFundPercent}% of the portfolio; what that keeps out of a fund stays as cash.`,
+    );
+  }
+  if (prefs.universe === "funds_only") rules.push(`${UNIVERSES.funds_only.description}`);
+  if (prefs.strategy === "mix") {
+    rules.push(`${STRATEGY_CHOICES.mix.label}, as you chose: no strategy on top.`);
+  }
 
   return {
     level,
@@ -246,7 +293,9 @@ export function profileFor(
     harvestLosses: prefs.harvestLosses,
     cashBufferCents: prefs.cashBufferCents,
     monthly: { amountCents: prefs.monthlyAddCents, day: prefs.addDay },
-    limits: AUTOPILOT_LIMITS,
+    limits,
+    strategyChoice: prefs.strategy,
+    universe: prefs.universe,
     rules,
   };
 }
@@ -296,7 +345,7 @@ export function scanPreferencesFor(
     maxDropShare: prefs.maxDropPercent === null ? fallbackDropShare : prefs.maxDropPercent / 100,
     goalDate: prefs.goalDate,
     appetite: APPETITE[prefs.appetite],
-    excludedTickers: avoidedTickers(prefs.avoid),
+    excludedTickers: avoidedTickers(prefs.avoid, prefs.universe),
     taxSensitive: prefs.harvestLosses,
     cashBufferCents: prefs.cashBufferCents,
     mode: prefs.mode,

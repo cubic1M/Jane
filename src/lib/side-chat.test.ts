@@ -82,7 +82,10 @@ describe("messages between the page and the frame", () => {
     expect(isFrameMessage({ type: "jane:panel", state: "full" })).toBe(true);
     expect(isFrameMessage({ type: "jane:panel", state: "sheet" })).toBe(true);
     expect(isFrameMessage({ type: "jane:panel", state: "huge" })).toBe(false);
+    expect(isFrameMessage({ type: "jane:panel", state: "open", home: true })).toBe(true);
+    expect(isFrameMessage({ type: "jane:panel", state: "open", home: "yes" })).toBe(false);
     expect(isFrameMessage({ type: "jane:refresh" })).toBe(true);
+    expect(isFrameMessage({ type: "jane:ready" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ask", text: "What is idle cash?" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ask", text: "" })).toBe(false);
     expect(isFrameMessage({ type: "other" })).toBe(false);

@@ -40,6 +40,11 @@ test("practice settings save and change what Jane does", async ({ context, page,
   await page.getByLabel("Oil, gas and coal companies").check();
   await page.getByLabel(/^Off/).check();
   await page.getByLabel(/^Suggest only/).check();
+  // How Jane invests: the strategy, the pace, what she may buy and the most in one fund.
+  await page.getByLabel(/^Just the level's mix/).check();
+  await page.getByLabel("How often to rebalance").selectOption("rarely");
+  await page.getByLabel("What Jane may buy").selectOption("funds_only");
+  await page.getByLabel("Most in one fund (%)").fill("50");
   await page.getByRole("button", { name: "Save settings" }).click();
 
   await expect(page.getByRole("status")).toHaveText("Saved. Jane uses it from the next run.");
@@ -48,6 +53,13 @@ test("practice settings save and change what Jane does", async ({ context, page,
   await expect(doing.getByText("Never bought: Oil, gas and coal companies.")).toBeVisible();
   await expect(doing.getByText("No extra moves: just the model, kept on target.")).toBeVisible();
   await expect(page.getByLabel("Risk level")).toHaveValue("2");
+  await expect(
+    doing.getByText("Rebalanced rarely: when a kind is 8 points off its target."),
+  ).toBeVisible();
+  await expect(doing.getByText(/^No fund over 50% of the portfolio/)).toBeVisible();
+  await expect(doing.getByText(/^Only the index funds/)).toBeVisible();
+  await expect(doing.getByText(/^Just the level's mix, as you chose/)).toBeVisible();
+  await expect(page.getByLabel("How often to rebalance")).toHaveValue("rarely");
 
   const axe = await new AxeBuilder({ page })
     // The side chat is the chat page itself, checked on its own (/chat).

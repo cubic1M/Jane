@@ -47,6 +47,7 @@ import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
 import { STAGE_AGES } from "@/config/retirement";
 import { tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
+import { practiceIdeasFor } from "./practice-ideas";
 import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
 
 // Claude's tools for investment questions in Jane's chat (spec step 128 on): read-only,
@@ -253,7 +254,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "practice_portfolio",
     description:
-      "The person's practice portfolio (demo advice mode only): a paper portfolio Jane runs on practice money, never real money, at a risk level (Very low to Very high). Gives the level, what it's worth and started with, cash, each position, whether Jane is paused (all trading, or opportunities only), and this week's trades with the rule and the reason for each. Say plainly that it's practice money and nothing real was bought or sold. To pause or resume it, offer practice.pause or practice.resume with propose_action; you can't change it yourself.",
+      "The person's practice portfolio (demo advice mode only): a paper portfolio Jane runs on practice money, never real money, at a risk level (Very low to Very high). Gives the level, what it's worth and started with, cash, each position, whether Jane is paused (all trading, or opportunities only), this week's trades with the rule and the reason for each, the ideas Jane is waiting on the person for (each with how sure she is, as a percent, and why), the strategy the autopilot follows today and whether the person's settings let it, and what their yes and no to past ideas changed (which kinds now come sooner or later). For \"what are you thinking of doing\", \"what strategy is mine on\" or \"have you learned what I like\". Say plainly that it's practice money and nothing real was bought or sold. To pause or resume it, offer practice.pause or practice.resume with propose_action; you can't change it yourself.",
     input_schema: noInput,
   },
   {
@@ -1081,6 +1082,7 @@ export async function runInvestmentTool(
           rule: RULE_LABELS[t.rule] ?? t.rule,
           reason: t.reason,
         })),
+        ...(await practiceIdeasFor(userId, { client, now }, money)),
       });
     }
     case "crypto": {

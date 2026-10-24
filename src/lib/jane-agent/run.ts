@@ -75,6 +75,16 @@ export async function runJaneAgent(
   // run waits on all of it.
   const safely = (what: string, run: () => Promise<unknown>) =>
     run().catch((error) => console.error(`${what} failed`, { userId, error: String(error) }));
+  // The first brief's safe to spend caps goals at what the year plan has room for
+  // (src/lib/home.ts), as the hub does a moment later. Someone who starts with goals (a sample
+  // person) gets the plan kept first, or the brief said "short by $920.96" while the hub said
+  // $1,182 safe (phone walk). Nobody else has goals at their first scan, so it costs nothing.
+  if (early) {
+    const db = scopedFor(userId, client);
+    const [goals, plans] = await Promise.all([db.savingsGoals.count(), db.yearPlans.count()]);
+    if (goals > 0 && plans === 0)
+      await safely("Year plan", () => loadYearPlan(userId, { client, now, keep: true }));
+  }
   if (!early)
     await Promise.all([
       // Spec step 99: insurance found from payments joins the profile (as found) by itself.

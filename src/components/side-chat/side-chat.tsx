@@ -112,7 +112,16 @@ export function SideChat() {
 
   const post = (message: FrameMessage) =>
     frame.current?.contentWindow?.postMessage(message, window.location.origin);
-  const where: FrameMessage = { type: "jane:panel", state: wide ? panel : "sheet" };
+  const where: FrameMessage = {
+    type: "jane:panel",
+    state: wide ? panel : "sheet",
+    home: pathname === "/home",
+  };
+  // The latest, for the frame's "ready" (which can arrive between renders).
+  const whereRef = useRef(where);
+  useEffect(() => {
+    whereRef.current = where;
+  });
 
   useEffect(() => {
     const ready = () => setIdle(true);
@@ -125,16 +134,25 @@ export function SideChat() {
   }, []);
 
   // The room beside the page (src/app/globals.css) follows the panel.
+  // Until someone is known to be signed in, the CSS default (docked) stands.
   useEffect(() => {
+    if (!userId) return;
     document.documentElement.dataset.sideChat = shows ? panel : "none";
-  }, [shows, panel]);
+  }, [userId, shows, panel]);
 
   // The framed chat asks the page to open a link: in the main window, not the panel.
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.source !== frame.current?.contentWindow) return;
-      if (!isFrameMessage(event.data) || event.data.type !== "jane:navigate") return;
+      if (!isFrameMessage(event.data)) return;
+      if (event.data.type === "jane:ready") {
+        post(whereRef.current);
+        if (asking.current) post({ type: "jane:ask", text: asking.current });
+        asking.current = null;
+        return;
+      }
+      if (event.data.type !== "jane:navigate") return;
       router.push(event.data.href);
       if (!wide) sideChatStore.setSheet("closed");
       else if (sideChatStore.get().panel === "full") sideChatStore.setPanel("open");
@@ -143,11 +161,28 @@ export function SideChat() {
     return () => window.removeEventListener("message", onMessage);
   }, [router, wide]);
 
+  // "Ask Jane about this" (the feature map): the chat comes into view with the question in its
+  // message box, waiting for the framed chat if it isn't listening yet.
+  const asking = useRef<string | null>(null);
+  useEffect(() => {
+    const onAsk = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      if (loaded) post({ type: "jane:ask", text });
+      else asking.current = text;
+    };
+    window.addEventListener("jane:ask", onAsk);
+    return () => window.removeEventListener("jane:ask", onAsk);
+  }, [wide, loaded]);
+
   // Tell the framed chat where it is (docked, full or a sheet).
   useEffect(() => {
     if (loaded) post(where);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, wide, panel]);
+  }, [loaded, wide, panel, pathname]);
 
   // Out of sight, the unread dot is checked on focus and every minute.
   useEffect(() => {

@@ -135,21 +135,49 @@ export function demoPlaidApi(
     demo.anchor,
     new Set(holdings.map((h) => h.security_id)),
   );
+  // A bank or card balance moves with its own transactions since the day the bank was linked
+  // (real-user QA: a fixed balance next to each day's new charges made the books check say the
+  // card was $51.56 off). Plaid's amounts are money out positive: down in checking, up owed on
+  // a card.
+  const moved = new Map<string, number>();
+  // The first sync (on the day it was linked) brings everything through the day before.
+  const linkedThrough = addDays(demo.anchor, -1);
+  for (const t of [
+    ...demoTransactions(demo, linkedThrough, through),
+    ...demoSwitchTransactions(demo, switches, linkedThrough, through),
+  ]) {
+    moved.set(t.account_id, (moved.get(t.account_id) ?? 0) + Math.round(t.amount * 100));
+  }
+  const movedBalance = (a: ReturnType<typeof demoAccounts>[number]) => {
+    const cents = moved.get(a.account_id) ?? 0;
+    if (cents === 0 || a.balances.current === null || a.balances.current === undefined) return a;
+    const sign = a.type === "credit" ? 1 : a.type === "depository" ? -1 : 0;
+    if (sign === 0) return a;
+    return {
+      ...a,
+      balances: {
+        ...a.balances,
+        current: Math.round(a.balances.current * 100 + sign * cents) / 100,
+      },
+    };
+  };
   // An investment account's balance is what it holds (deposits from step 134 add to it).
-  const invested = demoAccounts(demo, extras).map((a) =>
-    a.type === "investment"
-      ? {
-          ...a,
-          balances: {
-            ...a.balances,
-            current:
-              holdings
-                .filter((h) => h.account_id === a.account_id)
-                .reduce((s, h) => s + Math.round(h.institution_value * 100), 0) / 100,
-          },
-        }
-      : a,
-  );
+  const invested = demoAccounts(demo, extras)
+    .map(movedBalance)
+    .map((a) =>
+      a.type === "investment"
+        ? {
+            ...a,
+            balances: {
+              ...a.balances,
+              current:
+                holdings
+                  .filter((h) => h.account_id === a.account_id)
+                  .reduce((s, h) => s + Math.round(h.institution_value * 100), 0) / 100,
+            },
+          }
+        : a,
+    );
   const paidOff = new Set(payoffs.filter((p) => p.day <= today(now)).map((p) => p.plaidAccountId));
   const accounts = () =>
     invested.map((a) =>
@@ -276,6 +304,12 @@ export async function linkDemoBank(
         manualSavedCents: g.savedCents,
       })),
     });
+  }
+  // Spec step 139: a sample person comes with what Jane already did for them, so "What Jane
+  // saved you" has their own confirmed wins (src/lib/sample-wins.ts). Never a real account.
+  if (person) {
+    const { seedSampleWins } = await import("@/lib/sample-wins");
+    await seedSampleWins(userId, person, { client, now });
   }
   await logAudit(
     { type: "user", id: userId },

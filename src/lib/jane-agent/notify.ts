@@ -2,6 +2,7 @@ import {
   CHAT_EMAIL_AFTER_MINUTES,
   CHAT_EMAIL_MAX_MESSAGES,
   CHAT_EMAILS_PER_DAY,
+  CHAT_URGENT_FROM_PRIORITY,
   CHAT_NOTIFY_DAILY_LIMIT,
   CHAT_NOTIFY_KINDS,
   CHAT_NOTIFY_MAX_AGE_HOURS,
@@ -50,6 +51,8 @@ export type Notifiable = {
   createdAt: Date;
   notifiedAt?: Date | null;
   notifiedVia: string | null;
+  // How it was placed (MESSAGE_PRIORITY), for what can't wait.
+  priority?: number;
 };
 
 type Channel = "push" | "email" | "both";
@@ -151,6 +154,7 @@ const MESSAGE_FIELDS = {
   id: true,
   dedupeKey: true,
   kind: true,
+  priority: true,
   body: true,
   refs: true,
   actions: true,
@@ -278,17 +282,23 @@ export async function deliverChatNotifications(
   // Email: to people who want it, or who chose push but have no device that takes it.
   const wantsEmail = prefs.channel === "email" || prefs.channel === "both" || !pushWorks;
   const sender = wantsEmail ? emailSender(send) : null;
-  if (!sender || emailTimes.length >= CHAT_EMAILS_PER_DAY) return { pushed, emailed: 0 };
+  if (!sender) return { pushed, emailed: 0 };
+  // Today's email has gone: only what can't wait, in an email of its own.
+  const onlyUrgent = emailTimes.length >= CHAT_EMAILS_PER_DAY;
+  const pressing = (m: Notifiable) =>
+    m.kind !== "brief" && (m.priority ?? 0) >= CHAT_URGENT_FROM_PRIORITY;
   const unreadSince = now.getTime() - emailAfterMinutes * MINUTE_MS;
   const batch: Notifiable[] = [];
   for (const m of due) {
     if (batch.length >= CHAT_EMAIL_MAX_MESSAGES) break;
     if (pushedIds.has(m.id) || m.createdAt.getTime() > unreadSince) continue;
+    if (onlyUrgent && !pressing(m)) continue;
     // Spec step 147: what isn't urgent goes only the way they answer, when Jane knows it.
     if (pushWorks && !wants(m, "email")) continue;
     // A message already pushed (to someone who wants both) doesn't count twice.
+    // What can't wait goes even past the day's cap.
     if (m.notifiedVia === null) {
-      if (room <= 0) continue;
+      if (room <= 0 && !pressing(m)) continue;
       room -= 1;
     }
     batch.push(m);

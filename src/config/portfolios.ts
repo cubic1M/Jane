@@ -82,6 +82,10 @@ export const PRACTICE_UNIVERSE: ReadonlySet<string> = new Set([
 // Practice money a new portfolio starts with: a stated sample amount, never linked to anything.
 export const PRACTICE_START_CENTS = 1_000_000;
 export const PRACTICE_MONTHLY_ADD_CENTS = 50_000;
+// A sample person's practice portfolio starts by itself at their first scan, this many days
+// back, and those days are replayed (src/lib/practice/demo-start.ts), so there are trades, ideas
+// and a strategy to look at from the first screen. Real people start theirs themselves.
+export const DEMO_PRACTICE_REPLAY_DAYS = 28;
 
 // Autopilot for the practice portfolio (spec step 291). Hard limits: nothing here can be turned
 // up by the person or by a card; they live in code review. No leverage, no options and no
@@ -100,6 +104,9 @@ export const AUTOPILOT_LIMITS = {
   // At most this many trades a day for one portfolio.
   tradesPerDay: 12,
 } as const;
+// The limits one portfolio runs with: the hard limits, with the rebalance band and the per-fund
+// cap as the person set them (src/planning/practice-profile.ts), never above the hard ones.
+export type AutopilotLimits = { readonly [K in keyof typeof AUTOPILOT_LIMITS]: number };
 
 // The strategy universe (the strategy library, src/planning/strategies/): plain index ETFs a
 // level's strategy may hold, each with its sleeve (what it counts as against the level's stock

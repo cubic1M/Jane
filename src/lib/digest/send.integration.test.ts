@@ -255,4 +255,24 @@ describe.runIf(url)("runDigests against a real database", () => {
     expect(await savedToDate(userId, { client })).toBe(5_000);
     expect(preview?.text).toContain("Saved so far (expected): about $50.00 a year");
   });
+
+  // Real-user QA: someone who signed up on a Thursday got the weekly email that day and again
+  // four days later. Their first one is their first Monday.
+  it("waits for a new person's first Monday", async () => {
+    const thursday = new Date("2026-10-22T20:00:00Z");
+    await person("newcomer", { finding: true });
+    await client.user.update({
+      where: { id: ids.newcomer },
+      data: { createdAt: new Date("2026-10-22T16:00:00Z") },
+    });
+    const first = await runDigests({ client, now: thursday, dryRun: true, send });
+    expect(first.previews.find((p) => p.userId === ids.newcomer)).toBeUndefined();
+    const monday = await runDigests({
+      client,
+      now: new Date("2026-10-26T22:00:00Z"),
+      dryRun: true,
+      send,
+    });
+    expect(monday.previews.find((p) => p.userId === ids.newcomer)).toBeDefined();
+  });
 });

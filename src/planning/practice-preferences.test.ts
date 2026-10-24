@@ -115,6 +115,10 @@ describe("practice preferences", () => {
       harvestLosses: false,
       cashBufferCents: 5_000,
       mode: "yolo",
+      strategy: "moonshot",
+      rebalancePace: "hourly",
+      universe: "everything",
+      maxFundPercent: 95,
     });
     expect(p).toMatchObject({
       riskLevel: null,
@@ -123,7 +127,40 @@ describe("practice preferences", () => {
       appetite: "normal",
       avoid: ["tobacco"],
       mode: "act",
+      strategy: "level",
+      rebalancePace: "normal",
+      universe: "funds_and_stocks",
+      maxFundPercent: null,
     });
+  });
+
+  it("checks the strategy, the rebalance pace, what may be bought and the most in one fund", () => {
+    const ok = applyPatch(
+      base(),
+      { strategy: "trend", rebalancePace: "rarely", universe: "funds_only", maxFundPercent: 40 },
+      TODAY,
+    );
+    expect(ok.ok && ok.changed).toEqual([
+      "strategy",
+      "rebalancePace",
+      "universe",
+      "maxFundPercent",
+    ]);
+    expect(ok.ok && sayPreference(ok.preferences, "strategy")).toBe("Trend filter");
+    const bad = applyPatch(
+      base(),
+      { strategy: "leverage", rebalancePace: "daily", universe: "crypto", maxFundPercent: 90 },
+      TODAY,
+    );
+    expect(bad.ok).toBe(false);
+    if (bad.ok) return;
+    expect(Object.keys(bad.errors).sort()).toEqual([
+      "maxFundPercent",
+      "rebalancePace",
+      "strategy",
+      "universe",
+    ]);
+    expect(bad.errors.maxFundPercent).toBe("Pick a share from 20% to 80%.");
   });
 
   it("says every field in words and describes a change", () => {
@@ -174,6 +211,10 @@ describe("the settings page's form", () => {
     harvestLosses: "on",
     cashBuffer: "$1,000",
     mode: "suggest",
+    strategy: "vol_target",
+    rebalancePace: "often",
+    universe: "funds_only",
+    maxFundPercent: "50",
   };
 
   it("reads every field and passes the same check as the chat", () => {
@@ -193,7 +234,13 @@ describe("the settings page's form", () => {
       harvestLosses: true,
       cashBufferCents: 100_000,
       mode: "suggest",
+      strategy: "vol_target",
+      rebalancePace: "often",
+      universe: "funds_only",
+      maxFundPercent: 50,
     });
+    // An empty cap on one fund is the hard limit.
+    expect(parsePreferenceForm(form({ ...full, maxFundPercent: "" })).maxFundPercent).toBeNull();
   });
 
   it("an empty level follows the questionnaire, an unticked box is off, and bad numbers are refused", () => {

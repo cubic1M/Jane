@@ -66,7 +66,8 @@ export async function homeSummary(
     // The year plan as last kept (spec step 205): what this month has room to save.
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
   ]);
-  const asOf = now.toISOString().slice(0, 10);
+  // The person's own day, as the bills and safe to spend read it (src/lib/today.ts).
+  const asOf = input.asOf;
   const budget =
     budgets.length === 0
       ? null
@@ -76,7 +77,7 @@ export async function homeSummary(
           asOf,
         );
   // Bills and deadlines from the one coming-up source, reusing the transactions loaded above.
-  const { bills, deadlines } = await loadComingUp(userId, {
+  const { bills, deposits, deadlines } = await loadComingUp(userId, {
     client,
     now,
     days: COMING_UP_DAYS,
@@ -138,6 +139,9 @@ export async function homeSummary(
     })),
     // Bills and deadlines in one list, soonest first (spec step 79).
     comingUp: comingUp(bills, deadlines, asOf, { days: COMING_UP_DAYS, limit: COMING_UP_LIMIT }),
+    // The hub's cash-flow strip (docs/design/home-hub.md): the same bills and deadlines, and the
+    // deposits expected, all of them.
+    cashFlow: { bills, deposits, deadlines },
     lastUpdated: updated ?? null,
     // For Jane's heads-ups in the chat (spec step 82): the deadlines page's list, budgets
     // gone over this month and goals whose date passed short of the target.

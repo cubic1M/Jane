@@ -1,3 +1,4 @@
+import type { AutopilotLimits } from "@/config/portfolios";
 import type { LedgerState } from "@/planning/practice-ledger";
 import { heldBy } from "@/planning/practice-scan";
 
@@ -12,6 +13,8 @@ export function tradesHeldBy(
   state: LedgerState,
   prices: Readonly<Record<string, number>>,
   tradesToday: number,
+  // The person's limits; the hard ones without them.
+  limits?: AutopilotLimits,
 ): string | null {
-  return heldBy({ trades }, state, prices, tradesToday);
+  return heldBy({ trades }, state, prices, tradesToday, limits);
 }

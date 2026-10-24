@@ -1,6 +1,7 @@
 import {
+  ESTATE_LAWYER_POINTER,
+  FEDERAL_ESTATE_FACT,
   ELIGIBLE_BENEFICIARIES,
-  ESTATE_EXCLUSION_CENTS,
   GIFT_SPLIT_FACTOR,
   INHERITED_IRA_YEARS,
   SPREAD_MIN_SAVING_CENTS,
@@ -95,11 +96,9 @@ export function giftsOverExclusion(
 }
 
 export function estateFacts(state: string | null): string[] {
-  const out = [
-    `The federal estate tax only applies to estates over ${round(ESTATE_EXCLUSION_CENTS / 100_000_000)} million dollars per person (more for a couple); most families owe none.`,
-  ];
+  const out = [FEDERAL_ESTATE_FACT];
   if (state && STATE_DEATH_TAXES[state]) out.push(STATE_DEATH_TAXES[state]);
-  out.push("An estate lawyer can say what applies to a particular family.");
+  out.push(ESTATE_LAWYER_POINTER);
   return out;
 }
 

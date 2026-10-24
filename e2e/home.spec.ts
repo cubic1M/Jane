@@ -10,7 +10,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("new people land on Connect; once data is in, Home matches the report", async ({
+test("new people land on Connect; once data is in, the hub matches the report", async ({
   context,
   page,
   baseURL,
@@ -35,16 +35,21 @@ test("new people land on Connect; once data is in, Home matches the report", asy
   const headline = await page.getByRole("heading", { level: 1 }).textContent();
 
   await page.goto("/home");
-  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
-  // The report's "We found $X a year" and Home's money found are the same number.
-  const amount = headline?.match(/\$[\d,.]+/)?.[0] ?? "";
-  await expect(page.getByText(amount, { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Jane's plan this week" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Review and approve" })).toHaveAttribute(
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeAttached();
+  // The report's "We found $X a year" and the hub's money found are the same number (the hub
+  // shows whole dollars).
+  const amount = (headline?.match(/\$[\d,.]+/)?.[0] ?? "").replace(/\.\d\d$/, "");
+  await expect(page.locator('[data-hub-number="saved"]')).toContainText(amount);
+  // It links to the report that shows it (hub QA: it linked to /plan, a bigger total).
+  await expect(page.getByRole("link", { name: "Money found", exact: true })).toHaveAttribute(
+    "href",
+    "/report",
+  );
+  await expect(page.getByRole("link", { name: /^Your plan: \d+ things? ›$/ })).toHaveAttribute(
     "href",
     "/plan",
   );
-  await expect(page.getByRole("heading", { name: "Coming up" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Next 30 days" })).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

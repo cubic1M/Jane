@@ -193,7 +193,8 @@ export async function answerPracticeIdea(
   const held =
     trades
       .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
-      .find((r) => r !== null) ?? tradesHeldBy(trades, ledger.state, prices, tradesToday);
+      .find((r) => r !== null) ??
+    tradesHeldBy(trades, ledger.state, prices, tradesToday, profile.limits);
   if (held) {
     await db.practiceOpportunities.updateMany({ where: { id: row.id }, data: { status: "held" } });
     return { note: `A cap stopped it (${held}), so nothing was done.`, href: PRACTICE_HREF };

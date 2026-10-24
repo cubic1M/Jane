@@ -15,6 +15,9 @@ export const SPENDING_DETECTOR_RATES = {
   priceRiseShare: 0.05,
   priceRiseMinCents: 100,
   priceRiseMinCharges: 4,
+  // Rent has its own detector (rent_increase, against the usual local rise), so a lease that
+  // renewed higher isn't also said as a price rise.
+  priceRiseNot: ["RENT_AND_UTILITIES_RENT"] as readonly string[],
   // Fixed price: at least this share of the earlier charges were exactly the same amount.
   fixedPriceShare: 0.7,
   // Bill negotiation: internet and phone bills this size or bigger a month, and the share

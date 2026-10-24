@@ -187,6 +187,7 @@ export async function scanPractice(
     opportunityMaxShare: profile.opportunityMaxShare,
     avoid: profile.avoid,
     cashBufferCents: profile.cashBufferCents,
+    limits: profile.limits,
     prices,
     history,
     trades: trades.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),
@@ -227,6 +228,7 @@ export async function scanPractice(
       tradesToday,
       prefs.mode,
       firstRefusal(profile, flag),
+      profile.limits,
     );
     if (!act && held) continue;
     // One question at a time about the same thing, and none about pocket change.

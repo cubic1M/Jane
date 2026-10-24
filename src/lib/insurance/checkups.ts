@@ -1,3 +1,5 @@
+import { autopilotFor } from "@/lib/sector-autopilot";
+import { keepCovered } from "./review";
 import { CHECKUP_DAILY_LIMIT, CHECKUP_EVERY_DAYS } from "@/config/insurance";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -139,7 +141,13 @@ export async function checkupPerson(
 ): Promise<Checkup | null> {
   const due = await checkupDue(userId, { client, now });
   if (!due) return null;
-  return runCheckup(userId, due.reason, { client, now, lifeEvent: due.lifeEvent });
+  const checkup = await runCheckup(userId, due.reason, { client, now, lifeEvent: due.lifeEvent });
+  // Spec step 202: at "Everything allowed" the review does the same-cover work by itself,
+  // within the caps, before it says what it did.
+  if (checkup && (await autopilotFor(userId, "insurance", { client, now })).level === "all") {
+    await keepCovered(userId, { client, now, by: "autopilot" });
+  }
+  return checkup;
 }
 
 // The daily run: everyone with an active policy, checked where due.

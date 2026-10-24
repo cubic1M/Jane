@@ -1,5 +1,6 @@
 import { APPROVED_DEBT_SENTENCES } from "@/config/debt-trouble";
 import { APPROVED_FAMILY_SENTENCES } from "@/config/family-file";
+import { APPROVED_ESTATE_SENTENCES } from "@/config/inheritance";
 import type { FindingType } from "@/generated/prisma/client";
 
 // Every piece of Claude-written text passes through checkGuardrails before anyone sees it.
@@ -141,10 +142,11 @@ function withoutReferrals(text: string, refusalsOnly = false): string {
 // where to take legal questions are taken out before checking. Only these exact sentences:
 // any other line about them, or a changed word, is still checked in full.
 function withoutApprovedSentences(text: string): string {
-  return [...APPROVED_DEBT_SENTENCES, ...APPROVED_FAMILY_SENTENCES].reduce(
-    (t, sentence) => t.split(sentence).join(" "),
-    text,
-  );
+  return [
+    ...APPROVED_DEBT_SENTENCES,
+    ...APPROVED_FAMILY_SENTENCES,
+    ...APPROVED_ESTATE_SENTENCES,
+  ].reduce((t, sentence) => t.split(sentence).join(" "), text);
 }
 
 // "No guarantee", "can't promise", "isn't guaranteed": saying there is no promise isn't one.

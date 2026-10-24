@@ -4,6 +4,7 @@ import {
   STRATEGY_FOLLOW_HISTORY_DAYS,
   STRATEGY_LABELS,
   STRATEGY_RESEARCH_CHOICE,
+  type StrategyId,
 } from "@/config/strategies";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -23,30 +24,53 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type StrategyToday = {
   chosen: Pick<ChosenStrategy, "level" | "id" | "params" | "key" | "label" | "why">;
-  source: "evaluation" | "research";
+  source: "evaluation" | "research" | "person";
 } & FollowToday;
 
 const DAY_MS = 86_400_000;
 const kept = new Map<string, StrategyToday>();
 
+// `pick`: a strategy the person chose in their settings (STRATEGY_CHOICES) instead of the
+// level's, with its fixed parameters.
 export async function strategyToday(
   level: RiskLevel,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    pick,
+  }: Options & {
+    pick?: { id: StrategyId; params: Readonly<Record<string, number | string>> };
+  } = {},
 ): Promise<StrategyToday | null> {
   const latest = await latestStrategies({ client });
   const evaluated = latest?.byLevel[level];
   const research = STRATEGY_RESEARCH_CHOICE[level];
-  const chosen: StrategyToday["chosen"] = evaluated ?? {
-    level,
-    id: research.id,
-    params: research.params,
-    key: keyOf({ id: research.id, params: research.params }),
-    label: STRATEGY_LABELS[research.id],
-    why: research.why,
-  };
-  const source = evaluated ? ("evaluation" as const) : ("research" as const);
+  const picked: StrategyToday["chosen"] | null = pick
+    ? {
+        level,
+        id: pick.id,
+        params: pick.params,
+        key: keyOf({ id: pick.id, params: pick.params }),
+        label: STRATEGY_LABELS[pick.id],
+        why: "You chose it in your practice settings.",
+      }
+    : null;
+  const chosen: StrategyToday["chosen"] = picked ??
+    evaluated ?? {
+      level,
+      id: research.id,
+      params: research.params,
+      key: keyOf({ id: research.id, params: research.params }),
+      label: STRATEGY_LABELS[research.id],
+      why: research.why,
+    };
+  const source = picked
+    ? ("person" as const)
+    : evaluated
+      ? ("evaluation" as const)
+      : ("research" as const);
   const today = now.toISOString().slice(0, 10);
-  const key = `${today}|${latest?.ranAt.toISOString() ?? "research"}|${level}`;
+  const key = `${today}|${latest?.ranAt.toISOString() ?? "research"}|${level}|${picked?.key ?? ""}`;
   const known = kept.get(key);
   if (known) return known;
   let out: StrategyToday;
@@ -60,7 +84,12 @@ export async function strategyToday(
     const data = stored ? alignUniverse(stored.bars) : null;
     out = data
       ? { chosen, source, ...followToday(chosen, data, level, today) }
-      : { chosen, source, follow: false, why: "No stored closes for the strategy's funds yet." };
+      : {
+          chosen,
+          source,
+          follow: false,
+          why: "Jane doesn't have enough recent prices for this strategy's funds yet, so the portfolio keeps the level's mix until the daily price load has them.",
+        };
   }
   if (kept.size > 50) kept.clear();
   kept.set(key, out);

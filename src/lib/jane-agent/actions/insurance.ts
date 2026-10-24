@@ -3,6 +3,8 @@ import { dismissGap } from "@/lib/insurance/household";
 import { AcceptShopError, acceptShop } from "@/lib/insurance/accept";
 import { requestQuotes } from "@/lib/insurance/quotes";
 import { markCheckupSeen } from "@/lib/insurance/checkups";
+import { keepCovered } from "@/lib/insurance/review";
+import { keptCoveredNote } from "../insurance/review-words";
 import {
   BenefitError,
   answerQuestion,
@@ -160,6 +162,26 @@ export const insuranceCheckupSeen: ActionHandler = {
     return {
       answeredWith: action.label,
       note: "OK. I'll check your cover again in a year, or sooner if your life changes.",
+    };
+  },
+};
+
+// Spec step 202: "Keep me covered" on the yearly review (or typed in the chat): pays less for
+// the same cover and calls the insurer about renewals going up, on the person's tap. The
+// checkup is marked seen when it was the review's own.
+export const insuranceKeepCovered: ActionHandler = {
+  id: "insurance.keep_covered",
+  on: "open",
+  async run({ userId, message, client, now }) {
+    const done = await keepCovered(userId, { client, now, by: "you" });
+    const { insuranceCheckupId } = message.refs;
+    if (insuranceCheckupId) await markCheckupSeen(userId, insuranceCheckupId, { client, now });
+    return {
+      answeredWith: "Keep me covered",
+      note:
+        done.savings + done.calls === 0
+          ? "Nothing needed doing: there was no way to pay less for the same cover and no renewal to call about."
+          : keptCoveredNote(done),
     };
   },
 };

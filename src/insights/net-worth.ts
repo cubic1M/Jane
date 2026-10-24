@@ -125,3 +125,37 @@ export function monthlyNetWorth(
     return { month, netCents: any ? net : null };
   });
 }
+
+// The net worth line the hub and /net-worth both draw, so they agree with each other and with
+// the headline (phone walk: the page jumped by a car's value in the month it was first valued
+// and ended at a month-old snapshot). How the accounts moved: things owned count across the
+// whole window at their value now, and so does an account with no balance history yet (a
+// sample person's investments, an account linked today); this month is today's net worth.
+export function netWorthLine(
+  accounts: { id: string; type: string; currentBalanceCents: number | null }[],
+  snapshots: Snapshot[],
+  owned: OwnedValue[],
+  asOf: string,
+  monthCount: number,
+  todayCents: number,
+): { month: string; netCents: number | null }[] {
+  const ends = monthsEnding(asOf, monthCount);
+  // No history at all (a bank linked today): only this month, never a made-up flat year.
+  if (snapshots.length === 0)
+    return ends.map((month, i) => ({ month, netCents: i === ends.length - 1 ? todayCents : null }));
+  const start = `${ends[0]}-01`;
+  const kept = new Set(snapshots.map((s) => s.accountId));
+  const months = monthlyNetWorth(
+    accounts,
+    [
+      ...snapshots,
+      ...accounts
+        .filter((a) => !kept.has(a.id) && a.currentBalanceCents !== null)
+        .map((a) => ({ accountId: a.id, date: start, balanceCents: a.currentBalanceCents! })),
+    ],
+    asOf,
+    monthCount,
+    owned.map((o) => ({ ...o, valuedOn: o.valuedOn < start ? o.valuedOn : start })),
+  );
+  return months.map((m, i) => (i === months.length - 1 ? { ...m, netCents: todayCents } : m));
+}
