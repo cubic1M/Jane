@@ -1,7 +1,7 @@
 import type { LoanProduct } from "@/config/debt";
 import { FIT_CARD_PAYMENT_SHARE, FIT_PRODUCT, FIT_TERMS, type FitNeed } from "@/config/fit";
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { Debt } from "@/insights/debts";
+import { loanPaymentCents, type Debt } from "@/insights/debts";
 import { creditBandFor } from "@/lib/credit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -43,13 +43,14 @@ export type FitView = FitResult & {
   cushionCents?: number | null;
 };
 
-const baselineOf = (debt: Debt, asOf: string): FitBaseline | null => {
+const baselineOf = (debt: Debt): FitBaseline | null => {
   if (!debt.balanceCents || debt.aprBps === null || !debt.paymentCents) return null;
   return {
     label: `your ${debt.name}`,
     balanceCents: debt.balanceCents,
     aprBps: debt.aprBps,
-    monthlyCents: debt.paymentCents * (debt.paymentEvery === "two_weeks" ? 2 : 1),
+    // "Your payment", as every page has it (a mortgage's without its escrow).
+    monthlyCents: loanPaymentCents(debt)!,
   };
 };
 
@@ -83,7 +84,7 @@ export async function loadFit(
       .filter((d) => d.kind !== "bnpl" && (d.balanceCents ?? 0) > 0 && d.aprBps !== null)
       .sort((a, b) => (b.aprBps ?? 0) - (a.aprBps ?? 0));
     const debt = want.debtKey ? debts.find((d) => d.key === want.debtKey) : debts[0];
-    baseline = debt ? baselineOf(debt, asOf) : null;
+    baseline = debt ? baselineOf(debt) : null;
     // Keeping it, as the offers page counts it (src/planning/refinance.ts): one horizon.
     const keep = debt ? refinanceable(debt, asOf)?.keep : undefined;
     if (baseline && keep) baseline = { ...baseline, monthlyCents: keep.monthlyCents };

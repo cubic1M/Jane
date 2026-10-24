@@ -87,6 +87,7 @@ export const loanDeadlines: DeadlineSource = async (userId, { client, now }) => 
           payoffDate: true,
           isOverdue: true,
           pastDueCents: true,
+          originationPrincipalCents: true,
           ytdInterestPaidCents: true,
           description: true,
         },

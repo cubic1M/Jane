@@ -6,7 +6,7 @@ import {
   STUDENT_STEPS,
 } from "@/config/student-loans";
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { Debt, DebtBook } from "@/insights/debts";
+import { loanPaymentCents, type Debt, type DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
@@ -120,7 +120,7 @@ export async function loadStudentLoans(
   const input: StudentInput | null = loan && {
     balanceCents: loan.balanceCents!,
     aprBps: loan.aprBps!,
-    currentPaymentCents: loan.paymentCents,
+    currentPaymentCents: loanPaymentCents(loan),
     agiCents,
     familySize: profile.familySize,
     dependants: profile.dependants,
