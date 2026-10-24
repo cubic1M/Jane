@@ -54,7 +54,8 @@ import { SettingsArea } from "./settings-area";
 // under the section id it always had, and the old #anchors open that item (./settings-area.tsx).
 
 const MUTED = "text-sm text-zinc-600 dark:text-zinc-400";
-const LINK = "font-medium text-emerald-700 hover:underline";
+// Black, white and grey only: meaning comes from glyphs and underlines, not hue.
+const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const RECONNECT =
   "inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 const BOX = "flex scroll-mt-8 flex-col gap-3";
@@ -399,7 +400,7 @@ async function SettingsContent({
       ) : (
         <Link
           href="/settings/two-factor"
-          className="inline-flex h-11 w-fit items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800"
+          className="inline-flex h-11 w-fit items-center justify-center rounded-full bg-zinc-900 px-6 font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           Turn on two-factor
         </Link>
