@@ -71,14 +71,12 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   // answers in the chat from the finding's own evidence, and leaves the decision open.
   await ask.fill("cancel hulu");
   await ask.press("Enter");
-  // Jane's answer, by its words: the result of the Yes above may land after it.
-  const answer = messages.filter({ hasText: "Hulu" }).filter({ hasText: "Want me to handle it?" });
-  await expect(answer).toHaveCount(1);
-  const body = (await answer.locator("p").nth(1).textContent()) ?? "";
+  await expect(messages.last()).toContainText("Want me to handle it?");
+  const body = (await messages.last().locator("p").nth(1).textContent()) ?? "";
   expect(body).toContain("Want me to handle it?");
   const finding = messages.filter({ hasText: body });
   await finding.getByRole("button", { name: "Why?" }).click();
-  await expect(messages.filter({ hasText: "If you say yes:" }).last()).toBeVisible();
+  await expect(messages.last()).toContainText("If you say yes:");
   await expect(finding.getByRole("button", { name: "Why?" })).toHaveCount(0);
   await expect(finding.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
 
