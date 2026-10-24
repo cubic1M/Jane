@@ -826,7 +826,7 @@ function themeFlags(
       },
       ask: {
         headline: `Try ${wholeDollars(amount)} of ${theme.ticker} on the news, in practice`,
-        short: `${h.title} (${h.date}). Beat the market in ${record.hits} of ${record.events} past events; out in about a month.`,
+        short: `After news on ${h.date}: it beat the market in ${record.hits} of ${record.events} past events; out in about a month.`,
         worthCents: amount,
         worthKind: "risk",
       },

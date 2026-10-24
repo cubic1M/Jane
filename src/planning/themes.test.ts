@@ -7,7 +7,7 @@ import {
 import { THEMES, THEME_IDS, THEME_HOLD_DAYS, THEME_STOP_LOSS } from "@/config/themes";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import type { Bar } from "@/lib/market/types";
-import { themeEvidence, themeTrades } from "./themes";
+import { themeEvidence, themeExits, themeTrades, tradingDaysBetween } from "./themes";
 
 // The news themes' backtest: bought the day the news broke, out after a month or at the stop,
 // against the market over the same days; and the committed evidence is the fixture's own.
@@ -115,5 +115,49 @@ describe("THEMES", () => {
     expect(reads("rate_cut_bonds", "Fed holds rates steady")).toBe(false);
     expect(reads("chip_boom", "Nvidia soars on record AI chip demand")).toBe(true);
     expect(reads("risk_off_gold", "Stocks plunge as recession fears spread")).toBe(true);
+  });
+});
+
+describe("themeExits", () => {
+  const state = {
+    cashCents: 0,
+    positions: { ITA: { quantity: 10, costBasisCents: 100_000 } },
+  };
+  const bought = [
+    {
+      placedAt: "2026-09-01T21:30:00.000Z",
+      side: "buy",
+      ticker: "ITA",
+      quantity: 10,
+      amountCents: 100_000,
+      rule: "theme_idea",
+    },
+  ];
+
+  it("gets out after the month, all of it, with the reason", () => {
+    expect(tradingDaysBetween("2026-09-01", "2026-09-28")).toBe(19);
+    expect(themeExits(state, { ITA: 10_500 }, bought, "2026-09-28")).toEqual([]);
+    const [exit] = themeExits(state, { ITA: 10_500 }, bought, "2026-09-29");
+    expect(exit).toMatchObject({
+      ticker: "ITA",
+      side: "sell",
+      amountCents: 105_000,
+      rule: "theme_exit",
+    });
+    expect(exit.reason).toMatch(
+      /^Out of ITA after 20 trading days, as the news theme said: up 5\.0%/,
+    );
+  });
+
+  it("gets out at the stop, sooner", () => {
+    const [exit] = themeExits(state, { ITA: 9_100 }, bought, "2026-09-03");
+    expect(exit.reason).toMatch(/^Out of ITA at the stop: down 9\.0%/);
+    expect(themeExits(state, { ITA: 9_300 }, bought, "2026-09-03")).toEqual([]);
+  });
+
+  it("leaves what isn't a theme fund, and a fund it never bought", () => {
+    const vti = { cashCents: 0, positions: { VTI: { quantity: 10, costBasisCents: 100_000 } } };
+    expect(themeExits(vti, { VTI: 1 }, [], "2027-01-01")).toEqual([]);
+    expect(themeExits(state, { ITA: 1 }, [], "2027-01-01")).toEqual([]);
   });
 });

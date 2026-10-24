@@ -174,3 +174,19 @@ export const THEME_BENCHMARK = "VTI";
 export const THEME_NEWS_DAYS = 2;
 // One idea per theme in this many days.
 export const THEME_REPEAT_DAYS = 30;
+// What the daily scan asks the news feed about for the themes, besides the watched companies:
+// the theme funds and a few of the largest companies in each.
+export const THEME_NEWS_SYMBOLS: readonly string[] = [
+  "XLE",
+  "USO",
+  "XOM",
+  "CVX",
+  "ITA",
+  "LMT",
+  "RTX",
+  "GLD",
+  "TLT",
+  "SMH",
+  "TSM",
+  "AMD",
+];

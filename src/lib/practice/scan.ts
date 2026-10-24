@@ -14,6 +14,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { THEME_NEWS_SYMBOLS } from "@/config/themes";
 import { marketData, type Bar, type Headline } from "@/lib/market";
 import { newsKey } from "@/lib/news/store";
 import { rulesSummary } from "@/lib/news/summarize";
@@ -128,7 +129,12 @@ export async function scanPractice(
     if (!history[ticker]) heldHistory[ticker] = await feed.prices(ticker, from, today);
   }
   const headlines = await withSummaries(
-    await feed.news(PRACTICE_STOCKS, daysBefore(today, NEWS_LOOKBACK_DAYS), today),
+    // The watched companies, and the news themes' funds and companies (src/config/themes.ts).
+    await feed.news(
+      [...PRACTICE_STOCKS, ...THEME_NEWS_SYMBOLS],
+      daysBefore(today, NEWS_LOOKBACK_DAYS),
+      today,
+    ),
     feed.name,
     client,
   );
