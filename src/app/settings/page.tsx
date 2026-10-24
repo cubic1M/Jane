@@ -282,7 +282,7 @@ async function SettingsContent() {
           <p role="note" className={MUTED}>
             You&apos;re trying Jane with a sample person, so nothing here is emailed or sent to a
             phone. These settings show how it works;{" "}
-            <Link href="/signup" className="font-medium text-emerald-700 hover:underline">
+            <Link href="/signup" className="font-medium underline hover:no-underline">
               sign up
             </Link>{" "}
             to get them.
