@@ -68,7 +68,7 @@ describe("reviewItems", () => {
     expect(keep?.text).toMatch(/2 ways to pay less for the same cover, up to \$140\.00/);
     expect(keep?.button.href).toBeNull();
     expect(reviewItems(busy).find((i) => i.key === "deductible")?.button.href).toBe(
-      "/insurance#savings",
+      "/insurance?focus=savings",
     );
   });
 

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser, waitForFullScan } from "./db";
 
 // Options of one choice in the chat (insurance cover, loan offers): Jane's answer carries the
@@ -42,7 +43,8 @@ test("a pick on the options card is instant, and the next card follows within 10
 
   // The person's own options for a cover they're short of, as the insurance page shows them.
   await page.goto("/insurance");
-  await page.getByRole("link", { name: "See options" }).first().click();
+  await pickItem(page, "Insurance", "Your perfect coverage", "first-open");
+  await page.getByRole("link", { name: "See options" }).click();
   const shown = page.getByTestId("option-card");
   await expect(shown).toBeVisible();
   const title = ((await shown.getByRole("heading", { level: 3 }).textContent()) ?? "").trim();

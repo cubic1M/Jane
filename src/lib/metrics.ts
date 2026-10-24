@@ -233,6 +233,7 @@ export async function loadMetricRows({
     accounts,
     findings,
     opens,
+    posted,
     decisions,
     actions,
     intents,
@@ -256,6 +257,11 @@ export async function loadMetricRows({
     client.analyticsEvent.findMany({
       where: { name: "card_opened" },
       select: { properties: true, createdAt: true },
+    }),
+    // A finding Jane posted in the chat counts as shown, like a card opened on its page.
+    client.janeMessage.findMany({
+      where: { userId: REAL },
+      select: { refs: true, createdAt: true },
     }),
     client.decision.findMany({
       where: { undoneAt: null, userId: REAL },
@@ -296,11 +302,18 @@ export async function loadMetricRows({
       a._min.createdAt ? [{ userId: a.userId, linkedAt: a._min.createdAt }] : [],
     ),
     findings,
-    cardOpens: opens.flatMap((o) => {
-      const id = (o.properties as { finding_id?: unknown } | null)?.finding_id;
-      const type = typeof id === "string" ? findingType.get(id) : undefined;
-      return type ? [{ findingType: type, at: o.createdAt }] : [];
-    }),
+    cardOpens: [
+      ...opens.flatMap((o) => {
+        const id = (o.properties as { finding_id?: unknown } | null)?.finding_id;
+        const type = typeof id === "string" ? findingType.get(id) : undefined;
+        return type ? [{ findingType: type, at: o.createdAt }] : [];
+      }),
+      ...posted.flatMap((m) => {
+        const id = (m.refs as { findingId?: unknown } | null)?.findingId;
+        const type = typeof id === "string" ? findingType.get(id) : undefined;
+        return type ? [{ findingType: type, at: m.createdAt }] : [];
+      }),
+    ],
     decisions: decisions.map((d) => ({
       findingType: d.finding.type,
       choice: d.choice,

@@ -6,6 +6,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { anthropic, llmModel } from "@/lib/anthropic";
 import { logAudit } from "@/lib/audit";
+import { encryptBytes } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxDocuments } from "@/lib/tax-documents";
@@ -205,6 +206,46 @@ export async function readDraftReturn(
     if (again) return toView(again);
     throw error;
   }
+}
+
+// Sample data only (demo advice, step 98): a sample draft to check without a file to upload, so
+// a Try Jane person can see the check. The stand-in reader fills it from their own figures, with
+// its planted mistakes; nothing goes to Claude. One at a time: a waiting sample is reused.
+export const SAMPLE_DRAFT_NAME = "Sample draft return.pdf";
+const SAMPLE_DRAFT_BYTES = new TextEncoder().encode("%PDF-1.4\n% Sample draft return\n%%EOF\n");
+
+export async function addSampleDraft(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<DraftReturnView> {
+  if (!(await adviceMode(userId, { client }))) {
+    throw new DraftReturnError("The sample draft is only for sample data.");
+  }
+  const db = scopedFor(userId, client);
+  const waiting = await db.draftReturns.findFirst({
+    where: { status: "waiting", document: { fileName: SAMPLE_DRAFT_NAME } },
+    select: SELECT,
+  });
+  if (waiting) return toView(waiting);
+  const document = await db.documents.create({
+    data: {
+      userId,
+      kind: "draft_return",
+      fileName: SAMPLE_DRAFT_NAME,
+      contentType: "application/pdf",
+      sizeBytes: SAMPLE_DRAFT_BYTES.length,
+      encryptedBytes: encryptBytes(SAMPLE_DRAFT_BYTES),
+      uploadedAt: now,
+    },
+    select: { id: true },
+  });
+  await logAudit(
+    { type: "user", id: userId },
+    "document_uploaded",
+    { type: "document", id: document.id },
+    { kind: "draft_return", sample: true },
+  );
+  return (await readDraftReturn(userId, document.id, { client, now }))!;
 }
 
 export async function listDraftReturns(
