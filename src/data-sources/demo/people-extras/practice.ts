@@ -51,7 +51,7 @@ export const DEMO_PRACTICE: Readonly<Record<PersonId, DemoPractice>> = {
     start: {},
     changes: [{ daysAgo: 7, set: { mode: "suggest" } }],
   },
-  equity: { startCents: 4_000_000, level: 4, dropReaction: "buy", start: {}, changes: [] },
+  equity: { startCents: 1_000_000, level: 4, dropReaction: "buy", start: {}, changes: [] },
   // Dan and Lena set their retirement date a few days ago: the glide path moves the mix.
   preretire: {
     startCents: 6_000_000,
@@ -70,13 +70,13 @@ export const DEMO_PRACTICE: Readonly<Record<PersonId, DemoPractice>> = {
     changes: [{ daysAgo: 20, set: { mode: "suggest", addDay: 8 } }],
   },
   // Chris chose High for practice though they would sell in a fall: this autumn's dip brings them
-  // close to the drop they said they could take. They practise small, $1,000 and nothing
-  // monthly, while the cards come first.
+  // close to the drop they said they could take. They practise small, $2,000 and $100 a month,
+  // while the cards come first.
   debt: {
-    startCents: 100_000,
+    startCents: 200_000,
     level: 1,
     dropReaction: "sell",
-    start: { riskLevel: 4, monthlyAddCents: 0 },
+    start: { riskLevel: 4, monthlyAddCents: 10_000 },
     changes: [],
   },
   // Jo never bought VXUS until a few days ago and now asks first: the cheaper twin of the
