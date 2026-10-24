@@ -16,5 +16,8 @@ on real history with no network call. Data only: nothing here is code, and the a
 - `universe.csv` (same source and shape, downloaded 2026-10-23, 2016-01-04 to 2026-10-21): the
   rest of the strategy universe (`STRATEGY_ASSETS` in `src/config/portfolios.ts`): VBR, VEA, VWO,
   SHY, IEF, TLT, TIP, VNQ, GLD.
+- `themes.csv` (same source and shape, downloaded 2026-10-24, 2016-01-04 to 2026-10-21): the funds
+  the news themes point to (`THEMES` in `src/config/themes.ts`) not already above: XLE, USO, ITA,
+  SMH. Used to backtest each theme on its past events (`src/planning/themes.ts`).
 - Not refreshed automatically. To refresh, fetch the same series and rewrite the file in the
   same shape; record the new range and date here and in `docs/backtests/log.md`.

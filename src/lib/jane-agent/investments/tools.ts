@@ -2,7 +2,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { formatBps } from "@/insights/investments";
 import type { ToolOutput } from "@/lib/ask/tools";
-import { GOALS, HORIZONS, RISK_LEVELS } from "@/config/investing";
+import { GOALS, HORIZONS, RISK_LEVELS, type RiskLevel } from "@/config/investing";
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
@@ -45,6 +46,19 @@ import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
 import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
 import { STAGE_AGES } from "@/config/retirement";
+import {
+  THEME_ALTERNATIVE_EVIDENCE,
+  THEME_EVIDENCE,
+  THEME_EVIDENCE_SOURCE,
+  themeConfidence,
+} from "@/config/theme-evidence";
+import {
+  THEME_HOLD_DAYS,
+  THEME_IDS,
+  THEME_SLICE_BY_LEVEL,
+  THEME_STOP_LOSS,
+  THEMES,
+} from "@/config/themes";
 import { tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { practiceIdeasFor } from "./practice-ideas";
@@ -255,6 +269,13 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     name: "practice_portfolio",
     description:
       "The person's practice portfolio (demo advice mode only): a paper portfolio Jane runs on practice money, never real money, at a risk level (Very low to Very high). Gives the level, what it's worth and started with, cash, each position, whether Jane is paused (all trading, or opportunities only), this week's trades with the rule and the reason for each, the ideas Jane is waiting on the person for (each with how sure she is, as a percent, and why), the strategy the autopilot follows today and whether the person's settings let it, and what their yes and no to past ideas changed (which kinds now come sooner or later). For \"what are you thinking of doing\", \"what strategy is mine on\" or \"have you learned what I like\". Say plainly that it's practice money and nothing real was bought or sold. To pause or resume it, offer practice.pause or practice.resume with propose_action; you can't change it yourself.",
+    input_schema: noInput,
+  },
+  // Phase AW: the news themes the practice portfolio watches, and how each did before.
+  {
+    name: "news_themes",
+    description:
+      'The news themes Jane watches for the practice portfolio (demo advice mode only): each kind of event (a Middle East supply shock, a war, a market scare, a Fed rate cut, a chip boom), the fund it points to, and how that fund did on the theme\'s past events against the whole US market over about a month, with the confidence and whether Jane offers it (only the ones that held up are). Also the slice by level and when the idea gets out. For "what do you do when there\'s a war", "should I buy oil" or "what news do you watch". Always call the numbers a replay of the past, never a forecast, and say when a theme didn\'t hold up.',
     input_schema: noInput,
   },
   {
@@ -1083,6 +1104,39 @@ export async function runInvestmentTool(
           reason: t.reason,
         })),
         ...(await practiceIdeasFor(userId, { client, now }, money)),
+      });
+    }
+    case "news_themes": {
+      if (!(await adviceMode(userId, { client }))) return out({ note: PRACTICE_ONLY_NOTE });
+      return out({
+        label: DEMO_ADVICE_LABEL,
+        source: THEME_EVIDENCE_SOURCE,
+        notAForecast: "A replay of past events, not a forecast.",
+        sliceByLevel: Object.fromEntries(
+          Object.entries(THEME_SLICE_BY_LEVEL).map(([l, share]) => [
+            RISK_LEVELS[Number(l) as RiskLevel].label,
+            `${Math.round((share ?? 0) * 100)}% of the practice portfolio at most`,
+          ]),
+        ),
+        exit: `Out after ${THEME_HOLD_DAYS} trading days, or sooner if it falls ${Math.round(THEME_STOP_LOSS * 100)}% from the buy.`,
+        themes: THEME_IDS.map((id) => {
+          const r = THEME_EVIDENCE[id];
+          return {
+            theme: THEMES[id].label,
+            fund: `${THEMES[id].ticker}: ${THEMES[id].fund}`,
+            what: THEMES[id].what,
+            risk: THEMES[id].risk,
+            offered: r.heldUp,
+            confidencePercent: r.heldUp ? themeConfidence(r) : null,
+            pastEvents: r.events,
+            beatTheMarket: r.hits,
+            averageAgainstTheMarketPoints: Math.round(r.averageExcess * 1000) / 10,
+            worstPercent: Math.round(r.worst * 1000) / 10,
+            alsoTested: THEME_ALTERNATIVE_EVIDENCE.filter((a) => a.theme === id).map(
+              (a) => `${a.ticker}: beat the market in ${a.hits} of ${a.events}`,
+            ),
+          };
+        }),
       });
     }
     case "crypto": {

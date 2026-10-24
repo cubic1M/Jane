@@ -139,11 +139,37 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
     }
   });
 
+  it("tells the news themes, how each did before, and which are offered", async () => {
+    const userId = await person();
+    const out = JSON.parse(
+      (await runChatTool(userId, "news_themes", {}, { client, now: at("2026-10-16") })).content,
+    );
+    expect(out.notAForecast).toMatch(/not a forecast/);
+    const offered = out.themes.filter((t: { offered: boolean }) => t.offered);
+    expect(offered.map((t: { fund: string }) => t.fund.split(":")[0]).sort()).toEqual([
+      "ITA",
+      "SMH",
+    ]);
+    for (const t of offered) expect(t.confidencePercent).toBeGreaterThan(0);
+    const oil = out.themes.find((t: { fund: string }) => t.fund.startsWith("XLE"));
+    expect(oil).toMatchObject({ offered: false, confidencePercent: null });
+    expect(oil.alsoTested[0]).toMatch(/^USO: beat the market in \d+ of 9/);
+    vi.mocked(adviceMode).mockResolvedValueOnce(false);
+    const real = JSON.parse(
+      (await runChatTool(userId, "news_themes", {}, { client, now: at("2026-10-16") })).content,
+    );
+    expect(real.note).toMatch(/demo advice/);
+  });
+
   it("is sent with the investing questions about it", () => {
     const names = (text: string) =>
       toolsFor(CHAT_TOOLS, text, null, null, "2026-10-16").map((t) => t.name);
     expect(names("what did you buy this week and why")).toContain("practice_portfolio");
     expect(names("pause it")).toContain("practice_portfolio");
+    expect(names("what do you do with my practice portfolio when there's a war")).toContain(
+      "news_themes",
+    );
+    expect(names("should I buy oil stocks")).toContain("news_themes");
     expect(names("what strategy is my practice portfolio on")).toContain("practice_portfolio");
     expect(names("what ideas do you have for my practice portfolio")).toContain(
       "practice_portfolio",

@@ -23,12 +23,14 @@ function read(file: string, into: Record<string, Bar[]>) {
   }
 }
 
-// The practice tickers (closes.csv) and the rest of the strategy universe (universe.csv).
+// The practice tickers (closes.csv), the rest of the strategy universe (universe.csv) and the
+// news themes' funds (themes.csv).
 export function realFixtureBars(): Record<string, Bar[]> {
   if (cached) return cached;
   const bars: Record<string, Bar[]> = {};
   read("./closes.csv", bars);
   read("./universe.csv", bars);
+  read("./themes.csv", bars);
   cached = bars;
   return bars;
 }

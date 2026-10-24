@@ -55,6 +55,11 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
 
   // The investments page sums it up and links back.
   await page.goto("/investments");
+  // The news themes, each with its past record; only the ones that held up are offered.
+  const themes = page.getByRole("region", { name: "News themes" });
+  await expect(themes.getByText(/^Defense when a war breaks out: ITA/)).toBeVisible();
+  await expect(themes.getByText("tested, not offered").first()).toBeVisible();
+  await expect(themes.getByText(/^USO instead: beat the market in \d+ of 9/)).toBeVisible();
   const summary = page.getByRole("region", { name: "Jane's practice ideas" });
   await expect(summary.getByText(/strategy today:/)).toBeVisible();
   await expect(summary.getByText(/still brought \(a safety check\)/)).toBeVisible();

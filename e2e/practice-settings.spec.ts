@@ -24,8 +24,9 @@ test("practice settings save and change what Jane does", async ({ context, page,
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
-  await page.goto("/investments/practice");
-  await page.getByRole("link", { name: /Set your goal, extra moves and what to avoid/ }).click();
+  // A sample portfolio starts by itself during the first scan, so the start form (and its link
+  // here) may already be gone: open the settings directly.
+  await page.goto("/investments/practice/settings");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Practice settings");
   const doing = page.getByRole("region", { name: "What Jane does now" });
   await expect(doing.getByText(/trades the practice portfolio herself/)).toBeVisible();

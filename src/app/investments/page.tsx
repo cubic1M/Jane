@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
 import { LevelStrategiesSection } from "@/components/level-strategies";
+import { NewsThemesSection } from "@/components/news-themes";
 import { PracticeIdeasSummary } from "@/components/practice-ideas-summary";
 import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
@@ -520,6 +521,7 @@ async function InvestmentsContent() {
       {backtests.advice && <BacktestsSection backtests={backtests.backtests} />}
       {backtests.advice && <PracticeIdeas userId={user.id} />}
       {backtests.advice && <LevelStrategies userId={user.id} />}
+      {backtests.advice && <NewsThemesSection />}
       {backtests.advice && (
         <Suspense
           fallback={<p className="text-sm text-zinc-500">Replaying the autopilot&apos;s rules…</p>}
