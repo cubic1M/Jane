@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addPracticeIdea, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
 
@@ -56,6 +57,7 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
 
   // The investments page sums it up and links back.
   await page.goto("/investments");
+  await pickItem(page, "Investing", "Practice portfolio", "Your practice portfolio");
   const summary = page.getByRole("region", { name: "Jane's practice ideas" });
   await expect(summary.getByText(/strategy today:/)).toBeVisible();
   await expect(summary.getByText(/still brought \(a safety check\)/)).toBeVisible();
