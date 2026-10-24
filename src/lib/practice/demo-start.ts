@@ -1,5 +1,9 @@
 import type { RiskLevel } from "@/config/investing";
-import { DEMO_PRACTICE_REPLAY_DAYS, PRACTICE_UNIVERSE } from "@/config/portfolios";
+import {
+  DEMO_PRACTICE_REPLAY_DAYS,
+  PRACTICE_START_CENTS,
+  PRACTICE_UNIVERSE,
+} from "@/config/portfolios";
 import { DEFAULT_LEVEL } from "@/config/practice-preferences";
 import { SCAN_HISTORY_DAYS } from "@/config/practice-scan";
 import { DEMO_PRACTICE } from "@/data-sources/demo/people-extras/practice";
@@ -90,7 +94,12 @@ export async function startDemoPractice(
   const from = iso(new Date(Date.parse(days[0]) - (SCAN_HISTORY_DAYS + 7) * DAY_MS));
   const feed = new MemoMarketData(marketData(), from, days.at(-1)!);
   await withMarketData(feed, () =>
-    startPractice(userId, level as RiskLevel, { client, now: closeOf(days[0]), auto: true }),
+    startPractice(
+      userId,
+      level as RiskLevel,
+      { client, now: closeOf(days[0]), auto: true },
+      sample?.startCents ?? PRACTICE_START_CENTS,
+    ),
   );
   const pending = [...(sample?.changes ?? [])]
     .map((c) => ({ day: demoPracticeChangeDay(today, c.daysAgo), set: c.set }))

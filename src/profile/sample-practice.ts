@@ -1,10 +1,5 @@
 import type { PersonId } from "@/config/people";
-import {
-  DEMO_PRACTICE_REPLAY_DAYS,
-  PRACTICE_START_CENTS,
-  PRACTICE_STOCKS,
-  PRACTICE_UNIVERSE,
-} from "@/config/portfolios";
+import { DEMO_PRACTICE_REPLAY_DAYS, PRACTICE_STOCKS, PRACTICE_UNIVERSE } from "@/config/portfolios";
 import { MAX_DROP_FROM_REACTION } from "@/config/practice-opportunities";
 import { SCAN_HISTORY_DAYS } from "@/config/practice-scan";
 import { STRATEGY_TRADE_COST_BPS } from "@/config/strategies";
@@ -60,7 +55,7 @@ export function samplePracticeIdeas(person: PersonId, data: ProfileInput): Pract
     bars,
     from: start,
     headlines: sampleNews(PRACTICE_STOCKS, from, last),
-    startCents: PRACTICE_START_CENTS,
+    startCents: c.startCents,
     monthlyAddCents: base.monthlyAddCents,
     addDay: base.addDay,
     strategy: "rules",
