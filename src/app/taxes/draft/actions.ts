@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { DraftReturnError, confirmDraftReturn, dismissDraftReturn } from "@/lib/draft-return";
+import {
+  DraftReturnError,
+  addSampleDraft,
+  confirmDraftReturn,
+  dismissDraftReturn,
+} from "@/lib/draft-return";
 import { requireUser } from "@/lib/session";
 import { draftFieldsFrom } from "./fields";
 
@@ -25,6 +30,11 @@ export async function draftAction(_previous: DraftState, formData: FormData): Pr
             ? "Confirmed. Jane checked it and found nothing to fix."
             : `Confirmed. Jane checked it: ${v.findings.length} thing${v.findings.length === 1 ? "" : "s"} to look at before you file.`,
       };
+    }
+    if (intent === "sample") {
+      await addSampleDraft(user.id);
+      revalidatePath("/taxes/draft");
+      return { ok: true, message: "Here is the sample draft. Check what Jane read, then confirm." };
     }
     if (intent === "dismiss") {
       await dismissDraftReturn(user.id, id);

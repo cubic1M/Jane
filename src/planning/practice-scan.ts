@@ -27,6 +27,7 @@ import {
   SCAN_KINDS,
   type ScanKind,
 } from "@/config/practice-scan";
+import { ideaSlot, PRACTICE_IDEA_MIN_CENTS } from "@/config/practice-suggestions";
 import { HARVEST_MIN_LOSS_CENTS } from "@/config/tax";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { WorthKind } from "@/detectors/contract";
@@ -599,6 +600,19 @@ export function flagStatus(
         ? "suggested"
         : "acted";
   return { status, heldBy: held };
+}
+
+// A suggestion the person isn't asked: one about the same thing is still waiting (ideaSlot,
+// within PRACTICE_IDEA_DAYS), or it's pocket change. The live scan and the rule replay both skip
+// with this, so neither keeps it.
+export function notAskedYet(
+  flag: Pick<ScanFlag, "kind" | "ticker" | "trades" | "amountCents">,
+  waiting: ReadonlySet<string>,
+): boolean {
+  return (
+    waiting.has(ideaSlot(flag.kind, flag.ticker)) ||
+    (flag.trades.length > 0 && flag.amountCents < PRACTICE_IDEA_MIN_CENTS)
+  );
 }
 
 // A flag kept from an earlier scan, as the scan reads it back.

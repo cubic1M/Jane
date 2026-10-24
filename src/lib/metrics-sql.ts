@@ -65,11 +65,19 @@ export async function computeMetricsSql(client: Client, w: Window): Promise<Metr
     WHERE ${inWindow(Prisma.sql`fl.linked_at`)}
     GROUP BY fl.user_id`;
 
+  // Shown: a card opened on its page, or the finding posted in Jane's chat, where most answers
+  // now come from (gap audit: chat yeses had nothing to be a share of).
   const opens = await client.$queryRaw<{ type: FindingType; count: bigint }[]>`
-    SELECT f.type::text AS type, COUNT(*) AS count
-    FROM analytics_events e JOIN findings f ON f.id = e.properties->>'finding_id'
-    WHERE e.name = 'card_opened' AND ${inWindow(Prisma.sql`e.created_at`)}
-    GROUP BY f.type`;
+    SELECT type, COUNT(*) AS count FROM (
+      SELECT f.type::text AS type
+      FROM analytics_events e JOIN findings f ON f.id = e.properties->>'finding_id'
+      WHERE e.name = 'card_opened' AND ${inWindow(Prisma.sql`e.created_at`)}
+      UNION ALL
+      SELECT f.type::text AS type
+      FROM jane_messages m JOIN findings f ON f.id = m.refs->>'findingId'
+      WHERE ${inWindow(Prisma.sql`m.created_at`)} AND ${real("m.user_id")}
+    ) shown
+    GROUP BY type`;
   const yeses = await client.$queryRaw<{ type: FindingType; count: bigint }[]>`
     SELECT f.type::text AS type, COUNT(*) AS count
     FROM decisions d JOIN findings f ON f.id = d.finding_id

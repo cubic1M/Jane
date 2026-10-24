@@ -21,7 +21,13 @@ export class MemoMarketData implements MarketData {
     this.simulated = feed.simulated;
   }
 
+  // Every ticker's window at once, so the replay's first day doesn't wait on them one by one.
+  async warm(tickers: readonly string[]): Promise<void> {
+    await Promise.all(tickers.map((t) => this.window(t.toUpperCase())));
+  }
+
   private window(ticker: string): Promise<Bar[]> {
+    ticker = ticker.toUpperCase();
     let bars = this.bars.get(ticker);
     if (!bars) {
       bars = this.feed.prices(ticker, this.from, this.to);
