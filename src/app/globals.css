@@ -253,9 +253,6 @@ html[data-giant-picked] [data-floating-cards="queue"] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-giant-picked] [data-floating-cards="queue"] {
-    display: none;
-  }
   .giant-glide {
     transition: none;
   }
