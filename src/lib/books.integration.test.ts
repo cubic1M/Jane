@@ -319,7 +319,7 @@ describe.runIf(url)("books that balance", { timeout: 120_000 }, () => {
     );
     const [said] = booksSource.gather(
       { books: { open: [ended!], markedAccountIds: [], merged: 0 } } as never,
-      NOW,
+      { now: NOW, trigger: "open" } as never,
     );
     expect(said.actions).toEqual([
       { id: "open", label: "Import a newer file", kind: "link", href: "/import" },
