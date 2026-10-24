@@ -65,7 +65,13 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
     strategies.getByText("Demo advice: sample data, not financial advice"),
   ).toBeVisible();
   // The filled-in page has no serious accessibility problems (e2e/accessibility.spec.ts
-  // checks it empty).
+  // checks it empty). Once the detail has finished fading in: mid-fade its grey text reads
+  // lighter than it is.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+  );
   const axe = await new AxeBuilder({ page })
     // The side chat is the chat page itself, checked on its own (/chat).
     .exclude('iframe[title="Chat with Jane"]')
