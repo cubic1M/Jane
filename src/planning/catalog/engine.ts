@@ -368,6 +368,7 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
         );
       if (w && e.mixWalk && w.vol > Math.max(budget.volCap, e.mixWalk.vol) + CATALOG_RISK_SLACK)
         reasons.push(`more volatile (${pct(w.vol)}) than ${RISK_LEVELS[level].label} allows`);
+      if (excessSharpe <= 0) reasons.push("no more return than the mix, only less risk");
       const beforeHaircut = reasons.length;
       if (dsr < CATALOG_MIN_DSR)
         reasons.push(
