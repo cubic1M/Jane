@@ -7,17 +7,10 @@ import { AssetPrompts } from "@/components/asset-prompts";
 import { ViewTracker } from "@/components/view-tracker";
 import { sourceLabel, type Debt } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
-import { areaOfCapability } from "@/config/areas";
-import { itemId, loansTree, type LoansBranch } from "@/lib/area-pages/loans";
-import { loadCredit } from "@/lib/credit";
-import { loadDebtReview } from "@/lib/debt-review";
-import { loadPayoff } from "@/lib/debt-plan";
-import { scopedDb } from "@/lib/db-scoped";
-import { loadBnpl } from "@/lib/bnpl";
-import { loadDebts } from "@/lib/debts";
+import { itemId, type LoansBranch } from "@/lib/area-pages/loans";
+import { loadLoansArea } from "@/lib/area-pages/loans-load";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
-import { assetPrompts } from "@/lib/owned-assets";
 import { requireUser } from "@/lib/session";
 import { clearTerms, saveTerms } from "./actions";
 
@@ -309,69 +302,10 @@ async function LoansContent({
     const v = params[key];
     return typeof v === "string" ? v : "";
   };
-  const db = await scopedDb();
-  const book = await loadDebts(user.id);
-  const [loans, linked, bnpl, suggestions, payoff, credit, review] = await Promise.all([
-    db.accounts.findMany({
-      where: { type: "loan" },
-      select: { id: true, name: true, type: true, subtype: true },
-    }),
-    // Mortgages and car loans with a home or car linked (spec step 67).
-    db.ownedAssets.findMany({ select: { loanAccountId: true } }),
-    // Spec step 176: the plans' installments over the next month.
-    loadBnpl(user.id, { book }),
-    db.suggestions.findMany({
-      where: { status: { in: ["waiting", "selected"] } },
-      select: {
-        key: true,
-        capability: true,
-        topic: true,
-        short: true,
-        why: true,
-        worthCents: true,
-        worthKind: true,
-        urgency: true,
-        actionLabel: true,
-        actionHref: true,
-      },
-      orderBy: { score: "desc" },
-    }),
-    loadPayoff(user.id, { book }),
-    loadCredit(user.id, { book }),
-    loadDebtReview(user.id, { book }),
-  ]);
-  const prompts = assetPrompts(
-    loans,
-    linked.map((o) => o.loanAccountId),
-  );
-  const mine = suggestions.filter((s) => areaOfCapability(s.capability) === "loans");
-  const accounts = book.debts.filter((d) => d.inNetWorth);
-  const plans = book.debts.filter((d) => !d.inNetWorth);
+  const { book, bnpl, prompts, mine, accounts, plans, area } = await loadLoansArea(user.id);
   const saved = SAVED[one("saved")];
   const openKey = one("terms");
   const error = one("error");
-  const latest = credit.available ? credit.latest : null;
-
-  const area = loansTree({
-    asOf: new Date().toISOString().slice(0, 10),
-    debts: [...accounts, ...plans],
-    suggestions: mine,
-    installments: bnpl.installments.length,
-    payoff: book.debts.length > 0 ? { debtFreeMonth: payoff.debtFreeMonth } : null,
-    credit: latest
-      ? {
-          score: latest.score,
-          share: latest.utilisation?.share ?? null,
-          toUnderHighCents: latest.utilisation?.toUnderHighCents ?? 0,
-        }
-      : null,
-    review: review.available
-      ? {
-          needYou: review.items.filter((i) => i.status === "tap").length,
-          on: review.review?.on ?? null,
-        }
-      : null,
-  });
 
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};

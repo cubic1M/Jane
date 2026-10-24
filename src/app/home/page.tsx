@@ -7,12 +7,18 @@ import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
-import { HomeTree } from "@/components/hub/home-tree";
-import { adviceMode } from "@/lib/advice-mode";
+import { GiantTree } from "@/components/hub/giant-tree";
 import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
+import { loadInvestingArea } from "@/lib/area-pages/investing-load";
+import { loadLoansArea } from "@/lib/area-pages/loans-load";
+import { moneyTree } from "@/lib/area-pages/money";
+import { loadMoneyArea } from "@/lib/area-pages/money-load";
+import { loadPlansArea } from "@/lib/area-pages/plans-load";
+import { loadTaxesArea } from "@/lib/area-pages/taxes-load";
+import type { AreaTrees } from "@/lib/giant-tree";
+import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
-import { homeTree } from "@/lib/hub/tree";
 import { CASH_FLOW_DAYS } from "@/config/areas";
 import { addDays } from "@/detection/units";
 import { autopilotOf } from "@/lib/autopilot";
@@ -24,7 +30,7 @@ import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
-import { cashFlowView, heroView, tilesView, type AreaTile } from "@/lib/hub/view";
+import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { openPopupMessages, POPUP_LIMIT, stackedSuggestions } from "@/lib/jane-agent/messages";
@@ -72,55 +78,56 @@ function NeedsYou({
   );
 }
 
-// What the home tree reads beyond the tiles, started with the page so it doesn't wait for them.
+// What the giant tree reads, started with the page so it doesn't wait for anything else. Each
+// area with a tree page shows that tree's branches, from the same loaders its page uses (a
+// loader that fails leaves its area showing what Jane looks for there).
+const quietly = <T,>(load: Promise<T>) => load.catch(() => undefined);
 const loadTreeData = (userId: string) =>
   Promise.all([
-    loadInsuranceArea(userId),
     scopedFor(userId).suggestions.findMany({ select: { key: true } }),
     adviceMode(userId),
+    quietly(loadInsuranceArea(userId)),
+    quietly(loadLoansArea(userId)),
+    quietly(loadTaxesArea(userId)),
+    quietly(loadPlansArea(userId)),
+    quietly(loadInvestingArea(userId)),
+    quietly(loadMoneyArea(userId).then(moneyTree)),
   ]);
 type TreeData = Awaited<ReturnType<typeof loadTreeData>>;
 
-async function Tiles({
-  userId,
-  home,
-  treeData,
-}: {
-  userId: string;
-  home: HomeSummary;
-  treeData: Promise<TreeData>;
-}) {
+async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
   const areas = await loadHubAreas(userId, {
     budgetsOver: home.budgetsOver.length,
     safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
   });
-  const tiles = tilesView(areas);
-  return (
-    <>
-      <AreaTiles tiles={tiles} />
-      <Suspense fallback={null}>
-        <AreasTree tiles={tiles} treeData={treeData} />
-      </Suspense>
-    </>
-  );
+  return <AreaTiles tiles={tilesView(areas)} />;
 }
 
-// The home tree: the areas' branches, from the same loaders their pages use.
-async function AreasTree({ tiles, treeData }: { tiles: AreaTile[]; treeData: Promise<TreeData> }) {
-  const [insurance, reached, advice] = await treeData;
+// The giant "What Jane does" tree (src/components/hub/giant-tree.tsx): Jane, the six areas,
+// their branches and features, all at once, from the same map as /home/map.
+async function AreasTree({ treeData }: { treeData: Promise<TreeData> }) {
+  const [reached, advice, insurance, loans, taxes, plans, investing, money] = await treeData;
+  const areaTrees: AreaTrees = {
+    insurance: insurance?.area,
+    loans: loans?.area,
+    taxes: taxes?.area,
+    ahead: plans?.area,
+    investments: investing?.area,
+    money,
+  };
   const maps = buildFeatureMap({
     examples: sampleExamples(),
     reached: new Set(reached.map((r) => r.key)),
     advice,
   });
-  return <HomeTree data={homeTree({ tiles, areaTrees: { insurance: insurance.area }, maps })} />;
+  return <GiantTree maps={maps} areaTrees={areaTrees} />;
 }
 
 async function HubContent() {
   await connection();
   const user = await requireUser();
   // Everything the hub reads starts at once (speed pass, 2026-10-24): the tree's data too, which
-  // the tiles' Suspense picks up when it's ready.
+  // the tree's Suspense picks up when it's ready.
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
@@ -169,13 +176,18 @@ async function HubContent() {
         chart={<NetWorthChart points={line} events={events} />}
       />
 
+      {/* Under the hero, before anything else: everything Jane does, as one tree. */}
+      <Suspense fallback={<div className="h-[480px] sm:h-[600px]" aria-hidden="true" />}>
+        <AreasTree treeData={treeData} />
+      </Suspense>
+
       <CashFlowStrip
         view={cashFlowView(top.cashFlow)}
         endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
       />
 
       <Suspense fallback={<AreaTilesLoading />}>
-        <Tiles userId={user.id} home={home} treeData={treeData} />
+        <Tiles userId={user.id} home={home} />
       </Suspense>
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
