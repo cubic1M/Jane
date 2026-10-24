@@ -75,6 +75,22 @@ function NeedsYou({
   );
 }
 
+// What the giant tree reads, started with the page so it doesn't wait for anything else. Each
+// area with a tree page shows that tree's branches, from the same loaders its page uses (a
+// loader that fails leaves its area showing what Jane looks for there).
+const quietly = <T,>(load: Promise<T>) => load.catch(() => undefined);
+const loadTreeData = (userId: string) =>
+  Promise.all([
+    scopedFor(userId).suggestions.findMany({ select: { key: true } }),
+    adviceMode(userId),
+    quietly(loadInsuranceArea(userId)),
+    quietly(loadLoansArea(userId)),
+    quietly(loadTaxesArea(userId)),
+    quietly(loadPlansArea(userId)),
+    quietly(loadInvestingArea(userId)),
+  ]);
+type TreeData = Awaited<ReturnType<typeof loadTreeData>>;
+
 async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
   const areas = await loadHubAreas(userId, {
     budgetsOver: home.budgetsOver.length,
@@ -85,19 +101,8 @@ async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
 
 // The giant "What Jane does" tree (src/components/hub/giant-tree.tsx): Jane, the six areas,
 // their branches and features, all at once, from the same map as /home/map.
-async function AreasTree({ userId }: { userId: string }) {
-  // Each area with a tree page shows that tree's branches, from the same loaders its page uses
-  // (a loader that fails leaves its area showing what Jane looks for there).
-  const quietly = <T,>(load: Promise<T>) => load.catch(() => undefined);
-  const [reached, advice, insurance, loans, taxes, plans, investing] = await Promise.all([
-    scopedFor(userId).suggestions.findMany({ select: { key: true } }),
-    adviceMode(userId),
-    quietly(loadInsuranceArea(userId)),
-    quietly(loadLoansArea(userId)),
-    quietly(loadTaxesArea(userId)),
-    quietly(loadPlansArea(userId)),
-    quietly(loadInvestingArea(userId)),
-  ]);
+async function AreasTree({ treeData }: { treeData: Promise<TreeData> }) {
+  const [reached, advice, insurance, loans, taxes, plans, investing] = await treeData;
   const areaTrees: AreaTrees = {
     insurance: insurance?.area,
     loans: loans?.area,
@@ -116,19 +121,24 @@ async function AreasTree({ userId }: { userId: string }) {
 async function HubContent() {
   await connection();
   const user = await requireUser();
-  const top = await loadHubTop(user.id);
-  if (!top) redirect("/connect");
-  const { home } = top;
-  const [checklist, autopilot, books, stackedRows, zone, line] = await Promise.all([
+  // Everything the hub reads starts at once (speed pass, 2026-10-24): the tree's data too, which
+  // the tree's Suspense picks up when it's ready.
+  const treeData = loadTreeData(user.id);
+  // Read later by the tree; a failure shows there, not as an unhandled rejection here.
+  treeData.catch(() => {});
+  const [top, checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+    loadHubTop(user.id),
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
     // The day's suggestions still waiting, as the chat shows them.
     stackedSuggestions(user.id),
     timezoneOf(user.id),
-    // Net worth every day since the first day with Jane, ending at the hub's own figure.
-    netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0),
   ]);
+  if (!top) redirect("/connect");
+  const { home } = top;
+  // Net worth every day since the first day with Jane, ending at the hub's own figure.
+  const line = await netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0);
   const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
   // What moved it: the chart's events, from its first day.
   const events = line[0]
@@ -155,7 +165,7 @@ async function HubContent() {
 
       {/* Under the hero, before anything else: everything Jane does, as one tree. */}
       <Suspense fallback={<div className="h-[480px] sm:h-[600px]" aria-hidden="true" />}>
-        <AreasTree userId={user.id} />
+        <AreasTree treeData={treeData} />
       </Suspense>
 
       <CashFlowStrip
