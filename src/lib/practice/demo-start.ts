@@ -1,3 +1,4 @@
+import type { RiskLevel } from "@/config/investing";
 import { DEMO_PRACTICE_REPLAY_DAYS, PRACTICE_UNIVERSE } from "@/config/portfolios";
 import { DEFAULT_LEVEL } from "@/config/practice-preferences";
 import { SCAN_HISTORY_DAYS } from "@/config/practice-scan";
@@ -48,42 +49,68 @@ export type DemoPracticeStart =
   | { started: false; why: "not_demo" | "exists" }
   | { started: true; level: number; days: number; trades: number };
 
-export async function ensureDemoPractice(
+// What the replay still has to do once the portfolio has started: its days, the settings
+// changes still to save, and the market data for the window.
+export type DemoPracticePlan = {
+  level: number;
+  days: string[];
+  pending: { day: string; set: Partial<PracticePreferences> }[];
+  feed: MemoMarketData;
+};
+
+const saveFor =
+  (userId: string, client: PrismaClient) => (set: Partial<PracticePreferences>, on: Date) =>
+    Object.keys(set).length > 0
+      ? savePreferences(userId, set, "sample", { client, now: on })
+      : Promise.resolve(null);
+
+// The quick part, before the first scan's suggestions: the portfolio, started on the first day
+// at the person's level with their settings, so nobody is asked to start one. Null when it
+// isn't for them (a real account) or they have one.
+export async function startDemoPractice(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<DemoPracticeStart> {
-  if (!(await adviceMode(userId, { client }))) return { started: false, why: "not_demo" };
+): Promise<DemoPracticePlan | null> {
+  if (!(await adviceMode(userId, { client }))) return null;
   const db = scopedFor(userId, client);
-  if (await db.practicePortfolios.findFirst({ select: { id: true } }))
-    return { started: false, why: "exists" };
+  if (await db.practicePortfolios.findFirst({ select: { id: true } })) return null;
   const today = iso(now);
   const days = replayDays(iso(new Date(now.getTime() - DEMO_PRACTICE_REPLAY_DAYS * DAY_MS)), today);
-  if (days.length === 0) return { started: false, why: "not_demo" };
+  if (days.length === 0) return null;
   // A sample person's own practice settings (people-extras/practice.ts): saved as they start,
   // and each change on its day.
   const person = await demoPersonFor(userId, { client });
   const sample = person ? DEMO_PRACTICE[person] : null;
-  const save = (set: Partial<PracticePreferences>, on: Date) =>
-    Object.keys(set).length > 0
-      ? savePreferences(userId, set, "sample", { client, now: on })
-      : Promise.resolve(null);
-  await save(sample?.start ?? {}, closeOf(days[0]));
+  await saveFor(userId, client)(sample?.start ?? {}, closeOf(days[0]));
   const level =
     sample?.start.riskLevel ??
     (await questionnaireLevel(userId, { client, now })) ??
     sample?.level ??
     DEFAULT_LEVEL;
+  const from = iso(new Date(Date.parse(days[0]) - (SCAN_HISTORY_DAYS + 7) * DAY_MS));
+  const feed = new MemoMarketData(marketData(), from, days.at(-1)!);
+  await withMarketData(feed, () =>
+    startPractice(userId, level as RiskLevel, { client, now: closeOf(days[0]), auto: true }),
+  );
   const pending = [...(sample?.changes ?? [])]
     .map((c) => ({ day: demoPracticeChangeDay(today, c.daysAgo), set: c.set }))
     .sort((a, b) => (a.day < b.day ? -1 : 1));
-  const from = iso(new Date(Date.parse(days[0]) - (SCAN_HISTORY_DAYS + 7) * DAY_MS));
-  const feed = new MemoMarketData(marketData(), from, days.at(-1)!);
-  await feed.warm([...PRACTICE_UNIVERSE]);
+  return { level, days, pending, feed };
+}
+
+// The slow part, beside the first scan's other work: every day since the start, through the
+// same daily practice run as every portfolio, each settings change saved just before its day.
+export async function replayDemoPractice(
+  userId: string,
+  plan: DemoPracticePlan,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<number> {
+  const save = saveFor(userId, client);
+  const pending = [...plan.pending];
+  await plan.feed.warm([...PRACTICE_UNIVERSE]);
   let trades = 0;
-  await withMarketData(feed, async () => {
-    await startPractice(userId, level, { client, now: closeOf(days[0]), auto: true });
-    for (const day of days) {
-      // The settings they changed by this day, saved just before its run.
+  await withMarketData(plan.feed, async () => {
+    for (const day of plan.days) {
       while (pending.length > 0 && pending[0].day <= day)
         await save(pending.shift()!.set, new Date(closeOf(day).getTime() - 60_000));
       const run = await runPracticeDay(userId, { client, now: closeOf(day) });
@@ -91,5 +118,17 @@ export async function ensureDemoPractice(
       if (run?.scan.scanned) trades += run.scan.flags.reduce((s, f) => s + f.trades, 0);
     }
   });
-  return { started: true, level, days: days.length, trades };
+  return trades;
+}
+
+// Both, one after the other.
+export async function ensureDemoPractice(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<DemoPracticeStart> {
+  if (!(await adviceMode(userId, { client }))) return { started: false, why: "not_demo" };
+  const plan = await startDemoPractice(userId, { client, now });
+  if (!plan) return { started: false, why: "exists" };
+  const trades = await replayDemoPractice(userId, plan, { client });
+  return { started: true, level: plan.level, days: plan.days.length, trades };
 }
