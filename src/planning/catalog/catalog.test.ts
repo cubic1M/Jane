@@ -177,7 +177,7 @@ describe("the write-up", () => {
       expect(md).toContain(`## ${level}`);
     expect(md).toMatch(/Recommendable: /);
     expect(md).toMatch(/Worth watching/);
-    expect(md).toMatch(/after the haircut for 4 trials/);
+    expect(md).toContain("6 trials were tested");
     const ev = evidenceModule(results, meta);
     expect(ev).toContain("export const CATALOG_EVIDENCE");
     expect(ev).toContain("faber_gtaa5:");
