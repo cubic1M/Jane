@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { landInChat } from "./chat-page";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -32,7 +33,7 @@ test("can I afford this shows a purchase's effect before and after, from the URL
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   // The scan ends in Jane's chat (spec step 82).
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Spec step 79: "Can I afford this?" lives under the Ahead tab now, not in a row of
   // links on Home.

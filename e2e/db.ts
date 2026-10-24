@@ -307,3 +307,51 @@ export async function addPracticeIdea(userId: string): Promise<void> {
     await client.end();
   }
 }
+
+// A news theme's idea, found just now (Phase AW): the scan keeps it waiting for a yes.
+export async function addThemeIdea(userId: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT id FROM practice_portfolios WHERE user_id = $1`, [
+      userId,
+    ]);
+    await client.query(
+      `INSERT INTO practice_opportunities
+        (id, portfolio_id, user_id, scanned_at, kind, ticker, key, amount_cents, headline, reason,
+         confidence, details, status, trade_ids)
+       VALUES ($1, $2, $3, now(), 'theme_idea', 'ITA', 'theme_idea:conflict_defense:e2e', 40000,
+         'Defense when a war breaks out: $400 in ITA', 'For the end-to-end test.', 67, $4,
+         'suggested', '{}')`,
+      [
+        `e2e-theme-${userId}`,
+        rows[0].id,
+        userId,
+        JSON.stringify({
+          ask: {
+            headline: "Try $400 of ITA on the news, in practice",
+            short:
+              "After news today: it beat the market in 5 of 7 past events; out in about a month.",
+            worthCents: 40000,
+            worthKind: "risk",
+          },
+          figures: [
+            { label: "Why now", value: "Troops cross the border as a war breaks out (E2E wire)" },
+            { label: "Past events", value: "Beat the market in 5 of 7" },
+            { label: "On average against the market", value: "1.4%" },
+            { label: "The risk", value: "Defense shares also hold airlines." },
+            {
+              label: "When to get out",
+              value: "Out after 20 trading days, or sooner if it falls 8%.",
+            },
+          ],
+          caps: ["Jane asks first, every time"],
+          confidence: { percent: 67, reason: "it beat the market in 5 of 7 past events" },
+          trades: [{ ticker: "ITA", side: "buy", amountCents: 40000 }],
+        }),
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+}

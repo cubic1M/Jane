@@ -7,6 +7,8 @@ import { AreaPage } from "@/components/area-page/area-page";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BacktestsSection } from "@/components/backtests";
 import { LevelStrategiesSection } from "@/components/level-strategies";
+import { NewsThemesSection } from "@/components/news-themes";
+import { StrategyMenuSection } from "@/components/strategy-menu";
 import { PracticeIdeasSummary } from "@/components/practice-ideas-summary";
 import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
@@ -107,6 +109,12 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function LevelStrategies({ userId }: { userId: string }) {
   const [latest, profile] = await Promise.all([latestStrategies(), practiceProfileOf(userId)]);
   return <LevelStrategiesSection latest={latest} level={profile.level} />;
+}
+
+// More strategies, at the person's own level.
+async function StrategyMenu({ userId }: { userId: string }) {
+  const profile = await practiceProfileOf(userId);
+  return <StrategyMenuSection level={profile.level} />;
 }
 
 async function RuleReplays({ userId }: { userId: string }) {
@@ -387,6 +395,8 @@ async function InvestmentsContent({
   details[itemId("news", "none")] = go("/investments/practice", "Your practice portfolio");
   details[itemId("strategies", "today")] = go("/investments/practice", "Your practice portfolio");
   details[itemId("strategies", "levels")] = <LevelStrategies userId={user.id} />;
+  details[itemId("strategies", "menu")] = <StrategyMenu userId={user.id} />;
+  details[itemId("news", "themes")] = <NewsThemesSection />;
   if (backtests.advice)
     details[itemId("strategies", "backtests")] = (
       <BacktestsSection backtests={backtests.backtests} />

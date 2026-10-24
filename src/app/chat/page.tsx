@@ -2,15 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { after, connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
 import { inTheList, toView, type MessageView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
 import { practiceCards } from "@/lib/practice/cards";
-import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
+import { chatRedirect } from "@/lib/side-chat";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
 import { ScanRefresher } from "./scan-refresher";
@@ -18,7 +17,8 @@ import { ScrollToEnd } from "./scroll-to-end";
 import { ChatCards } from "./chat-cards";
 import { EmbedBridge } from "./embed-bridge";
 
-// Jane's chat, the home screen (spec step 81): what Jane noticed, did and suggests, newest
+// Jane's chat (spec step 81), shown only in the side panel since the founder's "I don't want an
+// individual chat": /chat itself opens Home with the panel open. What Jane noticed, did and suggests, newest
 // at the bottom, each with its buttons. The last CHAT_PAGE_SIZE messages, with "Show
 // earlier". The message box at the end is for typing to Jane (spec step 84); conversations
 // from Ask Jane stay readable on /ask.
@@ -45,6 +45,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   const params = await searchParams;
   const pages = pagesFrom(params.pages);
   const embed = params.embed === "1";
+  // No chat page of its own: Home, with the side chat open (src/lib/side-chat.ts).
+  if (!embed) redirect(chatRedirect(params));
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
   const [chat, askHistory, pinned, stackedRows, zone, practice] = await Promise.all([
     openChat(user.id, { pages }),
@@ -58,7 +60,6 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   ]);
   const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
   if (!chat) {
-    if (!embed) redirect("/connect");
     return (
       <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
         Link a bank and I&apos;ll start looking after your money.{" "}
@@ -72,38 +73,19 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   const listed = inTheList(chat.messages, stacked);
   const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
-  // Constant search (Phase AW): a cheap practice scan, after the page is sent. Not for the side
-  // panel, which loads with every page: the chat's own page and Jane's runs do it.
-  if (!embed) after(() => scanOnOpenQuietly(user.id));
 
   return (
     <>
-      {embed ? (
-        <>
-          <EmbedBridge />
-          <h1 data-chat-embed className="sr-only">
-            Chat with Jane
-          </h1>
-        </>
-      ) : (
-        <>
-          <AppHeader user={user} />
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold tracking-tight">Chat with Jane</h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              I look at your money every day and bring you what matters. What I bring up on my own
-              has a yellow edge; my answers to your questions don&apos;t.
-            </p>
-          </div>
-        </>
-      )}
+      <EmbedBridge />
+      <h1 data-chat-embed className="sr-only">
+        Chat with Jane
+      </h1>
 
       {/* Every message counts here, the floating ones too: the pulse counts them all. */}
       {chat.scanning && <ScanRefresher shown={chat.hasEarlier ? -1 : chat.messages.length} />}
 
-      {/* Spec step 96: search everything said here, and what the person pinned. In the side
-          panel the search is on the chat's own page. */}
-      <form action="/chat/search" role="search" hidden={embed} className="flex gap-2">
+      {/* Spec step 96: search everything said here, and what the person pinned. */}
+      <form action="/chat/search" role="search" className="flex gap-2">
         <input
           name="q"
           type="search"

@@ -14,7 +14,8 @@ export type OpportunityKind =
   | "drift_warning"
   | "glide_path"
   | "risk_mismatch"
-  | "max_drop_near";
+  | "max_drop_near"
+  | "theme_idea";
 
 export const OPPORTUNITY_KINDS: readonly OpportunityKind[] = [
   "new_money_rebalance",
@@ -25,6 +26,7 @@ export const OPPORTUNITY_KINDS: readonly OpportunityKind[] = [
   "glide_path",
   "risk_mismatch",
   "max_drop_near",
+  "theme_idea",
 ];
 
 export const OPPORTUNITY_LABELS: Readonly<Record<OpportunityKind, string>> = {
@@ -36,6 +38,7 @@ export const OPPORTUNITY_LABELS: Readonly<Record<OpportunityKind, string>> = {
   glide_path: "Step down as your goal gets close",
   risk_mismatch: "More risk than you said",
   max_drop_near: "Close to the drop you said you could take",
+  theme_idea: "A news theme",
 };
 
 // Same shape as SCAN_CAPS. sizeShare and positionShare matter only for kinds with trades;
@@ -52,6 +55,8 @@ export const OPPORTUNITY_CAPS: Readonly<
   glide_path: { sizeShare: 0, positionShare: 0, perMonth: 1 },
   risk_mismatch: { sizeShare: 0, positionShare: 0, perMonth: 1 },
   max_drop_near: { sizeShare: 0, positionShare: 0, perMonth: 1 },
+  // The slice is the level's (THEME_SLICE_BY_LEVEL, src/config/themes.ts); these are its ceiling.
+  theme_idea: { sizeShare: 0.06, positionShare: 0.06, perMonth: 2 },
 };
 
 export const OPPORTUNITY_CONFIDENCE: Readonly<
@@ -91,12 +96,21 @@ export const OPPORTUNITY_CONFIDENCE: Readonly<
     reason:
       "It compares your mix with past crashes, which won't repeat exactly, against the drop you said you could take.",
   },
+  theme_idea: {
+    percent: 50,
+    reason:
+      "How often the theme's fund beat the market on its past events; each idea says its own.",
+  },
   max_drop_near: {
     percent: 72,
     reason:
       "Your own limit, not a market call: the portfolio is already most of the way to the drop you said you could take.",
   },
 };
+
+// Kinds that trade but always ask first, even when Jane acts by herself: a news theme is a bet
+// beside the plan, so it waits for the person's yes.
+export const ASK_FIRST_KINDS: readonly OpportunityKind[] = ["theme_idea"];
 
 // Kinds that keep the person inside what they said they could take. Their rank never falls
 // below SAFETY_HISTORY_FLOOR however often they're declined (src/config/suggestions.ts reads it).

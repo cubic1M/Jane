@@ -70,7 +70,8 @@ function practiceDetector(kind: Kind): Detector {
     capability: "investing",
     topic: PRACTICE_TOPIC[kind],
     needs: [],
-    covers: [],
+    // The theme ideas are what the chat's news_themes tool tells about.
+    covers: kind === "theme_idea" ? ["news_themes"] : [],
     detect({ data }): Suggestion | null {
       const idea = (data.extras?.practiceIdeas ?? []).find((i) => i.kind === kind);
       return idea ? practiceSuggestion(idea) : null;

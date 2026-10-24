@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import { ScanningProgress } from "./scanning-progress";
 import { requireUser } from "@/lib/session";
 
-// Where to go once the scan is done: the report, or Jane's chat (?then=chat, after
-// linking the demo bank, spec step 82).
+// Where to go once the scan is done: the report, or Home with Jane's chat beside it (?then=home,
+// after linking the demo bank, spec step 82; ?then=chat from older links).
 async function SignedInProgress({
   searchParams,
 }: {
@@ -11,7 +11,7 @@ async function SignedInProgress({
 }) {
   await requireUser();
   const { then } = await searchParams;
-  return <ScanningProgress next={then === "chat" ? "/chat" : "/report"} />;
+  return <ScanningProgress next={then === "home" || then === "chat" ? "/home" : "/report"} />;
 }
 
 export default function ScanningPage({ searchParams }: PageProps<"/scanning">) {
