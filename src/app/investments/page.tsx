@@ -114,7 +114,13 @@ async function LevelStrategies({ userId }: { userId: string }) {
 // More strategies, at the person's own level.
 async function StrategyMenu({ userId }: { userId: string }) {
   const profile = await practiceProfileOf(userId);
-  return <StrategyMenuSection level={profile.level} choice={profile.strategyChoice} />;
+  return (
+    <StrategyMenuSection
+      level={profile.level}
+      choice={profile.strategyChoice}
+      crypto={profile.crypto?.strategy ?? null}
+    />
+  );
 }
 
 async function RuleReplays({ userId }: { userId: string }) {

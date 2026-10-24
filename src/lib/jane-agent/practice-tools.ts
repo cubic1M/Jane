@@ -1,9 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
+import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
 import { GOALS, RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import {
   APPETITES,
   AUTOPILOT_MODES,
+  CRYPTO_SLEEVE_CHOICES,
   BROAD_FUND_NOTE,
   EXCLUSIONS,
   MAX_FUND_RANGE,
@@ -50,7 +52,7 @@ export const PRACTICE_TOOLS: Anthropic.Tool[] = [
   {
     name: CHANGE_PRACTICE_TOOL,
     description:
-      'Prepare a change to the practice portfolio settings as a card the person confirms with a tap; nothing changes until they do. Give only what they asked to change. "Make it less risky" is risk_step lower; "stop the extra moves" is extra_moves off; "avoid oil companies" is avoid_add fossil_fuels; "I need this money in 2030" is goal_date 2030-01-01; "just tell me first" is mode suggest; "use the trend strategy" is strategy trend, "no strategy, just the mix" is strategy mix, "go back to your pick" is strategy level; "use the value tilt" (or momentum, quality, dividend growth, equal weight) is strategy value_tilt (momentum_tilt, quality_tilt, dividend_growth, equal_weight); sector rotation and all-weather are not in the practice portfolio yet, so say so; "trade less often" is rebalance_pace rarely; "only index funds" or "no single stocks" is universe funds_only; "never more than half in one fund" is max_fund_percent 50. After calling it, write one sentence on what will change once they confirm; never say it is done. Demo advice mode only.',
+      'Prepare a change to the practice portfolio settings as a card the person confirms with a tap; nothing changes until they do. Give only what they asked to change. "Make it less risky" is risk_step lower; "stop the extra moves" is extra_moves off; "avoid oil companies" is avoid_add fossil_fuels; "I need this money in 2030" is goal_date 2030-01-01; "just tell me first" is mode suggest; "use the trend strategy" is strategy trend, "no strategy, just the mix" is strategy mix, "go back to your pick" is strategy level; "use the value tilt" (or momentum, quality, dividend growth, equal weight) is strategy value_tilt (momentum_tilt, quality_tilt, dividend_growth, equal_weight); sector rotation and all-weather are not in the practice portfolio yet, so say so; "trade less often" is rebalance_pace rarely; "only index funds" or "no single stocks" is universe funds_only; "never more than half in one fund" is max_fund_percent 50; "add the crypto trend" (or crypto held, crypto momentum) is crypto_sleeve crypto_trend (crypto_hold, crypto_momentum), only at Very high, and "no crypto" is crypto_sleeve off. After calling it, write one sentence on what will change once they confirm; never say it is done. Demo advice mode only.',
     input_schema: {
       type: "object" as const,
       properties: {
@@ -81,6 +83,11 @@ export const PRACTICE_TOOLS: Anthropic.Tool[] = [
         max_fund_percent: {
           type: ["integer", "null"],
           description: `The most of the portfolio in one fund, ${MAX_FUND_RANGE.min} to ${MAX_FUND_RANGE.max} whole percent; null for the limit.`,
+        },
+        crypto_sleeve: {
+          type: "string",
+          enum: Object.keys(CRYPTO_SLEEVE_CHOICES),
+          description: "The crypto sleeve beside the mix (Very high only), or off.",
         },
       },
       additionalProperties: false,
@@ -147,6 +154,7 @@ export async function patchFromInput(
   if ("rebalance_pace" in a) patch.rebalancePace = a.rebalance_pace;
   if ("universe" in a) patch.universe = a.universe;
   if ("max_fund_percent" in a) patch.maxFundPercent = a.max_fund_percent;
+  if ("crypto_sleeve" in a) patch.cryptoSleeve = a.crypto_sleeve;
   return patch;
 }
 
@@ -168,6 +176,12 @@ export async function proposePracticeChange(
   if (!result.ok) return { ok: false, error: Object.values(result.errors).join(" ") };
   if (result.changed.length === 0) {
     return { ok: false, error: "Those settings are already set that way; nothing to change." };
+  }
+  if (result.changed.includes("cryptoSleeve") && result.preferences.cryptoSleeve !== "off") {
+    const level =
+      result.preferences.riskLevel ?? (await practiceProfileOf(userId, { client, now })).level;
+    if (CRYPTO_SLEEVE_BY_LEVEL[level] === undefined)
+      return { ok: false, error: "The crypto sleeve runs at Very high only." };
   }
   const lines = describeChanges(before, result.preferences, result.changed);
   const extra =

@@ -155,7 +155,8 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
       ]),
     );
     expect(out.crypto.warning).toMatch(/lost 70% to 80%/);
-    expect(out.crypto.inThePracticePortfolio).toBe(false);
+    expect(out.crypto.inThePracticePortfolio).toMatch(/^At Very high, as a sleeve/);
+    expect(out.crypto.practicePortfolioRuns).toBe("no crypto sleeve");
     expect(out.crypto.strategies.map((s: { strategy: string }) => s.strategy)).toEqual([
       "Crypto, held",
       "Crypto trend",

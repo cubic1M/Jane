@@ -1,8 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { STRATEGY_CHOICES } from "@/config/practice-preferences";
-import { savePreferences } from "@/lib/practice/preferences";
+import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
+import { CRYPTO_SLEEVE_CHOICES, STRATEGY_CHOICES } from "@/config/practice-preferences";
+import { practiceProfileOf, savePreferences } from "@/lib/practice/preferences";
 import { requireUser } from "@/lib/session";
 
 // "Use in practice" on a strategy menu card (Phase AW, Stage A): the practice portfolio's
@@ -14,5 +15,19 @@ export async function usePracticeStrategy(formData: FormData): Promise<void> {
     await savePreferences(user.id, { strategy }, "page");
   }
   // Back to the same card: the investing tree opens on More strategies.
+  redirect("/investments?focus=strategies:menu");
+}
+
+// "Use in practice" on a crypto card, and "Turn the sleeve off" (Very high only): the crypto
+// sleeve, through the same check. A sleeve is turned on only at a level that has one.
+export async function usePracticeCrypto(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const sleeve = String(formData.get("sleeve") ?? "");
+  if (Object.hasOwn(CRYPTO_SLEEVE_CHOICES, sleeve)) {
+    const { level } = await practiceProfileOf(user.id);
+    if (sleeve === "off" || CRYPTO_SLEEVE_BY_LEVEL[level] !== undefined) {
+      await savePreferences(user.id, { cryptoSleeve: sleeve }, "page");
+    }
+  }
   redirect("/investments?focus=strategies:menu");
 }

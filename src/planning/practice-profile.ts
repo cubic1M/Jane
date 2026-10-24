@@ -1,3 +1,9 @@
+import { CRYPTO_EVIDENCE } from "@/config/crypto-evidence";
+import {
+  CRYPTO_SLEEVE_BY_LEVEL,
+  CRYPTO_STRATEGIES,
+  type CryptoStrategyId,
+} from "@/config/crypto-strategies";
 import { GLIDE_PATH_SOURCE, RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import {
   AUTOPILOT_LIMITS,
@@ -72,6 +78,9 @@ export type PracticeProfile = {
   universe: PracticePreferences["universe"];
   // What the profile does, in plain sentences, for the page, the chat and the backtests.
   rules: string[];
+  // The crypto sleeve the person chose (src/config/crypto-strategies.ts), with its rule's setting
+  // from the evidence and the most of the portfolio it may be: null when off or below Very high.
+  crypto: { strategy: CryptoStrategyId; param: number; share: number } | null;
   // The fund the person chose for a kind (a strategy menu tilt), set with the strategy below.
   funds?: Partial<Record<PracticeClass, string>>;
   // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
@@ -271,6 +280,21 @@ export function profileFor(
   if (prefs.strategy === "mix") {
     rules.push(`${STRATEGY_CHOICES.mix.label}, as you chose: no strategy on top.`);
   }
+  const sleeve = prefs.cryptoSleeve === "off" ? null : prefs.cryptoSleeve;
+  const sleeveShare = CRYPTO_SLEEVE_BY_LEVEL[level] ?? 0;
+  const crypto =
+    sleeve && sleeveShare > 0
+      ? { strategy: sleeve, param: CRYPTO_EVIDENCE[sleeve].param, share: sleeveShare }
+      : null;
+  if (crypto) {
+    rules.push(
+      `A crypto sleeve (${CRYPTO_STRATEGIES[crypto.strategy].label}) of up to ${pct(crypto.share)} of the portfolio, beside the mix: ${CRYPTO_STRATEGIES[crypto.strategy].how}`,
+    );
+  } else if (sleeve) {
+    rules.push(
+      `The crypto sleeve you chose (${CRYPTO_STRATEGIES[sleeve].label}) waits: it runs at Very high only, and anything it held is sold.`,
+    );
+  }
 
   return {
     level,
@@ -298,6 +322,7 @@ export function profileFor(
     limits,
     strategyChoice: prefs.strategy,
     universe: prefs.universe,
+    crypto,
     rules,
   };
 }

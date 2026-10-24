@@ -5,6 +5,8 @@ import {
   MODEL_PORTFOLIOS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
+  CRYPTO_TICKERS,
+  LEDGER_UNIVERSE,
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
@@ -16,9 +18,11 @@ import {
   type ScanKind,
 } from "@/config/practice-scan";
 import { ideaSlot, PRACTICE_IDEA_DAYS } from "@/config/practice-suggestions";
+import { CRYPTO_SLEEVE_HISTORY_DAYS } from "@/config/crypto-strategies";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { Bar, Headline } from "@/lib/market/types";
 import { worstDropOf, type Drop, type PathPoint } from "./backtest";
+import { cryptoSleeveTrades, sleeveCash } from "./crypto-sleeve";
 import {
   monthlyDue,
   planTrades,
@@ -184,7 +188,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
   const rules = input.rules === "live" ? undefined : (input.rules ?? new Set(SCAN_KINDS));
   const cost = input.tradeCostBps / 10_000;
   const cursors = new Map(
-    [...PRACTICE_UNIVERSE].map((t) => [t, new Cursor(input.bars[t] ?? [])] as const),
+    [...LEDGER_UNIVERSE].map((t) => [t, new Cursor(input.bars[t] ?? [])] as const),
   );
   const headlines = [...input.headlines]
     .filter((h) => h.ticker === null || STOCKS.includes(h.ticker))
@@ -236,7 +240,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
       const priceCents = prices[t.ticker];
       const portfolioCents = portfolioValue(state, prices);
       const { ticker, side, amountCents } = t;
-      const applied = apply(state, { side, ticker, amountCents, priceCents }, PRACTICE_UNIVERSE);
+      const applied = apply(state, { side, ticker, amountCents, priceCents }, LEDGER_UNIVERSE);
       state = applied.state;
       tradesToday += 1;
       if (t.side === "buy" && STOCKS.includes(t.ticker)) boughtStock = true;
@@ -395,14 +399,37 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
       const blocked = washBlocked(recent, today);
       for (const t of MODEL_TICKERS) if (!prices[t]) blocked.add(t);
       const exits = themeExits(state, prices, pastTrades, today);
+      // The crypto sleeve (Very high only): the live run's planner, on the closes before the day.
+      const cryptoFrom = daysBefore(today, CRYPTO_SLEEVE_HISTORY_DAYS);
+      const sleeve = cryptoSleeveTrades({
+        sleeve: profile.crypto,
+        level: profile.level,
+        state,
+        prices,
+        history: Object.fromEntries(
+          CRYPTO_TICKERS.map((t) => [
+            t,
+            cursors
+              .get(t)!
+              .window(cryptoFrom)
+              .filter((b) => b.date < today)
+              .map((b) => b.closeCents),
+          ]),
+        ),
+        today,
+        previous: i > 0 ? days[i - 1] : null,
+        cashCents: state.cashCents - profile.cashBufferCents,
+        traded: pastTrades.some((t) => t.rule === "crypto_sleeve"),
+      });
       const plan = [
         ...exits,
+        ...sleeve,
         ...planTrades({
           level: profile.level,
-          state,
+          state: { ...state, cashCents: state.cashCents + sleeveCash(sleeve) },
           prices,
           paused: false,
-          tradesToday: tradesToday + exits.length,
+          tradesToday: tradesToday + exits.length + sleeve.length,
           blocked,
           weights: profile.weights,
           avoid: new Set(profile.avoid),

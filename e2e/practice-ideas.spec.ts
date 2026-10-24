@@ -113,4 +113,19 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
       name: /^(Your practice portfolio|Answer (it|them) on your practice portfolio) →$/,
     }),
   ).toBeVisible();
+
+  // The crypto sleeve, at Very high only: below it each card says so; at it, one can be run
+  // and turned off again.
+  await pickItem(page, "Investing", "Strategies", "More strategies");
+  const trend = menu.getByRole("listitem").filter({ hasText: "Crypto trend" });
+  await expect(trend.getByText("In the practice portfolio at Very high only.")).toBeVisible();
+  await page.goto("/investments/practice/settings");
+  await page.getByLabel("Risk level").selectOption("5");
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved. Jane uses it from the next run.");
+  await page.goto("/investments?focus=strategies:menu");
+  await trend.getByRole("button", { name: "Use in practice" }).click();
+  await expect(trend.getByText("Your practice portfolio runs this sleeve")).toBeVisible();
+  await trend.getByRole("button", { name: "Turn the sleeve off" }).click();
+  await expect(trend.getByRole("button", { name: "Use in practice" })).toBeVisible();
 });

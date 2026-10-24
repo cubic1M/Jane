@@ -28,8 +28,10 @@ export type PlannedTrade = {
   amountCents: number;
   reason: string;
   // strategy_switch: into the fund of a strategy the person chose. theme_exit: out of a news
-  // theme's slice (src/planning/themes.ts).
-  rule: "model_buy" | "rebalance" | "cash_buffer" | "strategy_switch" | "theme_exit";
+  // theme's slice (src/planning/themes.ts). crypto_sleeve: the crypto sleeve's own trades
+  // (src/planning/crypto-sleeve.ts).
+  rule:
+    "model_buy" | "rebalance" | "cash_buffer" | "strategy_switch" | "theme_exit" | "crypto_sleeve";
 };
 
 export type Prices = Readonly<Record<string, number>>;

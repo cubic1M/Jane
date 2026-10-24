@@ -1,4 +1,4 @@
-import { PRACTICE_UNIVERSE } from "@/config/portfolios";
+import { LEDGER_UNIVERSE } from "@/config/portfolios";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -77,7 +77,7 @@ export class PaperBroker implements Broker {
     const applied = apply(
       state,
       { side: order.side, ticker, amountCents: order.amountCents, priceCents: bar.closeCents },
-      PRACTICE_UNIVERSE,
+      LEDGER_UNIVERSE,
     );
     const position = applied.state.positions[ticker];
     const trade = await client.$transaction(async (tx) => {

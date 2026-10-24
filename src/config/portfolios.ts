@@ -99,6 +99,17 @@ export const PRACTICE_UNIVERSE: ReadonlySet<string> = new Set([
   ...THEME_FUNDS,
 ]);
 
+// The crypto sleeve's coins as the practice ledger holds them (src/config/crypto-strategies.ts,
+// Very high only): priced only while a sleeve is chosen, so they stay out of PRACTICE_UNIVERSE,
+// whose every ticker the scans and the replays price each day.
+export const CRYPTO_PRACTICE_TICKERS = { BTC: "BTCUSD", ETH: "ETHUSD" } as const;
+export const CRYPTO_TICKERS: readonly string[] = Object.values(CRYPTO_PRACTICE_TICKERS);
+// Everything the practice ledger may hold.
+export const LEDGER_UNIVERSE: ReadonlySet<string> = new Set([
+  ...PRACTICE_UNIVERSE,
+  ...CRYPTO_TICKERS,
+]);
+
 // Practice money a new portfolio starts with: a stated sample amount, never linked to anything.
 export const PRACTICE_START_CENTS = 1_000_000;
 export const PRACTICE_MONTHLY_ADD_CENTS = 50_000;

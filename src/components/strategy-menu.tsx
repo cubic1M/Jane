@@ -1,4 +1,4 @@
-import { usePracticeStrategy } from "@/app/investments/strategy-actions";
+import { usePracticeCrypto, usePracticeStrategy } from "@/app/investments/strategy-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
 import {
@@ -6,6 +6,7 @@ import {
   CRYPTO_STRATEGIES,
   CRYPTO_STRATEGY_IDS,
   CRYPTO_WARNING,
+  type CryptoStrategyId,
 } from "@/config/crypto-strategies";
 import { INTRADAY_EVIDENCE, INTRADAY_EVIDENCE_SOURCE } from "@/config/intraday-evidence";
 import {
@@ -53,9 +54,14 @@ export function Sparkline({ points, label }: { points: readonly number[]; label:
   );
 }
 
+const BUTTON = "h-9 self-start rounded-lg px-3 text-sm font-medium";
+const PRIMARY = `${BUTTON} bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300`;
+const SECONDARY = `${BUTTON} border border-zinc-300 dark:border-zinc-700`;
+
 // Crypto, at Very high only: each rule on the years since its parameters were chosen, against
 // simply holding, with the plain warning.
-function CryptoMenu() {
+function CryptoMenu({ level, chosen }: { level: RiskLevel; chosen: CryptoStrategyId | null }) {
+  const open = CRYPTO_SLEEVE_BY_LEVEL[level] !== undefined;
   return (
     <div className="flex flex-col gap-2" aria-labelledby="crypto-menu-heading">
       <h3 id="crypto-menu-heading" className="font-semibold">
@@ -90,7 +96,29 @@ function CryptoMenu() {
                   ? "."
                   : ` (holding: ${pct(r.holdLater.cagr)}, worst ${pct(r.holdLater.maxDrawdown)}). ${r.beatsHolding ? "More return for its risk than holding." : "Less return for its risk than holding."}`}
               </p>
-              <p className="text-xs text-zinc-500">Not in the practice portfolio yet.</p>
+              {!open ? (
+                <p className="text-xs text-zinc-500">
+                  In the practice portfolio at Very high only.
+                </p>
+              ) : chosen === id ? (
+                <form action={usePracticeCrypto} className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                    <span aria-hidden="true">■ </span>
+                    Your practice portfolio runs this sleeve
+                  </span>
+                  <input type="hidden" name="sleeve" value="off" />
+                  <button type="submit" className={SECONDARY}>
+                    Turn the sleeve off
+                  </button>
+                </form>
+              ) : (
+                <form action={usePracticeCrypto}>
+                  <input type="hidden" name="sleeve" value={id} />
+                  <button type="submit" className={PRIMARY}>
+                    Use in practice
+                  </button>
+                </form>
+              )}
             </li>
           );
         })}
@@ -155,19 +183,19 @@ function IntradayMenu() {
   );
 }
 
-const BUTTON = "h-9 self-start rounded-lg px-3 text-sm font-medium";
-const PRIMARY = `${BUTTON} bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300`;
-const SECONDARY = `${BUTTON} border border-zinc-300 dark:border-zinc-700`;
 const followable = (id: MenuStrategyId): id is MenuStrategyId & StrategyChoice =>
   Object.hasOwn(STRATEGY_CHOICES, id);
 
 export function StrategyMenuSection({
   level,
   choice,
+  crypto = null,
 }: {
   level: RiskLevel;
   // The practice portfolio's strategy now (its settings).
   choice: StrategyChoice;
+  // The crypto sleeve it runs (Very high only), or null.
+  crypto?: CryptoStrategyId | null;
 }) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="strategy-menu-heading">
@@ -244,7 +272,7 @@ export function StrategyMenuSection({
           );
         })}
       </ul>
-      <CryptoMenu />
+      <CryptoMenu level={level} chosen={crypto} />
       <IntradayMenu />
       <p className="text-xs text-zinc-500">
         {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}; day trading:{" "}

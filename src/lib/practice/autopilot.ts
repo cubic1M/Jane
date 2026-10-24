@@ -1,4 +1,10 @@
-import { PRACTICE_UNIVERSE, THEME_FUNDS } from "@/config/portfolios";
+import { CRYPTO_SLEEVE_HISTORY_DAYS } from "@/config/crypto-strategies";
+import {
+  CRYPTO_TICKERS,
+  LEDGER_UNIVERSE,
+  PRACTICE_UNIVERSE,
+  THEME_FUNDS,
+} from "@/config/portfolios";
 import { rulesOnAt } from "@/config/practice-scan";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -12,6 +18,7 @@ import {
   sellsFirst,
   type PlannedTrade,
 } from "@/planning/practice-autopilot";
+import { cryptoSleeveTrades, previousWeekday, sleeveCash } from "@/planning/crypto-sleeve";
 import { refusedByPreferences } from "@/planning/practice-profile";
 import { washBlocked } from "@/planning/practice-scan";
 import { themeExits } from "@/planning/themes";
@@ -137,14 +144,46 @@ export async function runAutopilot(
     themeBuys.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),
     asOf,
   );
+  // The crypto sleeve (Very high only, src/planning/crypto-sleeve.ts): its coins priced only
+  // while it runs or holds them, and its trades before the mix's, whose cash they change.
+  const holdsCrypto = CRYPTO_TICKERS.some((t) => (state.positions[t]?.quantity ?? 0) > 0);
+  const history: Record<string, number[]> = {};
+  if (profile.crypto || holdsCrypto) {
+    const before = previousWeekday(asOf);
+    const from = new Date(dayStart.getTime() - CRYPTO_SLEEVE_HISTORY_DAYS * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    for (const t of CRYPTO_TICKERS) {
+      const bar = await feed.latest(t, asOf);
+      if (bar) prices[t] = bar.closeCents;
+      if (profile.crypto)
+        history[t] = (await feed.prices(t, from, before)).map((b) => b.closeCents);
+    }
+  }
+  const sleeve = cryptoSleeveTrades({
+    sleeve: profile.crypto,
+    level: profile.level,
+    state,
+    prices,
+    history,
+    today: asOf,
+    previous: previousWeekday(asOf),
+    cashCents: state.cashCents - profile.cashBufferCents,
+    traded:
+      profile.crypto !== null &&
+      (await client.practiceTrade.count({
+        where: { portfolioId: portfolio.id, rule: "crypto_sleeve", undone: false },
+      })) > 0,
+  });
   const plan = [
     ...exits,
+    ...sleeve,
     ...planTrades({
       level: profile.level,
-      state,
+      state: { ...state, cashCents: state.cashCents + sleeveCash(sleeve) },
       prices,
       paused: false,
-      tradesToday: tradesToday + exits.length,
+      tradesToday: tradesToday + exits.length + sleeve.length,
       blocked,
       weights: profile.weights,
       avoid: new Set(profile.avoid),
@@ -281,7 +320,7 @@ export async function undoLastTrade(userId: string, { client = defaultClient }: 
           priceCents: t.priceCents!,
         },
   );
-  const rebuilt = replay(0, entries, PRACTICE_UNIVERSE);
+  const rebuilt = replay(0, entries, LEDGER_UNIVERSE);
   await client.$transaction([
     client.practiceTrade.update({ where: { id: last.id }, data: { undone: true } }),
     client.practicePortfolio.update({

@@ -47,6 +47,7 @@ const SELECT = {
   rebalancePace: true,
   universe: true,
   maxFundPercent: true,
+  cryptoSleeve: true,
 } as const;
 
 export async function loadPreferences(
@@ -120,6 +121,7 @@ export async function savePreferences(
     rebalancePace: p.rebalancePace,
     universe: p.universe,
     maxFundPercent: p.maxFundPercent,
+    cryptoSleeve: p.cryptoSleeve,
   };
   const db = scopedFor(userId, client);
   await db.practicePreferences.upsert({

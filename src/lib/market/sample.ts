@@ -24,6 +24,10 @@ export const SAMPLE_PROFILES: Readonly<Record<string, Profile>> = {
   MSFT: { base: 85, drift: 0.2, vol: 0.016, beta: 1.1, hit: 1.1 },
   NVDA: { base: 50, drift: 0.4, vol: 0.028, beta: 1.5, hit: 1.5 },
   TSLA: { base: 21, drift: 0.3, vol: 0.035, beta: 1.6, hit: 1.6 },
+  // The crypto sleeve's coins (src/config/crypto-strategies.ts, Very high only): far jumpier,
+  // and hit hardest by the planted events.
+  BTCUSD: { base: 14000, drift: 0.3, vol: 0.055, beta: 0.4, hit: 1.6 },
+  ETHUSD: { base: 750, drift: 0.3, vol: 0.07, beta: 0.45, hit: 1.8 },
   // The strategy menu's tilt funds (src/config/strategy-menu.ts).
   VTV: { base: 120, drift: 0.075, vol: 0.004, beta: 0.95, hit: 0.95 },
   MTUM: { base: 150, drift: 0.1, vol: 0.006, beta: 1.05, hit: 1.05 },

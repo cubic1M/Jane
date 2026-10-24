@@ -140,6 +140,17 @@ export const STRATEGY_CHOICES = {
 } as const;
 export type StrategyChoice = keyof typeof STRATEGY_CHOICES;
 
+// The crypto sleeve beside the plan (src/config/crypto-strategies.ts): off, or one of the crypto
+// rules. Followed at Very high only (CRYPTO_SLEEVE_BY_LEVEL); at any other level it waits, and
+// what the sleeve holds is sold.
+export const CRYPTO_SLEEVE_CHOICES = {
+  off: { label: "Off" },
+  crypto_hold: { label: "Crypto, held" },
+  crypto_trend: { label: "Crypto trend" },
+  crypto_momentum: { label: "Crypto momentum" },
+} as const;
+export type CryptoSleeveChoice = keyof typeof CRYPTO_SLEEVE_CHOICES;
+
 // How far a kind may drift from its target before the autopilot rebalances: the person's pace.
 // Normal is the autopilot's own band (AUTOPILOT_LIMITS.rebalanceBand). Rarely means fewer trades
 // and more drift between them. FOR REVIEW.
@@ -210,6 +221,7 @@ export const PREFERENCE_DEFAULTS = {
   rebalancePace: "normal" as RebalancePace,
   universe: "funds_and_stocks" as Universe,
   maxFundPercent: null as number | null,
+  cryptoSleeve: "off" as CryptoSleeveChoice,
 };
 
 // The level when nothing else says one (no choice, no portfolio, no questionnaire): Medium.
