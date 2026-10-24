@@ -23,13 +23,20 @@ export const PRACTICE_TOPIC: Readonly<
   glide_path: "practice_glide_path",
   risk_mismatch: "practice_risk_mismatch",
   max_drop_near: "practice_max_drop_near",
+  theme_idea: "practice_theme_idea",
 };
 
 // An idea waits this many days for the person; after that the next scan has newer numbers.
 // While one waits, the scan doesn't ask again about the same thing (ideaSlot): the same kind
 // for the whole portfolio, or the same kind and holding.
 export const PRACTICE_IDEA_DAYS = 7;
-const PER_HOLDING: readonly string[] = ["dip_buy", "tax_loss_harvest", "news_idea", "cheaper_fund"];
+const PER_HOLDING: readonly string[] = [
+  "dip_buy",
+  "tax_loss_harvest",
+  "news_idea",
+  "cheaper_fund",
+  "theme_idea",
+];
 export const ideaSlot = (kind: string, ticker: string) =>
   PER_HOLDING.includes(kind) ? `${kind}:${ticker}` : kind;
 
@@ -53,6 +60,7 @@ export const PRACTICE_RANK_FLOOR_CENTS: Readonly<Record<keyof typeof PRACTICE_TO
   glide_path: 15_000,
   risk_mismatch: 20_000,
   max_drop_near: 25_000,
+  theme_idea: 6_000,
 };
 
 export const PRACTICE_URGENCY: Readonly<Record<keyof typeof PRACTICE_TOPIC, Urgency>> = {
@@ -67,6 +75,7 @@ export const PRACTICE_URGENCY: Readonly<Record<keyof typeof PRACTICE_TOPIC, Urge
   glide_path: "soon",
   risk_mismatch: "now",
   max_drop_near: "now",
+  theme_idea: "soon",
 };
 
 // Where the buttons go: the practice page, and its settings page.

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { landInChat } from "./chat-page";
 
 // Spec step 186: talk to Jane. The browser's speech recognition and speech are stand-ins
 // here (a real one needs a microphone): the microphone works from the keyboard, what was
@@ -80,7 +81,7 @@ test("speak a question with the keyboard, send it, and hear the answer", async (
 
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // From the message box, Tab reaches the microphone; Enter starts listening.
   const ask = page.getByRole("textbox", { name: "Message Jane" });
@@ -132,7 +133,7 @@ test("no microphone or Read aloud where the browser can't do them", async ({
   });
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   await expect(page.getByRole("textbox", { name: "Message Jane" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Speak your message" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Read aloud" })).toHaveCount(0);
