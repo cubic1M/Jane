@@ -106,7 +106,7 @@ export function standalone(id: CatalogId, p: number, u: Universe, fund = 0): Sta
   return { start, values, turnover: traded / years };
 }
 
-const daily = (v: readonly number[]) =>
+export const daily = (v: readonly number[]) =>
   v.map((x, t) => (t === 0 || !(v[t - 1] > 0) || !(x > 0) ? Number.NaN : x / v[t - 1] - 1));
 
 function mixWeights(level: RiskLevel): Record<string, number> {
@@ -127,7 +127,7 @@ export function mixReturns(u: Universe, level: RiskLevel): number[] {
 }
 
 // The level's portfolio with this strategy in it, daily (k: the blend with bills).
-function levelReturns(
+export function levelReturns(
   u: Universe,
   id: CatalogId,
   s: readonly number[],
@@ -267,7 +267,7 @@ type Trial = {
   parts?: Record<string, number[]>;
 };
 
-function blend(
+export function blend(
   u: Universe,
   s: readonly number[],
   level: RiskLevel,

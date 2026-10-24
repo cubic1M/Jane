@@ -907,6 +907,15 @@ export const CATALOG_SLIPPAGE_BPS = 2;
 export const CATALOG_WALK_FROM_YEAR = 2020;
 // Several start years: the walk-forward must also beat the mix measured from each of these.
 export const CATALOG_ALSO_FROM_YEARS: readonly number[] = [2021, 2022];
+// The regimes the longer history is read through (Yahoo's closes from mid-2007): each strategy
+// at its published middle setting, against the level's mix. Descriptive, not walk-forward:
+// there are too few years before 2008 to choose settings on.
+export const CATALOG_REGIMES: readonly { label: string; from: string; to: string }[] = [
+  { label: "2008 crash", from: "2007-10-09", to: "2009-03-09" },
+  { label: "2008", from: "2008-01-01", to: "2008-12-31" },
+  { label: "2020 crash", from: "2020-02-19", to: "2020-03-23" },
+  { label: "2022", from: "2022-01-01", to: "2022-12-31" },
+];
 // The fixed split the founder asked for: chosen on the years to the end of 2021, scored after.
 export const CATALOG_TRAIN_END = "2021-12-31";
 // Recommendable only with a deflated Sharpe ratio (Bailey & López de Prado) of the excess over

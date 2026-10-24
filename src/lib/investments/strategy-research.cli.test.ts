@@ -22,6 +22,8 @@ import {
 } from "@/config/crypto-strategies";
 import { alignCrypto, cryptoResult } from "@/planning/crypto-strategies";
 import { alignCatalog, runCatalog } from "@/planning/catalog/engine";
+import { regimeReport, regimesMarkdown } from "@/planning/catalog/regimes";
+import { fetchYahooDaily, yahooBars } from "@/lib/market/yahoo";
 import { evidenceModule, resultsMarkdown } from "@/planning/catalog/report";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import type { Bar } from "@/lib/market/types";
@@ -46,7 +48,10 @@ import { selectForLevel } from "@/planning/strategies/select";
 //   catalog-results.json;
 // - crypto: bitcoin's and ether's daily bars from Alpaca's crypto feed, the three crypto rules
 //   replayed walk-forward (src/planning/crypto-strategies.ts), into crypto-summary.md and
-//   crypto-results.json.
+//   crypto-results.json;
+// - regimes: every catalog fund's adjusted daily closes from Yahoo Finance's keyless chart, from
+//   2007 (VXUS spliced with VEU before it began in 2011), every strategy at its middle setting
+//   through 2008, the 2020 crash and 2022 (src/planning/catalog/regimes.ts), into regimes.md.
 // Keys are read from the environment and never written or printed. Practice research only.
 
 const MODE = process.env.STRATEGY_RESEARCH;
@@ -314,6 +319,52 @@ async function runCryptoResearch() {
   console.log(lines.join("\n"));
 }
 
+// A fund's closes, with an older fund's returns before its first day (scaled to meet it).
+function splice(newer: Bar[], older: Bar[]): Bar[] {
+  if (newer.length === 0) return older;
+  const first = newer[0];
+  const at = older.find((b) => b.date === first.date);
+  if (!at) return newer;
+  const scale = first.closeCents / at.closeCents;
+  return [
+    ...older
+      .filter((b) => b.date < first.date)
+      .map((b) => ({ date: b.date, closeCents: Math.round(b.closeCents * scale) })),
+    ...newer,
+  ];
+}
+
+async function runRegimes() {
+  const from = process.env.RESEARCH_FROM ?? "2007-01-01";
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const bars: Record<string, Bar[]> = {};
+  let spy: { date: string; o: number; h: number; l: number; c: number }[] = [];
+  for (const t of [...new Set([...catalogTickers(), "VEU"])]) {
+    try {
+      const days = await fetchYahooDaily(t, from, to);
+      bars[t] = yahooBars(days);
+      if (t === "SPY") spy = days.map((d) => ({ date: d.date, o: d.o, h: d.h, l: d.l, c: d.c }));
+      console.log(`${t}: ${bars[t].length} days from ${bars[t][0]?.date ?? "none"}`);
+    } catch (error) {
+      console.log(`${t}: none (${String(error)})`);
+      bars[t] = [];
+    }
+  }
+  bars.VXUS = splice(bars.VXUS ?? [], bars.VEU ?? []);
+  const u = alignCatalog(bars, spy);
+  if (!u) throw new Error("No VTI history.");
+  const { results } = runCatalog(u);
+  const watch = [...new Set(results.filter((r) => r.watch || r.recommendable).map((r) => r.id))];
+  const source = `Yahoo Finance adjusted daily closes, ${u.dates[0]} to ${u.dates.at(-1)} (VXUS spliced with VEU before 2011)`;
+  const md = regimesMarkdown(regimeReport(u), source, watch);
+  writeFileSync(join(DIR, "regimes.md"), md);
+  writeFileSync(
+    join(DIR, "regimes.json"),
+    JSON.stringify({ source, watch, rows: regimeReport(u) }, null, 1),
+  );
+  console.log(md.slice(0, 4000));
+}
+
 const readBars = () => JSON.parse(readFileSync(join(DIR, "bars.json"), "utf8")) as BarsFile;
 const writeLevel = (l: LevelFile) =>
   writeFileSync(join(DIR, `level-${l.level}.json`), JSON.stringify(l));
@@ -348,5 +399,6 @@ describe.runIf(MODE)("strategy research", () => {
     if (MODE === "intraday") await runIntraday();
     if (MODE === "catalog") await runCatalogResearch();
     if (MODE === "crypto") await runCryptoResearch();
+    if (MODE === "regimes") await runRegimes();
   });
 });

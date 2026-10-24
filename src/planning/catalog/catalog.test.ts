@@ -4,6 +4,7 @@ import { CATALOG, CATALOG_IDS, catalogTickers } from "@/config/strategy-catalog"
 import type { Bar } from "@/lib/market/types";
 import { catalogMarkdown } from "./catalog-doc";
 import { evidenceModule, resultsMarkdown } from "./report";
+import { regimeReport, regimesMarkdown } from "./regimes";
 import { alignCatalog, metricsOver, mixReturns, runCatalog, standalone } from "./engine";
 import {
   expectedMaxSharpe,
@@ -196,6 +197,22 @@ describe("the write-up", () => {
     const ev = evidenceModule(results, meta);
     expect(ev).toContain("export const CATALOG_EVIDENCE");
     expect(ev).toContain("faber_gtaa5:");
+  });
+});
+
+describe("through past regimes", () => {
+  it("reads each strategy at its middle setting through each regime, against the mix", () => {
+    const u = universe();
+    const rows = regimeReport(u, ["faber_gtaa5", "mix_trend_overlay", "managed_futures"]);
+    expect(rows.filter((r) => r.id === "faber_gtaa5")).toHaveLength(5);
+    const g = rows.find((r) => r.id === "faber_gtaa5" && r.level === 3)!;
+    expect(g.param).toBe(10);
+    // The made-up prices start in 2015: 2008 is before every strategy, 2022 inside all of them.
+    expect(g.regimes.find((x) => x.label === "2008")!.strategy).toBeNull();
+    expect(g.regimes.find((x) => x.label === "2022")!.strategy).not.toBeNull();
+    const md = regimesMarkdown(rows, "made-up closes", ["faber_gtaa5"]);
+    expect(md).toContain("**Faber GTAA / Ivy 5**");
+    expect(md).toContain("### Very high");
   });
 });
 
