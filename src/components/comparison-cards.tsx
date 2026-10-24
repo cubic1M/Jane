@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { pickCompared, type PickResult } from "@/lib/compare-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { MOTION } from "@/config/motion";
 import {
   PREFERENCES,
   WHAT_A_PICK_DOES,
@@ -15,12 +16,11 @@ import {
 // Comparison cards (founder, 2026-10-24; pure model in src/lib/comparison.ts). Two to four
 // options side by side on a wide screen; on a phone a stack to swipe through, with a Compare
 // toggle that lines them up as a table. "Sort by" at the top re-ranks them here, with no trip
-// to the server, and the cards glide to their new places (FLIP; still under reduced motion).
-// One tap chooses: the card turns inverted at once and the pick is queued behind it. Black,
+// to the server, and the cards glide to their new places (FLIP, at the motion spec's base
+// duration and standard easing, src/config/motion.ts; still under reduced motion). One tap
+// chooses: the card turns inverted at once and the pick is queued behind it. Black,
 // white and grey only (docs/design/area-pages.md): tags and glyphs, never colour, say what's
 // what. Rows the options differ on are bold; rows that are the same on every option are dimmed.
-
-const MOVE_MS = 220;
 
 const reducedMotion = () =>
   typeof window === "undefined" ||
@@ -72,8 +72,8 @@ export function ComparisonCards({
       const dy = was.top - now.top;
       if (dx === 0 && dy === 0) continue;
       el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }], {
-        duration: MOVE_MS,
-        easing: "cubic-bezier(0.2, 0, 0, 1)",
+        duration: MOTION.baseMs,
+        easing: MOTION.standard,
       });
     }
   }, [preference]);
