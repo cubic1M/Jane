@@ -9,6 +9,7 @@ vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
 
 import { adviceMode } from "@/lib/advice-mode";
 import { logAudit } from "@/lib/audit";
+import { runAutopilot } from "@/lib/practice/autopilot";
 import { startPractice } from "@/lib/practice/portfolio";
 import { loadPreferences, practiceProfileOf, savePreferences } from "@/lib/practice/preferences";
 import { applyPatch, DEFAULT_PREFERENCES } from "@/planning/practice-preferences";
@@ -161,6 +162,27 @@ describe.runIf(url)("practice settings in the chat", () => {
     // Over the hard limit is refused, as on the page.
     const over = await propose(id, { max_fund_percent: 95 });
     expect(over).toEqual({ ok: false, error: "Pick a share from 20% to 80%." });
+  });
+
+  it('"use the value tilt": the card, the tap, and the autopilot moves US stocks into VTV', async () => {
+    const id = await person();
+    await runAutopilot(id, { client, now: NOW });
+    const card = await propose(id, { strategy: "value_tilt" });
+    expect(card.ok && card.line).toContain("Strategy: Jane's pick for your level → Value tilt");
+    if (!card.ok) return;
+    await tap(id, card.refs);
+    const profile = await practiceProfileOf(id, { client, now: NOW });
+    expect(profile.funds).toEqual({ us_stocks: "VTV" });
+    expect(profile.rules.at(-1)).toMatch(/your US stocks are held in VTV/);
+    const run = await runAutopilot(id, { client, now: new Date(NOW.getTime() + 86_400_000) });
+    expect(run.ran && run.fills.map((f) => [f.side, f.ticker])).toEqual([
+      ["sell", "VTI"],
+      ["buy", "VTV"],
+    ]);
+    const moved = await client.practiceTrade.findMany({
+      where: { userId: id, rule: "strategy_switch" },
+    });
+    expect(moved).toHaveLength(2);
   });
 
   it("goes through the same check as the settings page", async () => {

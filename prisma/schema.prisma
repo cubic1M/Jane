@@ -4323,6 +4323,10 @@ model PracticePreferences {
   rebalancePace   String    @default("normal") @map("rebalance_pace")
   universe        String    @default("funds_and_stocks")
   maxFundPercent  Int?      @map("max_fund_percent")
+  // CRYPTO_SLEEVE_CHOICES: off, or the crypto rule the sleeve follows (Very high only).
+  cryptoSleeve    String    @default("off") @map("crypto_sleeve")
+  // DAY_TRADING_CHOICES: off, or the intraday rule the day-trading sleeve follows (Very high only).
+  dayTrading      String    @default("off") @map("day_trading")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

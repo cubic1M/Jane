@@ -1,7 +1,20 @@
+import { CRYPTO_EVIDENCE } from "@/config/crypto-evidence";
+import { INTRADAY_EVIDENCE } from "@/config/intraday-evidence";
+import {
+  INTRADAY_RULES,
+  INTRADAY_SLEEVE_BY_LEVEL,
+  INTRADAY_WARNING,
+  type IntradayRuleId,
+} from "@/config/intraday-strategies";
+import {
+  CRYPTO_SLEEVE_BY_LEVEL,
+  CRYPTO_STRATEGIES,
+  type CryptoStrategyId,
+} from "@/config/crypto-strategies";
 import { GLIDE_PATH_SOURCE, RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import {
   AUTOPILOT_LIMITS,
-  classTickers,
+  swapPair,
   MODEL_PORTFOLIOS,
   OPPORTUNITY_LEVELS,
   PRACTICE_ETFS,
@@ -72,6 +85,14 @@ export type PracticeProfile = {
   universe: PracticePreferences["universe"];
   // What the profile does, in plain sentences, for the page, the chat and the backtests.
   rules: string[];
+  // The crypto sleeve the person chose (src/config/crypto-strategies.ts), with its rule's setting
+  // from the evidence and the most of the portfolio it may be: null when off or below Very high.
+  crypto: { strategy: CryptoStrategyId; param: number; share: number } | null;
+  // The day-trading sleeve the person chose (src/config/intraday-strategies.ts), the same way:
+  // null when off or below Very high.
+  dayTrade: { rule: IntradayRuleId; param: number; share: number } | null;
+  // The fund the person chose for a kind (a strategy menu tilt), set with the strategy below.
+  funds?: Partial<Record<PracticeClass, string>>;
   // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
   // whether the mix follows it this month, and why or why not. Absent before the first
   // evaluation.
@@ -147,7 +168,7 @@ export function glideWeights(
 
 // A kind with every fund avoided gives its share to its fallback, then bonds, then bills.
 function withoutAvoided(weights: Record<PracticeClass, number>, avoid: ReadonlySet<string>) {
-  const open = (c: PracticeClass) => classTickers(c).some((t) => !avoid.has(t));
+  const open = (c: PracticeClass) => swapPair(c).some((t) => !avoid.has(t));
   const out = { ...weights };
   const moved: string[] = [];
   for (const c of CLASSES) {
@@ -269,6 +290,37 @@ export function profileFor(
   if (prefs.strategy === "mix") {
     rules.push(`${STRATEGY_CHOICES.mix.label}, as you chose: no strategy on top.`);
   }
+  const sleeve = prefs.cryptoSleeve === "off" ? null : prefs.cryptoSleeve;
+  const sleeveShare = CRYPTO_SLEEVE_BY_LEVEL[level] ?? 0;
+  const crypto =
+    sleeve && sleeveShare > 0
+      ? { strategy: sleeve, param: CRYPTO_EVIDENCE[sleeve].param, share: sleeveShare }
+      : null;
+  if (crypto) {
+    rules.push(
+      `A crypto sleeve (${CRYPTO_STRATEGIES[crypto.strategy].label}) of up to ${pct(crypto.share)} of the portfolio, beside the mix: ${CRYPTO_STRATEGIES[crypto.strategy].how}`,
+    );
+  } else if (sleeve) {
+    rules.push(
+      `The crypto sleeve you chose (${CRYPTO_STRATEGIES[sleeve].label}) waits: it runs at Very high only, and anything it held is sold.`,
+    );
+  }
+
+  const dayRule = prefs.dayTrading === "off" ? null : prefs.dayTrading;
+  const dayShare = INTRADAY_SLEEVE_BY_LEVEL[level] ?? 0;
+  const dayTrade =
+    dayRule && dayShare > 0
+      ? { rule: dayRule, param: INTRADAY_EVIDENCE[dayRule].param, share: dayShare }
+      : null;
+  if (dayTrade) {
+    rules.push(
+      `Day trading (${INTRADAY_RULES[dayTrade.rule].label}) with up to ${pct(dayTrade.share)} of the portfolio, kept in cash for it: ${INTRADAY_RULES[dayTrade.rule].how} ${INTRADAY_WARNING}`,
+    );
+  } else if (dayRule) {
+    rules.push(
+      `The day trading you chose (${INTRADAY_RULES[dayRule].label}) waits: it runs at Very high only.`,
+    );
+  }
 
   return {
     level,
@@ -296,6 +348,8 @@ export function profileFor(
     limits,
     strategyChoice: prefs.strategy,
     universe: prefs.universe,
+    crypto,
+    dayTrade,
     rules,
   };
 }
