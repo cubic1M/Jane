@@ -9,7 +9,12 @@ import {
   type RangeKey,
   type SeriesPoint,
 } from "@/insights/net-worth-series";
-import { daysToMark, type EventGroup, type NetWorthEvent } from "@/insights/net-worth-events";
+import {
+  EVENT_KIND_WORDS,
+  daysToMark,
+  type EventGroup,
+  type NetWorthEvent,
+} from "@/insights/net-worth-events";
 import { formatCents } from "@/lib/money";
 
 // The home hub's net worth chart (founder request; docs/design/home-hub.md): the person's net
@@ -30,6 +35,14 @@ const H_EXPANDED_NARROW = 300;
 const PAD_Y = 14;
 // A marker's hit area, in px: bigger than its dot.
 const MARK = 24;
+// A day's boxes (founder: "each dot should have an expandable box that shows exactly where that
+// money went … and if they want to view more details it should lead to another box next to it
+// connected by dotted animated line"): the summary's and the details' widths, the gap the line
+// crosses, and the summary's lines before "+N more".
+const SUMMARY_W = 240;
+const DETAIL_W = 300;
+const GAP = 28;
+const SUMMARY_LINES = 3;
 
 const RANGE_WORDS: Record<RangeKey, string> = {
   "1W": "Past week",
@@ -55,6 +68,75 @@ const longDate = (iso: string) =>
 // the person's own accounts.
 const effect = (e: NetWorthEvent) =>
   e.cents !== 0 ? signed(e.cents) : e.moved ? `${dollars(e.moved)} moved` : "";
+// One line of a day's summary: "−$1,640 · card payment · Chase ····5003".
+export const summaryLine = (e: NetWorthEvent) =>
+  [effect(e), EVENT_KIND_WORDS[e.kind], e.account ?? e.name].filter(Boolean).join(" · ");
+
+type Rect = { left: number; top: number; width: number; height: number };
+
+// Where a day's boxes go inside the chart (never over anything outside it): beside each other
+// when there's room, the details on the side with more space; stacked on a narrow chart. The
+// summary sits above a dot in the lower half and below one in the upper half; the chart grows
+// to hold whatever doesn't fit. Pure, for the tests.
+export function placeBoxes({
+  dot,
+  width,
+  height,
+  summary,
+  detail,
+}: {
+  dot: { x: number; y: number };
+  width: number;
+  height: number;
+  summary: number;
+  // The details box's height, or null while it's closed.
+  detail: number | null;
+}): { summary: Rect; detail: Rect | null; stacked: boolean; height: number } {
+  const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+  const sw = Math.min(SUMMARY_W, width);
+  const dw = Math.min(DETAIL_W, width);
+  const stacked = detail !== null && width < sw + GAP + dw;
+  const below = stacked || dot.y <= height / 2;
+  const sTop = below ? dot.y + MARK / 2 + 2 : Math.max(0, dot.y - MARK / 2 - 2 - summary);
+  if (detail === null) {
+    const s = { left: clamp(dot.x - sw / 2, 0, width - sw), top: sTop, width: sw, height: summary };
+    return {
+      summary: s,
+      detail: null,
+      stacked: false,
+      height: Math.max(height, sTop + summary + 8),
+    };
+  }
+  if (stacked) {
+    const s = { left: clamp(dot.x - sw / 2, 0, width - sw), top: sTop, width: sw, height: summary };
+    const d = {
+      left: clamp(dot.x - dw / 2, 0, width - dw),
+      top: sTop + summary + GAP,
+      width: dw,
+      height: detail,
+    };
+    return { summary: s, detail: d, stacked, height: Math.max(height, d.top + detail + 8) };
+  }
+  // Side by side: the details go toward the middle, so a dot at either edge keeps both inside.
+  const right = dot.x <= width / 2;
+  const sLeft = right
+    ? clamp(dot.x - sw / 2, 0, width - sw - GAP - dw)
+    : clamp(dot.x - sw / 2, dw + GAP, width - sw);
+  const s = { left: sLeft, top: sTop, width: sw, height: summary };
+  const dTop = clamp(sTop, 0, Math.max(0, height - detail));
+  const d = {
+    left: right ? sLeft + sw + GAP : sLeft - GAP - dw,
+    top: dTop,
+    width: dw,
+    height: detail,
+  };
+  return {
+    summary: s,
+    detail: d,
+    stacked,
+    height: Math.max(height, sTop + summary + 8, dTop + detail + 8),
+  };
+}
 
 export function NetWorthChart({
   points,
@@ -67,8 +149,17 @@ export function NetWorthChart({
   const [range, setRange] = useState<RangeKey>("ALL");
   const [scrub, setScrub] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
-  // The marker whose card is open, by date.
+  // The marker whose summary is open, by date, and whether its details are open beside it.
   const [marked, setMarked] = useState<string | null>(null);
+  const [details, setDetails] = useState(false);
+  // The open boxes' heights, measured once drawn, to place them and grow the chart for them.
+  const [sizes, setSizes] = useState<{ summary: number; detail: number }>({
+    summary: 96,
+    detail: 160,
+  });
+  const summaryBox = useRef<HTMLDivElement>(null);
+  const detailBox = useRef<HTMLDivElement>(null);
+  const area = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
   const box = useRef<HTMLDivElement>(null);
   // A finger on the line (a drag scrubs until it lets go).
@@ -84,6 +175,43 @@ export function NetWorthChart({
     watch.observe(el);
     return () => watch.disconnect();
   }, []);
+
+  // A day's boxes: measured once drawn (to place them), and shut by Esc or a click outside.
+  useLayoutEffect(() => {
+    const summary = summaryBox.current?.offsetHeight;
+    const detail = detailBox.current?.offsetHeight;
+    setSizes((s) => {
+      const next = { summary: summary ?? s.summary, detail: detail ?? s.detail };
+      return next.summary === s.summary && next.detail === s.detail ? s : next;
+    });
+  }, [marked, details, width]);
+  useEffect(() => {
+    if (!marked) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const dot = area.current?.querySelector<HTMLElement>(`[data-net-worth-event="${marked}"]`);
+      setMarked(null);
+      setDetails(false);
+      dot?.focus();
+    };
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (
+        t?.closest?.(
+          "[data-net-worth-event-card], [data-net-worth-event-detail], [data-net-worth-event]",
+        )
+      )
+        return;
+      setMarked(null);
+      setDetails(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [marked]);
 
   const today = points[points.length - 1];
   const ranges = rangesFor(points);
@@ -106,6 +234,11 @@ export function NetWorthChart({
       })
     : [];
   const open = marks.find((m) => m.group.date === marked) ?? null;
+  const shut = () => {
+    setMarked(null);
+    setDetails(false);
+  };
+
   const values = shown.map((p) => p.cents);
   const hi0 = Math.max(...values);
   const lo0 = Math.min(...values);
@@ -123,6 +256,16 @@ export function NetWorthChart({
     .filter(({ i }) => i % step === 0 || i === shown.length - 1)
     .map(({ p, i }, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.cents).toFixed(1)}`)
     .join(" ");
+
+  const place = open
+    ? placeBoxes({
+        dot: { x: x(open.i), y: y(shown[open.i].cents) },
+        width,
+        height: H,
+        summary: sizes.summary,
+        detail: details ? sizes.detail : null,
+      })
+    : null;
 
   const indexAt = (clientX: number) => {
     const rect = box.current?.getBoundingClientRect();
@@ -157,7 +300,7 @@ export function NetWorthChart({
             aria-expanded={expanded}
             onClick={() => {
               setExpanded((e) => !e);
-              setMarked(null);
+              shut();
             }}
             className="inline-flex min-h-11 items-center text-xs font-semibold tracking-wider hover:underline"
           >
@@ -195,7 +338,7 @@ export function NetWorthChart({
 
       {!single && (
         <>
-          <div className="relative">
+          <div ref={area} className="relative" style={{ minHeight: place?.height ?? H }}>
             <div
               ref={box}
               // Scrubbing is choosing a day: a slider, its value the day and the net worth then.
@@ -305,8 +448,9 @@ export function NetWorthChart({
                 )}
               </svg>
             </div>
-            {/* Expanded, the days money moved because of something: a dot on the line each, its
-              card on hover, focus or tap. */}
+            {/* Expanded, the days money moved because of something: a dot on the line each. A
+              click opens the day's summary inside the chart, and More details opens the full
+              list beside it, joined by a marching dotted line. */}
             {marks.length > 0 && (
               <div className="pointer-events-none absolute inset-0 -mx-1">
                 {marks.map(({ group, i }) => (
@@ -318,11 +462,10 @@ export function NetWorthChart({
                       .map((e) => `${e.label} ${effect(e)}`)
                       .join("; ")}`}
                     aria-expanded={marked === group.date}
-                    onMouseEnter={() => setMarked(group.date)}
-                    onFocus={() => setMarked(group.date)}
-                    onClick={() => setMarked((m) => (m === group.date ? null : group.date))}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") setMarked(null);
+                    aria-controls={marked === group.date ? "net-worth-day" : undefined}
+                    onClick={() => {
+                      setDetails(false);
+                      setMarked((m) => (m === group.date ? null : group.date));
                     }}
                     className="pointer-events-auto absolute flex items-center justify-center"
                     style={{
@@ -338,36 +481,38 @@ export function NetWorthChart({
                         marked === group.date ? "bg-current" : "bg-white dark:bg-zinc-950"
                       } ${group.events.length > 1 ? "outline outline-1 outline-offset-2 outline-current" : ""}`}
                     />
+                    {group.events.length > 1 && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute top-full -mt-1 text-[10px] leading-none font-semibold tabular-nums"
+                      >
+                        ×{group.events.length}
+                      </span>
+                    )}
                   </button>
                 ))}
-                {open && (
-                  <div
-                    role="status"
-                    data-net-worth-event-card=""
-                    className="pointer-events-auto absolute z-10 flex w-60 flex-col gap-1 border-2 border-current bg-white p-2 text-xs shadow-lg dark:bg-zinc-950"
-                    style={{
-                      left: Math.min(Math.max(0, x(open.i) - 120), Math.max(0, width - 240)),
-                      top:
-                        y(shown[open.i].cents) > H / 2
-                          ? Math.max(
-                              0,
-                              y(shown[open.i].cents) - 16 - 28 * (open.group.events.length + 1),
-                            )
-                          : y(shown[open.i].cents) + 16,
-                    }}
-                  >
-                    <p className="font-semibold tabular-nums">{longDate(open.group.date)}</p>
-                    <ul className="flex flex-col gap-0.5">
-                      {open.group.events.map((e, k) => (
-                        <li key={k} className="flex items-baseline justify-between gap-2">
-                          <Link href={e.href} className="min-w-0 truncate hover:underline">
-                            {e.label}
-                          </Link>
-                          <span className="shrink-0 font-semibold tabular-nums">{effect(e)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                {open && place && (
+                  <>
+                    <DaySummary
+                      ref={summaryBox}
+                      group={open.group}
+                      at={place.summary}
+                      details={details}
+                      onDetails={() => setDetails((d) => !d)}
+                      onClose={shut}
+                    />
+                    {details && place.detail && (
+                      <>
+                        <Connector from={place.summary} to={place.detail} stacked={place.stacked} />
+                        <DayDetails
+                          ref={detailBox}
+                          group={open.group}
+                          at={place.detail}
+                          onClose={() => setDetails(false)}
+                        />
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -384,7 +529,7 @@ export function NetWorthChart({
                   onClick={() => {
                     setRange(key);
                     setScrub(null);
-                    setMarked(null);
+                    shut();
                   }}
                   className={`inline-flex min-h-11 min-w-11 items-center justify-center px-3 text-sm font-semibold ${
                     on
@@ -401,5 +546,158 @@ export function NetWorthChart({
         </>
       )}
     </section>
+  );
+}
+
+// A day's summary: what moved the money, a line each (at most SUMMARY_LINES, then "+N more"),
+// More details and close. Inside the chart, where placeBoxes put it.
+function DaySummary({
+  ref,
+  group,
+  at,
+  details,
+  onDetails,
+  onClose,
+}: {
+  ref: React.Ref<HTMLDivElement>;
+  group: EventGroup;
+  at: Rect;
+  details: boolean;
+  onDetails: () => void;
+  onClose: () => void;
+}) {
+  const extra = group.events.length - SUMMARY_LINES;
+  return (
+    <div
+      ref={ref}
+      id="net-worth-day"
+      role="group"
+      aria-label={`What moved your money on ${longDate(group.date)}`}
+      data-net-worth-event-card=""
+      className="nw-box-in pointer-events-auto absolute z-10 flex flex-col gap-1 border-2 border-current bg-white p-2 text-xs shadow-lg dark:bg-zinc-950"
+      style={{ left: at.left, top: at.top, width: at.width }}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="font-semibold tabular-nums">{longDate(group.date)}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="-my-1 inline-flex min-h-8 items-center font-semibold hover:underline"
+        >
+          [X]<span className="sr-only"> Close</span>
+        </button>
+      </div>
+      <ul className="flex flex-col gap-0.5">
+        {group.events.slice(0, SUMMARY_LINES).map((e, k) => (
+          <li key={k} className="tabular-nums [overflow-wrap:anywhere]">
+            {summaryLine(e)}
+          </li>
+        ))}
+      </ul>
+      {extra > 0 && <p className="text-zinc-600 dark:text-zinc-400">+{extra} more</p>}
+      <button
+        type="button"
+        aria-expanded={details}
+        aria-controls={details ? "net-worth-day-details" : undefined}
+        onClick={onDetails}
+        className="self-start font-semibold tracking-wider hover:underline"
+      >
+        {details ? "[LESS]" : "[MORE DETAILS]"}
+      </button>
+    </div>
+  );
+}
+
+// The full breakdown, beside the summary: every event that day with its account, what it did and
+// where to see it, and the day's total.
+function DayDetails({
+  ref,
+  group,
+  at,
+  onClose,
+}: {
+  ref: React.Ref<HTMLDivElement>;
+  group: EventGroup;
+  at: Rect;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      ref={ref}
+      id="net-worth-day-details"
+      role="group"
+      aria-label={`Every movement on ${longDate(group.date)}`}
+      data-net-worth-event-detail=""
+      className="nw-box-in pointer-events-auto absolute z-10 flex flex-col gap-2 border-2 border-dashed border-current bg-white p-2 text-xs shadow-lg dark:bg-zinc-950"
+      style={{ left: at.left, top: at.top, width: at.width }}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="font-semibold"># {longDate(group.date)}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="-my-1 inline-flex min-h-8 items-center font-semibold hover:underline"
+        >
+          [X]<span className="sr-only"> Close the details</span>
+        </button>
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {group.events.map((e, k) => (
+          <li
+            key={k}
+            className="flex flex-col border-t border-dashed border-zinc-300 pt-1 first:border-0 first:pt-0 dark:border-zinc-700"
+          >
+            <span className="flex items-baseline justify-between gap-2">
+              <Link
+                href={e.href}
+                className="min-w-0 font-medium [overflow-wrap:anywhere] hover:underline"
+              >
+                {e.label}
+              </Link>
+              <span className="shrink-0 font-semibold tabular-nums">{effect(e)}</span>
+            </span>
+            <span className="text-zinc-600 dark:text-zinc-400">
+              {[EVENT_KIND_WORDS[e.kind], e.account, longDate(e.date)].filter(Boolean).join(" · ")}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="flex justify-between gap-2 border-t border-current pt-1 font-semibold tabular-nums">
+        <span>That day</span>
+        <span>{group.cents === 0 ? "No change" : signed(group.cents)}</span>
+      </p>
+    </div>
+  );
+}
+
+// The marching dotted line from the summary to its details (no march with reduced motion).
+function Connector({ from, to, stacked }: { from: Rect; to: Rect; stacked: boolean }) {
+  const a = stacked
+    ? { x: from.left + from.width / 2, y: from.top + from.height }
+    : to.left > from.left
+      ? { x: from.left + from.width, y: from.top + Math.min(24, from.height / 2) }
+      : { x: from.left, y: from.top + Math.min(24, from.height / 2) };
+  const b = stacked
+    ? { x: to.left + to.width / 2, y: to.top }
+    : to.left > from.left
+      ? { x: to.left, y: to.top + 24 }
+      : { x: to.left + to.width, y: to.top + 24 };
+  const d = stacked
+    ? `M${a.x},${a.y} C${a.x},${(a.y + b.y) / 2} ${b.x},${(a.y + b.y) / 2} ${b.x},${b.y}`
+    : `M${a.x},${a.y} C${(a.x + b.x) / 2},${a.y} ${(a.x + b.x) / 2},${b.y} ${b.x},${b.y}`;
+  return (
+    <svg
+      aria-hidden="true"
+      data-net-worth-connector=""
+      className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible"
+    >
+      <path
+        d={d}
+        fill="none"
+        strokeWidth={2}
+        strokeDasharray="3 6"
+        className="ask-line stroke-current"
+      />
+    </svg>
   );
 }

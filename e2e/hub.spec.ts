@@ -38,7 +38,11 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   // The hero row: safe to spend with its bar, net worth, and money found or saved.
   const hero = page.getByRole("region", { name: "Your money at a glance" });
   await expect(hero.locator("[data-hub-number]")).toHaveCount(3);
-  await expect(hero.getByRole("link", { name: /^Safe to spend/ })).toBeVisible();
+  // Safe to spend opens in place on why it's that number (e2e/hero-tiles.spec.ts).
+  await expect(hero.getByRole("button", { name: /^Safe to spend/ })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
   await expect(hero.getByRole("img", { name: /Safe to spend \d+%/ })).toBeVisible();
   await expect(hero.getByRole("link", { name: "Net worth" })).toHaveAttribute("href", "/net-worth");
 

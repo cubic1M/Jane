@@ -96,14 +96,42 @@ export async function recordPaidMembership(
   return true;
 }
 
-// Yearly savings from finished actions, from the cards people approved.
+// What each saving was, for the home hub's Saved tile (founder: "click on it, it expands and
+// shows a summary of where was saved"): one line per finished change, biggest first, with what
+// kind of saving it was. The same changes and amounts savedToDate adds up, so the tile's lines
+// and its total never disagree.
+export type SavedKind = "refund" | "cancelled" | "cheaper" | "interest" | "done_yourself";
+export type SavedItem = { title: string; kind: SavedKind; cents: number; yearly: boolean };
+
+const KIND_OF: Record<string, SavedKind> = {
+  cancel_subscription: "cancelled",
+  fight_price_increase: "cheaper",
+  negotiate_bill: "cheaper",
+  insurance_reshop: "cheaper",
+  card_interest: "cheaper",
+  move_idle_cash: "interest",
+  recover_bank_fees: "refund",
+  request_refund: "refund",
+  review_cash_flow: "cheaper",
+};
+
+type Card = { title?: unknown; annualSavingsCents?: unknown; actionType?: unknown } | null;
+const estimateOf = (snapshot: unknown) => {
+  const cents = (snapshot as Card)?.annualSavingsCents;
+  return typeof cents === "number" ? cents : 0;
+};
+const titleOf = (snapshot: unknown) => {
+  const title = (snapshot as Card)?.title;
+  return typeof title === "string" && title ? title : "A change Jane made";
+};
+
 // Savings from finished changes: actions the team finished, and do-it-yourself changes the
 // person marked done. A finding has one live decision, so nothing counts twice. With
 // `between`, only changes finished in that time (the year in review uses it).
-export async function savedToDate(
+export async function savedItems(
   userId: string,
   { client = defaultClient, between }: Options & { between?: { from: Date; to: Date } } = {},
-) {
+): Promise<SavedItem[]> {
   const db = scopedFor(userId, client);
   const finished = between ? { gte: between.from, lt: between.to } : undefined;
   const [done, diy] = await Promise.all([
@@ -115,6 +143,7 @@ export async function savedToDate(
         ...(finished ? { completedAt: finished } : {}),
       },
       select: {
+        type: true,
         refundCents: true,
         confirmedAnnualCents: true,
         decision: { select: { cardSnapshot: true } },
@@ -130,15 +159,28 @@ export async function savedToDate(
     }),
   ]);
   // A refund seen in the transactions, or a lower price confirmed on a call, counts for
-  // what actually happened.
-  const estimate = (snapshot: unknown) => {
-    const cents = (snapshot as { annualSavingsCents?: unknown } | null)?.annualSavingsCents;
-    return typeof cents === "number" ? cents : 0;
-  };
-  return (
-    done.reduce(
-      (sum, a) => sum + (actionWorthCents(a, estimate(a.decision.cardSnapshot)) ?? 0),
-      0,
-    ) + diy.reduce((sum, d) => sum + estimate(d.cardSnapshot), 0)
-  );
+  // what actually happened; otherwise the card's estimate, a year of it.
+  const items: SavedItem[] = [
+    ...done.map((a) => ({
+      title: titleOf(a.decision.cardSnapshot),
+      kind: a.refundCents !== null ? ("refund" as const) : (KIND_OF[a.type] ?? "cheaper"),
+      cents: actionWorthCents(a, estimateOf(a.decision.cardSnapshot)) ?? 0,
+      yearly: a.refundCents === null,
+    })),
+    ...diy.map((d) => ({
+      title: titleOf(d.cardSnapshot),
+      kind: "done_yourself" as const,
+      cents: estimateOf(d.cardSnapshot),
+      yearly: true,
+    })),
+  ];
+  return items.filter((i) => i.cents > 0).sort((a, b) => b.cents - a.cents);
+}
+
+// Yearly savings from finished actions, from the cards people approved: the items above, added.
+export async function savedToDate(
+  userId: string,
+  options: Options & { between?: { from: Date; to: Date } } = {},
+): Promise<number> {
+  return (await savedItems(userId, options)).reduce((sum, i) => sum + i.cents, 0);
 }

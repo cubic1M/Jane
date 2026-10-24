@@ -9,6 +9,7 @@ import {
   type EventGroup,
   type NetWorthEvent,
 } from "@/insights/net-worth-events";
+import { accountLabels } from "@/lib/account-labels";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 
@@ -26,7 +27,9 @@ export async function netWorthEvents(
   const db = scopedFor(userId, client);
   const since = new Date(`${from}T00:00:00Z`);
   const [accounts, transactions, snapshots, actions] = await Promise.all([
-    db.accounts.findMany({ select: { id: true, name: true, type: true } }),
+    db.accounts.findMany({
+      select: { id: true, name: true, type: true, mask: true, createdAt: true },
+    }),
     db.transactions.findMany({
       where: { pending: false, date: { gte: since } },
       select: {
@@ -55,6 +58,8 @@ export async function netWorthEvents(
     }),
   ]);
   const typeOf = new Map(accounts.map((a) => [a.id, a.type]));
+  // Each account as the loan pages name it, so two that read the same are told apart.
+  const labelOf = accountLabels(accounts);
 
   const events: NetWorthEvent[] = transactions.flatMap((t) => {
     const e = transactionEvent({
@@ -64,6 +69,7 @@ export async function netWorthEvents(
       pfcPrimary: t.pfcPrimary,
       pfcDetailed: t.pfcDetailed,
       accountType: typeOf.get(t.accountId) ?? "depository",
+      account: labelOf.get(t.accountId),
     });
     return e ? [e] : [];
   });
@@ -74,10 +80,12 @@ export async function netWorthEvents(
       .map((s) => ({ date: day(s.date), cents: s.balanceCents }));
     if (balances.length === 0) continue;
     if (DEBT_ACCOUNT_TYPES.includes(a.type)) {
-      const done = paidOff({ id: a.id, name: a.name, balances });
+      const done = paidOff({ id: a.id, name: a.name, label: labelOf.get(a.id), balances });
       if (done) events.push(done);
     } else if (a.type === "investment") {
-      events.push(...investmentMonths({ id: a.id, name: a.name, balances }));
+      events.push(
+        ...investmentMonths({ id: a.id, name: a.name, label: labelOf.get(a.id), balances }),
+      );
     }
   }
 

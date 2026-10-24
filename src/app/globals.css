@@ -902,12 +902,49 @@ html[data-giant-picked] [data-floating-cards="queue"] {
     stroke-dashoffset: 1;
   }
 }
+/* A net worth day's summary and details boxes, and the home hub's tiles opening: they arrive
+   on --motion-slow with the spring; nothing moves with reduced motion. */
+.nw-box-in {
+  animation: nw-box-in var(--motion-slow) var(--ease-spring) both;
+}
+@keyframes nw-box-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+.hub-open {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--motion-base) var(--ease-out-soft);
+}
+.hub-open[data-open] {
+  grid-template-rows: 1fr;
+  transition-duration: var(--motion-slow);
+}
+.hub-open > * {
+  overflow: hidden;
+  min-height: 0;
+  /* Shut, it's hidden once the closing animation is done (not just clipped). */
+  visibility: hidden;
+  transition: visibility 0s linear var(--motion-base);
+}
+.hub-open[data-open] > * {
+  visibility: visible;
+  transition: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .nw-box {
     transition: none;
   }
   .nw-line {
     animation: none;
+  }
+  .nw-box-in {
+    animation: none;
+  }
+  .hub-open {
+    transition: none;
   }
 }
 

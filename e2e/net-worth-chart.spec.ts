@@ -121,19 +121,46 @@ test("expanded, the chart marks what moved the money, each with its card", async
   expect(count).toBeGreaterThan(2);
   expect(count).toBeLessThanOrEqual(12);
 
-  // Its card: the date, what happened and ± how much, linked to where to see it.
+  // A click opens the day's summary inside the chart: the date, and a line each for what moved
+  // the money ("−$1,640 · card payment · Chase ····5003").
   const first = marks.first();
   await expect(first).toHaveAttribute("aria-label", /^[A-Z][a-z]{2} \d{1,2}, \d{4}: .+/);
-  await first.focus();
+  await first.click();
+  await expect(first).toHaveAttribute("aria-expanded", "true");
   const card = chart.locator("[data-net-worth-event-card]");
   await expect(card).toBeVisible();
   await expect(card).toContainText(/\d{4}/);
-  await expect(card.getByRole("link").first()).toHaveAttribute(
+  await expect(card.getByRole("listitem").first()).toHaveText(
+    /^([+−]\$[\d,]+|\$[\d,]+ moved) · .+/,
+  );
+
+  // More details: the full breakdown beside it (stacked on a phone), joined by a dotted line,
+  // every movement linked to where to see it.
+  await card.getByRole("button", { name: "[MORE DETAILS]" }).click();
+  const details = chart.locator("[data-net-worth-event-detail]");
+  await expect(details).toBeVisible();
+  await expect(chart.locator("[data-net-worth-connector]")).toBeAttached();
+  await expect(details.getByRole("link").first()).toHaveAttribute(
     "href",
     /^\/(transactions|loans|investments|actions)/,
   );
-  await expect(card).toContainText(/[+−]\$[\d,]+|\$[\d,]+ moved/);
+  await expect(details).toContainText("That day");
+  // Both stay inside the chart: nothing outside it is covered.
+  const area = (await chart.boundingBox())!;
+  for (const box of [await card.boundingBox(), await details.boundingBox()]) {
+    expect(box!.x).toBeGreaterThanOrEqual(area.x - 1);
+    expect(box!.y).toBeGreaterThanOrEqual(area.y - 1);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(area.x + area.width + 1);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(area.y + area.height + 1);
+  }
+  // Esc shuts both and returns to the dot; a click outside shuts them too.
   await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  await expect(details).toHaveCount(0);
+  await expect(first).toBeFocused();
+  await first.click();
+  await expect(card).toBeVisible();
+  await page.getByRole("heading", { level: 1, name: "Home" }).click({ force: true });
   await expect(card).toHaveCount(0);
 
   // A shorter range marks only its own days.

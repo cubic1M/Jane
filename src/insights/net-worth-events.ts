@@ -32,6 +32,22 @@ export type NetWorthEvent = {
   moved?: number;
   // Where to see it: the transaction, the account or what Jane did.
   href: string;
+  // The account it happened in, as the loan pages name it ("Chase ····5003"), when there is one.
+  account?: string;
+  // Who it was with ("Acme Corp", "Best Buy"), for a transaction.
+  name?: string;
+};
+
+// A kind in a word or two, as the dot's summary says it: "−$1,640 · card payment · Chase ····5003".
+export const EVENT_KIND_WORDS: Record<EventKind, string> = {
+  pay: "pay",
+  purchase: "purchase",
+  bill: "bill",
+  card_payment: "card payment",
+  loan_paid_off: "paid off",
+  investments: "investments",
+  refund: "refund",
+  jane_saved: "Jane saved",
 };
 
 export type EventGroup = { date: string; cents: number; events: NetWorthEvent[] };
@@ -44,6 +60,7 @@ export type EventTransaction = {
   pfcPrimary: string | null;
   pfcDetailed: string | null;
   accountType: string;
+  account?: string;
 };
 
 const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
@@ -54,7 +71,12 @@ const BILL_DETAILS = ["GENERAL_SERVICES_INSURANCE"];
 
 // One transaction as an event, or null for money moving between the person's own accounts.
 export function transactionEvent(t: EventTransaction): NetWorthEvent | null {
-  const base = { date: t.date, href: search(t.name) };
+  const base = {
+    date: t.date,
+    href: search(t.name),
+    name: t.name,
+    ...(t.account ? { account: t.account } : {}),
+  };
   const detailed = t.pfcDetailed ?? "";
   const primary = t.pfcPrimary ?? "";
   const out = t.amountCents > 0;
@@ -84,6 +106,8 @@ export function transactionEvent(t: EventTransaction): NetWorthEvent | null {
 export type DebtBalances = {
   id: string;
   name: string;
+  // Its name with the last four digits, when known.
+  label?: string;
   // Oldest first.
   balances: { date: string; cents: number }[];
 };
@@ -101,6 +125,7 @@ export function paidOff(debt: DebtBalances): NetWorthEvent | null {
         cents: 0,
         moved: owed,
         href: "/loans",
+        account: debt.label ?? debt.name,
       };
     }
   }
@@ -122,6 +147,7 @@ export function investmentMonths(account: DebtBalances): NetWorthEvent[] {
         label: `Investments ${change > 0 ? "up" : "down"}: ${account.name}`,
         cents: change,
         href: "/investments",
+        account: account.label ?? account.name,
       },
     ];
   });
