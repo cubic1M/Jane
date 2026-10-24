@@ -90,7 +90,7 @@ export function AreaPage({
               type="button"
               aria-pressed={picked === c.id}
               onClick={() => pick(c.id)}
-              className="inline-flex min-h-11 items-center gap-2 border border-red-700/40 bg-red-50 px-3 text-sm font-semibold text-red-900 hover:border-red-700 dark:bg-red-950/40 dark:text-red-100"
+              className="inline-flex min-h-11 items-center gap-2 border-2 border-zinc-900 bg-white px-3 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-900"
             >
               <StatusMark status="act" />
               {c.label}
@@ -124,7 +124,7 @@ export function AreaPage({
             key={item.id}
             aria-label={branch.label}
             data-area-detail={item.id}
-            className="map-pop flex flex-col gap-2 border border-l-4 border-emerald-700 bg-white p-4 dark:bg-zinc-950"
+            className="map-pop flex flex-col gap-2 border border-l-4 border-zinc-900 bg-white p-4 dark:border-zinc-100 dark:bg-zinc-950"
           >
             <p className="flex items-center gap-2 font-semibold">
               <StatusMark status={item.status} />
@@ -137,7 +137,7 @@ export function AreaPage({
             {details[item.id]}
             {more[item.id] && (
               <details className="text-sm">
-                <summary className="cursor-pointer font-medium text-emerald-700">More</summary>
+                <summary className="cursor-pointer font-medium underline">More</summary>
                 <div className="mt-2 flex flex-col gap-2">{more[item.id]}</div>
               </details>
             )}
