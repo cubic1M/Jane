@@ -211,7 +211,9 @@ while it floats.
 
 **Where it shows:**
 - The chat (`/chat?embed=1` in the side panel).
-- Home, which loads the same pop-ups (`openPopupMessages`).
+- Home, which loads the same pop-ups (`openPopupMessages`). On a phone under 640 px wide they
+  start folded into one line at the very bottom, "[JANE] 3 for you ▲", left of the Jane button,
+  so the net worth is the first thing seen (QA round 6); a tap opens the card (`foldOnPhone`).
 - Any page's side chat.
 
 ## Motion

@@ -203,7 +203,7 @@ async function HubContent() {
         </Link>
       </p>
 
-      <SuggestionCards messages={suggestions} />
+      <SuggestionCards messages={suggestions} foldOnPhone />
     </>
   );
 }

@@ -1052,6 +1052,15 @@ textarea {
     bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
 }
+/* Folded on a small phone: one line at the very bottom, level with the Jane button and left of
+   it, so the first screen stays clear. */
+@media (width < 640px) {
+  body .floating-cards.floating-cards-folded,
+  body:has(#jane-fab) .floating-cards.floating-cards-folded {
+    bottom: calc(1rem + 6px + env(safe-area-inset-bottom));
+    right: 5.5rem;
+  }
+}
 @media (min-width: 1024px) {
   body:has(#app-top-bar) .floating-cards {
     right: 380px;

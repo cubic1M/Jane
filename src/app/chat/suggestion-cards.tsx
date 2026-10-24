@@ -72,7 +72,14 @@ export function cardOf(message: MessageView): FloatingCardData {
   };
 }
 
-export function SuggestionCards({ messages }: { messages: MessageView[] }) {
+export function SuggestionCards({
+  messages,
+  foldOnPhone = false,
+}: {
+  messages: MessageView[];
+  // Home: start folded on a small phone, so the net worth shows first.
+  foldOnPhone?: boolean;
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [open, setOpen] = useState(messages.length);
@@ -97,6 +104,7 @@ export function SuggestionCards({ messages }: { messages: MessageView[] }) {
         label="Suggestions for you"
         neverLabel="Don't suggest this again"
         links={links}
+        foldOnPhone={foldOnPhone}
         onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
           const message = messages.find((m) => m.id === id)!;
