@@ -4,6 +4,7 @@ import {
   usePracticeStrategy,
 } from "@/app/investments/strategy-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { CATALOG_EVIDENCE, CATALOG_EVIDENCE_SOURCE } from "@/config/catalog-evidence";
 import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
 import {
   CRYPTO_SLEEVE_BY_LEVEL,
@@ -23,6 +24,7 @@ import {
 import { STRATEGY_CHOICES, type StrategyChoice } from "@/config/practice-preferences";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
+import { CATALOG, CATALOG_IDS, CATALOG_WALK_FROM_YEAR } from "@/config/strategy-catalog";
 import { MENU_STRATEGIES, MENU_STRATEGY_IDS, type MenuStrategyId } from "@/config/strategy-menu";
 import {
   MENU_EVIDENCE,
@@ -212,6 +214,72 @@ function IntradayMenu({ level, chosen }: { level: RiskLevel; chosen: IntradayRul
 const followable = (id: MenuStrategyId): id is MenuStrategyId & StrategyChoice =>
   Object.hasOwn(STRATEGY_CHOICES, id);
 
+// Every strategy in the catalog (src/config/strategy-catalog.ts), as the research scored it at
+// the person's level: what is recommendable, what is worth watching, and what was tested and
+// not recommended, with the reason. Few words; the numbers are the walk-forward since
+// CATALOG_WALK_FROM_YEAR against the level's own mix.
+function CatalogMenu({ level }: { level: RiskLevel }) {
+  const rows = CATALOG_IDS.flatMap((id) => {
+    const e = CATALOG_EVIDENCE[id]?.[level];
+    return e ? [{ id, e }] : [];
+  });
+  if (rows.length === 0) return null;
+  const rec = rows.filter((r) => r.e.recommendable);
+  const watch = rows.filter((r) => r.e.watch);
+  const rest = rows.filter((r) => !r.e.recommendable && !r.e.watch);
+  const line = (r: (typeof rows)[number]) =>
+    `${pct(r.e.cagr)} a year since ${CATALOG_WALK_FROM_YEAR} (your mix ${pct(r.e.mixCagr)}), worst drop ${pct(r.e.maxDrawdown)}`;
+  return (
+    <div className="flex flex-col gap-2" aria-labelledby="catalog-menu-heading">
+      <h3 id="catalog-menu-heading" className="font-semibold">
+        Every strategy we tested ({rows.length})
+      </h3>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        Each replayed walk-forward against your mix at {RISK_LEVELS[level].label}, after costs, with
+        a haircut for testing so many at once.{" "}
+        {rec.length === 0
+          ? `None is recommendable at ${RISK_LEVELS[level].label}: none beat your mix by enough to rule out luck.`
+          : `${rec.length} recommendable at ${RISK_LEVELS[level].label}.`}
+      </p>
+      {rec.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm" aria-label="Recommendable">
+          {rec.map((r) => (
+            <li key={r.id} data-catalog={r.id}>
+              <span aria-hidden="true">■ </span>
+              <span className="font-medium">{CATALOG[r.id].label}</span>: {line(r)}.{" "}
+              {Math.round(r.e.dsr * 100)}% likely a real edge.
+            </li>
+          ))}
+        </ul>
+      )}
+      {watch.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm" aria-label="Worth watching">
+          {watch.map((r) => (
+            <li key={r.id} data-catalog={r.id}>
+              <span aria-hidden="true">▲ </span>
+              <span className="font-medium">{CATALOG[r.id].label}</span>, worth watching: {line(r)}.
+              Only {Math.round(r.e.dsr * 100)}% likely a real edge after the haircut.
+            </li>
+          ))}
+        </ul>
+      )}
+      <details className="text-sm">
+        <summary className="cursor-pointer text-zinc-600 dark:text-zinc-400">
+          Tested, not recommended ({rest.length})
+        </summary>
+        <ul className="mt-1 flex flex-col gap-1 text-xs text-zinc-500">
+          {rest.map((r) => (
+            <li key={r.id} data-catalog={r.id}>
+              {CATALOG[r.id].label}: {line(r)}. {r.e.why[0].toUpperCase()}
+              {r.e.why.slice(1)}.
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}
+
 export function StrategyMenuSection({
   level,
   choice,
@@ -303,9 +371,11 @@ export function StrategyMenuSection({
       </ul>
       <CryptoMenu level={level} chosen={crypto} />
       <IntradayMenu level={level} chosen={dayTrading} />
+      <CatalogMenu level={level} />
       <p className="text-xs text-zinc-500">
         {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}; day trading:{" "}
-        {INTRADAY_EVIDENCE_SOURCE}. {STRATEGY_NOT_A_FORECAST} Practice money only.
+        {INTRADAY_EVIDENCE_SOURCE}; every strategy tested: {CATALOG_EVIDENCE_SOURCE}.{" "}
+        {STRATEGY_NOT_A_FORECAST} Practice money only.
       </p>
       <DemoAdviceLabel />
     </section>

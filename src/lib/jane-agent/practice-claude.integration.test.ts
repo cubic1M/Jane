@@ -162,6 +162,13 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
       "Crypto trend",
       "Crypto momentum",
     ]);
+    // Every catalog strategy tested, with what is recommendable and why the rest isn't.
+    const tested = out.tested;
+    expect(tested.how).toMatch(/haircut/);
+    expect(
+      tested.recommendable.length + tested.worthWatching.length + tested.notRecommended.length,
+    ).toBeGreaterThan(30);
+    for (const r of tested.notRecommended) expect(r.why.length).toBeGreaterThan(0);
     expect(out.dayTrading.warning).toMatch(/Most people who day trade lose money/);
     expect(out.dayTrading.inThePracticePortfolio).toMatch(/^At Very high, as a sleeve/);
     expect(out.dayTrading.practicePortfolioRuns).toBe("no day trading");

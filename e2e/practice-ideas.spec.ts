@@ -86,6 +86,13 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
     vwap.getByRole("img", { name: /^VWAP reversion: \$100 became \$\d+ since 2024/ }),
   ).toBeVisible();
   await expect(vwap.getByText(/Since 2024: .* trades, .* \(holding: /)).toBeVisible();
+  // Every strategy tested, at the person's level: what is recommendable or worth watching, and
+  // the rest with the reason.
+  await expect(
+    menu.getByRole("heading", { name: /^Every strategy we tested \(\d+\)$/ }),
+  ).toBeVisible();
+  await menu.getByText(/^Tested, not recommended \(\d+\)$/).click();
+  await expect(menu.locator("li[data-catalog]").first()).toBeVisible();
   // Choose it for the practice portfolio, then go back to Jane's pick.
   await value.getByRole("button", { name: "Use in practice" }).click();
   await expect(value.getByText("Your practice portfolio uses this")).toBeVisible();
