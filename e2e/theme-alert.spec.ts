@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { CHAT, landInChat, popupCard } from "./chat-page";
+import { CHAT, landInChat } from "./chat-page";
 import { E2E_DATABASE_URL, addThemeIdea, deleteUser, signedInUser } from "./db";
 
 // A news theme's alert (Phase AW, Stage A): when the practice scan finds a theme idea, Jane puts
@@ -40,11 +40,19 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   const overlay = page.getByRole("region", { name: "Suggestions for you" });
   const showing = overlay.locator('[data-card-state="showing"]');
   const headline = showing.getByRole("heading", { level: 3 });
-  // Jane's pop-ups step through with the arrow keys (e2e/chat-page.ts): to the theme's card,
-  // reloading until the scan has posted it.
+  // Through Jane's pop-ups to the theme's card: Not now puts each suggestion off (so the day's
+  // later ones come up after a reload), and a decision without it is stepped past.
   await expect(async () => {
     await page.goto(CHAT);
-    await popupCard(page, theme, 30_000);
+    await expect(overlay).toBeVisible({ timeout: 5_000 });
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    for (let i = 0; i < 16; i += 1) {
+      if (theme.test(((await headline.textContent({ timeout: 2_000 })) ?? "").trim())) return;
+      const notNow = showing.getByRole("button", { name: "Not now", exact: true });
+      if ((await notNow.count()) > 0) await notNow.first().click();
+      else await page.keyboard.press("ArrowRight");
+    }
+    throw new Error("No news theme card yet");
   }).toPass({ timeout: 120_000 });
   await expect(headline).toHaveText(theme);
   await expect(showing.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
