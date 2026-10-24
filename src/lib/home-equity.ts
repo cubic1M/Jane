@@ -1,9 +1,4 @@
-import {
-  PROJECT_MAX_CENTS,
-  PROJECT_MIN_CENTS,
-  PROJECT_YEARS_MAX,
-  DEFAULT_TERM_YEARS,
-} from "@/config/home-equity";
+import { PROJECT_MAX_CENTS, PROJECT_MIN_CENTS, PROJECT_YEARS_MAX } from "@/config/home-equity";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
@@ -16,9 +11,7 @@ import {
   compareProject,
   escrowCheck,
   escrowLetter,
-  mortgagePi,
   pmiOriginalLetter,
-  pmiTimeline,
   type EscrowCheck,
   type PmiTimeline,
   type ProjectOption,
@@ -71,11 +64,6 @@ const EMPTY_FACTS: HomeFacts = {
   escrowRequestSentOn: null,
 };
 
-const termYears = (description: string | null) => {
-  const m = /(\d{1,2})[- ]?year/i.exec(description ?? "");
-  return m ? Number(m[1]) : DEFAULT_TERM_YEARS;
-};
-
 export async function loadHomeEquity(
   userId: string,
   { client = defaultClient, now = new Date(), book, mortgage: given }: Options = {},
@@ -100,12 +88,8 @@ export async function loadHomeEquity(
     };
   }
   const db = scopedFor(userId, client);
-  const [row, liability, user] = await Promise.all([
+  const [row, user] = await Promise.all([
     db.homeEquityFacts.findFirst(),
-    db.liabilities.findFirst({
-      where: { accountId: m.loan.accountId! },
-      select: { originationPrincipalCents: true, description: true },
-    }),
     client.user.findUnique({ where: { id: userId }, select: { name: true } }),
   ]);
   const facts: HomeFacts = row
@@ -117,24 +101,12 @@ export async function loadHomeEquity(
         escrowRequestSentOn: row.escrowRequestSentOn ? isoDay(row.escrowRequestSentOn) : null,
       }
     : EMPTY_FACTS;
-  const aprBps = m.loan.aprBps;
   const paymentCents = m.loan.paymentCents;
-  const paymentPiCents = mortgagePi({
-    originationPrincipalCents: liability?.originationPrincipalCents ?? null,
-    aprBps,
-    termYears: termYears(liability?.description ?? null),
-  });
+  // The payment's split, as every page has it (src/insights/debts.ts).
+  const paymentPiCents = m.loan.principalAndInterestCents ?? null;
   const balanceCents = m.loan.balanceCents!;
-  const pmi =
-    m.hasPmi && facts.originalValueCents
-      ? pmiTimeline({
-          originalValueCents: facts.originalValueCents,
-          balanceCents,
-          aprBps,
-          paymentPiCents,
-          today: isoDay(now),
-        })
-      : null;
+  // One PMI rule: the mortgage's own (src/lib/mortgage.ts), against the original value.
+  const pmi = m.pmi;
   const name = user?.name ?? "";
   const escrow =
     facts.yearlyTaxCents !== null || facts.yearlyInsuranceCents !== null
@@ -268,15 +240,6 @@ export async function compareHomeProject(
   }
   const m = given === undefined ? await loadMortgage(userId, { client, now, book }) : given;
   if (!m || !(await adviceMode(userId, { client }))) return null;
-  const liability = await scopedFor(userId, client).liabilities.findFirst({
-    where: { accountId: m.loan.accountId! },
-    select: { originationPrincipalCents: true, description: true },
-  });
-  const pi = mortgagePi({
-    originationPrincipalCents: liability?.originationPrincipalCents ?? null,
-    aprBps: m.loan.aprBps,
-    termYears: termYears(liability?.description ?? null),
-  });
   return {
     projectCents: input.projectCents,
     years: input.years,
@@ -286,7 +249,7 @@ export async function compareHomeProject(
       homeValueCents: m.home?.valueCents ?? null,
       mortgageBalanceCents: m.loan.balanceCents!,
       mortgageAprBps: m.loan.aprBps,
-      mortgagePiCents: pi,
+      mortgagePiCents: m.loan.principalAndInterestCents ?? null,
     }),
   };
 }

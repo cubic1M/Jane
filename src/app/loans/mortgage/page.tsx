@@ -2,18 +2,17 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
-import { PMI_ASK_LTV, PMI_SOURCE } from "@/config/debt";
+import { PMI_SOURCE } from "@/config/debt";
 import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { loadMortgage } from "@/lib/mortgage";
-import { promptHref } from "@/lib/owned-assets";
 import { ensureChecked } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
-import { PMI_STEPS, percent } from "@/planning/mortgage";
+import { pmiTimelineLines } from "@/lib/jane-agent/home-equity-replies";
 
-// The mortgage, watched (spec step 115): PMI against the home's value the person gave,
-// the request Jane drafted when it can come off, escrow changes, extra principal and the
-// refinance break-even.
+// The mortgage, watched (spec step 115): PMI by the one rule (the home's value when the loan
+// began, as on /loans/equity, where the request is drafted), escrow changes, extra principal
+// and the refinance break-even.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BOX =
@@ -66,43 +65,28 @@ async function MortgageContent() {
             <h2 id="pmi-title" className="text-xl font-semibold">
               Private mortgage insurance (PMI)
             </h2>
-            {m.pmi.kind === "none" && <p>Your bank reports no PMI on this loan.</p>}
-            {m.pmi.kind === "unknown" &&
-              (m.pmi.why === "no_value" ? (
-                <p>
-                  Your loan has PMI.{" "}
-                  <Link
-                    href={promptHref({ kind: "home", loanId: m.loan.accountId! })}
-                    className={LINK}
-                  >
-                    Add your home&apos;s value
-                  </Link>{" "}
-                  and Jane tells you when it can come off.
-                </p>
-              ) : (
-                <p>Your bank doesn&apos;t say whether this loan has PMI.</p>
-              ))}
-            {m.pmi.kind === "not_yet" && (
+            {/* One PMI rule (loans QA): the home's value when the loan began, as /loans/equity. */}
+            {m.hasPmi === false && <p>Your bank reports no PMI on this loan.</p>}
+            {m.hasPmi === null && <p>Your bank doesn&apos;t say whether this loan has PMI.</p>}
+            {m.hasPmi === true && !m.pmi && (
               <p>
-                Your loan is {percent(m.pmi.ltv)} of your home&apos;s value. PMI can come off under{" "}
-                {percent(PMI_ASK_LTV)}, at a balance of {formatCents(m.pmi.balanceAtAskCents)}.
+                Your loan has PMI.{" "}
+                <Link href="/loans/equity" className={LINK}>
+                  Tell Jane the home&apos;s value when the loan began
+                </Link>{" "}
+                and she works out when it can come off.
               </p>
             )}
-            {m.pmi.kind === "can_ask" && (
+            {m.pmi && (
               <>
-                <p role="status" className="font-medium">
-                  PMI can come off: your loan is {percent(m.pmi.ltv)} of the value you gave for your
-                  home.
-                </p>
-                <ol aria-label="Steps to remove PMI" className="list-decimal pl-5">
-                  {PMI_STEPS.map((s) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ol>
-                <p className="font-medium">The request Jane drafted for your servicer</p>
-                <pre className="rounded-lg bg-zinc-100 p-3 text-sm whitespace-pre-wrap dark:bg-zinc-900">
-                  {m.letter}
-                </pre>
+                {pmiTimelineLines(m.pmi).map((l) => (
+                  <p key={l}>{l}</p>
+                ))}
+                {m.pmi.canAskNow && !m.pmi.endsNow && (
+                  <Link href="/loans/equity" className={LINK}>
+                    The request Jane drafted for your servicer
+                  </Link>
+                )}
               </>
             )}
             <p className="text-xs text-zinc-500">

@@ -42,6 +42,7 @@ import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
+import { PMI_ASK_ORIGINAL } from "./mortgage-replies";
 import type { FitView } from "@/lib/fit";
 import { fitCard } from "@/lib/fit-card";
 import type { OptionCard } from "@/lib/option-card";
@@ -53,7 +54,6 @@ import {
   type HomeMeasure,
 } from "@/planning/home-vs-borrow";
 import { FIT_LABEL_TEXT, type FitTerms } from "@/planning/fit";
-import { PMI_STEPS } from "@/planning/mortgage";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
 import { PLAN_NAMES } from "@/planning/student-loans";
 import type { PayoffPlan } from "@/planning/debt";
@@ -533,6 +533,10 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
       keepingItTakesMonths: c.keepMonths,
       keepingItCosts: money(c.currentTotalCents),
       keepingMonthlyPayment: money(c.currentMonthlyCents),
+      // A mortgage's payments here are principal and interest; the escrow stays as it is.
+      ...(c.escrowCents !== undefined
+        ? { paymentsArePrincipalAndInterest: true, escrowThatStays: money(c.escrowCents) }
+        : {}),
       janesPick: c.pick && offer(c.pick),
       ...(c.cashPayoffCents
         ? {
@@ -658,15 +662,20 @@ export function mortgageToolOutput(m: Mortgage | null, money: (cents: number) =>
       valuedOn: m.home.valuedOn,
       fromThePerson: true,
     },
+    // One PMI rule (as the home_equity tool and both pages): the original value, not today's.
     pmi:
-      m.pmi.kind === "can_ask" || m.pmi.kind === "not_yet"
-        ? {
-            status: m.pmi.kind,
-            loanToValue: Math.round(m.pmi.ltv * 1000) / 10,
-            steps: PMI_STEPS,
-            source: PMI_SOURCE,
-          }
-        : { status: m.pmi.kind },
+      m.hasPmi !== true
+        ? { status: m.hasPmi === false ? "none" : "not_reported" }
+        : !m.pmi
+          ? { status: "needs_the_original_value", ask: PMI_ASK_ORIGINAL, source: PMI_SOURCE }
+          : {
+              status: m.pmi.endsNow ? "ends_by_itself" : m.pmi.canAskNow ? "can_ask" : "not_yet",
+              loanAsShareOfOriginalValue: Math.round(m.pmi.ltv * 1000) / 10,
+              balanceToAsk: money(m.pmi.askBalanceCents),
+              askAround: m.pmi.askOn,
+              endsByItselfAround: m.pmi.autoOn,
+              source: PMI_SOURCE,
+            },
     escrowBalance: m.escrowBalanceCents === null ? null : money(m.escrowBalanceCents),
     escrowChange: m.escrow && {
       from: money(m.escrow.fromCents),
