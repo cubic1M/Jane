@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { CHAT, landInChat } from "./chat-page";
+import { CHAT, landInChat, popupCard } from "./chat-page";
 import { E2E_DATABASE_URL, addThemeIdea, deleteUser, signedInUser } from "./db";
 
 // A news theme's alert (Phase AW, Stage A): when the practice scan finds a theme idea, Jane puts
@@ -40,14 +40,11 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   const overlay = page.getByRole("region", { name: "Suggestions for you" });
   const showing = overlay.locator('[data-card-state="showing"]');
   const headline = showing.getByRole("heading", { level: 3 });
+  // Jane's pop-ups step through with the arrow keys (e2e/chat-page.ts): to the theme's card,
+  // reloading until the scan has posted it.
   await expect(async () => {
     await page.goto(CHAT);
-    await expect(overlay).toBeVisible({ timeout: 5_000 });
-    for (let i = 0; i < 8; i += 1) {
-      if (theme.test(((await headline.textContent({ timeout: 2_000 })) ?? "").trim())) return;
-      await showing.getByRole("button", { name: "Not now", exact: true }).first().click();
-    }
-    throw new Error("No news theme card yet");
+    await popupCard(page, theme, 10_000);
   }).toPass({ timeout: 90_000 });
   await expect(headline).toHaveText(theme);
   await expect(showing.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
