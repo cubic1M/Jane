@@ -1,0 +1,289 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  changeOver,
+  pointsIn,
+  rangesFor,
+  type RangeKey,
+  type SeriesPoint,
+} from "@/insights/net-worth-series";
+import { formatCents } from "@/lib/money";
+
+// The home hub's net worth chart (founder request; docs/design/home-hub.md): the person's net
+// worth from their first day with Jane to today, as one clean line. A big number with the
+// range's change under it; the line green when the range is up and red when it's down, with a
+// dotted baseline at where the range started. Hover (computer), drag (phone) or the arrow
+// keys scrub: the number and the date follow the point under the hairline, and letting go
+// returns to today. Range chips under it: 1W 1M 3M 1Y ALL, only those the history is longer
+// than, ALL first chosen. The line draws itself in when the range changes (not with reduced
+// motion).
+
+const H_WIDE = 190;
+const H_NARROW = 150;
+const PAD_Y = 10;
+
+const RANGE_WORDS: Record<RangeKey, string> = {
+  "1W": "Past week",
+  "1M": "Past month",
+  "3M": "Past 3 months",
+  "1Y": "Past year",
+  ALL: "Since you started",
+};
+
+const dollars = (cents: number) => formatCents(cents).replace(/\.\d\d$/, "");
+const signed = (cents: number) => `${cents >= 0 ? "+" : "−"}${dollars(Math.abs(cents))}`;
+const percent = (share: number) =>
+  `${share >= 0 ? "+" : "−"}${(Math.abs(share) * 100).toFixed(Math.abs(share) < 0.1 ? 2 : 1)}%`;
+const longDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+export function NetWorthChart({ points }: { points: SeriesPoint[] }) {
+  const [range, setRange] = useState<RangeKey>("ALL");
+  const [scrub, setScrub] = useState<number | null>(null);
+  const [width, setWidth] = useState(640);
+  const box = useRef<HTMLDivElement>(null);
+  // A finger on the line (a drag scrubs until it lets go).
+  const dragging = useRef(false);
+
+  useLayoutEffect(() => {
+    if (box.current) setWidth(box.current.clientWidth);
+  }, []);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(([e]) => setWidth(Math.round(e.contentRect.width)));
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
+
+  const today = points[points.length - 1];
+  const ranges = rangesFor(points);
+  const shown = pointsIn(points, ranges.includes(range) ? range : "ALL");
+  const at = scrub === null ? shown.length - 1 : Math.min(scrub, shown.length - 1);
+  const point = shown[at] ?? today;
+  const move = changeOver(shown, at);
+  const whole = changeOver(shown);
+  const up = whole.cents >= 0;
+
+  if (!today) return null;
+  const single = points.length < 2;
+
+  const H = width < 480 ? H_NARROW : H_WIDE;
+  const values = shown.map((p) => p.cents);
+  const hi0 = Math.max(...values);
+  const lo0 = Math.min(...values);
+  // A tiny move stays visible but isn't blown up into a cliff.
+  const span = Math.max(hi0 - lo0, Math.abs(hi0) * 0.01, 100);
+  const mid = (hi0 + lo0) / 2;
+  const lo = mid - span / 2;
+  const hi = mid + span / 2;
+  const x = (i: number) => (shown.length < 2 ? width : (i / (shown.length - 1)) * width);
+  const y = (v: number) => PAD_Y + (1 - (v - lo) / (hi - lo)) * (H - PAD_Y * 2);
+  // At most one vertex per pixel; the last point is always kept.
+  const step = Math.max(1, Math.floor(shown.length / Math.max(1, width)));
+  const path = shown
+    .map((p, i) => ({ p, i }))
+    .filter(({ i }) => i % step === 0 || i === shown.length - 1)
+    .map(({ p, i }, k) => `${k === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.cents).toFixed(1)}`)
+    .join(" ");
+
+  const indexAt = (clientX: number) => {
+    const rect = box.current?.getBoundingClientRect();
+    if (!rect || shown.length < 2) return shown.length - 1;
+    const share = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    return Math.round(share * (shown.length - 1));
+  };
+
+  const stroke = up
+    ? "stroke-emerald-600 dark:stroke-emerald-400"
+    : "stroke-red-600 dark:stroke-red-400";
+  const ink = up ? "text-emerald-700" : "text-red-700";
+  const moveInk = move.cents >= 0 ? "text-emerald-700" : "text-red-700";
+
+  return (
+    <section
+      aria-labelledby="net-worth-heading"
+      data-net-worth-chart=""
+      className="flex flex-col gap-2 border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950"
+    >
+      <Link
+        id="net-worth-heading"
+        href="/net-worth"
+        className="self-start text-sm font-medium text-zinc-600 hover:text-emerald-700 dark:text-zinc-400"
+      >
+        Net worth
+      </Link>
+      <p
+        data-hub-number="net-worth"
+        className="text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl"
+      >
+        {dollars(point.cents)}
+      </p>
+      {single ? (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Your line starts today. It grows each day from here.
+        </p>
+      ) : (
+        <p data-net-worth-change="" className="text-sm tabular-nums">
+          <span className={`font-semibold ${moveInk}`}>
+            {signed(move.cents)}
+            {move.share !== null && ` (${percent(move.share)})`}
+          </span>{" "}
+          <span className="text-zinc-600 dark:text-zinc-400">
+            {scrub === null
+              ? RANGE_WORDS[ranges.includes(range) ? range : "ALL"]
+              : longDate(point.date)}
+          </span>
+        </p>
+      )}
+
+      {!single && (
+        <>
+          <div
+            ref={box}
+            // Scrubbing is choosing a day: a slider, its value the day and the net worth then.
+            role="slider"
+            tabIndex={0}
+            aria-label={`Net worth, ${RANGE_WORDS[ranges.includes(range) ? range : "ALL"].toLowerCase()}`}
+            aria-valuemin={0}
+            aria-valuemax={shown.length - 1}
+            aria-valuenow={at}
+            aria-valuetext={`${at === shown.length - 1 ? "Today" : longDate(point.date)}: ${dollars(point.cents)}`}
+            className="relative -mx-1 cursor-crosshair touch-pan-y outline-offset-4 select-none"
+            style={{ height: H }}
+            onPointerDown={(e) => {
+              if (e.pointerType !== "mouse") {
+                dragging.current = true;
+                try {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {
+                  // Capture is a nicety: the drag still follows inside the chart.
+                }
+              }
+              setScrub(indexAt(e.clientX));
+            }}
+            onPointerMove={(e) => {
+              if (e.pointerType === "mouse" || dragging.current) setScrub(indexAt(e.clientX));
+            }}
+            onPointerUp={(e) => {
+              if (e.pointerType !== "mouse") {
+                dragging.current = false;
+                setScrub(null);
+              }
+            }}
+            onPointerCancel={() => {
+              dragging.current = false;
+              setScrub(null);
+            }}
+            onPointerLeave={(e) => {
+              if (e.pointerType === "mouse") setScrub(null);
+            }}
+            onBlur={() => setScrub(null)}
+            onKeyDown={(e) => {
+              const from = scrub ?? shown.length - 1;
+              const jump = e.shiftKey ? 7 : 1;
+              if (e.key === "ArrowLeft") setScrub(Math.max(0, from - jump));
+              else if (e.key === "ArrowRight") {
+                const next = from + jump;
+                setScrub(next >= shown.length - 1 ? null : next);
+              } else if (e.key === "Home") setScrub(0);
+              else if (e.key === "End" || e.key === "Escape") setScrub(null);
+              else return;
+              e.preventDefault();
+            }}
+          >
+            <svg
+              aria-hidden="true"
+              width={width}
+              height={H}
+              viewBox={`0 0 ${width} ${H}`}
+              className="absolute inset-0 overflow-visible"
+            >
+              {/* Where the range started. */}
+              <line
+                x1={0}
+                x2={width}
+                y1={y(shown[0].cents)}
+                y2={y(shown[0].cents)}
+                strokeWidth={1}
+                strokeDasharray="2 5"
+                className="stroke-zinc-400 dark:stroke-zinc-600"
+              />
+              <path
+                key={`${range}-${shown.length}`}
+                d={path}
+                pathLength={1}
+                fill="none"
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                className={`nw-line ${stroke}`}
+              />
+              {scrub !== null && (
+                <>
+                  <line
+                    x1={x(at)}
+                    x2={x(at)}
+                    y1={0}
+                    y2={H}
+                    strokeWidth={1}
+                    className="stroke-zinc-500 dark:stroke-zinc-400"
+                  />
+                  <circle
+                    cx={x(at)}
+                    cy={y(point.cents)}
+                    r={4.5}
+                    strokeWidth={2}
+                    className={`fill-white dark:fill-zinc-950 ${stroke}`}
+                  />
+                </>
+              )}
+              {scrub === null && (
+                <circle
+                  cx={x(shown.length - 1)}
+                  cy={y(today.cents)}
+                  r={3.5}
+                  className={
+                    up ? "fill-emerald-600 dark:fill-emerald-400" : "fill-red-600 dark:fill-red-400"
+                  }
+                />
+              )}
+            </svg>
+          </div>
+
+          <div role="group" aria-label="Range" className="flex flex-wrap gap-1">
+            {ranges.map((key) => {
+              const on = key === (ranges.includes(range) ? range : "ALL");
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    setRange(key);
+                    setScrub(null);
+                  }}
+                  className={`inline-flex min-h-11 min-w-11 items-center justify-center px-3 text-sm font-semibold ${
+                    on
+                      ? `border-b-2 ${up ? "border-emerald-700" : "border-red-700"} ${ink}`
+                      : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
+                  }`}
+                >
+                  {key}
+                  <span className="sr-only">, {RANGE_WORDS[key].toLowerCase()}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}

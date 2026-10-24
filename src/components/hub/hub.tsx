@@ -1,7 +1,8 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { formatCents } from "@/lib/money";
 import type { AreaTile, HeroView } from "@/lib/hub/view";
-import { HealthBadge, Meter, Sparkline, StackBar, TinyChart } from "./charts";
+import { HealthBadge, Meter, StackBar, TinyChart } from "./charts";
 
 // The home hub's hero row and area tiles (docs/design/home-hub.md): a big number and one
 // small graphic each, the whole card a link to where the number comes from.
@@ -12,108 +13,86 @@ const CARD_LINK =
   "text-sm font-medium text-zinc-600 after:absolute after:inset-0 hover:text-emerald-700 dark:text-zinc-400";
 
 const dollars = (cents: number) => formatCents(cents).replace(/\.\d\d$/, "");
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
-const TREND = { up: "▲ up this year", down: "▼ down this year", flat: "■ flat this year" };
-
-export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number }) {
-  const { safe, netWorth, saved } = hero;
+// The hero: the net worth chart on top (the founder's "graph like Robinhood"), then safe to
+// spend and money found side by side.
+export function HeroRow({
+  hero,
+  planItems,
+  chart,
+}: {
+  hero: HeroView;
+  planItems: number;
+  chart: ReactNode;
+}) {
+  const { safe, saved } = hero;
   return (
-    <section aria-label="Your money at a glance" className="grid grid-cols-2 gap-3 xl:grid-cols-3">
-      {safe && (
-        <div className={`${CARD} col-span-2 xl:col-span-1`}>
-          <Link href="/figures/safe_to_spend" className={CARD_LINK}>
-            {safe.label}
-          </Link>
-          <p
-            data-hub-number="safe"
-            className={`text-4xl font-semibold tracking-tight tabular-nums ${safe.short ? "text-red-700" : ""}`}
-          >
-            {safe.short ? `Short ${dollars(safe.cents)}` : dollars(safe.cents)}
-          </p>
-          <StackBar
-            parts={safe.parts}
-            emphasis="safe"
-            label={safe.parts.map((p) => `${p.label} ${Math.round(p.share * 100)}%`).join(", ")}
-          />
-          <p aria-hidden className="flex flex-wrap gap-x-3 text-xs text-zinc-500">
-            {safe.parts.map((p) => (
-              <span key={p.key}>
-                <span className={p.key === "safe" ? "text-emerald-700" : ""}>■</span> {p.label}
-              </span>
-            ))}
-          </p>
-        </div>
-      )}
-      {netWorth && (
+    <section aria-label="Your money at a glance" className="flex flex-col gap-3">
+      {chart}
+      <div className="grid grid-cols-2 gap-3">
+        {safe && (
+          <div className={`${CARD} col-span-2 sm:col-span-1`}>
+            <Link href="/figures/safe_to_spend" className={CARD_LINK}>
+              {safe.label}
+            </Link>
+            <p
+              data-hub-number="safe"
+              className={`text-4xl font-semibold tracking-tight tabular-nums ${safe.short ? "text-red-700" : ""}`}
+            >
+              {safe.short ? `Short ${dollars(safe.cents)}` : dollars(safe.cents)}
+            </p>
+            <StackBar
+              parts={safe.parts}
+              emphasis="safe"
+              label={safe.parts.map((p) => `${p.label} ${Math.round(p.share * 100)}%`).join(", ")}
+            />
+            <p aria-hidden className="flex flex-wrap gap-x-3 text-xs text-zinc-500">
+              {safe.parts.map((p) => (
+                <span key={p.key}>
+                  <span className={p.key === "safe" ? "text-emerald-700" : ""}>■</span> {p.label}
+                </span>
+              ))}
+            </p>
+          </div>
+        )}
         <div className={CARD}>
-          <Link href="/net-worth" className={CARD_LINK}>
-            Net worth
+          {/* Each figure links to the page that shows it: what was found is the report's total
+            (hub QA: it linked to /plan, whose total counts more). */}
+          <Link href={saved.label === "Saved so far" ? "/saved" : "/report"} className={CARD_LINK}>
+            {saved.label}
           </Link>
           <p
-            data-hub-number="net-worth"
+            data-hub-number="saved"
             className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl"
           >
-            {dollars(netWorth.cents)}
+            {saved.label === "Money found" && saved.cents === 0 && planItems > 0 ? (
+              // As the report says it when nothing has a sure dollar figure yet.
+              `${planItems} to look at`
+            ) : (
+              <>
+                {dollars(saved.cents)}
+                <span className="text-base font-normal text-zinc-500">/yr</span>
+              </>
+            )}
           </p>
-          <Sparkline
-            label={`Net worth over the year, ${netWorth.trend}`}
-            points={netWorth.points.map((p) => ({
-              key: p.month,
-              value: p.cents,
-              title: `${monthName(p.month)}: ${dollars(p.cents)}`,
-            }))}
-          />
-          {netWorth.points.length >= 2 ? (
-            <p className="text-xs text-zinc-600 dark:text-zinc-400">{TREND[netWorth.trend]}</p>
-          ) : (
-            <p className="text-xs text-zinc-500">The line fills in month by month.</p>
+          {/* What was said yes to, at its expected yearly value (one meaning of "saved", #587). */}
+          {saved.label === "Saved so far" && <p className="text-xs text-zinc-500">Expected</p>}
+          {saved.label === "Saved so far" && (
+            <Meter
+              share={saved.share}
+              label={`${Math.round(saved.share * 100)}% of what Jane found`}
+            />
+          )}
+          {planItems > 0 && (
+            <Link
+              href="/plan"
+              className="relative z-10 self-start text-sm font-medium text-emerald-700 hover:underline"
+            >
+              {/* The plan's items, as the chat says them ("Your plan for this week is ready: 12
+                things"); "ideas" are the tiles' suggestions, a different count (phone walk). */}
+              Your plan: {planItems} {planItems === 1 ? "thing" : "things"} ›
+            </Link>
           )}
         </div>
-      )}
-      <div className={CARD}>
-        {/* Each figure links to the page that shows it: what was found is the report's total
-            (hub QA: it linked to /plan, whose total counts more). */}
-        <Link href={saved.label === "Saved so far" ? "/saved" : "/report"} className={CARD_LINK}>
-          {saved.label}
-        </Link>
-        <p
-          data-hub-number="saved"
-          className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl"
-        >
-          {saved.label === "Money found" && saved.cents === 0 && planItems > 0 ? (
-            // As the report says it when nothing has a sure dollar figure yet.
-            `${planItems} to look at`
-          ) : (
-            <>
-              {dollars(saved.cents)}
-              <span className="text-base font-normal text-zinc-500">/yr</span>
-            </>
-          )}
-        </p>
-        {/* What was said yes to, at its expected yearly value (one meaning of "saved", #587). */}
-        {saved.label === "Saved so far" && <p className="text-xs text-zinc-500">Expected</p>}
-        {saved.label === "Saved so far" && (
-          <Meter
-            share={saved.share}
-            label={`${Math.round(saved.share * 100)}% of what Jane found`}
-          />
-        )}
-        {planItems > 0 && (
-          <Link
-            href="/plan"
-            className="relative z-10 self-start text-sm font-medium text-emerald-700 hover:underline"
-          >
-            {/* The plan's items, as the chat says them ("Your plan for this week is ready: 12
-                things"); "ideas" are the tiles' suggestions, a different count (phone walk). */}
-            Your plan: {planItems} {planItems === 1 ? "thing" : "things"} ›
-          </Link>
-        )}
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
-import { NET_WORTH_MONTHS } from "@/config/net-worth";
+import { DEMO_HISTORY_DAYS, DEMO_HISTORY_LOWEST_BANK_CENTS } from "@/config/net-worth";
+import { addDays } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -6,8 +7,8 @@ import { scopedFor } from "@/lib/db-scoped";
 // A sample person's past balances (the home hub's net worth line, docs/design/home-hub.md).
 // Real accounts get a balance snapshot each day from the daily job (src/lib/snapshots.ts), so
 // their line fills in over the months; a demo-bank person is new every time, so on the first
-// scan their accounts get a month-end balance for each of the last months, worked back from
-// today's balance through their own transactions. Demo bank only: a stand-in for history a
+// scan their accounts get a balance for each day of the last year, worked back from today's
+// balance through their own transactions (the hub's net worth chart is daily). Demo bank only: a stand-in for history a
 // real bank would have, never written for real accounts.
 
 export type HistoryAccount = { id: string; type: string; currentBalanceCents: number | null };
@@ -52,7 +53,47 @@ export function pastMonthEndBalances(
   return out;
 }
 
-// Writes the past month-end balances for one demo item's accounts. Never overwrites a day
+// The same, for every day from `days` days ago to yesterday: what the hub's daily net worth
+// chart draws. One pass from today backwards: each day's balance is the next day's with that
+// next day's transactions undone.
+export function pastDailyBalances(
+  accounts: readonly HistoryAccount[],
+  transactions: readonly HistoryTransaction[],
+  asOf: string,
+  days: number,
+): PastBalance[] {
+  const out: PastBalance[] = [];
+  for (const a of accounts) {
+    if (a.currentBalanceCents === null) continue;
+    if (a.type !== "depository" && !DEBT_TYPES.has(a.type)) continue;
+    const debt = DEBT_TYPES.has(a.type);
+    const sign = debt ? -1 : 1;
+    const byDay = new Map<string, number>();
+    for (const t of transactions) {
+      if (t.accountId === a.id) byDay.set(t.date, (byDay.get(t.date) ?? 0) + t.amountCents);
+    }
+    const worked: PastBalance[] = [];
+    let balance = a.currentBalanceCents;
+    // Today's transactions are in today's balance; undo them to get yesterday's, and so on.
+    for (let d = asOf, i = 0; i < days; i += 1) {
+      balance += sign * (byDay.get(d) ?? 0);
+      d = addDays(d, -1);
+      worked.push({ accountId: a.id, date: d, balanceCents: balance });
+    }
+    // Transactions that don't explain the balance (phone walk), judged at month ends as the
+    // monthly line is (a bank account dips mid-month before payday): no history for the
+    // account. The chart counts it at today's balance throughout, and the books check (which
+    // compares a day's balance with its transactions) has nothing made up to flag.
+    const lowest = debt ? 0 : DEMO_HISTORY_LOWEST_BANK_CENTS;
+    const monthEnd = (d: string) => addDays(d, 1).endsWith("-01");
+    if (worked.filter((b) => monthEnd(b.date)).every((b) => b.balanceCents >= lowest)) {
+      out.push(...worked.reverse());
+    }
+  }
+  return out;
+}
+
+// Writes the past daily balances for one demo item's accounts. Never overwrites a day
 // that already has a snapshot.
 export async function ensureDemoBalanceHistory(
   userId: string,
@@ -70,11 +111,11 @@ export async function ensureDemoBalanceHistory(
     where: { accountId: { in: accounts.map((a) => a.id) }, pending: false },
     select: { accountId: true, date: true, amountCents: true },
   });
-  const balances = pastMonthEndBalances(
+  const balances = pastDailyBalances(
     accounts,
     rows.map((t) => ({ ...t, date: t.date.toISOString().slice(0, 10) })),
     asOf,
-    NET_WORTH_MONTHS,
+    DEMO_HISTORY_DAYS,
   );
   if (balances.length === 0) return 0;
   const { count } = await db.balanceSnapshots.createMany({
