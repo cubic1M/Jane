@@ -14,6 +14,9 @@ import {
 } from "@/config/intraday-strategies";
 import { AlpacaMarketData } from "@/lib/market/alpaca";
 import { fetchIntraday } from "@/lib/market/alpaca-intraday";
+import { catalogTickers } from "@/config/strategy-catalog";
+import { alignCatalog, runCatalog } from "@/planning/catalog/engine";
+import { evidenceModule, resultsMarkdown } from "@/planning/catalog/report";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import type { Bar } from "@/lib/market/types";
 import { alignUniverse, type Metrics } from "@/planning/strategies/engine";
@@ -30,7 +33,11 @@ import { selectForLevel } from "@/planning/strategies/select";
 // - all: the three in turn, for a local round;
 // - intraday: INTRADAY_TICKER's 5-minute bars from Alpaca, every day-trading rule walk-forward
 //   (src/planning/intraday.ts), into intraday-evidence.ts (to commit as
-//   src/config/intraday-evidence.ts) and intraday-summary.md.
+//   src/config/intraday-evidence.ts) and intraday-summary.md;
+// - catalog: every catalog strategy's funds' daily closes (and SPY's daily bars) from Alpaca,
+//   the whole catalog replayed (src/planning/catalog/), into strategy-results.md (to commit as
+//   docs/backtests/strategy-results.md), catalog-evidence.ts (src/config/catalog-evidence.ts) and
+//   catalog-results.json.
 // Keys are read from the environment and never written or printed. Practice research only.
 
 const MODE = process.env.STRATEGY_RESEARCH;
@@ -230,6 +237,39 @@ ${rows.join("\n")}
   console.log(lines.join("\n"));
 }
 
+async function runCatalogResearch() {
+  const id = process.env.ALPACA_API_KEY_ID;
+  const secret = process.env.ALPACA_API_SECRET_KEY;
+  if (!id || !secret) throw new Error("Alpaca secrets not set");
+  const feed = process.env.RESEARCH_FEED ?? "sip";
+  const from = process.env.RESEARCH_FROM ?? "2016-01-01";
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const alpaca = new AlpacaMarketData({ id, secret }, undefined, undefined, feed);
+  const bars: Record<string, Bar[]> = {};
+  for (const t of catalogTickers()) {
+    bars[t] = await alpaca.prices(t, from, to);
+    console.log(`${t}: ${bars[t].length} bars from ${bars[t][0]?.date ?? "none"}`);
+  }
+  const spy = (
+    await fetchIntraday({ id, secret }, "SPY", from, to, { timeframe: "1Day", feed })
+  ).map((b) => ({ date: b.t.slice(0, 10), o: b.o, h: b.h, l: b.l, c: b.c }));
+  const u = alignCatalog(bars, spy);
+  if (!u) throw new Error("No VTI bars to align on.");
+  const { results, trials } = runCatalog(u);
+  const meta = {
+    source: `Alpaca ${feed.toUpperCase()} daily closes`,
+    from: u.dates[0],
+    to: u.dates[u.dates.length - 1],
+    trials,
+  };
+  writeFileSync(join(DIR, "catalog-results.json"), JSON.stringify({ meta, results }, null, 1));
+  writeFileSync(join(DIR, "strategy-results.md"), resultsMarkdown(results, meta));
+  writeFileSync(join(DIR, "catalog-evidence.ts"), evidenceModule(results, meta));
+  for (const r of results.filter((x) => x.recommendable))
+    console.log(`recommendable at ${r.level}: ${r.id}`);
+  console.log(`${results.length} results, ${trials} trials`);
+}
+
 const readBars = () => JSON.parse(readFileSync(join(DIR, "bars.json"), "utf8")) as BarsFile;
 const writeLevel = (l: LevelFile) =>
   writeFileSync(join(DIR, `level-${l.level}.json`), JSON.stringify(l));
@@ -262,5 +302,6 @@ describe.runIf(MODE)("strategy research", () => {
     }
     if (MODE === "summary" || MODE === "all") writeSummary();
     if (MODE === "intraday") await runIntraday();
+    if (MODE === "catalog") await runCatalogResearch();
   });
 });

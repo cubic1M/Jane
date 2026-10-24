@@ -11,10 +11,10 @@ on:
   workflow_dispatch:
     inputs:
       kind:
-        description: "daily (the strategy library on daily bars) or intraday (the Very high day-trading rules on 5-minute bars; alpaca only)"
+        description: "daily (the strategy library on daily bars), intraday (the Very high day-trading rules on 5-minute bars) or catalog (every catalog strategy, walk-forward with the haircut); alpaca only for the last two"
         default: daily
         type: choice
-        options: [daily, intraday]
+        options: [daily, intraday, catalog]
       source:
         description: "alpaca (the repo's Alpaca secrets) or fixture (the committed keyless closes)"
         default: alpaca
@@ -39,7 +39,7 @@ concurrency:
 jobs:
   bars:
     name: Fetch daily bars
-    if: inputs.kind != 'intraday'
+    if: inputs.kind == 'daily'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -163,4 +163,39 @@ jobs:
           path: |
             research/intraday-evidence.ts
             research/intraday-summary.md
+          retention-days: 30
+
+  catalog:
+    name: Strategy catalog
+    if: inputs.kind == 'catalog'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Replay the whole catalog on daily closes
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          STRATEGY_RESEARCH: catalog
+          RESEARCH_FROM: ${{ inputs.from }}
+          RESEARCH_FEED: ${{ inputs.feed }}
+          RESEARCH_DIR: research
+        run: |
+          if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
+            echo "::error::Alpaca secrets not set (ALPACA_API_KEY_ID, ALPACA_API_SECRET_KEY)."
+            exit 1
+          fi
+          npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
+          cat research/strategy-results.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalog-research
+          path: |
+            research/strategy-results.md
+            research/catalog-evidence.ts
+            research/catalog-results.json
           retention-days: 30

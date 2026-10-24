@@ -1,0 +1,352 @@
+import {
+  CATALOG,
+  CATALOG_MAX_WEIGHT,
+  SECTORS,
+  TEN,
+  type CatalogId,
+} from "@/config/strategy-catalog";
+import {
+  covariance,
+  hrp,
+  m13612u,
+  m13612w,
+  maxDiversification,
+  minVariance,
+  MONTH,
+  ret,
+  returnsBefore,
+  rsi,
+  sd,
+  sma,
+} from "./math";
+
+// Each catalog strategy's rule (src/config/strategy-catalog.ts) as the weights it holds after
+// day t's close, from the closes up to and including t, over its own funds. Null holds what it
+// has. The engine (./engine.ts) trades at that close and earns from the next day. Pure.
+
+export type Bars = { o: number; h: number; l: number; c: number };
+export type Universe = {
+  dates: string[];
+  // Closes by ticker on `dates`; 0 where the fund had no close yet.
+  closes: Record<string, number[]>;
+  // SPY's daily bars, for the internal bar strength.
+  spy?: (Bars | null)[];
+};
+export type Weights = Record<string, number>;
+export type Context = {
+  // The strategy's own value (its index), after day t, and what it holds now.
+  value: number;
+  held: Weights;
+  // Its own memory between days (a floor, a peak).
+  memo: Record<string, number>;
+};
+
+const isMonthEnd = (u: Universe, t: number) =>
+  t + 1 >= u.dates.length || u.dates[t + 1].slice(0, 7) !== u.dates[t].slice(0, 7);
+const isWeekEnd = (u: Universe, t: number) => {
+  if (t + 1 >= u.dates.length) return true;
+  const day = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay();
+  return day(u.dates[t + 1]) < day(u.dates[t]);
+};
+const has = (u: Universe, tickers: readonly string[], t: number, back: number) =>
+  t - back >= 0 && tickers.every((x) => (u.closes[x]?.[t - back] ?? 0) > 0);
+const c = (u: Universe, x: string) => u.closes[x];
+const equal = (tickers: readonly string[]): Weights =>
+  Object.fromEntries(tickers.map((x) => [x, 1 / tickers.length]));
+const top = <T>(xs: T[], k: number, by: (x: T) => number) =>
+  [...xs].sort((a, b) => by(b) - by(a)).slice(0, k);
+const add = (w: Weights, x: string, v: number) => {
+  w[x] = (w[x] ?? 0) + v;
+};
+const YEAR = 12 * MONTH;
+
+function fixed(u: Universe, t: number, w: Weights): Weights | null {
+  if (!has(u, Object.keys(w), t, 0)) return null;
+  return isMonthEnd(u, t) ? w : null;
+}
+
+// The volatility-scaled, optimizer and clustering rules over a set of funds.
+function optimized(
+  u: Universe,
+  t: number,
+  tickers: readonly string[],
+  days: number,
+  how: "min" | "maxdiv" | "hrp",
+) {
+  if (!isMonthEnd(u, t) || !has(u, tickers, t, days + 1)) return null;
+  const r = returnsBefore(
+    tickers.map((x) => c(u, x)),
+    t + 1,
+    days,
+  );
+  const cov = covariance(r);
+  const w =
+    how === "min"
+      ? minVariance(cov, CATALOG_MAX_WEIGHT)
+      : how === "maxdiv"
+        ? maxDiversification(cov, CATALOG_MAX_WEIGHT)
+        : hrp(cov);
+  return Object.fromEntries(tickers.map((x, i) => [x, w[i]]));
+}
+
+// Keller's canary rules share this: the best `k` of `pool` by `score`, equal weight.
+function bestOf(
+  u: Universe,
+  t: number,
+  pool: readonly string[],
+  k: number,
+  score: (x: string) => number | null,
+) {
+  const s = pool
+    .map((x) => ({ x, v: score(x) }))
+    .filter((p): p is { x: string; v: number } => p.v !== null);
+  if (s.length < pool.length) return null;
+  return top(s, k, (p) => p.v).map((p) => p.x);
+}
+
+export function decide(
+  id: CatalogId,
+  p: number,
+  u: Universe,
+  t: number,
+  ctx: Context,
+): Weights | null {
+  const e = CATALOG[id];
+  switch (id) {
+    case "sixty_forty":
+      return fixed(u, t, { VTI: 0.6, BND: 0.4 });
+    case "permanent_portfolio":
+      return fixed(u, t, { SPY: 0.25, TLT: 0.25, GLD: 0.25, BIL: 0.25 });
+    case "golden_butterfly":
+      return fixed(u, t, { VTI: 0.2, IJS: 0.2, TLT: 0.2, SHY: 0.2, GLD: 0.2 });
+    case "all_weather_fixed":
+      return fixed(u, t, { VTI: 0.3, TLT: 0.4, IEF: 0.15, GLD: 0.075, DBC: 0.075 });
+    case "faber_gtaa5": {
+      const funds = ["VTI", "VEU", "VNQ", "IEF", "DBC"];
+      if (!isMonthEnd(u, t) || !has(u, [...funds, "BIL"], t, p * MONTH)) return null;
+      const w: Weights = {};
+      for (const f of funds) add(w, c(u, f)[t] > sma(c(u, f), t, p * MONTH)! ? f : "BIL", 0.2);
+      return w;
+    }
+    case "faber_gtaa_top": {
+      if (!isMonthEnd(u, t) || !has(u, [...TEN, "BIL"], t, YEAR)) return null;
+      const picks = bestOf(u, t, TEN, p, (x) => m13612u(c(u, x), t))!;
+      const w: Weights = {};
+      for (const f of picks)
+        add(
+          w,
+          c(u, f)[t] > sma(c(u, f), t, 10 * MONTH)! && m13612u(c(u, f), t)! > 0 ? f : "BIL",
+          1 / p,
+        );
+      return w;
+    }
+    case "dual_momentum": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, p * MONTH)) return null;
+      const r = (x: string) => ret(c(u, x), t, p * MONTH)!;
+      if (r("SPY") <= r("BIL")) return { AGG: 1 };
+      return { [r("SPY") >= r("VEU") ? "SPY" : "VEU"]: 1 };
+    }
+    case "vaa_g4": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR)) return null;
+      const off = ["SPY", "EFA", "EEM", "AGG"];
+      const m = (x: string) => m13612w(c(u, x), t)!;
+      const pool = off.every((x) => m(x) > 0) ? off : ["SHY", "IEF", "LQD"];
+      return equal(top(pool, 1, m));
+    }
+    case "daa": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR)) return null;
+      const off = [
+        "SPY",
+        "IWM",
+        "QQQ",
+        "EFA",
+        "EEM",
+        "VNQ",
+        "DBC",
+        "GLD",
+        "TLT",
+        "HYG",
+        "LQD",
+        "IEF",
+      ];
+      const m = (x: string) => m13612w(c(u, x), t)!;
+      const bad = ["EEM", "BND"].filter((x) => m(x) <= 0).length;
+      const cash = top(["SHY", "IEF", "LQD"], 1, m)[0];
+      const share = bad === 0 ? 1 : bad === 1 ? 0.5 : 0;
+      const w: Weights = {};
+      for (const f of top(off, p, m)) add(w, f, share / p);
+      if (share < 1) add(w, cash, 1 - share);
+      return w;
+    }
+    case "baa": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR)) return null;
+      const canary = ["SPY", "EEM", "EFA", "BND"];
+      const off = [
+        "SPY",
+        "IWM",
+        "QQQ",
+        "EFA",
+        "EEM",
+        "VNQ",
+        "DBC",
+        "GLD",
+        "TLT",
+        "HYG",
+        "LQD",
+        "IEF",
+      ];
+      const def = ["TIP", "DBC", "BIL", "IEF", "TLT", "LQD", "BND"];
+      const sma12 = (x: string) => c(u, x)[t] / sma(c(u, x), t, YEAR)! - 1;
+      if (canary.every((x) => m13612w(c(u, x), t)! > 0)) return equal(top(off, p, sma12));
+      const w: Weights = {};
+      for (const f of top(def, 3, sma12)) add(w, sma12(f) < sma12("BIL") ? "BIL" : f, 1 / 3);
+      return w;
+    }
+    case "haa": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR)) return null;
+      const off = ["SPY", "IWM", "EFA", "EEM", "VNQ", "DBC", "IEF", "TLT"];
+      const m = (x: string) => m13612u(c(u, x), t)!;
+      const cash = m("IEF") > m("BIL") ? "IEF" : "BIL";
+      if (m("TIP") <= 0) return { [cash]: 1 };
+      const w: Weights = {};
+      for (const f of top(off, p, m)) add(w, m(f) > 0 ? f : cash, 1 / p);
+      return w;
+    }
+    case "adaptive_aa": {
+      if (!isMonthEnd(u, t) || !has(u, TEN, t, 251)) return null;
+      const picks = top([...TEN], p, (x) => ret(c(u, x), t, 6 * MONTH)!);
+      // Volatility from the last 60 days, correlation from the last 250: their covariance.
+      const r60 = returnsBefore(
+        picks.map((x) => c(u, x)),
+        t + 1,
+        60,
+      );
+      const r250 = returnsBefore(
+        picks.map((x) => c(u, x)),
+        t + 1,
+        250,
+      );
+      const vol = r60.map((r) => sd(r));
+      const cov250 = covariance(r250);
+      const s250 = cov250.map((row, i) => Math.sqrt(row[i]));
+      const cov = cov250.map((row, i) =>
+        row.map((v, j) => (v / (s250[i] * s250[j])) * vol[i] * vol[j]),
+      );
+      const w = minVariance(cov, 1);
+      return Object.fromEntries(picks.map((x, i) => [x, w[i]]));
+    }
+    case "risk_parity": {
+      const funds = ["VTI", "TLT", "IEF", "GLD", "DBC"];
+      if (!isMonthEnd(u, t) || !has(u, funds, t, p + 1)) return null;
+      const r = returnsBefore(
+        funds.map((x) => c(u, x)),
+        t + 1,
+        p,
+      );
+      const inv = r.map((x) => 1 / Math.max(1e-6, sd(x)));
+      const s = inv.reduce((a, x) => a + x, 0);
+      return Object.fromEntries(funds.map((x, i) => [x, inv[i] / s]));
+    }
+    case "min_variance":
+      return optimized(u, t, TEN, p, "min");
+    case "max_diversification":
+      return optimized(u, t, TEN, p, "maxdiv");
+    case "hrp":
+      return optimized(u, t, TEN, p, "hrp");
+    case "value":
+    case "momentum":
+    case "quality":
+    case "low_volatility":
+    case "size":
+    case "small_value":
+    case "equal_weight":
+    case "dividend_growth":
+    case "shareholder_yield":
+    case "managed_futures":
+      return fixed(u, t, { [e.tickers[0]]: 1 });
+    case "multi_factor":
+      return fixed(u, t, equal(e.tickers));
+    case "sector_rotation": {
+      if (!isMonthEnd(u, t) || !has(u, SECTORS, t, p * MONTH)) return null;
+      return equal(top([...SECTORS], 3, (x) => ret(c(u, x), t, p * MONTH)!));
+    }
+    case "trend_200": {
+      if (!isMonthEnd(u, t) || !has(u, ["SPY", "BIL"], t, p)) return null;
+      return { [c(u, "SPY")[t] > sma(c(u, "SPY"), t, p)! ? "SPY" : "BIL"]: 1 };
+    }
+    case "time_series_momentum": {
+      if (!isMonthEnd(u, t) || !has(u, ["SPY", "BIL"], t, p * MONTH)) return null;
+      const r = (x: string) => ret(c(u, x), t, p * MONTH)!;
+      return { [r("SPY") > r("BIL") ? "SPY" : "BIL"]: 1 };
+    }
+    case "vol_target": {
+      if (!isWeekEnd(u, t) || !has(u, ["SPY", "BIL"], t, 21)) return null;
+      const [r] = returnsBefore([c(u, "SPY")], t + 1, 20);
+      const vol = sd(r) * Math.sqrt(252);
+      const w = Math.min(1, p / Math.max(1e-6, vol));
+      return { SPY: w, BIL: 1 - w };
+    }
+    case "cppi":
+    case "tipp": {
+      if (!has(u, ["SPY", "BIL"], t, 0)) return null;
+      const year = u.dates[t].slice(0, 4);
+      if (id === "cppi") {
+        if (ctx.memo.year !== Number(year)) {
+          ctx.memo.year = Number(year);
+          ctx.memo.floor = 0.8 * ctx.value;
+        }
+      } else {
+        ctx.memo.floor = Math.max(ctx.memo.floor ?? 0, 0.8 * ctx.value);
+      }
+      if (!isWeekEnd(u, t) && Object.keys(ctx.held).length > 0) return null;
+      const cushion = Math.max(0, ctx.value - ctx.memo.floor);
+      const w = Math.min(1, (p * cushion) / ctx.value);
+      return { SPY: w, BIL: 1 - w };
+    }
+    case "sell_in_may": {
+      if (!has(u, ["SPY", "BIL"], t, 0)) return null;
+      // Decided at the close before the month it is for.
+      const next =
+        t + 1 < u.dates.length
+          ? Number(u.dates[t + 1].slice(5, 7))
+          : Number(u.dates[t].slice(5, 7));
+      const want = next >= 5 && next <= 10 ? "BIL" : "SPY";
+      return ctx.held[want] === 1 ? null : { [want]: 1 };
+    }
+    case "turn_of_month": {
+      if (!has(u, ["SPY", "BIL"], t, 0)) return null;
+      // In from the last trading day's close through the Nth trading day's close of the next.
+      const month = u.dates[t].slice(0, 7);
+      let dayOfMonth = 1;
+      for (let i = t - 1; i >= 0 && u.dates[i].slice(0, 7) === month; i -= 1) dayOfMonth += 1;
+      const want = isMonthEnd(u, t) || dayOfMonth < p ? "SPY" : "BIL";
+      return ctx.held[want] === 1 ? null : { [want]: 1 };
+    }
+    case "rsi2": {
+      if (!has(u, ["SPY", "BIL"], t, 200)) return null;
+      const spy = c(u, "SPY");
+      const inSpy = (ctx.held.SPY ?? 0) > 0;
+      if (!inSpy && spy[t] > sma(spy, t, 200)! && rsi(spy, t, 2)! < p) return { SPY: 1 };
+      if (inSpy && spy[t] > sma(spy, t, 5)!) return { BIL: 1 };
+      return Object.keys(ctx.held).length === 0 ? { BIL: 1 } : null;
+    }
+    case "ibs": {
+      const bar = u.spy?.[t];
+      if (!bar || !has(u, ["SPY", "BIL"], t, 0)) return null;
+      const range = bar.h - bar.l;
+      const ibs = range > 0 ? (bar.c - bar.l) / range : 0.5;
+      const want = ibs < p ? "SPY" : "BIL";
+      return ctx.held[want] === 1 ? null : { [want]: 1 };
+    }
+    case "bollinger": {
+      if (!has(u, ["SPY", "BIL"], t, 200)) return null;
+      const spy = c(u, "SPY");
+      const mid = sma(spy, t, 20)!;
+      const band = sd(spy.slice(t - 19, t + 1));
+      const inSpy = (ctx.held.SPY ?? 0) > 0;
+      if (!inSpy && spy[t] > sma(spy, t, 200)! && spy[t] < mid - p * band) return { SPY: 1 };
+      if (inSpy && spy[t] > mid) return { BIL: 1 };
+      return Object.keys(ctx.held).length === 0 ? { BIL: 1 } : null;
+    }
+  }
+}
