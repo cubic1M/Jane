@@ -59,7 +59,13 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   await expect(showing.getByRole("button", { name: "Not now", exact: true })).toBeVisible();
   const counter = overlay.locator("p[aria-live]");
   const total = Number(((await counter.textContent()) ?? "").split(" ")[0]);
-  if (total > 1) await expect(showing).toContainText(`+${total - 1}`);
+  // How many: "+N" on the stack on a phone; the dock's header line on a computer.
+  if (isMobile && total > 1) await expect(showing).toContainText(`+${total - 1}`);
+  if (!isMobile) {
+    await expect(overlay.locator("[data-dock-header]")).toContainText(
+      `1 of ${total} ${total === 1 ? "suggestion" : "suggestions"}`,
+    );
+  }
 
   // Clear of the Jane button on a phone, and of the docked chat on a computer.
   if (isMobile) {
@@ -86,9 +92,9 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
     // The arrows step through the cards and back.
     if (total > 1) {
       const first = (await heading.textContent()) ?? "";
-      await showing.getByRole("button", { name: "Next card" }).click();
+      await overlay.getByRole("button", { name: "Next suggestion" }).click();
       await expect(heading).not.toHaveText(first);
-      await showing.getByRole("button", { name: "Previous card" }).click();
+      await overlay.getByRole("button", { name: "Previous suggestion" }).click();
       await expect(heading).toHaveText(first);
     }
   }
