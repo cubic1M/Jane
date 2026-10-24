@@ -43,7 +43,7 @@ export type FitView = FitResult & {
   cushionCents?: number | null;
 };
 
-const baselineOf = (debt: Debt, asOf: string): FitBaseline | null => {
+const baselineOf = (debt: Debt): FitBaseline | null => {
   if (!debt.balanceCents || debt.aprBps === null || !debt.paymentCents) return null;
   return {
     label: `your ${debt.name}`,
@@ -84,7 +84,7 @@ export async function loadFit(
       .filter((d) => d.kind !== "bnpl" && (d.balanceCents ?? 0) > 0 && d.aprBps !== null)
       .sort((a, b) => (b.aprBps ?? 0) - (a.aprBps ?? 0));
     const debt = want.debtKey ? debts.find((d) => d.key === want.debtKey) : debts[0];
-    baseline = debt ? baselineOf(debt, asOf) : null;
+    baseline = debt ? baselineOf(debt) : null;
     // Keeping it, as the offers page counts it (src/planning/refinance.ts): one horizon.
     const keep = debt ? refinanceable(debt, asOf)?.keep : undefined;
     if (baseline && keep) baseline = { ...baseline, monthlyCents: keep.monthlyCents };
