@@ -1,8 +1,8 @@
-import { PMI_ASK_LTV, PMI_SOURCE } from "@/config/debt";
+import { PMI_SOURCE } from "@/config/debt";
 import { formatRate } from "@/insights/loans";
 import type { Mortgage } from "@/lib/mortgage";
 import { formatCents } from "@/lib/money";
-import { PMI_STEPS, percent } from "@/planning/mortgage";
+import { EQUITY_PAGE, pmiTimelineLines } from "./home-equity-replies";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 
@@ -18,27 +18,21 @@ export const MORTGAGE_PAGE: MessageAction = {
 const months = (n: number) =>
   n >= 24 ? `${Math.round(n / 12)} years` : `${n} ${n === 1 ? "month" : "months"}`;
 
+// PMI by one rule (loans QA): the loan against the home's value when it began, as the home
+// loan page has it, never today's value.
+export const PMI_ASK_ORIGINAL =
+  "Your loan has PMI. Tell me the home's value when the loan began and I'll tell you when it can come off.";
+
 export function pmiLines(m: Mortgage): string[] {
-  switch (m.pmi.kind) {
-    case "none":
-      return [];
-    case "unknown":
-      return m.pmi.why === "no_value"
-        ? [
-            "Your loan has PMI. Add your home's value on Things you own and I'll tell you when it can come off.",
-          ]
-        : [];
-    case "not_yet":
-      return [
-        `PMI: your loan is ${percent(m.pmi.ltv)} of your home's value. It can come off under ${percent(PMI_ASK_LTV)}, at a balance of ${formatCents(m.pmi.balanceAtAskCents)}.`,
-      ];
-    case "can_ask":
-      return [
-        `PMI can come off: your loan is ${percent(m.pmi.ltv)} of the value you gave for your home, under ${percent(PMI_ASK_LTV)}.`,
-        ...PMI_STEPS.map((s, i) => `${i + 1}. ${s}`),
-        `The rules, from the CFPB: ${PMI_SOURCE}`,
-      ];
-  }
+  if (m.hasPmi !== true) return [];
+  if (!m.pmi) return [PMI_ASK_ORIGINAL];
+  return [
+    ...pmiTimelineLines(m.pmi),
+    ...(m.pmi.canAskNow && !m.pmi.endsNow
+      ? ["The request is drafted on your home loan page, for you to send."]
+      : []),
+    `The rules, from the CFPB: ${PMI_SOURCE}`,
+  ];
 }
 
 export function mortgageReply(m: Mortgage | null): Reply {
@@ -80,7 +74,7 @@ export function mortgageReply(m: Mortgage | null): Reply {
   }
   return {
     body: lines.join("\n"),
-    actions: [MORTGAGE_PAGE],
+    actions: m.hasPmi ? [MORTGAGE_PAGE, EQUITY_PAGE] : [MORTGAGE_PAGE],
     refs: {},
   };
 }

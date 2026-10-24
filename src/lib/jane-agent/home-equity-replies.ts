@@ -3,7 +3,7 @@ import { PROJECT_NOTES, PROJECT_PRODUCTS } from "@/config/home-equity";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { formatCents } from "@/lib/money";
-import { cheapest } from "@/planning/home-equity";
+import { cheapest, type PmiTimeline } from "@/planning/home-equity";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 
@@ -26,9 +26,11 @@ export const sentButton = (which: "pmi" | "escrow"): MessageAction => ({
 
 const pct = (share: number) => `${Math.round(share * 1000) / 10}%`;
 
-export function pmiLines(data: HomeEquity): string[] {
-  const p = data.pmi;
-  if (!p) return [];
+export const pmiLines = (data: HomeEquity): string[] =>
+  data.pmi ? pmiTimelineLines(data.pmi) : [];
+
+// PMI by the one rule, the same lines on /loans/mortgage, /loans/equity and in the chat.
+export function pmiTimelineLines(p: PmiTimeline): string[] {
   const lines = [
     `Your loan is ${formatCents(p.balanceCents)}, ${pct(p.ltv)} of the home's original value of ${formatCents(p.originalValueCents)}.`,
   ];
