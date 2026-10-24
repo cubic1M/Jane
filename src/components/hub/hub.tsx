@@ -109,7 +109,9 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
             href="/plan"
             className="relative z-10 self-start text-sm font-medium text-emerald-700 hover:underline"
           >
-            Review {planItems} {planItems === 1 ? "idea" : "ideas"} ›
+            {/* The plan's items, as the chat says them ("Your plan for this week is ready: 12
+                things"); "ideas" are the tiles' suggestions, a different count (phone walk). */}
+            Your plan: {planItems} {planItems === 1 ? "thing" : "things"} ›
           </Link>
         )}
       </div>

@@ -56,6 +56,9 @@ describe("business needs", () => {
     });
     expect(professional.gapCents).toBe(BUSINESS_PROFESSIONAL_TARGET_CENTS);
     expect(professional.summary).toMatch(/cost them money/);
+    // A sentence that says it's what Jane would look at, not cover already held (phone walk).
+    expect(general.summary).toMatch(/^I'd look at \$1,000,000\.00 of general liability/);
+    expect(professional.summary).toMatch(/^I'd look at /);
   });
 
   it("gives a shop general liability, not professional (Jo)", () => {
