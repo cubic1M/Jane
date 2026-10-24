@@ -64,6 +64,7 @@ import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidenc
 import { CRYPTO_STRATEGIES, CRYPTO_STRATEGY_IDS, CRYPTO_WARNING } from "@/config/crypto-strategies";
 import { INTRADAY_EVIDENCE, INTRADAY_EVIDENCE_SOURCE } from "@/config/intraday-evidence";
 import { CATALOG_EVIDENCE, CATALOG_EVIDENCE_SOURCE } from "@/config/catalog-evidence";
+import { CATALOG_REGIME_EVIDENCE } from "@/config/catalog-regimes";
 import { CATALOG, CATALOG_IDS, CATALOG_WALK_FROM_YEAR } from "@/config/strategy-catalog";
 import { INTRADAY_RULE_IDS, INTRADAY_RULES, INTRADAY_WARNING } from "@/config/intraday-strategies";
 import { MENU_STRATEGIES, MENU_STRATEGY_IDS } from "@/config/strategy-menu";
@@ -1164,7 +1165,7 @@ export async function runInvestmentTool(
         tested: (() => {
           const rows = CATALOG_IDS.flatMap((id) => {
             const e = CATALOG_EVIDENCE[id]?.[level];
-            return e ? [{ strategy: CATALOG[id].label, e }] : [];
+            return e ? [{ id, strategy: CATALOG[id].label, e }] : [];
           });
           return {
             source: CATALOG_EVIDENCE_SOURCE,
@@ -1190,6 +1191,12 @@ export async function runInvestmentTool(
                 yearlyPercent: pct(r.e.cagr),
                 mixYearlyPercent: pct(r.e.mixCagr),
                 realEdgePercent: Math.round(r.e.dsr * 100),
+                // Descriptive: at its published setting, through each past regime.
+                pastRegimes: (CATALOG_REGIME_EVIDENCE[r.id]?.[level] ?? []).map((g) => ({
+                  regime: g.label,
+                  percent: g.strategy === null ? null : pct(g.strategy),
+                  mixPercent: g.mix === null ? null : pct(g.mix),
+                })),
               })),
             notRecommended: rows
               .filter((r) => !r.e.recommendable && !r.e.watch)

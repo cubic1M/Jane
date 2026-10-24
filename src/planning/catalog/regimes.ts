@@ -136,3 +136,40 @@ export function regimesMarkdown(
   }
   return lines.join("\n") + "\n";
 }
+
+// The compact record the picker reads (src/config/catalog-regimes.ts): per strategy and level,
+// its total return and the mix's through each regime.
+export function regimesEvidenceModule(rows: readonly RegimeRow[], source: string): string {
+  const r3 = (n: number | null) => (n === null ? null : Math.round(n * 1000) / 1000);
+  const by = new Map<
+    string,
+    Record<number, { label: string; strategy: number | null; mix: number | null }[]>
+  >();
+  for (const r of rows) {
+    const m = by.get(r.id) ?? {};
+    m[r.level] = r.regimes.map((g) => ({
+      label: g.label,
+      strategy: r3(g.strategy),
+      mix: r3(g.mix),
+    }));
+    by.set(r.id, m);
+  }
+  return `import type { RiskLevel } from "@/config/investing";
+import type { CatalogId } from "@/config/strategy-catalog";
+
+// Each catalog strategy through past regimes (src/planning/catalog/regimes.ts, batch 8,
+// docs/backtests/strategy-regimes.md): at its published middle setting, its total return and the
+// level's mix's through each of CATALOG_REGIMES. Descriptive, not out of sample: most of these
+// were designed on data that includes 2008. Fractions; null where it hadn't started.
+
+export type RegimeMove = { label: string; strategy: number | null; mix: number | null };
+
+export const CATALOG_REGIMES_SOURCE = ${JSON.stringify(source)};
+
+export const CATALOG_REGIME_EVIDENCE: Readonly<
+  Partial<Record<CatalogId, Partial<Record<RiskLevel, RegimeMove[]>>>>
+> = {
+${[...by.entries()].map(([id, m]) => `  ${id}: ${JSON.stringify(m)},`).join("\n")}
+};
+`;
+}

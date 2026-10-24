@@ -140,6 +140,7 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   await expect(trend.getByRole("button", { name: "Use in practice" })).toBeVisible();
   // A worth-watching tested strategy, followed in practice instead of the mix, and back.
   const watch = menu.getByRole("list", { name: "Worth watching" }).getByRole("listitem").first();
+  await expect(watch.getByText(/Past regimes: /)).toBeVisible();
   await watch.getByRole("button", { name: "Use in practice" }).click();
   await expect(watch.getByText("Your practice portfolio follows this")).toBeVisible();
   await watch.getByRole("button", { name: "Back to your mix" }).click();

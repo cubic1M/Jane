@@ -6,6 +6,7 @@ import {
 } from "@/app/investments/strategy-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { CATALOG_EVIDENCE, CATALOG_EVIDENCE_SOURCE } from "@/config/catalog-evidence";
+import { CATALOG_REGIME_EVIDENCE } from "@/config/catalog-regimes";
 import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
 import {
   CRYPTO_SLEEVE_BY_LEVEL,
@@ -223,6 +224,15 @@ function CatalogMenu({ level, chosen }: { level: RiskLevel; chosen: CatalogId | 
   const rest = rows.filter((r) => !r.e.recommendable && !r.e.watch);
   const line = (r: (typeof rows)[number]) =>
     `${pct(r.e.cagr)} a year since ${CATALOG_WALK_FROM_YEAR} (your mix ${pct(r.e.mixCagr)}), worst drop ${pct(r.e.maxDrawdown)}`;
+  // Through past regimes, at its published setting (descriptive, docs/backtests/strategy-regimes.md).
+  const regimes = (id: CatalogId) => {
+    const moves = (CATALOG_REGIME_EVIDENCE[id]?.[level] ?? []).filter(
+      (g) => g.label !== "2008" && g.strategy !== null,
+    );
+    if (moves.length === 0) return null;
+    const sign = (n: number) => `${n >= 0 ? "+" : ""}${pct(n)}`;
+    return `Past regimes: ${moves.map((g) => `${g.label} ${sign(g.strategy!)} (your mix ${sign(g.mix ?? 0)})`).join(", ")}.`;
+  };
   const choose = (r: (typeof rows)[number]) =>
     chosen === r.id ? (
       <form action={usePracticeCatalog} className="mt-1 flex flex-wrap items-center gap-2">
@@ -256,6 +266,7 @@ function CatalogMenu({ level, chosen }: { level: RiskLevel; chosen: CatalogId | 
       <p className="text-xs text-zinc-500">
         {line(r)}. {note}
       </p>
+      {regimes(r.id) && <p className="text-xs text-zinc-500">{regimes(r.id)}</p>}
       {CATALOG[r.id].kind !== "sleeve" && choose(r)}
     </li>
   );
