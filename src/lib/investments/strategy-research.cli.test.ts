@@ -4,10 +4,31 @@ import { describe, it } from "vitest";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { strategyTickers } from "@/config/portfolios";
 import { RISK_BUDGETS, STRATEGY_LABELS, type StrategyId } from "@/config/strategies";
+import {
+  INTRADAY_RULE_IDS,
+  INTRADAY_RULES,
+  INTRADAY_SLIPPAGE,
+  INTRADAY_TICKER,
+  INTRADAY_TIMEFRAME,
+  INTRADAY_TRAIN_END,
+} from "@/config/intraday-strategies";
 import { AlpacaMarketData } from "@/lib/market/alpaca";
+import { fetchIntraday } from "@/lib/market/alpaca-intraday";
+import { catalogTickers } from "@/config/strategy-catalog";
+import {
+  CRYPTO_STRATEGIES,
+  CRYPTO_STRATEGY_IDS,
+  CRYPTO_TRAIN_END,
+} from "@/config/crypto-strategies";
+import { alignCrypto, cryptoResult } from "@/planning/crypto-strategies";
+import { alignCatalog, runCatalog } from "@/planning/catalog/engine";
+import { regimeReport, regimesMarkdown } from "@/planning/catalog/regimes";
+import { fetchYahooDaily, yahooBars } from "@/lib/market/yahoo";
+import { evidenceModule, resultsMarkdown } from "@/planning/catalog/report";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import type { Bar } from "@/lib/market/types";
 import { alignUniverse, type Metrics } from "@/planning/strategies/engine";
+import { intradayResult, sessionsOf, type IntradayMetrics } from "@/planning/intraday";
 import { selectForLevel } from "@/planning/strategies/select";
 
 // The strategy research CLI (.github/workflows/strategy-research.yml, and locally): run with
@@ -17,7 +38,20 @@ import { selectForLevel } from "@/planning/strategies/select";
 //   out, and only here) or from the committed keyless fixture (RESEARCH_SOURCE=fixture);
 // - level: every strategy for RESEARCH_LEVEL into level-<n>.json;
 // - summary: every level-<n>.json into results.json and summary.md;
-// - all: the three in turn, for a local round.
+// - all: the three in turn, for a local round;
+// - intraday: INTRADAY_TICKER's 5-minute bars from Alpaca, every day-trading rule walk-forward
+//   (src/planning/intraday.ts), into intraday-evidence.ts (to commit as
+//   src/config/intraday-evidence.ts) and intraday-summary.md;
+// - catalog: every catalog strategy's funds' daily closes (and SPY's daily bars) from Alpaca,
+//   the whole catalog replayed (src/planning/catalog/), into strategy-results.md (to commit as
+//   docs/backtests/strategy-results.md), catalog-evidence.ts (src/config/catalog-evidence.ts) and
+//   catalog-results.json;
+// - crypto: bitcoin's and ether's daily bars from Alpaca's crypto feed, the three crypto rules
+//   replayed walk-forward (src/planning/crypto-strategies.ts), into crypto-summary.md and
+//   crypto-results.json;
+// - regimes: every catalog fund's adjusted daily closes from Yahoo Finance's keyless chart, from
+//   2007 (VXUS spliced with VEU before it began in 2011), every strategy at its middle setting
+//   through 2008, the 2020 crash and 2022 (src/planning/catalog/regimes.ts), into regimes.md.
 // Keys are read from the environment and never written or printed. Practice research only.
 
 const MODE = process.env.STRATEGY_RESEARCH;
@@ -123,6 +157,214 @@ function summarise(levels: LevelFile[]): string {
   return lines.join("\n") + "\n";
 }
 
+const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
+const period = (m: IntradayMetrics) => ({
+  from: m.from,
+  to: m.to,
+  sessions: m.sessions,
+  trades: m.trades,
+  winRate: r4(m.winRate),
+  averageTrade: r4(m.averageTrade),
+  cagr: r4(m.cagr),
+  maxDrawdown: r4(m.maxDrawdown),
+  vol: r4(m.vol),
+  sortino: r4(m.sortino),
+});
+
+async function runIntraday() {
+  const id = process.env.ALPACA_API_KEY_ID;
+  const secret = process.env.ALPACA_API_SECRET_KEY;
+  if (!id || !secret) throw new Error("Alpaca secrets not set");
+  const feed = process.env.RESEARCH_FEED ?? "sip";
+  const from = process.env.RESEARCH_FROM ?? "2016-01-01";
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const bars = await fetchIntraday({ id, secret }, INTRADAY_TICKER, from, to, {
+    timeframe: INTRADAY_TIMEFRAME,
+    feed,
+  });
+  const sessions = sessionsOf(bars);
+  if (sessions.length < 500) throw new Error(`Only ${sessions.length} sessions of bars.`);
+  console.log(
+    `${INTRADAY_TICKER}: ${bars.length} bars, ${sessions.length} sessions, ${sessions[0].date} to ${sessions.at(-1)!.date}`,
+  );
+  const results = INTRADAY_RULE_IDS.map((rule) => intradayResult(sessions, rule)).filter(
+    (r) => r !== null,
+  );
+  if (results.length !== INTRADAY_RULE_IDS.length) throw new Error("A rule could not be replayed.");
+  const source = `Alpaca ${feed.toUpperCase()} ${INTRADAY_TIMEFRAME} bars for ${INTRADAY_TICKER}, ${sessions[0].date} to ${sessions.at(-1)!.date}`;
+  const rows = results.map(
+    (r) =>
+      `  ${r.id}: ${JSON.stringify({ param: r.param, train: period(r.train), later: period(r.later), holdLater: period(r.holdLater), beatsHolding: r.beatsHolding, curve: r.curve })},`,
+  );
+  writeFileSync(
+    join(DIR, "intraday-evidence.ts"),
+    `import type { IntradayRuleId } from "@/config/intraday-strategies";
+
+// Each day-trading rule on real 5-minute bars (src/planning/intraday.ts): its setting chosen on
+// the sessions to INTRADAY_TRAIN_END, then its result on the later sessions against holding the
+// fund over the same days, after slippage both ways, and its curve over those sessions from 100.
+// Written by the strategy research workflow (kind: intraday), whose bars are too many to commit;
+// src/planning/intraday.test.ts checks the rules themselves. A replay of the past, not a
+// forecast. Fractions throughout.
+
+export type IntradayPeriod = {
+  from: string;
+  to: string;
+  sessions: number;
+  trades: number;
+  winRate: number;
+  averageTrade: number;
+  cagr: number;
+  maxDrawdown: number;
+  vol: number;
+  sortino: number;
+};
+export type IntradayRecord = {
+  param: number;
+  train: IntradayPeriod;
+  later: IntradayPeriod;
+  holdLater: IntradayPeriod;
+  beatsHolding: boolean;
+  curve: number[];
+};
+
+export const INTRADAY_EVIDENCE_SOURCE = ${JSON.stringify(source)};
+
+export const INTRADAY_EVIDENCE: Readonly<Record<IntradayRuleId, IntradayRecord>> = {
+${rows.join("\n")}
+};
+`,
+  );
+  const lines = [
+    `# Day-trading research: ${source}`,
+    "",
+    `Chosen on the sessions to ${INTRADAY_TRAIN_END} by Sortino, scored on the later ones, ${(INTRADAY_SLIPPAGE * 100).toFixed(2)}% slippage each way. A replay of the past, not a forecast.`,
+    "",
+    "| Rule | Setting | Train: a year | Train: drop | Later: trades | Later: win rate | Later: a year | Later: drop | Later: Sortino | Holding: a year | Holding: drop | Holding: Sortino |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...results.map(
+      (r) =>
+        `| ${INTRADAY_RULES[r.id].label} | ${r.param} | ${pct(r.train.cagr)} | ${pct(r.train.maxDrawdown)} | ${r.later.trades} | ${pct(r.later.winRate)} | ${pct(r.later.cagr)} | ${pct(r.later.maxDrawdown)} | ${r.later.sortino.toFixed(2)} | ${pct(r.holdLater.cagr)} | ${pct(r.holdLater.maxDrawdown)} | ${r.holdLater.sortino.toFixed(2)} |`,
+    ),
+  ];
+  writeFileSync(join(DIR, "intraday-summary.md"), lines.join("\n") + "\n");
+  console.log(lines.join("\n"));
+}
+
+async function runCatalogResearch() {
+  const id = process.env.ALPACA_API_KEY_ID;
+  const secret = process.env.ALPACA_API_SECRET_KEY;
+  if (!id || !secret) throw new Error("Alpaca secrets not set");
+  const feed = process.env.RESEARCH_FEED ?? "sip";
+  const from = process.env.RESEARCH_FROM ?? "2016-01-01";
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const alpaca = new AlpacaMarketData({ id, secret }, undefined, undefined, feed);
+  const bars: Record<string, Bar[]> = {};
+  for (const t of catalogTickers()) {
+    bars[t] = await alpaca.prices(t, from, to);
+    console.log(`${t}: ${bars[t].length} bars from ${bars[t][0]?.date ?? "none"}`);
+  }
+  const spy = (
+    await fetchIntraday({ id, secret }, "SPY", from, to, { timeframe: "1Day", feed })
+  ).map((b) => ({ date: b.t.slice(0, 10), o: b.o, h: b.h, l: b.l, c: b.c }));
+  const u = alignCatalog(bars, spy);
+  if (!u) throw new Error("No VTI bars to align on.");
+  const { results, trials } = runCatalog(u);
+  const meta = {
+    source: `Alpaca ${feed.toUpperCase()} daily closes`,
+    from: u.dates[0],
+    to: u.dates[u.dates.length - 1],
+    trials,
+  };
+  writeFileSync(join(DIR, "catalog-results.json"), JSON.stringify({ meta, results }, null, 1));
+  writeFileSync(join(DIR, "strategy-results.md"), resultsMarkdown(results, meta));
+  writeFileSync(join(DIR, "catalog-evidence.ts"), evidenceModule(results, meta));
+  for (const r of results.filter((x) => x.recommendable))
+    console.log(`recommendable at ${r.level}: ${r.id}`);
+  console.log(`${results.length} results, ${trials} trials`);
+}
+
+async function runCryptoResearch() {
+  const id = process.env.ALPACA_API_KEY_ID;
+  const secret = process.env.ALPACA_API_SECRET_KEY;
+  if (!id || !secret) throw new Error("Alpaca secrets not set");
+  const from = process.env.RESEARCH_FROM ?? "2016-01-01";
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const alpaca = new AlpacaMarketData({ id, secret });
+  const bars = {
+    BTC: await alpaca.prices("BTCUSD", from, to),
+    ETH: await alpaca.prices("ETHUSD", from, to),
+  };
+  for (const [t, b] of Object.entries(bars))
+    console.log(`${t}: ${b.length} bars, ${b[0]?.date ?? "none"} to ${b.at(-1)?.date ?? "none"}`);
+  const u = alignCrypto(bars);
+  if (!u) throw new Error("No crypto bars.");
+  const results = CRYPTO_STRATEGY_IDS.map((sid) => ({ id: sid, r: cryptoResult(u, sid) }));
+  const source = `Alpaca crypto daily bars for BTC/USD and ETH/USD, ${u.dates[0]} to ${u.dates.at(-1)}`;
+  const lines = [
+    `# Crypto rules on ${source}`,
+    "",
+    `Chosen on the days to ${CRYPTO_TRAIN_END}, scored after, against simply holding, after fees and slippage. A replay of the past, not a forecast. ${u.dates[0] > CRYPTO_TRAIN_END.slice(0, 4) + "-01-01" ? "The feed starts after the training years begin, so the choice rests on fewer years." : ""}`,
+    "",
+    "| Rule | Setting | Later: a year | Later: worst drop | Later: Sortino | Holding: a year | Holding: worst drop | Holding: Sortino | More return for its risk than holding |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...results.map(({ id: sid, r }) =>
+      r
+        ? `| ${CRYPTO_STRATEGIES[sid].label} | ${r.param} | ${pct(r.later.cagr)} | ${pct(r.later.maxDrawdown)} | ${r.later.sortino.toFixed(2)} | ${pct(r.holdLater.cagr)} | ${pct(r.holdLater.maxDrawdown)} | ${r.holdLater.sortino.toFixed(2)} | ${r.beatsHolding ? "yes" : "no"} |`
+        : `| ${CRYPTO_STRATEGIES[sid].label} | – | not enough history | | | | | | |`,
+    ),
+  ];
+  writeFileSync(join(DIR, "crypto-summary.md"), lines.join("\n") + "\n");
+  writeFileSync(join(DIR, "crypto-results.json"), JSON.stringify({ source, results }, null, 1));
+  console.log(lines.join("\n"));
+}
+
+// A fund's closes, with an older fund's returns before its first day (scaled to meet it).
+function splice(newer: Bar[], older: Bar[]): Bar[] {
+  if (newer.length === 0) return older;
+  const first = newer[0];
+  const at = older.find((b) => b.date === first.date);
+  if (!at) return newer;
+  const scale = first.closeCents / at.closeCents;
+  return [
+    ...older
+      .filter((b) => b.date < first.date)
+      .map((b) => ({ date: b.date, closeCents: Math.round(b.closeCents * scale) })),
+    ...newer,
+  ];
+}
+
+async function runRegimes() {
+  const from = process.env.RESEARCH_FROM ?? "2007-01-01";
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const bars: Record<string, Bar[]> = {};
+  let spy: { date: string; o: number; h: number; l: number; c: number }[] = [];
+  for (const t of [...new Set([...catalogTickers(), "VEU"])]) {
+    try {
+      const days = await fetchYahooDaily(t, from, to);
+      bars[t] = yahooBars(days);
+      if (t === "SPY") spy = days.map((d) => ({ date: d.date, o: d.o, h: d.h, l: d.l, c: d.c }));
+      console.log(`${t}: ${bars[t].length} days from ${bars[t][0]?.date ?? "none"}`);
+    } catch (error) {
+      console.log(`${t}: none (${String(error)})`);
+      bars[t] = [];
+    }
+  }
+  bars.VXUS = splice(bars.VXUS ?? [], bars.VEU ?? []);
+  const u = alignCatalog(bars, spy);
+  if (!u) throw new Error("No VTI history.");
+  const { results } = runCatalog(u);
+  const watch = [...new Set(results.filter((r) => r.watch || r.recommendable).map((r) => r.id))];
+  const source = `Yahoo Finance adjusted daily closes, ${u.dates[0]} to ${u.dates.at(-1)} (VXUS spliced with VEU before 2011)`;
+  const md = regimesMarkdown(regimeReport(u), source, watch);
+  writeFileSync(join(DIR, "regimes.md"), md);
+  writeFileSync(
+    join(DIR, "regimes.json"),
+    JSON.stringify({ source, watch, rows: regimeReport(u) }, null, 1),
+  );
+  console.log(md.slice(0, 4000));
+}
+
 const readBars = () => JSON.parse(readFileSync(join(DIR, "bars.json"), "utf8")) as BarsFile;
 const writeLevel = (l: LevelFile) =>
   writeFileSync(join(DIR, `level-${l.level}.json`), JSON.stringify(l));
@@ -154,5 +396,9 @@ describe.runIf(MODE)("strategy research", () => {
       for (const level of [1, 2, 3, 4, 5] as const) writeLevel(runLevel(file, level));
     }
     if (MODE === "summary" || MODE === "all") writeSummary();
+    if (MODE === "intraday") await runIntraday();
+    if (MODE === "catalog") await runCatalogResearch();
+    if (MODE === "crypto") await runCryptoResearch();
+    if (MODE === "regimes") await runRegimes();
   });
 });
