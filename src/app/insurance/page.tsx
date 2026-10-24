@@ -3,7 +3,10 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
-import { PerfectCoverage } from "./perfect-coverage";
+import type { ReactNode } from "react";
+import { AreaPage } from "@/components/area-page/area-page";
+import { insuranceTree, itemId } from "@/lib/area-pages/insurance";
+import { NeedDetail, NeedWorking, loadCoverage, needKey } from "./perfect-coverage";
 import { ViewTracker } from "@/components/view-tracker";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
@@ -66,9 +69,13 @@ import {
 import { HouseholdForm, PolicyForm } from "./forms";
 
 // Insurance (spec step 102): every policy in one place, the household facts that matter
-// and the gaps, in plain words. Every figure comes from a policy record.
+// and the gaps, in plain words. Every figure comes from a policy record. Laid out as the area
+// page pattern (docs/design/area-pages.md): what matters now, the area's tree, and the detail
+// of the one thing picked; the forms and long text wait behind "More".
 
 const LINK = "font-medium text-emerald-700 hover:underline";
+const BUTTON =
+  "inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800";
 const kindName = (kind: keyof typeof POLICY_KINDS) => POLICY_KINDS[kind].toLowerCase();
 const INPUT =
   "h-11 min-w-0 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
@@ -105,10 +112,7 @@ function PolicyCard({ policy, asOf, editing }: { policy: Policy; asOf: string; e
       : null;
   const limits = coverageLines(policy.kind, policy.coverage);
   return (
-    <li
-      id={`policy-${policy.id}`}
-      className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800"
-    >
+    <div id={`policy-${policy.id}`} className="flex flex-col gap-2 [overflow-wrap:anywhere]">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex min-w-0 flex-col">
           <h3 className="font-semibold">
@@ -174,7 +178,7 @@ function PolicyCard({ policy, asOf, editing }: { policy: Policy; asOf: string; e
           {policy.status === "found" ? "Not insurance" : "Remove"}
         </button>
       </form>
-    </li>
+    </div>
   );
 }
 
@@ -247,6 +251,386 @@ async function InsuranceContent({
   const typed = (fact: { value: number | string | null; from: string | null }) =>
     fact.from === "you" && fact.value !== null ? String(fact.value) : "";
   const totalLine = premiumTotalLine(policies);
+  const coverage = await loadCoverage(user.id, {
+    advice,
+    selected: one("need"),
+    policyId: one("policy"),
+  });
+  const result = one("picked");
+
+  // The tree (docs/design/area-pages.md): the same records, a few words and a figure each.
+  const area = insuranceTree({
+    asOf,
+    needs: coverage.needs.map((n) => ({ ...n, opened: coverage.opened.has(needKey(n)) })),
+    policies: policies.map((p) => ({
+      id: p.id,
+      kind: p.kind,
+      carrier: p.carrier,
+      status: p.status,
+      yearlyCents: yearlyPremium(p),
+      renewsOn: nextRenewal(p, asOf),
+    })),
+    gaps,
+    savings: savings.map((s) => ({ ...s, line: savingLine(s, policyById(s.policyId)) })),
+    renewals: renewals.map((n) => ({
+      ...n,
+      carrier: policyById(n.policyId)?.carrier ?? "Your insurer",
+      line: (n.status === "asked"
+        ? askCallBody(n, policyById(n.policyId))
+        : callResultBody(n, policyById(n.policyId))
+      ).split("\n")[0],
+    })),
+    changes: changeGroups.map(([ref, changes]) => ({
+      ref,
+      event: changes[0].event,
+      intro: coverBody(changes[0].event, changes, policies, partner !== null).split("\n")[0],
+      count: changes.length,
+    })),
+    readings,
+    payingTwice,
+    cards: cards.cards.map((c) => ({
+      accountId: c.accountId,
+      card: c.card,
+      benefits: c.benefits.length,
+    })),
+    household: family.rows.map((r) => ({ name: r.name, policies: r.policies.length })),
+    risks: risks.map((r) => ({ id: r.id, kind: r.kind, question: riskQuestion(r) })),
+    health: healthYear
+      ? {
+          metCents: healthYear.progress.deductibleMetCents,
+          deductibleCents: healthYear.plan.deductibleCents,
+        }
+      : null,
+  });
+
+  // Each item's detail: its actions (and its own card), and what sits behind More.
+  const details: Record<string, ReactNode> = {};
+  const more: Record<string, ReactNode> = {};
+
+  for (const n of coverage.needs) {
+    const id = itemId("needs", needKey(n));
+    details[id] = (
+      <NeedDetail need={n} coverage={coverage} advice={advice} policyId={one("policy")} />
+    );
+    more[id] = <NeedWorking need={n} />;
+  }
+  for (const gap of gaps) {
+    const id = itemId("missing", gap.key + (gap.policyId ? `-${gap.policyId}` : ""));
+    details[id] = (
+      <div className="flex flex-col gap-2 text-sm">
+        <h3 className="text-base font-semibold">{gap.title}</h3>
+        {advice && (
+          <div className="flex flex-col gap-1">
+            <p className="font-medium">{gapAdvice(gap).text}</p>
+            <DemoAdviceLabel />
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-4">
+          {gap.policyId ? (
+            <Link
+              href={`/insurance?edit=${gap.policyId}&focus=${encodeURIComponent(itemId("policies", gap.policyId))}`}
+              className={LINK}
+            >
+              Update the policy
+            </Link>
+          ) : (
+            <Link href={`/insurance?add=${gap.kind}#add`} className={LINK}>
+              I have this: add it
+            </Link>
+          )}
+          <form action={notNeeded}>
+            <input type="hidden" name="gap" value={gap.key} />
+            <button type="submit" className="underline">
+              I don&apos;t need it
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+    more[id] = <p>{gap.why}</p>;
+  }
+  for (const s of savings) {
+    const id = itemId("savings", s.id);
+    details[id] = (
+      <div className="flex flex-col gap-2 text-sm">
+        {lowering([s]).length > 0 && (
+          <p className="text-zinc-600 dark:text-zinc-400">
+            This one lowers your cover: if you claim, you pay{" "}
+            {formatCents((s.detail.toDeductibleCents ?? 0) - (s.detail.fromDeductibleCents ?? 0))}{" "}
+            more yourself.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <form action={applyOneSaving}>
+            <input type="hidden" name="savingId" value={s.id} />
+            <button type="submit" className={BUTTON}>
+              {lowering([s]).length > 0 ? "Raise it" : "Do it"}
+            </button>
+          </form>
+          <form action={skipSaving}>
+            <input type="hidden" name="savingId" value={s.id} />
+            <button type="submit" className={`h-10 ${LINK}`}>
+              No thanks
+            </button>
+          </form>
+        </div>
+        <DemoAdviceLabel />
+      </div>
+    );
+  }
+  for (const n of renewals) {
+    const id = itemId("renewals", n.id);
+    const lines = (
+      n.status === "asked"
+        ? askCallBody(n, policyById(n.policyId))
+        : callResultBody(n, policyById(n.policyId))
+    ).split("\n");
+    details[id] =
+      n.status === "asked" ? (
+        <div className="flex flex-wrap gap-3 text-sm">
+          <form action={callRenewal}>
+            <input type="hidden" name="negotiationId" value={n.id} />
+            <button type="submit" className={BUTTON}>
+              Call them
+            </button>
+          </form>
+          <form action={skipRenewal}>
+            <input type="hidden" name="negotiationId" value={n.id} />
+            <button type="submit" className={`h-10 ${LINK}`}>
+              No thanks
+            </button>
+          </form>
+        </div>
+      ) : null;
+    if (lines.length > 1) {
+      more[id] = lines.slice(1).map((line) => <p key={line}>{line}</p>);
+    }
+  }
+  for (const [ref, changes] of changeGroups) {
+    const id = itemId("changes", ref);
+    // The first line is the event, which the summary already says.
+    const [, ...lines] = coverBody(changes[0].event, changes, policies, partner !== null).split(
+      "\n",
+    );
+    const [apply] = coverActions(changes, partner !== null);
+    details[id] = (
+      <div className="flex flex-col gap-2 text-sm">
+        <ul className="flex flex-col gap-1">
+          {lines.map((line) => (
+            <li key={line}>{line.replace(/^- /, "")}</li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap gap-3">
+          <form action={applyChanges}>
+            <input type="hidden" name="coverEvent" value={ref} />
+            <button type="submit" className={BUTTON}>
+              {apply.label}
+            </button>
+          </form>
+          <form action={dismissChanges}>
+            <input type="hidden" name="coverEvent" value={ref} />
+            <button type="submit" className={`h-10 ${LINK}`}>
+              Not now
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+  for (const reading of readings) {
+    details[itemId("documents", reading.id)] = (
+      <Link href={`/insurance/read/${reading.id}`} className={`text-sm ${LINK}`}>
+        Check and confirm
+      </Link>
+    );
+  }
+  for (const d of payingTwice) {
+    details[itemId("cards", `twice-${d.findingId}`)] = (
+      <Link href={`/report/${d.findingId}`} className={`text-sm ${LINK}`}>
+        Cancel it
+      </Link>
+    );
+  }
+  for (const card of cards.cards) {
+    const id = itemId("cards", card.accountId);
+    details[id] = (
+      <ul className="flex flex-col gap-1 text-sm">
+        {card.benefits.map((b) => (
+          <li key={b.kind}>
+            <span className="font-medium">{b.label}:</span> {limitWords(b)}, when{" "}
+            {conditionWords(b)}.
+          </li>
+        ))}
+      </ul>
+    );
+    more[id] = (
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">
+        From the card&apos;s benefit guide, checked by our team. The card company&apos;s terms
+        decide what&apos;s covered.
+      </p>
+    );
+  }
+  for (const p of policies) {
+    const id = itemId("policies", p.id);
+    details[id] = <PolicyCard policy={p} asOf={asOf} editing={one("edit") === p.id} />;
+  }
+  for (const r of risks) {
+    const id = itemId("questions", r.id);
+    details[id] = (
+      <form action={answerRiskForm} className="flex gap-3">
+        <input type="hidden" name="riskId" value={r.id} />
+        <button type="submit" name="answer" value="yes" className={BUTTON}>
+          Yes
+        </button>
+        <button
+          type="submit"
+          name="answer"
+          value="no"
+          className="inline-flex h-10 items-center rounded-full border border-zinc-300 px-5 text-sm font-medium dark:border-zinc-700"
+        >
+          No
+        </button>
+      </form>
+    );
+    more[id] = <p>{riskQuestion(r)}</p>;
+  }
+  for (const row of family.rows) {
+    details[itemId("household", row.name)] = (
+      <div className="flex flex-col gap-1 text-sm">
+        <p>
+          {row.name}
+          {row.relation !== "you" && row.relation !== "spouse" && (
+            <span className="text-zinc-600 dark:text-zinc-400">
+              {" "}
+              ({HOUSEHOLD_RELATIONS[row.relation].toLowerCase()})
+            </span>
+          )}
+          :{" "}
+          {row.policies.length > 0
+            ? row.policies
+                .map(
+                  (p) =>
+                    `${p.carrier} ${kindName(p.kind)}${p.owner === "You" ? "" : ` (${p.owner}'s)`}`,
+                )
+                .join(", ")
+            : "no policy on file"}
+        </p>
+        {family.people.some((p) => p.name === row.name) && (
+          <form action={removePersonForm}>
+            <input type="hidden" name="name" value={row.name} />
+            <button type="submit" className={`text-xs ${LINK}`}>
+              Remove
+            </button>
+          </form>
+        )}
+      </div>
+    );
+  }
+  details[itemId("household", "add")] = (
+    <div className="flex flex-col gap-3 text-sm">
+      {familyError && (
+        <p role="alert" className="text-red-700 dark:text-red-400">
+          {familyError}
+        </p>
+      )}
+      <form action={addPersonForm} className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 font-medium" htmlFor="person-name">
+          Name
+          <input id="person-name" name="name" className={INPUT} />
+        </label>
+        <label className="flex flex-col gap-1 font-medium" htmlFor="person-relation">
+          Who they are to you
+          <select id="person-relation" name="relation" className={INPUT} defaultValue="child">
+            {Object.entries(HOUSEHOLD_RELATIONS).map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 font-medium" htmlFor="person-age">
+          Age
+          <input id="person-age" name="age" inputMode="numeric" className={`${INPUT} w-20`} />
+        </label>
+        <label className="flex items-center gap-2 pb-3 font-medium">
+          <input type="checkbox" name="driver" /> Drives
+        </label>
+        <button type="submit" className={BUTTON}>
+          Add them
+        </button>
+      </form>
+    </div>
+  );
+  more[itemId("household", "add")] = (
+    <ul className="flex flex-col gap-2">
+      {family.healthPlans.length > 1 && (
+        <li>
+          Health plans for the whole household, a year:{" "}
+          {family.healthPlans
+            .map((r) => `${r.label}: about ${formatCents(r.familyYearlyCents)}`)
+            .join("; ")}
+        </li>
+      )}
+      {policies
+        .filter((p) => p.status === "active")
+        .map((p) => {
+          const mine = family.policies.find((f) => f.id === p.id);
+          return (
+            <li key={p.id}>
+              <span className="font-medium">
+                {p.carrier} {kindName(p.kind)}
+              </span>
+              <form action={setSharedForm} className="inline-block pl-3">
+                <input type="hidden" name="policyId" value={p.id} />
+                <input type="hidden" name="shared" value={p.sharedWithHousehold ? "no" : "yes"} />
+                <button type="submit" className={LINK}>
+                  {p.sharedWithHousehold ? "Shared: stop sharing" : "Share with my household"}
+                </button>
+              </form>
+              {family.people.map((person) => {
+                const covers = (mine?.covered ?? []).some((c) => c.name === person.name);
+                return (
+                  <form key={person.name} action={setCoveredForm} className="inline-block pl-3">
+                    <input type="hidden" name="policyId" value={p.id} />
+                    <input type="hidden" name="name" value={person.name} />
+                    <input type="hidden" name="covered" value={covers ? "no" : "yes"} />
+                    <button type="submit" className={LINK}>
+                      {covers ? `Covers ${person.name}: remove` : `Add ${person.name}`}
+                    </button>
+                  </form>
+                );
+              })}
+            </li>
+          );
+        })}
+    </ul>
+  );
+  if (healthYear) {
+    const id = itemId("health", "deductible");
+    details[id] = (
+      <div className="flex flex-col gap-2 text-sm">
+        <progress
+          className="w-full"
+          aria-label="Deductible met"
+          value={healthYear.progress.deductibleMetCents}
+          max={healthYear.plan.deductibleCents}
+        />
+        <ul className="flex flex-col gap-1">
+          {healthYearLines(healthYear).map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  // Opened from a gap's "I have this: add it" or a policy's edit link: that part is open.
+  const focus =
+    one("focus") ||
+    (one("need")
+      ? itemId("needs", `${one("need")}${one("policy") ? `-${one("policy")}` : ""}`)
+      : "") ||
+    (one("edit") ? itemId("policies", one("edit")) : "");
 
   return (
     <>
@@ -255,554 +639,109 @@ async function InsuranceContent({
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Insurance</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Every policy you have, what it covers and when it renews, in one place. Jane reads your{" "}
-          <Link href="/documents" className={LINK}>
-            policy documents
-          </Link>{" "}
-          and adds each one once you confirm what she read, and points out cover that looks missing.
-          Unless you let her switch for you in Settings, she never buys, changes or cancels
-          insurance without your tap.
+          Your cover at a glance. Open a branch to see more.
         </p>
-        {/* Spec steps 108 and 141: what Jane does with insurance by herself. */}
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          On autopilot: {autopilotReply(autopilot, insuranceArea).body}{" "}
-          <Link href="/settings#sectors" className={LINK}>
-            Change it
+        <nav aria-label="Insurance pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <Link href="/insurance/checkup" className={LINK}>
+            Checkup
           </Link>
-        </p>
-        <div className="flex flex-wrap gap-4">
-          <Link href="/insurance/checkup" className={`text-sm ${LINK}`}>
-            Coverage checkup
+          <Link href="/insurance/claims" className={LINK}>
+            Claims
           </Link>
-          <Link href="/insurance/claims" className={`text-sm ${LINK}`}>
-            Something happened? Claims
-          </Link>
-          <Link href="/insurance/benefits" className={`text-sm ${LINK}`}>
-            Benefits through work
+          <Link href="/insurance/benefits" className={LINK}>
+            Work benefits
           </Link>
           {advice && (
-            <Link href="/insurance/life" className={`text-sm ${LINK}`}>
+            <Link href="/insurance/life" className={LINK}>
               Life cover
             </Link>
           )}
-        </div>
+        </nav>
       </div>
 
-      {saved && (
+      {(saved || result) && (
         <p
           role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
+          className="bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
         >
-          {saved}
+          {saved ?? result}
         </p>
       )}
 
-      <PerfectCoverage
-        userId={user.id}
-        advice={advice}
-        selected={one("need")}
-        policyId={one("policy")}
-        result={one("picked")}
+      <AreaPage
+        tree={area.tree}
+        label="Insurance"
+        chips={area.chips}
+        summaries={area.summaries}
+        details={details}
+        more={more}
+        focus={focus || undefined}
       />
 
-      {healthYear && (
-        <section id="health-year" className="flex flex-col gap-3" aria-labelledby="health-year-h">
-          <h2 id="health-year-h" className="text-xl font-semibold">
-            Your health plan this year
-          </h2>
-          <progress
-            className="w-full"
-            aria-label="Deductible met"
-            value={healthYear.progress.deductibleMetCents}
-            max={healthYear.plan.deductibleCents}
-          />
-          <ul className="flex flex-col gap-1 text-sm">
-            {healthYearLines(healthYear).map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section id="household" className="flex flex-col gap-3" aria-labelledby="household-heading">
-        <h2 id="household-heading" className="text-xl font-semibold">
-          Your household&apos;s cover
-        </h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Who is covered by what. A partner in your household sees only the policies you choose to
-          share, and only to read.
-        </p>
-        {familyError && (
-          <p role="alert" className="text-red-700 dark:text-red-400">
-            {familyError}
-          </p>
-        )}
-        <ul className="flex flex-col gap-2 text-sm">
-          {family.rows.map((row) => (
-            <li
-              key={row.name}
-              className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
-            >
-              <span className="font-medium">{row.name}</span>
-              {row.relation !== "you" && row.relation !== "spouse" && (
-                <span className="text-zinc-600 dark:text-zinc-400">
-                  {" "}
-                  ({HOUSEHOLD_RELATIONS[row.relation].toLowerCase()})
-                </span>
-              )}
-              :{" "}
-              {row.policies.length > 0
-                ? row.policies
-                    .map(
-                      (p) =>
-                        `${p.carrier} ${kindName(p.kind)}${p.owner === "You" ? "" : ` (${p.owner}'s)`}`,
-                    )
-                    .join(", ")
-                : "no policy on file"}
-              {family.people.some((p) => p.name === row.name) && (
-                <form action={removePersonForm} className="mt-1 inline-block pl-2">
-                  <input type="hidden" name="name" value={row.name} />
-                  <button type="submit" className={`text-xs ${LINK}`}>
-                    Remove
-                  </button>
-                </form>
-              )}
-            </li>
-          ))}
-        </ul>
-        {family.healthPlans.length > 1 && (
-          <div className="rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800">
-            <p className="font-medium">Health plans for the whole household, a year</p>
-            <ul>
-              {family.healthPlans.map((r) => (
-                <li key={r.policyId}>
-                  {r.label}: about {formatCents(r.familyYearlyCents)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <details className="text-sm">
-          <summary className={`cursor-pointer ${LINK}`}>
-            Add someone, or choose what to share
-          </summary>
-          <form action={addPersonForm} className="mt-3 flex flex-wrap items-end gap-3">
-            <label className="flex flex-col gap-1 font-medium" htmlFor="person-name">
-              Name
-              <input id="person-name" name="name" className={INPUT} />
-            </label>
-            <label className="flex flex-col gap-1 font-medium" htmlFor="person-relation">
-              Who they are to you
-              <select id="person-relation" name="relation" className={INPUT} defaultValue="child">
-                {Object.entries(HOUSEHOLD_RELATIONS).map(([k, label]) => (
-                  <option key={k} value={k}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 font-medium" htmlFor="person-age">
-              Age
-              <input id="person-age" name="age" inputMode="numeric" className={`${INPUT} w-20`} />
-            </label>
-            <label className="flex items-center gap-2 pb-3 font-medium">
-              <input type="checkbox" name="driver" /> Drives
-            </label>
-            <button
-              type="submit"
-              className="inline-flex h-11 items-center rounded-full bg-emerald-700 px-5 font-semibold text-white"
-            >
-              Add them
-            </button>
-          </form>
-          <ul className="mt-3 flex flex-col gap-2">
-            {policies
-              .filter((p) => p.status === "active")
-              .map((p) => {
-                const mine = family.policies.find((f) => f.id === p.id);
-                return (
-                  <li
-                    key={p.id}
-                    className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
-                  >
-                    <span className="font-medium">
-                      {p.carrier} {kindName(p.kind)}
-                    </span>
-                    <form action={setSharedForm} className="inline-block pl-3">
-                      <input type="hidden" name="policyId" value={p.id} />
-                      <input
-                        type="hidden"
-                        name="shared"
-                        value={p.sharedWithHousehold ? "no" : "yes"}
-                      />
-                      <button type="submit" className={LINK}>
-                        {p.sharedWithHousehold ? "Shared: stop sharing" : "Share with my household"}
-                      </button>
-                    </form>
-                    {family.people.map((person) => {
-                      const covers = (mine?.covered ?? []).some((c) => c.name === person.name);
-                      return (
-                        <form
-                          key={person.name}
-                          action={setCoveredForm}
-                          className="inline-block pl-3"
-                        >
-                          <input type="hidden" name="policyId" value={p.id} />
-                          <input type="hidden" name="name" value={person.name} />
-                          <input type="hidden" name="covered" value={covers ? "no" : "yes"} />
-                          <button type="submit" className={LINK}>
-                            {covers ? `Covers ${person.name}: remove` : `Add ${person.name}`}
-                          </button>
-                        </form>
-                      );
-                    })}
-                  </li>
-                );
-              })}
-          </ul>
-        </details>
-      </section>
-
-      {risks.length > 0 && (
-        <section id="risks" className="flex flex-col gap-3" aria-labelledby="risks-heading">
-          <h2 id="risks-heading" className="text-xl font-semibold">
-            A few questions about how you live
-          </h2>
-          <ul className="flex flex-col gap-3">
-            {risks.map((r) => (
-              <li
-                key={r.id}
-                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800"
-              >
-                <p>{riskQuestion(r)}</p>
-                <form action={answerRiskForm} className="flex gap-3">
-                  <input type="hidden" name="riskId" value={r.id} />
-                  <button
-                    type="submit"
-                    name="answer"
-                    value="yes"
-                    className="inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    type="submit"
-                    name="answer"
-                    value="no"
-                    className="inline-flex h-10 items-center rounded-full border border-zinc-300 px-5 font-medium dark:border-zinc-700"
-                  >
-                    No
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {savings.length > 0 && (
-        <section id="savings" className="flex flex-col gap-3" aria-labelledby="savings-heading">
-          <h2 id="savings-heading" className="text-xl font-semibold">
-            Pay less for the same cover
-          </h2>
-          <ul className="flex flex-col gap-3">
-            {savings.map((s) => (
-              <li
-                key={s.id}
-                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800"
-              >
-                <p>{savingLine(s, policyById(s.policyId))}</p>
-                {lowering([s]).length > 0 && (
-                  <p className="text-zinc-600 dark:text-zinc-400">
-                    This one lowers your cover: if you claim, you pay{" "}
-                    {formatCents(
-                      (s.detail.toDeductibleCents ?? 0) - (s.detail.fromDeductibleCents ?? 0),
-                    )}{" "}
-                    more yourself.
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-3">
-                  <form action={applyOneSaving}>
-                    <input type="hidden" name="savingId" value={s.id} />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800"
-                    >
-                      {lowering([s]).length > 0 ? "Raise it" : "Do it"}
-                    </button>
-                  </form>
-                  <form action={skipSaving}>
-                    <input type="hidden" name="savingId" value={s.id} />
-                    <button type="submit" className={`h-10 ${LINK}`}>
-                      No thanks
-                    </button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <DemoAdviceLabel />
-        </section>
-      )}
-
-      {renewals.length > 0 && (
-        <section id="renewals" className="flex flex-col gap-3" aria-labelledby="renewals-heading">
-          <h2 id="renewals-heading" className="text-xl font-semibold">
-            Renewals going up
-          </h2>
-          {renewals.map((n) => (
-            <div
-              key={n.id}
-              className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800"
-            >
-              {(n.status === "asked"
-                ? askCallBody(n, policyById(n.policyId))
-                : callResultBody(n, policyById(n.policyId))
-              )
-                .split("\n")
-                .map((line) => (
-                  <p key={line}>{line}</p>
-                ))}
-              {n.status === "asked" && (
-                <div className="flex flex-wrap gap-3">
-                  <form action={callRenewal}>
-                    <input type="hidden" name="negotiationId" value={n.id} />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800"
-                    >
-                      Call them
-                    </button>
-                  </form>
-                  <form action={skipRenewal}>
-                    <input type="hidden" name="negotiationId" value={n.id} />
-                    <button type="submit" className={`h-10 ${LINK}`}>
-                      No thanks
-                    </button>
-                  </form>
-                </div>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
-
-      {changeGroups.length > 0 && (
-        <section id="changes" className="flex flex-col gap-3" aria-labelledby="changes-heading">
-          <h2 id="changes-heading" className="text-xl font-semibold">
-            After life events
-          </h2>
-          {changeGroups.map(([ref, changes]) => {
-            const [intro, ...lines] = coverBody(
-              changes[0].event,
-              changes,
-              policies,
-              partner !== null,
-            ).split("\n");
-            const [apply] = coverActions(changes, partner !== null);
-            return (
-              <div
-                key={ref}
-                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-              >
-                <p className="font-medium">{intro}</p>
-                <ul className="flex flex-col gap-1 text-sm">
-                  {lines.map((line) => (
-                    <li key={line}>{line.replace(/^- /, "")}</li>
-                  ))}
-                </ul>
-                <div className="flex flex-wrap gap-3">
-                  <form action={applyChanges}>
-                    <input type="hidden" name="coverEvent" value={ref} />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
-                    >
-                      {apply.label}
-                    </button>
-                  </form>
-                  <form action={dismissChanges}>
-                    <input type="hidden" name="coverEvent" value={ref} />
-                    <button type="submit" className={`h-10 text-sm ${LINK}`}>
-                      Not now
-                    </button>
-                  </form>
-                </div>
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-      {readings.length > 0 && (
-        <section className="flex flex-col gap-3" aria-labelledby="readings">
-          <h2 id="readings" className="text-xl font-semibold">
-            Read from your documents
-          </h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Nothing here is on your insurance until you confirm it.
-          </p>
-          <ul className="flex flex-col gap-3">
-            {readings.map((reading) => (
-              <li
-                key={reading.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-              >
-                <span className="font-medium">{reading.title}</span>
-                <Link href={`/insurance/read/${reading.id}`} className={`text-sm ${LINK}`}>
-                  Check and confirm
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {cards.cards.length > 0 && (
-        <section id="cards" className="flex flex-col gap-3" aria-labelledby="cards-heading">
-          <h2 id="cards-heading" className="text-xl font-semibold">
-            Cover through your cards
-          </h2>
-          {payingTwice.map((d) => (
-            <p
-              key={d.findingId}
-              className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-50"
-            >
-              <span>
-                You pay {d.merchant}
-                {d.annualSavingsCents ? ` ${formatCents(d.annualSavingsCents)} a year` : ""} for
-                cover your {d.card} already gives you.
-              </span>
-              <Link href={`/report/${d.findingId}`} className={LINK}>
-                Cancel it
+      {/* Below the tree: nothing open by default (docs/design/area-pages.md). */}
+      <div className="flex flex-col gap-2">
+        <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <summary className={`cursor-pointer text-sm ${LINK}`}>How Jane handles insurance</summary>
+          <div className="mt-2 flex flex-col gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <p>
+              Jane reads your{" "}
+              <Link href="/documents" className={LINK}>
+                policy documents
+              </Link>{" "}
+              and adds each one once you confirm what she read. Unless you let her switch for you in
+              Settings, she never buys, changes or cancels insurance without your tap.
+            </p>
+            {/* Spec steps 108 and 141: what Jane does with insurance by herself. */}
+            <p>
+              On autopilot: {autopilotReply(autopilot, insuranceArea).body}{" "}
+              <Link href="/settings#sectors" className={LINK}>
+                Change it
               </Link>
             </p>
-          ))}
-          {cards.cards.map((card) => (
-            <div
-              key={card.accountId}
-              className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-            >
-              <h3 className="font-semibold">{card.card}</h3>
-              <ul className="flex flex-col gap-1 text-sm">
-                {card.benefits.map((b) => (
-                  <li key={b.kind}>
-                    <span className="font-medium">{b.label}:</span> {limitWords(b)}, when{" "}
-                    {conditionWords(b)}.
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                From the card&apos;s benefit guide, checked by our team. The card company&apos;s
-                terms decide what&apos;s covered.
-              </p>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {gaps.length > 0 && (
-        <section className="flex flex-col gap-3" aria-labelledby="gaps">
-          <h2 id="gaps" className="text-xl font-semibold">
-            Cover that looks missing
-          </h2>
-          <ul className="flex flex-col gap-3">
-            {gaps.map((gap) => (
-              <li
-                key={gap.key}
-                className="flex flex-col gap-2 rounded-xl bg-amber-50 p-4 text-amber-950 dark:bg-amber-950 dark:text-amber-50"
-              >
-                <h3 className="font-semibold">{gap.title}</h3>
-                <p className="text-sm">{gap.why}</p>
-                {advice && (
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium">{gapAdvice(gap).text}</p>
-                    <DemoAdviceLabel />
-                  </div>
-                )}
-                <div className="flex flex-wrap items-center gap-4 text-sm">
-                  {gap.policyId ? (
-                    <Link
-                      href={`/insurance?edit=${gap.policyId}#policy-${gap.policyId}`}
-                      className={LINK}
-                    >
-                      Update the policy
-                    </Link>
-                  ) : (
-                    <Link href={`/insurance?add=${gap.kind}#add`} className={LINK}>
-                      I have this: add it
-                    </Link>
-                  )}
-                  <form action={notNeeded}>
-                    <input type="hidden" name="gap" value={gap.key} />
-                    <button type="submit" className="underline">
-                      I don&apos;t need it
-                    </button>
-                  </form>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="flex flex-col gap-3" aria-labelledby="policies">
-        <h2 id="policies" className="text-xl font-semibold">
-          Your policies
-        </h2>
-        {policies.length === 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Nothing here yet. Add your car, home or renters policy below, or upload the policy
-            document and Jane reads it for you.
-          </p>
-        ) : (
-          <>
-            {totalLine && <p className="text-sm text-zinc-600 dark:text-zinc-400">{totalLine}</p>}
-            <ul className="flex flex-col gap-3">
-              {policies.map((p) => (
-                <PolicyCard key={p.id} policy={p} asOf={asOf} editing={one("edit") === p.id} />
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-3" aria-labelledby="household">
-        <h2 id="household" className="text-xl font-semibold">
-          Your household
-        </h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          What matters for your cover. Leave a box blank and Jane reads it from your accounts where
-          she can.
-        </p>
-        <HouseholdForm
-          values={{
-            housing: household.housing.from === "you" ? (household.housing.value ?? "") : "",
-            vehicles: typed(household.vehicles),
-            dependants: typed(household.dependants),
-            pets: typed(household.pets),
-          }}
-          hints={householdHints(household)}
-        />
-      </section>
-
-      <section id="add" className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">
-          {policies.length === 0 ? "Add a policy" : "Add another policy"}
-        </h2>
-        <PolicyForm
-          key={add}
-          policyId=""
-          values={{ ...EMPTY_POLICY_INPUT, kind: isPolicyKind(add) ? add : "auto" }}
-        />
-      </section>
+            {totalLine && <p>{totalLine}</p>}
+          </div>
+        </details>
+        <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <summary className={`cursor-pointer text-sm ${LINK}`}>Your household details</summary>
+          <div className="mt-2 flex flex-col gap-2">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Leave a box blank and Jane reads it from your accounts where she can.
+            </p>
+            <HouseholdForm
+              values={{
+                housing: household.housing.from === "you" ? (household.housing.value ?? "") : "",
+                vehicles: typed(household.vehicles),
+                dependants: typed(household.dependants),
+                pets: typed(household.pets),
+              }}
+              hints={householdHints(household)}
+            />
+          </div>
+        </details>
+        <details
+          id="add"
+          open={add !== "" || policies.length === 0}
+          className="border-t border-zinc-200 pt-2 dark:border-zinc-800"
+        >
+          <summary className={`cursor-pointer text-sm ${LINK}`}>
+            {policies.length === 0 ? "Add a policy" : "Add another policy"}
+          </summary>
+          <div className="mt-2">
+            <PolicyForm
+              key={add}
+              policyId=""
+              values={{ ...EMPTY_POLICY_INPUT, kind: isPolicyKind(add) ? add : "auto" }}
+            />
+          </div>
+        </details>
+      </div>
     </>
   );
 }
 
 export default function InsurancePage({ searchParams }: PageProps<"/insurance">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
         <InsuranceContent searchParams={searchParams} />
       </Suspense>
