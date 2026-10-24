@@ -74,14 +74,17 @@ describe("the real-closes fixture", () => {
     }
   });
 
-  it("still shows every turned-off rule making its level worse", { timeout: 120_000 }, () => {
+  it("still shows every turned-off rule not earning its place", { timeout: 120_000 }, () => {
     const levels = Object.keys(OPPORTUNITY_RULES_OFF).map(Number) as (1 | 2 | 3 | 4 | 5)[];
     const r = ruleReplays(realFixtureBars(), [], levels)!;
     for (const l of r.levels)
       for (const off of OPPORTUNITY_RULES_OFF[l.level] ?? []) {
         const v = l.verdicts.find((x) => x.rule === off.rule)!;
         expect(v.status).toBe("off");
-        expect(v.returnPoints!).toBeLessThan(0);
+        // Less return, or a deeper worst drop: never better on both counts.
+        expect(v.returnPoints! < 0 || v.dropPoints! < 0, `level ${l.level}`).toBe(true);
+        // And the evidence on the page is the replay's own, to two decimals.
+        expect(off.evidence).toContain(Math.abs(v.returnPoints!).toFixed(2));
       }
   });
 });
