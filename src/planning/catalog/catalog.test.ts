@@ -1,6 +1,8 @@
+import { readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CATALOG, CATALOG_IDS, catalogTickers } from "@/config/strategy-catalog";
 import type { Bar } from "@/lib/market/types";
+import { catalogMarkdown } from "./catalog-doc";
 import { alignCatalog, metricsOver, mixReturns, runCatalog, standalone } from "./engine";
 import {
   expectedMaxSharpe,
@@ -161,5 +163,15 @@ describe("the engine", () => {
     expect(results.filter((r) => r.recommendable).length).toBeLessThanOrEqual(results.length / 10);
     const mix = metricsOver(u, mixReturns(u, 3), 1, u.dates.length - 1)!;
     expect(mix.vol).toBeGreaterThan(0);
+  });
+});
+
+describe("the catalog document", () => {
+  it.runIf(process.env.CATALOG_DOC_WRITE)("is written from the catalog", () => {
+    writeFileSync("docs/backtests/strategy-catalog.md", catalogMarkdown());
+  });
+
+  it("is the catalog's own: every strategy with its source and rules", () => {
+    expect(readFileSync("docs/backtests/strategy-catalog.md", "utf8")).toBe(catalogMarkdown());
   });
 });
