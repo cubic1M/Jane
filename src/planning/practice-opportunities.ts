@@ -37,7 +37,7 @@ import { LEVEL_WORST_DROP_PERCENT } from "@/config/practice-preferences";
 import { DRIFT_STOCKS_BAND, rulesOnAt, SCAN_CAPS, SCAN_CONFIDENCE } from "@/config/practice-scan";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PaySchedule } from "@/detection/paydays";
-import { portfolioValue, positionValue, type Prices } from "./practice-autopilot";
+import { buyFundFor, portfolioValue, positionValue, type Prices } from "./practice-autopilot";
 import { apply, type LedgerState } from "./practice-ledger";
 import {
   bandOf,
@@ -210,24 +210,6 @@ export function recentDrop(
   return { peakCents, nowCents, drop: peakCents > 0 ? 1 - nowCents / peakCents : 0, peakDate };
 }
 
-// The fund to buy more of a kind in: the one held (the larger), else the main one; never one
-// blocked (a wash sale, or excluded) and, when there's a choice, not one at a loss.
-function buyTickerFor(
-  c: PracticeClass,
-  state: LedgerState,
-  prices: Prices,
-  blocked: ReadonlySet<string>,
-): string | null {
-  const held = (t: string) => positionValue(state, prices, t);
-  const main = classTickers(c).reduce((a, b) => (held(b) > held(a) ? b : a));
-  const open = [main, ...classTickers(c)].filter((t) => !blocked.has(t));
-  const atLoss = (t: string) => {
-    const p = state.positions[t];
-    return p !== undefined && held(t) < p.costBasisCents;
-  };
-  return open.find((t) => !atLoss(t)) ?? open[0] ?? null;
-}
-
 // Cash spread over the kinds that are short of their targets, in proportion to how short,
 // held to the size cap and each fund's per-position cap. The caller writes the reason.
 function buyShort(
@@ -249,7 +231,13 @@ function buyShort(
   if (needed <= 0 || spend < AUTOPILOT_LIMITS.minTradeCents) return [];
   const trades: ScanTrade[] = [];
   for (const { c, gap } of short) {
-    const ticker = buyTickerFor(c, input.state, input.prices, blocked);
+    const ticker = buyFundFor(
+      c,
+      blocked,
+      input.prefs.taxSensitive && (input.rules ?? rulesOnAt(input.level)).has("tax_loss_harvest")
+        ? { state: input.state, prices: input.prices }
+        : null,
+    );
     if (!ticker) continue;
     const room =
       Math.round(caps.positionShare * total) - positionValue(input.state, input.prices, ticker);
