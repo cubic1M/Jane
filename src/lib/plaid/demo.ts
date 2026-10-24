@@ -292,6 +292,12 @@ export async function linkDemoBank(
     },
     select: { id: true },
   });
+  // A sample person comes with their tax profile answered: how they file and who they claim
+  // (src/lib/sample-tax-answers.ts).
+  if (person) {
+    const { seedSampleTaxAnswers } = await import("@/lib/sample-tax-answers");
+    await seedSampleTaxAnswers(userId, person, { client });
+  }
   // Spec step 241: a sample person comes with their goals (tracked by hand: no account yet).
   const goals = demoGoalsFor(person, today(now));
   if (goals.length > 0 && (await db.savingsGoals.count()) === 0) {
