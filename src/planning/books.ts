@@ -63,13 +63,16 @@ export function reconcile(accountType: string, snaps: Snap[], txns: Tx[]): Misma
   let found: Mismatch | null = null;
   for (let i = 1; i < sorted.length; i += 1) {
     const [a, b] = [sorted[i - 1], sorted[i]];
-    const sum = txns
-      .filter((t) => t.date > a.date && t.date <= b.date)
-      .reduce((s, t) => s + t.amountCents, 0);
+    const between = (from: string, to: string) =>
+      txns.filter((t) => t.date > from && t.date <= to).reduce((s, t) => s + t.amountCents, 0);
+    const sum = between(a.date, b.date);
     const actual = b.balanceCents - a.balanceCents;
     const expected = sign * sum;
     const off = actual - expected;
-    if (Math.abs(off) > BOOKS_TOLERANCE_CENTS) {
+    // A balance read on a day may only have that day's charges the next day (real-user QA): it
+    // also adds up if each snapshot holds the transactions through the day before.
+    const lagged = actual - sign * between(addDays(a.date, -1), addDays(b.date, -1));
+    if (Math.abs(off) > BOOKS_TOLERANCE_CENTS && Math.abs(lagged) > BOOKS_TOLERANCE_CENTS) {
       found = {
         // The balance moved with no transactions at all: the bank stopped sending them.
         kind: sum === 0 ? "gap" : "off",
