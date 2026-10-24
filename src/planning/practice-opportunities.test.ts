@@ -28,7 +28,9 @@ import { SampleMarketData } from "@/lib/market/sample";
 import { planTrades, portfolioValue, positionValue } from "./practice-autopilot";
 import { apply, type LedgerState } from "./practice-ledger";
 import { glideWeights, levelForDrop } from "./practice-profile";
-import { drift, scanPortfolio, type PastTrade } from "./practice-scan";
+import { drift, flagStatus, scanPortfolio, type PastTrade } from "./practice-scan";
+import { THEME_EVIDENCE, themeConfidence } from "@/config/theme-evidence";
+import { THEME_SLICE_BY_LEVEL } from "@/config/themes";
 
 // The kinds after step 292: each fires on a planted case and not otherwise, the caps hold, the
 // person's preferences are obeyed, and the safety kinds never trade.
@@ -661,5 +663,70 @@ describe("step 292 kinds, after the QA pass", () => {
       expect(f.ask.headline).toContain(bought);
       expect(f.headline).toContain(bought);
     }
+  });
+});
+
+describe("news themes (src/config/themes.ts)", () => {
+  // The sample's October: a war breaks out on the 16th and chip makers surge on the 15th.
+  const DAY = "2026-10-16";
+
+  it("brings the themes that held up, small, from the day's news, and asks first", async () => {
+    const held = withCash(await boughtOn(4, "2026-09-01"), 400_000);
+    const flags = one(await scanOn(4, DAY, held), "theme_idea");
+    expect(flags.map((f) => f.ticker).sort()).toEqual(["ITA", "SMH"]);
+    const total = portfolioValue(held.state, await pricesOn(DAY));
+    for (const f of flags) {
+      const buy = f.trades.find((t) => t.side === "buy")!;
+      expect(buy.amountCents).toBeLessThanOrEqual(Math.round(THEME_SLICE_BY_LEVEL[4]! * total));
+      expect(f.reason).toMatch(/Out after 20 trading days, or sooner if it falls 8%/);
+      expect(f.figures.map((x) => x.label)).toEqual(
+        expect.arrayContaining(["Why now", "The risk", "When to get out", "Past events"]),
+      );
+      expect(f.confidence.percent).toBe(
+        themeConfidence(THEME_EVIDENCE[f.ticker === "ITA" ? "conflict_defense" : "chip_boom"]),
+      );
+      expectShortForms(f);
+      // Even when Jane acts by herself, a theme waits for the person's yes.
+      expect(flagStatus(f, held.state, await pricesOn(DAY), 0, "act").status).toBe("suggested");
+    }
+  });
+
+  it("never at Low or Very low, never a theme that didn't hold up, never what they avoid", async () => {
+    const low = withCash(await boughtOn(2, "2026-09-01"), 400_000);
+    expect(one(await scanOn(2, DAY, low), "theme_idea")).toEqual([]);
+    const held = withCash(await boughtOn(4, "2026-09-01"), 400_000);
+    const oil = {
+      id: "x",
+      ticker: null,
+      date: DAY,
+      title: "Iran fires missiles at Israel as the Middle East conflict widens",
+      source: "Sample newswire",
+      url: null,
+    };
+    const flags = one(await scanOn(4, DAY, held, { headlines: [oil] }), "theme_idea");
+    // Defense reads it too; oil after Middle East news didn't hold up, so XLE never comes.
+    expect(flags.map((f) => f.ticker)).toEqual(["ITA"]);
+    const avoid = one(await scanOn(4, DAY, held, {}, { excludedTickers: ["ITA"] }), "theme_idea");
+    expect(avoid.map((f) => f.ticker)).toEqual(["SMH"]);
+  });
+
+  it("one idea a theme at a time: none while its fund is held or was bought lately", async () => {
+    const held = withCash(await boughtOn(4, "2026-09-01"), 400_000);
+    const bought = {
+      ...held,
+      trades: [
+        ...held.trades,
+        {
+          placedAt: "2026-10-01T21:30:00.000Z",
+          side: "buy",
+          ticker: "SMH",
+          quantity: 1,
+          amountCents: 6_000,
+          gainCents: null,
+          rule: "theme_idea",
+        },
+      ],
+    };
+    expect(one(await scanOn(4, DAY, bought), "theme_idea").map((f) => f.ticker)).toEqual(["ITA"]);
   });
 });

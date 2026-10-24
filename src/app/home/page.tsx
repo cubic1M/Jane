@@ -21,7 +21,11 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
+import { netWorthEvents } from "@/lib/hub/net-worth-events";
+import { netWorthHistory } from "@/lib/hub/net-worth-history";
+import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView, type AreaTile } from "@/lib/hub/view";
+import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { stackedSuggestions } from "@/lib/jane-agent/messages";
 import { timezoneOf } from "@/lib/jane-agent/open";
@@ -67,7 +71,24 @@ function NeedsYou({
   );
 }
 
-async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
+// What the home tree reads beyond the tiles, started with the page so it doesn't wait for them.
+const loadTreeData = (userId: string) =>
+  Promise.all([
+    loadInsuranceArea(userId),
+    scopedFor(userId).suggestions.findMany({ select: { key: true } }),
+    adviceMode(userId),
+  ]);
+type TreeData = Awaited<ReturnType<typeof loadTreeData>>;
+
+async function Tiles({
+  userId,
+  home,
+  treeData,
+}: {
+  userId: string;
+  home: HomeSummary;
+  treeData: Promise<TreeData>;
+}) {
   const areas = await loadHubAreas(userId, {
     budgetsOver: home.budgetsOver.length,
     safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
@@ -77,19 +98,15 @@ async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
     <>
       <AreaTiles tiles={tiles} />
       <Suspense fallback={null}>
-        <AreasTree userId={userId} tiles={tiles} />
+        <AreasTree tiles={tiles} treeData={treeData} />
       </Suspense>
     </>
   );
 }
 
 // The home tree: the areas' branches, from the same loaders their pages use.
-async function AreasTree({ userId, tiles }: { userId: string; tiles: AreaTile[] }) {
-  const [insurance, reached, advice] = await Promise.all([
-    loadInsuranceArea(userId),
-    scopedFor(userId).suggestions.findMany({ select: { key: true } }),
-    adviceMode(userId),
-  ]);
+async function AreasTree({ tiles, treeData }: { tiles: AreaTile[]; treeData: Promise<TreeData> }) {
+  const [insurance, reached, advice] = await treeData;
   const maps = buildFeatureMap({
     examples: sampleExamples(),
     reached: new Set(reached.map((r) => r.key)),
@@ -101,10 +118,13 @@ async function AreasTree({ userId, tiles }: { userId: string; tiles: AreaTile[] 
 async function HubContent() {
   await connection();
   const user = await requireUser();
-  const top = await loadHubTop(user.id);
-  if (!top) redirect("/connect");
-  const { home } = top;
-  const [checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+  // Everything the hub reads starts at once (speed pass, 2026-10-24): the tree's data too, which
+  // the tiles' Suspense picks up when it's ready.
+  const treeData = loadTreeData(user.id);
+  // Read later by the tree; a failure shows there, not as an unhandled rejection here.
+  treeData.catch(() => {});
+  const [top, checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+    loadHubTop(user.id),
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
@@ -112,10 +132,21 @@ async function HubContent() {
     stackedSuggestions(user.id),
     timezoneOf(user.id),
   ]);
+  if (!top) redirect("/connect");
+  const { home } = top;
+  // Net worth every day since the first day with Jane, ending at the hub's own figure.
+  const line = await netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0);
   const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
+  // What moved it: the chart's events, from its first day.
+  const events = line[0]
+    ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
+    : [];
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
+  // Constant search (Phase AW): a cheap practice scan, after the page is sent. It ran when the
+  // chat's own page opened; Home is where people land now.
+  after(() => scanOnOpenQuietly(user.id));
 
   return (
     <>
@@ -123,7 +154,11 @@ async function HubContent() {
       <BooksNotice books={books} />
       <h1 className="sr-only">Home</h1>
 
-      <HeroRow hero={heroView(top.hero)} planItems={home.plan.items} />
+      <HeroRow
+        hero={heroView(top.hero)}
+        planItems={home.plan.items}
+        chart={<NetWorthChart points={line} events={events} />}
+      />
 
       <CashFlowStrip
         view={cashFlowView(top.cashFlow)}
@@ -131,7 +166,7 @@ async function HubContent() {
       />
 
       <Suspense fallback={<AreaTilesLoading />}>
-        <Tiles userId={user.id} home={home} />
+        <Tiles userId={user.id} home={home} treeData={treeData} />
       </Suspense>
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />

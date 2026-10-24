@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { CHAT } from "./chat-page";
 
 // Spec step 138: a visitor tries Jane with sample data, without signing up, and lands in
 // Jane's chat as their own sample person. Needs the scratch database (see e2e/db.ts).
@@ -12,10 +13,13 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
   const clicked = Date.now();
   await button.click();
 
-  await expect(page).toHaveURL(/\/chat$/, { timeout: 60_000 });
+  // Try Jane opens Home, with the chat beside it, saying this is a sample person.
+  await expect(page).toHaveURL(/\/home$/, { timeout: 60_000 });
   await expect(page.getByRole("note").filter({ hasText: "sample person" })).toContainText(
     "deleted after a day",
   );
+  // Her chat by itself for the checks below.
+  await page.goto(CHAT);
   // Jane's first brief shows on the open page by itself (no reload here) within 25 seconds of
   // the click: it was in the database long before it showed, once.
   await expect(page.getByText(/^Good (morning|afternoon|evening)!/).first()).toBeVisible({
@@ -23,6 +27,7 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
   });
 
   // The banner's "Sign up" reaches the form to start their own account, not back to the chat.
+  await page.goto("/home");
   await page
     .getByRole("note")
     .filter({ hasText: "sample person" })
@@ -49,7 +54,8 @@ test("five tries in a row each reach the chat in 8 seconds and the brief in 25",
     await page.getByRole("checkbox").check();
     const clicked = Date.now();
     await page.getByRole("button", { name: "Try it with sample data" }).click();
-    await expect(page, `try ${i} reaches the chat`).toHaveURL(/\/chat$/, { timeout: 8000 });
+    await expect(page, `try ${i} reaches Home`).toHaveURL(/\/home$/, { timeout: 8000 });
+    await page.goto(CHAT);
     await expect(page.getByText(/^Good (morning|afternoon|evening)!/).first()).toBeVisible({
       timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
     });
