@@ -90,8 +90,7 @@ export const DEBT_MESSAGE_PRIORITY = {
   // Spec step 114: a cheaper student loan plan, and studentaid.gov's steps, both can wait.
   student_pick: 31,
   student_steps: 27,
-  // Spec step 115: PMI that can come off is money every month; an escrow change is news.
-  mortgage_pmi: 62,
+  // Spec step 115: an escrow change is news. (PMI is raised by the home-equity source.)
   mortgage_escrow: 46,
   // Spec step 116: card use high enough to hurt the score; a score that moved.
   credit_utilisation: 47,
