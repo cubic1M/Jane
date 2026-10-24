@@ -238,14 +238,15 @@ return and worst drop, and that the evidence quotes the replay's own numbers.
 
 ## 2026-10-24: the strategy catalog, every strategy at every level
 
-The founder asked for every well-documented, rules-based strategy, backtested thoroughly, with only the good-enough ones recommended. [The catalog](strategy-catalog.md) has 40 strategies from public sources (Faber, Antonacci, Keller & Keuning, Butler et al., López de Prado, Choueifaty, the factor literature, Connors, the seasonal anomalies). They were replayed in GitHub Actions on Alpaca SIP daily closes, 2016 to October 2026, after costs, at every risk level (run 40080872141); the results are in [strategy-results.md](strategy-results.md).
+The founder asked for every well-documented, rules-based strategy, backtested thoroughly, with only the good-enough ones recommended. [The catalog](strategy-catalog.md) has 42 strategies from public sources (Faber, Antonacci, Keller & Keuning, Keller & Butler, Butler et al., Kipnis, López de Prado, Choueifaty, the factor literature, Connors, the seasonal anomalies). They were replayed in GitHub Actions on Alpaca SIP daily closes, 2016 to October 2026, after costs, at every risk level (run 40081382866); the results are in [strategy-results.md](strategy-results.md).
 
-- 67 trials (every strategy at every setting). Each was scored out of sample twice: walk-forward from 2020, and chosen to 2021 then scored from 2022.
-- The deflated Sharpe ratio of each walk-forward's excess over the level's mix, against the best of 67 lucky trials, is the haircut.
-- **Nothing is recommendable at any level.** None beat its level's mix by enough to rule out luck after testing 67 at once.
-- **Worth watching:** each beat the mix out of sample, inside the risk budget, with more return and not just less risk.
+- 69 trials (every strategy at every setting). Each was scored out of sample twice: walk-forward from 2020, and chosen to 2021 then scored from 2022.
+- The deflated Sharpe ratio of each walk-forward's excess over the level's mix, against the best of 69 lucky trials, is the haircut.
+- **Nothing is recommendable at any level.** None beat its level's mix by enough to rule out luck after testing 69 at once.
+- **Worth watching:** each beat the mix out of sample, inside the risk budget, with more return and not just less risk, and still ahead measured from 2021 and from 2022.
   - Hybrid asset allocation (HAA): every level, 5 to 10% likely a real edge.
   - Sector rotation: every level, strongest at High and Very high (18 to 22%).
   - Faber's aggressive GTAA: every level but Very high, 5 to 8%.
+  - Elastic asset allocation (EAA): every level but Very high, 4 to 6%.
 - Most of the rest did worse than simply keeping the level's mix, the honest result for most published rules once costs and out-of-sample years are counted.
 - The day-trading rules (every one lost after slippage) and the crypto rules are scored separately: `intraday-evidence.ts` and `crypto-evidence.ts`.
