@@ -6,7 +6,11 @@ import {
   THEME_STOP_LOSS,
   type Theme,
 } from "@/config/themes";
+import { THEME_FUNDS } from "@/config/portfolios";
 import type { Bar } from "@/lib/market/types";
+import { positionValue, type PlannedTrade, type Prices } from "./practice-autopilot";
+import type { LedgerState } from "./practice-ledger";
+import type { PastTrade } from "./practice-scan";
 
 // A news theme on its past events (Phase AW, Stage A): bought at the close of the day the news
 // broke, sold THEME_HOLD_DAYS trading days later or at the close it first falls THEME_STOP_LOSS
@@ -90,4 +94,61 @@ export function themeEvidence(trades: readonly ThemeTrade[]): ThemeEvidence {
     best: n ? Math.max(...trades.map((t) => t.returnShare)) : 0,
     heldUp: n > 0 && averageExcess > 0 && hitRate >= THEME_MIN_HIT_RATE,
   };
+}
+
+// When to get out of a theme slice the person said yes to (Phase AW): the whole position, after
+// THEME_HOLD_DAYS trading days from the buy, or as soon as it closes THEME_STOP_LOSS below what it
+// was bought at, as the idea said. The live autopilot sells with this, by itself; in suggest-only
+// mode it is shown, as every plan is.
+export function themeExits(
+  state: LedgerState,
+  prices: Prices,
+  trades: readonly Pick<
+    PastTrade,
+    "placedAt" | "side" | "ticker" | "quantity" | "amountCents" | "rule"
+  >[],
+  today: string,
+): PlannedTrade[] {
+  const out: PlannedTrade[] = [];
+  for (const ticker of THEME_FUNDS) {
+    const p = state.positions[ticker];
+    const price = prices[ticker];
+    if (!p || p.quantity <= 0 || !price) continue;
+    const buy = trades
+      .filter((t) => t.ticker === ticker && t.side === "buy" && (t.quantity ?? 0) > 0)
+      .sort((a, b) => (a.placedAt < b.placedAt ? 1 : -1))[0];
+    if (!buy) continue;
+    const bought = buy.placedAt.slice(0, 10);
+    const boughtAt = buy.amountCents / buy.quantity!;
+    const days = tradingDaysBetween(bought, today);
+    const stopped = price <= boughtAt * (1 - THEME_STOP_LOSS);
+    if (days < THEME_HOLD_DAYS && !stopped) continue;
+    const amountCents = positionValue(state, prices, ticker);
+    const change = price / boughtAt - 1;
+    const moved = `${change >= 0 ? "up" : "down"} ${(Math.abs(change) * 100).toFixed(1)}%`;
+    out.push({
+      ticker,
+      side: "sell",
+      amountCents,
+      rule: "theme_exit",
+      reason: stopped
+        ? `Out of ${ticker} at the stop: ${moved} since the news theme's buy on ${bought}, past the ${Math.round(THEME_STOP_LOSS * 100)}% it was allowed to fall.`
+        : `Out of ${ticker} after ${days} trading days, as the news theme said: ${moved} since the buy on ${bought}.`,
+    });
+  }
+  return out;
+}
+
+// Weekdays after `from`, up to and including `to`.
+export function tradingDaysBetween(from: string, to: string): number {
+  let n = 0;
+  for (
+    let t = Date.parse(`${from}T00:00:00Z`) + 86_400_000;
+    t <= Date.parse(`${to}T00:00:00Z`);
+    t += 86_400_000
+  ) {
+    const d = new Date(t).getUTCDay();
+    if (d !== 0 && d !== 6) n += 1;
+  }
+  return n;
 }

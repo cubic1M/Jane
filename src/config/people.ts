@@ -147,6 +147,7 @@ export const SUGGESTION_TOPICS = [
   "practice_glide_path",
   "practice_risk_mismatch",
   "practice_max_drop_near",
+  "practice_theme_idea",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
