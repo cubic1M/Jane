@@ -1,5 +1,6 @@
 import {
   BOOKS_DEBT_TYPES,
+  BOOKS_IMPORT_STALE_DAYS,
   BOOKS_RECONCILED_TYPES,
   BOOKS_STALE_DAYS,
   BOOKS_TOLERANCE_CENTS,
@@ -206,5 +207,20 @@ export function unmatchedToSay(unmatched: readonly Tx[], accounts: readonly Acct
   }
   return [...latest.values()].sort(
     (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
+  );
+}
+
+// Imported (CSV) accounts whose data ends long enough ago to say so: their newest transaction is
+// BOOKS_IMPORT_STALE_DAYS old or more. One with no transactions isn't said (nothing was imported).
+export function importsEnded(
+  accounts: readonly { id: string; name: string; source: string; lastDate: string | null }[],
+  asOf: string,
+): { id: string; name: string; lastDate: string }[] {
+  return accounts.flatMap((a) =>
+    a.source === "csv" &&
+    a.lastDate !== null &&
+    daysBetween(a.lastDate, asOf) >= BOOKS_IMPORT_STALE_DAYS
+      ? [{ id: a.id, name: a.name, lastDate: a.lastDate }]
+      : [],
   );
 }

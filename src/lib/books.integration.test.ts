@@ -284,4 +284,46 @@ describe.runIf(url)("books that balance", { timeout: 120_000 }, () => {
       ),
     ).toEqual([]);
   });
+
+  // Real-user QA: a CSV account went quiet after a week, and Jane read the silence as a missed
+  // paycheck. Its data ends where its file did, said plainly, with a fresh import offered.
+  it("says when an imported account's data ends, and offers a newer file", async () => {
+    const user = await client.user.create({
+      data: { email: `books-csv-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const account = await client.account.create({
+      data: {
+        userId: user.id,
+        source: "csv",
+        name: "Chase checking",
+        type: "depository",
+        subtype: "checking",
+        currentBalanceCents: 250_000,
+      },
+    });
+    await client.transaction.create({
+      data: {
+        userId: user.id,
+        accountId: account.id,
+        source: "csv",
+        date: day("2026-10-06"),
+        amountCents: 1_549,
+        description: "NETFLIX.COM",
+      },
+    });
+    const view = await runBooksCheck(user.id, { client, now: NOW });
+    const ended = view.open.find((i) => i.accountId === account.id && i.kind === "stale");
+    expect(ended?.words).toBe(
+      "Chase checking's data ends on 2026-10-06, the last day in the file you imported, so I can't see anything after it. Import a newer file and I'll pick up from there.",
+    );
+    const [said] = booksSource.gather(
+      { books: { open: [ended!], markedAccountIds: [], merged: 0 } } as never,
+      NOW,
+      { trigger: "open" } as never,
+    );
+    expect(said.actions).toEqual([
+      { id: "open", label: "Import a newer file", kind: "link", href: "/import" },
+    ]);
+  });
 });
