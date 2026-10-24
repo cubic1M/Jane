@@ -1,5 +1,12 @@
 import { usePracticeStrategy } from "@/app/investments/strategy-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
+import {
+  CRYPTO_SLEEVE_BY_LEVEL,
+  CRYPTO_STRATEGIES,
+  CRYPTO_STRATEGY_IDS,
+  CRYPTO_WARNING,
+} from "@/config/crypto-strategies";
 import { STRATEGY_CHOICES, type StrategyChoice } from "@/config/practice-preferences";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
@@ -36,6 +43,52 @@ export function Sparkline({ points, label }: { points: readonly number[]; label:
     <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={label}>
       <polyline points={d} fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
+  );
+}
+
+// Crypto, at Very high only: each rule on the years since its parameters were chosen, against
+// simply holding, with the plain warning.
+function CryptoMenu() {
+  return (
+    <div className="flex flex-col gap-2" aria-labelledby="crypto-menu-heading">
+      <h3 id="crypto-menu-heading" className="font-semibold">
+        Crypto (Very high only)
+      </h3>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        A small sleeve, {Math.round((CRYPTO_SLEEVE_BY_LEVEL[5] ?? 0) * 100)}% of the portfolio at
+        most. Each rule&apos;s setting was chosen on 2018 to 2021, then replayed from 2022 after
+        fees and slippage, against simply holding. {CRYPTO_WARNING}
+      </p>
+      <ul className="grid gap-2 sm:grid-cols-3">
+        {CRYPTO_STRATEGY_IDS.map((id) => {
+          const s = CRYPTO_STRATEGIES[id];
+          const r = CRYPTO_EVIDENCE[id];
+          return (
+            <li
+              key={id}
+              data-strategy={id}
+              className="flex flex-col gap-1 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium">{s.label}</p>
+                <Sparkline
+                  points={r.curve}
+                  label={`${s.label}: $100 became $${(r.curve.at(-1) ?? 100).toFixed(0)} since 2022`}
+                />
+              </div>
+              <p className="text-zinc-600 dark:text-zinc-400">{s.line}</p>
+              <p className="text-xs text-zinc-500">
+                Since 2022: {pct(r.later.cagr)} a year, worst drop {pct(r.later.maxDrawdown)}
+                {id === "crypto_hold"
+                  ? "."
+                  : ` (holding: ${pct(r.holdLater.cagr)}, worst ${pct(r.holdLater.maxDrawdown)}). ${r.beatsHolding ? "More return for its risk than holding." : "Less return for its risk than holding."}`}
+              </p>
+              <p className="text-xs text-zinc-500">Not in the practice portfolio yet.</p>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -131,8 +184,10 @@ export function StrategyMenuSection({
           );
         })}
       </ul>
+      <CryptoMenu />
       <p className="text-xs text-zinc-500">
-        {MENU_EVIDENCE_SOURCE}. {STRATEGY_NOT_A_FORECAST} Practice money only.
+        {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}. {STRATEGY_NOT_A_FORECAST} Practice
+        money only.
       </p>
       <DemoAdviceLabel />
     </section>

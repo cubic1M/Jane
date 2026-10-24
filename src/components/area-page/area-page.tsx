@@ -21,6 +21,7 @@ export function AreaPage({
   details,
   more,
   focus,
+  anchors,
 }: {
   tree: TreeData;
   // The tree's accessible name ("Insurance").
@@ -32,6 +33,9 @@ export function AreaPage({
   // What sits behind "More" for an item, when there is more.
   more: Record<string, ReactNode>;
   focus?: string;
+  // Older links by #anchor ("/taxes#withholding") and the node each opens, when there's no
+  // ?focus=. Optional: an area without old anchors leaves it out.
+  anchors?: Record<string, string>;
 }) {
   const known = (id: string | undefined) =>
     !!id && tree.branches.some((b) => b.id === id || b.items.some((i) => i.id === id));
@@ -40,14 +44,30 @@ export function AreaPage({
   const [picked, setPicked] = useState<string | null>(start?.includes(":") ? start : null);
   const panel = useRef<HTMLDivElement>(null);
 
+  // An old #anchor link opens its node once the page is in the browser.
+  useEffect(() => {
+    const id = anchors?.[window.location.hash.slice(1)];
+    if (start || !known(id)) return;
+    // After the first paint, like a tap would.
+    requestAnimationFrame(() => {
+      setOpen(branchOf(id!));
+      setPicked(id!.includes(":") ? id! : null);
+      requestAnimationFrame(() => panel.current?.scrollIntoView({ block: "nearest" }));
+    });
+    // Only on arrival: picking later doesn't look at the hash again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // The address follows what's open, so a reload or a shared link comes back to it.
   useEffect(() => {
     const url = new URL(window.location.href);
     const now = picked ?? open;
-    if (now) url.searchParams.set("focus", now);
-    else url.searchParams.delete("focus");
+    if (now) {
+      url.searchParams.set("focus", now);
+      if (anchors && url.hash) url.hash = "";
+    } else url.searchParams.delete("focus");
     if (url.href !== window.location.href) window.history.replaceState(null, "", url);
-  }, [open, picked]);
+  }, [open, picked, anchors]);
 
   const branch = tree.branches.find((b) => b.id === open) ?? null;
   const item = branch?.items.find((i) => i.id === picked) ?? null;

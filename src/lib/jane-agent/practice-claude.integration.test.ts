@@ -154,6 +154,13 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
         "All-weather (risk parity)",
       ]),
     );
+    expect(out.crypto.warning).toMatch(/lost 70% to 80%/);
+    expect(out.crypto.inThePracticePortfolio).toBe(false);
+    expect(out.crypto.strategies.map((s: { strategy: string }) => s.strategy)).toEqual([
+      "Crypto, held",
+      "Crypto trend",
+      "Crypto momentum",
+    ]);
     for (const s of out.strategies) {
       expect(typeof s.yearlyPercent).toBe("number");
       expect(typeof s.mixYearlyPercent).toBe("number");
