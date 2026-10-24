@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { SubmitButton } from "@/components/submit-button";
 
 // Reached from an email's unsubscribe link (the weekly digest and the monthly report, which
 // share one setting, or with what=alerts, alert emails); works without signing in. The change only
@@ -49,12 +50,9 @@ async function Content({
         method="post"
         action={`/api/unsubscribe?${new URLSearchParams({ token, from: "page", ...(alerts ? { what: "alerts" } : chat ? { what: "chat" } : {}) })}`}
       >
-        <button
-          type="submit"
-          className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800"
-        >
+        <SubmitButton className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800">
           Unsubscribe
-        </button>
+        </SubmitButton>
       </form>
     </>
   );

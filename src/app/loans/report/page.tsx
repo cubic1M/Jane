@@ -9,6 +9,7 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { sendLetterAction } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Collections and credit report errors (spec step 181): what's on the report that may need
 // fixing, the letters Jane wrote (each citing its rule, with its deadline), and what came
@@ -97,12 +98,9 @@ async function ReportContent({ searchParams }: Pick<PageProps<"/loans/report">, 
                         ) : (
                           <form action={sendLetterAction} className="mt-2">
                             <input type="hidden" name="letterId" value={l.id} />
-                            <button
-                              type="submit"
-                              className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
-                            >
+                            <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
                               Send this letter
-                            </button>
+                            </SubmitButton>
                           </form>
                         )}
                       </li>

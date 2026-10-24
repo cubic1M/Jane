@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { PayoffPlan, Strategy } from "@/planning/debt";
 import { monthAfter, monthName } from "@/planning/payoff";
 import { startPlan, stopPlan } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // The payoff plan across every debt (spec step 110), above the planner: the same math,
 // worked out from today's balances. In demo advice mode, Jane's pick and why (labelled);
@@ -44,9 +45,7 @@ function StartButton({
     <form action={startPlan}>
       <input type="hidden" name="strategy" value={strategy} />
       <input type="hidden" name="extra" value={(extraCents / 100).toFixed(2)} />
-      <button type="submit" className={primary ? BUTTON : SECONDARY}>
-        {label}
-      </button>
+      <SubmitButton className={primary ? BUTTON : SECONDARY}>{label}</SubmitButton>
     </form>
   );
 }
@@ -197,12 +196,9 @@ export function YourPlan({
                 : "Jane checks it every month."}
           </p>
           <form action={stopPlan}>
-            <button
-              type="submit"
-              className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
-            >
+            <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
               Stop the plan
-            </button>
+            </SubmitButton>
           </form>
         </div>
       ) : (

@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { turnOffPartner } from "./actions";
 import { PartnerForm, type PartnerFormValues } from "./partner-form";
+import { SubmitButton } from "@/components/submit-button";
 
 const ACTION_TYPES = [
   "move_idle_cash",
@@ -82,12 +83,9 @@ async function Partners() {
                 {p.active ? (
                   <form action={turnOffPartner}>
                     <input type="hidden" name="id" value={p.id} />
-                    <button
-                      type="submit"
-                      className="rounded-full bg-red-700 px-4 py-1 text-xs font-semibold text-white"
-                    >
+                    <SubmitButton className="rounded-full bg-red-700 px-4 py-1 text-xs font-semibold text-white">
                       Turn off now
-                    </button>
+                    </SubmitButton>
                   </form>
                 ) : (
                   <span className="text-xs font-semibold text-zinc-500">Off</span>

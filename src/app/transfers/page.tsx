@@ -7,6 +7,7 @@ import { listTransfers } from "@/lib/money-movement/transfers";
 import { requireUser } from "@/lib/session";
 import { STAND_IN_NOTE } from "@/lib/jane-agent/replies-paycheck";
 import { undoTransfer } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Transfers (spec steps 144–145): every transfer and payment Jane scheduled, by herself or on
 // a tap, and Undo while it's pending.
@@ -67,12 +68,9 @@ async function TransfersContent() {
               {t.undoable && (
                 <form action={undoTransfer}>
                   <input type="hidden" name="transferId" value={t.id} />
-                  <button
-                    type="submit"
-                    className="min-h-11 px-3 text-sm font-semibold text-emerald-700 hover:underline"
-                  >
+                  <SubmitButton className="min-h-11 px-3 text-sm font-semibold text-emerald-700 hover:underline">
                     Undo
-                  </button>
+                  </SubmitButton>
                 </form>
               )}
             </li>
