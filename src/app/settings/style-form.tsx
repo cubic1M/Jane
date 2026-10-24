@@ -7,6 +7,7 @@ import {
 } from "@/lib/jane-agent/style";
 import type { Posting } from "@/lib/jane-agent/preferences";
 import { saveStyle } from "./memory-actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // How Jane talks (spec step 188): answer length, numbers first or plain words first, and how
 // often she posts. Saved on Save, the same as saying it in the chat and tapping Remember.
@@ -44,12 +45,9 @@ export function StyleForm({ style, posting }: { style: Style; posting: Posting }
           <option value="as_they_come">Things as they come</option>
         </select>
       </label>
-      <button
-        type="submit"
-        className="inline-flex min-h-11 w-fit items-center border border-emerald-700 px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
-      >
+      <SubmitButton className="inline-flex min-h-11 w-fit items-center border border-emerald-700 px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950">
         Save how Jane talks
-      </button>
+      </SubmitButton>
     </form>
   );
 }

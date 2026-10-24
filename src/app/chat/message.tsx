@@ -7,6 +7,7 @@ import type { MessageView } from "@/lib/jane-agent/view";
 import { tapButton, type MessageState } from "./actions";
 import { ReadAloud } from "./read-aloud";
 import { togglePin } from "./pin";
+import { SubmitButton } from "@/components/submit-button";
 
 // One message in Jane's chat (spec step 81). Jane's sit on the left with their buttons; a
 // tap answers it in place, and it shows what was chosen instead of the buttons. Undo stays
@@ -171,12 +172,9 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
         <form action={togglePin}>
           <input type="hidden" name="messageId" value={message.id} />
           <input type="hidden" name="pinned" value={message.pinned ? "false" : "true"} />
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-zinc-500 hover:underline"
-          >
+          <SubmitButton className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-zinc-500 hover:underline">
             {message.pinned ? "Unpin" : "Pin"}
-          </button>
+          </SubmitButton>
         </form>
       </div>
       {(buttons.length > 0 || message.links.length > 0) && (

@@ -26,9 +26,11 @@ export function AppHeader({
 }) {
   return (
     <header className="flex flex-col gap-3 text-sm">
+      {/* Above the docked chat (z-40), so the profile menu opens over it and Sign out can be
+          pressed; the chat expanded to the whole window (z-50, later on the page) still covers it. */}
       <div
         id="app-top-bar"
-        className="flex flex-wrap items-center gap-x-3 gap-y-1 lg:fixed lg:inset-x-0 lg:top-0 lg:z-40 lg:h-14 lg:flex-nowrap lg:border-b lg:border-zinc-300 lg:bg-white lg:px-4 dark:lg:border-zinc-700 dark:lg:bg-zinc-950 print:static"
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 lg:fixed lg:inset-x-0 lg:top-0 lg:z-50 lg:h-14 lg:flex-nowrap lg:border-b lg:border-zinc-300 lg:bg-white lg:px-4 dark:lg:border-zinc-700 dark:lg:bg-zinc-950 print:static"
       >
         <Link
           href="/home"

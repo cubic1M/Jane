@@ -13,6 +13,7 @@ import { scoreLine } from "@/lib/jane-agent/borrowing-power-replies";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { checkAgainAction } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // What you could borrow (spec step 250): a mortgage, a car loan, a personal loan and a card, each
 // with the likely amount and rate from soft checks, the day it was checked, and what would
@@ -114,9 +115,7 @@ async function BorrowContent({ searchParams }: Pick<PageProps<"/loans/borrow">, 
             ; applying is a separate step, and only on your tap.
           </p>
           <form action={checkAgainAction}>
-            <button type="submit" className={BUTTON}>
-              Check again
-            </button>
+            <SubmitButton className={BUTTON}>Check again</SubmitButton>
           </form>
         </>
       )}

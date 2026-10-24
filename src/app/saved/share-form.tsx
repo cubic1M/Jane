@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { shareTotal, stopSharing, type ShareState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const BUTTON =
   "inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-semibold disabled:opacity-60";
@@ -15,22 +16,20 @@ export function ShareForm() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-3">
         <form action={share}>
-          <button
-            type="submit"
+          <SubmitButton
             disabled={sharing}
             className={`${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`}
           >
             Share my total
-          </button>
+          </SubmitButton>
         </form>
         <form action={stop}>
-          <button
-            type="submit"
+          <SubmitButton
             disabled={stopping}
             className={`${BUTTON} border border-zinc-400 hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-900`}
           >
             Stop sharing
-          </button>
+          </SubmitButton>
         </form>
       </div>
       {shown && (

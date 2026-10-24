@@ -9,6 +9,7 @@ import { loadHsa } from "@/lib/investments/hsa";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { investHsa, linkHsa, reimburse } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // The HSA as an investment (spec step 159): cash and invested, the cash cushion, room under
 // the limit, and the receipts vault of medical charges to pay back tax-free later.
@@ -53,9 +54,7 @@ async function HsaContent({
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               No HSA linked. Try a demo one.
             </p>
-            <button type="submit" className={`${BUTTON} self-start`}>
-              Link a demo HSA
-            </button>
+            <SubmitButton className={`${BUTTON} self-start`}>Link a demo HSA</SubmitButton>
           </form>
         ) : (
           <p className="text-zinc-600 dark:text-zinc-400">No HSA linked yet.</p>
@@ -90,9 +89,9 @@ async function HsaContent({
                     Invest the {formatCents(hsa.plan.toInvestCents)} beyond the cushion in a
                     low-cost index fund, through the simulated brokerage (no real money moves).
                   </p>
-                  <button type="submit" className={`${BUTTON} self-start`}>
+                  <SubmitButton className={`${BUTTON} self-start`}>
                     Invest {formatCents(hsa.plan.toInvestCents)}
-                  </button>
+                  </SubmitButton>
                   <DemoAdviceLabel />
                 </form>
               )}
@@ -125,12 +124,9 @@ async function HsaContent({
                   {r.status === "saved" ? (
                     <form action={reimburse}>
                       <input type="hidden" name="receiptId" value={r.id} />
-                      <button
-                        type="submit"
-                        className="text-xs font-medium text-emerald-700 hover:underline"
-                      >
+                      <SubmitButton className="text-xs font-medium text-emerald-700 hover:underline">
                         Mark paid back
-                      </button>
+                      </SubmitButton>
                     </form>
                   ) : (
                     <span className="text-xs text-zinc-500">paid back</span>
