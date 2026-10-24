@@ -32,6 +32,8 @@ export function AppHeader({
       >
         <Link
           href="/home"
+          // On every page: prefetching the hub would load all of its data each time.
+          prefetch={false}
           className="inline-flex min-h-11 shrink-0 items-center text-base font-bold tracking-tight"
         >
           <span aria-hidden className="text-emerald-700">

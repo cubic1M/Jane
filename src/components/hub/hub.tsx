@@ -4,7 +4,9 @@ import type { AreaTile, HeroView } from "@/lib/hub/view";
 import { HealthBadge, Meter, Sparkline, StackBar, TinyChart } from "./charts";
 
 // The home hub's hero row and area tiles (docs/design/home-hub.md): a big number and one
-// small graphic each, the whole card a link to where the number comes from.
+// small graphic each, the whole card a link to where the number comes from. The links don't
+// prefetch: each target reads the person's data, and prefetching them all competed with the
+// hub's own loads (speed pass, 2026-10-24).
 
 const CARD =
   "group relative flex min-w-0 flex-col gap-2 border border-zinc-300 bg-white p-4 hover:border-emerald-700 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:border-emerald-500";
@@ -27,7 +29,7 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
     <section aria-label="Your money at a glance" className="grid grid-cols-2 gap-3 xl:grid-cols-3">
       {safe && (
         <div className={`${CARD} col-span-2 xl:col-span-1`}>
-          <Link href="/figures/safe_to_spend" className={CARD_LINK}>
+          <Link prefetch={false} href="/figures/safe_to_spend" className={CARD_LINK}>
             {safe.label}
           </Link>
           <p
@@ -52,7 +54,7 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
       )}
       {netWorth && (
         <div className={CARD}>
-          <Link href="/net-worth" className={CARD_LINK}>
+          <Link prefetch={false} href="/net-worth" className={CARD_LINK}>
             Net worth
           </Link>
           <p
@@ -79,7 +81,11 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
       <div className={CARD}>
         {/* Each figure links to the page that shows it: what was found is the report's total
             (hub QA: it linked to /plan, whose total counts more). */}
-        <Link href={saved.label === "Saved so far" ? "/saved" : "/report"} className={CARD_LINK}>
+        <Link
+          prefetch={false}
+          href={saved.label === "Saved so far" ? "/saved" : "/report"}
+          className={CARD_LINK}
+        >
           {saved.label}
         </Link>
         <p
@@ -106,6 +112,7 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
         )}
         {planItems > 0 && (
           <Link
+            prefetch={false}
             href="/plan"
             className="relative z-10 self-start text-sm font-medium text-emerald-700 hover:underline"
           >
@@ -126,7 +133,11 @@ export function AreaTiles({ tiles }: { tiles: AreaTile[] }) {
         <h2 id="areas-heading" className="text-base font-semibold">
           Your areas
         </h2>
-        <Link href="/home/map" className="text-sm font-medium text-emerald-700 hover:underline">
+        <Link
+          prefetch={false}
+          href="/home/map"
+          className="text-sm font-medium text-emerald-700 hover:underline"
+        >
           What Jane does ›
         </Link>
       </div>
@@ -139,6 +150,7 @@ export function AreaTiles({ tiles }: { tiles: AreaTile[] }) {
             style={{ animationDelay: `${i * 40}ms` }}
           >
             <Link
+              prefetch={false}
               href={tile.href}
               className={`${CARD_LINK} font-semibold text-zinc-900 dark:text-zinc-100`}
             >
