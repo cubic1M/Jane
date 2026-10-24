@@ -46,12 +46,12 @@ jobs:
       - run: npm run typecheck
 
   unit:
-    name: Unit tests (${{ matrix.shard }}/6)
+    name: Unit tests (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4]
     services:
       postgres:
         image: postgres:16
@@ -86,7 +86,17 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
-      - run: npx vitest run --shard=${{ matrix.shard }}/6
+      # Trial and retention cleanup delete every expired sample person in the database, so they
+      # run on their own after shard 1's tests, never alongside tests that create sample people.
+      - run: >-
+          npx vitest run --shard=${{ matrix.shard }}/4
+          --exclude src/lib/trial.integration.test.ts
+          --exclude src/lib/retention.integration.test.ts
+      - if: matrix.shard == 1
+        name: Trial and retention cleanup tests, alone
+        run: >-
+          npx vitest run --no-file-parallelism
+          src/lib/trial.integration.test.ts src/lib/retention.integration.test.ts
 
   checks:
     name: Lint, typecheck and unit tests
@@ -100,15 +110,17 @@ jobs:
           test "${{ needs.static.result }}" = success && test "${{ needs.unit.result }}" = success
 
   e2e:
-    name: End-to-end tests (${{ matrix.shard }}/4)
-    # About 35 minutes in one job, so it runs in four shards. It runs on main after each merge
+    name: End-to-end tests (${{ matrix.shard }}/2)
+    # About 35 minutes in one job, so it runs in two shards. More shards finish sooner alone but
+    # each one compiles the pages again, and with many PRs at once the extra runner time queues
+    # everything behind GitHub's concurrent-job limit. It runs on main after each merge
     # and on PRs labelled "e2e", not on every PR push, so the other checks get runners sooner.
     if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:16
@@ -136,7 +148,7 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
-      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
 
   # The one end-to-end result the branch ruleset requires: it passes when every shard passed, or
   # when the end-to-end tests didn't run (a PR without the "e2e" label), so auto-merge waits

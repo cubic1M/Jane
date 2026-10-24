@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addPracticeIdea, deleteUser, signedInUser } from "./db";
+import { landInChat } from "./chat-page";
 
 // Jane's practice ideas on the practice portfolio page (Phase AW, Stage A): each idea with how
 // sure Jane is and Yes or No, the strategy followed today, and what the person's answers
@@ -26,7 +27,7 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // A sample person's practice portfolio starts by itself during the first scan, a few weeks
   // back, with those days replayed: no start button to find.
