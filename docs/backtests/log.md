@@ -256,3 +256,8 @@ The founder asked for every well-documented, rules-based strategy, backtested th
   - HAA half-and-half with the No-Brainer is worth watching at every level but Very high (6 to 13%).
   - Trend and absolute-momentum overlays on the level's own mix cut risk but gave up more return; neither is worth watching.
 - The day-trading rules re-run on Alpaca's 5-minute bars to October 23 (run 40083791242) gave the same result: every one lost after slippage while holding SPY made 19.9% a year.
+- Batch 8 ran every strategy through 2008, the 2020 crash and 2022 on Yahoo's adjusted closes from 2005 (run 40084992464, [strategy-regimes.md](strategy-regimes.md)). Each younger fund is read through an older look-alike before it began. Every strategy is at its published middle setting, so this is descriptive, not out of sample.
+  - The watch list held up where the mixes fell. Through the 2008 crash the mixes fell 17% to 52%; meanwhile HAA gained 5.9%, the watch-list blend 11.1% and EAA 13.0%.
+  - In the 2020 crash: HAA 0.0%, the blend +1.4%, EAA +4.1%, against −12% to −31%. In 2022: +3.5%, +1.6% and +5.2%, against −13% to −17%.
+  - HAA with the No-Brainer fell 23% in the 2008 crash, its fixed half doing what fixed mixes do.
+  - This doesn't change the verdicts: on the out-of-sample years the edge still doesn't clear the haircut.
