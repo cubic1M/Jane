@@ -31,9 +31,11 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
   const panelChat = page.frameLocator('iframe[title="Chat with Jane"]');
   for (const path of ["/home", "/insurance"]) {
     await page.goto(path);
-    await expect(page.getByText(/still going through your accounts/)).toHaveCount(0);
+    await expect(page.getByText(/still (going|looking) through your accounts/)).toHaveCount(0);
     if ((await page.locator('iframe[title="Chat with Jane"]').count()) > 0) {
-      await expect(panelChat.getByText(/still going through your accounts/)).toHaveCount(0);
+      await expect(panelChat.getByText(/still (going|looking) through your accounts/)).toHaveCount(
+        0,
+      );
     }
   }
   // Her chat by itself for the checks below.
