@@ -60,10 +60,7 @@ export function HeroRow({
           <Link href={saved.label === "Saved so far" ? "/saved" : "/report"} className={CARD_LINK}>
             {saved.label}
           </Link>
-          <p
-            data-hub-number="saved"
-            className="text-2xl font-semibold tracking-tight tabular-nums"
-          >
+          <p data-hub-number="saved" className="text-2xl font-semibold tracking-tight tabular-nums">
             {saved.label === "Money found" && saved.cents === 0 && planItems > 0 ? (
               // As the report says it when nothing has a sure dollar figure yet.
               `${planItems} to look at`
