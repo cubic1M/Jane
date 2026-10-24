@@ -4,6 +4,7 @@ import { AreaTabs } from "@/components/area-tabs";
 import { BackToChat } from "@/components/back-to-chat";
 import { DemoBanner } from "@/components/demo-banner";
 import { ProfileMenu } from "@/components/profile-menu";
+import { ScanBarGate } from "@/components/scan-bar-gate";
 import { ChatToggle } from "@/components/side-chat/chat-toggle";
 import { SideChatUser } from "@/components/side-chat/side-chat";
 
@@ -48,6 +49,10 @@ export function AppHeader({
         </div>
       </div>
       <SideChatUser userId={user.id} />
+      {/* The first scan's loading bar, across the top of every page while it runs. */}
+      <Suspense>
+        <ScanBarGate userId={user.id} />
+      </Suspense>
       <Suspense>
         <DemoBanner userId={user.id} />
       </Suspense>

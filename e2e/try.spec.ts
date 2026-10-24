@@ -18,6 +18,24 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
   await expect(page.getByRole("note").filter({ hasText: "sample person" })).toContainText(
     "deleted after a day",
   );
+  // While Jane reads the sample person's accounts, a loading bar across the top of the page
+  // says how far she's got, and goes when she's done; the chat never says "still going
+  // through your accounts" (founder: "remove this one from the chat"). On a fast run the scan
+  // may be over before the page is drawn: then there's no bar to see.
+  const bar = page.locator("[data-scan-bar]");
+  if ((await bar.count()) > 0) {
+    await expect(bar).toHaveAttribute("role", "progressbar");
+    await expect(bar).toHaveText(/^\[[█░]{16}\] \d{1,3}% · \S/);
+  }
+  await expect(bar).toHaveCount(0, { timeout: 120_000 });
+  const panelChat = page.frameLocator('iframe[title="Chat with Jane"]');
+  for (const path of ["/home", "/insurance"]) {
+    await page.goto(path);
+    await expect(page.getByText(/still going through your accounts/)).toHaveCount(0);
+    if ((await page.locator('iframe[title="Chat with Jane"]').count()) > 0) {
+      await expect(panelChat.getByText(/still going through your accounts/)).toHaveCount(0);
+    }
+  }
   // Her chat by itself for the checks below.
   await page.goto(CHAT);
   // Jane's first brief shows on the open page by itself (no reload here) within 25 seconds of

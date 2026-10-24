@@ -48,7 +48,6 @@ import {
   isDemoToken,
   isSecondLoginToken,
 } from "./demo";
-import { postScanningHello } from "@/lib/jane-agent/open";
 import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
@@ -619,10 +618,7 @@ export async function syncItem(
   timing.mark("item");
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
   // Everything the demo bank needs before it can answer, together (each is a round trip):
-  // what it reads about the person, its example options and sample insurance policy, and, on
-  // the first scan, "still going through your accounts", which comes before anything Jane
-  // finds whenever the person gets to the chat.
-  const firstScan = progressive && item.transactionsCursor === null;
+  // what it reads about the person, its example options and sample insurance policy.
   const [demo] = await Promise.all([
     isDemoToken(accessToken)
       ? Promise.all([
@@ -635,13 +631,6 @@ export async function syncItem(
           ensureDemoOptions({ client, now }),
           ensureDemoPolicies(item.userId, { client, now }),
         ])
-      : null,
-    firstScan
-      ? // A millisecond before this sync's own time: everything Jane posts later in the sync is
-        // stamped from `now` onward, so the hello is strictly first, never tied with the brief.
-        postScanningHello(item.userId, { client, now: new Date(now.getTime() - 1) }).catch(
-          (error) => console.error("Posting the scanning hello failed", { error: String(error) }),
-        )
       : null,
   ]);
   if (demo) {
