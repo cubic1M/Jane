@@ -1,3 +1,4 @@
+import { toComparison, type Comparison } from "@/lib/comparison";
 import { validTimezone } from "@/lib/digest/week";
 import { landing } from "@/lib/area-pages/landing";
 import type { OptionSet } from "@/lib/floating-cards";
@@ -41,6 +42,9 @@ export type MessageView = {
   // Options of one choice (refs.options), while the message is open: the floating pick card.
   // Its buttons (option.pick, option.later) are the card's, not the message's.
   options: OptionSet | null;
+  // The same options as comparison cards (src/lib/comparison.ts), which the chat shows instead
+  // when the card carries their numbers (cards saved before them don't).
+  comparison?: Comparison | null;
   // A suggestion card's extra details (refs.cardDetails), or null.
   cardDetails?: CardExtras | null;
   // A suggestion's whole reason (refs.suggestionWhy), or null.
@@ -109,6 +113,10 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     options:
       message.status === "open" && message.refs.options?.options?.length
         ? toOptionSet(message.refs.options)
+        : null,
+    comparison:
+      message.status === "open" && message.refs.options?.options?.length
+        ? toComparison(message.refs.options)
         : null,
     cardDetails: message.refs.cardDetails ?? null,
     cardWhy: message.refs.suggestionWhy ?? null,

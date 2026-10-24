@@ -25,12 +25,17 @@ export const OPTION_ACTIONS: MessageAction[] = [
   { id: "option.later", label: "Later", kind: "secondary" },
 ];
 
-// What the pick did, in a line under the message, and the agent's job it started, if any.
-async function pick(
+// The errors a lane's picker throws for a stale, made-up or already-answered option.
+export const isPickError = (error: unknown): error is Error =>
+  error instanceof PickError || error instanceof FitPickError || error instanceof AcceptShopError;
+
+// What the pick did, in a line under the message, and the agent's job it started, if any. The
+// comparison cards on the area pages (src/lib/compare-actions.ts) pick through here too.
+export async function pickOffered(
   userId: string,
-  card: OfferedOptions,
+  card: Pick<OfferedOptions, "kind" | "topic" | "policyId">,
   optionId: string,
-  at: { client: PrismaClient; now: Date },
+  at: { client?: PrismaClient; now?: Date } = {},
 ): Promise<{ note: string; agentJobId?: string }> {
   // A reshop's quotes (step 104): the switch to the picked one, which Jane's agent does.
   const shopId = card.kind === "insurance" ? shopIdOf(card.topic) : null;
@@ -70,20 +75,14 @@ export const optionPick: ActionHandler = {
       throw new ChatActionError("not_offered", "That option isn't on this card.");
     }
     try {
-      const { note, agentJobId } = await pick(userId, card, chosen.id, { client, now });
+      const { note, agentJobId } = await pickOffered(userId, card, chosen.id, { client, now });
       return {
         answeredWith: chosen.label,
         note,
         ...(agentJobId ? { agentJobIds: [agentJobId] } : {}),
       };
     } catch (error) {
-      if (
-        error instanceof PickError ||
-        error instanceof FitPickError ||
-        error instanceof AcceptShopError
-      ) {
-        throw answeredElsewhere(error.message);
-      }
+      if (isPickError(error)) throw answeredElsewhere(error.message);
       throw error;
     }
   },
