@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { areaTree, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
-// The Jane, Money and Ahead hubs (spec step 80), filled by the demo bank: each shows its
+// The Jane, Spending & bills and Ahead hubs (spec step 80), filled by the demo bank: each shows its
 // sections and live numbers, and its tiles open the full pages.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -47,19 +48,25 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
   await page.locator('main a[href^="/report/"]').first().click();
   await expect(page).toHaveURL(/\/report\/[\w-]+$/);
 
-  // Money: the picture, grouped, each tile with its number.
+  // Spending & bills: the area's tree (docs/design/area-pages.md); picking an item shows its
+  // detail with live numbers, and the nav links open the full pages.
   await page.goto("/money");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your money");
-  for (const name of ["What you have", "What goes out", "What you owe", "Your files"]) {
-    await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
-  }
-  const netWorth = page.getByRole("listitem").filter({ hasText: "Net worth" });
-  await expect(netWorth).toContainText(DOLLARS);
-  await expect(page.getByRole("listitem").filter({ hasText: "Loans and cards" })).toContainText(
-    DOLLARS,
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Spending & bills");
+  await expect(areaTree(page, "Spending & bills")).toBeVisible();
+  const worth = await pickItem(page, "Spending & bills", "What you have", "Net worth");
+  await expect(worth).toContainText(DOLLARS);
+  await expect(worth.getByRole("link", { name: "Net worth, month by month" })).toHaveAttribute(
+    "href",
+    "/net-worth",
   );
-  await expect(page.getByRole("link", { name: "Things you own" })).toBeVisible();
-  await page.getByRole("link", { name: "Coming up" }).click();
+  const loans = await pickItem(page, "Spending & bills", "What you have", "Loans and cards");
+  await expect(loans).toContainText(/Owed across \d+ accounts/);
+  const bills = await pickItem(page, "Spending & bills", "Coming up", "The next month of bills");
+  await expect(bills).toContainText(DOLLARS);
+  await page
+    .getByRole("navigation", { name: "Spending and bills pages" })
+    .getByRole("link", { name: "Coming up" })
+    .click();
   await expect(page).toHaveURL("/bills");
 
   // Ahead: planning, with the yearly set-aside and the next deadline.

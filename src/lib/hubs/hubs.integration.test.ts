@@ -17,6 +17,8 @@ import { syncItem } from "@/lib/plaid/sync";
 import { aheadTiles, loadAheadHub } from "./ahead";
 import { loadJaneHub } from "./jane";
 import { loadMoneyHub, moneyTiles } from "./money";
+import { moneyTree } from "@/lib/area-pages/money";
+import { loadMoneyArea } from "@/lib/area-pages/money-load";
 
 // The three hubs (spec step 80) against a real, migrated Postgres (see
 // src/detection/engine.integration.test.ts): a person with the demo bank gets the same
@@ -173,6 +175,67 @@ describe.runIf(url)("the hubs against a real database", () => {
     const tiles = moneyTiles(data).flatMap((g) => g.tiles);
     expect(tiles.find((t) => t.label === "Things you own")?.status).not.toBe("Add your home");
     expect(tiles.find((t) => t.label === "Investments")?.value).not.toBeNull();
+  });
+
+  // Spending & bills as a tree (docs/design/area-pages.md): the hub's numbers, and only this
+  // person's suggestions in the area.
+  it("Spending & bills tree: the hub's numbers, and only this person's suggestions", async () => {
+    const suggestion = (id: string, capability: string, topic: string, worthCents: number) =>
+      client.suggestion.create({
+        data: {
+          userId: id,
+          key: `${capability}:${topic}`,
+          capability,
+          topic,
+          title: "Ask your provider for a lower rate",
+          short: "Your internet bill is higher than most like it.",
+          worthCents,
+          worthKind: "saves",
+          confidencePercent: 80,
+          confidenceReason: "From your bills",
+          urgency: "later",
+          why: "Providers often lower the rate when asked.",
+          actionLabel: "Ask for a lower rate",
+          actionHref: "/report",
+        },
+      });
+    // Starting from none: the demo bank's scan leaves its own.
+    await client.suggestion.deleteMany({ where: { userId: { in: [userId, otherId] } } });
+    await suggestion(userId, "cost", "bill_negotiation", 24_000);
+    // Another person's, and one outside the area, never show.
+    await suggestion(otherId, "cost", "bank_fees", 9_900);
+    await suggestion(userId, "taxes", "w4_check", 50_000);
+
+    const [area, hub] = await Promise.all([
+      loadMoneyArea(userId, { client, now: NOW }),
+      loadMoneyHub(userId, { client, now: NOW }),
+    ]);
+    expect(area.have.netCents).toBe(hub.netWorth.netCents);
+    expect(area.have.debt).toEqual(hub.debt);
+    expect(area.spending?.spendingCents).toBe(hub.spendingCents);
+    expect(area.recurring.length).toBe(hub.recurring.count);
+    expect(area.lows.length).toBeGreaterThan(0);
+    expect(area.bills.length).toBeGreaterThan(0);
+    expect(area.suggestions.map((s) => s.topic)).toEqual(["bill_negotiation"]);
+    expect(area.actions.bill_negotiation).toEqual({
+      label: "Ask for a lower rate",
+      href: "/report",
+      why: "Providers often lower the rate when asked.",
+    });
+
+    const tree = moneyTree(area);
+    expect(tree.tree.branches[0]).toMatchObject({ id: "charges", label: "Charges to look at" });
+    expect(tree.tree.branches[0].items).toEqual([
+      expect.objectContaining({ id: "charges:bill_negotiation", label: "A bill you can lower" }),
+    ]);
+    expect(tree.tree.branches.map((b) => b.id)).toEqual(
+      expect.arrayContaining(["coming", "subscriptions", "spending", "have"]),
+    );
+
+    const empty = await loadMoneyArea(emptyId, { client, now: NOW });
+    expect(empty).toMatchObject({ hasAccounts: false, suggestions: [], lows: [], bills: [] });
+    expect(moneyTree(empty).tree.branches.map((b) => b.id)).toEqual(["have"]);
+    await client.suggestion.deleteMany({ where: { userId: { in: [userId, otherId] } } });
   });
 
   it("Ahead: yearly bills, deadlines and debt from the demo bank", async () => {
