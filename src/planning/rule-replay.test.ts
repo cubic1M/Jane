@@ -39,10 +39,10 @@ describe("replayRules: a planted dip, worked by hand", () => {
   // Jan 2: $10,000 + $500 in. The autopilot buys the model: VTI $2,100, VXUS $1,050, BND $6,300,
   //   BIL $1,050. No cash left.
   // Feb 3: $500 in. Worth $1,680 + $1,050 + $6,300 + $1,050 + $500 = $10,580. VTI is 20% below its
-  //   high of the days before: a dip. VTI is held at a loss, so the dip buy goes into ITOT (a
-  //   wash sale otherwise later): the smallest of the cash ($500), 5% of $10,580 ($529) and the
-  //   room to 25% in US stocks ($2,645 − $1,680 = $965) is $500, 12.5 ITOT. Mix inside the band.
-  // Feb 4: worth $2,100 + $625 + $1,050 + $6,300 + $1,050 = $11,125.
+  //   high of the days before: a dip. No losses are harvested here (no harvest rule), so the dip
+  //   buy goes into VTI itself: the smallest of the cash ($500), 5% of $10,580 ($529) and the
+  //   room to 25% in US stocks ($2,645 − $1,680 = $965) is $500, 6.25 VTI. Mix inside the band.
+  // Feb 4: worth $2,725 (27.25 VTI) + $1,050 + $6,300 + $1,050 = $11,125.
   // Time-weighted: $10,000; then ×(10,580 − 500)/10,500 = $9,600; then ×11,125/10,580
   //   = $10,094.52. Return +0.945%. $11,000 put in.
   const bars = {
@@ -63,16 +63,16 @@ describe("replayRules: a planted dip, worked by hand", () => {
     BIL: flat(),
   };
 
-  it("buys the dip with the month's cash, into the swap partner, and nothing else", () => {
+  it("buys the dip with the month's cash, into the kind's own fund, and nothing else", () => {
     const r = replayRules(base(bars))!;
     expect(r.trades.map((t) => [t.date, t.ticker, t.side, t.amountCents, t.rule])).toEqual([
       ["2025-01-02", "VTI", "buy", 210_000, "model_buy"],
       ["2025-01-02", "VXUS", "buy", 105_000, "model_buy"],
       ["2025-01-02", "BND", "buy", 630_000, "model_buy"],
       ["2025-01-02", "BIL", "buy", 105_000, "model_buy"],
-      ["2025-02-03", "ITOT", "buy", 50_000, "dip_buy"],
+      ["2025-02-03", "VTI", "buy", 50_000, "dip_buy"],
     ]);
-    expect(r.trades[4].quantity).toBe(12.5);
+    expect(r.trades[4].quantity).toBe(6.25);
     expect(r.trades[4].reason).toMatch(/VTI is 20% below its high/);
     expect(r.acted).toEqual({ dip_buy: 1 });
     expect(r.held).toEqual({});

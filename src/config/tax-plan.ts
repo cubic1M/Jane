@@ -137,3 +137,7 @@ export const PLAN_ORDER: readonly PlanMoveKey[] = Object.keys(TAX_PLAN) as PlanM
 // A W-4 check is due this many days after a new job or a new baby.
 export const W4_AFTER_EVENT_DAYS = 30;
 export const W4_LIFE_EVENTS = ["new_job", "new_baby"] as const;
+
+// The Taxes page's tree (src/lib/area-pages/taxes.ts): an open move this close to its
+// deadline is urgent.
+export const PLAN_SOON_DAYS = 14;

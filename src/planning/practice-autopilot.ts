@@ -8,7 +8,8 @@ import {
   type PracticeClass,
 } from "@/config/portfolios";
 import type { RiskLevel } from "@/config/investing";
-import { DRIFT_STOCKS_BAND } from "@/config/practice-scan";
+import { DRIFT_STOCKS_BAND, HARVEST_MIN_LOSS_SHARE } from "@/config/practice-scan";
+import { HARVEST_MIN_LOSS_CENTS } from "@/config/tax";
 import type { LedgerState } from "./practice-ledger";
 
 // Autopilot for the practice portfolio (spec step 291, Phase AW, Stage A). Pure: given the model
@@ -35,6 +36,8 @@ const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 const USD = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dollars = (cents: number) => `$${USD.format(cents / 100)}`;
 const pct = (n: number) => `${Math.round(n * 100)}%`;
+// One decimal, so a small gap doesn't read as none ("4.8% against 5%", not "5% against 5%").
+const pctTenth = (n: number) => `${(Math.round(n * 1000) / 10).toString()}%`;
 const LABEL: Record<PracticeClass, string> = {
   us_stocks: "US stocks",
   intl_stocks: "international stocks",
@@ -66,6 +69,41 @@ export function withinHard(limits: AutopilotLimits | undefined): AutopilotLimits
     perStockShare: Math.min(HARD.perStockShare, limits.perStockShare),
     tradesPerDay: Math.min(HARD.tradesPerDay, limits.tradesPerDay),
   };
+}
+
+// A loss worth harvesting: at least HARVEST_MIN_LOSS_SHARE of what the holding cost and at least
+// HARVEST_MIN_LOSS_CENTS. The scan's harvest and the buys below both ask this.
+export function lossToHarvest(state: LedgerState, prices: Prices, ticker: string): boolean {
+  const p = state.positions[ticker];
+  if (!p) return false;
+  const loss = p.costBasisCents - positionValue(state, prices, ticker);
+  return loss >= Math.max(HARVEST_MIN_LOSS_CENTS, HARVEST_MIN_LOSS_SHARE * p.costBasisCents);
+}
+
+const atLoss = (state: LedgerState, prices: Prices, ticker: string) => {
+  const p = state.positions[ticker];
+  return p !== undefined && positionValue(state, prices, ticker) < p.costBasisCents;
+};
+
+// The fund to buy more of a kind in: the kind's own fund (PRACTICE_ETFS). Its swap partner only
+// for the wash-sale window: the own fund was sold at a loss lately (or is on the never-buy
+// list), or, when losses are being harvested for the person (`harvesting`), it is held at a
+// loss, which a buy now would start the window on (a harvest within 30 days would be a wash
+// sale). Never because the partner is the larger holding, and never for someone whose losses
+// aren't harvested. The autopilot and the daily scan both buy with this.
+export function buyFundFor(
+  c: PracticeClass,
+  blocked: ReadonlySet<string>,
+  harvesting: { state: LedgerState; prices: Prices } | null = null,
+): string | null {
+  const [own, partner] = classTickers(c);
+  const keep =
+    harvesting !== null &&
+    partner !== undefined &&
+    !blocked.has(partner) &&
+    atLoss(harvesting.state, harvesting.prices, own);
+  if (!blocked.has(own) && !keep) return own;
+  return [partner, own].find((t) => t !== undefined && !blocked.has(t)) ?? null;
 }
 
 // Why a trade can't be made, or null. The same checks the runner applies before it places one.
@@ -110,6 +148,9 @@ export function planTrades(input: {
   cashBufferCents?: number;
   // The person's limits (their rebalance band and cap on one fund); the hard ones without them.
   limits?: AutopilotLimits;
+  // Whether losses are being harvested for them (their settings and the level's rules): then a
+  // fund holding a loss worth harvesting isn't bought (buyFundFor).
+  harvesting?: boolean;
 }): PlannedTrade[] {
   if (input.paused) return [];
   const L = withinHard(input.limits);
@@ -128,16 +169,8 @@ export function planTrades(input: {
   // The fund a kind is held in (the larger, after a swap), and the one to buy more of.
   const sellTicker = (c: PracticeClass) =>
     classTickers(c).reduce((a, b) => (held(b) > held(a) ? b : a));
-  // New money goes into a fund of the kind that isn't at a loss, so buying never turns a loss
-  // still to be harvested into a wash sale.
-  const atLoss = (t: string) => {
-    const p = state.positions[t];
-    return p !== undefined && held(t) < p.costBasisCents;
-  };
-  const buyTicker = (c: PracticeClass) => {
-    const open = [sellTicker(c), ...classTickers(c)].filter((t) => !blocked.has(t));
-    return open.find((t) => !atLoss(t)) ?? open[0] ?? null;
-  };
+  const buyTicker = (c: PracticeClass) =>
+    buyFundFor(c, blocked, input.harvesting ? { state, prices } : null);
   // The model's value: cash waiting plus the ETFs (opportunity stocks sit outside it).
   const total = state.cashCents + CLASSES.reduce((s, c) => s + modelValue(c), 0);
   if (total <= 0) return [];
@@ -205,7 +238,7 @@ export function planTrades(input: {
         side: "sell",
         amountCents: amount,
         rule: "rebalance",
-        reason: `${LABEL[c]} had grown to ${pct(modelValue(c) / total)} of the portfolio against a target of ${pct(weights[c])}, so ${dollars(amount)} moved back.`,
+        reason: `${LABEL[c]} had grown to ${pctTenth(modelValue(c) / total)} of the portfolio against a target of ${pctTenth(weights[c])}, so ${dollars(amount)} moved back.`,
       });
     }
   }
@@ -236,7 +269,7 @@ export function planTrades(input: {
       rule: first ? "model_buy" : "rebalance",
       reason: first
         ? `Starting the model for your level: ${pct(weights[c])} in ${LABEL[c]}, ${dollars(amount)} to begin.`
-        : `${LABEL[c]} was ${pct(modelValue(c) / total)} of the portfolio against a target of ${pct(weights[c])}, so ${dollars(amount)} was added.`,
+        : `${dollars(amount)} of cash waiting went to ${LABEL[c]}: ${pctTenth(modelValue(c) / total)} of the portfolio against a target of ${pctTenth(weights[c])}.`,
     });
   }
   return trades;

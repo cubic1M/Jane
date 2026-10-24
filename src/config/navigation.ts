@@ -41,8 +41,6 @@ export const TABS: readonly Tab[] = [
     href: "/money",
     paths: [
       "/money",
-      "/net-worth",
-      "/goals",
       "/budgets",
       "/subscriptions",
       "/bills",
@@ -78,8 +76,11 @@ export const TABS: readonly Tab[] = [
     key: "ahead",
     label: "Plans & goals",
     href: "/ahead",
+    // Goals and net worth are planning: the Plans & goals tree has them (area plan, 2026-10-23).
     paths: [
       "/ahead",
+      "/goals",
+      "/net-worth",
       "/afford",
       "/deadlines",
       "/life-events",
