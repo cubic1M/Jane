@@ -1,3 +1,4 @@
+import { INTRADAY_TICKER } from "@/config/intraday-strategies";
 import { TARGET_MIXES, type RiskLevel } from "@/config/investing";
 import { THEMES } from "@/config/themes";
 
@@ -63,10 +64,22 @@ export const HARVEST_PARTNERS: Readonly<Partial<Record<PracticeClass, Partner>>>
 
 const CLASS_KEYS = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 
-// The model ETFs that hold one kind: the main one, then its swap partner.
-export function classTickers(c: PracticeClass): string[] {
+// Funds of a kind the strategy menu's tilts hold it in (src/config/strategy-menu.ts), when the
+// person chooses one: still that kind, for the mix and the drift.
+export const TILT_FUNDS: Readonly<Partial<Record<PracticeClass, readonly string[]>>> = {
+  us_stocks: ["VTV", "MTUM", "QUAL", "VIG", "RSP"],
+};
+
+// A kind's everyday funds: the main one, then its swap partner. Only these stand in for each
+// other (a tax-loss swap, a fund avoided).
+export function swapPair(c: PracticeClass): string[] {
   const partner = HARVEST_PARTNERS[c];
   return partner ? [PRACTICE_ETFS[c].ticker, partner.ticker] : [PRACTICE_ETFS[c].ticker];
+}
+
+// Every fund that holds one kind, for the mix and the drift: its swap pair, then its tilt funds.
+export function classTickers(c: PracticeClass): string[] {
+  return [...swapPair(c), ...(TILT_FUNDS[c] ?? [])];
 }
 
 // Which kind a model ETF holds, or null for anything else (an opportunity stock).
@@ -85,6 +98,20 @@ export const PRACTICE_UNIVERSE: ReadonlySet<string> = new Set([
   ...CLASS_KEYS.flatMap((c) => classTickers(c)),
   ...PRACTICE_STOCKS,
   ...THEME_FUNDS,
+]);
+
+// The crypto sleeve's coins as the practice ledger holds them (src/config/crypto-strategies.ts,
+// Very high only): priced only while a sleeve is chosen, so they stay out of PRACTICE_UNIVERSE,
+// whose every ticker the scans and the replays price each day.
+export const CRYPTO_PRACTICE_TICKERS = { BTC: "BTCUSD", ETH: "ETHUSD" } as const;
+export const CRYPTO_TICKERS: readonly string[] = Object.values(CRYPTO_PRACTICE_TICKERS);
+// The day-trading sleeve's fund (Very high only): bought and sold the same day, never held.
+export const DAY_TRADE_TICKER = INTRADAY_TICKER;
+// Everything the practice ledger may hold.
+export const LEDGER_UNIVERSE: ReadonlySet<string> = new Set([
+  ...PRACTICE_UNIVERSE,
+  ...CRYPTO_TICKERS,
+  DAY_TRADE_TICKER,
 ]);
 
 // Practice money a new portfolio starts with: a stated sample amount, never linked to anything.

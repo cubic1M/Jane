@@ -104,7 +104,7 @@ A branch takes the worst status of its items (`worst()`), and its line says "N u
    it, and add it to `areaTrees` in `AreasTree` (`src/app/home/page.tsx`). The giant tree then
    shows the area's own branches and items, with statuses and figures, each linking to
    `/<area>?focus=…`. The page and Home read the same data, so they never disagree.
-   Insurance, Loans & credit, Taxes, Investing and Plans & goals are wired.
+   All six areas are wired.
 
 ## The home tree: one giant "What Jane does" tree
 
@@ -112,8 +112,8 @@ On `/home`, right under the net worth hero (founder: "one giant tree graph, not 
 click through each subtab"): Jane, the six areas in a row, and under each area its branches
 with their features listed below them. It's all one canvas (`src/components/hub/giant-tree.tsx`;
 the layout and camera are in `src/lib/giant-tree.ts`). An area with a tree page shows that
-tree's branches and items, from the page's own loader; the others show what Jane looks for
-there, from the feature map, as `/home/map` does.
+tree's branches and items, from the page's own loader (all six do); an area whose loader
+fails shows what Jane looks for there, from the feature map, as `/home/map` does.
 
 - **Moving around:** drag to pan, the wheel or a pinch to zoom, and `[+]` `[−]` `[FIT]`. Wide
   screens split each area into two columns, whichever fits at the larger scale.

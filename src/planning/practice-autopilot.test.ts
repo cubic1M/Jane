@@ -116,6 +116,45 @@ describe("autopilot for the practice portfolio", () => {
     for (const t of loose) expect(t.amountCents).toBeLessThanOrEqual(700_000);
   });
 
+  it("moves a kind into the fund the person chose, and buys there from then on", () => {
+    const prices = { ...PRICES, VTV: 15_000 };
+    const universe = new Set([...UNIVERSE, "VTV"]);
+    const { state } = run(3, empty(1_000_000));
+    const funds = { us_stocks: "VTV" };
+    const moves = planTrades({ level: 3, state, prices, paused: false, tradesToday: 0, funds });
+    const vti = Math.round(state.positions.VTI.quantity * prices.VTI);
+    expect(moves.map((t) => [t.side, t.ticker, t.rule])).toEqual([
+      ["sell", "VTI", "strategy_switch"],
+      ["buy", "VTV", "strategy_switch"],
+    ]);
+    expect(moves.every((t) => t.amountCents === vti)).toBe(true);
+    expect(moves[0].reason).toMatch(/to VTV, the fund of the strategy you chose/);
+    let after = state;
+    for (const t of sellsFirst(moves))
+      after = apply(
+        after,
+        { ...t, priceCents: prices[t.ticker as keyof typeof prices] },
+        universe,
+      ).state;
+    // Done once: nothing to move again, and new money goes to VTV.
+    expect(
+      planTrades({ level: 3, state: after, prices, paused: false, tradesToday: 0, funds }),
+    ).toEqual([]);
+    const more = { ...after, cashCents: after.cashCents + 300_000 };
+    const buys = planTrades({
+      level: 3,
+      state: more,
+      prices,
+      paused: false,
+      tradesToday: 0,
+      funds,
+    });
+    expect(buys.some((t) => t.ticker === "VTV" && t.side === "buy" && t.rule === "rebalance")).toBe(
+      true,
+    );
+    expect(buys.some((t) => t.ticker === "VTI")).toBe(false);
+  });
+
   it("adds new cash to what is under target, never borrowing", () => {
     const { state } = run(2, empty(1_000_000));
     const more = { ...state, cashCents: state.cashCents + 100_000 };

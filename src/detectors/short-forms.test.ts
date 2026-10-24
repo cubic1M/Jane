@@ -4,7 +4,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { shortFormProblems, runHarness } from "./harness";
 import { clip, headlineOf } from "./helpers";
-import type { Suggestion } from "./contract";
+import { cardHeadline, type Suggestion } from "./contract";
 
 // docs/detectors.md, "Short forms": every suggestion has a headline of at most 60 characters
 // that starts with a verb and carries the dollars, and one why-you line of at most 120 with
@@ -40,6 +40,13 @@ describe("the short forms of a suggestion", () => {
       /over 120/,
     );
     expect(shortFormProblems({ ...base, short: "You pay a lot." })[0]).toMatch(/own numbers/);
+  });
+
+  it("says a card's headline in a glance: /yr, and a risk as what it protects", () => {
+    expect(cardHeadline("Cancel Hulu, save $216 a year.")).toBe("Cancel Hulu, save $216/yr");
+    expect(cardHeadline("Look at life cover for your family, avoid up to $1,287,200")).toBe(
+      "Look at life cover for your family, protect $1,287,200",
+    );
   });
 
   it("builds headlines with the dollars, and cuts long lines at a word", () => {

@@ -37,16 +37,24 @@ export async function loadTaxesArea(userId: string, { now = new Date() }: { now?
     loadTaxEstimate(userId, { now }),
     adviceMode(userId),
   ]);
+  // The audit records are built from the page's own estimate, tags, forms, gifts and home (#687).
+  const homeLoad = loadHomeTaxes(userId, { now, loaded: { estimate } });
+  const givingLoad = loadGiving(userId, { now, loaded: { estimate, advice } });
   const [refunds, investments, savings, sideIncome, records, home, family, giving, plan] =
     await Promise.all([
       loadRefunds(userId, { now }).then((r) => r.refunds),
       loadInvestmentTaxes(userId, estimate.year, { now }),
       loadTaxSavings(userId, { now, loaded: { estimate, advice } }),
       loadSideIncome(userId, { now, loaded: { estimate } }),
-      loadAuditRecords(userId, year, { now }),
-      loadHomeTaxes(userId, { now, loaded: { estimate } }),
+      Promise.all([homeLoad, givingLoad]).then(([home, giving]) =>
+        loadAuditRecords(userId, year, {
+          now,
+          loaded: { estimate, tags, docs: forms, home, giving },
+        }),
+      ),
+      homeLoad,
       loadFamilyTaxes(userId, { now, loaded: { estimate, advice } }),
-      loadGiving(userId, { now, loaded: { estimate, advice } }),
+      givingLoad,
       loadTaxPlan(userId, { now, loaded: { estimate, advice } }),
     ]);
   const check = checkFrom(estimate);

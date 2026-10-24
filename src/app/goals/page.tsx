@@ -7,6 +7,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { GOALS_COPY, monthlyLine } from "@/planning/goals-copy";
 import { removeGoal } from "./actions";
+import { accountLabels } from "@/lib/account-labels";
 import { GoalForm } from "./goal-form";
 import { GoalTradeoffs } from "./tradeoffs";
 
@@ -25,11 +26,17 @@ async function Goals() {
   const db = await scopedDb();
   const [goals, accounts, tradeoffs] = await Promise.all([
     listGoals(user.id),
-    db.accounts.findMany({
-      where: { type: "depository" },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
+    db.accounts
+      .findMany({
+        where: { type: "depository" },
+        select: { id: true, name: true, mask: true, createdAt: true },
+        orderBy: { name: "asc" },
+      })
+      // Each named so no two read the same.
+      .then((rows) => {
+        const labels = accountLabels(rows, " balance");
+        return rows.map((a) => ({ id: a.id, name: labels.get(a.id)! }));
+      }),
     // Spec step 241: only worth the year plan's work with two goals or more.
     db.savingsGoals.count().then((n) => (n >= 2 ? loadTradeoffs(user.id) : null)),
   ]);

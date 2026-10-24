@@ -49,3 +49,7 @@ export class MarketDataNotConfigured extends Error {}
 // Thrown when a real adapter's service refuses a request (a bad key, a feed the plan doesn't
 // include): the reason, never the keys. Nothing is read as "no data" instead.
 export class MarketDataError extends Error {}
+
+// An intraday bar (Phase AW, Stage A: the Very high day-trading research): its start as an ISO
+// time (UTC), its open, high, low and close in cents, and the shares traded.
+export type IntradayBar = { t: string; o: number; h: number; l: number; c: number; v: number };

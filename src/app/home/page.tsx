@@ -11,6 +11,8 @@ import { GiantTree } from "@/components/hub/giant-tree";
 import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { loadLoansArea } from "@/lib/area-pages/loans-load";
+import { moneyTree } from "@/lib/area-pages/money";
+import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { loadPlansArea } from "@/lib/area-pages/plans-load";
 import { loadTaxesArea } from "@/lib/area-pages/taxes-load";
 import type { AreaTrees } from "@/lib/giant-tree";
@@ -88,6 +90,7 @@ const loadTreeData = (userId: string) =>
     quietly(loadTaxesArea(userId)),
     quietly(loadPlansArea(userId)),
     quietly(loadInvestingArea(userId)),
+    quietly(loadMoneyArea(userId).then(moneyTree)),
   ]);
 type TreeData = Awaited<ReturnType<typeof loadTreeData>>;
 
@@ -102,13 +105,14 @@ async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
 // The giant "What Jane does" tree (src/components/hub/giant-tree.tsx): Jane, the six areas,
 // their branches and features, all at once, from the same map as /home/map.
 async function AreasTree({ treeData }: { treeData: Promise<TreeData> }) {
-  const [reached, advice, insurance, loans, taxes, plans, investing] = await treeData;
+  const [reached, advice, insurance, loans, taxes, plans, investing, money] = await treeData;
   const areaTrees: AreaTrees = {
     insurance: insurance?.area,
     loans: loans?.area,
     taxes: taxes?.area,
     ahead: plans?.area,
     investments: investing?.area,
+    money,
   };
   const maps = buildFeatureMap({
     examples: sampleExamples(),

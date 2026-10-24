@@ -110,8 +110,59 @@ export const STRATEGY_CHOICES = {
     id: "vol_target",
     params: { windowDays: 63 },
   },
+  // The strategy menu's tilts (src/config/strategy-menu.ts): the level's mix, with its US stocks
+  // part held in the tilt's fund instead of the whole market.
+  value_tilt: {
+    label: "Value tilt",
+    description: "Your US stocks in a value fund (VTV): cheaper, slower-growing companies.",
+    fund: "VTV",
+  },
+  momentum_tilt: {
+    label: "Momentum tilt",
+    description: "Your US stocks in a momentum fund (MTUM): the companies that rose most lately.",
+    fund: "MTUM",
+  },
+  quality_tilt: {
+    label: "Quality tilt",
+    description: "Your US stocks in a quality fund (QUAL): steady profits, little debt.",
+    fund: "QUAL",
+  },
+  dividend_growth: {
+    label: "Dividend growth",
+    description: "Your US stocks in a dividend-growth fund (VIG): dividends raised for 10+ years.",
+    fund: "VIG",
+  },
+  equal_weight: {
+    label: "Equal weight",
+    description: "Your US stocks in an equal-weight S&P 500 fund (RSP).",
+    fund: "RSP",
+  },
 } as const;
 export type StrategyChoice = keyof typeof STRATEGY_CHOICES;
+
+// The crypto sleeve beside the plan (src/config/crypto-strategies.ts): off, or one of the crypto
+// rules. Followed at Very high only (CRYPTO_SLEEVE_BY_LEVEL); at any other level it waits, and
+// what the sleeve holds is sold.
+export const CRYPTO_SLEEVE_CHOICES = {
+  off: { label: "Off" },
+  crypto_hold: { label: "Crypto, held" },
+  crypto_trend: { label: "Crypto trend" },
+  crypto_momentum: { label: "Crypto momentum" },
+} as const;
+export type CryptoSleeveChoice = keyof typeof CRYPTO_SLEEVE_CHOICES;
+
+// The day-trading sleeve (src/config/intraday-strategies.ts): off, or one of the intraday rules,
+// in and out of the fund the same day. Very high only (INTRADAY_SLEEVE_BY_LEVEL); most day
+// trading loses money, and every rule here did worse than holding.
+export const DAY_TRADING_CHOICES = {
+  off: { label: "Off" },
+  opening_range: { label: "Opening-range break" },
+  liquidity_sweep: { label: "Liquidity sweep" },
+  fair_value_gap: { label: "Fair value gap" },
+  vwap_reversion: { label: "VWAP reversion" },
+  volume_imbalance: { label: "Volume imbalance" },
+} as const;
+export type DayTradingChoice = keyof typeof DAY_TRADING_CHOICES;
 
 // How far a kind may drift from its target before the autopilot rebalances: the person's pace.
 // Normal is the autopilot's own band (AUTOPILOT_LIMITS.rebalanceBand). Rarely means fewer trades
@@ -183,6 +234,8 @@ export const PREFERENCE_DEFAULTS = {
   rebalancePace: "normal" as RebalancePace,
   universe: "funds_and_stocks" as Universe,
   maxFundPercent: null as number | null,
+  cryptoSleeve: "off" as CryptoSleeveChoice,
+  dayTrading: "off" as DayTradingChoice,
 };
 
 // The level when nothing else says one (no choice, no portfolio, no questionnaire): Medium.

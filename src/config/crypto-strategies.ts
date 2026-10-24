@@ -11,6 +11,7 @@ export type CryptoStrategyId = "crypto_hold" | "crypto_trend" | "crypto_momentum
 
 export const CRYPTO_ASSETS = ["BTC", "ETH"] as const;
 export type CryptoAsset = (typeof CRYPTO_ASSETS)[number];
+export const CRYPTO_NAMES: Readonly<Record<CryptoAsset, string>> = { BTC: "bitcoin", ETH: "ether" };
 
 export const CRYPTO_STRATEGIES: Readonly<
   Record<
@@ -50,5 +51,10 @@ export const CRYPTO_SLIPPAGE = 0.001;
 export const CRYPTO_TRAIN_END = "2021-12-31";
 // The sleeve: the most of the practice portfolio, by level. Very high only.
 export const CRYPTO_SLEEVE_BY_LEVEL: Readonly<Partial<Record<RiskLevel, number>>> = { 5: 0.05 };
+// In the practice portfolio: a coin's trade smaller than this waits (no dust trades).
+export const CRYPTO_SLEEVE_MIN_TRADE_CENTS = 2_500;
+// How many calendar days of closes the live sleeve reads before it decides: the longest
+// look-back in the grids (200 days) with room for weekends in a feed of trading days.
+export const CRYPTO_SLEEVE_HISTORY_DAYS = 330;
 export const CRYPTO_WARNING =
   "Crypto has lost 70% to 80% of its value more than once, and can again. Practice money only.";
