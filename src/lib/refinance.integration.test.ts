@@ -97,7 +97,8 @@ describe.runIf(url)("refinance offers against a real database", () => {
     expect(refi.available).toBe(true);
     const by = (name: string) => refi.comparisons.find((c) => c.debtName.startsWith(name))!;
     const car = by("Demo Car Loan");
-    expect(car.termMonths).toBe(36);
+    // The months its $494.10 payment takes to end it (loans QA: one payment everywhere).
+    expect(car.termMonths).toBe(42);
     expect(car.pick?.offer).toMatchObject({ lender: "Harbor Auto Refi", demo: true });
     expect(car.pick!.savingCents).toBeGreaterThanOrEqual(REFI_MIN_SAVING_CENTS);
     for (const s of car.offers) {
@@ -124,7 +125,7 @@ describe.runIf(url)("refinance offers against a real database", () => {
     expect(messages.some((m) => m.body.includes("Demo Credit Card"))).toBe(false);
     const car = messages.find((m) => m.body.includes("Demo Car Loan"))!;
     expect(car).toMatchObject({ kind: "decision", refs: { advice: true } });
-    expect(car.dedupeKey).toMatch(/^refinance:offer:account:\w+:demo-harbor-\d+-36$/);
+    expect(car.dedupeKey).toMatch(/^refinance:offer:account:\w+:demo-harbor-\d+-42$/);
     expect(car.body.split("\n")[0]).toMatch(
       /^I checked loan rates for you\. Your Demo Car Loan ····0006 \(6\.90%, \$18,020\.00 left\) could move to Harbor Auto Refi at 5\.\d\d% fixed\.$/,
     );

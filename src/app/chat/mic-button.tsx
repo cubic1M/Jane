@@ -99,11 +99,58 @@ export function MicButton({
       disabled={disabled}
       aria-pressed={listening}
       aria-label={listening ? "Stop listening" : "Speak your message"}
-      className="inline-flex min-h-11 shrink-0 items-center px-1 text-sm font-semibold text-emerald-700 hover:underline disabled:opacity-60"
+      title={listening ? "Stop listening" : "Speak"}
+      data-listening={listening || undefined}
+      className="mic-button inline-flex min-h-11 shrink-0 items-center gap-1.5 px-1 text-sm font-semibold hover:underline disabled:opacity-60"
     >
-      <span aria-hidden="true">[</span>
-      {listening ? "Stop" : "Speak"}
-      <span aria-hidden="true">]</span>
+      <MicGlyph />
+      {listening && (
+        <span aria-hidden="true" className="inline-flex items-center gap-1.5 text-xs">
+          <span className="mic-meter tabular-nums">
+            {LEVELS.map((bar, i) => (
+              <span key={i} style={{ animationDelay: `${i * 90}ms` }}>
+                {bar}
+              </span>
+            ))}
+          </span>
+          <span className="mic-rec tracking-wider">● REC</span>
+        </span>
+      )}
     </button>
+  );
+}
+
+// The meter's bars, each cycling through the heights (src/app/globals.css, .mic-meter): a
+// sign that Jane is listening, not a reading of the sound.
+const LEVELS = ["▁", "▃", "▅", "▇", "▂"];
+
+// A microphone drawn in square pixels, like the rest of the terminal look.
+const MIC_PIXELS: [number, number, number, number][] = [
+  [4, 0, 4, 1],
+  [3, 1, 6, 7],
+  [4, 8, 4, 1],
+  [1, 5, 1, 4],
+  [10, 5, 1, 4],
+  [2, 9, 1, 1],
+  [9, 9, 1, 1],
+  [3, 10, 6, 1],
+  [5, 11, 2, 2],
+  [3, 13, 6, 1],
+];
+
+function MicGlyph() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 12 14"
+      width="15"
+      height="18"
+      shapeRendering="crispEdges"
+      className="mic-glyph fill-current"
+    >
+      {MIC_PIXELS.map(([x, y, w, h]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width={w} height={h} />
+      ))}
+    </svg>
   );
 }

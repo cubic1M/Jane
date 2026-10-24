@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { Debt, DebtBook } from "@/insights/debts";
+import { loanPaymentCents, type Debt, type DebtBook } from "@/insights/debts";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { debtsOr } from "@/lib/debts";
@@ -8,15 +8,14 @@ import {
   breakEvenMonths,
   escrowChange,
   extraPrincipal,
-  pmiLetter,
-  pmiStatus,
   type EscrowChange,
   type ExtraScenario,
-  type PmiStatus,
 } from "@/planning/mortgage";
+import { pmiTimeline, type PmiTimeline } from "@/planning/home-equity";
 
 // The mortgage, watched (spec step 115), for one person: the loan from the bank (with its
-// PMI and escrow as Plaid reports them), the home's value they gave (spec step 67), PMI,
+// PMI and escrow as Plaid reports them), the home's value they gave (spec step 67), PMI by
+// one rule (the home's value when the loan began, as /loans/equity has it),
 // extra principal, escrow changes from their payments, and the refinance break-even from
 // Jane's monthly rate check (spec step 111).
 
@@ -32,9 +31,10 @@ export type Mortgage = {
   escrowBalanceCents: number | null;
   hasPrepaymentPenalty: boolean | null;
   home: { name: string; valueCents: number; valuedOn: string } | null;
-  pmi: PmiStatus;
-  // Drafted when PMI can come off.
-  letter: string | null;
+  // PMI by one rule everywhere (loans QA), the Homeowners Protection Act's as the CFPB
+  // explains it: the loan against the home's value when it began, which the person tells
+  // Jane (step 228's facts), not today's value. Null without PMI or without that value.
+  pmi: PmiTimeline | null;
   extra: { baseMonths: number; baseInterestCents: number; scenarios: ExtraScenario[] } | null;
   escrow: EscrowChange | null;
   // The best refinance offer, if Jane checked: what it would save a month, its closing
@@ -64,7 +64,7 @@ export async function loadMortgage(
     .sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0];
   if (!loan) return null;
   const db = scopedFor(userId, client);
-  const [liability, home, payments, refinance, user] = await Promise.all([
+  const [liability, home, payments, refinance, facts] = await Promise.all([
     db.liabilities.findFirst({
       where: { accountId: loan.accountId! },
       select: { hasPmi: true, escrowBalanceCents: true, hasPrepaymentPenalty: true },
@@ -83,11 +83,19 @@ export async function loadMortgage(
       select: { date: true, amountCents: true },
     }),
     givenRefinance ? Promise.resolve(givenRefinance) : loadRefinance(userId, { client, now, book }),
-    // Users have their own helpers, so a read of this column by id.
-    client.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    db.homeEquityFacts.findFirst({ select: { originalValueCents: true } }),
   ]);
   const balanceCents = loan.balanceCents!;
-  const pmi = pmiStatus(liability?.hasPmi ?? null, balanceCents, home?.valueCents ?? null);
+  const pmi =
+    liability?.hasPmi && facts?.originalValueCents
+      ? pmiTimeline({
+          originalValueCents: facts.originalValueCents,
+          balanceCents,
+          aprBps: loan.aprBps,
+          paymentPiCents: loan.principalAndInterestCents ?? null,
+          today: now.toISOString().slice(0, 10),
+        })
+      : null;
   const comparison = refinance.comparisons.find((c) => c.debtKey === loan.key);
   const best = comparison?.offers[0];
   const monthlySavingCents = best ? comparison!.currentMonthlyCents - best.monthlyCents : 0;
@@ -104,19 +112,9 @@ export async function loadMortgage(
         }
       : null,
     pmi,
-    letter:
-      pmi.kind === "can_ask"
-        ? pmiLetter({
-            name: user?.name ?? "",
-            loanName: loan.name,
-            balanceCents,
-            homeValueCents: home!.valueCents,
-            ltv: pmi.ltv,
-          })
-        : null,
     extra:
-      loan.aprBps !== null && loan.paymentCents !== null
-        ? extraPrincipal(balanceCents, loan.aprBps, loan.paymentCents)
+      loan.aprBps !== null && loanPaymentCents(loan) !== null
+        ? extraPrincipal(balanceCents, loan.aprBps, loanPaymentCents(loan)!)
         : null,
     // An escrow change only reads as one on a fixed rate (a variable rate moves the payment).
     escrow:

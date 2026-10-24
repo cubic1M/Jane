@@ -106,6 +106,11 @@ describe("chooseToNotify", () => {
     expect(ids({ kinds: { brief: true } })).not.toContain("alert");
   });
 
+  it("never sends a chat-only message (a news theme's alert to a sample person)", () => {
+    const sample = [message({ id: "theme", refs: { chatOnly: true, suggestion: "s" } })];
+    expect(chooseToNotify(sample, chatNotifyPrefs({}))).toEqual([]);
+  });
+
   it("stops a kind turned off, and everything when off", () => {
     expect(ids({ kinds: { decision: false } })).toEqual(["heads-up", "done"]);
     expect(ids({ channel: "off" })).toEqual([]);

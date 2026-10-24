@@ -86,5 +86,5 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
       console.error("Cleaning up trials failed", { error: String(error) }),
     );
   });
-  return { next: opened ? "/chat" : "/scanning?then=chat" };
+  return { next: opened ? "/home" : "/scanning?then=home" };
 }
