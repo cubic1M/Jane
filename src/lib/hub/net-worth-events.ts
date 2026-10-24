@@ -3,6 +3,7 @@ import { DEBT_ACCOUNT_TYPES } from "@/config/net-worth";
 import {
   investmentMonths,
   janeSaved,
+  movementOf,
   paidOff,
   significantDays,
   transactionEvent,
@@ -24,6 +25,27 @@ export async function netWorthEvents(
   netWorthCents: number,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<EventGroup[]> {
+  return significantDays(await loadEvents(userId, from, { client, every: false }), netWorthCents);
+}
+
+// Every movement since `from`, oldest first (founder: "a dot for EVERY single little movement
+// in cash"): each transaction, transfers between the person's own accounts included, the
+// investment months, loans paid off and what Jane saved. For the expanded chart, fetched when
+// it opens (/api/net-worth/movements).
+export async function netWorthMovements(
+  userId: string,
+  from: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<NetWorthEvent[]> {
+  const events = await loadEvents(userId, from, { client, every: true });
+  return events.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+async function loadEvents(
+  userId: string,
+  from: string,
+  { client, every }: { client: PrismaClient; every: boolean },
+): Promise<NetWorthEvent[]> {
   const db = scopedFor(userId, client);
   const since = new Date(`${from}T00:00:00Z`);
   const [accounts, transactions, snapshots, actions] = await Promise.all([
@@ -32,6 +54,8 @@ export async function netWorthEvents(
     }),
     db.transactions.findMany({
       where: { pending: false, date: { gte: since } },
+      // A day's movements in the order they posted, the same each time.
+      orderBy: [{ date: "asc" }, { id: "asc" }],
       select: {
         accountId: true,
         date: true,
@@ -62,7 +86,8 @@ export async function netWorthEvents(
   const labelOf = accountLabels(accounts);
 
   const events: NetWorthEvent[] = transactions.flatMap((t) => {
-    const e = transactionEvent({
+    const read = every ? movementOf : transactionEvent;
+    const e = read({
       date: day(t.date),
       amountCents: t.amountCents,
       name: t.merchantName ?? t.description,
@@ -99,5 +124,5 @@ export async function netWorthEvents(
     if (saved) events.push(saved);
   }
 
-  return significantDays(events, netWorthCents);
+  return events;
 }
