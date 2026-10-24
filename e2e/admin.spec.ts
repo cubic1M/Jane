@@ -71,7 +71,7 @@ test.describe("signed in", () => {
     await form.getByRole("button", { name: "Save" }).click();
     await expect(form.getByRole("alert")).toContainText("minutes");
 
-    await form.getByLabel("Status").selectOption({ label: "Waiting on you" });
+    await form.getByLabel("Status").selectOption({ label: "Waiting on the person" });
     await form.getByLabel(/What the person needs to do/).fill("Send us your GEICO policy");
     await form.getByRole("button", { name: "Save" }).click();
     await expect(form.getByRole("status")).toContainText("Saved");

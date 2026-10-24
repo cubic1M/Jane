@@ -26,7 +26,7 @@ export function W4Buttons(
             name="intent"
             value="sent"
             disabled={pending}
-            className={`${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`}
+            className={`${BUTTON} bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-300`}
           >
             I&apos;ve sent my new W-4
           </button>
@@ -53,7 +53,7 @@ export function W4Buttons(
           Undo: I didn&apos;t send it
         </button>
       )}
-      <span role="status" className={state?.ok === false ? "text-sm text-red-700" : "text-sm"}>
+      <span role="status" className={state?.ok === false ? "text-sm font-semibold" : "text-sm"}>
         {state?.message ?? ""}
       </span>
     </form>

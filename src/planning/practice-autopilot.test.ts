@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { AUTOPILOT_LIMITS, MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/portfolios";
 import { apply, type LedgerState } from "./practice-ledger";
-import { monthlyDue, planTrades, portfolioValue, sellsFirst, violates } from "./practice-autopilot";
+import {
+  buyFundFor,
+  monthlyDue,
+  planTrades,
+  portfolioValue,
+  sellsFirst,
+  violates,
+} from "./practice-autopilot";
 
 const PRICES = { VTI: 30_000, VXUS: 6_000, BND: 8_000, BIL: 9_150, TSLA: 20_000, ITOT: 12_000 };
 const UNIVERSE = new Set(["VTI", "VXUS", "BND", "BIL", "TSLA", "ITOT"]);
@@ -171,15 +178,45 @@ describe("autopilot for the practice portfolio", () => {
     expect(trades.some((t) => t.ticker === "VTI")).toBe(false);
   });
 
-  it("puts new money into a fund of the kind that isn't at a loss, keeping the loss to harvest", () => {
+  it("buys the kind's own fund, even at a loss, and its swap partner only when it's blocked", () => {
     const { state } = run(3, empty(1_000_000));
-    // VTI down 20% since it was bought: new money goes to US stocks through ITOT instead.
+    // VTI down 20% since it was bought: new money still goes to VTI for someone whose losses
+    // aren't harvested; the partner is for swaps.
     const down = { ...PRICES, VTI: 24_000 };
     const more = { ...state, cashCents: state.cashCents + 300_000 };
     const input = { level: 3 as const, state: more, prices: down, paused: false, tradesToday: 0 };
     const trades = planTrades(input);
-    expect(trades.some((t) => t.ticker === "ITOT" && t.side === "buy")).toBe(true);
-    expect(trades.some((t) => t.ticker === "VTI" && t.side === "buy")).toBe(false);
+    expect(trades.some((t) => t.ticker === "VTI" && t.side === "buy")).toBe(true);
+    expect(trades.some((t) => t.ticker === "ITOT")).toBe(false);
+    // Harvesting their losses: the buy goes to ITOT, so a harvest of VTI isn't a wash sale.
+    const harvesting = planTrades({ ...input, harvesting: true });
+    expect(harvesting.some((t) => t.ticker === "ITOT" && t.side === "buy")).toBe(true);
+    expect(harvesting.some((t) => t.ticker === "VTI" && t.side === "buy")).toBe(false);
+    // Sold at a loss lately (the wash-sale window): the partner.
+    const blocked = planTrades({ ...input, blocked: new Set(["VTI"]) });
+    expect(blocked.some((t) => t.ticker === "ITOT" && t.side === "buy")).toBe(true);
+    expect(buyFundFor("us_stocks", new Set())).toBe("VTI");
+    expect(buyFundFor("us_stocks", new Set(["VTI", "ITOT"]))).toBeNull();
+  });
+
+  it("says the real share when it invests cash waiting, to a tenth of a point", () => {
+    const { state } = run(3, empty(1_000_000));
+    const more = { ...state, cashCents: state.cashCents + 20_000 };
+    const trades = planTrades({
+      level: 3,
+      state: more,
+      prices: PRICES,
+      paused: false,
+      tradesToday: 0,
+    });
+    expect(trades.filter((x) => x.side === "buy").length).toBeGreaterThan(0);
+    for (const t of trades.filter((x) => x.side === "buy")) {
+      expect(t.reason).toMatch(/^\$[\d,.]+ of cash waiting went to /);
+      const [, now, target] = /: ([\d.]+)% of the portfolio against a target of ([\d.]+)%/.exec(
+        t.reason,
+      )!;
+      expect(now).not.toBe(target);
+    }
   });
 
   it("rebalances when stocks together drift past their band, even if no one kind does", () => {

@@ -1,5 +1,5 @@
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
-import type { TaxPlanView } from "@/lib/tax-plan";
+import type { PlanMoveView, TaxPlanView } from "@/lib/tax-plan";
 import { PlanButtons } from "./plan-buttons";
 
 // The year-round tax plan on /taxes (spec step 167): each move by its deadline, whether
@@ -39,23 +39,30 @@ export function PlanSection({ view, today }: { view: TaxPlanView; today: string 
                 <span className="whitespace-nowrap">by {day(m.deadline)}</span>
               </div>
               <p className="text-zinc-600 dark:text-zinc-400">{m.detail}</p>
-              <p>
-                {m.handled === "added"
-                  ? "On your deadlines."
-                  : m.handled === "no"
-                    ? "You said it's not for you."
-                    : m.opensOn > today
-                      ? `Jane brings it up on ${day(m.opensOn)}.`
-                      : "Open now."}
-              </p>
-              {m.handled === null && m.opensOn <= today && (
-                <PlanButtons moveId={m.id} label={m.title} />
-              )}
-              {m.advice && <DemoAdviceLabel />}
+              <PlanMoveActions move={m} today={today} />
             </li>
           ))}
         </ol>
       )}
     </section>
+  );
+}
+
+// One move's state and its button, for the move's detail on the Taxes tree.
+export function PlanMoveActions({ move: m, today }: { move: PlanMoveView; today: string }) {
+  return (
+    <>
+      <p className="text-sm">
+        {m.handled === "added"
+          ? "On your deadlines."
+          : m.handled === "no"
+            ? "You said it's not for you."
+            : m.opensOn > today
+              ? `Jane brings it up on ${day(m.opensOn)}.`
+              : "Open now."}
+      </p>
+      {m.handled === null && m.opensOn <= today && <PlanButtons moveId={m.id} label={m.title} />}
+      {m.advice && <DemoAdviceLabel />}
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   E2E_DATABASE_URL,
+  addBankNeedingSignIn,
   addSession,
   deleteUser,
   sessionExists,
@@ -91,4 +92,22 @@ test("lists this device and signs another one out at once", async ({
   // This device is still signed in.
   await page.reload();
   await expect(page.locator("#sessions").getByText("This device")).toBeVisible();
+});
+
+// A bank that needs a fresh sign-in can be reconnected from Settings, not only from /connect.
+test("offers Reconnect for a bank that needs you to sign in again", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await addBankNeedingSignIn(userId, "Lapsed Bank");
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/settings");
+  const bank = page.locator("#banks li").filter({ hasText: "Lapsed Bank" });
+  await expect(bank.getByText("needs you to sign in again")).toBeVisible();
+  await expect(bank.getByRole("button", { name: "Reconnect" })).toBeVisible();
 });

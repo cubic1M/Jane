@@ -70,21 +70,21 @@ export function reviewItems(r: ReviewInput): ReviewItem[] {
     items.push({
       key: "deductible",
       text: `a higher deductible would save up to ${formatCents(sum(lower.map((s) => s.yearlySavingCents)))} a year, but lowers your cover`,
-      button: { label: "Look at the deductible", href: "/insurance#savings" },
+      button: { label: "Look at the deductible", href: "/insurance?focus=savings" },
     });
   }
   if (r.risks > 0) {
     items.push({
       key: "risks",
       text: `${r.risks} ${plural(r.risks, "question", "questions")} about how you live`,
-      button: { label: "Answer them", href: "/insurance#risks" },
+      button: { label: "Answer them", href: "/insurance?focus=questions" },
     });
   }
   if (r.coverChanges > 0) {
     items.push({
       key: "cover_changes",
       text: `${r.coverChanges} cover ${plural(r.coverChanges, "change", "changes")} for what's changed in your life`,
-      button: { label: "See the changes", href: "/insurance#changes" },
+      button: { label: "See the changes", href: "/insurance?focus=changes" },
     });
   }
   // One line per life event, with its gaps' own sentences and a button to the first one's options.
@@ -105,7 +105,7 @@ export function reviewItems(r: ReviewInput): ReviewItem[] {
     items.push({
       key: "gaps",
       text: `${r.gaps} ${plural(r.gaps, "gap", "gaps")} in your cover`,
-      button: { label: "See the gaps", href: "/insurance#gaps" },
+      button: { label: "See the gaps", href: "/insurance?focus=missing" },
     });
   }
   if (r.recommendations.length > 0) {
@@ -138,7 +138,7 @@ export function reviewItems(r: ReviewInput): ReviewItem[] {
             ]
           : []),
       ].join(" and "),
-      button: { label: "Your health year", href: "/insurance#health-year" },
+      button: { label: "Your health year", href: "/insurance?focus=health" },
     });
   }
   return items;

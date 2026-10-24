@@ -154,7 +154,7 @@ export async function refreshBank(
         ok: false,
         message:
           error.code === "ITEM_LOGIN_REQUIRED"
-            ? "Your bank needs you to sign in again. Use Reconnect on the Accounts page."
+            ? "Your bank needs you to sign in again. Use Reconnect to sign in."
             : "We couldn't reach your bank just now. Try again later.",
       };
     }
