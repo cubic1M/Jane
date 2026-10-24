@@ -6,11 +6,11 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
-import { loadGiving } from "@/lib/giving";
-import { loadHomeTaxes } from "@/lib/home-taxes";
-import { loadTaxDocuments } from "@/lib/tax-documents";
-import { loadTaxEstimate } from "@/lib/tax-estimate";
-import { loadTaxTags } from "@/lib/tax-organizer";
+import { loadGiving, type GivingView } from "@/lib/giving";
+import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
+import { loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
+import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
+import { loadTaxTags, type TaxTagsView } from "@/lib/tax-organizer";
 import {
   buildAuditPack,
   matchReceipt,
@@ -60,16 +60,31 @@ const TAG_KEY: Readonly<Record<string, string>> = {
 export async function loadAuditRecords(
   userId: string,
   year: number,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    loaded = {},
+  }: Options & {
+    // What the Taxes page has already loaded for the same year, so it isn't loaded twice.
+    loaded?: {
+      estimate?: TaxEstimateView;
+      tags?: TaxTagsView;
+      giving?: GivingView;
+      home?: HomeTaxesView;
+      docs?: TaxDocumentsView;
+    };
+  } = {},
 ): Promise<AuditRecordsView> {
   const db = scopedFor(userId, client);
   const today = iso(now);
   const [estimate, tags, giving, home, docs, receipts, profile, first] = await Promise.all([
-    loadTaxEstimate(userId, { client, now, year }),
-    loadTaxTags(userId, year, { client }),
-    loadGiving(userId, { client, now }),
-    loadHomeTaxes(userId, { client, now }),
-    loadTaxDocuments(userId, year, { client, now }),
+    loaded.estimate?.year === year
+      ? loaded.estimate
+      : loadTaxEstimate(userId, { client, now, year }),
+    loaded.tags?.year === year ? loaded.tags : loadTaxTags(userId, year, { client }),
+    loaded.giving ?? loadGiving(userId, { client, now }),
+    loaded.home ?? loadHomeTaxes(userId, { client, now }),
+    loaded.docs?.year === year ? loaded.docs : loadTaxDocuments(userId, year, { client, now }),
     db.documents.findMany({
       where: { kind: "receipt" },
       select: { id: true, fileName: true, purchaseDate: true, purchaseAmountCents: true },
