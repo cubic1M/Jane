@@ -65,7 +65,7 @@ async function Content({
           {view.answeredWith ? `Answered: ${view.answeredWith}` : "Answered"}
         </h1>
         {view.note && (
-          <p role="status" className="text-emerald-700">
+          <p role="status" className="font-semibold">
             <span aria-hidden="true">&gt; </span>
             {view.note}
           </p>
