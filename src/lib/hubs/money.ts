@@ -207,6 +207,7 @@ export async function loadMoneyHub(
             payoffDate: true,
             isOverdue: true,
             pastDueCents: true,
+            originationPrincipalCents: true,
             ytdInterestPaidCents: true,
             description: true,
           },
