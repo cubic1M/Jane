@@ -61,9 +61,9 @@ export function Meter({ share, label }: { share: number; label: string }) {
 
 // The health of an area: a shape and a word, never colour alone.
 const HEALTH: Record<Health, { word: string; shape: string; className: string }> = {
-  good: { word: "Good", shape: "■", className: "text-emerald-700" },
-  look: { word: "Look", shape: "▲", className: "text-amber-700" },
-  act: { word: "Act", shape: "◆", className: "text-red-700" },
+  good: { word: "Good", shape: "○", className: "" },
+  look: { word: "Look", shape: "◐", className: "" },
+  act: { word: "Act", shape: "●", className: "font-bold" },
 };
 
 export function HealthBadge({ health, why }: { health: Health | null; why: string }) {

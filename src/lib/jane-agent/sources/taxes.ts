@@ -817,7 +817,7 @@ export const taxesSource: MessageSource = {
         actions: [
           { id: "tax.form_got", label: "I have it", kind: "primary" },
           snoozeButton("Not yet"),
-          { id: "open", label: "See tax forms", kind: "link", href: "/taxes#forms" },
+          { id: "open", label: "See tax forms", kind: "link", href: "/taxes?focus=records:forms" },
         ],
         dedupeKey: `form:${tax.formsDue!.year}:${form.key}`,
         priority: TAX_MESSAGE_PRIORITY.form_due,

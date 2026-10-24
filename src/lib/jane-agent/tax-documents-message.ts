@@ -11,7 +11,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // that let her act, one tap otherwise), a form still missing, and the answer to "my tax
 // forms".
 
-export const FORMS_HREF = "/taxes#forms";
+export const FORMS_HREF = "/taxes?focus=records:forms";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

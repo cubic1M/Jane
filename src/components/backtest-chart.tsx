@@ -12,20 +12,20 @@ export type ChartSeries = {
   points: { date: string; valueCents: number }[];
 };
 
-// Validated as an ordinal ramp (one hue, monotone lightness, light end clears the surface).
+// An ordinal ramp of greys (monotone lightness; the light end clears the surface).
 const STROKES: Readonly<Record<number, string>> = {
-  1: "stroke-[#86b6ef] dark:stroke-[#184f95]",
-  2: "stroke-[#5598e7] dark:stroke-[#256abf]",
-  3: "stroke-[#2a78d6] dark:stroke-[#3987e5]",
-  4: "stroke-[#1c5cab] dark:stroke-[#6da7ec]",
-  5: "stroke-[#0d366b] dark:stroke-[#b7d3f6]",
+  1: "stroke-[#b2b2b2] dark:stroke-[#505050]",
+  2: "stroke-[#959595] dark:stroke-[#6a6a6a]",
+  3: "stroke-[#787878] dark:stroke-[#868686]",
+  4: "stroke-[#5d5d5d] dark:stroke-[#a4a4a4]",
+  5: "stroke-[#373737] dark:stroke-[#d0d0d0]",
 };
 const SWATCHES: Readonly<Record<number, string>> = {
-  1: "bg-[#86b6ef] dark:bg-[#184f95]",
-  2: "bg-[#5598e7] dark:bg-[#256abf]",
-  3: "bg-[#2a78d6] dark:bg-[#3987e5]",
-  4: "bg-[#1c5cab] dark:bg-[#6da7ec]",
-  5: "bg-[#0d366b] dark:bg-[#b7d3f6]",
+  1: "bg-[#b2b2b2] dark:bg-[#505050]",
+  2: "bg-[#959595] dark:bg-[#6a6a6a]",
+  3: "bg-[#787878] dark:bg-[#868686]",
+  4: "bg-[#5d5d5d] dark:bg-[#a4a4a4]",
+  5: "bg-[#373737] dark:bg-[#d0d0d0]",
 };
 
 // Drawn at the container's own width, so the axis text stays readable on a phone.

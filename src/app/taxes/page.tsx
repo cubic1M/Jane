@@ -306,16 +306,16 @@ async function TaxesContent({
           Kept organised all year from your accounts. Open a branch to see more.
         </p>
         <nav aria-label="Tax pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/taxes/file" className={LINK}>
+          <Link prefetch={false} href="/taxes/file" className={LINK}>
             File
           </Link>
-          <Link href="/taxes/profile" className={LINK}>
+          <Link prefetch={false} href="/taxes/profile" className={LINK}>
             Profile
           </Link>
-          <Link href="/taxes/tags" className={LINK}>
+          <Link prefetch={false} href="/taxes/tags" className={LINK}>
             Tags
           </Link>
-          <Link href="/tax-pack" className={LINK}>
+          <Link prefetch={false} href="/tax-pack" className={LINK}>
             Tax-time pack
           </Link>
         </nav>

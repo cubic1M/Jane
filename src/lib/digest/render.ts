@@ -183,7 +183,7 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
     `Unsubscribe: ${links.unsubscribe}`,
   ].join("\n");
 
-  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#18181b;line-height:1.5">
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#171717;line-height:1.5">
 <h1 style="font-size:22px">${escapeHtml(headline)}</h1>
 ${totals.map((t) => `<p style="margin:4px 0">${escapeHtml(t)}</p>`).join("\n")}
 ${body
@@ -191,12 +191,12 @@ ${body
     (s) => `<h2 style="font-size:17px;margin-top:24px">${escapeHtml(s.heading)}</h2>
 <ul>${s.items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>${
       s.link
-        ? `\n<p><a href="${escapeHtml(s.link.url)}" style="color:#047857">${escapeHtml(s.link.label)}</a></p>`
+        ? `\n<p><a href="${escapeHtml(s.link.url)}" style="color:#171717">${escapeHtml(s.link.label)}</a></p>`
         : ""
     }`,
   )
   .join("\n")}
-<p style="margin-top:32px;font-size:12px;color:#71717a"><a href="${escapeHtml(links.settings)}" style="color:#71717a">Email settings</a> · <a href="${escapeHtml(links.unsubscribe)}" style="color:#71717a">Unsubscribe</a></p>
+<p style="margin-top:32px;font-size:12px;color:#737373"><a href="${escapeHtml(links.settings)}" style="color:#737373">Email settings</a> · <a href="${escapeHtml(links.unsubscribe)}" style="color:#737373">Unsubscribe</a></p>
 </div>`;
 
   return { subject: headline, text, html };

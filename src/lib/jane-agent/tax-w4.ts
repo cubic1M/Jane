@@ -113,7 +113,7 @@ export function withholdingFacts(view: TaxEstimateView, check: Actionable): W4Me
         : `Your withholding is behind your tax: I estimate ${balancePhrase(check.refundCents)} for ${view.year}. The IRS's Tax Withholding Estimator shows what to put on a new W-4 to catch up.`,
     actions: [
       link("Tax Withholding Estimator", IRS_WITHHOLDING_ESTIMATOR_URL),
-      link("See the estimate", "/taxes#withholding"),
+      link("See the estimate", "/taxes?focus=estimate:withholding"),
     ],
     refs: {},
   };

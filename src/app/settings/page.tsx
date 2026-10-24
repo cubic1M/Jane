@@ -13,6 +13,7 @@ import { CallOffersForm } from "./call-offers-form";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
+import { isTrialUser } from "@/lib/trial-ids";
 import { formatCents } from "@/lib/money";
 import { vapidPublicKey } from "@/lib/push";
 import { US_STATES } from "@/config/referrals";
@@ -276,6 +277,17 @@ async function SettingsContent() {
       </Group>
 
       <Group id="notifications">
+        {/* Spec step 138: a trial person is never emailed or notified, whatever is set here. */}
+        {isTrialUser(user.id) && (
+          <p role="note" className={MUTED}>
+            You&apos;re trying Jane with a sample person, so nothing here is emailed or sent to a
+            phone. These settings show how it works;{" "}
+            <Link href="/signup" className="font-medium text-emerald-700 hover:underline">
+              sign up
+            </Link>{" "}
+            to get them.
+          </p>
+        )}
         {/* Spec step 85: Jane's chat messages as phone notifications or email. */}
         <section id="jane-messages" className={SECTION}>
           <h3 className={H3}>Messages from Jane</h3>

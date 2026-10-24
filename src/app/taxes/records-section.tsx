@@ -35,7 +35,7 @@ function EvidenceLine({ e }: { e: Evidence }) {
       );
     case "form":
       return (
-        <Link href="/taxes#forms" className={LINK}>
+        <Link href="/taxes?focus=records:forms" className={LINK}>
           {e.form} from {e.from}
         </Link>
       );
