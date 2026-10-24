@@ -149,7 +149,12 @@ describe("the taxes message source", () => {
   });
 
   it("says nothing before there's anything to work from, or once it's done", () => {
-    const empty = taxProfileView(null, { income: [], state: null, childrenHint: false, dependants: null });
+    const empty = taxProfileView(null, {
+      income: [],
+      state: null,
+      childrenHint: false,
+      dependants: null,
+    });
     expect(taxesSource.gather(snapshot({ profile: empty }), context)).toEqual([]);
     expect(taxesSource.gather(snapshot(undefined), context)).toEqual([]);
   });
