@@ -23,7 +23,9 @@ describe("medicare", () => {
     expect(s.worthKind).toBe("risk");
     expect(s.why).toMatch(/20 or more people, Part B can wait/);
     expect(s.urgency).toBe("later");
-    expect(s.confidence.percent).toBeLessThanOrEqual(55);
+    // Their investor profile (spec step 129) tells Jane their age, so she's sure of it.
+    expect(s.confidence.reason).not.toMatch(/don't know your age/);
+    expect(s.confidence.percent).toBeGreaterThan(55);
   });
 
   it("is soon at 64, gone at 66, and never for anyone else", () => {
