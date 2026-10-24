@@ -152,7 +152,10 @@ export function ChatComposer({
           {!typed.some((m) => !draft.before.has(m.id) && m.body === draft.question) && (
             <div className="flex flex-col items-end gap-1 self-end sm:max-w-[80%]">
               <span className="text-xs text-zinc-500">You</span>
-              <p className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]">
+              <p
+                data-draft-question=""
+                className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]"
+              >
                 {draft.question}
               </p>
             </div>
@@ -162,7 +165,9 @@ export function ChatComposer({
               <span className="font-semibold text-emerald-700">jane&gt;</span> answer
             </p>
             {draft.answer && (
-              <p className="whitespace-pre-line [overflow-wrap:anywhere]">{draft.answer}</p>
+              <p data-draft-answer="" className="whitespace-pre-line [overflow-wrap:anywhere]">
+                {draft.answer}
+              </p>
             )}
             {(draft.status || !draft.answer) && (
               <p role="status" className="text-sm text-zinc-500">

@@ -7,12 +7,10 @@ import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
-import { HomeTree } from "@/components/hub/home-tree";
+import { GiantTree } from "@/components/hub/giant-tree";
 import { adviceMode } from "@/lib/advice-mode";
-import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
-import { homeTree } from "@/lib/hub/tree";
 import { CASH_FLOW_DAYS } from "@/config/areas";
 import { addDays } from "@/detection/units";
 import { autopilotOf } from "@/lib/autopilot";
@@ -21,7 +19,7 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
-import { cashFlowView, heroView, tilesView, type AreaTile } from "@/lib/hub/view";
+import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
 import { stackedSuggestions } from "@/lib/jane-agent/messages";
 import { timezoneOf } from "@/lib/jane-agent/open";
@@ -72,21 +70,13 @@ async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
     budgetsOver: home.budgetsOver.length,
     safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
   });
-  const tiles = tilesView(areas);
-  return (
-    <>
-      <AreaTiles tiles={tiles} />
-      <Suspense fallback={null}>
-        <AreasTree userId={userId} tiles={tiles} />
-      </Suspense>
-    </>
-  );
+  return <AreaTiles tiles={tilesView(areas)} />;
 }
 
-// The home tree: the areas' branches, from the same loaders their pages use.
-async function AreasTree({ userId, tiles }: { userId: string; tiles: AreaTile[] }) {
-  const [insurance, reached, advice] = await Promise.all([
-    loadInsuranceArea(userId),
+// The giant "What Jane does" tree (src/components/hub/giant-tree.tsx): Jane, the six areas,
+// their branches and features, all at once, from the same map as /home/map.
+async function AreasTree({ userId }: { userId: string }) {
+  const [reached, advice] = await Promise.all([
     scopedFor(userId).suggestions.findMany({ select: { key: true } }),
     adviceMode(userId),
   ]);
@@ -95,7 +85,7 @@ async function AreasTree({ userId, tiles }: { userId: string; tiles: AreaTile[] 
     reached: new Set(reached.map((r) => r.key)),
     advice,
   });
-  return <HomeTree data={homeTree({ tiles, areaTrees: { insurance: insurance.area }, maps })} />;
+  return <GiantTree maps={maps} />;
 }
 
 async function HubContent() {
@@ -124,6 +114,11 @@ async function HubContent() {
       <h1 className="sr-only">Home</h1>
 
       <HeroRow hero={heroView(top.hero)} planItems={home.plan.items} />
+
+      {/* Under the hero, before anything else: everything Jane does, as one tree. */}
+      <Suspense fallback={<div className="h-[480px] sm:h-[600px]" aria-hidden="true" />}>
+        <AreasTree userId={user.id} />
+      </Suspense>
 
       <CashFlowStrip
         view={cashFlowView(top.cashFlow)}

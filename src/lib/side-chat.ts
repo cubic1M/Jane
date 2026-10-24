@@ -73,7 +73,14 @@ export type FrameMessage =
   | { type: "jane:refresh" }
   // The framed chat is listening: the page tells it where it is.
   | { type: "jane:ready" }
-  | { type: "jane:ask"; text: string };
+  | { type: "jane:ask"; text: string }
+  // "Ask Jane" from the giant tree: send this now (no Send to press), or find where it was
+  // asked before; the chat says where the question landed, and when Jane starts and finishes.
+  | { type: "jane:send"; text: string }
+  | { type: "jane:find"; text: string }
+  | { type: "jane:bubble"; x: number; y: number }
+  | { type: "jane:answering" }
+  | { type: "jane:answered" };
 
 export function isFrameMessage(data: unknown): data is FrameMessage {
   if (!data || typeof data !== "object") return false;
@@ -88,9 +95,15 @@ export function isFrameMessage(data: unknown): data is FrameMessage {
       );
     case "jane:refresh":
     case "jane:ready":
+    case "jane:answering":
+    case "jane:answered":
       return true;
     case "jane:ask":
+    case "jane:send":
+    case "jane:find":
       return typeof m.text === "string" && m.text.length > 0 && m.text.length <= 300;
+    case "jane:bubble":
+      return Number.isFinite(m.x) && Number.isFinite(m.y);
     default:
       return false;
   }

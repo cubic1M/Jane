@@ -88,6 +88,16 @@ describe("messages between the page and the frame", () => {
     expect(isFrameMessage({ type: "jane:ready" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ask", text: "What is idle cash?" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ask", text: "" })).toBe(false);
+    // From the giant tree: send now, or find; and where the question landed.
+    expect(isFrameMessage({ type: "jane:send", text: "How does Jane cut my bank fees?" })).toBe(
+      true,
+    );
+    expect(isFrameMessage({ type: "jane:send", text: "x".repeat(301) })).toBe(false);
+    expect(isFrameMessage({ type: "jane:find", text: "Hi" })).toBe(true);
+    expect(isFrameMessage({ type: "jane:bubble", x: 10, y: 20 })).toBe(true);
+    expect(isFrameMessage({ type: "jane:bubble", x: "10", y: 20 })).toBe(false);
+    expect(isFrameMessage({ type: "jane:answering" })).toBe(true);
+    expect(isFrameMessage({ type: "jane:answered" })).toBe(true);
     expect(isFrameMessage({ type: "other" })).toBe(false);
     expect(isFrameMessage(null)).toBe(false);
   });
