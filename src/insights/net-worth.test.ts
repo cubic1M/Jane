@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyNetWorth, netWorth, netWorthOn } from "./net-worth";
+import { monthlyNetWorth, netWorth, netWorthLine, netWorthOn } from "./net-worth";
 
 const accounts = [
   { id: "chk", name: "Checking", type: "depository", balanceCents: 250_000 },
@@ -131,5 +131,37 @@ describe("monthlyNetWorth with things you own", () => {
       [{ id: "x", valueCents: 100_000, valuedOn: "2026-10-01" }],
     );
     expect(months).toEqual([{ month: "2026-10", netCents: 95_000 }]);
+  });
+});
+
+// The line the hub and /net-worth both draw (phone walk: they disagreed).
+describe("netWorthLine", () => {
+  const accounts = [
+    { id: "chk", type: "depository", currentBalanceCents: 50_000 },
+    { id: "inv", type: "investment", currentBalanceCents: 1_000_000 },
+  ];
+  const snapshots = [
+    { accountId: "chk", date: "2026-08-31", balanceCents: 30_000 },
+    { accountId: "chk", date: "2026-09-30", balanceCents: 40_000 },
+  ];
+  const car = { id: "car", valueCents: 1_400_000, valuedOn: "2026-10-20" };
+
+  it("counts what has no history, and what's owned, in every month, and ends at today", () => {
+    const line = netWorthLine(accounts, snapshots, [car], "2026-10-23", 3, 2_450_000);
+    expect(line).toEqual([
+      // August: checking's month end, the investments and the car at their value now.
+      { month: "2026-08", netCents: 30_000 + 1_000_000 + 1_400_000 },
+      { month: "2026-09", netCents: 40_000 + 1_000_000 + 1_400_000 },
+      // This month is the headline itself.
+      { month: "2026-10", netCents: 2_450_000 },
+    ]);
+  });
+
+  it("shows only this month with no history at all, never a made-up flat year", () => {
+    expect(netWorthLine(accounts, [], [car], "2026-10-23", 3, 2_450_000)).toEqual([
+      { month: "2026-08", netCents: null },
+      { month: "2026-09", netCents: null },
+      { month: "2026-10", netCents: 2_450_000 },
+    ]);
   });
 });
