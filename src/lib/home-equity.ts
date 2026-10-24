@@ -12,7 +12,6 @@ import {
   escrowCheck,
   escrowLetter,
   pmiOriginalLetter,
-  pmiTimeline,
   type EscrowCheck,
   type PmiTimeline,
   type ProjectOption,
@@ -102,21 +101,12 @@ export async function loadHomeEquity(
         escrowRequestSentOn: row.escrowRequestSentOn ? isoDay(row.escrowRequestSentOn) : null,
       }
     : EMPTY_FACTS;
-  const aprBps = m.loan.aprBps;
   const paymentCents = m.loan.paymentCents;
   // The payment's split, as every page has it (src/insights/debts.ts).
   const paymentPiCents = m.loan.principalAndInterestCents ?? null;
   const balanceCents = m.loan.balanceCents!;
-  const pmi =
-    m.hasPmi && facts.originalValueCents
-      ? pmiTimeline({
-          originalValueCents: facts.originalValueCents,
-          balanceCents,
-          aprBps,
-          paymentPiCents,
-          today: isoDay(now),
-        })
-      : null;
+  // One PMI rule: the mortgage's own (src/lib/mortgage.ts), against the original value.
+  const pmi = m.pmi;
   const name = user?.name ?? "";
   const escrow =
     facts.yearlyTaxCents !== null || facts.yearlyInsuranceCents !== null
