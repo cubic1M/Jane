@@ -144,6 +144,7 @@ export function NetWorthChart({
     >
       <div className="flex items-start justify-between gap-3">
         <Link
+          prefetch={false}
           id="net-worth-heading"
           href="/net-worth"
           className="text-sm font-medium text-zinc-600 hover:text-zinc-950 hover:underline dark:text-zinc-400 dark:hover:text-zinc-50"
