@@ -7,12 +7,14 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { takeChatAction } from "@/lib/jane-agent/actions";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { runAutopilot } from "./autopilot";
 import { answerIdeaHere, practiceIdeasView } from "./ideas-view";
 import { startPractice } from "./portfolio";
 import { savePreferences } from "./preferences";
-import { runPracticeDay } from "./scan";
+import { runPracticeDay, runPracticeDayForAll } from "./scan";
+import { postThemeAlerts } from "./theme-alerts";
 
 // The news themes against a real, migrated Postgres and the sample market: the day's news
 // brings a theme idea that waits for a yes even when Jane acts by herself, Yes buys the small
@@ -82,5 +84,42 @@ describe.runIf(url)("news themes in the practice portfolio", () => {
       where: { userId: user.id, rule: "theme_exit" },
     });
     expect(exit.reason).toMatch(new RegExp(`^Out of ${buy.ticker} (after|at the stop)`));
+  });
+
+  it("posts one alert a day in the chat, card only for a sample person, and Yes there buys it", async () => {
+    const user = await client.user.create({
+      data: { email: `practice-theme-alert-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    await linkDemoBank(user.id, { client });
+    await savePreferences(user.id, { riskLevel: 4 }, "page", { client, now: at("2026-09-01") });
+    await startPractice(user.id, 4, { client, now: at("2026-09-01") });
+    await runAutopilot(user.id, { client, now: at("2026-09-01") });
+
+    // The daily run on the sample's October 16: the scan, then the alert.
+    await runPracticeDayForAll({ client, now: at("2026-10-16") });
+    const alerts = await client.janeMessage.findMany({
+      where: { userId: user.id, dedupeKey: { startsWith: "themes:" } },
+    });
+    expect(alerts).toHaveLength(1);
+    const [alert] = alerts;
+    expect(alert.kind).toBe("decision");
+    expect(alert.body).toMatch(/^News theme: Try \$/);
+    expect(alert.body).toMatch(/% sure/);
+    expect(alert.body).toContain("Demo advice: sample data, not financial advice");
+    expect(alert.refs).toMatchObject({ chatOnly: true, advice: true });
+    // Never twice, and no second card the same day.
+    expect(await postThemeAlerts(user.id, { client, now: at("2026-10-16") })).toBe(0);
+
+    const done = await takeChatAction(user.id, alert.id, "suggestion.yes", {
+      client,
+      now: at("2026-10-16"),
+    });
+    expect(done.message.answeredWith).toBe("Yes, in practice");
+    expect(
+      await client.practiceTrade.count({
+        where: { userId: user.id, rule: "theme_idea", side: "buy" },
+      }),
+    ).toBe(1);
   });
 });
