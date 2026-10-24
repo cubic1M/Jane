@@ -94,6 +94,7 @@ const priceIncrease: Detector = {
   detect({ profile, data }) {
     const rises = regular(data)
       .filter((s) => s.txs.length >= S.priceRiseMinCharges)
+      .filter((s) => !s.txs.some((t) => S.priceRiseNot.includes(t.pfc ?? "")))
       .flatMap((s) => {
         const earlier = s.txs.slice(0, -1).map((t) => t.amountCents);
         const before = median(earlier);

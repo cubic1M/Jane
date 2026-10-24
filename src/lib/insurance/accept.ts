@@ -8,6 +8,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { sameCompany } from "@/lib/documents/dates";
 import { kindWords } from "./gaps";
 import { POLICY_SELECT, toPolicy } from "./policies";
+import type { StoredQuote } from "./quotes";
 import { shopById } from "./shop";
 
 // Yes to Jane's pick (spec step 104): the person's one tap. Recorded like every other yes:
@@ -20,6 +21,8 @@ type Options = { client?: PrismaClient; now?: Date };
 export class AcceptShopError extends Error {}
 
 const DECIDABLE = ["new", "shown"] as const;
+
+const asJson = (q: StoredQuote) => JSON.parse(JSON.stringify(q)) as Prisma.InputJsonObject;
 
 // What the decision keeps about the switch: enough for the agent (spec step 105) to bind
 // the pick without the quote, which the next reshop replaces.
@@ -45,10 +48,14 @@ export async function acceptShop(
     client = defaultClient,
     now = new Date(),
     by = "person",
+    quoteId,
   }: Options & {
     // Spec step 141: "autopilot" when Insurance's autopilot said yes within its caps
     // (src/lib/insurance/autopilot.ts); recorded like a standing rule's yes.
     by?: "person" | "autopilot";
+    // The quote picked on the chat's pick-one card (src/lib/insurance/shop-card.ts): Jane's
+    // pick when left out, or another of the shop's quotes that also costs less.
+    quoteId?: string;
   } = {},
 ): Promise<{ decisionId: string; actionId: string; agentJobId: string }> {
   const db = scopedFor(userId, client);
@@ -58,6 +65,14 @@ export async function acceptShop(
   }
   if (shop.expiresAt && shop.expiresAt <= now) {
     throw new AcceptShopError("These quotes have expired. Ask me to shop it again.");
+  }
+  const chosen =
+    !quoteId || quoteId === shop.pick.id ? shop.pick : shop.runnersUp.find((q) => q.id === quoteId);
+  if (!chosen)
+    throw new AcceptShopError("That quote isn't available anymore. Ask me to shop it again.");
+  const savingCents = shop.currentAnnualCents - chosen.annualPremiumCents;
+  if (savingCents <= 0) {
+    throw new AcceptShopError("That one doesn't cost less than what you pay now.");
   }
   const policyRow = await db.insurancePolicies.findFirst({
     where: { id: shop.policyId, status: "active" },
@@ -84,7 +99,7 @@ export async function acceptShop(
         type: "insurance_reshop",
         key: `shop:${shop.id}`,
         title: `Your ${policy.carrier} ${kindWords(policy.kind)} could cost less`,
-        annualSavingsCents: shop.savingCents,
+        annualSavingsCents: savingCents,
         amountCents: shop.currentAnnualCents,
         confidence: "high",
         evidence: { merchant: policy.carrier, annualCostCents: shop.currentAnnualCents },
@@ -96,19 +111,19 @@ export async function acceptShop(
     where: { id: finding.id },
     select: CARD_SELECT,
   });
-  const card = buildCard({ ...cardRow, annualSavingsCents: shop.savingCents });
+  const card = buildCard({ ...cardRow, annualSavingsCents: savingCents });
   const options: InsuranceSwitchOptions = {
     insuranceShopId: shop.id,
     insurancePolicyId: policy.id,
-    insuranceCarrier: shop.pick.carrier.name,
-    insuranceAnnualCents: shop.pick.annualPremiumCents,
-    insuranceSavingCents: shop.savingCents,
+    insuranceCarrier: chosen.carrier.name,
+    insuranceAnnualCents: chosen.annualPremiumCents,
+    insuranceSavingCents: savingCents,
   };
 
   const result = await db.transaction(async (tx) => {
     const claimed = await tx.findings.updateMany({
       where: { id: finding.id, status: { in: [...DECIDABLE] } },
-      data: { status: "approved", annualSavingsCents: shop.savingCents },
+      data: { status: "approved", annualSavingsCents: savingCents },
     });
     if (claimed.count === 0) throw new AcceptShopError("This one's already been answered.");
     const decision = await tx.decisions.create({
@@ -130,7 +145,19 @@ export async function acceptShop(
   });
   await db.insuranceShops.updateMany({
     where: { id: shop.id, status: "open" },
-    data: { status: "accepted", answeredAt: now },
+    data: {
+      status: "accepted",
+      answeredAt: now,
+      // Another of the shop's quotes was picked: it becomes the pick the agent binds (step
+      // 105), before the agent starts below.
+      ...(chosen !== shop.pick
+        ? {
+            pick: asJson(chosen),
+            runnersUp: [shop.pick, ...shop.runnersUp.filter((q) => q.id !== chosen.id)].map(asJson),
+            savingCents,
+          }
+        : {}),
+    },
   });
   await logAudit(
     { type: "user", id: userId },
@@ -147,7 +174,7 @@ export async function acceptShop(
   await track(userId, "decision_yes", {
     finding_type: "insurance_reshop",
     action_type: "insurance_reshop",
-    annual_savings_cents: shop.savingCents,
+    annual_savings_cents: savingCents,
     source: by === "autopilot" ? "rule" : "chat",
   });
   // Spec step 105: Jane's agent does the switch itself (src/lib/insurance/switch.ts).

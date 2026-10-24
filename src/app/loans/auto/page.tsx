@@ -1,3 +1,4 @@
+import { dayLabel } from "@/lib/day-label";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -14,6 +15,7 @@ import {
   confirmAddonAction,
   dismissAddonAction,
 } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // The car loan you already have (spec step 245): the best refinance by total cost, dealer
 // add-ons found in the loan with the refund each would give, and the cancellation drafted for
@@ -86,7 +88,10 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                   Compared on total cost, not the payment: a lower payment over a longer term can
                   cost more. Sample offers from a stand-in lender catalog
-                  {data.refi.checkedOn ? `, checked ${data.refi.checkedOn}` : ""}.
+                  {data.refi.checkedOn
+                    ? `, checked ${dayLabel(data.refi.checkedOn, { year: true })}`
+                    : ""}
+                  .
                 </p>
                 {data.change && (
                   <p role="status">
@@ -107,8 +112,8 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
                 className="flex flex-col gap-2 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900"
               >
                 <p>
-                  {formatCents(c.paidCents)} to {c.name} on {c.startedOn}: looks like{" "}
-                  {c.label.toLowerCase()}. Was it?
+                  {formatCents(c.paidCents)} to {c.name} on {dayLabel(c.startedOn, { year: true })}:
+                  looks like {c.label.toLowerCase()}. Was it?
                 </p>
                 <form action={confirmAddonAction} className="flex flex-wrap items-end gap-2">
                   <input type="hidden" name="key" value={c.key} />
@@ -121,15 +126,11 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
                       className={`${INPUT} w-28`}
                     />
                   </label>
-                  <button type="submit" className={BUTTON}>
-                    Yes, it was
-                  </button>
+                  <SubmitButton className={BUTTON}>Yes, it was</SubmitButton>
                 </form>
                 <form action={dismissAddonAction}>
                   <input type="hidden" name="key" value={c.key} />
-                  <button type="submit" className={OUTLINE}>
-                    No, it wasn&apos;t
-                  </button>
+                  <SubmitButton className={OUTLINE}>No, it wasn&apos;t</SubmitButton>
                 </form>
               </div>
             ))}
@@ -168,16 +169,12 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
                       <form action={cancelAddonAction}>
                         <input type="hidden" name="id" value={a.id} />
                         <input type="hidden" name="by" value="mine" />
-                        <button type="submit" className={BUTTON}>
-                          I&apos;ll send it myself
-                        </button>
+                        <SubmitButton className={BUTTON}>I&apos;ll send it myself</SubmitButton>
                       </form>
                       <form action={cancelAddonAction}>
                         <input type="hidden" name="id" value={a.id} />
                         <input type="hidden" name="by" value="team" />
-                        <button type="submit" className={OUTLINE}>
-                          Have the team send it
-                        </button>
+                        <SubmitButton className={OUTLINE}>Have the team send it</SubmitButton>
                       </form>
                     </div>
                   ) : (
@@ -221,9 +218,9 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
                 Bought on
                 <input name="startedOn" type="date" className={INPUT} />
               </label>
-              <button type="submit" className={`${BUTTON} sm:col-span-5 sm:justify-self-start`}>
+              <SubmitButton className={`${BUTTON} sm:col-span-5 sm:justify-self-start`}>
                 Add it
-              </button>
+              </SubmitButton>
             </form>
             <ul className="flex flex-col gap-1 text-sm">
               {ADDON_SOURCES.map((s) => (

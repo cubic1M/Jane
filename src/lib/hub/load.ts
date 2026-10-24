@@ -1,17 +1,17 @@
-import { NET_WORTH_MONTHS } from "@/config/net-worth";
 import { SPENDING_MONTHS } from "@/config/areas";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { debtSummary } from "@/insights/loans";
-import { monthlyNetWorth, netWorth } from "@/insights/net-worth";
-import { monthsEnding, spendingInsights } from "@/insights/spending";
-import { cryptoTotal } from "@/lib/crypto/crypto";
+import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
+import { loadNetWorthHistory } from "@/lib/net-worth-history";
 import { healthFor } from "@/lib/health-score";
 import { homeSummary, type HomeSummary } from "@/lib/home";
 import { loadInsurance } from "@/lib/insurance/profile";
+import { practicePaidIn } from "@/lib/investments/practice-paid-in";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import type { AreasInput, CashFlowInput, HeroInput } from "./view";
@@ -31,10 +31,10 @@ export async function loadHubTop(
 ): Promise<HubTop | null> {
   const [home, worth] = await Promise.all([
     homeSummary(userId, { client, now }),
-    netWorthOverYear(userId, { client, now }),
+    loadNetWorthHistory(userId, { client, now }),
   ]);
   if (!home) return null;
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   return {
     home,
     hero: {
@@ -53,44 +53,6 @@ export async function loadHubTop(
   };
 }
 
-// Net worth today and month by month, as /net-worth works it out.
-async function netWorthOverYear(userId: string, { client, now }: Required<Options>) {
-  const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
-  const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
-  const [accounts, snapshots, ownedRows, crypto] = await Promise.all([
-    db.accounts.findMany({
-      select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
-    }),
-    db.balanceSnapshots.findMany({
-      where: { date: { gte: new Date(`${first}-01T00:00:00Z`) } },
-      select: { accountId: true, date: true, balanceCents: true },
-    }),
-    db.ownedAssets.findMany({
-      select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
-    }),
-    cryptoTotal(userId, { client }),
-  ]);
-  if (accounts.length === 0) return null;
-  const owned = ownedRows.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) }));
-  const today = netWorth(
-    accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
-    owned,
-    crypto,
-  );
-  const months = monthlyNetWorth(
-    accounts,
-    snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
-    asOf,
-    NET_WORTH_MONTHS,
-    owned,
-  );
-  return {
-    todayCents: today.netCents,
-    months: months.map((m) => ({ month: m.month, netCents: m.netCents })),
-  };
-}
-
 async function quietly<T>(what: string, load: () => Promise<T>): Promise<T | null> {
   try {
     return await load();
@@ -106,7 +68,7 @@ export async function loadHubAreas(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<AreasInput> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [health, suggestions, months, insurance, loans, taxes, practice, goals] = await Promise.all(
     [
       quietly("the health score", () => healthFor(userId, { client, now })),
@@ -139,6 +101,7 @@ export async function loadHubAreas(
                 payoffDate: true,
                 isOverdue: true,
                 pastDueCents: true,
+                originationPrincipalCents: true,
                 ytdInterestPaidCents: true,
                 description: true,
               },
@@ -148,7 +111,10 @@ export async function loadHubAreas(
         return debtSummary(accounts, asOf);
       }),
       quietly("taxes", () => loadTaxEstimate(userId, { client, now })),
-      quietly("practice", () => loadPractice(userId, { client, now })),
+      quietly("practice", async () => {
+        const view = await loadPractice(userId, { client, now });
+        return view && { ...view, paidInCents: await practicePaidIn(userId, { client }) };
+      }),
       quietly("goals", () => listGoals(userId, { client, now })),
     ],
   );
@@ -187,7 +153,7 @@ export async function loadHubAreas(
     investments: practice
       ? {
           totalCents: practice.totalCents,
-          startingCents: practice.startingCents,
+          paidInCents: practice.paidInCents,
           parts: [
             ...practice.holdings.map((h) => ({ label: h.ticker, valueCents: h.valueCents })),
             { label: "Cash", valueCents: practice.state.cashCents },

@@ -84,7 +84,7 @@ const fsaDeadline: Detector = {
       ),
       urgency,
       why: `You set aside ${formatCents(election)} for your FSA this year and your medical costs come to about ${formatCents(status.usedCents)}, so around ${formatCents(status.leftCents)} is left. It's lost after Dec ${FSA_DEADLINE.day} (${status.daysLeft} days), unless your employer allows a carryover. Eligible care, prescriptions, glasses and dental work count.`,
-      action: { label: "Your health year", href: "/insurance#health-year" },
+      action: { label: "Your health year", href: "/insurance?focus=health" },
     };
   },
 };
@@ -119,7 +119,7 @@ const deductibleMet: Detector = {
       ),
       urgency: "soon",
       why: `You've paid your whole ${formatCents(plan.deductibleCents)} deductible this year. Until Dec 31 your plan pays ${100 - plan.coinsurance}% of covered care; in January you'd pay the deductible again. A planned visit or procedure now costs about ${formatCents(saves)} less on a ${formatCents(R.plannedCareCents)} bill.`,
-      action: { label: "Your health year", href: "/insurance#health-year" },
+      action: { label: "Your health year", href: "/insurance?focus=health" },
     };
   },
 };
@@ -156,7 +156,7 @@ const medicalBillDispute: Detector = {
       ),
       urgency: "soon",
       why: `${plain(top.bill.provider)} billed ${formatCents(top.paidCents)} on ${top.bill.date}. By your plan's terms your share looks like about ${formatCents(top.shouldPayCents)}, which is ${formatCents(top.overCents)} less. My team can ask the provider and your plan to check it.`,
-      action: { label: "Your health year", href: "/insurance#health-year" },
+      action: { label: "Your health year", href: "/insurance?focus=health" },
     };
   },
 };

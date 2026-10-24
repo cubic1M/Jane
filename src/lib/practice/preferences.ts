@@ -28,7 +28,8 @@ import { strategyToday } from "@/lib/investments/strategy-today";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export type ChangeSource = "page" | "chat";
+// "sample": a sample person's settings, saved as their portfolio starts (./demo-start.ts).
+export type ChangeSource = "page" | "chat" | "sample";
 
 const SELECT = {
   riskLevel: true,
@@ -46,6 +47,8 @@ const SELECT = {
   rebalancePace: true,
   universe: true,
   maxFundPercent: true,
+  cryptoSleeve: true,
+  dayTrading: true,
 } as const;
 
 export async function loadPreferences(
@@ -119,6 +122,8 @@ export async function savePreferences(
     rebalancePace: p.rebalancePace,
     universe: p.universe,
     maxFundPercent: p.maxFundPercent,
+    cryptoSleeve: p.cryptoSleeve,
+    dayTrading: p.dayTrading,
   };
   const db = scopedFor(userId, client);
   await db.practicePreferences.upsert({
@@ -176,6 +181,23 @@ async function withStrategy(profile: PracticeProfile, options: Options): Promise
   // The person chose the level's mix alone: no strategy on top.
   if (profile.strategyChoice === "mix") return profile;
   const choice = STRATEGY_CHOICES[profile.strategyChoice];
+  // A strategy menu tilt (src/config/strategy-menu.ts): the level's mix, its US stocks part in
+  // the tilt's fund.
+  if ("fund" in choice) {
+    const note = `${choice.label}, as you chose: your US stocks are held in ${choice.fund} instead of the whole market.`;
+    return {
+      ...profile,
+      funds: { us_stocks: choice.fund },
+      rules: [...profile.rules, note],
+      strategy: {
+        key: choice.fund,
+        label: choice.label,
+        why: choice.description,
+        followed: true,
+        note,
+      },
+    };
+  }
   const today = await strategyToday(profile.level, {
     ...options,
     ...("id" in choice ? { pick: { id: choice.id, params: choice.params } } : {}),

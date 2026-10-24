@@ -74,6 +74,12 @@ import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { NEWS_TOOLS, isNewsTool, runNewsTool } from "./news-tools";
 import { PRACTICE_TOOLS, isPracticeTool, runPracticeTool } from "./practice-tools";
+import {
+  SETTINGS_CHAT_PAGES,
+  SETTINGS_TOOLS,
+  isSettingsTool,
+  runSettingsTool,
+} from "./settings-tools";
 import { rebalanceOffer } from "./investments/replies";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
@@ -145,6 +151,8 @@ export function healthHeadline(score: number, band: string) {
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
   // Loans and debt (spec Phase Y, ./debt-tools.ts).
   ...DEBT_CHAT_PAGES,
+  // Settings, banks, documents, household, notifications (./settings-tools.ts).
+  ...SETTINGS_CHAT_PAGES,
   today: { label: "See today", href: "/home" },
   insurance: { label: "See your insurance", href: "/insurance" },
   plan: { label: "Open the plan", href: "/plan" },
@@ -504,6 +512,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...NEWS_TOOLS,
   // Phase AW: the practice portfolio's settings, read and changed with a confirmation card.
   ...PRACTICE_TOOLS,
+  // Connected banks and what Jane sends the person (./settings-tools.ts).
+  ...SETTINGS_TOOLS,
 ];
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -523,6 +533,7 @@ export async function runChatTool(
   if (isNewsTool(name)) return runNewsTool(userId, name, input, { client, now });
   if (isPracticeTool(name)) return runPracticeTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
+  if (isSettingsTool(name)) return runSettingsTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));

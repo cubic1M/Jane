@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import type { PlanOption } from "@/config/plan";
 import { answerItem, undoItem, type ItemState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const PRIMARY =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
@@ -44,9 +45,9 @@ function Done({ state }: { state: Exclude<ItemState, null> }) {
       <form action={undo} className="flex flex-wrap items-center gap-3">
         <p role="status">Skipped.</p>
         <input type="hidden" name="decisionId" value={state.decisionId} />
-        <button type="submit" disabled={undoing} className="text-sm font-medium underline">
+        <SubmitButton disabled={undoing} className="text-sm font-medium underline">
           Undo
-        </button>
+        </SubmitButton>
         {undoState?.kind === "error" && (
           <span role="alert" className="text-sm text-red-700 dark:text-red-400">
             {undoState.message}

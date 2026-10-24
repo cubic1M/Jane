@@ -8,6 +8,8 @@ import {
   parsePanelState,
   sheetShare,
   snapSheet,
+  chatRedirect,
+  openedChat,
 } from "./side-chat";
 
 // The side chat's rules (docs/design/home-hub.md).
@@ -82,10 +84,44 @@ describe("messages between the page and the frame", () => {
     expect(isFrameMessage({ type: "jane:panel", state: "full" })).toBe(true);
     expect(isFrameMessage({ type: "jane:panel", state: "sheet" })).toBe(true);
     expect(isFrameMessage({ type: "jane:panel", state: "huge" })).toBe(false);
+    expect(isFrameMessage({ type: "jane:panel", state: "open", home: true })).toBe(true);
+    expect(isFrameMessage({ type: "jane:panel", state: "open", home: "yes" })).toBe(false);
     expect(isFrameMessage({ type: "jane:refresh" })).toBe(true);
+    expect(isFrameMessage({ type: "jane:ready" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ask", text: "What is idle cash?" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ask", text: "" })).toBe(false);
+    // From the giant tree: send now, or find; and where the question landed.
+    expect(isFrameMessage({ type: "jane:send", text: "How does Jane cut my bank fees?" })).toBe(
+      true,
+    );
+    expect(isFrameMessage({ type: "jane:send", text: "x".repeat(301) })).toBe(false);
+    expect(isFrameMessage({ type: "jane:find", text: "Hi" })).toBe(true);
+    expect(isFrameMessage({ type: "jane:bubble", x: 10, y: 20 })).toBe(true);
+    expect(isFrameMessage({ type: "jane:bubble", x: "10", y: 20 })).toBe(false);
+    expect(isFrameMessage({ type: "jane:answering" })).toBe(true);
+    expect(isFrameMessage({ type: "jane:answered" })).toBe(true);
     expect(isFrameMessage({ type: "other" })).toBe(false);
     expect(isFrameMessage(null)).toBe(false);
+  });
+});
+
+describe("no chat page of its own", () => {
+  it("sends /chat to Home with the side chat open, keeping what it was asked to show", () => {
+    expect(chatRedirect({})).toBe("/home?chat=open");
+    expect(chatRedirect({ pages: "2", from: "m1" })).toBe("/home?chat=open&pages=2&from=m1");
+    // The panel's own address never redirects; this is never asked about it.
+    expect(chatRedirect({ embed: "1", chat: "x" })).toBe("/home?chat=open");
+  });
+
+  it("opens the framed chat there, and tidies the address", () => {
+    expect(openedChat("?chat=open&pages=2", "#m1")).toEqual({
+      src: "/chat?embed=1&pages=2#m1",
+      address: "",
+    });
+    expect(openedChat("?chat=open&focus=needs", "")).toEqual({
+      src: "/chat?embed=1",
+      address: "?focus=needs",
+    });
+    expect(openedChat("?focus=needs", "")).toBeNull();
   });
 });

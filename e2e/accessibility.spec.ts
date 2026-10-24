@@ -32,8 +32,10 @@ const SIGNED_OUT = [
   "/chat/reply",
 ];
 const SIGNED_IN = [
-  "/chat",
+  // The chat as the side panel shows it (it has no page of its own).
+  "/chat?embed=1",
   "/home",
+  "/home/map",
   "/plan",
   "/report",
   "/actions",

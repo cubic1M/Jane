@@ -26,6 +26,10 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   what_jane_did: "reports what Jane already did, when asked; nothing to suggest",
+  strategy_menu:
+    "reports the practice portfolio's strategy menu and each strategy's replay when asked; which way to run it is the person's choice, so there is nothing to suggest unasked",
+  notification_settings:
+    "reports what the person chose Jane sends them and how, when asked; their own preferences, nothing to suggest",
   insurance_review:
     "reports the yearly insurance review when asked; the review itself is the yearly checkup's own message, which Jane posts unasked (spec step 202)",
   insurance_decision:

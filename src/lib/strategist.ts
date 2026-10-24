@@ -1,3 +1,4 @@
+import { landing } from "@/lib/area-pages/landing";
 import type Anthropic from "@anthropic-ai/sdk";
 import {
   STRATEGIST_EVERY_DAYS,
@@ -231,7 +232,7 @@ export async function runStrategist(
       urgency: idea.urgency,
       why: idea.why,
       actionLabel: idea.action.label,
-      actionHref: idea.action.href,
+      actionHref: landing(idea.action.href),
       lastSeenAt: now,
     };
     const have = await scopedFor(userId, client).suggestions.findFirst({

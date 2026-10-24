@@ -19,7 +19,30 @@ import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 
 type Options = { client?: PrismaClient; now?: Date };
 
+type HoldingRow = {
+  accountId: string;
+  valueCents: number;
+  costBasisCents: number | null;
+  security: { ticker: string | null; isCashEquivalent: boolean; type: string | null } | null;
+};
+
+// A holding as the profile counts it. Its security can come back missing although the schema
+// requires one: Prisma reads the relation in a second query, and a sync that replaces the
+// demo bank's securities in between leaves it null (it crashed /insurance once). The holding
+// still counts at its value, with no ticker and not as cash.
+export function profileHolding(h: HoldingRow) {
+  return {
+    accountId: h.accountId,
+    valueCents: h.valueCents,
+    basisCents: h.costBasisCents,
+    ticker: h.security?.ticker ?? null,
+    isCash: h.security ? h.security.isCashEquivalent || h.security.type === "cash" : false,
+  };
+}
+
 const PREF_PREFIX = "profile:";
+// The key prefix of a profile answer, for code that seeds one (the demo bank's sample people).
+export const PROFILE_FACT_PREFIX = PREF_PREFIX;
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
@@ -196,13 +219,7 @@ export async function loadProfileInput(
             ? (report?.cardLimitCents ?? null)
             : null,
     })),
-    holdings: holdings.map((h) => ({
-      accountId: h.accountId,
-      valueCents: h.valueCents,
-      basisCents: h.costBasisCents,
-      ticker: h.security.ticker,
-      isCash: h.security.isCashEquivalent || h.security.type === "cash",
-    })),
+    holdings: holdings.map(profileHolding),
     liabilities: liabilities.map((l) => ({
       accountId: l.accountId,
       kind: l.kind,

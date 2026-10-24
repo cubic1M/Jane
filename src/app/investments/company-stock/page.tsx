@@ -15,6 +15,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { linkStockPlan, sellNow } from "./actions";
 import { GrantForm } from "./grant-form";
+import { SubmitButton } from "@/components/submit-button";
 
 // Company stock (spec step 160, demo advice): how much of what's invested is in the
 // employer's stock, what's still to vest, and a plan to sell down in parts with the tax
@@ -110,9 +111,7 @@ async function CompanyContent({
 
       {view.demo && !view.holdings.some((h) => h.accountName === "Demo Stock Plan") && (
         <form action={linkStockPlan}>
-          <button type="submit" className={BUTTON}>
-            Link a demo stock plan
-          </button>
+          <SubmitButton className={BUTTON}>Link a demo stock plan</SubmitButton>
         </form>
       )}
 
@@ -150,9 +149,7 @@ async function CompanyContent({
           {view.plan.parts[0].on <= new Date().toISOString().slice(0, 10) && (
             <form action={sellNow}>
               <input type="hidden" name="key" value={view.plan.key} />
-              <button type="submit" className={BUTTON}>
-                Sell the first part (simulated)
-              </button>
+              <SubmitButton className={BUTTON}>Sell the first part (simulated)</SubmitButton>
             </form>
           )}
           <p className="text-xs text-zinc-500">

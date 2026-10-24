@@ -24,6 +24,62 @@ export const SAMPLE_PROFILES: Readonly<Record<string, Profile>> = {
   MSFT: { base: 85, drift: 0.2, vol: 0.016, beta: 1.1, hit: 1.1 },
   NVDA: { base: 50, drift: 0.4, vol: 0.028, beta: 1.5, hit: 1.5 },
   TSLA: { base: 21, drift: 0.3, vol: 0.035, beta: 1.6, hit: 1.6 },
+  // The crypto sleeve's coins (src/config/crypto-strategies.ts, Very high only): far jumpier,
+  // and hit hardest by the planted events.
+  BTCUSD: { base: 14000, drift: 0.3, vol: 0.055, beta: 0.4, hit: 1.6 },
+  ETHUSD: { base: 750, drift: 0.3, vol: 0.07, beta: 0.45, hit: 1.8 },
+  // The day-trading sleeve's fund (src/config/intraday-strategies.ts, Very high only), with its
+  // 5-minute bars made from these closes (./sample-intraday.ts).
+  SPY: { base: 268, drift: 0.09, vol: 0.011, beta: 1, hit: 1 },
+  // The strategy catalog's other funds (src/config/strategy-catalog.ts), so a person can follow
+  // a catalog strategy in practice on the sample market too. Rough shapes by kind of fund.
+  QQQ: { base: 150, drift: 0.14, vol: 0.012, beta: 1.15, hit: 1.15 },
+  IWM: { base: 140, drift: 0.085, vol: 0.014, beta: 1.15, hit: 1.1 },
+  IJR: { base: 70, drift: 0.09, vol: 0.014, beta: 1.15, hit: 1.1 },
+  IJS: { base: 60, drift: 0.085, vol: 0.015, beta: 1.15, hit: 1.15 },
+  IVE: { base: 120, drift: 0.075, vol: 0.004, beta: 0.95, hit: 0.95 },
+  USMV: { base: 50, drift: 0.08, vol: 0.004, beta: 0.75, hit: 0.75 },
+  SYLD: { base: 35, drift: 0.08, vol: 0.008, beta: 1, hit: 1 },
+  XLB: { base: 55, drift: 0.06, vol: 0.01, beta: 1, hit: 1.05 },
+  XLF: { base: 25, drift: 0.07, vol: 0.011, beta: 1.1, hit: 1.2 },
+  XLI: { base: 70, drift: 0.08, vol: 0.009, beta: 1.05, hit: 1.05 },
+  XLK: { base: 65, drift: 0.15, vol: 0.011, beta: 1.15, hit: 1.1 },
+  XLP: { base: 55, drift: 0.06, vol: 0.006, beta: 0.6, hit: 0.6 },
+  XLU: { base: 50, drift: 0.06, vol: 0.008, beta: 0.5, hit: 0.6 },
+  XLV: { base: 80, drift: 0.08, vol: 0.007, beta: 0.75, hit: 0.75 },
+  XLY: { base: 100, drift: 0.1, vol: 0.01, beta: 1.15, hit: 1.15 },
+  EFA: { base: 65, drift: 0.05, vol: 0.006, beta: 0.85, hit: 0.9 },
+  VEU: { base: 50, drift: 0.05, vol: 0.006, beta: 0.85, hit: 0.9 },
+  VGK: { base: 55, drift: 0.05, vol: 0.007, beta: 0.85, hit: 0.95 },
+  EWJ: { base: 55, drift: 0.04, vol: 0.007, beta: 0.7, hit: 0.8 },
+  EEM: { base: 42, drift: 0.05, vol: 0.01, beta: 0.9, hit: 1.1 },
+  VWO: { base: 42, drift: 0.05, vol: 0.01, beta: 0.9, hit: 1.1 },
+  SCZ: { base: 55, drift: 0.05, vol: 0.008, beta: 0.85, hit: 0.95 },
+  DLS: { base: 60, drift: 0.05, vol: 0.008, beta: 0.85, hit: 0.95 },
+  DGS: { base: 45, drift: 0.05, vol: 0.01, beta: 0.9, hit: 1.05 },
+  VNQ: { base: 80, drift: 0.06, vol: 0.01, beta: 0.9, hit: 1.1 },
+  IYR: { base: 75, drift: 0.06, vol: 0.01, beta: 0.9, hit: 1.1 },
+  REM: { base: 40, drift: 0.03, vol: 0.012, beta: 0.8, hit: 1.3 },
+  IEF: { base: 105, drift: 0.02, vol: 0.004, beta: 0, hit: 0 },
+  SHY: { base: 84, drift: 0.015, vol: 0.001, beta: 0, hit: 0 },
+  TIP: { base: 110, drift: 0.02, vol: 0.003, beta: 0.05, hit: 0.1 },
+  LQD: { base: 115, drift: 0.03, vol: 0.005, beta: 0.15, hit: 0.4 },
+  HYG: { base: 85, drift: 0.045, vol: 0.005, beta: 0.4, hit: 0.8 },
+  DBC: { base: 16, drift: 0.02, vol: 0.012, beta: 0.3, hit: 0.6 },
+  GSG: { base: 16, drift: 0.02, vol: 0.013, beta: 0.3, hit: 0.6 },
+  DBMF: { base: 28, drift: 0.04, vol: 0.008, beta: 0, hit: 0 },
+  // The strategy menu's tilt funds (src/config/strategy-menu.ts).
+  VTV: { base: 120, drift: 0.075, vol: 0.004, beta: 0.95, hit: 0.95 },
+  MTUM: { base: 150, drift: 0.1, vol: 0.006, beta: 1.05, hit: 1.05 },
+  QUAL: { base: 130, drift: 0.09, vol: 0.004, beta: 0.95, hit: 0.95 },
+  VIG: { base: 160, drift: 0.085, vol: 0.004, beta: 0.9, hit: 0.9 },
+  RSP: { base: 140, drift: 0.08, vol: 0.005, beta: 1, hit: 1 },
+  // The news themes' funds (src/config/themes.ts).
+  XLE: { base: 45, drift: 0.04, vol: 0.016, beta: 0.9, hit: 1.1 },
+  ITA: { base: 70, drift: 0.08, vol: 0.012, beta: 0.9, hit: 0.9 },
+  GLD: { base: 120, drift: 0.05, vol: 0.009, beta: 0.1, hit: 0 },
+  TLT: { base: 120, drift: 0.01, vol: 0.009, beta: 0.1, hit: 0 },
+  SMH: { base: 60, drift: 0.2, vol: 0.02, beta: 1.4, hit: 1.4 },
 };
 export const SAMPLE_TICKERS = Object.keys(SAMPLE_PROFILES);
 export const PRACTICE_TICKERS = Object.values(PRACTICE_ETFS).map((e) => e.ticker);
@@ -70,7 +126,7 @@ function unit(key: string): number {
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
-const normal = (key: string) =>
+export const normal = (key: string) =>
   (unit(`${key}:a`) + unit(`${key}:b`) + unit(`${key}:c`) + unit(`${key}:d`) - 2) * Math.sqrt(3);
 
 const DAY_MS = 86_400_000;
@@ -157,6 +213,17 @@ const HEADLINES: readonly Omit<Headline, "id" | "source" | "url">[] = [
     date: "2026-10-16",
     title: "Microsoft announces a large new data-center investment",
   },
+  // The news themes' kinds of event (src/config/themes.ts), in the sample's own October.
+  {
+    ticker: null,
+    date: "2026-10-15",
+    title: "Chip makers surge as demand for AI chips hits a record",
+  },
+  {
+    ticker: null,
+    date: "2026-10-16",
+    title: "Troops cross the border as a war breaks out overseas",
+  },
   {
     ticker: "NVDA",
     date: "2026-03-05",
@@ -181,12 +248,30 @@ const FILINGS: readonly Omit<Filing, "id" | "url">[] = [
 
 const inRange = (d: string, from: string, to: string) => d >= from && d <= to;
 
+// The sample market read without waiting, for pure replays (the detector harness's sample
+// people, src/profile/sample-practice.ts): the same closes and headlines the class gives.
+export function sampleBars(ticker: string, from: string, to: string): Bar[] {
+  return barsFor(ticker.toUpperCase()).filter((b) => inRange(b.date, from, to));
+}
+
+export function sampleNews(tickers: readonly string[], from: string, to: string): Headline[] {
+  const wanted = new Set(tickers.map((t) => t.toUpperCase()));
+  return HEADLINES.filter(
+    (h) => inRange(h.date, from, to) && (h.ticker === null || wanted.has(h.ticker)),
+  ).map((h, i) => ({
+    ...h,
+    id: `sample-news-${h.date}-${h.ticker ?? "market"}-${i}`,
+    source: "Sample newswire",
+    url: null,
+  }));
+}
+
 export class SampleMarketData implements MarketData {
   readonly name = "sample";
   readonly simulated = true;
 
   async prices(ticker: string, from: string, to: string): Promise<Bar[]> {
-    return barsFor(ticker.toUpperCase()).filter((b) => inRange(b.date, from, to));
+    return sampleBars(ticker, from, to);
   }
 
   async latest(ticker: string, on: string): Promise<Bar | null> {
@@ -200,15 +285,7 @@ export class SampleMarketData implements MarketData {
   }
 
   async news(tickers: readonly string[], from: string, to: string): Promise<Headline[]> {
-    const wanted = new Set(tickers.map((t) => t.toUpperCase()));
-    return HEADLINES.filter(
-      (h) => inRange(h.date, from, to) && (h.ticker === null || wanted.has(h.ticker)),
-    ).map((h, i) => ({
-      ...h,
-      id: `sample-news-${h.date}-${h.ticker ?? "market"}-${i}`,
-      source: "Sample newswire",
-      url: null,
-    }));
+    return sampleNews(tickers, from, to);
   }
 
   async filings(ticker: string, from: string, to: string): Promise<Filing[]> {

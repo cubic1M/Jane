@@ -346,6 +346,9 @@ export const WEEKS_PER_MONTH = 4.345;
 // with the last thing talked about only within this many minutes, and never from another
 // day in the person's timezone.
 export const CHAT_CONTEXT_MINUTES = 30;
+// How many of Jane's recent answers are looked back through for the card a "why?" means, when
+// the answer just before it has nothing to explain.
+export const CARD_TOPIC_LOOKBACK = 4;
 // A clarifying question offers at most this many meanings, one button each.
 export const CHAT_CLARIFY_CHOICES = 3;
 // The subscriptions list names at most this many, the most expensive first.

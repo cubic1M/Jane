@@ -1,26 +1,27 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
+import { AreaPage } from "@/components/area-page/area-page";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { ViewTracker } from "@/components/view-tracker";
 import { sourceLabel, type Debt } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
-import { scopedDb } from "@/lib/db-scoped";
-import { loadBnpl } from "@/lib/bnpl";
-import { loadDebts } from "@/lib/debts";
+import { itemId, type LoansBranch } from "@/lib/area-pages/loans";
+import { loadLoansArea } from "@/lib/area-pages/loans-load";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
-import { assetPrompts } from "@/lib/owned-assets";
 import { requireUser } from "@/lib/session";
 import { clearTerms, saveTerms } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Every debt in one place (spec step 109): loans and cards with what the bank reports,
 // buy now, pay later plans found from payments, and terms the person typed for what the
 // bank leaves out. Every rate says where it came from. Jane's chat answers the same
 // questions from the same numbers (src/lib/debts.ts).
 
-const LINK = "font-medium text-emerald-700 hover:underline";
+// Black, white and grey only (founder, 2026-10-24): links read by their underline.
+const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const INPUT =
   "h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
 
@@ -51,13 +52,13 @@ function TermsForm({ debt, open, error }: { debt: Debt; open: boolean; error: st
   const typed = (from: Debt["aprFrom"], value: string) => (from === "typed" ? value : "");
   return (
     <details open={open} className="text-sm">
-      <summary className="cursor-pointer text-emerald-700">
+      <summary className="cursor-pointer font-medium underline underline-offset-2">
         {debt.typedOn ? "Change what you typed" : "Add what your bank doesn't report"}
       </summary>
       <form action={saveTerms} className="mt-3 grid gap-3 sm:grid-cols-2">
         <input type="hidden" name="debtKey" value={debt.key} />
         {open && error && (
-          <p role="alert" className="text-amber-800 sm:col-span-2 dark:text-amber-300">
+          <p role="alert" className="font-medium sm:col-span-2">
             {error}
           </p>
         )}
@@ -116,24 +117,18 @@ function TermsForm({ debt, open, error }: { debt: Debt; open: boolean; error: st
           </label>
         )}
         <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
-          <button
-            type="submit"
-            className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
-          >
+          <SubmitButton className="h-11 rounded-full bg-zinc-900 px-5 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300">
             Save
-          </button>
+          </SubmitButton>
           <span className="text-zinc-500">From your statement or the lender&apos;s app.</span>
         </div>
       </form>
       {debt.typedOn && (
         <form action={clearTerms} className="mt-2">
           <input type="hidden" name="debtKey" value={debt.key} />
-          <button
-            type="submit"
-            className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
-          >
+          <SubmitButton className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:hover:text-zinc-100">
             Clear what I typed
-          </button>
+          </SubmitButton>
         </form>
       )}
     </details>
@@ -158,15 +153,7 @@ function DebtCard({ debt, open, error }: { debt: Debt; open: boolean; error: str
           {debt.balanceCents === null ? "–" : formatCents(debt.balanceCents)}
         </span>
       </div>
-      {debt.overdue && (
-        <p
-          role="status"
-          className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
-        >
-          Your bank shows this as overdue
-          {debt.pastDueCents ? `: ${formatCents(debt.pastDueCents)} past due` : ""}.
-        </p>
-      )}
+      {/* Overdue is said in the tree item's summary, with the amount past due. */}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
         <div>
           <dt className="text-zinc-500">Rate</dt>
@@ -193,9 +180,7 @@ function DebtCard({ debt, open, error }: { debt: Debt; open: boolean; error: str
           <dd>
             {debt.nextDue === null ? "Not known yet" : dateLabel(debt.nextDue)}
             {debt.dueSoon && (
-              <span className="ml-1 rounded bg-amber-100 px-1.5 text-xs text-amber-900 dark:bg-amber-900 dark:text-amber-100">
-                soon
-              </span>
+              <span className="ml-1 border border-zinc-400 px-1.5 text-xs">soon</span>
             )}
           </dd>
         </div>
@@ -217,6 +202,89 @@ function DebtCard({ debt, open, error }: { debt: Debt; open: boolean; error: str
   );
 }
 
+// Every loans and credit page, by where it lives in the tree; the tree's details link to them
+// with these words, and the closed list at the bottom keeps every one a tap away.
+const PAGES: { href: string; label: string; what: string }[] = [
+  { href: "/debt", label: "Try the payoff planner", what: "Paying it off" },
+  { href: "/loans/refinance", label: "See refinance offers", what: "Refinance offers" },
+  { href: "/loans/student", label: "Compare its repayment plans", what: "Student loans" },
+  { href: "/loans/mortgage", label: "See PMI, escrow and extra payments", what: "Your mortgage" },
+  { href: "/loans/equity", label: "Your home loan, used well", what: "Your home loan" },
+  { href: "/loans/recast", label: "Recast, refinance or pay extra", what: "Extra mortgage money" },
+  {
+    href: "/loans/auto",
+    label: "Check for a cheaper loan and dealer add-ons to cancel",
+    what: "Your car loan",
+  },
+  { href: "/loans/interest", label: "Cut it without a new card", what: "Card interest" },
+  { href: "/loans/costly", label: "See what they cost and the way out", what: "Costly borrowing" },
+  { href: "/loans/tight", label: "See the plan", what: "When money is tight" },
+  { href: "/loans/help", label: "See the options, plainly", what: "When debt is too much" },
+  { href: "/loans/medical", label: "Check it before you pay", what: "Medical bills" },
+  { href: "/loans/report", label: "Fix your report", what: "Your credit report" },
+  { href: "/loans/credit", label: "See your credit score", what: "Credit score" },
+  { href: "/loans/goal", label: "Plan it month by month", what: "A score for a goal" },
+  {
+    href: "/loans/borrow",
+    label: "See what you could get, and at what rate",
+    what: "What you could borrow",
+  },
+  { href: "/loans/home", label: "Plan it from saving to closing", what: "Buying a home" },
+  { href: "/loans/car", label: "Plan it before the dealer", what: "Buying a car" },
+  { href: "/loans/cards", label: "See your card rewards", what: "Card rewards" },
+  { href: "/loans/family", label: "Keep track kindly", what: "Family and friends" },
+  {
+    href: "/loans/helping",
+    label: "See what it does to both of you",
+    what: "Helping family with credit",
+  },
+  {
+    href: "/loans/renting",
+    label: "Build credit with it and track your deposit",
+    what: "Your rent",
+  },
+  { href: "/loans/review", label: "Your debt review", what: "Debt review" },
+];
+const PAGE = Object.fromEntries(PAGES.map((p) => [p.href, p]));
+
+// The page each suggestion's topic is worked on.
+const TOPIC_PAGE: Record<string, string> = {
+  card_interest: "/loans/interest",
+  high_cost_loans: "/loans/costly",
+  cash_advance: "/loans/costly",
+  balance_transfer: "/loans/refinance",
+  consolidation: "/loans/refinance",
+  bnpl: "/loans",
+  medical_bills: "/loans/medical",
+  credit_report_errors: "/loans/report",
+  refinance: "/loans/refinance",
+  auto_refinance: "/loans/auto",
+  car_addons: "/loans/auto",
+  student_repayment: "/loans/student",
+  student_forgiveness: "/loans/student",
+  mortgage_extra: "/loans/recast",
+  pmi_removal: "/loans/mortgage",
+  debt_plan: "/debt",
+  hardship_plan: "/loans/help",
+  credit_building: "/loans/credit",
+  borrowing_power: "/loans/borrow",
+  family_loans: "/loans/family",
+  family_credit: "/loans/helping",
+  cosign_risk: "/loans/helping",
+  rent_reporting: "/loans/renting",
+  rent_increase: "/loans/renting",
+};
+
+function PageLink({ href }: { href: string }) {
+  const page = PAGE[href];
+  if (!page) return null;
+  return (
+    <Link href={href} className={`self-start text-sm ${LINK}`}>
+      {page.label} ›
+    </Link>
+  );
+}
+
 async function LoansContent({
   searchParams,
 }: {
@@ -229,27 +297,96 @@ async function LoansContent({
     const v = params[key];
     return typeof v === "string" ? v : "";
   };
-  const db = await scopedDb();
-  const [book, loans, linked, bnpl] = await Promise.all([
-    loadDebts(user.id),
-    db.accounts.findMany({
-      where: { type: "loan" },
-      select: { id: true, name: true, type: true, subtype: true },
-    }),
-    // Mortgages and car loans with a home or car linked (spec step 67).
-    db.ownedAssets.findMany({ select: { loanAccountId: true } }),
-    // Spec step 176: the plans' installments over the next month.
-    loadBnpl(user.id),
-  ]);
-  const prompts = assetPrompts(
-    loans,
-    linked.map((o) => o.loanAccountId),
-  );
-  const accounts = book.debts.filter((d) => d.inNetWorth);
-  const plans = book.debts.filter((d) => !d.inNetWorth);
+  const { book, bnpl, prompts, mine, accounts, plans, area } = await loadLoansArea(user.id);
   const saved = SAVED[one("saved")];
   const openKey = one("terms");
   const error = one("error");
+
+  const details: Record<string, ReactNode> = {};
+  const more: Record<string, ReactNode> = {};
+  for (const sug of mine) {
+    const branch = area.tree.branches.find((b) =>
+      b.items.some((i) => i.id.endsWith(`:${sug.topic}`)),
+    );
+    if (!branch) continue;
+    const id = itemId(branch.id as LoansBranch, sug.topic);
+    const page = TOPIC_PAGE[sug.topic];
+    details[id] = (
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <Link href={sug.actionHref} className={`text-sm ${LINK}`}>
+          {sug.actionLabel} ›
+        </Link>
+        {page && page !== sug.actionHref && <PageLink href={page} />}
+      </div>
+    );
+    more[id] = <p>{sug.why}</p>;
+  }
+  const hasKind = (kind: string) => book.debts.some((d) => d.kind === kind);
+  for (const d of [...accounts, ...plans]) {
+    details[itemId("debts", d.key)] = (
+      <ul aria-label={d.inNetWorth ? "Loans and cards" : "Buy now, pay later plans"}>
+        <DebtCard debt={d} open={openKey === d.key} error={error} />
+      </ul>
+    );
+    const page =
+      d.kind === "mortgage"
+        ? "/loans/mortgage"
+        : d.kind === "student"
+          ? "/loans/student"
+          : d.kind === "auto"
+            ? "/loans/auto"
+            : d.kind === "card"
+              ? "/loans/interest"
+              : null;
+    if (page) more[itemId("debts", d.key)] = <PageLink href={page} />;
+  }
+  details[itemId("debts", "installments")] = (
+    <div className="flex flex-col gap-1 text-sm">
+      <ul aria-label="Installments coming" className="list-disc pl-5">
+        {bnpl.installments.slice(0, 8).map((i) => (
+          <li key={`${i.planKey}${i.date}`}>
+            {dayLabel(i.date)}: {formatCents(i.cents)} to {i.name}
+          </li>
+        ))}
+      </ul>
+      <p className="text-zinc-600 dark:text-zinc-400">
+        Any your forecast doesn&apos;t count yet are taken off your safe to spend.
+      </p>
+    </div>
+  );
+  details[itemId("cheaper", "checked")] = (
+    <div className="flex flex-col gap-1">
+      <PageLink href="/loans/refinance" />
+      {hasKind("student") && <PageLink href="/loans/student" />}
+      {hasKind("mortgage") && <PageLink href="/loans/mortgage" />}
+      {hasKind("auto") && <PageLink href="/loans/auto" />}
+    </div>
+  );
+  // Each cheaper-loan suggestion also opens the other pages for the loans the person has.
+  for (const topic of ["refinance", "student_repayment", "student_forgiveness", "pmi_removal"]) {
+    const id = itemId("cheaper", topic);
+    if (!details[id]) continue;
+    details[id] = (
+      <div className="flex flex-col gap-1">
+        {details[id]}
+        {topic !== "refinance" && <PageLink href="/loans/refinance" />}
+        {hasKind("student") && !topic.startsWith("student") && <PageLink href="/loans/student" />}
+        {hasKind("mortgage") && topic !== "pmi_removal" && <PageLink href="/loans/mortgage" />}
+      </div>
+    );
+  }
+  details[itemId("payoff", "plan")] = <PageLink href="/debt" />;
+  details[itemId("credit", "score")] = <PageLink href="/loans/credit" />;
+  details[itemId("credit", "use")] = <PageLink href="/loans/credit" />;
+  details[itemId("credit", "goal")] = <PageLink href="/loans/goal" />;
+  details[itemId("borrow", "power")] = <PageLink href="/loans/borrow" />;
+  details[itemId("borrow", "home")] = <PageLink href="/loans/home" />;
+  details[itemId("borrow", "car")] = <PageLink href="/loans/car" />;
+  details[itemId("borrow", "cards")] = <PageLink href="/loans/cards" />;
+  details[itemId("reviews", "debt")] = <PageLink href="/loans/review" />;
+
+  // Opened from a debt's "Add what your bank doesn't report" (?terms=) or a deep link.
+  const focus = one("focus") || (openKey ? itemId("debts", openKey) : "");
 
   return (
     <>
@@ -258,270 +395,98 @@ async function LoansContent({
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Every debt</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Your loans, cards and buy now, pay later plans, with the rates, payments and dates your
-          bank reports. Every rate says where it came from, and Jane never guesses one.
+          {book.debts.length === 0
+            ? "No loans, cards or plans yet."
+            : `You owe ${formatCents(book.totalOwedCents)}, ${formatCents(book.monthlyCents)} due each month. Open a branch to see more.`}
         </p>
+        <nav aria-label="Loans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <Link prefetch={false} href="/debt" className={LINK}>
+            Payoff plan
+          </Link>
+          <Link prefetch={false} href="/loans/refinance" className={LINK}>
+            Refinance
+          </Link>
+          <Link prefetch={false} href="/loans/credit" className={LINK}>
+            Credit score
+          </Link>
+          <Link prefetch={false} href="/loans/borrow" className={LINK}>
+            What you could borrow
+          </Link>
+        </nav>
       </div>
 
       {saved && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-        >
+        <p role="status" className="border border-zinc-300 p-3 text-sm dark:border-zinc-700">
           {saved}
         </p>
       )}
 
       {book.debts.length === 0 ? (
         <p className="text-zinc-600 dark:text-zinc-400">
-          No loans, cards or plans yet. When you{" "}
+          When you{" "}
           <Link href="/connect" className={LINK}>
             link a bank
           </Link>{" "}
           that reports them, they show here with their rates and due dates.
         </p>
       ) : (
-        <>
-          <section className="grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">You owe</span>
-              <span className="text-2xl font-semibold">{formatCents(book.totalOwedCents)}</span>
-              {plans.length > 0 && (
-                <span className="text-xs text-zinc-500">
-                  {formatCents(book.accountsOwedCents)} on loans and cards, as in your{" "}
-                  <Link href="/net-worth" className={LINK}>
-                    net worth
-                  </Link>
-                  , plus {formatCents(book.bnplOwedCents)} on buy now, pay later plans
-                  {book.bnplUnknown > 0 ? ` (${book.bnplUnknown} without a balance yet)` : ""}.
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">Due each month</span>
-              <span className="text-2xl font-semibold">{formatCents(book.monthlyCents)}</span>
-              {book.missingMonthly > 0 && (
-                <span className="text-xs text-zinc-500">
-                  Leaves out {book.missingMonthly} without a payment yet.
-                </span>
-              )}
-            </div>
-          </section>
+        <AreaPage
+          tree={area.tree}
+          label="Loans & credit"
+          chips={area.chips}
+          summaries={area.summaries}
+          details={details}
+          more={more}
+          focus={focus || undefined}
+        />
+      )}
 
-          <ul id="terms" aria-label="Loans and cards" className="flex flex-col gap-3">
-            {accounts.map((d) => (
-              <DebtCard key={d.key} debt={d} open={openKey === d.key} error={error} />
+      {/* Below the tree: nothing open by default (docs/design/area-pages.md). */}
+      <div className="flex flex-col gap-2">
+        {plans.length > 0 && (
+          <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
+            <summary className={`cursor-pointer text-sm ${LINK}`}>About buy now, pay later</summary>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Found from your payments to Affirm, Klarna and Afterpay. They aren&apos;t bank
+              accounts, so net worth doesn&apos;t count them
+              {book.bnplUnknown > 0 ? ` (${book.bnplUnknown} without a balance yet)` : ""}.
+            </p>
+          </details>
+        )}
+        <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <summary className={`cursor-pointer text-sm ${LINK}`}>How Jane gets your rates</summary>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Rates, payments and dates come from what your bank reports, or what you type for what it
+            leaves out. Every rate says where it came from, and Jane never guesses one. Your
+            statements are the source of truth.
+          </p>
+        </details>
+        <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <summary className={`cursor-pointer text-sm ${LINK}`}>Own a home or a car?</summary>
+          <div className="mt-2 flex flex-col gap-2 text-sm">
+            <AssetPrompts prompts={prompts} />
+            <p className="text-zinc-600 dark:text-zinc-400">
+              <Link href="/things" className={LINK}>
+                Things you own
+              </Link>{" "}
+              shows what you own of it, from the values you give.
+            </p>
+          </div>
+        </details>
+        <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <summary className={`cursor-pointer text-sm ${LINK}`}>All loans and credit pages</summary>
+          <ul aria-label="All loans and credit pages" className="mt-2 flex flex-col gap-1 text-sm">
+            {PAGES.map((p) => (
+              <li key={p.href}>
+                {p.what}:{" "}
+                <Link href={p.href} className={LINK}>
+                  {p.label}
+                </Link>
+              </li>
             ))}
           </ul>
-
-          {plans.length > 0 && (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-xl font-semibold">Buy now, pay later</h2>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Found from your payments to Affirm, Klarna and Afterpay. They aren&apos;t bank
-                accounts, so net worth doesn&apos;t count them.
-              </p>
-              <ul aria-label="Buy now, pay later plans" className="flex flex-col gap-3">
-                {plans.map((d) => (
-                  <DebtCard key={d.key} debt={d} open={openKey === d.key} error={error} />
-                ))}
-              </ul>
-              {bnpl.installments.length > 0 && (
-                <div className="flex flex-col gap-1 text-sm">
-                  <h3 className="font-medium">Installments coming</h3>
-                  <ul aria-label="Installments coming" className="list-disc pl-5">
-                    {bnpl.installments.slice(0, 8).map((i) => (
-                      <li key={`${i.planKey}${i.date}`}>
-                        {dayLabel(i.date)}: {formatCents(i.cents)} to {i.name}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-zinc-600 dark:text-zinc-400">
-                    From each plan&apos;s own schedule. Any your forecast doesn&apos;t count yet are
-                    taken off your safe to spend.
-                  </p>
-                </div>
-              )}
-            </section>
-          )}
-
-          <AssetPrompts prompts={prompts} />
-
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Own a home or a car?{" "}
-            <Link href="/things" className={LINK}>
-              Things you own
-            </Link>{" "}
-            shows what you own of it, from the values you give.
-          </p>
-
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            How do your debts look to lenders?{" "}
-            <Link href="/loans/credit" className={LINK}>
-              See your credit score
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Which card earns most on what you buy?{" "}
-            <Link href="/loans/cards" className={LINK}>
-              See your card rewards
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Money tight this month?{" "}
-            <Link href="/loans/tight" className={LINK}>
-              See the plan
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Thinking of buying a car?{" "}
-            <Link href="/loans/car" className={LINK}>
-              Plan it before the dealer
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Saving for a home?{" "}
-            <Link href="/loans/home" className={LINK}>
-              Plan it from saving to closing
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            A medical bill to look at?{" "}
-            <Link href="/loans/medical" className={LINK}>
-              Check it before you pay
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            A collection or an error on your credit report?{" "}
-            <Link href="/loans/report" className={LINK}>
-              Fix your report
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Paying too much card interest?{" "}
-            <Link href="/loans/interest" className={LINK}>
-              Cut it without a new card
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Lent or borrowed money with family or friends?{" "}
-            <Link href="/loans/family" className={LINK}>
-              Keep track kindly
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Helping someone with credit, or asked to co-sign?{" "}
-            <Link href="/loans/helping" className={LINK}>
-              See what it does to both of you
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Thinking of borrowing?{" "}
-            <Link href="/loans/borrow" className={LINK}>
-              See what you could get, and at what rate
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Paying rent?{" "}
-            <Link href="/loans/renting" className={LINK}>
-              Build credit with it and track your deposit
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Payday loans, cash advances or overdrafts?{" "}
-            <Link href="/loans/costly" className={LINK}>
-              See what they cost and the way out
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Extra money for the mortgage?{" "}
-            <Link href="/loans/recast" className={LINK}>
-              Recast, refinance or pay extra
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Already have a car loan?{" "}
-            <Link href="/loans/auto" className={LINK}>
-              Check for a cheaper loan and dealer add-ons to cancel
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Everything about your debts and credit, checked at once:{" "}
-            <Link href="/loans/review" className={LINK}>
-              Your debt review
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Is the debt getting too much?{" "}
-            <Link href="/loans/help" className={LINK}>
-              See the options, plainly
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            PMI, escrow or a home project?{" "}
-            <Link href="/loans/equity" className={LINK}>
-              Your home loan, used well
-            </Link>
-            .
-          </p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Need a credit score by a date?{" "}
-            <Link href="/loans/goal" className={LINK}>
-              Plan it month by month
-            </Link>
-            .
-          </p>
-
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Own a home with a mortgage?{" "}
-            <Link href="/loans/mortgage" className={LINK}>
-              See PMI, escrow and extra payments
-            </Link>
-            .
-          </p>
-
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Have a federal student loan?{" "}
-            <Link href="/loans/student" className={LINK}>
-              Compare its repayment plans
-            </Link>
-            .
-          </p>
-
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Could a loan cost less?{" "}
-            <Link href="/loans/refinance" className={LINK}>
-              See refinance offers
-            </Link>
-            , checked every month.
-          </p>
-
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Want to see how paying them down could go?{" "}
-            <Link href="/debt" className={LINK}>
-              Try the payoff planner
-            </Link>
-            . Your statements are the source of truth.
-          </p>
-        </>
-      )}
+        </details>
+      </div>
     </>
   );
 }

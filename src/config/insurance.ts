@@ -628,6 +628,9 @@ export const COVER_CHANGES_DAILY_LIMIT = 200;
 // --- Renewal negotiation and claims, done by Jane (spec step 155) ---------------------------
 // A renewal this much (share) above today's price is worth asking the carrier about.
 export const NEGOTIATE_MIN_RISE = 0.05;
+// How far back a policy's charges are read to see what it cost before a rise (a year: monthly
+// and six-monthly premiums both show their old price).
+export const NEGOTIATE_HISTORY_DAYS = 365;
 // The stand-in carrier meets a cheaper competing quote this close (share above it), or
 // takes off this share of the rise for a loyal customer, never below today's price.
 export const DEMO_NEGOTIATE = { matchMargin: 0.02, loyaltyShareOfRise: 0.5 } as const;
@@ -920,6 +923,9 @@ export const BUSINESS_LOOKBACK_DAYS = 365;
 // Freelance, gig or shop money this big in the period, or the tax profile saying self-employed,
 // means a business.
 export const BUSINESS_MIN_INCOME_CENTS = 50_000;
+// And at least this many payments of it: one Shopify payout from selling something isn't a
+// business (real-user QA).
+export const BUSINESS_MIN_PAYMENTS = 3;
 // Deposits from a card-payment service are a business's sales (Jo's Square deposits).
 export const BUSINESS_SALES_DEPOSIT = /\b(?:square|stripe|shopify|clover|toast|paypal)\b/i;
 export const BUSINESS_LIABILITY_TARGET_CENTS = 100_000_000;

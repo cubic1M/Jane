@@ -7,7 +7,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // Giving in the chat (spec step 168): a gift's missing receipt, the giving options before
 // the year ends (each as the tax with and without it; demo advice), and "how should I give".
 
-export const GIVING_HREF = "/taxes#giving";
+export const GIVING_HREF = "/taxes?focus=life:giving";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

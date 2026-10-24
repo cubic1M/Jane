@@ -10,6 +10,10 @@ import type { MessageAction, MessageRefs } from "./types";
 
 export const INHERITED_HREF = "/profile";
 
+// The heirs the 10-year rule doesn't apply to, in a line (ELIGIBLE_BENEFICIARIES has them in full).
+const RULE_EXCEPTIONS =
+  "A spouse, a minor child, a disabled or chronically ill heir, or one close to the owner's age has other rules.";
+
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 export function inheritedIraMessage(v: InheritanceView, ira: InheritedIra): Message | null {
@@ -60,7 +64,8 @@ export function inheritanceLines(v: InheritanceView): string[] {
   // Taxes QA: "what's the 10-year rule" with no inherited IRA got no word about the rule.
   if (v.inherited.length === 0) {
     lines.push(
-      `The 10-year rule: most people who inherit an IRA from someone other than their spouse must empty it by the end of the 10th year after the owner died, and pay income tax on each withdrawal. If the owner had already started required withdrawals, there are yearly ones too. The exceptions: ${ELIGIBLE_BENEFICIARIES.join("; ")}.`,
+      // Answer-check sweep: kept under the length a chat answer allows.
+      `The 10-year rule: most people who inherit an IRA from someone other than their spouse must empty it by the end of the 10th year after the owner died,, paying income tax on each withdrawal. ${RULE_EXCEPTIONS}`,
     );
   }
   lines.push(

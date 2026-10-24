@@ -1,4 +1,5 @@
 import { validTimezone } from "@/lib/digest/week";
+import { landing } from "@/lib/area-pages/landing";
 import type { OptionSet } from "@/lib/floating-cards";
 import { toOptionSet } from "@/lib/option-set";
 import { withFrom } from "./back-link";
@@ -42,6 +43,8 @@ export type MessageView = {
   options: OptionSet | null;
   // A suggestion card's extra details (refs.cardDetails), or null.
   cardDetails?: CardExtras | null;
+  // A suggestion's whole reason (refs.suggestionWhy), or null.
+  cardWhy?: string | null;
 };
 
 const TAGS: Record<MessageKind, string> = {
@@ -94,9 +97,10 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     note: message.refs.note ?? null,
     advice: message.refs.advice === true,
     buttons,
-    // Spec step 86: a page opened from here links back to this message.
+    // Spec step 86: a page opened from here links back to this message. An old link to an
+    // area page lands on its node (src/lib/area-pages/landing.ts).
     links: message.actions.flatMap((a) =>
-      a.kind === "link" ? [{ label: a.label, href: withFrom(a.href, message.id) }] : [],
+      a.kind === "link" ? [{ label: a.label, href: withFrom(landing(a.href), message.id) }] : [],
     ),
     undoUntil: buttons.some((b) => b.id.startsWith("undo.")) ? undoUntil : null,
     block: drawn(message.refs.block),
@@ -107,5 +111,6 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
         ? toOptionSet(message.refs.options)
         : null,
     cardDetails: message.refs.cardDetails ?? null,
+    cardWhy: message.refs.suggestionWhy ?? null,
   };
 }

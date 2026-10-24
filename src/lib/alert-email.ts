@@ -29,12 +29,12 @@ export function renderAlertEmail(
     `Choose which alerts we email: ${links.settings}`,
     `Stop alert emails: ${links.unsubscribe}`,
   ].join("\n");
-  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#18181b;line-height:1.5">
-<p style="font-size:13px;color:#71717a;margin:0">${escapeHtml(label)}</p>
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#171717;line-height:1.5">
+<p style="font-size:13px;color:#737373;margin:0">${escapeHtml(label)}</p>
 <h1 style="font-size:20px">${escapeHtml(alert.title)}</h1>
 <p>${escapeHtml(alert.body)}</p>
-<p><a href="${escapeHtml(links.alerts)}" style="color:#047857">See your alerts</a></p>
-<p style="margin-top:32px;font-size:12px;color:#71717a"><a href="${escapeHtml(links.settings)}" style="color:#71717a">Choose which alerts we email</a> · <a href="${escapeHtml(links.unsubscribe)}" style="color:#71717a">Stop alert emails</a></p>
+<p><a href="${escapeHtml(links.alerts)}" style="color:#171717">See your alerts</a></p>
+<p style="margin-top:32px;font-size:12px;color:#737373"><a href="${escapeHtml(links.settings)}" style="color:#737373">Choose which alerts we email</a> · <a href="${escapeHtml(links.unsubscribe)}" style="color:#737373">Stop alert emails</a></p>
 </div>`;
   return { subject, text, html };
 }

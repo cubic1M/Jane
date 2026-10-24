@@ -10,7 +10,7 @@ import { W4Buttons } from "./w4-buttons";
 // labelled; real accounts get the comparison and the IRS's estimator.
 
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-const LINK = "font-medium text-emerald-700 hover:underline";
+const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 
 const where = (c: W4Change) =>
   c.step === "4b"
@@ -59,7 +59,7 @@ export function WithholdingSection({ view }: { view: WithholdingView }) {
               : `Less is being withheld than your tax: ${balancePhrase(check.refundCents)} for ${estimate.year}.`}
           </p>
           {advice ? (
-            <div className="flex flex-col gap-2 rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
+            <div className="flex flex-col gap-2 border border-zinc-300 p-3 text-sm dark:border-zinc-700">
               <p className="font-medium">What to put on a new W-4</p>
               <ul className="list-disc pl-5">
                 {check.thisYear && (
@@ -70,6 +70,15 @@ export function WithholdingSection({ view }: { view: WithholdingView }) {
                 )}
                 <li>From January, for a full year: {where(check.fromJanuary)}.</li>
               </ul>
+              {check.thisYear?.step === "4b" && (
+                // Area plan walk: "$127,700" next to "$24,500" read as a mistake without this.
+                <p>
+                  Step 4(b) is a yearly figure your employer spreads over all {check.perYear}{" "}
+                  paychecks, so handing the refund back in {check.paychecksLeft} takes a big one:
+                  about {formatCents(-check.thisYear.perPaycheckCents)} less withheld from each.
+                  Switch to the January figure then.
+                </p>
+              )}
               <p>Keep Steps 1 to 3 as they are. Only you can give it to your employer.</p>
               <W4Buttons
                 kind="suggest"

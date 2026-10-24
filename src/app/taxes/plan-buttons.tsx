@@ -31,7 +31,7 @@ export function PlanButtons({ moveId, label }: { moveId: string; label: string }
       >
         Not for me
       </button>
-      <span role="status" className={state?.ok === false ? "text-sm text-red-700" : "text-sm"}>
+      <span role="status" className={state?.ok === false ? "text-sm font-semibold" : "text-sm"}>
         {state?.message ?? ""}
       </span>
     </form>

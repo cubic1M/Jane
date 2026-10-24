@@ -82,3 +82,61 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await tiles.nth(1).getByRole("link", { name: "Insurance" }).click();
   await expect(page).toHaveURL("/insurance");
 });
+
+test("the giant tree shows everything at once, and a feature's Ask Jane box sends to the chat", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  userId = await demoPerson(context, page, baseURL);
+  await page.goto("/home");
+
+  // Jane, the six areas and their branches, all in one canvas, no tabs to click through.
+  const tree = page.getByRole("tree", { name: "What Jane does" });
+  await expect(tree.locator('[role="treeitem"][aria-level="1"]')).toHaveCount(1, {
+    timeout: 60_000,
+  });
+  await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(AREAS.length);
+  expect(await tree.locator('[role="treeitem"][aria-level="3"]').count()).toBeGreaterThan(6);
+  expect(await tree.locator('[role="treeitem"][aria-level="4"]').count()).toBeGreaterThan(20);
+  const canvas = page.locator("[data-giant-tree]");
+  for (const name of ["Zoom in", "Zoom out", "Fit the whole tree"]) {
+    await expect(canvas.getByRole("button", { name })).toBeVisible();
+  }
+
+  // The keyboard walks it: Jane, into the first area, its first branch, its first feature.
+  const jane = tree.locator('[role="treeitem"][aria-level="1"]');
+  await jane.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  const feature = tree.locator('[role="treeitem"][aria-level="4"]').first();
+  await expect(feature).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(feature).toHaveAttribute("aria-selected", "true");
+  const detail = page.locator("[data-giant-detail]");
+  await expect(detail.getByRole("link", { name: "[OPEN]" })).toBeVisible();
+
+  // Its Ask Jane box sends the question straight into the chat: no Send to press.
+  const ask = canvas.locator("[data-ask-jane]");
+  await expect(ask).toBeVisible();
+  const question = ((await ask.locator(":scope > span").last().textContent()) ?? "").trim();
+  expect(question.length).toBeGreaterThan(5);
+  await ask.click();
+  if (isMobile) {
+    await expect(page.getByRole("dialog", { name: "Chat with Jane" })).toBeVisible();
+  }
+  const chat = page.frameLocator('iframe[title="Chat with Jane"]');
+  const messages = chat.getByRole("list", { name: "Messages" }).getByRole("listitem");
+  await expect(chat.getByText(question).first()).toBeVisible({ timeout: 30_000 });
+  // Jane answers, and the box says it was asked; asked again, it doesn't send twice.
+  await expect(ask).toContainText("ASKED", { timeout: 60_000 });
+  const count = await messages.count();
+  // On a phone the sheet is over the page: close it to reach the box again.
+  if (isMobile) await page.getByRole("button", { name: "Close chat" }).click();
+  await ask.click();
+  await page.waitForTimeout(1000);
+  expect(await messages.count()).toBe(count);
+});

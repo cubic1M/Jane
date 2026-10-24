@@ -32,21 +32,35 @@ export function simulatedKind(actionId: string, messagesSoFar: number): Simulate
   return n < 6 ? "done" : n < 8 ? "needs_info" : n < 9 ? "refused" : "needs_person";
 }
 
+// What the request was about, so the answer fits it: cancelling, a price, or money back.
+const CANCEL: readonly ActionType[] = ["cancel_subscription"];
+const PRICE: readonly ActionType[] = ["fight_price_increase", "negotiate_bill", "card_interest"];
+
 export function simulatedBody(
   kind: SimulatedKind,
   actionType: ActionType,
   merchant: string,
 ): string {
   const sign = `\n\nBest,\n${merchant} Support`;
+  const cancel = CANCEL.includes(actionType);
+  const price = PRICE.includes(actionType);
   switch (kind) {
     case "done":
-      return actionType === "fight_price_increase"
-        ? `Hi,\n\nThanks for being a loyal customer. We can keep your previous price for the next 12 months; the change has been applied to the account.${sign}`
-        : `Hi,\n\nThanks for reaching out. Your refund has been processed for the charges listed. It should appear on the card in 5 to 7 business days.${sign}`;
+      return cancel
+        ? `Hi,\n\nThanks for reaching out. We've cancelled the subscription, and there will be no further charges.${sign}`
+        : actionType === "fight_price_increase"
+          ? `Hi,\n\nThanks for being a loyal customer. We can keep your previous price for the next 12 months; the change has been applied to the account.${sign}`
+          : price
+            ? `Hi,\n\nThanks for being a loyal customer. We've applied a lower rate to the account for the next 12 months.${sign}`
+            : `Hi,\n\nThanks for reaching out. Your refund has been processed for the charges listed. It should appear on the card in 5 to 7 business days.${sign}`;
     case "needs_info":
       return `Hi,\n\nHappy to look into this. Could you confirm the last 4 digits of the card that was charged, so we can find the account?${sign}`;
     case "refused":
-      return `Hi,\n\nWe looked into this. Unfortunately we are unable to offer a refund for these charges under our terms.${sign}`;
+      return cancel
+        ? `Hi,\n\nWe looked into this. Unfortunately we are unable to cancel the subscription on a request sent on the customer's behalf.${sign}`
+        : price
+          ? `Hi,\n\nWe looked into this. Unfortunately we are unable to change the price on this plan.${sign}`
+          : `Hi,\n\nWe looked into this. Unfortunately we are unable to offer a refund for these charges under our terms.${sign}`;
     case "needs_person":
       return `Hi,\n\nFor security, the account holder must contact us directly from the email address on the account.${sign}`;
   }

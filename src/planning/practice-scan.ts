@@ -3,6 +3,7 @@ import {
   AUTOPILOT_LIMITS,
   classOf,
   classTickers,
+  swapPair,
   MODEL_PORTFOLIOS,
   OPPORTUNITY_LEVELS,
   PRACTICE_ETFS,
@@ -27,12 +28,21 @@ import {
   SCAN_KINDS,
   type ScanKind,
 } from "@/config/practice-scan";
+import { ASK_FIRST_KINDS } from "@/config/practice-opportunities";
+import { ideaSlot, PRACTICE_IDEA_MIN_CENTS } from "@/config/practice-suggestions";
 import { HARVEST_MIN_LOSS_CENTS } from "@/config/tax";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { WorthKind } from "@/detectors/contract";
 import type { Bar, Headline } from "@/lib/market/types";
 import { lotsFor, unrealised, washReplacements, type InvTransaction } from "./investment-taxes";
-import { portfolioValue, positionValue, violates, type Prices } from "./practice-autopilot";
+import {
+  buyFundFor,
+  lossToHarvest,
+  portfolioValue,
+  positionValue,
+  violates,
+  type Prices,
+} from "./practice-autopilot";
 import { apply, LedgerError, type LedgerState } from "./practice-ledger";
 
 // The daily scan of a practice portfolio (spec step 292, Phase AW, Stage A). Pure: from what the
@@ -127,6 +137,8 @@ export type ScanInput = {
   avoid?: readonly string[];
   // Cash always kept: dips and ideas only spend the cash above it.
   cashBufferCents?: number;
+  // The fund the person chose for a kind (a strategy menu tilt): buys go there first.
+  funds?: Readonly<Partial<Record<PracticeClass, string>>>;
   // The person's limits (their rebalance pace's band); the hard ones without them.
   limits?: AutopilotLimits;
 };
@@ -303,14 +315,16 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
   found.sort((a, b) => b.drop - a.drop);
   const flags: ScanFlag[] = [];
   for (const x of found) {
-    // Into the fund held, or its partner when that one is at a loss or was just sold at one
-    // (buying it would make a wash sale of the loss).
-    const open = [x.ticker, ...classTickers(x.c)].filter((t) => !blocked.has(t));
-    const atLoss = (t: string) => {
-      const p = input.state.positions[t];
-      return p !== undefined && positionValue(input.state, input.prices, t) < p.costBasisCents;
-    };
-    const buy = open.find((t) => !atLoss(t)) ?? open[0];
+    // Into the kind's own fund, or its partner only when that one was just sold at a loss
+    // (buying it back would make a wash sale) or is never bought.
+    const buy = buyFundFor(
+      x.c,
+      blocked,
+      (input.rules ?? rulesOnAt(input.level)).has("tax_loss_harvest")
+        ? { state: input.state, prices: input.prices }
+        : null,
+      input.funds?.[x.c] ?? null,
+    );
     if (!buy) continue;
     const held = classValue(input.state, input.prices, x.c);
     const room = Math.round((weights[x.c] + DIP_MAX_OVER_TARGET) * total) - held;
@@ -368,12 +382,12 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
   for (const [ticker, position] of Object.entries(input.state.positions)) {
     const c = classOf(ticker);
     if (!c) continue;
-    const swap = classTickers(c).find((t) => t !== ticker && !blocked.has(t));
+    const swap = swapPair(c).find((t) => t !== ticker && !blocked.has(t));
     if (!swap) continue;
     const valueCents = positionValue(input.state, input.prices, ticker);
     const cost = position.costBasisCents;
     const loss = cost - valueCents;
-    if (loss < Math.max(HARVEST_MIN_LOSS_CENTS, HARVEST_MIN_LOSS_SHARE * cost)) continue;
+    if (!lossToHarvest(input.state, input.prices, ticker)) continue;
     // A buy of the same fund within the window either side makes the loss a wash sale; and the
     // fund swapped into mustn't have been sold at a loss within it either.
     const txns = asTransactions(input.trades, ticker);
@@ -595,10 +609,25 @@ export function flagStatus(
     ? "held"
     : flag.kind === "drift_rebalance"
       ? "autopilot"
-      : flag.trades.length === 0 || mode === "suggest"
+      : flag.trades.length === 0 ||
+          mode === "suggest" ||
+          (ASK_FIRST_KINDS as readonly string[]).includes(flag.kind)
         ? "suggested"
         : "acted";
   return { status, heldBy: held };
+}
+
+// A suggestion the person isn't asked: one about the same thing is still waiting (ideaSlot,
+// within PRACTICE_IDEA_DAYS), or it's pocket change. The live scan and the rule replay both skip
+// with this, so neither keeps it.
+export function notAskedYet(
+  flag: Pick<ScanFlag, "kind" | "ticker" | "trades" | "amountCents">,
+  waiting: ReadonlySet<string>,
+): boolean {
+  return (
+    waiting.has(ideaSlot(flag.kind, flag.ticker)) ||
+    (flag.trades.length > 0 && flag.amountCents < PRACTICE_IDEA_MIN_CENTS)
+  );
 }
 
 // A flag kept from an earlier scan, as the scan reads it back.

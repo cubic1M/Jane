@@ -1,3 +1,4 @@
+import { DEMO_FAMILY_CREDIT, demoToldFor } from "@/data-sources/demo/people-extras/told";
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
@@ -7,12 +8,13 @@ import {
   DEMO_BENEFICIARIES_MISSING,
   DEMO_VALUES_EXCLUDES,
 } from "@/data-sources/demo/people-extras/investing";
-import type { PersonId } from "@/config/people";
+import { isPersonId, type PersonId } from "@/config/people";
 import { SAMPLE_RELIEF } from "@/config/disasters";
 import { goalProgress } from "@/planning/goals";
 import { tradeGoalOf } from "@/planning/goal-tradeoffs";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
+import { samplePracticeIdeas } from "./sample-practice";
 
 // A sample person's data in the shape the profile builder takes, straight from the demo bank
 // (spec step 252), so the profile and the detector harness (steps 253 and 254) can be tried
@@ -91,12 +93,29 @@ const HEALTH_PLANS: Readonly<
   },
 };
 
+function familyCreditFor(person: string): Pick<ProfileInput, "familyCredit"> {
+  const rows = DEMO_FAMILY_CREDIT[person as PersonId] ?? [];
+  if (rows.length === 0) return {};
+  const cosigned = rows.filter((r) => r.kind === "cosigned");
+  return {
+    familyCredit: {
+      helped: rows.length - cosigned.length,
+      cosignedOwedCents: cosigned.reduce((s, r) => s + r.balanceCents, 0),
+      cosignedMissed: cosigned.filter((r) => r.missed).length,
+      cosignedPaymentCents: cosigned.reduce((s, r) => s + r.monthlyPaymentCents, 0),
+    },
+  };
+}
+
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };
   const holdings = demoHoldings(demo, SAMPLE_TODAY);
-  return {
+  const input: ProfileInput = {
     today: SAMPLE_TODAY,
-    told,
+    // What they told Jane that no bank shows (people-extras/told.ts), under anything a test says.
+    told: { ...demoToldFor(person, SAMPLE_TODAY), ...told },
+    // Credit they help family with, as the profile loader totals it (src/lib/profile.ts).
+    ...familyCreditFor(person),
     extras: {
       householdMembers: 0,
       coverPolicies: SAMPLE_POLICIES[person] ?? [],
@@ -173,4 +192,15 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
       minimumCents: l.minimumPaymentCents,
     })),
   };
+  // Phase AW: their practice portfolio starts by itself at the first scan
+  // (src/lib/practice/demo-start.ts), with the ideas it has waiting.
+  if (isPersonId(person)) {
+    input.extras = {
+      householdMembers: 0,
+      ...input.extras,
+      hasPracticePortfolio: true,
+      practiceIdeas: samplePracticeIdeas(person, input),
+    };
+  }
+  return input;
 }

@@ -22,7 +22,9 @@ export function TryButton() {
     return () => clearTimeout(fallback);
   }, [next, router]);
   return (
-    <form action={action} className="flex flex-col gap-2">
+    // At most the screen's width: the people's long descriptions in the picker would otherwise
+    // widen it past a phone's edge, button and all (phone walk, 375 px).
+    <form action={action} className="flex w-full max-w-md min-w-0 flex-col gap-2">
       <label className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
         <input type="checkbox" name="consent" required className="mt-0.5 h-5 w-5" />
         <span>
@@ -42,7 +44,7 @@ export function TryButton() {
         <select
           name="person"
           defaultValue="any"
-          className="h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
+          className="h-11 w-full min-w-0 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
         >
           <option value="any">Surprise me</option>
           {PEOPLE.map((p) => (

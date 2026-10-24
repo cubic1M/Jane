@@ -12,6 +12,7 @@ import { InviteForm } from "./forms";
 import { MoneyForTwo } from "./money-for-two";
 import { SharedBills } from "./shared-bills";
 import { shareableCharges, sharedBills } from "@/lib/shared-bills";
+import { SubmitButton } from "@/components/submit-button";
 
 // Emails and account names can be long with no spaces; they wrap rather than push the page
 // sideways on a phone.
@@ -66,9 +67,9 @@ async function Household() {
             You share with {partners.map((p) => p.user.email).join(", ")}
           </h2>
           <form action={leave}>
-            <button type="submit" className="text-sm font-medium text-red-700 hover:underline">
+            <SubmitButton className="text-sm font-medium text-red-700 hover:underline">
               Leave household
-            </button>
+            </SubmitButton>
           </form>
         </section>
       ) : (
@@ -102,13 +103,10 @@ async function Household() {
                   <form action={share}>
                     <input type="hidden" name="accountId" value={a.id} />
                     <input type="hidden" name="shared" value={String(!a.sharedWithHousehold)} />
-                    <button
-                      type="submit"
-                      className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                    >
+                    <SubmitButton className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900">
                       {a.sharedWithHousehold ? "Stop sharing" : "Share"}
                       <span className="sr-only"> {label(a)}</span>
-                    </button>
+                    </SubmitButton>
                   </form>
                 </span>
               </li>

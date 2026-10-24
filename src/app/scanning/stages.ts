@@ -41,16 +41,16 @@ export function percentFor(done: number, creep: number): number {
 }
 
 // What a slow scan offers instead of the bar: where this screen was heading. From Try Jane
-// (then=chat) that's the chat, which opens with Jane saying she's still looking.
-export function slowLink(next: "/report" | "/chat"): {
+// (then=home) that's Home, whose chat opens with Jane saying she's still looking.
+export function slowLink(next: "/report" | "/home"): {
   href: string;
   label: string;
   after: string;
 } {
-  return next === "/chat"
+  return next === "/home"
     ? {
-        href: "/chat",
-        label: "Open the chat",
+        href: "/home",
+        label: "Open Jane",
         after: "and Jane will post what she finds as it's ready.",
       }
     : {
@@ -58,4 +58,24 @@ export function slowLink(next: "/report" | "/chat"): {
         label: "See your report",
         after: "and savings will appear as soon as they're ready.",
       };
+}
+
+// The page's loading bar during the first scan (src/components/scan-bar.tsx), in ASCII:
+// "[████████░░░░░░░░] 52% · reading transactions".
+export const BAR_CELLS = 16;
+
+export function scanBarText(percent: number, label: string): string {
+  const p = Math.max(0, Math.min(100, Math.round(percent)));
+  const filled = Math.round((p / 100) * BAR_CELLS);
+  return `[${"█".repeat(filled)}${"░".repeat(BAR_CELLS - filled)}] ${p}% · ${label.toLowerCase()}`;
+}
+
+// What's happening now: the first stage not yet finished.
+export function stageLabel(progress: ScanProgress | null): string {
+  const done = stagesDone(progress);
+  if (done >= STAGES.length) return STAGES[STAGES.length - 1].label;
+  const stage = STAGES[done];
+  return stage.label === "Reading your transactions" && progress
+    ? monthsLabel(progress.months)
+    : stage.label;
 }

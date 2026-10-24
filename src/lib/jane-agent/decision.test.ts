@@ -138,6 +138,13 @@ describe("the follow-up", () => {
       item: "crypto",
       label: "bitcoin",
     });
+    // "Why?" right after it asks for the reason alone (answer-check sweep).
+    expect(withTopic(parseIntent("why", ASOF), topic, ASOF)).toEqual({
+      kind: "decision",
+      item: "crypto",
+      label: "bitcoin",
+      why: true,
+    });
     // Another kind of topic doesn't count.
     expect(
       withTopic(parseIntent("should i buy?", ASOF), { kind: "act", target: "Netflix" }, ASOF),
@@ -183,6 +190,18 @@ describe("the answer", () => {
       facts({ cardDebtCents: 0, cashCents: 5_000_000, goalsBehind: [] }),
     );
     expect(reply.body).toContain("Your basics look covered");
+  });
+
+  it("gives the reason alone to 'why?', and says when to ask again", () => {
+    const reply = decisionReply(
+      { kind: "decision", item: "crypto", label: "bitcoin", why: true },
+      null,
+      facts(),
+      true,
+    );
+    expect(reply.body).toMatch(/^I'd pay the cards down first/);
+    expect(reply.body).toMatch(/Ask me about bitcoin again once that's done\.$/);
+    expect(reply.body).not.toContain("here is where you stand");
   });
 
   it("gives only the facts on a real account", () => {

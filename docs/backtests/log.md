@@ -214,3 +214,40 @@ For later (not built here):
 - **News ideas need stored past headlines** before they can be replayed.
 - **Per-person evaluation** (risk, worst drop they can stomach, goal date, monthly amount) is the
   next round, once the preference type lands (B1).
+
+## 2026-10-24: everyday buys go to each kind's own fund
+
+The practice autopilot used to buy whichever fund of a kind was held more, or the swap partner
+whenever the main fund was at a loss. So after a tax-loss swap, or in any dip, rebalances bought
+ITOT instead of VTI. Now `buyFundFor` (src/planning/practice-autopilot.ts) buys the kind's own
+fund. The partner is used only for the wash-sale window: when the own fund was sold at a loss
+lately (or is never bought), or when the person's losses are being harvested and the own fund is
+held at a loss (buying it would make a harvest within 30 days a wash sale). The dip buys and
+opportunity buys use the same rule.
+
+The rule replay re-run on the fixture (2016 to October 14, 2026), tax-loss swaps against none:
+
+| Level | Return points | Worst drop, points deeper | |
+| --- | --- | --- | --- |
+| Medium | −0.01 | 0.03 | stays off |
+| High | +0.18 | 0.04 | stays off: far under the 1% gain a rule needs, and a deeper drop |
+| Very high | −0.04 | 0.05 | stays off |
+
+`src/planning/rule-tuning.test.ts` now checks that each switched-off rule is never better on both
+return and worst drop, and that the evidence quotes the replay's own numbers.
+
+## 2026-10-24: the strategy catalog, every strategy at every level
+
+The founder asked for every well-documented, rules-based strategy, backtested thoroughly, with only the good-enough ones recommended. [The catalog](strategy-catalog.md) has 48 strategies from public sources (Faber, Antonacci, Keller & Keuning, Keller & Butler, Butler et al., Kipnis, López de Prado, Choueifaty, the factor literature, Connors, the seasonal anomalies). They were replayed in GitHub Actions on Alpaca SIP daily closes, 2016 to October 2026, after costs, at every risk level (run 40083022347); the results are in [strategy-results.md](strategy-results.md).
+
+- 77 trials (every strategy at every setting). Each was scored out of sample twice: walk-forward from 2020, and chosen to 2021 then scored from 2022.
+- The deflated Sharpe ratio of each walk-forward's excess over the level's mix, against the best of 77 lucky trials, is the haircut.
+- **Nothing is recommendable at any level.** None beat its level's mix by enough to rule out luck after testing 77 at once.
+- **Worth watching:** each beat the mix out of sample, inside the risk budget, with more return and not just less risk, and still ahead measured from 2021 and from 2022.
+  - Hybrid asset allocation (HAA): every level, 5 to 10% likely a real edge.
+  - Sector rotation: every level, strongest at High and Very high (18 to 22%).
+  - Faber's aggressive GTAA: every level but Very high, 5 to 8%.
+  - Elastic asset allocation (EAA): every level but Very high, 4 to 7%.
+- The last three added (sector rotation with a trend filter, bond rotation, trend with volatility targeting) cut risk but gave up more return than they saved; none is worth watching. Of the three lazy portfolios, the No-Brainer is worth watching at Very low and Low and the Coffeehouse at Very low; the Larry portfolio trailed every level's mix.
+- Most of the rest did worse than simply keeping the level's mix, the honest result for most published rules once costs and out-of-sample years are counted.
+- The day-trading rules (every one lost after slippage) and the crypto rules are scored separately: `intraday-evidence.ts` and `crypto-evidence.ts`.

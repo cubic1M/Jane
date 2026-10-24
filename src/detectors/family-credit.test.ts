@@ -81,7 +81,17 @@ describe("a co-signed loan", () => {
     expect(s.why).toContain("It's on your credit report too");
   });
 
+  it("reaches Dan and Lena, who co-signed Emily's car loan (detector coverage)", () => {
+    const s = fire("preretire").find((x) => x.topic === "cosign_risk")!;
+    expect(s).toMatchObject({ urgency: "later", worthCents: 1_460_000 });
+    expect(s.short).toContain("$14,600.00");
+  });
+
   it("stays quiet when nothing is co-signed", () => {
-    expect(fire("preretire").some((x) => x.topic === "cosign_risk")).toBe(false);
+    expect(
+      fire("preretire", (d) => ({ ...d, familyCredit: undefined })).some(
+        (x) => x.topic === "cosign_risk",
+      ),
+    ).toBe(false);
   });
 });

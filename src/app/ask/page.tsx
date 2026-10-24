@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 import { deleteAskConversation } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // The person's earlier Ask Jane conversations (spec step 23), to read and delete. New questions
 // go to the one chat, where Claude answers with every tool (docs/feature-audit.md, cluster 5):
@@ -83,12 +84,9 @@ async function Ask({ searchParams }: { searchParams: PageProps<"/ask">["searchPa
                 </Link>
                 <form action={deleteAskConversation}>
                   <input type="hidden" name="conversationId" value={conversation.id} />
-                  <button
-                    type="submit"
-                    className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
-                  >
+                  <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
                     Delete
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}

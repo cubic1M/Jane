@@ -8,7 +8,7 @@ import { figuresOf, type Source } from "@/planning/home-taxes";
 // and the state and local tax cap applied.
 
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-const LINK = "text-emerald-700 underline";
+const LINK = "underline underline-offset-2";
 
 function SourceLink({ s }: { s: Source }) {
   switch (s.kind) {
@@ -26,7 +26,7 @@ function SourceLink({ s }: { s: Source }) {
       );
     case "document":
       return (
-        <Link href="/taxes#forms" className={LINK}>
+        <Link href="/taxes?focus=records:forms" className={LINK}>
           {s.form} from {s.from}
         </Link>
       );

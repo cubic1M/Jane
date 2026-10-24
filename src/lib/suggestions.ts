@@ -1,3 +1,4 @@
+import { landing } from "@/lib/area-pages/landing";
 import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
 import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
 import { runDetectors } from "@/detectors";
@@ -201,7 +202,8 @@ export async function scanSuggestions(
       urgency: s.urgency,
       why: s.why,
       actionLabel: s.action.label,
-      actionHref: s.action.href,
+      // A bare area link opens the suggestion's own node on that area's tree.
+      actionHref: landing(s.action.href, { key: s.id, topic: s.topic }),
       score: scores.get(s.id) ?? 0,
       lastSeenAt: now,
     };

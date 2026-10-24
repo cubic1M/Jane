@@ -9,6 +9,7 @@ import { requireUser } from "@/lib/session";
 import type { MenuFund } from "@/planning/plan-menu";
 import { confirm, sendChange, useSample } from "./actions";
 import { ReadForm } from "./read-form";
+import { SubmitButton } from "@/components/submit-button";
 
 // The workplace plan's menu, used well (spec step 232, demo advice): the funds the plan
 // offers, read from a disclosure and confirmed, and the cheapest mix of them for the
@@ -95,9 +96,7 @@ async function Content({
           <Table funds={v.proposed.funds} />
           <form action={confirm} className="flex gap-3">
             <input type="hidden" name="id" value={v.proposed.id} />
-            <button type="submit" className={BUTTON}>
-              Yes, that&apos;s right
-            </button>
+            <SubmitButton className={BUTTON}>Yes, that&apos;s right</SubmitButton>
           </form>
         </section>
       )}
@@ -145,9 +144,7 @@ async function Content({
           ) : (
             v.plan.savingCents > 0 && (
               <form action={sendChange}>
-                <button type="submit" className={BUTTON}>
-                  Send this mix to my plan
-                </button>
+                <SubmitButton className={BUTTON}>Send this mix to my plan</SubmitButton>
               </form>
             )
           )}
@@ -162,9 +159,7 @@ async function Content({
           <ReadForm />
           {v.demo && (
             <form action={useSample}>
-              <button type="submit" className={SECONDARY}>
-                Use the demo plan&apos;s disclosure
-              </button>
+              <SubmitButton className={SECONDARY}>Use the demo plan&apos;s disclosure</SubmitButton>
             </form>
           )}
         </section>

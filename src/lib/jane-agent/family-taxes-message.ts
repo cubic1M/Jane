@@ -8,7 +8,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // Family taxes in the chat (spec step 169, demo advice): a choice with both sides' tax, and
 // the answer to "should we file jointly or separately", "FSA or the credit" and the like.
 
-export const FAMILY_HREF = "/taxes#family";
+export const FAMILY_HREF = "/taxes?focus=life:family";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

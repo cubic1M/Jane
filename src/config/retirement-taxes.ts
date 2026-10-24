@@ -72,3 +72,36 @@ export const IRA_DISTRIBUTION = /IRA DISTRIBUTION|IRA DIST\b|RMD\b/i;
 
 // Raising the Social Security withholding: when the tax on the taxable part is at least this.
 export const SS_TAX_MIN_CENTS = $(300);
+
+// Medicare sign-up (detector coverage, spec step 254). FOR REVIEW each year. Sources: CMS, "2026
+// Medicare Parts A & B premiums and deductibles" (the standard Part B premium); Medicare.gov,
+// "Avoid late enrollment penalties" (10% of the standard premium for each full 12 months late,
+// for as long as you have Part B; the initial window is the 7 months around the 65th birthday;
+// work cover from an employer with 20 or more employees lets Part B wait without the penalty).
+export const MEDICARE = {
+  startAge: 65,
+  partBMonthlyCents: { 2025: $(185), 2026: $(202.9) } as Readonly<Record<number, number>>,
+  latePenaltyPerYear: 0.1,
+  windowMonths: 7,
+  employerSizeToWait: 20,
+  // Brought "soon" from this told age; before it, "later".
+  soonFromAge: 64,
+} as const;
+
+// Social Security claiming age (detector coverage). FOR REVIEW each year. Sources: SSA, "Primary
+// insurance amount" (the 2026 bend points, $1,286 and $7,749 of average indexed monthly
+// earnings, at 90%, 32% and 15%); SSA "Contribution and benefit base" (2026: $184,500); SSA
+// "Delayed retirement credits" (8% a year past full retirement age, 67 for anyone born in 1960
+// or later, up to 70). The benefit is estimated from today's pay, not the person's record:
+// their Social Security statement has the real figure.
+export const SOCIAL_SECURITY = {
+  bendPointsCents: [$(1_286), $(7_749)] as const,
+  bendShares: [0.9, 0.32, 0.15] as const,
+  taxableMaxCents: $(184_500),
+  fullAge: 67,
+  latestAge: 70,
+  delayCreditPerYear: 0.08,
+  // Brought from this told age, or to anyone whose life stage is approaching retirement.
+  fromAge: 55,
+  soonFromAge: 61,
+} as const;

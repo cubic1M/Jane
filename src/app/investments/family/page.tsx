@@ -14,6 +14,7 @@ import { loadFamily } from "@/lib/investments/family";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { makeLink, openAccount, putIn, saveChild, takeDown } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Investing for the family (spec step 213, demo advice): a child's custodial account, a Roth
 // IRA for a child with earned income, and a gift link for their college fund.
@@ -101,9 +102,7 @@ async function Content({
                         className={INPUT}
                       />
                     </label>
-                    <button type="submit" className={BUTTON}>
-                      Put in
-                    </button>
+                    <SubmitButton className={BUTTON}>Put in</SubmitButton>
                   </form>
                 </>
               ) : (
@@ -111,9 +110,7 @@ async function Content({
                 v.demo && (
                   <form action={openAccount}>
                     <input type="hidden" name="kind" value="custodial" />
-                    <button type="submit" className={SECONDARY}>
-                      Open a demo custodial account
-                    </button>
+                    <SubmitButton className={SECONDARY}>Open a demo custodial account</SubmitButton>
                   </form>
                 )
               )}
@@ -147,9 +144,7 @@ async function Content({
                       className={INPUT}
                     />
                   </label>
-                  <button type="submit" className={BUTTON}>
-                    Put in
-                  </button>
+                  <SubmitButton className={BUTTON}>Put in</SubmitButton>
                 </form>
               ) : (
                 i === 0 &&
@@ -157,9 +152,9 @@ async function Content({
                 v.demo && (
                   <form action={openAccount}>
                     <input type="hidden" name="kind" value="child_roth" />
-                    <button type="submit" className={SECONDARY}>
+                    <SubmitButton className={SECONDARY}>
                       Open a demo Roth IRA for {c.name}
-                    </button>
+                    </SubmitButton>
                   </form>
                 )
               )}
@@ -190,17 +185,13 @@ async function Content({
                     </ul>
                   )}
                   <form action={takeDown}>
-                    <button type="submit" className={SECONDARY}>
-                      Take the link down
-                    </button>
+                    <SubmitButton className={SECONDARY}>Take the link down</SubmitButton>
                   </form>
                 </>
               ) : (
                 <form action={makeLink}>
                   <input type="hidden" name="plan" value={c.college.planId} />
-                  <button type="submit" className={BUTTON}>
-                    Make a gift link
-                  </button>
+                  <SubmitButton className={BUTTON}>Make a gift link</SubmitButton>
                 </form>
               )}
             </div>
@@ -227,9 +218,7 @@ async function Content({
             className={INPUT}
           />
         </label>
-        <button type="submit" className={SECONDARY}>
-          Save
-        </button>
+        <SubmitButton className={SECONDARY}>Save</SubmitButton>
       </form>
     </>
   );

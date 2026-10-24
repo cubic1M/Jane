@@ -9,6 +9,7 @@ import { loadShortTerm } from "@/lib/investments/short-term";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { buildLadder } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Short-term money, placed safely (spec step 234, demo advice): money needed within three
 // years, compared after tax in the person's own state, with a Treasury bill ladder that
@@ -106,9 +107,7 @@ async function Content({
                 about {formatCents(c.gainCents)} a year more than savings, after tax.
               </p>
               <SimulatedBanner />
-              <button type="submit" className={`${BUTTON} self-start`}>
-                Build the ladder
-              </button>
+              <SubmitButton className={`${BUTTON} self-start`}>Build the ladder</SubmitButton>
               <DemoAdviceLabel />
             </form>
           )}

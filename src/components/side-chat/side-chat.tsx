@@ -1,10 +1,10 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SIDE_CHAT_MIN_WIDTH_PX, UNREAD_POLL_MS } from "@/config/side-chat";
 import {
-  EMBED_PATH,
+  openedChat,
   isFrameMessage,
   panelShowsOn,
   sheetShare,
@@ -85,7 +85,7 @@ function UnreadDot({ count }: { count: number }) {
 }
 
 export function SideChat() {
-  const { userId, panel, sheet, unread } = useSideChat();
+  const { userId, panel, sheet, unread, src } = useSideChat();
   const pathname = usePathname();
   const router = useRouter();
   const wide = useWide();
@@ -109,10 +109,28 @@ export function SideChat() {
     velocity: number;
   } | null>(null);
   const mountFrame = idle && shows && (inView || loaded);
+  // Opened from a /chat link (src/lib/side-chat.ts): the chat comes into view showing what the
+  // link asked for, and the address is tidied so a reload doesn't open it again.
+  const search = useSearchParams();
+  useEffect(() => {
+    const opened = openedChat(window.location.search, window.location.hash);
+    if (!opened) return;
+    sideChatStore.openChat(opened.src);
+    window.history.replaceState(null, "", `${window.location.pathname}${opened.address}`);
+  }, [pathname, search]);
 
   const post = (message: FrameMessage) =>
     frame.current?.contentWindow?.postMessage(message, window.location.origin);
-  const where: FrameMessage = { type: "jane:panel", state: wide ? panel : "sheet" };
+  const where: FrameMessage = {
+    type: "jane:panel",
+    state: wide ? panel : "sheet",
+    home: pathname === "/home",
+  };
+  // The latest, for the frame's "ready" (which can arrive between renders).
+  const whereRef = useRef(where);
+  useEffect(() => {
+    whereRef.current = where;
+  });
 
   useEffect(() => {
     const ready = () => setIdle(true);
@@ -136,7 +154,34 @@ export function SideChat() {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.source !== frame.current?.contentWindow) return;
-      if (!isFrameMessage(event.data) || event.data.type !== "jane:navigate") return;
+      if (!isFrameMessage(event.data)) return;
+      if (event.data.type === "jane:ready") {
+        listening.current = true;
+        post(whereRef.current);
+        if (asking.current) post({ type: "jane:ask", text: asking.current });
+        asking.current = null;
+        if (sending.current) post({ type: "jane:send", text: sending.current });
+        sending.current = null;
+        return;
+      }
+      // Where a question sent from the giant tree landed, in the page's coordinates, and when
+      // Jane starts and finishes: told to the page for its dotted line.
+      if (event.data.type === "jane:bubble") {
+        const r = frame.current?.getBoundingClientRect();
+        if (r) {
+          window.dispatchEvent(
+            new CustomEvent("jane:bubble", {
+              detail: { x: r.left + event.data.x, y: r.top + event.data.y },
+            }),
+          );
+        }
+        return;
+      }
+      if (event.data.type === "jane:answering" || event.data.type === "jane:answered") {
+        window.dispatchEvent(new Event(event.data.type));
+        return;
+      }
+      if (event.data.type !== "jane:navigate") return;
       router.push(event.data.href);
       if (!wide) sideChatStore.setSheet("closed");
       else if (sideChatStore.get().panel === "full") sideChatStore.setPanel("open");
@@ -145,11 +190,60 @@ export function SideChat() {
     return () => window.removeEventListener("message", onMessage);
   }, [router, wide]);
 
+  // "Ask Jane" from the giant tree: the chat comes into view and the question is sent at once,
+  // waiting for the framed chat if it isn't listening yet; asked before, it finds the answer.
+  const sending = useRef<string | null>(null);
+  // The framed chat said it's listening (its "ready"); a new page in the frame says it again.
+  const listening = useRef(false);
+  useEffect(() => {
+    const onSend = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      // Only once the framed chat is listening (loaded isn't enough: it may still be hydrating).
+      if (listening.current) post({ type: "jane:send", text });
+      else sending.current = text;
+    };
+    const onFind = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      if (listening.current) post({ type: "jane:find", text });
+    };
+    window.addEventListener("jane:send", onSend);
+    window.addEventListener("jane:find", onFind);
+    return () => {
+      window.removeEventListener("jane:send", onSend);
+      window.removeEventListener("jane:find", onFind);
+    };
+  }, [wide, loaded]);
+
+  // "Ask Jane about this" (the feature map): the chat comes into view with the question in its
+  // message box, waiting for the framed chat if it isn't listening yet.
+  const asking = useRef<string | null>(null);
+  useEffect(() => {
+    const onAsk = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      if (loaded) post({ type: "jane:ask", text });
+      else asking.current = text;
+    };
+    window.addEventListener("jane:ask", onAsk);
+    return () => window.removeEventListener("jane:ask", onAsk);
+  }, [wide, loaded]);
+
   // Tell the framed chat where it is (docked, full or a sheet).
   useEffect(() => {
     if (loaded) post(where);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, wide, panel]);
+  }, [loaded, wide, panel, pathname]);
 
   // Out of sight, the unread dot is checked on focus and every minute.
   useEffect(() => {
@@ -210,7 +304,7 @@ export function SideChat() {
   const iframe = mountFrame && (
     <iframe
       ref={frame}
-      src={EMBED_PATH}
+      src={src}
       title="Chat with Jane"
       onLoad={() => {
         setLoaded(true);

@@ -5,18 +5,24 @@ import {
   MODEL_PORTFOLIOS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
+  CRYPTO_TICKERS,
+  LEDGER_UNIVERSE,
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
 import {
   NEWS_LOOKBACK_DAYS,
+  rulesOnAt,
   SCAN_HISTORY_DAYS,
   SCAN_KINDS,
   type ScanKind,
 } from "@/config/practice-scan";
+import { ideaSlot, PRACTICE_IDEA_DAYS } from "@/config/practice-suggestions";
+import { CRYPTO_SLEEVE_HISTORY_DAYS } from "@/config/crypto-strategies";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { Bar, Headline } from "@/lib/market/types";
 import { worstDropOf, type Drop, type PathPoint } from "./backtest";
+import { cryptoSleeveTrades, sleeveCash } from "./crypto-sleeve";
 import {
   monthlyDue,
   planTrades,
@@ -26,6 +32,7 @@ import {
   violates,
 } from "./practice-autopilot";
 import { apply, type LedgerState } from "./practice-ledger";
+import { themeExits } from "./themes";
 import { scanOpportunities } from "./practice-opportunities";
 import { DEFAULT_PREFERENCES, type PracticePreferences } from "./practice-preferences";
 import {
@@ -41,6 +48,8 @@ import {
   washBlocked,
   type PastFlag,
   type PastTrade,
+  notAskedYet,
+  type ScanFlag,
 } from "./practice-scan";
 
 // The rule replay ("Did the extra rules help?"): the practice autopilot and its daily scan run
@@ -72,12 +81,22 @@ export type ReplayInput = {
   monthlyAddCents: number;
   addDay: number;
   strategy: Strategy;
-  // For "rules": the scan kinds that may flag (drift always does).
-  rules?: ReadonlySet<ScanKind>;
+  // For "rules": the scan kinds that may flag (drift always does), or "live" for the ones the
+  // live scan uses at the day's level.
+  rules?: ReadonlySet<ScanKind> | "live";
   // The person's practice preferences (B1's PracticePreferences): the profile built from them
   // each day (profileFor) sets the mix, caps, never-buy list, cash kept and suggest-only, as it
   // does for the live autopilot and scan. Left out, the defaults.
   preferences?: PracticePreferences;
+  // Changes to the preferences part-way, each from its day on (as a person saving their
+  // settings would): a sample person who moved to suggest-only a week ago.
+  changes?: readonly { from: string; preferences: PracticePreferences }[];
+  // The day of the month of the person's main payday, for the payday kind; null or left out
+  // when unknown (a replay of the past knows no paydays).
+  paydayDay?: number | null;
+  // The drop the person can take from their investor profile's answer, when their practice
+  // settings say none (src/lib/practice/opportunity-prefs.ts), as a share.
+  fallbackDropShare?: number | null;
   // Each trade's cost in basis points of what changes hands, taken off the value as paid.
   tradeCostBps: number;
 };
@@ -128,6 +147,8 @@ export type ReplayResult = {
   maxOpportunityShare: number;
   // The most trades on one day.
   maxTradesInADay: number;
+  // Every flag kept as a suggestion, with its day: what the live scan would ask the person.
+  suggestions: { date: string; flag: ScanFlag }[];
 };
 
 // The live scan runs at 21:30 UTC (vercel.json); trades are stamped then.
@@ -163,10 +184,11 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
   const days = replayDays(input.bars).filter((d) => !input.from || d >= input.from);
   if (days.length < 2) return null;
   const { level, strategy } = input;
-  const rules = input.rules ?? new Set(SCAN_KINDS);
+  // "live": the scan's own rules for the day's level (rulesOnAt), as the live scan runs.
+  const rules = input.rules === "live" ? undefined : (input.rules ?? new Set(SCAN_KINDS));
   const cost = input.tradeCostBps / 10_000;
   const cursors = new Map(
-    [...PRACTICE_UNIVERSE].map((t) => [t, new Cursor(input.bars[t] ?? [])] as const),
+    [...LEDGER_UNIVERSE].map((t) => [t, new Cursor(input.bars[t] ?? [])] as const),
   );
   const headlines = [...input.headlines]
     .filter((h) => h.ticker === null || STOCKS.includes(h.ticker))
@@ -188,10 +210,17 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
   const acted: Partial<Record<ScanKind, number>> = {};
   const held: Partial<Record<ScanKind, number>> = {};
   const suggested: Partial<Record<ScanKind, number>> = {};
-  const preferences = input.preferences ?? DEFAULT_PREFERENCES;
-  const prefs = scanPreferencesFor(preferences);
-  // The profile moves only with a goal date's glide path; otherwise it is the same every day.
-  const fixed = preferences.goalDate ? null : profileFor(preferences, { level, today: days[0] });
+  const base = input.preferences ?? DEFAULT_PREFERENCES;
+  const changes = [...(input.changes ?? [])].sort((a, b) => (a.from < b.from ? -1 : 1));
+  const preferencesOn = (day: string) =>
+    changes.filter((c) => c.from <= day).at(-1)?.preferences ?? base;
+  // The profile moves only with a goal date's glide path or a change; otherwise it is the same
+  // every day.
+  const fixed =
+    base.goalDate || changes.length > 0 ? null : profileFor(base, { level, today: days[0] });
+  const suggestions: { date: string; flag: ScanFlag }[] = [];
+  // Each idea slot's last suggestion day: one about the same thing waits PRACTICE_IDEA_DAYS.
+  const asked = new Map<string, string>();
   const index: PathPoint[] = [];
   let indexValue = input.startCents;
   let lastValue = 0;
@@ -211,7 +240,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
       const priceCents = prices[t.ticker];
       const portfolioCents = portfolioValue(state, prices);
       const { ticker, side, amountCents } = t;
-      const applied = apply(state, { side, ticker, amountCents, priceCents }, PRACTICE_UNIVERSE);
+      const applied = apply(state, { side, ticker, amountCents, priceCents }, LEDGER_UNIVERSE);
       state = applied.state;
       tradesToday += 1;
       if (t.side === "buy" && STOCKS.includes(t.ticker)) boughtStock = true;
@@ -244,11 +273,18 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
       });
     };
 
+    // The day's preferences: a change from its day on, as saved settings are read.
+    const preferences = preferencesOn(today);
+    // The monthly money and its day: the input's, or a change's (the portfolio keeps its own
+    // copy, which saving the settings updates).
+    const changed = preferences !== base;
+    const monthlyAddCents = changed ? preferences.monthlyAddCents : input.monthlyAddCents;
+    const addDay = changed ? preferences.addDay : input.addDay;
     // The monthly money, before the scan, so a dip can use it first (addMonthlyIfDue).
     const month = today.slice(0, 7);
     const due = monthlyDue({
-      monthlyAddCents: input.monthlyAddCents,
-      addDay: input.addDay,
+      monthlyAddCents,
+      addDay,
       today,
       addedThisMonth: lastAddMonth === month,
     });
@@ -257,16 +293,17 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
     if (due) {
       state = apply(
         state,
-        { side: "deposit", amountCents: input.monthlyAddCents },
+        { side: "deposit", amountCents: monthlyAddCents },
         PRACTICE_UNIVERSE,
       ).state;
-      putIn += input.monthlyAddCents;
-      flow = input.monthlyAddCents;
+      putIn += monthlyAddCents;
+      flow = monthlyAddCents;
       lastAddMonth = month;
       lastDepositOn = today;
     }
 
     const morning = portfolioValue(state, prices);
+    const prefs = scanPreferencesFor(preferences, input.fallbackDropShare ?? null);
     const profile = fixed ?? profileFor(preferences, { level, today });
     if (strategy === "hold") {
       // The targets with whatever cash is waiting, never a sale.
@@ -300,6 +337,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           avoid: profile.avoid,
           cashBufferCents: profile.cashBufferCents,
           limits: profile.limits,
+          funds: profile.funds,
           prices,
           history,
           trades: pastTrades,
@@ -315,14 +353,16 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
             unpriced.length > 0
               ? { ...prefs, excludedTickers: [...prefs.excludedTickers, ...unpriced] }
               : prefs,
-          monthlyAddCents: input.monthlyAddCents,
-          addDay: input.addDay,
-          // The replay knows no paydays (they come from a person's bank deposits); the payday
-          // kind only ever suggests.
-          paydayDay: null,
+          monthlyAddCents,
+          addDay,
+          // A payday only when the caller knows one (it comes from a person's bank deposits);
+          // the payday kind only ever suggests.
+          paydayDay: input.paydayDay ?? null,
           heldHistory,
           lastDepositOn,
         });
+        const waitingSince = daysBefore(today, PRACTICE_IDEA_DAYS);
+        const waiting = new Set([...asked].filter(([, d]) => d >= waitingSince).map(([k]) => k));
         for (const flag of flags) {
           const { status } = flagStatus(
             flag,
@@ -333,6 +373,9 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
             firstRefusal(profile, flag),
             profile.limits,
           );
+          // As the live scan: not kept while one about the same thing waits, or for pocket change.
+          if (status === "suggested" && notAskedYet(flag, waiting)) continue;
+          if (status === "suggested") asked.set(ideaSlot(flag.kind, flag.ticker), today);
           pastFlags.push({
             key: status === "held" ? `${flag.key}:held:${today}` : flag.key,
             kind: flag.kind,
@@ -340,7 +383,10 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
             status,
           });
           if (status === "held") held[flag.kind] = (held[flag.kind] ?? 0) + 1;
-          if (status === "suggested") suggested[flag.kind] = (suggested[flag.kind] ?? 0) + 1;
+          if (status === "suggested") {
+            suggested[flag.kind] = (suggested[flag.kind] ?? 0) + 1;
+            suggestions.push({ date: today, flag });
+          }
           if (status !== "acted") continue;
           acted[flag.kind] = (acted[flag.kind] ?? 0) + 1;
           for (const t of flag.trades) if (!refusedByPreferences(profile, t)) place(t, t.rule);
@@ -352,18 +398,48 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
       const recent = pastTrades.filter((t) => t.side === "sell" && t.placedAt >= since);
       const blocked = washBlocked(recent, today);
       for (const t of MODEL_TICKERS) if (!prices[t]) blocked.add(t);
-      const plan = planTrades({
+      const exits = themeExits(state, prices, pastTrades, today);
+      // The crypto sleeve (Very high only): the live run's planner, on the closes before the day.
+      const cryptoFrom = daysBefore(today, CRYPTO_SLEEVE_HISTORY_DAYS);
+      const sleeve = cryptoSleeveTrades({
+        sleeve: profile.crypto,
         level: profile.level,
         state,
         prices,
-        paused: false,
-        tradesToday,
-        blocked,
-        weights: profile.weights,
-        avoid: new Set(profile.avoid),
-        cashBufferCents: profile.cashBufferCents,
-        limits: profile.limits,
+        history: Object.fromEntries(
+          CRYPTO_TICKERS.map((t) => [
+            t,
+            cursors
+              .get(t)!
+              .window(cryptoFrom)
+              .filter((b) => b.date < today)
+              .map((b) => b.closeCents),
+          ]),
+        ),
+        today,
+        previous: i > 0 ? days[i - 1] : null,
+        cashCents: state.cashCents - profile.cashBufferCents,
+        traded: pastTrades.some((t) => t.rule === "crypto_sleeve"),
       });
+      const plan = [
+        ...exits,
+        ...sleeve,
+        ...planTrades({
+          level: profile.level,
+          state: { ...state, cashCents: state.cashCents + sleeveCash(sleeve) },
+          prices,
+          paused: false,
+          tradesToday: tradesToday + exits.length + sleeve.length,
+          blocked,
+          weights: profile.weights,
+          avoid: new Set(profile.avoid),
+          cashBufferCents: profile.cashBufferCents,
+          limits: profile.limits,
+          harvesting:
+            profile.harvestLosses && (rules ?? rulesOnAt(profile.level)).has("tax_loss_harvest"),
+          funds: profile.funds,
+        }),
+      ];
       // Suggest only: the plan is shown, never placed.
       if (profile.trades)
         for (const t of sellsFirst(plan)) if (!refusedByPreferences(profile, t)) place(t, t.rule);
@@ -398,6 +474,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
     costCents: Math.round(costCents),
     harvestedLossCents: harvested,
     maxOpportunityShare,
+    suggestions,
     maxTradesInADay,
   };
 }

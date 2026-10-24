@@ -23,7 +23,12 @@ import {
   dismissCoverEvent,
 } from "@/lib/insurance/cover-changes";
 import { parseCoverEventRef } from "@/lib/jane-agent/insurance/cover-words";
-import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insurance/negotiate";
+import {
+  NegotiationError,
+  callCarrier,
+  declineNegotiation,
+  negotiationsDue,
+} from "@/lib/insurance/negotiate";
 import { SavingError, applySaving, dismissSaving } from "@/lib/insurance/savings";
 import { RiskError, answerRisk } from "@/lib/insurance/risks";
 import {
@@ -82,6 +87,12 @@ export async function savePolicy(_previous: PolicyState, formData: FormData): Pr
     if (error instanceof PolicyError) return { message: error.message, input };
     throw error;
   }
+  // A policy just confirmed (or added) whose premium went up shows under "Renewals going up"
+  // at once, with its call, instead of after the night's run (gap audit: the "ask your insurer
+  // for a better rate" suggestion led here to nothing for a found policy).
+  await negotiationsDue(user.id).catch((error) =>
+    console.error("Renewal check after saving a policy failed", { error: String(error) }),
+  );
   refreshOthers();
   redirect(`/insurance?saved=${policyId ? "updated" : "added"}`);
 }
@@ -100,7 +111,7 @@ export async function confirmReadingForm(
     throw error;
   }
   refreshOthers();
-  redirect("/insurance?saved=read");
+  redirect("/insurance?saved=read&focus=documents");
 }
 
 export async function dismissReadingForm(formData: FormData): Promise<void> {
@@ -120,7 +131,7 @@ export async function applyChanges(formData: FormData): Promise<void> {
   const parsed = parseCoverEventRef(text(formData, "coverEvent"));
   if (parsed) await applyCoverEvent(user.id, parsed.event, parsed.eventKey);
   refreshOthers();
-  redirect("/insurance?saved=changes");
+  redirect("/insurance?saved=changes&focus=changes");
 }
 
 export async function dismissChanges(formData: FormData): Promise<void> {
@@ -144,7 +155,7 @@ export async function callRenewal(formData: FormData): Promise<void> {
     if (!(error instanceof NegotiationError)) throw error;
   }
   refreshOthers();
-  redirect("/insurance?saved=called#renewals");
+  redirect("/insurance?saved=called&focus=renewals");
 }
 
 export async function skipRenewal(formData: FormData): Promise<void> {
@@ -167,7 +178,7 @@ export async function applyOneSaving(formData: FormData): Promise<void> {
     if (!(error instanceof SavingError)) throw error;
   }
   refreshOthers();
-  redirect("/insurance?saved=saving#savings");
+  redirect("/insurance?saved=saving&focus=savings");
 }
 
 export async function skipSaving(formData: FormData): Promise<void> {
@@ -190,7 +201,7 @@ export async function answerRiskForm(formData: FormData): Promise<void> {
     if (!(error instanceof RiskError)) throw error;
   }
   refreshOthers();
-  redirect("/insurance?saved=risk");
+  redirect("/insurance?saved=risk&focus=questions");
 }
 
 // Spec step 198: the whole household's cover.
@@ -204,7 +215,9 @@ async function household(run: () => Promise<unknown>): Promise<never> {
   }
   refreshOthers();
   redirect(
-    error ? `/insurance?family=${encodeURIComponent(error)}#household` : "/insurance#household",
+    error
+      ? `/insurance?family=${encodeURIComponent(error)}&focus=household`
+      : "/insurance?focus=household",
   );
 }
 

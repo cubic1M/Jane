@@ -93,14 +93,14 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
       {
         key: "loans-student",
         name: "Demo Student Loan",
-        mask: "2005",
+        mask: "2007",
         type: "loan",
         subtype: "student",
         balance: 62000,
       },
     ],
     // Its terms, so the debt tools and the PSLF count see the loan the detectors count.
-    student: { account: "loans-student", rate: 5.8, original: 70000, minimum: 450, yearsLeft: 16 },
+    student: { account: "loans-student", rate: 5.8, original: 70000, minimum: 450 },
     monthly: [
       R(
         "loans-student",
@@ -154,7 +154,7 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
         balance: 38000,
       },
     ],
-    student: { account: "loans-student", rate: 6.2, original: 42000, minimum: 450, yearsLeft: 8 },
+    student: { account: "loans-student", rate: 6.2, original: 42000, minimum: 450 },
     monthly: [
       R(
         "loans-student",

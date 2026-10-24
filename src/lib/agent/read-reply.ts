@@ -62,6 +62,8 @@ const RULES: { outcome: ReplyOutcome; patterns: RegExp[] }[] = [
       /\b(processed|issued|approved) (a|the|your) refund\b/i,
       /\bkeep (your|the) (previous|old|current) price\b/i,
       /\bwe('ve| have) (applied|reversed|credited)\b/i,
+      /\bwe('ve| have) (cancell?ed|closed)\b/i,
+      /\b(subscription|account|membership) (has been|was|is now) (cancell?ed|closed)\b/i,
     ],
   },
   {

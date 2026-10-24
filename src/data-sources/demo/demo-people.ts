@@ -1,6 +1,7 @@
 import type { AccountBase, LiabilitiesObject, Transaction } from "plaid";
 import type { PfcDetailed } from "@/categorize/taxonomy";
 import type { PersonId } from "@/config/people";
+import { ledgered } from "./demo-ledger";
 import { PEOPLE_EXTRAS } from "./people-extras";
 import {
   accountId,
@@ -11,8 +12,8 @@ import {
   nextDayOfMonth,
   primaryOf,
   random,
-  yearsAfter,
 } from "./demo-bank";
+import { monthsAfter, monthsToPayOff, mortgagePiDollars } from "./demo-loans";
 
 // The eight sample people's banks (spec step 252): each a year of transactions, accounts,
 // loans and investments in the same Plaid shapes as the demo bank, so they sync through the
@@ -33,6 +34,8 @@ export type Recurring = {
   // Only days from this many days from the anchor (from, inclusive) up to (until, exclusive):
   // a job that ended or began.
   span?: { from?: number; until?: number };
+  // A card payment from checking: the card account it pays (the first card when left out).
+  pays?: string;
 };
 
 export type Once = Omit<Recurring, "days" | "months"> & { offsets: number[] };
@@ -68,15 +71,15 @@ type Mortgage = {
   original: number;
   payment: number;
   pmi: boolean;
+  // The escrow account's balance (the escrow a month is the payment less principal and
+  // interest; see demo-loans.ts).
   escrow: number;
-  yearsLeft: number;
 };
 type Student = {
   account: string;
   rate: number;
   original: number;
   minimum: number;
-  yearsLeft: number;
 };
 type Auto = {
   account: string;
@@ -84,7 +87,6 @@ type Auto = {
   principal: number;
   original: number;
   payment: number;
-  yearsLeft: number;
 };
 
 type Def = {
@@ -96,6 +98,11 @@ type Def = {
   student?: Student;
   auto?: Auto;
   positions: Position[];
+  // How the year closes as a ledger (./demo-ledger.ts): `fixedCards` when the person pays the
+  // fixed amounts the templates give (a minimum payer) rather than each month's statement;
+  // `rest`, where money left over after savings goes ("transfer" to another bank's savings for
+  // income that comes in lumps, everyday spending otherwise).
+  ledger?: { fixedCards?: boolean; rest?: "spending" | "transfer" };
 };
 
 const R = (
@@ -230,15 +237,32 @@ const DEFS: Record<PersonId, Def> = {
     ],
     monthly: [
       R("pay", "checking", "BRIGHTLY INC PAYROLL", "INCOME_SALARY", -1640, [1, 15], null),
-      R(
-        "rent",
-        "checking",
-        "OAKWOOD APARTMENTS",
-        "RENT_AND_UTILITIES_RENT",
-        1450,
-        [1],
-        "Oakwood Apartments",
-      ),
+      // Detector coverage (rent_increase): the lease renewed 40 days before the sample was linked,
+      // from $1,320 to $1,450 a month, 9.8%, well past the usual rise.
+      {
+        ...R(
+          "rent",
+          "checking",
+          "OAKWOOD APARTMENTS",
+          "RENT_AND_UTILITIES_RENT",
+          1320,
+          [1],
+          "Oakwood Apartments",
+        ),
+        span: { until: -40 },
+      },
+      {
+        ...R(
+          "rent-renewed",
+          "checking",
+          "OAKWOOD APARTMENTS",
+          "RENT_AND_UTILITIES_RENT",
+          1450,
+          [1],
+          "Oakwood Apartments",
+        ),
+        span: { from: -40 },
+      },
       R(
         "student",
         "checking",
@@ -291,7 +315,7 @@ const DEFS: Record<PersonId, Def> = {
       ),
     ],
     cards: [{ account: "card", apr: 26.99, balance: 1940.2, minimum: 58 }],
-    student: { account: "student", rate: 5.5, original: 16000, minimum: 160, yearsLeft: 8 },
+    student: { account: "student", rate: 5.5, original: 16000, minimum: 160 },
     positions: [
       { account: "retirement", key: "NSTDX", quantity: 78.4, basis: 1900 },
       { account: "retirement", key: "CASH", quantity: 0, basis: 0, cash: 0 },
@@ -473,7 +497,6 @@ const DEFS: Record<PersonId, Def> = {
       payment: 2412.6,
       pmi: true,
       escrow: 5100,
-      yearsLeft: 26,
     },
     auto: {
       account: "auto",
@@ -481,7 +504,6 @@ const DEFS: Record<PersonId, Def> = {
       principal: 21400,
       original: 29000,
       payment: 468,
-      yearsLeft: 4,
     },
     positions: [
       { account: "retirement", key: "NSTDX", quantity: 2610, basis: 52000 },
@@ -491,6 +513,8 @@ const DEFS: Record<PersonId, Def> = {
   },
   // Paid by clients at irregular times; no tax withheld; solo.
   freelancer: {
+    // Clients pay in lumps: what's left over goes to savings at another bank on payday.
+    ledger: { rest: "transfer" },
     accounts: [
       {
         key: "checking",
@@ -679,7 +703,7 @@ const DEFS: Record<PersonId, Def> = {
         "checking",
         "WELLS FARGO HOME MORTGAGE",
         "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-        5980.4,
+        6190.85,
         [1],
         "Wells Fargo",
       ),
@@ -713,10 +737,11 @@ const DEFS: Record<PersonId, Def> = {
       account: "mortgage",
       rate: 6.9,
       original: 940000,
-      payment: 5980.4,
+      // Principal and interest only: no escrow on her jumbo loan (she pays Chubb and the
+      // property tax herself). Loans QA: it was $5,980.40, less than its principal and interest.
+      payment: 6190.85,
       pmi: false,
-      escrow: 14800,
-      yearsLeft: 28,
+      escrow: 0,
     },
     positions: [
       { account: "retirement", key: "NSTDX", quantity: 2900, basis: 61000 },
@@ -826,7 +851,6 @@ const DEFS: Record<PersonId, Def> = {
       payment: 1210,
       pmi: false,
       escrow: 3300,
-      yearsLeft: 5,
     },
     positions: [
       { account: "retirement", key: "ACME", quantity: 1700, basis: 90000 },
@@ -973,6 +997,8 @@ const DEFS: Record<PersonId, Def> = {
   },
   // Many cards near their limits, overdrafts, a payday loan, a car loan.
   debt: {
+    // Pays the fixed minimums on the cards, so their balances climb.
+    ledger: { fixedCards: true },
     accounts: [
       {
         key: "checking",
@@ -1039,7 +1065,18 @@ const DEFS: Record<PersonId, Def> = {
         "Credit Acceptance",
       ),
       R("paya", "checking", "CARD A PAYMENT", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", 140, [20], null),
-      R("payb", "checking", "CARD B PAYMENT", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", 110, [21], null),
+      {
+        ...R(
+          "payb",
+          "checking",
+          "CARD B PAYMENT",
+          "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+          110,
+          [21],
+          null,
+        ),
+        pays: "card2",
+      },
       R(
         "payday",
         "checking",
@@ -1096,12 +1133,13 @@ const DEFS: Record<PersonId, Def> = {
       principal: 12800,
       original: 16000,
       payment: 396,
-      yearsLeft: 3,
     },
     positions: [],
   },
   // Runs a shop through an LLC; business and personal money mixed.
   owner: {
+    // Sales come in lumps: what's left over goes to savings at another bank on payday.
+    ledger: { rest: "transfer" },
     accounts: [
       {
         key: "checking",
@@ -1225,7 +1263,6 @@ const DEFS: Record<PersonId, Def> = {
       principal: 24500,
       original: 31000,
       payment: 612,
-      yearsLeft: 4,
     },
     positions: [],
   },
@@ -1267,7 +1304,12 @@ export function personTransactions(
 ): Transaction[] {
   const def = defOf(demo);
   const start = after ?? addDays(through, -365);
-  const inRange = (day: string) => day > start && day <= through;
+  // Made from further back (the statements a payment pays, the year the ledger closes) and on
+  // to the anchor; only (start, through] is returned.
+  const yearAgo = addDays(demo.anchor, -365);
+  const from = addDays(start < yearAgo ? start : yearAgo, -45);
+  const until = through > demo.anchor ? through : demo.anchor;
+  const inRange = (day: string) => day > from && day <= until;
   const out: Transaction[] = [];
   const make = (t: Omit<Recurring, "days" | "months">, day: string): Transaction => {
     const [low, high] = Array.isArray(t.amount) ? t.amount : [t.amount, t.amount];
@@ -1288,8 +1330,8 @@ export function personTransactions(
       },
     } as unknown as Transaction;
   };
-  const first = new Date(`${start}T00:00:00Z`);
-  const last = new Date(`${through}T00:00:00Z`);
+  const first = new Date(`${from}T00:00:00Z`);
+  const last = new Date(`${until}T00:00:00Z`);
   for (
     let y = first.getUTCFullYear(), m = first.getUTCMonth();
     y < last.getUTCFullYear() || (y === last.getUTCFullYear() && m <= last.getUTCMonth());
@@ -1312,9 +1354,44 @@ export function personTransactions(
       if (inRange(day)) out.push(make(t, day));
     }
   }
-  return out.sort(
-    (a, b) => a.date.localeCompare(b.date) || a.transaction_id.localeCompare(b.transaction_id),
+  return ledgered(out, ledgerPlan(demo, def), start, through)
+    .filter((t) => t.date > start && t.date <= through)
+    .sort(
+      (a, b) => a.date.localeCompare(b.date) || a.transaction_id.localeCompare(b.transaction_id),
+    );
+}
+
+// What the ledger needs to know about a person (./demo-ledger.ts).
+function ledgerPlan(demo: DemoSeed, def: Def) {
+  const id = (key: string) => accountId(demo.seed, key);
+  const checking = def.accounts.find((a) => a.subtype === "checking");
+  const savings = def.accounts.find((a) => a.subtype === "savings");
+  const cards = def.accounts.filter((a) => a.type === "credit");
+  const pays = new Map(
+    [...def.monthly, ...def.once].map((t) => [t.key, t.pays ?? cards[0]?.key ?? null]),
   );
+  const prefix = `demo-${demo.seed}-`;
+  const pay = def.monthly.find(
+    (t) => t.account === checking?.key && t.category.startsWith("INCOME"),
+  );
+  return {
+    seed: demo.seed,
+    anchor: demo.anchor,
+    checking: id(checking?.key ?? "checking"),
+    savings: savings ? { id: id(savings.key), balance: savings.balance } : null,
+    cards: cards.map((c) => ({
+      id: id(c.key),
+      balance: c.balance,
+      fixed: def.ledger?.fixedCards === true,
+    })),
+    // `demo-<seed>-<key>-<YYYY-MM-DD>`.
+    paysCard: (transactionId: string) => {
+      const key = pays.get(transactionId.slice(prefix.length, -11));
+      return key ? id(key) : null;
+    },
+    payDay: pay?.days[0] ?? 1,
+    rest: def.ledger?.rest ?? "spending",
+  };
 }
 
 // Books QA (spec step 238): an account a sample person reaches through a second bank login, so
@@ -1393,6 +1470,10 @@ export function personPositions(demo: DemoSeed) {
 export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObject {
   const def = defOf(demo);
   const { seed, anchor } = demo;
+  // Each loan's payoff date, where its balance, rate and payment end it (demo-loans.ts).
+  const balanceOf = (key: string) => def.accounts.find((a) => a.key === key)!.balance;
+  const paidOffOn = (key: string, rate: number, payment: number) =>
+    monthsAfter(anchor, monthsToPayOff(balanceOf(key), rate, payment));
   return {
     credit: def.cards.map((c) => ({
       account_id: accountId(seed, c.account),
@@ -1426,7 +1507,11 @@ export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObj
             last_payment_date: null,
             loan_term: "30 year",
             loan_type_description: "Conventional 30 year fixed",
-            maturity_date: yearsAfter(anchor, def.mortgage.yearsLeft),
+            maturity_date: paidOffOn(
+              def.mortgage.account,
+              def.mortgage.rate,
+              mortgagePiDollars(def.mortgage.original, def.mortgage.rate),
+            ),
             next_monthly_payment: def.mortgage.payment,
             next_payment_due_date: nextDayOfMonth(today, 1),
             origination_date: null,
@@ -1444,7 +1529,11 @@ export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObj
             account_id: accountId(seed, def.student.account),
             account_number: null,
             disbursement_dates: null,
-            expected_payoff_date: yearsAfter(anchor, def.student.yearsLeft),
+            expected_payoff_date: paidOffOn(
+              def.student.account,
+              def.student.rate,
+              def.student.minimum,
+            ),
             guarantor: null,
             interest_rate_percentage: def.student.rate,
             is_overdue: false,
@@ -1481,8 +1570,8 @@ export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObj
             principal_balance: def.auto.principal,
             origination_principal_amount: def.auto.original,
             origination_date: null,
-            loan_term_months: def.auto.yearsLeft * 12,
-            maturity_date: yearsAfter(anchor, def.auto.yearsLeft),
+            loan_term_months: monthsToPayOff(def.auto.original, def.auto.rate, def.auto.payment),
+            maturity_date: paidOffOn(def.auto.account, def.auto.rate, def.auto.payment),
             payment_count: null,
             payment_frequency: null,
             next_payment_amount: def.auto.payment,

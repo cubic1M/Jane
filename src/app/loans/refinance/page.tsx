@@ -13,6 +13,7 @@ import { listApplications, statusLine } from "@/lib/loan-applications";
 import { loadTransfers, type Transfers } from "@/lib/balance-transfers";
 import { shortMonth } from "@/planning/balance-transfer";
 import { applyAction, checkNow, endTransferAction, startTransferAction } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Refinance offers (spec step 111): for each loan and card, the offers Jane checked, each over
 // the debt's own remaining months, compared with keeping it (paying what you pay now until it's
@@ -36,9 +37,11 @@ function Comparison({ c }: { c: RefinanceComparison }) {
         <h2 className="font-semibold">{c.debtName}</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {formatCents(c.balanceCents)} at {formatRate(c.currentAprBps)}. Keeping it, at{" "}
-          {formatCents(c.currentMonthlyCents)} a month, it&apos;s paid off in {c.keepMonths} months
-          and costs {formatCents(c.currentTotalCents)} in all. Offers are priced over {c.termMonths}{" "}
-          months.
+          {formatCents(c.currentMonthlyCents)} a month
+          {c.escrowCents !== undefined &&
+            ` in principal and interest (your payment also holds ${formatCents(c.escrowCents)} of escrow, which stays)`}
+          , it&apos;s paid off in {c.keepMonths} months and costs {formatCents(c.currentTotalCents)}{" "}
+          in all. Offers are priced over {c.termMonths} months.
         </p>
       </div>
       {c.cashPayoffCents ? (
@@ -68,12 +71,9 @@ function Comparison({ c }: { c: RefinanceComparison }) {
           <form action={applyAction} className="mt-2">
             <input type="hidden" name="debtKey" value={c.debtKey} />
             <input type="hidden" name="lender" value={c.pick.offer.lender} />
-            <button
-              type="submit"
-              className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
-            >
+            <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
               Apply with {c.pick.offer.lender}
-            </button>
+            </SubmitButton>
             <span className="ml-3 text-xs text-zinc-600 dark:text-zinc-400">
               You review the terms before anything is sent.
             </span>
@@ -167,9 +167,9 @@ function TransfersSection({ data, started }: { data: Transfers; started: unknown
               </span>
               <form action={endTransferAction}>
                 <input type="hidden" name="id" value={t.id} />
-                <button type="submit" className="font-medium text-emerald-700 hover:underline">
+                <SubmitButton className="font-medium text-emerald-700 hover:underline">
                   It&apos;s paid off
-                </button>
+                </SubmitButton>
               </form>
             </li>
           ))}
@@ -193,12 +193,9 @@ function TransfersSection({ data, started }: { data: Transfers; started: unknown
               <form action={startTransferAction} className="mt-2">
                 <input type="hidden" name="debtKey" value={c.debtKey} />
                 <input type="hidden" name="offerId" value={c.pick.offer.id} />
-                <button
-                  type="submit"
-                  className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
-                >
+                <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
                   I&apos;ve moved it to {c.pick.offer.cardName}
-                </button>
+                </SubmitButton>
               </form>
               <p className="text-xs text-zinc-600 dark:text-zinc-400">
                 Opening the card and moving the balance are yours to do; this tells Jane you have.
@@ -326,9 +323,9 @@ async function RefinanceContent({
                 : "Jane hasn't checked yet."}
             </span>
             <form action={checkNow}>
-              <button type="submit" className="font-medium text-emerald-700 hover:underline">
+              <SubmitButton className="font-medium text-emerald-700 hover:underline">
                 Check rates now
-              </button>
+              </SubmitButton>
             </form>
           </div>
           {refi.comparisons.length > 0 && (

@@ -47,61 +47,6 @@ export function StackBar({
   );
 }
 
-// A sparkline: a 2px line and a dot on the last point, scaled to its own range.
-export function Sparkline({
-  points,
-  label,
-  width = 160,
-  height = 40,
-}: {
-  points: { key: string; value: number; title: string }[];
-  label: string;
-  width?: number;
-  height?: number;
-}) {
-  if (points.length < 2) return null;
-  const values = points.map((p) => p.value);
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  const pad = 4;
-  const x = (i: number) => pad + (i / (points.length - 1)) * (width - pad * 2);
-  const y = (v: number) =>
-    hi === lo ? height / 2 : pad + (1 - (v - lo) / (hi - lo)) * (height - pad * 2);
-  const d = points
-    .map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`)
-    .join(" ");
-  const last = points.length - 1;
-  return (
-    <svg
-      role="img"
-      aria-label={label}
-      viewBox={`0 0 ${width} ${height}`}
-      className="h-10 w-full max-w-48 overflow-visible"
-      preserveAspectRatio="none"
-    >
-      <path
-        d={d}
-        pathLength={1}
-        fill="none"
-        strokeWidth={2}
-        vectorEffect="non-scaling-stroke"
-        className="hub-draw stroke-emerald-700 dark:stroke-emerald-400"
-      />
-      {points.map((p, i) => (
-        <circle
-          key={p.key}
-          cx={x(i)}
-          cy={y(p.value)}
-          r={i === last ? 3.5 : 6}
-          className={i === last ? MARK : "fill-transparent"}
-        >
-          <title>{p.title}</title>
-        </circle>
-      ))}
-    </svg>
-  );
-}
-
 // A share of one thing: a filled run on a grey track.
 export function Meter({ share, label }: { share: number; label: string }) {
   return (
@@ -116,9 +61,9 @@ export function Meter({ share, label }: { share: number; label: string }) {
 
 // The health of an area: a shape and a word, never colour alone.
 const HEALTH: Record<Health, { word: string; shape: string; className: string }> = {
-  good: { word: "Good", shape: "■", className: "text-emerald-700" },
-  look: { word: "Look", shape: "▲", className: "text-amber-700" },
-  act: { word: "Act", shape: "◆", className: "text-red-700" },
+  good: { word: "Good", shape: "○", className: "" },
+  look: { word: "Look", shape: "◐", className: "" },
+  act: { word: "Act", shape: "●", className: "font-bold" },
 };
 
 export function HealthBadge({ health, why }: { health: Health | null; why: string }) {

@@ -59,7 +59,7 @@ export const sameCoverActions = (savings: Saving[]): MessageAction[] => [
     label: savings.length === 1 ? "Do it" : "Do all of these",
     kind: "primary",
   },
-  { id: "open", label: "Your insurance", kind: "link", href: "/insurance#savings" },
+  { id: "open", label: "Your insurance", kind: "link", href: "/insurance?focus=savings" },
   { id: "saving.no", label: "Not now", kind: "secondary" },
 ];
 

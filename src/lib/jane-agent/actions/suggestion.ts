@@ -1,4 +1,5 @@
-import { answerPracticeIdea } from "@/lib/practice/ideas";
+import { parsePracticeIdeaId } from "@/config/practice-suggestions";
+import { answerIdeaHere } from "@/lib/practice/ideas-view";
 import { SuggestionError, answerSuggestion, explainSuggestion } from "@/lib/suggestions";
 import {
   ChatActionError,
@@ -26,8 +27,16 @@ function handler(id: "suggestion.yes" | "suggestion.no", answer: "yes" | "no"): 
       try {
         const key = keyOf(context);
         const options = { client: context.client, now: context.now };
-        const out = await answerSuggestion(context.userId, key, answer, options);
-        const practice = await answerPracticeIdea(context.userId, key, answer, options);
+        // A practice idea is answered even before the nightly scan made its suggestion (a news
+        // theme's alert posts at once): answerIdeaHere makes it first.
+        const practice = parsePracticeIdeaId(key)
+          ? await answerIdeaHere(context.userId, key, answer, options)
+          : null;
+        if (parsePracticeIdeaId(key) && !practice)
+          throw answeredElsewhere("That practice idea has already moved on.");
+        const out = practice
+          ? { actionHref: practice.href }
+          : await answerSuggestion(context.userId, key, answer, options);
         if (practice) {
           return {
             answeredWith: context.action.label,

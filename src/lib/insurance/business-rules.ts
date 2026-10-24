@@ -4,6 +4,7 @@ import {
   BUSINESS_LIABILITY_TARGET_CENTS,
   BUSINESS_MILES_MIN,
   BUSINESS_MIN_INCOME_CENTS,
+  BUSINESS_MIN_PAYMENTS,
   type GapKey,
   type PolicyKind,
 } from "@/config/insurance";
@@ -30,6 +31,8 @@ export type SelfEmployment = {
   equipmentCents: number;
   // Gas spending a month on average, for a business owner who drives for the business.
   gasMonthlyCents: number;
+  // How many contract, gig and sales payments came in (a business is paid again and again).
+  payments?: number;
 };
 
 export type BusinessGap = {
@@ -48,7 +51,9 @@ const number = (value: unknown) => (typeof value === "number" ? value : 0);
 
 // Whether they run a business: said so, or freelance, gig or shop money came in.
 export const runsBusiness = (s: SelfEmployment) =>
-  s.declared || s.serviceCents + s.gigCents + s.salesCents >= BUSINESS_MIN_INCOME_CENTS;
+  s.declared ||
+  (s.serviceCents + s.gigCents + s.salesCents >= BUSINESS_MIN_INCOME_CENTS &&
+    (s.payments ?? BUSINESS_MIN_PAYMENTS) >= BUSINESS_MIN_PAYMENTS);
 // Work for clients (design, consulting): advice or work that can cost a client money.
 export const doesServiceWork = (s: SelfEmployment) =>
   s.serviceCents >= BUSINESS_MIN_INCOME_CENTS ||

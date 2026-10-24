@@ -145,35 +145,54 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(after.suggestions).toBe(true);
   });
 
-  it("says it is still looking first, and the brief waits for the suggestions", async () => {
+  it("posts no 'still looking' message, and the brief waits for the suggestions", async () => {
     const trial = await startTrial({ client, now: NOW, defer: true, person: "debt" });
     created.push(trial.userId);
     atScan.length = 0;
     await syncItem(trial.itemId, { client, now: NOW, progressive: true });
-    // While the (slow) scan ran, only "still looking" had been said: no brief, no findings.
+    // While the (slow) scan ran, nothing had been said: the page's loading bar says how far
+    // it has got (founder: "remove this one from the chat").
     const start = atScan.find((s) => s.at === "start")!;
-    expect(start.bodies).toEqual([SCANNING_HELLO]);
-    // Then the first thing Jane posted came after the hello, and it leads with a suggestion.
+    expect(start.bodies).toEqual([]);
     const messages = await client.janeMessage.findMany({
       where: { userId: trial.userId },
       orderBy: { createdAt: "asc" },
       select: { body: true, kind: true, createdAt: true, refs: true },
     });
-    // Strictly first: its time is before everything else Jane posted in the sync (no tie).
-    expect(messages[0].body).toBe(SCANNING_HELLO);
-    expect(messages[0].createdAt.getTime()).toBeLessThan(messages[1].createdAt.getTime());
-    // Exactly: "still looking", then Jane's welcome, then the agenda that leads with the scan's
-    // suggestions (on the cards, each with its percentage).
+    expect(messages.map((m) => m.body)).not.toContain(SCANNING_HELLO);
+    // Jane's welcome first, then the agenda that leads with the scan's suggestions (on the
+    // cards, each with its percentage).
     const at = (test: (body: string) => boolean) => messages.findIndex((m) => test(m.body));
-    const looking = at((b) => b === SCANNING_HELLO);
     const welcome = at((b) => /^Hi, I'm Jane\. I look at your money/.test(b));
     const agenda = at((b) => ON_THE_CARDS.test(b));
-    expect(looking, messages.map((m) => m.body.slice(0, 30)).join(" | ")).toBe(0);
-    expect(welcome).toBeGreaterThan(looking);
+    expect(welcome, messages.map((m) => m.body.slice(0, 30)).join(" | ")).toBe(0);
     expect(agenda).toBeGreaterThan(welcome);
     const suggestions = messages.filter((m) => (m.refs as { suggestion?: string }).suggestion);
     expect(suggestions.length).toBeGreaterThan(0);
     for (const m of suggestions) expect(m.body).toMatch(/% sure|not sure/);
+    const chat = (await openChat(trial.userId, { client, now: NOW }))!;
+    expect(chat.scanning).toBe(false);
+    expect(chat.messages.map((m) => m.body)).not.toContain(SCANNING_HELLO);
+    expect(chat.messages[0].body).toMatch(/^Hi, I'm Jane\. I look at your money/);
+  });
+
+  it("says the same safe to spend in the first brief as the hub, for someone with goals", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true, person: "preretire" });
+    created.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    const { homeSummary } = await import("@/lib/home");
+    const { formatCents } = await import("@/lib/money");
+    const safe = (await homeSummary(trial.userId, { client, now: NOW }))!.safeToSpend!;
+    const brief = await client.janeMessage.findFirstOrThrow({
+      where: { userId: trial.userId, kind: "brief", body: { contains: "payday" } },
+      orderBy: { createdAt: "asc" },
+    });
+    // Goals capped at the year plan's room in both (phone walk: "short by $920.96" vs $1,182).
+    const said =
+      safe.safeCents < 0
+        ? `short by ${formatCents(-safe.safeCents)}`
+        : `${formatCents(safe.safeCents)} safe to spend`;
+    expect(brief.body).toContain(said);
   });
 
   it("builds the first brief from a light snapshot, the whole one right after", async () => {
@@ -223,7 +242,7 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(bodies.some((b) => ON_THE_CARDS.test(b))).toBe(true);
   });
 
-  it("opens at once with 'still looking', without running the whole agent, while it scans", async () => {
+  it("opens at once, without running the whole agent or saying 'still looking', while it scans", async () => {
     const trial = await startTrial({ client, now: NOW, defer: true });
     created.push(trial.userId);
     // Accounts and transactions are in (as /scanning waits for) but the scan isn't done.
@@ -234,12 +253,9 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
 
     const chat = (await openChat(trial.userId, { client }))!;
     expect(chat.scanning).toBe(true);
-    expect(chat.messages.map((m) => m.body)).toEqual([SCANNING_HELLO]);
-    // Nothing else ran: no findings, no brief.
-    expect(await client.janeMessage.count({ where: { userId: trial.userId } })).toBe(1);
-    // Opening again says it once.
-    await openChat(trial.userId, { client });
-    expect(await client.janeMessage.count({ where: { userId: trial.userId } })).toBe(1);
+    expect(chat.messages).toEqual([]);
+    // Nothing ran: no findings, no brief, no "still looking".
+    expect(await client.janeMessage.count({ where: { userId: trial.userId } })).toBe(0);
 
     // When the scan finishes the chat is normal again: the hello comes, then the findings.
     await client.user.update({ where: { id: trial.userId }, data: { firstScanDoneAt: NOW } });

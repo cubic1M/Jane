@@ -44,8 +44,13 @@ export function borrowingReply(d: BorrowingPower, home: HomeMeasure | null = nul
       refs: {},
     };
   }
+  // The answer first (answer-check sweep): how many kinds are open, then each one.
+  const open = d.figures.filter((f) => f.available).length;
+  const checked = `soft checks on ${dayLabel(d.checkedOn, { year: true })} (they don't touch your score)`;
   const lines = [
-    `Here's what you could likely get, from soft checks on ${dayLabel(d.checkedOn, { year: true })} (they don't touch your score):`,
+    open === 0
+      ? `Lenders would likely turn down each of the ${d.figures.length} kinds of credit I checked for now, from ${checked}.`
+      : `You could likely get ${open} of the ${d.figures.length} kinds of credit I checked, from ${checked}.`,
     ...d.figures.map(figureLine),
     scoreLine(d),
   ];

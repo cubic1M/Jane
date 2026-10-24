@@ -336,8 +336,13 @@ describe("inherited money", () => {
     expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira_spread"))).toEqual([
       "preretire",
     ]);
-    // The deadline needs the year the owner died; nobody has told it yet.
-    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira"))).toEqual([]);
+    // The deadline needs the year the owner died: Ruth told it (her sister, ten years ago), so
+    // hers is the last year (detector coverage).
+    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira"))).toEqual(["retiree"]);
+    expect(run("retiree").find((x) => x.topic === "inherited_ira")).toMatchObject({
+      urgency: "now",
+      worthKind: "risk",
+    });
     const s = run("preretire").find((x) => x.topic === "inherited_ira_spread")!;
     expect(s.worthKind).toBe("saves");
     expect(s.worthCents).toBeGreaterThanOrEqual(50_000);

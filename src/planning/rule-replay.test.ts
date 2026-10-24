@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { AUTOPILOT_LIMITS, PRACTICE_STOCKS, PRACTICE_UNIVERSE } from "@/config/portfolios";
+import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
+import {
+  AUTOPILOT_LIMITS,
+  CRYPTO_TICKERS,
+  PRACTICE_STOCKS,
+  PRACTICE_UNIVERSE,
+} from "@/config/portfolios";
 import {
   OPPORTUNITY_MAX_SHARE,
   SCAN_CAPS,
@@ -39,10 +45,10 @@ describe("replayRules: a planted dip, worked by hand", () => {
   // Jan 2: $10,000 + $500 in. The autopilot buys the model: VTI $2,100, VXUS $1,050, BND $6,300,
   //   BIL $1,050. No cash left.
   // Feb 3: $500 in. Worth $1,680 + $1,050 + $6,300 + $1,050 + $500 = $10,580. VTI is 20% below its
-  //   high of the days before: a dip. VTI is held at a loss, so the dip buy goes into ITOT (a
-  //   wash sale otherwise later): the smallest of the cash ($500), 5% of $10,580 ($529) and the
-  //   room to 25% in US stocks ($2,645 − $1,680 = $965) is $500, 12.5 ITOT. Mix inside the band.
-  // Feb 4: worth $2,100 + $625 + $1,050 + $6,300 + $1,050 = $11,125.
+  //   high of the days before: a dip. No losses are harvested here (no harvest rule), so the dip
+  //   buy goes into VTI itself: the smallest of the cash ($500), 5% of $10,580 ($529) and the
+  //   room to 25% in US stocks ($2,645 − $1,680 = $965) is $500, 6.25 VTI. Mix inside the band.
+  // Feb 4: worth $2,725 (27.25 VTI) + $1,050 + $6,300 + $1,050 = $11,125.
   // Time-weighted: $10,000; then ×(10,580 − 500)/10,500 = $9,600; then ×11,125/10,580
   //   = $10,094.52. Return +0.945%. $11,000 put in.
   const bars = {
@@ -63,16 +69,16 @@ describe("replayRules: a planted dip, worked by hand", () => {
     BIL: flat(),
   };
 
-  it("buys the dip with the month's cash, into the swap partner, and nothing else", () => {
+  it("buys the dip with the month's cash, into the kind's own fund, and nothing else", () => {
     const r = replayRules(base(bars))!;
     expect(r.trades.map((t) => [t.date, t.ticker, t.side, t.amountCents, t.rule])).toEqual([
       ["2025-01-02", "VTI", "buy", 210_000, "model_buy"],
       ["2025-01-02", "VXUS", "buy", 105_000, "model_buy"],
       ["2025-01-02", "BND", "buy", 630_000, "model_buy"],
       ["2025-01-02", "BIL", "buy", 105_000, "model_buy"],
-      ["2025-02-03", "ITOT", "buy", 50_000, "dip_buy"],
+      ["2025-02-03", "VTI", "buy", 50_000, "dip_buy"],
     ]);
-    expect(r.trades[4].quantity).toBe(12.5);
+    expect(r.trades[4].quantity).toBe(6.25);
     expect(r.trades[4].reason).toMatch(/VTI is 20% below its high/);
     expect(r.acted).toEqual({ dip_buy: 1 });
     expect(r.held).toEqual({});
@@ -179,6 +185,32 @@ describe("replayRules on the sample market", () => {
     // A drop limit lowers the level the mix is built from: less in stocks, a shallower worst drop.
     const careful = run({ maxDropPercent: 20 });
     expect(careful.worstDrop.fraction).toBeGreaterThan(run({}).worstDrop.fraction);
+  });
+
+  it("runs the crypto sleeve the person chose at Very high, with the live run's planner", async () => {
+    const { bars, headlines } = await load("2026-10-30");
+    for (const t of CRYPTO_TICKERS) bars[t] = await market.prices(t, SAMPLE_START, "2026-10-30");
+    const run = (level: 3 | 5) =>
+      replayRules({
+        ...base(bars),
+        from: "2025-01-02",
+        level,
+        headlines,
+        rules: all,
+        preferences: { ...DEFAULT_PREFERENCES, cryptoSleeve: "crypto_trend" },
+      })!;
+    const sleeve = run(5).trades.filter((t) => t.rule === "crypto_sleeve");
+    expect(sleeve.length).toBeGreaterThan(4);
+    expect(new Set(sleeve.map((t) => t.ticker))).toEqual(new Set(CRYPTO_TICKERS));
+    // Within its share: never more than the sleeve in one coin after a buy.
+    for (const t of sleeve.filter((x) => x.side === "buy"))
+      expect(t.positionAfterCents).toBeLessThanOrEqual(
+        Math.round(CRYPTO_SLEEVE_BY_LEVEL[5]! * t.portfolioCents) + 2,
+      );
+    // Its days: a week's first trading day, or the day it starts.
+    const days = new Set(sleeve.map((t) => t.date));
+    for (const d of days) expect(d === "2025-01-02" || new Date(d).getUTCDay() <= 2).toBe(true);
+    expect(run(3).trades.filter((t) => t.rule === "crypto_sleeve")).toEqual([]);
   });
 
   it("gives the same result for the same bars", async () => {

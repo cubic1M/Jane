@@ -4,6 +4,7 @@ import { dayLabel } from "@/lib/day-label";
 import { ESTIMATE_LABEL, streakLine } from "@/lib/jane-agent/credit-building-replies";
 import { formatCents } from "@/lib/money";
 import { openBuilderAction, payStatementAction } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Building credit (spec step 175) on /loans/credit: the payment before the next statement
 // closes, the on-time streak, the score simulator (labelled an estimate) and, for a thin
@@ -61,9 +62,9 @@ export function BuildCredit({
                 {s.suggested.target === "good" ? "10%" : "30%"} of your limits.
               </span>
               {s.canPay && (
-                <button type="submit" className={BUTTON}>
+                <SubmitButton className={BUTTON}>
                   Pay {formatCents(s.suggested.amountCents)} before it closes
-                </button>
+                </SubmitButton>
               )}
             </form>
           ) : s.toUnderHighCents > 0 ? (
@@ -119,9 +120,7 @@ export function BuildCredit({
               <p>{b.summary}</p>
               <form action={openBuilderAction} className="mt-2">
                 <input type="hidden" name="productId" value={b.id} />
-                <button type="submit" className={BUTTON}>
-                  Open the {b.name}
-                </button>
+                <SubmitButton className={BUTTON}>Open the {b.name}</SubmitButton>
               </form>
             </li>
           ))}

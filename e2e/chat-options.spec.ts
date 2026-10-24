@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser, waitForFullScan } from "./db";
+import { CHAT, landInChat } from "./chat-page";
 
 // Options of one choice in the chat (insurance cover, loan offers): Jane's answer carries the
 // lane's pick-one card (refs.options), which floats over the chat as the pick card. A pick is
@@ -36,13 +38,14 @@ test("a pick on the options card is instant, and the next card follows within 10
     if (page.url().endsWith("/connect")) {
       await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
     }
-    await expect(page).toHaveURL("/chat", { timeout: 15_000 });
+    await landInChat(page, 15_000);
   }).toPass({ timeout: 90_000 });
   await waitForFullScan(user.userId);
 
   // The person's own options for a cover they're short of, as the insurance page shows them.
   await page.goto("/insurance");
-  await page.getByRole("link", { name: "See options" }).first().click();
+  await pickItem(page, "Insurance", "Your perfect coverage", "first-open");
+  await page.getByRole("link", { name: "See options" }).click();
   const shown = page.getByTestId("option-card");
   await expect(shown).toBeVisible();
   const title = ((await shown.getByRole("heading", { level: 3 }).textContent()) ?? "").trim();
@@ -96,7 +99,7 @@ test("a pick on the options card is instant, and the next card follows within 10
     ],
   });
 
-  await page.goto("/chat");
+  await page.goto(CHAT);
   const pickCard = page.getByRole("region", { name: title });
   await expect(pickCard).toBeVisible();
   expect(await pickCard.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
@@ -131,4 +134,47 @@ test("a pick on the options card is instant, and the next card follows within 10
   // Reloaded, the card stays gone.
   await page.reload();
   await expect(page.getByRole("region", { name: title })).toHaveCount(0);
+});
+
+// Gap audit: switching to cheaper insurance is a pick-one card too, Jane's pick first and the
+// other cheaper quotes after; a pick starts the switch.
+test("cheaper car insurance comes as a pick-one card, and a pick starts the switch", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await expect(async () => {
+    if (page.url().endsWith("/connect")) {
+      await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
+    }
+    await landInChat(page, 15_000);
+  }).toPass({ timeout: 90_000 });
+  await waitForFullScan(user.userId);
+  await page.reload();
+
+  const ask = page.getByRole("textbox", { name: "Message Jane" });
+  await ask.fill("find me cheaper car insurance");
+  await ask.press("Enter");
+  const card = page.getByRole("region", { name: /^Switch your .+ car insurance$/ });
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  const showing = card.locator('[data-card-state="showing"]');
+  await expect(showing.getByText("Jane's pick")).toBeVisible();
+  const headline = (await showing.getByRole("heading", { level: 3 }).textContent()) ?? "";
+  expect(headline).toMatch(/, \$[\d,]+\/yr$/);
+  const carrier = headline.split(",")[0];
+
+  const started = Date.now();
+  await showing.getByRole("button", { name: "Pick this one" }).click();
+  await expect(card).toHaveCount(0, { timeout: 100 });
+  expect(Date.now() - started).toBeLessThan(1_000);
+  // Behind it, the switch started, and the chat's history says what was chosen.
+  const answer = page.getByRole("listitem").filter({ hasText: "You chose:" }).last();
+  await expect(answer).toContainText(carrier, { timeout: 30_000 });
+  await expect(answer).toContainText("I'm switching you now");
 });

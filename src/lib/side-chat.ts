@@ -20,6 +20,36 @@ export type SheetState = "closed" | "half" | "full";
 
 export const EMBED_PATH = "/chat?embed=1";
 
+// The chat has no page of its own (the founder: "I don't want an individual chat"): a visit to
+// /chat opens Home with the side chat open (?chat=open), keeping what the chat was asked to
+// show (?pages=, and a #message the browser keeps through the redirect).
+export const CHAT_OPEN = "chat";
+
+export function chatRedirect(params: Record<string, string | string[] | undefined>): string {
+  const kept = new URLSearchParams({ [CHAT_OPEN]: "open" });
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "embed" || key === CHAT_OPEN || value === undefined) continue;
+    for (const v of Array.isArray(value) ? value : [value]) kept.append(key, v);
+  }
+  return `/home?${kept}`;
+}
+
+// Opened from such a link: the framed chat with what it was asked to show, and the address
+// without it (so a reload doesn't open it again). Null for any other address.
+export function openedChat(search: string, hash: string): { src: string; address: string } | null {
+  const params = new URLSearchParams(search);
+  if (params.get(CHAT_OPEN) !== "open") return null;
+  params.delete(CHAT_OPEN);
+  const embed = new URLSearchParams({ embed: "1" });
+  const rest = new URLSearchParams();
+  for (const [key, value] of params) {
+    if (key === "pages" || key === "from") embed.append(key, value);
+    else rest.append(key, value);
+  }
+  const left = rest.toString();
+  return { src: `/chat?${embed}${hash}`, address: left ? `?${left}` : "" };
+}
+
 // Remembered per person in the browser.
 export const panelKey = (userId: string) => `jane.sideChat:${userId}`;
 
@@ -68,9 +98,19 @@ export function leavesFrame(
 // Messages between the page and the framed chat. Both sides check the origin and the sender.
 export type FrameMessage =
   | { type: "jane:navigate"; href: string }
-  | { type: "jane:panel"; state: PanelState | "sheet" }
+  // Where the panel is, and whether the page beside it is Home (whose hub shows the suggestions).
+  | { type: "jane:panel"; state: PanelState | "sheet"; home?: boolean }
   | { type: "jane:refresh" }
-  | { type: "jane:ask"; text: string };
+  // The framed chat is listening: the page tells it where it is.
+  | { type: "jane:ready" }
+  | { type: "jane:ask"; text: string }
+  // "Ask Jane" from the giant tree: send this now (no Send to press), or find where it was
+  // asked before; the chat says where the question landed, and when Jane starts and finishes.
+  | { type: "jane:send"; text: string }
+  | { type: "jane:find"; text: string }
+  | { type: "jane:bubble"; x: number; y: number }
+  | { type: "jane:answering" }
+  | { type: "jane:answered" };
 
 export function isFrameMessage(data: unknown): data is FrameMessage {
   if (!data || typeof data !== "object") return false;
@@ -79,11 +119,21 @@ export function isFrameMessage(data: unknown): data is FrameMessage {
     case "jane:navigate":
       return typeof m.href === "string" && m.href.startsWith("/") && !m.href.startsWith("//");
     case "jane:panel":
-      return m.state === "sheet" || PANEL_STATES.includes(m.state as PanelState);
+      return (
+        (m.state === "sheet" || PANEL_STATES.includes(m.state as PanelState)) &&
+        (m.home === undefined || typeof m.home === "boolean")
+      );
     case "jane:refresh":
+    case "jane:ready":
+    case "jane:answering":
+    case "jane:answered":
       return true;
     case "jane:ask":
+    case "jane:send":
+    case "jane:find":
       return typeof m.text === "string" && m.text.length > 0 && m.text.length <= 300;
+    case "jane:bubble":
+      return Number.isFinite(m.x) && Number.isFinite(m.y);
     default:
       return false;
   }
