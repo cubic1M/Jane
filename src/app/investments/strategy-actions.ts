@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { STRATEGY_CHOICES } from "@/config/practice-preferences";
 import { savePreferences } from "@/lib/practice/preferences";
@@ -13,6 +14,7 @@ export async function usePracticeStrategy(formData: FormData): Promise<void> {
   if (Object.hasOwn(STRATEGY_CHOICES, strategy)) {
     await savePreferences(user.id, { strategy }, "page");
   }
-  // Back to the same card: the investing tree opens on More strategies.
+  // Back to the same card, drawn afresh: the investing tree opens on More strategies.
+  revalidatePath("/investments");
   redirect("/investments?focus=strategies:menu");
 }
