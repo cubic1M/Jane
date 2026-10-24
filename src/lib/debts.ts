@@ -49,6 +49,7 @@ export async function loadDebts(
             payoffDate: true,
             isOverdue: true,
             pastDueCents: true,
+            originationPrincipalCents: true,
             description: true,
           },
         },

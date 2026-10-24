@@ -8,19 +8,21 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { gather, plan } from "@/lib/jane-agent/brain";
+import { gather } from "@/lib/jane-agent/brain";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { pmiLines } from "@/lib/jane-agent/mortgage-replies";
+import { loadHomeEquity, saveHomeFacts } from "./home-equity";
 import { checkRates } from "./refinance";
 import { loadMortgage } from "./mortgage";
 
 // Spec step 115 against a real, migrated Postgres, on the demo bank: the mortgage's PMI and
-// escrow from Plaid Liabilities, PMI removal raised once the home's value the person gives
-// puts the loan under 80% (with the steps and a drafted request), the escrow change in the
-// payment, extra principal, and a refinance that doesn't pay at today's rates.
+// escrow from Plaid Liabilities, PMI by the one rule (the home's value when the loan began, as
+// /loans/equity has it), the escrow change in the payment, extra principal, and a refinance
+// that doesn't pay at today's rates.
 
 const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
@@ -71,8 +73,8 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
       escrowBalanceCents: 421_055,
       hasPrepaymentPenalty: false,
     });
-    // The demo bank gives its sample person a $380,000 home: 82.2% of it is still owed.
-    expect(m.pmi).toMatchObject({ kind: "not_yet" });
+    // PMI waits for the home's value when the loan began (one rule, as /loans/equity).
+    expect(m.pmi).toBeNull();
     expect(m.escrow).toMatchObject({ fromCents: 214_154, toCents: 219_831, changeCents: 5_677 });
     // A 3.99% mortgage: nothing in the catalog is cheaper, so refinancing never pays back.
     expect(m.refi?.breakEvenMonths).toBeNull();
@@ -86,45 +88,54 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
     );
   });
 
-  it("raises PMI removal once the home's value puts the loan under 80%, with a drafted request", async () => {
-    // The demo home is $380,000.
-    // $312,400 of $380,000 is 82.2%: not yet.
-    expect((await loadMortgage(userId, opts()))!.pmi).toMatchObject({ kind: "not_yet" });
-    expect((await fromSource()).filter((x) => x.dedupeKey.includes("pmi"))).toEqual([]);
-
+  // Loans QA: /loans/mortgage measured PMI against today's value (the home the person owns)
+  // and /loans/equity against the value when the loan began. One rule now: the original value.
+  it("measures PMI one way, against the home's value when the loan began, everywhere", async () => {
+    // Today's value doesn't decide it: a $450,000 home still asks for the original value.
     await client.ownedAsset.updateMany({
       where: { userId, kind: "home" },
       data: { valueCents: 45_000_000 },
     });
-    const now = (await loadMortgage(userId, opts()))!;
-    expect(now.pmi).toMatchObject({ kind: "can_ask" });
-    expect(now.letter).toContain("69.4% of my home's current value of about $450,000.00");
-    const [pmi] = (await fromSource()).filter((x) => x.dedupeKey.includes("pmi"));
-    expect(pmi).toMatchObject({
-      kind: "decision",
-      dedupeKey: `mortgage:pmi:${now.loan.accountId}`,
-    });
-    expect(pmi.body).toContain(
-      "PMI can come off: your loan is 69.4% of the value you gave for your home",
+    expect((await loadMortgage(userId, opts()))!.pmi).toBeNull();
+    expect((await fromSource()).filter((x) => x.dedupeKey.includes("pmi"))).toEqual([]);
+    const ask = await sendToJane(userId, "can I get rid of PMI?", opts());
+    expect(ask.reply.body).toContain(
+      "Your loan has PMI. Tell me the home's value when the loan began and I'll tell you when it can come off.",
     );
-    expect(pmi.body).toContain("I've drafted the request for you to send your servicer.");
-    // Once: after it's been said, never again.
-    const snapshot = await loadSnapshot(userId, opts());
-    const again = plan(snapshot!, { recent: [], seenKeys: [pmi.dedupeKey] }, LINKED, {
-      trigger: "open",
-    });
-    expect(again.filter((x) => x.dedupeKey === pmi.dedupeKey)).toEqual([]);
-  });
+    const asked = JSON.parse((await runChatTool(userId, "mortgage", {}, opts())).content);
+    expect(asked.pmi).toMatchObject({ status: "needs_the_original_value" });
 
-  it("answers about PMI and the mortgage, by rules and for Claude", async () => {
+    // $312,400 of $395,000 is 79.1%: the same figure on both pages, in the chat and the tools.
+    await saveHomeFacts(
+      userId,
+      { originalValueCents: 39_500_000, yearlyTaxCents: null, yearlyInsuranceCents: null },
+      opts(),
+    );
+    const m = (await loadMortgage(userId, opts()))!;
+    const e = await loadHomeEquity(userId, opts());
+    expect(m.pmi).toEqual(e.pmi);
+    expect(m.pmi).toMatchObject({ canAskNow: true, endsNow: false });
+    expect(pmiLines(m)[0]).toBe(
+      "Your loan is $312,400.00, 79.1% of the home's original value of $395,000.00.",
+    );
     const { reply } = await sendToJane(userId, "can I get rid of PMI?", opts());
-    expect(reply.body).toContain("PMI can come off");
+    expect(reply.body).toContain("79.1% of the home's original value of $395,000.00");
     expect(reply.body).toContain("consumerfinance.gov");
     expect(reply.body).toContain("Refinancing doesn't pay right now");
-    const tool = await runChatTool(userId, "mortgage", {}, opts());
-    const output = JSON.parse(tool.content);
-    expect(output.pmi).toMatchObject({ status: "can_ask", loanToValue: 69.4 });
-    expect(output.escrowChange).toMatchObject({ to: "$2,198.31" });
-    expect(tool.cents).toContain(31_240_000);
+    const tool = JSON.parse((await runChatTool(userId, "mortgage", {}, opts())).content);
+    expect(tool.pmi).toMatchObject({ status: "can_ask", loanAsShareOfOriginalValue: 79.1 });
+    expect(tool.escrowChange).toMatchObject({ to: "$2,198.31" });
+    const equityTool = JSON.parse((await runChatTool(userId, "home_equity", {}, opts())).content);
+    expect(equityTool.pmi).toMatchObject({
+      loanAsShareOfOriginalValue: 79.1,
+      canAskToCancelNow: true,
+    });
+    // Raised once, by the home loan's source with the request drafted there, not by both.
+    const snapshot = await loadSnapshot(userId, opts());
+    // The mortgage and the home loan sources both see this loan; only the home loan's raises it.
+    const raised = gather(snapshot!, LINKED, { trigger: "sync" }).filter(
+      (x) => (x.source === "mortgage" || x.source === "home_equity") && x.dedupeKey.includes("pmi"),
+    );
+    expect(raised.map((x) => x.source)).toEqual(["home_equity"]);
   });
 });
