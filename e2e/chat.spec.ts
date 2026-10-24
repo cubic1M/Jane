@@ -110,12 +110,8 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(autopilot.getByRole("status")).toContainText("I'll handle the safe stuff");
   await expect(autopilot.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
 
-  // The chat's own page is the chat expanded (docs/design/home-hub.md): the area tabs are
-  // above it with none lit up, and no side chat beside it. The message box is at the end.
-  const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByRole("link", { name: "Home", exact: true })).toBeAttached();
-  await expect(nav.locator('[aria-current="page"]')).toHaveCount(0);
-  await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toHaveCount(0);
+  // The chat as the side panel shows it: no page header of its own, the message box at the end.
+  await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
   await expect(ask).toHaveAttribute("placeholder", "Ask Jane anything");
 
   // Typing a question (spec step 84): it shows as the person's message, with Jane's answer
