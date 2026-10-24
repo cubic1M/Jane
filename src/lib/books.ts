@@ -6,6 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import {
   duplicateAccounts,
+  importsEnded,
   linkProblems,
   matchTransfers,
   unmatchedToSay,
@@ -144,7 +145,15 @@ export async function runBooksCheck(
   // Duplicate accounts first: a merged copy shouldn't also fail the balance check.
   const [loadedAccounts, items] = await Promise.all([
     db.accounts.findMany({
-      select: { id: true, itemId: true, name: true, mask: true, type: true, subtype: true },
+      select: {
+        id: true,
+        itemId: true,
+        name: true,
+        mask: true,
+        type: true,
+        subtype: true,
+        source: true,
+      },
     }),
     db.plaidItems.findMany({
       select: {
@@ -237,6 +246,30 @@ export async function runBooksCheck(
       itemId: l.id,
       detail: { lastSyncedAt: l.lastSyncedAt },
       words: `${l.name} hasn't updated since ${l.lastSyncedAt ?? "it was linked"}, so what I show from there may be out of date.`,
+    });
+  }
+  // An imported account's data ends where its file did: said plainly, with a fresh import.
+  const imported = accounts.filter((a) => a.source === "csv");
+  const newest =
+    imported.length === 0
+      ? []
+      : await db.transactions.findMany({
+          where: { accountId: { in: imported.map((a) => a.id) } },
+          distinct: ["accountId"],
+          orderBy: [{ accountId: "asc" }, { date: "desc" }],
+          select: { accountId: true, date: true },
+        });
+  const lastOf = new Map(newest.map((t) => [t.accountId, iso(t.date)]));
+  for (const a of importsEnded(
+    imported.map((a) => ({ ...a, lastDate: lastOf.get(a.id) ?? null })),
+    asOf,
+  )) {
+    found.push({
+      kind: "stale",
+      key: `import:${a.id}`,
+      accountId: a.id,
+      detail: { lastDate: a.lastDate },
+      words: `${a.name}'s data ends on ${a.lastDate}, the last day in the file you imported, so I can't see anything after it. Import a newer file and I'll pick up from there.`,
     });
   }
   const unmatched = unmatchedToSay(matchTransfers(txns.map(asTx)).unmatchedOut, accounts).slice(-3);

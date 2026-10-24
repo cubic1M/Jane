@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   copiesToLeaveOut,
+  importsEnded,
   duplicateAccounts,
   linkProblems,
   matchTransfers,
@@ -66,6 +67,15 @@ describe("reconcile", () => {
     expect(reconcile("depository", snaps, [])).toMatchObject({ kind: "gap" });
     expect(reconcile("investment", snaps, [])).toBeNull();
     expect(reconcile("loan", snaps, [])).toBeNull();
+  });
+
+  // Real-user QA: a balance read on Oct 1 hadn't the Oct 1 charge yet; it showed on Oct 10's.
+  it("adds up when each balance holds the charges through the day before", () => {
+    expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-01", 20_000)])).toBeNull();
+    // Off either way is still off.
+    expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-05", 5_000)])).toMatchObject({
+      kind: "off",
+    });
   });
 
   it("lets a dollar of rounding go", () => {
@@ -236,5 +246,25 @@ describe("unmatched transfers worth saying (books QA)", () => {
       [],
     );
     expect(said.map((t) => t.id)).toEqual(["c", "b"]);
+  });
+});
+
+// Real-user QA: an imported account's data ends where its file did.
+describe("importsEnded", () => {
+  const csv = (lastDate: string | null, source = "csv") => ({
+    id: "a",
+    name: "Chase checking",
+    source,
+    lastDate,
+  });
+  it("says so a week after an imported file's last day", () => {
+    expect(importsEnded([csv("2026-10-20")], "2026-10-27")).toEqual([
+      { id: "a", name: "Chase checking", lastDate: "2026-10-20" },
+    ]);
+    expect(importsEnded([csv("2026-10-20")], "2026-10-25")).toEqual([]);
+  });
+  it("isn't for a linked bank, or an account with nothing imported", () => {
+    expect(importsEnded([csv("2026-09-01", "plaid")], "2026-10-27")).toEqual([]);
+    expect(importsEnded([csv(null)], "2026-10-27")).toEqual([]);
   });
 });

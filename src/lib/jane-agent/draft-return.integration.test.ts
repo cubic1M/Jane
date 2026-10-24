@@ -10,7 +10,13 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { TAX_DETECTORS } from "@/detectors/taxes";
 import { runDetectors } from "@/detectors";
-import { DraftReturnError, confirmDraftReturn, readDraftReturn } from "@/lib/draft-return";
+import {
+  DraftReturnError,
+  SAMPLE_DRAFT_NAME,
+  addSampleDraft,
+  confirmDraftReturn,
+  readDraftReturn,
+} from "@/lib/draft-return";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { loadProfileInput } from "@/lib/profile";
@@ -170,6 +176,25 @@ describe.runIf(url)("a draft return checked before filing", { timeout: 120_000 }
     )!;
     expect(s).toMatchObject({ urgency: "now", worthKind: "risk" });
     expect(s.title).toBe("Fix 3 things in your 2026 draft return before you file");
+  });
+
+  it("makes a sample draft for sample data, once while it waits, and none for a real account", async () => {
+    // Gap audit: a Try Jane person has no draft to upload, so the check was out of reach.
+    const { userId } = await person("draft-sample");
+    const sample = await addSampleDraft(userId, { client, now: MAR });
+    expect(sample.fileName).toBe(SAMPLE_DRAFT_NAME);
+    expect(sample.status).toBe("waiting");
+    expect(sample.sources.wages).toBe("demo");
+    expect((await addSampleDraft(userId, { client, now: MAR })).id).toBe(sample.id);
+    const checked = await confirmDraftReturn(userId, sample.id, { client, now: MAR });
+    expect(checked.findings).toHaveLength(3);
+
+    const real = await client.user.create({
+      data: { email: `draft-real-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(real.id);
+    await expect(addSampleDraft(real.id, { client, now: MAR })).rejects.toThrow(DraftReturnError);
+    expect(await client.document.count({ where: { userId: real.id } })).toBe(0);
   });
 
   it("keeps a draft the person says isn't one out of everything", async () => {

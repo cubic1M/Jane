@@ -3,11 +3,12 @@ import { SPENDING_MONTHS } from "@/config/areas";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { debtSummary } from "@/insights/loans";
-import { monthlyNetWorth, netWorth } from "@/insights/net-worth";
+import { netWorth, netWorthLine } from "@/insights/net-worth";
 import { monthsEnding, spendingInsights } from "@/insights/spending";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
 import { healthFor } from "@/lib/health-score";
 import { homeSummary, type HomeSummary } from "@/lib/home";
@@ -35,7 +36,7 @@ export async function loadHubTop(
     netWorthOverYear(userId, { client, now }),
   ]);
   if (!home) return null;
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   return {
     home,
     hero: {
@@ -57,7 +58,7 @@ export async function loadHubTop(
 // Net worth today and month by month, as /net-worth works it out.
 async function netWorthOverYear(userId: string, { client, now }: Required<Options>) {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
   const [accounts, snapshots, ownedRows, crypto] = await Promise.all([
     db.accounts.findMany({
@@ -79,32 +80,16 @@ async function netWorthOverYear(userId: string, { client, now }: Required<Option
     owned,
     crypto,
   );
-  // The line shows how the accounts moved: things owned count across the whole year at their
-  // value now, rather than appearing as a jump in the month they were first valued, and so
-  // does an account with no balance history yet (a sample person's investments, an account
-  // linked today), or the line leaves it out and drifts off the headline.
-  const start = `${first}-01`;
-  const kept = new Set(snapshots.map((s) => s.accountId));
-  const months = monthlyNetWorth(
-    accounts,
-    [
-      ...snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
-      ...accounts
-        .filter((a) => !kept.has(a.id) && a.currentBalanceCents !== null)
-        .map((a) => ({ accountId: a.id, date: start, balanceCents: a.currentBalanceCents! })),
-    ],
-    asOf,
-    NET_WORTH_MONTHS,
-    owned.map((o) => ({ ...o, valuedOn: o.valuedOn < start ? o.valuedOn : start })),
-  );
-  // This month's point is today's net worth, the hero's number, so the line ends where the
-  // number is (the last snapshot can be weeks old, or a sample person's month end).
   return {
     todayCents: today.netCents,
-    months: months.map((m, i) => ({
-      month: m.month,
-      netCents: i === months.length - 1 ? today.netCents : m.netCents,
-    })),
+    months: netWorthLine(
+      accounts,
+      snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
+      owned,
+      asOf,
+      NET_WORTH_MONTHS,
+      today.netCents,
+    ),
   };
 }
 
@@ -123,7 +108,7 @@ export async function loadHubAreas(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<AreasInput> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [health, suggestions, months, insurance, loans, taxes, practice, goals] = await Promise.all(
     [
       quietly("the health score", () => healthFor(userId, { client, now })),

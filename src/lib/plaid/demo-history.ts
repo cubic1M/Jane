@@ -8,14 +8,20 @@ import { scopedFor } from "@/lib/db-scoped";
 // Real accounts get a balance snapshot each day from the daily job (src/lib/snapshots.ts), so
 // their line fills in over the months; a demo-bank person is new every time, so on the first
 // scan their accounts get a balance for each day of the last year, worked back from today's
-// balance through their own transactions (the hub's net worth chart is daily). Demo bank only: a stand-in for history a
-// real bank would have, never written for real accounts.
+// balance through their own transactions (the hub's net worth chart is daily). Demo bank
+// only: a stand-in for history a real bank would have, never written for real accounts.
 
 export type HistoryAccount = { id: string; type: string; currentBalanceCents: number | null };
 export type HistoryTransaction = { accountId: string; date: string; amountCents: number };
 export type PastBalance = { accountId: string; date: string; balanceCents: number };
 
 const DEBT_TYPES = new Set(["credit", "loan"]);
+
+// Whether worked-back balances are believable: no bank account far overdrawn, no card or loan
+// owing less than nothing. If not, the transactions don't explain the balance (phone walk: a
+// shop owner's card "owed" -$51,991 a year ago, and their net worth line started at -$174,403).
+const credible = (balances: readonly PastBalance[], debt: boolean) =>
+  balances.every((b) => b.balanceCents >= (debt ? 0 : DEMO_HISTORY_LOWEST_BANK_CENTS));
 
 // The last day of each of the `months` months before the month of `asOf`, oldest first.
 export function pastMonthEnds(asOf: string, months: number): string[] {
@@ -44,11 +50,18 @@ export function pastMonthEndBalances(
     if (a.currentBalanceCents === null) continue;
     if (a.type !== "depository" && !DEBT_TYPES.has(a.type)) continue;
     const own = transactions.filter((t) => t.accountId === a.id);
-    const sign = DEBT_TYPES.has(a.type) ? -1 : 1;
-    for (const end of ends) {
+    const debt = DEBT_TYPES.has(a.type);
+    const sign = debt ? -1 : 1;
+    const worked = ends.map((end) => {
       const since = own.filter((t) => t.date > end).reduce((sum, t) => sum + t.amountCents, 0);
-      out.push({ accountId: a.id, date: end, balanceCents: a.currentBalanceCents + sign * since });
-    }
+      return { accountId: a.id, date: end, balanceCents: a.currentBalanceCents! + sign * since };
+    });
+    // Transactions that don't explain the balance: today's balance.
+    out.push(
+      ...(credible(worked, debt)
+        ? worked
+        : worked.map((b) => ({ ...b, balanceCents: a.currentBalanceCents! }))),
+    );
   }
   return out;
 }
@@ -84,9 +97,13 @@ export function pastDailyBalances(
     // monthly line is (a bank account dips mid-month before payday): no history for the
     // account. The chart counts it at today's balance throughout, and the books check (which
     // compares a day's balance with its transactions) has nothing made up to flag.
-    const lowest = debt ? 0 : DEMO_HISTORY_LOWEST_BANK_CENTS;
     const monthEnd = (d: string) => addDays(d, 1).endsWith("-01");
-    if (worked.filter((b) => monthEnd(b.date)).every((b) => b.balanceCents >= lowest)) {
+    if (
+      credible(
+        worked.filter((b) => monthEnd(b.date)),
+        debt,
+      )
+    ) {
       out.push(...worked.reverse());
     }
   }

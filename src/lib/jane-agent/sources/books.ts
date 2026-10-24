@@ -6,23 +6,36 @@ import type { MessageSource } from "./source";
 export const booksSource: MessageSource = {
   key: "books",
   gather(snapshot) {
-    return (snapshot.books?.open ?? []).slice(0, 2).map((issue) => ({
-      kind: "heads_up" as const,
-      body:
-        issue.kind === "broken"
-          ? `${issue.words} It takes a minute, and nothing changes in your accounts.`
-          : `${issue.words} Figures that rely on it are marked until it's fixed.`,
-      refs: {},
-      actions: [
-        {
-          id: "open" as const,
-          label: issue.kind === "broken" ? "Reconnect" : "Check my accounts",
-          kind: "link" as const,
-          href: "/connect",
-        },
-      ],
-      dedupeKey: issue.id,
-      priority: MESSAGE_PRIORITY.books,
-    }));
+    return (snapshot.books?.open ?? []).slice(0, 2).map((issue) => {
+      // An imported account whose file ended (real-user QA): a fresh import, not a reconnect.
+      const imported = issue.kind === "stale" && issue.accountId !== null && issue.itemId === null;
+      return {
+        kind: "heads_up" as const,
+        body:
+          issue.kind === "broken"
+            ? `${issue.words} It takes a minute, and nothing changes in your accounts.`
+            : imported
+              ? issue.words
+              : `${issue.words} Figures that rely on it are marked until it's fixed.`,
+        refs: {},
+        actions: [
+          imported
+            ? {
+                id: "open" as const,
+                label: "Import a newer file",
+                kind: "link" as const,
+                href: "/import",
+              }
+            : {
+                id: "open" as const,
+                label: issue.kind === "broken" ? "Reconnect" : "Check my accounts",
+                kind: "link" as const,
+                href: "/connect",
+              },
+        ],
+        dedupeKey: issue.id,
+        priority: MESSAGE_PRIORITY.books,
+      };
+    });
   },
 };
