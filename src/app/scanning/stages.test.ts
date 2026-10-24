@@ -54,7 +54,7 @@ describe("the scan's stages", () => {
 
 describe("a slow scan", () => {
   it("offers where the screen was heading: the chat from Try Jane, else the report", () => {
-    expect(slowLink("/chat")).toMatchObject({ href: "/chat", label: "Open the chat" });
+    expect(slowLink("/home")).toMatchObject({ href: "/home", label: "Open Jane" });
     expect(slowLink("/report")).toMatchObject({ href: "/report", label: "See your report" });
   });
 });

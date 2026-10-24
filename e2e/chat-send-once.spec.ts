@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { landInChat } from "./chat-page";
 
 // Founder bug: "every time I type a question, it duplicates, then disappears." From the
 // moment a typed question shows, it is on the page exactly once until the answer is in, and
@@ -25,7 +26,7 @@ test("a typed question shows once and stays", async ({ context, page, baseURL })
     if (page.url().endsWith("/connect")) {
       await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
     }
-    await expect(page).toHaveURL("/chat", { timeout: 15_000 });
+    await landInChat(page, 15_000);
   }).toPass({ timeout: 90_000 });
   await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible({
     timeout: 60_000,
