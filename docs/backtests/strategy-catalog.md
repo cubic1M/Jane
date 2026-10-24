@@ -96,6 +96,30 @@ Also tested, separately and at Very high only: the five day-trading rules on 5-m
 - **Funds:** SPY, IWM, EFA, EEM, VNQ, DBC, IEF, TLT, TIP, BIL
 - **At each level:** a whole portfolio, blended with bills to the level's volatility
 
+### Protective asset allocation (PAA) (`paa`)
+
+- **Source:** [Keller & Keuning, Protective Asset Allocation (PAA): A Simple Momentum-Based Alternative for Term Deposits (2016)](https://www.cxoadvisory.com/technical-trading/dual-momentum-with-multi-market-breadth-crash-protection)
+- **Rules:** Momentum is the price against its 12-month average, less one, over SPY, QQQ, IWM, VGK, EWJ, EEM, IYR, GSG, GLD, HYG, LQD and TLT. With n of the 12 positive and protection A, the bond share is (12 − n) / (12 − 3A), between 0 and 1, held in IEF; the rest in the top 6 positive ones, equal weight. Monthly.
+- **Setting:** protection (A): 1, 2
+- **Funds:** SPY, QQQ, IWM, VGK, EWJ, EEM, IYR, GSG, GLD, HYG, LQD, TLT, IEF
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
+### Accelerating dual momentum (`accelerating_dual_momentum`)
+
+- **Source:** [Engineered Portfolio's Accelerating Dual Momentum (2018), as published in an open TradingView script](https://www.tradingview.com/script/LyF7R2tF/)
+- **Rules:** Each month, the better of US stocks (SPY) and foreign small companies (SCZ) by the average of their 1, 3 and 6-month returns, if positive; otherwise the better of long Treasuries (TLT) and inflation-linked bonds (TIP) over the last month.
+- **Setting:** none
+- **Funds:** SPY, SCZ, TLT, TIP
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
+### Composite dual momentum (`composite_dual_momentum`)
+
+- **Source:** [Antonacci, Risk Premia Harvesting Through Dual Momentum (2012): its four modules](https://alphaarchitect.com/2012/07/risk-premia-harvesting-through-momentum/)
+- **Rules:** A quarter each in four pairs: US/foreign stocks (SPY/EFA), high-yield/credit bonds (HYG/LQD), equity/mortgage REITs (VNQ/REM) and gold/Treasuries (GLD/TLT). Each month each quarter holds the pair's better fund over the last 12 months if it beat bills (BIL), else bills.
+- **Setting:** months of look-back: 12
+- **Funds:** SPY, EFA, HYG, LQD, VNQ, REM, GLD, TLT, BIL
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
 ## Risk-based allocation
 
 ### Adaptive asset allocation (`adaptive_aa`)

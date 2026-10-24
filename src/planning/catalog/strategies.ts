@@ -212,6 +212,48 @@ export function decide(
       for (const f of top(off, p, m)) add(w, m(f) > 0 ? f : cash, 1 / p);
       return w;
     }
+    case "paa": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR)) return null;
+      const risky = e.tickers.filter((x) => x !== "IEF");
+      const m = (x: string) => c(u, x)[t] / sma(c(u, x), t, YEAR)! - 1;
+      const n = risky.filter((x) => m(x) > 0).length;
+      const n1 = (p * risky.length) / 4;
+      const bf = Math.min(1, Math.max(0, (risky.length - n) / (risky.length - n1)));
+      const picks = top(
+        risky.filter((x) => m(x) > 0),
+        6,
+        m,
+      );
+      const w: Weights = {};
+      if (picks.length === 0 || bf >= 1) return { IEF: 1 };
+      for (const f of picks) add(w, f, (1 - bf) / picks.length);
+      if (bf > 0) add(w, "IEF", bf);
+      return w;
+    }
+    case "accelerating_dual_momentum": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, 6 * MONTH)) return null;
+      const score = (x: string) =>
+        ([1, 3, 6].map((k) => ret(c(u, x), t, k * MONTH)!) as number[]).reduce((a, v) => a + v, 0) /
+        3;
+      const best = score("SPY") >= score("SCZ") ? "SPY" : "SCZ";
+      if (score(best) > 0) return { [best]: 1 };
+      return { [ret(c(u, "TLT"), t, MONTH)! >= ret(c(u, "TIP"), t, MONTH)! ? "TLT" : "TIP"]: 1 };
+    }
+    case "composite_dual_momentum": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, p * MONTH)) return null;
+      const r = (x: string) => ret(c(u, x), t, p * MONTH)!;
+      const w: Weights = {};
+      for (const [a, b] of [
+        ["SPY", "EFA"],
+        ["HYG", "LQD"],
+        ["VNQ", "REM"],
+        ["GLD", "TLT"],
+      ]) {
+        const pick = r(a) >= r(b) ? a : b;
+        add(w, r(pick) > r("BIL") ? pick : "BIL", 0.25);
+      }
+      return w;
+    }
     case "adaptive_aa": {
       if (!isMonthEnd(u, t) || !has(u, TEN, t, 251)) return null;
       const picks = top([...TEN], p, (x) => ret(c(u, x), t, 6 * MONTH)!);

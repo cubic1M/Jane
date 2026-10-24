@@ -237,6 +237,64 @@ export const CATALOG = {
     grid: [4],
     tickers: ["SPY", "IWM", "EFA", "EEM", "VNQ", "DBC", "IEF", "TLT", "TIP", "BIL"],
   },
+  paa: {
+    label: "Protective asset allocation (PAA)",
+    family: "tactical",
+    kind: "portfolio",
+    source: {
+      title:
+        "Keller & Keuning, Protective Asset Allocation (PAA): A Simple Momentum-Based Alternative for Term Deposits (2016)",
+      url: "https://www.cxoadvisory.com/technical-trading/dual-momentum-with-multi-market-breadth-crash-protection",
+    },
+    rules:
+      "Momentum is the price against its 12-month average, less one, over SPY, QQQ, IWM, VGK, EWJ, EEM, IYR, GSG, GLD, HYG, LQD and TLT. With n of the 12 positive and protection A, the bond share is (12 − n) / (12 − 3A), between 0 and 1, held in IEF; the rest in the top 6 positive ones, equal weight. Monthly.",
+    param: "protection (A)",
+    grid: [1, 2],
+    tickers: [
+      "SPY",
+      "QQQ",
+      "IWM",
+      "VGK",
+      "EWJ",
+      "EEM",
+      "IYR",
+      "GSG",
+      "GLD",
+      "HYG",
+      "LQD",
+      "TLT",
+      "IEF",
+    ],
+  },
+  accelerating_dual_momentum: {
+    label: "Accelerating dual momentum",
+    family: "tactical",
+    kind: "portfolio",
+    source: {
+      title:
+        "Engineered Portfolio's Accelerating Dual Momentum (2018), as published in an open TradingView script",
+      url: "https://www.tradingview.com/script/LyF7R2tF/",
+    },
+    rules:
+      "Each month, the better of US stocks (SPY) and foreign small companies (SCZ) by the average of their 1, 3 and 6-month returns, if positive; otherwise the better of long Treasuries (TLT) and inflation-linked bonds (TIP) over the last month.",
+    param: "none",
+    grid: [0],
+    tickers: ["SPY", "SCZ", "TLT", "TIP"],
+  },
+  composite_dual_momentum: {
+    label: "Composite dual momentum",
+    family: "tactical",
+    kind: "portfolio",
+    source: {
+      title: "Antonacci, Risk Premia Harvesting Through Dual Momentum (2012): its four modules",
+      url: "https://alphaarchitect.com/2012/07/risk-premia-harvesting-through-momentum/",
+    },
+    rules:
+      "A quarter each in four pairs: US/foreign stocks (SPY/EFA), high-yield/credit bonds (HYG/LQD), equity/mortgage REITs (VNQ/REM) and gold/Treasuries (GLD/TLT). Each month each quarter holds the pair's better fund over the last 12 months if it beat bills (BIL), else bills.",
+    param: "months of look-back",
+    grid: [12],
+    tickers: ["SPY", "EFA", "HYG", "LQD", "VNQ", "REM", "GLD", "TLT", "BIL"],
+  },
   adaptive_aa: {
     label: "Adaptive asset allocation",
     family: "risk",
