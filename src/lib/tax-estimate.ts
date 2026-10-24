@@ -1,3 +1,4 @@
+import { dependantsWords } from "@/planning/tax-profile";
 import { DETECTOR_RATES } from "@/config/detectors";
 import {
   IRA_DISTRIBUTION,
@@ -404,7 +405,15 @@ export async function loadTaxEstimate(
   }
   const local = residency.locality ? LOCAL_TAXES[residency.locality] : undefined;
   if (local) assumptions.push(`You live in ${local.label}, which has its own income tax.`);
-  if (view.dependants.status !== "yours") {
+  if (view.dependants.status === "found") {
+    const counted = profile.childrenUnder17 + profile.otherDependants > 0;
+    const found = `the ${dependantsWords(view.dependants.childrenUnder17 ?? 0, view.dependants.otherDependants ?? 0)} in your household`;
+    assumptions.push(
+      counted
+        ? `I've counted ${found}; check them on your tax profile.`
+        : `I've counted no dependants yet: say yes to ${found} on your tax profile to count them.`,
+    );
+  } else if (view.dependants.status !== "yours") {
     assumptions.push("You haven't told me about dependants, so I've counted none.");
   }
   if (elapsed > 0 && elapsed < 1) {

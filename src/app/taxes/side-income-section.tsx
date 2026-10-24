@@ -9,7 +9,7 @@ import { roundDollars } from "@/planning/tax-estimate-copy";
 // depreciation; each gig platform's payouts matched to its 1099; hobby or business.
 
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-const LINK = "text-emerald-700 underline";
+const LINK = "underline underline-offset-2";
 const STATUS = {
   matched: "Matches its 1099",
   differs: "Doesn't match its 1099 (not used)",

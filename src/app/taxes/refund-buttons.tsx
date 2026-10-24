@@ -18,7 +18,7 @@ export function RefundButtons({ transactionId }: { transactionId: string }) {
         name="intent"
         value="apply"
         disabled={pending}
-        className={`${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`}
+        className={`${BUTTON} bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-300`}
       >
         Set it up
       </button>
@@ -31,7 +31,7 @@ export function RefundButtons({ transactionId }: { transactionId: string }) {
       >
         Not this time
       </button>
-      <span role="status" className={state?.ok === false ? "text-sm text-red-700" : "text-sm"}>
+      <span role="status" className={state?.ok === false ? "text-sm font-semibold" : "text-sm"}>
         {state?.message ?? ""}
       </span>
     </form>
