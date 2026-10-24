@@ -207,9 +207,7 @@ export async function chatting(
   const since = new Date(now.getTime() - CHAT_TYPING_PAUSE_MINUTES * 60_000);
   return (
     (await scopedFor(userId, client).janeMessages.count({
-      // No upper bound: a run is often handed the moment it was asked for (a page's render),
-      // and what they typed after that moment counts too (e2e/chat.spec.ts "cancel hulu").
-      where: { kind: "user", createdAt: { gt: since } },
+      where: { kind: "user", createdAt: { gt: since, lte: now } },
     })) > 0
   );
 }

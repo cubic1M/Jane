@@ -101,25 +101,6 @@ describe.runIf(url)("never interrupt, against a real database", () => {
     expect(kinds).toEqual(["user", "reply"]);
   });
 
-  // A run asked for at one moment (a page's render) and started after the person typed: what
-  // they typed after that moment holds it too.
-  it("holds a run asked for before the person typed", async () => {
-    const before = await client.janeMessage.count({ where: { userId: otherId } });
-    await sendToJane(otherId, "safe to spend", { client, now: at(20) });
-    expect(await runJaneAgent(otherId, { client, now: at(19), trigger: "open" })).toEqual({
-      posted: 0,
-    });
-    const kinds = (
-      await client.janeMessage.findMany({
-        where: { userId: otherId },
-        orderBy: { createdAt: "asc" },
-        select: { kind: true },
-        skip: before,
-      })
-    ).map((m) => m.kind);
-    expect(kinds).toEqual(["user", "reply"]);
-  });
-
   it("shows findings of one kind as one message, and each Yes is that finding's own", async () => {
     // Bundles are for things as they come (spec step 184's agenda lists them itself).
     await client.janePreference.create({
