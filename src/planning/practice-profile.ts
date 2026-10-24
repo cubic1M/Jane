@@ -1,3 +1,5 @@
+import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
+import { CATALOG, type CatalogId } from "@/config/strategy-catalog";
 import { CRYPTO_EVIDENCE } from "@/config/crypto-evidence";
 import { INTRADAY_EVIDENCE } from "@/config/intraday-evidence";
 import {
@@ -91,6 +93,10 @@ export type PracticeProfile = {
   // The day-trading sleeve the person chose (src/config/intraday-strategies.ts), the same way:
   // null when off or below Very high.
   dayTrade: { rule: IntradayRuleId; param: number; share: number } | null;
+  // A tested strategy (src/config/strategy-catalog.ts) the portfolio follows instead of the mix,
+  // at its published middle setting: only one the research rates worth watching or recommendable
+  // at this level (src/config/catalog-evidence.ts). Null otherwise.
+  catalog: { id: CatalogId; param: number } | null;
   // The fund the person chose for a kind (a strategy menu tilt), set with the strategy below.
   funds?: Partial<Record<PracticeClass, string>>;
   // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
@@ -322,6 +328,28 @@ export function profileFor(
     );
   }
 
+  const picked = prefs.catalogStrategy === "off" ? null : prefs.catalogStrategy;
+  const verdict = picked ? CATALOG_EVIDENCE[picked]?.[level] : undefined;
+  const catalog =
+    picked &&
+    verdict &&
+    (verdict.watch || verdict.recommendable) &&
+    CATALOG[picked].kind !== "sleeve"
+      ? {
+          id: picked,
+          param: CATALOG[picked].grid[Math.floor((CATALOG[picked].grid.length - 1) / 2)],
+        }
+      : null;
+  if (catalog) {
+    rules.push(
+      `Follows ${CATALOG[catalog.id].label} instead of the mix, as you chose: ${CATALOG[catalog.id].rules} ${verdict?.recommendable ? "Recommendable at this level." : "Worth watching at this level: it beat the mix in later years, but the edge may be luck."} Jane's extra moves wait meanwhile.`,
+    );
+  } else if (picked) {
+    rules.push(
+      `The tested strategy you chose (${CATALOG[picked].label}) waits: at ${RISK_LEVELS[level].label} the research doesn't rate it worth watching, so the mix runs.`,
+    );
+  }
+
   return {
     level,
     chosenLevel,
@@ -350,6 +378,7 @@ export function profileFor(
     universe: prefs.universe,
     crypto,
     dayTrade,
+    catalog,
     rules,
   };
 }

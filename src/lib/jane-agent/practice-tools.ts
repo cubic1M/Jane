@@ -2,6 +2,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
 import { INTRADAY_SLEEVE_BY_LEVEL } from "@/config/intraday-strategies";
+import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
+import { CATALOG, CATALOG_IDS } from "@/config/strategy-catalog";
 import { GOALS, RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import {
   APPETITES,
@@ -54,7 +56,7 @@ export const PRACTICE_TOOLS: Anthropic.Tool[] = [
   {
     name: CHANGE_PRACTICE_TOOL,
     description:
-      'Prepare a change to the practice portfolio settings as a card the person confirms with a tap; nothing changes until they do. Give only what they asked to change. "Make it less risky" is risk_step lower; "stop the extra moves" is extra_moves off; "avoid oil companies" is avoid_add fossil_fuels; "I need this money in 2030" is goal_date 2030-01-01; "just tell me first" is mode suggest; "use the trend strategy" is strategy trend, "no strategy, just the mix" is strategy mix, "go back to your pick" is strategy level; "use the value tilt" (or momentum, quality, dividend growth, equal weight) is strategy value_tilt (momentum_tilt, quality_tilt, dividend_growth, equal_weight); sector rotation and all-weather are not in the practice portfolio yet, so say so; "trade less often" is rebalance_pace rarely; "only index funds" or "no single stocks" is universe funds_only; "never more than half in one fund" is max_fund_percent 50; "add the crypto trend" (or crypto held, crypto momentum) is crypto_sleeve crypto_trend (crypto_hold, crypto_momentum), only at Very high, and "no crypto" is crypto_sleeve off; "day trade with the opening-range break" (or liquidity sweep, fair value gap, VWAP reversion, volume imbalance) is day_trading opening_range (liquidity_sweep, fair_value_gap, vwap_reversion, volume_imbalance), only at Very high, said with the warning that most day traders lose money and every rule did worse than holding, and "stop day trading" is day_trading off. After calling it, write one sentence on what will change once they confirm; never say it is done. Demo advice mode only.',
+      'Prepare a change to the practice portfolio settings as a card the person confirms with a tap; nothing changes until they do. Give only what they asked to change. "Make it less risky" is risk_step lower; "stop the extra moves" is extra_moves off; "avoid oil companies" is avoid_add fossil_fuels; "I need this money in 2030" is goal_date 2030-01-01; "just tell me first" is mode suggest; "use the trend strategy" is strategy trend, "no strategy, just the mix" is strategy mix, "go back to your pick" is strategy level; "use the value tilt" (or momentum, quality, dividend growth, equal weight) is strategy value_tilt (momentum_tilt, quality_tilt, dividend_growth, equal_weight); sector rotation and all-weather are not in the practice portfolio yet, so say so; "trade less often" is rebalance_pace rarely; "only index funds" or "no single stocks" is universe funds_only; "never more than half in one fund" is max_fund_percent 50; "add the crypto trend" (or crypto held, crypto momentum) is crypto_sleeve crypto_trend (crypto_hold, crypto_momentum), only at Very high, and "no crypto" is crypto_sleeve off; "day trade with the opening-range break" (or liquidity sweep, fair value gap, VWAP reversion, volume imbalance) is day_trading opening_range (liquidity_sweep, fair_value_gap, vwap_reversion, volume_imbalance), only at Very high, said with the warning that most day traders lose money and every rule did worse than holding, and "stop day trading" is day_trading off; "follow HAA" (or any tested strategy on the worth-watching or recommendable lists of strategy_menu) is catalog_strategy with its id, and "back to my mix" is catalog_strategy off. After calling it, write one sentence on what will change once they confirm; never say it is done. Demo advice mode only.',
     input_schema: {
       type: "object" as const,
       properties: {
@@ -95,6 +97,12 @@ export const PRACTICE_TOOLS: Anthropic.Tool[] = [
           type: "string",
           enum: Object.keys(DAY_TRADING_CHOICES),
           description: "The day-trading sleeve's rule (Very high only), or off.",
+        },
+        catalog_strategy: {
+          type: "string",
+          enum: ["off", ...CATALOG_IDS],
+          description:
+            "A tested strategy to follow instead of the mix (only one worth watching or recommendable at the level), or off.",
         },
       },
       additionalProperties: false,
@@ -163,6 +171,7 @@ export async function patchFromInput(
   if ("max_fund_percent" in a) patch.maxFundPercent = a.max_fund_percent;
   if ("crypto_sleeve" in a) patch.cryptoSleeve = a.crypto_sleeve;
   if ("day_trading" in a) patch.dayTrading = a.day_trading;
+  if ("catalog_strategy" in a) patch.catalogStrategy = a.catalog_strategy;
   return patch;
 }
 
@@ -196,6 +205,16 @@ export async function proposePracticeChange(
       result.preferences.riskLevel ?? (await practiceProfileOf(userId, { client, now })).level;
     if (INTRADAY_SLEEVE_BY_LEVEL[level] === undefined)
       return { ok: false, error: "Day trading runs at Very high only." };
+  }
+  if (result.changed.includes("catalogStrategy") && result.preferences.catalogStrategy !== "off") {
+    const level =
+      result.preferences.riskLevel ?? (await practiceProfileOf(userId, { client, now })).level;
+    const e = CATALOG_EVIDENCE[result.preferences.catalogStrategy]?.[level];
+    if (!e || !(e.watch || e.recommendable))
+      return {
+        ok: false,
+        error: `At this level the research doesn't rate ${CATALOG[result.preferences.catalogStrategy].label} worth watching, so the practice portfolio won't follow it.`,
+      };
   }
   const lines = describeChanges(before, result.preferences, result.changed);
   const extra =

@@ -1,4 +1,5 @@
 import {
+  usePracticeCatalog,
   usePracticeCrypto,
   usePracticeDayTrading,
   usePracticeStrategy,
@@ -24,7 +25,12 @@ import {
 import { STRATEGY_CHOICES, type StrategyChoice } from "@/config/practice-preferences";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
-import { CATALOG, CATALOG_IDS, CATALOG_WALK_FROM_YEAR } from "@/config/strategy-catalog";
+import {
+  CATALOG,
+  CATALOG_IDS,
+  CATALOG_WALK_FROM_YEAR,
+  type CatalogId,
+} from "@/config/strategy-catalog";
 import { MENU_STRATEGIES, MENU_STRATEGY_IDS, type MenuStrategyId } from "@/config/strategy-menu";
 import {
   MENU_EVIDENCE,
@@ -218,7 +224,7 @@ const followable = (id: MenuStrategyId): id is MenuStrategyId & StrategyChoice =
 // the person's level: what is recommendable, what is worth watching, and what was tested and
 // not recommended, with the reason. Few words; the numbers are the walk-forward since
 // CATALOG_WALK_FROM_YEAR against the level's own mix.
-function CatalogMenu({ level }: { level: RiskLevel }) {
+function CatalogMenu({ level, chosen }: { level: RiskLevel; chosen: CatalogId | null }) {
   const rows = CATALOG_IDS.flatMap((id) => {
     const e = CATALOG_EVIDENCE[id]?.[level];
     return e ? [{ id, e }] : [];
@@ -229,6 +235,42 @@ function CatalogMenu({ level }: { level: RiskLevel }) {
   const rest = rows.filter((r) => !r.e.recommendable && !r.e.watch);
   const line = (r: (typeof rows)[number]) =>
     `${pct(r.e.cagr)} a year since ${CATALOG_WALK_FROM_YEAR} (your mix ${pct(r.e.mixCagr)}), worst drop ${pct(r.e.maxDrawdown)}`;
+  const choose = (r: (typeof rows)[number]) =>
+    chosen === r.id ? (
+      <form action={usePracticeCatalog} className="mt-1 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+          <span aria-hidden="true">■ </span>
+          Your practice portfolio follows this
+        </span>
+        <input type="hidden" name="strategy" value="off" />
+        <button type="submit" className={SECONDARY}>
+          Back to your mix
+        </button>
+      </form>
+    ) : (
+      <form action={usePracticeCatalog} className="mt-1">
+        <input type="hidden" name="strategy" value={r.id} />
+        <button type="submit" className={PRIMARY}>
+          Use in practice
+        </button>
+      </form>
+    );
+  const card = (r: (typeof rows)[number], mark: string, note: string) => (
+    <li
+      key={r.id}
+      data-catalog={r.id}
+      className="flex flex-col gap-1 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+    >
+      <p className="font-medium">
+        <span aria-hidden="true">{mark} </span>
+        {CATALOG[r.id].label}
+      </p>
+      <p className="text-xs text-zinc-500">
+        {line(r)}. {note}
+      </p>
+      {CATALOG[r.id].kind !== "sleeve" && choose(r)}
+    </li>
+  );
   return (
     <div className="flex flex-col gap-2" aria-labelledby="catalog-menu-heading">
       <h3 id="catalog-menu-heading" className="font-semibold">
@@ -242,26 +284,25 @@ function CatalogMenu({ level }: { level: RiskLevel }) {
           : `${rec.length} recommendable at ${RISK_LEVELS[level].label}.`}
       </p>
       {rec.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm" aria-label="Recommendable">
-          {rec.map((r) => (
-            <li key={r.id} data-catalog={r.id}>
-              <span aria-hidden="true">■ </span>
-              <span className="font-medium">{CATALOG[r.id].label}</span>: {line(r)}.{" "}
-              {Math.round(r.e.dsr * 100)}% likely a real edge.
-            </li>
-          ))}
+        <ul className="grid gap-2 sm:grid-cols-2" aria-label="Recommendable">
+          {rec.map((r) => card(r, "■", `${Math.round(r.e.dsr * 100)}% likely a real edge.`))}
         </ul>
       )}
       {watch.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm" aria-label="Worth watching">
-          {watch.map((r) => (
-            <li key={r.id} data-catalog={r.id}>
-              <span aria-hidden="true">▲ </span>
-              <span className="font-medium">{CATALOG[r.id].label}</span>, worth watching: {line(r)}.
-              Only {Math.round(r.e.dsr * 100)}% likely a real edge after the haircut.
-            </li>
-          ))}
-        </ul>
+        <>
+          <h4 className="text-sm font-medium">
+            Worth watching: beat the mix in later years, but the edge may be luck
+          </h4>
+          <ul className="grid gap-2 sm:grid-cols-2" aria-label="Worth watching">
+            {watch.map((r) =>
+              card(
+                r,
+                "▲",
+                `Only ${Math.round(r.e.dsr * 100)}% likely a real edge after the haircut.`,
+              ),
+            )}
+          </ul>
+        </>
       )}
       <details className="text-sm">
         <summary className="cursor-pointer text-zinc-600 dark:text-zinc-400">
@@ -285,6 +326,7 @@ export function StrategyMenuSection({
   choice,
   crypto = null,
   dayTrading = null,
+  catalogChoice = null,
 }: {
   level: RiskLevel;
   // The practice portfolio's strategy now (its settings).
@@ -293,6 +335,8 @@ export function StrategyMenuSection({
   crypto?: CryptoStrategyId | null;
   // The day-trading rule it follows (Very high only), or null.
   dayTrading?: IntradayRuleId | null;
+  // The tested strategy it follows instead of the mix, or null.
+  catalogChoice?: CatalogId | null;
 }) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="strategy-menu-heading">
@@ -371,7 +415,7 @@ export function StrategyMenuSection({
       </ul>
       <CryptoMenu level={level} chosen={crypto} />
       <IntradayMenu level={level} chosen={dayTrading} />
-      <CatalogMenu level={level} />
+      <CatalogMenu level={level} chosen={catalogChoice} />
       <p className="text-xs text-zinc-500">
         {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}; day trading:{" "}
         {INTRADAY_EVIDENCE_SOURCE}; every strategy tested: {CATALOG_EVIDENCE_SOURCE}.{" "}

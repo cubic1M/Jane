@@ -120,6 +120,7 @@ async function StrategyMenu({ userId }: { userId: string }) {
       choice={profile.strategyChoice}
       crypto={profile.crypto?.strategy ?? null}
       dayTrading={profile.dayTrade?.rule ?? null}
+      catalogChoice={profile.catalog?.id ?? null}
     />
   );
 }

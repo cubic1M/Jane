@@ -12,7 +12,14 @@ vi.mock("@/lib/practice/preferences", () => ({
 import { redirect } from "next/navigation";
 import { adviceMode } from "@/lib/advice-mode";
 import { practiceProfileOf, savePreferences } from "@/lib/practice/preferences";
-import { usePracticeCrypto, usePracticeDayTrading, usePracticeStrategy } from "./strategy-actions";
+import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
+import { CATALOG_IDS } from "@/config/strategy-catalog";
+import {
+  usePracticeCatalog,
+  usePracticeCrypto,
+  usePracticeDayTrading,
+  usePracticeStrategy,
+} from "./strategy-actions";
 
 // The strategy menu's buttons: demo advice only, Very high only for the crypto and day-trading
 // sleeves (off always allowed), only known choices, and back to the same card.
@@ -55,6 +62,22 @@ describe("the strategy menu's buttons", () => {
     await usePracticeStrategy(form({ strategy: "moonshot" }));
     expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
       { cryptoSleeve: "off" },
+    ]);
+  });
+
+  it("follows a tested strategy only where the research rates it worth watching or better", async () => {
+    vi.mocked(practiceProfileOf).mockResolvedValue({ level: 3 } as never);
+    const ok = CATALOG_IDS.find((id) => CATALOG_EVIDENCE[id]?.[3]?.watch)!;
+    const no = CATALOG_IDS.find((id) => {
+      const e = CATALOG_EVIDENCE[id]?.[3];
+      return e && !e.watch && !e.recommendable;
+    })!;
+    await usePracticeCatalog(form({ strategy: ok }));
+    await usePracticeCatalog(form({ strategy: no }));
+    await usePracticeCatalog(form({ strategy: "off" }));
+    expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
+      { catalogStrategy: ok },
+      { catalogStrategy: "off" },
     ]);
   });
 });

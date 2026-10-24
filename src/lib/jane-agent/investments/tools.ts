@@ -1169,6 +1169,11 @@ export async function runInvestmentTool(
           return {
             source: CATALOG_EVIDENCE_SOURCE,
             how: `Every strategy in the catalog (docs/backtests/strategy-catalog.md), walk-forward against the level's mix since ${CATALOG_WALK_FROM_YEAR} after costs, recommendable only if it beat the mix after a haircut for testing them all at once (the deflated Sharpe ratio).`,
+            practicePortfolioFollows: profile.catalog
+              ? CATALOG[profile.catalog.id].label
+              : "the level's mix (or Jane's pick)",
+            canFollow:
+              "A worth-watching or recommendable one can be followed in practice instead of the mix: Use in practice on its card, or practice_settings catalog_strategy.",
             recommendable: rows
               .filter((r) => r.e.recommendable)
               .map((r) => ({

@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
 import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
+import { CATALOG, type CatalogId } from "@/config/strategy-catalog";
 import { INTRADAY_SLEEVE_BY_LEVEL } from "@/config/intraday-strategies";
 import {
   CRYPTO_SLEEVE_CHOICES,
@@ -57,6 +59,21 @@ export async function usePracticeDayTrading(formData: FormData): Promise<void> {
     if (rule === "off" || INTRADAY_SLEEVE_BY_LEVEL[level] !== undefined) {
       await savePreferences(user.id, { dayTrading: rule }, "page");
     }
+  }
+  revalidatePath("/investments");
+  redirect("/investments?focus=strategies:menu");
+}
+
+// "Use in practice" on a tested strategy, and "Back to your mix": only one the research rates
+// worth watching or recommendable at the person's level (src/config/catalog-evidence.ts).
+export async function usePracticeCatalog(formData: FormData): Promise<void> {
+  const user = await demoUser();
+  const strategy = String(formData.get("strategy") ?? "");
+  if (user && (strategy === "off" || Object.hasOwn(CATALOG, strategy))) {
+    const { level } = await practiceProfileOf(user.id);
+    const e = strategy === "off" ? null : CATALOG_EVIDENCE[strategy as CatalogId]?.[level];
+    if (strategy === "off" || (e && (e.watch || e.recommendable)))
+      await savePreferences(user.id, { catalogStrategy: strategy }, "page");
   }
   revalidatePath("/investments");
   redirect("/investments?focus=strategies:menu");

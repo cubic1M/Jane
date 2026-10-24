@@ -1,3 +1,4 @@
+import { CATALOG } from "@/config/strategy-catalog";
 import { GOALS, RISK_LEVELS, type Goal, type RiskLevel } from "@/config/investing";
 import { PRACTICE_UNIVERSE } from "@/config/portfolios";
 import {
@@ -5,6 +6,7 @@ import {
   APPETITES,
   CRYPTO_SLEEVE_CHOICES,
   DAY_TRADING_CHOICES,
+  type CatalogChoice,
   type CryptoSleeveChoice,
   type DayTradingChoice,
   AUTOPILOT_MODES,
@@ -56,6 +58,8 @@ export type PracticePreferences = {
   cryptoSleeve: CryptoSleeveChoice;
   // The day-trading sleeve (DAY_TRADING_CHOICES), followed at Very high only.
   dayTrading: DayTradingChoice;
+  // A catalog strategy followed instead of the level's mix (CatalogChoice).
+  catalogStrategy: CatalogChoice;
 };
 
 export type PreferenceField = keyof PracticePreferences;
@@ -79,6 +83,7 @@ export const PREFERENCE_FIELDS: readonly PreferenceField[] = [
   "maxFundPercent",
   "cryptoSleeve",
   "dayTrading",
+  "catalogStrategy",
 ];
 
 export const DEFAULT_PREFERENCES: PracticePreferences = {
@@ -196,6 +201,10 @@ function check(
       return typeof v === "string" && Object.hasOwn(DAY_TRADING_CHOICES, v)
         ? { value: v }
         : { error: "Pick off or one of the day-trading rules." };
+    case "catalogStrategy":
+      return typeof v === "string" && (v === "off" || Object.hasOwn(CATALOG, v))
+        ? { value: v }
+        : { error: "Pick off or one of the tested strategies." };
   }
 }
 
@@ -247,6 +256,7 @@ export function fromRow(row: {
   maxFundPercent: number | null;
   cryptoSleeve: string;
   dayTrading: string;
+  catalogStrategy: string;
 }): PracticePreferences {
   const d = DEFAULT_PREFERENCES;
   return {
@@ -283,6 +293,10 @@ export function fromRow(row: {
     dayTrading: Object.hasOwn(DAY_TRADING_CHOICES, row.dayTrading)
       ? (row.dayTrading as DayTradingChoice)
       : d.dayTrading,
+    catalogStrategy:
+      row.catalogStrategy === "off" || Object.hasOwn(CATALOG, row.catalogStrategy)
+        ? (row.catalogStrategy as CatalogChoice)
+        : d.catalogStrategy,
   };
 }
 
@@ -340,6 +354,8 @@ export function sayPreference(p: PracticePreferences, field: PreferenceField): s
       return CRYPTO_SLEEVE_CHOICES[p.cryptoSleeve].label;
     case "dayTrading":
       return DAY_TRADING_CHOICES[p.dayTrading].label;
+    case "catalogStrategy":
+      return p.catalogStrategy === "off" ? "Off" : CATALOG[p.catalogStrategy].label;
   }
 }
 
@@ -361,6 +377,7 @@ export const PREFERENCE_LABELS: Readonly<Record<PreferenceField, string>> = {
   maxFundPercent: "Most in one fund",
   cryptoSleeve: "Crypto sleeve (Very high only)",
   dayTrading: "Day trading (Very high only)",
+  catalogStrategy: "A tested strategy instead of the mix",
 };
 
 // What a change does, one line per field: "Risk level: Medium → Low".
@@ -411,5 +428,8 @@ export function parsePreferenceForm(form: FormLike): PreferencePatch {
     // Only when the form has it (the page shows it at Very high).
     ...(form.get("cryptoSleeve") == null ? {} : { cryptoSleeve: text(form.get("cryptoSleeve")) }),
     ...(form.get("dayTrading") == null ? {} : { dayTrading: text(form.get("dayTrading")) }),
+    ...(form.get("catalogStrategy") == null
+      ? {}
+      : { catalogStrategy: text(form.get("catalogStrategy")) }),
   };
 }
