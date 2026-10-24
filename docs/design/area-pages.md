@@ -99,15 +99,21 @@ A branch takes the worst status of its items (`worst()`), and its line says "N u
    lands on the same item.
 6. **Update the e2e specs** to `pickItem(page, "<Area>", "<branch label>", "<item label>")`, and
    scope assertions to the returned region.
-7. **Home tree.** Add the area's branches to the home hub's tree (see below) once its page
-   reads `?focus=<branch>`.
+7. **Home tree.** Move the page's loading into `src/lib/area-pages/<area>-load.ts`
+   (`load<Area>Area(userId)`, returning `area` and whatever the page renders), have the page call
+   it, and add it to `areaTrees` in `AreasTree` (`src/app/home/page.tsx`). The giant tree then
+   shows the area's own branches and items, with statuses and figures, each linking to
+   `/<area>?focus=…`. The page and Home read the same data, so they never disagree.
+   Insurance, Loans & credit, Taxes and Plans & goals are wired.
 
 ## The home tree: one giant "What Jane does" tree
 
 On `/home`, right under the net worth hero (founder: "one giant tree graph, not like u have to
 click through each subtab"): Jane, the six areas in a row, and under each area its branches
 with their features listed below them. It's all one canvas (`src/components/hub/giant-tree.tsx`;
-the layout and camera are in `src/lib/giant-tree.ts`, from the same feature map as `/home/map`).
+the layout and camera are in `src/lib/giant-tree.ts`). An area with a tree page shows that
+tree's branches and items, from the page's own loader; the others show what Jane looks for
+there, from the feature map, as `/home/map` does.
 
 - **Moving around:** drag to pan, the wheel or a pinch to zoom, and `[+]` `[−]` `[FIT]`. Wide
   screens split each area into two columns, whichever fits at the larger scale.
