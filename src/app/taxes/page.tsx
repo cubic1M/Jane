@@ -36,6 +36,7 @@ import { WithholdingSection } from "./withholding-section";
 import { FormToggle } from "./form-toggle";
 import { DocumentButtons } from "./document-buttons";
 import { PlanMoveActions } from "./plan-section";
+import { ConfirmDependants } from "./profile/confirm-dependants";
 import { GivingSection } from "./giving-section";
 import { FamilySection } from "./family-section";
 import { SideIncomeSection } from "./side-income-section";
@@ -86,10 +87,13 @@ function ProfileCard({
   fields,
   complete,
   newIncome,
+  confirm,
 }: {
   fields: ProfileField[];
   complete: boolean;
   newIncome: string[];
+  // "Are these your dependants?" when Jane found them (#660).
+  confirm: ReactNode;
 }) {
   return (
     <section aria-labelledby="profile" className={CARD}>
@@ -106,6 +110,7 @@ function ProfileCard({
           <Row key={f.key} label={f.label} value={f.value} status={f.status} />
         ))}
       </dl>
+      {confirm}
       {newIncome.length > 0 && (
         <p className="text-sm font-medium">
           New since you answered: {newIncome.join("; ")}.{" "}
@@ -251,9 +256,9 @@ async function TaxesContent({
       key: "dependants",
       label: "Dependants",
       value:
-        kids.status === "yours"
-          ? `${kids.childrenUnder17} under 17, ${kids.otherDependants} other`
-          : "—",
+        kids.status === "missing"
+          ? "—"
+          : `${kids.childrenUnder17} under 17, ${kids.otherDependants} other`,
       status: kids.status,
     },
     {
@@ -371,7 +376,22 @@ async function TaxesContent({
   details[itemId("life", "giving")] = <GivingSection view={giving} />;
 
   const profileCard = (
-    <ProfileCard fields={fields} complete={view.complete} newIncome={newIncome} />
+    <ProfileCard
+      fields={fields}
+      complete={view.complete}
+      newIncome={newIncome}
+      confirm={
+        kids.status === "found" &&
+        kids.childrenUnder17 !== null &&
+        kids.otherDependants !== null && (
+          <ConfirmDependants
+            childrenUnder17={kids.childrenUnder17}
+            otherDependants={kids.otherDependants}
+            from={kids.from ?? "your accounts"}
+          />
+        )
+      }
+    />
   );
   for (const f of fields) details[itemId("profile", f.key)] = profileCard;
   details[itemId("profile", "new-income")] = profileCard;

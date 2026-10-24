@@ -70,6 +70,15 @@ export function WithholdingSection({ view }: { view: WithholdingView }) {
                 )}
                 <li>From January, for a full year: {where(check.fromJanuary)}.</li>
               </ul>
+              {check.thisYear?.step === "4b" && (
+                // Area plan walk: "$127,700" next to "$24,500" read as a mistake without this.
+                <p>
+                  Step 4(b) is a yearly figure your employer spreads over all {check.perYear}{" "}
+                  paychecks, so handing the refund back in {check.paychecksLeft} takes a big one:
+                  about {formatCents(-check.thisYear.perPaycheckCents)} less withheld from each.
+                  Switch to the January figure then.
+                </p>
+              )}
               <p>Keep Steps 1 to 3 as they are. Only you can give it to your employer.</p>
               <W4Buttons
                 kind="suggest"

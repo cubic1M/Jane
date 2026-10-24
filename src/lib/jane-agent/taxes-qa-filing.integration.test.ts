@@ -61,6 +61,9 @@ describe.runIf(url)(
 
     it("estimates a family with a joint account and two paychecks as married filing jointly, and says so", async () => {
       const userId = await person("family");
+      // The guess for a couple who haven't said: the sample family arrives with their answers
+      // (src/lib/sample-tax-answers.ts), so they're taken away here.
+      await client.taxProfile.deleteMany({ where: { userId } });
       const v = await loadTaxEstimate(userId, { client, now: NOW });
       expect(v.input.filingStatus).toBe("married_joint");
       expect(v.assumptions).toContain(
