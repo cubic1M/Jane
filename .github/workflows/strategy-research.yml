@@ -11,10 +11,10 @@ on:
   workflow_dispatch:
     inputs:
       kind:
-        description: "daily (the strategy library on daily bars), intraday (the Very high day-trading rules on 5-minute bars) or catalog (every catalog strategy, walk-forward with the haircut); alpaca only for the last two"
+        description: "daily (the strategy library on daily bars), intraday (the Very high day-trading rules on 5-minute bars) catalog (every catalog strategy, walk-forward with the haircut) or crypto (the crypto rules on Alpaca's crypto bars); alpaca only for the last three"
         default: daily
         type: choice
-        options: [daily, intraday, catalog]
+        options: [daily, intraday, catalog, crypto]
       source:
         description: "alpaca (the repo's Alpaca secrets) or fixture (the committed keyless closes)"
         default: alpaca
@@ -198,4 +198,37 @@ jobs:
             research/strategy-results.md
             research/catalog-evidence.ts
             research/catalog-results.json
+          retention-days: 30
+
+  crypto:
+    name: Crypto rules
+    if: inputs.kind == 'crypto'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Replay the crypto rules on Alpaca's crypto bars
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          STRATEGY_RESEARCH: crypto
+          RESEARCH_FROM: ${{ inputs.from }}
+          RESEARCH_DIR: research
+        run: |
+          if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
+            echo "::error::Alpaca secrets not set (ALPACA_API_KEY_ID, ALPACA_API_SECRET_KEY)."
+            exit 1
+          fi
+          npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
+          cat research/crypto-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crypto-research
+          path: |
+            research/crypto-summary.md
+            research/crypto-results.json
           retention-days: 30

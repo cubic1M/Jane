@@ -15,6 +15,12 @@ import {
 import { AlpacaMarketData } from "@/lib/market/alpaca";
 import { fetchIntraday } from "@/lib/market/alpaca-intraday";
 import { catalogTickers } from "@/config/strategy-catalog";
+import {
+  CRYPTO_STRATEGIES,
+  CRYPTO_STRATEGY_IDS,
+  CRYPTO_TRAIN_END,
+} from "@/config/crypto-strategies";
+import { alignCrypto, cryptoResult } from "@/planning/crypto-strategies";
 import { alignCatalog, runCatalog } from "@/planning/catalog/engine";
 import { evidenceModule, resultsMarkdown } from "@/planning/catalog/report";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
@@ -37,7 +43,10 @@ import { selectForLevel } from "@/planning/strategies/select";
 // - catalog: every catalog strategy's funds' daily closes (and SPY's daily bars) from Alpaca,
 //   the whole catalog replayed (src/planning/catalog/), into strategy-results.md (to commit as
 //   docs/backtests/strategy-results.md), catalog-evidence.ts (src/config/catalog-evidence.ts) and
-//   catalog-results.json.
+//   catalog-results.json;
+// - crypto: bitcoin's and ether's daily bars from Alpaca's crypto feed, the three crypto rules
+//   replayed walk-forward (src/planning/crypto-strategies.ts), into crypto-summary.md and
+//   crypto-results.json.
 // Keys are read from the environment and never written or printed. Practice research only.
 
 const MODE = process.env.STRATEGY_RESEARCH;
@@ -270,6 +279,41 @@ async function runCatalogResearch() {
   console.log(`${results.length} results, ${trials} trials`);
 }
 
+async function runCryptoResearch() {
+  const id = process.env.ALPACA_API_KEY_ID;
+  const secret = process.env.ALPACA_API_SECRET_KEY;
+  if (!id || !secret) throw new Error("Alpaca secrets not set");
+  const from = process.env.RESEARCH_FROM ?? "2016-01-01";
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const alpaca = new AlpacaMarketData({ id, secret });
+  const bars = {
+    BTC: await alpaca.prices("BTCUSD", from, to),
+    ETH: await alpaca.prices("ETHUSD", from, to),
+  };
+  for (const [t, b] of Object.entries(bars))
+    console.log(`${t}: ${b.length} bars, ${b[0]?.date ?? "none"} to ${b.at(-1)?.date ?? "none"}`);
+  const u = alignCrypto(bars);
+  if (!u) throw new Error("No crypto bars.");
+  const results = CRYPTO_STRATEGY_IDS.map((sid) => ({ id: sid, r: cryptoResult(u, sid) }));
+  const source = `Alpaca crypto daily bars for BTC/USD and ETH/USD, ${u.dates[0]} to ${u.dates.at(-1)}`;
+  const lines = [
+    `# Crypto rules on ${source}`,
+    "",
+    `Chosen on the days to ${CRYPTO_TRAIN_END}, scored after, against simply holding, after fees and slippage. A replay of the past, not a forecast. ${u.dates[0] > CRYPTO_TRAIN_END.slice(0, 4) + "-01-01" ? "The feed starts after the training years begin, so the choice rests on fewer years." : ""}`,
+    "",
+    "| Rule | Setting | Later: a year | Later: worst drop | Later: Sortino | Holding: a year | Holding: worst drop | Holding: Sortino | More return for its risk than holding |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...results.map(({ id: sid, r }) =>
+      r
+        ? `| ${CRYPTO_STRATEGIES[sid].label} | ${r.param} | ${pct(r.later.cagr)} | ${pct(r.later.maxDrawdown)} | ${r.later.sortino.toFixed(2)} | ${pct(r.holdLater.cagr)} | ${pct(r.holdLater.maxDrawdown)} | ${r.holdLater.sortino.toFixed(2)} | ${r.beatsHolding ? "yes" : "no"} |`
+        : `| ${CRYPTO_STRATEGIES[sid].label} | – | not enough history | | | | | | |`,
+    ),
+  ];
+  writeFileSync(join(DIR, "crypto-summary.md"), lines.join("\n") + "\n");
+  writeFileSync(join(DIR, "crypto-results.json"), JSON.stringify({ source, results }, null, 1));
+  console.log(lines.join("\n"));
+}
+
 const readBars = () => JSON.parse(readFileSync(join(DIR, "bars.json"), "utf8")) as BarsFile;
 const writeLevel = (l: LevelFile) =>
   writeFileSync(join(DIR, `level-${l.level}.json`), JSON.stringify(l));
@@ -303,5 +347,6 @@ describe.runIf(MODE)("strategy research", () => {
     if (MODE === "summary" || MODE === "all") writeSummary();
     if (MODE === "intraday") await runIntraday();
     if (MODE === "catalog") await runCatalogResearch();
+    if (MODE === "crypto") await runCryptoResearch();
   });
 });
