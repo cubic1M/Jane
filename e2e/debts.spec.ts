@@ -7,6 +7,7 @@ import {
   setCheckingBalance,
   signedInUser,
 } from "./db";
+import { CHAT, landInChat } from "./chat-page";
 
 // Spec step 109: every debt in one place, from the demo bank: loans and cards with where
 // each rate came from, the buy now, pay later plans found from payments, terms typed for
@@ -32,7 +33,7 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   const ask = page.getByRole("textbox", { name: "Message Jane" });
   await ask.fill("How much do I owe?");
@@ -77,7 +78,7 @@ test("the payoff plan picks an order for the demo bank and starts with one tap",
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/debt");
   const plan = page.getByRole("region", { name: "Your way out of debt" });
@@ -108,7 +109,7 @@ test("refinance offers compare total cost and pick one, labelled", async ({
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans");
   await page.getByRole("link", { name: "See refinance offers" }).click();
@@ -148,7 +149,7 @@ test("apply prepares the application, and it's sent only once the terms are revi
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/refinance");
   await page.getByRole("button", { name: "Apply with Harbor Auto Refi" }).click();
@@ -182,7 +183,7 @@ test("a 0% transfer counts its fee and is tracked once moved", async ({
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/refinance#transfers");
   const section = page.getByRole("region", { name: "Move card debt to 0%" });
@@ -207,7 +208,7 @@ test("student loan plans are compared, and every step links to studentaid.gov", 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans");
   await page.getByRole("link", { name: "Compare its repayment plans" }).click();
@@ -243,7 +244,7 @@ test("the mortgage page shows PMI, the escrow change and extra principal", async
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans");
   await page.getByRole("link", { name: "See PMI, escrow and extra payments" }).click();
@@ -275,7 +276,7 @@ test("the credit score is a labelled stand-in, with its factors and card use", a
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans");
   await page.getByRole("link", { name: "See your credit score" }).click();
@@ -301,7 +302,7 @@ test("card rewards count the fee, and a better card is applied for with one tap"
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans");
   await page.getByRole("link", { name: "See your card rewards" }).click();
@@ -333,7 +334,7 @@ test("building credit shows the simulator as an estimate and the statement payme
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/credit");
   const build = page.getByRole("region", { name: "Build your credit" });
@@ -358,7 +359,7 @@ test("buy now, pay later installments are listed from the plans' schedules", asy
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans");
   const list = page.getByRole("list", { name: "Installments coming" });
@@ -380,7 +381,7 @@ test("a tight month shows the plan, and a request is sent only on the tap", asyn
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   await setCheckingBalance(user.userId, 30_000);
 
   await page.goto("/loans/tight");
@@ -412,7 +413,7 @@ test("buying a car shows the all-in cost, preapprovals and a dealer check", asyn
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/car?price=30000&dealerApr=8.99&dealerMonths=60");
   await expect(page.getByRole("heading", { level: 1, name: "Buying a car" })).toBeVisible();
@@ -441,7 +442,7 @@ test("buying a home shows the plan, its assumptions, and starts the goal on the 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/home?price=400000");
   await expect(page.getByRole("heading", { level: 1, name: "Buying a home" })).toBeVisible();
@@ -475,7 +476,7 @@ test("medical bills are found, letters are written, and a request is sent only o
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/medical");
   await expect(page.getByRole("heading", { level: 1, name: "Medical bills" })).toBeVisible();
@@ -513,7 +514,7 @@ test("report fixes show the letters with their rules, and a letter is sent only 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/report");
   await expect(
@@ -552,7 +553,7 @@ test("card interest shows the cost, a promotion off pace, and a request sent on 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/interest");
   await expect(page.getByRole("heading", { level: 1, name: "Less card interest" })).toBeVisible();
@@ -592,7 +593,7 @@ test("student loans show PSLF month by month, save dates as deadlines, and warn 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/student");
   await page.getByLabel("I work full time in public service").check();
@@ -633,7 +634,7 @@ test("a payment-app transfer is a loan only after the tap, and the reminder is o
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   const day = (daysAgo: number) =>
     new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
   await addTransfer(user.userId, {
@@ -675,7 +676,7 @@ test("a credit score goal is previewed, started on the tap, and ticked off month
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   const inSix = new Date(Date.now() + 183 * 86_400_000).toISOString().slice(0, 10);
 
   await page.goto("/loans/credit");
@@ -718,7 +719,7 @@ test("a home loan's PMI, escrow and project are worked out from what the person 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/equity");
   await expect(
@@ -775,7 +776,7 @@ test("the options when debt is too much are laid out as facts, with the pointer 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/help");
   await expect(
@@ -814,7 +815,7 @@ test("the debt review lists every item, and the chat message keeps each button u
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/review");
   await expect(page.getByRole("heading", { level: 1, name: "Your debt review" })).toBeVisible();
@@ -839,7 +840,7 @@ test("the debt review lists every item, and the chat message keeps each button u
   await expect(month.getByRole("heading", { name: "A lower card rate" })).toHaveCount(0);
 
   // Asking in the chat shows the same items.
-  await page.goto("/chat");
+  await page.goto(CHAT);
   const box = page.getByRole("textbox", { name: "Message Jane" });
   await box.fill("do my yearly debt review");
   await box.press("Enter");
@@ -861,7 +862,7 @@ test("a dealer add-on is confirmed, with its refund and a cancellation the team 
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   const yearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
   await addPayment(user.userId, {
     date: yearAgo,
@@ -902,7 +903,7 @@ test("a lump sum is compared on the mortgage: extra principal, recast, refinance
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/recast");
   await expect(
@@ -936,7 +937,7 @@ test("costly short-term borrowing is found, costed, and the way out is laid out"
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/costly");
   await expect(
@@ -1006,7 +1007,7 @@ test("a co-signed loan is counted in full and a missed payment lands on the pers
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans/helping");
   await expect(
@@ -1047,7 +1048,7 @@ test("what you could borrow is shown with the day it was checked", async ({
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/loans");
   await page.getByRole("link", { name: "See what you could get, and at what rate" }).click();

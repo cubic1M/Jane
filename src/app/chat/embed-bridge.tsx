@@ -11,8 +11,14 @@ export function EmbedBridge() {
   const router = useRouter();
 
   useEffect(() => {
-    if (window.self === window.top) return;
     const root = document.documentElement;
+    // Opened on its own (the e2e tests do): the chat as it is, with its suggestions.
+    if (window.self === window.top) {
+      root.dataset.chatEmbedCards = "";
+      return () => {
+        delete root.dataset.chatEmbedCards;
+      };
+    }
     root.dataset.chatEmbed = "open";
     const origin = window.location.origin;
 

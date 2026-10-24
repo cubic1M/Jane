@@ -274,6 +274,36 @@ main h2::before {
   }
 }
 
+/* The chat's microphone (src/app/chat/mic-button.tsx): while it listens the glyph pulses, the
+   ASCII meter's bars rise and fall and "● REC" blinks. Still for reduced motion. */
+.mic-button[data-listening] .mic-glyph {
+  animation: mic-pulse 1s ease-in-out infinite;
+}
+.mic-meter > span {
+  display: inline-block;
+  animation: mic-level 0.6s steps(1) infinite alternate;
+}
+.mic-rec {
+  animation: ascii-blink 1.1s steps(1) infinite;
+}
+@keyframes mic-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes mic-level {
+  50% {
+    transform: scaleY(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mic-button[data-listening] .mic-glyph,
+  .mic-meter > span,
+  .mic-rec {
+    animation: none;
+  }
+}
+
 /* The landing headline's blinking cursor; still for reduced motion. */
 .ascii-cursor {
   margin-left: 0.1em;

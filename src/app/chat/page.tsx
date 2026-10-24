@@ -11,6 +11,7 @@ import { openChat, timezoneOf } from "@/lib/jane-agent/open";
 import { practiceCards } from "@/lib/practice/cards";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
+import { chatRedirect } from "@/lib/side-chat";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
 import { ScanRefresher } from "./scan-refresher";
@@ -18,7 +19,8 @@ import { ScrollToEnd } from "./scroll-to-end";
 import { ChatCards } from "./chat-cards";
 import { EmbedBridge } from "./embed-bridge";
 
-// Jane's chat, the home screen (spec step 81): what Jane noticed, did and suggests, newest
+// Jane's chat (spec step 81), shown only in the side panel since the founder's "I don't want an
+// individual chat": /chat itself opens Home with the panel open. What Jane noticed, did and suggests, newest
 // at the bottom, each with its buttons. The last CHAT_PAGE_SIZE messages, with "Show
 // earlier". The message box at the end is for typing to Jane (spec step 84); conversations
 // from Ask Jane stay readable on /ask.
@@ -45,6 +47,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   const params = await searchParams;
   const pages = pagesFrom(params.pages);
   const embed = params.embed === "1";
+  // No chat page of its own: Home, with the side chat open (src/lib/side-chat.ts).
+  if (!embed) redirect(chatRedirect(params));
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
   const [chat, askHistory, pinned, stackedRows, zone, practice] = await Promise.all([
     openChat(user.id, { pages }),

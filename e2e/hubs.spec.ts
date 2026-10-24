@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { landInChat } from "./chat-page";
 
 // The Jane, Money and Ahead hubs (spec step 80), filled by the demo bank: each shows its
 // sections and live numbers, and its tiles open the full pages.
@@ -28,7 +29,7 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   // The scan ends in Jane's chat (spec step 82).
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Jane: what's to decide, with Jane's pick where there's one.
   await page.goto("/jane");

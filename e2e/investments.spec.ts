@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { CHAT, landInChat } from "./chat-page";
 
 // Investments (spec steps 128–137) on the demo bank: what the person owns, with sources,
 // and Jane answering about it in the chat.
@@ -26,7 +27,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Step 128: what they own, adding up to net worth, every holding with its source.
   await page.goto("/investments");
@@ -67,7 +68,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
     [],
   );
 
-  await page.goto("/chat");
+  await page.goto(CHAT);
   await page.getByRole("textbox", { name: "Message Jane" }).fill("what's in my 401k");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/Your Demo 401\(k\) has \$84,250\.40 in 5 holdings/)).toBeVisible();
@@ -159,7 +160,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   // Step 137: what Jane does by herself, and how it's going.
   await page.goto("/investments");
   await expect(page.getByRole("heading", { name: "What Jane does by herself" })).toBeVisible();
-  await page.goto("/chat");
+  await page.goto(CHAT);
   await page.getByRole("textbox", { name: "Message Jane" }).fill("how are my investments doing");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/^Your investments start \w+ at \$/)).toBeVisible();
@@ -179,7 +180,7 @@ test("prices, goals, college, HSA, company stock, crypto and cash, each with its
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Step 156: how they've done, past results only, prices from the demo feed.
   await page.goto("/investments");

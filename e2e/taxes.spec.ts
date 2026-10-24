@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { landInChat } from "./chat-page";
 
 // Taxes (spec steps 118–127): what Jane found in the demo bank is shown as found, and the
 // person's answers are saved from the profile page. No serious accessibility problems.
@@ -37,7 +38,7 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taxes: 2026");
@@ -112,7 +113,7 @@ test("tax tags: Jane's tags, her questions, and tagging a work expense", async (
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes/tags");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tax tags: 2026");
@@ -155,7 +156,7 @@ test("state taxes: a mid-year move splits the estimate, each state with its sour
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes/profile#states");
   const where = page.locator("#states");
@@ -202,7 +203,7 @@ test("the tax plan: moves by deadline, and one on the deadlines with a tap", asy
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes#plan");
   const plan = page.getByRole("region", { name: /tax plan$/ });
@@ -227,7 +228,7 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   await page.goto("/taxes/profile#family");
   const form = page.locator("#family");
@@ -264,7 +265,7 @@ test("a sample draft return to check, for someone with no draft of their own", a
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Spec step 272, reached without a file: the stand-in's sample draft, read for the person.
   await page.goto("/taxes/draft");
@@ -287,7 +288,7 @@ test("retirement income, inherited money and disasters each have a page from /ta
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Spec steps 271, 268 and 270: each reached from /taxes, with the chat's own lines.
   for (const [link, heading, section] of [
