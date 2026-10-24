@@ -3,6 +3,7 @@ import { LOAN_DUE_SOON_DAYS } from "@/config/loans";
 import { SYNCED_KINDS, syncedKindOf } from "@/data-sources/types";
 import type { BnplPlan } from "./bnpl";
 import { monthlyInterest } from "@/planning/debt";
+import { mortgagePi, mortgageTermYears } from "@/planning/home-equity";
 import { netWorth } from "./net-worth";
 
 // Every debt in one place (spec step 109): loans and cards from the bank (Plaid
@@ -35,6 +36,8 @@ export type DebtAccountInput = {
     isOverdue: boolean | null;
     pastDueCents: number | null;
     description: string | null;
+    // How the loan began: a mortgage's principal and interest comes from it.
+    originationPrincipalCents?: number | null;
   } | null;
 };
 
@@ -67,6 +70,9 @@ export type Debt = {
   paymentCents: number | null;
   paymentEvery: "month" | "two_weeks";
   paymentFrom: DebtSource | null;
+  // A mortgage's payment less its escrow: the principal and interest, which is what pays the
+  // loan down (null or absent: all of the payment does). See loanPaymentCents.
+  principalAndInterestCents?: number | null;
   // YYYY-MM-DD.
   nextDue: string | null;
   dueSoon: boolean;
@@ -127,6 +133,32 @@ const dueSoonOf = (nextDue: string | null, asOf: string) => {
   return days >= 0 && days <= LOAN_DUE_SOON_DAYS;
 };
 
+// A mortgage's principal and interest, from how it began and its term (Plaid doesn't split
+// the escrow out). Null when unknown, or when it's more than the whole payment.
+function principalAndInterest(
+  l: DebtAccountInput["liability"],
+  aprBps: number | null,
+  paymentCents: number | null,
+): number | null {
+  const pi = mortgagePi({
+    originationPrincipalCents: l?.originationPrincipalCents ?? null,
+    aprBps,
+    termYears: mortgageTermYears(l?.description ?? null),
+  });
+  return pi !== null && (paymentCents === null || pi <= paymentCents) ? pi : null;
+}
+
+// "Your payment" on a debt, one figure for every page, tool and comparison (loans QA): the
+// bank's (or the typed) payment, a month (a payment every two weeks counts twice), and for a
+// mortgage only its principal and interest, since the escrow pays taxes and insurance.
+export function loanPaymentCents(
+  debt: Pick<Debt, "paymentCents" | "paymentEvery" | "principalAndInterestCents">,
+): number | null {
+  if (debt.principalAndInterestCents) return debt.principalAndInterestCents;
+  if (!debt.paymentCents) return null;
+  return debt.paymentCents * (debt.paymentEvery === "two_weeks" ? 2 : 1);
+}
+
 function accountDebt(a: DebtAccountInput, typed: TypedTerms | undefined, asOf: string): Debt {
   const synced = syncedKindOf(a.type, a.subtype);
   const kind = (synced && KIND_OF[synced]) ?? (a.type === "credit" ? "card" : "loan");
@@ -159,6 +191,8 @@ function accountDebt(a: DebtAccountInput, typed: TypedTerms | undefined, asOf: s
     paymentCents,
     paymentEvery: "month",
     paymentFrom,
+    principalAndInterestCents:
+      kind === "mortgage" ? principalAndInterest(l, aprBps, paymentCents) : null,
     nextDue,
     dueSoon: dueSoonOf(nextDue, asOf),
     payoffDate,

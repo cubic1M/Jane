@@ -36,9 +36,11 @@ function Comparison({ c }: { c: RefinanceComparison }) {
         <h2 className="font-semibold">{c.debtName}</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {formatCents(c.balanceCents)} at {formatRate(c.currentAprBps)}. Keeping it, at{" "}
-          {formatCents(c.currentMonthlyCents)} a month, it&apos;s paid off in {c.keepMonths} months
-          and costs {formatCents(c.currentTotalCents)} in all. Offers are priced over {c.termMonths}{" "}
-          months.
+          {formatCents(c.currentMonthlyCents)} a month
+          {c.escrowCents !== undefined &&
+            ` in principal and interest (your payment also holds ${formatCents(c.escrowCents)} of escrow, which stays)`}
+          , it&apos;s paid off in {c.keepMonths} months and costs {formatCents(c.currentTotalCents)}{" "}
+          in all. Offers are priced over {c.termMonths} months.
         </p>
       </div>
       {c.cashPayoffCents ? (
