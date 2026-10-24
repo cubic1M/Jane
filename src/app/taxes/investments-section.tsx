@@ -56,13 +56,13 @@ export function InvestmentsSection({
         From the cost basis your broker reports, at each holding&apos;s average cost.
       </p>
       {view.washSales.map((w) => (
-        <p key={`${w.securityId}${w.date}`} className="text-sm text-amber-800 dark:text-amber-300">
+        <p key={`${w.securityId}${w.date}`} className="text-sm font-medium">
           Wash sale: {w.ticker ?? w.name} sold at a loss on {day(w.date)} and bought again within 30
           days, so {formatCents(w.washDisallowedCents)} of the loss doesn&apos;t count this year.
         </p>
       ))}
       {advice && (view.harvest.length > 0 || view.location.length > 0) && (
-        <div className="flex flex-col gap-2 rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
+        <div className="flex flex-col gap-2 border border-zinc-300 p-3 text-sm dark:border-zinc-700">
           {view.harvest.map((h) => (
             <p key={h.holding.securityId}>
               {h.holding.name} is down {formatCents(h.lossCents)}: selling it before Dec 31 would
@@ -76,7 +76,7 @@ export function InvestmentsSection({
               IRA.{" "}
               <Link
                 href="/investments/accounts"
-                className="font-medium text-emerald-700 hover:underline"
+                className="font-medium underline underline-offset-2 hover:no-underline"
               >
                 Where to hold what
               </Link>

@@ -104,9 +104,20 @@ A branch takes the worst status of its items (`worst()`), and its line says "N u
 
 ## The home tree
 
-On `/home`: Jane → the six areas → each area's branches, drawn with the same engine. A branch
-node links to `/<area>?focus=<branch>`, so the area page opens with that branch already open.
-An area node with no tree page yet links to the page itself.
+On `/home`, under the area tiles ("Everything, as a tree"): Jane → the six areas → each area's
+branches, drawn with the same engine (`src/components/hub/home-tree.tsx`, shaped by the pure
+`homeTree` in `src/lib/hub/tree.ts`).
+
+- An area with a tree page lists that tree's branches, with their statuses, loaded by the same
+  loader as the page (`loadInsuranceArea` in `src/lib/area-pages/insurance-load.ts`, without
+  the page's refresh). Picking one goes to `/<area>?focus=<branch>`, and the page opens with
+  that branch open. The area's own status and line come from its tree, so the hub and the page
+  agree.
+- An area without one yet lists what Jane looks for there (the feature map's branches), and
+  each links to the area's page. Once its page reads `?focus=`, add its tree to `areaTrees` in
+  `src/app/home/page.tsx`.
+- Every area's first item is "Open <area>". An area with nothing under it goes straight to its
+  page.
 
 ## Keyboard and screen readers
 

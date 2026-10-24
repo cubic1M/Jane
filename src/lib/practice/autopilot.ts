@@ -1,4 +1,5 @@
 import { PRACTICE_UNIVERSE, THEME_FUNDS } from "@/config/portfolios";
+import { rulesOnAt } from "@/config/practice-scan";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
@@ -149,6 +150,7 @@ export async function runAutopilot(
       avoid: new Set(profile.avoid),
       cashBufferCents: profile.cashBufferCents,
       limits: profile.limits,
+      harvesting: profile.harvestLosses && rulesOnAt(profile.level).has("tax_loss_harvest"),
     }),
   ];
   if (!profile.trades) return { ran: true, deposit, fills: [], suggested: plan };

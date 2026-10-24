@@ -10,6 +10,7 @@ import {
 } from "@/config/portfolios";
 import {
   NEWS_LOOKBACK_DAYS,
+  rulesOnAt,
   SCAN_HISTORY_DAYS,
   SCAN_KINDS,
   type ScanKind,
@@ -406,6 +407,8 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           avoid: new Set(profile.avoid),
           cashBufferCents: profile.cashBufferCents,
           limits: profile.limits,
+          harvesting:
+            profile.harvestLosses && (rules ?? rulesOnAt(profile.level)).has("tax_loss_harvest"),
         }),
       ];
       // Suggest only: the plan is shown, never placed.
