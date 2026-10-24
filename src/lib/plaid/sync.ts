@@ -729,6 +729,24 @@ export async function syncItem(
 
   timing.mark("cursor_and_track");
   await runDetection(item.userId, { client, now });
+  // Phase AW: a sample person's practice portfolio starts by itself, weeks back, before the
+  // first suggestions, so "start a practice portfolio" never is one; its days are replayed
+  // beside the sector work below. Never fails the sync. Loaded here, not at the top: the practice
+  // run reaches this file again.
+  const practice =
+    isDemoToken(accessToken) && result.firstSync && !secondLogin
+      ? await import("@/lib/practice/demo-start")
+          .then(async (m) => {
+            const plan = await m.startDemoPractice(item.userId, { client, now });
+            return plan ? { m, plan } : null;
+          })
+          .catch((error) => {
+            console.error("Starting the sample person's practice portfolio failed", {
+              error: String(error),
+            });
+            return null;
+          })
+      : null;
   // Someone watching their first scan is looking at the chat: Jane's first words come at once,
   // whatever the hour (quiet hours had left a person scanned at night with no brief at all).
   const scanTrigger = progressive && result.firstSync ? "open" : "sync";
@@ -770,19 +788,13 @@ export async function syncItem(
     // problem there never fails the sync; the daily run tries again.
     // Spec step 106: and checks the cover once a year and after a life event.
     insuranceAfterSync(item.userId, { client, now }),
+    // The sample person's practice days, replayed (src/lib/practice/demo-start.ts).
+    practice ? practice.m.replayDemoPractice(item.userId, practice.plan, { client }) : null,
     // Card text from Claude, as a job: retried later if it fails, without failing the sync.
     (async () =>
       runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
         client,
       }))(),
-    // Phase AW: a sample person's practice portfolio starts by itself, with a few weeks
-    // replayed, so the bot is there to look at before Jane's last words of the scan. Loaded
-    // here, not at the top: the practice run reaches this file again.
-    isDemoToken(accessToken) && result.firstSync
-      ? import("@/lib/practice/demo-start").then((m) =>
-          m.ensureDemoPractice(item.userId, { client, now }),
-        )
-      : null,
   ]);
   for (const result of sectors) {
     if (result.status === "rejected") {

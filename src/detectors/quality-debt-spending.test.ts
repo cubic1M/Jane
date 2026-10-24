@@ -163,7 +163,9 @@ describe("plain words", () => {
 
   it("names merchants as people do, not as the bank prints them", () => {
     for (const { person, s } of all) {
-      const shouting = s.why.match(/\b[A-Z]{5,}\b/g)?.filter((w) => !["MEDICARE"].includes(w));
+      const shouting = s.why
+        .match(/\b[A-Z]{5,}\b/g)
+        ?.filter((w) => !["MEDICARE", "FINRA"].includes(w));
       expect(shouting ?? [], `${person} ${s.topic}: ${s.why}`).toEqual([]);
     }
     expect(run("renter").find((s) => s.topic === "duplicate_subscription")!.why).toContain(
