@@ -29,7 +29,7 @@
     "next": "16.4.2",
     "next-auth": "^5.0.0-beta.30",
     "pg": "8.23.1",
-    "plaid": "47.0.0",
+    "plaid": "48.0.0",
     "posthog-node": "5.56.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
