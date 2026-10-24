@@ -137,7 +137,7 @@ export function AreaPage({
             {details[item.id]}
             {more[item.id] && (
               <details className="text-sm">
-                <summary className="cursor-pointer font-medium underline">[MORE]</summary>
+                <summary className="cursor-pointer font-medium underline">More</summary>
                 <div className="mt-2 flex flex-col gap-2">{more[item.id]}</div>
               </details>
             )}
