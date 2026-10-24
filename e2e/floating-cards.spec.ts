@@ -51,10 +51,8 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   // The suggestion's message in the list, if it is there.
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
   const inList = (headline: string) => messages.filter({ hasText: headline });
-  // The agenda only says the suggestions are on the cards: none of their lines or buttons.
-  const agenda = messages.filter({ hasText: /Good (morning|afternoon|evening)!/ });
-  await expect(agenda).toContainText(/on the cards? at the bottom\./);
-  await expect(agenda.getByRole("button", { name: /Not for me:/ })).toHaveCount(0);
+  // The agenda waits on the person too, so it's a card in the stack, not a card in the list.
+  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(0);
 
   // Short: a headline with one number, Yes and Not now, and More details closed.
   const showing = overlay.locator('[data-card-state="showing"]');

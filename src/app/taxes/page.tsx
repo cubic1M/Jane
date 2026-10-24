@@ -5,33 +5,19 @@ import { AppHeader } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { ViewTracker } from "@/components/view-tracker";
-import {
-  FILING_STATUSES,
-  INCOME_KINDS,
-  TAX_TAG_ORDER,
-  TAX_TAGS,
-  TAX_YEAR,
-  whatJaneDoes,
-} from "@/config/tax";
-import { TAXES_ANCHORS, TOPICS, itemId, taxesTree } from "@/lib/area-pages/taxes";
+import { TAX_TAG_ORDER, TAX_TAGS, TAX_YEAR, whatJaneDoes } from "@/config/tax";
+import { TAXES_ANCHORS, TOPICS, itemId } from "@/lib/area-pages/taxes";
 import { firstSentences } from "@/lib/area-pages/tree";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { loadTaxTags, type TaxTagsView } from "@/lib/tax-organizer";
-import { adviceMode } from "@/lib/advice-mode";
-import { loadTaxEstimate } from "@/lib/tax-estimate";
-import { checkFrom } from "@/lib/tax-withholding";
-import { loadTaxSavings } from "@/lib/tax-savings";
-import { loadWorkingProfile } from "@/lib/tax-profile";
+import { loadTaxesArea, type ProfileField } from "@/lib/area-pages/taxes-load";
+import { type TaxTagsView } from "@/lib/tax-organizer";
 import { byHerself } from "@/lib/jane-agent/replies-autopilot";
-import { defaultTaxYear } from "@/planning/tax-pack";
-import { stateName, type FieldStatus } from "@/planning/tax-profile";
+import { type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
 import { SavingActions } from "./savings-section";
 import { InvestmentsSection } from "./investments-section";
-import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { RefundSection } from "./refund-section";
-import { loadRefunds } from "@/lib/tax-refund";
 import { WithholdingSection } from "./withholding-section";
 import { FormToggle } from "./form-toggle";
 import { DocumentButtons } from "./document-buttons";
@@ -40,15 +26,9 @@ import { ConfirmDependants } from "./profile/confirm-dependants";
 import { GivingSection } from "./giving-section";
 import { FamilySection } from "./family-section";
 import { SideIncomeSection } from "./side-income-section";
-import { loadSideIncome } from "@/lib/side-income";
 import { RecordsSection } from "./records-section";
-import { loadAuditRecords } from "@/lib/audit-records";
 import { HomeSection } from "./home-section";
-import { loadHomeTaxes } from "@/lib/home-taxes";
-import { loadFamilyTaxes } from "@/lib/family-taxes";
-import { loadGiving } from "@/lib/giving";
-import { loadTaxPlan } from "@/lib/tax-plan";
-import { loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
+import { type TaxDocumentsView } from "@/lib/tax-documents";
 import { COMPARED } from "@/planning/tax-document-check";
 
 // Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. The page is a
@@ -80,8 +60,6 @@ function Row({ label, value, status }: { label: string; value: string; status: F
     </div>
   );
 }
-
-type ProfileField = { key: string; label: string; value: string; status: FieldStatus };
 
 function ProfileCard({
   fields,
@@ -219,116 +197,30 @@ async function TaxesContent({
   const params = await searchParams;
   const focus = typeof params.focus === "string" ? params.focus : undefined;
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  // The year being gathered: last year until the end of April, then this one.
-  const year = defaultTaxYear(today);
-  const [{ view, taxes }, tags, forms, estimate, advice] = await Promise.all([
-    loadWorkingProfile(user.id, { now }),
-    loadTaxTags(user.id, year),
-    // Spec step 166: with what Jane collected and how each checked.
-    loadTaxDocuments(user.id, year, { now }),
-    loadTaxEstimate(user.id, { now }),
-    adviceMode(user.id),
-  ]);
-  const [refunds, investments, savings, sideIncome, records, home, family, giving, plan] =
-    await Promise.all([
-      loadRefunds(user.id, { now }).then((r) => r.refunds),
-      loadInvestmentTaxes(user.id, estimate.year, { now }),
-      loadTaxSavings(user.id, { now, loaded: { estimate, advice } }),
-      loadSideIncome(user.id, { now, loaded: { estimate } }),
-      loadAuditRecords(user.id, year, { now }),
-      loadHomeTaxes(user.id, { now, loaded: { estimate } }),
-      loadFamilyTaxes(user.id, { now, loaded: { estimate, advice } }),
-      loadGiving(user.id, { now, loaded: { estimate, advice } }),
-      loadTaxPlan(user.id, { now, loaded: { estimate, advice } }),
-    ]);
-  const check = checkFrom(estimate);
-  const kids = view.dependants;
-
-  const fields: ProfileField[] = [
-    {
-      key: "filing",
-      label: "How you file",
-      value: view.filingStatus.value ? FILING_STATUSES[view.filingStatus.value] : "—",
-      status: view.filingStatus.status,
-    },
-    {
-      key: "dependants",
-      label: "Dependants",
-      value:
-        kids.status === "missing"
-          ? "—"
-          : `${kids.childrenUnder17} under 17, ${kids.otherDependants} other`,
-      status: kids.status,
-    },
-    {
-      key: "state",
-      label: "State",
-      value: stateName(view.state.value) ?? "—",
-      status: view.state.status,
-    },
-    {
-      key: "income",
-      label: "Income",
-      value:
-        view.incomeKinds.value.length > 0
-          ? view.incomeKinds.value
-              .map((k) => `${INCOME_KINDS[k].label} (${INCOME_KINDS[k].form})`)
-              .join("; ")
-          : "—",
-      status: view.incomeKinds.status,
-    },
-  ];
-  const newIncome = view.newIncome.map((i) => INCOME_KINDS[i.kind].label.toLowerCase());
-  const hasSideIncome = !!sideIncome.rental || sideIncome.platforms.length > 0;
-
-  const area = taxesTree({
-    asOf: today,
-    year: estimate.year,
-    moves: plan.moves,
-    savings: savings.advice ? savings.savings : null,
-    estimate: {
-      refundCents: estimate.estimate.refundCents,
-      withholdingKnown: estimate.withholdingKnown,
-    },
-    withholding: check.status,
-    w4Sent: !!estimate.w4,
-    refunds: refunds.length,
-    investments:
-      investments.taxableAccounts === 0
-        ? null
-        : {
-            washSales: investments.washSales.length,
-            harvest: advice ? investments.harvest.length : 0,
-          },
-    forms: {
-      total: forms.forms.length,
-      received: forms.forms.filter((f) => f.received).length,
-      toCheck: forms.forms.filter((f) => f.document && !f.usable && f.document.decision === null)
-        .length,
-    },
-    tags: { checks: tags.checks.length },
-    records: {
-      items: records.items.length,
-      needs: records.items.reduce((n, i) => n + i.needs.length, 0),
-      gaps: records.gaps.length,
-      canGo: records.retention.filter((r) => r.status !== "keep").length,
-    },
-    sideIncome: hasSideIncome
-      ? {
-          differs: sideIncome.platforms.filter((p) => p.status === "differs").length,
-          waiting: sideIncome.platforms.filter((p) => p.status === "waiting").length,
-        }
-      : null,
-    home: home.homeowner,
-    family: family.advice ? { choices: family.choices.length } : null,
-    giving: {
-      totalCents: giving.totalCents,
-      receiptsMissing: giving.receiptsMissing.length,
-      options: giving.advice && !giving.dismissed ? giving.options.length : 0,
-    },
-    profile: { complete: view.complete, newIncome: newIncome.length, fields },
-  });
+  const {
+    today,
+    year,
+    view,
+    taxes,
+    tags,
+    forms,
+    estimate,
+    advice,
+    refunds,
+    investments,
+    savings,
+    sideIncome,
+    records,
+    home,
+    family,
+    giving,
+    plan,
+    check,
+    kids,
+    fields,
+    newIncome,
+    area,
+  } = await loadTaxesArea(user.id, { now });
 
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
@@ -414,16 +306,16 @@ async function TaxesContent({
           Kept organised all year from your accounts. Open a branch to see more.
         </p>
         <nav aria-label="Tax pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/taxes/file" className={LINK}>
+          <Link prefetch={false} href="/taxes/file" className={LINK}>
             File
           </Link>
-          <Link href="/taxes/profile" className={LINK}>
+          <Link prefetch={false} href="/taxes/profile" className={LINK}>
             Profile
           </Link>
-          <Link href="/taxes/tags" className={LINK}>
+          <Link prefetch={false} href="/taxes/tags" className={LINK}>
             Tags
           </Link>
-          <Link href="/tax-pack" className={LINK}>
+          <Link prefetch={false} href="/tax-pack" className={LINK}>
             Tax-time pack
           </Link>
         </nav>

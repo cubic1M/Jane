@@ -61,7 +61,7 @@ export async function postThemeAlerts(
     // headline, one "Why you" line, and how sure Jane is; the whole reason behind More details.
     const lines = [
       // Ten words at most, one figure: "News theme: Try $400 of ITA in practice".
-      `News theme: ${(d.ask?.headline ?? row.headline).replace(" on the news,", "")}`,
+      `News theme: ${(d.ask?.headline ?? row.headline).replace(/ on (the )?news,/, "")}`,
       `Why you: ${fig("Why now") ?? row.reason}.`,
       `${percent}% sure: ${d.confidence?.reason ?? "from its past events"}.`,
     ];

@@ -379,7 +379,7 @@ const cashFlow: Detector = {
       capability: "taxes",
       topic: "cash_flow",
       title: `Set aside about ${formatCents(weekly)} from each week's sales for the tax bill due every ${months === 1 ? "month" : `${months} months`}`,
-      headline: headlineOf("Set aside tax from each week's sales", average, "risk"),
+      headline: headlineOf("Set aside tax from weekly sales", average, "risk"),
       short: `About ${formatCents(average)} of tax goes out every ${months} months; ${formatCents(weekly)} a week covers it.`,
       worthCents: average,
       worthKind: "risk",

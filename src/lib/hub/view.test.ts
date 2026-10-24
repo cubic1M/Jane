@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cashFlowView,
+  cashGroups,
   chartText,
   heroView,
   shortMoney,
@@ -145,6 +146,34 @@ describe("the hero row", () => {
     const view = heroView(hero({ safe: null, netWorth: null }));
     expect(view.safe).toBeNull();
     expect(view.netWorth).toBeNull();
+  });
+});
+
+describe("the cash-flow strip's markers", () => {
+  const e = (key: string, kind: "bill" | "pay" | "deadline", day: number, weight = 0.5) => ({
+    key,
+    kind,
+    day,
+    date: `2026-11-${String(day).padStart(2, "0")}`,
+    label: key,
+    amountCents: 1_000,
+    weight,
+    href: null,
+  });
+
+  it("makes a day's events of one kind one marker, sized by the biggest, listing them all", () => {
+    const groups = cashGroups([
+      e("rent", "bill", 8, 1),
+      e("phone", "bill", 8, 0.2),
+      e("pay", "pay", 8),
+      e("netflix", "bill", 3),
+    ]);
+    expect(groups.map((g) => [g.kind, g.day, g.events.map((x) => x.key)])).toEqual([
+      ["bill", 3, ["netflix"]],
+      ["pay", 8, ["pay"]],
+      ["bill", 8, ["rent", "phone"]],
+    ]);
+    expect(groups[2].weight).toBe(1);
   });
 });
 

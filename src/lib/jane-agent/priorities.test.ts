@@ -171,8 +171,8 @@ describe("the one ranked list", () => {
     id: "s1",
     key: "idle_cash",
     topic: "cash",
-    title: "Move idle cash to a higher rate",
-    headline: "Move idle cash to a higher rate, earn $360 a year",
+    title: "Move idle cash to higher interest",
+    headline: "Move idle cash to higher interest, earn $360 a year",
     short: "You keep $9,000 in cash; about $8,000 is more than you need",
     why: "You keep $9,000 in checking.",
     worthCents: 36_000,
@@ -213,14 +213,14 @@ describe("the one ranked list", () => {
   it("is what the brief starts with and what 'what should I do first' answers", () => {
     const [brief] = gather(withScan, MORNING, SYNC).filter((m) => m.source === "brief");
     expect(brief.body).toContain(
-      "Start with: Move idle cash to a higher rate. You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
+      "Start with: Move idle cash to higher interest. You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
     );
     const one = prioritiesReply(rankedFor(withScan), false, true);
-    expect(one.body).toMatch(/^Move idle cash to a higher rate\. You keep \$9,000/);
+    expect(one.body).toMatch(/^Move idle cash to higher interest\. You keep \$9,000/);
     expect(one.body).toContain("It's worth about $360.00 a year.");
     const why = prioritiesReply(rankedFor(withScan), true);
     expect(why.body).toMatch(
-      /^Move idle cash to a higher rate is first: it's the best thing I found looking across your money\./,
+      /^Move idle cash to higher interest is first: it's the best thing I found looking across your money\./,
     );
     const risk = rankedFor(
       snapshot({ suggestions: [{ ...suggestion, worthKind: "risk", worthCents: 50_000 }] }),

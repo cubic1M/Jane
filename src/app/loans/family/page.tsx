@@ -13,6 +13,7 @@ import {
   dismissLoanAction,
   settleLoanAction,
 } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Money between family and friends (spec step 226): who owes whom, kept kindly. A transfer is
 // a loan only after the person says so, Jane never messages the other person, and a reminder
@@ -72,15 +73,13 @@ async function FamilyContent({ searchParams }: Pick<PageProps<"/loans/family">, 
                 <div className="mt-2 flex flex-wrap gap-3">
                   <form action={confirmLoanAction}>
                     <input type="hidden" name="candidateId" value={c.id} />
-                    <button type="submit" className={BUTTON}>
+                    <SubmitButton className={BUTTON}>
                       {c.kind === "lent" ? "Yes, I lent it" : "Yes, I borrowed it"}
-                    </button>
+                    </SubmitButton>
                   </form>
                   <form action={dismissLoanAction}>
                     <input type="hidden" name="candidateId" value={c.id} />
-                    <button type="submit" className={LINK}>
-                      No, it wasn&apos;t a loan
-                    </button>
+                    <SubmitButton className={LINK}>No, it wasn&apos;t a loan</SubmitButton>
                   </form>
                 </div>
               </li>
@@ -122,9 +121,7 @@ async function FamilyContent({ searchParams }: Pick<PageProps<"/loans/family">, 
                 )}
                 <form action={settleLoanAction} className="mt-2">
                   <input type="hidden" name="loanId" value={l.id} />
-                  <button type="submit" className={LINK}>
-                    Mark settled
-                  </button>
+                  <SubmitButton className={LINK}>Mark settled</SubmitButton>
                 </form>
               </li>
             ))}
@@ -173,9 +170,7 @@ async function FamilyContent({ searchParams }: Pick<PageProps<"/loans/family">, 
               Co-signed for
               <input name="counterparty" className={INPUT} />
             </label>
-            <button type="submit" className={`${BUTTON} self-end`}>
-              Watch it
-            </button>
+            <SubmitButton className={`${BUTTON} self-end`}>Watch it</SubmitButton>
           </form>
         )}
       </section>

@@ -1,6 +1,7 @@
 import type { TradeoffView } from "@/lib/goal-tradeoffs";
 import { monthLabel, type GoalDate, type TradeOrder } from "@/planning/goal-tradeoffs";
 import { pickGoalOrder } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Goals that trade off openly (spec step 241): each order's dates from the year plan, Jane's
 // suggested order and why, and the person's pick. Nothing re-plans without the tap.
@@ -46,12 +47,9 @@ export function GoalTradeoffs({ view }: { view: TradeoffView }) {
                 ) : (
                   <form action={pickGoalOrder}>
                     <input type="hidden" name="order" value={o.order.join(",")} />
-                    <button
-                      type="submit"
-                      className="rounded-full bg-emerald-700 px-3 py-1 text-sm text-white hover:bg-emerald-800"
-                    >
+                    <SubmitButton className="rounded-full bg-emerald-700 px-3 py-1 text-sm text-white hover:bg-emerald-800">
                       Use this order
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
               </div>

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { clearIncome, saveIncome, type IncomeState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // "That's wrong" on income: say what you earn a month, or go back to the average.
 export function IncomeForm({ said }: { said: string | null }) {
@@ -29,12 +30,9 @@ export function IncomeForm({ said }: { said: string | null }) {
       </form>
       {said && (
         <form action={clearIncome}>
-          <button
-            type="submit"
-            className="min-h-11 text-sm font-medium text-emerald-700 hover:underline"
-          >
+          <SubmitButton className="min-h-11 text-sm font-medium text-emerald-700 hover:underline">
             Go back to the average of my deposits
-          </button>
+          </SubmitButton>
         </form>
       )}
       {state && (

@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/session";
 import { factSpec } from "@/profile/facts";
 import { forgetProfileCorrection } from "./actions";
 import { CorrectForm } from "./correct-form";
+import { SubmitButton } from "@/components/submit-button";
 
 // What Jane knows about you (spec step 253): every fact in the picture of you with where it
 // came from, how sure she is and why, and a way to correct it. A correction is used by
@@ -67,9 +68,9 @@ async function ProfileContent() {
                   {f.source === "told" && (
                     <form action={forgetProfileCorrection}>
                       <input type="hidden" name="key" value={f.key} />
-                      <button type="submit" className={`text-sm underline ${MUTED}`}>
+                      <SubmitButton className={`text-sm underline ${MUTED}`}>
                         Go back to what you see
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                 </div>

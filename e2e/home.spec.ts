@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { areaTree } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -88,9 +89,10 @@ test("new people land on Connect; once data is in, the hub matches the report", 
   await expect(page.getByRole("link", { name: "What Jane did", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page).toHaveURL("/settings");
-  await expect(
-    page.getByRole("navigation", { name: "Settings sections" }).getByRole("link"),
-  ).toHaveText(["Accounts", "Notifications", "Autopilot", "Privacy and security"]);
+  // Settings is a tree (docs/design/area-pages.md): one branch per kind of setting.
+  await expect(areaTree(page, "Settings").locator('[role="treeitem"][aria-level="2"]')).toHaveCount(
+    7,
+  );
   await expect(nav.getByRole("link", { name: "Home", exact: true })).not.toHaveAttribute(
     "aria-current",
   );

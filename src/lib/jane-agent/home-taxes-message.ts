@@ -7,7 +7,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // a home sale against the exclusion, and "my mortgage interest / property tax". Facts from
 // the person's own accounts, each with where it came from.
 
-export const HOME_HREF = "/taxes#home";
+export const HOME_HREF = "/taxes?focus=life:home";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 

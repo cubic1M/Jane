@@ -4,7 +4,14 @@ import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
-import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
+import {
+  markChatRead,
+  openPopupMessages,
+  pinnedMessages,
+  POPUP_LIMIT,
+  stackedSuggestions,
+} from "@/lib/jane-agent/messages";
+import { isPopup, popupOrder, withoutPopups } from "@/lib/jane-agent/popups";
 import { inTheList, toView, type MessageView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
 import { practiceCards } from "@/lib/practice/cards";
@@ -48,7 +55,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   // No chat page of its own: Home, with the side chat open (src/lib/side-chat.ts).
   if (!embed) redirect(chatRedirect(params));
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
-  const [chat, askHistory, pinned, stackedRows, zone, practice] = await Promise.all([
+  const [chat, askHistory, pinned, stackedRows, zone, practice, popupRows] = await Promise.all([
     openChat(user.id, { pages }),
     scopedFor(user.id).askConversations.count(),
     pinnedMessages(user.id),
@@ -57,8 +64,16 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
     timezoneOf(user.id),
     // Spec step 296: the practice portfolio's cards (demo advice mode only).
     practiceCards(user.id),
+    // Anything else Jane brought up that waits on the person: a pop-up too.
+    openPopupMessages(user.id),
   ]);
-  const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
+  const now = new Date();
+  const stacked = [
+    ...stackedRows.map((m) => toView(m, now, zone)),
+    ...popupOrder(
+      popupRows.map((m) => toView(m, now, zone)).filter((m) => isPopup(m) && !m.suggestion),
+    ).slice(0, POPUP_LIMIT),
+  ];
   if (!chat) {
     return (
       <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -69,8 +84,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       </p>
     );
   }
-  // The floating cards are the one place a waiting suggestion shows.
-  const listed = inTheList(chat.messages, stacked);
+  // The floating cards are the one place a waiting suggestion or decision shows: the list has
+  // no card of its own, and no gap where one was.
+  const listed = withoutPopups(inTheList(chat.messages, stacked), stacked);
   const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
 
@@ -139,7 +155,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
           ))}
         </ol>
       )}
-      {listed.length === 0 && stacked.length === 0 && (
+      {listed.length === 0 && stacked.length === 0 && !chat.scanning && (
         <p className="text-zinc-600 dark:text-zinc-400">
           Nothing new from me yet. I&apos;ll post here as soon as I spot something.
         </p>

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openBranch } from "./area-tree";
+import { areaTree, openBranch, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
 
@@ -45,13 +45,16 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
   await expect(page.getByText("Demo Home Loan ····0004")).toBeVisible();
 
   await page.getByRole("note").getByRole("link", { name: "Remove it" }).click();
-  await expect(page).toHaveURL(/\/settings#banks/);
+  await expect(page).toHaveURL(/\/settings.*#banks/);
   page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", { name: /Disconnect/ })
     .first()
     .click();
-  await expect(page.getByText("No banks linked.")).toBeVisible();
+  // Gone from the tree; what's left says nothing is linked.
+  await expect(areaTree(page, "Settings")).not.toContainText("Demo Bank");
+  const add = await pickItem(page, "Settings", "Banks and files", "Add a bank or a file");
+  await expect(add).toContainText("No banks linked.");
   await page.goto("/home");
   await expect(page.getByRole("note")).toHaveCount(0);
 });

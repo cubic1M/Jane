@@ -4,14 +4,9 @@ import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
-import { previousMonth } from "@/insights/check-in";
-import { DECISIONS, itemId, plansTree } from "@/lib/area-pages/plans";
-import { scopedDb } from "@/lib/db-scoped";
-import { loadTradeoffs } from "@/lib/goal-tradeoffs";
-import { listGoals } from "@/lib/goals";
-import { loadAheadHub } from "@/lib/hubs/ahead";
-import { loadNetWorthHistory } from "@/lib/net-worth-history";
+import { DECISIONS, itemId } from "@/lib/area-pages/plans";
 import { requireUser } from "@/lib/session";
+import { loadPlansArea } from "@/lib/area-pages/plans-load";
 
 // Plans & goals (spec step 80; docs/design/area-pages.md): the area's tree, with what's coming
 // up first, then goals and net worth, then the planning tools and the look-backs. Math from
@@ -40,49 +35,7 @@ async function AheadContent({
   await connection();
   const params = await searchParams;
   const focus = typeof params.focus === "string" ? params.focus : undefined;
-  const db = await scopedDb();
-  const [data, accounts, goals, worth] = await Promise.all([
-    loadAheadHub(user.id),
-    db.accounts.count(),
-    listGoals(user.id),
-    loadNetWorthHistory(user.id),
-  ]);
-  // Spec step 241: only worth the year plan's work with two goals or more.
-  const tradeoffs = goals.length >= 2 ? await loadTradeoffs(user.id) : null;
-  const late = new Map((tradeoffs?.current?.dates ?? []).map((d) => [d.id, d.lateMonths]));
-  const dates = data.dates ?? [];
-
-  const area = plansTree({
-    asOf: data.asOf,
-    deadlines: dates,
-    goals: goals.map((g) => ({
-      id: g.id,
-      name: g.name,
-      targetCents: g.targetCents,
-      targetDate: g.targetDate,
-      status: g.progress.status,
-      savedCents: g.progress.savedCents,
-      monthlyCents: g.progress.status === "on_the_way" ? g.progress.monthlyCents : null,
-      lateMonths: tradeoffs?.competing ? (late.get(g.id) ?? null) : null,
-    })),
-    competing: !!tradeoffs?.competing,
-    netWorth: worth
-      ? {
-          todayCents: worth.todayCents,
-          lastMonthCents: worth.months.at(-2)?.netCents ?? null,
-        }
-      : null,
-    lifeEvents: data.lifeEvents,
-    lastMonth: {
-      label: new Date(`${previousMonth(data.asOf)}-01T00:00:00Z`).toLocaleDateString("en-US", {
-        month: "long",
-        timeZone: "UTC",
-      }),
-    },
-    year: Number(data.asOf.slice(0, 4)),
-    yearly: data.yearly,
-    debt: data.debt,
-  });
+  const { data, accounts, goals, dates, area } = await loadPlansArea(user.id);
 
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
@@ -135,16 +88,16 @@ async function AheadContent({
           What&apos;s coming up and the tools to get ready. Math from your own numbers, not advice.
         </p>
         <nav aria-label="Plans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/goals" className={LINK}>
+          <Link prefetch={false} href="/goals" className={LINK}>
             Goals
           </Link>
-          <Link href="/net-worth" className={LINK}>
+          <Link prefetch={false} href="/net-worth" className={LINK}>
             Net worth
           </Link>
-          <Link href="/deadlines" className={LINK}>
+          <Link prefetch={false} href="/deadlines" className={LINK}>
             Dates
           </Link>
-          <Link href="/afford" className={LINK}>
+          <Link prefetch={false} href="/afford" className={LINK}>
             Can I afford this?
           </Link>
         </nav>

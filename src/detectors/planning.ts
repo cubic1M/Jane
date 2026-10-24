@@ -60,7 +60,7 @@ const planMenu: Detector = {
       capability: "investing",
       topic: "plan_menu",
       title: "Use a cheaper fund from your own 401(k) menu",
-      headline: headlineOf("Use a cheaper fund in your 401(k)", total, "saves"),
+      headline: headlineOf("Use a cheaper 401(k) fund", total, "saves"),
       short: clip(
         `Your 401(k) holds ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); your plan offers cheaper.`,
       ),
@@ -151,7 +151,7 @@ const suddenMoney: Detector = {
       capability: "investing",
       topic: "sudden_money",
       title: "Plan your big deposit: tax first, then the rest in order",
-      headline: `Plan your big deposit, set aside ${dollars(hold)} for tax`,
+      headline: `Set aside ${dollars(hold)} tax from your deposit`,
       short: clip(
         `${formatCents(amount)} arrived on ${biggest.date}; keep about ${formatCents(hold)} aside for tax.`,
       ),

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { AUTOPILOT_LIMITS, PRACTICE_STOCKS, PRACTICE_UNIVERSE } from "@/config/portfolios";
+import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
+import {
+  AUTOPILOT_LIMITS,
+  CRYPTO_TICKERS,
+  PRACTICE_STOCKS,
+  PRACTICE_UNIVERSE,
+} from "@/config/portfolios";
 import {
   OPPORTUNITY_MAX_SHARE,
   SCAN_CAPS,
@@ -179,6 +185,32 @@ describe("replayRules on the sample market", () => {
     // A drop limit lowers the level the mix is built from: less in stocks, a shallower worst drop.
     const careful = run({ maxDropPercent: 20 });
     expect(careful.worstDrop.fraction).toBeGreaterThan(run({}).worstDrop.fraction);
+  });
+
+  it("runs the crypto sleeve the person chose at Very high, with the live run's planner", async () => {
+    const { bars, headlines } = await load("2026-10-30");
+    for (const t of CRYPTO_TICKERS) bars[t] = await market.prices(t, SAMPLE_START, "2026-10-30");
+    const run = (level: 3 | 5) =>
+      replayRules({
+        ...base(bars),
+        from: "2025-01-02",
+        level,
+        headlines,
+        rules: all,
+        preferences: { ...DEFAULT_PREFERENCES, cryptoSleeve: "crypto_trend" },
+      })!;
+    const sleeve = run(5).trades.filter((t) => t.rule === "crypto_sleeve");
+    expect(sleeve.length).toBeGreaterThan(4);
+    expect(new Set(sleeve.map((t) => t.ticker))).toEqual(new Set(CRYPTO_TICKERS));
+    // Within its share: never more than the sleeve in one coin after a buy.
+    for (const t of sleeve.filter((x) => x.side === "buy"))
+      expect(t.positionAfterCents).toBeLessThanOrEqual(
+        Math.round(CRYPTO_SLEEVE_BY_LEVEL[5]! * t.portfolioCents) + 2,
+      );
+    // Its days: a week's first trading day, or the day it starts.
+    const days = new Set(sleeve.map((t) => t.date));
+    for (const d of days) expect(d === "2025-01-02" || new Date(d).getUTCDay() <= 2).toBe(true);
+    expect(run(3).trades.filter((t) => t.rule === "crypto_sleeve")).toEqual([]);
   });
 
   it("gives the same result for the same bars", async () => {

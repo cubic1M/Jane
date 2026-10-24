@@ -101,7 +101,7 @@ const consolidation: Detector = {
       capability: "debt",
       topic: "consolidation",
       title: "Move your card debt to one cheaper loan",
-      headline: headlineOf("Move your cards to one cheaper loan", saves, "saves", true),
+      headline: headlineOf("Move card debt into one loan", saves, "saves", true),
       short: `${formatCents(owed)} on cards at ${(apr / 100).toFixed(1)}% could be one loan at ${(pick.aprBps / 100).toFixed(2)}%.`,
       worthCents: saves,
       worthKind: "saves",

@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
-import { areaTree, openBranch } from "./area-tree";
 import { demoPerson } from "./demo-person";
 
 // The home hub (docs/design/home-hub.md): graphs first and few words. Three numbers up top,
@@ -54,7 +53,16 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await page.keyboard.press("ArrowRight");
   await expect(marks.nth(1)).toBeFocused();
   await expect(page.getByRole("tooltip")).not.toHaveText(first ?? "");
-  await expect(marks.nth(1)).toHaveAccessibleName(/, (bill|payday|date), [A-Z][a-z]{2} \d+/);
+  // One event: "Rent, bill, Nov 1, $1,200.00"; a day's events of one kind are one mark that
+  // lists them: "2 bills, Nov 1: Rent $1,200.00; Phone $80.00".
+  await expect(marks.nth(1)).toHaveAccessibleName(
+    /, (bill|payday|date), [A-Z][a-z]{2} \d+|^\d+ (bill|payday|date)s, [A-Z][a-z]{2} \d+: /,
+  );
+  // No two marks on the same spot: each can be tapped (tap audit).
+  const spots = await marks.evaluateAll((els) =>
+    els.map((el) => `${el.getAttribute("data-kind")}|${(el as HTMLElement).style.left}`),
+  );
+  expect(new Set(spots).size).toBe(spots.length);
 
   // A tile per area, in tab order, each with a health word or what to set up, and a chart.
   const tiles = page.getByRole("region", { name: "Your areas" }).getByRole("listitem");
@@ -84,29 +92,60 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await expect(page).toHaveURL("/insurance");
 });
 
-test("the home tree goes into an area, already open on the branch picked", async ({
+test("the giant tree shows everything at once, and a feature's Ask Jane box sends to the chat", async ({
   context,
   page,
   baseURL,
+  isMobile,
 }) => {
+  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
   userId = await demoPerson(context, page, baseURL);
   await page.goto("/home");
-  // Jane, then the six areas.
-  const tree = page.getByRole("tree", { name: "Your areas" });
-  await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(AREAS.length, {
+
+  // Jane, the six areas and their branches, all in one canvas, no tabs to click through.
+  const tree = page.getByRole("tree", { name: "What Jane does" });
+  await expect(tree.locator('[role="treeitem"][aria-level="1"]')).toHaveCount(1, {
     timeout: 60_000,
   });
-  // Picking navigates, so it isn't checked for being picked: the next page is.
-  await openBranch(page, "Your areas", "Insurance");
-  await areaTree(page, "Your areas")
-    .locator('[role="treeitem"][aria-level="3"]')
-    .filter({ hasText: "Your perfect coverage" })
-    .click();
-  await expect(page).toHaveURL(/\/insurance\?focus=needs$/, { timeout: 30_000 });
-  // The Insurance page opens with that branch open.
-  await expect(
-    areaTree(page, "Insurance")
-      .locator('[role="treeitem"][aria-level="2"]')
-      .filter({ hasText: "Your perfect coverage" }),
-  ).toHaveAttribute("aria-expanded", "true");
+  await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(AREAS.length);
+  expect(await tree.locator('[role="treeitem"][aria-level="3"]').count()).toBeGreaterThan(6);
+  expect(await tree.locator('[role="treeitem"][aria-level="4"]').count()).toBeGreaterThan(20);
+  const canvas = page.locator("[data-giant-tree]");
+  for (const name of ["Zoom in", "Zoom out", "Fit the whole tree"]) {
+    await expect(canvas.getByRole("button", { name })).toBeVisible();
+  }
+
+  // The keyboard walks it: Jane, into the first area, its first branch, its first feature.
+  const jane = tree.locator('[role="treeitem"][aria-level="1"]');
+  await jane.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  const feature = tree.locator('[role="treeitem"][aria-level="4"]').first();
+  await expect(feature).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(feature).toHaveAttribute("aria-selected", "true");
+  const detail = page.locator("[data-giant-detail]");
+  await expect(detail.getByRole("link", { name: "[OPEN]" })).toBeVisible();
+
+  // Its Ask Jane box sends the question straight into the chat: no Send to press.
+  const ask = canvas.locator("[data-ask-jane]");
+  await expect(ask).toBeVisible();
+  const question = ((await ask.locator(":scope > span").last().textContent()) ?? "").trim();
+  expect(question.length).toBeGreaterThan(5);
+  await ask.click();
+  if (isMobile) {
+    await expect(page.getByRole("dialog", { name: "Chat with Jane" })).toBeVisible();
+  }
+  const chat = page.frameLocator('iframe[title="Chat with Jane"]');
+  const messages = chat.getByRole("list", { name: "Messages" }).getByRole("listitem");
+  await expect(chat.getByText(question).first()).toBeVisible({ timeout: 30_000 });
+  // Jane answers, and the box says it was asked; asked again, it doesn't send twice.
+  await expect(ask).toContainText("ASKED", { timeout: 60_000 });
+  const count = await messages.count();
+  // On a phone the sheet is over the page: close it to reach the box again.
+  if (isMobile) await page.getByRole("button", { name: "Close chat" }).click();
+  await ask.click();
+  await page.waitForTimeout(1000);
+  expect(await messages.count()).toBe(count);
 });

@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findFirst } = vi.hoisted(() => ({ findFirst: vi.fn() }));
+const { findFirst, afterCallbacks } = vi.hoisted(() => ({
+  findFirst: vi.fn(),
+  afterCallbacks: [] as (() => unknown)[],
+}));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/server", () => ({
+  after: vi.fn((callback: () => unknown) => afterCallbacks.push(callback)),
+}));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => {
     throw new Error(`redirect:${path}`);
@@ -59,9 +65,12 @@ describe("disconnectBank", () => {
     vi.mocked(runDetection).mockReset();
   });
 
-  it("removes the bank and refreshes findings", async () => {
+  it("removes the bank, answers at once, and refreshes findings after", async () => {
+    afterCallbacks.length = 0;
     expect(await disconnectBank(null, form({ itemId: "item1" }))).toMatchObject({ ok: true });
     expect(removePlaidItem).toHaveBeenCalledWith("u1", "item1", "user_disconnected");
+    expect(runDetection).not.toHaveBeenCalled();
+    for (const callback of afterCallbacks) await callback();
     expect(runDetection).toHaveBeenCalledWith("u1");
   });
 

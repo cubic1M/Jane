@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-// App icons, drawn rather than stored: a white "J" on the brand green. The maskable one
+// App icons, drawn rather than stored: a white "J" on near-black. The maskable one
 // keeps the letter inside the safe zone phones crop to.
 const SIZES: Record<string, { size: number; letter: number; radius: number }> = {
   "192": { size: 192, letter: 120, radius: 40 },
@@ -23,7 +23,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/icons/[v
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#047857",
+        background: "#171717",
         borderRadius: spec.radius,
         color: "white",
         fontSize: spec.letter,

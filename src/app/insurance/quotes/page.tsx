@@ -19,6 +19,7 @@ import type { PolicyKind } from "@/config/insurance";
 import { toComparison } from "@/lib/comparison";
 import { shopCard } from "@/lib/insurance/shop-card";
 import { getQuotes, keepPolicy } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Quotes for one policy (spec step 103), like for like: same cover and deductible, or each
 // difference spelled out. From the stand-in carrier catalog until a licensed partner is
@@ -109,12 +110,9 @@ function PickCard({ shop, policy }: { shop: Shop; policy: { carrier: string; kin
       <form action={keepPolicy}>
         <input type="hidden" name="shopId" value={shop.id} />
         <input type="hidden" name="policyId" value={shop.policyId} />
-        <button
-          type="submit"
-          className="inline-flex h-11 items-center justify-center border border-zinc-400 px-6 font-semibold dark:border-zinc-600"
-        >
+        <SubmitButton className="inline-flex h-11 items-center justify-center border border-zinc-400 px-6 font-semibold dark:border-zinc-600">
           Not now
-        </button>
+        </SubmitButton>
       </form>
     </section>
   );
@@ -215,9 +213,9 @@ async function QuotesContent({
               )}
               <form action={getQuotes}>
                 <input type="hidden" name="policyId" value={policy.id} />
-                <button type="submit" className={BUTTON}>
+                <SubmitButton className={BUTTON}>
                   {quotes.length > 0 ? "Get fresh quotes" : "Get quotes"}
-                </button>
+                </SubmitButton>
               </form>
             </>
           )}

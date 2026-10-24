@@ -13,14 +13,14 @@ Insurance is the first area built this way. This doc is the pattern every other 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ Insurance                         Checkup · Claims · …       │  h1, one line, nav links
-│ ◆ Renewal going up $240/yr  ◆ Card cover paid twice $96/yr   │  "What matters now": ≤ 3 chips
+│ ● Renewal going up $240/yr  ● Card cover paid twice $96/yr   │  "What matters now": ≤ 3 chips
 │ ┌────────────┐   ┌─────────────────────────┐   ┌───────────┐ │
-│ │ Insurance  │──▶│ ◆ Renewals going up   1 │──▶│ ◆ Car  +$240│
-│ │ 2 urgent · │   │ ▲ Your policies       3 │   └───────────┘ │  the area's tree
-│ │ 4 to look  │   │ ■ Your health plan    1 │                 │
+│ │ Insurance  │──▶│ ● Renewals going up   1 │──▶│ ● Car  +$240│
+│ │ 2 urgent · │   │ ◐ Your policies       3 │   └───────────┘ │  the area's tree
+│ │ 4 to look  │   │ ○ Your health plan    1 │                 │
 │ └────────────┘   └─────────────────────────┘                 │
 │ ┌─ Renewals going up ───────────────────────────────────────┐│
-│ │ ◆ Car                                         +$240/yr     ││  the detail of the one
+│ │ ● Car                                         +$240/yr     ││  the detail of the one
 │ │ Your car renewal goes up $240. Jane can call them.        ││  thing picked: summary,
 │ │ [Call them]                                   More ▸       ││  actions, "More"
 │ └────────────────────────────────────────────────────────────┘│
@@ -52,14 +52,13 @@ Long words never get cut down to fit: what doesn't fit moves into "More".
 
 ## Status
 
-Every node has one of three statuses, shown as a shape and spoken as words, never colour
-alone (`STATUS` in `src/components/tree/interactive-tree.tsx`):
+Every node has one of three statuses, shown as a glyph and spoken as words, never colour (`STATUS` in `src/components/tree/interactive-tree.tsx`):
 
 | Status | Shape | Words | Means |
 | --- | --- | --- | --- |
-| `good` | ■ | Good | Nothing to do |
-| `look` | ▲ | Needs a look | Worth a look; nothing is lost by waiting a week |
-| `act` | ◆ | Urgent | Money is being lost or cover is missing now |
+| `good` | ○ | Good | Nothing to do |
+| `look` | ◐ | Needs a look | Worth a look; nothing is lost by waiting a week |
+| `act` | ● (bold) | Urgent | Money is being lost or cover is missing now |
 
 A branch takes the worst status of its items (`worst()`), and its line says "N urgent" or
 "N things to look at". The root's line counts both, or says "All good".
@@ -99,25 +98,34 @@ A branch takes the worst status of its items (`worst()`), and its line says "N u
    lands on the same item.
 6. **Update the e2e specs** to `pickItem(page, "<Area>", "<branch label>", "<item label>")`, and
    scope assertions to the returned region.
-7. **Home tree.** Add the area's branches to the home hub's tree (see below) once its page
-   reads `?focus=<branch>`.
+7. **Home tree.** Move the page's loading into `src/lib/area-pages/<area>-load.ts`
+   (`load<Area>Area(userId)`, returning `area` and whatever the page renders), have the page call
+   it, and add it to `areaTrees` in `AreasTree` (`src/app/home/page.tsx`). The giant tree then
+   shows the area's own branches and items, with statuses and figures, each linking to
+   `/<area>?focus=…`. The page and Home read the same data, so they never disagree.
+   All six areas are wired.
 
-## The home tree
+## The home tree: one giant "What Jane does" tree
 
-On `/home`, under the area tiles ("Everything, as a tree"): Jane → the six areas → each area's
-branches, drawn with the same engine (`src/components/hub/home-tree.tsx`, shaped by the pure
-`homeTree` in `src/lib/hub/tree.ts`).
+On `/home`, right under the net worth hero (founder: "one giant tree graph, not like u have to
+click through each subtab"): Jane, the six areas in a row, and under each area its branches
+with their features listed below them. It's all one canvas (`src/components/hub/giant-tree.tsx`;
+the layout and camera are in `src/lib/giant-tree.ts`). An area with a tree page shows that
+tree's branches and items, from the page's own loader (all six do); an area whose loader
+fails shows what Jane looks for there, from the feature map, as `/home/map` does.
 
-- An area with a tree page lists that tree's branches, with their statuses, loaded by the same
-  loader as the page (`loadInsuranceArea` in `src/lib/area-pages/insurance-load.ts`, without
-  the page's refresh). Picking one goes to `/<area>?focus=<branch>`, and the page opens with
-  that branch open. The area's own status and line come from its tree, so the hub and the page
-  agree.
-- An area without one yet lists what Jane looks for there (the feature map's branches), and
-  each links to the area's page. Once its page reads `?focus=`, add its tree to `areaTrees` in
-  `src/app/home/page.tsx`.
-- Every area's first item is "Open <area>". An area with nothing under it goes straight to its
-  page.
+- **Moving around:** drag to pan, the wheel or a pinch to zoom, and `[+]` `[−]` `[FIT]`. Wide
+  screens split each area into two columns, whichever fits at the larger scale.
+- **Semantic zoom:** feature labels appear once their rows are big enough to read. Area and
+  branch labels are scaled to stay readable when zoomed out.
+- **Opening a node:** a click centres it in the top third and opens its detail (`[FOR YOU]`,
+  one line, `[OPEN]` into its page). The suggestion pop-ups step aside while something is open.
+- **Ask Jane:** a feature also gets an inverted `[ASK JANE]` box beside it. One click sends its
+  question straight into the side chat (no Send). A dotted line marches from the box to the
+  question and fades when Jane starts answering. Each question goes once per session
+  (`src/lib/ask-jane.ts`); asked again, the chat scrolls to the earlier answer. The messages
+  are `jane:send`, `jane:find`, `jane:bubble`, `jane:answering` and `jane:answered`
+  (`src/lib/side-chat.ts`).
 
 ## Keyboard and screen readers
 
@@ -128,6 +136,111 @@ opens a branch or picks an item. The detail region is `aria-live="polite"`.
 
 On a phone, or when a branch has many items, the canvas pans so the items fill the view and the
 branches are off to the left. An "All of <area>" button above the tree brings them back.
+
+## Visual language: monochrome terminal
+
+The founder's words: "the entire design of the website should be this ascii, cool, almost spyware
+like", and "remove the green on every part of the site. I want a black and white and gray color
+scheme". Jane looks like a surveillance console, in black, white and greys only, in light and
+dark mode alike.
+
+**Colour.** None. `src/app/globals.css` remaps every Tailwind palette (emerald, amber, red, sky,
+zinc and the rest, every shade from 50 to 950) to a grey of the same lightness. Existing classes
+stay, and contrast between shades stays as designed. New code uses `neutral-*` or `zinc-*`.
+`src/app/monochrome.test.ts` fails on three things:
+- a palette shade that isn't remapped;
+- a hex colour that isn't a grey (`#737373`; emails and icons included);
+- a file with more colour-named classes than it had in `src/app/monochrome-baseline.json`.
+
+**Meaning lives in shape, words and weight:**
+
+| What | How |
+| --- | --- |
+| Status | ● urgent (bold), ◐ worth a look, ○ fine, plus words for screen readers |
+| Up and down | ▲ / ▼ and a + / − sign |
+| Jane's own cards (suggestions) | Inverted (`.invert-scope`): white on black in light mode, black on white in dark mode, a heavy dashed border and a `[JANE]` tag, so they never look like an answer |
+| Primary button | Inverted: the text colour as its background (any `bg-emerald-600/700/800`) |
+| Secondary button | Bracketed outline: `[Ask me first]` |
+| Error | `role="alert"` with a heavy border and an `[ERROR]` tag |
+| Net worth line | The text colour on the page background, with a dashed baseline |
+
+**Terminal details:**
+- Monospace everywhere, square corners and dashed borders (already global).
+- Bracketed labels for actions: `[OPEN]`, `[ASK]`.
+- Small uppercase tags for states: `LIVE`, `SCANNING`, `3 FLAGS`.
+- `> ` before page titles and `# ` before section headings.
+- A blinking cursor on headings.
+- Tree edges drawn as dotted lines.
+- Tabular figures for numbers.
+- Optionally, a faint scanline or grid texture, and a short "decrypting" reveal of text on first load.
+
+**Never at the cost of reading:**
+- AA contrast for every grey pair (the axe tests check).
+- Effects never cover text.
+- All motion stops under `prefers-reduced-motion`.
+
+## Jane's pop-ups: no cards in the chat
+
+The founder: "replace all the yellow cards in the chat as pop up ones that do not take any space
+in the chat area. The yellow cards should also be very concise and easy and direct to
+understand, with users having the ability to click more details to see more."
+
+**What floats.** Everything Jane brings up on her own that waits on the person:
+- the day's suggestions;
+- the morning brief and agenda;
+- something to decide, like the autopilot question;
+- a heads-up with a button.
+
+It floats as a card over the page or the chat, taking no room in the chat's list
+(`isPopup` in `src/lib/jane-agent/popups.ts`). The day's suggestions come first, then the day's
+brief, then the rest, newest first, with "+N" for the cards waiting behind. Her answers to what
+the person typed stay in the conversation: her first message after theirs, within five minutes,
+is the answer (`ANSWER_WINDOW_MS`); anything else she posts meanwhile floats.
+
+**The card:**
+- **Headline:** eight words at most (`POPUP_HEADLINE_WORDS`; the detectors' `HEADLINE_MAX_WORDS`
+  is 8 too, starting with a verb), with one number.
+- **Buttons:** one action (the message's main button) and Not now (its own `snooze` when it has
+  one). An X puts it off too.
+- **More details:** expands in place with a height animation. It holds the reasoning and how
+  sure Jane is (a suggestion), or the whole message and its other choices (a decision).
+
+**After it's answered** it's back in the list as one line of history (`data-history`): what it
+was, what was chosen, and the whole message behind More details. There's no gap or placeholder
+while it floats.
+
+**Where it shows:**
+- The chat (`/chat?embed=1` in the side panel).
+- Home, which loads the same pop-ups (`openPopupMessages`). On a phone under 640 px wide they
+  start folded into one line at the very bottom, "[JANE] 3 for you ▲", left of the Jane button,
+  so the net worth is the first thing seen (QA round 6); a tap opens the card (`foldOnPhone`).
+- Any page's side chat.
+
+## Motion
+
+One spec for everything that moves (`--motion-*` and `--ease-*` in `src/app/globals.css`, and
+`MOTION` in `src/config/motion.ts` for the Web Animations API):
+
+| Token | Value | For |
+| --- | --- | --- |
+| `--motion-fast` | 150 ms | Fades, the reduced-motion stand-ins |
+| `--motion-base` | 200 ms | A card leaving, a page arriving, a detail shutting |
+| `--motion-slow` | 250 ms | Pop-ups rising, the side chat and sheet, the tree's camera, a detail opening, lines drawing |
+| `--ease-spring` | `cubic-bezier(0.2, 0.9, 0.3, 1.15)` | Things that arrive (pop-ups, the panel, nodes) |
+| `--ease-out-soft` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | Everything else |
+
+- **Pop-ups:** spring in from below. Yes slides them off right and Not now left, while the
+  next rises in the same frame.
+- **More details:** opens by animating its measured height.
+- **Pages:** fade and rise a few pixels on every navigation (`src/app/template.tsx`). The
+  animation leaves no transform behind, so fixed pop-ups stay put.
+- **Side chat:** docks, folds and expands, and the sheet snaps, on `--motion-slow` with the spring.
+- **Tree and net worth chart:** the tree's camera glides, and the net worth line draws itself
+  in on a range change, both on `--motion-slow`.
+- **Loading:** content that loads late has a skeleton or a held space (the tiles, the tree)
+  rather than a jump.
+- **Reduced motion:** all of it stops under `prefers-reduced-motion: reduce`. Things appear in
+  place, and a short fade is the most that remains.
 
 ## Comparison cards
 

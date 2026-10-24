@@ -46,6 +46,9 @@ const TOPIC_BRANCH: Record<string, LoansBranch> = {
 };
 
 // Six words or fewer per topic, not the detectors' long headlines.
+// A suggestion's own item on the tree (it's drawn there while it's open).
+export const loansTopicNode = (topic: string) => itemId(TOPIC_BRANCH[topic] ?? "costs", topic);
+
 export const TOPIC_LABELS: Record<string, string> = {
   card_interest: "Card interest you can cut",
   high_cost_loans: "Costly short-term borrowing",

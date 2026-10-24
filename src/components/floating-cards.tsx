@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   answer,
   counter,
@@ -11,6 +11,7 @@ import {
   type CardMode,
   type FloatingCardData,
 } from "@/lib/floating-cards";
+import { MOTION } from "@/config/motion";
 
 // A reason as one sentence: some end with a full stop already (the practice scan's), some don't.
 const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
@@ -33,13 +34,28 @@ const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `
 // whole set is done.
 
 const SWIPE_PX = 50;
-const LEAVE_MS = 220;
-const SPRING = "cubic-bezier(0.2, 0.9, 0.3, 1.15)";
+const LEAVE_MS = MOTION.slowMs;
+const SPRING = MOTION.spring;
 const BUTTON = "inline-flex min-h-11 items-center justify-center px-4 text-sm font-semibold";
 const PRIMARY = `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`;
 const SECONDARY = `${BUTTON} border border-zinc-400 bg-white hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:hover:bg-zinc-900`;
 
 export type CardAnswer = "yes" | "not_now" | "never";
+
+// A small phone: there, Home's cards start folded into one line at the bottom (QA round 6: the
+// card covered the net-worth figure on a 375 x 812 phone), and a tap opens them.
+const PHONE = "(max-width: 639px)";
+const subscribePhone = (onChange: () => void) => {
+  const query = window.matchMedia(PHONE);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+const usePhone = () =>
+  useSyncExternalStore(
+    subscribePhone,
+    () => window.matchMedia(PHONE).matches,
+    () => false,
+  );
 
 const reducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -73,7 +89,7 @@ function Expanding({
           { height: "0px", opacity: 0 },
           { height: `${el.scrollHeight}px`, opacity: 1 },
         ],
-        { duration: 260, easing: SPRING },
+        { duration: MOTION.slowMs, easing: SPRING },
       );
     } else {
       const shut = el.animate(
@@ -81,7 +97,7 @@ function Expanding({
           { height: `${el.offsetHeight}px`, opacity: 1 },
           { height: "0px", opacity: 0 },
         ],
-        { duration: 180, easing: "ease-in" },
+        { duration: MOTION.baseMs, easing: MOTION.standard },
       );
       shut.onfinish = () => setShown(false);
     }
@@ -100,30 +116,38 @@ export function FloatingCards({
   onAnswer,
   neverLabel,
   links,
+  foldOnPhone = false,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
   // The overlay's accessible name ("Suggestions for you").
   label: string;
-  // Called at once when a card is answered; the caller does the server work behind it.
-  onAnswer: (id: string, answer: CardAnswer) => void;
+  // Called at once when a card is answered (with the choice, when one of a card's other
+  // choices was taken); the caller does the server work behind it.
+  onAnswer: (id: string, answer: CardAnswer, choice?: string) => void;
   // A third, quieter choice inside the details ("Don't suggest this again"); omit for none.
   neverLabel?: string;
   // Page links to show inside a card's details, by card id.
   links?: Record<string, { label: string; href: string }[]>;
+  // Start folded into one line at the bottom on a small phone, until it's tapped (Home, where
+  // the cards would cover the net worth).
+  foldOnPhone?: boolean;
 }) {
   const [state, setState] = useState(initialState);
   // Cards that just left, kept for the length of their exit slide, and which way they went.
   const [leaving, setLeaving] = useState<(FloatingCardData & { way: "yes" | "no" })[]>([]);
   const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const phone = usePhone();
+  const [unfolded, setUnfolded] = useState(false);
   const current = currentCard(cards, state);
   const left = waiting(cards, state);
   const open = current !== null && detailsOpen === current.id;
   // Cards waiting behind the one showing, drawn as edges under it.
   const behind = Math.max(0, left.length - 1);
+  const folded = foldOnPhone && phone && !unfolded && current !== null;
 
-  function respond(card: FloatingCardData, how: CardAnswer) {
+  function respond(card: FloatingCardData, how: CardAnswer, choice?: string) {
     // The set first, so the next card is on screen in the same frame; then the caller's work.
     const departing = mode === "pick" ? left : [card];
     const way: "yes" | "no" = how === "yes" ? "yes" : "no";
@@ -133,7 +157,7 @@ export function FloatingCards({
     ]);
     setState((s) => answer(cards, s, mode, card.id));
     setDetailsOpen(null);
-    onAnswer(card.id, how);
+    onAnswer(card.id, how, choice);
     window.setTimeout(
       () => setLeaving((now) => now.filter((n) => !departing.some((d) => d.id === n.id))),
       LEAVE_MS,
@@ -142,7 +166,7 @@ export function FloatingCards({
 
   // Arrow keys move between cards unless someone is typing; Escape puts the card off.
   useEffect(() => {
-    if (!current) return;
+    if (!current || folded) return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
@@ -160,7 +184,32 @@ export function FloatingCards({
   const accent =
     mode === "pick"
       ? "border-emerald-700 bg-white dark:bg-zinc-950"
-      : "border-amber-500 bg-amber-50 dark:border-amber-500 dark:bg-zinc-900";
+      : // Jane's own cards: inverted, so they never look like an answer.
+        "invert-scope border-2 border-zinc-500";
+
+  if (folded) {
+    return (
+      <section
+        aria-label={label}
+        data-floating-cards={mode}
+        className="floating-cards floating-cards-folded pointer-events-none fixed inset-x-0 z-40 flex px-3"
+      >
+        <button
+          type="button"
+          data-card-state="folded"
+          aria-expanded={false}
+          onClick={() => setUnfolded(true)}
+          className="floating-card-in invert-scope pointer-events-auto inline-flex min-h-11 items-center gap-2 border-2 border-zinc-500 px-3 text-sm font-semibold shadow-lg"
+        >
+          <span aria-hidden="true" className="text-xs tracking-wider">
+            [JANE]
+          </span>
+          {left.length} for you
+          <span aria-hidden="true">▲</span>
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -216,9 +265,9 @@ export function FloatingCards({
             <div className="flex items-start gap-2 pt-3 pl-3">
               <span
                 aria-hidden="true"
-                className={`mt-0.5 text-sm ${mode === "pick" ? "text-emerald-700" : "text-amber-700"}`}
+                className={`mt-0.5 shrink-0 text-xs font-semibold tracking-wider ${mode === "pick" ? "text-emerald-700" : ""}`}
               >
-                {mode === "pick" ? "◆" : "✦"}
+                {mode === "pick" ? "◆" : "[JANE]"}
               </span>
               <div className="min-w-0 flex-1">
                 {current.badge && (
@@ -254,10 +303,24 @@ export function FloatingCards({
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
+              {/* X puts it off, as Not now does. */}
+              <button
+                type="button"
+                aria-label="Close card"
+                onClick={() => respond(current, "not_now")}
+                className="-mt-2 -ml-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
+              >
+                <span aria-hidden="true" className="text-base leading-none">
+                  ×
+                </span>
+              </button>
             </div>
             {/* Already here, only hidden: opening it is a toggle, not a fetch. */}
             <Expanding id={`details-${current.id}`} open={open}>
               <div className="mx-3 mt-2 flex max-h-[22vh] flex-col gap-2 overflow-y-auto border-t border-zinc-300 pt-2 text-sm dark:border-zinc-700">
+                {current.details.about && (
+                  <p className="whitespace-pre-line">{current.details.about}</p>
+                )}
                 {current.details.why && (
                   <p>
                     <span className="font-medium">Why you:</span> {current.details.why}
@@ -299,7 +362,21 @@ export function FloatingCards({
                     {link.label} ›
                   </a>
                 ))}
-                {neverLabel && mode === "queue" && (
+                {current.choices && current.choices.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {current.choices.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => respond(current, "yes", c.id)}
+                        className={SECONDARY}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {neverLabel && mode === "queue" && !current.noNever && (
                   <button
                     type="button"
                     onClick={() => respond(current, "never")}

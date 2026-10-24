@@ -55,6 +55,8 @@ export async function runJaneAgent(
   if (trigger !== "open" && inQuietHours(now, user.timezone)) return { posted: 0 };
   // Spec step 92: never interrupt. While they're chatting, Jane's own messages wait.
   if (await chatting(userId, { client, now })) return { posted: 0 };
+  // A run takes a while (the upkeep below, the bank data): what they typed meanwhile counts too.
+  const typedAtStart = await typedCount(userId, client);
 
   // The first run of a first scan (`early`) is only for the first brief: it must reach the
   // person inside the host's 60 seconds, so it skips everything Jane keeps current by herself.
@@ -188,6 +190,9 @@ export async function runJaneAgent(
     now,
     settings,
   );
+  // They started typing while this run worked: Jane's own messages wait for the next run, so
+  // none lands after Jane's answer to what they just asked.
+  if ((await typedCount(userId, client)) > typedAtStart) return { posted: 0 };
   const posted = await postMessages(userId, planned, { client, now });
   // What's important goes out as a notification, unless the person is looking (spec step 85).
   await queueChatNotificationsSafely(userId, { client, now, trigger });
@@ -202,9 +207,16 @@ export async function chatting(
   const since = new Date(now.getTime() - CHAT_TYPING_PAUSE_MINUTES * 60_000);
   return (
     (await scopedFor(userId, client).janeMessages.count({
-      where: { kind: "user", createdAt: { gt: since, lte: now } },
+      // No upper bound: a run is often handed the moment it was asked for (a page's render),
+      // and what they typed after that moment counts too (e2e/chat.spec.ts "cancel hulu").
+      where: { kind: "user", createdAt: { gt: since } },
     })) > 0
   );
+}
+
+// How many messages the person has typed to Jane, ever: a run compares it at its start and end.
+function typedCount(userId: string, client: PrismaClient): Promise<number> {
+  return scopedFor(userId, client).janeMessages.count({ where: { kind: "user" } });
 }
 
 // Never lets Jane's chat fail what called it (a sync, an import): logs and moves on.

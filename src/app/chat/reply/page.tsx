@@ -56,6 +56,28 @@ async function Content({
     );
   }
 
+  // Used: the person usually lands here straight after tapping (the page reloads once the
+  // answer goes through), so it says what happened rather than only that the link is spent.
+  if (view.state === "used" && (view.note || view.answeredWith)) {
+    return (
+      <>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {view.answeredWith ? `Answered: ${view.answeredWith}` : "Answered"}
+        </h1>
+        {view.note && (
+          <p role="status" className="font-semibold">
+            <span aria-hidden="true">&gt; </span>
+            {view.note}
+          </p>
+        )}
+        <p className="text-zinc-600 dark:text-zinc-400">Each link works once.</p>
+        <Link href={`/chat#${view.messageId}`} className={LINK}>
+          Open the chat
+        </Link>
+      </>
+    );
+  }
+
   const text = {
     invalid: ["This link doesn't work", "Your messages from Jane are always in the chat."],
     expired: ["This link has expired", "Links from Jane's emails work for a few days."],
