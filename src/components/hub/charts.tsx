@@ -47,67 +47,6 @@ export function StackBar({
   );
 }
 
-// A sparkline: a 2px line and a dot on the last point, scaled to its own range.
-export function Sparkline({
-  points,
-  label,
-  width = 160,
-  height = 40,
-}: {
-  points: { key: string; value: number; title: string }[];
-  label: string;
-  width?: number;
-  height?: number;
-}) {
-  if (points.length < 2) return null;
-  const values = points.map((p) => p.value);
-  // A small change stays small: the line's height covers at least 5% of the value, so a 1% move
-  // doesn't look like a climb.
-  const span = Math.max(
-    Math.max(...values) - Math.min(...values),
-    Math.abs(Math.max(...values)) * 0.05,
-  );
-  const mid = (Math.max(...values) + Math.min(...values)) / 2;
-  const lo = mid - span / 2;
-  const hi = mid + span / 2;
-  const pad = 4;
-  const x = (i: number) => pad + (i / (points.length - 1)) * (width - pad * 2);
-  const y = (v: number) =>
-    hi === lo ? height / 2 : pad + (1 - (v - lo) / (hi - lo)) * (height - pad * 2);
-  const d = points
-    .map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`)
-    .join(" ");
-  const last = points.length - 1;
-  return (
-    <svg
-      role="img"
-      aria-label={label}
-      viewBox={`0 0 ${width} ${height}`}
-      className="hub-pop h-10 w-full max-w-48 overflow-visible"
-      preserveAspectRatio="none"
-    >
-      <path
-        d={d}
-        fill="none"
-        strokeWidth={2}
-        vectorEffect="non-scaling-stroke"
-        className="stroke-emerald-700 dark:stroke-emerald-400"
-      />
-      {points.map((p, i) => (
-        <circle
-          key={p.key}
-          cx={x(i)}
-          cy={y(p.value)}
-          r={i === last ? 3.5 : 6}
-          className={i === last ? MARK : "fill-transparent"}
-        >
-          <title>{p.title}</title>
-        </circle>
-      ))}
-    </svg>
-  );
-}
-
 // A share of one thing: a filled run on a grey track.
 export function Meter({ share, label }: { share: number; label: string }) {
   return (

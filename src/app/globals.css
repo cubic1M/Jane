@@ -854,6 +854,23 @@ body {
   }
 }
 
+/* The hub's net worth chart (src/components/hub/net-worth-chart.tsx): the line draws itself in
+   when the range changes. Still for reduced motion. */
+.nw-line {
+  stroke-dasharray: 1;
+  animation: nw-draw 650ms var(--ease-out-soft) both;
+}
+@keyframes nw-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nw-line {
+    animation: none;
+  }
+}
+
 /* The chat inside the side panel (/chat?embed=1) has no footer of its own. */
 body:has([data-chat-embed]) > footer {
   display: none;
