@@ -108,11 +108,13 @@ export async function loadRefunds(
   const refunds = findRefunds(deposits.map((t) => ({ ...t, date: iso(t.date) })));
   if (refunds.length === 0) return { advice, refunds: [] };
   const handled = new Set(profile?.refundsHandled ?? []);
-  const inputs = advice ? await planInputs(userId, client, now) : null;
-  const estimates = new Map<number, Awaited<ReturnType<typeof loadTaxEstimate>>>();
-  for (const year of new Set(refunds.map((r) => r.taxYear))) {
-    estimates.set(year, await loadTaxEstimate(userId, { client, now, year }));
-  }
+  // The plan's inputs and each refund year's estimate, together.
+  const years = [...new Set(refunds.map((r) => r.taxYear))];
+  const [inputs, perYear] = await Promise.all([
+    advice ? planInputs(userId, client, now) : null,
+    Promise.all(years.map((year) => loadTaxEstimate(userId, { client, now, year }))),
+  ]);
+  const estimates = new Map(years.map((year, i) => [year, perYear[i]]));
   return {
     advice,
     refunds: refunds.map((refund) => {

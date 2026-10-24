@@ -230,16 +230,24 @@ async function TaxesContent({
     loadTaxEstimate(user.id, { now }),
     adviceMode(user.id),
   ]);
+  // The audit records are built from the page's own estimate, tags, forms, gifts and home.
+  const homeLoad = loadHomeTaxes(user.id, { now, loaded: { estimate } });
+  const givingLoad = loadGiving(user.id, { now, loaded: { estimate, advice } });
   const [refunds, investments, savings, sideIncome, records, home, family, giving, plan] =
     await Promise.all([
       loadRefunds(user.id, { now }).then((r) => r.refunds),
       loadInvestmentTaxes(user.id, estimate.year, { now }),
       loadTaxSavings(user.id, { now, loaded: { estimate, advice } }),
       loadSideIncome(user.id, { now, loaded: { estimate } }),
-      loadAuditRecords(user.id, year, { now }),
-      loadHomeTaxes(user.id, { now, loaded: { estimate } }),
+      Promise.all([homeLoad, givingLoad]).then(([home, giving]) =>
+        loadAuditRecords(user.id, year, {
+          now,
+          loaded: { estimate, tags, docs: forms, home, giving },
+        }),
+      ),
+      homeLoad,
       loadFamilyTaxes(user.id, { now, loaded: { estimate, advice } }),
-      loadGiving(user.id, { now, loaded: { estimate, advice } }),
+      givingLoad,
       loadTaxPlan(user.id, { now, loaded: { estimate, advice } }),
     ]);
   const check = checkFrom(estimate);
