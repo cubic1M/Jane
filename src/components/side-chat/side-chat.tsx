@@ -339,7 +339,9 @@ export function SideChat() {
             >
               <UnreadDot count={unread} />
               {/* Its name is its text: "Open chat", and how many are new. */}
-              <span className="sr-only">{unread > 0 ? `Open chat, ${unread} new` : "Open chat"}</span>
+              <span className="sr-only">
+                {unread > 0 ? `Open chat, ${unread} new` : "Open chat"}
+              </span>
               <span
                 aria-hidden
                 className="text-xs font-medium text-zinc-600 [writing-mode:vertical-rl] dark:text-zinc-400"
