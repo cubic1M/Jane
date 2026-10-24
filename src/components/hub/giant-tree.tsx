@@ -10,9 +10,11 @@ import {
   giantLayoutFor,
   showsLabels,
   zoomAt,
+  type AreaTrees,
   type Camera,
   type GiantNode,
 } from "@/lib/giant-tree";
+import { STATUS } from "@/components/tree/interactive-tree";
 import { askedBefore, rememberAsked } from "@/lib/ask-jane";
 
 // The giant "What Jane does" tree on Home (src/lib/giant-tree.ts): all of it at once on one
@@ -33,11 +35,11 @@ const MIN_LABEL_PX = 12;
 
 type Pointer = { x: number; y: number };
 
-export function GiantTree({ maps }: { maps: AreaMap[] }) {
+export function GiantTree({ maps, areaTrees = {} }: { maps: AreaMap[]; areaTrees?: AreaTrees }) {
   const view = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 960, h: VIEW_H_WIDE });
   // One column per area on a narrow screen, two on a wide one: whichever reads better.
-  const layout = useMemo(() => giantLayoutFor(maps, size), [maps, size]);
+  const layout = useMemo(() => giantLayoutFor(maps, size, areaTrees), [maps, size, areaTrees]);
   const byId = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n])), [layout]);
   // The camera, for the layout it was set on; a new layout (the screen changed shape) starts
   // fitted again.
@@ -280,7 +282,7 @@ export function GiantTree({ maps }: { maps: AreaMap[] }) {
                   aria-level={n.level}
                   aria-expanded={n.children.length > 0 ? true : undefined}
                   aria-selected={isPicked}
-                  aria-label={`${n.label}${n.forYou ? ", for you" : ""}`}
+                  aria-label={`${n.status ? `${STATUS[n.status].words}: ` : ""}${n.label}${n.figure ? `, ${n.figure}` : ""}${n.forYou ? ", for you" : ""}`}
                   tabIndex={n.id === focused ? 0 : -1}
                   onFocus={() => setFocused(n.id)}
                   className={`absolute flex cursor-pointer items-center gap-1.5 overflow-hidden border px-2 ${
@@ -292,6 +294,15 @@ export function GiantTree({ maps }: { maps: AreaMap[] }) {
                   }`}
                   style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
                 >
+                  {n.status && (
+                    <span
+                      aria-hidden="true"
+                      className={`shrink-0 ${STATUS[n.status].className}`}
+                      style={{ fontSize: 11 * scale }}
+                    >
+                      {STATUS[n.status].shape}
+                    </span>
+                  )}
                   {labelled ? (
                     <span
                       aria-hidden="true"
@@ -307,6 +318,15 @@ export function GiantTree({ maps }: { maps: AreaMap[] }) {
                   ) : (
                     // Too small to read: a bar where the label will be.
                     <span aria-hidden="true" className="h-1.5 w-2/3 bg-zinc-300 dark:bg-zinc-700" />
+                  )}
+                  {n.figure && labelled && (
+                    <span
+                      aria-hidden="true"
+                      className="shrink-0 font-semibold tabular-nums"
+                      style={{ fontSize: 11 * scale }}
+                    >
+                      {n.figure}
+                    </span>
                   )}
                   {n.forYou && labelled && (
                     <span
@@ -365,6 +385,7 @@ export function GiantTree({ maps }: { maps: AreaMap[] }) {
         >
           <p className="font-semibold">
             {node.label}
+            {node.figure && <span className="ml-2 tabular-nums">{node.figure}</span>}
             {node.forYou && <span className="ml-2 text-xs tracking-wider">[FOR YOU]</span>}
           </p>
           {node.line && (

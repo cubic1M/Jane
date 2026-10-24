@@ -1,3 +1,7 @@
+import type { TreeStatus } from "@/components/tree/interactive-tree";
+import type { AreaKey } from "@/config/areas";
+import type { AreaTree } from "@/lib/area-pages/tree";
+import { worst } from "@/lib/area-pages/tree";
 import type { AreaMap } from "@/lib/feature-map";
 
 // The giant "What Jane does" tree on Home (founder: "one giant tree graph, not like u have to
@@ -20,6 +24,9 @@ export type GiantNode = {
   href?: string;
   // A feature's question for Jane.
   ask?: string;
+  // From an area's own tree (src/lib/area-pages): how it stands, and its key figure.
+  status?: TreeStatus;
+  figure?: string;
   parent: string | null;
   children: string[];
   // Its box in the world, in px at full size.
@@ -62,9 +69,77 @@ export const GIANT = {
   minScale: 0.08,
 } as const;
 
+// The areas' own trees, by area: where an area has one, its branches and items are the tree's
+// (so the home tree never drifts from the page), each linking to the page open on it.
+export type AreaTrees = Partial<Record<AreaKey, AreaTree>>;
+
+// One area's branches as the giant tree shows them: its own tree's, or else what Jane looks for
+// there (the feature map's).
+type Branch = {
+  id: string;
+  label: string;
+  line: string;
+  forYou: boolean;
+  status?: TreeStatus;
+  href: string;
+  items: {
+    id: string;
+    label: string;
+    line: string;
+    forYou: boolean;
+    href: string;
+    ask: string;
+    status?: TreeStatus;
+    figure?: string;
+  }[];
+};
+
+function branchesOf(map: AreaMap, own: AreaTree | undefined): Branch[] {
+  if (own) {
+    const focus = (id: string) => `${map.href}?focus=${encodeURIComponent(id)}`;
+    return own.tree.branches.map((b) => ({
+      id: b.id,
+      label: b.label,
+      line: b.line ?? `${b.items.length} things`,
+      forYou: false,
+      status: b.status,
+      href: focus(b.id),
+      items: b.items.map((i) => ({
+        id: i.id,
+        label: i.label,
+        line: own.summaries[i.id] ?? i.line ?? "",
+        forYou: false,
+        href: focus(i.id),
+        ask: `What should I do about "${i.label}"${i.figure ? ` (${i.figure})` : ""}?`,
+        status: i.status,
+        figure: i.figure,
+      })),
+    }));
+  }
+  return map.branches.map((b) => ({
+    id: b.id,
+    label: b.name,
+    line: b.forYou > 0 ? `${b.forYou} for you` : `${b.features.length} things`,
+    forYou: b.forYou > 0,
+    href: map.href,
+    items: b.features.map((f) => ({
+      id: f.id,
+      label: f.name,
+      line: f.line,
+      forYou: f.forYou,
+      href: f.href,
+      ask: f.ask,
+    })),
+  }));
+}
+
 // `split`: how many columns each area's branches share. Two makes the tree wider and half as
 // tall, which fits a wide screen better (giantLayoutFor picks).
-export function giantLayout(maps: readonly AreaMap[], split: 1 | 2 = 1): GiantLayout {
+export function giantLayout(
+  maps: readonly AreaMap[],
+  split: 1 | 2 = 1,
+  areaTrees: AreaTrees = {},
+): GiantLayout {
   const nodes: GiantNode[] = [];
   const edges: GiantEdge[] = [];
   const subW = GIANT.area.w;
@@ -88,15 +163,18 @@ export function giantLayout(maps: readonly AreaMap[], split: 1 | 2 = 1): GiantLa
 
   maps.forEach((map, col) => {
     const x = col * (colW + GIANT.columnGap);
+    const own = areaTrees[map.key];
+    const branches = branchesOf(map, own);
     const area: GiantNode = {
       id: map.key,
       level: 2,
       label: map.name,
-      line: `${map.features} things · ${map.forYou} for you`,
-      forYou: map.forYou > 0,
+      line: own ? own.tree.sub : `${map.features} things · ${map.forYou} for you`,
+      forYou: !own && map.forYou > 0,
+      status: own ? worst(own.tree.branches.map((b) => b.status)) : undefined,
       href: map.href,
       parent: root.id,
-      children: map.branches.map((b) => `${map.key}/${b.id}`),
+      children: branches.map((b) => `${map.key}/${b.id}`),
       x,
       y: areaY,
       ...GIANT.area,
@@ -106,13 +184,13 @@ export function giantLayout(maps: readonly AreaMap[], split: 1 | 2 = 1): GiantLa
     edges.push(edge(root, area, "down"));
 
     // Branches fill the first column until it holds about its share of the rows.
-    const rows = (b: AreaMap["branches"][number]) => 1 + b.features.length;
-    const total = map.branches.reduce((n, b) => n + rows(b), 0);
+    const rows = (b: Branch) => 1 + b.items.length;
+    const total = branches.reduce((n, b) => n + rows(b), 0);
     const top = areaY + GIANT.area.h + GIANT.levelGap / 2;
     let y = top;
     let sub = 0;
     let filled = 0;
-    for (const b of map.branches) {
+    for (const b of branches) {
       if (sub < split - 1 && filled > 0 && filled + rows(b) / 2 > (total * (sub + 1)) / split) {
         sub += 1;
         y = top;
@@ -123,12 +201,13 @@ export function giantLayout(maps: readonly AreaMap[], split: 1 | 2 = 1): GiantLa
       const branch: GiantNode = {
         id,
         level: 3,
-        label: b.name,
-        line: b.forYou > 0 ? `${b.forYou} for you` : `${b.features.length} things`,
-        forYou: b.forYou > 0,
-        href: map.href,
+        label: b.label,
+        line: b.line,
+        forYou: b.forYou,
+        status: b.status,
+        href: b.href,
         parent: area.id,
-        children: b.features.map((f) => `${id}/${f.id}`),
+        children: b.items.map((f) => `${id}/${f.id}`),
         x: sx + GIANT.indent,
         y,
         ...GIANT.branch,
@@ -136,15 +215,17 @@ export function giantLayout(maps: readonly AreaMap[], split: 1 | 2 = 1): GiantLa
       nodes.push(branch);
       edges.push(edge({ ...area, x: sx }, branch, "side"));
       y += GIANT.branch.h + GIANT.rowGap;
-      for (const f of b.features) {
+      for (const f of b.items) {
         const feature: GiantNode = {
           id: `${id}/${f.id}`,
           level: 4,
-          label: f.name,
+          label: f.label,
           line: f.line,
           forYou: f.forYou,
           href: f.href,
           ask: f.ask,
+          status: f.status,
+          figure: f.figure,
           parent: id,
           children: [],
           x: sx + GIANT.indent * 2 + 8,
@@ -198,9 +279,10 @@ const clampK = (k: number) => Math.min(GIANT.maxScale, Math.max(GIANT.minScale, 
 export function giantLayoutFor(
   maps: readonly AreaMap[],
   view: { w: number; h: number },
+  areaTrees: AreaTrees = {},
 ): GiantLayout {
-  const one = giantLayout(maps, 1);
-  const two = giantLayout(maps, 2);
+  const one = giantLayout(maps, 1, areaTrees);
+  const two = giantLayout(maps, 2, areaTrees);
   return fitCamera(two, view).k > fitCamera(one, view).k ? two : one;
 }
 

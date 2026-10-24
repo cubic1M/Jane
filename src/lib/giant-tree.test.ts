@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AreaMap } from "@/lib/feature-map";
+import { buildAreaTree } from "@/lib/area-pages/tree";
 import {
   GIANT,
   centerOn,
@@ -96,6 +97,52 @@ describe("the giant tree's layout", () => {
     expect(giantEdgePath(down)).toMatch(/^M[\d.]+,[\d.]+ C/);
     const side = layout.edges.find((e) => e.id === "money/subs>money/subs/a")!;
     expect(giantEdgePath(side)).toMatch(/^M[\d.]+,[\d.]+ V[\d.]+ H[\d.]+$/);
+  });
+});
+
+describe("an area with its own tree", () => {
+  const insurance = buildAreaTree({
+    key: "insurance",
+    label: "Insurance",
+    sub: ({ urgent }) => `${urgent} urgent`,
+    branches: [
+      {
+        id: "missing",
+        label: "Cover that looks missing",
+        items: [
+          {
+            id: "missing:life",
+            label: "Life cover",
+            status: "act",
+            figure: "Missing",
+            summary: "No life cover on file.",
+          },
+        ],
+      },
+    ],
+  });
+  const layout = giantLayout(maps, 1, { insurance });
+  const byId = new Map(layout.nodes.map((n) => [n.id, n]));
+
+  it("shows that tree's branches and items, never drifting from the page", () => {
+    expect(byId.get("insurance")).toMatchObject({ status: "act", line: "1 urgent" });
+    expect(byId.get("insurance/missing")).toMatchObject({
+      label: "Cover that looks missing",
+      status: "act",
+      href: "/insurance?focus=missing",
+    });
+    expect(byId.get("insurance/missing/missing:life")).toMatchObject({
+      level: 4,
+      label: "Life cover",
+      figure: "Missing",
+      status: "act",
+      line: "No life cover on file.",
+      href: "/insurance?focus=missing%3Alife",
+      ask: 'What should I do about "Life cover" (Missing)?',
+    });
+    // The feature map's branches are gone for that area; the others keep theirs.
+    expect(byId.has("insurance/gaps")).toBe(false);
+    expect(byId.has("money/subs")).toBe(true);
   });
 });
 

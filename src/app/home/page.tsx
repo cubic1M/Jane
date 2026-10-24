@@ -8,6 +8,11 @@ import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
 import { GiantTree } from "@/components/hub/giant-tree";
+import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
+import { loadLoansArea } from "@/lib/area-pages/loans-load";
+import { loadPlansArea } from "@/lib/area-pages/plans-load";
+import { loadTaxesArea } from "@/lib/area-pages/taxes-load";
+import type { AreaTrees } from "@/lib/giant-tree";
 import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
@@ -76,16 +81,29 @@ async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
 // The giant "What Jane does" tree (src/components/hub/giant-tree.tsx): Jane, the six areas,
 // their branches and features, all at once, from the same map as /home/map.
 async function AreasTree({ userId }: { userId: string }) {
-  const [reached, advice] = await Promise.all([
+  // Each area with a tree page shows that tree's branches, from the same loaders its page uses
+  // (a loader that fails leaves its area showing what Jane looks for there).
+  const quietly = <T,>(load: Promise<T>) => load.catch(() => undefined);
+  const [reached, advice, insurance, loans, taxes, plans] = await Promise.all([
     scopedFor(userId).suggestions.findMany({ select: { key: true } }),
     adviceMode(userId),
+    quietly(loadInsuranceArea(userId)),
+    quietly(loadLoansArea(userId)),
+    quietly(loadTaxesArea(userId)),
+    quietly(loadPlansArea(userId)),
   ]);
+  const areaTrees: AreaTrees = {
+    insurance: insurance?.area,
+    loans: loans?.area,
+    taxes: taxes?.area,
+    ahead: plans?.area,
+  };
   const maps = buildFeatureMap({
     examples: sampleExamples(),
     reached: new Set(reached.map((r) => r.key)),
     advice,
   });
-  return <GiantTree maps={maps} />;
+  return <GiantTree maps={maps} areaTrees={areaTrees} />;
 }
 
 async function HubContent() {
