@@ -68,6 +68,15 @@ describe("reconcile", () => {
     expect(reconcile("loan", snaps, [])).toBeNull();
   });
 
+  // Real-user QA: a balance read on Oct 1 hadn't the Oct 1 charge yet; it showed on Oct 10's.
+  it("adds up when each balance holds the charges through the day before", () => {
+    expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-01", 20_000)])).toBeNull();
+    // Off either way is still off.
+    expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-05", 5_000)])).toMatchObject({
+      kind: "off",
+    });
+  });
+
   it("lets a dollar of rounding go", () => {
     expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-05", 19_950)])).toBeNull();
   });
