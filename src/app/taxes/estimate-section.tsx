@@ -40,14 +40,14 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
         <h2 id="estimate-heading" className="text-xl font-semibold">
           Your {view.year} estimate
         </h2>
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <span className="border border-zinc-400 px-2 py-0.5 text-xs font-medium dark:border-zinc-600">
           Estimate
         </span>
       </div>
       <p className="text-lg">{federalLine(e, view.withholdingKnown)}</p>
       {state && <p className="text-lg">{state}</p>}
       <details className="text-sm">
-        <summary className="cursor-pointer font-medium text-emerald-700">
+        <summary className="cursor-pointer font-medium underline underline-offset-2">
           How Jane worked it out
         </summary>
         <table className="mt-2 w-full">
@@ -125,7 +125,11 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
               <span key={p.code}>
                 {i > 0 && ", "}
                 {p.url ? (
-                  <a href={p.url} className="text-emerald-700 hover:underline" rel="noreferrer">
+                  <a
+                    href={p.url}
+                    className="underline underline-offset-2 hover:no-underline"
+                    rel="noreferrer"
+                  >
                     {STATE_SOURCES[p.code]?.agency ?? stateName(p.code)}
                   </a>
                 ) : (
@@ -138,7 +142,7 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
                 {", "}
                 <a
                   href={e.state.local.url}
-                  className="text-emerald-700 hover:underline"
+                  className="underline underline-offset-2 hover:no-underline"
                   rel="noreferrer"
                 >
                   {e.state.local.source}
@@ -146,7 +150,10 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
               </>
             )}
             , for review.{" "}
-            <a href="/taxes/profile#states" className="text-emerald-700 hover:underline">
+            <a
+              href="/taxes/profile#states"
+              className="underline underline-offset-2 hover:no-underline"
+            >
               Moved, or work for an employer in another state?
             </a>
           </p>

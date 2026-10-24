@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import {
   E2E_DATABASE_URL,
   addPayment,
@@ -7,6 +8,16 @@ import {
   setCheckingBalance,
   signedInUser,
 } from "./db";
+
+// A loans and credit page from the /loans tree's list of every page (docs/design/area-pages.md).
+async function openLoansPage(page: Page, link: string) {
+  await page.goto("/loans");
+  await page.getByText("All loans and credit pages").click();
+  await page
+    .getByRole("list", { name: "All loans and credit pages" })
+    .getByRole("link", { name: link })
+    .click();
+}
 
 // Spec step 109: every debt in one place, from the demo bank: loans and cards with where
 // each rate came from, the buy now, pay later plans found from payments, terms typed for
@@ -44,23 +55,32 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
 
   await expect(page).toHaveURL(/\/loans/);
   await expect(page.getByRole("heading", { level: 1, name: "Every debt" })).toBeVisible();
-  const loans = page.getByRole("list", { name: "Loans and cards" });
-  const plans = page.getByRole("list", { name: "Buy now, pay later plans" });
-  const car = loans.getByRole("listitem").filter({ hasText: "Demo Car Loan ····0006" });
+  // Each debt is an item of the tree's "Your debts" branch, its card in the detail.
+  const debts = "Your debts";
+  const car = (await pickItem(page, "Loans & credit", debts, "Demo Car Loan ····0006"))
+    .getByRole("list", { name: "Loans and cards" })
+    .getByRole("listitem");
   await expect(car).toContainText("6.90% fixed");
   await expect(car).toContainText("from your bank");
-  const klarna = plans.getByRole("listitem").filter({ hasText: "Klarna Pay in 4" });
+  const klarna = (await pickItem(page, "Loans & credit", debts, "Klarna Pay in 4"))
+    .getByRole("list", { name: "Buy now, pay later plans" })
+    .getByRole("listitem");
   await expect(klarna).toContainText("2 of 4 payments made");
   await expect(klarna).toContainText("no interest under the company's own terms");
 
-  const affirm = plans.getByRole("listitem").filter({ hasText: "Affirm plan" });
-  await affirm.getByText("Add what your bank doesn't report").click();
-  await affirm.getByLabel("Rate (APR %)").fill("15");
-  await affirm.getByLabel("Left to pay ($)").fill("537");
-  await affirm.getByRole("button", { name: "Save", exact: true }).click();
+  const affirm = () =>
+    pickItem(page, "Loans & credit", debts, "Affirm plan").then((r) =>
+      r.getByRole("list", { name: "Buy now, pay later plans" }).getByRole("listitem"),
+    );
+  const plan = await affirm();
+  await plan.getByText("Add what your bank doesn't report").click();
+  await plan.getByLabel("Rate (APR %)").fill("15");
+  await plan.getByLabel("Left to pay ($)").fill("537");
+  await plan.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Saved. Jane counts it from now on.");
-  await expect(affirm).toContainText("15.00%");
-  await expect(affirm).toContainText("you typed it on");
+  const saved = await affirm();
+  await expect(saved).toContainText("15.00%");
+  await expect(saved).toContainText("you typed it on");
 });
 
 // Spec step 110: the plan across every debt, Jane's pick as labelled demo advice, started
@@ -110,8 +130,7 @@ test("refinance offers compare total cost and pick one, labelled", async ({
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
-  await page.goto("/loans");
-  await page.getByRole("link", { name: "See refinance offers" }).click();
+  await openLoansPage(page, "See refinance offers");
   // The first visit asks the stand-in lenders and compiles the page: give it time.
   await expect(page.getByRole("heading", { level: 1, name: "Refinance offers" })).toBeVisible({
     timeout: 60_000,
@@ -209,8 +228,7 @@ test("student loan plans are compared, and every step links to studentaid.gov", 
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
-  await page.goto("/loans");
-  await page.getByRole("link", { name: "Compare its repayment plans" }).click();
+  await openLoansPage(page, "Compare its repayment plans");
   await expect(page.getByRole("heading", { level: 1, name: "Student loans" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Repayment plans" })).toContainText(
     "Repayment Assistance Plan (RAP)",
@@ -245,8 +263,7 @@ test("the mortgage page shows PMI, the escrow change and extra principal", async
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
-  await page.goto("/loans");
-  await page.getByRole("link", { name: "See PMI, escrow and extra payments" }).click();
+  await openLoansPage(page, "See PMI, escrow and extra payments");
   await expect(page.getByRole("heading", { level: 1, name: "Your mortgage" })).toBeVisible();
   const pmi = page.getByRole("region", { name: "Private mortgage insurance (PMI)" });
   // The demo home is worth $380,000, so the page says when the PMI can come off.
@@ -277,8 +294,7 @@ test("the credit score is a labelled stand-in, with its factors and card use", a
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
-  await page.goto("/loans");
-  await page.getByRole("link", { name: "See your credit score" }).click();
+  await openLoansPage(page, "See your credit score");
   await expect(page.getByRole("heading", { level: 1, name: "Credit score" })).toBeVisible();
   await expect(
     page.getByRole("note").filter({ hasText: "not your real credit score" }),
@@ -303,8 +319,7 @@ test("card rewards count the fee, and a better card is applied for with one tap"
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
-  await page.goto("/loans");
-  await page.getByRole("link", { name: "See your card rewards" }).click();
+  await openLoansPage(page, "See your card rewards");
   await expect(page.getByRole("heading", { level: 1, name: "Card rewards" })).toBeVisible();
   await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   await expect(page.getByRole("region", { name: "Your cards" })).toContainText(
@@ -361,7 +376,8 @@ test("buy now, pay later installments are listed from the plans' schedules", asy
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
   await page.goto("/loans");
-  const list = page.getByRole("list", { name: "Installments coming" });
+  const installments = await pickItem(page, "Loans & credit", "Your debts", "Installments coming");
+  const list = installments.getByRole("list", { name: "Installments coming" });
   await expect(list).toBeVisible();
   await expect(list).toContainText("$62.25 to Klarna Pay in 4");
   await expect(list).toContainText("$89.50 to Affirm plan");
@@ -1049,8 +1065,7 @@ test("what you could borrow is shown with the day it was checked", async ({
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
-  await page.goto("/loans");
-  await page.getByRole("link", { name: "See what you could get, and at what rate" }).click();
+  await openLoansPage(page, "See what you could get, and at what rate");
   await expect(
     page.getByRole("heading", { level: 1, name: "What you could borrow" }),
   ).toBeVisible();
