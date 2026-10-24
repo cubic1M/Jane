@@ -36,6 +36,7 @@ export async function usePracticeCrypto(formData: FormData): Promise<void> {
       await savePreferences(user.id, { cryptoSleeve: sleeve }, "page");
     }
   }
+  revalidatePath("/investments");
   redirect("/investments?focus=strategies:menu");
 }
 
@@ -50,5 +51,6 @@ export async function usePracticeDayTrading(formData: FormData): Promise<void> {
       await savePreferences(user.id, { dayTrading: rule }, "page");
     }
   }
+  revalidatePath("/investments");
   redirect("/investments?focus=strategies:menu");
 }
