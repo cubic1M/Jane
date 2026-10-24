@@ -91,7 +91,9 @@ describe.runIf(url)("one payment for each loan, everywhere", () => {
         if (c) expect(c.currentMonthlyCents, loan.name).toBe(payment);
         // A mortgage's says it's principal and interest, with the escrow that stays.
         if (c && loan.kind === "mortgage") {
-          expect(c.escrowCents, loan.name).toBe(loan.paymentCents! - payment!);
+          // Priya's has none (her jumbo loan's payment is all principal and interest): no note.
+          const escrow = loan.paymentCents! - payment!;
+          expect(c.escrowCents, loan.name).toBe(escrow > 0 ? escrow : undefined);
         }
       }
 
