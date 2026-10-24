@@ -98,6 +98,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "vehicle_deduction",
     // Phase AW: the ideas their auto-started practice portfolio has waiting.
     "practice_news_idea",
+    "practice_theme_idea",
   ],
   equity: [
     "asset_location",
@@ -127,6 +128,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "umbrella",
     "values_funds",
     "withholding_gap",
+    "practice_theme_idea",
   ],
   preretire: [
     "auto_invest",
@@ -161,6 +163,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "cosign_risk",
     // Phase AW: the ideas their auto-started practice portfolio has waiting.
     "practice_glide_path",
+    "practice_theme_idea",
   ],
   retiree: [
     "bill_negotiation",
@@ -208,6 +211,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "subscriptions",
     // Phase AW: the ideas their auto-started practice portfolio has waiting.
     "practice_max_drop_near",
+    "practice_theme_idea",
   ],
   owner: [
     "bill_negotiation",

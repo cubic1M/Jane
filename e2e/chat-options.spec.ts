@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser, signedInUser, waitForFullScan } from "./db";
+import { CHAT, landInChat } from "./chat-page";
 
 // Options of one choice in the chat (insurance cover, loan offers): Jane's answer carries the
 // lane's pick-one card (refs.options), which floats over the chat as the pick card. A pick is
@@ -37,7 +38,7 @@ test("a pick on the options card is instant, and the next card follows within 10
     if (page.url().endsWith("/connect")) {
       await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
     }
-    await expect(page).toHaveURL("/chat", { timeout: 15_000 });
+    await landInChat(page, 15_000);
   }).toPass({ timeout: 90_000 });
   await waitForFullScan(user.userId);
 
@@ -98,7 +99,7 @@ test("a pick on the options card is instant, and the next card follows within 10
     ],
   });
 
-  await page.goto("/chat");
+  await page.goto(CHAT);
   const pickCard = page.getByRole("region", { name: title });
   await expect(pickCard).toBeVisible();
   expect(await pickCard.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
@@ -152,7 +153,7 @@ test("cheaper car insurance comes as a pick-one card, and a pick starts the swit
     if (page.url().endsWith("/connect")) {
       await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
     }
-    await expect(page).toHaveURL("/chat", { timeout: 15_000 });
+    await landInChat(page, 15_000);
   }).toPass({ timeout: 90_000 });
   await waitForFullScan(user.userId);
   await page.reload();
