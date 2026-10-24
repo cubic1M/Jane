@@ -43,10 +43,11 @@ export async function createCheckPerson({
     { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
     { client, now },
   );
-  // Spec step 297: on the demo bank, a practice portfolio at that profile's level (Medium),
-  // started a month and a half ago and run day by day through the last week, so the practice
-  // portfolio questions have a week of trades to talk about. Practice money only.
-  if (!person) await seedPractice(user.id, client, now);
+  // Spec step 297: on the demo bank, a practice portfolio at that profile's level (Medium) with
+  // weeks of trades to talk about. The first sync starts it by itself for a demo person (Phase
+  // AW, src/lib/practice/demo-start.ts); this only fills in if that didn't. Practice money only.
+  if (!person && !(await client.practicePortfolio.findFirst({ where: { userId: user.id } })))
+    await seedPractice(user.id, client, now);
   return user.id;
 }
 

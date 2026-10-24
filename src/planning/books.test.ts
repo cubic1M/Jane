@@ -60,6 +60,23 @@ describe("reconcile", () => {
     expect(reconcile("depository", snaps, [])).toMatchObject({ kind: "gap", offByCents: -20_000 });
   });
 
+  // Real-user QA: a 401(k) or a brokerage account moves with prices, and a loan with interest,
+  // with no transactions of their own: not a problem with the books.
+  it("leaves investment and loan accounts out", () => {
+    expect(reconcile("depository", snaps, [])).toMatchObject({ kind: "gap" });
+    expect(reconcile("investment", snaps, [])).toBeNull();
+    expect(reconcile("loan", snaps, [])).toBeNull();
+  });
+
+  // Real-user QA: a balance read on Oct 1 hadn't the Oct 1 charge yet; it showed on Oct 10's.
+  it("adds up when each balance holds the charges through the day before", () => {
+    expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-01", 20_000)])).toBeNull();
+    // Off either way is still off.
+    expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-05", 5_000)])).toMatchObject({
+      kind: "off",
+    });
+  });
+
   it("lets a dollar of rounding go", () => {
     expect(reconcile("depository", snaps, [tx("a", "x", "2026-10-05", 19_950)])).toBeNull();
   });

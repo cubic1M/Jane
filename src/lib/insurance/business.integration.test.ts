@@ -6,6 +6,9 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { linkDemoBank } from "@/lib/plaid/demo";
+import { syncItem } from "@/lib/plaid/sync";
+import { detectFor } from "@/lib/suggestions";
 import { gapQuotes } from "./risks";
 import { loadInsurance } from "./profile";
 
@@ -132,5 +135,23 @@ describe.runIf(url)("business cover, against a real database", () => {
     const me = await freelancer();
     // No demo bank, no partner: nothing is made up.
     expect(await gapQuotes(me, "business", o())).toEqual([]);
+  });
+
+  // Real-user QA: someone who signed up and linked the demo bank (a salaried person whose only
+  // business signal is one $640 Shopify payout) was asked to check their business cover. One
+  // sale isn't a business (the harness's reach test keeps the freelancer and the shop owner).
+  it("doesn't ask about business cover after one sale", { timeout: 120_000 }, async () => {
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", Buffer.alloc(32, 7).toString("base64"));
+    const user = await client.user.create({
+      data: { email: `one-sale-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const { itemId } = await linkDemoBank(user.id, o());
+    await syncItem(itemId, {
+      ...o(),
+      api: new Proxy({}, { get: () => () => Promise.reject(new Error("no Plaid")) }) as never,
+    });
+    const topics = (await detectFor(user.id, o())).suggestions.map((s) => s.topic);
+    expect(topics).not.toContain("business_insurance");
   });
 });

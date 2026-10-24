@@ -31,8 +31,14 @@ export const CHAT_NOTIFY_KIND_LABELS: Readonly<Record<ChatNotifyKind, string>> =
 
 // At most this many messages go out (pushed or emailed) in any 24 hours.
 export const CHAT_NOTIFY_DAILY_LIMIT = 6;
-// At most this many of Jane's emails in any 24 hours; each has every message waiting.
-export const CHAT_EMAILS_PER_DAY = 2;
+// At most this many of Jane's emails in any 24 hours; each has every message waiting
+// (real-user QA: a new person got two a day, on top of their alerts and the weekly email). Urgent
+// messages always get through, in an email of their own when today's has gone.
+export const CHAT_EMAILS_PER_DAY = 1;
+// Urgent, for that: a bill to pay, a payday's split, a deadline days away, a paycheck that
+// stopped, an urgent alert (MESSAGE_PRIORITY in src/config/agent-chat.ts, from billpay up). The
+// daily brief never counts, however high it is placed.
+export const CHAT_URGENT_FROM_PRIORITY = 87;
 // At most this many messages in one email, most important first.
 export const CHAT_EMAIL_MAX_MESSAGES = 5;
 // A message goes by email only once it has sat unread this long, so someone looking at

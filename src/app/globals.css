@@ -202,6 +202,38 @@ body {
   }
 }
 
+/* The feature map (src/components/feature-tree.tsx): the view zooms and pans with a spring,
+   edges draw themselves, and nodes pop in as a branch opens. Still for reduced motion. */
+.map-view {
+  transition: height 420ms var(--ease-spring);
+}
+.map-world {
+  transition: transform 450ms var(--ease-spring);
+}
+.map-edge {
+  stroke-dasharray: 1;
+  animation: hub-draw 500ms var(--ease-out-soft) both;
+}
+.map-pop {
+  animation: map-pop 280ms var(--ease-spring) both;
+}
+@keyframes map-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-view,
+  .map-world {
+    transition: none;
+  }
+  .map-edge,
+  .map-pop {
+    animation: none;
+  }
+}
+
 /* The chat inside the side panel (/chat?embed=1) has no footer of its own. */
 body:has([data-chat-embed]) > footer {
   display: none;
@@ -270,32 +302,90 @@ textarea {
   min-width: 0;
 }
 
-/* Floating cards (src/components/floating-cards.tsx): the next one slides in as the answered
-   one slides away. Still for reduced motion. */
+/* Floating cards (src/components/floating-cards.tsx): compact pop-ups above the chat's message
+   box, or at the bottom of the hub, clear of the Jane button on a phone and of the docked chat
+   on a computer. A card rises in with a spring; Yes slides it off to the right and Not now to
+   the left while the next rises in the same frame. A fade only for reduced motion. */
+.floating-cards {
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+@media (width < 1024px) {
+  body:has(#jane-fab) .floating-cards {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+}
+@media (min-width: 1024px) {
+  body:has(#app-top-bar) .floating-cards {
+    right: 380px;
+  }
+  html[data-side-chat="rail"] body:has(#app-top-bar) .floating-cards {
+    right: 56px;
+  }
+  html[data-side-chat="none"] body:has(#app-top-bar) .floating-cards,
+  body:has(#app-top-bar):has([data-chat-page]) .floating-cards {
+    right: 0;
+  }
+}
+/* In the side panel (/chat?embed=1) the suggestions wait until the page beside it says where it
+   is: on Home the hub shows them, so the chat beside it leaves them out; anywhere else, or
+   full screen, they show (src/app/chat/embed-bridge.tsx sets data-chat-embed-cards). Hidden by
+   default, so a slow start never shows them twice. */
+body:has([data-chat-embed]) [data-floating-cards="queue"] {
+  display: none;
+}
+html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="queue"] {
+  display: flex;
+}
+
 .floating-card-in {
-  animation: floating-card-in 220ms ease-out both;
+  animation: floating-card-in 260ms var(--ease-spring) both;
 }
 .floating-card-out {
-  animation: floating-card-out 220ms ease-in both;
+  animation: floating-card-out 200ms ease-in both;
+}
+.floating-card-out-yes {
+  animation: floating-card-out-yes 200ms ease-in both;
+}
+.floating-card-edge {
+  transition:
+    transform 260ms var(--ease-spring),
+    opacity 200ms ease-out;
 }
 
 @keyframes floating-card-in {
   from {
     opacity: 0;
-    transform: translateY(1.25rem);
+    transform: translateY(0.75rem) scale(0.98);
   }
 }
-
 @keyframes floating-card-out {
   to {
     opacity: 0;
-    transform: translateX(-2rem);
+    transform: translateX(-110%);
+  }
+}
+@keyframes floating-card-out-yes {
+  to {
+    opacity: 0;
+    transform: translateX(110%);
+  }
+}
+@keyframes floating-card-fade {
+  from {
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .floating-card-in,
-  .floating-card-out {
+  .floating-card-in {
+    animation: floating-card-fade 120ms linear both;
+  }
+  .floating-card-out,
+  .floating-card-out-yes {
     animation: none;
+    opacity: 0;
+  }
+  .floating-card-edge {
+    transition: none;
   }
 }

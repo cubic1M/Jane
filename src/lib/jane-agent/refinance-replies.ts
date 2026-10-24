@@ -30,7 +30,7 @@ const offerLine = (s: ScoredOffer) =>
 // One debt's offers: the pick and why, the runners-up and, for a mortgage, the break-even.
 export function comparisonLines(c: RefinanceComparison): string[] {
   const lines = [
-    `Your ${c.debtName}: ${formatCents(c.balanceCents)} at ${formatRate(c.currentAprBps)}. Keeping it at ${formatCents(c.currentMonthlyCents)} a month, it's paid off in ${months(c.keepMonths)} and costs ${formatCents(c.currentTotalCents)} in all; offers are priced over ${months(c.termMonths)}.`,
+    `Your ${c.debtName}: ${formatCents(c.balanceCents)} at ${formatRate(c.currentAprBps)}. Keeping it at ${formatCents(c.currentMonthlyCents)} a month, it's paid off in ${months(c.keepMonths)} and costs ${formatCents(c.currentTotalCents)} in all; offers are priced over the same ${months(c.termMonths)}.`,
   ];
   if (c.cashPayoffCents) {
     lines.push(

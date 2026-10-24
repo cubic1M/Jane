@@ -37,7 +37,21 @@ export function EmbedBridge() {
       if (event.origin !== origin || event.source !== window.parent) return;
       if (!isFrameMessage(event.data)) return;
       if (event.data.type === "jane:refresh") router.refresh();
-      else if (event.data.type === "jane:panel") root.dataset.chatEmbed = event.data.state;
+      else if (event.data.type === "jane:ask") {
+        // "Ask Jane about this" (the feature map): the question waits in the box to be sent.
+        const box = document.querySelector<HTMLInputElement>('input[name="message"]');
+        if (box) {
+          box.value = event.data.text;
+          box.focus({ preventScroll: true });
+          box.setSelectionRange(box.value.length, box.value.length);
+          box.scrollIntoView({ block: "center" });
+        }
+      } else if (event.data.type === "jane:panel") {
+        root.dataset.chatEmbed = event.data.state;
+        // Beside Home the hub shows the suggestions; full screen, the chat shows them again.
+        if (event.data.home && event.data.state !== "full") delete root.dataset.chatEmbedCards;
+        else root.dataset.chatEmbedCards = "";
+      }
     };
     // The panel growing or shrinking keeps the end of the chat in view if it was.
     let atEnd = true;
@@ -52,6 +66,8 @@ export function EmbedBridge() {
     window.addEventListener("click", onClick, true);
     window.addEventListener("message", onMessage);
     window.addEventListener("scroll", onScroll, { passive: true });
+    // Listening now: ask the page where the panel is.
+    window.parent.postMessage({ type: "jane:ready" }, origin);
     window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("click", onClick, true);
@@ -59,6 +75,7 @@ export function EmbedBridge() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       delete root.dataset.chatEmbed;
+      delete root.dataset.chatEmbedCards;
     };
   }, [router]);
 

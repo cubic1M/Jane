@@ -3,6 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import {
   CHAT_CLAUDE_HISTORY,
   CHAT_CLAUDE_TURN_CHARS,
+  CARD_TOPIC_LOOKBACK,
   CHAT_CONTEXT_MINUTES,
   CHAT_MAX_MESSAGE,
 } from "@/config/agent-chat";
@@ -89,6 +90,34 @@ export async function lastTopic(
   return parseRefs(last.refs).topic ?? null;
 }
 
+// The last card Jane put up in this conversation (a reply about a finding), same window and day
+// as lastTopic: what "why?" means when the answer just before it has nothing to explain
+// (answer-check sweep: "cancel Hulu", "what's my net worth", "why?" asked which one).
+export async function lastCardTopic(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<Topic | null> {
+  const [rows, user] = await Promise.all([
+    scopedFor(userId, client).janeMessages.findMany({
+      where: {
+        kind: "reply",
+        createdAt: { gte: new Date(now.getTime() - CHAT_CONTEXT_MINUTES * 60_000), lte: now },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: CARD_TOPIC_LOOKBACK,
+      select: { refs: true, createdAt: true },
+    }),
+    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+  ]);
+  const today = localTime(now, user?.timezone ?? null).date;
+  for (const row of rows) {
+    if (localTime(row.createdAt, user?.timezone ?? null).date !== today) return null;
+    const topic = parseRefs(row.refs).topic;
+    if (topic?.findingId) return topic;
+  }
+  return null;
+}
+
 // The recent typed messages and Jane's answers to them, oldest first: all Claude sees.
 export async function recentTurns(
   userId: string,
@@ -149,7 +178,10 @@ async function answer(
   const toFlow = await typedFlowReply(text, { userId, client, now });
   if (toFlow) return { reply: toFlow, intent: "flow_answer", source: "rules" };
   // Spec step 88: what the conversation was about, for a follow-up.
-  const topic = await lastTopic(userId, { client, now });
+  const [topic, cardTopic] = await Promise.all([
+    lastTopic(userId, { client, now }),
+    lastCardTopic(userId, { client, now }),
+  ]);
   intent = resolvePronoun(text, intent, topic, (t) => parseIntent(t, asOf));
   // Spec step 188: how the person likes Jane to talk.
   const style = styleOf(await listPreferences(userId, { client }));
@@ -158,13 +190,13 @@ async function answer(
     const two = splitQuestions(text, asOf);
     if (two) {
       const replies = await Promise.all(
-        two.map((part) => answerByRules(userId, part, { client, now, topic })),
+        two.map((part) => answerByRules(userId, part, { client, now, topic, cardTopic })),
       );
       if (replies.every((r) => r !== null)) {
         return shapeReply(joinReplies(replies as Reply[]), style);
       }
     }
-    const reply = await answerByRules(userId, intent, { client, now, topic });
+    const reply = await answerByRules(userId, intent, { client, now, topic, cardTopic });
     return reply ? shapeReply(reply, style) : null;
   };
   // The backup for when Claude can't answer: the rules' answer from the same data, or, for

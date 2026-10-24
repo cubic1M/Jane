@@ -305,7 +305,8 @@ export function businessNeedsFor(input: NeedInput): Need[] {
         "General liability clients and landlords usually ask for",
         have >= BUSINESS_LIABILITY_TARGET_CENTS
           ? `Your business policy's ${formatCents(have)} of general liability meets the ${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)} I'd size.`
-          : `${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)} of general liability for your business; ${have > 0 ? `yours is ${formatCents(have)}` : "your personal policies don't cover it"}.`,
+          : // A sentence, not a label: it is a card's "Why you" (phone walk: it read as cover held).
+            `I'd look at ${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)} of general liability for your business; ${have > 0 ? `yours is ${formatCents(have)}` : "your personal policies don't cover it"}.`,
       ),
     );
   }
@@ -319,7 +320,7 @@ export function businessNeedsFor(input: NeedInput): Need[] {
         "Professional liability for work done for clients",
         have >= BUSINESS_PROFESSIONAL_TARGET_CENTS
           ? `Your ${formatCents(have)} of professional liability meets the ${formatCents(BUSINESS_PROFESSIONAL_TARGET_CENTS)} I'd size.`
-          : `${formatCents(BUSINESS_PROFESSIONAL_TARGET_CENTS)} of professional liability, for a client who says your work cost them money; ${have > 0 ? `yours is ${formatCents(have)}` : "you have none"}.`,
+          : `I'd look at ${formatCents(BUSINESS_PROFESSIONAL_TARGET_CENTS)} of professional liability, for a client who says your work cost them money; ${have > 0 ? `yours is ${formatCents(have)}` : "you have none"}.`,
       ),
     );
   }
@@ -333,7 +334,7 @@ export function businessNeedsFor(input: NeedInput): Need[] {
         "Work equipment bought this year",
         have >= work.equipmentCents
           ? `Your ${formatCents(have)} of business property cover meets the ${formatCents(work.equipmentCents)} of equipment you bought.`
-          : `Cover for the ${formatCents(work.equipmentCents)} of work equipment you bought; home and renters policies cap it or leave it out.`,
+          : `I'd cover the ${formatCents(work.equipmentCents)} of work equipment you bought; home and renters policies cap it or leave it out.`,
       ),
     );
   }

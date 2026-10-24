@@ -2,7 +2,7 @@ import { PRACTICE_START_CENTS } from "@/config/portfolios";
 import type { RiskLevel } from "@/config/investing";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
-import { logAudit } from "@/lib/audit";
+import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
@@ -20,7 +20,14 @@ export class PracticeError extends Error {}
 export async function startPractice(
   userId: string,
   level: RiskLevel,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    auto = false,
+  }: Options & {
+    // Started by Jane for a sample person (./demo-start.ts), not by the person.
+    auto?: boolean;
+  } = {},
   startingCents = PRACTICE_START_CENTS,
 ) {
   const db = scopedFor(userId, client);
@@ -54,15 +61,16 @@ export async function startPractice(
     select: { id: true },
   });
   await logAudit(
-    { type: "user", id: userId },
+    auto ? SYSTEM_ACTOR : { type: "user", id: userId },
     "practice_started",
     { type: "practice_portfolio", id: row.id },
     {
       level,
       simulated: "true",
+      ...(auto ? { auto: "true" } : {}),
     },
   );
-  await track(userId, "practice_started", { level });
+  await track(userId, "practice_started", { level, auto });
   return row.id;
 }
 

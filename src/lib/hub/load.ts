@@ -3,15 +3,17 @@ import { SPENDING_MONTHS } from "@/config/areas";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { debtSummary } from "@/insights/loans";
-import { monthlyNetWorth, netWorth } from "@/insights/net-worth";
+import { netWorth, netWorthLine } from "@/insights/net-worth";
 import { monthsEnding, spendingInsights } from "@/insights/spending";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
 import { healthFor } from "@/lib/health-score";
 import { homeSummary, type HomeSummary } from "@/lib/home";
 import { loadInsurance } from "@/lib/insurance/profile";
+import { practicePaidIn } from "@/lib/investments/practice-paid-in";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import type { AreasInput, CashFlowInput, HeroInput } from "./view";
@@ -34,7 +36,7 @@ export async function loadHubTop(
     netWorthOverYear(userId, { client, now }),
   ]);
   if (!home) return null;
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   return {
     home,
     hero: {
@@ -56,7 +58,7 @@ export async function loadHubTop(
 // Net worth today and month by month, as /net-worth works it out.
 async function netWorthOverYear(userId: string, { client, now }: Required<Options>) {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
   const [accounts, snapshots, ownedRows, crypto] = await Promise.all([
     db.accounts.findMany({
@@ -78,16 +80,16 @@ async function netWorthOverYear(userId: string, { client, now }: Required<Option
     owned,
     crypto,
   );
-  const months = monthlyNetWorth(
-    accounts,
-    snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
-    asOf,
-    NET_WORTH_MONTHS,
-    owned,
-  );
   return {
     todayCents: today.netCents,
-    months: months.map((m) => ({ month: m.month, netCents: m.netCents })),
+    months: netWorthLine(
+      accounts,
+      snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
+      owned,
+      asOf,
+      NET_WORTH_MONTHS,
+      today.netCents,
+    ),
   };
 }
 
@@ -106,7 +108,7 @@ export async function loadHubAreas(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<AreasInput> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [health, suggestions, months, insurance, loans, taxes, practice, goals] = await Promise.all(
     [
       quietly("the health score", () => healthFor(userId, { client, now })),
@@ -148,7 +150,10 @@ export async function loadHubAreas(
         return debtSummary(accounts, asOf);
       }),
       quietly("taxes", () => loadTaxEstimate(userId, { client, now })),
-      quietly("practice", () => loadPractice(userId, { client, now })),
+      quietly("practice", async () => {
+        const view = await loadPractice(userId, { client, now });
+        return view && { ...view, paidInCents: await practicePaidIn(userId, { client }) };
+      }),
       quietly("goals", () => listGoals(userId, { client, now })),
     ],
   );
@@ -187,7 +192,7 @@ export async function loadHubAreas(
     investments: practice
       ? {
           totalCents: practice.totalCents,
-          startingCents: practice.startingCents,
+          paidInCents: practice.paidInCents,
           parts: [
             ...practice.holdings.map((h) => ({ label: h.ticker, valueCents: h.valueCents })),
             { label: "Cash", valueCents: practice.state.cashCents },

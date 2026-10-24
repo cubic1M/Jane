@@ -66,7 +66,8 @@ export async function homeSummary(
     // The year plan as last kept (spec step 205): what this month has room to save.
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
   ]);
-  const asOf = now.toISOString().slice(0, 10);
+  // The person's own day, as the bills and safe to spend read it (src/lib/today.ts).
+  const asOf = input.asOf;
   const budget =
     budgets.length === 0
       ? null

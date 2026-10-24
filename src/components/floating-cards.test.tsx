@@ -84,3 +84,51 @@ describe("the confidence line", () => {
     expect(html).not.toContain("kept small..");
   });
 });
+
+// Compact pop-ups (docs/design/home-hub.md): shut, a suggestion is an icon, the headline and
+// Yes and Not now, with the cards behind it as "+2"; the details wait behind the chevron.
+describe("a line of suggestions", () => {
+  const card = (id: string, headline: string) => ({
+    id,
+    headline,
+    details: {
+      why: "No plays since June.",
+      confidence: { percent: 90, reason: "8 months of charges" },
+      whatYesDoes: "I ask the team to cancel it.",
+    },
+    yesLabel: "Yes",
+  });
+  const html = renderToStaticMarkup(
+    <FloatingCards
+      cards={[
+        card("a", "Cancel Hulu, save $215/yr"),
+        card("b", "Drop PMI, save $1,562/yr"),
+        card("c", "Move idle cash, earn $400/yr"),
+      ]}
+      label="Suggestions for you"
+      onAnswer={vi.fn()}
+    />,
+  );
+
+  it("shows one card, shut, with the rest counted behind it", () => {
+    expect(html).toContain("Cancel Hulu, save $215/yr");
+    expect(html).not.toContain("Drop PMI");
+    expect(html).toContain("+2");
+    // Screen readers hear how many are left.
+    expect(html).toContain("3 left");
+    expect(html).toContain('aria-label="More details"');
+    expect(html).toContain('aria-expanded="false"');
+  });
+
+  it("keeps the details on the page, hidden until the chevron opens them", () => {
+    expect(html).toMatch(/<div[^>]*id="details-a"[^>]*hidden=""/);
+    expect(html).toContain("90% sure:");
+    expect(html).toContain("What Yes does:");
+  });
+
+  it("has Yes and Not now, and nothing else to tap while shut", () => {
+    expect(html).toContain(">Yes<");
+    expect(html).toContain(">Not now<");
+    expect(html).not.toContain("✕");
+  });
+});

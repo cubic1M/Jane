@@ -13,15 +13,30 @@ import { loadSnapshot } from "./snapshot";
 // Spec step 88: a follow-up is read against what the conversation was about (topic), and
 // each answer says what it was about, for the next one.
 
-type Options = { client?: PrismaClient; now?: Date; topic?: Topic | null };
+type Options = {
+  client?: PrismaClient;
+  now?: Date;
+  topic?: Topic | null;
+  // The last card Jane put up today (lastCardTopic): what an unplaced "why?" is about.
+  cardTopic?: Topic | null;
+};
 
 export async function answerByRules(
   userId: string,
   typed: Intent,
-  { client = defaultClient, now = new Date(), topic = null }: Options = {},
+  { client = defaultClient, now = new Date(), topic = null, cardTopic = null }: Options = {},
 ): Promise<Reply | null> {
   const asOf = now.toISOString().slice(0, 10);
-  const resolved = withTopic(typed, topic, asOf);
+  let resolved = withTopic(typed, topic, asOf);
+  // "Why?" or "tell me more" that the last answer can't place: the card Jane put up earlier in
+  // the conversation, rather than "Which one do you mean?" or "Why what?".
+  if (
+    (resolved.kind === "which" || resolved.kind === "explain") &&
+    (typed.kind === "explain" || typed.kind === "follow_up") &&
+    cardTopic?.findingId
+  ) {
+    resolved = { kind: "why_finding", findingId: cardTopic.findingId };
+  }
   if (resolved.kind === "which") return whichReply(userId, { client, now });
   const reply = await byIntent(userId, resolved, { client, now });
   if (reply) {

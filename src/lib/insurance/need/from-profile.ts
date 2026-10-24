@@ -28,6 +28,13 @@ export function selfEmploymentFrom(profile: Profile, data: ProfileInput): SelfEm
     ),
     miles: 0,
     equipmentCents: sum((t) => t.pfc === "GENERAL_MERCHANDISE_ELECTRONICS" && t.amountCents > 0),
+    payments: data.transactions.filter(
+      (t) =>
+        t.amountCents < 0 &&
+        (t.pfc === "INCOME_CONTRACTOR" ||
+          t.pfc === "INCOME_GIG_ECONOMY" ||
+          (t.pfc === "INCOME_OTHER" && BUSINESS_SALES_DEPOSIT.test(t.description))),
+    ).length,
     gasMonthlyCents: Math.round(
       sum((t) => t.pfc === "TRANSPORTATION_GAS" && t.amountCents > 0) / months,
     ),

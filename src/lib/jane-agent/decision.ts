@@ -199,13 +199,15 @@ export function decisionReply(
   const lines = standing(facts);
   const lead = first(facts);
   const body = advice
-    ? [
-        `Before ${label}, here is where you stand.`,
-        ...lines,
-        lead
-          ? `${lead.say} ${CLOSING[item as CoreSubject] ?? CLOSING.other}`
-          : `Your basics look covered, so putting some toward ${label} is reasonable. ${CLOSING[item as CoreSubject] ?? CLOSING.other}`,
-      ].join(" ")
+    ? intent.why && lead
+      ? `${lead.say} Ask me about ${label} again once that's done.`
+      : [
+          `Before ${label}, here is where you stand.`,
+          ...lines,
+          lead
+            ? `${lead.say} ${CLOSING[item as CoreSubject] ?? CLOSING.other}`
+            : `Your basics look covered, so putting some toward ${label} is reasonable. ${CLOSING[item as CoreSubject] ?? CLOSING.other}`,
+        ].join(" ")
     : [
         `Here is where you stand on the things that matter before ${label}.`,
         ...lines,

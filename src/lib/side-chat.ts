@@ -68,8 +68,11 @@ export function leavesFrame(
 // Messages between the page and the framed chat. Both sides check the origin and the sender.
 export type FrameMessage =
   | { type: "jane:navigate"; href: string }
-  | { type: "jane:panel"; state: PanelState | "sheet" }
+  // Where the panel is, and whether the page beside it is Home (whose hub shows the suggestions).
+  | { type: "jane:panel"; state: PanelState | "sheet"; home?: boolean }
   | { type: "jane:refresh" }
+  // The framed chat is listening: the page tells it where it is.
+  | { type: "jane:ready" }
   | { type: "jane:ask"; text: string };
 
 export function isFrameMessage(data: unknown): data is FrameMessage {
@@ -79,8 +82,12 @@ export function isFrameMessage(data: unknown): data is FrameMessage {
     case "jane:navigate":
       return typeof m.href === "string" && m.href.startsWith("/") && !m.href.startsWith("//");
     case "jane:panel":
-      return m.state === "sheet" || PANEL_STATES.includes(m.state as PanelState);
+      return (
+        (m.state === "sheet" || PANEL_STATES.includes(m.state as PanelState)) &&
+        (m.home === undefined || typeof m.home === "boolean")
+      );
     case "jane:refresh":
+    case "jane:ready":
       return true;
     case "jane:ask":
       return typeof m.text === "string" && m.text.length > 0 && m.text.length <= 300;
