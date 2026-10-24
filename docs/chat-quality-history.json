@@ -9,5 +9,28 @@
     "costCents": 0,
     "firstWordsMs": 15,
     "failed": []
+  },
+  {
+    "date": "2026-10-24",
+    "mode": "rules_only",
+    "promptVersion": "chat-v30",
+    "score": 100,
+    "graded": 354,
+    "skipped": 27,
+    "costCents": 0,
+    "firstWordsMs": 37,
+    "metrics": {
+      "understoodPct": 100,
+      "figuresPct": 100,
+      "followUpsPct": 100,
+      "counts": {
+        "questions": 354,
+        "withFigures": 50,
+        "followUps": 18
+      },
+      "firstWordsMs": 37,
+      "fullAnswerMs": 37
+    },
+    "failed": []
   }
 ]
