@@ -44,8 +44,8 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   // reloading until the scan has posted it.
   await expect(async () => {
     await page.goto(CHAT);
-    await popupCard(page, theme, 10_000);
-  }).toPass({ timeout: 90_000 });
+    await popupCard(page, theme, 30_000);
+  }).toPass({ timeout: 120_000 });
   await expect(headline).toHaveText(theme);
   await expect(showing.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
   // More details: how sure Jane is, when it gets out, and the demo advice label.

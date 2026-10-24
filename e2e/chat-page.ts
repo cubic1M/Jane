@@ -20,6 +20,9 @@ export async function popupCard(page: Page, headline: RegExp, timeout = 30_000) 
   const title = showing.getByRole("heading", { level: 3 });
   await expect(overlay).toBeVisible({ timeout });
   await expect(async () => {
+    // The cards ignore the arrow keys while someone is typing: out of the message box first
+    // (a phone can hold focus there).
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     for (let i = 0; i < 12; i += 1) {
       if (headline.test(((await title.textContent({ timeout: 2_000 })) ?? "").trim())) return;
       await page.keyboard.press("ArrowRight");
