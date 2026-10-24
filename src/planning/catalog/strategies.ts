@@ -254,6 +254,74 @@ export function decide(
       }
       return w;
     }
+    case "eaa": {
+      const pool = ["SPY", "QQQ", "IWM", "VGK", "EWJ", "EEM", "VNQ", "DBC", "GLD", "TLT", "IEF"];
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR + 1)) return null;
+      const r = (x: string) => {
+        const b = m13612u(c(u, "BIL"), t)!;
+        return m13612u(c(u, x), t)! - b;
+      };
+      // Monthly returns over the last 12 months, and their equal-weight average's.
+      const monthly = (x: string) =>
+        Array.from(
+          { length: 12 },
+          (_, k) => c(u, x)[t - k * MONTH] / c(u, x)[t - (k + 1) * MONTH] - 1,
+        );
+      const series = Object.fromEntries(pool.map((x) => [x, monthly(x)]));
+      const index = Array.from(
+        { length: 12 },
+        (_, k) => pool.reduce((a, x) => a + series[x][k], 0) / pool.length,
+      );
+      const corr = (a: number[], b: number[]) => {
+        const ma = a.reduce((s, x) => s + x, 0) / a.length;
+        const mb = b.reduce((s, x) => s + x, 0) / b.length;
+        const cov = a.reduce((s, x, i) => s + (x - ma) * (b[i] - mb), 0);
+        const va = Math.sqrt(a.reduce((s, x) => s + (x - ma) ** 2, 0));
+        const vb = Math.sqrt(b.reduce((s, x) => s + (x - mb) ** 2, 0));
+        return va > 0 && vb > 0 ? cov / (va * vb) : 0;
+      };
+      const positive = pool.filter((x) => r(x) > 0);
+      const cashShare = (pool.length - positive.length) / pool.length;
+      const z = (x: string) => (r(x) * Math.sqrt(Math.max(0, 1 - corr(series[x], index)))) ** p;
+      const picks = top(positive, Math.ceil(1 + Math.sqrt(pool.length)), z).filter((x) => z(x) > 0);
+      const sum = picks.reduce((a, x) => a + z(x), 0);
+      if (picks.length === 0 || sum <= 0) return { SHY: 1 };
+      const w: Weights = {};
+      for (const f of picks) add(w, f, ((1 - cashShare) * z(f)) / sum);
+      if (cashShare > 0) add(w, "SHY", cashShare);
+      return w;
+    }
+    case "kda": {
+      const pool = ["SPY", "VGK", "EWJ", "EEM", "VNQ", "DBC", "GLD", "IEF", "TLT"];
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, YEAR + 1)) return null;
+      const m = (x: string) => m13612w(c(u, x), t)!;
+      const good = ["VWO", "BND"].filter((x) => m(x) > 0).length;
+      const share = good === 2 ? 1 : good === 1 ? 0.5 : 0;
+      const rest = m("IEF") > 0 ? "IEF" : "BIL";
+      if (share === 0) return { [rest]: 1 };
+      const picks = top(pool, p, m);
+      const r21 = returnsBefore(
+        picks.map((x) => c(u, x)),
+        t + 1,
+        21,
+      );
+      const r252 = returnsBefore(
+        picks.map((x) => c(u, x)),
+        t + 1,
+        252,
+      );
+      const vol = r21.map((x) => sd(x));
+      const cov252 = covariance(r252);
+      const s252 = cov252.map((row, i) => Math.sqrt(row[i]));
+      const cov = cov252.map((row, i) =>
+        row.map((v, j) => (v / (s252[i] * s252[j])) * vol[i] * vol[j]),
+      );
+      const mv = minVariance(cov, 1);
+      const w: Weights = {};
+      picks.forEach((f, i) => add(w, f, share * mv[i]));
+      if (share < 1) add(w, rest, 1 - share);
+      return w;
+    }
     case "adaptive_aa": {
       if (!isMonthEnd(u, t) || !has(u, TEN, t, 251)) return null;
       const picks = top([...TEN], p, (x) => ret(c(u, x), t, 6 * MONTH)!);

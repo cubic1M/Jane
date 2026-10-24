@@ -120,7 +120,23 @@ Also tested, separately and at Very high only: the five day-trading rules on 5-m
 - **Funds:** SPY, EFA, HYG, LQD, VNQ, REM, GLD, TLT, BIL
 - **At each level:** a whole portfolio, blended with bills to the level's volatility
 
+### Elastic asset allocation (EAA) (`eaa`)
+
+- **Source:** [Keller & Butler, A Century of Generalized Momentum: From Flexible (FAA) to Elastic Asset Allocation (EAA) (2014)](https://www.cxoadvisory.com/momentum-investing/long-run-test-of-a-tactical-tractable-mpt)
+- **Rules:** For SPY, QQQ, IWM, VGK, EWJ, EEM, VNQ, DBC, GLD, TLT and IEF: R is the average of the 1, 3, 6 and 12-month returns over bills, C the 12-month correlation with their equal-weight average. Each month, of those with R above 0, the top 1 + √11 by z = (R · √(1 − C))^S, weighted by z; the share of funds with R at or below 0 goes to short Treasuries (SHY).
+- **Setting:** selection aggressiveness (S): 2
+- **Funds:** SPY, QQQ, IWM, VGK, EWJ, EEM, VNQ, DBC, GLD, TLT, IEF, SHY, BIL
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
 ## Risk-based allocation
+
+### Kipnis defensive adaptive (KDA) (`kda`)
+
+- **Source:** [Kipnis, Right Now It's KDA... Asset Allocation (QuantStrat TradeR, 2019): DAA's canary with AAA's minimum variance](https://www.r-bloggers.com/2019/01/right-now-its-kdaasset-allocation/)
+- **Rules:** 13612W momentum. The canary VWO and BND sets the risky share: both positive 100%, one 50%, none 0%. The risky share goes to the top 5 of SPY, VGK, EWJ, EEM, VNQ, DBC, GLD, IEF and TLT by momentum, weighted to the least variance (21-day volatility, 252-day correlation); the rest to IEF if its momentum is positive, else bills (BIL). Monthly.
+- **Setting:** how many to hold: 5
+- **Funds:** SPY, VGK, EWJ, EEM, VNQ, DBC, GLD, IEF, TLT, VWO, BND, BIL
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
 
 ### Adaptive asset allocation (`adaptive_aa`)
 

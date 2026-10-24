@@ -295,6 +295,50 @@ export const CATALOG = {
     grid: [12],
     tickers: ["SPY", "EFA", "HYG", "LQD", "VNQ", "REM", "GLD", "TLT", "BIL"],
   },
+  eaa: {
+    label: "Elastic asset allocation (EAA)",
+    family: "tactical",
+    kind: "portfolio",
+    source: {
+      title:
+        "Keller & Butler, A Century of Generalized Momentum: From Flexible (FAA) to Elastic Asset Allocation (EAA) (2014)",
+      url: "https://www.cxoadvisory.com/momentum-investing/long-run-test-of-a-tactical-tractable-mpt",
+    },
+    rules:
+      "For SPY, QQQ, IWM, VGK, EWJ, EEM, VNQ, DBC, GLD, TLT and IEF: R is the average of the 1, 3, 6 and 12-month returns over bills, C the 12-month correlation with their equal-weight average. Each month, of those with R above 0, the top 1 + √11 by z = (R · √(1 − C))^S, weighted by z; the share of funds with R at or below 0 goes to short Treasuries (SHY).",
+    param: "selection aggressiveness (S)",
+    grid: [2],
+    tickers: [
+      "SPY",
+      "QQQ",
+      "IWM",
+      "VGK",
+      "EWJ",
+      "EEM",
+      "VNQ",
+      "DBC",
+      "GLD",
+      "TLT",
+      "IEF",
+      "SHY",
+      "BIL",
+    ],
+  },
+  kda: {
+    label: "Kipnis defensive adaptive (KDA)",
+    family: "risk",
+    kind: "portfolio",
+    source: {
+      title:
+        "Kipnis, Right Now It's KDA... Asset Allocation (QuantStrat TradeR, 2019): DAA's canary with AAA's minimum variance",
+      url: "https://www.r-bloggers.com/2019/01/right-now-its-kdaasset-allocation/",
+    },
+    rules:
+      "13612W momentum. The canary VWO and BND sets the risky share: both positive 100%, one 50%, none 0%. The risky share goes to the top 5 of SPY, VGK, EWJ, EEM, VNQ, DBC, GLD, IEF and TLT by momentum, weighted to the least variance (21-day volatility, 252-day correlation); the rest to IEF if its momentum is positive, else bills (BIL). Monthly.",
+    param: "how many to hold",
+    grid: [5],
+    tickers: ["SPY", "VGK", "EWJ", "EEM", "VNQ", "DBC", "GLD", "IEF", "TLT", "VWO", "BND", "BIL"],
+  },
   adaptive_aa: {
     label: "Adaptive asset allocation",
     family: "risk",
@@ -693,6 +737,8 @@ export const CATALOG_MIX_FUNDS = {
 export const CATALOG_SLIPPAGE_BPS = 2;
 // Walk-forward: each year from this one is scored with the setting the years before chose.
 export const CATALOG_WALK_FROM_YEAR = 2020;
+// Several start years: the walk-forward must also beat the mix measured from each of these.
+export const CATALOG_ALSO_FROM_YEARS: readonly number[] = [2021, 2022];
 // The fixed split the founder asked for: chosen on the years to the end of 2021, scored after.
 export const CATALOG_TRAIN_END = "2021-12-31";
 // Recommendable only with a deflated Sharpe ratio (Bailey & López de Prado) of the excess over

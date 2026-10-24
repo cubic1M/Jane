@@ -1,6 +1,7 @@
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import {
   CATALOG,
+  CATALOG_ALSO_FROM_YEARS,
   CATALOG_MIN_DSR,
   CATALOG_TRAIN_END,
   CATALOG_WALK_FROM_YEAR,
@@ -28,6 +29,7 @@ export function resultsMarkdown(
     "",
     "- **Walk-forward:** each year from " +
       `${CATALOG_WALK_FROM_YEAR} is scored with the setting (and, for whole portfolios, the blend with bills that matches the level's volatility) chosen by Sortino on the years before it.`,
+    `- **Several start years:** the walk-forward must also beat the mix measured from ${CATALOG_ALSO_FROM_YEARS.join(" and ")}.`,
     `- **Fixed split:** chosen on the years to ${CATALOG_TRAIN_END}, scored from ${Number(CATALOG_TRAIN_END.slice(0, 4)) + 1}.`,
     `- **The haircut:** ${meta.trials} trials were tested (every strategy at every setting). The deflated Sharpe ratio (Bailey & López de Prado, 2014) of each walk-forward's daily excess over the level's mix, against the best Sharpe ratio that many trials would show by luck, is the chance its edge is real.`,
     `- **Recommendable** only with that chance at least ${Math.round(CATALOG_MIN_DSR * 100)}%, more return for its risk than the mix both since ${CATALOG_WALK_FROM_YEAR} and from 2022, and no riskier than the level's budget or its own mix.`,

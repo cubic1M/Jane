@@ -1,6 +1,7 @@
 import { RISK_LEVELS, TARGET_MIXES, type RiskLevel } from "@/config/investing";
 import {
   CATALOG,
+  CATALOG_ALSO_FROM_YEARS,
   CATALOG_IDS,
   CATALOG_MIN_DSR,
   CATALOG_MIX_FUNDS,
@@ -236,6 +237,8 @@ export type CatalogResult = {
   mixLater: CatalogMetrics | null;
   fixedParam: number | null;
   turnover: number;
+  // The later start years from which the walk-forward still beat the mix (Sortino).
+  holdsFrom: number[];
   // The walk-forward's excess over the mix: its yearly Sharpe ratio, and the deflated Sharpe
   // ratio after the haircut for every trial tested.
   excessSharpe: number;
@@ -369,6 +372,15 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
       if (w && e.mixWalk && w.vol > Math.max(budget.volCap, e.mixWalk.vol) + CATALOG_RISK_SLACK)
         reasons.push(`more volatile (${pct(w.vol)}) than ${RISK_LEVELS[level].label} allows`);
       if (excessSharpe <= 0) reasons.push("no more return than the mix, only less risk");
+      const holdsFrom = CATALOG_ALSO_FROM_YEARS.filter((y) => {
+        const i0 = indexOfDate(u, `${y}-01-01`);
+        const a = metricsOver(u, e.walk, i0, u.dates.length - 1);
+        const b = metricsOver(u, mix, i0, u.dates.length - 1);
+        return a !== null && b !== null && a.sortino > b.sortino;
+      });
+      const misses = CATALOG_ALSO_FROM_YEARS.filter((y) => !holdsFrom.includes(y));
+      if (w && misses.length > 0)
+        reasons.push(`not ahead of the mix measured from ${misses.join(" or ")}`);
       const beforeHaircut = reasons.length;
       if (dsr < CATALOG_MIN_DSR)
         reasons.push(
@@ -391,6 +403,7 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
         mixLater: e.mixLater,
         fixedParam: e.fixedParam,
         turnover: e.turnover,
+        holdsFrom,
         excessSharpe,
         dsr,
         recommendable: reasons.length === 0,
