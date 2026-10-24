@@ -792,10 +792,11 @@ export const PEOPLE: readonly Person[] = [
       "life_checklist",
     ],
     firstQuestion: "business_structure",
-    // Mid 40s, the shop's profits to grow for retirement.
+    // Mid 40s, the shop's profits to grow for retirement 20 years off. With the shop's uneven
+    // income that is the practice portfolio's level 4, as its demo bank runs it.
     investor: {
       age: 45,
-      horizon: "10_to_20",
+      horizon: "over_20",
       dropReaction: "fine",
       goals: ["retirement", "growth"],
     },
