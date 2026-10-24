@@ -1,3 +1,4 @@
+import { cache } from "react";
 import {
   MAX_SECTOR_CAP_CENTS,
   SECTORS,
@@ -55,6 +56,21 @@ export async function sectorAutopilots(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<SectorAutopilot[]> {
+  return client === defaultClient
+    ? sectorAutopilotsOnce(userId, monthStart(now).toISOString())
+    : sectorAutopilotsFrom(userId, client, monthStart(now));
+}
+
+// Read once per server render (React's cache): every area's "what Jane does by herself" asks.
+const sectorAutopilotsOnce = cache((userId: string, month: string) =>
+  sectorAutopilotsFrom(userId, defaultClient, new Date(month)),
+);
+
+async function sectorAutopilotsFrom(
+  userId: string,
+  client: PrismaClient,
+  since: Date,
+): Promise<SectorAutopilot[]> {
   const db = scopedFor(userId, client);
   const [global, rows, used] = await Promise.all([
     globalLevel(userId, client),
@@ -63,7 +79,7 @@ export async function sectorAutopilots(
     }),
     db.autopilotActs.groupBy({
       by: ["sector"],
-      where: { createdAt: { gte: monthStart(now) } },
+      where: { createdAt: { gte: since } },
       _sum: { cents: true },
     }),
   ]);

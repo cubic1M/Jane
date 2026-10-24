@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { expectedFor, loadTaught, missingRefundAlerts } from "@/lib/unusual";
 import {
   COUNT_ONLY_WHEN_APPROVED,
@@ -246,8 +247,16 @@ export async function loadDetectionInput(
   { client = defaultClient, now = new Date() }: Pick<Options, "client" | "now"> = {},
 ): Promise<DetectionInput> {
   // The person's own day (src/lib/today.ts): what's due today is due on their calendar.
-  return loadInput(scopedFor(userId, client), await todayOf(userId, { client, now }), client);
+  const asOf = await todayOf(userId, { client, now });
+  if (client !== defaultClient) return loadInput(scopedFor(userId, client), asOf, client);
+  // Each caller gets its own copy of the top level: some set subscriptionMerchantKeys on it.
+  return { ...(await inputOnce(userId, asOf)) };
 }
+
+// Loaded once per server render and day (React's cache): a page's parts each ask for it.
+const inputOnce = cache((userId: string, asOf: string) =>
+  loadInput(scopedFor(userId, defaultClient), asOf, defaultClient),
+);
 
 export type DetectionSummary = {
   counts: Record<FindingType, number>;

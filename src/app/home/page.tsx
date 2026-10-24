@@ -67,7 +67,24 @@ function NeedsYou({
   );
 }
 
-async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
+// What the home tree reads beyond the tiles, started with the page so it doesn't wait for them.
+const loadTreeData = (userId: string) =>
+  Promise.all([
+    loadInsuranceArea(userId),
+    scopedFor(userId).suggestions.findMany({ select: { key: true } }),
+    adviceMode(userId),
+  ]);
+type TreeData = Awaited<ReturnType<typeof loadTreeData>>;
+
+async function Tiles({
+  userId,
+  home,
+  treeData,
+}: {
+  userId: string;
+  home: HomeSummary;
+  treeData: Promise<TreeData>;
+}) {
   const areas = await loadHubAreas(userId, {
     budgetsOver: home.budgetsOver.length,
     safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
@@ -77,19 +94,15 @@ async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
     <>
       <AreaTiles tiles={tiles} />
       <Suspense fallback={null}>
-        <AreasTree userId={userId} tiles={tiles} />
+        <AreasTree tiles={tiles} treeData={treeData} />
       </Suspense>
     </>
   );
 }
 
 // The home tree: the areas' branches, from the same loaders their pages use.
-async function AreasTree({ userId, tiles }: { userId: string; tiles: AreaTile[] }) {
-  const [insurance, reached, advice] = await Promise.all([
-    loadInsuranceArea(userId),
-    scopedFor(userId).suggestions.findMany({ select: { key: true } }),
-    adviceMode(userId),
-  ]);
+async function AreasTree({ tiles, treeData }: { tiles: AreaTile[]; treeData: Promise<TreeData> }) {
+  const [insurance, reached, advice] = await treeData;
   const maps = buildFeatureMap({
     examples: sampleExamples(),
     reached: new Set(reached.map((r) => r.key)),
@@ -101,10 +114,13 @@ async function AreasTree({ userId, tiles }: { userId: string; tiles: AreaTile[] 
 async function HubContent() {
   await connection();
   const user = await requireUser();
-  const top = await loadHubTop(user.id);
-  if (!top) redirect("/connect");
-  const { home } = top;
-  const [checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+  // Everything the hub reads starts at once (speed pass, 2026-10-24): the tree's data too, which
+  // the tiles' Suspense picks up when it's ready.
+  const treeData = loadTreeData(user.id);
+  // Read later by the tree; a failure shows there, not as an unhandled rejection here.
+  treeData.catch(() => {});
+  const [top, checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+    loadHubTop(user.id),
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
@@ -112,6 +128,8 @@ async function HubContent() {
     stackedSuggestions(user.id),
     timezoneOf(user.id),
   ]);
+  if (!top) redirect("/connect");
+  const { home } = top;
   const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
@@ -131,7 +149,7 @@ async function HubContent() {
       />
 
       <Suspense fallback={<AreaTilesLoading />}>
-        <Tiles userId={user.id} home={home} />
+        <Tiles userId={user.id} home={home} treeData={treeData} />
       </Suspense>
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
