@@ -811,7 +811,12 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
         return {
           facts: `You've met ${money(p.deductibleMetCents)} of your ${money(hy.plan.deductibleCents)} deductible${p.deductibleLeftCents > 0 ? `, ${money(p.deductibleLeftCents)} to go` : ", so your plan is paying its share now"}.`,
           actions: [
-            { id: "open", label: "Your health year", kind: "link", href: "/insurance?focus=health" },
+            {
+              id: "open",
+              label: "Your health year",
+              kind: "link",
+              href: "/insurance?focus=health",
+            },
           ],
         };
       }
