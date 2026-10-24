@@ -60,6 +60,8 @@ import {
   THEMES,
 } from "@/config/themes";
 import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
+import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
+import { CRYPTO_STRATEGIES, CRYPTO_STRATEGY_IDS, CRYPTO_WARNING } from "@/config/crypto-strategies";
 import { MENU_STRATEGIES, MENU_STRATEGY_IDS } from "@/config/strategy-menu";
 import {
   MENU_EVIDENCE,
@@ -283,7 +285,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "strategy_menu",
     description:
-      'The strategy menu for the practice portfolio (demo advice mode only): well-known ways to run it besides Jane\'s pick for the person\'s level (value, momentum and quality tilts, dividend growth, equal weight, sector rotation, all-weather risk parity), each replayed on real prices after costs at the person\'s level, with how it works, its yearly return and worst drop against the level\'s own mix over the same days (the whole replay and the years since 2022), whether it gave more or less return for its risk, and the levels it fits. For "what other strategies are there", "is momentum better" or "how does all-weather work". Always call it a replay of the past, never a forecast, and say plainly when a strategy did worse than the mix.',
+      'The strategy menu for the practice portfolio (demo advice mode only): well-known ways to run it besides Jane\'s pick for the person\'s level (value, momentum and quality tilts, dividend growth, equal weight, sector rotation, all-weather risk parity), and at Very high a small crypto sleeve (bitcoin and ether held, or run by a trend or momentum rule, against holding since 2022, with its warning), each replayed on real prices after costs at the person\'s level, with how it works, its yearly return and worst drop against the level\'s own mix over the same days (the whole replay and the years since 2022), whether it gave more or less return for its risk, and the levels it fits. For "what other strategies are there", "is momentum better" or "how does all-weather work". Always call it a replay of the past, never a forecast, and say plainly when a strategy did worse than the mix.',
     input_schema: noInput,
   },
   // Phase AW: the news themes the practice portfolio watches, and how each did before.
@@ -1131,6 +1133,25 @@ export async function runInvestmentTool(
         source: `${MENU_EVIDENCE_SOURCE}, ${MENU_EVIDENCE_RANGE.from} to ${MENU_EVIDENCE_RANGE.to}, after costs`,
         level: RISK_LEVELS[level].label,
         default: "Jane's pick for the level (the strategy each level follows) stays the default.",
+        crypto: {
+          forLevels: "Very high only, a small sleeve",
+          warning: CRYPTO_WARNING,
+          inThePracticePortfolio: false,
+          source: CRYPTO_EVIDENCE_SOURCE,
+          strategies: CRYPTO_STRATEGY_IDS.map((id) => {
+            const r = CRYPTO_EVIDENCE[id];
+            return {
+              strategy: CRYPTO_STRATEGIES[id].label,
+              how: CRYPTO_STRATEGIES[id].how,
+              setting: r.param,
+              since2022YearlyPercent: pct(r.later.cagr),
+              since2022WorstDropPercent: pct(r.later.maxDrawdown),
+              holdingSince2022YearlyPercent: pct(r.holdLater.cagr),
+              holdingSince2022WorstDropPercent: pct(r.holdLater.maxDrawdown),
+              moreReturnForItsRiskThanHolding: r.beatsHolding,
+            };
+          }),
+        },
         strategies: MENU_STRATEGY_IDS.map((id) => {
           const r = MENU_EVIDENCE[id][level];
           return {

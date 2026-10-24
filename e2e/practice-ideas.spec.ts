@@ -57,11 +57,22 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   await page.goto("/investments");
   // More strategies, each a card with its curve, its numbers against the mix and the levels it fits.
   const menu = page.getByRole("region", { name: "More strategies" });
-  await expect(menu.getByRole("listitem")).toHaveCount(7);
+  await expect(menu.locator('li[data-strategy]:not([data-strategy^="crypto_"])')).toHaveCount(7);
   const value = menu.getByRole("listitem").filter({ hasText: "Value tilt" });
   await expect(value.getByRole("img", { name: /^Value tilt: \$100 became \$\d+/ })).toBeVisible();
   await expect(value.getByText(/a year \(your mix [\d.]+%\), worst drop/)).toBeVisible();
   await expect(value.getByText(/^Fits: /)).toBeVisible();
+  // Crypto, at Very high only, with its warning and each rule against holding.
+  await expect(menu.getByRole("heading", { name: "Crypto (Very high only)" })).toBeVisible();
+  await expect(
+    menu.getByText(/Crypto has lost 70% to 80% of its value more than once/),
+  ).toBeVisible();
+  await expect(
+    menu
+      .getByRole("listitem")
+      .filter({ hasText: "Crypto momentum" })
+      .getByText(/Since 2022: .* \(holding: /),
+  ).toBeVisible();
   // The news themes, each with its past record; only the ones that held up are offered.
   const themes = page.getByRole("region", { name: "News themes" });
   await expect(themes.getByText(/^Defense when a war breaks out: ITA/)).toBeVisible();
