@@ -181,12 +181,30 @@ const FILINGS: readonly Omit<Filing, "id" | "url">[] = [
 
 const inRange = (d: string, from: string, to: string) => d >= from && d <= to;
 
+// The sample market read without waiting, for pure replays (the detector harness's sample
+// people, src/profile/sample-practice.ts): the same closes and headlines the class gives.
+export function sampleBars(ticker: string, from: string, to: string): Bar[] {
+  return barsFor(ticker.toUpperCase()).filter((b) => inRange(b.date, from, to));
+}
+
+export function sampleNews(tickers: readonly string[], from: string, to: string): Headline[] {
+  const wanted = new Set(tickers.map((t) => t.toUpperCase()));
+  return HEADLINES.filter(
+    (h) => inRange(h.date, from, to) && (h.ticker === null || wanted.has(h.ticker)),
+  ).map((h, i) => ({
+    ...h,
+    id: `sample-news-${h.date}-${h.ticker ?? "market"}-${i}`,
+    source: "Sample newswire",
+    url: null,
+  }));
+}
+
 export class SampleMarketData implements MarketData {
   readonly name = "sample";
   readonly simulated = true;
 
   async prices(ticker: string, from: string, to: string): Promise<Bar[]> {
-    return barsFor(ticker.toUpperCase()).filter((b) => inRange(b.date, from, to));
+    return sampleBars(ticker, from, to);
   }
 
   async latest(ticker: string, on: string): Promise<Bar | null> {
@@ -200,15 +218,7 @@ export class SampleMarketData implements MarketData {
   }
 
   async news(tickers: readonly string[], from: string, to: string): Promise<Headline[]> {
-    const wanted = new Set(tickers.map((t) => t.toUpperCase()));
-    return HEADLINES.filter(
-      (h) => inRange(h.date, from, to) && (h.ticker === null || wanted.has(h.ticker)),
-    ).map((h, i) => ({
-      ...h,
-      id: `sample-news-${h.date}-${h.ticker ?? "market"}-${i}`,
-      source: "Sample newswire",
-      url: null,
-    }));
+    return sampleNews(tickers, from, to);
   }
 
   async filings(ticker: string, from: string, to: string): Promise<Filing[]> {

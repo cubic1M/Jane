@@ -1,3 +1,4 @@
+import { isTrialUser } from "@/lib/trial-ids";
 import { randomBytes } from "node:crypto";
 import {
   AGENT_ACTION_TYPES,
@@ -220,7 +221,15 @@ export async function handOff(
     where: { id: action.id },
     data: { agentState: "handed_off", handoffReason: reason, agentNextAt: null, status: "queued" },
   });
-  await note(userId, action.id, `Passed to our team: ${reason}`, options.client);
+  // Spec step 138: the team never works a sample person's request, so it isn't promised.
+  await note(
+    userId,
+    action.id,
+    isTrialUser(userId)
+      ? `This is as far as Jane goes with sample data: ${reason} With your own account, our team would take it from here.`
+      : `Passed to our team: ${reason}`,
+    options.client,
+  );
   await logAudit(
     SYSTEM_ACTOR,
     "agent_handed_off",

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { TURNAROUND_BUSINESS_DAYS } from "@/config/concierge";
 import type { ActionStatus, ActionType } from "@/generated/prisma/client";
-import { ACTION_STATUS_LABELS } from "@/lib/action-status";
+import { TEAM_STATUS_LABELS } from "@/lib/action-status";
 import { isOverdue } from "@/lib/business-days";
 import { ACTION_STATUSES, listQueue, loadWorkload, teamMembers } from "@/lib/concierge";
 import { requireAdmin } from "@/lib/session";
@@ -100,7 +100,7 @@ async function Queue({
             <option value="">Open</option>
             {ACTION_STATUSES.map((s) => (
               <option key={s} value={s}>
-                {ACTION_STATUS_LABELS[s].label}
+                {TEAM_STATUS_LABELS[s]}
               </option>
             ))}
           </select>
@@ -149,7 +149,7 @@ async function Queue({
                 >
                   <span className="flex flex-wrap justify-between gap-2">
                     <span className="font-semibold">{action.title}</span>
-                    <span className="text-sm">{ACTION_STATUS_LABELS[action.status].label}</span>
+                    <span className="text-sm">{TEAM_STATUS_LABELS[action.status]}</span>
                   </span>
                   <span className="text-sm text-zinc-600 dark:text-zinc-400">
                     {label(action.type)} · {action.user.email} · queued{" "}

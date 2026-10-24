@@ -13,6 +13,8 @@ import { loadHubAreas } from "@/lib/hub/load";
 import { tilesView } from "@/lib/hub/view";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { practiceIdeasView } from "@/lib/practice/ideas-view";
+import { inputFor } from "@/profile/sample";
+import { samplePracticeIdeas } from "@/profile/sample-practice";
 import { isTrialUser, startTrial } from "@/lib/trial";
 import { syncItem } from "./sync";
 
@@ -83,6 +85,18 @@ describe.runIf(url)(
         );
         expect(chat.positions.length).toBeGreaterThan(0);
         expect(chat.strategyToday?.strategy).toBeTruthy();
+        // The ideas waiting are the ones the detector harness replays for them (same settings,
+        // same days, the same scan). The two kinds that read the drop they said they could take
+        // need their investor profile, so they count only once it is there.
+        const profiled = (await client.investorProfile.count({ where: { userId } })) > 0;
+        const needsProfile = (k: string) =>
+          !profiled && (k === "risk_mismatch" || k === "max_drop_near");
+        const harness = samplePracticeIdeas(id, { ...inputFor(id), today: "2026-10-18" })
+          .map((i) => i.kind)
+          .filter((k) => !needsProfile(k));
+        expect([...new Set(view.ideas.map((i) => i.kind))].sort()).toEqual(
+          [...new Set(harness)].sort(),
+        );
       },
     );
   },

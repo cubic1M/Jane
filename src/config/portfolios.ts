@@ -85,7 +85,7 @@ export const PRACTICE_MONTHLY_ADD_CENTS = 50_000;
 // A sample person's practice portfolio starts by itself at their first scan, this many days
 // back, and those days are replayed (src/lib/practice/demo-start.ts), so there are trades, ideas
 // and a strategy to look at from the first screen. Real people start theirs themselves.
-export const DEMO_PRACTICE_REPLAY_DAYS = 28;
+export const DEMO_PRACTICE_REPLAY_DAYS = 42;
 
 // Autopilot for the practice portfolio (spec step 291). Hard limits: nothing here can be turned
 // up by the person or by a card; they live in code review. No leverage, no options and no

@@ -29,14 +29,13 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
 
   // A sample person's practice portfolio starts by itself during the first scan, a few weeks
   // back, with those days replayed: no start button to find.
+  // The portfolio starts before the first suggestions; its days are replayed beside the scan's
+  // other work, so the trades come a little after.
   await expect(async () => {
     await page.goto("/investments/practice");
-    await expect(page.getByRole("heading", { name: "Everything Jane did" })).toBeVisible({
-      timeout: 2_000,
-    });
+    await expect(page.getByText(/^Bought /).first()).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 120_000 });
   await expect(page.getByRole("button", { name: "Start with practice money" })).toHaveCount(0);
-  await expect(page.getByText(/^Bought /).first()).toBeVisible();
   const ideas = page.getByRole("region", { name: "Jane's ideas" });
   await expect(ideas.getByText("Strategy today:")).toBeVisible();
   await expect(ideas.getByText("Demo advice: sample data, not financial advice")).toBeVisible();

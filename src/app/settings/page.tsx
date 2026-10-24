@@ -29,14 +29,10 @@ import { connection } from "next/server";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { listSessions } from "@/lib/user-sessions";
 import { SessionsList } from "./sessions-list";
-import {
-  CHAT_NOTIFY_DAILY_LIMIT,
-  CHAT_NOTIFY_KIND_LABELS,
-  CHAT_NOTIFY_KINDS,
-} from "@/config/chat-notify";
-import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
+import { CHAT_NOTIFY_KIND_LABELS, CHAT_NOTIFY_KINDS } from "@/config/chat-notify";
 import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { ChatNotifyForm } from "./chat-notify-form";
+import { messagesFromJaneWords } from "./notify-words";
 import { listPreferences, postingOf } from "@/lib/jane-agent/preferences";
 import { styleOf } from "@/lib/jane-agent/style";
 import { StyleForm } from "./style-form";
@@ -49,7 +45,6 @@ import { SectorsForm } from "./sectors-form";
 import { dayLabel } from "@/lib/day-label";
 
 // "9pm", "8am".
-const clock = (hour: number) => `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
 
 // Spec step 79: the sections sit in four groups, with a menu of them at the top. Each
 // section keeps its id (#banks, #alerts, #autopilot, #rules, #two-factor, ...): other
@@ -270,12 +265,7 @@ async function SettingsContent() {
         {/* Spec step 85: Jane's chat messages as phone notifications or email. */}
         <section id="jane-messages" className={SECTION}>
           <h3 className={H3}>Messages from Jane</h3>
-          <p className={MUTED}>
-            When I post something important in your chat, I can send it to you, with buttons to
-            answer right there. At most {CHAT_NOTIFY_DAILY_LIMIT} a day, never between{" "}
-            {clock(QUIET_START_HOUR)} and {clock(QUIET_END_HOUR)}, and never something you&apos;ve
-            already seen.
-          </p>
+          <p className={MUTED}>{messagesFromJaneWords()}</p>
           <ChatNotifyForm
             channel={chatNotify.channel}
             kinds={CHAT_NOTIFY_KINDS.map((kind) => ({

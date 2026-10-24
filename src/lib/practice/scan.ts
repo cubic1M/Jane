@@ -6,11 +6,7 @@ import {
   type PracticeClass,
 } from "@/config/portfolios";
 import { ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
-import {
-  ideaSlot,
-  PRACTICE_IDEA_DAYS,
-  PRACTICE_IDEA_MIN_CENTS,
-} from "@/config/practice-suggestions";
+import { ideaSlot, PRACTICE_IDEA_DAYS } from "@/config/practice-suggestions";
 import { NEWS_LOOKBACK_DAYS, SCAN_HISTORY_DAYS, type ScanKind } from "@/config/practice-scan";
 import { loadDetectionInput } from "@/detection/engine";
 import { paySchedules } from "@/detection/paydays";
@@ -23,7 +19,7 @@ import { newsKey } from "@/lib/news/store";
 import { rulesSummary } from "@/lib/news/summarize";
 import { mainPaydayDay, scanOpportunities } from "@/planning/practice-opportunities";
 import { firstRefusal, refusedByPreferences } from "@/planning/practice-profile";
-import { flagStatus, monthUse, type ScanHeadline } from "@/planning/practice-scan";
+import { flagStatus, monthUse, notAskedYet, type ScanHeadline } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { scanPreferences } from "./opportunity-prefs";
@@ -232,13 +228,7 @@ export async function scanPractice(
     );
     if (!act && held) continue;
     // One question at a time about the same thing, and none about pocket change.
-    if (
-      status === "suggested" &&
-      (waiting.has(ideaSlot(flag.kind, flag.ticker)) ||
-        (flag.trades.length > 0 && flag.amountCents < PRACTICE_IDEA_MIN_CENTS))
-    ) {
-      continue;
-    }
+    if (status === "suggested" && notAskedYet(flag, waiting)) continue;
     const details = {
       figures: flag.figures,
       caps: flag.caps,
