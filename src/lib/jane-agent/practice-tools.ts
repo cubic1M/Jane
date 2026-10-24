@@ -1,7 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
-import { INTRADAY_SLEEVE_BY_LEVEL } from "@/config/intraday-strategies";
 import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
 import { CATALOG, CATALOG_IDS } from "@/config/strategy-catalog";
 import { GOALS, RISK_LEVELS, type RiskLevel } from "@/config/investing";
@@ -56,7 +55,7 @@ export const PRACTICE_TOOLS: Anthropic.Tool[] = [
   {
     name: CHANGE_PRACTICE_TOOL,
     description:
-      'Prepare a change to the practice portfolio settings as a card the person confirms with a tap; nothing changes until they do. Give only what they asked to change. "Make it less risky" is risk_step lower; "stop the extra moves" is extra_moves off; "avoid oil companies" is avoid_add fossil_fuels; "I need this money in 2030" is goal_date 2030-01-01; "just tell me first" is mode suggest; "use the trend strategy" is strategy trend, "no strategy, just the mix" is strategy mix, "go back to your pick" is strategy level; "use the value tilt" (or momentum, quality, dividend growth, equal weight) is strategy value_tilt (momentum_tilt, quality_tilt, dividend_growth, equal_weight); sector rotation and all-weather are not in the practice portfolio yet, so say so; "trade less often" is rebalance_pace rarely; "only index funds" or "no single stocks" is universe funds_only; "never more than half in one fund" is max_fund_percent 50; "add the crypto trend" (or crypto held, crypto momentum) is crypto_sleeve crypto_trend (crypto_hold, crypto_momentum), only at Very high, and "no crypto" is crypto_sleeve off; "day trade with the opening-range break" (or liquidity sweep, fair value gap, VWAP reversion, volume imbalance) is day_trading opening_range (liquidity_sweep, fair_value_gap, vwap_reversion, volume_imbalance), only at Very high, said with the warning that most day traders lose money and every rule did worse than holding, and "stop day trading" is day_trading off; "follow HAA" (or any tested strategy on the worth-watching or recommendable lists of strategy_menu) is catalog_strategy with its id, and "back to my mix" is catalog_strategy off. After calling it, write one sentence on what will change once they confirm; never say it is done. Demo advice mode only.',
+      'Prepare a change to the practice portfolio settings as a card the person confirms with a tap; nothing changes until they do. Give only what they asked to change. "Make it less risky" is risk_step lower; "stop the extra moves" is extra_moves off; "avoid oil companies" is avoid_add fossil_fuels; "I need this money in 2030" is goal_date 2030-01-01; "just tell me first" is mode suggest; "use the trend strategy" is strategy trend, "no strategy, just the mix" is strategy mix, "go back to your pick" is strategy level; "use the value tilt" (or momentum, quality, dividend growth, equal weight) is strategy value_tilt (momentum_tilt, quality_tilt, dividend_growth, equal_weight); sector rotation and all-weather are not in the practice portfolio yet, so say so; "trade less often" is rebalance_pace rarely; "only index funds" or "no single stocks" is universe funds_only; "never more than half in one fund" is max_fund_percent 50; "add the crypto trend" (or crypto held, crypto momentum) is crypto_sleeve crypto_trend (crypto_hold, crypto_momentum), only at Very high, and "no crypto" is crypto_sleeve off; day trading is not offered (every rule tested lost money after costs), so say so, and "stop day trading" is day_trading off; "follow HAA" (or any tested strategy on the worth-watching or recommendable lists of strategy_menu) is catalog_strategy with its id, and "back to my mix" is catalog_strategy off. After calling it, write one sentence on what will change once they confirm; never say it is done. Demo advice mode only.',
     input_schema: {
       type: "object" as const,
       properties: {
@@ -201,10 +200,12 @@ export async function proposePracticeChange(
       return { ok: false, error: "The crypto sleeve runs at Very high only." };
   }
   if (result.changed.includes("dayTrading") && result.preferences.dayTrading !== "off") {
-    const level =
-      result.preferences.riskLevel ?? (await practiceProfileOf(userId, { client, now })).level;
-    if (INTRADAY_SLEEVE_BY_LEVEL[level] === undefined)
-      return { ok: false, error: "Day trading runs at Very high only." };
+    // Every rule lost money after costs (src/config/intraday-evidence.ts): not offered.
+    return {
+      ok: false,
+      error:
+        "Day trading isn't offered: every day-trading rule we tested lost money after costs, while simply holding SPY made far more.",
+    };
   }
   if (result.changed.includes("catalogStrategy") && result.preferences.catalogStrategy !== "off") {
     const level =

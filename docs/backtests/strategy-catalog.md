@@ -202,6 +202,22 @@ Also tested, separately and at Very high only: the five day-trading rules on 5-m
 - **Funds:** SPY, EFA, EEM, VNQ, DBC, GLD, TLT, IEF, LQD, TIP
 - **At each level:** a whole portfolio, blended with bills to the level's volatility
 
+### Hierarchical risk parity with a trend filter (`hrp_trend`)
+
+- **Source:** [López de Prado (2016) with Faber's 10-month rule (2007)](https://papers.ssrn.com/abstract=2708678)
+- **Rules:** HRP over the ten asset ETFs (252 days), each fund below its 10-month average held as bills (BIL) instead. Monthly.
+- **Setting:** trading days of history: 252
+- **Funds:** SPY, EFA, EEM, VNQ, DBC, GLD, TLT, IEF, LQD, TIP, BIL
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
+### Maximum diversification with a trend filter (`max_div_trend`)
+
+- **Source:** [Choueifaty & Coignard (2008) with Faber's 10-month rule (2007)](https://ideas.repec.org/a/rsk/journ6/2255764.html)
+- **Rules:** Maximum diversification over the ten asset ETFs (252 days, at most 40% in one), each fund below its 10-month average held as bills (BIL) instead. Monthly.
+- **Setting:** trading days of history: 252
+- **Funds:** SPY, EFA, EEM, VNQ, DBC, GLD, TLT, IEF, LQD, TIP, BIL
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
 ## Factor tilts
 
 ### Value (`value`)
@@ -282,6 +298,22 @@ Also tested, separately and at Very high only: the five day-trading rules on 5-m
 - **Rules:** The level's US-stocks share held in a shareholder-yield fund (SYLD): dividends, buybacks and debt paid down.
 - **Setting:** none
 - **Funds:** SYLD
+- **At each level:** replaces the level mix's US-stocks share
+
+### Factor rotation (`factor_rotation`)
+
+- **Source:** [Arnott, Clements, Kalesnik & Linnainmaa, Factor Momentum (2021)](https://alphaarchitect.com/using-momentum-to-find-value/)
+- **Rules:** Each month, the US-stocks share split between the 2 of value (VTV), momentum (MTUM), quality (QUAL), low volatility (USMV) and small companies (IJR) with the best last N months.
+- **Setting:** months of look-back: 6, 12
+- **Funds:** VTV, MTUM, QUAL, USMV, IJR
+- **At each level:** replaces the level mix's US-stocks share
+
+### Low volatility with a trend filter (`low_vol_trend`)
+
+- **Source:** [Baker, Bradley & Wurgler (2011) with Faber's 10-month rule (2007)](https://papers.ssrn.com/abstract=1745108)
+- **Rules:** At each month-end, the US-stocks share in the minimum-volatility fund (USMV) while it closes above its 10-month average, else in bills (BIL).
+- **Setting:** months in the average: 10
+- **Funds:** USMV, BIL
 - **At each level:** replaces the level mix's US-stocks share
 
 ## Trend following

@@ -79,7 +79,9 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
       .getByText(/Since 2022: .* \(holding: /),
   ).toBeVisible();
   // Day trading, at Very high only: the warning first, each rule against holding.
-  await expect(menu.getByRole("heading", { name: "Day trading (Very high only)" })).toBeVisible();
+  await expect(
+    menu.getByRole("heading", { name: "Day trading (tested, not offered)" }),
+  ).toBeVisible();
   await expect(menu.getByText(/Most people who day trade lose money/)).toBeVisible();
   const vwap = menu.getByRole("listitem").filter({ hasText: "VWAP reversion" });
   await expect(
@@ -142,11 +144,8 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   await expect(watch.getByText("Your practice portfolio follows this")).toBeVisible();
   await watch.getByRole("button", { name: "Back to your mix" }).click();
   await expect(watch.getByRole("button", { name: "Use in practice" })).toBeVisible();
-  // Day trading the same way, under its warning.
+  // Day trading is shown as tested and not offered: every rule lost money after costs.
   const orb = menu.getByRole("listitem").filter({ hasText: "Opening-range break" });
-  await orb.getByRole("button", { name: "Use in practice" }).click();
-  await expect(orb.getByText("Your practice portfolio day trades with this")).toBeVisible();
-  await expect(menu.getByText(/Most people who day trade lose money/)).toBeVisible();
-  await orb.getByRole("button", { name: "Stop day trading" }).click();
-  await expect(orb.getByRole("button", { name: "Use in practice" })).toBeVisible();
+  await expect(orb.getByText(/Tested: lost money after costs/)).toBeVisible();
+  await expect(orb.getByRole("button", { name: "Use in practice" })).toHaveCount(0);
 });

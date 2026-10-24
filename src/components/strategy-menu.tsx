@@ -140,24 +140,23 @@ function CryptoMenu({ level, chosen }: { level: RiskLevel; chosen: CryptoStrateg
   );
 }
 
-// Day trading, at Very high only: each rule on the sessions since its setting was chosen, after
-// slippage, against holding the fund, with the plain warning first.
-function IntradayMenu({ level, chosen }: { level: RiskLevel; chosen: IntradayRuleId | null }) {
-  const open = INTRADAY_SLEEVE_BY_LEVEL[level] !== undefined;
+// Day trading, tested and not offered: each rule on the sessions since its setting was chosen,
+// after slippage, against holding the fund, with the plain warning first. Every one lost money.
+function IntradayMenu({ chosen }: { chosen: IntradayRuleId | null }) {
   return (
     <div className="flex flex-col gap-2" aria-labelledby="intraday-menu-heading">
       <h3 id="intraday-menu-heading" className="font-semibold">
-        Day trading (Very high only)
+        Day trading (tested, not offered)
       </h3>
       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
         <span aria-hidden="true">▲ </span>
         {INTRADAY_WARNING}
       </p>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        A small sleeve, {Math.round((INTRADAY_SLEEVE_BY_LEVEL[5] ?? 0) * 100)}% of the portfolio at
-        most, in and out of the S&amp;P 500 fund (SPY) the same day. Each rule&apos;s setting was
+        In and out of the S&amp;P 500 fund (SPY) the same day, as a{" "}
+        {Math.round((INTRADAY_SLEEVE_BY_LEVEL[5] ?? 0) * 100)}% sleeve. Each rule&apos;s setting was
         chosen on 2016 to 2023, then replayed from 2024 on 5-minute bars after slippage, against
-        simply holding.
+        simply holding. Every one lost money, so none is offered.
       </p>
       <ul className="grid gap-2 sm:grid-cols-2">
         {INTRADAY_RULE_IDS.map((id) => {
@@ -186,26 +185,15 @@ function IntradayMenu({ level, chosen }: { level: RiskLevel; chosen: IntradayRul
                   ? "More return for its risk than holding."
                   : "Less return for its risk than holding."}
               </p>
-              {!open ? (
-                <p className="text-xs text-zinc-500">
-                  In the practice portfolio at Very high only.
-                </p>
-              ) : chosen === id ? (
+              <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                <span aria-hidden="true">▲ </span>
+                Tested: lost money after costs. Not offered in practice.
+              </p>
+              {chosen === id && (
                 <form action={usePracticeDayTrading} className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
-                    <span aria-hidden="true">■ </span>
-                    Your practice portfolio day trades with this
-                  </span>
                   <input type="hidden" name="rule" value="off" />
                   <button type="submit" className={SECONDARY}>
                     Stop day trading
-                  </button>
-                </form>
-              ) : (
-                <form action={usePracticeDayTrading}>
-                  <input type="hidden" name="rule" value={id} />
-                  <button type="submit" className={PRIMARY}>
-                    Use in practice
                   </button>
                 </form>
               )}
@@ -414,7 +402,7 @@ export function StrategyMenuSection({
         })}
       </ul>
       <CryptoMenu level={level} chosen={crypto} />
-      <IntradayMenu level={level} chosen={dayTrading} />
+      <IntradayMenu chosen={dayTrading} />
       <CatalogMenu level={level} chosen={catalogChoice} />
       <p className="text-xs text-zinc-500">
         {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}; day trading:{" "}

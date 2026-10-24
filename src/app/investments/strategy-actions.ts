@@ -56,9 +56,10 @@ export async function usePracticeDayTrading(formData: FormData): Promise<void> {
   const rule = String(formData.get("rule") ?? "");
   if (user && Object.hasOwn(DAY_TRADING_CHOICES, rule)) {
     const { level } = await practiceProfileOf(user.id);
-    if (rule === "off" || INTRADAY_SLEEVE_BY_LEVEL[level] !== undefined) {
-      await savePreferences(user.id, { dayTrading: rule }, "page");
-    }
+    // Every rule lost money after costs (src/config/intraday-evidence.ts): turning it off only.
+    if (rule === "off") await savePreferences(user.id, { dayTrading: rule }, "page");
+    void level;
+    void INTRADAY_SLEEVE_BY_LEVEL;
   }
   revalidatePath("/investments");
   redirect("/investments?focus=strategies:menu");

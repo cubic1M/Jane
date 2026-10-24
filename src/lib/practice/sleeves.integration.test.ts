@@ -93,36 +93,8 @@ describe.runIf(url)("the crypto sleeve", () => {
     expect(left.every((p) => p.quantity < 1e-9)).toBe(true);
   });
 
-  it("day trades at Very high: in and out the same day, on the day's own bars", async () => {
+  it("never day trades, even at Very high: every rule lost money after costs", async () => {
     const id = await person(5, "off", "opening_range");
-    let days = 0;
-    for (let d = 19; d <= 30; d += 1) {
-      const now = new Date(`2026-10-${d}T21:30:00Z`);
-      if (now.getUTCDay() === 0 || now.getUTCDay() === 6) continue;
-      const r = await runAutopilot(id, { client, now });
-      if (!r.ran) throw new Error("did not run");
-      const day = r.fills.filter((f) => f.ticker === "SPY");
-      if (day.length > 0) {
-        days += 1;
-        expect(day.map((f) => f.side)).toEqual(["buy", "sell"]);
-        expect(day[0].amountCents).toBeLessThanOrEqual(Math.round(0.05 * 1_100_000));
-      }
-      // Never held overnight.
-      const spy = await client.practicePosition.findFirst({ where: { userId: id, ticker: "SPY" } });
-      expect(spy === null || spy.quantity < 1e-9).toBe(true);
-      // Once a day: a second run that day trades nothing more.
-      const again = await runAutopilot(id, { client, now });
-      expect(again.ran && again.fills.filter((f) => f.ticker === "SPY")).toEqual([]);
-    }
-    expect(days).toBeGreaterThan(0);
-    const trades = await client.practiceTrade.findMany({
-      where: { userId: id, rule: "day_trade" },
-    });
-    expect(trades.find((t) => t.side === "sell")?.reason).toMatch(/Most people who day trade/);
-  });
-
-  it("never day trades below Very high", async () => {
-    const id = await person(3, "off", "opening_range");
     for (const d of [19, 20, 21, 22, 23]) {
       const r = await runAutopilot(id, { client, now: new Date(`2026-10-${d}T21:30:00Z`) });
       expect(r.ran && r.fills.filter((f) => f.ticker === "SPY")).toEqual([]);
@@ -149,6 +121,7 @@ describe.runIf(url)("the crypto sleeve", () => {
       { day_trading: "vwap_reversion" },
       { client, now: MONDAY },
     );
-    expect(day).toEqual({ ok: false, error: "Day trading runs at Very high only." });
+    expect(day.ok).toBe(false);
+    expect(!day.ok && day.error).toMatch(/^Day trading isn't offered/);
   });
 });

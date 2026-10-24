@@ -1,10 +1,8 @@
 import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
 import { CATALOG, type CatalogId } from "@/config/strategy-catalog";
 import { CRYPTO_EVIDENCE } from "@/config/crypto-evidence";
-import { INTRADAY_EVIDENCE } from "@/config/intraday-evidence";
 import {
   INTRADAY_RULES,
-  INTRADAY_SLEEVE_BY_LEVEL,
   INTRADAY_WARNING,
   type IntradayRuleId,
 } from "@/config/intraday-strategies";
@@ -312,19 +310,13 @@ export function profileFor(
     );
   }
 
+  // Day trading isn't offered: every rule lost money after costs (src/config/intraday-evidence.ts).
+  // A choice made before stays saved and waits; the sleeve's code stays for the research.
   const dayRule = prefs.dayTrading === "off" ? null : prefs.dayTrading;
-  const dayShare = INTRADAY_SLEEVE_BY_LEVEL[level] ?? 0;
-  const dayTrade =
-    dayRule && dayShare > 0
-      ? { rule: dayRule, param: INTRADAY_EVIDENCE[dayRule].param, share: dayShare }
-      : null;
-  if (dayTrade) {
+  const dayTrade: PracticeProfile["dayTrade"] = null;
+  if (dayRule) {
     rules.push(
-      `Day trading (${INTRADAY_RULES[dayTrade.rule].label}) with up to ${pct(dayTrade.share)} of the portfolio, kept in cash for it: ${INTRADAY_RULES[dayTrade.rule].how} ${INTRADAY_WARNING}`,
-    );
-  } else if (dayRule) {
-    rules.push(
-      `The day trading you chose (${INTRADAY_RULES[dayRule].label}) waits: it runs at Very high only.`,
+      `The day trading you chose (${INTRADAY_RULES[dayRule].label}) waits: every day-trading rule we tested lost money after costs, so it isn't offered. ${INTRADAY_WARNING}`,
     );
   }
 

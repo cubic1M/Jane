@@ -40,7 +40,6 @@ describe("the strategy menu's buttons", () => {
     expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
       { strategy: "value_tilt" },
       { cryptoSleeve: "crypto_trend" },
-      { dayTrading: "vwap_reversion" },
     ]);
     expect(vi.mocked(redirect)).toHaveBeenCalledWith("/investments?focus=strategies:menu");
   });
