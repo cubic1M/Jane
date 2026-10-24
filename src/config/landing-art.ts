@@ -1,10 +1,11 @@
 import type { DiamondRecipe } from "@/lib/ascii-diamond";
 
-// The landing page's art (founder, 2026-10-24): the picture drawn as ASCII diamonds, on the right
-// of the headline, and the same diamonds as the whole page's background.
+// The landing page's art (founder, 2026-10-24): the Patrick Jane picture drawn as ASCII diamonds
+// with the founder's recipe, on the right of the headline, and the same diamonds as the whole
+// page's background. The page's colours come from the render (src/app/landing.css).
 //
-// To use another picture (the founder's photo): put it in public/landing, set `source` (and
-// `crop`) here, and run `npm run render:landing-art` to remake the poster and the tile.
+// To use another picture: put it in public/landing, set `source` (and `crop`) here, and run
+// `npm run render:landing-art` to remake the poster, the tile and the palette.
 
 // The 21st.dev "Custom ASCII art" recipe the founder chose (src/lib/ascii-diamond.ts draws it).
 export const LANDING_RECIPE: DiamondRecipe = {
@@ -27,8 +28,8 @@ export const LANDING_RECIPE: DiamondRecipe = {
 };
 
 export const LANDING_ART = {
-  // The picture. Until the founder's photo comes, the old landing art's still frame.
-  source: "/landing/jane-ascii-poster.webp",
+  // The picture: the clearest frame (69) of the old Patrick Jane ASCII animation.
+  source: "/landing/patrick-jane.webp",
   // The part of it to use, as shares of its width and height (this one drops the
   // "asciicraft.com" mark in the bottom corner).
   crop: { x: 0, y: 0, width: 1, height: 0.9 },

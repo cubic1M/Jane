@@ -1,20 +1,20 @@
-import { Fraunces } from "next/font/google";
+import { Playfair_Display } from "next/font/google";
 
-// The display face for the landing page's biggest words (founder, 2026-10-24: Aguero Serif).
-// Aguero Serif is a commercial font (Craft Supply Co; the free download is personal use only),
-// so until its licence is bought this is Fraunces, a free soft, high-contrast display serif,
-// with its "soft" axis turned up. globals.css puts "Aguero Serif" first in --font-display.
+// The display face for the landing page's biggest words (founder, 2026-10-24: Agraham, by Hishand
+// Studio). Agraham is a commercial font (the free download is personal use only; a licence is
+// about $6 a style on MyFonts), so until it's bought this is Playfair Display, the closest free
+// high-contrast display serif. globals.css puts "Agraham" first in --font-display.
 //
-// Once the licensed file is at public/fonts/aguero-serif.woff2, replace this with:
+// next/font/local fails the build when its file is missing, so it's wired once the licensed file
+// is at public/fonts/agraham.woff2: replace this with
 //   import localFont from "next/font/local";
 //   export const displayFont = localFont({
-//     src: "../../public/fonts/aguero-serif.woff2",
+//     src: "../../public/fonts/agraham.woff2",
 //     variable: "--font-display-face",
 //     display: "swap",
 //   });
-export const displayFont = Fraunces({
+export const displayFont = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-display-face",
-  axes: ["SOFT", "opsz"],
   display: "swap",
 });

@@ -54,7 +54,7 @@ test("the hero shows the ASCII diamond art beside the headline, as a canvas or i
   expect(a!.x).toBeGreaterThan(h!.x + h!.width - 1);
   // The display face for the headline, the page's dotted diamonds behind everything.
   expect(await heading.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(
-    /Aguero Serif.*Fraunces/,
+    /Agraham.*Playfair Display/,
   );
   await expect(page.getByTestId("diamond-background")).toHaveCSS("background-image", /url\(/);
 

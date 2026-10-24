@@ -66,17 +66,34 @@ async function rendered(width: number, height: number, dpr: number): Promise<Ima
 
 // Lines the background tile's cells up with the art's: the tile starts where the art's grid
 // does, measured from the background's own corner.
-function alignGrid(el: HTMLElement) {
+// The canvas is also nudged onto whole device pixels and sized exactly to its pixels, so the
+// browser never resamples it: its dots stay as crisp as the tile's.
+function alignGrid(el: HTMLElement, out: HTMLCanvasElement, dpr: number, w: number, h: number) {
+  const art = el.getBoundingClientRect();
+  const nudge = (v: number) => (Math.round(v * dpr) - v * dpr) / dpr;
+  const [dx, dy] = [nudge(art.left), nudge(art.top)];
+  out.style.width = `${w / dpr}px`;
+  out.style.height = `${h / dpr}px`;
+  out.style.transform = `translate(${dx}px, ${dy}px)`;
   const layer = document.querySelector<HTMLElement>("[data-diamond-background]");
   if (!layer) return;
   const cell = LANDING_ART.recipe.cellSize;
-  const art = el.getBoundingClientRect();
   const from = layer.getBoundingClientRect();
-  const x = (((art.left - from.left) % cell) + cell) % cell;
-  const y = (((art.top - from.top) % cell) + cell) % cell;
-  layer.style.setProperty("--diamond-grid-x", `${x.toFixed(2)}px`);
-  layer.style.setProperty("--diamond-grid-y", `${y.toFixed(2)}px`);
+  const x = (((art.left + dx - from.left) % cell) + cell) % cell;
+  const y = (((art.top + dy - from.top) % cell) + cell) % cell;
+  layer.style.setProperty("--diamond-grid-x", `${x.toFixed(3)}px`);
+  layer.style.setProperty("--diamond-grid-y", `${y.toFixed(3)}px`);
 }
+
+// The art's edges fade into the page: its dots sit on the same grid as the background's, so the
+// picture comes out of the pattern instead of sitting in a box.
+const EDGE = "transparent, black 14%, black 86%, transparent";
+const FADE: CSSProperties = {
+  maskImage: `linear-gradient(to right, ${EDGE}), linear-gradient(to bottom, ${EDGE})`,
+  maskComposite: "intersect",
+  WebkitMaskImage: `linear-gradient(to right, ${EDGE}), linear-gradient(to bottom, ${EDGE})`,
+  WebkitMaskComposite: "source-in",
+};
 
 export function AsciiDiamond({ className = "" }: { className?: string }) {
   const box = useRef<HTMLDivElement>(null);
@@ -96,7 +113,7 @@ export function AsciiDiamond({ className = "" }: { className?: string }) {
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
       const width = Math.round(cssWidth * dpr);
       const height = Math.round(width * ASPECT);
-      alignGrid(el);
+      alignGrid(el, out, dpr, width, height);
       const key = `${width}x${height}@${dpr}`;
       if (key === last) return;
       last = key;
@@ -131,8 +148,8 @@ export function AsciiDiamond({ className = "" }: { className?: string }) {
       aria-hidden="true"
       data-testid="landing-art"
       data-rendered={drawn ? "canvas" : "poster"}
-      className={`diamond-art relative w-full ${className}`}
-      style={{ aspectRatio: `${1} / ${ASPECT}` }}
+      className={`relative w-full ${className}`}
+      style={{ aspectRatio: `${1} / ${ASPECT}`, ...FADE }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- pre-rendered pixels, shown as they are */}
       <img
@@ -142,7 +159,7 @@ export function AsciiDiamond({ className = "" }: { className?: string }) {
       />
       <canvas
         ref={canvas}
-        className={`absolute inset-0 size-full transition-opacity duration-200 motion-reduce:transition-none ${drawn ? "opacity-100" : "opacity-0"}`}
+        className={`absolute top-0 left-0 transition-opacity duration-200 motion-reduce:transition-none ${drawn ? "opacity-100" : "opacity-0"}`}
       />
     </div>
   );
@@ -198,7 +215,7 @@ export function DiamondBackground() {
       aria-hidden="true"
       data-testid="diamond-background"
       data-diamond-background=""
-      className="diamond-art pointer-events-none absolute inset-0 -z-10"
+      className="pointer-events-none absolute inset-0 -z-10"
       style={style}
     />
   );

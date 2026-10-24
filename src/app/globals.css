@@ -295,7 +295,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   /* The landing page's headline (src/app/fonts.ts). */
-  --font-display: "Aguero Serif", var(--font-display-face), Georgia, serif;
+  --font-display: "Agraham", var(--font-display-face), Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1139,10 +1139,18 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
   }
 }
 
-/* The landing page's ASCII diamonds (src/components/ascii-diamond.tsx) are drawn light on dark;
-   in light mode they turn dark on light. */
-@media (prefers-color-scheme: light) {
-  .diamond-art {
-    filter: invert(1);
-  }
+/* The landing page (src/app/page.tsx) is the one page in colour: its own palette, sampled from
+   its art (src/app/landing.css, generated), in light and dark mode alike, footer included. */
+.landing {
+  --background: var(--landing-bg);
+  --foreground: var(--landing-mid);
+  background: var(--landing-bg);
+  color: var(--landing-mid);
+}
+body:has(.landing) {
+  background: var(--landing-bg);
+  color: var(--landing-mid);
+}
+body:has(.landing) footer {
+  color: var(--landing-dot);
 }
