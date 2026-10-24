@@ -241,6 +241,9 @@ export type CatalogResult = {
   excessSharpe: number;
   dsr: number;
   recommendable: boolean;
+  // Passed every test but the haircut: beat the mix out of sample, inside the risk budget, but
+  // too likely luck after testing this many strategies. Worth watching, not recommending.
+  watch: boolean;
   why: string;
   // The walk-forward's path, 40 points from 100.
   curve: number[];
@@ -365,6 +368,7 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
         );
       if (w && e.mixWalk && w.vol > Math.max(budget.volCap, e.mixWalk.vol) + CATALOG_RISK_SLACK)
         reasons.push(`more volatile (${pct(w.vol)}) than ${RISK_LEVELS[level].label} allows`);
+      const beforeHaircut = reasons.length;
       if (dsr < CATALOG_MIN_DSR)
         reasons.push(
           `after the haircut for ${trials.length} trials, only ${Math.round(dsr * 100)}% likely to beat the mix (needs ${Math.round(CATALOG_MIN_DSR * 100)}%)`,
@@ -389,6 +393,7 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
         excessSharpe,
         dsr,
         recommendable: reasons.length === 0,
+        watch: beforeHaircut === 0 && reasons.length > 0,
         why:
           reasons.length === 0
             ? "beat the mix after the haircut, inside the risk budget"

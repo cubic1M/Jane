@@ -40,6 +40,7 @@ export function resultsMarkdown(
     const mix = rows.find((r) => r.mixWalk)?.mixWalk;
     const mixLater = rows.find((r) => r.mixLater)?.mixLater;
     const rec = rows.filter((r) => r.recommendable);
+    const watch = rows.filter((r) => r.watch);
     lines.push(
       `## ${RISK_LEVELS[level].label}`,
       "",
@@ -49,11 +50,15 @@ export function resultsMarkdown(
         ? `Recommendable: ${rec.map((r) => CATALOG[r.id].label).join(", ")}.`
         : "Recommendable: none. Nothing beat the mix by enough to survive the haircut for testing this many strategies.",
       "",
+      watch.length > 0
+        ? `Worth watching (beat the mix out of sample, inside the risk budget, but the edge could still be luck): ${watch.map((r) => `${CATALOG[r.id].label} (${Math.round(r.dsr * 100)}%)`).join(", ")}.`
+        : "Worth watching: none.",
+      "",
       "| # | Strategy | Since 2020: a year | Worst drop | Volatility | Sortino | Calmar | Worst year | From 2022: a year | From 2022: Sortino | Turnover | Excess Sharpe | Real edge (DSR) | Verdict |",
       "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
       ...rows.map(
         (r, i) =>
-          `| ${i + 1} | ${CATALOG[r.id].label} | ${pct(r.walk?.cagr)} | ${pct(r.walk?.maxDrawdown)} | ${pct(r.walk?.vol)} | ${num(r.walk?.sortino)} | ${num(r.walk?.calmar)} | ${pct(r.walk?.worstYear)} | ${pct(r.later?.cagr)} | ${num(r.later?.sortino)} | ${num(r.turnover, 1)}× | ${num(r.excessSharpe)} | ${Math.round(r.dsr * 100)}% | ${r.recommendable ? "**recommendable**" : `tested, not recommended: ${r.why}`} |`,
+          `| ${i + 1} | ${CATALOG[r.id].label} | ${pct(r.walk?.cagr)} | ${pct(r.walk?.maxDrawdown)} | ${pct(r.walk?.vol)} | ${num(r.walk?.sortino)} | ${num(r.walk?.calmar)} | ${pct(r.walk?.worstYear)} | ${pct(r.later?.cagr)} | ${num(r.later?.sortino)} | ${num(r.turnover, 1)}× | ${num(r.excessSharpe)} | ${Math.round(r.dsr * 100)}% | ${r.recommendable ? "**recommendable**" : r.watch ? `worth watching: ${r.why}` : `tested, not recommended: ${r.why}`} |`,
       ),
       "",
     );
@@ -71,6 +76,7 @@ type Slim = {
   mixSortino: number;
   dsr: number;
   recommendable: boolean;
+  watch: boolean;
   why: string;
 };
 const r4 = (n: number | undefined) =>
@@ -83,6 +89,7 @@ const slim = (r: CatalogResult): Slim => ({
   mixSortino: r4(r.mixWalk?.sortino),
   dsr: r4(r.dsr),
   recommendable: r.recommendable,
+  watch: r.watch,
   why: r.why,
 });
 
@@ -114,6 +121,7 @@ export type CatalogEvidence = {
   mixSortino: number;
   dsr: number;
   recommendable: boolean;
+  watch: boolean;
   why: string;
 };
 

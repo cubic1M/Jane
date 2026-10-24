@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CATALOG, CATALOG_IDS, catalogTickers } from "@/config/strategy-catalog";
 import type { Bar } from "@/lib/market/types";
 import { catalogMarkdown } from "./catalog-doc";
+import { evidenceModule, resultsMarkdown } from "./report";
 import { alignCatalog, metricsOver, mixReturns, runCatalog, standalone } from "./engine";
 import {
   expectedMaxSharpe,
@@ -163,6 +164,23 @@ describe("the engine", () => {
     expect(results.filter((r) => r.recommendable).length).toBeLessThanOrEqual(results.length / 10);
     const mix = metricsOver(u, mixReturns(u, 3), 1, u.dates.length - 1)!;
     expect(mix.vol).toBeGreaterThan(0);
+  });
+});
+
+describe("the write-up", () => {
+  it("ranks every level, says what is recommendable, worth watching or not, and why", () => {
+    const u = universe();
+    const { results, trials } = runCatalog(u, ["sixty_forty", "faber_gtaa5", "rsi2"]);
+    const meta = { source: "made-up closes", from: u.dates[0], to: u.dates.at(-1)!, trials };
+    const md = resultsMarkdown(results, meta);
+    for (const level of ["Very low", "Low", "Medium", "High", "Very high"])
+      expect(md).toContain(`## ${level}`);
+    expect(md).toMatch(/Recommendable: /);
+    expect(md).toMatch(/Worth watching/);
+    expect(md).toMatch(/after the haircut for 4 trials/);
+    const ev = evidenceModule(results, meta);
+    expect(ev).toContain("export const CATALOG_EVIDENCE");
+    expect(ev).toContain("faber_gtaa5:");
   });
 });
 
