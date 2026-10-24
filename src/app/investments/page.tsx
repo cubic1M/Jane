@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
 import { LevelStrategiesSection } from "@/components/level-strategies";
 import { NewsThemesSection } from "@/components/news-themes";
+import { StrategyMenuSection } from "@/components/strategy-menu";
 import { PracticeIdeasSummary } from "@/components/practice-ideas-summary";
 import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
@@ -104,6 +105,12 @@ async function LevelStrategies({ userId }: { userId: string }) {
 async function PracticeIdeas({ userId }: { userId: string }) {
   const started = await scopedFor(userId).practicePortfolios.findFirst({ select: { id: true } });
   return started ? <PracticeIdeasSummary view={await practiceIdeasView(userId)} /> : null;
+}
+
+// More strategies, at the person's own level.
+async function StrategyMenu({ userId }: { userId: string }) {
+  const profile = await practiceProfileOf(userId);
+  return <StrategyMenuSection level={profile.level} />;
 }
 
 async function RuleReplays({ userId }: { userId: string }) {
@@ -521,6 +528,7 @@ async function InvestmentsContent() {
       {backtests.advice && <BacktestsSection backtests={backtests.backtests} />}
       {backtests.advice && <PracticeIdeas userId={user.id} />}
       {backtests.advice && <LevelStrategies userId={user.id} />}
+      {backtests.advice && <StrategyMenu userId={user.id} />}
       {backtests.advice && <NewsThemesSection />}
       {backtests.advice && (
         <Suspense

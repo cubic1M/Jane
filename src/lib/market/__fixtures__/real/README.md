@@ -19,5 +19,9 @@ on real history with no network call. Data only: nothing here is code, and the a
 - `themes.csv` (same source and shape, downloaded 2026-10-24, 2016-01-04 to 2026-10-21): the funds
   the news themes point to (`THEMES` in `src/config/themes.ts`) not already above: XLE, USO, ITA,
   SMH. Used to backtest each theme on its past events (`src/planning/themes.ts`).
+- `menu.csv` (same source and shape, downloaded 2026-10-24, 2016-01-04 to 2026-10-21): the funds
+  the strategy menu uses (`MENU_STRATEGIES` in `src/config/strategy-menu.ts`) not already above:
+  VTV, MTUM, QUAL, VIG, RSP (factor, dividend and equal-weight US stocks), XLB, XLF, XLI, XLK, XLP,
+  XLU, XLV, XLY (the sector funds besides XLE), DBC (commodities).
 - Not refreshed automatically. To refresh, fetch the same series and rewrite the file in the
   same shape; record the new range and date here and in `docs/backtests/log.md`.
