@@ -20,7 +20,8 @@ export function EmailForm({
     <form action={action} className="flex flex-col gap-4">
       <label className="flex items-center gap-3">
         <input type="checkbox" name="digest" defaultChecked={digestEnabled} className="h-5 w-5" />
-        Send me a weekly email on Monday with what we saved and what needs me
+        Send me a weekly email on Monday with what we saved and what needs me, and the monthly money
+        report
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Your timezone

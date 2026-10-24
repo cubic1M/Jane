@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-// Reached from an email's unsubscribe link (the weekly digest, or with what=alerts, alert
-// emails); works without signing in. The change only
+// Reached from an email's unsubscribe link (the weekly digest and the monthly report, which
+// share one setting, or with what=alerts, alert emails); works without signing in. The change only
 // happens on the button press, so mail scanners that open links don't unsubscribe anyone.
 
 async function Content({
@@ -23,7 +23,7 @@ async function Content({
             ? "Jane won't email you its messages anymore. They're always in your chat."
             : alerts
               ? "We won't email you alerts anymore. They still show on your alerts page."
-              : "We won't send you the weekly email anymore."}{" "}
+              : "We won't send you the weekly email or the monthly money report anymore."}{" "}
           You can turn it back on in{" "}
           <Link href="/settings" className="font-medium text-emerald-700 hover:underline">
             settings
@@ -39,7 +39,11 @@ async function Content({
   return (
     <>
       <h1 className="text-3xl font-semibold tracking-tight">
-        {chat ? "Stop Jane's emails?" : alerts ? "Stop alert emails?" : "Stop the weekly email?"}
+        {chat
+          ? "Stop Jane's emails?"
+          : alerts
+            ? "Stop alert emails?"
+            : "Stop the weekly email and the monthly report?"}
       </h1>
       <form
         method="post"
