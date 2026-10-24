@@ -25,6 +25,9 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
+import { netWorthEvents } from "@/lib/hub/net-worth-events";
+import { netWorthHistory } from "@/lib/hub/net-worth-history";
+import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
 import { stackedSuggestions } from "@/lib/jane-agent/messages";
@@ -115,15 +118,21 @@ async function HubContent() {
   const top = await loadHubTop(user.id);
   if (!top) redirect("/connect");
   const { home } = top;
-  const [checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+  const [checklist, autopilot, books, stackedRows, zone, line] = await Promise.all([
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
     // The day's suggestions still waiting, as the chat shows them.
     stackedSuggestions(user.id),
     timezoneOf(user.id),
+    // Net worth every day since the first day with Jane, ending at the hub's own figure.
+    netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0),
   ]);
   const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
+  // What moved it: the chart's events, from its first day.
+  const events = line[0]
+    ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
+    : [];
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
@@ -134,7 +143,11 @@ async function HubContent() {
       <BooksNotice books={books} />
       <h1 className="sr-only">Home</h1>
 
-      <HeroRow hero={heroView(top.hero)} planItems={home.plan.items} />
+      <HeroRow
+        hero={heroView(top.hero)}
+        planItems={home.plan.items}
+        chart={<NetWorthChart points={line} events={events} />}
+      />
 
       {/* Under the hero, before anything else: everything Jane does, as one tree. */}
       <Suspense fallback={<div className="h-[480px] sm:h-[600px]" aria-hidden="true" />}>
