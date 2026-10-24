@@ -151,6 +151,19 @@ export const CRYPTO_SLEEVE_CHOICES = {
 } as const;
 export type CryptoSleeveChoice = keyof typeof CRYPTO_SLEEVE_CHOICES;
 
+// The day-trading sleeve (src/config/intraday-strategies.ts): off, or one of the intraday rules,
+// in and out of the fund the same day. Very high only (INTRADAY_SLEEVE_BY_LEVEL); most day
+// trading loses money, and every rule here did worse than holding.
+export const DAY_TRADING_CHOICES = {
+  off: { label: "Off" },
+  opening_range: { label: "Opening-range break" },
+  liquidity_sweep: { label: "Liquidity sweep" },
+  fair_value_gap: { label: "Fair value gap" },
+  vwap_reversion: { label: "VWAP reversion" },
+  volume_imbalance: { label: "Volume imbalance" },
+} as const;
+export type DayTradingChoice = keyof typeof DAY_TRADING_CHOICES;
+
 // How far a kind may drift from its target before the autopilot rebalances: the person's pace.
 // Normal is the autopilot's own band (AUTOPILOT_LIMITS.rebalanceBand). Rarely means fewer trades
 // and more drift between them. FOR REVIEW.
@@ -222,6 +235,7 @@ export const PREFERENCE_DEFAULTS = {
   universe: "funds_and_stocks" as Universe,
   maxFundPercent: null as number | null,
   cryptoSleeve: "off" as CryptoSleeveChoice,
+  dayTrading: "off" as DayTradingChoice,
 };
 
 // The level when nothing else says one (no choice, no portfolio, no questionnaire): Medium.

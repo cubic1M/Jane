@@ -102,6 +102,9 @@ describe("practice preferences", () => {
     expect(r.ok && r.preferences.cryptoSleeve).toBe("crypto_trend");
     expect(r.ok && r.changed).toEqual(["cryptoSleeve"]);
     expect(applyPatch(base(), { cryptoSleeve: "dogecoin" }, TODAY).ok).toBe(false);
+    const d = applyPatch(base(), { dayTrading: "vwap_reversion" }, TODAY);
+    expect(d.ok && d.preferences.dayTrading).toBe("vwap_reversion");
+    expect(applyPatch(base(), { dayTrading: "scalping" }, TODAY).ok).toBe(false);
   });
 
   it("an unchanged value isn't a change", () => {
@@ -127,6 +130,7 @@ describe("practice preferences", () => {
       universe: "everything",
       maxFundPercent: 95,
       cryptoSleeve: "dogecoin",
+      dayTrading: "scalping",
     });
     expect(p).toMatchObject({
       riskLevel: null,
@@ -137,6 +141,7 @@ describe("practice preferences", () => {
       mode: "act",
       strategy: "level",
       cryptoSleeve: "off",
+      dayTrading: "off",
       rebalancePace: "normal",
       universe: "funds_and_stocks",
       maxFundPercent: null,
@@ -249,6 +254,7 @@ describe("the settings page's form", () => {
       maxFundPercent: 50,
       // Not on the form unless shown (Very high): left as it was.
       cryptoSleeve: "off",
+      dayTrading: "off",
     });
     expect(parsePreferenceForm(form({ ...full, cryptoSleeve: "crypto_hold" })).cryptoSleeve).toBe(
       "crypto_hold",

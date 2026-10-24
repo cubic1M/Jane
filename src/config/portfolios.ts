@@ -1,3 +1,4 @@
+import { INTRADAY_TICKER } from "@/config/intraday-strategies";
 import { TARGET_MIXES, type RiskLevel } from "@/config/investing";
 import { THEMES } from "@/config/themes";
 
@@ -104,10 +105,13 @@ export const PRACTICE_UNIVERSE: ReadonlySet<string> = new Set([
 // whose every ticker the scans and the replays price each day.
 export const CRYPTO_PRACTICE_TICKERS = { BTC: "BTCUSD", ETH: "ETHUSD" } as const;
 export const CRYPTO_TICKERS: readonly string[] = Object.values(CRYPTO_PRACTICE_TICKERS);
+// The day-trading sleeve's fund (Very high only): bought and sold the same day, never held.
+export const DAY_TRADE_TICKER = INTRADAY_TICKER;
 // Everything the practice ledger may hold.
 export const LEDGER_UNIVERSE: ReadonlySet<string> = new Set([
   ...PRACTICE_UNIVERSE,
   ...CRYPTO_TICKERS,
+  DAY_TRADE_TICKER,
 ]);
 
 // Practice money a new portfolio starts with: a stated sample amount, never linked to anything.

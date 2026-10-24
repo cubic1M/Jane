@@ -1,4 +1,11 @@
 import { CRYPTO_EVIDENCE } from "@/config/crypto-evidence";
+import { INTRADAY_EVIDENCE } from "@/config/intraday-evidence";
+import {
+  INTRADAY_RULES,
+  INTRADAY_SLEEVE_BY_LEVEL,
+  INTRADAY_WARNING,
+  type IntradayRuleId,
+} from "@/config/intraday-strategies";
 import {
   CRYPTO_SLEEVE_BY_LEVEL,
   CRYPTO_STRATEGIES,
@@ -81,6 +88,9 @@ export type PracticeProfile = {
   // The crypto sleeve the person chose (src/config/crypto-strategies.ts), with its rule's setting
   // from the evidence and the most of the portfolio it may be: null when off or below Very high.
   crypto: { strategy: CryptoStrategyId; param: number; share: number } | null;
+  // The day-trading sleeve the person chose (src/config/intraday-strategies.ts), the same way:
+  // null when off or below Very high.
+  dayTrade: { rule: IntradayRuleId; param: number; share: number } | null;
   // The fund the person chose for a kind (a strategy menu tilt), set with the strategy below.
   funds?: Partial<Record<PracticeClass, string>>;
   // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
@@ -296,6 +306,22 @@ export function profileFor(
     );
   }
 
+  const dayRule = prefs.dayTrading === "off" ? null : prefs.dayTrading;
+  const dayShare = INTRADAY_SLEEVE_BY_LEVEL[level] ?? 0;
+  const dayTrade =
+    dayRule && dayShare > 0
+      ? { rule: dayRule, param: INTRADAY_EVIDENCE[dayRule].param, share: dayShare }
+      : null;
+  if (dayTrade) {
+    rules.push(
+      `Day trading (${INTRADAY_RULES[dayTrade.rule].label}) with up to ${pct(dayTrade.share)} of the portfolio, kept in cash for it: ${INTRADAY_RULES[dayTrade.rule].how} ${INTRADAY_WARNING}`,
+    );
+  } else if (dayRule) {
+    rules.push(
+      `The day trading you chose (${INTRADAY_RULES[dayRule].label}) waits: it runs at Very high only.`,
+    );
+  }
+
   return {
     level,
     chosenLevel,
@@ -323,6 +349,7 @@ export function profileFor(
     strategyChoice: prefs.strategy,
     universe: prefs.universe,
     crypto,
+    dayTrade,
     rules,
   };
 }

@@ -7,6 +7,7 @@ import { PracticeIdeasSection } from "@/components/practice-ideas";
 import { RISK_LEVELS } from "@/config/investing";
 import {
   CRYPTO_PRACTICE_TICKERS,
+  DAY_TRADE_TICKER,
   HARVEST_PARTNERS,
   MODEL_PORTFOLIOS,
   PRACTICE_ETFS,
@@ -51,6 +52,7 @@ const COINS: Readonly<Record<string, string>> = {
 };
 const fundName = (ticker: string) => {
   if (COINS[ticker]) return `${COINS[ticker]} (crypto sleeve)`;
+  if (ticker === DAY_TRADE_TICKER) return `S&P 500 ETF (${ticker}, day trading)`;
   const fund = [...Object.values(PRACTICE_ETFS), ...Object.values(HARVEST_PARTNERS)].find(
     (e) => e?.ticker === ticker,
   );

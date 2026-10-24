@@ -21,6 +21,9 @@ export type Order = {
   // One sentence for the person, and the name of the rule that allowed it.
   reason: string;
   rule: string;
+  // A day trade's fill at its own price from the day's 5-minute bars (src/planning/day-trade.ts);
+  // every other order fills at the day's close.
+  priceCents?: number;
 };
 
 export type Fill = {
@@ -72,7 +75,9 @@ export class PaperBroker implements Broker {
     const { portfolio, state } = await loadLedger(userId, client);
     const ticker = order.ticker.toUpperCase();
     const asOf = now.toISOString().slice(0, 10);
-    const bar = await marketData().latest(ticker, asOf);
+    const bar = order.priceCents
+      ? { closeCents: order.priceCents }
+      : await marketData().latest(ticker, asOf);
     if (!bar) throw new LedgerError(`No price for ${ticker}.`);
     const applied = apply(
       state,

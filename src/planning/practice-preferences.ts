@@ -4,7 +4,9 @@ import {
   ADD_DAY_RANGE,
   APPETITES,
   CRYPTO_SLEEVE_CHOICES,
+  DAY_TRADING_CHOICES,
   type CryptoSleeveChoice,
+  type DayTradingChoice,
   AUTOPILOT_MODES,
   AVOID_MAX,
   CASH_BUFFER_MAX_CENTS,
@@ -52,6 +54,8 @@ export type PracticePreferences = {
   maxFundPercent: number | null;
   // The crypto sleeve (CRYPTO_SLEEVE_CHOICES), followed at Very high only.
   cryptoSleeve: CryptoSleeveChoice;
+  // The day-trading sleeve (DAY_TRADING_CHOICES), followed at Very high only.
+  dayTrading: DayTradingChoice;
 };
 
 export type PreferenceField = keyof PracticePreferences;
@@ -74,6 +78,7 @@ export const PREFERENCE_FIELDS: readonly PreferenceField[] = [
   "universe",
   "maxFundPercent",
   "cryptoSleeve",
+  "dayTrading",
 ];
 
 export const DEFAULT_PREFERENCES: PracticePreferences = {
@@ -187,6 +192,10 @@ function check(
       return typeof v === "string" && Object.hasOwn(CRYPTO_SLEEVE_CHOICES, v)
         ? { value: v }
         : { error: "Pick off, crypto held, the crypto trend or crypto momentum." };
+    case "dayTrading":
+      return typeof v === "string" && Object.hasOwn(DAY_TRADING_CHOICES, v)
+        ? { value: v }
+        : { error: "Pick off or one of the day-trading rules." };
   }
 }
 
@@ -237,6 +246,7 @@ export function fromRow(row: {
   universe: string;
   maxFundPercent: number | null;
   cryptoSleeve: string;
+  dayTrading: string;
 }): PracticePreferences {
   const d = DEFAULT_PREFERENCES;
   return {
@@ -270,6 +280,9 @@ export function fromRow(row: {
     cryptoSleeve: Object.hasOwn(CRYPTO_SLEEVE_CHOICES, row.cryptoSleeve)
       ? (row.cryptoSleeve as CryptoSleeveChoice)
       : d.cryptoSleeve,
+    dayTrading: Object.hasOwn(DAY_TRADING_CHOICES, row.dayTrading)
+      ? (row.dayTrading as DayTradingChoice)
+      : d.dayTrading,
   };
 }
 
@@ -325,6 +338,8 @@ export function sayPreference(p: PracticePreferences, field: PreferenceField): s
         : `${p.maxFundPercent}%`;
     case "cryptoSleeve":
       return CRYPTO_SLEEVE_CHOICES[p.cryptoSleeve].label;
+    case "dayTrading":
+      return DAY_TRADING_CHOICES[p.dayTrading].label;
   }
 }
 
@@ -345,6 +360,7 @@ export const PREFERENCE_LABELS: Readonly<Record<PreferenceField, string>> = {
   universe: "What Jane may buy",
   maxFundPercent: "Most in one fund",
   cryptoSleeve: "Crypto sleeve (Very high only)",
+  dayTrading: "Day trading (Very high only)",
 };
 
 // What a change does, one line per field: "Risk level: Medium → Low".
@@ -394,5 +410,6 @@ export function parsePreferenceForm(form: FormLike): PreferencePatch {
     maxFundPercent: fund === "" ? null : num(fund),
     // Only when the form has it (the page shows it at Very high).
     ...(form.get("cryptoSleeve") == null ? {} : { cryptoSleeve: text(form.get("cryptoSleeve")) }),
+    ...(form.get("dayTrading") == null ? {} : { dayTrading: text(form.get("dayTrading")) }),
   };
 }

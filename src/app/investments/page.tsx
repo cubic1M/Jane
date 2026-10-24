@@ -119,6 +119,7 @@ async function StrategyMenu({ userId }: { userId: string }) {
       level={profile.level}
       choice={profile.strategyChoice}
       crypto={profile.crypto?.strategy ?? null}
+      dayTrading={profile.dayTrade?.rule ?? null}
     />
   );
 }

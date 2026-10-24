@@ -163,7 +163,8 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
       "Crypto momentum",
     ]);
     expect(out.dayTrading.warning).toMatch(/Most people who day trade lose money/);
-    expect(out.dayTrading.inThePracticePortfolio).toBe(false);
+    expect(out.dayTrading.inThePracticePortfolio).toMatch(/^At Very high, as a sleeve/);
+    expect(out.dayTrading.practicePortfolioRuns).toBe("no day trading");
     expect(out.dayTrading.rules).toHaveLength(5);
     for (const r of out.dayTrading.rules) {
       expect(typeof r.since2024YearlyPercent).toBe("number");

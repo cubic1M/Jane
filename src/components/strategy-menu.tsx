@@ -1,4 +1,8 @@
-import { usePracticeCrypto, usePracticeStrategy } from "@/app/investments/strategy-actions";
+import {
+  usePracticeCrypto,
+  usePracticeDayTrading,
+  usePracticeStrategy,
+} from "@/app/investments/strategy-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
 import {
@@ -14,6 +18,7 @@ import {
   INTRADAY_RULES,
   INTRADAY_SLEEVE_BY_LEVEL,
   INTRADAY_WARNING,
+  type IntradayRuleId,
 } from "@/config/intraday-strategies";
 import { STRATEGY_CHOICES, type StrategyChoice } from "@/config/practice-preferences";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
@@ -129,7 +134,8 @@ function CryptoMenu({ level, chosen }: { level: RiskLevel; chosen: CryptoStrateg
 
 // Day trading, at Very high only: each rule on the sessions since its setting was chosen, after
 // slippage, against holding the fund, with the plain warning first.
-function IntradayMenu() {
+function IntradayMenu({ level, chosen }: { level: RiskLevel; chosen: IntradayRuleId | null }) {
+  const open = INTRADAY_SLEEVE_BY_LEVEL[level] !== undefined;
   return (
     <div className="flex flex-col gap-2" aria-labelledby="intraday-menu-heading">
       <h3 id="intraday-menu-heading" className="font-semibold">
@@ -172,9 +178,34 @@ function IntradayMenu() {
                   ? "More return for its risk than holding."
                   : "Less return for its risk than holding."}
               </p>
-              <p className="text-xs text-zinc-500">
-                Fits: Very high only. Not in the practice portfolio yet.
-              </p>
+              {!open ? (
+                <p className="text-xs text-zinc-500">
+                  In the practice portfolio at Very high only.
+                </p>
+              ) : chosen === id ? (
+                <form action={usePracticeDayTrading} className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-emerald-700">
+                    Your practice portfolio day trades with this
+                  </span>
+                  <input type="hidden" name="rule" value="off" />
+                  <button
+                    type="submit"
+                    className={`${BUTTON} border border-zinc-300 dark:border-zinc-700`}
+                  >
+                    Stop day trading
+                  </button>
+                </form>
+              ) : (
+                <form action={usePracticeDayTrading}>
+                  <input type="hidden" name="rule" value={id} />
+                  <button
+                    type="submit"
+                    className={`${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`}
+                  >
+                    Use in practice
+                  </button>
+                </form>
+              )}
             </li>
           );
         })}
@@ -190,12 +221,15 @@ export function StrategyMenuSection({
   level,
   choice,
   crypto = null,
+  dayTrading = null,
 }: {
   level: RiskLevel;
   // The practice portfolio's strategy now (its settings).
   choice: StrategyChoice;
   // The crypto sleeve it runs (Very high only), or null.
   crypto?: CryptoStrategyId | null;
+  // The day-trading rule it follows (Very high only), or null.
+  dayTrading?: IntradayRuleId | null;
 }) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="strategy-menu-heading">
@@ -273,7 +307,7 @@ export function StrategyMenuSection({
         })}
       </ul>
       <CryptoMenu level={level} chosen={crypto} />
-      <IntradayMenu />
+      <IntradayMenu level={level} chosen={dayTrading} />
       <p className="text-xs text-zinc-500">
         {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}; day trading:{" "}
         {INTRADAY_EVIDENCE_SOURCE}. {STRATEGY_NOT_A_FORECAST} Practice money only.

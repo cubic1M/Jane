@@ -128,4 +128,11 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   await expect(trend.getByText("Your practice portfolio runs this sleeve")).toBeVisible();
   await trend.getByRole("button", { name: "Turn the sleeve off" }).click();
   await expect(trend.getByRole("button", { name: "Use in practice" })).toBeVisible();
+  // Day trading the same way, under its warning.
+  const orb = menu.getByRole("listitem").filter({ hasText: "Opening-range break" });
+  await orb.getByRole("button", { name: "Use in practice" }).click();
+  await expect(orb.getByText("Your practice portfolio day trades with this")).toBeVisible();
+  await expect(menu.getByText(/^Most people who day trade lose money/)).toBeVisible();
+  await orb.getByRole("button", { name: "Stop day trading" }).click();
+  await expect(orb.getByRole("button", { name: "Use in practice" })).toBeVisible();
 });

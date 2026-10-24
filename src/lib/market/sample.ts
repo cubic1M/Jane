@@ -28,6 +28,9 @@ export const SAMPLE_PROFILES: Readonly<Record<string, Profile>> = {
   // and hit hardest by the planted events.
   BTCUSD: { base: 14000, drift: 0.3, vol: 0.055, beta: 0.4, hit: 1.6 },
   ETHUSD: { base: 750, drift: 0.3, vol: 0.07, beta: 0.45, hit: 1.8 },
+  // The day-trading sleeve's fund (src/config/intraday-strategies.ts, Very high only), with its
+  // 5-minute bars made from these closes (./sample-intraday.ts).
+  SPY: { base: 268, drift: 0.09, vol: 0.011, beta: 1, hit: 1 },
   // The strategy menu's tilt funds (src/config/strategy-menu.ts).
   VTV: { base: 120, drift: 0.075, vol: 0.004, beta: 0.95, hit: 0.95 },
   MTUM: { base: 150, drift: 0.1, vol: 0.006, beta: 1.05, hit: 1.05 },
@@ -86,7 +89,7 @@ function unit(key: string): number {
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
-const normal = (key: string) =>
+export const normal = (key: string) =>
   (unit(`${key}:a`) + unit(`${key}:b`) + unit(`${key}:c`) + unit(`${key}:d`) - 2) * Math.sqrt(3);
 
 const DAY_MS = 86_400_000;

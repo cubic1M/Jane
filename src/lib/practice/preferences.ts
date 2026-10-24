@@ -48,6 +48,7 @@ const SELECT = {
   universe: true,
   maxFundPercent: true,
   cryptoSleeve: true,
+  dayTrading: true,
 } as const;
 
 export async function loadPreferences(
@@ -122,6 +123,7 @@ export async function savePreferences(
     universe: p.universe,
     maxFundPercent: p.maxFundPercent,
     cryptoSleeve: p.cryptoSleeve,
+    dayTrading: p.dayTrading,
   };
   const db = scopedFor(userId, client);
   await db.practicePreferences.upsert({

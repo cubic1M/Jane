@@ -1,6 +1,8 @@
 import { CRYPTO_SLEEVE_HISTORY_DAYS } from "@/config/crypto-strategies";
+import { SESSION_CLOSE_MINUTE } from "@/config/intraday-strategies";
 import {
   CRYPTO_TICKERS,
+  DAY_TRADE_TICKER,
   LEDGER_UNIVERSE,
   PRACTICE_UNIVERSE,
   THEME_FUNDS,
@@ -11,15 +13,19 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { marketData } from "@/lib/market";
+import { intradaySession, marketData } from "@/lib/market";
 import {
   monthlyDue,
   planTrades,
+  portfolioValue,
   sellsFirst,
+  withinHard,
   type PlannedTrade,
 } from "@/planning/practice-autopilot";
 import { cryptoSleeveTrades, previousWeekday, sleeveCash } from "@/planning/crypto-sleeve";
-import { refusedByPreferences } from "@/planning/practice-profile";
+import { dayTradeFills, dayTradeReserve, type DayTradeSleeve } from "@/planning/day-trade";
+import { sessionsOf } from "@/planning/intraday";
+import { refusedByPreferences, type PracticeProfile } from "@/planning/practice-profile";
 import { washBlocked } from "@/planning/practice-scan";
 import { themeExits } from "@/planning/themes";
 import { replay, type Entry } from "@/planning/practice-ledger";
@@ -160,6 +166,8 @@ export async function runAutopilot(
         history[t] = (await feed.prices(t, from, before)).map((b) => b.closeCents);
     }
   }
+  // The day-trading sleeve's money stays in cash for it (src/planning/day-trade.ts).
+  const reserve = dayTradeReserve(profile.dayTrade, portfolioValue(state, prices));
   const sleeve = cryptoSleeveTrades({
     sleeve: profile.crypto,
     level: profile.level,
@@ -168,7 +176,7 @@ export async function runAutopilot(
     history,
     today: asOf,
     previous: previousWeekday(asOf),
-    cashCents: state.cashCents - profile.cashBufferCents,
+    cashCents: state.cashCents - profile.cashBufferCents - reserve,
     traded:
       profile.crypto !== null &&
       (await client.practiceTrade.count({
@@ -187,7 +195,7 @@ export async function runAutopilot(
       blocked,
       weights: profile.weights,
       avoid: new Set(profile.avoid),
-      cashBufferCents: profile.cashBufferCents,
+      cashBufferCents: profile.cashBufferCents + reserve,
       limits: profile.limits,
       harvesting: profile.harvestLosses && rulesOnAt(profile.level).has("tax_loss_harvest"),
       funds: profile.funds,
@@ -212,7 +220,58 @@ export async function runAutopilot(
       ),
     );
   }
+  if (profile.dayTrade) {
+    fills.push(
+      ...(await dayTrade(userId, profile.dayTrade, tradesToday + fills.length, profile.limits, {
+        client,
+        now,
+      })),
+    );
+  }
   return { ran: true, deposit, fills, suggested: [] };
+}
+
+// The day's trade for the day-trading sleeve, after the close: the rule on the day's own
+// 5-minute bars, bought and sold at their prices with the slippage in. Once a day, only on a
+// whole session, and only within the day's trade limit.
+async function dayTrade(
+  userId: string,
+  sleeve: DayTradeSleeve,
+  tradesSoFar: number,
+  limits: PracticeProfile["limits"],
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<Fill[]> {
+  const day = now.toISOString().slice(0, 10);
+  const { portfolio, state } = await loadLedger(userId, client);
+  const done = await client.practiceTrade.count({
+    where: {
+      portfolioId: portfolio.id,
+      rule: "day_trade",
+      undone: false,
+      placedAt: { gte: new Date(`${day}T00:00:00Z`) },
+    },
+  });
+  if (done > 0 || tradesSoFar + 2 > withinHard(limits).tradesPerDay) return [];
+  const session = intradaySession();
+  const [today] = sessionsOf(await session(DAY_TRADE_TICKER, day));
+  if (!today || today.bars.at(-1)!.minute < SESSION_CLOSE_MINUTE - 5) return [];
+  const [prior] = sessionsOf(await session(DAY_TRADE_TICKER, previousWeekday(day)));
+  const prices: Record<string, number> = { [DAY_TRADE_TICKER]: today.bars.at(-1)!.c };
+  for (const t of Object.keys(state.positions)) {
+    const bar = await marketData().latest(t, day);
+    if (bar) prices[t] = bar.closeCents;
+  }
+  const planned = dayTradeFills({
+    sleeve,
+    today,
+    prior: prior ?? null,
+    portfolioCents: portfolioValue(state, prices),
+    cashCents: state.cashCents,
+  });
+  const broker = practiceBroker();
+  const out: Fill[] = [];
+  for (const f of planned) out.push(await broker.placeOrder(userId, f, { client, now }));
+  return out;
 }
 
 // Every portfolio, for the daily run (step 292 calls this beside the scan). One person's problem
