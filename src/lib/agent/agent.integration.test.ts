@@ -36,9 +36,17 @@ describe.runIf(url)("the action agent against a real database", () => {
     Promise.resolve(readReplyByRules(reply.body));
 
   // A person with an approved refund for a double charge; returns the action.
-  async function approved(type: "duplicate_charge" | "insurance_reshop" = "duplicate_charge") {
+  async function approved(
+    type: "duplicate_charge" | "insurance_reshop" = "duplicate_charge",
+    { trial = false }: { trial?: boolean } = {},
+  ) {
+    const id = trial ? `trial_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}` : undefined;
     const user = await client.user.create({
-      data: { email: `agent-${crypto.randomUUID()}@example.com`, name: "Alex Rivera" },
+      data: {
+        ...(id ? { id } : {}),
+        email: id ? `${id}@try.jane.invalid` : `agent-${crypto.randomUUID()}@example.com`,
+        name: "Alex Rivera",
+      },
     });
     created.push(user.id);
     const f = findingOfType(type);
@@ -148,6 +156,18 @@ describe.runIf(url)("the action agent against a real database", () => {
     expect(handed.handoffReason).toContain("said no");
     const queue = await listQueue(ADMIN, { type: null, status: null }, { client });
     expect(queue.find((a) => a.id === action.id)?.handoffReason).toContain("said no");
+  });
+
+  it("doesn't promise the team to someone trying Jane, whose requests the team never works", async () => {
+    const { userId, action } = await approved("duplicate_charge", { trial: true });
+    await agentStep(userId, action.id, { client, notify });
+    await reply(action.id, simulatedBody("refused", "request_refund", "Target"));
+    const notes = await client.agentMessage.findMany({ where: { actionId: action.id } });
+    const said = notes.map((n) => n.body).join("\n");
+    expect(said).toMatch(/This is as far as Jane goes with sample data/);
+    expect(said).not.toMatch(/Passed to our team/);
+    const queue = await listQueue(ADMIN, { type: null, status: null }, { client });
+    expect(queue.map((a) => a.id)).not.toContain(action.id);
   });
 
   it("follows up when nobody answers, then hands off", async () => {
