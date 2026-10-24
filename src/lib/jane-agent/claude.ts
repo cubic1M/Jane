@@ -186,6 +186,7 @@ const STATUS: Record<string, string> = {
   connections: "Checking your bank connections…",
   notification_settings: "Checking what I send you…",
   nightly_log: "Looking at last night's checks…",
+  what_jane_did: "Looking at what I did for you…",
   priorities: "Working out what matters most…",
   whole_picture: "Looking across everything…",
   balance_forecast: "Looking at where your balance is heading…",
