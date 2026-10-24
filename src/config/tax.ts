@@ -106,6 +106,9 @@ export const TAX_PROFILE_MIN_PAYCHECKS = 2;
 export const TAX_PROFILE_PAYERS_SHOWN = 2;
 
 // Spending that hints at children, so Jane mentions it when she asks (never assumes).
+// A child counts for the child tax credit while under this age at the end of the year (and
+// as another dependant after); the tax profile's "Children under 17" (src/config/tax-rates.ts).
+export const CHILD_TAX_CREDIT_AGE = 17;
 export const CHILDCARE_HINT_CATEGORIES: readonly PfcDetailed[] = ["GENERAL_SERVICES_CHILDCARE"];
 
 // Payments to government agencies whose name starts with a state's code ("CA DMV …"), so

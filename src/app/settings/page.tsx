@@ -33,6 +33,8 @@ import { CHAT_NOTIFY_KIND_LABELS, CHAT_NOTIFY_KINDS } from "@/config/chat-notify
 import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { ChatNotifyForm } from "./chat-notify-form";
 import { messagesFromJaneWords } from "./notify-words";
+import { LinkButton } from "@/app/connect/link-button";
+import { ITEM_STATUS } from "@/lib/plaid/sync";
 import { listPreferences, postingOf } from "@/lib/jane-agent/preferences";
 import { styleOf } from "@/lib/jane-agent/style";
 import { StyleForm } from "./style-form";
@@ -62,6 +64,8 @@ const GROUP = "flex scroll-mt-8 flex-col gap-8 border-t border-zinc-200 pt-6 dar
 const SECTION = "flex scroll-mt-8 flex-col gap-3";
 const MUTED = "text-zinc-600 dark:text-zinc-400";
 const LINK = "font-medium text-emerald-700 hover:underline";
+const RECONNECT =
+  "inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
 function Group({ id, children }: { id: (typeof GROUPS)[number]["id"]; children: ReactNode }) {
   const label = GROUPS.find((g) => g.id === id)?.label;
@@ -122,6 +126,7 @@ async function SettingsContent() {
       select: {
         id: true,
         institutionName: true,
+        status: true,
         lastSyncedAt: true,
         accounts: { select: { name: true, mask: true } },
       },
@@ -204,6 +209,15 @@ async function SettingsContent() {
                         .map((a) => (a.mask ? `${a.name} ····${a.mask}` : a.name))
                         .join(", ")}
                     </p>
+                    {item.status === ITEM_STATUS.loginRequired && (
+                      // The same Reconnect as /connect: Plaid Link in update mode.
+                      <div className="mt-2 flex flex-col gap-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-950">
+                        <p className="text-sm">
+                          Your bank needs you to sign in again before I can read new transactions.
+                        </p>
+                        <LinkButton itemId={item.id} label="Reconnect" className={RECONNECT} />
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <RefreshForm itemId={item.id} />
