@@ -1,3 +1,4 @@
+import { dayLabel } from "@/lib/day-label";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -86,7 +87,10 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                   Compared on total cost, not the payment: a lower payment over a longer term can
                   cost more. Sample offers from a stand-in lender catalog
-                  {data.refi.checkedOn ? `, checked ${data.refi.checkedOn}` : ""}.
+                  {data.refi.checkedOn
+                    ? `, checked ${dayLabel(data.refi.checkedOn, { year: true })}`
+                    : ""}
+                  .
                 </p>
                 {data.change && (
                   <p role="status">
@@ -107,8 +111,8 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
                 className="flex flex-col gap-2 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900"
               >
                 <p>
-                  {formatCents(c.paidCents)} to {c.name} on {c.startedOn}: looks like{" "}
-                  {c.label.toLowerCase()}. Was it?
+                  {formatCents(c.paidCents)} to {c.name} on {dayLabel(c.startedOn, { year: true })}:
+                  looks like {c.label.toLowerCase()}. Was it?
                 </p>
                 <form action={confirmAddonAction} className="flex flex-wrap items-end gap-2">
                   <input type="hidden" name="key" value={c.key} />

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -20,6 +21,14 @@ export async function adviceMode(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<boolean> {
+  return client === defaultClient ? adviceModeOnce(userId) : adviceModeFrom(userId, client);
+}
+
+// Worked out once per server render (React's cache): a page's parts each ask (speed pass,
+// 2026-10-24: /home asked 81 times).
+const adviceModeOnce = cache((userId: string) => adviceModeFrom(userId, defaultClient));
+
+async function adviceModeFrom(userId: string, client: PrismaClient): Promise<boolean> {
   const db = scopedFor(userId, client);
   const [items, csvAccounts] = await Promise.all([
     db.plaidItems.findMany({ select: { plaidItemId: true } }),
