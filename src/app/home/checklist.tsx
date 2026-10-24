@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ChecklistItem } from "@/lib/checklist";
 import { hideChecklist } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export function FirstWeekChecklist({ items }: { items: ChecklistItem[] }) {
   const done = items.filter((i) => i.done).length;
@@ -42,9 +43,9 @@ export function FirstWeekChecklist({ items }: { items: ChecklistItem[] }) {
         ))}
       </ul>
       <form action={hideChecklist}>
-        <button type="submit" className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
+        <SubmitButton className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
           Hide this for good
-        </button>
+        </SubmitButton>
       </form>
     </section>
   );

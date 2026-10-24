@@ -26,6 +26,7 @@ import { loadPreferences, practiceProfileOf, questionnaireLevel } from "@/lib/pr
 import { requireUser } from "@/lib/session";
 import { PREFERENCE_LABELS, type PreferenceField } from "@/planning/practice-preferences";
 import { savePracticeSettings } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // What the person wants from the practice portfolio (Phase AW, Stage A), in plain words: how much
 // risk, a goal and its date, the monthly practice money, extra moves, what never to buy, loss
@@ -373,9 +374,7 @@ async function Content({
           ))}
         </fieldset>
 
-        <button type="submit" className={`${BUTTON} self-start`}>
-          Save settings
-        </button>
+        <SubmitButton className={`${BUTTON} self-start`}>Save settings</SubmitButton>
       </form>
     </>
   );

@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { markChecked, removeOption } from "./actions";
 import { OptionForm } from "./option-form";
+import { SubmitButton } from "@/components/submit-button";
 
 const KIND_LABEL: Record<string, string> = {
   plan: "Plans from other providers",
@@ -99,21 +100,15 @@ async function Options() {
                         <span className="flex gap-2">
                           <form action={markChecked}>
                             <input type="hidden" name="id" value={o.id} />
-                            <button
-                              type="submit"
-                              className="text-sm font-medium text-emerald-700 hover:underline"
-                            >
+                            <SubmitButton className="text-sm font-medium text-emerald-700 hover:underline">
                               Checked today
-                            </button>
+                            </SubmitButton>
                           </form>
                           <form action={removeOption}>
                             <input type="hidden" name="id" value={o.id} />
-                            <button
-                              type="submit"
-                              className="text-sm font-medium text-red-700 hover:underline"
-                            >
+                            <SubmitButton className="text-sm font-medium text-red-700 hover:underline">
                               Remove
-                            </button>
+                            </SubmitButton>
                           </form>
                         </span>
                       )}

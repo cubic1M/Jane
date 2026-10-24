@@ -9,6 +9,7 @@ import { loadValues } from "@/lib/investments/values";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { saveValues, switchFunds } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Investing by your values (spec step 236, demo advice): leave out fossil fuels, weapons or
 // tobacco, or lean towards a theme, inside each kind of investment so the risk target holds.
@@ -78,9 +79,7 @@ async function Content({
             </label>
           ))}
         </fieldset>
-        <button type="submit" className={`${BUTTON} self-start`}>
-          Save my list
-        </button>
+        <SubmitButton className={`${BUTTON} self-start`}>Save my list</SubmitButton>
       </form>
       {v.advice && v.plan && (
         <section className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
@@ -130,9 +129,7 @@ async function Content({
               <form action={switchFunds} className="flex flex-col gap-2">
                 <input type="hidden" name="key" value={v.plan.key} />
                 <SimulatedBanner />
-                <button type="submit" className={`${BUTTON} self-start`}>
-                  Switch these funds
-                </button>
+                <SubmitButton className={`${BUTTON} self-start`}>Switch these funds</SubmitButton>
                 <DemoAdviceLabel />
               </form>
             </>

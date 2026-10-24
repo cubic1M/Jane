@@ -21,6 +21,7 @@ import { loadPractice } from "@/lib/practice/portfolio";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { pauseSwitch, runNow, startPracticePortfolio, undoLast } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // The practice portfolio (spec steps 288 to 294, Phase AW, Stage A): a paper portfolio run by
 // Jane on practice money, with its trade log and a pause switch. Nothing here is a real account
@@ -139,9 +140,7 @@ async function Content({
               );
             })}
           </fieldset>
-          <button type="submit" className={`${BUTTON} self-start`}>
-            Start with practice money
-          </button>
+          <SubmitButton className={`${BUTTON} self-start`}>Start with practice money</SubmitButton>
           <Link href="/investments/practice/settings" className={`text-sm ${LINK}`}>
             Set your goal, extra moves and what to avoid first →
           </Link>
@@ -175,9 +174,9 @@ async function Content({
               <form action={pauseSwitch}>
                 <input type="hidden" name="which" value="all" />
                 <input type="hidden" name="paused" value={practice.paused ? "0" : "1"} />
-                <button type="submit" className={OUTLINE}>
+                <SubmitButton className={OUTLINE}>
                   {practice.paused ? "Resume Jane" : "Pause Jane"}
-                </button>
+                </SubmitButton>
               </form>
               <form action={pauseSwitch}>
                 <input type="hidden" name="which" value="opportunities" />
@@ -186,19 +185,17 @@ async function Content({
                   name="paused"
                   value={practice.opportunitiesPaused ? "0" : "1"}
                 />
-                <button type="submit" className={OUTLINE}>
+                <SubmitButton className={OUTLINE}>
                   {practice.opportunitiesPaused ? "Resume opportunities" : "Pause opportunities"}
-                </button>
+                </SubmitButton>
               </form>
               <form action={runNow}>
-                <button type="submit" className={OUTLINE} disabled={practice.paused}>
+                <SubmitButton className={OUTLINE} disabled={practice.paused}>
                   Check now
-                </button>
+                </SubmitButton>
               </form>
               <form action={undoLast}>
-                <button type="submit" className={OUTLINE}>
-                  Undo the last trade
-                </button>
+                <SubmitButton className={OUTLINE}>Undo the last trade</SubmitButton>
               </form>
             </div>
             {practice.paused && <p className="text-sm">Paused: no trades until you resume.</p>}

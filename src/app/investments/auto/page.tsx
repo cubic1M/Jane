@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { toggleAutoInvest } from "./actions";
 import { AutoInvestForm } from "./auto-form";
+import { SubmitButton } from "@/components/submit-button";
 
 // Automatic investing (spec step 134): set it up once, see every payday's contribution
 // (or why it was paused), pause and resume. Through the simulated brokerage, and said so.
@@ -91,12 +92,9 @@ async function AutoContent({
                   name="status"
                   value={data.plan.status === "active" ? "paused" : "active"}
                 />
-                <button
-                  type="submit"
-                  className="h-11 rounded-lg border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700"
-                >
+                <SubmitButton className="h-11 rounded-lg border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700">
                   {data.plan.status === "active" ? "Pause" : "Resume"}
-                </button>
+                </SubmitButton>
               </form>
             </section>
           )}

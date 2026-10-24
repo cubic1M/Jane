@@ -2,6 +2,7 @@ import Link from "next/link";
 import { googleEnabled } from "@/auth";
 import { signInWithEmail, signInWithGoogle } from "@/lib/auth-actions";
 import { invitesRequired } from "@/lib/invites";
+import { SubmitButton } from "@/components/submit-button";
 
 const PRIMARY_BUTTON =
   "inline-flex h-12 items-center justify-center rounded-full bg-emerald-700 px-8 text-base font-semibold text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700";
@@ -70,9 +71,7 @@ export function AuthForm({
             </span>
           </label>
         )}
-        <button type="submit" className={PRIMARY_BUTTON}>
-          {submitLabel}
-        </button>
+        <SubmitButton className={PRIMARY_BUTTON}>{submitLabel}</SubmitButton>
       </div>
 
       {googleEnabled && (
@@ -83,14 +82,9 @@ export function AuthForm({
             <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
           </div>
           {/* Skips the email field's "required"; the invite code is still checked. */}
-          <button
-            type="submit"
-            formAction={signInWithGoogle}
-            formNoValidate
-            className={SECONDARY_BUTTON}
-          >
+          <SubmitButton formAction={signInWithGoogle} formNoValidate className={SECONDARY_BUTTON}>
             Continue with Google
-          </button>
+          </SubmitButton>
         </>
       )}
     </form>

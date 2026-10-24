@@ -5,6 +5,7 @@ import { itemId } from "@/lib/area-pages/insurance";
 import { isShort, needKey, type Coverage } from "@/lib/area-pages/insurance-coverage";
 import type { Need } from "@/lib/insurance/need/types";
 import { pickCoverForm } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Your perfect coverage (spec step 279): what cover they need, what they have and the gap, with
 // the same numbers the chat and the nightly detectors use. On the area tree each need is an
@@ -72,9 +73,7 @@ export function NeedDetail({
                   <input type="hidden" name="need" value={card.topic} />
                   <input type="hidden" name="option" value={o.id} />
                   <input type="hidden" name="policy" value={policyId} />
-                  <button type="submit" className={BUTTON}>
-                    Choose this one
-                  </button>
+                  <SubmitButton className={BUTTON}>Choose this one</SubmitButton>
                 </form>
               </li>
             ))}

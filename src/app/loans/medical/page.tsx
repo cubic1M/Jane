@@ -9,6 +9,7 @@ import { loadMedicalBills } from "@/lib/medical-bills";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { addBillAction, sendRequestAction } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Medical bills (spec step 180): bills found in the person's payments plus ones they type,
 // each with the requests Jane wrote (itemized bill, insurance check, financial assistance,
@@ -104,12 +105,9 @@ async function MedicalContent({ searchParams }: Pick<PageProps<"/loans/medical">
                         ) : (
                           <form action={sendRequestAction} className="mt-2">
                             <input type="hidden" name="itemId" value={i.id} />
-                            <button
-                              type="submit"
-                              className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
-                            >
+                            <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
                               Send this request
-                            </button>
+                            </SubmitButton>
                           </form>
                         )}
                       </li>
@@ -136,12 +134,9 @@ async function MedicalContent({ searchParams }: Pick<PageProps<"/loans/medical">
               Date on the bill
               <input name="billedOn" type="date" className={INPUT} />
             </label>
-            <button
-              type="submit"
-              className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800 sm:col-span-3 sm:w-fit"
-            >
+            <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800 sm:col-span-3 sm:w-fit">
               Add this bill
-            </button>
+            </SubmitButton>
           </form>
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
             <a href={MEDICAL_SOURCE} className={LINK}>
