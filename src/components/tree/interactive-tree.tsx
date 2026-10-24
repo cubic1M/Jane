@@ -33,9 +33,9 @@ export type TreeData = { key: string; label: string; sub: string; branches: Tree
 
 // The status, never colour alone: a shape, and words for screen readers.
 export const STATUS: Record<TreeStatus, { shape: string; words: string; className: string }> = {
-  good: { shape: "■", words: "Good", className: "text-emerald-700" },
-  look: { shape: "▲", words: "Needs a look", className: "text-amber-700" },
-  act: { shape: "◆", words: "Urgent", className: "text-red-700" },
+  good: { shape: "○", words: "Good", className: "" },
+  look: { shape: "◐", words: "Needs a look", className: "" },
+  act: { shape: "●", words: "Urgent", className: "font-bold" },
 };
 
 export function StatusMark({ status }: { status?: TreeStatus }) {
