@@ -132,10 +132,10 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
     });
     // Raised once, by the home loan's source with the request drafted there, not by both.
     const snapshot = await loadSnapshot(userId, opts());
-    const raised = gather(snapshot!, LINKED, { trigger: "sync" }).filter((x) =>
-      x.dedupeKey.includes("pmi"),
+    // The mortgage and the home loan sources both see this loan; only the home loan's raises it.
+    const raised = gather(snapshot!, LINKED, { trigger: "sync" }).filter(
+      (x) => (x.source === "mortgage" || x.source === "home_equity") && x.dedupeKey.includes("pmi"),
     );
-    // (The suggestion card, pmi_removal, links to the same page.)
-    expect(raised.map((x) => x.source).filter((x) => x !== "suggestions")).toEqual(["home_equity"]);
+    expect(raised.map((x) => x.source)).toEqual(["home_equity"]);
   });
 });
