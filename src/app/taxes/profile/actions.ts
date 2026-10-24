@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
-import { TaxProfileError, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
+import { TaxProfileError, confirmFound, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
 import { ResidencyError, saveLocality, saveMoves, saveWorkState } from "@/lib/tax-states";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -154,4 +154,17 @@ export async function saveSideIncomeAction(
     if (error instanceof SideIncomeError) return { ok: false, message: error.message };
     throw error;
   }
+}
+
+// "Yes, these are my dependants": the children Jane found in the household the person listed
+// for insurance, saved as their answer with one tap (from /taxes or the tax profile).
+export async function confirmDependants(): Promise<void> {
+  const user = await requireUser();
+  try {
+    await confirmFound(user.id, "dependants", { via: "page" });
+  } catch (error) {
+    if (!(error instanceof TaxProfileError)) throw error;
+  }
+  revalidatePath("/taxes");
+  revalidatePath("/taxes/profile");
 }
