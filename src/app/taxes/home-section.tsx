@@ -26,7 +26,7 @@ function SourceLink({ s }: { s: Source }) {
       );
     case "document":
       return (
-        <Link href="/taxes#forms" className={LINK}>
+        <Link href="/taxes?focus=records:forms" className={LINK}>
           {s.form} from {s.from}
         </Link>
       );

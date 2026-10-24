@@ -36,7 +36,7 @@ const BACKTESTS: MessageAction = {
   id: "open",
   label: "See every level",
   kind: "link",
-  href: "/investments#backtests-heading",
+  href: "/investments?focus=strategies:backtests",
 };
 
 export const PRACTICE_ONLY_NOTE =
@@ -189,7 +189,7 @@ const STRATEGIES: MessageAction = {
   id: "open",
   label: "See every level",
   kind: "link",
-  href: "/investments#level-strategies-heading",
+  href: "/investments?focus=strategies:levels",
 };
 
 // "Which strategy does my level use": the daily replay's choice for the level, and why.
@@ -223,7 +223,7 @@ const RULE_REPLAY: MessageAction = {
   id: "open",
   label: "See every level",
   kind: "link",
-  href: "/investments#rule-replay-heading",
+  href: "/investments?focus=strategies:rules",
 };
 
 // "Did the extra rules help?": for one level (the person's own unless they named one), the
