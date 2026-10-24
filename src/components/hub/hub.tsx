@@ -77,15 +77,24 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
         </div>
       )}
       <div className={CARD}>
-        <Link href={saved.label === "Saved so far" ? "/saved" : "/plan"} className={CARD_LINK}>
+        {/* Each figure links to the page that shows it: what was found is the report's total
+            (hub QA: it linked to /plan, whose total counts more). */}
+        <Link href={saved.label === "Saved so far" ? "/saved" : "/report"} className={CARD_LINK}>
           {saved.label}
         </Link>
         <p
           data-hub-number="saved"
           className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl"
         >
-          {dollars(saved.cents)}
-          <span className="text-base font-normal text-zinc-500">/yr</span>
+          {saved.label === "Money found" && saved.cents === 0 && planItems > 0 ? (
+            // As the report says it when nothing has a sure dollar figure yet.
+            `${planItems} to look at`
+          ) : (
+            <>
+              {dollars(saved.cents)}
+              <span className="text-base font-normal text-zinc-500">/yr</span>
+            </>
+          )}
         </p>
         {/* What was said yes to, at its expected yearly value (one meaning of "saved", #587). */}
         {saved.label === "Saved so far" && <p className="text-xs text-zinc-500">Expected</p>}
@@ -100,7 +109,9 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
             href="/plan"
             className="relative z-10 self-start text-sm font-medium text-emerald-700 hover:underline"
           >
-            Review {planItems} {planItems === 1 ? "idea" : "ideas"} ›
+            {/* The plan's items, as the chat says them ("Your plan for this week is ready: 12
+                things"); "ideas" are the tiles' suggestions, a different count (phone walk). */}
+            Your plan: {planItems} {planItems === 1 ? "thing" : "things"} ›
           </Link>
         )}
       </div>
@@ -111,9 +122,14 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
 export function AreaTiles({ tiles }: { tiles: AreaTile[] }) {
   return (
     <section aria-labelledby="areas-heading" className="flex flex-col gap-2">
-      <h2 id="areas-heading" className="text-base font-semibold">
-        Your areas
-      </h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <h2 id="areas-heading" className="text-base font-semibold">
+          Your areas
+        </h2>
+        <Link href="/home/map" className="text-sm font-medium text-emerald-700 hover:underline">
+          What Jane does ›
+        </Link>
+      </div>
       <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {tiles.map((tile, i) => (
           <li

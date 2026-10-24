@@ -1,3 +1,4 @@
+import { DEMO_FAMILY_CREDIT, demoToldFor } from "@/data-sources/demo/people-extras/told";
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
@@ -91,6 +92,20 @@ const HEALTH_PLANS: Readonly<
   },
 };
 
+function familyCreditFor(person: string): Pick<ProfileInput, "familyCredit"> {
+  const rows = DEMO_FAMILY_CREDIT[person as PersonId] ?? [];
+  if (rows.length === 0) return {};
+  const cosigned = rows.filter((r) => r.kind === "cosigned");
+  return {
+    familyCredit: {
+      helped: rows.length - cosigned.length,
+      cosignedOwedCents: cosigned.reduce((s, r) => s + r.balanceCents, 0),
+      cosignedMissed: cosigned.filter((r) => r.missed).length,
+      cosignedPaymentCents: cosigned.reduce((s, r) => s + r.monthlyPaymentCents, 0),
+    },
+  };
+}
+
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };
   const holdings = demoHoldings(demo, SAMPLE_TODAY);
@@ -99,7 +114,15 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
   const investor = isPersonId(person) ? personById(person)?.investor : undefined;
   return {
     today: SAMPLE_TODAY,
-    told: investor ? { age: investor.age, risk: investor.dropReaction, ...told } : told,
+    // What they told Jane that no bank shows (people-extras/told.ts), their investor profile's
+    // age and risk (spec step 129), then anything a test says.
+    told: {
+      ...demoToldFor(person, SAMPLE_TODAY),
+      ...(investor ? { age: investor.age, risk: investor.dropReaction } : {}),
+      ...told,
+    },
+    // Credit they help family with, as the profile loader totals it (src/lib/profile.ts).
+    ...familyCreditFor(person),
     extras: {
       householdMembers: 0,
       coverPolicies: SAMPLE_POLICIES[person] ?? [],

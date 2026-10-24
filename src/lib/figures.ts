@@ -81,7 +81,8 @@ export async function explainFigure(
   const base = {
     id,
     title: FIGURE_LABELS[id],
-    asOf: iso(now),
+    // The person's own day, as the figure was worked out (src/lib/today.ts).
+    asOf: input.asOf,
     corrections: FIGURE_CORRECTIONS[id],
   };
   const txs = (

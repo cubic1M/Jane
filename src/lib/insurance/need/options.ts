@@ -252,6 +252,45 @@ export function optionRequests(
           : []),
       ]).slice(0, MAX_OPTIONS);
     }
+    // Spec step 201: a business policy at the level clients ask for, a smaller one, a larger one.
+    // Only the cover the need is about changes; whatever else their business policy has stays.
+    case "business_liability":
+    case "professional_liability":
+    case "business_equipment": {
+      const key =
+        need.kind === "business_liability"
+          ? "generalLiability"
+          : need.kind === "professional_liability"
+            ? "professionalLiability"
+            : "businessProperty";
+      // A new policy for professional liability or equipment alone carries no general liability.
+      const base: Coverage = policy
+        ? { ...cover }
+        : key === "generalLiability"
+          ? {}
+          : { generalLiability: 0 };
+      const at = (cents: number) => ({ ...base, [key]: cents });
+      const what =
+        key === "businessProperty"
+          ? (cents: number) => `${money(cents)} of cover for your equipment`
+          : (cents: number) =>
+              `${money(cents)} of ${key === "generalLiability" ? "general" : "professional"} liability`;
+      const half = Math.round(need.needCents / 2);
+      const double = need.needCents * 2;
+      return dedupe([
+        ...(policy ? [make("like", "like_for_like", "business", cover, null, null)] : []),
+        make("need", "meets_need", "business", at(need.needCents), null, what(need.needCents)),
+        make("cheaper", "cheaper", "business", at(half), null, `${what(half)}, half what I'd size`),
+        make(
+          "better",
+          "better",
+          "business",
+          at(double),
+          null,
+          `${what(double)}, twice what I'd size`,
+        ),
+      ]).slice(0, MAX_OPTIONS);
+    }
     case "disability": {
       const pay = extra.yearlyPayCents ?? 0;
       const monthly = (share: number) => Math.round((pay * share) / 12);
@@ -315,7 +354,11 @@ export function buildOptions(
       );
     const best = eligible[0];
     if (!best) continue;
-    const lines = coverageLines(best.kind, best.coverage);
+    // Cover set to nothing isn't a line ("General liability: $0.00" on a professional-only policy).
+    const lines = coverageLines(
+      best.kind,
+      Object.fromEntries(Object.entries(best.coverage).filter(([, v]) => v !== 0)),
+    );
     cards.push({
       id: request.id,
       role: request.role,

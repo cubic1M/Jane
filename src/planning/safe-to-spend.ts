@@ -46,7 +46,10 @@ export function safeToSpend(
     (b) =>
       b.accountId !== null &&
       checkingIds.has(b.accountId) &&
-      b.date > input.asOf &&
+      // Due today counts: one that has posted already moved the next date on, so a bill dated
+      // today is still to come out (phone walk: an evening in the US is the next day in UTC,
+      // and tomorrow's card payment dropped out, raising safe to spend by $1,640).
+      b.date >= input.asOf &&
       (payday === null || b.date < payday),
   );
   const billsCents = bills.reduce((sum, b) => sum + b.amountCents, 0);

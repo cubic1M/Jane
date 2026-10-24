@@ -14,7 +14,8 @@ import { dollars, evidence, nice } from "./helpers";
 // transactions, transactions that stopped, a link that needs a sign-in or stopped updating,
 // the same account linked twice). The figures that rely on it are what's at stake.
 const books: Detector = {
-  covers: ["books_check"],
+  // A link that needs a sign-in is also what the connections tool reports when asked.
+  covers: ["books_check", "connections"],
   capability: "books",
   topic: "data_problems",
   needs: [],

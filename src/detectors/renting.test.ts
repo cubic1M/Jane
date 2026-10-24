@@ -52,21 +52,35 @@ describe("rent reporting", () => {
       const found = fire(p.id).some((s) => s.topic === "rent_reporting");
       expect(found, p.name).toBe(p.should.includes("rent_reporting"));
     }
-    expect(fire("renter", (d) => ({ ...d, rentReportingOn: true }))).toEqual([]);
+    expect(
+      fire("renter", (d) => ({ ...d, rentReportingOn: true })).filter(
+        (s) => s.topic === "rent_reporting",
+      ),
+    ).toEqual([]);
   });
 
   it("needs a few rent payments, and some debt for reporting to be worth anything", () => {
-    expect(fire("renter", withRents([145_000, 145_000]))).toEqual([]);
+    const reporting = (list: { topic: string }[]) =>
+      list.filter((s) => s.topic === "rent_reporting");
+    expect(reporting(fire("renter", withRents([145_000, 145_000])))).toEqual([]);
     expect(
-      fire("renter", (d) => ({
-        ...d,
-        accounts: d.accounts.map((a) => ({ ...a, balanceCents: Math.min(0, a.balanceCents) })),
-      })),
+      reporting(
+        fire("renter", (d) => ({
+          ...d,
+          accounts: d.accounts.map((a) => ({ ...a, balanceCents: Math.min(0, a.balanceCents) })),
+        })),
+      ),
     ).toEqual([]);
   });
 });
 
 describe("a rent increase", () => {
+  it("reaches Maya, whose lease renewed at $1,450 from $1,320 (detector coverage)", () => {
+    const s = fire("renter").find((x) => x.topic === "rent_increase")!;
+    expect(s.why).toContain("went from $1,320.00 to $1,450.00 a month");
+    expect(s.worthCents).toBe(156_000);
+  });
+
   it("is raised when rent rose well past the usual, in dollars a year", () => {
     const s = fire("renter", withRents([145_000, 145_000, 145_000, 160_000])).find(
       (x) => x.topic === "rent_increase",
@@ -83,7 +97,11 @@ describe("a rent increase", () => {
         (x) => x.topic === "rent_increase",
       ),
     ).toBe(false);
-    expect(fire("renter").some((x) => x.topic === "rent_increase")).toBe(false);
+    expect(
+      fire("renter", withRents([145_000, 145_000, 145_000, 145_000])).some(
+        (x) => x.topic === "rent_increase",
+      ),
+    ).toBe(false);
     expect(
       fire("owner", withRents([100_000, 100_000, 100_000, 130_000])).some(
         (x) => x.topic === "rent_increase",

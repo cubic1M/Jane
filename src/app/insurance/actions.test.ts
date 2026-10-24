@@ -13,6 +13,10 @@ vi.mock("@/lib/insurance/policies", async (importOriginal) => ({
   updatePolicy: vi.fn(),
   removePolicy: vi.fn(),
 }));
+vi.mock("@/lib/insurance/negotiate", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/insurance/negotiate")>()),
+  negotiationsDue: vi.fn(async () => []),
+}));
 vi.mock("@/lib/insurance/household", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/insurance/household")>()),
   saveHousehold: vi.fn(),
@@ -21,6 +25,7 @@ vi.mock("@/lib/insurance/household", async (importOriginal) => ({
 
 import { revalidatePath } from "next/cache";
 import { HouseholdFactsError, dismissGap, saveHousehold } from "@/lib/insurance/household";
+import { negotiationsDue } from "@/lib/insurance/negotiate";
 import { PolicyError, addPolicy, removePolicy, updatePolicy } from "@/lib/insurance/policies";
 import { deletePolicy, notNeeded, saveHouseholdFacts, savePolicy } from "./actions";
 
@@ -69,6 +74,8 @@ describe("insurance page actions", () => {
       "REDIRECT /insurance?saved=updated",
     );
     expect(updatePolicy).toHaveBeenCalledWith("u1", "p1", input);
+    // A rise on the policy just confirmed is looked for at once, not the next night.
+    expect(negotiationsDue).toHaveBeenCalledWith("u1");
   });
 
   it("shows a problem and keeps what was typed", async () => {

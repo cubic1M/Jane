@@ -42,6 +42,8 @@ export type MessageView = {
   options: OptionSet | null;
   // A suggestion card's extra details (refs.cardDetails), or null.
   cardDetails?: CardExtras | null;
+  // A suggestion's whole reason (refs.suggestionWhy), or null.
+  cardWhy?: string | null;
 };
 
 const TAGS: Record<MessageKind, string> = {
@@ -107,5 +109,6 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
         ? toOptionSet(message.refs.options)
         : null,
     cardDetails: message.refs.cardDetails ?? null,
+    cardWhy: message.refs.suggestionWhy ?? null,
   };
 }

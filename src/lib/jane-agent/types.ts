@@ -38,6 +38,8 @@ export const ACTION_IDS = [
   "insurance.shop_yes",
   "insurance.shop_no",
   "insurance.checkup_seen",
+  // Spec step 202: the yearly review's "Keep me covered".
+  "insurance.keep_covered",
   "insurance.claim_start",
   "insurance.claim_step",
   "insurance.claim_close",
@@ -414,6 +416,9 @@ export type MessageRefs = {
   carAddon?: { key?: string; id?: string };
   // Spec step 255: the suggestion (by its key) a button is about.
   suggestion?: string;
+  // Its whole reason, with the figure the headline names ("If it fell by 30% you would lose
+  // $77,748"), for the floating card's More details: the "Why you" line alone doesn't say it.
+  suggestionWhy?: string;
   // What a suggestion's floating card shows under More details beyond its why: a practice
   // idea's numbers and caps, and what its Yes does (Phase AW).
   cardDetails?: CardExtras;
@@ -636,6 +641,8 @@ export type MultiStep =
       label: string;
       action: ActionId;
       actionLabel: string;
+      // What goes with the button: for a pick-one card (option.pick), the option picked.
+      choice?: string;
       body: string;
       refs: MessageRefs;
       actions: MessageAction[];

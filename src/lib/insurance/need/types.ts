@@ -1,4 +1,5 @@
 import type { PolicyKind } from "@/config/insurance";
+import type { SelfEmployment } from "@/lib/insurance/business-rules";
 
 // What cover a person needs (spec step 274): one shape for every calculator, so the chat, the
 // page, the detectors and the option cards (steps 275–279) all read the same numbers.
@@ -10,7 +11,11 @@ export type NeedKind =
   | "deductible"
   | "auto_liability"
   | "home_liability"
-  | "renters_liability";
+  | "renters_liability"
+  // Spec step 201: cover for what they earn on the side or in a business.
+  | "business_liability"
+  | "professional_liability"
+  | "business_equipment";
 
 export type NeedLine = { label: string; cents: number; adds: boolean };
 
@@ -64,4 +69,6 @@ export type NeedInput = {
   // Life cover through work, which no policy on file shows.
   workLifeCoverCents: number;
   policies: readonly NeedPolicy[];
+  // Spec step 201: what their income and spending say about a business or side work.
+  business?: SelfEmployment | null;
 };

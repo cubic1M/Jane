@@ -293,3 +293,12 @@ export const HEADLINE_VERBS: readonly string[] = [
   "Use",
   "Weigh",
 ];
+
+// A business's lumpy tax bills (detector coverage, cash_flow): sales, payroll and use tax paid
+// every few months out of the same account as the weekly sales. Seen this many times or more,
+// it's a rhythm worth setting aside for; due within SOON_DAYS, it's soon.
+export const BUSINESS_LUMPS = {
+  pattern: /\b(?:SALES|PAYROLL|USE|EXCISE) TAX\b/i,
+  minPayments: 2,
+  soonDays: 30,
+} as const;

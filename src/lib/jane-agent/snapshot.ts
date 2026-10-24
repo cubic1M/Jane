@@ -39,6 +39,7 @@ import { homeSummary, type HomeSummary } from "@/lib/home";
 import { planFor } from "@/lib/plan";
 import { isNoRisk } from "@/lib/plan-links";
 import { savingsLine } from "@/lib/savings-text";
+import { localDate } from "@/lib/today";
 import { recentRuleApprovals } from "@/lib/standing-rules";
 import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
@@ -366,7 +367,8 @@ export async function loadSnapshot(
 
   return {
     timezone: user?.timezone ?? null,
-    asOf: now.toISOString().slice(0, 10),
+    // The person's own day (src/lib/today.ts).
+    asOf: localDate(now, user?.timezone),
     weekStart: weekStart(now, user?.timezone).toISOString().slice(0, 10),
     safeToSpend: home.safeToSpend
       ? { safeCents: home.safeToSpend.safeCents, payday: home.safeToSpend.payday }

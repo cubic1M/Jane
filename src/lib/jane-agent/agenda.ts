@@ -126,7 +126,14 @@ export function agendaOf<T extends Planned>(
     if (overnight) lines.push(overnight);
     if (lead.length > 0) lines.push(cardsLine(lead.length));
     if (yes.length > 0) {
-      lines.push(yes.length === 1 ? "One more thing needs your yes:" : "These need your yes:");
+      // After the cards' line, plainly not the same things (visitor walk: "3 suggestions"
+      // followed by five others read as a mix-up).
+      const besides = lead.length > 0 ? "Besides the cards, " : "";
+      lines.push(
+        yes.length === 1
+          ? `${besides}${besides ? "one more thing" : "One more thing"} needs your yes:`
+          : `${besides}${besides ? "these" : "These"} need your yes:`,
+      );
       lines.push(...yes.map((c) => `- ${lineOf(c)}`));
     }
     if (bills.length > 0) {

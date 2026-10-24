@@ -200,7 +200,7 @@ export async function runDigests({
   // Active people: digest on, not deleted, at least one account.
   const users = await client.user.findMany({
     where: { digestEnabled: true, deletedAt: null, accounts: { some: {} } },
-    select: { id: true, email: true, timezone: true },
+    select: { id: true, email: true, timezone: true, createdAt: true },
     orderBy: { id: "asc" },
   });
   const run: DigestRun = {
@@ -216,6 +216,15 @@ export async function runDigests({
     // One person's problem (e.g. their account deleted mid-run) never stops the rest.
     try {
       const week = weekStart(now, user.timezone);
+      // Real-user QA: someone who signed up this week gets their first one next Monday, not on
+      // the first daily run after signing up and again four days later.
+      if (
+        user.createdAt <= now &&
+        weekStart(user.createdAt, user.timezone).getTime() === week.getTime()
+      ) {
+        run.skipped += 1;
+        continue;
+      }
       const db = scopedFor(user.id, client);
       if (await db.digests.findFirst({ where: { weekStart: week }, select: { id: true } })) {
         run.alreadySent += 1;

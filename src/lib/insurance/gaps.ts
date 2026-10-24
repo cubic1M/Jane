@@ -9,6 +9,7 @@ import {
   type PolicyKind,
 } from "@/config/insurance";
 import { formatCents } from "@/lib/money";
+import { businessGaps } from "./business-rules";
 import { isLiabilityOnly } from "./coverage";
 import type { Household } from "./household";
 import type { Policy } from "./policies";
@@ -95,7 +96,20 @@ export function coverageGaps(
       why: "It has no collision or comprehensive cover, so it pays for damage you cause to other people and their cars, not for damage to your own car or if it's stolen.",
     });
   }
-  gaps.push(...moreGaps(household, everyone), ...riskGaps(household, everyone));
+  // Spec step 201: side-gig cover from the tax lane's signals. The same worry asked about in
+  // step 197 is said once: their own yes to driving for pay is the car gap, and business
+  // liability covers what the home-business question asks.
+  const risk = riskGaps(household, everyone);
+  const said = new Set(risk.map((g) => g.key));
+  const business = businessGaps(household.signals.selfEmployment, policies).filter(
+    (g) => !(g.key === "car_business_use" && said.has("rideshare")),
+  );
+  const businessSaid = new Set(business.map((g) => g.key));
+  gaps.push(
+    ...moreGaps(household, everyone),
+    ...business,
+    ...risk.filter((g) => !(g.key === "home_business" && businessSaid.has("business_liability"))),
+  );
   return gaps.filter((g) => !household.dismissedGaps.includes(g.key));
 }
 

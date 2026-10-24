@@ -40,7 +40,12 @@ test("new people land on Connect; once data is in, the hub matches the report", 
   // shows whole dollars).
   const amount = (headline?.match(/\$[\d,.]+/)?.[0] ?? "").replace(/\.\d\d$/, "");
   await expect(page.locator('[data-hub-number="saved"]')).toContainText(amount);
-  await expect(page.getByRole("link", { name: /^Review \d+ ideas? ›$/ })).toHaveAttribute(
+  // It links to the report that shows it (hub QA: it linked to /plan, a bigger total).
+  await expect(page.getByRole("link", { name: "Money found", exact: true })).toHaveAttribute(
+    "href",
+    "/report",
+  );
+  await expect(page.getByRole("link", { name: /^Your plan: \d+ things? ›$/ })).toHaveAttribute(
     "href",
     "/plan",
   );

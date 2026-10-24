@@ -34,6 +34,7 @@ const SIGNED_OUT = [
 const SIGNED_IN = [
   "/chat",
   "/home",
+  "/home/map",
   "/plan",
   "/report",
   "/actions",

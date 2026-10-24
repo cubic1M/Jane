@@ -14,6 +14,9 @@ const TITLES: Record<Need["kind"], string> = {
   auto_liability: "Choose your car's injury liability",
   home_liability: "Choose your home liability",
   renters_liability: "Choose your renters liability",
+  business_liability: "Choose your business liability cover",
+  professional_liability: "Choose your professional liability cover",
+  business_equipment: "Choose cover for your work equipment",
 };
 
 export function insuranceCard(set: OptionSet, need: Need, advice: boolean): OptionCard {

@@ -230,6 +230,8 @@ export const PEOPLE: readonly Person[] = [
       "liability_levels",
       "consolidation",
       "practice_portfolio",
+      // Detector coverage: the lease renewed at $1,450, up from $1,320.
+      "rent_increase",
     ],
     mustNot: [
       "beneficiaries",
@@ -388,6 +390,8 @@ export const PEOPLE: readonly Person[] = [
       "borrowing_power",
       // Spec step 244: WeWork and Adobe sit in a catch-all category.
       "month_close",
+      // Spec step 201: client work needs general and professional liability.
+      "business_insurance",
     ],
     mustNot: [
       "beneficiaries",
@@ -528,6 +532,8 @@ export const PEOPLE: readonly Person[] = [
       "bill_split",
       // Spec step 241: the trip to Japan and the kitchen can't both be on time.
       "goal_tradeoffs",
+      // Detector coverage: they co-signed Emily's car loan.
+      "cosign_risk",
     ],
     mustNot: [
       "values_funds",
@@ -584,6 +590,8 @@ export const PEOPLE: readonly Person[] = [
       "medical_deduction",
       "social_security_tax",
       "short_term_cash",
+      // Detector coverage: her sister's IRA must be empty this December 31.
+      "inherited_ira",
     ],
     mustNot: [
       "beneficiaries",
@@ -615,7 +623,6 @@ export const PEOPLE: readonly Person[] = [
       "s_corp_election",
       "home_office_deduction",
       "vehicle_deduction",
-      "inherited_ira",
       "inherited_ira_spread",
       "household_setup",
       "life_checklist",
