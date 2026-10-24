@@ -9,6 +9,7 @@ import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
 import { GiantTree } from "@/components/hub/giant-tree";
 import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
+import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { loadLoansArea } from "@/lib/area-pages/loans-load";
 import { loadPlansArea } from "@/lib/area-pages/plans-load";
 import { loadTaxesArea } from "@/lib/area-pages/taxes-load";
@@ -84,19 +85,21 @@ async function AreasTree({ userId }: { userId: string }) {
   // Each area with a tree page shows that tree's branches, from the same loaders its page uses
   // (a loader that fails leaves its area showing what Jane looks for there).
   const quietly = <T,>(load: Promise<T>) => load.catch(() => undefined);
-  const [reached, advice, insurance, loans, taxes, plans] = await Promise.all([
+  const [reached, advice, insurance, loans, taxes, plans, investing] = await Promise.all([
     scopedFor(userId).suggestions.findMany({ select: { key: true } }),
     adviceMode(userId),
     quietly(loadInsuranceArea(userId)),
     quietly(loadLoansArea(userId)),
     quietly(loadTaxesArea(userId)),
     quietly(loadPlansArea(userId)),
+    quietly(loadInvestingArea(userId)),
   ]);
   const areaTrees: AreaTrees = {
     insurance: insurance?.area,
     loans: loans?.area,
     taxes: taxes?.area,
     ahead: plans?.area,
+    investments: investing?.area,
   };
   const maps = buildFeatureMap({
     examples: sampleExamples(),

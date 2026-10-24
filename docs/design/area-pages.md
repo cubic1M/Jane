@@ -104,7 +104,7 @@ A branch takes the worst status of its items (`worst()`), and its line says "N u
    it, and add it to `areaTrees` in `AreasTree` (`src/app/home/page.tsx`). The giant tree then
    shows the area's own branches and items, with statuses and figures, each linking to
    `/<area>?focus=…`. The page and Home read the same data, so they never disagree.
-   Insurance, Loans & credit, Taxes and Plans & goals are wired.
+   Insurance, Loans & credit, Taxes, Investing and Plans & goals are wired.
 
 ## The home tree: one giant "What Jane does" tree
 
