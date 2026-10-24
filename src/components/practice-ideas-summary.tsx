@@ -7,7 +7,7 @@ import type { PracticeIdeasView } from "@/lib/practice/ideas-view";
 // person's answers changed, in short. They're answered on the practice portfolio page or in the
 // chat. Practice money and demo advice only.
 
-const LINK = "font-medium text-emerald-700 hover:underline";
+const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const SHOWN = 3;
 const EFFECT = {
   sooner: "sooner",
