@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { percent } from "@/planning/credit";
 import { STAND_IN_LABEL } from "@/lib/jane-agent/credit-replies";
 import { dayLabel } from "@/lib/day-label";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The credit score (spec step 116): the score from Jane's monthly soft pull, what's helping
 // and hurting, card use from the card balances, and what Jane is doing about it. The
@@ -132,7 +133,7 @@ async function CreditContent({ searchParams }: Pick<PageProps<"/loans/credit">, 
 export default function CreditPage({ searchParams }: PageProps<"/loans/credit">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <CreditContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { startGoalAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Buying a home (spec step 179): from saving to closing. What the person can afford under
 // the usual 28/36 rules, the monthly cost with mortgage insurance explained, the cash needed
@@ -240,7 +241,7 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
 export default function HomePage({ searchParams }: PageProps<"/loans/home">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <HomeContent searchParams={searchParams} />
       </Suspense>
     </main>

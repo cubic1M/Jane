@@ -17,6 +17,7 @@ import { StatusForm } from "./status-form";
 import { savingsPhrase } from "@/lib/savings-text";
 import { describePlanOptions } from "@/lib/plan-options";
 import { AgentTimeline } from "@/components/agent-timeline";
+import { LoadingBar } from "@/components/loading-bar";
 
 async function ActionDetail({
   params,
@@ -258,7 +259,7 @@ async function ActionDetail({
 export default function AdminActionPage({ params }: PageProps<"/admin/actions/[actionId]">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ActionDetail params={params} />
       </Suspense>
     </main>

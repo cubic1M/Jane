@@ -19,6 +19,7 @@ import { DiyKit } from "./diy-kit";
 import { savingsLine } from "@/lib/savings-text";
 import { policyForMerchant, policyLines } from "@/lib/documents/dates";
 import { CHOICE_WORDS, messageAboutFinding } from "@/lib/jane-agent/messages";
+import { LoadingBar } from "@/components/loading-bar";
 
 async function Card({ params }: { params: PageProps<"/report/[findingId]">["params"] }) {
   const user = await requireUser();
@@ -219,7 +220,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
 export default function CardPage({ params }: PageProps<"/report/[findingId]">) {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Card params={params} />
       </Suspense>
     </main>

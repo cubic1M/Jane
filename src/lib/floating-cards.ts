@@ -111,3 +111,40 @@ export type OptionSet = {
   title: string;
   options: OptionCardData[];
 };
+
+// A card's details as real paragraphs (founder: "each new paragraph is a new line with an empty
+// line in between to not make it so clunky and hard to read"): a blank line or a line break
+// starts a paragraph, "- " or "• " lines are a list, and a long run of sentences is split into
+// groups of two, so no block is a wall.
+export type DetailBlock = { kind: "p"; text: string } | { kind: "list"; items: string[] };
+
+const BULLET = /^\s*[-•*]\s+/;
+// A sentence ends at . ! or ? followed by a space and a capital, a digit or a quote: "$3.50" and
+// "e.g. this" stay whole.
+const SENTENCE_END = /(?<=[.!?])\s+(?=[A-Z0-9$"“(])/;
+const SENTENCES_PER_BLOCK = 2;
+const LONG_BLOCK = 3;
+
+export function paragraphs(text: string): DetailBlock[] {
+  const blocks: DetailBlock[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (BULLET.test(trimmed)) {
+      const item = trimmed.replace(BULLET, "");
+      const last = blocks[blocks.length - 1];
+      if (last?.kind === "list") last.items.push(item);
+      else blocks.push({ kind: "list", items: [item] });
+      continue;
+    }
+    const sentences = trimmed.split(SENTENCE_END);
+    if (sentences.length <= LONG_BLOCK) {
+      blocks.push({ kind: "p", text: trimmed });
+      continue;
+    }
+    for (let i = 0; i < sentences.length; i += SENTENCES_PER_BLOCK) {
+      blocks.push({ kind: "p", text: sentences.slice(i, i + SENTENCES_PER_BLOCK).join(" ") });
+    }
+  }
+  return blocks;
+}

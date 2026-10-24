@@ -75,10 +75,16 @@ export function cardOf(message: MessageView): FloatingCardData {
 export function SuggestionCards({
   messages,
   foldOnPhone = false,
+  docked = false,
+  onAnswered,
 }: {
   messages: MessageView[];
   // Home: start folded on a small phone, so the net worth shows first.
   foldOnPhone?: boolean;
+  // In the dock above the side chat, not floating over the page.
+  docked?: boolean;
+  // Told once the server has the answer (the dock reloads its cards).
+  onAnswered?: () => void;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -105,6 +111,7 @@ export function SuggestionCards({
         neverLabel="Don't suggest this again"
         links={links}
         foldOnPhone={foldOnPhone}
+        docked={docked}
         onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
           const message = messages.find((m) => m.id === id)!;
@@ -124,11 +131,12 @@ export function SuggestionCards({
             data.set("actionId", actionId);
             await tapButton({ message, error: null }, data);
             router.refresh();
+            onAnswered?.();
           });
         }}
       />
       {/* Room at the end of the page so the message box is never under a card. */}
-      {open > 0 && <div aria-hidden="true" className="h-28" />}
+      {open > 0 && !docked && <div aria-hidden="true" className="h-28" />}
     </>
   );
 }

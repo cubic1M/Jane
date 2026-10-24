@@ -7,6 +7,7 @@ import { loadFamilyFile } from "@/lib/investments/family-file";
 import { requireUser } from "@/lib/session";
 import { addEvent, saveFileContacts, saveNames, saveSharing, stillRight } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The family looked after (spec step 237): who is named on each account, what a life event makes
 // out of date, and a file the person shares in part. Facts only about wills and trusts, with a
@@ -250,7 +251,7 @@ async function Content({
 export default function FamilyFilePage(props: PageProps<"/investments/family-file">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

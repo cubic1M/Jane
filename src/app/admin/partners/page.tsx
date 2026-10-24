@@ -7,6 +7,7 @@ import { AdminNav } from "../admin-nav";
 import { turnOffPartner } from "./actions";
 import { PartnerForm, type PartnerFormValues } from "./partner-form";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 const ACTION_TYPES = [
   "move_idle_cash",
@@ -124,7 +125,7 @@ async function Partners() {
 export default function PartnersPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Partners />
       </Suspense>
     </main>

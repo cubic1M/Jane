@@ -10,6 +10,7 @@ import { loadSelfEmployed } from "@/lib/self-employed";
 import { requireUser } from "@/lib/session";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { HelperForm } from "./helper-form";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Freelance taxes (spec step 123): business expenses, the home office and mileage helpers,
 // what to set aside from each payment and the estimated tax payments left (demo advice).
@@ -194,7 +195,7 @@ async function Content() {
 export default function SelfEmployedPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content />
       </Suspense>
     </main>

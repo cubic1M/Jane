@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answerKind, demoDeposit, stage } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Sudden money (spec step 235, demo advice): a bonus, an inheritance or a sale, with a staged
 // plan. Tax set aside first; every part is your tap.
@@ -130,7 +131,7 @@ async function Content({
 export default function SuddenMoneyPage(props: PageProps<"/investments/sudden-money">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

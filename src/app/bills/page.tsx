@@ -6,6 +6,7 @@ import { loadDetectionInput } from "@/detection/engine";
 import { forecastAccounts, upcomingBills } from "@/detection/forecast";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 const dayLabel = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -85,7 +86,7 @@ async function Bills() {
 export default function BillsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Looking ahead…</p>}>
+      <Suspense fallback={<LoadingBar label="Looking ahead" />}>
         <Bills />
       </Suspense>
     </main>

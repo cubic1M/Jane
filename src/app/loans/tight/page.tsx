@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { loadTightMoney } from "@/lib/tight-money";
 import { sendRequestAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // When money is tight (spec step 177): the bills in the order to pay them (housing,
 // utilities and insurance first), and the requests Jane prepared, each written out and sent
@@ -133,7 +134,7 @@ async function TightContent({ searchParams }: Pick<PageProps<"/loans/tight">, "s
 export default function TightPage({ searchParams }: PageProps<"/loans/tight">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <TightContent searchParams={searchParams} />
       </Suspense>
     </main>

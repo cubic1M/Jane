@@ -3,6 +3,7 @@ import history from "../../../../docs/chat-quality-history.json";
 import type { NightEntry } from "@/lib/jane-agent/checks/history";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Spec step 195: how well Jane's chat answers, night by night. The nightly run
 // (.github/workflows/chat-quality.yml) scores the question bank and records each night in
@@ -111,7 +112,7 @@ async function ChatQuality() {
 export default function ChatQualityPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ChatQuality />
       </Suspense>
     </main>

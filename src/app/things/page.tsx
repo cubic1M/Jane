@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/session";
 import { deleteAsset } from "./actions";
 import { AssetForm } from "./asset-form";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Things you own (spec step 67): a home, a car, anything else of value, at the value the
 // person gives. Counted in net worth; with the loan against it, shown as equity.
@@ -207,7 +208,7 @@ async function ThingsContent({
 export default function ThingsPage({ searchParams }: PageProps<"/things">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ThingsContent searchParams={searchParams} />
       </Suspense>
     </main>

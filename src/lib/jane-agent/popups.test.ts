@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { concise, isPopup, popupCard, withoutPopups, POPUP_HEADLINE_WORDS } from "./popups";
+import {
+  chatList,
+  concise,
+  firstSentence,
+  isPopup,
+  popupCard,
+  popupStack,
+  withoutPopups,
+  POPUP_HEADLINE_WORDS,
+} from "./popups";
 import type { MessageView } from "./view";
 
 // Jane's own messages as pop-ups: what floats, how short its headline is, what its buttons do.
@@ -88,8 +97,59 @@ describe("a pop-up's card", () => {
     });
   });
 
-  it("keeps the whole message behind More details when the headline is cut", () => {
+  it("shows its first sentence whole, never cut with an ellipsis, and the rest behind More details", () => {
     const body = "Your car insurance renews next week and the price went up by $240";
-    expect(popupCard(message({ body })).details.about).toBe(body);
+    expect(popupCard(message({ body })).headline).toBe(body);
+    expect(popupCard(message({ body })).details.about).toBeUndefined();
+    const brief = popupCard(
+      message({
+        kind: "brief",
+        body: "Good morning! Three things today.\nYour rent is due Friday.",
+      }),
+    );
+    expect(brief.headline).toBe("Good morning!");
+    expect(brief.details.about).toBe("Three things today.\nYour rent is due Friday.");
+    expect(firstSentence("Saved $3.50 a month. More soon.")).toBe("Saved $3.50 a month.");
+  });
+});
+
+describe("one stack of cards, never repeated", () => {
+  const suggestion = (id: string, body: string) => message({ id, body, suggestion: true });
+
+  it("puts the day's suggestions first, then the rest, one card per message and per headline", () => {
+    const stack = popupStack(
+      [suggestion("s1", "Drop your mortgage insurance, save $1,562/yr\nWhy you: …")],
+      [
+        message({ id: "s1", suggestion: true }),
+        message({
+          id: "d1",
+          body: "Drop your mortgage insurance, save $1,562/yr\nFrom insurance.",
+        }),
+        message({ id: "d2" }),
+        message({ id: "b1", kind: "brief", body: "Good morning!" }),
+      ],
+      12,
+    );
+    expect(stack.map((m) => m.id)).toEqual(["s1", "b1", "d2"]);
+  });
+
+  it("keeps no more than the limit beyond the suggestions", () => {
+    const others = ["a", "b", "c"].map((id) => message({ id, body: `Thing ${id}` }));
+    expect(popupStack([], others, 2)).toHaveLength(2);
+  });
+
+  it("keeps the cards out of the chat: no suggestion, waiting or answered, and no twin", () => {
+    const stack = [suggestion("s1", "Cancel Hulu, save $216/yr")];
+    const list = chatList(
+      [
+        suggestion("s1", "Cancel Hulu, save $216/yr"),
+        message({ id: "s0", suggestion: true, status: "answered" }),
+        message({ id: "twin", body: "Cancel Hulu, save $216/yr\nFrom spending." }),
+        message({ id: "r1", kind: "reply", body: "Here's your plan." }),
+        message({ id: "old", body: "Cancel Hulu, save $216/yr", status: "answered" }),
+      ],
+      stack,
+    );
+    expect(list.map((m) => m.id)).toEqual(["r1", "old"]);
   });
 });

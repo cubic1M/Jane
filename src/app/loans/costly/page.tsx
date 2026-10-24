@@ -9,6 +9,7 @@ import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { wayOutLines } from "@/lib/jane-agent/costly-borrowing-replies";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Out of costly short-term borrowing (spec step 247): what payday loans, cash advances,
 // overdrafts and pay advance apps cost over the last year, in dollars and as a yearly rate, and
@@ -96,7 +97,7 @@ async function CostlyContent() {
 export default function CostlyPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <CostlyContent />
       </Suspense>
     </main>
