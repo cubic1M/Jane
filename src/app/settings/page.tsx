@@ -13,6 +13,7 @@ import { CallOffersForm } from "./call-offers-form";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
+import { isTrialUser } from "@/lib/trial-ids";
 import { formatCents } from "@/lib/money";
 import { vapidPublicKey } from "@/lib/push";
 import { US_STATES } from "@/config/referrals";
@@ -300,8 +301,20 @@ async function SettingsContent({
     </p>
   );
 
+  // Spec step 138: a trial person is never emailed or notified, whatever is set here.
+  const trialNote = isTrialUser(user.id) ? (
+    <p role="note" className={MUTED}>
+      You&apos;re trying Jane with a sample person, so nothing here is emailed or sent to a phone.
+      These settings show how it works;{" "}
+      <Link href="/signup" className={LINK}>
+        sign up
+      </Link>{" "}
+      to get them.
+    </p>
+  ) : null;
   details[itemId("notify", "messages")] = (
     <div id="jane-messages" className={BOX}>
+      {trialNote}
       <ChatNotifyForm
         channel={chatNotify.channel}
         kinds={CHAT_NOTIFY_KINDS.map((kind) => ({
@@ -315,6 +328,7 @@ async function SettingsContent({
   more[itemId("notify", "messages")] = <p className={MUTED}>{messagesFromJaneWords()}</p>;
   details[itemId("notify", "alerts")] = (
     <div id="alerts" className={BOX}>
+      {trialNote}
       <AlertsForm
         rows={ALERT_TYPES.map((type) => ({
           type,
@@ -334,6 +348,7 @@ async function SettingsContent({
   );
   details[itemId("notify", "email")] = (
     <div id="email" className={BOX}>
+      {trialNote}
       <EmailForm
         digestEnabled={prefs.digestEnabled}
         timezone={prefs.timezone ?? DEFAULT_TIMEZONE}

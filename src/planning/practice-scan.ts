@@ -3,6 +3,7 @@ import {
   AUTOPILOT_LIMITS,
   classOf,
   classTickers,
+  swapPair,
   MODEL_PORTFOLIOS,
   OPPORTUNITY_LEVELS,
   PRACTICE_ETFS,
@@ -27,6 +28,7 @@ import {
   SCAN_KINDS,
   type ScanKind,
 } from "@/config/practice-scan";
+import { ASK_FIRST_KINDS } from "@/config/practice-opportunities";
 import { ideaSlot, PRACTICE_IDEA_MIN_CENTS } from "@/config/practice-suggestions";
 import { HARVEST_MIN_LOSS_CENTS } from "@/config/tax";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
@@ -135,6 +137,8 @@ export type ScanInput = {
   avoid?: readonly string[];
   // Cash always kept: dips and ideas only spend the cash above it.
   cashBufferCents?: number;
+  // The fund the person chose for a kind (a strategy menu tilt): buys go there first.
+  funds?: Readonly<Partial<Record<PracticeClass, string>>>;
   // The person's limits (their rebalance pace's band); the hard ones without them.
   limits?: AutopilotLimits;
 };
@@ -319,6 +323,7 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
       (input.rules ?? rulesOnAt(input.level)).has("tax_loss_harvest")
         ? { state: input.state, prices: input.prices }
         : null,
+      input.funds?.[x.c] ?? null,
     );
     if (!buy) continue;
     const held = classValue(input.state, input.prices, x.c);
@@ -377,7 +382,7 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
   for (const [ticker, position] of Object.entries(input.state.positions)) {
     const c = classOf(ticker);
     if (!c) continue;
-    const swap = classTickers(c).find((t) => t !== ticker && !blocked.has(t));
+    const swap = swapPair(c).find((t) => t !== ticker && !blocked.has(t));
     if (!swap) continue;
     const valueCents = positionValue(input.state, input.prices, ticker);
     const cost = position.costBasisCents;
@@ -604,7 +609,9 @@ export function flagStatus(
     ? "held"
     : flag.kind === "drift_rebalance"
       ? "autopilot"
-      : flag.trades.length === 0 || mode === "suggest"
+      : flag.trades.length === 0 ||
+          mode === "suggest" ||
+          (ASK_FIRST_KINDS as readonly string[]).includes(flag.kind)
         ? "suggested"
         : "acted";
   return { status, heldBy: held };

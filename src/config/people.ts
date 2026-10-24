@@ -147,6 +147,7 @@ export const SUGGESTION_TOPICS = [
   "practice_glide_path",
   "practice_risk_mismatch",
   "practice_max_drop_near",
+  "practice_theme_idea",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -380,6 +381,7 @@ export const PEOPLE: readonly Person[] = [
       "business_insurance",
       // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
       "practice_news_idea",
+      "practice_theme_idea",
     ],
     mustNot: [
       "beneficiaries",
@@ -449,6 +451,7 @@ export const PEOPLE: readonly Person[] = [
       "hsa_over_limit",
       // Spec step 266: about $1M she could be sued for, past what home cover's liability reaches.
       "umbrella",
+      "practice_theme_idea",
     ],
     mustNot: [
       "beneficiaries",
@@ -515,6 +518,7 @@ export const PEOPLE: readonly Person[] = [
       "cosign_risk",
       // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
       "practice_glide_path",
+      "practice_theme_idea",
     ],
     mustNot: [
       "values_funds",
@@ -640,6 +644,7 @@ export const PEOPLE: readonly Person[] = [
       "rent_reporting",
       // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
       "practice_max_drop_near",
+      "practice_theme_idea",
     ],
     mustNot: [
       "beneficiaries",

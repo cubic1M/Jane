@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 // interactiveWidget "resizes-content" makes the page (and so the message box) shrink above the
 // phone keyboard instead of sliding under it (spec step 194).
 export const viewport: Viewport = {
-  themeColor: "#047857",
+  themeColor: "#171717",
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
 };

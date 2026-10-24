@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ScanProgress } from "@/lib/scan";
-import { monthsLabel, percentFor, slowLink, STAGES, stagesDone } from "./stages";
+import {
+  monthsLabel,
+  percentFor,
+  scanBarText,
+  slowLink,
+  stageLabel,
+  STAGES,
+  stagesDone,
+} from "./stages";
 
 const none: ScanProgress = {
   accounts: false,
@@ -54,7 +62,35 @@ describe("the scan's stages", () => {
 
 describe("a slow scan", () => {
   it("offers where the screen was heading: the chat from Try Jane, else the report", () => {
-    expect(slowLink("/chat")).toMatchObject({ href: "/chat", label: "Open the chat" });
+    expect(slowLink("/home")).toMatchObject({ href: "/home", label: "Open Jane" });
     expect(slowLink("/report")).toMatchObject({ href: "/report", label: "See your report" });
+  });
+});
+
+describe("the page's loading bar", () => {
+  it("draws the share in sixteen cells, with the step in words", () => {
+    expect(scanBarText(52, "Reading 12 months of transactions")).toBe(
+      "[████████░░░░░░░░] 52% · reading 12 months of transactions",
+    );
+    expect(scanBarText(0, "Linking your accounts")).toBe(
+      "[░░░░░░░░░░░░░░░░] 0% · linking your accounts",
+    );
+    expect(scanBarText(120, "Ready")).toBe("[████████████████] 100% · ready");
+  });
+
+  it("names the step that's running", () => {
+    const p = {
+      accounts: true,
+      months: 12,
+      transactions: false,
+      detection: false,
+      suggestions: false,
+      done: false,
+    };
+    expect(stageLabel(null)).toBe("Linking your accounts");
+    expect(stageLabel(p)).toBe("Reading 12 months of transactions");
+    expect(
+      stageLabel({ ...p, transactions: true, detection: true, suggestions: true, done: true }),
+    ).toBe("Ready");
   });
 });

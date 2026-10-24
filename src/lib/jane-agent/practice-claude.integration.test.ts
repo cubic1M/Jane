@@ -139,11 +139,93 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
     }
   });
 
+  it("tells the strategy menu at the person's level, against their mix, honestly", async () => {
+    const userId = await person();
+    const out = JSON.parse(
+      (await runChatTool(userId, "strategy_menu", {}, { client, now: at("2026-10-16") })).content,
+    );
+    expect(out.notAForecast).toMatch(/not a forecast/);
+    expect(out.default).toMatch(/Jane's pick/);
+    expect(out.strategies.map((s: { strategy: string }) => s.strategy)).toEqual(
+      expect.arrayContaining([
+        "Value tilt",
+        "Momentum tilt",
+        "Sector rotation",
+        "All-weather (risk parity)",
+      ]),
+    );
+    expect(out.crypto.warning).toMatch(/lost 70% to 80%/);
+    expect(out.crypto.inThePracticePortfolio).toMatch(/^At Very high, as a sleeve/);
+    expect(out.crypto.practicePortfolioRuns).toBe("no crypto sleeve");
+    expect(out.crypto.strategies.map((s: { strategy: string }) => s.strategy)).toEqual([
+      "Crypto, held",
+      "Crypto trend",
+      "Crypto momentum",
+    ]);
+    // Every catalog strategy tested, with what is recommendable and why the rest isn't.
+    const tested = out.tested;
+    expect(tested.how).toMatch(/haircut/);
+    expect(
+      tested.recommendable.length + tested.worthWatching.length + tested.notRecommended.length,
+    ).toBeGreaterThan(30);
+    for (const r of tested.notRecommended) expect(r.why.length).toBeGreaterThan(0);
+    expect(out.dayTrading.warning).toMatch(/Most people who day trade lose money/);
+    expect(out.dayTrading.inThePracticePortfolio).toMatch(/^At Very high, as a sleeve/);
+    expect(out.dayTrading.practicePortfolioRuns).toBe("no day trading");
+    expect(out.dayTrading.rules).toHaveLength(5);
+    for (const r of out.dayTrading.rules) {
+      expect(typeof r.since2024YearlyPercent).toBe("number");
+      expect(typeof r.moreReturnForItsRiskThanHolding).toBe("boolean");
+    }
+    for (const s of out.strategies) {
+      expect(typeof s.yearlyPercent).toBe("number");
+      expect(typeof s.mixYearlyPercent).toBe("number");
+      expect(typeof s.moreReturnForItsRiskThanTheMix).toBe("boolean");
+    }
+    vi.mocked(adviceMode).mockResolvedValueOnce(false);
+    const real = JSON.parse(
+      (await runChatTool(userId, "strategy_menu", {}, { client, now: at("2026-10-16") })).content,
+    );
+    expect(real.note).toMatch(/demo advice/);
+  });
+
+  it("tells the news themes, how each did before, and which are offered", async () => {
+    const userId = await person();
+    const out = JSON.parse(
+      (await runChatTool(userId, "news_themes", {}, { client, now: at("2026-10-16") })).content,
+    );
+    expect(out.notAForecast).toMatch(/not a forecast/);
+    const offered = out.themes.filter((t: { offered: boolean }) => t.offered);
+    expect(offered.map((t: { fund: string }) => t.fund.split(":")[0]).sort()).toEqual([
+      "ITA",
+      "SMH",
+    ]);
+    for (const t of offered) expect(t.confidencePercent).toBeGreaterThan(0);
+    const oil = out.themes.find((t: { fund: string }) => t.fund.startsWith("XLE"));
+    expect(oil).toMatchObject({ offered: false, confidencePercent: null });
+    expect(oil.alsoTested[0]).toMatch(/^USO: beat the market in \d+ of 9/);
+    vi.mocked(adviceMode).mockResolvedValueOnce(false);
+    const real = JSON.parse(
+      (await runChatTool(userId, "news_themes", {}, { client, now: at("2026-10-16") })).content,
+    );
+    expect(real.note).toMatch(/demo advice/);
+  });
+
   it("is sent with the investing questions about it", () => {
     const names = (text: string) =>
       toolsFor(CHAT_TOOLS, text, null, null, "2026-10-16").map((t) => t.name);
     expect(names("what did you buy this week and why")).toContain("practice_portfolio");
     expect(names("pause it")).toContain("practice_portfolio");
+    expect(names("what do you do with my practice portfolio when there's a war")).toContain(
+      "news_themes",
+    );
+    expect(names("should I buy oil stocks")).toContain("news_themes");
+    expect(names("what other strategies could my practice portfolio use")).toContain(
+      "strategy_menu",
+    );
+    expect(names("is momentum better than my mix")).toContain("strategy_menu");
+    expect(names("can I day trade with the practice money")).toContain("strategy_menu");
+    expect(names("does VWAP reversion work")).toContain("strategy_menu");
     expect(names("what strategy is my practice portfolio on")).toContain("practice_portfolio");
     expect(names("what ideas do you have for my practice portfolio")).toContain(
       "practice_portfolio",

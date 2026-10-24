@@ -416,6 +416,9 @@ export type MessageRefs = {
   carAddon?: { key?: string; id?: string };
   // Spec step 255: the suggestion (by its key) a button is about.
   suggestion?: string;
+  // Phase AW: shown in the chat only, never pushed or emailed (a news theme's alert to a trial
+  // or sample person, src/lib/practice/theme-alerts.ts).
+  chatOnly?: true;
   // Its whole reason, with the figure the headline names ("If it fell by 30% you would lose
   // $77,748"), for the floating card's More details: the "Why you" line alone doesn't say it.
   suggestionWhy?: string;

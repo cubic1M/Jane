@@ -8,6 +8,7 @@ import {
   PRACTICE_ETFS,
   PRACTICE_UNIVERSE,
   stocksShare,
+  THEME_FUNDS,
   type PracticeClass,
 } from "@/config/portfolios";
 import {
@@ -35,6 +36,17 @@ import {
 } from "@/config/practice-opportunities";
 import { LEVEL_WORST_DROP_PERCENT } from "@/config/practice-preferences";
 import { DRIFT_STOCKS_BAND, rulesOnAt, SCAN_CAPS, SCAN_CONFIDENCE } from "@/config/practice-scan";
+import { THEME_EVIDENCE, THEME_EVIDENCE_SOURCE, themeConfidence } from "@/config/theme-evidence";
+import {
+  THEME_HOLD_DAYS,
+  THEME_IDS,
+  THEME_MAX_SHARE,
+  THEME_NEWS_DAYS,
+  THEME_REPEAT_DAYS,
+  THEME_SLICE_BY_LEVEL,
+  THEME_STOP_LOSS,
+  THEMES,
+} from "@/config/themes";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PaySchedule } from "@/detection/paydays";
 import { buyFundFor, portfolioValue, positionValue, type Prices } from "./practice-autopilot";
@@ -237,6 +249,7 @@ function buyShort(
       input.prefs.taxSensitive && (input.rules ?? rulesOnAt(input.level)).has("tax_loss_harvest")
         ? { state: input.state, prices: input.prices }
         : null,
+      input.funds?.[c] ?? null,
     );
     if (!ticker) continue;
     const room =
@@ -691,6 +704,126 @@ function maxDropFlag(input: OpportunityInput): ScanFlag | null {
 }
 
 // Whether a step 292 flag is one the person's preferences allow.
+// A news theme (src/config/themes.ts): a headline of a kind of event whose fund held up on its
+// past events brings a small slice of that fund, capped by the level, out after about a month
+// or at the stop. Always asked first (ASK_FIRST_KINDS). Paid from cash waiting, then the
+// short-term bills, then the US stocks fund, never one at a loss (that sale would need its own
+// wash-sale check).
+function themeFlags(
+  input: OpportunityInput,
+  available: number,
+  blocked: ReadonlySet<string>,
+): ScanFlag[] {
+  const slice = THEME_SLICE_BY_LEVEL[input.level] ?? 0;
+  if (slice <= 0 || input.opportunitiesPaused) return [];
+  const total = portfolioValue(input.state, input.prices);
+  const caps = SCAN_CAPS.theme_idea;
+  const from = new Date(Date.parse(`${input.today}T00:00:00Z`) - THEME_NEWS_DAYS * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const lately = new Date(Date.parse(`${input.today}T00:00:00Z`) - THEME_REPEAT_DAYS * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  let themesHeld = THEME_FUNDS.reduce((s, t) => s + positionValue(input.state, input.prices, t), 0);
+  let cash = available;
+  const funds = [...classTickers("cash"), ...classTickers("us_stocks")]
+    .filter((t) => input.state.positions[t] && !blocked.has(t))
+    .map((t) => ({ ticker: t, value: positionValue(input.state, input.prices, t) }))
+    .filter((f) => f.value >= input.state.positions[f.ticker].costBasisCents);
+  const flags: ScanFlag[] = [];
+  for (const id of THEME_IDS) {
+    const theme = THEMES[id];
+    const record = THEME_EVIDENCE[id];
+    if (!record.heldUp || blocked.has(theme.ticker)) continue;
+    const h = input.headlines.find(
+      (x) =>
+        x.date >= from && x.date <= input.today && theme.triggers.every((r) => r.test(x.title)),
+    );
+    if (!h) continue;
+    const key = `theme_idea:${id}:${h.date}`;
+    if (input.seen.has(key)) continue;
+    // One idea a theme at a time: none while its fund is held or was bought lately.
+    const own = positionValue(input.state, input.prices, theme.ticker);
+    const boughtLately = input.trades.some(
+      (t) => t.ticker === theme.ticker && t.side === "buy" && t.placedAt.slice(0, 10) >= lately,
+    );
+    if (own > 0 || boughtLately || !input.prices[theme.ticker]) continue;
+    const amount = Math.floor(
+      Math.min(
+        Math.round(slice * total),
+        Math.round(caps.sizeShare * total),
+        Math.round(caps.positionShare * total),
+        Math.round(THEME_MAX_SHARE * total) - themesHeld,
+      ),
+    );
+    if (amount < AUTOPILOT_LIMITS.minTradeCents) continue;
+    const fromCash = Math.min(cash, amount);
+    const fromFund = amount - fromCash;
+    const fund = fromFund > 0 ? funds.find((f) => f.value >= fromFund) : null;
+    if (fromFund > 0 && !fund) continue;
+    cash -= fromCash;
+    if (fund) fund.value -= fromFund;
+    themesHeld += amount;
+    const confidence = themeConfidence(record);
+    const past = `It beat the whole US market in ${record.hits} of ${record.events} past events of this kind, by ${pct(record.averageExcess)} on average over a month; the worst was ${pct(record.worst)}.`;
+    const exit = `Out after ${THEME_HOLD_DAYS} trading days, or sooner if it falls ${pct(THEME_STOP_LOSS)}.`;
+    const paid = fund ? ` paid from ${fund.ticker}` : " from cash waiting";
+    const reason = `News on ${h.date}: "${h.title}". ${theme.what} ${past} A ${dollars(amount)} slice of ${theme.ticker}${paid}. ${theme.risk} ${exit}`;
+    const trades: ScanTrade[] = [];
+    if (fund)
+      trades.push({
+        ticker: fund.ticker,
+        side: "sell",
+        amountCents: fromFund,
+        rule: "theme_idea",
+        reason,
+      });
+    trades.push({
+      ticker: theme.ticker,
+      side: "buy",
+      amountCents: amount,
+      rule: "theme_idea",
+      reason,
+    });
+    flags.push({
+      kind: "theme_idea",
+      ticker: theme.ticker,
+      key,
+      headline: `${theme.label}: ${dollars(amount)} in ${theme.ticker}`,
+      reason,
+      amountCents: amount,
+      trades,
+      figures: [
+        { label: "Why now", value: `${h.title} (${h.source}, ${h.date})` },
+        { label: "The fund", value: `${theme.ticker}: ${theme.fund}` },
+        { label: "Past events", value: `Beat the market in ${record.hits} of ${record.events}` },
+        { label: "On average against the market", value: pct(record.averageExcess) },
+        { label: "Worst past result", value: pct(record.worst) },
+        { label: "The risk", value: theme.risk },
+        { label: "When to get out", value: exit },
+        { label: "Past results from", value: THEME_EVIDENCE_SOURCE },
+      ],
+      caps: [
+        `At most ${pct(slice)} of the portfolio at your level`,
+        `At most ${pct(THEME_MAX_SHARE)} in all news themes`,
+        `One idea a theme at a time; at most ${caps.perMonth} a month`,
+        "Jane asks first, every time",
+      ],
+      confidence: {
+        percent: confidence,
+        reason: `It beat the market in ${record.hits} of ${record.events} past events of this kind; with so few, Jane keeps it near even. A replay of the past, not a forecast.`,
+      },
+      ask: {
+        headline: `Try ${wholeDollars(amount)} of ${theme.ticker} on the news, in practice`,
+        short: `After news on ${h.date}: it beat the market in ${record.hits} of ${record.events} past events; out in about a month.`,
+        worthCents: amount,
+        worthKind: "risk",
+      },
+    });
+  }
+  return flags;
+}
+
 function allowedByPrefs(f: ScanFlag, prefs: ScanPreferences): boolean {
   if (prefs.appetite === "none" && (f.kind === "dip_buy" || f.kind === "news_idea")) return false;
   if (prefs.appetite === "low" && f.kind === "news_idea") return false;
@@ -733,15 +866,25 @@ export function scanOpportunities(input: OpportunityInput): ScanFlag[] {
       base = base.filter((f) => f.kind !== "drift_rebalance");
     }
   }
+  const cashDrag = newMoney ? null : cashDragFlag(input, available, blocked);
+  // A theme takes only the cash the others leave, and never sells what they trade today.
+  const spent = (f: ScanFlag | null) =>
+    (f?.trades ?? []).reduce((s, t) => s + (t.side === "buy" ? t.amountCents : -t.amountCents), 0);
+  const themes = themeFlags(
+    input,
+    Math.max(0, available - spent(cashDrag)),
+    new Set([...blocked, ...touched]),
+  );
   const found = [
     newMoney,
-    newMoney ? null : cashDragFlag(input, available, blocked),
+    cashDrag,
     ...cheaperFundFlags(input, blocked, touched),
     paydayFlag(input),
     newMoney ? null : driftWarningFlag(input),
     glideFlag(input),
     mismatchFlag(input),
     maxDropFlag(input),
+    ...themes,
   ].filter((f): f is ScanFlag => f !== null && on.has(f.kind) && !input.seen.has(f.key));
   const left = Object.fromEntries(
     OPPORTUNITY_KINDS.map((k) => [k, SCAN_CAPS[k].perMonth - (input.usedThisMonth[k] ?? 0)]),

@@ -471,16 +471,16 @@ async function LoansContent({
             : `You owe ${formatCents(book.totalOwedCents)}, ${formatCents(book.monthlyCents)} due each month. Open a branch to see more.`}
         </p>
         <nav aria-label="Loans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/debt" className={LINK}>
+          <Link prefetch={false} href="/debt" className={LINK}>
             Payoff plan
           </Link>
-          <Link href="/loans/refinance" className={LINK}>
+          <Link prefetch={false} href="/loans/refinance" className={LINK}>
             Refinance
           </Link>
-          <Link href="/loans/credit" className={LINK}>
+          <Link prefetch={false} href="/loans/credit" className={LINK}>
             Credit score
           </Link>
-          <Link href="/loans/borrow" className={LINK}>
+          <Link prefetch={false} href="/loans/borrow" className={LINK}>
             What you could borrow
           </Link>
         </nav>

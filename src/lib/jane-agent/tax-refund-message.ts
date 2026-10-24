@@ -32,7 +32,9 @@ export function refundMessage(view: RefundView): {
   if (!view.plan || view.plan.items.length === 0) {
     return {
       body: landed,
-      actions: [{ id: "open", label: "See your taxes", kind: "link", href: "/taxes#refund" }],
+      actions: [
+        { id: "open", label: "See your taxes", kind: "link", href: "/taxes?focus=estimate:refund" },
+      ],
       refs: { taxRefund: r.transactionId },
     };
   }

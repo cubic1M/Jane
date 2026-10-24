@@ -75,7 +75,8 @@ export type ReplyLinkView =
   | { state: "invalid" }
   | { state: "expired" }
   | { state: "wrong_user" }
-  | { state: "used"; messageId: string }
+  // What this link did, so the page shows the outcome when it reloads after the tap.
+  | { state: "used"; messageId: string; answeredWith: string | null; note: string | null }
   | { state: "answered"; messageId: string; answeredWith: string | null }
   | { state: "ready"; messageId: string; body: string; label: string };
 
@@ -92,7 +93,15 @@ export async function viewReplyLink(
   const link = await findLink(token, client);
   if (!link) return { state: "invalid" };
   if (signedInAs && signedInAs !== link.userId) return { state: "wrong_user" };
-  if (link.usedAt) return { state: "used", messageId: link.messageId };
+  if (link.usedAt) {
+    const found = await messageFor(link, client);
+    return {
+      state: "used",
+      messageId: link.messageId,
+      answeredWith: found?.message.answeredWith ?? null,
+      note: found?.message.refs.note ?? null,
+    };
+  }
   if (link.expiresAt <= now) return { state: "expired" };
   const found = await messageFor(link, client);
   if (!found) return { state: "invalid" };

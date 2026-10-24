@@ -41,6 +41,41 @@ export type InvestmentTaxesView = {
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const DAY_MS = 86_400_000;
 
+type HoldingRow = {
+  accountId: string;
+  securityId: string;
+  quantity: number;
+  valueCents: number;
+  costBasisCents: number | null;
+  security: {
+    ticker: string | null;
+    name: string;
+    type: string | null;
+    isCashEquivalent: boolean;
+  } | null;
+};
+
+// A holding whose gains are worked out: not cash, and with its security. The security can come
+// back missing although the schema requires one (Prisma reads the relation in a second query,
+// and a sync can replace the demo bank's securities in between); without it the lots can't be
+// matched, so it's left out rather than crashing the page.
+export function taxHolding(h: HoldingRow): InvHolding[] {
+  const s = h.security;
+  if (!s || s.isCashEquivalent || s.type === "cash") return [];
+  return [
+    {
+      accountId: h.accountId,
+      securityId: h.securityId,
+      ticker: s.ticker,
+      name: s.name,
+      type: s.type,
+      quantity: h.quantity,
+      valueCents: h.valueCents,
+      costBasisCents: h.costBasisCents,
+    },
+  ];
+}
+
 export async function loadInvestmentTaxes(
   userId: string,
   year: number,
@@ -94,18 +129,7 @@ export async function loadInvestmentTaxes(
     }),
   ]);
   const txs: InvTransaction[] = transactions.map((t) => ({ ...t, date: iso(t.date) }));
-  const held: InvHolding[] = holdings
-    .filter((h) => !h.security.isCashEquivalent && h.security.type !== "cash")
-    .map((h) => ({
-      accountId: h.accountId,
-      securityId: h.securityId,
-      ticker: h.security.ticker,
-      name: h.security.name,
-      type: h.security.type,
-      quantity: h.quantity,
-      valueCents: h.valueCents,
-      costBasisCents: h.costBasisCents,
-    }));
+  const held: InvHolding[] = holdings.flatMap(taxHolding);
   const allUnrealised: Unrealised[] = [];
   const allRealised: Realised[] = [];
   for (const h of held) {

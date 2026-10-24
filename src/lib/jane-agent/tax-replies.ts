@@ -219,7 +219,7 @@ export function formsReply(view: TaxFormsView): Reply {
   if (view.forms.length === 0) {
     return {
       body: `I don't expect any tax forms for ${view.year} from what's in your accounts. If you were paid somewhere I can't see, that payer sends its own.`,
-      actions: [link("See your taxes", "/taxes#forms")],
+      actions: [link("See your taxes", "/taxes?focus=records:forms")],
       refs: {},
     };
   }
@@ -235,7 +235,7 @@ export function formsReply(view: TaxFormsView): Reply {
   );
   return {
     body: `I expect ${view.forms.length} tax ${view.forms.length === 1 ? "form" : "forms"} for ${view.year}, from your accounts.\n${lines.join("\n")}`,
-    actions: [link("See tax forms", "/taxes#forms")],
+    actions: [link("See tax forms", "/taxes?focus=records:forms")],
     refs: {},
   };
 }
@@ -281,7 +281,7 @@ export function estimateMessage(view: TaxEstimateView): Reply {
   return {
     body: `My estimate for your ${view.year} taxes: ${federalLine(e, view.withholdingKnown).replace(/^Federal: /, "federal, ")}${state ? ` ${state}` : ""}${sofar}${assumed ? ` ${assumed}` : ""} I update it after every sync.`,
     actions: [
-      link("See the estimate", "/taxes#estimate"),
+      link("See the estimate", "/taxes?focus=estimate:estimate"),
       ...(view.withholdingKnown ? [] : [link("Add pay stub figures", `${PROFILE_HREF}#pay-stub`)]),
     ],
     refs: {},
@@ -292,7 +292,7 @@ export function bracketReply(view: TaxEstimateView): Reply {
   const rate = Math.round(view.estimate.marginalRate * 100);
   return {
     body: `Your top federal rate is about ${rate}%: each extra $100 of income adds about $${rate} of federal tax, before any state tax. That's from my ${view.year} estimate.`,
-    actions: [link("See the estimate", "/taxes#estimate")],
+    actions: [link("See the estimate", "/taxes?focus=estimate:estimate")],
     refs: {},
   };
 }
@@ -323,7 +323,7 @@ export function withholdingReply(view: WithholdingView): Reply {
     case "on_track":
       return {
         body: onTrackLine(estimate, check.refundCents),
-        actions: [link("See the estimate", "/taxes#withholding")],
+        actions: [link("See the estimate", "/taxes?focus=estimate:withholding")],
         refs: {},
       };
     default:
@@ -344,7 +344,7 @@ export function savingsReply(view: TaxSavingsView): Reply {
   if (!first) {
     return {
       body: `I haven't found more ways for you to pay less for ${view.year} from what's in your accounts.`,
-      actions: [link("See your taxes", "/taxes#savings")],
+      actions: [link("See your taxes", "/taxes?focus=savings")],
       refs: { advice: true },
     };
   }
@@ -358,7 +358,7 @@ export function savingsReply(view: TaxSavingsView): Reply {
       : "";
   return {
     body: `${top.body}${more}`,
-    actions: [...top.actions, link("All of them", "/taxes#savings")],
+    actions: [...top.actions, link("All of them", "/taxes?focus=savings")],
     refs: top.refs,
   };
 }
@@ -443,7 +443,7 @@ export function refundReply(refunds: RefundView[], estimate: TaxEstimateView): R
       estimate.withholdingKnown && e.refundCents > 0
         ? `I haven't seen a tax refund in your accounts yet. For ${estimate.year} I estimate ${balancePhraseOf(e.refundCents)}; I'll tell you when it lands.`
         : "I haven't seen a tax refund in your accounts. I'll tell you when one lands.",
-    actions: [link("See the estimate", "/taxes#estimate")],
+    actions: [link("See the estimate", "/taxes?focus=estimate:estimate")],
     refs: {},
   };
 }
@@ -494,7 +494,7 @@ export function standardDeductionReply(view: TaxEstimateView): Reply {
       : ` Filing as ${status}, yours is ${formatCents(d.standardCents)}, and it's more than itemizing would give you.`;
   return {
     body: `The ${view.year} standard deduction is ${formatCents(STANDARD_DEDUCTION.single)} for single filers, ${formatCents(STANDARD_DEDUCTION.married_joint)} married filing jointly and ${formatCents(STANDARD_DEDUCTION.head_of_household)} head of household.${yours}`,
-    actions: [link("See the estimate", "/taxes#estimate")],
+    actions: [link("See the estimate", "/taxes?focus=estimate:estimate")],
     refs: {},
   };
 }

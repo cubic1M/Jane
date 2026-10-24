@@ -7,7 +7,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // for depreciation, hobby or business (both taxes shown, demo advice), and the answer to
 // "my rental income" and "my gig income".
 
-export const SIDE_HREF = "/taxes#side-income";
+export const SIDE_HREF = "/taxes?focus=life:side-income";
 export const SIDE_FORM_HREF = "/taxes/profile#side-income";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };

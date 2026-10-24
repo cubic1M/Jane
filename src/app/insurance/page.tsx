@@ -581,17 +581,17 @@ async function InsuranceContent({
           Your cover at a glance. Open a branch to see more.
         </p>
         <nav aria-label="Insurance pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/insurance/checkup" className={LINK}>
+          <Link prefetch={false} href="/insurance/checkup" className={LINK}>
             Checkup
           </Link>
-          <Link href="/insurance/claims" className={LINK}>
+          <Link prefetch={false} href="/insurance/claims" className={LINK}>
             Claims
           </Link>
-          <Link href="/insurance/benefits" className={LINK}>
+          <Link prefetch={false} href="/insurance/benefits" className={LINK}>
             Work benefits
           </Link>
           {advice && (
-            <Link href="/insurance/life" className={LINK}>
+            <Link prefetch={false} href="/insurance/life" className={LINK}>
               Life cover
             </Link>
           )}
