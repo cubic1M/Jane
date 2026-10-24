@@ -225,7 +225,10 @@ export function compareRefinance(
     pick,
     runnersUp: pick ? scored.filter((o) => o !== pick).slice(0, REFI_RUNNERS_UP) : [],
     why,
-    ...(debt.principalAndInterestCents && debt.paymentCents
+    // Only where there is escrow: a payment that's all principal and interest needs no note.
+    ...(debt.principalAndInterestCents &&
+    debt.paymentCents &&
+    debt.paymentCents > debt.principalAndInterestCents
       ? { escrowCents: debt.paymentCents - debt.principalAndInterestCents }
       : {}),
   };
