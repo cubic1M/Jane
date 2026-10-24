@@ -5,7 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { NET_WORTH_MONTHS } from "@/config/net-worth";
 import { monthsEnding } from "@/insights/spending";
-import { monthlyNetWorth, netWorth } from "@/insights/net-worth";
+import { netWorth, netWorthLine } from "@/insights/net-worth";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
@@ -49,12 +49,14 @@ async function NetWorthContent() {
     owned,
     crypto,
   );
-  const months = monthlyNetWorth(
+  // The same line as the hub's, ending at today's net worth.
+  const months = netWorthLine(
     accounts,
     snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
+    owned,
     asOf,
     NET_WORTH_MONTHS,
-    owned,
+    today.netCents,
   );
   const prompts = assetPrompts(
     accounts,

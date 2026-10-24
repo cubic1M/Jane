@@ -4,6 +4,11 @@
 export const SNAPSHOT_RETENTION_DAYS = 730;
 // Months shown on /net-worth.
 export const NET_WORTH_MONTHS = 12;
+// A sample person's past balances (src/lib/plaid/demo-history.ts): working back through an
+// account's transactions must not take a bank account below this (a deep overdraft) or a card
+// or loan below owing nothing. If it would, the transactions don't explain the balance (a
+// payment seen on one side only), and the account is kept at today's balance instead.
+export const DEMO_HISTORY_LOWEST_BANK_CENTS = -100_000;
 // Plaid account types that are money owed rather than money held.
 export const DEBT_ACCOUNT_TYPES: readonly string[] = ["credit", "loan"];
 
