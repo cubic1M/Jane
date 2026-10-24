@@ -26,7 +26,6 @@ import { EmailForm } from "./email-form";
 import { TwoFactorOnForms } from "./two-factor-forms";
 import { RulesForm } from "./rules-form";
 import { cookies } from "next/headers";
-import { connection } from "next/server";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { listSessions } from "@/lib/user-sessions";
 import { SessionsList } from "./sessions-list";
@@ -46,58 +45,40 @@ import { SECTOR_ALL_MEANS, SECTOR_LABELS } from "@/config/autopilot-sectors";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { SectorsForm } from "./sectors-form";
 import { dayLabel } from "@/lib/day-label";
+import { openBooks } from "@/lib/books";
+import { importEnded } from "@/lib/books-fix";
+import { SETTINGS_ANCHORS, anchorFocus, itemId, settingsTree } from "@/lib/area-pages/settings";
+import { SettingsArea } from "./settings-area";
 
-// "9pm", "8am".
+// Settings (spec step 79; docs/design/area-pages.md): the area's tree, one item per setting
+// with what it's set to, and the one thing picked below it. Each form sits in its item's detail
+// under the section id it always had, and the old #anchors open that item (./settings-area.tsx).
 
-// Spec step 79: the sections sit in four groups, with a menu of them at the top. Each
-// section keeps its id (#banks, #alerts, #autopilot, #rules, #two-factor, ...): other
-// pages and emails link straight to them.
-const GROUPS = [
-  { id: "accounts", label: "Accounts" },
-  { id: "notifications", label: "Notifications" },
-  { id: "autopilot", label: "Autopilot" },
-  { id: "privacy", label: "Privacy and security" },
-] as const;
-
-const H2 = "text-2xl font-semibold tracking-tight";
-const H3 = "text-lg font-semibold";
-const GROUP = "flex scroll-mt-8 flex-col gap-8 border-t border-zinc-200 pt-6 dark:border-zinc-800";
-const SECTION = "flex scroll-mt-8 flex-col gap-3";
-const MUTED = "text-zinc-600 dark:text-zinc-400";
-const LINK = "font-medium text-emerald-700 hover:underline";
+const MUTED = "text-sm text-zinc-600 dark:text-zinc-400";
+// Black, white and grey only: meaning comes from glyphs and underlines, not hue.
+const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const RECONNECT =
   "inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
+const BOX = "flex scroll-mt-8 flex-col gap-3";
 
-function Group({ id, children }: { id: (typeof GROUPS)[number]["id"]; children: ReactNode }) {
-  const label = GROUPS.find((g) => g.id === id)?.label;
-  return (
-    <section id={id} aria-labelledby={`${id}-heading`} className={GROUP}>
-      <h2 id={`${id}-heading`} className={H2}>
-        {label}
-      </h2>
-      {children}
-    </section>
-  );
-}
+// How Jane's messages go out, as the tree shows it.
+const CHANNEL_WORDS: Record<string, string> = {
+  push: "Phone",
+  email: "Email",
+  both: "Phone and email",
+  off: "Off",
+};
 
-// Where you're signed in (spec step 73). This session is found by its cookie, here on the
-// server; the page only ever gets row ids and labels.
-async function SessionsSection({ userId }: { userId: string }) {
-  await connection();
-  const sessions = await listSessions(userId, sessionTokenFrom(await cookies()));
-  return (
-    <section id="sessions" className="flex scroll-mt-8 flex-col gap-3">
-      <h3 className={H3}>Where you&apos;re signed in</h3>
-      <p className="text-zinc-600 dark:text-zinc-400">
-        Don&apos;t recognize one? Sign it out; it stops working straight away.
-      </p>
-      <SessionsList sessions={sessions} />
-    </section>
-  );
-}
-
-async function SettingsContent() {
+async function SettingsContent({
+  searchParams,
+}: {
+  searchParams: PageProps<"/settings">["searchParams"];
+}) {
   const user = await requireUser();
+  const params = await searchParams;
+  // Where you're signed in (spec step 73): this session is found by its cookie, here on the
+  // server; the page only ever gets row ids and labels.
+  const token = sessionTokenFrom(await cookies());
   const mine = await scopedDb();
   const [
     prefs,
@@ -110,6 +91,10 @@ async function SettingsContent() {
     remembered,
     sectors,
     attention,
+    books,
+    owned,
+    documents,
+    sessions,
   ] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
@@ -158,342 +143,378 @@ async function SettingsContent() {
     listPreferences(user.id),
     sectorAutopilots(user.id),
     loadAttention(user.id),
+    openBooks(user.id),
+    mine.ownedAssets.count(),
+    mine.documents.count(),
+    listSessions(user.id, token),
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
   const chatNotify = chatNotifyPrefs(prefs.chatNotifyPrefs);
   const day = (d: Date | null | undefined) => (d ? dayLabel(d, { year: true }) : "not yet");
+  const ended = new Map(
+    books.open
+      .filter((o) => importEnded(o) && o.accountId)
+      .map((o) => [o.accountId as string, o.words]),
+  );
+  const imported = accounts.filter((a) => a.source !== "plaid");
+  const autopilotLabel =
+    autopilot === null
+      ? null
+      : autopilot === "custom"
+        ? "Your own rules"
+        : AUTOPILOT_LEVELS[autopilot].label;
+
+  const area = settingsTree({
+    banks: items.map((item) => ({
+      id: item.id,
+      name: item.institutionName ?? "Your bank",
+      updated: day(item.lastSyncedAt),
+      accounts: item.accounts.length,
+      needsSignIn: item.status === ITEM_STATUS.loginRequired,
+    })),
+    imports: imported.map((a) => ({
+      id: a.id,
+      name: a.mask ? `${a.name} ····${a.mask}` : a.name,
+      lastImport: day(csvUpdated.get(a.id)),
+      ended: ended.get(a.id) ?? null,
+    })),
+    autopilot: autopilotLabel,
+    sectorsOn: sectors.filter((s) => s.level !== "ask").length,
+    sectors: sectors.length,
+    rulesOn: rules.filter((r) => r.enabled).length,
+    channel: CHANNEL_WORDS[chatNotify.channel] ?? chatNotify.channel,
+    alertsOn: ALERT_TYPES.filter((type) => alerts[type] !== "off").length,
+    alerts: ALERT_TYPES.length,
+    digest: prefs.digestEnabled,
+    remembered: remembered.filter((p) => p.kind !== "style").length,
+    state: prefs.state,
+    owned,
+    documents,
+    twoFactor: twoFactor.enabledAt !== null,
+    calendar: prefs.calendarCreatedAt !== null,
+  });
+
+  const details: Record<string, ReactNode> = {};
+  const more: Record<string, ReactNode> = {};
+
+  // Banks and files: each bank's Refresh and Disconnect (and Reconnect when it needs a sign-in),
+  // its accounts behind More.
+  for (const item of items) {
+    const id = itemId("banks", `item-${item.id}`);
+    details[id] = (
+      <div className={BOX}>
+        {item.status === ITEM_STATUS.loginRequired && (
+          // The same Reconnect as /connect: Plaid Link in update mode.
+          <LinkButton itemId={item.id} label="Reconnect" className={RECONNECT} />
+        )}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <RefreshForm itemId={item.id} />
+          <DisconnectForm itemId={item.id} name={item.institutionName ?? "this bank"} />
+        </div>
+      </div>
+    );
+    more[id] = (
+      <ul className="flex flex-col divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
+        {accounts
+          .filter((a) => a.item?.institutionName === item.institutionName && a.source === "plaid")
+          .map((a) => (
+            <li key={a.id} className="flex flex-wrap justify-between gap-2 py-1.5">
+              <span>{a.mask ? `${a.name} ····${a.mask}` : a.name}</span>
+              <span className="font-medium">
+                {a.currentBalanceCents === null ? "No balance" : formatCents(a.currentBalanceCents)}
+              </span>
+            </li>
+          ))}
+      </ul>
+    );
+  }
+  for (const a of imported) {
+    details[itemId("banks", `csv-${a.id}`)] = (
+      <div className={BOX}>
+        <p className={MUTED}>
+          Balance:{" "}
+          {a.currentBalanceCents === null ? "none yet" : formatCents(a.currentBalanceCents)}
+        </p>
+        <Link href="/import" className={`self-start text-sm ${LINK}`}>
+          {ended.has(a.id) ? "Import a newer file" : "Import a file"}
+        </Link>
+      </div>
+    );
+  }
+  details[itemId("banks", "add")] = (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      <Link href="/connect" className={LINK}>
+        Link a bank
+      </Link>
+      <Link href="/import" className={LINK}>
+        Import a file
+      </Link>
+    </div>
+  );
+
+  details[itemId("autopilot", "level")] = (
+    <div id="autopilot" className={BOX}>
+      <AutopilotChooser compact />
+      <CallOffersForm accept={prefs.acceptSimpleOffers} />
+    </div>
+  );
+  details[itemId("autopilot", "sectors")] = (
+    <div id="sectors" className={BOX}>
+      <SectorsForm
+        rows={sectors.map((s) => ({
+          sector: s.sector,
+          label: SECTOR_LABELS[s.sector],
+          level: s.level,
+          actionCap: String(s.actionCapCents / 100),
+          monthlyCap: String(s.monthlyCapCents / 100),
+          used: formatCents(s.usedThisMonthCents),
+          allMeans: SECTOR_ALL_MEANS[s.sector],
+        }))}
+      />
+    </div>
+  );
+  more[itemId("autopilot", "sectors")] = (
+    <p className={MUTED}>
+      Over a cap, she asks. Free checks (reshopping, rate checks) run in every area.
+    </p>
+  );
+  details[itemId("autopilot", "rules")] = (
+    <div id="rules" className={BOX}>
+      <RulesForm
+        rules={rules.map((r) => ({
+          key: r.key,
+          label: r.label,
+          description: r.description,
+          enabled: r.enabled,
+          monthlyLimit: r.monthlyLimit,
+          maxAmountLabel: r.maxAmount?.label ?? null,
+          maxDollars: r.maxAnnualCents === null ? "" : String(r.maxAnnualCents / 100),
+        }))}
+      />
+    </div>
+  );
+  more[itemId("autopilot", "rules")] = (
+    <p className={MUTED}>
+      Jane tells you whenever a rule is used, and you can take it back for a day. Moving money,
+      phone calls, cancelling things and insurance always need your yes.
+    </p>
+  );
+
+  // Spec step 138: a trial person is never emailed or notified, whatever is set here.
+  const trialNote = isTrialUser(user.id) ? (
+    <p role="note" className={MUTED}>
+      You&apos;re trying Jane with a sample person, so nothing here is emailed or sent to a phone.
+      These settings show how it works;{" "}
+      <Link href="/signup" className={LINK}>
+        sign up
+      </Link>{" "}
+      to get them.
+    </p>
+  ) : null;
+  details[itemId("notify", "messages")] = (
+    <div id="jane-messages" className={BOX}>
+      {trialNote}
+      <ChatNotifyForm
+        channel={chatNotify.channel}
+        kinds={CHAT_NOTIFY_KINDS.map((kind) => ({
+          kind,
+          label: CHAT_NOTIFY_KIND_LABELS[kind],
+          on: chatNotify.kinds[kind],
+        }))}
+      />
+    </div>
+  );
+  more[itemId("notify", "messages")] = <p className={MUTED}>{messagesFromJaneWords()}</p>;
+  details[itemId("notify", "alerts")] = (
+    <div id="alerts" className={BOX}>
+      {trialNote}
+      <AlertsForm
+        rows={ALERT_TYPES.map((type) => ({
+          type,
+          ...ALERT_LABELS[type],
+          urgent: isUrgent(type),
+          value: alerts[type],
+        }))}
+      />
+      {vapidPublicKey() && <NotificationsToggle publicKey={vapidPublicKey() ?? ""} />}
+    </div>
+  );
+  more[itemId("notify", "alerts")] = (
+    <p className={MUTED}>
+      Emails right away are limited to {ALERT_EMAILS_PER_DAY} a day; anything else waits for the
+      weekly email.
+    </p>
+  );
+  details[itemId("notify", "email")] = (
+    <div id="email" className={BOX}>
+      {trialNote}
+      <EmailForm
+        digestEnabled={prefs.digestEnabled}
+        timezone={prefs.timezone ?? DEFAULT_TIMEZONE}
+        timezones={TIMEZONES}
+      />
+    </div>
+  );
+  details[itemId("notify", "asking")] = (
+    <div id="asking-less" className={BOX}>
+      <AttentionList attention={attention} />
+    </div>
+  );
+
+  details[itemId("memory", "told")] = (
+    <div id="remembers" className={BOX}>
+      <MemoryList preferences={remembered} />
+    </div>
+  );
+  more[itemId("memory", "told")] = (
+    <p className={MUTED}>She uses these in her answers and suggestions.</p>
+  );
+  details[itemId("memory", "style")] = (
+    <div className={BOX}>
+      <StyleForm style={styleOf(remembered)} posting={postingOf(remembered)} />
+    </div>
+  );
+  more[itemId("memory", "style")] = (
+    <p className={MUTED}>
+      Or say it in the chat, like &quot;keep it short&quot;, and tap Remember this.
+    </p>
+  );
+
+  details[itemId("household", "household")] = (
+    <Link href="/household" className={`self-start text-sm ${LINK}`}>
+      Manage your household
+    </Link>
+  );
+  details[itemId("household", "state")] = (
+    <div id="where-you-live" className={BOX}>
+      <StateForm state={prefs.state} states={US_STATES} />
+    </div>
+  );
+  details[itemId("household", "owned")] = (
+    <Link href="/things" className={`self-start text-sm ${LINK}`}>
+      Things you own
+    </Link>
+  );
+  details[itemId("household", "documents")] = (
+    <Link href="/documents" className={`self-start text-sm ${LINK}`}>
+      Policies and receipts
+    </Link>
+  );
+
+  details[itemId("security", "two-factor")] = (
+    <div id="two-factor" className={BOX}>
+      {twoFactor.enabledAt ? (
+        <>
+          <p className={MUTED}>
+            On since {day(twoFactor.enabledAt)}. {twoFactor.backupCodesLeft} backup{" "}
+            {twoFactor.backupCodesLeft === 1 ? "code" : "codes"} left.
+          </p>
+          <TwoFactorOnForms canTurnOff={user.role !== "admin"} />
+        </>
+      ) : (
+        <Link
+          href="/settings/two-factor"
+          className="inline-flex h-11 w-fit items-center justify-center rounded-full bg-zinc-900 px-6 font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        >
+          Turn on two-factor
+        </Link>
+      )}
+    </div>
+  );
+  details[itemId("security", "sessions")] = (
+    <div id="sessions" className={BOX}>
+      <SessionsList sessions={sessions} />
+    </div>
+  );
+  details[itemId("security", "access")] = (
+    <Link href="/settings/team-access" className={`self-start text-sm ${LINK}`}>
+      See who saw my data
+    </Link>
+  );
+  details[itemId("security", "calendar")] = (
+    <div id="calendar" className={BOX}>
+      <CalendarForm since={prefs.calendarCreatedAt?.toISOString().slice(0, 10) ?? null} />
+    </div>
+  );
+
+  details[itemId("data", "download")] = (
+    <div id="your-data" className={BOX}>
+      <a
+        href="/api/export"
+        download
+        className="inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+      >
+        Download my data
+      </a>
+    </div>
+  );
+  more[itemId("data", "download")] = (
+    <p className={MUTED}>
+      Uploaded policies, warranties and receipts download one by one from{" "}
+      <Link href="/documents" className={LINK}>
+        Policies and receipts
+      </Link>
+      .
+    </p>
+  );
+  details[itemId("data", "delete")] = (
+    <div id="delete" className={BOX}>
+      <DeleteDataForm />
+    </div>
+  );
+
+  const focus = typeof params.focus === "string" ? params.focus : undefined;
+  const anchors = Object.fromEntries(
+    Object.keys(SETTINGS_ANCHORS).flatMap((anchor) => {
+      const to = anchorFocus(anchor, area);
+      return to ? [[anchor, to]] : [];
+    }),
+  );
 
   return (
     <>
       <AppHeader user={user} />
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-        <nav aria-label="Settings sections">
-          <ul className="flex flex-wrap gap-2 text-sm">
-            {GROUPS.map((group) => (
-              <li key={group.id}>
-                <a
-                  href={`#${group.id}`}
-                  className="inline-flex h-11 items-center rounded-full border border-zinc-300 px-4 font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-                >
-                  {group.label}
-                </a>
-              </li>
-            ))}
-          </ul>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          What each setting is now. Open a branch to change one.
+        </p>
+        <nav aria-label="Settings pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <Link href="/connect" className={LINK}>
+            Connect
+          </Link>
+          <Link href="/import" className={LINK}>
+            Import
+          </Link>
+          <Link href="/documents" className={LINK}>
+            Documents
+          </Link>
+          <Link href="/household" className={LINK}>
+            Household
+          </Link>
         </nav>
       </div>
 
-      <Group id="accounts">
-        <section id="banks" className={SECTION}>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <h3 className={H3}>Connected banks</h3>
-            <Link href="/connect" className={`text-sm ${LINK}`}>
-              Add a bank or import a file
-            </Link>
-          </div>
-          {items.length === 0 ? (
-            <p className={MUTED}>No banks linked.</p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {items.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 sm:flex-row sm:items-start sm:justify-between dark:border-zinc-800"
-                >
-                  <div>
-                    <p className="font-semibold">{item.institutionName ?? "Your bank"}</p>
-                    <p className="text-xs text-zinc-500">Updated {day(item.lastSyncedAt)}</p>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {item.accounts
-                        .map((a) => (a.mask ? `${a.name} ····${a.mask}` : a.name))
-                        .join(", ")}
-                    </p>
-                    {item.status === ITEM_STATUS.loginRequired && (
-                      // The same Reconnect as /connect: Plaid Link in update mode.
-                      <div className="mt-2 flex flex-col gap-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-950">
-                        <p className="text-sm">
-                          Your bank needs you to sign in again before I can read new transactions.
-                        </p>
-                        <LinkButton itemId={item.id} label="Reconnect" className={RECONNECT} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <RefreshForm itemId={item.id} />
-                    <DisconnectForm itemId={item.id} name={item.institutionName ?? "this bank"} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {accounts.length > 0 && (
-          <section id="your-accounts" className={SECTION}>
-            <h3 className={H3}>Your accounts</h3>
-            <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 text-sm dark:divide-zinc-800 dark:border-zinc-800">
-              {accounts.map((a) => (
-                <li key={a.id} className="flex flex-wrap justify-between gap-2 px-4 py-3">
-                  <span>
-                    <span className="font-medium">
-                      {a.mask ? `${a.name} ····${a.mask}` : a.name}
-                    </span>
-                    <span className="block text-xs text-zinc-500">
-                      {a.source === "plaid"
-                        ? `Linked through ${a.item?.institutionName ?? "Plaid"} · updated ${day(a.item?.lastSyncedAt)}`
-                        : `CSV import · last import ${day(csvUpdated.get(a.id))}`}
-                    </span>
-                  </span>
-                  <span className="font-medium">
-                    {a.currentBalanceCents === null
-                      ? "No balance"
-                      : formatCents(a.currentBalanceCents)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section id="household" className={SECTION}>
-          <h3 className={H3}>Household</h3>
-          <p className={MUTED}>
-            Share chosen accounts with a partner, read-only.{" "}
-            <Link href="/household" className={LINK}>
-              Manage your household
-            </Link>
-          </p>
-        </section>
-
-        <section id="where-you-live" className={SECTION}>
-          <h3 className={H3}>Where you live</h3>
-          <p className={MUTED}>
-            Some offers (like savings accounts from partners) are only available in some states.
-          </p>
-          <StateForm state={prefs.state} states={US_STATES} />
-        </section>
-      </Group>
-
-      <Group id="notifications">
-        {/* Spec step 138: a trial person is never emailed or notified, whatever is set here. */}
-        {isTrialUser(user.id) && (
-          <p role="note" className={MUTED}>
-            You&apos;re trying Jane with a sample person, so nothing here is emailed or sent to a
-            phone. These settings show how it works;{" "}
-            <Link href="/signup" className="font-medium underline hover:no-underline">
-              sign up
-            </Link>{" "}
-            to get them.
-          </p>
-        )}
-        {/* Spec step 85: Jane's chat messages as phone notifications or email. */}
-        <section id="jane-messages" className={SECTION}>
-          <h3 className={H3}>Messages from Jane</h3>
-          <p className={MUTED}>{messagesFromJaneWords()}</p>
-          <ChatNotifyForm
-            channel={chatNotify.channel}
-            kinds={CHAT_NOTIFY_KINDS.map((kind) => ({
-              kind,
-              label: CHAT_NOTIFY_KIND_LABELS[kind],
-              on: chatNotify.kinds[kind],
-            }))}
-          />
-        </section>
-
-        {/* Spec step 147: when Jane asks, and what she stopped bringing up. */}
-        <section id="asking-less" className={SECTION}>
-          <h3 className={H3}>Asking less</h3>
-          <AttentionList attention={attention} />
-        </section>
-
-        <section id="email" className={SECTION}>
-          <h3 className={H3}>Email</h3>
-          <EmailForm
-            digestEnabled={prefs.digestEnabled}
-            timezone={prefs.timezone ?? DEFAULT_TIMEZONE}
-            timezones={TIMEZONES}
-          />
-        </section>
-
-        <section id="alerts" className={SECTION}>
-          <h3 className={H3}>Alerts</h3>
-          <p className={MUTED}>
-            We check for these after every update from your bank. Emails right away are limited to{" "}
-            {ALERT_EMAILS_PER_DAY} a day; anything else waits for the weekly email.
-          </p>
-          <AlertsForm
-            rows={ALERT_TYPES.map((type) => ({
-              type,
-              ...ALERT_LABELS[type],
-              urgent: isUrgent(type),
-              value: alerts[type],
-            }))}
-          />
-          {vapidPublicKey() && <NotificationsToggle publicKey={vapidPublicKey() ?? ""} />}
-        </section>
-      </Group>
-
-      {/* The group is #autopilot, so links to it land on its heading. */}
-      <Group id="autopilot">
-        <section className={SECTION}>
-          <p className={MUTED}>
-            How much Jane does on its own. Now:{" "}
-            <strong>
-              {autopilot === null
-                ? "not chosen yet"
-                : autopilot === "custom"
-                  ? "your own rules (below)"
-                  : AUTOPILOT_LEVELS[autopilot].label}
-            </strong>
-            . Pick a level to change it.
-          </p>
-          <AutopilotChooser compact />
-          <CallOffersForm accept={prefs.acceptSimpleOffers} />
-        </section>
-
-        <section id="sectors" className={SECTION}>
-          <h3 className={H3}>Area by area</h3>
-          <p className={MUTED}>
-            How much Jane may do by herself in each area, and up to how many dollars each time and
-            each month. Over a cap, she asks. Free checks (reshopping, rate checks) run in every
-            area.
-          </p>
-          <SectorsForm
-            rows={sectors.map((s) => ({
-              sector: s.sector,
-              label: SECTOR_LABELS[s.sector],
-              level: s.level,
-              actionCap: String(s.actionCapCents / 100),
-              monthlyCap: String(s.monthlyCapCents / 100),
-              used: formatCents(s.usedThisMonthCents),
-              allMeans: SECTOR_ALL_MEANS[s.sector],
-            }))}
-          />
-        </section>
-
-        <section id="rules" className={SECTION}>
-          <h3 className={H3}>Fine-tune: standing rules</h3>
-          <p className={MUTED}>
-            Things Jane may do without asking each time. Jane tells you whenever a rule is used, and
-            you can take it back for a day. Moving money, phone calls, cancelling things and
-            insurance always need your yes.
-          </p>
-          <RulesForm
-            rules={rules.map((r) => ({
-              key: r.key,
-              label: r.label,
-              description: r.description,
-              enabled: r.enabled,
-              monthlyLimit: r.monthlyLimit,
-              maxAmountLabel: r.maxAmount?.label ?? null,
-              maxDollars: r.maxAnnualCents === null ? "" : String(r.maxAnnualCents / 100),
-            }))}
-          />
-        </section>
-
-        {/* Spec step 91: what Jane remembers, each one deletable. */}
-        <section id="remembers" className={SECTION}>
-          <h3 className={H3}>What Jane remembers</h3>
-          <p className={MUTED}>
-            What you&apos;ve told Jane in the chat, and suggestions you asked her not to make again.
-            She uses these in her answers and suggestions.
-          </p>
-          <MemoryList preferences={remembered} />
-          <h3 className="mt-2 text-lg font-semibold">How Jane talks</h3>
-          <p className={MUTED}>
-            Or say it in the chat, like &quot;keep it short&quot;, and tap Remember this.
-          </p>
-          <StyleForm style={styleOf(remembered)} posting={postingOf(remembered)} />
-        </section>
-      </Group>
-
-      <Group id="privacy">
-        <section id="two-factor" className={SECTION}>
-          <h3 className={H3}>Two-factor sign-in</h3>
-          {twoFactor.enabledAt ? (
-            <>
-              <p className={MUTED}>
-                On since {day(twoFactor.enabledAt)}. Each new sign-in asks for a code from your
-                authenticator app. {twoFactor.backupCodesLeft} backup{" "}
-                {twoFactor.backupCodesLeft === 1 ? "code" : "codes"} left.
-              </p>
-              <TwoFactorOnForms canTurnOff={user.role !== "admin"} />
-            </>
-          ) : (
-            <>
-              <p className={MUTED}>
-                Optional extra protection: after the email link or Google, signing in also asks for
-                a code from an app on your phone.
-              </p>
-              <Link
-                href="/settings/two-factor"
-                className="inline-flex h-11 w-fit items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800"
-              >
-                Turn on two-factor
-              </Link>
-            </>
-          )}
-        </section>
-
-        <SessionsSection userId={user.id} />
-
-        <section id="team-access" className={SECTION}>
-          <h3 className={H3}>Who saw my data</h3>
-          <p className={MUTED}>
-            Every time our team or Jane&apos;s agent looked at or acted on your data.{" "}
-            <Link href="/settings/team-access" className={LINK}>
-              See who saw my data
-            </Link>
-          </p>
-        </section>
-
-        <section id="calendar" className={SECTION}>
-          <h3 className={H3}>Money calendar</h3>
-          <CalendarForm since={prefs.calendarCreatedAt?.toISOString().slice(0, 10) ?? null} />
-        </section>
-
-        <section id="your-data" className={SECTION}>
-          <h3 className={H3}>Your data</h3>
-          <p className={MUTED}>Download a copy of everything we hold about you, as a JSON file.</p>
-          <a
-            href="/api/export"
-            download
-            className="inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
-          >
-            Download my data
-          </a>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Uploaded policies, warranties and receipts download one by one from{" "}
-            <Link href="/documents" className={LINK}>
-              Policies and receipts
-            </Link>
-            .
-          </p>
-        </section>
-
-        <section
-          id="delete"
-          className="flex scroll-mt-8 flex-col gap-3 rounded-xl border border-red-200 p-4 dark:border-red-900"
-        >
-          <h3 className={H3}>Delete all my data</h3>
-          <p className={MUTED}>
-            We disconnect every linked bank and permanently delete your account, transactions,
-            findings and history. This can&apos;t be undone.
-          </p>
-          <DeleteDataForm />
-        </section>
-      </Group>
+      <SettingsArea
+        tree={area.tree}
+        label="Settings"
+        chips={area.chips}
+        summaries={area.summaries}
+        details={details}
+        more={more}
+        focus={focus}
+        anchors={anchors}
+      />
     </>
   );
 }
 
-export default function SettingsPage() {
+export default function SettingsPage({ searchParams }: PageProps<"/settings">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
-        <SettingsContent />
+        <SettingsContent searchParams={searchParams} />
       </Suspense>
     </main>
   );

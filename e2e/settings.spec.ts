@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import {
   E2E_DATABASE_URL,
   addBankNeedingSignIn,
@@ -35,7 +36,7 @@ test("delete all my data needs DELETE typed, then removes the account", async ({
   // Exact text: the account dropdown's "Test Card (Credit card)" option is hidden.
   await expect(page.getByText("Test Card", { exact: true })).toBeVisible();
 
-  await page.goto("/settings");
+  await page.goto("/settings#delete");
   await page.getByLabel("Type DELETE to confirm").fill("delete");
   await page.getByRole("button", { name: "Delete all my data" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Type DELETE" })).toBeVisible();
@@ -107,7 +108,13 @@ test("offers Reconnect for a bank that needs you to sign in again", async ({
     { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
   ]);
   await page.goto("/settings");
-  const bank = page.locator("#banks li").filter({ hasText: "Lapsed Bank" });
+  // Up front: a bank that needs you is the page's one urgent thing.
+  await expect(
+    page
+      .getByRole("group", { name: "What matters now" })
+      .getByRole("button", { name: /Lapsed Bank/ }),
+  ).toBeVisible();
+  const bank = await pickItem(page, "Settings", "Banks and files", "Lapsed Bank");
   await expect(bank.getByText("needs you to sign in again")).toBeVisible();
   await expect(bank.getByRole("button", { name: "Reconnect" })).toBeVisible();
 });
