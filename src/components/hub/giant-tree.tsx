@@ -282,7 +282,6 @@ export function GiantTree({ maps, areaTrees = {} }: { maps: AreaMap[]; areaTrees
                   aria-level={n.level}
                   aria-expanded={n.children.length > 0 ? true : undefined}
                   aria-selected={isPicked}
-                  aria-label={`${n.status ? `${STATUS[n.status].words}: ` : ""}${n.label}${n.figure ? `, ${n.figure}` : ""}${n.forYou ? ", for you" : ""}`}
                   tabIndex={n.id === focused ? 0 : -1}
                   onFocus={() => setFocused(n.id)}
                   className={`absolute flex cursor-pointer items-center gap-1.5 overflow-hidden border px-2 ${
@@ -296,35 +295,41 @@ export function GiantTree({ maps, areaTrees = {} }: { maps: AreaMap[]; areaTrees
                 >
                   {n.status && (
                     <span
-                      aria-hidden="true"
                       className={`shrink-0 ${STATUS[n.status].className}`}
                       style={{ fontSize: 11 * scale }}
                     >
-                      {STATUS[n.status].shape}
+                      <span aria-hidden="true">{STATUS[n.status].shape}</span>
+                      <span className="sr-only">{STATUS[n.status].words}: </span>
                     </span>
                   )}
                   {labelled ? (
                     <span
-                      aria-hidden="true"
                       className={`min-w-0 flex-1 truncate ${n.level <= 2 ? "font-semibold" : n.level === 3 ? "font-medium" : ""}`}
                       style={{
                         fontSize: (n.level === 1 || n.level === 2 ? 15 : 13) * scale,
                         lineHeight: 1.15,
                       }}
                     >
-                      {n.level === 1 ? "> " : ""}
+                      {n.level === 1 && <span aria-hidden="true">&gt; </span>}
                       {n.label}
                     </span>
                   ) : (
-                    // Too small to read: a bar where the label will be.
-                    <span aria-hidden="true" className="h-1.5 w-2/3 bg-zinc-300 dark:bg-zinc-700" />
+                    // Too small to read: a bar where the label will be (its words for screen
+                    // readers).
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="h-1.5 w-2/3 bg-zinc-300 dark:bg-zinc-700"
+                      />
+                      <span className="sr-only">{n.label}</span>
+                    </>
                   )}
                   {n.figure && labelled && (
                     <span
-                      aria-hidden="true"
                       className="shrink-0 font-semibold tabular-nums"
                       style={{ fontSize: 11 * scale }}
                     >
+                      <span className="sr-only">, </span>
                       {n.figure}
                     </span>
                   )}
@@ -337,6 +342,7 @@ export function GiantTree({ maps, areaTrees = {} }: { maps: AreaMap[]; areaTrees
                       [YOU]
                     </span>
                   )}
+                  {n.forYou && <span className="sr-only">, for you</span>}
                 </div>
               );
             })}
@@ -478,12 +484,14 @@ function AskBox({
         onPointerDown={(e) => e.stopPropagation()}
         onClick={send}
         disabled={busy}
-        aria-label={`Ask Jane: ${question}`}
         className="invert-scope absolute z-20 flex w-60 flex-col gap-1 border-2 border-zinc-500 bg-zinc-950 p-2 text-left text-sm text-white shadow-lg disabled:opacity-80 dark:bg-zinc-50 dark:text-zinc-950"
         style={{ left, top: Math.max(8, at.y) }}
       >
         <span className="text-xs font-semibold tracking-wider">
-          {busy ? "[SENDING…]" : state === "done" ? "[ASKED · SEE CHAT]" : "[ASK JANE]"}
+          <span aria-hidden="true">[</span>
+          {busy ? "SENDING…" : state === "done" ? "ASKED · SEE CHAT" : "ASK JANE"}
+          <span aria-hidden="true">]</span>
+          <span className="sr-only">: </span>
         </span>
         <span className="[overflow-wrap:anywhere]">{question}</span>
       </button>

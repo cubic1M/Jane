@@ -122,7 +122,7 @@ test("the giant tree shows everything at once, and a feature's Ask Jane box send
   // Its Ask Jane box sends the question straight into the chat: no Send to press.
   const ask = canvas.locator("[data-ask-jane]");
   await expect(ask).toBeVisible();
-  const question = ((await ask.getAttribute("aria-label")) ?? "").replace(/^Ask Jane: /, "");
+  const question = ((await ask.locator(":scope > span").last().textContent()) ?? "").trim();
   expect(question.length).toBeGreaterThan(5);
   await ask.click();
   if (isMobile) {
@@ -132,7 +132,7 @@ test("the giant tree shows everything at once, and a feature's Ask Jane box send
   const messages = chat.getByRole("list", { name: "Messages" }).getByRole("listitem");
   await expect(chat.getByText(question).first()).toBeVisible({ timeout: 30_000 });
   // Jane answers, and the box says it was asked; asked again, it doesn't send twice.
-  await expect(ask).toContainText("[ASKED", { timeout: 60_000 });
+  await expect(ask).toContainText("ASKED", { timeout: 60_000 });
   const count = await messages.count();
   // On a phone the sheet is over the page: close it to reach the box again.
   if (isMobile) await page.getByRole("button", { name: "Close chat" }).click();
