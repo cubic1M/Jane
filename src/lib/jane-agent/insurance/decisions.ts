@@ -613,7 +613,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
         advice: "Only if you could pay the difference on a claim.",
         facts: `Raising your deductible from ${money(car.deductibleCents)} to ${money(to)} saves about ${money(saving.yearlySavingCents)} a year, and you'd pay ${money(to - car.deductibleCents)} more if you claim.`,
         actions: [
-          { id: "open", label: "See the saving", kind: "link", href: "/insurance#savings" },
+          { id: "open", label: "See the saving", kind: "link", href: "/insurance?focus=savings" },
           SEE,
         ],
       };
@@ -800,7 +800,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
                   id: "open",
                   label: "Your health year",
                   kind: "link",
-                  href: "/insurance#health-year",
+                  href: "/insurance?focus=health",
                 },
               ],
             }
@@ -811,7 +811,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
         return {
           facts: `You've met ${money(p.deductibleMetCents)} of your ${money(hy.plan.deductibleCents)} deductible${p.deductibleLeftCents > 0 ? `, ${money(p.deductibleLeftCents)} to go` : ", so your plan is paying its share now"}.`,
           actions: [
-            { id: "open", label: "Your health year", kind: "link", href: "/insurance#health-year" },
+            { id: "open", label: "Your health year", kind: "link", href: "/insurance?focus=health" },
           ],
         };
       }
@@ -825,7 +825,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
                 id: "open",
                 label: "Your health year",
                 kind: "link",
-                href: "/insurance#health-year",
+                href: "/insurance?focus=health",
               },
             ],
           };

@@ -1,5 +1,7 @@
 import { MAP_GAP, MAP_MIN_SCALE, MAP_NARROW_PX, MAP_NODE } from "@/config/feature-map";
-import type { AreaMap } from "./feature-map";
+// Any tree the engine draws: the feature map's areas (src/lib/feature-map.ts) and the area pages
+// (docs/design/area-pages.md) both fit it.
+export type TreeShape = { key: string; branches: { id: string; features: { id: string }[] }[] };
 
 // Where the feature map's nodes sit (docs/design/home-hub.md): a left-to-right tree, the area
 // on the left, its branches in a column, and the open branch's features in a column beside it,
@@ -22,7 +24,7 @@ export type MapLayout = {
 const right = (b: Box) => ({ x: b.x + b.w, y: b.y + b.h / 2 });
 const left = (b: Box) => ({ x: b.x, y: b.y + b.h / 2 });
 
-export function layoutMap(map: AreaMap, open: string | null, viewWidth: number): MapLayout {
+export function layoutMap(map: TreeShape, open: string | null, viewWidth: number): MapLayout {
   const { root, group, feature } = MAP_NODE;
   const branchX = root.w + MAP_GAP.column;
   const featureX = branchX + group.w + MAP_GAP.column;

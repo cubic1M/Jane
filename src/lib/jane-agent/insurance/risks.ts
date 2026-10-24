@@ -10,7 +10,7 @@ const INSURANCE = {
   id: "open",
   label: "Your insurance",
   kind: "link",
-  href: "/insurance#risks",
+  href: "/insurance?focus=questions",
 } as const;
 
 export async function risksAnswer(
