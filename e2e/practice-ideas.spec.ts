@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, addPracticeIdea, deleteUser, signedInUser } from "./db";
 
 // Jane's practice ideas on the practice portfolio page (Phase AW, Stage A): each idea with how
@@ -53,9 +54,10 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   await expect(idea).toHaveCount(0);
   await expect(ideas.getByText(/You said no once, but it's a safety check/)).toBeVisible();
 
-  // The investments page sums it up and links back.
+  // The investments page: more strategies, each a card with its curve, its numbers against the
+  // mix and the levels it fits.
   await page.goto("/investments");
-  // More strategies, each a card with its curve, its numbers against the mix and the levels it fits.
+  await pickItem(page, "Investing", "Strategies", "More strategies");
   const menu = page.getByRole("region", { name: "More strategies" });
   await expect(menu.locator('li[data-strategy]:not([data-strategy^="crypto_"])')).toHaveCount(7);
   const value = menu.getByRole("listitem").filter({ hasText: "Value tilt" });
@@ -74,10 +76,13 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
       .getByText(/Since 2022: .* \(holding: /),
   ).toBeVisible();
   // The news themes, each with its past record; only the ones that held up are offered.
+  await pickItem(page, "Investing", "News alerts", "News themes");
   const themes = page.getByRole("region", { name: "News themes" });
   await expect(themes.getByText(/^Defense when a war breaks out: ITA/)).toBeVisible();
   await expect(themes.getByText("tested, not offered").first()).toBeVisible();
   await expect(themes.getByText(/^USO instead: beat the market in \d+ of 9/)).toBeVisible();
+  // It sums up the practice ideas and links back.
+  await pickItem(page, "Investing", "Practice portfolio", "Your practice portfolio");
   const summary = page.getByRole("region", { name: "Jane's practice ideas" });
   await expect(summary.getByText(/strategy today:/)).toBeVisible();
   await expect(summary.getByText(/still brought \(a safety check\)/)).toBeVisible();
