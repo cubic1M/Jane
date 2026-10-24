@@ -71,7 +71,7 @@ export function popupCard(m: MessageView): PopupCard {
     id: m.id,
     headline,
     details: {
-      why: more.trim() || undefined,
+      about: more.trim() || undefined,
       notes: m.advice ? ["Demo advice: sample data, not financial advice"] : undefined,
     },
     yesLabel: main.label,

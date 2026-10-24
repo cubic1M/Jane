@@ -271,6 +271,9 @@ export function FloatingCards({
             {/* Already here, only hidden: opening it is a toggle, not a fetch. */}
             <Expanding id={`details-${current.id}`} open={open}>
               <div className="mx-3 mt-2 flex max-h-[22vh] flex-col gap-2 overflow-y-auto border-t border-zinc-300 pt-2 text-sm dark:border-zinc-700">
+                {current.details.about && (
+                  <p className="whitespace-pre-line">{current.details.about}</p>
+                )}
                 {current.details.why && (
                   <p>
                     <span className="font-medium">Why you:</span> {current.details.why}

@@ -69,7 +69,7 @@ describe("a pop-up's card", () => {
         { id: "autopilot.ask", label: "Ask me first" },
       ],
     });
-    expect(card.details.why).toBe("Handle the safe stuff: refunds and fees.");
+    expect(card.details.about).toBe("Handle the safe stuff: refunds and fees.");
     const heads = popupCard(
       message({
         kind: "heads_up",
@@ -90,6 +90,6 @@ describe("a pop-up's card", () => {
 
   it("keeps the whole message behind More details when the headline is cut", () => {
     const body = "Your car insurance renews next week and the price went up by $240";
-    expect(popupCard(message({ body })).details.why).toBe(body);
+    expect(popupCard(message({ body })).details.about).toBe(body);
   });
 });
