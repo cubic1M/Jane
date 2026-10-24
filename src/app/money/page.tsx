@@ -14,7 +14,8 @@ import { requireUser } from "@/lib/session";
 // whole list or the form (/bills, /subscriptions, /budgets, /insights, /transactions,
 // /transfers, /net-worth); the explanations wait behind "More".
 
-const LINK = "font-medium text-emerald-700 hover:underline";
+// Black, white and grey only: meaning comes from glyphs and underlines, not hue.
+const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const MUTED = "text-sm text-zinc-600 dark:text-zinc-400";
 
 function Go({ href, children }: { href: string; children: ReactNode }) {
@@ -130,10 +131,7 @@ async function MoneyContent({
           aria-valuemax={100}
           className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
         >
-          <div
-            className={`h-full ${p.over ? "bg-red-600" : "bg-emerald-600"}`}
-            style={{ width: `${share}%` }}
-          />
+          <div className="h-full bg-zinc-900 dark:bg-zinc-100" style={{ width: `${share}%` }} />
         </div>
         <Go href="/budgets">Change your budgets</Go>
       </>
@@ -277,7 +275,7 @@ async function MoneyContent({
       </div>
 
       {!data.hasAccounts && (
-        <p className="bg-emerald-50 p-4 dark:bg-emerald-950">
+        <p className="border border-zinc-300 p-4 dark:border-zinc-700">
           Link a bank to fill this in.{" "}
           <Link href="/connect" className={LINK}>
             Link an account
