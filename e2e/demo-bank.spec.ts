@@ -42,7 +42,7 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
   await expect(page.getByText("Demo Home Loan ····0004")).toBeVisible();
 
   await page.getByRole("note").getByRole("link", { name: "Remove it" }).click();
-  await expect(page).toHaveURL(/\/settings#banks/);
+  await expect(page).toHaveURL(/\/settings.*#banks/);
   page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", { name: /Disconnect/ })

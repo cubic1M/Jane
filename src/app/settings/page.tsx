@@ -25,7 +25,6 @@ import { EmailForm } from "./email-form";
 import { TwoFactorOnForms } from "./two-factor-forms";
 import { RulesForm } from "./rules-form";
 import { cookies } from "next/headers";
-import { connection } from "next/server";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { listSessions } from "@/lib/user-sessions";
 import { SessionsList } from "./sessions-list";
@@ -68,18 +67,6 @@ const CHANNEL_WORDS: Record<string, string> = {
   off: "Off",
 };
 
-// Where you're signed in (spec step 73). This session is found by its cookie, here on the
-// server; the page only ever gets row ids and labels.
-async function SessionsSection({ userId }: { userId: string }) {
-  await connection();
-  const sessions = await listSessions(userId, sessionTokenFrom(await cookies()));
-  return (
-    <div id="sessions" className={BOX}>
-      <SessionsList sessions={sessions} />
-    </div>
-  );
-}
-
 async function SettingsContent({
   searchParams,
 }: {
@@ -87,6 +74,9 @@ async function SettingsContent({
 }) {
   const user = await requireUser();
   const params = await searchParams;
+  // Where you're signed in (spec step 73): this session is found by its cookie, here on the
+  // server; the page only ever gets row ids and labels.
+  const token = sessionTokenFrom(await cookies());
   const mine = await scopedDb();
   const [
     prefs,
@@ -102,6 +92,7 @@ async function SettingsContent({
     books,
     owned,
     documents,
+    sessions,
   ] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
@@ -153,6 +144,7 @@ async function SettingsContent({
     openBooks(user.id),
     mine.ownedAssets.count(),
     mine.documents.count(),
+    listSessions(user.id, token),
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
@@ -414,7 +406,11 @@ async function SettingsContent({
       )}
     </div>
   );
-  details[itemId("security", "sessions")] = <SessionsSection userId={user.id} />;
+  details[itemId("security", "sessions")] = (
+    <div id="sessions" className={BOX}>
+      <SessionsList sessions={sessions} />
+    </div>
+  );
   details[itemId("security", "access")] = (
     <Link href="/settings/team-access" className={`self-start text-sm ${LINK}`}>
       See who saw my data
