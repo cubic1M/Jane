@@ -50,7 +50,7 @@ import { selectForLevel } from "@/planning/strategies/select";
 //   replayed walk-forward (src/planning/crypto-strategies.ts), into crypto-summary.md and
 //   crypto-results.json;
 // - regimes: every catalog fund's adjusted daily closes from Yahoo Finance's keyless chart, from
-//   2007 (VXUS spliced with VEU before it began in 2011), every strategy at its middle setting
+//   2005 (each younger fund spliced with an older look-alike), every strategy at its middle setting
 //   through 2008, the 2020 crash and 2022 (src/planning/catalog/regimes.ts), into regimes.md.
 // Keys are read from the environment and never written or printed. Practice research only.
 
@@ -335,7 +335,7 @@ function splice(newer: Bar[], older: Bar[]): Bar[] {
 }
 
 async function runRegimes() {
-  const from = process.env.RESEARCH_FROM ?? "2007-01-01";
+  const from = process.env.RESEARCH_FROM ?? "2005-01-01";
   const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const bars: Record<string, Bar[]> = {};
   let spy: { date: string; o: number; h: number; l: number; c: number }[] = [];
@@ -350,12 +350,26 @@ async function runRegimes() {
       bars[t] = [];
     }
   }
-  bars.VXUS = splice(bars.VXUS ?? [], bars.VEU ?? []);
+  // Younger funds read through an older look-alike before they began (labelled in the source).
+  const SPLICES: [string, string][] = [
+    ["VEU", "EFA"],
+    ["VXUS", "VEU"],
+    ["BIL", "SHY"],
+    ["BND", "AGG"],
+    ["HYG", "LQD"],
+    ["VWO", "EEM"],
+    ["SCZ", "EFA"],
+    ["GSG", "DBC"],
+    ["REM", "VNQ"],
+    ["DLS", "EFA"],
+    ["DGS", "EEM"],
+  ];
+  for (const [young, old] of SPLICES) bars[young] = splice(bars[young] ?? [], bars[old] ?? []);
   const u = alignCatalog(bars, spy);
   if (!u) throw new Error("No VTI history.");
   const { results } = runCatalog(u);
   const watch = [...new Set(results.filter((r) => r.watch || r.recommendable).map((r) => r.id))];
-  const source = `Yahoo Finance adjusted daily closes, ${u.dates[0]} to ${u.dates.at(-1)} (VXUS spliced with VEU before 2011)`;
+  const source = `Yahoo Finance adjusted daily closes, ${u.dates[0]} to ${u.dates.at(-1)}, each younger fund read through an older look-alike before it began (${SPLICES.map(([y, o]) => `${y} through ${o}`).join(", ")})`;
   const md = regimesMarkdown(regimeReport(u), source, watch);
   writeFileSync(join(DIR, "regimes.md"), md);
   writeFileSync(
