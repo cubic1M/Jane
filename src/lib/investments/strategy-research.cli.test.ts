@@ -4,10 +4,20 @@ import { describe, it } from "vitest";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { strategyTickers } from "@/config/portfolios";
 import { RISK_BUDGETS, STRATEGY_LABELS, type StrategyId } from "@/config/strategies";
+import {
+  INTRADAY_RULE_IDS,
+  INTRADAY_RULES,
+  INTRADAY_SLIPPAGE,
+  INTRADAY_TICKER,
+  INTRADAY_TIMEFRAME,
+  INTRADAY_TRAIN_END,
+} from "@/config/intraday-strategies";
 import { AlpacaMarketData } from "@/lib/market/alpaca";
+import { fetchIntraday } from "@/lib/market/alpaca-intraday";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import type { Bar } from "@/lib/market/types";
 import { alignUniverse, type Metrics } from "@/planning/strategies/engine";
+import { intradayResult, sessionsOf, type IntradayMetrics } from "@/planning/intraday";
 import { selectForLevel } from "@/planning/strategies/select";
 
 // The strategy research CLI (.github/workflows/strategy-research.yml, and locally): run with
@@ -17,7 +27,10 @@ import { selectForLevel } from "@/planning/strategies/select";
 //   out, and only here) or from the committed keyless fixture (RESEARCH_SOURCE=fixture);
 // - level: every strategy for RESEARCH_LEVEL into level-<n>.json;
 // - summary: every level-<n>.json into results.json and summary.md;
-// - all: the three in turn, for a local round.
+// - all: the three in turn, for a local round;
+// - intraday: INTRADAY_TICKER's 5-minute bars from Alpaca, every day-trading rule walk-forward
+//   (src/planning/intraday.ts), into intraday-evidence.ts (to commit as
+//   src/config/intraday-evidence.ts) and intraday-summary.md.
 // Keys are read from the environment and never written or printed. Practice research only.
 
 const MODE = process.env.STRATEGY_RESEARCH;
@@ -123,6 +136,100 @@ function summarise(levels: LevelFile[]): string {
   return lines.join("\n") + "\n";
 }
 
+const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
+const period = (m: IntradayMetrics) => ({
+  from: m.from,
+  to: m.to,
+  sessions: m.sessions,
+  trades: m.trades,
+  winRate: r4(m.winRate),
+  averageTrade: r4(m.averageTrade),
+  cagr: r4(m.cagr),
+  maxDrawdown: r4(m.maxDrawdown),
+  vol: r4(m.vol),
+  sortino: r4(m.sortino),
+});
+
+async function runIntraday() {
+  const id = process.env.ALPACA_API_KEY_ID;
+  const secret = process.env.ALPACA_API_SECRET_KEY;
+  if (!id || !secret) throw new Error("Alpaca secrets not set");
+  const feed = process.env.RESEARCH_FEED ?? "sip";
+  const from = process.env.RESEARCH_FROM ?? "2016-01-01";
+  const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const bars = await fetchIntraday({ id, secret }, INTRADAY_TICKER, from, to, {
+    timeframe: INTRADAY_TIMEFRAME,
+    feed,
+  });
+  const sessions = sessionsOf(bars);
+  if (sessions.length < 500) throw new Error(`Only ${sessions.length} sessions of bars.`);
+  console.log(
+    `${INTRADAY_TICKER}: ${bars.length} bars, ${sessions.length} sessions, ${sessions[0].date} to ${sessions.at(-1)!.date}`,
+  );
+  const results = INTRADAY_RULE_IDS.map((rule) => intradayResult(sessions, rule)).filter(
+    (r) => r !== null,
+  );
+  if (results.length !== INTRADAY_RULE_IDS.length) throw new Error("A rule could not be replayed.");
+  const source = `Alpaca ${feed.toUpperCase()} ${INTRADAY_TIMEFRAME} bars for ${INTRADAY_TICKER}, ${sessions[0].date} to ${sessions.at(-1)!.date}`;
+  const rows = results.map(
+    (r) =>
+      `  ${r.id}: ${JSON.stringify({ param: r.param, train: period(r.train), later: period(r.later), holdLater: period(r.holdLater), beatsHolding: r.beatsHolding, curve: r.curve })},`,
+  );
+  writeFileSync(
+    join(DIR, "intraday-evidence.ts"),
+    `import type { IntradayRuleId } from "@/config/intraday-strategies";
+
+// Each day-trading rule on real 5-minute bars (src/planning/intraday.ts): its setting chosen on
+// the sessions to INTRADAY_TRAIN_END, then its result on the later sessions against holding the
+// fund over the same days, after slippage both ways, and its curve over those sessions from 100.
+// Written by the strategy research workflow (kind: intraday), whose bars are too many to commit;
+// src/planning/intraday.test.ts checks the rules themselves. A replay of the past, not a
+// forecast. Fractions throughout.
+
+export type IntradayPeriod = {
+  from: string;
+  to: string;
+  sessions: number;
+  trades: number;
+  winRate: number;
+  averageTrade: number;
+  cagr: number;
+  maxDrawdown: number;
+  vol: number;
+  sortino: number;
+};
+export type IntradayRecord = {
+  param: number;
+  train: IntradayPeriod;
+  later: IntradayPeriod;
+  holdLater: IntradayPeriod;
+  beatsHolding: boolean;
+  curve: number[];
+};
+
+export const INTRADAY_EVIDENCE_SOURCE = ${JSON.stringify(source)};
+
+export const INTRADAY_EVIDENCE: Readonly<Record<IntradayRuleId, IntradayRecord>> = {
+${rows.join("\n")}
+};
+`,
+  );
+  const lines = [
+    `# Day-trading research: ${source}`,
+    "",
+    `Chosen on the sessions to ${INTRADAY_TRAIN_END} by Sortino, scored on the later ones, ${pct(INTRADAY_SLIPPAGE)} slippage each way. A replay of the past, not a forecast.`,
+    "",
+    "| Rule | Setting | Train: a year | Train: drop | Later: trades | Later: win rate | Later: a year | Later: drop | Later: Sortino | Holding: a year | Holding: drop | Holding: Sortino |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...results.map(
+      (r) =>
+        `| ${INTRADAY_RULES[r.id].label} | ${r.param} | ${pct(r.train.cagr)} | ${pct(r.train.maxDrawdown)} | ${r.later.trades} | ${pct(r.later.winRate)} | ${pct(r.later.cagr)} | ${pct(r.later.maxDrawdown)} | ${r.later.sortino.toFixed(2)} | ${pct(r.holdLater.cagr)} | ${pct(r.holdLater.maxDrawdown)} | ${r.holdLater.sortino.toFixed(2)} |`,
+    ),
+  ];
+  writeFileSync(join(DIR, "intraday-summary.md"), lines.join("\n") + "\n");
+  console.log(lines.join("\n"));
+}
+
 const readBars = () => JSON.parse(readFileSync(join(DIR, "bars.json"), "utf8")) as BarsFile;
 const writeLevel = (l: LevelFile) =>
   writeFileSync(join(DIR, `level-${l.level}.json`), JSON.stringify(l));
@@ -154,5 +261,6 @@ describe.runIf(MODE)("strategy research", () => {
       for (const level of [1, 2, 3, 4, 5] as const) writeLevel(runLevel(file, level));
     }
     if (MODE === "summary" || MODE === "all") writeSummary();
+    if (MODE === "intraday") await runIntraday();
   });
 });

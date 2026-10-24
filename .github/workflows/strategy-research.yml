@@ -10,6 +10,11 @@ name: Strategy research
 on:
   workflow_dispatch:
     inputs:
+      kind:
+        description: "daily (the strategy library on daily bars) or intraday (the Very high day-trading rules on 5-minute bars; alpaca only)"
+        default: daily
+        type: choice
+        options: [daily, intraday]
       source:
         description: "alpaca (the repo's Alpaca secrets) or fixture (the committed keyless closes)"
         default: alpaca
@@ -34,6 +39,7 @@ concurrency:
 jobs:
   bars:
     name: Fetch daily bars
+    if: inputs.kind != 'intraday'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -123,4 +129,38 @@ jobs:
           path: |
             research/results.json
             research/summary.md
+          retention-days: 30
+
+  intraday:
+    name: Day-trading rules
+    if: inputs.kind == 'intraday'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Replay every day-trading rule on 5-minute bars
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          STRATEGY_RESEARCH: intraday
+          RESEARCH_FROM: ${{ inputs.from }}
+          RESEARCH_FEED: ${{ inputs.feed }}
+          RESEARCH_DIR: research
+        run: |
+          if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
+            echo "::error::Alpaca secrets not set (ALPACA_API_KEY_ID, ALPACA_API_SECRET_KEY)."
+            exit 1
+          fi
+          npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
+          cat research/intraday-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: intraday-research
+          path: |
+            research/intraday-evidence.ts
+            research/intraday-summary.md
           retention-days: 30
