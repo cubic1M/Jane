@@ -26,7 +26,12 @@ export function washSaleMessage(r: Realised): Said {
   return {
     body: `Your sale of ${shares} ${label(r)} on ${day(r.date)} was at a loss of ${formatCents(loss)}, but ${label(r)} was bought again within ${WASH_SALE_DAYS} days (${day(r.washReplacements[0].date)}), so ${formatCents(r.washDisallowedCents)} of the loss can't count this year: it's a wash sale. That part is added to the new shares' cost instead.`,
     actions: [
-      { id: "open", label: "See investment taxes", kind: "link", href: "/taxes#investments" },
+      {
+        id: "open",
+        label: "See investment taxes",
+        kind: "link",
+        href: "/taxes?focus=estimate:investments",
+      },
     ],
     refs: {},
   };
@@ -103,7 +108,12 @@ export function investmentsReply(
   return {
     body: `${realisedLine}${open}${wash}${harvest}`,
     actions: [
-      { id: "open", label: "See investment taxes", kind: "link", href: "/taxes#investments" },
+      {
+        id: "open",
+        label: "See investment taxes",
+        kind: "link",
+        href: "/taxes?focus=estimate:investments",
+      },
     ],
     refs: harvest ? { advice: true } : {},
   };
