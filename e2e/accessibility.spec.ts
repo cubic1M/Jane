@@ -9,7 +9,10 @@ test.setTimeout(300_000);
 
 async function violations(page: Page, path: string) {
   await page.goto(path);
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
+  // The docked chat and the first scan's loading bar poll, so the network may never go quiet:
+  // wait a little for it, not for ever (each page used to wait out the test's whole limit).
+  await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
   const results = await new AxeBuilder({ page })
     // The side chat is the chat page itself, checked on its own (/chat).
     .exclude('iframe[title="Chat with Jane"]')
