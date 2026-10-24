@@ -122,7 +122,17 @@ function newJobSignals(input: DetectionInput, w: Window): LifeSignal[] {
     if (deposits.length < PAYCHECK_MIN_HISTORY) continue;
     const gaps = deposits.slice(1).map((d, i) => daysBetween(deposits[i].date, d.date));
     const due = addDays(last.date, Math.round(median(gaps)) + PAYCHECK_LATE_DAYS);
-    if (due < w.asOf && due > w.from && !out.some((s) => s.key === "paychecks_stopped")) {
+    // Real-user QA: only when the account's data runs past the day it was due (an import ends
+    // on the day of its file; a paycheck after that isn't missing).
+    const seenUntil = input.transactions
+      .filter((t) => t.accountId === last.accountId)
+      .reduce((m, t) => (t.date > m ? t.date : m), last.date);
+    if (
+      seenUntil > due &&
+      due < w.asOf &&
+      due > w.from &&
+      !out.some((s) => s.key === "paychecks_stopped")
+    ) {
       out.push({
         key: "paychecks_stopped",
         text: `no paycheck from ${name} since ${shortDate(last.date)}`,
