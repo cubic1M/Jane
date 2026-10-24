@@ -311,7 +311,8 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
     );
 
   const p = input.practice;
-  const isNews = (kind: string) => kind === "news_idea";
+  // News ideas and news themes' ideas both come from the day's headlines.
+  const isNews = (kind: string) => kind === "news_idea" || kind === "theme_idea";
   const ideaItem = (branch: "practice" | "news") => (i: NonNullable<typeof p>["ideas"][number]) =>
     item(branch, i.key, {
       label: shortLabel(i.headline),
