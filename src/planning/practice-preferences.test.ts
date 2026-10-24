@@ -97,6 +97,16 @@ describe("practice preferences", () => {
     expect(cleared.ok && cleared.changed).toEqual(["goal", "goalDate"]);
   });
 
+  it("takes a crypto sleeve choice, and nothing else for it", () => {
+    const r = applyPatch(base(), { cryptoSleeve: "crypto_trend" }, TODAY);
+    expect(r.ok && r.preferences.cryptoSleeve).toBe("crypto_trend");
+    expect(r.ok && r.changed).toEqual(["cryptoSleeve"]);
+    expect(applyPatch(base(), { cryptoSleeve: "dogecoin" }, TODAY).ok).toBe(false);
+    const d = applyPatch(base(), { dayTrading: "vwap_reversion" }, TODAY);
+    expect(d.ok && d.preferences.dayTrading).toBe("vwap_reversion");
+    expect(applyPatch(base(), { dayTrading: "scalping" }, TODAY).ok).toBe(false);
+  });
+
   it("an unchanged value isn't a change", () => {
     const r = applyPatch(base(), { appetite: "normal", mode: "act" }, TODAY);
     expect(r.ok && r.changed).toEqual([]);
@@ -119,6 +129,8 @@ describe("practice preferences", () => {
       rebalancePace: "hourly",
       universe: "everything",
       maxFundPercent: 95,
+      cryptoSleeve: "dogecoin",
+      dayTrading: "scalping",
     });
     expect(p).toMatchObject({
       riskLevel: null,
@@ -128,6 +140,8 @@ describe("practice preferences", () => {
       avoid: ["tobacco"],
       mode: "act",
       strategy: "level",
+      cryptoSleeve: "off",
+      dayTrading: "off",
       rebalancePace: "normal",
       universe: "funds_and_stocks",
       maxFundPercent: null,
@@ -238,7 +252,13 @@ describe("the settings page's form", () => {
       rebalancePace: "often",
       universe: "funds_only",
       maxFundPercent: 50,
+      // Not on the form unless shown (Very high): left as it was.
+      cryptoSleeve: "off",
+      dayTrading: "off",
     });
+    expect(parsePreferenceForm(form({ ...full, cryptoSleeve: "crypto_hold" })).cryptoSleeve).toBe(
+      "crypto_hold",
+    );
     // An empty cap on one fund is the hard limit.
     expect(parsePreferenceForm(form({ ...full, maxFundPercent: "" })).maxFundPercent).toBeNull();
   });

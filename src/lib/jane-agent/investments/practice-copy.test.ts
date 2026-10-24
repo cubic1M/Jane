@@ -224,7 +224,7 @@ describe("the strategy each level follows, in the chat", () => {
     );
     expect(own.body).toMatch(/not a forecast/);
     expect(own.refs).toEqual({ advice: true });
-    expect(hrefs(own.actions)).toEqual(["/investments#level-strategies-heading"]);
+    expect(hrefs(own.actions)).toEqual(["/investments?focus=strategies:levels"]);
     // Before the daily replay: the committed research choice and its evidence.
     expect(levelStrategyReply(true, null, 3, true).body).toMatch(
       /^Your level, Medium, follows the trend filter \(trend\(months=6\)\)\. Chosen on Alpaca's closes/,
@@ -276,7 +276,7 @@ describe("the rule replay in the chat", () => {
     expect(reply.body).toMatch(/not a forecast/);
     expect(reply.body.replace(/not a forecast/g, "")).not.toMatch(/forecast/i);
     expect(reply.refs).toEqual({ advice: true });
-    expect(hrefs(reply.actions)).toEqual(["/investments#rule-replay-heading"]);
+    expect(hrefs(reply.actions)).toEqual(["/investments?focus=strategies:rules"]);
     expect(ruleReplayReply({ advice: true, data }, 4, false).body).toMatch(/^High: /);
     expect(ruleReplayReply({ advice: true, data }, 2, true).body).toMatch(/don't have a replay/);
     expect(ruleReplayReply({ advice: false }, 4, true).body).toMatch(/demo advice/);

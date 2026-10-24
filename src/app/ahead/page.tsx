@@ -135,16 +135,16 @@ async function AheadContent({
           What&apos;s coming up and the tools to get ready. Math from your own numbers, not advice.
         </p>
         <nav aria-label="Plans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/goals" className={LINK}>
+          <Link prefetch={false} href="/goals" className={LINK}>
             Goals
           </Link>
-          <Link href="/net-worth" className={LINK}>
+          <Link prefetch={false} href="/net-worth" className={LINK}>
             Net worth
           </Link>
-          <Link href="/deadlines" className={LINK}>
+          <Link prefetch={false} href="/deadlines" className={LINK}>
             Dates
           </Link>
-          <Link href="/afford" className={LINK}>
+          <Link prefetch={false} href="/afford" className={LINK}>
             Can I afford this?
           </Link>
         </nav>

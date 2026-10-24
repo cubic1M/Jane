@@ -159,6 +159,27 @@ describe("the Alpaca adapter's history, page by page", () => {
     );
     expect(fetcher.mock.calls[0][0]).toContain("feed=sip");
   });
+  it("asks the crypto endpoint for the sleeve's coins, by their pair", async () => {
+    const fetcher = vi.fn(async (_u: string, _i: { headers: Record<string, string> }) => ({
+      json: async () => ({ bars: { "BTC/USD": [{ t: "2026-10-01T00:00:00Z", c: 61234.56 }] } }),
+    }));
+    const a = new AlpacaMarketData({ id: "k", secret: "s" }, fetcher, undefined, "iex");
+    const bars = await a.prices("BTCUSD", "2026-10-01", "2026-10-02");
+    expect(bars).toEqual([{ date: "2026-10-01", closeCents: 6_123_456 }]);
+    expect(fetcher.mock.calls[0][0]).toContain("/v1beta3/crypto/us/bars?symbols=BTC%2FUSD");
+  });
+});
+
+describe("the sample market's crypto", () => {
+  it("prices the sleeve's coins, far jumpier than the funds", async () => {
+    const vol = async (t: string) => {
+      const b = await sample.prices(t, "2024-01-02", "2024-12-31");
+      const r = b.slice(1).map((x, i) => Math.log(x.closeCents / b[i].closeCents));
+      return Math.sqrt(r.reduce((s, x) => s + x * x, 0) / r.length);
+    };
+    expect(await vol("BTCUSD")).toBeGreaterThan(2 * (await vol("VTI")));
+    expect(await sample.latest("ETHUSD", "2026-10-16")).not.toBeNull();
+  });
 });
 
 describe("the Alpaca adapter when Alpaca refuses", () => {

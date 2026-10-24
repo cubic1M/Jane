@@ -5,7 +5,13 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { PracticeIdeasSection } from "@/components/practice-ideas";
 import { RISK_LEVELS } from "@/config/investing";
-import { HARVEST_PARTNERS, MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/portfolios";
+import {
+  CRYPTO_PRACTICE_TICKERS,
+  DAY_TRADE_TICKER,
+  HARVEST_PARTNERS,
+  MODEL_PORTFOLIOS,
+  PRACTICE_ETFS,
+} from "@/config/portfolios";
 import { adviceMode } from "@/lib/advice-mode";
 import { practicePaidIn } from "@/lib/investments/practice-paid-in";
 import { formatCents } from "@/lib/money";
@@ -38,8 +44,15 @@ const MESSAGES: Record<string, string> = {
   idea_no: "OK, put away. Jane brings that kind of idea a little later now.",
   idea_gone: "That idea has already moved on.",
 };
-// A fund's name with its ticker, for the model funds and their swap partners; a stock by ticker.
+// A fund's name with its ticker, for the model funds and their swap partners; a coin by its name;
+// a stock by ticker.
+const COINS: Readonly<Record<string, string>> = {
+  [CRYPTO_PRACTICE_TICKERS.BTC]: "Bitcoin",
+  [CRYPTO_PRACTICE_TICKERS.ETH]: "Ether",
+};
 const fundName = (ticker: string) => {
+  if (COINS[ticker]) return `${COINS[ticker]} (crypto sleeve)`;
+  if (ticker === DAY_TRADE_TICKER) return `S&P 500 ETF (${ticker}, day trading)`;
   const fund = [...Object.values(PRACTICE_ETFS), ...Object.values(HARVEST_PARTNERS)].find(
     (e) => e?.ticker === ticker,
   );

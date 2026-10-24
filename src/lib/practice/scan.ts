@@ -191,6 +191,7 @@ export async function scanPractice(
     avoid: profile.avoid,
     cashBufferCents: profile.cashBufferCents,
     limits: profile.limits,
+    funds: profile.funds,
     prices,
     history,
     trades: trades.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),

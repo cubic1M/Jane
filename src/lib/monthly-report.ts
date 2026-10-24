@@ -213,18 +213,18 @@ export function renderMonthlyReportEmail(
     "",
     `Unsubscribe: ${links.unsubscribe}`,
   ].join("\n");
-  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#18181b;line-height:1.5">
+  const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#171717;line-height:1.5">
 <h1 style="font-size:22px">${esc(subject)}</h1>
 ${report.summary ? `<p>${esc(report.summary)}</p>` : ""}
 <ul>${lines
     .map(
       (l) =>
-        `<li><strong>${esc(l.label)}:</strong> ${esc(l.text)} <a href="${esc(`${links.base}${l.href}`)}" style="color:#047857">See it</a></li>`,
+        `<li><strong>${esc(l.label)}:</strong> ${esc(l.text)} <a href="${esc(`${links.base}${l.href}`)}" style="color:#171717">See it</a></li>`,
     )
     .join("")}</ul>
 ${receipts.length > 0 ? `<h2 style="font-size:16px">Receipts</h2><ul>${receipts.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
-<p><a href="${esc(page)}" style="color:#047857">See it all</a></p>
-<p style="margin-top:32px;font-size:12px;color:#71717a"><a href="${esc(links.unsubscribe)}" style="color:#71717a">Unsubscribe</a></p>
+<p><a href="${esc(page)}" style="color:#171717">See it all</a></p>
+<p style="margin-top:32px;font-size:12px;color:#737373"><a href="${esc(links.unsubscribe)}" style="color:#737373">Unsubscribe</a></p>
 </div>`;
   return { subject, text, html };
 }

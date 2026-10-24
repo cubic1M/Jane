@@ -68,6 +68,21 @@ describe("household actions", () => {
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "blair@example.com" }));
   });
 
+  it("never emails an invite from someone trying Jane, and still shows the link", async () => {
+    vi.stubEnv("RESEND_API_KEY", "key");
+    const { requireUser } = await import("@/lib/session");
+    vi.mocked(requireUser).mockResolvedValueOnce({
+      id: "trial_0123456789abcdef01234567",
+      email: "trial_0123456789abcdef01234567@try.jane.invalid",
+    } as never);
+    const state = await invite(null, form({ email: "blair@example.com" }));
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect(state).toMatchObject({
+      ok: true,
+      link: "https://app.example.com/household/join?token=tok",
+    });
+  });
+
   it("shows household errors as messages", async () => {
     vi.mocked(invitePartner).mockRejectedValueOnce(new HouseholdError("Your household is full."));
     expect(await invite(null, form({ email: "x@example.com" }))).toEqual({

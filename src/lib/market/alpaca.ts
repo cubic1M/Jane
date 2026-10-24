@@ -1,3 +1,4 @@
+import { CRYPTO_TICKERS } from "@/config/portfolios";
 import type { Bar, Headline, MarketData } from "./types";
 import { MarketDataError, MarketDataNotConfigured, type Filing } from "./types";
 
@@ -34,6 +35,16 @@ export const barsUrl = (
   pageToken?: string | null,
 ) =>
   `${ALPACA_DATA_URL}/v2/stocks/bars?symbols=${encodeURIComponent(tickers.join(","))}&timeframe=1Day&start=${from}&end=${to}&adjustment=all&feed=${feed}&limit=10000${pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ""}`;
+// Crypto's daily bars (the sleeve's coins, CRYPTO_PRACTICE_TICKERS): Alpaca's crypto endpoint,
+// with the pair as "BTC/USD".
+export const cryptoPair = (ticker: string) => `${ticker.slice(0, -3)}/${ticker.slice(-3)}`;
+export const cryptoBarsUrl = (
+  ticker: string,
+  from: string,
+  to: string,
+  pageToken?: string | null,
+) =>
+  `${ALPACA_DATA_URL}/v1beta3/crypto/us/bars?symbols=${encodeURIComponent(cryptoPair(ticker))}&timeframe=1Day&start=${from}&end=${to}&limit=10000${pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ""}`;
 export const newsUrl = (tickers: readonly string[], from: string, to: string) =>
   `${ALPACA_DATA_URL}/v1beta1/news?symbols=${encodeURIComponent(tickers.join(","))}&start=${from}&end=${to}&limit=50`;
 
@@ -97,11 +108,13 @@ export class AlpacaMarketData implements MarketData {
     const out: Bar[] = [];
     let token: string | null = null;
     for (let page = 0; page < 50; page += 1) {
-      const res = await this.fetcher(barsUrl([ticker], from, to, this.feed, token), {
-        headers: this.headers(),
-      });
+      const crypto = CRYPTO_TICKERS.includes(ticker);
+      const url = crypto
+        ? cryptoBarsUrl(ticker, from, to, token)
+        : barsUrl([ticker], from, to, this.feed, token);
+      const res = await this.fetcher(url, { headers: this.headers() });
       const json = (await bodyOf(res)) as AlpacaBars;
-      out.push(...parseBars(json, ticker));
+      out.push(...parseBars(json, crypto ? cryptoPair(ticker) : ticker));
       token = nextPage(json);
       if (!token) break;
     }
