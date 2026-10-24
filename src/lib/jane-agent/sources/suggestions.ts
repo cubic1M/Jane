@@ -25,6 +25,7 @@ export const suggestionsSource: MessageSource = {
       body: suggestionCard(s).join("\n"),
       refs: {
         suggestion: s.key,
+        suggestionWhy: s.why,
         ...(s.advice ? { advice: true as const } : {}),
         ...(s.cardDetails ? { cardDetails: s.cardDetails } : {}),
       },

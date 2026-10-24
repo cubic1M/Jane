@@ -32,7 +32,8 @@ describe("past month-end balances", () => {
     );
     // Since Sep 30: 30_000 out, so it was 30_000 higher then.
     expect(out).toEqual([
-      // Jul 31 is before the first transaction (Aug 10): left out.
+      // Jul 31 is before the first transaction (Aug 10): every one of them undone.
+      { accountId: "chk", date: "2026-07-31", balanceCents: 1_000_000 + 30_000 - 200_000 + 50_000 },
       { accountId: "chk", date: "2026-08-31", balanceCents: 1_000_000 + 30_000 - 200_000 },
       { accountId: "chk", date: "2026-09-30", balanceCents: 1_030_000 },
     ]);
@@ -46,10 +47,15 @@ describe("past month-end balances", () => {
       2,
     );
     // Since Sep 30 a 5_000 payment lowered what's owed, so it owed 5_000 more then.
-    expect(out).toEqual([{ accountId: "card", date: "2026-09-30", balanceCents: 45_000 }]);
+    // On Aug 31, before the 12_000 charge too: 7_000 less owed.
+    expect(out).toEqual([
+      { accountId: "card", date: "2026-08-31", balanceCents: 33_000 },
+      { accountId: "card", date: "2026-09-30", balanceCents: 45_000 },
+    ]);
   });
 
-  it("leaves out investments, accounts with no balance and accounts with no transactions", () => {
+  it("keeps untouched accounts at today's balance, and leaves out investments and no balance", () => {
+    // Every bank account the headline counts is in every month, or the line drifts off it.
     expect(
       pastMonthEndBalances(
         [
@@ -59,8 +65,11 @@ describe("past month-end balances", () => {
         ],
         tx,
         "2026-10-23",
-        3,
+        2,
       ),
-    ).toEqual([]);
+    ).toEqual([
+      { accountId: "sav", date: "2026-08-31", balanceCents: 100 },
+      { accountId: "sav", date: "2026-09-30", balanceCents: 100 },
+    ]);
   });
 });

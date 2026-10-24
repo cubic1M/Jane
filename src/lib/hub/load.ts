@@ -12,6 +12,7 @@ import { listGoals } from "@/lib/goals";
 import { healthFor } from "@/lib/health-score";
 import { homeSummary, type HomeSummary } from "@/lib/home";
 import { loadInsurance } from "@/lib/insurance/profile";
+import { practicePaidIn } from "@/lib/investments/practice-paid-in";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import type { AreasInput, CashFlowInput, HeroInput } from "./view";
@@ -79,17 +80,31 @@ async function netWorthOverYear(userId: string, { client, now }: Required<Option
     crypto,
   );
   // The line shows how the accounts moved: things owned count across the whole year at their
-  // value now, rather than appearing as a jump in the month they were first valued.
+  // value now, rather than appearing as a jump in the month they were first valued, and so
+  // does an account with no balance history yet (a sample person's investments, an account
+  // linked today), or the line leaves it out and drifts off the headline.
+  const start = `${first}-01`;
+  const kept = new Set(snapshots.map((s) => s.accountId));
   const months = monthlyNetWorth(
     accounts,
-    snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
+    [
+      ...snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
+      ...accounts
+        .filter((a) => !kept.has(a.id) && a.currentBalanceCents !== null)
+        .map((a) => ({ accountId: a.id, date: start, balanceCents: a.currentBalanceCents! })),
+    ],
     asOf,
     NET_WORTH_MONTHS,
-    owned.map((o) => ({ ...o, valuedOn: o.valuedOn < `${first}-01` ? o.valuedOn : `${first}-01` })),
+    owned.map((o) => ({ ...o, valuedOn: o.valuedOn < start ? o.valuedOn : start })),
   );
+  // This month's point is today's net worth, the hero's number, so the line ends where the
+  // number is (the last snapshot can be weeks old, or a sample person's month end).
   return {
     todayCents: today.netCents,
-    months: months.map((m) => ({ month: m.month, netCents: m.netCents })),
+    months: months.map((m, i) => ({
+      month: m.month,
+      netCents: i === months.length - 1 ? today.netCents : m.netCents,
+    })),
   };
 }
 
@@ -150,7 +165,10 @@ export async function loadHubAreas(
         return debtSummary(accounts, asOf);
       }),
       quietly("taxes", () => loadTaxEstimate(userId, { client, now })),
-      quietly("practice", () => loadPractice(userId, { client, now })),
+      quietly("practice", async () => {
+        const view = await loadPractice(userId, { client, now });
+        return view && { ...view, paidInCents: await practicePaidIn(userId, { client }) };
+      }),
       quietly("goals", () => listGoals(userId, { client, now })),
     ],
   );
@@ -189,7 +207,7 @@ export async function loadHubAreas(
     investments: practice
       ? {
           totalCents: practice.totalCents,
-          startingCents: practice.startingCents,
+          paidInCents: practice.paidInCents,
           parts: [
             ...practice.holdings.map((h) => ({ label: h.ticker, valueCents: h.valueCents })),
             { label: "Cash", valueCents: practice.state.cashCents },

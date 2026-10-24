@@ -65,7 +65,7 @@ const areas = (over: Partial<AreasInput> = {}): AreasInput => ({
   },
   investments: {
     totalCents: 1_020_000,
-    startingCents: 1_000_000,
+    paidInCents: 1_000_000,
     parts: [
       { label: "VTI", valueCents: 700_000 },
       { label: "Cash", valueCents: 320_000 },

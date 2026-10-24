@@ -66,6 +66,20 @@ describe.runIf(url)("the demo bank's balance history", () => {
     const top = await loadHubTop(user.id, { client, now: NOW });
     const line = heroView(top!.hero).netWorth!;
     expect(line.points.length).toBeGreaterThan(2);
+    // The line ends at the headline: every account counts, and this month is today.
+    expect(line.points.at(-1)!.cents).toBe(line.cents);
+    // Every bank, card and loan account has its history; investments never get one here.
+    const banks = await client.account.findMany({
+      where: { userId: user.id, type: { in: ["depository", "credit", "loan"] } },
+      select: { id: true },
+    });
+    const counted = new Set(snapshots.map((s) => s.accountId));
+    for (const b of banks) expect(counted.has(b.id)).toBe(true);
+    const investing = await client.account.findMany({
+      where: { userId: user.id, type: "investment" },
+      select: { id: true },
+    });
+    for (const i of investing) expect(counted.has(i.id)).toBe(false);
 
     // Running it again writes nothing new.
     expect(await ensureDemoBalanceHistory(user.id, itemId, { client, now: NOW })).toBe(0);

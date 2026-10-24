@@ -67,7 +67,8 @@ export type AreasInput = {
   } | null;
   investments: {
     totalCents: number;
-    startingCents: number;
+    // All the practice money put in (start and monthly adds): up or down is against this.
+    paidInCents: number;
     parts: { label: string; valueCents: number }[];
   } | null;
   ahead: {
@@ -425,7 +426,7 @@ export function tilesView(input: AreasInput): AreaTile[] {
       return tile("investments", input, p !== null, {
         value: p ? shortMoney(p.totalCents) : null,
         caption: p
-          ? p.totalCents >= p.startingCents
+          ? p.totalCents >= p.paidInCents
             ? "Practice money, up"
             : "Practice money, down"
           : "Start with practice money",

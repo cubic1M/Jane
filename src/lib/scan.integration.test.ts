@@ -174,6 +174,11 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     const suggestions = messages.filter((m) => (m.refs as { suggestion?: string }).suggestion);
     expect(suggestions.length).toBeGreaterThan(0);
     for (const m of suggestions) expect(m.body).toMatch(/% sure|not sure/);
+    // With the scan done, the chat no longer shows "still going through your accounts".
+    const chat = (await openChat(trial.userId, { client, now: NOW }))!;
+    expect(chat.scanning).toBe(false);
+    expect(chat.messages.map((m) => m.body)).not.toContain(SCANNING_HELLO);
+    expect(chat.messages[0].body).toMatch(/^Hi, I'm Jane\. I look at your money/);
   });
 
   it("builds the first brief from a light snapshot, the whole one right after", async () => {
