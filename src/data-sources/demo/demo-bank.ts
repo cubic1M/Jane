@@ -1,5 +1,6 @@
 import type { AccountBase, LiabilitiesObject, Transaction } from "plaid";
 import { isPersonSeed, personAccounts, personLiabilities, personTransactions } from "./demo-people";
+import { monthsAfter, monthsToPayOff, mortgagePiDollars } from "./demo-loans";
 import { PFC_TAXONOMY, type PfcDetailed, type PfcPrimary } from "@/categorize/taxonomy";
 
 // A fake bank (spec step 75) that stands in for Plaid until there are keys. It produces
@@ -840,9 +841,6 @@ export function lastDayOfMonthOn(today: string, dayOfMonth: number): string {
   return addDays(today, -30);
 }
 
-export const yearsAfter = (day: string, years: number) =>
-  `${Number(day.slice(0, 4)) + years}${day.slice(4, 7)}-01`;
-
 export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObject {
   if (isPersonSeed(demo)) return personLiabilities(demo, today);
   const { seed, anchor } = demo;
@@ -890,7 +888,10 @@ export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObjec
         last_payment_date: null,
         loan_term: "30 year",
         loan_type_description: "Conventional 30 year fixed",
-        maturity_date: yearsAfter(anchor, 26),
+        maturity_date: monthsAfter(
+          anchor,
+          monthsToPayOff(312400, 3.99, mortgagePiDollars(400000, 3.99)),
+        ),
         next_monthly_payment: 2198.31,
         next_payment_due_date: nextDayOfMonth(today, 1),
         origination_date: null,
@@ -906,7 +907,7 @@ export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObjec
         account_id: accountId(seed, "student"),
         account_number: null,
         disbursement_dates: null,
-        expected_payoff_date: yearsAfter(anchor, 6),
+        expected_payoff_date: monthsAfter(anchor, monthsToPayOff(18345, 5.25, 195)),
         guarantor: null,
         interest_rate_percentage: 5.25,
         is_overdue: false,
@@ -941,8 +942,8 @@ export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObjec
         principal_balance: 18020,
         origination_principal_amount: 26000,
         origination_date: null,
-        loan_term_months: 60,
-        maturity_date: yearsAfter(anchor, 3),
+        loan_term_months: monthsToPayOff(26000, 6.9, 494.1),
+        maturity_date: monthsAfter(anchor, monthsToPayOff(18020, 6.9, 494.1)),
         payment_count: null,
         payment_frequency: null,
         next_payment_amount: 494.1,
