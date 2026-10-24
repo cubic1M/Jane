@@ -190,3 +190,10 @@ export const THEME_NEWS_SYMBOLS: readonly string[] = [
   "TSM",
   "AMD",
 ];
+
+// The alert when a theme idea comes up (src/lib/practice/theme-alerts.ts): a card in the chat
+// for each new idea, at most one a day, placed like a decision that can wait (below the urgent
+// ones, CHAT_URGENT_FROM_PRIORITY), and then the person's notifications as they set them. A
+// trial or sample person gets the card only. FOR REVIEW.
+export const THEME_ALERT_PRIORITY = 60;
+export const THEME_ALERTS_PER_DAY = 1;
