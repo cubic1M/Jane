@@ -24,6 +24,12 @@ export const SAMPLE_PROFILES: Readonly<Record<string, Profile>> = {
   MSFT: { base: 85, drift: 0.2, vol: 0.016, beta: 1.1, hit: 1.1 },
   NVDA: { base: 50, drift: 0.4, vol: 0.028, beta: 1.5, hit: 1.5 },
   TSLA: { base: 21, drift: 0.3, vol: 0.035, beta: 1.6, hit: 1.6 },
+  // The strategy menu's tilt funds (src/config/strategy-menu.ts).
+  VTV: { base: 120, drift: 0.075, vol: 0.004, beta: 0.95, hit: 0.95 },
+  MTUM: { base: 150, drift: 0.1, vol: 0.006, beta: 1.05, hit: 1.05 },
+  QUAL: { base: 130, drift: 0.09, vol: 0.004, beta: 0.95, hit: 0.95 },
+  VIG: { base: 160, drift: 0.085, vol: 0.004, beta: 0.9, hit: 0.9 },
+  RSP: { base: 140, drift: 0.08, vol: 0.005, beta: 1, hit: 1 },
 };
 export const SAMPLE_TICKERS = Object.keys(SAMPLE_PROFILES);
 export const PRACTICE_TICKERS = Object.values(PRACTICE_ETFS).map((e) => e.ticker);

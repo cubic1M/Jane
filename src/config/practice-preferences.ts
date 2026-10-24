@@ -104,6 +104,33 @@ export const STRATEGY_CHOICES = {
     id: "vol_target",
     params: { windowDays: 63 },
   },
+  // The strategy menu's tilts (src/config/strategy-menu.ts): the level's mix, with its US stocks
+  // part held in the tilt's fund instead of the whole market.
+  value_tilt: {
+    label: "Value tilt",
+    description: "Your US stocks in a value fund (VTV): cheaper, slower-growing companies.",
+    fund: "VTV",
+  },
+  momentum_tilt: {
+    label: "Momentum tilt",
+    description: "Your US stocks in a momentum fund (MTUM): the companies that rose most lately.",
+    fund: "MTUM",
+  },
+  quality_tilt: {
+    label: "Quality tilt",
+    description: "Your US stocks in a quality fund (QUAL): steady profits, little debt.",
+    fund: "QUAL",
+  },
+  dividend_growth: {
+    label: "Dividend growth",
+    description: "Your US stocks in a dividend-growth fund (VIG): dividends raised for 10+ years.",
+    fund: "VIG",
+  },
+  equal_weight: {
+    label: "Equal weight",
+    description: "Your US stocks in an equal-weight S&P 500 fund (RSP).",
+    fund: "RSP",
+  },
 } as const;
 export type StrategyChoice = keyof typeof STRATEGY_CHOICES;
 

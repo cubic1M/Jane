@@ -62,10 +62,20 @@ export const HARVEST_PARTNERS: Readonly<Partial<Record<PracticeClass, Partner>>>
 
 const CLASS_KEYS = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 
-// The model ETFs that hold one kind: the main one, then its swap partner.
+// Funds of a kind the strategy menu's tilts hold it in (src/config/strategy-menu.ts), when the
+// person chooses one: still that kind, for the mix and the drift.
+export const TILT_FUNDS: Readonly<Partial<Record<PracticeClass, readonly string[]>>> = {
+  us_stocks: ["VTV", "MTUM", "QUAL", "VIG", "RSP"],
+};
+
+// The model ETFs that hold one kind: the main one, then its swap partner, then its tilt funds.
 export function classTickers(c: PracticeClass): string[] {
   const partner = HARVEST_PARTNERS[c];
-  return partner ? [PRACTICE_ETFS[c].ticker, partner.ticker] : [PRACTICE_ETFS[c].ticker];
+  return [
+    PRACTICE_ETFS[c].ticker,
+    ...(partner ? [partner.ticker] : []),
+    ...(TILT_FUNDS[c] ?? []),
+  ];
 }
 
 // Which kind a model ETF holds, or null for anything else (an opportunity stock).
