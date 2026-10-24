@@ -93,22 +93,16 @@ function DockHeader({
         JANE · {position} of {total} {total === 1 ? "suggestion" : "suggestions"}
       </p>
       {total > 1 && (
+        // Named by their words (accessibility: the name holds what's shown).
         <span className="ml-auto flex gap-1">
-          <button
-            type="button"
-            aria-label="Previous suggestion"
-            onClick={() => onStep(-1)}
-            className={STEP}
-          >
-            [‹ prev]
+          <button type="button" onClick={() => onStep(-1)} className={STEP}>
+            <span aria-hidden="true">[‹&nbsp;</span>previous
+            <span className="sr-only"> suggestion</span>
+            <span aria-hidden="true">]</span>
           </button>
-          <button
-            type="button"
-            aria-label="Next suggestion"
-            onClick={() => onStep(1)}
-            className={STEP}
-          >
-            [next ›]
+          <button type="button" onClick={() => onStep(1)} className={STEP}>
+            <span aria-hidden="true">[</span>next<span className="sr-only"> suggestion</span>
+            <span aria-hidden="true">&nbsp;›]</span>
           </button>
         </span>
       )}
