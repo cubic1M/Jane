@@ -156,9 +156,29 @@ export function SideChat() {
       if (event.source !== frame.current?.contentWindow) return;
       if (!isFrameMessage(event.data)) return;
       if (event.data.type === "jane:ready") {
+        listening.current = true;
         post(whereRef.current);
         if (asking.current) post({ type: "jane:ask", text: asking.current });
         asking.current = null;
+        if (sending.current) post({ type: "jane:send", text: sending.current });
+        sending.current = null;
+        return;
+      }
+      // Where a question sent from the giant tree landed, in the page's coordinates, and when
+      // Jane starts and finishes: told to the page for its dotted line.
+      if (event.data.type === "jane:bubble") {
+        const r = frame.current?.getBoundingClientRect();
+        if (r) {
+          window.dispatchEvent(
+            new CustomEvent("jane:bubble", {
+              detail: { x: r.left + event.data.x, y: r.top + event.data.y },
+            }),
+          );
+        }
+        return;
+      }
+      if (event.data.type === "jane:answering" || event.data.type === "jane:answered") {
+        window.dispatchEvent(new Event(event.data.type));
         return;
       }
       if (event.data.type !== "jane:navigate") return;
@@ -169,6 +189,38 @@ export function SideChat() {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [router, wide]);
+
+  // "Ask Jane" from the giant tree: the chat comes into view and the question is sent at once,
+  // waiting for the framed chat if it isn't listening yet; asked before, it finds the answer.
+  const sending = useRef<string | null>(null);
+  // The framed chat said it's listening (its "ready"); a new page in the frame says it again.
+  const listening = useRef(false);
+  useEffect(() => {
+    const onSend = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      // Only once the framed chat is listening (loaded isn't enough: it may still be hydrating).
+      if (listening.current) post({ type: "jane:send", text });
+      else sending.current = text;
+    };
+    const onFind = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      if (listening.current) post({ type: "jane:find", text });
+    };
+    window.addEventListener("jane:send", onSend);
+    window.addEventListener("jane:find", onFind);
+    return () => {
+      window.removeEventListener("jane:send", onSend);
+      window.removeEventListener("jane:find", onFind);
+    };
+  }, [wide, loaded]);
 
   // "Ask Jane about this" (the feature map): the chat comes into view with the question in its
   // message box, waiting for the framed chat if it isn't listening yet.

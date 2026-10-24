@@ -518,6 +518,33 @@ body {
   }
 }
 
+/* The giant tree on Home (src/components/hub/giant-tree.tsx): the camera glides when a click,
+   a button or the keyboard moves it (never while dragging or zooming with the wheel), and the
+   dotted line from an "Ask Jane" box to the chat marches while the question is sent. A static
+   dotted line and no glide for reduced motion. */
+html[data-giant-picked] [data-floating-cards="queue"] {
+  display: none;
+}
+.giant-glide {
+  transition: transform 420ms var(--ease-out-soft);
+}
+.ask-line {
+  animation: ask-line-march 0.6s linear infinite;
+}
+@keyframes ask-line-march {
+  to {
+    stroke-dashoffset: -9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .giant-glide {
+    transition: none;
+  }
+  .ask-line {
+    animation: none;
+  }
+}
+
 /* Primary buttons are inverted (the page's text colour as their background); secondary ones
    are bracketed outlines. Unlayered, so they win over the utilities on every page. */
 .bg-emerald-600,
