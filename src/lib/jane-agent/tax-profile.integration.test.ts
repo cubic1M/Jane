@@ -174,7 +174,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
     expect(await client.janeMessage.count({ where: { userId, dedupeKey: "taxes:profile" } })).toBe(
       1,
     );
-  }, 60_000);
+  }, 180_000); // Runs Jane's whole day up to 21 times: past 60s on busy CI runners (about 9s locally).
 
   it("refuses another person's tap, and a button the message doesn't offer", async () => {
     const userId = await demoPerson("tax-owner");

@@ -1,3 +1,4 @@
+import { dayLabel } from "@/lib/day-label";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -67,7 +68,7 @@ async function ReviewContent() {
           {data.advice && <DemoAdviceLabel />}
           <p role="status">
             {data.review
-              ? `${REVIEW_REASON_TEXT[data.review.reason]}. Last done ${data.review.on}.`
+              ? `${REVIEW_REASON_TEXT[data.review.reason]}. Last done ${dayLabel(data.review.on, { year: true })}.`
               : "Jane hasn't done a review yet."}
             {data.due ? ` One is due now: ${REVIEW_REASON_TEXT[data.due].toLowerCase()}.` : ""}
           </p>
@@ -105,7 +106,7 @@ async function ReviewContent() {
           <>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               {monthly.checkedOn
-                ? `Done ${monthly.checkedOn}.`
+                ? `Done ${dayLabel(monthly.checkedOn, { year: true })}.`
                 : "Jane's monthly pass hasn't run yet; this is how things stand today."}
             </p>
             <ul aria-label="Check-up items" className="flex flex-col gap-3">

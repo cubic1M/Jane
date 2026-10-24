@@ -12,7 +12,7 @@ const INSURANCE: MessageAction = {
   id: "open",
   label: "Your insurance",
   kind: "link",
-  href: "/insurance#cards",
+  href: "/insurance?focus=cards",
 };
 
 export async function cardCoverAnswer(

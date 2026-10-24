@@ -76,7 +76,7 @@ export const CHANGES_LINK: MessageAction = {
   id: "open",
   label: "Your insurance",
   kind: "link",
-  href: "/insurance#changes",
+  href: "/insurance?focus=changes",
 };
 
 export function coverActions(changes: CoverChange[], withPartner: boolean): MessageAction[] {

@@ -26,6 +26,8 @@ export type AheadData = {
   debt: { accounts: number; owedCents: number };
   // The newest open checklist, and how many are open.
   lifeEvents: { open: number; newest: { title: string; done: number; total: number } | null };
+  // Every date in the next HUB_DEADLINE_DAYS, soonest first, for the Plans & goals tree.
+  dates?: Pick<Deadline, "key" | "title" | "date" | "amountCents" | "href" | "detail">[];
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -36,20 +38,20 @@ const monthName = (month: string) =>
     timeZone: "UTC",
   });
 
+const until = (asOf: string) =>
+  new Date(Date.parse(`${asOf}T00:00:00Z`) + HUB_DEADLINE_DAYS * DAY_MS).toISOString().slice(0, 10);
+
 // Pure: the next deadline from today, and how many fall in the next HUB_DEADLINE_DAYS.
 export function deadlineSummary(
   deadlines: Pick<Deadline, "title" | "date">[],
   asOf: string,
 ): AheadData["deadlines"] {
-  const until = new Date(Date.parse(`${asOf}T00:00:00Z`) + HUB_DEADLINE_DAYS * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
   const ahead = deadlines
     .filter((d) => d.date >= asOf)
     .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
   return {
     next: ahead[0] ? { title: ahead[0].title, date: ahead[0].date } : null,
-    soon: ahead.filter((d) => d.date <= until).length,
+    soon: ahead.filter((d) => d.date <= until(asOf)).length,
   };
 }
 
@@ -183,6 +185,17 @@ export async function loadAheadHub(
     asOf,
     yearly: { monthlyCents: yearly.monthlyCents, bills: yearly.items.length },
     deadlines: deadlineSummary(deadlines, asOf),
+    dates: deadlines
+      .filter((d) => d.date >= asOf && d.date <= until(asOf))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title))
+      .map(({ key, title, date, amountCents, href, detail }) => ({
+        key,
+        title,
+        date,
+        amountCents,
+        href,
+        detail,
+      })),
     debt: {
       accounts: debts.length,
       owedCents: debts.reduce((sum, a) => sum + Math.max(0, a.currentBalanceCents ?? 0), 0),

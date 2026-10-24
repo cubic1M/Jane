@@ -24,6 +24,12 @@ export const SAMPLE_PROFILES: Readonly<Record<string, Profile>> = {
   MSFT: { base: 85, drift: 0.2, vol: 0.016, beta: 1.1, hit: 1.1 },
   NVDA: { base: 50, drift: 0.4, vol: 0.028, beta: 1.5, hit: 1.5 },
   TSLA: { base: 21, drift: 0.3, vol: 0.035, beta: 1.6, hit: 1.6 },
+  // The news themes' funds (src/config/themes.ts).
+  XLE: { base: 45, drift: 0.04, vol: 0.016, beta: 0.9, hit: 1.1 },
+  ITA: { base: 70, drift: 0.08, vol: 0.012, beta: 0.9, hit: 0.9 },
+  GLD: { base: 120, drift: 0.05, vol: 0.009, beta: 0.1, hit: 0 },
+  TLT: { base: 120, drift: 0.01, vol: 0.009, beta: 0.1, hit: 0 },
+  SMH: { base: 60, drift: 0.2, vol: 0.02, beta: 1.4, hit: 1.4 },
 };
 export const SAMPLE_TICKERS = Object.keys(SAMPLE_PROFILES);
 export const PRACTICE_TICKERS = Object.values(PRACTICE_ETFS).map((e) => e.ticker);
@@ -157,6 +163,17 @@ const HEADLINES: readonly Omit<Headline, "id" | "source" | "url">[] = [
     date: "2026-10-16",
     title: "Microsoft announces a large new data-center investment",
   },
+  // The news themes' kinds of event (src/config/themes.ts), in the sample's own October.
+  {
+    ticker: null,
+    date: "2026-10-15",
+    title: "Chip makers surge as demand for AI chips hits a record",
+  },
+  {
+    ticker: null,
+    date: "2026-10-16",
+    title: "Troops cross the border as a war breaks out overseas",
+  },
   {
     ticker: "NVDA",
     date: "2026-03-05",
@@ -181,12 +198,30 @@ const FILINGS: readonly Omit<Filing, "id" | "url">[] = [
 
 const inRange = (d: string, from: string, to: string) => d >= from && d <= to;
 
+// The sample market read without waiting, for pure replays (the detector harness's sample
+// people, src/profile/sample-practice.ts): the same closes and headlines the class gives.
+export function sampleBars(ticker: string, from: string, to: string): Bar[] {
+  return barsFor(ticker.toUpperCase()).filter((b) => inRange(b.date, from, to));
+}
+
+export function sampleNews(tickers: readonly string[], from: string, to: string): Headline[] {
+  const wanted = new Set(tickers.map((t) => t.toUpperCase()));
+  return HEADLINES.filter(
+    (h) => inRange(h.date, from, to) && (h.ticker === null || wanted.has(h.ticker)),
+  ).map((h, i) => ({
+    ...h,
+    id: `sample-news-${h.date}-${h.ticker ?? "market"}-${i}`,
+    source: "Sample newswire",
+    url: null,
+  }));
+}
+
 export class SampleMarketData implements MarketData {
   readonly name = "sample";
   readonly simulated = true;
 
   async prices(ticker: string, from: string, to: string): Promise<Bar[]> {
-    return barsFor(ticker.toUpperCase()).filter((b) => inRange(b.date, from, to));
+    return sampleBars(ticker, from, to);
   }
 
   async latest(ticker: string, on: string): Promise<Bar | null> {
@@ -200,15 +235,7 @@ export class SampleMarketData implements MarketData {
   }
 
   async news(tickers: readonly string[], from: string, to: string): Promise<Headline[]> {
-    const wanted = new Set(tickers.map((t) => t.toUpperCase()));
-    return HEADLINES.filter(
-      (h) => inRange(h.date, from, to) && (h.ticker === null || wanted.has(h.ticker)),
-    ).map((h, i) => ({
-      ...h,
-      id: `sample-news-${h.date}-${h.ticker ?? "market"}-${i}`,
-      source: "Sample newswire",
-      url: null,
-    }));
+    return sampleNews(tickers, from, to);
   }
 
   async filings(ticker: string, from: string, to: string): Promise<Filing[]> {

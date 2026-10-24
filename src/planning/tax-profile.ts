@@ -1,4 +1,5 @@
 import {
+  CHILD_TAX_CREDIT_AGE,
   CHILDCARE_HINT_CATEGORIES,
   STATE_AGENCY_CATEGORIES,
   FILING_STATUSES,
@@ -66,7 +67,37 @@ export type FoundFacts = {
   state: { code: string; from: string } | null;
   // Childcare spending seen, or a new-baby checklist: Jane mentions it, never assumes.
   childrenHint: boolean;
+  // Who the household the person listed for insurance says they could claim (children under
+  // 17, and older children), for them to confirm with one tap. Null with no household listed.
+  dependants: { childrenUnder17: number; otherDependants: number; from: string } | null;
 };
+
+// "2 children under 17 and 1 other dependant", for the found answer and the estimate.
+export const dependantsWords = (children: number, others: number) =>
+  [
+    children > 0 ? `${children} ${children === 1 ? "child" : "children"} under 17` : null,
+    others > 0 ? `${others} other ${others === 1 ? "dependant" : "dependants"}` : null,
+  ]
+    .filter(Boolean)
+    .join(" and ") || "no dependants";
+
+// A person in the household listed for insurance (src/lib/insurance/family-rules.ts).
+export type HouseholdMember = { relation: string; age: number | null };
+
+// Children in the household: under 17 (an age not given counts as under 17, as most listed
+// children are), and older ones as other dependants. A spouse or someone else isn't counted.
+export function dependantsFromHousehold(
+  people: readonly HouseholdMember[],
+): FoundFacts["dependants"] {
+  const children = people.filter((p) => p.relation === "child");
+  if (children.length === 0) return null;
+  const under = children.filter((c) => c.age === null || c.age < CHILD_TAX_CREDIT_AGE).length;
+  return {
+    childrenUnder17: under,
+    otherDependants: children.length - under,
+    from: "the household on your insurance page",
+  };
+}
 
 const payerOf = (t: ProfileTransaction) => (t.merchantName ?? t.description).trim();
 
@@ -77,6 +108,7 @@ export function findTaxFacts(input: {
   accounts: ProfileAccount[];
   settingsState: string | null;
   newBaby: boolean;
+  household?: readonly HouseholdMember[];
 }): FoundFacts {
   const income: FoundIncome[] = [];
   for (const kind of INCOME_KIND_ORDER) {
@@ -109,7 +141,12 @@ export function findTaxFacts(input: {
       t.pfcDetailed !== null &&
       (CHILDCARE_HINT_CATEGORIES as readonly string[]).includes(t.pfcDetailed),
   );
-  return { income, state: stateOf(input), childrenHint: childcare || input.newBaby };
+  return {
+    income,
+    state: stateOf(input),
+    childrenHint: childcare || input.newBaby,
+    dependants: dependantsFromHousehold(input.household ?? []),
+  };
 }
 
 const isState = (code: string | null) => US_STATES.some((s) => s.code === code);
@@ -147,6 +184,8 @@ export type TaxProfileView = {
     childrenUnder17: number | null;
     otherDependants: number | null;
     hint: boolean;
+    // Where found dependants came from, when the status is "found".
+    from: string | null;
   };
   state: { status: FieldStatus; value: string | null; from: string | null };
   // Kinds of income seen since the person last answered, not on their profile.
@@ -185,13 +224,23 @@ export function taxProfileView(stored: StoredTaxProfile | null, found: FoundFact
           childrenUnder17: stored?.childrenUnder17 ?? 0,
           otherDependants: stored?.otherDependants ?? 0,
           hint: found.childrenHint,
+          from: null,
         }
-      : {
-          status: "missing",
-          childrenUnder17: null,
-          otherDependants: null,
-          hint: found.childrenHint,
-        },
+      : found.dependants
+        ? {
+            status: "found",
+            childrenUnder17: found.dependants.childrenUnder17,
+            otherDependants: found.dependants.otherDependants,
+            hint: found.childrenHint,
+            from: found.dependants.from,
+          }
+        : {
+            status: "missing",
+            childrenUnder17: null,
+            otherDependants: null,
+            hint: found.childrenHint,
+            from: null,
+          },
     state: stateAnswered
       ? { status: "yours", value: stored!.state, from: null }
       : found.state
@@ -220,8 +269,8 @@ export function workingProfile(view: TaxProfileView, useFound: boolean): Working
     field.status === "yours" || (useFound && field.status === "found") ? value : empty;
   return {
     filingStatus: view.filingStatus.value,
-    childrenUnder17: view.dependants.childrenUnder17 ?? 0,
-    otherDependants: view.dependants.otherDependants ?? 0,
+    childrenUnder17: take(view.dependants, view.dependants.childrenUnder17 ?? 0, 0),
+    otherDependants: take(view.dependants, view.dependants.otherDependants ?? 0, 0),
     state: take(view.state, view.state.value, null),
     incomeKinds: take(view.incomeKinds, view.incomeKinds.value, []),
     unconfirmed: useFound ? PROFILE_FIELDS.filter((f) => view[f].status === "found") : [],

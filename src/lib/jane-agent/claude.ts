@@ -183,6 +183,8 @@ const STATUS: Record<string, string> = {
   plan_upkeep: "Looking at your week…",
   proven_savings: "Adding up what I saved you…",
   autopilot_settings: "Checking what I may do by myself…",
+  connections: "Checking your bank connections…",
+  notification_settings: "Checking what I send you…",
   nightly_log: "Looking at last night's checks…",
   priorities: "Working out what matters most…",
   whole_picture: "Looking across everything…",

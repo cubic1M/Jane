@@ -111,6 +111,11 @@ describe("a new job", () => {
     expect(guess.signals[1].text).toBe("a first paycheck from Globex on Oct 2");
   });
 
+  // Real-user QA: an import that ends on Sep 4 has no paycheck after it, but none stopped.
+  it("doesn't read the end of an import as paychecks stopping", () => {
+    expect(lifeEventGuesses(input({ transactions: acme }))).toEqual([]);
+  });
+
   it("doesn't ask on a raise alone", () => {
     const raise = [...acme.slice(0, -1), tx({ ...PAY, date: "2026-10-02", amountCents: -300_000 })];
     expect(lifeEventGuesses(input({ transactions: raise }))).toEqual([]);

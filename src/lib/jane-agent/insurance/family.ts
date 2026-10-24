@@ -11,7 +11,7 @@ const INSURANCE = {
   id: "open",
   label: "Your household",
   kind: "link",
-  href: "/insurance#household",
+  href: "/insurance?focus=household",
 } as const;
 
 export async function familyAnswer(

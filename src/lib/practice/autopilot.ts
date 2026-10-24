@@ -1,4 +1,5 @@
-import { PRACTICE_UNIVERSE } from "@/config/portfolios";
+import { PRACTICE_UNIVERSE, THEME_FUNDS } from "@/config/portfolios";
+import { rulesOnAt } from "@/config/practice-scan";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
@@ -13,6 +14,7 @@ import {
 } from "@/planning/practice-autopilot";
 import { refusedByPreferences } from "@/planning/practice-profile";
 import { washBlocked } from "@/planning/practice-scan";
+import { themeExits } from "@/planning/themes";
 import { replay, type Entry } from "@/planning/practice-ledger";
 import { practiceBroker, loadLedger, type Fill } from "./broker";
 import { addPracticeMoney, PracticeError } from "./portfolio";
@@ -112,18 +114,45 @@ export async function runAutopilot(
   const blocked = washBlocked(sold, asOf);
   // The person's preferences: the mix, what is never bought, the cash kept and whether Jane acts.
   const profile = await practiceProfileOf(userId, { client, now });
-  const plan = planTrades({
-    level: profile.level,
+  // A news theme's slice comes out after its month, or at its stop (src/planning/themes.ts).
+  const themeBuys = await client.practiceTrade.findMany({
+    where: {
+      portfolioId: portfolio.id,
+      side: "buy",
+      undone: false,
+      ticker: { in: [...THEME_FUNDS] },
+    },
+    select: {
+      placedAt: true,
+      side: true,
+      ticker: true,
+      quantity: true,
+      amountCents: true,
+      rule: true,
+    },
+  });
+  const exits = themeExits(
     state,
     prices,
-    paused: false,
-    tradesToday,
-    blocked,
-    weights: profile.weights,
-    avoid: new Set(profile.avoid),
-    cashBufferCents: profile.cashBufferCents,
-    limits: profile.limits,
-  });
+    themeBuys.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),
+    asOf,
+  );
+  const plan = [
+    ...exits,
+    ...planTrades({
+      level: profile.level,
+      state,
+      prices,
+      paused: false,
+      tradesToday: tradesToday + exits.length,
+      blocked,
+      weights: profile.weights,
+      avoid: new Set(profile.avoid),
+      cashBufferCents: profile.cashBufferCents,
+      limits: profile.limits,
+      harvesting: profile.harvestLosses && rulesOnAt(profile.level).has("tax_loss_harvest"),
+    }),
+  ];
   if (!profile.trades) return { ran: true, deposit, fills: [], suggested: plan };
   const broker = practiceBroker();
   const fills: Fill[] = [];
