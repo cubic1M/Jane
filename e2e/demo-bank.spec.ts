@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openBranch } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -39,6 +40,7 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
   await expect(page.getByRole("link", { name: "Sign up for Pine Mobile Unlimited" })).toBeVisible();
 
   await page.goto("/loans");
+  await openBranch(page, "Loans & credit", "Your debts");
   await expect(page.getByText("Demo Home Loan ····0004")).toBeVisible();
 
   await page.getByRole("note").getByRole("link", { name: "Remove it" }).click();
