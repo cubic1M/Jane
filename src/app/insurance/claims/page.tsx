@@ -23,7 +23,6 @@ import { adviceLines, payoutLine } from "@/lib/insurance/claim-worth";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
 import { StartClaimForm } from "./start-form";
-import { SubmitButton } from "@/components/submit-button";
 
 // Claims (spec step 107): when something happens, what to do now, what to collect, who to
 // call, and a tracker of the claim's steps. Every step stays on the claim until it's closed.
@@ -68,7 +67,9 @@ function Filing({ claim, filable }: { claim: Claim; filable: boolean }) {
         </ul>
         <form action={fileIt}>
           <input type="hidden" name="claimId" value={claim.id} />
-          <SubmitButton className={SMALL_BUTTON}>File it</SubmitButton>
+          <button type="submit" className={SMALL_BUTTON}>
+            File it
+          </button>
         </form>
       </div>
     );
@@ -92,7 +93,9 @@ function Filing({ claim, filable }: { claim: Claim; filable: boolean }) {
           className="min-w-0 rounded-lg border border-zinc-300 bg-transparent p-3 text-base dark:border-zinc-700"
         />
       </label>
-      <SubmitButton className={`${SMALL_BUTTON} self-start`}>Write it up</SubmitButton>
+      <button type="submit" className={`${SMALL_BUTTON} self-start`}>
+        Write it up
+      </button>
     </form>
   );
 }
@@ -142,9 +145,9 @@ function ClaimCard({ claim, filable = false }: { claim: Claim; filable?: boolean
               <form action={stepDone}>
                 <input type="hidden" name="claimId" value={claim.id} />
                 <input type="hidden" name="step" value={step.key} />
-                <SubmitButton className={SMALL_BUTTON}>
+                <button type="submit" className={SMALL_BUTTON}>
                   {next?.key === step.key ? "Done" : "Mark done"}
-                </SubmitButton>
+                </button>
               </form>
             )}
           </li>
@@ -167,11 +170,15 @@ function ClaimCard({ claim, filable = false }: { claim: Claim; filable?: boolean
                 className={INPUT}
               />
             </label>
-            <SubmitButton className={SMALL_BUTTON}>Save</SubmitButton>
+            <button type="submit" className={SMALL_BUTTON}>
+              Save
+            </button>
           </form>
           <form action={finishClaim}>
             <input type="hidden" name="claimId" value={claim.id} />
-            <SubmitButton className={SMALL_BUTTON}>Close the claim</SubmitButton>
+            <button type="submit" className={SMALL_BUTTON}>
+              Close the claim
+            </button>
           </form>
         </div>
       )}

@@ -9,7 +9,6 @@ import { formatCents } from "@/lib/money";
 import { loadRenting } from "@/lib/renting";
 import { requireUser } from "@/lib/session";
 import { depositAction, depositReturnedAction, reportingAction } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Renting, counted (spec step 248): rent reported to the credit bureaus only if you say so, a
 // rent increase beside what is usual, and a security deposit followed to its return date.
@@ -73,9 +72,9 @@ async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">
             )}
             <form action={reportingAction}>
               <input type="hidden" name="on" value={d.reporting.on ? "no" : "yes"} />
-              <SubmitButton className={BUTTON}>
+              <button type="submit" className={BUTTON}>
                 {d.reporting.on ? "Turn off rent reporting" : "Report my rent"}
-              </SubmitButton>
+              </button>
             </form>
           </section>
           {d.rise && (
@@ -118,7 +117,9 @@ async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">
                 Amount returned (${(x.amountCents / 100).toFixed(0)} deposit)
                 <input name="returned" inputMode="decimal" className={INPUT} />
               </label>
-              <SubmitButton className={`${BUTTON} self-end`}>It came back</SubmitButton>
+              <button type="submit" className={`${BUTTON} self-end`}>
+                It came back
+              </button>
             </form>
           ))}
         <form action={depositAction} className="grid gap-3 sm:grid-cols-4">
@@ -140,7 +141,9 @@ async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">
             Day you moved out
             <input name="movedOutOn" type="date" className={INPUT} />
           </label>
-          <SubmitButton className={`${BUTTON} self-end`}>Follow this deposit</SubmitButton>
+          <button type="submit" className={`${BUTTON} self-end`}>
+            Follow this deposit
+          </button>
         </form>
       </section>
       <ul className="flex flex-col gap-1 text-sm">

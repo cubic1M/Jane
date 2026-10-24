@@ -8,7 +8,6 @@ import { adviceLines, cosignLines } from "@/lib/jane-agent/family-credit-replies
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { addAction, missedAction, removeAction } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Helping family with credit (spec step 249): an authorized user, a first card for a student
 // and co-signing, with the risks shown and a co-signed loan counted in full in your own debt
@@ -101,16 +100,22 @@ async function HelpingContent({ searchParams }: Pick<PageProps<"/loans/helping">
                   <form action={missedAction}>
                     <input type="hidden" name="id" value={e.id} />
                     <input type="hidden" name="missed" value={e.missed ? "no" : "yes"} />
-                    <SubmitButton className="text-sm font-medium text-emerald-700 underline">
+                    <button
+                      type="submit"
+                      className="text-sm font-medium text-emerald-700 underline"
+                    >
                       {e.missed ? "They caught up" : "They missed a payment"}
-                    </SubmitButton>
+                    </button>
                   </form>
                 )}
                 <form action={removeAction}>
                   <input type="hidden" name="id" value={e.id} />
-                  <SubmitButton className="text-sm text-zinc-600 underline dark:text-zinc-400">
+                  <button
+                    type="submit"
+                    className="text-sm text-zinc-600 underline dark:text-zinc-400"
+                  >
                     Remove
-                  </SubmitButton>
+                  </button>
                 </form>
               </li>
             ))}
@@ -137,7 +142,9 @@ async function HelpingContent({ searchParams }: Pick<PageProps<"/loans/helping">
             Payment a month
             <input name="payment" inputMode="decimal" className={INPUT} />
           </label>
-          <SubmitButton className={`${BUTTON} self-end`}>Save</SubmitButton>
+          <button type="submit" className={`${BUTTON} self-end`}>
+            Save
+          </button>
         </form>
       </section>
     </>

@@ -2,7 +2,6 @@ import { formatCents } from "@/lib/money";
 import type { MoneyForTwoView } from "@/lib/money-for-two";
 import { sharesWords } from "@/planning/money-for-two";
 import { answerBigMove, chooseBigMove, chooseSplit, shareGoal } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 const CARD =
   "flex min-w-0 flex-col gap-3 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800";
@@ -31,12 +30,12 @@ export function MoneyForTwo({
             : `Half each. By income it would be ${sharesWords(view.incomeMyShareBps)} (you first).`}
         </p>
         <form action={chooseSplit} className="flex flex-wrap gap-2">
-          <SubmitButton name="rule" value="even" className={BUTTON}>
+          <button type="submit" name="rule" value="even" className={BUTTON}>
             Half each
-          </SubmitButton>
-          <SubmitButton name="rule" value="income" className={BUTTON}>
+          </button>
+          <button type="submit" name="rule" value="income" className={BUTTON}>
             By income
-          </SubmitButton>
+          </button>
         </form>
       </div>
 
@@ -55,7 +54,9 @@ export function MoneyForTwo({
             defaultValue={String(view.bigMoveCents / 100)}
             className="w-28 rounded border border-zinc-300 px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
           />
-          <SubmitButton className={BUTTON}>Save</SubmitButton>
+          <button type="submit" className={BUTTON}>
+            Save
+          </button>
         </form>
         {waiting.map((m) => (
           <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -65,12 +66,12 @@ export function MoneyForTwo({
             </span>
             <form action={answerBigMove} className="flex gap-2">
               <input type="hidden" name="transferId" value={m.id} />
-              <SubmitButton name="answer" value="approve" className={BUTTON}>
+              <button type="submit" name="answer" value="approve" className={BUTTON}>
                 Approve
-              </SubmitButton>
-              <SubmitButton name="answer" value="decline" className={BUTTON}>
+              </button>
+              <button type="submit" name="answer" value="decline" className={BUTTON}>
                 Decline
-              </SubmitButton>
+              </button>
             </form>
           </div>
         ))}
@@ -105,10 +106,10 @@ export function MoneyForTwo({
                 <form action={shareGoal}>
                   <input type="hidden" name="goalId" value={g.id} />
                   <input type="hidden" name="shared" value={String(!g.sharedWithHousehold)} />
-                  <SubmitButton className={BUTTON}>
+                  <button type="submit" className={BUTTON}>
                     {g.sharedWithHousehold ? "Make it mine only" : "Make it joint"}
                     <span className="sr-only"> {g.name}</span>
-                  </SubmitButton>
+                  </button>
                 </form>
               </li>
             ))}

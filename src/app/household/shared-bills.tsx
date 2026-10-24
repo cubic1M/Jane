@@ -2,7 +2,6 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import { formatCents } from "@/lib/money";
 import type { ShareableCharge } from "@/lib/shared-bills";
 import { settle, split, unsplit } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 const BUTTON =
   "rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900";
@@ -41,7 +40,9 @@ export function SharedBills({
         </p>
         {owedToMeCents !== 0 && (
           <form action={settle}>
-            <SubmitButton className={BUTTON}>Settle up</SubmitButton>
+            <button type="submit" className={BUTTON}>
+              Settle up
+            </button>
           </form>
         )}
       </div>
@@ -68,19 +69,19 @@ export function SharedBills({
                 {done ? (
                   <form action={unsplit}>
                     <input type="hidden" name="sharedChargeId" value={done.sharedChargeId} />
-                    <SubmitButton className={BUTTON}>
+                    <button type="submit" className={BUTTON}>
                       Undo split
                       <span className="sr-only">
                         {" "}
                         of {name(c)} on {c.date}
                       </span>
-                    </SubmitButton>
+                    </button>
                   </form>
                 ) : (
                   <form action={split}>
                     <input type="hidden" name="transactionId" value={c.id} />
                     <input type="hidden" name="percent" value={String(owed(c.mine))} />
-                    <SubmitButton className={BUTTON}>
+                    <button type="submit" className={BUTTON}>
                       {owed(c.mine) === 50
                         ? "Split half"
                         : `Split ${100 - owed(c.mine)}/${owed(c.mine)}`}
@@ -88,7 +89,7 @@ export function SharedBills({
                         {" "}
                         of {name(c)} on {c.date}
                       </span>
-                    </SubmitButton>
+                    </button>
                   </form>
                 )}
               </li>

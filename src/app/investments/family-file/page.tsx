@@ -6,7 +6,6 @@ import { BENEFICIARY_EVENTS, FILE_SECTIONS, RELATIONSHIPS } from "@/config/famil
 import { loadFamilyFile } from "@/lib/investments/family-file";
 import { requireUser } from "@/lib/session";
 import { addEvent, saveFileContacts, saveNames, saveSharing, stillRight } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // The family looked after (spec step 237): who is named on each account, what a life event makes
 // out of date, and a file the person shares in part. Facts only about wills and trusts, with a
@@ -83,11 +82,12 @@ async function Content({
             {c.names.length > 0 && (
               <form action={stillRight}>
                 <input type="hidden" name="accountId" value={c.accountId} />
-                <SubmitButton
+                <button
+                  type="submit"
                   className={`h-9 rounded-lg border border-zinc-300 px-3 text-sm dark:border-zinc-700`}
                 >
                   These are still right
-                </SubmitButton>
+                </button>
               </form>
             )}
             <details>
@@ -126,7 +126,9 @@ async function Content({
                     )}
                   </div>
                 ))}
-                <SubmitButton className={`${BUTTON} self-start`}>Save</SubmitButton>
+                <button type="submit" className={`${BUTTON} self-start`}>
+                  Save
+                </button>
               </form>
             </details>
           </div>
@@ -151,7 +153,9 @@ async function Content({
             ))}
           </select>
           <input name="on" type="date" aria-label="When" className={FIELD} />
-          <SubmitButton className={BUTTON}>Note it</SubmitButton>
+          <button type="submit" className={BUTTON}>
+            Note it
+          </button>
         </form>
       </section>
 
@@ -213,7 +217,9 @@ async function Content({
               defaultValue={v.documents}
             />
           </label>
-          <SubmitButton className={`${BUTTON} self-start`}>Save contacts and notes</SubmitButton>
+          <button type="submit" className={`${BUTTON} self-start`}>
+            Save contacts and notes
+          </button>
         </form>
         <form action={saveSharing} className="flex flex-col gap-2">
           <fieldset className="flex flex-col gap-1">
@@ -230,7 +236,9 @@ async function Content({
               </label>
             ))}
           </fieldset>
-          <SubmitButton className={`${BUTTON} self-start`}>Save my picks</SubmitButton>
+          <button type="submit" className={`${BUTTON} self-start`}>
+            Save my picks
+          </button>
         </form>
         <p className="text-sm">
           <a href="/investments/family-file/export" className={LINK}>

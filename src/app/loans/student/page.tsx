@@ -12,7 +12,6 @@ import { PLAN_NAMES } from "@/planning/student-loans";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { saveProfile, stepDone } from "./actions";
 import { LongGameSection } from "./long-game";
-import { SubmitButton } from "@/components/submit-button";
 
 // Student loans (spec step 114): the federal plans compared at the person's income, from
 // the plans' published rules; forgiveness tracking; and studentaid.gov's steps, each with
@@ -209,9 +208,12 @@ async function StudentContent({
             />
             I work full time in public service
           </label>
-          <SubmitButton className="h-11 self-start rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
+          <button
+            type="submit"
+            className="h-11 self-start rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
+          >
             Save
-          </SubmitButton>
+          </button>
         </form>
       </section>
 
@@ -232,9 +234,9 @@ async function StudentContent({
         </ol>
         {profile.stepsDone < STUDENT_STEPS.length && (
           <form action={stepDone}>
-            <SubmitButton className={LINK}>
+            <button type="submit" className={LINK}>
               I&apos;ve done step {profile.stepsDone + 1}
-            </SubmitButton>
+            </button>
           </form>
         )}
       </section>

@@ -13,7 +13,6 @@ import { loadCrypto } from "@/lib/crypto/crypto";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { linkCrypto, refreshCrypto } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Crypto (spec step 161): seen and sized, never traded. Each balance says where it came
 // from and when; in demo advice mode, flags for too big a share and costly fees.
@@ -165,18 +164,24 @@ async function CryptoContent({
         {view.demo && !has("Demo Exchange") && (
           <form action={linkCrypto}>
             <input type="hidden" name="kind" value="exchange" />
-            <SubmitButton className={BUTTON}>Connect a demo exchange</SubmitButton>
+            <button type="submit" className={BUTTON}>
+              Connect a demo exchange
+            </button>
           </form>
         )}
         {view.demo && !has("Demo Wallet") && (
           <form action={linkCrypto}>
             <input type="hidden" name="kind" value="wallet" />
-            <SubmitButton className={SECONDARY}>Add a demo wallet</SubmitButton>
+            <button type="submit" className={SECONDARY}>
+              Add a demo wallet
+            </button>
           </form>
         )}
         {view.connections.length > 0 && (
           <form action={refreshCrypto}>
-            <SubmitButton className={SECONDARY}>Read balances again</SubmitButton>
+            <button type="submit" className={SECONDARY}>
+              Read balances again
+            </button>
           </form>
         )}
       </div>

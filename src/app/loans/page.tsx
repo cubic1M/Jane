@@ -13,7 +13,6 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { clearTerms, saveTerms } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Every debt in one place (spec step 109): loans and cards with what the bank reports,
 // buy now, pay later plans found from payments, and terms the person typed for what the
@@ -117,18 +116,24 @@ function TermsForm({ debt, open, error }: { debt: Debt; open: boolean; error: st
           </label>
         )}
         <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
-          <SubmitButton className="h-11 rounded-full bg-zinc-900 px-5 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300">
+          <button
+            type="submit"
+            className="h-11 rounded-full bg-zinc-900 px-5 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          >
             Save
-          </SubmitButton>
+          </button>
           <span className="text-zinc-500">From your statement or the lender&apos;s app.</span>
         </div>
       </form>
       {debt.typedOn && (
         <form action={clearTerms} className="mt-2">
           <input type="hidden" name="debtKey" value={debt.key} />
-          <SubmitButton className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:hover:text-zinc-100">
+          <button
+            type="submit"
+            className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:hover:text-zinc-100"
+          >
             Clear what I typed
-          </SubmitButton>
+          </button>
         </form>
       )}
     </details>

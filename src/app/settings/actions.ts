@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { ALERT_TYPES } from "@/config/alerts";
 import { isStateCode } from "@/config/referrals";
@@ -100,8 +99,7 @@ export async function disconnectBank(
     }
     throw error;
   }
-  // Findings are worked out again after the response, so Disconnect answers at once.
-  after(() => runDetection(user.id));
+  await runDetection(user.id);
   revalidatePath("/settings");
   return { ok: true, message: "Disconnected. We've removed that bank's data." };
 }

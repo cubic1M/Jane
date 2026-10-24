@@ -10,7 +10,6 @@ import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { linkRothIra, putInIra, raiseForMatch } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Retirement accounts used fully (spec step 210, demo advice): every limit with what's
 // used, the match left on the table, Roth or traditional, and the backdoor Roth.
@@ -114,9 +113,9 @@ async function Content({
               ) : (
                 <form action={raiseForMatch} className="flex flex-col gap-2">
                   <SimulatedBanner />
-                  <SubmitButton className={`${BUTTON} self-start`}>
+                  <button type="submit" className={`${BUTTON} self-start`}>
                     Raise to {pct(v.match.fullMatchRate)} of pay
-                  </SubmitButton>
+                  </button>
                 </form>
               )}
             </>
@@ -170,14 +169,16 @@ async function Content({
             <form action={putInIra} className="flex flex-col gap-2">
               <input type="hidden" name="cents" value={v.iraAllowedCents} />
               <SimulatedBanner />
-              <SubmitButton className={`${BUTTON} self-start`}>
+              <button type="submit" className={`${BUTTON} self-start`}>
                 Put {formatCents(v.iraAllowedCents)} in {v.ira.name}
-              </SubmitButton>
+              </button>
             </form>
           )}
           {!v.ira && v.demo && (
             <form action={linkRothIra}>
-              <SubmitButton className={BUTTON}>Link a demo Roth IRA</SubmitButton>
+              <button type="submit" className={BUTTON}>
+                Link a demo Roth IRA
+              </button>
             </form>
           )}
           <DemoAdviceLabel />

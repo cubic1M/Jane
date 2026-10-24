@@ -9,7 +9,6 @@ import { ITEM_STATUS } from "@/lib/plaid/sync";
 import { requireUser } from "@/lib/session";
 import { linkDemo } from "./demo-actions";
 import { LinkButton } from "./link-button";
-import { SubmitButton } from "@/components/submit-button";
 
 const PRIMARY_BUTTON =
   "inline-flex h-12 w-full items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 sm:w-auto";
@@ -118,9 +117,9 @@ async function ConnectContent() {
               A pretend bank with a year of fake transactions, a card and loans, so you can see
               everything Jane does. Nothing real is connected, and you can remove it anytime.
             </p>
-            <SubmitButton className={SECONDARY_BUTTON + " self-start"}>
+            <button type="submit" className={SECONDARY_BUTTON + " self-start"}>
               Link a demo bank
-            </SubmitButton>
+            </button>
           </form>
         )}
         {items.length > 0 && (

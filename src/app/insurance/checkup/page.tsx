@@ -8,7 +8,6 @@ import { adviceMode } from "@/lib/advice-mode";
 import { latestCheckup, markCheckupSeen } from "@/lib/insurance/checkups";
 import { requireUser } from "@/lib/session";
 import { checkAgain } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // The coverage checkup (spec step 106): Jane's recommendations on the person's cover, each
 // with what it costs or saves and the risk it changes. Demo advice only, labelled.
@@ -84,7 +83,9 @@ async function CheckupContent() {
             </section>
           )}
           <form action={checkAgain}>
-            <SubmitButton className={BUTTON}>Check again</SubmitButton>
+            <button type="submit" className={BUTTON}>
+              Check again
+            </button>
           </form>
         </>
       )}

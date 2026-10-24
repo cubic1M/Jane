@@ -5,7 +5,6 @@ import { enrollment } from "@/lib/mfa";
 import { getSessionState } from "@/lib/session";
 import { CodeForm } from "./code-form";
 import { safeNext } from "./next-path";
-import { SubmitButton } from "@/components/submit-button";
 
 // Two-factor: anyone who turned it on enters a code once per session before the app
 // opens; admins set it up here the first time, before the team pages open.
@@ -45,9 +44,9 @@ async function Content({ searchParams }: { searchParams: PageProps<"/mfa">["sear
       )}
       <CodeForm next={next} allowBackup={setup.enrolled} />
       <form action={signOutToHome}>
-        <SubmitButton className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
+        <button type="submit" className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
           Sign out instead
-        </SubmitButton>
+        </button>
       </form>
     </>
   );

@@ -170,9 +170,6 @@ describe("confirmImport", () => {
       { ...counts, files: 1 },
     );
     expect(track).toHaveBeenCalledWith("user_1", "import_completed", { ...counts, files: 1 });
-    // Worked out after the response, so the tap answers at once (/scanning waits for it).
-    expect(runDetection).not.toHaveBeenCalled();
-    for (const callback of afterCallbacks) await callback();
     expect(runDetection).toHaveBeenCalledWith("user_1");
   });
 
@@ -188,10 +185,6 @@ describe("confirmImport", () => {
     expect(runJaneAgentSafely).not.toHaveBeenCalled();
 
     for (const callback of afterCallbacks) await callback();
-    // Findings first, then their card text.
-    expect(runDetection.mock.invocationCallOrder[0]).toBeLessThan(
-      runJob.mock.invocationCallOrder[0],
-    );
     expect(runJob).toHaveBeenCalledWith("job_1");
     // Spec step 82: Jane says what's new in the chat once the import is in.
     expect(runJaneAgentSafely).toHaveBeenCalledWith("user_1", { trigger: "import" });
@@ -206,9 +199,6 @@ describe("confirmImport", () => {
       confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
     ).rejects.toThrow("redirect:/scanning");
     expect(logAudit).toHaveBeenCalled();
-    // The failure after the response doesn't stop the card text or Jane's message.
-    for (const callback of afterCallbacks) await callback();
-    expect(runJob).toHaveBeenCalledWith("job_1");
   });
 
   it("returns a readable error and tracks import_failed for an unknown format", async () => {

@@ -9,7 +9,6 @@ import { getApplication, statusLine } from "@/lib/loan-applications";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { acceptAction, submitAction, withdrawAction } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // One loan application (spec step 112): the terms to review, what's sent with it, and
 // where it stands. Submit needs the terms reviewed (the box ticked); Accept signs for the
@@ -144,13 +143,15 @@ async function ApplicationContent({
               <input type="checkbox" name="reviewed" required className="h-5 w-5" />
               I&apos;ve reviewed the terms above
             </label>
-            <SubmitButton className={`${BUTTON} self-start`}>Submit the application</SubmitButton>
+            <button type="submit" className={`${BUTTON} self-start`}>
+              Submit the application
+            </button>
           </form>
           <form action={withdrawAction}>
             <input type="hidden" name="id" value={app.id} />
-            <SubmitButton className="text-sm text-zinc-500 hover:underline">
+            <button type="submit" className="text-sm text-zinc-500 hover:underline">
               Don&apos;t apply
-            </SubmitButton>
+            </button>
           </form>
         </div>
       )}
@@ -158,11 +159,15 @@ async function ApplicationContent({
         <div className="flex flex-wrap gap-3">
           <form action={acceptAction}>
             <input type="hidden" name="id" value={app.id} />
-            <SubmitButton className={BUTTON}>Accept the loan</SubmitButton>
+            <button type="submit" className={BUTTON}>
+              Accept the loan
+            </button>
           </form>
           <form action={withdrawAction}>
             <input type="hidden" name="id" value={app.id} />
-            <SubmitButton className={SECONDARY}>Don&apos;t take it</SubmitButton>
+            <button type="submit" className={SECONDARY}>
+              Don&apos;t take it
+            </button>
           </form>
         </div>
       )}

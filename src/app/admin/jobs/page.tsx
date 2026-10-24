@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { retry } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 const SHOWN = 50;
 const when = (date: Date) => date.toISOString().slice(0, 16).replace("T", " ");
@@ -59,9 +58,12 @@ async function Jobs() {
                   </span>
                   <form action={retry}>
                     <input type="hidden" name="jobId" value={j.id} />
-                    <SubmitButton className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold dark:border-zinc-700">
+                    <button
+                      type="submit"
+                      className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold dark:border-zinc-700"
+                    >
                       Retry
-                    </SubmitButton>
+                    </button>
                   </form>
                 </div>
                 {j.lastError && (

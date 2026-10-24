@@ -12,7 +12,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { deleteBudget } from "./actions";
 import { BudgetForm } from "./budget-form";
-import { SubmitButton } from "@/components/submit-button";
 
 const HOW_OFTEN: Record<IrregularItem["frequency"], string> = {
   QUARTERLY: "Every 3 months",
@@ -87,9 +86,12 @@ async function Budgets() {
                 </div>
                 <form action={deleteBudget} className="self-end">
                   <input type="hidden" name="category" value={p.category} />
-                  <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
+                  <button
+                    type="submit"
+                    className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
+                  >
                     Remove
-                  </SubmitButton>
+                  </button>
                 </form>
               </li>
             );

@@ -12,7 +12,6 @@ import { homeMeasureOf, homeVsBorrow, mortgageOf } from "@/planning/home-vs-borr
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { startGoalAction } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Buying a home (spec step 179): from saving to closing. What the person can afford under
 // the usual 28/36 rules, the monthly cost with mortgage insurance explained, the cash needed
@@ -145,9 +144,12 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
                 <input type="hidden" name="price" value={home.costs!.priceCents} />
                 <input type="hidden" name="downShare" value={home.downShare} />
                 <input type="hidden" name="targetDate" value={home.targetDate} />
-                <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
+                <button
+                  type="submit"
+                  className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
+                >
                   Start a {formatCents(home.costs!.cashNeededCents)} goal
-                </SubmitButton>
+                </button>
                 <span className="ml-3 text-xs text-zinc-600 dark:text-zinc-400">
                   It goes on your goals page, and Jane invests it for its timeline.
                 </span>

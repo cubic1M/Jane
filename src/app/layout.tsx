@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import { SideChat } from "@/components/side-chat/side-chat";
-import { NavPending } from "@/components/nav-pending";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,10 +42,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             address, so it waits in its own boundary (cache components). */}
         <Suspense>
           <SideChat />
-        </Suspense>
-        {/* Every link tap shows at once that the next page is on its way. */}
-        <Suspense>
-          <NavPending />
         </Suspense>
         <ServiceWorker />
       </body>

@@ -9,7 +9,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answer, demoProducts } from "./actions";
 import { ProductForm } from "./product-form";
-import { SubmitButton } from "@/components/submit-button";
 
 // What costly products really cost (spec step 215, demo advice): annuities, whole life and
 // advisory fees in dollars, with the surrender charge by year, what the same money would do
@@ -141,12 +140,12 @@ async function Content({
             You paid {a.provider} about {formatCents(a.yearlyCents)} in the last year. Is that a
             whole life policy?
           </span>
-          <SubmitButton name="yes" value="yes" className={BUTTON}>
+          <button name="yes" value="yes" className={BUTTON}>
             Yes
-          </SubmitButton>
-          <SubmitButton name="yes" value="no" className={SECONDARY}>
+          </button>
+          <button name="yes" value="no" className={SECONDARY}>
             No
-          </SubmitButton>
+          </button>
         </form>
       ))}
       {v.advisory && (
@@ -178,7 +177,9 @@ async function Content({
       )}
       {v.demo && v.products.length === 0 && (
         <form action={demoProducts}>
-          <SubmitButton className={BUTTON}>Add demo products</SubmitButton>
+          <button type="submit" className={BUTTON}>
+            Add demo products
+          </button>
         </form>
       )}
       <section className="flex flex-col gap-2">

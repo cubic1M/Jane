@@ -123,19 +123,18 @@ export async function confirmImport(formData: FormData): Promise<ActionResult> {
   );
   await track(db.userId, "import_completed", metadata);
 
+  try {
+    await runDetection(db.userId);
+  } catch (error) {
+    // The import itself worked, so don't fail it. /scanning waits for detection and offers
+    // the report anyway if it doesn't finish.
+    console.error("Detection failed after import", { error });
+  }
   // Card text from Claude takes a few seconds per finding, so it's written after the
   // response, as a job that's retried if it fails. Until then the report shows templates.
   const job = await enqueueJob("explain_findings", { userId: db.userId });
   const userId = db.userId;
-  // Detection runs after the response too, so the tap answers at once: /scanning waits for a
-  // first scan to finish, and a later import's findings come in as it does.
   after(async () => {
-    try {
-      await runDetection(userId);
-    } catch (error) {
-      // The import itself worked, so don't fail it. /scanning offers the report anyway.
-      console.error("Detection failed after import", { error });
-    }
     await runJob(job);
     // Then Jane says what's new in the chat (spec step 82).
     await runJaneAgentSafely(userId, { trigger: "import" });

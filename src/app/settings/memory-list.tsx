@@ -1,6 +1,5 @@
 import type { Preference } from "@/lib/jane-agent/preferences";
 import { forgetPreference } from "./memory-actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // What Jane remembers (spec step 91): each thing the person told her or asked her not to
 // suggest, with "Forget" next to it.
@@ -20,9 +19,12 @@ export function MemoryList({ preferences }: { preferences: Preference[] }) {
           <span className="min-w-0 [overflow-wrap:anywhere]">{p.label}</span>
           <form action={forgetPreference}>
             <input type="hidden" name="preferenceId" value={p.id} />
-            <SubmitButton className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-medium text-emerald-700 hover:underline">
+            <button
+              type="submit"
+              className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-medium text-emerald-700 hover:underline"
+            >
               Forget<span className="sr-only">: {p.label}</span>
-            </SubmitButton>
+            </button>
           </form>
         </li>
       ))}

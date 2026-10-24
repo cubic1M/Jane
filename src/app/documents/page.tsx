@@ -22,7 +22,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { deleteDocument } from "./actions";
 import { FactsSection, UploadForm } from "./forms";
-import { SubmitButton } from "@/components/submit-button";
 
 // Insurance policies, warranties and receipts (spec step 68).
 
@@ -160,9 +159,12 @@ async function DocumentsContent() {
                   <form action={deleteDocument} className="mt-2 flex flex-wrap items-center gap-3">
                     <input type="hidden" name="documentId" value={d.id} />
                     <span className="text-sm">This removes the file and its facts for good.</span>
-                    <SubmitButton className="text-sm font-semibold text-red-700 hover:underline">
+                    <button
+                      type="submit"
+                      className="text-sm font-semibold text-red-700 hover:underline"
+                    >
                       Yes, delete it
-                    </SubmitButton>
+                    </button>
                   </form>
                 </details>
               </li>

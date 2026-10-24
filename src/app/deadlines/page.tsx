@@ -17,7 +17,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { finishDeadline, removeDeadline } from "./actions";
 import { DeadlineForm } from "./deadline-form";
-import { SubmitButton } from "@/components/submit-button";
 
 // Deadlines (spec step 71): return windows, trials, renewals, payments and the person's
 // own dates, soonest first.
@@ -63,16 +62,19 @@ function Row({ deadline, today }: { deadline: Deadline; today: string }) {
           <>
             <form action={finishDeadline}>
               <input type="hidden" name="deadlineId" value={deadline.entryId} />
-              <SubmitButton className={LINK}>Mark done</SubmitButton>
+              <button type="submit" className={LINK}>
+                Mark done
+              </button>
             </form>
             <form action={removeDeadline}>
               <input type="hidden" name="deadlineId" value={deadline.entryId} />
-              <SubmitButton
+              <button
+                type="submit"
                 className="text-zinc-500 hover:text-red-700 hover:underline"
                 aria-label={`Delete ${deadline.title}`}
               >
                 Delete
-              </SubmitButton>
+              </button>
             </form>
           </>
         )}

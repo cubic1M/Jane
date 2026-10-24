@@ -9,7 +9,6 @@ import { ESTIMATE_NOTE } from "@/lib/jane-agent/credit-goal-replies";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { endGoalAction, startGoalAction, tickItemAction } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // A credit score for a goal (spec step 227): the score and date needed, a month-by-month plan
 // from the score simulator, and each month's checklist. A stand-in score; every figure is an
@@ -139,7 +138,9 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
                         <form action={tickItemAction}>
                           <input type="hidden" name="goalId" value={g.id ?? ""} />
                           <input type="hidden" name="key" value={i.key} />
-                          <SubmitButton className={LINK}>Mark done</SubmitButton>
+                          <button type="submit" className={LINK}>
+                            Mark done
+                          </button>
                         </form>
                       )}
                     </li>
@@ -148,7 +149,9 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
               </div>
               <form action={endGoalAction}>
                 <input type="hidden" name="goalId" value={g.id ?? ""} />
-                <SubmitButton className={LINK}>End this plan</SubmitButton>
+                <button type="submit" className={LINK}>
+                  End this plan
+                </button>
               </form>
             </section>
           ))}
@@ -196,7 +199,9 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
               <input type="hidden" name="kind" value={preview.kind} />
               <input type="hidden" name="targetScore" value={preview.targetScore} />
               <input type="hidden" name="targetDate" value={preview.targetDate} />
-              <SubmitButton className={BUTTON}>Start this plan</SubmitButton>
+              <button type="submit" className={BUTTON}>
+                Start this plan
+              </button>
             </form>
           )}
           <a href={CREDIT_GOAL_SOURCE} className={`${LINK} text-sm`}>

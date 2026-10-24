@@ -4,7 +4,6 @@ import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { deleteReply } from "./actions";
 import { ReplyForm } from "./reply-form";
-import { SubmitButton } from "@/components/submit-button";
 
 async function Replies() {
   const admin = await requireAdmin();
@@ -37,9 +36,12 @@ async function Replies() {
                 <ReplyForm reply={r} />
                 <form action={deleteReply}>
                   <input type="hidden" name="id" value={r.id} />
-                  <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
+                  <button
+                    type="submit"
+                    className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
+                  >
                     Delete
-                  </SubmitButton>
+                  </button>
                 </form>
               </div>
             </details>

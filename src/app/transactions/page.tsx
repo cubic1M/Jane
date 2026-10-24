@@ -8,7 +8,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { deleteRule } from "./actions";
 import { CategoryForm } from "./category-form";
-import { SubmitButton } from "@/components/submit-button";
 
 const SHOWN = 100;
 
@@ -128,9 +127,12 @@ async function Transactions({
                 </span>
                 <form action={deleteRule}>
                   <input type="hidden" name="merchantKey" value={r.merchantKey} />
-                  <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
+                  <button
+                    type="submit"
+                    className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
+                  >
                     Remove rule
-                  </SubmitButton>
+                  </button>
                 </form>
               </li>
             ))}

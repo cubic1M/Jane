@@ -8,7 +8,6 @@ import { readingHints, readingTitle } from "@/lib/jane-agent/insurance/reading-w
 import { requireUser } from "@/lib/session";
 import { dismissReadingForm } from "../../actions";
 import { PolicyForm } from "../../forms";
-import { SubmitButton } from "@/components/submit-button";
 
 // A policy read from a document (spec step 151): every field Jane read, with where it came
 // from, for the person to fix and confirm. Nothing is saved until they do.
@@ -53,7 +52,9 @@ async function ReadingContent({ params }: { params: Promise<{ id: string }> }) {
           />
           <form action={dismissReadingForm}>
             <input type="hidden" name="readingId" value={reading.id} />
-            <SubmitButton className={`text-sm ${LINK}`}>This isn&apos;t a policy</SubmitButton>
+            <button type="submit" className={`text-sm ${LINK}`}>
+              This isn&apos;t a policy
+            </button>
           </form>
         </>
       ) : (

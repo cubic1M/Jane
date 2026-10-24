@@ -9,7 +9,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { demoRental } from "./actions";
 import { RentalForm } from "./rental-form";
-import { SubmitButton } from "@/components/submit-button";
 
 // Property as an investment (spec step 214, demo advice): home equity, each rental's
 // figures from its own transactions, depreciation for the taxes side, and paying the
@@ -149,7 +148,9 @@ async function Content({
 
       {v.rentals.length === 0 && v.demo && (
         <form action={demoRental}>
-          <SubmitButton className={BUTTON}>Add a demo rental</SubmitButton>
+          <button type="submit" className={BUTTON}>
+            Add a demo rental
+          </button>
         </form>
       )}
       <section className="flex flex-col gap-2">

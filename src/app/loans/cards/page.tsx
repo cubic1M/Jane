@@ -15,7 +15,6 @@ import { pct } from "@/lib/jane-agent/credit-card-replies";
 import { requireUser } from "@/lib/session";
 import type { BetterCard } from "@/planning/credit-cards";
 import { applyCardAction } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // The right card for each purchase (spec step 174): what each of the person's cards earns
 // on their own year of spending with its fee taken off, which card to use for each kind of
@@ -59,9 +58,12 @@ function Better({ b, first }: { b: BetterCard; first: boolean }) {
       {first && (
         <form action={applyCardAction} className="mt-3">
           <input type="hidden" name="productId" value={b.card.id} />
-          <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
+          <button
+            type="submit"
+            className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
+          >
             Apply for the {b.card.name}
-          </SubmitButton>
+          </button>
           <span className="ml-3 text-xs text-zinc-600 dark:text-zinc-400">
             A real application with a hard credit check.
           </span>

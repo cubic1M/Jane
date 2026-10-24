@@ -10,7 +10,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { CLASSES } from "@/planning/location";
 import { swapNow } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // The right investment in the right account (spec step 231, demo advice): one allocation
 // across every account, with the swaps that put the tax-heavy holdings in tax-advantaged
@@ -127,7 +126,9 @@ async function Content({
                       <form action={swapNow}>
                         <input type="hidden" name="plan" value={plan.key} />
                         <input type="hidden" name="which" value={s.key} />
-                        <SubmitButton className={SECONDARY}>Swap anyway</SubmitButton>
+                        <button type="submit" className={SECONDARY}>
+                          Swap anyway
+                        </button>
                       </form>
                     )}
                   </li>
@@ -138,9 +139,9 @@ async function Content({
                   <input type="hidden" name="plan" value={plan.key} />
                   <input type="hidden" name="which" value="free" />
                   <SimulatedBanner />
-                  <SubmitButton className={`${BUTTON} self-start`}>
+                  <button type="submit" className={`${BUTTON} self-start`}>
                     Make the swaps that cost no tax
-                  </SubmitButton>
+                  </button>
                 </form>
               )}
               <DemoAdviceLabel />

@@ -1,7 +1,6 @@
 import { ATTENTION_STOP_AFTER } from "@/config/attention";
 import { hourWords, type Attention } from "@/lib/jane-agent/attention";
 import { bringBack } from "./attention-actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Asking less (spec step 147): what Jane learned about when and how the person answers, and
 // each kind of message she stopped bringing up, with why and Bring them back.
@@ -34,9 +33,12 @@ export function AttentionList({ attention }: { attention: Attention }) {
               </span>
               <form action={bringBack}>
                 <input type="hidden" name="source" value={kind.source} />
-                <SubmitButton className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-medium text-emerald-700 hover:underline">
+                <button
+                  type="submit"
+                  className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-medium text-emerald-700 hover:underline"
+                >
                   Bring them back<span className="sr-only">: {kind.label}</span>
-                </SubmitButton>
+                </button>
               </form>
             </li>
           ))}

@@ -1,7 +1,6 @@
 import { answerIdea } from "@/app/investments/practice/actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { PracticeIdeasView } from "@/lib/practice/ideas-view";
-import { SubmitButton } from "@/components/submit-button";
 
 // "Jane's ideas" on the practice portfolio page (Phase AW, Stage A): what the constant search
 // found and is asking about, each with how sure Jane is and Yes or No; what the person's answers
@@ -54,20 +53,22 @@ export function PracticeIdeasSection({ view }: { view: PracticeIdeasView }) {
               )}
               <form action={answerIdea} className="flex flex-wrap gap-2">
                 <input type="hidden" name="key" value={idea.suggestionKey} />
-                <SubmitButton
+                <button
+                  type="submit"
                   name="answer"
                   value="yes"
                   className={`${SMALL} bg-emerald-700 text-white hover:bg-emerald-800`}
                 >
                   {idea.trades > 0 ? "Yes, do it in practice" : "Yes, open settings"}
-                </SubmitButton>
-                <SubmitButton
+                </button>
+                <button
+                  type="submit"
                   name="answer"
                   value="no"
                   className={`${SMALL} border border-zinc-300 dark:border-zinc-700`}
                 >
                   No
-                </SubmitButton>
+                </button>
               </form>
             </li>
           ))}

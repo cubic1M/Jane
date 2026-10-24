@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { TERMS_VERSION } from "@/config/legal";
 import { getCurrentUser, HOME_PATH } from "@/lib/session";
 import { acceptCurrentTerms } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Shown once to signed-in people who haven't accepted the current Terms version.
 async function Content({
@@ -42,9 +41,12 @@ async function Content({
         <input type="checkbox" name="consent" required className="mt-1 h-5 w-5" />
         <span>I agree to the Terms and Privacy Policy.</span>
       </label>
-      <SubmitButton className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800">
+      <button
+        type="submit"
+        className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800"
+      >
         Continue
-      </SubmitButton>
+      </button>
     </form>
   );
 }

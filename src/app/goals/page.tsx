@@ -10,7 +10,6 @@ import { removeGoal } from "./actions";
 import { accountLabels } from "@/lib/account-labels";
 import { GoalForm } from "./goal-form";
 import { GoalTradeoffs } from "./tradeoffs";
-import { SubmitButton } from "@/components/submit-button";
 
 const EMPTY = { goalId: "", name: "", target: "", targetDate: "", accountId: "", saved: "" };
 const dollars = (cents: number | null) => (cents === null ? "" : (cents / 100).toFixed(2));
@@ -107,9 +106,12 @@ async function Goals() {
               </details>
               <form action={removeGoal} className="self-end">
                 <input type="hidden" name="goalId" value={g.id} />
-                <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
+                <button
+                  type="submit"
+                  className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
+                >
                   Delete goal
-                </SubmitButton>
+                </button>
               </form>
             </li>
           ))}

@@ -9,7 +9,6 @@ import { loadSuddenMoney } from "@/lib/investments/sudden-money";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answerKind, demoDeposit, stage } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Sudden money (spec step 235, demo advice): a bonus, an inheritance or a sale, with a staged
 // plan. Tax set aside first; every part is your tap.
@@ -68,13 +67,13 @@ async function Content({
               <input type="hidden" name="id" value={i.id} />
               <span className="text-sm">What was it?</span>
               {Object.entries(SUDDEN_KINDS).map(([k, label]) => (
-                <SubmitButton key={k} name="kind" value={k} className={SECONDARY}>
+                <button key={k} name="kind" value={k} className={SECONDARY}>
                   {label}
-                </SubmitButton>
+                </button>
               ))}
-              <SubmitButton name="kind" value="transfer" className={SECONDARY}>
+              <button name="kind" value="transfer" className={SECONDARY}>
                 Just a transfer
-              </SubmitButton>
+              </button>
             </form>
           ) : (
             <>
@@ -99,7 +98,9 @@ async function Content({
                         <form action={stage}>
                           <input type="hidden" name="id" value={i.id} />
                           <input type="hidden" name="stage" value={s.key} />
-                          <SubmitButton className={BUTTON}>Do this part</SubmitButton>
+                          <button type="submit" className={BUTTON}>
+                            Do this part
+                          </button>
                         </form>
                       ) : null}
                     </li>
@@ -120,7 +121,9 @@ async function Content({
       ))}
       {v.demo && v.items.length === 0 && (
         <form action={demoDeposit}>
-          <SubmitButton className={BUTTON}>Add a demo bonus deposit</SubmitButton>
+          <button type="submit" className={BUTTON}>
+            Add a demo bonus deposit
+          </button>
         </form>
       )}
     </>

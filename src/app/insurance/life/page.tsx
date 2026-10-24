@@ -17,7 +17,6 @@ import {
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answer, apply, buy, notNow, setDependants, submit } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Life cover (spec step 153), demo advice only: how much and for how long, with the method;
 // term quotes; the application's health questions one at a time; the carrier's decision.
@@ -81,7 +80,9 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
               <option value="3">3 or more</option>
             </select>
           </label>
-          <SubmitButton className={PRIMARY}>Work it out</SubmitButton>
+          <button type="submit" className={PRIMARY}>
+            Work it out
+          </button>
         </form>
       )}
       {sized.kind === "not_needed" && <p>{NOT_NEEDED[sized.reason].replace(/^Thanks\. /, "")}</p>}
@@ -129,7 +130,9 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
                     <form action={apply}>
                       <Hidden id={application.id} />
                       <input type="hidden" name="quoteId" value={q.partnerQuoteId} />
-                      <SubmitButton className={SMALL}>Apply</SubmitButton>
+                      <button type="submit" className={SMALL}>
+                        Apply
+                      </button>
                     </form>
                   </li>
                 ))}
@@ -142,7 +145,9 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
           )}
           <form action={notNow}>
             <Hidden id={application.id} />
-            <SubmitButton className={`text-sm ${LINK}`}>Not now</SubmitButton>
+            <button type="submit" className={`text-sm ${LINK}`}>
+              Not now
+            </button>
           </form>
         </section>
       )}
@@ -159,7 +164,9 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
               return (
                 <form action={submit}>
                   <Hidden id={application.id} />
-                  <SubmitButton className={PRIMARY}>Send application</SubmitButton>
+                  <button type="submit" className={PRIMARY}>
+                    Send application
+                  </button>
                 </form>
               );
             }
@@ -170,9 +177,9 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
                     <Hidden id={application.id} />
                     <input type="hidden" name="question" value={key} />
                     <input type="hidden" name="answer" value={value} />
-                    <SubmitButton className={value === "no" ? PRIMARY : SMALL}>
+                    <button type="submit" className={value === "no" ? PRIMARY : SMALL}>
                       {value === "yes" ? "Yes" : "No"}
-                    </SubmitButton>
+                    </button>
                   </form>
                 ))}
               </div>
@@ -199,11 +206,15 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
             <div className="flex gap-3">
               <form action={buy}>
                 <Hidden id={application.id} />
-                <SubmitButton className={PRIMARY}>Buy it</SubmitButton>
+                <button type="submit" className={PRIMARY}>
+                  Buy it
+                </button>
               </form>
               <form action={notNow}>
                 <Hidden id={application.id} />
-                <SubmitButton className={SMALL}>No thanks</SubmitButton>
+                <button type="submit" className={SMALL}>
+                  No thanks
+                </button>
               </form>
             </div>
           )}

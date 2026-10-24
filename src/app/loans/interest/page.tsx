@@ -10,7 +10,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { promoLine } from "@/planning/card-interest";
 import { addPromoAction, removePromoAction, sendRateAction } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
 
 // Less interest on every card (spec step 224): each card's interest, what paying earlier
 // saves, 0% promotions with their pace, and a request for a lower rate sent only on a tap.
@@ -120,7 +119,9 @@ async function InterestContent({
                             </p>
                             <form action={sendRateAction}>
                               <input type="hidden" name="requestId" value={c.rate.id} />
-                              <SubmitButton className={BUTTON}>Send this request</SubmitButton>
+                              <button type="submit" className={BUTTON}>
+                                Send this request
+                              </button>
                             </form>
                           </div>
                         ))}
@@ -164,7 +165,9 @@ async function InterestContent({
                     ) : (
                       <form action={removePromoAction} className="mt-1">
                         <input type="hidden" name="promoId" value={pr.id} />
-                        <SubmitButton className={LINK}>Remove</SubmitButton>
+                        <button type="submit" className={LINK}>
+                          Remove
+                        </button>
                       </form>
                     )}
                   </li>
@@ -199,9 +202,9 @@ async function InterestContent({
               <label className="flex items-center gap-2 text-sm">
                 <input name="deferred" type="checkbox" /> Deferred interest
               </label>
-              <SubmitButton className={`${BUTTON} sm:col-span-3 sm:w-fit`}>
+              <button type="submit" className={`${BUTTON} sm:col-span-3 sm:w-fit`}>
                 Add this promotion
-              </SubmitButton>
+              </button>
             </form>
             <a href={PROMO_SOURCE} className={`${LINK} text-sm`}>
               What deferred interest means (CFPB)
