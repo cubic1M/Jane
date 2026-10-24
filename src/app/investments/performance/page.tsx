@@ -7,6 +7,7 @@ import { formatReturn } from "@/insights/returns";
 import { loadHonest } from "@/lib/investments/honest";
 import { requireUser } from "@/lib/session";
 import { annualized } from "@/planning/honest";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Honest performance (spec step 233): how the money really did over 1, 3 and 5 years, after
 // fees and taxes, against a simple benchmark mix with the same risk, and why they differ.
@@ -101,7 +102,7 @@ async function Content() {
 export default function PerformancePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content />
       </Suspense>
     </main>

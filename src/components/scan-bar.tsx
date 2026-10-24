@@ -10,7 +10,8 @@ import type { ScanProgress } from "@/lib/scan";
 // reads a new person's accounts: "[████████░░░░░░░░] 52% · reading transactions". It's driven
 // by what has really finished (/api/detection/status, the same stages as /scanning), creeps
 // toward the next stage while one runs, and fades out at 100%, when the page reloads its data.
-// Fixed over the top edge, so nothing moves; still under reduced motion.
+// In the page's flow under the top bar, so it never covers a title, the card dock or the chat;
+// still under reduced motion.
 
 const POLL_MS = 1_500;
 // The creep toward the next stage takes about this long.
@@ -81,7 +82,7 @@ export function ScanBar({ initial }: { initial: ScanProgress }) {
       aria-valuenow={percent}
       aria-valuetext={`${percent}%, ${label}`}
       data-scan-bar=""
-      className={`scan-bar pointer-events-none fixed inset-x-0 top-0 z-[45] flex h-6 items-center justify-center bg-zinc-950 px-3 font-mono text-xs whitespace-nowrap text-zinc-50 tabular-nums lg:top-14 dark:bg-zinc-50 dark:text-zinc-950 ${
+      className={`scan-bar flex h-6 items-center justify-center overflow-hidden bg-zinc-950 px-3 font-mono text-xs whitespace-nowrap text-zinc-50 tabular-nums dark:bg-zinc-50 dark:text-zinc-950 ${
         done ? "scan-bar-out" : ""
       }`}
     >

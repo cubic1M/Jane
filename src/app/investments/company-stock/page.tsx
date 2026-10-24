@@ -16,6 +16,7 @@ import { requireUser } from "@/lib/session";
 import { linkStockPlan, sellNow } from "./actions";
 import { GrantForm } from "./grant-form";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Company stock (spec step 160, demo advice): how much of what's invested is in the
 // employer's stock, what's still to vest, and a plan to sell down in parts with the tax
@@ -173,7 +174,7 @@ async function CompanyContent({
 export default function CompanyStockPage(props: PageProps<"/investments/company-stock">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <CompanyContent searchParams={props.searchParams} />
       </Suspense>
     </main>

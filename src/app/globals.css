@@ -524,15 +524,15 @@ body {
   }
 }
 
-/* The giant tree on Home (src/components/hub/giant-tree.tsx): the camera glides when a click,
-   a button or the keyboard moves it (never while dragging or zooming with the wheel), and the
-   dotted line from an "Ask Jane" box to the chat marches while the question is sent. A static
-   dotted line and no glide for reduced motion. */
-html[data-giant-picked] [data-floating-cards="queue"] {
+/* The "What Jane does" tree on Home (src/components/hub/giant-tree.tsx): an area's tree opens
+   with the page's own fade-and-rise, and the dotted line from an "Ask Jane" box to the chat
+   marches while the question is sent. While a feature is open, the floating cards step aside
+   (the dock above the chat stays). Still under reduced motion. */
+html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   display: none;
 }
-.giant-glide {
-  transition: transform 420ms var(--ease-out-soft);
+.giant-open {
+  animation: page-in var(--motion-slow) var(--ease-out-soft) backwards;
 }
 .ask-line {
   animation: ask-line-march 0.6s linear infinite;
@@ -543,9 +543,7 @@ html[data-giant-picked] [data-floating-cards="queue"] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .giant-glide {
-    transition: none;
-  }
+  .giant-open,
   .ask-line {
     animation: none;
   }
@@ -942,6 +940,19 @@ html[data-giant-picked] [data-floating-cards="queue"] {
   }
 }
 
+/* The chat never scrolls the page (founder: "Never let the chat scroll affect the whole screen
+   scroll"): scrolling past either end of the chat in the side panel or the phone's sheet stops
+   there, with a wheel, a trackpad or a finger (src/lib/contain-scroll.ts does the same where
+   the browser would still hand the scroll on, as when the chat is too short to scroll). */
+html[data-chat-embed],
+html[data-chat-embed] body,
+.side-chat,
+.side-chat-sheet,
+.side-chat iframe,
+.side-chat-sheet iframe {
+  overscroll-behavior: contain;
+}
+
 /* The chat inside the side panel (/chat?embed=1) has no footer of its own. */
 body:has([data-chat-embed]) > footer {
   display: none;
@@ -1073,6 +1084,15 @@ textarea {
     right: 0;
   }
 }
+/* On a computer with the chat docked, Jane's cards are in the dock above it
+   (src/components/side-chat/card-dock.tsx), so the page's own floating stack stays out. */
+@media (min-width: 1024px) {
+  html:not([data-side-chat="rail"]):not([data-side-chat="none"])
+    body:has(#app-top-bar):not(:has([data-chat-page]))
+    .floating-cards[data-floating-cards="queue"] {
+    display: none;
+  }
+}
 /* In the side panel (/chat?embed=1) the suggestions wait until the page beside it says where it
    is: on Home the hub shows them, so the chat beside it leaves them out; anywhere else, or
    full screen, they show (src/app/chat/embed-bridge.tsx sets data-chat-embed-cards). Hidden by
@@ -1084,6 +1104,24 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
   display: flex;
 }
 
+/* A card opened to its details grows wider (and taller, by its details' own animation). */
+.floating-card-width {
+  transition: max-width var(--motion-slow) var(--ease-out-soft);
+}
+/* The card's buttons: one row; when they don't fit, it scrolls and the last edge fades. */
+.card-actions {
+  padding-right: 1.5rem;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, black calc(100% - 1.5rem), transparent);
+}
+.card-actions::-webkit-scrollbar {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-card-width {
+    transition: none;
+  }
+}
 .floating-card-in {
   animation: floating-card-in var(--motion-slow) var(--ease-spring) both;
 }

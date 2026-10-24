@@ -13,6 +13,7 @@ import { MoneyForTwo } from "./money-for-two";
 import { SharedBills } from "./shared-bills";
 import { shareableCharges, sharedBills } from "@/lib/shared-bills";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Emails and account names can be long with no spaces; they wrap rather than push the page
 // sideways on a phone.
@@ -178,7 +179,7 @@ async function Household() {
 export default function HouseholdPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Household />
       </Suspense>
     </main>

@@ -7,6 +7,7 @@ import {
   currentCard,
   initialState,
   move,
+  paragraphs,
   waiting,
   type CardMode,
   type FloatingCardData,
@@ -40,6 +41,9 @@ const BUTTON = "inline-flex min-h-11 items-center justify-center px-4 text-sm fo
 const PRIMARY = `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`;
 const SECONDARY = `${BUTTON} border border-zinc-400 bg-white hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:hover:bg-zinc-900`;
 
+const ARROW =
+  "inline-flex size-11 items-center justify-center text-lg font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50";
+
 export type CardAnswer = "yes" | "not_now" | "never";
 
 // A small phone: there, Home's cards start folded into one line at the bottom (QA round 6: the
@@ -56,6 +60,28 @@ const usePhone = () =>
     () => window.matchMedia(PHONE).matches,
     () => false,
   );
+
+// Details as paragraphs with room between them, lists as lists (src/lib/floating-cards.ts).
+function Prose({ text, lead }: { text: string; lead?: string }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {paragraphs(text).map((block, i) =>
+        block.kind === "list" ? (
+          <ul key={i} className="flex list-disc flex-col gap-1 pl-5">
+            {block.items.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p key={i}>
+            {i === 0 && lead && <span className="font-medium">{lead} </span>}
+            {block.text}
+          </p>
+        ),
+      )}
+    </div>
+  );
+}
 
 const reducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -117,6 +143,7 @@ export function FloatingCards({
   neverLabel,
   links,
   foldOnPhone = false,
+  docked = false,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
@@ -132,6 +159,9 @@ export function FloatingCards({
   // Start folded into one line at the bottom on a small phone, until it's tapped (Home, where
   // the cards would cover the net worth).
   foldOnPhone?: boolean;
+  // In the dock above the side chat (src/components/side-chat/card-dock.tsx): in the flow
+  // there, not floating; a little bigger, with arrows between the cards.
+  docked?: boolean;
 }) {
   const [state, setState] = useState(initialState);
   // Cards that just left, kept for the length of their exit slide, and which way they went.
@@ -166,7 +196,8 @@ export function FloatingCards({
 
   // Arrow keys move between cards unless someone is typing; Escape puts the card off.
   useEffect(() => {
-    if (!current || folded) return;
+    // Docked, the arrows are buttons: the keys stay with the page.
+    if (!current || folded || docked) return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
@@ -215,7 +246,12 @@ export function FloatingCards({
     <section
       aria-label={label}
       data-floating-cards={mode}
-      className="floating-cards pointer-events-none fixed inset-x-0 z-40 flex justify-center px-3"
+      data-card-dock={docked ? "" : undefined}
+      className={
+        docked
+          ? "flex w-full flex-col px-3 pt-3 pb-4"
+          : "floating-cards pointer-events-none fixed inset-x-0 z-40 flex justify-center px-3"
+      }
       onTouchStart={(e) => {
         const t = e.touches[0];
         touchStart.current = { x: t.clientX, y: t.clientY };
@@ -231,7 +267,11 @@ export function FloatingCards({
         }
       }}
     >
-      <div className="relative w-full max-w-md">
+      <div
+        className={`relative w-full ${
+          docked ? "" : `floating-card-width ${open ? "max-w-2xl" : "max-w-md"}`
+        }`}
+      >
         {/* The cards waiting behind, as edges under this one. */}
         {current &&
           [1, 2].slice(0, Math.min(2, behind)).map((n) => (
@@ -275,7 +315,9 @@ export function FloatingCards({
                     {current.badge}
                   </p>
                 )}
-                <h3 className="text-sm font-semibold [overflow-wrap:anywhere]">
+                <h3
+                  className={`${docked ? "text-base" : "text-sm"} font-semibold [overflow-wrap:anywhere]`}
+                >
                   {current.headline}
                 </h3>
                 {current.summary && (
@@ -317,15 +359,13 @@ export function FloatingCards({
             </div>
             {/* Already here, only hidden: opening it is a toggle, not a fetch. */}
             <Expanding id={`details-${current.id}`} open={open}>
-              <div className="mx-3 mt-2 flex max-h-[22vh] flex-col gap-2 overflow-y-auto border-t border-zinc-300 pt-2 text-sm dark:border-zinc-700">
-                {current.details.about && (
-                  <p className="whitespace-pre-line">{current.details.about}</p>
-                )}
-                {current.details.why && (
-                  <p>
-                    <span className="font-medium">Why you:</span> {current.details.why}
-                  </p>
-                )}
+              <div
+                className={`mx-3 mt-2 flex flex-col gap-3 overflow-y-auto overscroll-contain border-t border-zinc-300 pt-3 pb-1 text-sm leading-relaxed tabular-nums dark:border-zinc-700 ${
+                  docked ? "max-h-[60vh]" : "max-h-[55vh]"
+                }`}
+              >
+                {current.details.about && <Prose text={current.details.about} />}
+                {current.details.why && <Prose text={current.details.why} lead="Why you:" />}
                 {current.details.figures && current.details.figures.length > 0 && (
                   <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
                     {current.details.figures.map((f) => (
@@ -336,17 +376,8 @@ export function FloatingCards({
                     ))}
                   </dl>
                 )}
-                {current.details.confidence && (
-                  <p>
-                    <span className="font-medium">{current.details.confidence.percent}% sure:</span>{" "}
-                    {sentence(current.details.confidence.reason)}
-                  </p>
-                )}
                 {current.details.whatYesDoes && (
-                  <p>
-                    <span className="font-medium">What Yes does:</span>{" "}
-                    {current.details.whatYesDoes}
-                  </p>
+                  <Prose text={current.details.whatYesDoes} lead="What Yes does:" />
                 )}
                 {current.details.notes?.map((note) => (
                   <p key={note} className="text-xs text-zinc-600 dark:text-zinc-400">
@@ -362,20 +393,6 @@ export function FloatingCards({
                     {link.label} ›
                   </a>
                 ))}
-                {current.choices && current.choices.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {current.choices.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => respond(current, "yes", c.id)}
-                        className={SECONDARY}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 {neverLabel && mode === "queue" && !current.noNever && (
                   <button
                     type="button"
@@ -385,19 +402,47 @@ export function FloatingCards({
                     {neverLabel}
                   </button>
                 )}
+                {/* How sure Jane is, last and on its own line. */}
+                {current.details.confidence && (
+                  <p data-card-confidence="">
+                    <span className="font-medium">{current.details.confidence.percent}% sure:</span>{" "}
+                    {sentence(current.details.confidence.reason)}
+                  </p>
+                )}
               </div>
             </Expanding>
             <div className="flex items-center gap-2 p-3">
-              <button type="button" onClick={() => respond(current, "yes")} className={PRIMARY}>
-                {current.yesLabel}
-              </button>
-              <button
-                type="button"
-                onClick={() => respond(current, "not_now")}
-                className={SECONDARY}
+              {/* One row, every label whole (founder: "lined up horizontally in one line instead
+                  of stacked"): too many to fit, it scrolls sideways under a fading edge. */}
+              <div
+                data-card-actions=""
+                className="card-actions flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
               >
-                {current.notNowLabel ?? "Not now"}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => respond(current, "yes")}
+                  className={`${PRIMARY} shrink-0 whitespace-nowrap`}
+                >
+                  {current.yesLabel}
+                </button>
+                {current.choices?.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => respond(current, "yes", c.id)}
+                    className={`${SECONDARY} shrink-0 whitespace-nowrap`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => respond(current, "not_now")}
+                  className={`${SECONDARY} shrink-0 whitespace-nowrap`}
+                >
+                  {current.notNowLabel ?? "Not now"}
+                </button>
+              </div>
               <p
                 aria-live="polite"
                 className={
@@ -414,6 +459,26 @@ export function FloatingCards({
                   className="ml-auto text-xs font-semibold text-zinc-600 tabular-nums dark:text-zinc-400"
                 >
                   +{behind}
+                </span>
+              )}
+              {docked && mode === "queue" && left.length > 1 && (
+                <span className="flex">
+                  <button
+                    type="button"
+                    aria-label="Previous card"
+                    onClick={() => setState((s) => move(cards, s, -1))}
+                    className={ARROW}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Next card"
+                    onClick={() => setState((s) => move(cards, s, 1))}
+                    className={ARROW}
+                  >
+                    ›
+                  </button>
                 </span>
               )}
             </div>

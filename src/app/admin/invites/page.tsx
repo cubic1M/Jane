@@ -4,6 +4,7 @@ import { invitesRequired } from "@/lib/invites";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { InviteForm } from "./invite-form";
+import { LoadingBar } from "@/components/loading-bar";
 
 async function Invites() {
   const admin = await requireAdmin();
@@ -43,7 +44,7 @@ async function Invites() {
 export default function InvitesPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Invites />
       </Suspense>
     </main>

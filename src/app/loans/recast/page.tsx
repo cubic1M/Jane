@@ -8,6 +8,7 @@ import { formatRate } from "@/insights/loans";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Recast, refinance or pay extra (spec step 246): a lump sum and/or extra money each month used
 // three ways on the mortgage, with fees and the date each pays back, against investing it
@@ -162,7 +163,7 @@ async function RecastContent({ searchParams }: Pick<PageProps<"/loans/recast">, 
 export default function RecastPage({ searchParams }: PageProps<"/loans/recast">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <RecastContent searchParams={searchParams} />
       </Suspense>
     </main>

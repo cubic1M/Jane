@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { acceptAction, submitAction, withdrawAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // One loan application (spec step 112): the terms to review, what's sent with it, and
 // where it stands. Submit needs the terms reviewed (the box ticked); Accept signs for the
@@ -191,7 +192,7 @@ async function ApplicationContent({
 export default function ApplicationPage({ params, searchParams }: PageProps<"/loans/apply/[id]">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ApplicationContent params={params} searchParams={searchParams} />
       </Suspense>
     </main>

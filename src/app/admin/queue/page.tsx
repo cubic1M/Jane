@@ -7,6 +7,7 @@ import { isOverdue } from "@/lib/business-days";
 import { ACTION_STATUSES, listQueue, loadWorkload, teamMembers } from "@/lib/concierge";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { LoadingBar } from "@/components/loading-bar";
 
 const ACTION_TYPES: ActionType[] = [
   "cancel_subscription",
@@ -175,7 +176,7 @@ async function Queue({
 export default function QueuePage({ searchParams }: PageProps<"/admin/queue">) {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Queue searchParams={searchParams} />
       </Suspense>
     </main>

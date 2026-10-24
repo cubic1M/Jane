@@ -21,6 +21,7 @@ import { parseChildren } from "@/lib/family-taxes";
 import { loadResidency } from "@/lib/tax-states";
 import { localitiesIn } from "@/planning/tax-states";
 import { defaultTaxYear } from "@/planning/tax-pack";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The tax profile (spec step 118): every answer, and what Jane found, can be changed here.
 
@@ -188,7 +189,7 @@ async function ProfileContent() {
 export default function TaxProfilePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ProfileContent />
       </Suspense>
     </main>

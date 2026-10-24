@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-notices";
 import { ReadingForm, ResponseButtons, SendButtons } from "./forms";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Letters from the IRS and the state (spec step 217): the notice explained, its date on the
 // deadlines, a check against what Jane knows, and a drafted response. Nothing is paid or
@@ -129,7 +130,7 @@ async function Content() {
 export default function LettersPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content />
       </Suspense>
     </main>

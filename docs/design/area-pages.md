@@ -105,22 +105,27 @@ A branch takes the worst status of its items (`worst()`), and its line says "N u
    `/<area>?focus=…`. The page and Home read the same data, so they never disagree.
    All six areas are wired.
 
-## The home tree: one giant "What Jane does" tree
+## The home tree: "What Jane does"
 
-On `/home`, right under the net worth hero (founder: "one giant tree graph, not like u have to
-click through each subtab"): Jane, the six areas in a row, and under each area its branches
-with their features listed below them. It's all one canvas (`src/components/hub/giant-tree.tsx`;
-the layout and camera are in `src/lib/giant-tree.ts`). An area with a tree page shows that
-tree's branches and items, from the page's own loader (all six do); an area whose loader
-fails shows what Jane looks for there, from the feature map, as `/home/map` does.
+On `/home`, right under the net worth hero. The founder, first: "one giant tree graph, not like u
+have to click through each subtab"; then: "rn it's too big, I think you should not make it drag
+around freely. Instead, put the subsections fixed (without the first layer of jane, just remove
+that), and when u click on a subsection like taxes, it expands into a tree graph. The full names
+should also be there, and not like '...'".
 
-- **Moving around:** drag to pan, the wheel or a pinch to zoom, and `[+]` `[−]` `[FIT]`. Wide
-  screens split each area into two columns, whichever fits at the larger scale.
-- **Semantic zoom:** feature labels appear once their rows are big enough to read. Area and
-  branch labels are scaled to stay readable when zoomed out.
-- **Opening a node:** a click centres it in the top third and opens its detail (`[FOR YOU]`,
-  one line, `[OPEN]` into its page). The suggestion pop-ups step aside while something is open.
-- **Ask Jane:** a feature also gets an inverted `[ASK JANE]` box beside it. One click sends its
+- **Tiles:** the six areas are fixed tiles: a row of six on a wide screen, three by two on a
+  tablet, two by three on a phone. No "Jane" box above them; nothing to drag, pan or zoom. Each
+  tile has its status, its full name (wrapping, never "…"), its line and `[+]`.
+- **Opening an area:** a tile opens its tree below the row (`[−]` shuts it; another tile swaps
+  it): the area with `[OPEN]`, a dotted line down to its branches side by side (as many columns
+  as fit), and each branch's features under it on a dotted line, as a terminal draws a tree.
+  An area with a tree page shows that tree's branches and items, from the page's own loader
+  (all six do); an area whose loader fails shows what Jane looks for there, from the feature
+  map, as `/home/map` does. The component is `src/components/hub/giant-tree.tsx`; what each
+  area holds is `giantAreas` in `src/lib/giant-tree.ts`.
+- **Opening a feature:** a click opens it in place: one line, `[OPEN]` into its page, and the
+  Ask Jane box. The floating cards step aside while a feature is open; the dock stays.
+- **Ask Jane:** an inverted `[ASK JANE]` box under the open feature. One click sends its
   question straight into the side chat (no Send). A dotted line marches from the box to the
   question and fades when Jane starts answering. Each question goes once per session
   (`src/lib/ask-jane.ts`); asked again, the chat scrolls to the earlier answer. The messages
@@ -198,23 +203,63 @@ the person typed stay in the conversation: her first message after theirs, withi
 is the answer (`ANSWER_WINDOW_MS`); anything else she posts meanwhile floats.
 
 **The card:**
-- **Headline:** eight words at most (`POPUP_HEADLINE_WORDS`; the detectors' `HEADLINE_MAX_WORDS`
-  is 8 too, starting with a verb), with one number.
-- **Buttons:** one action (the message's main button) and Not now (its own `snooze` when it has
-  one). An X puts it off too.
-- **More details:** expands in place with a height animation. It holds the reasoning and how
-  sure Jane is (a suggestion), or the whole message and its other choices (a decision).
+- **Headline:** eight words at most for the detectors (`HEADLINE_MAX_WORDS`, starting with a
+  verb), with one number; anything else shows its first sentence whole, never cut with "…".
+- **Buttons:** one row (founder: "show the whole option lined up horizontally in one line
+  instead of stacked on each other"): the main action, the message's other choices, and Not now
+  (its own `snooze` when it has one), every label whole. Too many to fit, the row scrolls
+  sideways under a fading edge (`.card-actions`). An X puts it off too.
+- **More details:** expands in place with a height animation, and the card grows: wider when it
+  floats (`max-w-2xl`), taller up to about 70% of the screen, scrolling inside itself (the
+  scroll stays in the card). It shrinks back when shut. Inside, real paragraphs (founder: "each
+  new paragraph is a new line with an empty line in between"): each line of the source is a
+  paragraph, a long run is split into twos, "- " lines are a list (`paragraphs` in
+  `src/lib/floating-cards.ts`), figures are tabular, and how sure Jane is comes last, on its own
+  line.
 
-**After it's answered** it's back in the list as one line of history (`data-history`): what it
+**After it's answered** (anything but a suggestion, which never shows in the chat) it's back in the list as one line of history (`data-history`): what it
 was, what was chosen, and the whole message behind More details. There's no gap or placeholder
 while it floats.
 
-**Where it shows:**
-- The chat (`/chat?embed=1` in the side panel).
-- Home, which loads the same pop-ups (`openPopupMessages`). On a phone under 640 px wide they
-  start folded into one line at the very bottom, "[JANE] 3 for you ▲", left of the Jane button,
-  so the net worth is the first thing seen (QA round 6); a tap opens the card (`foldOnPhone`).
-- Any page's side chat.
+**Where it shows** (founder: "Don't let the suggestion cards repeat in the chat again, I want
+them right above the chat on the right (but not in the chat), also slightly bigger so that the
+info isn't all gone"):
+- **On a computer:** in the dock directly above the side chat, in the right column
+  (`src/components/side-chat/card-dock.tsx`, loading `/api/chat/cards`), on every page. One card
+  at a time, a little bigger, with "+N" and ‹ › arrows. The page's own floating stack and the
+  chat in the panel leave them out. With the chat folded to its rail, the page's stack shows.
+- **On a phone:** in the chat's sheet, over its message box; and on Home, folded into one line at
+  the very bottom, "[JANE] 3 for you ▲", left of the Jane button, so the net worth is the first
+  thing seen (QA round 6); a tap opens the card (`foldOnPhone`).
+- **Never twice:** one stack (`popupStack`, loaded by `loadPopupStack`): one card per message and
+  per headline, so a finding a source also posted as a decision shows once. The chat's list
+  (`chatList`) has no suggestion at all, waiting or answered, and nothing that's floating.
+- **Whole headlines:** a card's headline is its message's first sentence, never cut with "…";
+  the rest is behind More details.
+
+## Jane's logos
+
+The ">Jane" wordmark in the top bar and the "J_" mark over the chat are only marks (founder: "It
+should just be the logo, and no interaction"): no link, no button, no pointer, no focus stop
+(`data-jane-logo`). Home and the area tabs do the moving; the folded chat has its own "Open
+chat" button under the mark, and the phone's labelled "Chat with Jane" button opens the sheet.
+
+## Loading
+
+Every page and section that waits shows the ASCII bar, never "Loading…" in words (founder: "it
+should always show a loading bar ... The loading bar should not cover up anything, including the
+titles and suggestion box or chat box"): "[████░░░░░░░░░░░░] 34% · loading", in the flow where
+the content will be (`LoadingBar` in `src/components/loading-bar.tsx`, every Suspense fallback).
+A tapped link shows it under the top bar (`#page-loading`, `src/components/nav-pending.tsx`),
+and the first scan's bar sits there too (`src/components/scan-bar.tsx`). None is fixed over the
+page, the card dock or the chat.
+
+## The chat's scroll
+
+Scrolling past either end of the chat never scrolls the page (founder: "Never let the chat
+scroll affect the whole screen scroll"): `overscroll-behavior: contain` on the framed chat and
+the panel, and `containScroll` (`src/lib/contain-scroll.ts`) for what the browser would still
+hand on, such as a chat too short to scroll. Wheel, trackpad and touch.
 
 ## Motion
 
