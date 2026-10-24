@@ -242,6 +242,10 @@ body {
 
 /* The hub's net worth chart (src/components/hub/net-worth-chart.tsx): the line draws itself in
    when the range changes. Still for reduced motion. */
+/* Expanding grows the chart smoothly rather than jumping. */
+.nw-box {
+  transition: height var(--motion-slow) var(--ease-spring);
+}
 .nw-line {
   stroke-dasharray: 1;
   animation: nw-draw var(--motion-slow) var(--ease-out-soft) both;
@@ -252,6 +256,9 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .nw-box {
+    transition: none;
+  }
   .nw-line {
     animation: none;
   }
