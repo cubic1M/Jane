@@ -93,7 +93,7 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
       {
         key: "loans-student",
         name: "Demo Student Loan",
-        mask: "2005",
+        mask: "2007",
         type: "loan",
         subtype: "student",
         balance: 62000,

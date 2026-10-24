@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { TaxSavingsView } from "@/lib/tax-savings";
+import type { TaxSaving } from "@/planning/tax-savings";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { SavingButtons } from "./saving-buttons";
 
@@ -39,15 +40,7 @@ export function SavingsSection({ view }: { view: TaxSavingsView }) {
                   </span>
                 </div>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">{s.why}</p>
-                {s.action.kind === "link" && (
-                  <Link
-                    href={s.action.href}
-                    className="text-sm font-medium text-emerald-700 hover:underline"
-                  >
-                    {s.action.label}
-                  </Link>
-                )}
-                <SavingButtons savingKey={s.key} year={view.year} kind={s.action.kind} />
+                <SavingActions saving={s} year={view.year} />
               </li>
             ))}
           </ul>
@@ -58,5 +51,19 @@ export function SavingsSection({ view }: { view: TaxSavingsView }) {
         </>
       )}
     </section>
+  );
+}
+
+// One saving's link and buttons, for its detail on the Taxes tree.
+export function SavingActions({ saving: s, year }: { saving: TaxSaving; year: number }) {
+  return (
+    <>
+      {s.action.kind === "link" && (
+        <Link href={s.action.href} className="text-sm font-medium underline underline-offset-2">
+          {s.action.label}
+        </Link>
+      )}
+      <SavingButtons savingKey={s.key} year={year} kind={s.action.kind} />
+    </>
   );
 }
