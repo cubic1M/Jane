@@ -198,6 +198,7 @@ jobs:
             research/strategy-results.md
             research/catalog-evidence.ts
             research/catalog-results.json
+            research/sensitivity.md
           retention-days: 30
 
   crypto:

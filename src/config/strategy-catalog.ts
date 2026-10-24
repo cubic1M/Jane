@@ -972,6 +972,17 @@ export const CATALOG_REGIMES: readonly { label: string; from: string; to: string
   { label: "2020 crash", from: "2020-02-19", to: "2020-03-23" },
   { label: "2022", from: "2022-01-01", to: "2022-12-31" },
 ];
+// Batch 10, how much the watch list depends on its setting: each worth-watching strategy over a
+// wider range of settings than its grid, scored since CATALOG_WALK_FROM_YEAR at fixed settings.
+// Descriptive (not trials): an edge that only one setting shows is likely luck.
+export const CATALOG_SENSITIVITY: Readonly<Partial<Record<CatalogId, readonly number[]>>> = {
+  haa: [2, 3, 4, 5, 6],
+  faber_gtaa_top: [2, 3, 4, 5, 6],
+  eaa: [0.5, 1, 2, 3],
+  sector_rotation: [3, 6, 9, 12],
+  daa: [3, 4, 5, 6],
+  faber_gtaa5: [6, 8, 10, 12],
+};
 // The fixed split the founder asked for: chosen on the years to the end of 2021, scored after.
 export const CATALOG_TRAIN_END = "2021-12-31";
 // Recommendable only with a deflated Sharpe ratio (Bailey & López de Prado) of the excess over

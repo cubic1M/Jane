@@ -23,6 +23,7 @@ import {
 import { alignCrypto, cryptoResult } from "@/planning/crypto-strategies";
 import { alignCatalog, runCatalog } from "@/planning/catalog/engine";
 import { regimeReport, regimesMarkdown } from "@/planning/catalog/regimes";
+import { sensitivity, sensitivityMarkdown } from "@/planning/catalog/sensitivity";
 import { fetchYahooDaily, yahooBars } from "@/lib/market/yahoo";
 import { evidenceModule, resultsMarkdown } from "@/planning/catalog/report";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
@@ -279,6 +280,10 @@ async function runCatalogResearch() {
   writeFileSync(join(DIR, "catalog-results.json"), JSON.stringify({ meta, results }, null, 1));
   writeFileSync(join(DIR, "strategy-results.md"), resultsMarkdown(results, meta));
   writeFileSync(join(DIR, "catalog-evidence.ts"), evidenceModule(results, meta));
+  writeFileSync(
+    join(DIR, "sensitivity.md"),
+    sensitivityMarkdown(sensitivity(u), `${meta.source}, ${meta.from} to ${meta.to}`),
+  );
   for (const r of results.filter((x) => x.recommendable))
     console.log(`recommendable at ${r.level}: ${r.id}`);
   console.log(`${results.length} results, ${trials} trials`);

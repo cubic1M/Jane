@@ -5,6 +5,7 @@ import type { Bar } from "@/lib/market/types";
 import { catalogMarkdown } from "./catalog-doc";
 import { evidenceModule, resultsMarkdown } from "./report";
 import { regimeReport, regimesMarkdown } from "./regimes";
+import { sensitivity, sensitivityMarkdown } from "./sensitivity";
 import { alignCatalog, metricsOver, mixReturns, runCatalog, standalone } from "./engine";
 import {
   expectedMaxSharpe,
@@ -213,6 +214,18 @@ describe("through past regimes", () => {
     const md = regimesMarkdown(rows, "made-up closes", ["faber_gtaa5"]);
     expect(md).toContain("**Faber GTAA / Ivy 5**");
     expect(md).toContain("### Very high");
+  });
+});
+
+describe("how much the watch list depends on its setting", () => {
+  it("scores each setting fixed since 2020, at Medium and Very high, against the mix", () => {
+    const u = universe();
+    const rows = sensitivity(u);
+    const haa = rows.filter((r) => r.id === "haa");
+    expect(haa.map((r) => r.param)).toEqual([2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
+    expect(new Set(haa.map((r) => r.level))).toEqual(new Set([3, 5]));
+    const md = sensitivityMarkdown(rows, "made-up closes");
+    expect(md).toMatch(/Ahead of the mix at \d+ of \d+ settings and levels/);
   });
 });
 
