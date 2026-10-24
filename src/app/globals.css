@@ -238,6 +238,9 @@ body {
    a button or the keyboard moves it (never while dragging or zooming with the wheel), and the
    dotted line from an "Ask Jane" box to the chat marches while the question is sent. A static
    dotted line and no glide for reduced motion. */
+html[data-giant-picked] [data-floating-cards="queue"] {
+  display: none;
+}
 .giant-glide {
   transition: transform 420ms var(--ease-out-soft);
 }
@@ -250,6 +253,9 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  html[data-giant-picked] [data-floating-cards="queue"] {
+    display: none;
+  }
   .giant-glide {
     transition: none;
   }

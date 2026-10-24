@@ -134,6 +134,8 @@ test("the giant tree shows everything at once, and a feature's Ask Jane box send
   // Jane answers, and the box says it was asked; asked again, it doesn't send twice.
   await expect(ask).toContainText("[ASKED", { timeout: 60_000 });
   const count = await messages.count();
+  // On a phone the sheet is over the page: close it to reach the box again.
+  if (isMobile) await page.getByRole("button", { name: "Close chat" }).click();
   await ask.click();
   await page.waitForTimeout(1000);
   expect(await messages.count()).toBe(count);

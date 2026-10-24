@@ -51,6 +51,7 @@ export const GIANT = {
   feature: { w: 188, h: 30 },
   // Between the area columns, between rows, and a feature's indent under its branch.
   columnGap: 32,
+  subColumnGap: 12,
   rowGap: 8,
   levelGap: 56,
   indent: 12,
@@ -61,10 +62,13 @@ export const GIANT = {
   minScale: 0.08,
 } as const;
 
-export function giantLayout(maps: readonly AreaMap[]): GiantLayout {
+// `split`: how many columns each area's branches share. Two makes the tree wider and half as
+// tall, which fits a wide screen better (giantLayoutFor picks).
+export function giantLayout(maps: readonly AreaMap[], split: 1 | 2 = 1): GiantLayout {
   const nodes: GiantNode[] = [];
   const edges: GiantEdge[] = [];
-  const colW = GIANT.area.w;
+  const subW = GIANT.area.w;
+  const colW = split * subW + (split - 1) * GIANT.subColumnGap;
   const width = maps.length * colW + Math.max(0, maps.length - 1) * GIANT.columnGap;
   const root: GiantNode = {
     id: "jane",
@@ -96,12 +100,25 @@ export function giantLayout(maps: readonly AreaMap[]): GiantLayout {
       x,
       y: areaY,
       ...GIANT.area,
+      w: colW,
     };
     nodes.push(area);
     edges.push(edge(root, area, "down"));
 
-    let y = areaY + GIANT.area.h + GIANT.levelGap / 2;
+    // Branches fill the first column until it holds about its share of the rows.
+    const rows = (b: AreaMap["branches"][number]) => 1 + b.features.length;
+    const total = map.branches.reduce((n, b) => n + rows(b), 0);
+    const top = areaY + GIANT.area.h + GIANT.levelGap / 2;
+    let y = top;
+    let sub = 0;
+    let filled = 0;
     for (const b of map.branches) {
+      if (sub < split - 1 && filled > 0 && filled + rows(b) / 2 > (total * (sub + 1)) / split) {
+        sub += 1;
+        y = top;
+      }
+      filled += rows(b);
+      const sx = x + sub * (subW + GIANT.subColumnGap);
       const id = `${map.key}/${b.id}`;
       const branch: GiantNode = {
         id,
@@ -112,12 +129,12 @@ export function giantLayout(maps: readonly AreaMap[]): GiantLayout {
         href: map.href,
         parent: area.id,
         children: b.features.map((f) => `${id}/${f.id}`),
-        x: x + GIANT.indent,
+        x: sx + GIANT.indent,
         y,
         ...GIANT.branch,
       };
       nodes.push(branch);
-      edges.push(edge(area, branch, "side"));
+      edges.push(edge({ ...area, x: sx }, branch, "side"));
       y += GIANT.branch.h + GIANT.rowGap;
       for (const f of b.features) {
         const feature: GiantNode = {
@@ -130,7 +147,7 @@ export function giantLayout(maps: readonly AreaMap[]): GiantLayout {
           ask: f.ask,
           parent: id,
           children: [],
-          x: x + GIANT.indent * 2 + 8,
+          x: sx + GIANT.indent * 2 + 8,
           y,
           ...GIANT.feature,
         };
@@ -139,8 +156,8 @@ export function giantLayout(maps: readonly AreaMap[]): GiantLayout {
         y += GIANT.feature.h + GIANT.rowGap;
       }
       y += GIANT.rowGap;
+      height = Math.max(height, y);
     }
-    height = Math.max(height, y);
   });
 
   return { nodes, edges, width, height };
@@ -176,6 +193,17 @@ export type Camera = { k: number; x: number; y: number };
 
 const clampK = (k: number) => Math.min(GIANT.maxScale, Math.max(GIANT.minScale, k));
 
+// The layout that reads best in this view: one column per area or two, whichever lets the
+// whole tree fit at the larger scale.
+export function giantLayoutFor(
+  maps: readonly AreaMap[],
+  view: { w: number; h: number },
+): GiantLayout {
+  const one = giantLayout(maps, 1);
+  const two = giantLayout(maps, 2);
+  return fitCamera(two, view).k > fitCamera(one, view).k ? two : one;
+}
+
 // The whole tree in view, centred, with a margin.
 export function fitCamera(
   layout: Pick<GiantLayout, "width" | "height">,
@@ -195,17 +223,18 @@ export function zoomAt(camera: Camera, factor: number, px: number, py: number): 
   return { k, x: px - (px - camera.x) * f, y: py - (py - camera.y) * f };
 }
 
-// A node in the middle of the view, at least close enough to read it.
+// A node in the middle of the view (`anchorY` of the way down), at least close enough to read.
 export function centerOn(
   node: Pick<GiantNode, "x" | "y" | "w" | "h" | "level">,
   view: { w: number; h: number },
   camera: Camera,
+  anchorY = 0.5,
 ): Camera {
   const k = clampK(Math.max(camera.k, readableScale(node.level)));
   return {
     k,
     x: view.w / 2 - (node.x + node.w / 2) * k,
-    y: view.h / 2 - (node.y + node.h / 2) * k,
+    y: view.h * anchorY - (node.y + node.h / 2) * k,
   };
 }
 

@@ -6,6 +6,7 @@ import {
   fitCamera,
   giantEdgePath,
   giantLayout,
+  giantLayoutFor,
   showsLabels,
   zoomAt,
 } from "./giant-tree";
@@ -95,6 +96,37 @@ describe("the giant tree's layout", () => {
     expect(giantEdgePath(down)).toMatch(/^M[\d.]+,[\d.]+ C/);
     const side = layout.edges.find((e) => e.id === "money/subs>money/subs/a")!;
     expect(giantEdgePath(side)).toMatch(/^M[\d.]+,[\d.]+ V[\d.]+ H[\d.]+$/);
+  });
+});
+
+describe("two columns per area on a wide screen", () => {
+  const big: AreaMap[] = maps.map((m) => ({
+    ...m,
+    branches: Array.from({ length: 6 }, (_, i) => ({
+      id: `b${i}`,
+      name: `Branch ${i}`,
+      forYou: 0,
+      features: [feature(`${m.key}${i}a`), feature(`${m.key}${i}b`)],
+    })),
+  }));
+
+  it("shares an area's branches between two columns, about half each, half as tall", () => {
+    const one = giantLayout(big, 1);
+    const two = giantLayout(big, 2);
+    expect(two.width).toBeGreaterThan(one.width * 1.8);
+    expect(two.height).toBeLessThan(one.height * 0.6);
+    const xs = new Set(
+      two.nodes.filter((n) => n.level === 3 && n.parent === "money").map((n) => n.x),
+    );
+    expect(xs.size).toBe(2);
+    // The area spans both.
+    const area = two.nodes.find((n) => n.id === "money")!;
+    expect(area.w).toBe(GIANT.area.w * 2 + GIANT.subColumnGap);
+  });
+
+  it("picks the one that fits the view at the larger scale", () => {
+    expect(giantLayoutFor(big, { w: 1400, h: 600 }).width).toBe(giantLayout(big, 2).width);
+    expect(giantLayoutFor(big, { w: 343, h: 480 }).width).toBe(giantLayout(big, 1).width);
   });
 });
 

@@ -7,7 +7,7 @@ import {
   centerOn,
   fitCamera,
   giantEdgePath,
-  giantLayout,
+  giantLayoutFor,
   showsLabels,
   zoomAt,
   type Camera,
@@ -34,11 +34,16 @@ const MIN_LABEL_PX = 12;
 type Pointer = { x: number; y: number };
 
 export function GiantTree({ maps }: { maps: AreaMap[] }) {
-  const layout = useMemo(() => giantLayout(maps), [maps]);
-  const byId = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n])), [layout]);
   const view = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 960, h: VIEW_H_WIDE });
-  const [camera, setCamera] = useState<Camera | null>(null);
+  // One column per area on a narrow screen, two on a wide one: whichever reads better.
+  const layout = useMemo(() => giantLayoutFor(maps, size), [maps, size]);
+  const byId = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n])), [layout]);
+  // The camera, for the layout it was set on; a new layout (the screen changed shape) starts
+  // fitted again.
+  const [camera, setCameraFor] = useState<{ width: number; c: Camera } | null>(null);
+  const setCamera = (c: Camera) => setCameraFor({ width: layout.width, c });
+  const latest = useRef<{ width: number; c: Camera } | null>(null);
   // Animated moves (a click, the buttons, the keyboard), never a drag or the wheel.
   const [gliding, setGliding] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
@@ -53,8 +58,7 @@ export function GiantTree({ maps }: { maps: AreaMap[] }) {
     const w = el.clientWidth;
     const h = w < 640 ? VIEW_H_NARROW : VIEW_H_WIDE;
     setSize({ w, h });
-    setCamera(fitCamera(layout, { w, h }));
-  }, [layout]);
+  }, []);
   useEffect(() => {
     const el = view.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -74,26 +78,40 @@ export function GiantTree({ maps }: { maps: AreaMap[] }) {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       setGliding(false);
-      setCamera((c) =>
-        c
-          ? zoomAt(c, Math.exp(-e.deltaY * 0.0015), e.clientX - rect.left, e.clientY - rect.top)
-          : c,
-      );
+      const now = latest.current;
+      if (!now) return;
+      setCameraFor({
+        width: now.width,
+        c: zoomAt(now.c, Math.exp(-e.deltaY * 0.0015), e.clientX - rect.left, e.clientY - rect.top),
+      });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  const cam = camera ?? fitCamera(layout, size);
+  const cam = camera && camera.width === layout.width ? camera.c : fitCamera(layout, size);
+  useEffect(() => {
+    latest.current = { width: layout.width, c: cam };
+  });
   const glide = (next: Camera) => {
     setGliding(true);
     setCamera(next);
   };
+  // Opened, a node sits in the top third, clear of the pop-ups and the Jane button below.
   const open = (node: GiantNode) => {
     setPicked(node.id);
     setFocused(node.id);
-    glide(centerOn(node, size, cam));
+    glide(centerOn(node, size, cam, 0.3));
   };
+  // While something is open here, the suggestion pop-ups step aside (src/app/globals.css).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (picked) root.dataset.giantPicked = "";
+    else delete root.dataset.giantPicked;
+    return () => {
+      delete root.dataset.giantPicked;
+    };
+  }, [picked]);
   const zoomBy = (factor: number) => glide(zoomAt(cam, factor, size.w / 2, size.h / 2));
   const fit = () => {
     setPicked(null);
@@ -440,7 +458,7 @@ function AskBox({
         onClick={send}
         disabled={busy}
         aria-label={`Ask Jane: ${question}`}
-        className="invert-scope absolute z-20 flex w-60 flex-col gap-1 border-2 border-zinc-500 p-2 text-left text-sm disabled:opacity-80"
+        className="invert-scope absolute z-20 flex w-60 flex-col gap-1 border-2 border-zinc-500 bg-zinc-950 p-2 text-left text-sm text-white shadow-lg disabled:opacity-80 dark:bg-zinc-50 dark:text-zinc-950"
         style={{ left, top: Math.max(8, at.y) }}
       >
         <span className="text-xs font-semibold tracking-wider">
