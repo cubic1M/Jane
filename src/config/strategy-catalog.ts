@@ -88,6 +88,49 @@ export const CATALOG = {
     grid: [0],
     tickers: ["VTI", "IJS", "TLT", "SHY", "GLD"],
   },
+  no_brainer: {
+    label: "No-Brainer portfolio",
+    family: "static",
+    kind: "portfolio",
+    source: {
+      title: "Bernstein, The Intelligent Asset Allocator (2000); Portfolio Charts",
+      url: "https://portfoliocharts.com/portfolios/no-brainer-portfolio/",
+    },
+    rules:
+      "25% each in US large companies (SPY), US small companies (IJR), developed foreign stocks (EFA) and short Treasuries (SHY), rebalanced monthly.",
+    param: "none",
+    grid: [0],
+    tickers: ["SPY", "IJR", "EFA", "SHY"],
+  },
+  coffeehouse: {
+    label: "Coffeehouse portfolio",
+    family: "static",
+    kind: "portfolio",
+    source: {
+      title: "Schultheis, The Coffeehouse Investor (1998); Portfolio Charts",
+      url: "https://portfoliocharts.com/portfolios/coffeehouse-portfolio/",
+    },
+    rules:
+      "10% each in US large (SPY), large value (IVE), small (IJR) and small value (IJS) companies, foreign stocks (EFA) and REITs (VNQ); 40% US bonds (BND). Rebalanced monthly.",
+    param: "none",
+    grid: [0],
+    tickers: ["SPY", "IVE", "IJR", "IJS", "EFA", "VNQ", "BND"],
+  },
+  larry: {
+    label: "Larry portfolio",
+    family: "static",
+    kind: "portfolio",
+    source: {
+      title:
+        "Swedroe & Grogan, Reducing the Risk of Black Swans (2014): a small, high-tilt stock share and the rest in Treasuries",
+      url: "https://www.moneycrashers.com/larry-swedroe-portfolio/",
+    },
+    rules:
+      "15% US small value (IJS), 7.5% foreign small companies paying dividends (DLS), 7.5% emerging small companies paying dividends (DGS), 70% intermediate Treasuries (IEF). Rebalanced monthly.",
+    param: "none",
+    grid: [0],
+    tickers: ["IJS", "DLS", "DGS", "IEF"],
+  },
   all_weather_fixed: {
     label: "All-weather (fixed)",
     family: "static",

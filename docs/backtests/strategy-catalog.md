@@ -30,6 +30,30 @@ Also tested, separately and at Very high only: the five day-trading rules on 5-m
 - **Funds:** VTI, IJS, TLT, SHY, GLD
 - **At each level:** a whole portfolio, blended with bills to the level's volatility
 
+### No-Brainer portfolio (`no_brainer`)
+
+- **Source:** [Bernstein, The Intelligent Asset Allocator (2000); Portfolio Charts](https://portfoliocharts.com/portfolios/no-brainer-portfolio/)
+- **Rules:** 25% each in US large companies (SPY), US small companies (IJR), developed foreign stocks (EFA) and short Treasuries (SHY), rebalanced monthly.
+- **Setting:** none
+- **Funds:** SPY, IJR, EFA, SHY
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
+### Coffeehouse portfolio (`coffeehouse`)
+
+- **Source:** [Schultheis, The Coffeehouse Investor (1998); Portfolio Charts](https://portfoliocharts.com/portfolios/coffeehouse-portfolio/)
+- **Rules:** 10% each in US large (SPY), large value (IVE), small (IJR) and small value (IJS) companies, foreign stocks (EFA) and REITs (VNQ); 40% US bonds (BND). Rebalanced monthly.
+- **Setting:** none
+- **Funds:** SPY, IVE, IJR, IJS, EFA, VNQ, BND
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
+### Larry portfolio (`larry`)
+
+- **Source:** [Swedroe & Grogan, Reducing the Risk of Black Swans (2014): a small, high-tilt stock share and the rest in Treasuries](https://www.moneycrashers.com/larry-swedroe-portfolio/)
+- **Rules:** 15% US small value (IJS), 7.5% foreign small companies paying dividends (DLS), 7.5% emerging small companies paying dividends (DGS), 70% intermediate Treasuries (IEF). Rebalanced monthly.
+- **Setting:** none
+- **Funds:** IJS, DLS, DGS, IEF
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
 ### All-weather (fixed) (`all_weather_fixed`)
 
 - **Source:** [The widely published retail split of Dalio's All Weather idea (30/40/15/7.5/7.5); not Bridgewater's own fund](https://de.tradingview.com/script/GSYS7QZ2-Ray-Dalio-s-All-Weather-Strategy-Portfolio-Calculator)

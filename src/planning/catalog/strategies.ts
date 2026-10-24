@@ -119,6 +119,12 @@ export function decide(
       return fixed(u, t, { SPY: 0.25, TLT: 0.25, GLD: 0.25, BIL: 0.25 });
     case "golden_butterfly":
       return fixed(u, t, { VTI: 0.2, IJS: 0.2, TLT: 0.2, SHY: 0.2, GLD: 0.2 });
+    case "no_brainer":
+      return fixed(u, t, { SPY: 0.25, IJR: 0.25, EFA: 0.25, SHY: 0.25 });
+    case "coffeehouse":
+      return fixed(u, t, { SPY: 0.1, IVE: 0.1, IJR: 0.1, IJS: 0.1, EFA: 0.1, VNQ: 0.1, BND: 0.4 });
+    case "larry":
+      return fixed(u, t, { IJS: 0.15, DLS: 0.075, DGS: 0.075, IEF: 0.7 });
     case "all_weather_fixed":
       return fixed(u, t, { VTI: 0.3, TLT: 0.4, IEF: 0.15, GLD: 0.075, DBC: 0.075 });
     case "faber_gtaa5": {
