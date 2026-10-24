@@ -19,7 +19,12 @@ export function savingsLine(type: FindingType, cents: number | null): string {
       ? "Savings depend on the quotes we find"
       : "No dollar estimate for this one";
   }
-  return isRefund(type)
-    ? `Could get back about ${formatCents(cents)}`
-    : `Could save ${savingsPhrase(type, cents)}`;
+  if (isRefund(type)) return `Could get back about ${formatCents(cents)}`;
+  // Idle cash earns interest; nothing is saved (phone walk: "could save" read oddly).
+  if (type === "idle_cash") return `Could earn ${savingsPhrase(type, cents)}`;
+  // Card interest is worked out at today's balance and rate, which can be more than the last
+  // twelve months' interest beside it ("$1,296 in interest… could save about $1,415").
+  if (type === "card_interest")
+    return `Could save ${savingsPhrase(type, cents)} at today's balance`;
+  return `Could save ${savingsPhrase(type, cents)}`;
 }

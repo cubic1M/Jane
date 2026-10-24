@@ -95,8 +95,10 @@ describe("the rule replay's code path", () => {
     ])
       expect(replay).not.toContain(rule);
     const scan = source("../lib/practice/scan.ts");
-    for (const fn of ["scanOpportunities", "flagStatus", "monthUse"])
+    for (const fn of ["scanOpportunities", "flagStatus", "monthUse", "notAskedYet"]) {
       expect(scan).toContain(`${fn}(`);
+      expect(replay).toContain(`${fn}(`);
+    }
     const autopilot = source("../lib/practice/autopilot.ts");
     for (const fn of ["planTrades", "sellsFirst", "monthlyDue", "washBlocked"])
       expect(autopilot).toContain(`${fn}(`);

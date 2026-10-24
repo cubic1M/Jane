@@ -829,7 +829,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     page: "/insurance",
     tool: "propose_action",
     profile: "demo_advice",
-    expect: { button: "insurance.shop_yes", avoid: /couldn't set up|where you stand/i },
+    // The switch is the pick-one card's (gap audit): its quotes picked with option.pick.
+    expect: { button: "option.pick", avoid: /couldn't set up|where you stand/i },
   },
   {
     id: "reshop-2",
@@ -950,7 +951,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     sector: "follow",
     page: "/subscriptions",
     tool: "finding_details",
-    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i },
+    // The charges behind the card are the evidence: a list fits.
+    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i, list: true },
   },
   {
     id: "dbar-more",
@@ -960,7 +962,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     sector: "follow",
     page: "/subscriptions",
     tool: "finding_details",
-    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i },
+    // The charges behind the card are the evidence: a list fits.
+    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i, list: true },
   },
   {
     id: "debt-moves",
@@ -1752,7 +1755,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: {
       intent: "insurance",
-      button: "insurance.shop_yes",
+      button: "option.pick",
       mentions: /same cover/,
       list: true,
     },
@@ -1786,7 +1789,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "ins-11",
     text: "what do you do with my insurance on your own",
     needs: "rules",
-    expect: { intent: "insurance", mentions: /never buy, change or cancel/ },
+    // The Insurance area's own setting says what waits for a tap (#497).
+    expect: { intent: "insurance", mentions: /without your tap/ },
   },
   {
     id: "ins-12",
@@ -2113,6 +2117,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "credit_monthly",
       mentions: /check-up/i,
+      // One line per kind of credit (or check-up item): a list fits.
+      list: true,
       link: "/loans/review",
       maxChars: 2_600,
     },
@@ -2125,6 +2131,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "borrowing_power",
       mentions: /soft check|borrow/i,
+      // One line per kind of credit (or check-up item): a list fits.
+      list: true,
       link: "/loans/borrow",
       maxChars: 2_000,
     },
@@ -2136,6 +2144,8 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: {
       intent: "borrowing_power",
       mentions: /mortgage/i,
+      // One line per kind of credit (or check-up item): a list fits.
+      list: true,
       link: "/loans/borrow",
       maxChars: 2_000,
     },

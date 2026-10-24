@@ -25,7 +25,7 @@ describe("linkDemo", () => {
 
   it("links, syncs after the response, and scans on the way to the chat", async () => {
     vi.mocked(linkDemoBank).mockResolvedValue({ itemId: "demo-1", created: true });
-    await expect(linkDemo()).rejects.toThrow("redirect:/scanning?then=chat");
+    await expect(linkDemo()).rejects.toThrow("redirect:/scanning?then=home");
     expect(linkDemoBank).toHaveBeenCalledWith("u1");
     expect(after).toHaveBeenCalledTimes(1);
   });

@@ -12,6 +12,7 @@ import {
   PRACTICE_STOCKS,
   PRACTICE_UNIVERSE,
 } from "@/config/portfolios";
+import { rulesOnAt } from "@/config/practice-scan";
 import { PRACTICE_DETECTORS } from "@/detectors/practice";
 import type { Bar } from "@/lib/market";
 import { SampleMarketData } from "@/lib/market/sample";
@@ -158,6 +159,8 @@ async function walk(level: RiskLevel): Promise<Walk> {
       paused: false,
       tradesToday: today,
       blocked: washBlocked(trades, day),
+      // As the live autopilot: losses are harvested where the level's rules allow it.
+      harvesting: rulesOnAt(level).has("tax_loss_harvest"),
     });
     // Sales first, so their cash pays for the buys.
     const sales = plan.filter((t) => t.side === "sell");

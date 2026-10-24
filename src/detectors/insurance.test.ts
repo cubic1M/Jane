@@ -262,7 +262,8 @@ describe("the umbrella suggestion follows the need calculator (insurance QA pass
     const profile = buildProfile(data);
     const umbrella = INSURANCE_DETECTORS.find((d) => d.topic === "umbrella")!;
     const s = umbrella.detect({ profile, data });
-    expect(s?.short).toContain("$856,994.00");
+    // Her home, her savings and (detector coverage) her sister's inherited IRA.
+    expect(s?.short).toContain("$887,198.00");
     expect(s?.why).toContain("what you own less what you owe");
   });
 });

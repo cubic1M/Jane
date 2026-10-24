@@ -88,10 +88,11 @@ test("on a computer the chat docks beside the page, folds, expands and stays put
   await page.keyboard.press("Escape");
   await expect(panel.getByRole("button", { name: "Expand chat" })).toBeVisible();
 
-  // The chat's own page is the chat expanded: no panel beside it.
+  // The chat has no page of its own: /chat opens Home with the panel docked open.
+  await panel.getByRole("button", { name: "Collapse chat" }).click();
   await page.goto("/chat");
-  await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible();
-  await expect(panel).toHaveCount(0);
+  await expect(page).toHaveURL(/\/home$/);
+  await expect(panel.getByRole("button", { name: "Expand chat" })).toBeVisible();
 });
 
 test("on a phone the chat is a sheet from the Jane button", async ({

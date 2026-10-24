@@ -5,8 +5,9 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { PracticeIdeasSection } from "@/components/practice-ideas";
 import { RISK_LEVELS } from "@/config/investing";
-import { MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/portfolios";
+import { HARVEST_PARTNERS, MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/portfolios";
 import { adviceMode } from "@/lib/advice-mode";
+import { practicePaidIn } from "@/lib/investments/practice-paid-in";
 import { formatCents } from "@/lib/money";
 import { tradeLog } from "@/lib/practice/autopilot";
 import { practiceIdeasView } from "@/lib/practice/ideas-view";
@@ -37,6 +38,14 @@ const MESSAGES: Record<string, string> = {
   idea_no: "OK, put away. Jane brings that kind of idea a little later now.",
   idea_gone: "That idea has already moved on.",
 };
+// A fund's name with its ticker, for the model funds and their swap partners; a stock by ticker.
+const fundName = (ticker: string) => {
+  const fund = [...Object.values(PRACTICE_ETFS), ...Object.values(HARVEST_PARTNERS)].find(
+    (e) => e?.ticker === ticker,
+  );
+  return fund ? `${fund.name} (${ticker})` : ticker;
+};
+
 const when = (d: Date) =>
   d.toLocaleString("en-US", {
     month: "short",
@@ -60,9 +69,11 @@ async function Content({
   // Constant search (Phase AW): a cheap scan, after the page is sent; demo advice only.
   if (advice) after(() => scanOnOpenQuietly(user.id));
   const practice = advice ? await loadPractice(user.id) : null;
-  const [log, ideas] = practice
-    ? await Promise.all([tradeLog(user.id), practiceIdeasView(user.id)])
-    : [[], null];
+  const [log, ideas, paidIn] = practice
+    ? await Promise.all([tradeLog(user.id), practiceIdeasView(user.id), practicePaidIn(user.id)])
+    : [[], null, 0];
+  // Up or down against all the practice money put in, not the starting money alone.
+  const gain = practice ? practice.totalCents - paidIn : 0;
   return (
     <>
       <AppHeader user={user} />
@@ -131,15 +142,18 @@ async function Content({
               {RISK_LEVELS[practice.level].label}: {formatCents(practice.totalCents)}
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Started with {formatCents(practice.startingCents)} of practice money.{" "}
+              {paidIn > practice.startingCents
+                ? `You've put in ${formatCents(paidIn)} of practice money: ${formatCents(practice.startingCents)} to start, then ${formatCents(practice.monthlyAddCents)} a month.`
+                : `Started with ${formatCents(practice.startingCents)} of practice money.`}{" "}
+              {gain === 0
+                ? "That's even."
+                : `That's ${formatCents(Math.abs(gain))} ${gain > 0 ? "more" : "less"} than went in.`}{" "}
               {formatCents(practice.state.cashCents)} is waiting as cash.
             </p>
             <ul className="text-sm">
               {practice.holdings.map((h) => (
                 <li key={h.ticker}>
-                  {Object.values(PRACTICE_ETFS).find((e) => e.ticker === h.ticker)?.name ??
-                    h.ticker}{" "}
-                  ({h.ticker}): {formatCents(h.valueCents)}
+                  {fundName(h.ticker)}: {formatCents(h.valueCents)}
                 </li>
               ))}
             </ul>
@@ -202,9 +216,7 @@ async function Content({
                       {t.side === "deposit"
                         ? "Practice money in"
                         : `${t.side === "buy" ? "Bought" : "Sold"} ${t.ticker}`}
-                      <span className="block text-xs text-zinc-500">
-                        {t.reason} ({t.rule})
-                      </span>
+                      <span className="block text-xs text-zinc-500">{t.reason}</span>
                     </td>
                     <td className="text-right align-top">{formatCents(t.amountCents)}</td>
                   </tr>

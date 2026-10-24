@@ -137,6 +137,17 @@ describe.runIf(url)("metrics in SQL against a real database", () => {
         status: "in_progress",
       },
     });
+    // Ben saw his in Jane's chat, not on a card page: that counts as shown (gap audit).
+    await client.janeMessage.create({
+      data: {
+        userId: ben,
+        kind: "decision",
+        body: "Want me to ask for the fees back?",
+        refs: { findingId: benFinding.id },
+        dedupeKey: `metrics-${suffix}`,
+        createdAt: ago(3),
+      },
+    });
     const benYes = await client.decision.create({
       data: {
         userId: ben,
@@ -202,6 +213,9 @@ describe.runIf(url)("metrics in SQL against a real database", () => {
     // The trial person isn't in it.
     expect(m.linkRate).toEqual({ signedUp: 2, linked: 1, rate: 0.5 });
     expect(m.completion).toEqual({ closed: 2, done: 1, rate: 0.5 });
+    // Bank fees: Ana's card opened and Ben's chat message are both shown; her do-it-yourself and
+    // his yes are both approvals.
+    expect(m.approval.find((a) => a.type === "bank_fees")).toMatchObject({ shown: 2, approved: 2 });
     expect(m.willingnessToPay).toEqual({ completed: 1, willing: 1, rate: 1 });
     expect(m.referrals.byPartner).toEqual([
       { partner: `Metrics Bank ${suffix}`, conversions: 1, cents: 4_000 },

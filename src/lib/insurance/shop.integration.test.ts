@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
+import { cardProblems } from "@/lib/option-card";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -236,7 +237,7 @@ describe.runIf(url)("insurance shopped for you, against a real database", () => 
     expect(tool.policies[0].janesPick).toBeNull();
   });
 
-  it("finds a cheaper policy when asked, with Yes and Not now", async () => {
+  it("finds a cheaper policy when asked, as a pick-one card with Later", async () => {
     const { userId } = await demoPerson();
     const { reply } = await sendToJane(userId, "find me cheaper car insurance", {
       client,
@@ -244,15 +245,45 @@ describe.runIf(url)("insurance shopped for you, against a real database", () => 
     });
     expect(reply.body).toMatch(/^I found car insurance \$408\.00 a year cheaper/);
     expect(reply.refs.advice).toBe(true);
-    expect(reply.actions.map((a) => a.id)).toEqual([
-      "insurance.shop_yes",
-      "open",
-      "insurance.shop_no",
-    ]);
-    const { message } = await takeChatAction(userId, reply.id, "insurance.shop_no", {
+    // The quotes float over the chat as the pick-one card: Jane's pick first, cheaper ones after.
+    expect(reply.actions.map((a) => a.id)).toEqual(["option.pick", "option.later", "open"]);
+    const card = reply.refs.options!;
+    expect(card).toMatchObject({ kind: "insurance", advice: true, newCover: false });
+    expect(card.topic).toBe(`switch:${reply.refs.insuranceShopId}`);
+    expect(cardProblems(card)).toEqual([]);
+    expect(card.options[0].isPick).toBe(true);
+    const { message } = await takeChatAction(userId, reply.id, "option.later", {
       client,
       now: NOW,
     });
-    expect(message.refs.note).toMatch(/^OK, you'll keep your current policy/);
+    expect(message.status).toBe("dismissed");
+  });
+
+  it("switches to the quote picked on the card, Jane's pick or another cheaper one", async () => {
+    const { userId } = await demoPerson();
+    const { reply } = await sendToJane(userId, "find me cheaper car insurance", {
+      client,
+      now: NOW,
+    });
+    const card = reply.refs.options!;
+    // The last option: another cheaper quote when there is one, else Jane's pick.
+    const picked = card.options.at(-1)!;
+    const { message } = await takeChatAction(userId, reply.id, "option.pick", {
+      client,
+      now: NOW,
+      choice: picked.id,
+    });
+    expect(message.refs.note).toMatch(/^Done\. I'm switching you now/);
+    const shop = await client.insuranceShop.findUniqueOrThrow({
+      where: { id: reply.refs.insuranceShopId! },
+    });
+    expect(shop.status).toBe("accepted");
+    // The agent binds the shop's pick: the one picked on the card.
+    expect((shop.pick as { id: string }).id).toBe(picked.id);
+    const decision = await client.decision.findFirstOrThrow({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(decision.options).toMatchObject({ insuranceCarrier: picked.label });
   });
 });

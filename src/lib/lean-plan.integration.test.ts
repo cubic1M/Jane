@@ -64,6 +64,9 @@ describe.runIf(url)("when income stops", { timeout: 120_000 }, () => {
     created.push(userId);
     const { itemId } = await linkDemoBank(userId, { client, now: LINKED });
     await syncItem(itemId, { client, api, now: LINKED });
+    // The daily sync keeps the account's days coming (a late paycheck is only judged on data
+    // that runs past the day it was late: real-user QA).
+    await syncItem(itemId, { client, api, now: LATE });
     // The mid-October paycheck never came.
     const gone = await client.transaction.findMany({
       where: { userId, pfcPrimary: "INCOME", date: { gte: new Date("2026-10-15T00:00:00Z") } },

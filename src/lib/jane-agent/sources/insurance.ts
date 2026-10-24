@@ -444,7 +444,7 @@ function fsaMessages(insurance: InsuranceSnapshot): Candidate[] {
       body: `You have ${formatCents(fsa.leftCents)} left in your FSA, and it's lost after ${shortDate(fsa.deadline)} (${fsa.daysLeft} days), unless your employer allows a carryover. Eligible care and medicine count, like prescriptions, glasses and dental work.`,
       refs: {},
       actions: [
-        { id: "open", label: "Your health year", kind: "link", href: "/insurance#health-year" },
+        { id: "open", label: "Your health year", kind: "link", href: "/insurance?focus=health" },
       ],
       dedupeKey: `fsa-deadline:${fsa.deadline}`,
       priority: MESSAGE_PRIORITY.fsa_deadline,

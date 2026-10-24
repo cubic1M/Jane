@@ -7,6 +7,7 @@ import { membershipPriceCents, stripeEnabled } from "@/lib/membership/offer";
 import { markOfferShown, offerFor, savedToDate } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { isTrialUser } from "@/lib/trial-ids";
 import { MembershipOffer } from "./membership-offer";
 import { AnswerForm } from "./answer-form";
 import { SelfCancel } from "./self-cancel";
@@ -195,7 +196,11 @@ async function ActionsContent({
                           action.agentState === "confirming" &&
                           action.cancelledOn
                         ? `You cancelled on ${action.cancelledOn.toISOString().slice(0, 10)}. Jane is watching for the next charge to make sure${action.confirmAfter ? ` (around ${action.confirmAfter.toISOString().slice(0, 10)})` : ""}.`
-                        : status.detail}
+                        : action.status === "queued" &&
+                            action.agentState === "handed_off" &&
+                            isTrialUser(user.id)
+                          ? "With sample data this stops here: our team doesn't take on requests from people trying Jane. With your own account, they would pick it up within one business day."
+                          : status.detail}
                   </p>
                 )}
                 {/* The company asked a question the agent can't answer: the person can. */}

@@ -1,5 +1,6 @@
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { insuranceCard } from "@/lib/insurance/need/card";
+import { shopCard } from "@/lib/insurance/shop-card";
 import { loadNeeds, optionsForNeed, withNeeds } from "@/lib/insurance/need/load";
 import type { Need } from "@/lib/insurance/need/types";
 import type { OfferedOptions } from "@/lib/option-card";
@@ -59,6 +60,10 @@ const NEED_KINDS: readonly Need["kind"][] = [
   "auto_liability",
   "home_liability",
   "renters_liability",
+  // Spec step 201.
+  "business_liability",
+  "professional_liability",
+  "business_equipment",
 ];
 
 export const INSURANCE_TOOLS: Anthropic.Tool[] = [
@@ -101,7 +106,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_needs",
     description:
-      "What cover the person needs, worked out from their own numbers, what they have and the gap (spec step 278): term life (income, debts, schooling, less savings and cover), disability (about 60% of pay a month), umbrella, deductibles by their cash, and car, home and renters liability levels. It is the same working the page and the nightly detectors use. Use it for 'how much life insurance do I need'. The need is demo advice: say so with the label in demo advice mode. In demo advice mode it also prices options for the cover asked about (or the first one that is short): they are shown to the person as a pick-one card under your answer, so name Jane's pick and why in a sentence, never the whole list.",
+      "What cover the person needs, worked out from their own numbers, what they have and the gap (spec step 278): term life (income, debts, schooling, less savings and cover), disability (about 60% of pay a month), umbrella, deductibles by their cash, car, home and renters liability levels, and for a business or side work (spec step 201) general and professional liability and work equipment cover, which no personal policy gives. It is the same working the page and the nightly detectors use. Use it for 'how much life insurance do I need'. The need is demo advice: say so with the label in demo advice mode. In demo advice mode it also prices options for the cover asked about (or the first one that is short): they are shown to the person as a pick-one card under your answer, so name Jane's pick and why in a sentence, never the whole list.",
     input_schema: {
       type: "object",
       properties: {
@@ -734,9 +739,19 @@ async function quotesTool(
     })),
   );
   const current = (p: (typeof active)[number]) => yearlyPremium(p);
+  // The open reshop that saves the most, as the pick-one card under the answer (step 104).
+  const best = shops
+    .filter((s) => s.status === "open" && s.pick)
+    .sort((a, b) => (b.savingCents ?? 0) - (a.savingCents ?? 0))[0];
+  const bestPolicy = best ? active.find((p) => p.id === best.policyId) : undefined;
+  const card = best && bestPolicy ? shopCard(best, bestPolicy) : null;
   return {
+    ...(card ? { options: card } : {}),
     content: JSON.stringify({
       partnerAvailable: canQuote,
+      ...(card
+        ? { shownAsACard: `${card.title}: the quotes to switch to are on a card under your answer` }
+        : {}),
       policies: withQuotes
         .filter((w) => w.quotes.length > 0 || shops.some((s) => s.policyId === w.policy.id))
         .map(({ policy, quotes }) => ({

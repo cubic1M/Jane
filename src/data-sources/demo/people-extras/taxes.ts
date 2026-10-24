@@ -175,8 +175,21 @@ export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
     ],
   },
   // Ruth owns her home outright and gives to her church. Step 269: this year she had dental implants and bought hearing aids, a big year of care.
+  // Detector coverage (inherited_ira): an IRA from her sister, who died ten years ago, so it has
+  // to be empty by this December 31 (she told Jane the year: people-extras/told.ts).
   retiree: {
     monthly: [propertyTax(2400)],
+    accounts: [
+      {
+        key: "taxes-inherited-ira",
+        name: "Inherited IRA",
+        mask: "6099",
+        type: "investment",
+        subtype: "ira",
+        balance: 0,
+      },
+    ],
+    positions: [{ account: "taxes-inherited-ira", key: "NSTDX", quantity: 1200, basis: 30000 }],
     once: [
       {
         key: "taxes-gift",

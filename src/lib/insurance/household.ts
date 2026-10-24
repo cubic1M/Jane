@@ -1,4 +1,6 @@
 import {
+  BUSINESS_LOOKBACK_DAYS,
+  BUSINESS_SALES_DEPOSIT,
   GAP_KEYS,
   HOUSING,
   MAX_HOUSEHOLD_COUNT,
@@ -17,6 +19,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { runsBusiness, type SelfEmployment } from "./business-rules";
 
 // The household facts that matter for cover (spec step 102): whether the person owns or
 // rents, and how many cars, dependants and pets. What they typed wins; until they do,
@@ -55,6 +58,8 @@ export type Signals = {
   travelCents: number;
   // Medical spending in the last MEDICAL_LOOKBACK_DAYS; null when there are no transactions.
   medicalCents: number | null;
+  // Spec step 201: what the tax lane's signals say about freelance and gig work.
+  selfEmployment?: SelfEmployment;
 };
 
 // What the accounts say, for the facts not typed.
@@ -104,6 +109,7 @@ export function resolveHousehold(
       assetsCents: signs.assetsCents ?? null,
       travelCents: signs.travelCents ?? 0,
       medicalCents: signs.medicalCents ?? null,
+      ...(signs.selfEmployment ? { selfEmployment: signs.selfEmployment } : {}),
     },
   };
 }
@@ -115,52 +121,83 @@ export async function loadHousehold(
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - RENT_LOOKBACK_DAYS * 86_400_000);
   const days = (n: number) => new Date(now.getTime() - n * 86_400_000);
-  const [saved, loans, owned, rent, paychecks, balances, travel, medical, anyTransactions] =
-    await Promise.all([
-      db.insuranceProfiles.findFirst({
-        select: {
-          housing: true,
-          vehicles: true,
-          dependants: true,
-          pets: true,
-          dismissedGaps: true,
-        },
-      }),
-      db.accounts.findMany({ where: { type: "loan" }, select: { id: true, subtype: true } }),
-      db.ownedAssets.findMany({ select: { kind: true, loanAccountId: true, valueCents: true } }),
-      db.transactions.count({
-        where: { pfcDetailed: RENT_CATEGORY, date: { gte: since }, amountCents: { gt: 0 } },
-      }),
-      // Spec step 149.
-      db.transactions.count({
-        where: {
-          pfcDetailed: INCOME_CATEGORY,
-          date: { gte: days(INCOME_LOOKBACK_DAYS) },
-          amountCents: { lt: 0 },
-        },
-      }),
-      db.accounts.findMany({
-        where: { type: { in: ["depository", "investment"] } },
-        select: { currentBalanceCents: true },
-      }),
-      db.transactions.aggregate({
-        where: {
-          pfcPrimary: "TRAVEL",
-          date: { gte: days(TRAVEL_LOOKBACK_DAYS) },
-          amountCents: { gt: 0 },
-        },
-        _sum: { amountCents: true },
-      }),
-      db.transactions.aggregate({
-        where: {
-          pfcPrimary: "MEDICAL",
-          date: { gte: days(MEDICAL_LOOKBACK_DAYS) },
-          amountCents: { gt: 0 },
-        },
-        _sum: { amountCents: true },
-      }),
-      db.transactions.count({ where: { date: { gte: days(MEDICAL_LOOKBACK_DAYS) } } }),
-    ]);
+  const [
+    saved,
+    loans,
+    owned,
+    rent,
+    paychecks,
+    balances,
+    travel,
+    medical,
+    anyTransactions,
+    sideWork,
+    taxProfile,
+  ] = await Promise.all([
+    db.insuranceProfiles.findFirst({
+      select: {
+        housing: true,
+        vehicles: true,
+        dependants: true,
+        pets: true,
+        dismissedGaps: true,
+      },
+    }),
+    db.accounts.findMany({ where: { type: "loan" }, select: { id: true, subtype: true } }),
+    db.ownedAssets.findMany({ select: { kind: true, loanAccountId: true, valueCents: true } }),
+    db.transactions.count({
+      where: { pfcDetailed: RENT_CATEGORY, date: { gte: since }, amountCents: { gt: 0 } },
+    }),
+    // Spec step 149.
+    db.transactions.count({
+      where: {
+        pfcDetailed: INCOME_CATEGORY,
+        date: { gte: days(INCOME_LOOKBACK_DAYS) },
+        amountCents: { lt: 0 },
+      },
+    }),
+    db.accounts.findMany({
+      where: { type: { in: ["depository", "investment"] } },
+      select: { currentBalanceCents: true },
+    }),
+    db.transactions.aggregate({
+      where: {
+        pfcPrimary: "TRAVEL",
+        date: { gte: days(TRAVEL_LOOKBACK_DAYS) },
+        amountCents: { gt: 0 },
+      },
+      _sum: { amountCents: true },
+    }),
+    db.transactions.aggregate({
+      where: {
+        pfcPrimary: "MEDICAL",
+        date: { gte: days(MEDICAL_LOOKBACK_DAYS) },
+        amountCents: { gt: 0 },
+      },
+      _sum: { amountCents: true },
+    }),
+    db.transactions.count({ where: { date: { gte: days(MEDICAL_LOOKBACK_DAYS) } } }),
+    // Spec step 201.
+    db.transactions.findMany({
+      where: {
+        date: { gte: days(BUSINESS_LOOKBACK_DAYS) },
+        OR: [
+          {
+            pfcDetailed: { in: ["INCOME_CONTRACTOR", "INCOME_GIG_ECONOMY"] },
+            amountCents: { lt: 0 },
+          },
+          { pfcDetailed: "GENERAL_MERCHANDISE_ELECTRONICS", amountCents: { gt: 0 } },
+          // A shop's card sales, and gas for driving to suppliers and customers.
+          { pfcDetailed: "INCOME_OTHER", amountCents: { lt: 0 } },
+          { pfcDetailed: "TRANSPORTATION_GAS", amountCents: { gt: 0 } },
+        ],
+      },
+      select: { pfcDetailed: true, amountCents: true, description: true },
+    }),
+    db.taxProfiles.findFirst({
+      select: { incomeKinds: true, businessMiles: true, businessMilesYear: true },
+    }),
+  ]);
   // A car loan and the car it's linked to are one car.
   const carLoans = loans.filter((l) => l.subtype === "auto").map((l) => l.id);
   const ownedCars = owned.filter((o) => o.kind === "vehicle");
@@ -183,9 +220,44 @@ export async function loadHousehold(
         : null,
     travelCents: travel._sum.amountCents ?? 0,
     medicalCents: anyTransactions > 0 ? (medical._sum.amountCents ?? 0) : null,
+    // Only for someone with a business or side work.
+    ...businessSignal({
+      declared: taxProfile?.incomeKinds.includes("self_employed") ?? false,
+      serviceCents: sumOf(sideWork, "INCOME_CONTRACTOR"),
+      gigCents: sumOf(sideWork, "INCOME_GIG_ECONOMY"),
+      salesCents: sumOf(
+        sideWork.filter((r) => BUSINESS_SALES_DEPOSIT.test(r.description)),
+        "INCOME_OTHER",
+      ),
+      payments: sideWork.filter(
+        (r) =>
+          r.amountCents < 0 &&
+          (r.pfcDetailed === "INCOME_CONTRACTOR" ||
+            r.pfcDetailed === "INCOME_GIG_ECONOMY" ||
+            (r.pfcDetailed === "INCOME_OTHER" && BUSINESS_SALES_DEPOSIT.test(r.description))),
+      ).length,
+      gasMonthlyCents: Math.round(
+        sumOf(sideWork, "TRANSPORTATION_GAS") / (BUSINESS_LOOKBACK_DAYS / (365 / 12)),
+      ),
+      miles:
+        taxProfile?.businessMilesYear === now.getUTCFullYear()
+          ? (taxProfile.businessMiles ?? 0)
+          : 0,
+      equipmentCents: sumOf(sideWork, "GENERAL_MERCHANDISE_ELECTRONICS"),
+    }),
   });
   return { ...household, risks: yes.map((r) => r.kind as RiskKind) };
 }
+
+// Spec step 201: the business signals, kept only when there is a business or side work to cover.
+const businessSignal = (s: SelfEmployment): { selfEmployment?: SelfEmployment } =>
+  runsBusiness(s) || s.gigCents > 0 || s.miles > 0 || s.equipmentCents > 0
+    ? { selfEmployment: s }
+    : {};
+
+// The size of the rows in one category, as a positive amount whichever way the money went.
+const sumOf = (rows: { pfcDetailed: string | null; amountCents: number }[], category: string) =>
+  rows.filter((r) => r.pfcDetailed === category).reduce((n, r) => n + Math.abs(r.amountCents), 0);
 
 export type HouseholdInput = {
   housing: string;

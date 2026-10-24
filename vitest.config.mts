@@ -12,8 +12,8 @@ export default defineConfig({
     setupFiles: ["src/test-setup/no-anthropic.ts"],
     // The integration tests run against a real database on shared CI runners; with dozens of
     // pull requests running at once, tests that finish in 3-4 seconds locally have passed 20
-    // seconds (flows, loan applications). A test that hangs still fails, just later.
-    testTimeout: 60_000,
+    // seconds (flows, loan applications, tax profile); 60s was still hit under load. A test that hangs still fails, just later.
+    testTimeout: 120_000,
     // Setup hooks that link and sync a demo bank (about 100 integration files) hit the default
     // 10s on a busy runner and fail at random, holding up unrelated pull requests.
     hookTimeout: 60_000,

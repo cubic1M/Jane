@@ -2,10 +2,11 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { adviceMode } from "@/lib/advice-mode";
 import { listDraftReturns } from "@/lib/draft-return";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { DraftForm } from "./forms";
+import { DraftForm, SampleDraftButton } from "./forms";
 
 // Your draft return (spec step 272): a draft uploaded to Documents, read for you to confirm, then
 // checked line by line against what Jane knows for the year. Each thing to fix has its dollars.
@@ -17,7 +18,8 @@ const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:bor
 async function Content() {
   const user = await requireUser();
   await connection();
-  const drafts = (await listDraftReturns(user.id)).filter((d) => d.status !== "dismissed");
+  const [all, sample] = await Promise.all([listDraftReturns(user.id), adviceMode(user.id)]);
+  const drafts = all.filter((d) => d.status !== "dismissed");
   return (
     <>
       <AppHeader user={user} />
@@ -36,6 +38,18 @@ async function Content() {
         </p>
       </div>
       {drafts.length === 0 && <p className="text-sm">No draft yet.</p>}
+      {sample && !drafts.some((d) => d.status === "waiting") && (
+        <section aria-labelledby="sample" className={CARD}>
+          <h2 id="sample" className="text-xl font-semibold">
+            Try it on a sample
+          </h2>
+          <p className="text-sm">
+            No draft to hand? Jane makes a sample one from your sample figures, with a few mistakes
+            in it, so you can see the check.
+          </p>
+          <SampleDraftButton />
+        </section>
+      )}
       {drafts.map((d) =>
         d.status === "waiting" ? (
           <section key={d.id} aria-labelledby={`draft-${d.id}`} className={CARD}>

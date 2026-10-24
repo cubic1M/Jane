@@ -263,11 +263,20 @@ export async function updatePolicy(
   { client = defaultClient }: Options = {},
 ): Promise<void> {
   const checked = checkPolicy(input);
-  // A policy found from payments is confirmed by saving its details.
-  const { count } = await scopedFor(userId, client).insurancePolicies.updateMany({
-    where: { id, status: { in: ["active", "found", "pending"] } },
-    data: { ...checked },
+  const db = scopedFor(userId, client);
+  // A policy found from payments is confirmed by saving its details: it becomes active, so the
+  // checkup, reshops and renewal calls count it (gap audit: the status stayed "found").
+  const confirmed = await db.insurancePolicies.updateMany({
+    where: { id, status: "found" },
+    data: { ...checked, status: "active" },
   });
+  const { count } =
+    confirmed.count > 0
+      ? confirmed
+      : await db.insurancePolicies.updateMany({
+          where: { id, status: { in: ["active", "pending"] } },
+          data: { ...checked },
+        });
   if (count === 0) throw new PolicyError("That isn't one of your policies.");
   await auditPolicy(userId, "insurance_policy_saved", id, checked.kind);
   await track(userId, "insurance_policy_updated", { kind: checked.kind });

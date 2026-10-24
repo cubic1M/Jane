@@ -4,6 +4,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { kindWords } from "@/lib/insurance/gaps";
 import { quotesFor, requestQuotes, type QuotesResult } from "@/lib/insurance/quotes";
 import { shopNow } from "@/lib/insurance/shop";
+import { shopCard } from "@/lib/insurance/shop-card";
+import { OPTION_ACTIONS } from "../actions/options";
 import { shopBody } from "../sources/insurance";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
@@ -150,15 +152,17 @@ export async function quotesAnswer(
     const shop = await shopNow(userId, policy.id, { client, now });
     if (shop?.status === "open") {
       const body = shopBody(shop, policies, null, true);
-      if (body) {
+      // The quotes as the pick-one card over the chat (Jane's pick first, the other cheaper
+      // ones after): a tap on any of them switches (option.pick, through acceptShop).
+      const card = shopCard(shop, policy);
+      if (body && card) {
         return {
           body,
           actions: [
-            { id: "insurance.shop_yes", label: "Yes, switch", kind: "primary" },
+            ...OPTION_ACTIONS,
             link("Show options", `/insurance/quotes?policy=${policy.id}`),
-            { id: "insurance.shop_no", label: "Not now", kind: "secondary" },
           ],
-          refs: { insuranceShopId: shop.id, policyId: policy.id, advice: true },
+          refs: { insuranceShopId: shop.id, policyId: policy.id, advice: true, options: card },
         };
       }
     }

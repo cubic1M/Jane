@@ -293,7 +293,7 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
       new Date("2026-10-19T16:00:00Z"),
     );
     expect(out.agenda.body.split("\n")).toContain(cardsLine(keys.length));
-    expect(out.agenda.body).toContain("One more thing needs your yes:");
+    expect(out.agenda.body).toContain("Besides the cards, one more thing needs your yes:");
     expect(out.agenda.refs.items).toEqual([
       { dedupeKey: "finding:t", label: expect.stringMatching(/^Yes: /), action: "finding.yes" },
     ]);

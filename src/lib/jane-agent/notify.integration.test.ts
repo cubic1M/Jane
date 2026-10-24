@@ -1,3 +1,4 @@
+import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
@@ -437,6 +438,28 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
         (await deliverChatNotifications(userId, { client, now: at(3 * HOUR), push, send })).emailed,
       ).toBe(0);
       expect(send).toHaveBeenCalledTimes(1);
+
+      // Real-user QA: what can't wait still gets through, in an email of its own.
+      await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "heads_up",
+          body: "Your balance could go below zero before payday.",
+          dedupeKey: "heads_ups:alert:urgent-1",
+          priority: MESSAGE_PRIORITY.urgent_alert,
+          createdAt: at(3 * HOUR),
+        },
+      });
+      const urgent = await deliverChatNotifications(userId, {
+        client,
+        now: at(5 * HOUR),
+        push,
+        send,
+      });
+      expect(urgent.emailed).toBe(1);
+      expect(send).toHaveBeenCalledTimes(2);
+      expect(JSON.stringify(send.mock.calls[1][0])).toContain("below zero before payday");
+      expect(JSON.stringify(send.mock.calls[1][0])).not.toContain('"New"');
     });
 
     it("emails when no phone takes the push", async () => {

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { expectedFor, loadTaught, missingRefundAlerts } from "@/lib/unusual";
 import {
   COUNT_ONLY_WHEN_APPROVED,
@@ -15,6 +16,7 @@ import { applyStandingRules } from "@/lib/standing-rules";
 import { db as defaultClient } from "@/lib/db";
 import { llmModel } from "@/lib/anthropic";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { cardProducts } from "@/lib/insurance/card-benefits";
 import { isDemoItemId } from "@/lib/plaid/demo";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
@@ -244,8 +246,17 @@ export async function loadDetectionInput(
   userId: string,
   { client = defaultClient, now = new Date() }: Pick<Options, "client" | "now"> = {},
 ): Promise<DetectionInput> {
-  return loadInput(scopedFor(userId, client), isoDate(now), client);
+  // The person's own day (src/lib/today.ts): what's due today is due on their calendar.
+  const asOf = await todayOf(userId, { client, now });
+  if (client !== defaultClient) return loadInput(scopedFor(userId, client), asOf, client);
+  // Each caller gets its own copy of the top level: some set subscriptionMerchantKeys on it.
+  return { ...(await inputOnce(userId, asOf)) };
 }
+
+// Loaded once per server render and day (React's cache): a page's parts each ask for it.
+const inputOnce = cache((userId: string, asOf: string) =>
+  loadInput(scopedFor(userId, defaultClient), asOf, defaultClient),
+);
 
 export type DetectionSummary = {
   counts: Record<FindingType, number>;
@@ -339,7 +350,7 @@ export async function runDetection(
   }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
-  const input = await loadInput(db, isoDate(now), client);
+  const input = await loadInput(db, await todayOf(userId, { client, now }), client);
   input.subscriptionMerchantKeys = await subscriptionMerchantKeys(db, input, check);
   const candidates = detect(input);
   // A card's interest finding is worth a year of its interest from the balance and rate, the same

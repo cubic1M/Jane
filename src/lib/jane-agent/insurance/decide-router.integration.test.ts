@@ -68,8 +68,10 @@ describe.runIf(url)("insurance decisions through the router", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.actions.some((a) => a.id === "insurance.shop_yes")).toBe(true);
+    // The switch is the pick-one card's: its quotes in refs.options, picked with option.pick.
+    expect(result.actions.some((a) => a.id === "option.pick")).toBe(true);
     expect(result.refs).toMatchObject({ insuranceShopId: expect.any(String) });
+    expect(result.refs.options?.topic).toMatch(/^switch:/);
     // Nothing to switch to for a kind they don't have: the reason comes back for Claude to say.
     const none = await proposeAction(
       userId,

@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { CHAT, landInChat } from "./chat-page";
 
 // Investments (spec steps 128–137) on the demo bank: what the person owns, with sources,
 // and Jane answering about it in the chat.
@@ -26,22 +28,27 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Step 128: what they own, adding up to net worth, every holding with its source.
   await page.goto("/investments");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Investments");
-  await expect(page.getByText("$96,730.55").first()).toBeVisible();
-  await expect(page.getByText("Northstar Target 2055 Fund")).toBeVisible();
+  // The page is a tree (docs/design/area-pages.md): each part is the detail of its item.
+  const total = await pickItem(page, "Investing", "What you own", "In total");
+  await expect(total.getByText("$96,730.55").first()).toBeVisible();
+  const account = await pickItem(page, "Investing", "What you own", /401\(k\)/);
+  await expect(account.getByText("Northstar Target 2055 Fund")).toBeVisible();
   await expect(
-    page.getByText(/Source: Demo Bank \(fake data\), Demo 401\(k\), price as of/).first(),
+    account.getByText(/Source: Demo Bank \(fake data\), Demo 401\(k\), price as of/).first(),
   ).toBeVisible();
   // Step 295: each risk level replayed over sample history, as demo advice, never a forecast.
+  await pickItem(page, "Investing", "Strategies", "Each level, replayed");
   const backtests = page.getByRole("region", { name: "How each risk level would have done" });
   await expect(backtests.getByText(/Replay of sample history since Jan 2, 2018/)).toBeVisible();
   await expect(backtests.getByText(/not a forecast/)).toBeVisible();
   await expect(backtests.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // The autopilot's own rules replayed against plain rebalancing and buy and hold, per level.
+  await pickItem(page, "Investing", "Strategies", "Did the extra rules help?");
   const rules = page.getByRole("region", { name: "Did the extra rules help?" });
   await expect(rules.getByText(/Replay of sample history since Jan 2, 2018/)).toBeVisible({
     timeout: 60_000,
@@ -50,6 +57,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(rules.getByText("Plain rebalancing").first()).toBeVisible();
   await expect(rules.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // The strategy each level follows (the research choice until the daily replay has run).
+  await pickItem(page, "Investing", "Strategies", "The strategy each level follows");
   const strategies = page.getByRole("region", { name: "The strategy each level follows" });
   await expect(strategies.getByText(/Alpaca's real prices from Jan 4, 2016/)).toBeVisible();
   await expect(strategies.getByText(/not a forecast/)).toBeVisible();
@@ -67,7 +75,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
     [],
   );
 
-  await page.goto("/chat");
+  await page.goto(CHAT);
   await page.getByRole("textbox", { name: "Message Jane" }).fill("what's in my 401k");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/Your Demo 401\(k\) has \$84,250\.40 in 5 holdings/)).toBeVisible();
@@ -149,6 +157,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
 
   // Step 136: plain explainers, one tap from the investments page, marked for review.
   await page.goto("/investments");
+  await page.getByText("Learn the basics", { exact: true }).click();
   await page.getByRole("link", { name: "index funds" }).click();
   await expect(page).toHaveURL("/learn/index-funds");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Index funds");
@@ -158,8 +167,9 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
 
   // Step 137: what Jane does by herself, and how it's going.
   await page.goto("/investments");
-  await expect(page.getByRole("heading", { name: "What Jane does by herself" })).toBeVisible();
-  await page.goto("/chat");
+  await page.getByText("What Jane does by herself", { exact: true }).first().click();
+  await expect(page.getByRole("region", { name: "What Jane does by herself" })).toBeVisible();
+  await page.goto(CHAT);
   await page.getByRole("textbox", { name: "Message Jane" }).fill("how are my investments doing");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/^Your investments start \w+ at \$/)).toBeVisible();
@@ -179,12 +189,14 @@ test("prices, goals, college, HSA, company stock, crypto and cash, each with its
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
 
   // Step 156: how they've done, past results only, prices from the demo feed.
   await page.goto("/investments");
+  const done = await pickItem(page, "Investing", "How it's done", "Returns");
   await expect(page.getByRole("heading", { name: "How they've done" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Last 12 months" })).toBeVisible();
+  await done.getByText("More", { exact: true }).click();
   await expect(page.getByText(/Prices come from the demo price feed \(made up\)/)).toBeVisible();
 
   // Step 157: each goal invested for its timeline, with the glide path shown.

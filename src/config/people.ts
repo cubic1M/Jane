@@ -147,6 +147,7 @@ export const SUGGESTION_TOPICS = [
   "practice_glide_path",
   "practice_risk_mismatch",
   "practice_max_drop_near",
+  "practice_theme_idea",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -218,7 +219,11 @@ export const PEOPLE: readonly Person[] = [
       "rent_reporting",
       "liability_levels",
       "consolidation",
-      "practice_portfolio",
+      // Detector coverage: the lease renewed at $1,450, up from $1,320.
+      "rent_increase",
+      // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
+      "practice_payday_timing",
+      "practice_risk_mismatch",
     ],
     mustNot: [
       "beneficiaries",
@@ -304,13 +309,18 @@ export const PEOPLE: readonly Person[] = [
       // Spec step 238: their joint savings is linked twice.
       "data_problems",
       "disaster_relief",
-      "practice_portfolio",
       "fsa_deadline",
       "deductible_met",
       "medical_bill_dispute",
       // Loans QA: their cash stays a 3-month cushion, so the 21.49% card is better as one
       // cheaper loan than paid from savings.
       "consolidation",
+      // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
+      "practice_dip_buy",
+      "practice_tax_loss_harvest",
+      "practice_new_money",
+      "practice_cash_drag",
+      "practice_drift_warning",
     ],
     mustNot: [
       "values_funds",
@@ -364,10 +374,14 @@ export const PEOPLE: readonly Person[] = [
 
       "disability_insurance",
       "ptc_repayment",
-      "practice_portfolio",
       "borrowing_power",
       // Spec step 244: WeWork and Adobe sit in a catch-all category.
       "month_close",
+      // Spec step 201: client work needs general and professional liability.
+      "business_insurance",
+      // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
+      "practice_news_idea",
+      "practice_theme_idea",
     ],
     mustNot: [
       "beneficiaries",
@@ -437,6 +451,7 @@ export const PEOPLE: readonly Person[] = [
       "hsa_over_limit",
       // Spec step 266: about $1M she could be sued for, past what home cover's liability reaches.
       "umbrella",
+      "practice_theme_idea",
     ],
     mustNot: [
       "beneficiaries",
@@ -499,6 +514,11 @@ export const PEOPLE: readonly Person[] = [
       "bill_split",
       // Spec step 241: the trip to Japan and the kitchen can't both be on time.
       "goal_tradeoffs",
+      // Detector coverage: they co-signed Emily's car loan.
+      "cosign_risk",
+      // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
+      "practice_glide_path",
+      "practice_theme_idea",
     ],
     mustNot: [
       "values_funds",
@@ -548,6 +568,12 @@ export const PEOPLE: readonly Person[] = [
       "medical_deduction",
       "social_security_tax",
       "short_term_cash",
+      // Detector coverage: her sister's IRA must be empty this December 31.
+      "inherited_ira",
+      // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
+      "practice_dip_buy",
+      "practice_tax_loss_harvest",
+      "practice_cash_drag",
     ],
     mustNot: [
       "beneficiaries",
@@ -579,7 +605,6 @@ export const PEOPLE: readonly Person[] = [
       "s_corp_election",
       "home_office_deduction",
       "vehicle_deduction",
-      "inherited_ira",
       "inherited_ira_spread",
       "household_setup",
       "life_checklist",
@@ -617,6 +642,9 @@ export const PEOPLE: readonly Person[] = [
       "credit_building",
       "credit_report_errors",
       "rent_reporting",
+      // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
+      "practice_max_drop_near",
+      "practice_theme_idea",
     ],
     mustNot: [
       "beneficiaries",
@@ -691,10 +719,12 @@ export const PEOPLE: readonly Person[] = [
       "disability_insurance",
       // Spec step 239: her shop's sales are counted as her income.
       "figure_check",
-      "practice_portfolio",
       // Loans QA: her cash is kept as a 6-month cushion for uneven business income, so her
       // 23.49% card is better as one cheaper loan than paid from savings.
       "consolidation",
+      // Phase AW: the ideas their practice portfolio has waiting (people-extras/practice.ts).
+      "practice_news_idea",
+      "practice_cheaper_fund",
     ],
     mustNot: [
       "beneficiaries",

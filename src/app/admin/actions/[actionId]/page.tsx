@@ -4,7 +4,7 @@ import { PLAYBOOKS } from "@/config/playbooks";
 import { DRAFTABLE } from "@/lib/drafts";
 import { describeOutcome } from "@/lib/merchant-outcomes";
 import { companyFacts } from "@/lib/merchants";
-import { ACTION_STATUS_LABELS } from "@/lib/action-status";
+import { TEAM_STATUS_LABELS } from "@/lib/action-status";
 import type { DecisionCard } from "@/lib/cards";
 import { getActionForAdmin, teamMembers } from "@/lib/concierge";
 import { formatCents } from "@/lib/money";
@@ -64,7 +64,7 @@ async function ActionDetail({
           {action.decision.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">{card.title}</h1>
-        <p className="font-medium">Status: {ACTION_STATUS_LABELS[action.status].label}</p>
+        <p className="font-medium">Status: {TEAM_STATUS_LABELS[action.status]}</p>
       </div>
 
       <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">

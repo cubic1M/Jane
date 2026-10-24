@@ -20,6 +20,8 @@ import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 type Options = { client?: PrismaClient; now?: Date };
 
 const PREF_PREFIX = "profile:";
+// The key prefix of a profile answer, for code that seeds one (the demo bank's sample people).
+export const PROFILE_FACT_PREFIX = PREF_PREFIX;
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
