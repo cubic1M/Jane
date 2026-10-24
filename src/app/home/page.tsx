@@ -7,6 +7,12 @@ import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
+import { HomeTree } from "@/components/hub/home-tree";
+import { adviceMode } from "@/lib/advice-mode";
+import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
+import { scopedFor } from "@/lib/db-scoped";
+import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
+import { homeTree } from "@/lib/hub/tree";
 import { CASH_FLOW_DAYS } from "@/config/areas";
 import { addDays } from "@/detection/units";
 import { autopilotOf } from "@/lib/autopilot";
@@ -15,7 +21,10 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
-import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
+import { netWorthEvents } from "@/lib/hub/net-worth-events";
+import { netWorthHistory } from "@/lib/hub/net-worth-history";
+import { NetWorthChart } from "@/components/hub/net-worth-chart";
+import { cashFlowView, heroView, tilesView, type AreaTile } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
 import { stackedSuggestions } from "@/lib/jane-agent/messages";
 import { timezoneOf } from "@/lib/jane-agent/open";
@@ -66,7 +75,30 @@ async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
     budgetsOver: home.budgetsOver.length,
     safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
   });
-  return <AreaTiles tiles={tilesView(areas)} />;
+  const tiles = tilesView(areas);
+  return (
+    <>
+      <AreaTiles tiles={tiles} />
+      <Suspense fallback={null}>
+        <AreasTree userId={userId} tiles={tiles} />
+      </Suspense>
+    </>
+  );
+}
+
+// The home tree: the areas' branches, from the same loaders their pages use.
+async function AreasTree({ userId, tiles }: { userId: string; tiles: AreaTile[] }) {
+  const [insurance, reached, advice] = await Promise.all([
+    loadInsuranceArea(userId),
+    scopedFor(userId).suggestions.findMany({ select: { key: true } }),
+    adviceMode(userId),
+  ]);
+  const maps = buildFeatureMap({
+    examples: sampleExamples(),
+    reached: new Set(reached.map((r) => r.key)),
+    advice,
+  });
+  return <HomeTree data={homeTree({ tiles, areaTrees: { insurance: insurance.area }, maps })} />;
 }
 
 async function HubContent() {
@@ -75,15 +107,21 @@ async function HubContent() {
   const top = await loadHubTop(user.id);
   if (!top) redirect("/connect");
   const { home } = top;
-  const [checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+  const [checklist, autopilot, books, stackedRows, zone, line] = await Promise.all([
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
     // The day's suggestions still waiting, as the chat shows them.
     stackedSuggestions(user.id),
     timezoneOf(user.id),
+    // Net worth every day since the first day with Jane, ending at the hub's own figure.
+    netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0),
   ]);
   const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
+  // What moved it: the chart's events, from its first day.
+  const events = line[0]
+    ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
+    : [];
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
@@ -94,7 +132,11 @@ async function HubContent() {
       <BooksNotice books={books} />
       <h1 className="sr-only">Home</h1>
 
-      <HeroRow hero={heroView(top.hero)} planItems={home.plan.items} />
+      <HeroRow
+        hero={heroView(top.hero)}
+        planItems={home.plan.items}
+        chart={<NetWorthChart points={line} events={events} />}
+      />
 
       <CashFlowStrip
         view={cashFlowView(top.cashFlow)}
