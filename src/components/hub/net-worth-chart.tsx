@@ -13,7 +13,7 @@ import { formatCents } from "@/lib/money";
 
 // The home hub's net worth chart (founder request; docs/design/home-hub.md): the person's net
 // worth from their first day with Jane to today, as one clean line. A big number with the
-// range's change under it; the line green when the range is up and red when it's down, with a
+// range's change under it (▲ or ▼ and a sign); the line in the page's text colour, with a
 // dotted baseline at where the range started. Hover (computer), drag (phone) or the arrow
 // keys scrub: the number and the date follow the point under the hairline, and letting go
 // returns to today. Range chips under it: 1W 1M 3M 1Y ALL, only those the history is longer
@@ -69,8 +69,6 @@ export function NetWorthChart({ points }: { points: SeriesPoint[] }) {
   const at = scrub === null ? shown.length - 1 : Math.min(scrub, shown.length - 1);
   const point = shown[at] ?? today;
   const move = changeOver(shown, at);
-  const whole = changeOver(shown);
-  const up = whole.cents >= 0;
 
   if (!today) return null;
   const single = points.length < 2;
@@ -101,11 +99,10 @@ export function NetWorthChart({ points }: { points: SeriesPoint[] }) {
     return Math.round(share * (shown.length - 1));
   };
 
-  const stroke = up
-    ? "stroke-emerald-600 dark:stroke-emerald-400"
-    : "stroke-red-600 dark:stroke-red-400";
-  const ink = up ? "text-emerald-700" : "text-red-700";
-  const moveInk = move.cents >= 0 ? "text-emerald-700" : "text-red-700";
+  // Monochrome (docs/design/area-pages.md): the line is the page's text colour; up and down
+  // are ▲ and ▼ and a sign, never a colour.
+  const stroke = "stroke-current";
+  const arrow = (cents: number) => (cents >= 0 ? "▲" : "▼");
 
   return (
     <section
@@ -116,7 +113,7 @@ export function NetWorthChart({ points }: { points: SeriesPoint[] }) {
       <Link
         id="net-worth-heading"
         href="/net-worth"
-        className="self-start text-sm font-medium text-zinc-600 hover:text-emerald-700 dark:text-zinc-400"
+        className="self-start text-sm font-medium text-zinc-600 hover:text-zinc-950 hover:underline dark:text-zinc-400 dark:hover:text-zinc-50"
       >
         Net worth
       </Link>
@@ -132,7 +129,8 @@ export function NetWorthChart({ points }: { points: SeriesPoint[] }) {
         </p>
       ) : (
         <p data-net-worth-change="" className="text-sm tabular-nums">
-          <span className={`font-semibold ${moveInk}`}>
+          <span className="font-semibold">
+            <span aria-hidden="true">{arrow(move.cents)} </span>
             {signed(move.cents)}
             {move.share !== null && ` (${percent(move.share)})`}
           </span>{" "}
@@ -250,9 +248,7 @@ export function NetWorthChart({ points }: { points: SeriesPoint[] }) {
                   cx={x(shown.length - 1)}
                   cy={y(today.cents)}
                   r={3.5}
-                  className={
-                    up ? "fill-emerald-600 dark:fill-emerald-400" : "fill-red-600 dark:fill-red-400"
-                  }
+                  className="fill-current"
                 />
               )}
             </svg>
@@ -272,7 +268,7 @@ export function NetWorthChart({ points }: { points: SeriesPoint[] }) {
                   }}
                   className={`inline-flex min-h-11 min-w-11 items-center justify-center px-3 text-sm font-semibold ${
                     on
-                      ? `border-b-2 ${up ? "border-emerald-700" : "border-red-700"} ${ink}`
+                      ? "border-b-2 border-current"
                       : "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
                   }`}
                 >
