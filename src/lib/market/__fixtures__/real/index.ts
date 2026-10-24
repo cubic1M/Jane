@@ -35,3 +35,14 @@ export function realFixtureBars(): Record<string, Bar[]> {
   cached = bars;
   return bars;
 }
+
+// Bitcoin and ether (crypto.csv): every calendar day, from 2018. Kept apart: the markets above
+// trade on weekdays only.
+let crypto: Record<string, Bar[]> | null = null;
+export function realCryptoBars(): Record<string, Bar[]> {
+  if (crypto) return crypto;
+  const bars: Record<string, Bar[]> = {};
+  read("./crypto.csv", bars);
+  crypto = bars;
+  return bars;
+}
