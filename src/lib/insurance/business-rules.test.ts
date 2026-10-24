@@ -34,6 +34,15 @@ describe("who runs a business", () => {
     expect(runsBusiness({ ...none, gigCents: 10_000 })).toBe(false);
   });
 
+  // Real-user QA: a salaried person who sold something once on Shopify ($640) was asked about
+  // business insurance. A business is paid again and again.
+  it("isn't one payout from selling something", () => {
+    expect(runsBusiness({ ...none, salesCents: 64_000, payments: 1 })).toBe(false);
+    expect(runsBusiness({ ...none, salesCents: 64_000, payments: 3 })).toBe(true);
+    // Saying so on the tax profile is enough.
+    expect(runsBusiness({ ...none, declared: true, payments: 0 })).toBe(true);
+  });
+
   it("has no business gaps for a salaried person", () => {
     expect(businessGaps(none, [policy("auto"), policy("home")])).toEqual([]);
     expect(businessGaps(undefined, [])).toEqual([]);

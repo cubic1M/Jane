@@ -229,6 +229,13 @@ export async function loadHousehold(
         sideWork.filter((r) => BUSINESS_SALES_DEPOSIT.test(r.description)),
         "INCOME_OTHER",
       ),
+      payments: sideWork.filter(
+        (r) =>
+          r.amountCents < 0 &&
+          (r.pfcDetailed === "INCOME_CONTRACTOR" ||
+            r.pfcDetailed === "INCOME_GIG_ECONOMY" ||
+            (r.pfcDetailed === "INCOME_OTHER" && BUSINESS_SALES_DEPOSIT.test(r.description))),
+      ).length,
       gasMonthlyCents: Math.round(
         sumOf(sideWork, "TRANSPORTATION_GAS") / (BUSINESS_LOOKBACK_DAYS / (365 / 12)),
       ),

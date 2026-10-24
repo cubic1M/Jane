@@ -923,6 +923,9 @@ export const BUSINESS_LOOKBACK_DAYS = 365;
 // Freelance, gig or shop money this big in the period, or the tax profile saying self-employed,
 // means a business.
 export const BUSINESS_MIN_INCOME_CENTS = 50_000;
+// And at least this many payments of it: one Shopify payout from selling something isn't a
+// business (real-user QA).
+export const BUSINESS_MIN_PAYMENTS = 3;
 // Deposits from a card-payment service are a business's sales (Jo's Square deposits).
 export const BUSINESS_SALES_DEPOSIT = /\b(?:square|stripe|shopify|clover|toast|paypal)\b/i;
 export const BUSINESS_LIABILITY_TARGET_CENTS = 100_000_000;
