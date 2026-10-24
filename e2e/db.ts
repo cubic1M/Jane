@@ -220,6 +220,22 @@ export async function addSession(
   return { id, sessionToken };
 }
 
+// A linked bank whose sign-in has lapsed (Plaid's ITEM_LOGIN_REQUIRED), with one account.
+export async function addBankNeedingSignIn(userId: string, name: string): Promise<void> {
+  const id = crypto.randomUUID().replaceAll("-", "");
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO plaid_items (id, user_id, plaid_item_id, access_token_encrypted, institution_name, status, last_synced_at, updated_at)
+       VALUES ($1, $2, $3, 'not-a-token', $4, 'login_required', now() - interval '3 days', now())`,
+      [`pi${id}`, userId, `e2e-item-${id}`, name],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 export async function sessionExists(id: string): Promise<boolean> {
   const client = new Client({ connectionString: E2E_DATABASE_URL });
   await client.connect();
