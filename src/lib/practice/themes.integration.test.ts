@@ -104,10 +104,17 @@ describe.runIf(url)("news themes in the practice portfolio", () => {
     expect(alerts).toHaveLength(1);
     const [alert] = alerts;
     expect(alert.kind).toBe("decision");
-    expect(alert.body).toMatch(/^News theme: Try \$/);
-    expect(alert.body).toMatch(/% sure/);
-    expect(alert.body).toContain("Demo advice: sample data, not financial advice");
-    expect(alert.refs).toMatchObject({ chatOnly: true, advice: true });
+    // A suggestion's short card: the headline, why this person, how sure Jane is.
+    const [headline, why, sure] = alert.body.split("\n");
+    expect(headline).toMatch(/^News theme: Try \$/);
+    expect(why).toMatch(/^Why you: /);
+    expect(sure).toMatch(/^\d+% sure: /);
+    const refs = alert.refs as Record<string, unknown>;
+    expect(refs).toMatchObject({ chatOnly: true, advice: true });
+    // The whole reason and the idea's figures behind More details.
+    expect(refs.suggestionWhy).toContain("Demo advice: sample data, not financial advice");
+    expect(refs.suggestionWhy).toMatch(/Out after 20 trading days/);
+    expect((refs.cardDetails as { figures: unknown[] }).figures.length).toBeGreaterThan(0);
     // Never twice, and no second card the same day.
     expect(await postThemeAlerts(user.id, { client, now: at("2026-10-16") })).toBe(0);
 
