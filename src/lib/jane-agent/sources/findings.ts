@@ -85,7 +85,12 @@ export function findingCandidate(finding: SnapshotFinding): Candidate {
     bundle: {
       group: finding.type,
       name: shortName(finding.title),
-      line: `${sentence(finding.title).replace(/\.$/, "")}: ${finding.savings.charAt(0).toLowerCase()}${finding.savings.slice(1)}`,
+      // The title alone when there's no dollar figure to add ("Demo Checking could drop to
+      // -$470.80 around Nov 14", not "…: no dollar estimate for this one").
+      line:
+        finding.annualSavingsCents === null && finding.type !== "insurance_reshop"
+          ? sentence(finding.title).replace(/\.$/, "")
+          : `${sentence(finding.title).replace(/\.$/, "")}: ${finding.savings.charAt(0).toLowerCase()}${finding.savings.slice(1)}`,
       cents: finding.annualSavingsCents,
     },
   };

@@ -9,6 +9,10 @@ describe("savings text", () => {
     expect(savingsPhrase("price_increase", 3_000)).toBe("about $30.00 a year");
     // Idle cash earns its yearly amount.
     expect(savingsLine("idle_cash", 252_448)).toBe("Could earn about $2,524.48 a year");
+    // Card interest says what its yearly amount is worked out from.
+    expect(savingsLine("card_interest", 141_553)).toBe(
+      "Could save about $1,415.53 a year at today's balance",
+    );
   });
 
   it("explains a missing estimate", () => {
