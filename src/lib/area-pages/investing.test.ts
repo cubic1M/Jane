@@ -111,6 +111,27 @@ describe("the investing tree", () => {
     expect(tree.sub).toBe("5 to look at");
   });
 
+  it("puts a news theme's idea under the news alerts", () => {
+    const news = investingTree(
+      input({
+        practice: {
+          started: true,
+          ideas: [
+            {
+              key: "t1",
+              kind: "theme_idea",
+              headline: "Defense when a war breaks out: $400 in ITA",
+              percent: 67,
+              worthCents: 40_000,
+            },
+          ],
+          strategy: null,
+        },
+      }),
+    ).tree.branches.find((b) => b.id === "news")!;
+    expect(news.items.map((i) => i.label)[0]).toMatch(/^Defense when a war breaks out/);
+  });
+
   it("says when the news is quiet, and lifts urgent ideas to the chips", () => {
     const quiet = investingTree(
       input({ practice: { started: true, ideas: [], strategy: null } }),

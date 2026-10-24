@@ -27,8 +27,6 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   strategy_menu:
     "reports the practice portfolio's strategy menu and each strategy's replay when asked; which way to run it is the person's choice, so there is nothing to suggest unasked",
-  news_themes:
-    "reports the news themes and how each did on its past events, when asked; the theme ideas themselves are brought by the practice-idea detectors, which cover this tool once they land",
   notification_settings:
     "reports what the person chose Jane sends them and how, when asked; their own preferences, nothing to suggest",
   insurance_review:

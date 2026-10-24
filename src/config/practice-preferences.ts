@@ -70,6 +70,12 @@ export const TICKER_TAGS: Readonly<Record<string, readonly ExclusionKey[]>> = {
   MSFT: ["tech"],
   NVDA: ["tech"],
   TSLA: ["cars", "tech"],
+  // The news themes' funds (src/config/themes.ts): a fund of one industry is that industry.
+  XLE: ["fossil_fuels"],
+  ITA: ["weapons"],
+  SMH: ["tech"],
+  GLD: [],
+  TLT: [],
 };
 
 export const BROAD_FUND_NOTE =
@@ -229,6 +235,7 @@ export const LEVEL_WORST_DROP_PERCENT: Readonly<Record<RiskLevel, number>> = {
 export const OPPORTUNITY_MIN_APPETITE: Readonly<Partial<Record<ScanKind, Appetite>>> = {
   dip_buy: "cautious",
   news_idea: "normal",
+  theme_idea: "normal",
 };
 
 // The most any appetite can take each extra move to: the size of one action and the most of one
@@ -239,6 +246,7 @@ export const OPPORTUNITY_HARD_CAPS: Readonly<
 > = {
   dip_buy: { sizeShare: 0.08, positionShare: AUTOPILOT_LIMITS.perEtfShare, perMonth: 3 },
   news_idea: { sizeShare: 0.015, positionShare: AUTOPILOT_LIMITS.perStockShare, perMonth: 3 },
+  theme_idea: { sizeShare: 0.06, positionShare: AUTOPILOT_LIMITS.perThemeShare, perMonth: 2 },
 };
 // All opportunity stocks together, at most, whatever the appetite.
 export const OPPORTUNITY_HARD_MAX_SHARE = 0.075;

@@ -174,3 +174,26 @@ export const THEME_BENCHMARK = "VTI";
 export const THEME_NEWS_DAYS = 2;
 // One idea per theme in this many days.
 export const THEME_REPEAT_DAYS = 30;
+// What the daily scan asks the news feed about for the themes, besides the watched companies:
+// the theme funds and a few of the largest companies in each.
+export const THEME_NEWS_SYMBOLS: readonly string[] = [
+  "XLE",
+  "USO",
+  "XOM",
+  "CVX",
+  "ITA",
+  "LMT",
+  "RTX",
+  "GLD",
+  "TLT",
+  "SMH",
+  "TSM",
+  "AMD",
+];
+
+// The alert when a theme idea comes up (src/lib/practice/theme-alerts.ts): a card in the chat
+// for each new idea, at most one a day, placed like a decision that can wait (below the urgent
+// ones, CHAT_URGENT_FROM_PRIORITY), and then the person's notifications as they set them. A
+// trial or sample person gets the card only. FOR REVIEW.
+export const THEME_ALERT_PRIORITY = 60;
+export const THEME_ALERTS_PER_DAY = 1;

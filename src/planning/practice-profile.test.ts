@@ -232,9 +232,11 @@ describe("profileFor", () => {
 
   describe("exclusions", () => {
     it("resolve groups to the companies in them and keep named tickers", () => {
-      expect(avoidedTickers(["tech"]).sort()).toEqual(["AAPL", "MSFT", "NVDA", "TSLA"]);
+      expect(avoidedTickers(["tech"]).sort()).toEqual(["AAPL", "MSFT", "NVDA", "SMH", "TSLA"]);
       expect(avoidedTickers(["cars", "VTI"]).sort()).toEqual(["TSLA", "VTI"]);
-      expect(avoidedTickers(["fossil_fuels"])).toEqual([]);
+      // A news theme's one-industry fund is that industry.
+      expect(avoidedTickers(["fossil_fuels"])).toEqual(["XLE"]);
+      expect(avoidedTickers(["weapons"])).toEqual(["ITA"]);
     });
 
     it("a kind whose every fund is avoided gives its share to another kind", () => {

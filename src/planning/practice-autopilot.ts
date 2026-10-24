@@ -4,6 +4,7 @@ import {
   MODEL_PORTFOLIOS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
+  THEME_FUNDS,
   type AutopilotLimits,
   type PracticeClass,
 } from "@/config/portfolios";
@@ -26,8 +27,9 @@ export type PlannedTrade = {
   side: "buy" | "sell";
   amountCents: number;
   reason: string;
-  // strategy_switch: into the fund of a strategy the person chose.
-  rule: "model_buy" | "rebalance" | "cash_buffer" | "strategy_switch";
+  // strategy_switch: into the fund of a strategy the person chose. theme_exit: out of a news
+  // theme's slice (src/planning/themes.ts).
+  rule: "model_buy" | "rebalance" | "cash_buffer" | "strategy_switch" | "theme_exit";
 };
 
 export type Prices = Readonly<Record<string, number>>;
@@ -68,6 +70,7 @@ export function withinHard(limits: AutopilotLimits | undefined): AutopilotLimits
     perTradeShare: Math.min(HARD.perTradeShare, limits.perTradeShare),
     perEtfShare: Math.min(HARD.perEtfShare, limits.perEtfShare),
     perStockShare: Math.min(HARD.perStockShare, limits.perStockShare),
+    perThemeShare: Math.min(HARD.perThemeShare, limits.perThemeShare),
     tradesPerDay: Math.min(HARD.tradesPerDay, limits.tradesPerDay),
   };
 }
@@ -132,7 +135,10 @@ export function violates(
   if (trade.side === "buy") {
     const after = positionValue(state, prices, trade.ticker) + alreadyBought + trade.amountCents;
     const isStock = (PRACTICE_STOCKS as readonly string[]).includes(trade.ticker);
-    const cap = Math.round(total * (isStock ? L.perStockShare : L.perEtfShare));
+    const isTheme = THEME_FUNDS.includes(trade.ticker);
+    const cap = Math.round(
+      total * (isStock ? L.perStockShare : isTheme ? L.perThemeShare : L.perEtfShare),
+    );
     if (after > cap) return "more than the per-position cap";
   }
   return null;

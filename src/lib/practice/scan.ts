@@ -14,6 +14,8 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { THEME_NEWS_SYMBOLS } from "@/config/themes";
+import { postThemeAlertsSafely } from "./theme-alerts";
 import { marketData, type Bar, type Headline } from "@/lib/market";
 import { newsKey } from "@/lib/news/store";
 import { rulesSummary } from "@/lib/news/summarize";
@@ -128,7 +130,12 @@ export async function scanPractice(
     if (!history[ticker]) heldHistory[ticker] = await feed.prices(ticker, from, today);
   }
   const headlines = await withSummaries(
-    await feed.news(PRACTICE_STOCKS, daysBefore(today, NEWS_LOOKBACK_DAYS), today),
+    // The watched companies, and the news themes' funds and companies (src/config/themes.ts).
+    await feed.news(
+      [...PRACTICE_STOCKS, ...THEME_NEWS_SYMBOLS],
+      daysBefore(today, NEWS_LOOKBACK_DAYS),
+      today,
+    ),
     feed.name,
     client,
   );
@@ -323,6 +330,8 @@ export async function scanOnOpenQuietly(userId: string) {
   } catch (error) {
     console.error("Practice scan on open failed", { error: String(error) });
   }
+  // A news theme's idea found today goes out as an alert (src/lib/practice/theme-alerts.ts).
+  await postThemeAlertsSafely(userId);
 }
 
 // One portfolio's day: the monthly money in, the scan, then the autopilot.
@@ -353,6 +362,7 @@ export async function runPracticeDayForAll({
   for (const { userId } of rows) {
     try {
       const day = await runPracticeDay(userId, { client, now });
+      await postThemeAlertsSafely(userId, { client, now });
       if (day?.scan.scanned) flags += day.scan.flags.length;
       if (day?.scan.scanned) trades += day.scan.flags.reduce((s, f) => s + f.trades, 0);
       if (day?.autopilot.ran) trades += day.autopilot.fills.length;
