@@ -10,7 +10,7 @@ import { W4Buttons } from "./w4-buttons";
 // labelled; real accounts get the comparison and the IRS's estimator.
 
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-const LINK = "font-medium text-emerald-700 hover:underline";
+const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 
 const where = (c: W4Change) =>
   c.step === "4b"
@@ -59,7 +59,7 @@ export function WithholdingSection({ view }: { view: WithholdingView }) {
               : `Less is being withheld than your tax: ${balancePhrase(check.refundCents)} for ${estimate.year}.`}
           </p>
           {advice ? (
-            <div className="flex flex-col gap-2 rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
+            <div className="flex flex-col gap-2 border border-zinc-300 p-3 text-sm dark:border-zinc-700">
               <p className="font-medium">What to put on a new W-4</p>
               <ul className="list-disc pl-5">
                 {check.thisYear && (
