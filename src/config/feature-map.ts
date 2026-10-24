@@ -90,8 +90,8 @@ export const TOPIC_ACRONYMS: readonly string[] = [
 // The map's shape, in px at full size: node sizes and the gaps between columns and rows.
 export const MAP_NODE = {
   root: { w: 176, h: 64 },
-  group: { w: 216, h: 56 },
-  feature: { w: 288, h: 68 },
+  group: { w: 300, h: 56 },
+  feature: { w: 320, h: 68 },
 } as const;
 export const MAP_GAP = { column: 56, group: 12, feature: 10 } as const;
 // Below this width the map zooms to the open branch's features alone.

@@ -9,6 +9,15 @@ export const ACTION_STATUS_LABELS: Record<ActionStatus, { label: string; detail:
   failed: { label: "Couldn't complete", detail: "We weren't able to finish this one." },
 };
 
+// The same statuses as the team reads them on /admin: "you" there would be the team member.
+export const TEAM_STATUS_LABELS: Record<ActionStatus, string> = {
+  queued: "Queued",
+  in_progress: "In progress",
+  waiting_on_user: "Waiting on the person",
+  done: "Done",
+  failed: "Couldn't complete",
+};
+
 // The finding follows its action, so the report and money-found stay in step.
 export const FINDING_STATUS: Record<ActionStatus, FindingStatus> = {
   queued: "approved",

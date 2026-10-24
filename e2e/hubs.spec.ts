@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
 // The Jane, Money and Ahead hubs (spec step 80), filled by the demo bank: each shows its
@@ -62,17 +63,15 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
   await page.getByRole("link", { name: "Coming up" }).click();
   await expect(page).toHaveURL("/bills");
 
-  // Ahead: planning, with the yearly set-aside and the next deadline.
+  // Plans & goals: a tree (docs/design/area-pages.md), dates first, the yearly set-aside under
+  // bills and debt.
   await page.goto("/ahead");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Plan ahead");
-  for (const name of ["Coming up", "Get ready", "Look back"]) {
-    await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
-  }
-  await expect(page.getByRole("listitem").filter({ hasText: "Yearly bills" })).toContainText(
-    /\$[\d,]+\.\d{2} a month/,
-  );
-  await expect(page.getByRole("listitem").filter({ hasText: "Deadlines" })).toContainText(/Next: /);
-  await page.getByRole("link", { name: "Yearly bills" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Plans & goals");
+  const dates = await pickItem(page, "Plans & goals", "Coming up", "All your dates");
+  await expect(dates).toContainText(/\d+ in 30 days/);
+  const bills = await pickItem(page, "Plans & goals", "Bills and debt", "Yearly bills");
+  await expect(bills).toContainText(/\$[\d.,]+k?\/mo/);
+  await bills.getByRole("link", { name: "See yearly bills" }).click();
   await expect(page).toHaveURL("/budgets#yearly");
   await expect(page.getByRole("heading", { name: "Set aside for yearly bills" })).toBeVisible();
 });

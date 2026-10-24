@@ -1,3 +1,4 @@
+import { PEOPLE } from "@/config/people";
 import { describe, expect, it } from "vitest";
 import {
   parsePracticeIdeaId,
@@ -102,12 +103,18 @@ describe("practice ideas as suggestions", () => {
     }
   });
 
-  it("only reads practice ideas: none of the eight sample people has one", () => {
-    for (const person of ["renter", "family", "retiree"]) {
-      const data = inputFor(person);
-      expect(runDetectors({ profile: buildProfile(data), data }, PRACTICE_IDEA_DETECTORS)).toEqual(
-        [],
-      );
+  it("reaches a sample person with every kind, from their auto-started practice portfolio", () => {
+    const reached = new Set<string>();
+    for (const p of PEOPLE) {
+      const data = inputFor(p.id);
+      const fired = runDetectors({ profile: buildProfile(data), data }, PRACTICE_IDEA_DETECTORS);
+      for (const s of fired) {
+        reached.add(s.topic);
+        // Each is on that person's written list (src/config/people.ts).
+        expect(p.should as readonly string[], `${p.id} ${s.topic}`).toContain(s.topic);
+        expect(s.confidence.percent).toBeGreaterThan(0);
+      }
     }
+    expect([...reached].sort()).toEqual(Object.values(PRACTICE_TOPIC).sort());
   });
 });

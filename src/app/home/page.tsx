@@ -7,6 +7,12 @@ import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
+import { HomeTree } from "@/components/hub/home-tree";
+import { adviceMode } from "@/lib/advice-mode";
+import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
+import { scopedFor } from "@/lib/db-scoped";
+import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
+import { homeTree } from "@/lib/hub/tree";
 import { CASH_FLOW_DAYS } from "@/config/areas";
 import { addDays } from "@/detection/units";
 import { autopilotOf } from "@/lib/autopilot";
@@ -17,7 +23,7 @@ import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
-import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
+import { cashFlowView, heroView, tilesView, type AreaTile } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
 import { stackedSuggestions } from "@/lib/jane-agent/messages";
 import { timezoneOf } from "@/lib/jane-agent/open";
@@ -68,7 +74,30 @@ async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
     budgetsOver: home.budgetsOver.length,
     safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
   });
-  return <AreaTiles tiles={tilesView(areas)} />;
+  const tiles = tilesView(areas);
+  return (
+    <>
+      <AreaTiles tiles={tiles} />
+      <Suspense fallback={null}>
+        <AreasTree userId={userId} tiles={tiles} />
+      </Suspense>
+    </>
+  );
+}
+
+// The home tree: the areas' branches, from the same loaders their pages use.
+async function AreasTree({ userId, tiles }: { userId: string; tiles: AreaTile[] }) {
+  const [insurance, reached, advice] = await Promise.all([
+    loadInsuranceArea(userId),
+    scopedFor(userId).suggestions.findMany({ select: { key: true } }),
+    adviceMode(userId),
+  ]);
+  const maps = buildFeatureMap({
+    examples: sampleExamples(),
+    reached: new Set(reached.map((r) => r.key)),
+    advice,
+  });
+  return <HomeTree data={homeTree({ tiles, areaTrees: { insurance: insurance.area }, maps })} />;
 }
 
 async function HubContent() {

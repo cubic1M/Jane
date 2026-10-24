@@ -115,7 +115,10 @@ describe("the harness on the eight people", () => {
         expect(s.worthCents, s.id).toBeGreaterThan(0);
         expect(s.why, s.id).toMatch(/\$|\d/);
         expect(s.action.href, s.id).toMatch(/^\//);
-        expect(s.id).toBe(`${s.capability}:${s.topic}`);
+        // A practice idea is one suggestion per idea (src/config/practice-suggestions.ts).
+        if (s.topic.startsWith("practice_") && s.topic !== "practice_portfolio")
+          expect(s.id.startsWith(`${s.capability}:${s.topic}:`), s.id).toBe(true);
+        else expect(s.id).toBe(`${s.capability}:${s.topic}`);
       }
     }
   });

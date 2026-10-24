@@ -111,7 +111,7 @@ export async function confirmReadingForm(
     throw error;
   }
   refreshOthers();
-  redirect("/insurance?saved=read");
+  redirect("/insurance?saved=read&focus=documents");
 }
 
 export async function dismissReadingForm(formData: FormData): Promise<void> {
@@ -131,7 +131,7 @@ export async function applyChanges(formData: FormData): Promise<void> {
   const parsed = parseCoverEventRef(text(formData, "coverEvent"));
   if (parsed) await applyCoverEvent(user.id, parsed.event, parsed.eventKey);
   refreshOthers();
-  redirect("/insurance?saved=changes");
+  redirect("/insurance?saved=changes&focus=changes");
 }
 
 export async function dismissChanges(formData: FormData): Promise<void> {
@@ -155,7 +155,7 @@ export async function callRenewal(formData: FormData): Promise<void> {
     if (!(error instanceof NegotiationError)) throw error;
   }
   refreshOthers();
-  redirect("/insurance?saved=called#renewals");
+  redirect("/insurance?saved=called&focus=renewals");
 }
 
 export async function skipRenewal(formData: FormData): Promise<void> {
@@ -178,7 +178,7 @@ export async function applyOneSaving(formData: FormData): Promise<void> {
     if (!(error instanceof SavingError)) throw error;
   }
   refreshOthers();
-  redirect("/insurance?saved=saving#savings");
+  redirect("/insurance?saved=saving&focus=savings");
 }
 
 export async function skipSaving(formData: FormData): Promise<void> {
@@ -201,7 +201,7 @@ export async function answerRiskForm(formData: FormData): Promise<void> {
     if (!(error instanceof RiskError)) throw error;
   }
   refreshOthers();
-  redirect("/insurance?saved=risk");
+  redirect("/insurance?saved=risk&focus=questions");
 }
 
 // Spec step 198: the whole household's cover.
@@ -215,7 +215,9 @@ async function household(run: () => Promise<unknown>): Promise<never> {
   }
   refreshOthers();
   redirect(
-    error ? `/insurance?family=${encodeURIComponent(error)}#household` : "/insurance#household",
+    error
+      ? `/insurance?family=${encodeURIComponent(error)}&focus=household`
+      : "/insurance?focus=household",
   );
 }
 

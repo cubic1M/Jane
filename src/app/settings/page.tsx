@@ -29,14 +29,12 @@ import { connection } from "next/server";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { listSessions } from "@/lib/user-sessions";
 import { SessionsList } from "./sessions-list";
-import {
-  CHAT_NOTIFY_DAILY_LIMIT,
-  CHAT_NOTIFY_KIND_LABELS,
-  CHAT_NOTIFY_KINDS,
-} from "@/config/chat-notify";
-import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
+import { CHAT_NOTIFY_KIND_LABELS, CHAT_NOTIFY_KINDS } from "@/config/chat-notify";
 import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { ChatNotifyForm } from "./chat-notify-form";
+import { messagesFromJaneWords } from "./notify-words";
+import { LinkButton } from "@/app/connect/link-button";
+import { ITEM_STATUS } from "@/lib/plaid/sync";
 import { listPreferences, postingOf } from "@/lib/jane-agent/preferences";
 import { styleOf } from "@/lib/jane-agent/style";
 import { StyleForm } from "./style-form";
@@ -49,7 +47,6 @@ import { SectorsForm } from "./sectors-form";
 import { dayLabel } from "@/lib/day-label";
 
 // "9pm", "8am".
-const clock = (hour: number) => `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
 
 // Spec step 79: the sections sit in four groups, with a menu of them at the top. Each
 // section keeps its id (#banks, #alerts, #autopilot, #rules, #two-factor, ...): other
@@ -67,6 +64,8 @@ const GROUP = "flex scroll-mt-8 flex-col gap-8 border-t border-zinc-200 pt-6 dar
 const SECTION = "flex scroll-mt-8 flex-col gap-3";
 const MUTED = "text-zinc-600 dark:text-zinc-400";
 const LINK = "font-medium text-emerald-700 hover:underline";
+const RECONNECT =
+  "inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
 function Group({ id, children }: { id: (typeof GROUPS)[number]["id"]; children: ReactNode }) {
   const label = GROUPS.find((g) => g.id === id)?.label;
@@ -127,6 +126,7 @@ async function SettingsContent() {
       select: {
         id: true,
         institutionName: true,
+        status: true,
         lastSyncedAt: true,
         accounts: { select: { name: true, mask: true } },
       },
@@ -209,6 +209,15 @@ async function SettingsContent() {
                         .map((a) => (a.mask ? `${a.name} ····${a.mask}` : a.name))
                         .join(", ")}
                     </p>
+                    {item.status === ITEM_STATUS.loginRequired && (
+                      // The same Reconnect as /connect: Plaid Link in update mode.
+                      <div className="mt-2 flex flex-col gap-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-950">
+                        <p className="text-sm">
+                          Your bank needs you to sign in again before I can read new transactions.
+                        </p>
+                        <LinkButton itemId={item.id} label="Reconnect" className={RECONNECT} />
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <RefreshForm itemId={item.id} />
@@ -270,12 +279,7 @@ async function SettingsContent() {
         {/* Spec step 85: Jane's chat messages as phone notifications or email. */}
         <section id="jane-messages" className={SECTION}>
           <h3 className={H3}>Messages from Jane</h3>
-          <p className={MUTED}>
-            When I post something important in your chat, I can send it to you, with buttons to
-            answer right there. At most {CHAT_NOTIFY_DAILY_LIMIT} a day, never between{" "}
-            {clock(QUIET_START_HOUR)} and {clock(QUIET_END_HOUR)}, and never something you&apos;ve
-            already seen.
-          </p>
+          <p className={MUTED}>{messagesFromJaneWords()}</p>
           <ChatNotifyForm
             channel={chatNotify.channel}
             kinds={CHAT_NOTIFY_KINDS.map((kind) => ({

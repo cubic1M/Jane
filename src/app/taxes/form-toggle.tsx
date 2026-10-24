@@ -29,7 +29,7 @@ export function FormToggle({
       >
         {received ? "Not yet" : "I have it"}
       </button>
-      <span role="status" className={state?.ok === false ? "text-sm text-red-700" : "text-sm"}>
+      <span role="status" className={state?.ok === false ? "text-sm font-semibold" : "text-sm"}>
         {state?.message ?? ""}
       </span>
     </form>
