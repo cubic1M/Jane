@@ -106,5 +106,11 @@ describe("settingsTree", () => {
     const none = { ...ALL_GOOD, banks: [] };
     expect(settingsTree(none).tree.branches[0].items.map((i) => i.id)).toEqual(["banks:add"]);
     expect(anchorFocus("banks", settingsTree(none))).toBe("banks:add");
+    expect(settingsTree(none).summaries["banks:add"]).toBe(
+      "No banks linked. Link one, or import a statement file.",
+    );
+    expect(settingsTree(ALL_GOOD).summaries["banks:add"]).toBe(
+      "Link another bank, or import a statement file.",
+    );
   });
 });

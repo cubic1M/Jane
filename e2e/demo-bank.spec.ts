@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { areaTree, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -48,7 +49,10 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
     .getByRole("button", { name: /Disconnect/ })
     .first()
     .click();
-  await expect(page.getByText("No banks linked.")).toBeVisible();
+  // Gone from the tree; what's left says nothing is linked.
+  await expect(areaTree(page, "Settings")).not.toContainText("Demo Bank");
+  const add = await pickItem(page, "Settings", "Banks and files", "Add a bank or a file");
+  await expect(add).toContainText("No banks linked.");
   await page.goto("/home");
   await expect(page.getByRole("note")).toHaveCount(0);
 });

@@ -107,7 +107,10 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
     ),
     item("banks", "add", {
       label: "Add a bank or a file",
-      summary: "Link another bank, or import a statement file.",
+      summary:
+        input.banks.length + input.imports.length === 0
+          ? "No banks linked. Link one, or import a statement file."
+          : "Link another bank, or import a statement file.",
     }),
   ];
 
