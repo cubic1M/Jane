@@ -20,7 +20,7 @@ export function ConfirmDependants({
       </p>
       <button
         type="submit"
-        className="h-11 self-start rounded-lg bg-emerald-700 px-4 font-medium text-white hover:bg-emerald-800"
+        className="h-11 self-start rounded-lg bg-zinc-900 px-4 font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-300"
       >
         Yes, these are my dependants
       </button>

@@ -18,7 +18,7 @@ export function FamilySection({ view }: { view: FamilyView }) {
       {view.choices.length === 0 ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           No family choices for {view.year} from what Jane knows.{" "}
-          <Link href="/taxes/profile#family" className="text-emerald-700 underline">
+          <Link href="/taxes/profile#family" className="underline underline-offset-2">
             Add family details
           </Link>
         </p>
@@ -37,9 +37,7 @@ export function FamilySection({ view }: { view: FamilyView }) {
                     <tr key={s.label} className="border-t border-zinc-200 dark:border-zinc-800">
                       <th scope="row" className="py-1 pr-2 text-left font-normal">
                         {s.label}
-                        {c.better === i && (
-                          <strong className="ml-2 text-emerald-700">Less tax</strong>
-                        )}
+                        {c.better === i && <strong className="ml-2">Less tax</strong>}
                         <span className="block text-xs text-zinc-600 dark:text-zinc-400">
                           {s.eligible ? s.why.join(" ") : `Not open to you: ${s.why.join(" ")}`}
                         </span>
@@ -65,7 +63,7 @@ export function FamilySection({ view }: { view: FamilyView }) {
       <p className="text-xs text-zinc-600 dark:text-zinc-400">
         Federal tax for {view.year}, estimated; a 529&apos;s figures include your state tax.
         Choosing is yours.{" "}
-        <Link href="/taxes/profile#family" className="text-emerald-700 underline">
+        <Link href="/taxes/profile#family" className="underline underline-offset-2">
           Family details
         </Link>
       </p>
