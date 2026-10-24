@@ -177,6 +177,23 @@ async function withStrategy(profile: PracticeProfile, options: Options): Promise
   // The person chose the level's mix alone: no strategy on top.
   if (profile.strategyChoice === "mix") return profile;
   const choice = STRATEGY_CHOICES[profile.strategyChoice];
+  // A strategy menu tilt (src/config/strategy-menu.ts): the level's mix, its US stocks part in
+  // the tilt's fund.
+  if ("fund" in choice) {
+    const note = `${choice.label}, as you chose: your US stocks are held in ${choice.fund} instead of the whole market.`;
+    return {
+      ...profile,
+      funds: { us_stocks: choice.fund },
+      rules: [...profile.rules, note],
+      strategy: {
+        key: choice.fund,
+        label: choice.label,
+        why: choice.description,
+        followed: true,
+        note,
+      },
+    };
+  }
   const today = await strategyToday(profile.level, {
     ...options,
     ...("id" in choice ? { pick: { id: choice.id, params: choice.params } } : {}),

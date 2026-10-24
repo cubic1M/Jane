@@ -237,6 +237,7 @@ function buyShort(
       input.prefs.taxSensitive && (input.rules ?? rulesOnAt(input.level)).has("tax_loss_harvest")
         ? { state: input.state, prices: input.prices }
         : null,
+      input.funds?.[c] ?? null,
     );
     if (!ticker) continue;
     const room =

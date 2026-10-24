@@ -68,14 +68,16 @@ export const TILT_FUNDS: Readonly<Partial<Record<PracticeClass, readonly string[
   us_stocks: ["VTV", "MTUM", "QUAL", "VIG", "RSP"],
 };
 
-// The model ETFs that hold one kind: the main one, then its swap partner, then its tilt funds.
-export function classTickers(c: PracticeClass): string[] {
+// A kind's everyday funds: the main one, then its swap partner. Only these stand in for each
+// other (a tax-loss swap, a fund avoided).
+export function swapPair(c: PracticeClass): string[] {
   const partner = HARVEST_PARTNERS[c];
-  return [
-    PRACTICE_ETFS[c].ticker,
-    ...(partner ? [partner.ticker] : []),
-    ...(TILT_FUNDS[c] ?? []),
-  ];
+  return partner ? [PRACTICE_ETFS[c].ticker, partner.ticker] : [PRACTICE_ETFS[c].ticker];
+}
+
+// Every fund that holds one kind, for the mix and the drift: its swap pair, then its tilt funds.
+export function classTickers(c: PracticeClass): string[] {
+  return [...swapPair(c), ...(TILT_FUNDS[c] ?? [])];
 }
 
 // Which kind a model ETF holds, or null for anything else (an opportunity stock).

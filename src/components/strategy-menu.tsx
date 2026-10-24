@@ -1,4 +1,6 @@
+import { usePracticeStrategy } from "@/app/investments/strategy-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { STRATEGY_CHOICES, type StrategyChoice } from "@/config/practice-preferences";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
 import { MENU_STRATEGIES, MENU_STRATEGY_IDS, type MenuStrategyId } from "@/config/strategy-menu";
@@ -37,7 +39,18 @@ export function Sparkline({ points, label }: { points: readonly number[]; label:
   );
 }
 
-export function StrategyMenuSection({ level }: { level: RiskLevel }) {
+const BUTTON = "h-9 self-start rounded-lg px-3 text-sm font-medium";
+const followable = (id: MenuStrategyId): id is MenuStrategyId & StrategyChoice =>
+  Object.hasOwn(STRATEGY_CHOICES, id);
+
+export function StrategyMenuSection({
+  level,
+  choice,
+}: {
+  level: RiskLevel;
+  // The practice portfolio's strategy now (its settings).
+  choice: StrategyChoice;
+}) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="strategy-menu-heading">
       <div className="flex flex-col gap-1">
@@ -45,8 +58,11 @@ export function StrategyMenuSection({ level }: { level: RiskLevel }) {
           More strategies
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Your practice portfolio follows Jane&apos;s pick for {RISK_LEVELS[level].label}. These are
-          other well-known ways to run it, each replayed on real prices from{" "}
+          Your practice portfolio follows{" "}
+          {choice === "level"
+            ? `Jane's pick for ${RISK_LEVELS[level].label}`
+            : STRATEGY_CHOICES[choice].label}
+          . These are other well-known ways to run it, each replayed on real prices from{" "}
           {longDate(MENU_EVIDENCE_RANGE.from)} to {longDate(MENU_EVIDENCE_RANGE.to)} after costs,
           against your level&apos;s own mix over the same days.
         </p>
@@ -82,6 +98,35 @@ export function StrategyMenuSection({ level }: { level: RiskLevel }) {
                 Fits:{" "}
                 {fits.length > 0 ? fits.map((l) => RISK_LEVELS[l].label).join(", ") : "no level"}
               </p>
+              {!followable(id) ? (
+                <p className="text-xs text-zinc-500">
+                  Not in the practice portfolio yet: it holds funds the practice portfolio
+                  can&apos;t.
+                </p>
+              ) : choice === id ? (
+                <form action={usePracticeStrategy} className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-emerald-700">
+                    Your practice portfolio uses this
+                  </span>
+                  <input type="hidden" name="strategy" value="level" />
+                  <button
+                    type="submit"
+                    className={`${BUTTON} border border-zinc-300 dark:border-zinc-700`}
+                  >
+                    Back to Jane&apos;s pick
+                  </button>
+                </form>
+              ) : (
+                <form action={usePracticeStrategy}>
+                  <input type="hidden" name="strategy" value={id} />
+                  <button
+                    type="submit"
+                    className={`${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`}
+                  >
+                    Use in practice
+                  </button>
+                </form>
+              )}
             </li>
           );
         })}

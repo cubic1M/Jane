@@ -125,6 +125,7 @@ export async function runAutopilot(
     cashBufferCents: profile.cashBufferCents,
     limits: profile.limits,
     harvesting: profile.harvestLosses && rulesOnAt(profile.level).has("tax_loss_harvest"),
+    funds: profile.funds,
   });
   if (!profile.trades) return { ran: true, deposit, fills: [], suggested: plan };
   const broker = practiceBroker();

@@ -110,7 +110,7 @@ async function PracticeIdeas({ userId }: { userId: string }) {
 // More strategies, at the person's own level.
 async function StrategyMenu({ userId }: { userId: string }) {
   const profile = await practiceProfileOf(userId);
-  return <StrategyMenuSection level={profile.level} />;
+  return <StrategyMenuSection level={profile.level} choice={profile.strategyChoice} />;
 }
 
 async function RuleReplays({ userId }: { userId: string }) {

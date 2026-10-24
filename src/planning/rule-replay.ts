@@ -332,6 +332,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           avoid: profile.avoid,
           cashBufferCents: profile.cashBufferCents,
           limits: profile.limits,
+          funds: profile.funds,
           prices,
           history,
           trades: pastTrades,
@@ -405,6 +406,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
         limits: profile.limits,
         harvesting:
           profile.harvestLosses && (rules ?? rulesOnAt(profile.level)).has("tax_loss_harvest"),
+        funds: profile.funds,
       });
       // Suggest only: the plan is shown, never placed.
       if (profile.trades)

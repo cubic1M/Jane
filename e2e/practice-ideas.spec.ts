@@ -62,6 +62,18 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   await expect(value.getByRole("img", { name: /^Value tilt: \$100 became \$\d+/ })).toBeVisible();
   await expect(value.getByText(/a year \(your mix [\d.]+%\), worst drop/)).toBeVisible();
   await expect(value.getByText(/^Fits: /)).toBeVisible();
+  // Choose it for the practice portfolio, then go back to Jane's pick.
+  await value.getByRole("button", { name: "Use in practice" }).click();
+  await expect(value.getByText("Your practice portfolio uses this")).toBeVisible();
+  await expect(menu.getByText(/Your practice portfolio follows Value tilt\./)).toBeVisible();
+  await expect(
+    menu
+      .getByRole("listitem")
+      .filter({ hasText: "Sector rotation" })
+      .getByText(/Not in the practice portfolio yet/),
+  ).toBeVisible();
+  await value.getByRole("button", { name: "Back to Jane's pick" }).click();
+  await expect(value.getByRole("button", { name: "Use in practice" })).toBeVisible();
   // The news themes, each with its past record; only the ones that held up are offered.
   const themes = page.getByRole("region", { name: "News themes" });
   await expect(themes.getByText(/^Defense when a war breaks out: ITA/)).toBeVisible();

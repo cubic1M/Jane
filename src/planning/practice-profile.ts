@@ -1,7 +1,7 @@
 import { GLIDE_PATH_SOURCE, RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import {
   AUTOPILOT_LIMITS,
-  classTickers,
+  swapPair,
   MODEL_PORTFOLIOS,
   OPPORTUNITY_LEVELS,
   PRACTICE_ETFS,
@@ -72,6 +72,8 @@ export type PracticeProfile = {
   universe: PracticePreferences["universe"];
   // What the profile does, in plain sentences, for the page, the chat and the backtests.
   rules: string[];
+  // The fund the person chose for a kind (a strategy menu tilt), set with the strategy below.
+  funds?: Partial<Record<PracticeClass, string>>;
   // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
   // whether the mix follows it this month, and why or why not. Absent before the first
   // evaluation.
@@ -147,7 +149,7 @@ export function glideWeights(
 
 // A kind with every fund avoided gives its share to its fallback, then bonds, then bills.
 function withoutAvoided(weights: Record<PracticeClass, number>, avoid: ReadonlySet<string>) {
-  const open = (c: PracticeClass) => classTickers(c).some((t) => !avoid.has(t));
+  const open = (c: PracticeClass) => swapPair(c).some((t) => !avoid.has(t));
   const out = { ...weights };
   const moved: string[] = [];
   for (const c of CLASSES) {
