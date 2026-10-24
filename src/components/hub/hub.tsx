@@ -120,9 +120,14 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
 export function AreaTiles({ tiles }: { tiles: AreaTile[] }) {
   return (
     <section aria-labelledby="areas-heading" className="flex flex-col gap-2">
-      <h2 id="areas-heading" className="text-base font-semibold">
-        Your areas
-      </h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <h2 id="areas-heading" className="text-base font-semibold">
+          Your areas
+        </h2>
+        <Link href="/home/map" className="text-sm font-medium text-emerald-700 hover:underline">
+          What Jane does ›
+        </Link>
+      </div>
       <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {tiles.map((tile, i) => (
           <li
