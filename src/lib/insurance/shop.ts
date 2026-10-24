@@ -184,6 +184,28 @@ export async function higherCharge(
     : null;
 }
 
+// The policy's charges over the last `days`, newest first (its insurer's, by merchant).
+export async function policyCharges(
+  userId: string,
+  policy: Policy,
+  {
+    client,
+    now,
+    days = PRICE_UP_LOOKBACK_DAYS,
+  }: { client: PrismaClient; now: Date; days?: number },
+): Promise<number[]> {
+  if (!policy.merchantKey) return [];
+  const since = new Date(now.getTime() - days * 86_400_000);
+  const rows = await scopedFor(userId, client).transactions.findMany({
+    where: { date: { gte: since }, amountCents: { gt: 0 } },
+    select: { amountCents: true, merchantName: true, description: true },
+    orderBy: { date: "desc" },
+  });
+  return rows
+    .filter((r) => normalizeMerchant(r.merchantName ?? r.description)?.key === policy.merchantKey)
+    .map((r) => r.amountCents);
+}
+
 // Why a policy is due a reshop today, with the key that stops it running twice, or null.
 export async function reshopDue(
   userId: string,

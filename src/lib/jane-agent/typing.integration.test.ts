@@ -101,6 +101,10 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       source: "rules",
     });
 
+    // A typed "yes" points at this answer's own Yes, not an older card's (answer-check sweep).
+    const { reply: ack } = await send("yes");
+    expect(ack.body).toBe('I only act when you tap, so tap "Yes" on my message above to do it.');
+
     // Another person can't tap it.
     await expect(
       takeChatAction(otherId, reply.id, "finding.yes", { client }),
@@ -116,6 +120,20 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     // The typed words were never logged.
     expect(JSON.stringify(errors.mock.calls)).not.toMatch(/hulu/i);
     errors.mockRestore();
+  });
+
+  it("reads 'why?' after an unrelated answer as about the card just before it", async () => {
+    const open = await client.finding.findFirstOrThrow({
+      where: { userId, status: { in: ["new", "shown"] }, type: "subscription_review" },
+    });
+    const { reply: card } = await send(`cancel ${open.title}`);
+    expect(card.refs.findingId).toBe(open.id);
+    await send("what's my net worth");
+    for (const text of ["why?", "tell me more"]) {
+      const { reply } = await send(text);
+      expect(reply.body, text).toMatch(/^You pay /);
+      expect(reply.refs.findingId, text).toBe(card.refs.findingId);
+    }
   });
 
   it("closes an answer's Yes and No once its finding is answered some other way", async () => {

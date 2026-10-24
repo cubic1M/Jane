@@ -163,6 +163,17 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   // demo-bank people have; a real account has no lending partner, so no loan pick either.
   "consolidation",
   "borrowing_power",
-  // The practice portfolio's ideas: demo advice only.
+  // Real-user QA (2026-10-23): a real account (a CSV import) was told "Add disability cover for
+  // your pay". Cover to buy, raise or switch is a recommendation on insurance: demo advice only.
+  // What is a fact stays for everyone (no car insurance seen, a deadline, a bill above the plan's
+  // share, a policy document to read).
+  "disability_insurance",
+  "renters_insurance",
+  "umbrella",
+  "liability_levels",
+  "deductible_fit",
+  "insurance_shopping",
+  // The practice portfolio runs on sample data for the demo bank only; its ideas too.
+  "practice_portfolio",
   ...Object.values(PRACTICE_TOPIC),
 ];

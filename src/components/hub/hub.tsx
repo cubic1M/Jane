@@ -77,15 +77,24 @@ export function HeroRow({ hero, planItems }: { hero: HeroView; planItems: number
         </div>
       )}
       <div className={CARD}>
-        <Link href={saved.label === "Saved so far" ? "/saved" : "/plan"} className={CARD_LINK}>
+        {/* Each figure links to the page that shows it: what was found is the report's total
+            (hub QA: it linked to /plan, whose total counts more). */}
+        <Link href={saved.label === "Saved so far" ? "/saved" : "/report"} className={CARD_LINK}>
           {saved.label}
         </Link>
         <p
           data-hub-number="saved"
           className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl"
         >
-          {dollars(saved.cents)}
-          <span className="text-base font-normal text-zinc-500">/yr</span>
+          {saved.label === "Money found" && saved.cents === 0 && planItems > 0 ? (
+            // As the report says it when nothing has a sure dollar figure yet.
+            `${planItems} to look at`
+          ) : (
+            <>
+              {dollars(saved.cents)}
+              <span className="text-base font-normal text-zinc-500">/yr</span>
+            </>
+          )}
         </p>
         {/* What was said yes to, at its expected yearly value (one meaning of "saved", #587). */}
         {saved.label === "Saved so far" && <p className="text-xs text-zinc-500">Expected</p>}

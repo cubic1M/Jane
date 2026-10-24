@@ -36,7 +36,12 @@ describe("the retirement tax questions people ask", () => {
     "which account should i withdraw from first for taxes",
     "how much tax on social security",
   ])("reads %j as the retirement tax question", (text) => {
-    expect(parseTaxIntent(text)).toEqual({ kind: "tax", ask: "retirement" });
+    expect(parseTaxIntent(text)).toEqual({
+      kind: "tax",
+      ask: "retirement",
+      // Naming Medicare or IRMAA asks the answer to explain the surcharge (answer-check sweep).
+      ...(/irmaa|medicare/.test(text) ? { medicare: true } : {}),
+    });
   });
 });
 

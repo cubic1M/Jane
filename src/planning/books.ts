@@ -1,5 +1,6 @@
 import {
   BOOKS_DEBT_TYPES,
+  BOOKS_RECONCILED_TYPES,
   BOOKS_STALE_DAYS,
   BOOKS_TOLERANCE_CENTS,
   TRANSFER_IN,
@@ -56,6 +57,7 @@ export type Mismatch = {
 // them say it should have. Plaid amounts are positive for money out, which lowers an asset
 // account's balance and raises what's owed on a card or loan. Returns the newest mismatch.
 export function reconcile(accountType: string, snaps: Snap[], txns: Tx[]): Mismatch | null {
+  if (!BOOKS_RECONCILED_TYPES.includes(accountType)) return null;
   const sorted = [...snaps].sort((a, b) => a.date.localeCompare(b.date));
   const sign = BOOKS_DEBT_TYPES.includes(accountType) ? 1 : -1;
   let found: Mismatch | null = null;
