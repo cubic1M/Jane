@@ -29,6 +29,7 @@ import { netWorthEvents } from "@/lib/hub/net-worth-events";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
+import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { stackedSuggestions } from "@/lib/jane-agent/messages";
 import { timezoneOf } from "@/lib/jane-agent/open";
@@ -136,6 +137,9 @@ async function HubContent() {
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
+  // Constant search (Phase AW): a cheap practice scan, after the page is sent. It ran when the
+  // chat's own page opened; Home is where people land now.
+  after(() => scanOnOpenQuietly(user.id));
 
   return (
     <>
