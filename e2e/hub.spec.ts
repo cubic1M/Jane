@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
+import { areaTree, openBranch } from "./area-tree";
 import { demoPerson } from "./demo-person";
 
 // The home hub (docs/design/home-hub.md): graphs first and few words. Three numbers up top,
@@ -81,4 +82,31 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   // A tile opens its tab.
   await tiles.nth(1).getByRole("link", { name: "Insurance" }).click();
   await expect(page).toHaveURL("/insurance");
+});
+
+test("the home tree goes into an area, already open on the branch picked", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  userId = await demoPerson(context, page, baseURL);
+  await page.goto("/home");
+  // Jane, then the six areas.
+  const tree = page.getByRole("tree", { name: "Your areas" });
+  await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(AREAS.length, {
+    timeout: 60_000,
+  });
+  // Picking navigates, so it isn't checked for being picked: the next page is.
+  await openBranch(page, "Your areas", "Insurance");
+  await areaTree(page, "Your areas")
+    .locator('[role="treeitem"][aria-level="3"]')
+    .filter({ hasText: "Your perfect coverage" })
+    .click();
+  await expect(page).toHaveURL(/\/insurance\?focus=needs$/, { timeout: 30_000 });
+  // The Insurance page opens with that branch open.
+  await expect(
+    areaTree(page, "Insurance")
+      .locator('[role="treeitem"][aria-level="2"]')
+      .filter({ hasText: "Your perfect coverage" }),
+  ).toHaveAttribute("aria-expanded", "true");
 });
