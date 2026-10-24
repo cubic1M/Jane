@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 
 // Insurance (spec step 102): a person says they rent, sees the missing renters cover, adds
-// their policy and the gap goes.
+// their policy and the gap goes. The page is the area tree (docs/design/area-pages.md): each
+// thing is opened from its branch, and its detail opens below the tree.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -22,8 +24,17 @@ test("a renter adds their renters policy and the gap goes", async ({ context, pa
 
   await page.goto("/insurance");
   await expect(page.getByRole("heading", { name: "Insurance", level: 1 })).toBeVisible();
+  await page.getByText("Your household details").click();
   await page.getByLabel("Your home").selectOption("rent");
   await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved. Jane checks your cover against it.")).toBeVisible();
+  // The gap is urgent, so it's one of the chips above the tree too.
+  await expect(
+    page
+      .getByRole("group", { name: "What matters now" })
+      .getByRole("button", { name: /Renters insurance/ }),
+  ).toBeVisible();
+  await pickItem(page, "Insurance", "Cover that looks missing", "Renters insurance");
   await expect(page.getByText("No renters insurance on file")).toBeVisible();
 
   await page.getByRole("link", { name: "I have this: add it" }).click();
@@ -36,9 +47,13 @@ test("a renter adds their renters policy and the gap goes", async ({ context, pa
   await add.getByRole("button", { name: "Add it" }).click();
 
   await expect(page.getByText("Added to your insurance.")).toBeVisible();
+  await pickItem(page, "Insurance", "Your policies", "Lemonade renters");
   await expect(page.getByRole("heading", { name: "Lemonade renters insurance" })).toBeVisible();
   await expect(page.getByText("Your belongings: $30,000.00")).toBeVisible();
   await expect(page.getByText("No renters insurance on file")).toHaveCount(0);
+  await expect(
+    page.getByRole("tree", { name: "Insurance" }).getByText("Cover that looks missing"),
+  ).toHaveCount(0);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
@@ -62,20 +77,21 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await waitForFullScan(userId!);
 
   await page.goto("/insurance");
+  await pickItem(page, "Insurance", "Your policies", "GEICO car");
   await expect(page.getByRole("heading", { name: "GEICO car insurance" })).toBeVisible();
   // The demo bank has a mortgage and no home policy: a gap, with demo advice, labelled.
-  await expect(page.getByText("No home insurance on file")).toBeVisible();
-  await expect(
-    page.getByText("Demo advice: sample data, not financial advice").first(),
-  ).toBeVisible();
+  const missing = await pickItem(page, "Insurance", "Cover that looks missing", "Home insurance");
+  await expect(missing.getByText("No home insurance on file")).toBeVisible();
+  await expect(missing.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // Spec step 152: the demo card's phone protection, with its limits, makes Asurion a
   // duplicate, cancelled through the usual card.
-  const cards = page.getByRole("region", { name: "Cover through your cards" });
-  await expect(cards.getByText(/Up to \$800\.00 a claim, Deductible \$50\.00/)).toBeVisible();
+  const card = await pickItem(page, "Insurance", "Cover through your cards", "Demo Credit Card");
+  await expect(card.getByText(/Up to \$800\.00 a claim, Deductible \$50\.00/)).toBeVisible();
+  const twice = await pickItem(page, "Insurance", "Cover through your cards", "Paying twice");
   await expect(
-    cards.getByText(/You pay Asurion \$204\.00 a year for cover your Demo Credit Card/),
+    twice.getByText(/You pay Asurion \$204\.00 a year for cover your Demo Credit Card/),
   ).toBeVisible();
-  await expect(cards.getByRole("link", { name: "Cancel it" })).toHaveAttribute(
+  await expect(twice.getByRole("link", { name: "Cancel it" })).toHaveAttribute(
     "href",
     /^\/report\//,
   );
@@ -84,6 +100,7 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await page.goto("/insurance/quotes");
   await expect(page).toHaveURL("/insurance");
 
+  await pickItem(page, "Insurance", "Your policies", "GEICO car");
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
   // The policy renews in 40 days, so Jane shopped it by herself when the bank linked
@@ -128,6 +145,7 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
   // after the chat opens on a busy machine: look again until the pick is there.
   await expect(async () => {
     await page.goto("/insurance");
+    await pickItem(page, "Insurance", "Your policies", "GEICO car");
     await page.getByRole("link", { name: "Compare quotes" }).click({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: "Yes, switch" })).toBeVisible({
       timeout: 10_000,
@@ -189,16 +207,19 @@ test("a policy document is read for the person to check and confirm (step 151)",
   await expect(page.getByLabel("Insurance company")).toHaveValue("GEICO");
 
   await page.goto("/insurance");
-  await expect(page.getByRole("heading", { name: "Read from your documents" })).toBeVisible();
-  await page.getByRole("link", { name: "Check and confirm" }).click();
+  const read = await pickItem(page, "Insurance", "Read from your documents", "first-open");
+  await read.getByRole("link", { name: "Check and confirm" }).click();
   await expect(page.getByRole("heading", { name: "Check what Jane read", level: 1 })).toBeVisible();
   await expect(page.getByText("As you typed it.").first()).toBeVisible();
   await page.getByRole("textbox", { name: "Deductible ($)" }).fill("500");
   await page.getByRole("button", { name: "Confirm" }).click();
 
   await expect(page.getByText("Confirmed. It's on your insurance now.")).toBeVisible();
+  await pickItem(page, "Insurance", "Your policies", "GEICO car");
   await expect(page.getByRole("heading", { name: "GEICO car insurance" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Read from your documents" })).toHaveCount(0);
+  await expect(
+    page.getByRole("tree", { name: "Insurance" }).getByText("Read from your documents"),
+  ).toHaveCount(0);
 });
 
 test("a demo-bank person sizes, applies for and buys life cover, a tap at a time (step 153)", async ({
@@ -231,6 +252,7 @@ test("a demo-bank person sizes, applies for and buys life cover, a tap at a time
   await expect(page.getByText(/their best rate\. Buy it\?/)).toBeVisible();
   await page.getByRole("button", { name: "Buy it" }).click();
   await expect(page.getByText("Added to your insurance.")).toBeVisible();
+  await pickItem(page, "Insurance", "Your policies", / life\b/);
   await expect(page.getByRole("heading", { name: /life insurance/ }).first()).toBeVisible();
 });
 
@@ -253,19 +275,22 @@ test("a move gets its insurance changes ready, made on one tap (step 154)", asyn
   await expect(page.getByText(/0 of/).first()).toBeVisible();
 
   await page.goto("/insurance");
-  const changes = page.getByRole("region", { name: "After life events" });
+  // Each event's changes are their own item: the move's, and the demo bank's car.
+  const changes = await pickItem(page, "Insurance", "After life events", "Your move");
   await expect(
     changes.getByText("You're moving. Here's what I've got ready for your insurance:"),
   ).toBeVisible();
   await expect(
     changes.getByText("Update the address on your GEICO car policy (the price stays the same)"),
   ).toBeVisible();
-  // The demo bank's car is also ready to add to the policy (listed first); make the move's.
-  const apply = changes.getByRole("button", { name: "Make the changes" });
-  await apply.last().click();
+  await changes.getByRole("button", { name: "Make the changes" }).click();
   await expect(page.getByText("Done. Your insurance is up to date.")).toBeVisible();
-  await apply.first().click();
-  await expect(page.getByRole("region", { name: "After life events" })).toHaveCount(0);
+  const car = await pickItem(page, "Insurance", "After life events", "A new car");
+  await car.getByRole("button", { name: "Make the changes" }).click();
+  await expect(page.getByText("Done. Your insurance is up to date.")).toBeVisible();
+  await expect(
+    page.getByRole("tree", { name: "Insurance" }).getByText("After life events"),
+  ).toHaveCount(0);
 });
 
 test("Jane files a small claim only after the person checks it (step 155)", async ({
@@ -319,21 +344,32 @@ test("a demo-bank person pays less for the same cover with one tap (step 196)", 
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
   await page.goto("/insurance");
-  const savings = page.getByRole("region", { name: "Pay less for the same cover" });
+  // A higher deductible lowers the cover, so it says what a claim would cost.
+  const deductible = await pickItem(
+    page,
+    "Insurance",
+    "Pay less for the same cover",
+    "Raise the deductible",
+  );
+  await expect(
+    deductible.getByText(/if you claim, you pay \$1,000\.00 more yourself/),
+  ).toBeVisible();
+  const savings = await pickItem(
+    page,
+    "Insurance",
+    "Pay less for the same cover",
+    "Turn on autopay",
+  );
   await expect(
     savings.getByText(/Turn on autopay for your GEICO car policy: about \$51\.12 a year less/),
   ).toBeVisible();
-  // A higher deductible lowers the cover, so it says what a claim would cost.
-  await expect(savings.getByText(/if you claim, you pay \$1,000\.00 more yourself/)).toBeVisible();
-  await savings
-    .getByRole("listitem")
-    .filter({ hasText: "Turn on autopay" })
-    .getByRole("button", { name: "Do it" })
-    .click();
+  await savings.getByRole("button", { name: "Do it" }).click();
   await expect(
     page.getByText("Done. Your policy is updated and your insurer confirmed it."),
   ).toBeVisible();
-  await expect(savings.getByText(/Turn on autopay/)).toHaveCount(0);
+  await expect(
+    page.getByRole("tree", { name: "Insurance" }).getByText("Turn on autopay"),
+  ).toHaveCount(0);
 });
 
 test("a demo-bank person answers a question about how they live, and a yes opens a gap (step 197)", async ({
@@ -351,12 +387,19 @@ test("a demo-bank person answers a question about how they live, and a yes opens
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
   await page.goto("/insurance");
-  const questions = page.getByRole("region", { name: "A few questions about how you live" });
-  const uber = questions.getByRole("listitem").filter({ hasText: "Are you driving for Uber?" });
-  await expect(uber.getByText(/I saw \$412\.00 come in from Uber Driver/)).toBeVisible();
+  const uber = await pickItem(
+    page,
+    "Insurance",
+    "Questions about how you live",
+    "Driving for pay?",
+  );
+  await expect(uber.getByText(/I saw \$412\.00 come in from Uber Driver/).first()).toBeVisible();
   await uber.getByRole("button", { name: "Yes" }).click();
   await expect(page.getByText("Thanks. Jane has noted it.")).toBeVisible();
-  await expect(questions.getByText("Are you driving for Uber?")).toHaveCount(0);
+  await expect(
+    page.getByRole("tree", { name: "Insurance" }).getByText("Driving for pay?"),
+  ).toHaveCount(0);
+  await pickItem(page, "Insurance", "Cover that looks missing", "Cover while driving for pay");
   await expect(
     page.getByRole("heading", {
       name: "Your car policy may not cover you while you drive for pay",
@@ -364,9 +407,10 @@ test("a demo-bank person answers a question about how they live, and a yes opens
   ).toBeVisible();
 
   // A no is remembered: the boat question never comes back.
-  const boat = questions.getByRole("listitem").filter({ hasText: "Do you have a boat?" });
+  const boat = await pickItem(page, "Insurance", "Questions about how you live", "A boat?");
   await boat.getByRole("button", { name: "No" }).click();
   await page.goto("/insurance");
+  await expect(page.getByRole("tree", { name: "Insurance" }).getByText("A boat?")).toHaveCount(0);
   await expect(page.getByText("Do you have a boat?")).toHaveCount(0);
 });
 
@@ -381,17 +425,23 @@ test("a person lists their household and sees who is covered by what (step 198)"
     { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
   ]);
   await page.goto("/insurance");
-  const household = page.getByRole("region", { name: "Your household's cover" });
-  await expect(household.getByText("You: no policy on file")).toBeVisible();
-  await household.getByText("Add someone, or choose what to share").click();
+  const you = await pickItem(page, "Insurance", "Your household's cover", "You");
+  await expect(you.getByText("You: no policy on file")).toBeVisible();
+  const household = await pickItem(
+    page,
+    "Insurance",
+    "Your household's cover",
+    "Add someone or share",
+  );
   await household.getByLabel("Name").fill("Sam");
   await household.getByLabel("Who they are to you").selectOption("child");
   await household.getByLabel("Age").fill("16");
   await household.getByLabel("Drives").check();
   await household.getByRole("button", { name: "Add them" }).click();
-  await expect(household.getByText("Sam", { exact: false }).first()).toBeVisible();
-  await expect(household.getByText(/no policy on file/).nth(1)).toBeVisible();
+  const sam = await pickItem(page, "Insurance", "Your household's cover", "Sam");
+  await expect(sam.getByText(/^Sam.*no policy on file/)).toBeVisible();
   // No car policy covers a 16-year-old driver: a gap, with the usual "I don't need it".
+  await pickItem(page, "Insurance", "Cover that looks missing", "A driver not on a policy");
   await expect(page.getByRole("heading", { name: "Sam isn't on a car policy" })).toBeVisible();
 });
 
@@ -410,7 +460,12 @@ test("a demo-bank person sees their health plan's year and a dispute card (step 
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
   await page.goto("/insurance");
-  const year = page.getByRole("region", { name: "Your health plan this year" });
+  const year = await pickItem(
+    page,
+    "Insurance",
+    "Your health plan this year",
+    "Deductible this year",
+  );
   await expect(year.getByText(/of your \$500\.00 deductible/)).toBeVisible();
   await expect(year.getByText(/left in your FSA.*Dec 31/)).toBeVisible();
   await expect(year.getByText(/BAYVIEW IMAGING CENTER billed/)).toBeVisible();
@@ -431,8 +486,8 @@ test("a demo-bank person goes from a gap to a picked option, and it reaches the 
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
   await waitForFullScan(userId!);
   await page.goto("/insurance");
-  await expect(page.getByRole("heading", { name: "Your perfect coverage" })).toBeVisible();
-  await page.getByRole("link", { name: "See options" }).first().click();
+  await pickItem(page, "Insurance", "Your perfect coverage", "first-open");
+  await page.getByRole("link", { name: "See options" }).click();
   const card = page.getByTestId("option-card");
   await expect(card).toBeVisible();
   await expect(card.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
