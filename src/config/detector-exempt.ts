@@ -25,6 +25,8 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 // never suggest by themselves, and why (spec step 254). Every other tool is covered by a
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
+  strategy_menu:
+    "reports the practice portfolio's strategy menu and each strategy's replay when asked; which way to run it is the person's choice, so there is nothing to suggest unasked",
   news_themes:
     "reports the news themes and how each did on its past events, when asked; the theme ideas themselves are brought by the practice-idea detectors, which cover this tool once they land",
   notification_settings:

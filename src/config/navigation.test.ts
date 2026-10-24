@@ -81,8 +81,11 @@ describe("navigation", () => {
     for (const path of ["/jane", "/plan", "/report", "/report/abc", "/actions", "/alerts"]) {
       expect(tabFor(path), path).toBe("jane");
     }
-    for (const path of ["/money", "/net-worth", "/bills", "/subscriptions", "/transfers"]) {
+    for (const path of ["/money", "/bills", "/subscriptions", "/transfers"]) {
       expect(tabFor(path), path).toBe("money");
+    }
+    for (const path of ["/goals", "/net-worth"]) {
+      expect(tabFor(path), path).toBe("ahead");
     }
     expect(tabFor("/investments/fees")).toBe("investments");
     // Debt is the loans tab's other half, and the tax-time pack is a taxes page.

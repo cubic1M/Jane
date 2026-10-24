@@ -23,14 +23,26 @@ function read(file: string, into: Record<string, Bar[]>) {
   }
 }
 
-// The practice tickers (closes.csv), the rest of the strategy universe (universe.csv) and the
-// news themes' funds (themes.csv).
+// The practice tickers (closes.csv), the rest of the strategy universe (universe.csv), the
+// news themes' funds (themes.csv) and the strategy menu's (menu.csv).
 export function realFixtureBars(): Record<string, Bar[]> {
   if (cached) return cached;
   const bars: Record<string, Bar[]> = {};
   read("./closes.csv", bars);
   read("./universe.csv", bars);
   read("./themes.csv", bars);
+  read("./menu.csv", bars);
   cached = bars;
+  return bars;
+}
+
+// Bitcoin and ether (crypto.csv): every calendar day, from 2018. Kept apart: the markets above
+// trade on weekdays only.
+let crypto: Record<string, Bar[]> | null = null;
+export function realCryptoBars(): Record<string, Bar[]> {
+  if (crypto) return crypto;
+  const bars: Record<string, Bar[]> = {};
+  read("./crypto.csv", bars);
+  crypto = bars;
   return bars;
 }

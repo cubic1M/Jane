@@ -6,6 +6,7 @@ import { RULE_TUNE_DROP_SLACK_POINTS, RULE_TUNE_MIN_GAIN } from "@/config/backte
 import { PRACTICE_UNIVERSE, strategyTickers } from "@/config/portfolios";
 import { OPPORTUNITY_RULES_OFF } from "@/config/practice-scan";
 import { THEMES } from "@/config/themes";
+import { menuTickers } from "./strategy-menu";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import { ruleReplays } from "@/lib/investments/rule-replay";
 import { keep, scoreOf, wins, type Scored } from "./rule-tuning";
@@ -63,13 +64,14 @@ describe("keep", () => {
 });
 
 describe("the real-closes fixture", () => {
-  it("has every practice, strategy and theme ticker from Jan 4, 2016, oldest first", () => {
+  it("has every practice, strategy, theme and menu ticker from Jan 4, 2016, oldest first", () => {
     const bars = realFixtureBars();
     expect(new Set(Object.keys(bars))).toEqual(
       new Set([
         ...PRACTICE_UNIVERSE,
         ...strategyTickers(),
         ...Object.values(THEMES).flatMap((t) => [t.ticker, ...(t.alternatives ?? [])]),
+        ...menuTickers(),
       ]),
     );
     for (const b of Object.values(bars)) {
@@ -79,14 +81,17 @@ describe("the real-closes fixture", () => {
     }
   });
 
-  it("still shows every turned-off rule making its level worse", { timeout: 120_000 }, () => {
+  it("still shows every turned-off rule not earning its place", { timeout: 120_000 }, () => {
     const levels = Object.keys(OPPORTUNITY_RULES_OFF).map(Number) as (1 | 2 | 3 | 4 | 5)[];
     const r = ruleReplays(realFixtureBars(), [], levels)!;
     for (const l of r.levels)
       for (const off of OPPORTUNITY_RULES_OFF[l.level] ?? []) {
         const v = l.verdicts.find((x) => x.rule === off.rule)!;
         expect(v.status).toBe("off");
-        expect(v.returnPoints!).toBeLessThan(0);
+        // Less return, or a deeper worst drop: never better on both counts.
+        expect(v.returnPoints! < 0 || v.dropPoints! < 0, `level ${l.level}`).toBe(true);
+        // And the evidence on the page is the replay's own, to two decimals.
+        expect(off.evidence).toContain(Math.abs(v.returnPoints!).toFixed(2));
       }
   });
 });

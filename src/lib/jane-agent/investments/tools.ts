@@ -59,6 +59,16 @@ import {
   THEME_STOP_LOSS,
   THEMES,
 } from "@/config/themes";
+import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
+import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
+import { CRYPTO_STRATEGIES, CRYPTO_STRATEGY_IDS, CRYPTO_WARNING } from "@/config/crypto-strategies";
+import { MENU_STRATEGIES, MENU_STRATEGY_IDS } from "@/config/strategy-menu";
+import {
+  MENU_EVIDENCE,
+  MENU_EVIDENCE_RANGE,
+  MENU_EVIDENCE_SOURCE,
+} from "@/config/strategy-menu-evidence";
+import { practiceProfileOf } from "@/lib/practice/preferences";
 import { tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { practiceIdeasFor } from "./practice-ideas";
@@ -269,6 +279,13 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     name: "practice_portfolio",
     description:
       "The person's practice portfolio (demo advice mode only): a paper portfolio Jane runs on practice money, never real money, at a risk level (Very low to Very high). Gives the level, what it's worth and started with, cash, each position, whether Jane is paused (all trading, or opportunities only), this week's trades with the rule and the reason for each, the ideas Jane is waiting on the person for (each with how sure she is, as a percent, and why), the strategy the autopilot follows today and whether the person's settings let it, and what their yes and no to past ideas changed (which kinds now come sooner or later). For \"what are you thinking of doing\", \"what strategy is mine on\" or \"have you learned what I like\". Say plainly that it's practice money and nothing real was bought or sold. To pause or resume it, offer practice.pause or practice.resume with propose_action; you can't change it yourself.",
+    input_schema: noInput,
+  },
+  // Phase AW: the strategy menu, each replayed at the person's level against their mix.
+  {
+    name: "strategy_menu",
+    description:
+      'The strategy menu for the practice portfolio (demo advice mode only): well-known ways to run it besides Jane\'s pick for the person\'s level (value, momentum and quality tilts, dividend growth, equal weight, sector rotation, all-weather risk parity), and at Very high a small crypto sleeve (bitcoin and ether held, or run by a trend or momentum rule, against holding since 2022, with its warning), each replayed on real prices after costs at the person\'s level, with how it works, its yearly return and worst drop against the level\'s own mix over the same days (the whole replay and the years since 2022), whether it gave more or less return for its risk, and the levels it fits. For "what other strategies are there", "is momentum better" or "how does all-weather work". Always call it a replay of the past, never a forecast, and say plainly when a strategy did worse than the mix.',
     input_schema: noInput,
   },
   // Phase AW: the news themes the practice portfolio watches, and how each did before.
@@ -1104,6 +1121,55 @@ export async function runInvestmentTool(
           reason: t.reason,
         })),
         ...(await practiceIdeasFor(userId, { client, now }, money)),
+      });
+    }
+    case "strategy_menu": {
+      if (!(await adviceMode(userId, { client }))) return out({ note: PRACTICE_ONLY_NOTE });
+      const level = (await practiceProfileOf(userId, { client, now })).level;
+      const pct = (n: number) => Math.round(n * 1000) / 10;
+      return out({
+        label: DEMO_ADVICE_LABEL,
+        notAForecast: STRATEGY_NOT_A_FORECAST,
+        source: `${MENU_EVIDENCE_SOURCE}, ${MENU_EVIDENCE_RANGE.from} to ${MENU_EVIDENCE_RANGE.to}, after costs`,
+        level: RISK_LEVELS[level].label,
+        default: "Jane's pick for the level (the strategy each level follows) stays the default.",
+        crypto: {
+          forLevels: "Very high only, a small sleeve",
+          warning: CRYPTO_WARNING,
+          inThePracticePortfolio: false,
+          source: CRYPTO_EVIDENCE_SOURCE,
+          strategies: CRYPTO_STRATEGY_IDS.map((id) => {
+            const r = CRYPTO_EVIDENCE[id];
+            return {
+              strategy: CRYPTO_STRATEGIES[id].label,
+              how: CRYPTO_STRATEGIES[id].how,
+              setting: r.param,
+              since2022YearlyPercent: pct(r.later.cagr),
+              since2022WorstDropPercent: pct(r.later.maxDrawdown),
+              holdingSince2022YearlyPercent: pct(r.holdLater.cagr),
+              holdingSince2022WorstDropPercent: pct(r.holdLater.maxDrawdown),
+              moreReturnForItsRiskThanHolding: r.beatsHolding,
+            };
+          }),
+        },
+        strategies: MENU_STRATEGY_IDS.map((id) => {
+          const r = MENU_EVIDENCE[id][level];
+          return {
+            strategy: MENU_STRATEGIES[id].label,
+            what: MENU_STRATEGIES[id].line,
+            how: MENU_STRATEGIES[id].how,
+            yearlyPercent: pct(r.cagr),
+            mixYearlyPercent: pct(r.mixCagr),
+            worstDropPercent: pct(r.maxDrawdown),
+            mixWorstDropPercent: pct(r.mixMaxDrawdown),
+            sinceDate2022YearlyPercent: pct(r.laterCagr),
+            mixSince2022YearlyPercent: pct(r.mixLaterCagr),
+            moreReturnForItsRiskThanTheMix: r.sortino > r.mixSortino,
+            fitsLevels: ([1, 2, 3, 4, 5] as const)
+              .filter((l) => MENU_EVIDENCE[id][l].fits)
+              .map((l) => RISK_LEVELS[l].label),
+          };
+        }),
       });
     }
     case "news_themes": {
