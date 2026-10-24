@@ -380,6 +380,27 @@ export function decide(
       if (!isMonthEnd(u, t) || !has(u, SECTORS, t, p * MONTH)) return null;
       return equal(top([...SECTORS], 3, (x) => ret(c(u, x), t, p * MONTH)!));
     }
+    case "sector_trend": {
+      if (!isMonthEnd(u, t) || !has(u, [...SECTORS, "BIL"], t, YEAR)) return null;
+      const w: Weights = {};
+      for (const f of top([...SECTORS], p, (x) => m13612u(c(u, x), t)!))
+        add(w, c(u, f)[t] > sma(c(u, f), t, 10 * MONTH)! ? f : "BIL", 1 / p);
+      return w;
+    }
+    case "trend_vol": {
+      if (!isWeekEnd(u, t) || !has(u, ["SPY", "BIL"], t, 200)) return null;
+      const spy = c(u, "SPY");
+      if (spy[t] <= sma(spy, t, 200)!) return { BIL: 1 };
+      const [r] = returnsBefore([spy], t + 1, 20);
+      const w = Math.min(1, p / Math.max(1e-6, sd(r) * Math.sqrt(252)));
+      return { SPY: w, BIL: 1 - w };
+    }
+    case "bond_rotation": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, p * MONTH)) return null;
+      const r = (x: string) => ret(c(u, x), t, p * MONTH)!;
+      const best = top(["TLT", "IEF", "SHY", "LQD", "HYG", "TIP"], 1, r)[0];
+      return { [r(best) > r("BIL") ? best : "BIL"]: 1 };
+    }
     case "trend_200": {
       if (!isMonthEnd(u, t) || !has(u, ["SPY", "BIL"], t, p)) return null;
       return { [c(u, "SPY")[t] > sma(c(u, "SPY"), t, p)! ? "SPY" : "BIL"]: 1 };

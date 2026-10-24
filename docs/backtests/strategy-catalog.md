@@ -288,6 +288,14 @@ Also tested, separately and at Very high only: the five day-trading rules on 5-m
 
 ## Rotation
 
+### Bond rotation (`bond_rotation`)
+
+- **Source:** [Antonacci, Dual Momentum Fixed Income (2014), widened to the main bond funds](https://seekingalpha.com/article/2779905-dual-momentum-fixed-income)
+- **Rules:** Each month, the one of long, intermediate and short Treasuries (TLT, IEF, SHY), investment-grade and high-yield credit (LQD, HYG) and inflation-linked bonds (TIP) with the best last N months, if it beat bills (BIL); otherwise bills.
+- **Setting:** months of look-back: 3, 6
+- **Funds:** TLT, IEF, SHY, LQD, HYG, TIP, BIL
+- **At each level:** a whole portfolio, blended with bills to the level's volatility
+
 ### Sector rotation (`sector_rotation`)
 
 - **Source:** [Moskowitz & Grinblatt, Do Industries Explain Momentum? (1999)](https://doi.org/10.1111/0022-1082.00146)
@@ -296,7 +304,23 @@ Also tested, separately and at Very high only: the five day-trading rules on 5-m
 - **Funds:** XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY
 - **At each level:** replaces the level mix's US-stocks share
 
+### Sector rotation with a trend filter (`sector_trend`)
+
+- **Source:** [Faber, Relative Strength Strategies for Investing (2010): top sectors, each above its 10-month average](https://papers.ssrn.com/abstract=1585517)
+- **Rules:** Each month, a third each in the 3 of 9 sector funds with the best average 1, 3, 6 and 12-month return; any of them below its 10-month average is held as bills (BIL) instead.
+- **Setting:** how many sectors: 3
+- **Funds:** XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY, BIL
+- **At each level:** replaces the level mix's US-stocks share
+
 ## Volatility and drawdown control
+
+### Trend filter with volatility targeting (`trend_vol`)
+
+- **Source:** [Faber (2007) and Moreira & Muir (2017), together](https://www.nber.org/papers/w22208)
+- **Rules:** Each week, the US-stocks share in bills (BIL) while SPY is below its 200-day average; above it, SPY scaled to a target volatility (its last 20 days', never above 100%), the rest in bills.
+- **Setting:** target volatility, a year: 0.12, 0.18
+- **Funds:** SPY, BIL
+- **At each level:** replaces the level mix's US-stocks share
 
 ### Volatility targeting (`vol_target`)
 

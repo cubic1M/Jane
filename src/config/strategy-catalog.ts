@@ -413,6 +413,20 @@ export const CATALOG = {
     grid: [126, 252],
     tickers: [...TEN],
   },
+  bond_rotation: {
+    label: "Bond rotation",
+    family: "rotation",
+    kind: "portfolio",
+    source: {
+      title: "Antonacci, Dual Momentum Fixed Income (2014), widened to the main bond funds",
+      url: "https://seekingalpha.com/article/2779905-dual-momentum-fixed-income",
+    },
+    rules:
+      "Each month, the one of long, intermediate and short Treasuries (TLT, IEF, SHY), investment-grade and high-yield credit (LQD, HYG) and inflation-linked bonds (TIP) with the best last N months, if it beat bills (BIL); otherwise bills.",
+    param: "months of look-back",
+    grid: [3, 6],
+    tickers: ["TLT", "IEF", "SHY", "LQD", "HYG", "TIP", "BIL"],
+  },
   value: {
     label: "Value",
     family: "factor",
@@ -561,6 +575,35 @@ export const CATALOG = {
     param: "months of look-back",
     grid: [3, 6, 12],
     tickers: [...SECTORS],
+  },
+  sector_trend: {
+    label: "Sector rotation with a trend filter",
+    family: "rotation",
+    kind: "equity",
+    source: {
+      title:
+        "Faber, Relative Strength Strategies for Investing (2010): top sectors, each above its 10-month average",
+      url: "https://papers.ssrn.com/abstract=1585517",
+    },
+    rules:
+      "Each month, a third each in the 3 of 9 sector funds with the best average 1, 3, 6 and 12-month return; any of them below its 10-month average is held as bills (BIL) instead.",
+    param: "how many sectors",
+    grid: [3],
+    tickers: [...SECTORS, "BIL"],
+  },
+  trend_vol: {
+    label: "Trend filter with volatility targeting",
+    family: "protection",
+    kind: "equity",
+    source: {
+      title: "Faber (2007) and Moreira & Muir (2017), together",
+      url: "https://www.nber.org/papers/w22208",
+    },
+    rules:
+      "Each week, the US-stocks share in bills (BIL) while SPY is below its 200-day average; above it, SPY scaled to a target volatility (its last 20 days', never above 100%), the rest in bills.",
+    param: "target volatility, a year",
+    grid: [0.12, 0.18],
+    tickers: ["SPY", "BIL"],
   },
   trend_200: {
     label: "Trend filter on US stocks",
