@@ -130,7 +130,8 @@ describe.runIf(url)("every debt in one place against a real database", () => {
     expect(car.reply.body).toContain(
       "Your Demo Car Loan ····0006: $18,020.00 left at 6.90% fixed (from your bank).",
     );
-    expect(car.reply.body).toMatch(/It's paid off by \w{3} 1, 2029 \(from your bank\)\./);
+    // Where its $494.10 payment ends it (the sample loans agree with themselves, loans QA).
+    expect(car.reply.body).toMatch(/It's paid off by \w{3} 1, 2030 \(from your bank\)\./);
     expect(track).toHaveBeenCalledWith(userId, "chat_message_sent", {
       intent: "debt_detail",
       source: "rules",

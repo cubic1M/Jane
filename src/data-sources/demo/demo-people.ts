@@ -11,8 +11,8 @@ import {
   nextDayOfMonth,
   primaryOf,
   random,
-  yearsAfter,
 } from "./demo-bank";
+import { monthsAfter, monthsToPayOff, mortgagePiDollars } from "./demo-loans";
 
 // The eight sample people's banks (spec step 252): each a year of transactions, accounts,
 // loans and investments in the same Plaid shapes as the demo bank, so they sync through the
@@ -68,15 +68,15 @@ type Mortgage = {
   original: number;
   payment: number;
   pmi: boolean;
+  // The escrow account's balance (the escrow a month is the payment less principal and
+  // interest; see demo-loans.ts).
   escrow: number;
-  yearsLeft: number;
 };
 type Student = {
   account: string;
   rate: number;
   original: number;
   minimum: number;
-  yearsLeft: number;
 };
 type Auto = {
   account: string;
@@ -84,7 +84,6 @@ type Auto = {
   principal: number;
   original: number;
   payment: number;
-  yearsLeft: number;
 };
 
 type Def = {
@@ -308,7 +307,7 @@ const DEFS: Record<PersonId, Def> = {
       ),
     ],
     cards: [{ account: "card", apr: 26.99, balance: 1940.2, minimum: 58 }],
-    student: { account: "student", rate: 5.5, original: 16000, minimum: 160, yearsLeft: 8 },
+    student: { account: "student", rate: 5.5, original: 16000, minimum: 160 },
     positions: [
       { account: "retirement", key: "NSTDX", quantity: 78.4, basis: 1900 },
       { account: "retirement", key: "CASH", quantity: 0, basis: 0, cash: 0 },
@@ -490,7 +489,6 @@ const DEFS: Record<PersonId, Def> = {
       payment: 2412.6,
       pmi: true,
       escrow: 5100,
-      yearsLeft: 26,
     },
     auto: {
       account: "auto",
@@ -498,7 +496,6 @@ const DEFS: Record<PersonId, Def> = {
       principal: 21400,
       original: 29000,
       payment: 468,
-      yearsLeft: 4,
     },
     positions: [
       { account: "retirement", key: "NSTDX", quantity: 2610, basis: 52000 },
@@ -696,7 +693,7 @@ const DEFS: Record<PersonId, Def> = {
         "checking",
         "WELLS FARGO HOME MORTGAGE",
         "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-        5980.4,
+        6190.85,
         [1],
         "Wells Fargo",
       ),
@@ -730,10 +727,11 @@ const DEFS: Record<PersonId, Def> = {
       account: "mortgage",
       rate: 6.9,
       original: 940000,
-      payment: 5980.4,
+      // Principal and interest only: no escrow on her jumbo loan (she pays Chubb and the
+      // property tax herself). Loans QA: it was $5,980.40, less than its principal and interest.
+      payment: 6190.85,
       pmi: false,
-      escrow: 14800,
-      yearsLeft: 28,
+      escrow: 0,
     },
     positions: [
       { account: "retirement", key: "NSTDX", quantity: 2900, basis: 61000 },
@@ -843,7 +841,6 @@ const DEFS: Record<PersonId, Def> = {
       payment: 1210,
       pmi: false,
       escrow: 3300,
-      yearsLeft: 5,
     },
     positions: [
       { account: "retirement", key: "ACME", quantity: 1700, basis: 90000 },
@@ -1113,7 +1110,6 @@ const DEFS: Record<PersonId, Def> = {
       principal: 12800,
       original: 16000,
       payment: 396,
-      yearsLeft: 3,
     },
     positions: [],
   },
@@ -1242,7 +1238,6 @@ const DEFS: Record<PersonId, Def> = {
       principal: 24500,
       original: 31000,
       payment: 612,
-      yearsLeft: 4,
     },
     positions: [],
   },
@@ -1410,6 +1405,10 @@ export function personPositions(demo: DemoSeed) {
 export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObject {
   const def = defOf(demo);
   const { seed, anchor } = demo;
+  // Each loan's payoff date, where its balance, rate and payment end it (demo-loans.ts).
+  const balanceOf = (key: string) => def.accounts.find((a) => a.key === key)!.balance;
+  const paidOffOn = (key: string, rate: number, payment: number) =>
+    monthsAfter(anchor, monthsToPayOff(balanceOf(key), rate, payment));
   return {
     credit: def.cards.map((c) => ({
       account_id: accountId(seed, c.account),
@@ -1443,7 +1442,11 @@ export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObj
             last_payment_date: null,
             loan_term: "30 year",
             loan_type_description: "Conventional 30 year fixed",
-            maturity_date: yearsAfter(anchor, def.mortgage.yearsLeft),
+            maturity_date: paidOffOn(
+              def.mortgage.account,
+              def.mortgage.rate,
+              mortgagePiDollars(def.mortgage.original, def.mortgage.rate),
+            ),
             next_monthly_payment: def.mortgage.payment,
             next_payment_due_date: nextDayOfMonth(today, 1),
             origination_date: null,
@@ -1461,7 +1464,11 @@ export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObj
             account_id: accountId(seed, def.student.account),
             account_number: null,
             disbursement_dates: null,
-            expected_payoff_date: yearsAfter(anchor, def.student.yearsLeft),
+            expected_payoff_date: paidOffOn(
+              def.student.account,
+              def.student.rate,
+              def.student.minimum,
+            ),
             guarantor: null,
             interest_rate_percentage: def.student.rate,
             is_overdue: false,
@@ -1498,8 +1505,8 @@ export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObj
             principal_balance: def.auto.principal,
             origination_principal_amount: def.auto.original,
             origination_date: null,
-            loan_term_months: def.auto.yearsLeft * 12,
-            maturity_date: yearsAfter(anchor, def.auto.yearsLeft),
+            loan_term_months: monthsToPayOff(def.auto.original, def.auto.rate, def.auto.payment),
+            maturity_date: paidOffOn(def.auto.account, def.auto.rate, def.auto.payment),
             payment_count: null,
             payment_frequency: null,
             next_payment_amount: def.auto.payment,
