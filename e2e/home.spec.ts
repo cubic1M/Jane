@@ -45,7 +45,7 @@ test("new people land on Connect; once data is in, the hub matches the report", 
     "href",
     "/report",
   );
-  await expect(page.getByRole("link", { name: /^Review \d+ ideas? ›$/ })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: /^Your plan: \d+ things? ›$/ })).toHaveAttribute(
     "href",
     "/plan",
   );
