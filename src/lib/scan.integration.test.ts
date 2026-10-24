@@ -181,6 +181,25 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(chat.messages[0].body).toMatch(/^Hi, I'm Jane\. I look at your money/);
   });
 
+  it("says the same safe to spend in the first brief as the hub, for someone with goals", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true, person: "preretire" });
+    created.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    const { homeSummary } = await import("@/lib/home");
+    const { formatCents } = await import("@/lib/money");
+    const safe = (await homeSummary(trial.userId, { client, now: NOW }))!.safeToSpend!;
+    const brief = await client.janeMessage.findFirstOrThrow({
+      where: { userId: trial.userId, kind: "brief", body: { contains: "payday" } },
+      orderBy: { createdAt: "asc" },
+    });
+    // Goals capped at the year plan's room in both (phone walk: "short by $920.96" vs $1,182).
+    const said =
+      safe.safeCents < 0
+        ? `short by ${formatCents(-safe.safeCents)}`
+        : `${formatCents(safe.safeCents)} safe to spend`;
+    expect(brief.body).toContain(said);
+  });
+
   it("builds the first brief from a light snapshot, the whole one right after", async () => {
     const trial = await startTrial({ client, now: NOW, defer: true, person: "debt" });
     created.push(trial.userId);
