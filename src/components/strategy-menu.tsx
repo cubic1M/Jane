@@ -153,6 +153,8 @@ function IntradayMenu() {
 }
 
 const BUTTON = "h-9 self-start rounded-lg px-3 text-sm font-medium";
+const PRIMARY = `${BUTTON} bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300`;
+const SECONDARY = `${BUTTON} border border-zinc-300 dark:border-zinc-700`;
 const followable = (id: MenuStrategyId): id is MenuStrategyId & StrategyChoice =>
   Object.hasOwn(STRATEGY_CHOICES, id);
 
@@ -218,24 +220,19 @@ export function StrategyMenuSection({
                 </p>
               ) : choice === id ? (
                 <form action={usePracticeStrategy} className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-medium text-emerald-700">
+                  <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                    <span aria-hidden="true">■ </span>
                     Your practice portfolio uses this
                   </span>
                   <input type="hidden" name="strategy" value="level" />
-                  <button
-                    type="submit"
-                    className={`${BUTTON} border border-zinc-300 dark:border-zinc-700`}
-                  >
+                  <button type="submit" className={SECONDARY}>
                     Back to Jane&apos;s pick
                   </button>
                 </form>
               ) : (
                 <form action={usePracticeStrategy}>
                   <input type="hidden" name="strategy" value={id} />
-                  <button
-                    type="submit"
-                    className={`${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`}
-                  >
+                  <button type="submit" className={PRIMARY}>
                     Use in practice
                   </button>
                 </form>
