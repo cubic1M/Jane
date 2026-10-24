@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { CHAT, landInChat } from "./chat-page";
 import { E2E_DATABASE_URL, addThemeIdea, deleteUser, signedInUser } from "./db";
 
 // A news theme's alert (Phase AW, Stage A): when the practice scan finds a theme idea, Jane puts
@@ -22,7 +23,7 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   ]);
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await landInChat(page, 60_000);
   // The portfolio starts by itself during the first scan.
   await expect(async () => {
     await page.goto("/investments/practice");
@@ -40,7 +41,7 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   const showing = overlay.locator('[data-card-state="showing"]');
   const headline = showing.getByRole("heading", { level: 3 });
   await expect(async () => {
-    await page.goto("/chat");
+    await page.goto(CHAT);
     await expect(overlay).toBeVisible({ timeout: 5_000 });
     for (let i = 0; i < 8; i += 1) {
       if (theme.test(((await headline.textContent({ timeout: 2_000 })) ?? "").trim())) return;
