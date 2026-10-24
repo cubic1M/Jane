@@ -8,6 +8,10 @@ export const BOOKS_TOLERANCE_CENTS = 100;
 export const BOOKS_LOOKBACK_DAYS = 45;
 // A bank link that hasn't synced for this many days is stale (or broken).
 export const BOOKS_STALE_DAYS = 4;
+// An imported (CSV) account whose newest transaction is this many days old: its data ends there,
+// said plainly, with a fresh import offered (real-user QA: a CSV account went quiet after a week,
+// and its silence read as a missed paycheck).
+export const BOOKS_IMPORT_STALE_DAYS = 7;
 // A transfer out and a transfer in of the same amount in two of the person's accounts, this
 // many days apart or less, are one move between their own accounts.
 export const TRANSFER_MATCH_DAYS = 4;
