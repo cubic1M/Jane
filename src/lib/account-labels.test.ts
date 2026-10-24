@@ -20,5 +20,11 @@ describe("account labels", () => {
     expect(labels.get("first")).toBe("Demo Savings ····2002");
     expect(labels.get("second")).toBe("Demo Savings ····2002, through another bank login");
     expect(new Set(labels.values()).size).toBe(2);
+    expect(
+      accountLabels(
+        [{ id: "x", name: "Demo Savings", mask: "2002", createdAt: at(1) }],
+        " balance",
+      ).get("x"),
+    ).toBe("Demo Savings ····2002 balance");
   });
 });

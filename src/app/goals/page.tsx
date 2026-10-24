@@ -34,7 +34,7 @@ async function Goals() {
       })
       // Each named so no two read the same.
       .then((rows) => {
-        const labels = accountLabels(rows);
+        const labels = accountLabels(rows, " balance");
         return rows.map((a) => ({ id: a.id, name: labels.get(a.id)! }));
       }),
     // Spec step 241: only worth the year plan's work with two goals or more.

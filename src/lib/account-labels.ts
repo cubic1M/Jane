@@ -6,7 +6,11 @@
 
 export type LabelledAccount = { id: string; name: string; mask: string | null; createdAt: Date };
 
-export function accountLabels(accounts: readonly LabelledAccount[]): Map<string, string> {
+// `after` follows the name and digits, before the login note ("… ····2002 balance, through …").
+export function accountLabels(
+  accounts: readonly LabelledAccount[],
+  after = "",
+): Map<string, string> {
   const base = (a: LabelledAccount) => (a.mask ? `${a.name} ····${a.mask}` : a.name);
   const seen = new Map<string, number>();
   const labels = new Map<string, string>();
@@ -14,7 +18,7 @@ export function accountLabels(accounts: readonly LabelledAccount[]): Map<string,
     const name = base(a);
     const count = seen.get(name) ?? 0;
     seen.set(name, count + 1);
-    labels.set(a.id, count === 0 ? name : `${name}, through another bank login`);
+    labels.set(a.id, `${name}${after}${count === 0 ? "" : ", through another bank login"}`);
   }
   return labels;
 }
