@@ -8,6 +8,7 @@ import { monthsEnding, spendingInsights } from "@/insights/spending";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
 import { healthFor } from "@/lib/health-score";
 import { homeSummary, type HomeSummary } from "@/lib/home";
@@ -34,7 +35,7 @@ export async function loadHubTop(
     netWorthOverYear(userId, { client, now }),
   ]);
   if (!home) return null;
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   return {
     home,
     hero: {
@@ -56,7 +57,7 @@ export async function loadHubTop(
 // Net worth today and month by month, as /net-worth works it out.
 async function netWorthOverYear(userId: string, { client, now }: Required<Options>) {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
   const [accounts, snapshots, ownedRows, crypto] = await Promise.all([
     db.accounts.findMany({
@@ -108,7 +109,7 @@ export async function loadHubAreas(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<AreasInput> {
   const db = scopedFor(userId, client);
-  const asOf = now.toISOString().slice(0, 10);
+  const asOf = await todayOf(userId, { client, now });
   const [health, suggestions, months, insurance, loans, taxes, practice, goals] = await Promise.all(
     [
       quietly("the health score", () => healthFor(userId, { client, now })),
