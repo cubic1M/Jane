@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState, type ButtonHTMLAttributes } from "react";
-import { useFormStatus } from "react-dom";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes } from "react";
+import { flushSync, useFormStatus } from "react-dom";
 
 // A form's submit button that answers the tap at once (the founder's "every button is an
-// instant response"): from the press until the server action returns, it shows a spinner and
-// can't be pressed twice. The spinner is plain text, so it needs no colour and screen readers
-// hear "working" from aria-busy. Only the button that was pressed spins, when a form has two.
-// Drop-in for <button type="submit">: every other prop passes through.
+// instant response"): the press itself shows a spinner, in the same frame, and from then until
+// the server action returns the form can't be sent twice. The spinner is plain text, so it
+// needs no colour, and screen readers hear "busy" from aria-busy. Only the button that was
+// pressed spins, when a form has two. Drop-in for <button type="submit">: every other prop
+// passes through.
 
 const FRAMES = ["|", "/", "-", "\\"];
+// A press that sends nothing (a required field left empty) stops spinning after this long.
+const UNSENT_MS = 400;
 
 export function Spinner() {
   const [frame, setFrame] = useState(0);
@@ -32,23 +35,39 @@ export function SubmitButton({
 }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type">) {
   const { pending } = useFormStatus();
   const [pressed, setPressed] = useState(false);
-  // The form is done: the next press starts afresh.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => (pending ? undefined : setPressed(false)), [pending]);
-  const busy = pending && pressed;
+  const sent = useRef(false);
+
+  useEffect(() => {
+    if (pending) {
+      sent.current = true;
+      return;
+    }
+    // The server answered: the next press starts afresh.
+    if (sent.current) {
+      sent.current = false;
+      setPressed(false);
+      return;
+    }
+    if (!pressed) return;
+    const id = window.setTimeout(() => setPressed(false), UNSENT_MS);
+    return () => window.clearTimeout(id);
+  }, [pending, pressed]);
+
   return (
     <button
       type="submit"
       {...props}
+      // Only once the form is on its way: disabling the button during the press would cancel it.
       disabled={disabled || pending}
-      aria-busy={busy || undefined}
+      aria-busy={pressed || undefined}
       onClick={(e) => {
-        setPressed(true);
+        // Painted before the form starts its work, so the press shows in the same frame.
+        flushSync(() => setPressed(true));
         onClick?.(e);
       }}
     >
       {children}
-      {busy && (
+      {pressed && (
         <>
           {" "}
           <Spinner />
