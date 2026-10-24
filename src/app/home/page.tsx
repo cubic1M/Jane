@@ -21,6 +21,9 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
+import { netWorthEvents } from "@/lib/hub/net-worth-events";
+import { netWorthHistory } from "@/lib/hub/net-worth-history";
+import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView, type AreaTile } from "@/lib/hub/view";
 import { requireUser } from "@/lib/session";
 import { stackedSuggestions } from "@/lib/jane-agent/messages";
@@ -130,7 +133,13 @@ async function HubContent() {
   ]);
   if (!top) redirect("/connect");
   const { home } = top;
+  // Net worth every day since the first day with Jane, ending at the hub's own figure.
+  const line = await netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0);
   const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
+  // What moved it: the chart's events, from its first day.
+  const events = line[0]
+    ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
+    : [];
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
@@ -141,7 +150,11 @@ async function HubContent() {
       <BooksNotice books={books} />
       <h1 className="sr-only">Home</h1>
 
-      <HeroRow hero={heroView(top.hero)} planItems={home.plan.items} />
+      <HeroRow
+        hero={heroView(top.hero)}
+        planItems={home.plan.items}
+        chart={<NetWorthChart points={line} events={events} />}
+      />
 
       <CashFlowStrip
         view={cashFlowView(top.cashFlow)}
