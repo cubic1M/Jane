@@ -184,24 +184,19 @@ function IntradayMenu({ level, chosen }: { level: RiskLevel; chosen: IntradayRul
                 </p>
               ) : chosen === id ? (
                 <form action={usePracticeDayTrading} className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-medium text-emerald-700">
+                  <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                    <span aria-hidden="true">■ </span>
                     Your practice portfolio day trades with this
                   </span>
                   <input type="hidden" name="rule" value="off" />
-                  <button
-                    type="submit"
-                    className={`${BUTTON} border border-zinc-300 dark:border-zinc-700`}
-                  >
+                  <button type="submit" className={SECONDARY}>
                     Stop day trading
                   </button>
                 </form>
               ) : (
                 <form action={usePracticeDayTrading}>
                   <input type="hidden" name="rule" value={id} />
-                  <button
-                    type="submit"
-                    className={`${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`}
-                  >
+                  <button type="submit" className={PRIMARY}>
                     Use in practice
                   </button>
                 </form>

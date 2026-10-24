@@ -48,5 +48,5 @@ export async function usePracticeDayTrading(formData: FormData): Promise<void> {
       await savePreferences(user.id, { dayTrading: rule }, "page");
     }
   }
-  redirect("/investments#intraday-menu-heading");
+  redirect("/investments?focus=strategies:menu");
 }

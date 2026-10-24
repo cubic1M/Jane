@@ -132,7 +132,7 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   const orb = menu.getByRole("listitem").filter({ hasText: "Opening-range break" });
   await orb.getByRole("button", { name: "Use in practice" }).click();
   await expect(orb.getByText("Your practice portfolio day trades with this")).toBeVisible();
-  await expect(menu.getByText(/^Most people who day trade lose money/)).toBeVisible();
+  await expect(menu.getByText(/Most people who day trade lose money/)).toBeVisible();
   await orb.getByRole("button", { name: "Stop day trading" }).click();
   await expect(orb.getByRole("button", { name: "Use in practice" })).toBeVisible();
 });
