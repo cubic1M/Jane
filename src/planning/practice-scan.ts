@@ -361,8 +361,8 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
       ask: {
         headline:
           buy === x.ticker
-            ? `Buy ${wholeDollars(amount)} of ${x.ticker} on its dip, in practice`
-            : `Buy ${wholeDollars(amount)} ${buy} on the ${x.ticker} dip, in practice`,
+            ? `Buy ${wholeDollars(amount)} ${x.ticker} in practice on its dip`
+            : `Buy ${wholeDollars(amount)} ${buy} in practice on the dip`,
         short: `${x.ticker} is ${pct(x.drop)} below its recent high, and ${dollars(cash + amount)} is waiting to be invested.`,
         worthCents: amount,
         worthKind: "risk",

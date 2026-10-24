@@ -50,8 +50,10 @@ test("on a computer the chat docks beside the page, folds, expands and stays put
   await expect(page).toHaveURL("/insurance");
   expect(await chat.locator("body").evaluate(() => (window as { kept?: boolean }).kept)).toBe(true);
 
-  // A link inside the chat opens in the main window, and the chat stays docked.
-  const link = chat.locator('main a[href^="/"]:not([href^="/chat"])').first();
+  // A link inside the chat opens in the main window, and the chat stays docked. Jane's own
+  // messages are pop-ups there: a card's link, behind More details.
+  await chat.getByRole("button", { name: "More details" }).first().click();
+  const link = chat.locator('main a[href^="/"]:not([href^="/chat"]):visible').first();
   const href = (await link.getAttribute("href")) ?? "";
   await link.click();
   await expect.poll(() => new URL(page.url()).pathname).toBe(new URL(href, baseURL).pathname);

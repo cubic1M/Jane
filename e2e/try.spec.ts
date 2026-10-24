@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { CHAT } from "./chat-page";
+import { CHAT, popupCard } from "./chat-page";
 
 // Spec step 138: a visitor tries Jane with sample data, without signing up, and lands in
 // Jane's chat as their own sample person. Needs the scratch database (see e2e/db.ts).
@@ -21,10 +21,12 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
   // Her chat by itself for the checks below.
   await page.goto(CHAT);
   // Jane's first brief shows on the open page by itself (no reload here) within 25 seconds of
-  // the click: it was in the database long before it showed, once.
-  await expect(page.getByText(/^Good (morning|afternoon|evening)!/).first()).toBeVisible({
-    timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
-  });
+  // the click, as one of her pop-ups: it was in the database long before it showed, once.
+  await popupCard(
+    page,
+    /^Good (morning|afternoon|evening)!/,
+    Math.max(1000, 25_000 - (Date.now() - clicked)),
+  );
 
   // The banner's "Sign up" reaches the form to start their own account, not back to the chat.
   await page.goto("/home");
@@ -56,9 +58,11 @@ test("five tries in a row each reach the chat in 8 seconds and the brief in 25",
     await page.getByRole("button", { name: "Try it with sample data" }).click();
     await expect(page, `try ${i} reaches Home`).toHaveURL(/\/home$/, { timeout: 8000 });
     await page.goto(CHAT);
-    await expect(page.getByText(/^Good (morning|afternoon|evening)!/).first()).toBeVisible({
-      timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
-    });
+    await popupCard(
+      page,
+      /^Good (morning|afternoon|evening)!/,
+      Math.max(1000, 25_000 - (Date.now() - clicked)),
+    );
     await context.close();
   }
 });

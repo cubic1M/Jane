@@ -28,7 +28,7 @@ describe("consolidating cards", () => {
     expect(s.why).toMatch(
       /^You owe \$1,940\.20 on a card at \d+\.\d%\. .+ at \d+\.\d\d% over \d(?:\.\d)? years would cost about \$[\d,.]+ less in all, fees counted, at \$[\d,.]+ a month\.$/,
     );
-    expect(s.headline).toMatch(/^Move your cards to one cheaper loan, save \$[\d,]+$/);
+    expect(s.headline).toMatch(/^Move card debt into one loan, save \$[\d,]+$/);
     // The rate is worked out from interest charges, not given by the bank, and the offers are typical.
     expect(s.confidence.percent).toBeLessThanOrEqual(65);
   });

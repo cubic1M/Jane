@@ -164,7 +164,7 @@ const backdoorRoth: Detector = {
       topic: "backdoor_roth",
       title: "Ask whether a backdoor Roth IRA fits you",
       headline: headlineOf(
-        "Ask if a backdoor Roth IRA fits",
+        "Ask if a backdoor Roth fits",
         Math.round(growth * R.growthTaxRate),
         "saves",
       ),

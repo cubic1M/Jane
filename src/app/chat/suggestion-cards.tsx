@@ -5,10 +5,12 @@ import { useMemo, useState, useTransition } from "react";
 import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
+import { popupCard, type PopupCard } from "@/lib/jane-agent/popups";
 import { tapButton } from "./actions";
 
-// The day's suggestions as floating cards over the chat (founder request), one at a time.
-// A suggestion message is three lines (src/lib/jane-agent/sources/suggestions.ts): the
+// Jane's pop-ups over the chat or the page (src/lib/jane-agent/popups.ts): the day's suggestions,
+// then anything else she brought up that waits on the person, one card at a time. A suggestion
+// message is three lines (src/lib/jane-agent/sources/suggestions.ts): the
 // headline, "Why you: …" and "85% sure: reason." The card shows the headline with Yes and Not
 // now; the rest is behind More details, already on the page. A tap is answered on screen at
 // once and sent to the server in the background, through the same action as the chat's buttons.
@@ -74,7 +76,11 @@ export function SuggestionCards({ messages }: { messages: MessageView[] }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [open, setOpen] = useState(messages.length);
-  const cards = useMemo(() => messages.map(cardOf), [messages]);
+  const cards = useMemo(
+    () =>
+      messages.map((m): FloatingCardData | PopupCard => (m.suggestion ? cardOf(m) : popupCard(m))),
+    [messages],
+  );
   const links = useMemo(
     () =>
       Object.fromEntries(
@@ -91,14 +97,23 @@ export function SuggestionCards({ messages }: { messages: MessageView[] }) {
         label="Suggestions for you"
         neverLabel="Don't suggest this again"
         links={links}
-        onAnswer={(id, how) => {
+        onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
+          const message = messages.find((m) => m.id === id)!;
+          const card = cards.find((c) => c.id === id) as PopupCard;
+          // A suggestion answers Yes, Not now or Never; anything else taps its own buttons,
+          // and Not now without a button of its own only puts it off on this screen.
+          const actionId = message.suggestion
+            ? ACTION_FOR[how]
+            : how === "yes"
+              ? (choice ?? card.yesAction)
+              : card.notNowAction;
+          if (!actionId) return;
           // The server work follows the screen: the card is already gone.
           startTransition(async () => {
             const data = new FormData();
             data.set("messageId", id);
-            data.set("actionId", ACTION_FOR[how]);
-            const message = messages.find((m) => m.id === id)!;
+            data.set("actionId", actionId);
             await tapButton({ message, error: null }, data);
             router.refresh();
           });

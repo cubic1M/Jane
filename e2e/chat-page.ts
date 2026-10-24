@@ -10,3 +10,25 @@ export async function landInChat(page: Page, timeout = 60_000) {
   await expect(page).toHaveURL(/\/home(\?|$)/, { timeout });
   await page.goto(CHAT);
 }
+
+// Jane's pop-ups (src/lib/jane-agent/popups.ts): anything she brings up that waits on the
+// person floats as a card, not in the chat's list. The card showing, once it's the one with
+// this headline (the arrow keys step through the stack), or a failure if it never comes.
+export async function popupCard(page: Page, headline: RegExp, timeout = 30_000) {
+  const overlay = page.getByRole("region", { name: "Suggestions for you" });
+  const showing = overlay.locator('[data-card-state="showing"]');
+  const title = showing.getByRole("heading", { level: 3 });
+  await expect(overlay).toBeVisible({ timeout });
+  await expect(async () => {
+    for (let i = 0; i < 12; i += 1) {
+      if (headline.test(((await title.textContent({ timeout: 2_000 })) ?? "").trim())) return;
+      await page.keyboard.press("ArrowRight");
+    }
+    for (let i = 0; i < 12; i += 1) {
+      if (headline.test(((await title.textContent({ timeout: 2_000 })) ?? "").trim())) return;
+      await page.keyboard.press("ArrowLeft");
+    }
+    throw new Error(`No card "${headline}"`);
+  }).toPass({ timeout });
+  return showing;
+}

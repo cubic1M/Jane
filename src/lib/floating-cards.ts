@@ -35,6 +35,10 @@ export type FloatingCardData = {
   badge?: string;
   yesLabel: string;
   notNowLabel?: string;
+  // Other answers than Yes (something Jane asked to decide between), behind More details.
+  choices?: { id: string; label: string }[];
+  // Not one of the day's suggestions: no "Don't suggest this again".
+  noNever?: boolean;
 };
 
 export type CardsState = {

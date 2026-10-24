@@ -11,6 +11,7 @@ import {
   type CardMode,
   type FloatingCardData,
 } from "@/lib/floating-cards";
+import { MOTION } from "@/config/motion";
 
 // A reason as one sentence: some end with a full stop already (the practice scan's), some don't.
 const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
@@ -33,8 +34,8 @@ const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `
 // whole set is done.
 
 const SWIPE_PX = 50;
-const LEAVE_MS = 220;
-const SPRING = "cubic-bezier(0.2, 0.9, 0.3, 1.15)";
+const LEAVE_MS = MOTION.slowMs;
+const SPRING = MOTION.spring;
 const BUTTON = "inline-flex min-h-11 items-center justify-center px-4 text-sm font-semibold";
 const PRIMARY = `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`;
 const SECONDARY = `${BUTTON} border border-zinc-400 bg-white hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:hover:bg-zinc-900`;
@@ -73,7 +74,7 @@ function Expanding({
           { height: "0px", opacity: 0 },
           { height: `${el.scrollHeight}px`, opacity: 1 },
         ],
-        { duration: 260, easing: SPRING },
+        { duration: MOTION.slowMs, easing: SPRING },
       );
     } else {
       const shut = el.animate(
@@ -81,7 +82,7 @@ function Expanding({
           { height: `${el.offsetHeight}px`, opacity: 1 },
           { height: "0px", opacity: 0 },
         ],
-        { duration: 180, easing: "ease-in" },
+        { duration: MOTION.baseMs, easing: MOTION.standard },
       );
       shut.onfinish = () => setShown(false);
     }
@@ -105,8 +106,9 @@ export function FloatingCards({
   mode?: CardMode;
   // The overlay's accessible name ("Suggestions for you").
   label: string;
-  // Called at once when a card is answered; the caller does the server work behind it.
-  onAnswer: (id: string, answer: CardAnswer) => void;
+  // Called at once when a card is answered (with the choice, when one of a card's other
+  // choices was taken); the caller does the server work behind it.
+  onAnswer: (id: string, answer: CardAnswer, choice?: string) => void;
   // A third, quieter choice inside the details ("Don't suggest this again"); omit for none.
   neverLabel?: string;
   // Page links to show inside a card's details, by card id.
@@ -123,7 +125,7 @@ export function FloatingCards({
   // Cards waiting behind the one showing, drawn as edges under it.
   const behind = Math.max(0, left.length - 1);
 
-  function respond(card: FloatingCardData, how: CardAnswer) {
+  function respond(card: FloatingCardData, how: CardAnswer, choice?: string) {
     // The set first, so the next card is on screen in the same frame; then the caller's work.
     const departing = mode === "pick" ? left : [card];
     const way: "yes" | "no" = how === "yes" ? "yes" : "no";
@@ -133,7 +135,7 @@ export function FloatingCards({
     ]);
     setState((s) => answer(cards, s, mode, card.id));
     setDetailsOpen(null);
-    onAnswer(card.id, how);
+    onAnswer(card.id, how, choice);
     window.setTimeout(
       () => setLeaving((now) => now.filter((n) => !departing.some((d) => d.id === n.id))),
       LEAVE_MS,
@@ -254,6 +256,17 @@ export function FloatingCards({
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
+              {/* X puts it off, as Not now does. */}
+              <button
+                type="button"
+                aria-label="Close card"
+                onClick={() => respond(current, "not_now")}
+                className="-mt-2 -ml-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
+              >
+                <span aria-hidden="true" className="text-base leading-none">
+                  ×
+                </span>
+              </button>
             </div>
             {/* Already here, only hidden: opening it is a toggle, not a fetch. */}
             <Expanding id={`details-${current.id}`} open={open}>
@@ -299,7 +312,21 @@ export function FloatingCards({
                     {link.label} ›
                   </a>
                 ))}
-                {neverLabel && mode === "queue" && (
+                {current.choices && current.choices.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {current.choices.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => respond(current, "yes", c.id)}
+                        className={SECONDARY}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {neverLabel && mode === "queue" && !current.noNever && (
                   <button
                     type="button"
                     onClick={() => respond(current, "never")}
