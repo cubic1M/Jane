@@ -22,6 +22,7 @@ import { dayLabel } from "@/lib/day-label";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
+import { formatCents } from "@/lib/money";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView, type AreaTile } from "@/lib/hub/view";
@@ -115,6 +116,32 @@ async function AreasTree({ tiles, treeData }: { tiles: AreaTile[]; treeData: Pro
   return <HomeTree data={homeTree({ tiles, areaTrees: { insurance: insurance.area }, maps })} />;
 }
 
+// The net worth chart: every day since the first day with Jane, ending at the hub's own figure,
+// and what moved it, from its first day.
+async function NetWorthHero({ userId, todayCents }: { userId: string; todayCents: number }) {
+  const line = await netWorthHistory(userId, todayCents);
+  const events = line[0] ? await netWorthEvents(userId, line[0].date, todayCents) : [];
+  return <NetWorthChart points={line} events={events} />;
+}
+
+// While the line loads: today's figure (already known) at the chart's size, so nothing moves.
+function NetWorthLoading({ todayCents }: { todayCents: number }) {
+  return (
+    <section
+      aria-label="Net worth"
+      aria-busy="true"
+      className="flex flex-col gap-2 border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950"
+    >
+      <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Net worth</p>
+      <p className="text-5xl font-semibold tracking-tight tabular-nums sm:text-6xl">
+        {formatCents(todayCents).replace(/\.\d\d$/, "")}
+      </p>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">Drawing your line…</p>
+      <div aria-hidden="true" className="h-[190px] sm:h-[260px]" />
+    </section>
+  );
+}
+
 async function HubContent() {
   await connection();
   const user = await requireUser();
@@ -134,13 +161,8 @@ async function HubContent() {
   ]);
   if (!top) redirect("/connect");
   const { home } = top;
-  // Net worth every day since the first day with Jane, ending at the hub's own figure.
-  const line = await netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0);
+  const todayCents = top.hero.netWorth?.todayCents ?? 0;
   const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
-  // What moved it: the chart's events, from its first day.
-  const events = line[0]
-    ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
-    : [];
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
@@ -157,7 +179,13 @@ async function HubContent() {
       <HeroRow
         hero={heroView(top.hero)}
         planItems={home.plan.items}
-        chart={<NetWorthChart points={line} events={events} />}
+        chart={
+          // Its own boundary: the history and what moved it are read after the top row's net
+          // worth, so the rest of the hub paints without waiting for them (speed pass).
+          <Suspense fallback={<NetWorthLoading todayCents={todayCents} />}>
+            <NetWorthHero userId={user.id} todayCents={todayCents} />
+          </Suspense>
+        }
       />
 
       <CashFlowStrip
