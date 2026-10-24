@@ -43,7 +43,7 @@ export async function buildMonthlyReport(
   const db = scopedFor(userId, client);
   const [saved, checkIn, transfers, snapshot, health] = await Promise.all([
     provenSavings(userId, { client, now }),
-    loadCheckIn(userId, month, { client }),
+    loadCheckIn(userId, month, { client, now }),
     db.moneyTransfers.findMany({
       where: {
         status: "completed",
