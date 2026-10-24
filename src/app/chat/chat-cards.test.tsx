@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./actions", () => ({ tapButton: vi.fn() }));
+vi.mock("@/lib/compare-actions", () => ({ pickCompared: vi.fn() }));
 vi.mock("./practice-actions", () => ({ putAwayPracticeCard: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 

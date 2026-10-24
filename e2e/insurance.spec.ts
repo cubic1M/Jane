@@ -148,12 +148,15 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
     await page.goto("/insurance");
     await pickItem(page, "Insurance", "Your policies", "GEICO car");
     await page.getByRole("link", { name: "Compare quotes" }).click({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: "Yes, switch" })).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(page.getByText("JANE'S PICK")).toBeVisible({ timeout: 10_000 });
   }).toPass({ timeout: 90_000 });
-  await page.getByRole("button", { name: "Yes, switch" }).click();
-  await expect(page).toHaveURL("/actions");
+  // Jane's pick and the other cheaper quotes side by side; choosing her pick starts the switch.
+  const pick = page.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });
+  await pick.getByRole("button", { name: /^Choose / }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Chosen:" })).toContainText(
+    "I'm switching you now",
+    { timeout: 30_000 },
+  );
 });
 
 test("a person starts a claim tracker and ticks off a step (step 107)", async ({
@@ -492,7 +495,10 @@ test("a demo-bank person goes from a gap to a picked option, and it reaches the 
   const card = page.getByTestId("option-card");
   await expect(card).toBeVisible();
   await expect(card.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
-  await expect(card.getByText("Jane's pick")).toBeVisible();
-  await card.getByRole("button", { name: "Choose this one" }).first().click();
-  await expect(page.getByRole("status")).toContainText("My team will");
+  await expect(card.getByText("JANE'S PICK")).toBeVisible();
+  await card
+    .getByRole("button", { name: /^Choose / })
+    .first()
+    .click();
+  await expect(card.getByRole("status")).toContainText("My team will", { timeout: 30_000 });
 });

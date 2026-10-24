@@ -293,3 +293,21 @@ export function loansTree(input: LoansTreeInput): AreaTree {
     })),
   });
 }
+
+// Comparison cards on the tree (founder, 2026-10-24): the suggestions that are a choice of loan
+// open the fit engine's options side by side ("Compare options"). What each one is priced for:
+// a car loan's refinance is that car loan; the rest let the engine pick the dearest debt.
+export const COMPARE_TOPICS = ["refinance", "auto_refinance", "consolidation"] as const;
+
+export function compareWant(
+  topic: string,
+  debts: readonly { key: string; kind: string }[],
+): { need: "refinance" | "consolidation"; debtKey?: string } | null {
+  if (topic === "consolidation") return { need: "consolidation" };
+  if (topic === "refinance") return { need: "refinance" };
+  if (topic === "auto_refinance") {
+    const car = debts.find((d) => d.kind === "auto");
+    return car ? { need: "refinance", debtKey: car.key } : { need: "refinance" };
+  }
+  return null;
+}

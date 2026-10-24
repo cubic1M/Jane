@@ -8,7 +8,18 @@ import { ViewTracker } from "@/components/view-tracker";
 import { sourceLabel, type Debt } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
 import { areaOfCapability } from "@/config/areas";
-import { itemId, loansTree, type LoansBranch } from "@/lib/area-pages/loans";
+import { ComparisonCards } from "@/components/comparison-cards";
+import { adviceMode } from "@/lib/advice-mode";
+import {
+  COMPARE_TOPICS,
+  compareWant,
+  itemId,
+  loansTree,
+  type LoansBranch,
+} from "@/lib/area-pages/loans";
+import { toComparison } from "@/lib/comparison";
+import { loadFit } from "@/lib/fit";
+import { fitCard } from "@/lib/fit-card";
 import { loadCredit } from "@/lib/credit";
 import { loadDebtReview } from "@/lib/debt-review";
 import { loadPayoff } from "@/lib/debt-plan";
@@ -351,6 +362,14 @@ async function LoansContent({
   const openKey = one("terms");
   const error = one("error");
   const latest = credit.available ? credit.latest : null;
+  // "Compare options" on a loan choice (?compare=<topic>): the fit engine's options as comparison
+  // cards. Demo advice only, as picking one is (src/lib/fit-pick.ts).
+  const advice = await adviceMode(user.id);
+  const compareTopic = one("compare");
+  const want = advice ? compareWant(compareTopic, book.debts) : null;
+  const fit = want ? await loadFit(user.id, want) : null;
+  const fitOptions = fit ? fitCard(fit, true) : null;
+  const comparison = fitOptions ? toComparison(fitOptions) : null;
 
   const area = loansTree({
     asOf: new Date().toISOString().slice(0, 10),
@@ -382,12 +401,32 @@ async function LoansContent({
     if (!branch) continue;
     const id = itemId(branch.id as LoansBranch, sug.topic);
     const page = TOPIC_PAGE[sug.topic];
+    const comparable = advice && (COMPARE_TOPICS as readonly string[]).includes(sug.topic);
     details[id] = (
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        <Link href={sug.actionHref} className={`text-sm ${LINK}`}>
-          {sug.actionLabel} ›
-        </Link>
-        {page && page !== sug.actionHref && <PageLink href={page} />}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link href={sug.actionHref} className={`text-sm ${LINK}`}>
+            {sug.actionLabel} ›
+          </Link>
+          {page && page !== sug.actionHref && <PageLink href={page} />}
+          {comparable && compareTopic !== sug.topic && (
+            <Link
+              href={`/loans?compare=${sug.topic}&focus=${encodeURIComponent(id)}#compare`}
+              className={`text-sm ${LINK}`}
+            >
+              Compare options ›
+            </Link>
+          )}
+        </div>
+        {comparable && compareTopic === sug.topic && (
+          <div id="compare">
+            {comparison ? (
+              <ComparisonCards comparison={comparison} />
+            ) : (
+              <p className="text-sm">No offers to compare for this right now.</p>
+            )}
+          </div>
+        )}
       </div>
     );
     more[id] = <p>{sug.why}</p>;

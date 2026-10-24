@@ -118,6 +118,27 @@ describe("the loan card's shape", () => {
     expect(first.facts[1]).toBe(`Term: ${engine.termMonths} months`);
   });
 
+  it("carries the comparison cards' numbers: payment, total, months, four rows", async () => {
+    const view = viewOf({
+      need: "car",
+      product: "auto",
+      amountCents: 2_000_000,
+      person: person(),
+      offers: await offersFor("auto", 2_000_000),
+    });
+    for (const o of fitCard(view, true)!.options) {
+      const engine = view.options.find((e) => e.id === o.id)!;
+      expect(o.compare).toMatchObject({
+        monthlyCents: engine.paymentCents,
+        totalCents: engine.totalCostCents,
+        coverScore: null,
+        payoffMonths: engine.termMonths,
+      });
+      expect(o.compare!.rows.map((r) => r.label)).toEqual(["APR", "Term", "Total cost", "Fees"]);
+      expect(o.compare!.bestFor).toMatch(/^Best for /);
+    }
+  });
+
   it("shows no pick, no confidence and no label outside advice mode", async () => {
     const view = viewOf({
       need: "car",

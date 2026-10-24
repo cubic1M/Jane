@@ -128,3 +128,40 @@ opens a branch or picks an item. The detail region is `aria-live="polite"`.
 
 On a phone, or when a branch has many items, the canvas pans so the items fill the view and the
 branches are off to the left. An "All of <area>" button above the tree brings them back.
+
+## Comparison cards
+
+Wherever Jane recommends insurance or a loan (the chat, the area trees, /insurance/quotes), the
+options are comparison cards (founder, 2026-10-24): two to four side by side on a wide screen,
+a stack to swipe through on a phone with a Compare toggle that lines them up as a table.
+
+```
+Sort by  ● Lowest total cost  ○ Lowest monthly  ○ Fastest payoff
+┌─────────────────────┐ ┌─────────────────────┐ ┌─────────────────────┐
+│ [JANE'S PICK]       │ │ [LOWEST MONTHLY]    │ │ [FASTEST PAYOFF]    │
+│ [LOWEST TOTAL]      │ │                     │ │                     │
+│ Lakeside CU         │ │ Harbor Bank         │ │ Summit              │
+│ $412/mo             │ │ $318/mo             │ │ $640/mo             │
+│ ▸ APR      6.90%    │ │ ▸ APR      7.20%    │ │ ▸ APR      6.50%    │
+│ ▸ Term     48 mo    │ │ ▸ Term     72 mo    │ │ ▸ Term     24 mo    │
+│ ▸ Total    $19,776  │ │ ▸ Total    $22,896  │ │ ▸ Total    $15,360  │
+│ · Fees     none     │ │ · Fees     none     │ │ · Fees     none     │  same on all: dimmed
+│ » Best for the least│ │ » Best for the small│ │ » Best for debt-free│
+│ [CHOOSE] More ▾     │ │ [CHOOSE] More ▾     │ │ [CHOOSE] More ▾     │
+└─────────────────────┘ └─────────────────────┘ └─────────────────────┘
+```
+
+- **Data**: every pick-one card (`src/lib/option-card.ts`) carries `compare` on each option: the
+  monthly figure, the total, how much cover (insurance) or how many months (loans), three or four
+  rows and a "best for" line. The builders set it: `insuranceCard`, `shopCard`, `fitCard`.
+- **Model**: `toComparison(card)` in `src/lib/comparison.ts` lines the rows up, marks the ones
+  that differ, tags the unique winner of each preference (CHEAPEST, BEST COVER, LOWEST MONTHLY,
+  LOWEST TOTAL, FASTEST PAYOFF) and opens on the preference that puts Jane's pick first.
+  `rank(options, preference)` is the re-ranking, stable on ties.
+- **Drawing**: `ComparisonCards` (`src/components/comparison-cards.tsx`). Monospace, black,
+  white and grey: tags in brackets, ▸ for a row that differs (bold), · for one that doesn't
+  (dimmed), the chosen card inverted. Sorting re-ranks on the screen with a FLIP glide, none
+  under reduced motion.
+- **Choosing**: one tap shows the choice at once; `pickCompared` (`src/lib/compare-actions.ts`)
+  queues it behind through the lane's own picker, which prices the options again. In the chat
+  the sheet sends `option.pick` instead.
