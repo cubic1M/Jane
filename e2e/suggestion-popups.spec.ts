@@ -2,11 +2,11 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 
-// Suggestions as compact pop-ups (docs/design/home-hub.md): on Home they pop up at the bottom
-// of the hub, a short card that never covers more than about a third of the screen, the cards
-// behind it counted, the details opening in place with the chevron, and the next card on
-// screen within 100 ms of a tap. Beside Home the docked chat leaves them out, so they show
-// once.
+// Jane's cards (docs/design/area-pages.md): on a computer they sit in a dock directly above
+// the side chat, in the right column and never in the chat itself, a little bigger, one at a
+// time with "+N" and arrows. On a phone they pop up at the bottom of Home, a short card that
+// never covers more than about a third of the screen. Either way the details open in place
+// with the chevron, and the next card is on screen within 100 ms of a tap.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(180_000);
@@ -22,11 +22,13 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
   baseURL,
   isMobile,
 }) => {
-  if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+  // A computer, or a small phone (375 x 812).
+  await page.setViewportSize(isMobile ? { width: 375, height: 812 } : { width: 1440, height: 900 });
   userId = await demoPerson(context, page, baseURL);
   await page.goto("/home");
 
-  const overlay = page.getByRole("region", { name: "Suggestions for you" });
+  const panel = page.getByRole("complementary", { name: "Chat with Jane" });
+  const overlay = (isMobile ? page : panel).getByRole("region", { name: "Suggestions for you" });
   await expect(overlay).toBeVisible({ timeout: 60_000 });
   const showing = overlay.locator('[data-card-state="showing"]');
   const viewport = page.viewportSize()!;
@@ -64,31 +66,75 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
     const jane = (await page.getByRole("button", { name: /^Chat with Jane/ }).boundingBox())!;
     expect(shut.y + shut.height).toBeLessThanOrEqual(jane.y + 1);
   } else {
-    const panel = (await page
-      .getByRole("complementary", { name: "Chat with Jane" })
-      .boundingBox())!;
-    expect(shut.x + shut.width).toBeLessThanOrEqual(panel.x + 1);
-    // The chat beside Home leaves the suggestions to the hub.
+    // Above the chat, in its column: the page has no floating stack of its own, and the chat
+    // has no card in it.
+    const box = (await panel.boundingBox())!;
+    expect(shut.x).toBeGreaterThanOrEqual(box.x - 1);
+    expect(shut.x + shut.width).toBeLessThanOrEqual(box.x + box.width + 1);
+    const frame = (await page.locator('iframe[title="Chat with Jane"]').boundingBox())!;
+    expect(shut.y + shut.height).toBeLessThanOrEqual(frame.y + 1);
+    await expect(page.locator('.floating-cards[data-floating-cards="queue"]')).toBeHidden();
     const chat = page.frameLocator('iframe[title="Chat with Jane"]');
     await expect(chat.getByRole("textbox", { name: "Message Jane" })).toBeVisible({
       timeout: 30_000,
     });
     await expect(chat.getByRole("region", { name: "Suggestions for you" })).toBeHidden();
+    // Whole: the headline is never cut short.
+    const heading = showing.getByRole("heading", { level: 3 });
+    await expect(heading).not.toContainText("…");
+    expect(await heading.evaluate((h) => h.scrollWidth <= h.clientWidth + 1)).toBe(true);
+    // The arrows step through the cards and back.
+    if (total > 1) {
+      const first = (await heading.textContent()) ?? "";
+      await showing.getByRole("button", { name: "Next card" }).click();
+      await expect(heading).not.toHaveText(first);
+      await showing.getByRole("button", { name: "Previous card" }).click();
+      await expect(heading).toHaveText(first);
+    }
   }
 
-  // The chevron opens the details in place: why, how sure and what Yes does.
+  // The buttons sit in one row, every label whole (founder: "lined up horizontally in one line
+  // instead of stacked on each other").
+  const actions = showing.locator("[data-card-actions] button");
+  const rows = await actions.evaluateAll((els) =>
+    els.map((e) => ({
+      top: Math.round(e.getBoundingClientRect().top),
+      whole: e.scrollWidth <= e.clientWidth + 1,
+    })),
+  );
+  expect(new Set(rows.map((r) => r.top)).size).toBe(1);
+  expect(rows.every((r) => r.whole)).toBe(true);
+
+  // The chevron opens the details in place, bigger: why, what Yes does, and how sure last.
   const more = showing.getByRole("button", { name: "More details" });
   await more.click();
   await expect(more).toHaveAttribute("aria-expanded", "true");
   const details = showing.locator('[id^="details-"]');
   await expect(details).toBeVisible();
-  await expect(details).toContainText(/\d+% sure:/);
   await expect(details).toContainText("What Yes does:");
-  await expect
-    .poll(async () => (await showing.boundingBox())!.height)
-    .toBeLessThan(viewport.height * 0.5);
+  // Paragraphs with room between them, and the confidence on its own line at the end.
+  const blocks = details.locator("p");
+  expect(await blocks.count()).toBeGreaterThan(1);
+  const [a, b] = await blocks.evaluateAll((els) =>
+    els.slice(0, 2).map((e) => e.getBoundingClientRect()),
+  );
+  expect(b.top - a.bottom).toBeGreaterThanOrEqual(8);
+  const sure = details.locator("[data-card-confidence]");
+  await expect(sure).toHaveText(/^\d+% sure:/);
+  expect(
+    await details.evaluate((el) => {
+      const ps = [...el.querySelectorAll("p, ul, dl, a, button")];
+      return ps[ps.length - 1]?.hasAttribute("data-card-confidence");
+    }),
+  ).toBe(true);
+  // Bigger open than shut, and never past about 70% of the screen; it shrinks back after.
+  await expect.poll(async () => (await showing.boundingBox())!.height).toBeGreaterThan(shut.height);
+  expect((await showing.boundingBox())!.height).toBeLessThan(viewport.height * 0.8);
   await more.click();
   await expect(details).toBeHidden();
+  await expect
+    .poll(async () => (await showing.boundingBox())!.height)
+    .toBeLessThan(shut.height + 4);
 
   // Not now: the next card is on screen within 100 ms.
   const headline = showing.getByRole("heading", { level: 3 });

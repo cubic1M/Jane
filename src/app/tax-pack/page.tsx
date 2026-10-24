@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/session";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { selectableYears, taxYearFrom, type PackGroup } from "@/planning/tax-pack";
 import { QUARTER_LABELS, TAX_PACK_COPY as COPY } from "@/planning/tax-pack-copy";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The tax-time pack (spec step 72): organizing only, no tax advice and no Claude text.
 
@@ -314,7 +315,7 @@ async function TaxPackContent({
 export default function TaxPackPage({ searchParams }: PageProps<"/tax-pack">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <TaxPackContent searchParams={searchParams} />
       </Suspense>
     </main>

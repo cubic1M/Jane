@@ -9,6 +9,7 @@ import { loadTaxTags, searchToTag } from "@/lib/tax-organizer";
 import { taxYearFrom } from "@/planning/tax-pack";
 import type { TagSource } from "@/planning/tax-tags";
 import { CheckButtons, TagForm } from "./tag-form";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Tax tags (spec step 119): what Jane tagged for the year, the ones she's unsure about,
 // and a search to tag anything else (a work expense). Tags never change spending.
@@ -180,7 +181,7 @@ async function TagsContent({
 export default function TaxTagsPage({ searchParams }: PageProps<"/taxes/tags">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <TagsContent searchParams={searchParams} />
       </Suspense>
     </main>

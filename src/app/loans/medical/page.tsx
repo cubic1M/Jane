@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { addBillAction, sendRequestAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Medical bills (spec step 180): bills found in the person's payments plus ones they type,
 // each with the requests Jane wrote (itemized bill, insurance check, financial assistance,
@@ -152,7 +153,7 @@ async function MedicalContent({ searchParams }: Pick<PageProps<"/loans/medical">
 export default function MedicalPage({ searchParams }: PageProps<"/loans/medical">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <MedicalContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -16,6 +16,7 @@ import {
   dismissAddonAction,
 } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The car loan you already have (spec step 245): the best refinance by total cost, dealer
 // add-ons found in the loan with the refund each would give, and the cancellation drafted for
@@ -241,7 +242,7 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
 export default function AutoPage({ searchParams }: PageProps<"/loans/auto">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <AutoContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { launchChecks, launchReady } from "@/lib/launch-check";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The production switch checklist, run against this deployment's own environment.
 async function Launch() {
@@ -39,7 +40,7 @@ async function Launch() {
 export default function LaunchPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Launch />
       </Suspense>
     </main>

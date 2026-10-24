@@ -8,6 +8,7 @@ import { SUGGESTION_NODES, dayLabel, itemId, moneyTree } from "@/lib/area-pages/
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Spending & bills (spec step 80; docs/design/area-pages.md): what matters now, the area's
 // tree, and the detail of the one thing picked. Each detail links to the page that has the
@@ -315,7 +316,7 @@ async function MoneyContent({
 export default function MoneyPage({ searchParams }: PageProps<"/money">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <MoneyContent searchParams={searchParams} />
       </Suspense>
     </main>

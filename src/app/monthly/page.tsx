@@ -9,6 +9,7 @@ import { storedReport } from "@/lib/monthly-report-store";
 import { requireUser } from "@/lib/session";
 import { categoryWords } from "@/planning/month-close";
 import { monthName, reportLines } from "@/planning/monthly-report";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The month's one report (spec step 148), with the monthly check-in folded in (spec step 45;
 // docs/feature-audit.md, cluster 2). For any month: Jane's short summary, what was spent and
@@ -249,7 +250,7 @@ function MonthClose({ view }: { view: CloseView }) {
 export default function MonthlyPage({ searchParams }: PageProps<"/monthly">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <MonthlyContent searchParams={searchParams} />
       </Suspense>
     </main>

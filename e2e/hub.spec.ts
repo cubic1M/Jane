@@ -96,7 +96,7 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   await expect(page).toHaveURL("/insurance");
 });
 
-test("the giant tree shows everything at once, and a feature's Ask Jane box sends to the chat", async ({
+test("the areas are fixed tiles that each open into their tree, and a feature's Ask Jane box sends to the chat", async ({
   context,
   page,
   baseURL,
@@ -106,34 +106,61 @@ test("the giant tree shows everything at once, and a feature's Ask Jane box send
   userId = await demoPerson(context, page, baseURL);
   await page.goto("/home");
 
-  // Jane, the six areas and their branches, all in one canvas, no tabs to click through.
-  const tree = page.getByRole("tree", { name: "What Jane does" });
-  await expect(tree.locator('[role="treeitem"][aria-level="1"]')).toHaveCount(1, {
-    timeout: 60_000,
-  });
-  await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(AREAS.length);
-  expect(await tree.locator('[role="treeitem"][aria-level="3"]').count()).toBeGreaterThan(6);
-  expect(await tree.locator('[role="treeitem"][aria-level="4"]').count()).toBeGreaterThan(20);
-  const canvas = page.locator("[data-giant-tree]");
+  // Six fixed tiles: no Jane box above them, nothing to drag or zoom.
+  const tree = page.locator("[data-giant-tree]");
+  const tiles = tree.locator("[data-giant-area-tile]");
+  await expect(tiles).toHaveCount(AREAS.length, { timeout: 60_000 });
+  // Streamed in: on screen, not still in the page's hidden placeholder.
+  await expect(tiles.last()).toBeVisible();
+  for (const [i, name] of AREAS.entries()) await expect(tiles.nth(i)).toContainText(name);
+  await expect(tree.getByText(/^> ?Jane$/)).toHaveCount(0);
   for (const name of ["Zoom in", "Zoom out", "Fit the whole tree"]) {
-    await expect(canvas.getByRole("button", { name })).toBeVisible();
+    await expect(tree.getByRole("button", { name })).toHaveCount(0);
   }
+  // A row of six on a computer; two by three on a phone.
+  const tops = await tiles.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
+  const rows = new Set(tops.map((t) => Math.round(t))).size;
+  expect(rows).toBe(isMobile ? 3 : 1);
+  // Every name in full: wrapped, never cut with "…".
+  await tiles.first().scrollIntoViewIfNeeded();
+  for (const text of await tiles.allTextContents()) expect(text).not.toContain("…");
 
-  // The keyboard walks it: Jane, into the first area, its first branch, its first feature.
-  const jane = tree.locator('[role="treeitem"][aria-level="1"]');
-  await jane.focus();
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
-  const feature = tree.locator('[role="treeitem"][aria-level="4"]').first();
-  await expect(feature).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(feature).toHaveAttribute("aria-selected", "true");
-  const detail = page.locator("[data-giant-detail]");
+  // A tile opens its tree below the row: the area, its branches, their features.
+  const taxes = tree.locator('[data-giant-area-tile="taxes"]');
+  await expect(taxes).toHaveAttribute("aria-expanded", "false");
+  await taxes.click();
+  await expect(taxes).toHaveAttribute("aria-expanded", "true");
+  const area = tree.locator('[data-giant-area="taxes"]');
+  await expect(area).toBeVisible();
+  expect(await area.locator("[data-giant-branch]").count()).toBeGreaterThan(2);
+  expect(await area.locator("[data-giant-feature]").count()).toBeGreaterThan(6);
+  const tilesBottom = Math.max(
+    ...(await tiles.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().bottom))),
+  );
+  expect((await area.boundingBox())!.y).toBeGreaterThanOrEqual(tilesBottom - 1);
+  // It fits the width: nothing sideways.
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+  ).toBe(true);
+  for (const text of await area.allTextContents()) expect(text).not.toContain("…");
+  // Another tile swaps the tree; the same one again shuts it.
+  await tree.locator('[data-giant-area-tile="insurance"]').click();
+  await expect(tree.locator('[data-giant-area="insurance"]')).toBeVisible();
+  await expect(area).toHaveCount(0);
+  await tree.locator('[data-giant-area-tile="insurance"]').click();
+  await expect(tree.locator("[data-giant-area]")).toHaveCount(0);
+  await taxes.click();
+
+  // A feature opens in place: what it is, [OPEN], and its Ask Jane box.
+  const feature = area.locator("[data-giant-feature]").first();
+  const toggle = feature.getByRole("button").first();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  const detail = feature.locator("[data-giant-detail]");
   await expect(detail.getByRole("link", { name: "[OPEN]" })).toBeVisible();
 
   // Its Ask Jane box sends the question straight into the chat: no Send to press.
-  const ask = canvas.locator("[data-ask-jane]");
+  const ask = detail.locator("[data-ask-jane]");
   await expect(ask).toBeVisible();
   const question = ((await ask.locator(":scope > span").last().textContent()) ?? "").trim();
   expect(question.length).toBeGreaterThan(5);

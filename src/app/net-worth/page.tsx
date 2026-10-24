@@ -13,6 +13,7 @@ import { cryptoTotal } from "@/lib/crypto/crypto";
 import { requireUser } from "@/lib/session";
 import { BooksNotice } from "@/components/books-notice";
 import { openBooks } from "@/lib/books";
+import { LoadingBar } from "@/components/loading-bar";
 
 const monthLabel = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
@@ -184,7 +185,7 @@ async function NetWorthContent() {
 export default function NetWorthPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <NetWorthContent />
       </Suspense>
     </main>

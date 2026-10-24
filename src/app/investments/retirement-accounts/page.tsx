@@ -11,6 +11,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { linkRothIra, putInIra, raiseForMatch } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Retirement accounts used fully (spec step 210, demo advice): every limit with what's
 // used, the match left on the table, Roth or traditional, and the backdoor Roth.
@@ -192,7 +193,7 @@ export default function RetirementAccountsPage(
 ) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

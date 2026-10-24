@@ -27,6 +27,7 @@ import { requireUser } from "@/lib/session";
 import { PREFERENCE_LABELS, type PreferenceField } from "@/planning/practice-preferences";
 import { savePracticeSettings } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What the person wants from the practice portfolio (Phase AW, Stage A), in plain words: how much
 // risk, a goal and its date, the monthly practice money, extra moves, what never to buy, loss
@@ -383,7 +384,7 @@ async function Content({
 export default function PracticeSettingsPage(props: PageProps<"/investments/practice/settings">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

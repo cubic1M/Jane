@@ -7,6 +7,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { loadReview } from "@/lib/investments/review";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Does it fit? (spec step 131). The mix of investments against the target for the
 // person's risk level, single companies that are too big a part of it, cash above the target mix, and what
@@ -145,7 +146,7 @@ async function ReviewContent() {
 export default function ReviewPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ReviewContent />
       </Suspense>
     </main>
