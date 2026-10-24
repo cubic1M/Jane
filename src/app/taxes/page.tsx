@@ -1,3 +1,4 @@
+import { ConfirmDependants } from "./profile/confirm-dependants";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -323,12 +324,21 @@ async function TaxesContent() {
           <Row
             label="Dependants"
             value={
-              kids.status === "yours"
-                ? `${kids.childrenUnder17} under 17, ${kids.otherDependants} other`
-                : "—"
+              kids.status === "missing"
+                ? "—"
+                : `${kids.childrenUnder17} under 17, ${kids.otherDependants} other`
             }
             status={kids.status}
           />
+          {kids.status === "found" &&
+            kids.childrenUnder17 !== null &&
+            kids.otherDependants !== null && (
+              <ConfirmDependants
+                childrenUnder17={kids.childrenUnder17}
+                otherDependants={kids.otherDependants}
+                from={kids.from ?? "your accounts"}
+              />
+            )}
           <Row
             label="State"
             value={stateName(view.state.value) ?? "—"}

@@ -9,6 +9,7 @@ import { loadTaxProfile } from "@/lib/tax-profile";
 import { stateName } from "@/planning/tax-profile";
 import { scopedDb } from "@/lib/db-scoped";
 import { hasDemoBank } from "@/lib/plaid/demo";
+import { ConfirmDependants } from "./confirm-dependants";
 import { TaxProfileForm } from "./form";
 import { PayStubForm } from "./pay-stub-form";
 import { ResidencyForm } from "./residency-form";
@@ -78,6 +79,15 @@ async function ProfileContent() {
           accounts and marks it; everything else is your answer, and you can change any of it.
         </p>
       </div>
+      {view.dependants.status === "found" &&
+        view.dependants.childrenUnder17 !== null &&
+        view.dependants.otherDependants !== null && (
+          <ConfirmDependants
+            childrenUnder17={view.dependants.childrenUnder17}
+            otherDependants={view.dependants.otherDependants}
+            from={view.dependants.from ?? "your accounts"}
+          />
+        )}
       <TaxProfileForm
         values={{
           incomeKinds: INCOME_KIND_ORDER.map((kind) => ({
