@@ -251,6 +251,20 @@ body {
   }
 }
 
+/* The first scan's loading bar (src/components/scan-bar.tsx): it fades out at 100%; under
+   reduced motion it just goes. */
+.scan-bar {
+  transition: opacity 600ms ease-out;
+}
+.scan-bar-out {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-bar {
+    transition: none;
+  }
+}
+
 /* The chat inside the side panel (/chat?embed=1) has no footer of its own. */
 body:has([data-chat-embed]) > footer {
   display: none;
