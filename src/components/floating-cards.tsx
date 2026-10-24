@@ -37,10 +37,12 @@ const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `
 const SWIPE_PX = 50;
 const LEAVE_MS = MOTION.slowMs;
 const SPRING = MOTION.spring;
-const BUTTON = "inline-flex min-h-11 items-center justify-center px-4 text-sm font-semibold";
+const BUTTON = "inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold";
 const PRIMARY = `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`;
 const SECONDARY = `${BUTTON} border border-zinc-400 bg-white hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:hover:bg-zinc-900`;
 
+// The card's buttons never run past it: a label longer than the card wraps inside its button.
+const COMPACT = "max-w-full text-left";
 const ARROW =
   "inline-flex size-11 items-center justify-center text-lg font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50";
 
@@ -269,7 +271,10 @@ export function FloatingCards({
     >
       <div
         className={`relative w-full ${
-          docked ? "" : `floating-card-width ${open ? "max-w-2xl" : "max-w-md"}`
+          docked
+            ? ""
+            : // Wider opened, or with choices, so more of its buttons fit on one line.
+              `floating-card-width ${open || (current?.choices?.length ?? 0) > 0 ? "max-w-2xl" : "max-w-md"}`
         }`}
       >
         {/* The cards waiting behind, as edges under this one. */}
@@ -411,17 +416,15 @@ export function FloatingCards({
                 )}
               </div>
             </Expanding>
-            <div className="flex items-center gap-2 p-3">
-              {/* One row, every label whole (founder: "lined up horizontally in one line instead
-                  of stacked"): too many to fit, it scrolls sideways under a fading edge. */}
-              <div
-                data-card-actions=""
-                className="card-actions flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
-              >
+            <div className="flex flex-wrap items-center gap-2 p-3">
+              {/* Every choice always in view, labels whole (founder: "not all the choices are
+                  shown"): one line when they fit (compact buttons), wrapping onto another
+                  rather than ever being cut off or scrolled out of sight. */}
+              <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => respond(current, "yes")}
-                  className={`${PRIMARY} shrink-0 whitespace-nowrap`}
+                  className={`${PRIMARY} ${COMPACT}`}
                 >
                   {current.yesLabel}
                 </button>
@@ -430,7 +433,7 @@ export function FloatingCards({
                     key={c.id}
                     type="button"
                     onClick={() => respond(current, "yes", c.id)}
-                    className={`${SECONDARY} shrink-0 whitespace-nowrap`}
+                    className={`${SECONDARY} ${COMPACT}`}
                   >
                     {c.label}
                   </button>
@@ -438,7 +441,7 @@ export function FloatingCards({
                 <button
                   type="button"
                   onClick={() => respond(current, "not_now")}
-                  className={`${SECONDARY} shrink-0 whitespace-nowrap`}
+                  className={`${SECONDARY} ${COMPACT}`}
                 >
                   {current.notNowLabel ?? "Not now"}
                 </button>
@@ -456,7 +459,7 @@ export function FloatingCards({
               {mode === "queue" && behind > 0 && (
                 <span
                   aria-hidden="true"
-                  className="ml-auto text-xs font-semibold text-zinc-600 tabular-nums dark:text-zinc-400"
+                  className="ml-auto pl-1 text-xs font-semibold text-zinc-600 tabular-nums dark:text-zinc-400"
                 >
                   +{behind}
                 </span>

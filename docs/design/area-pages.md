@@ -205,10 +205,12 @@ is the answer (`ANSWER_WINDOW_MS`); anything else she posts meanwhile floats.
 **The card:**
 - **Headline:** eight words at most for the detectors (`HEADLINE_MAX_WORDS`, starting with a
   verb), with one number; anything else shows its first sentence whole, never cut with "…".
-- **Buttons:** one row (founder: "show the whole option lined up horizontally in one line
-  instead of stacked on each other"): the main action, the message's other choices, and Not now
-  (its own `snooze` when it has one), every label whole. Too many to fit, the row scrolls
-  sideways under a fading edge (`.card-actions`). An X puts it off too.
+- **Buttons:** every choice always in view, labels whole (founder: "not all the choices are
+  shown"): the main action, the message's other choices, and Not now (its own `snooze` when it
+  has one). One line when they fit (compact buttons; a floating card with choices is wider);
+  otherwise they wrap onto more lines with the same spacing, never scrolled or cut out of sight
+  (`e2e/card-choices.spec.ts` checks 1440, 1024, 768 and 375 px, shut and opened). An X puts it
+  off too.
 - **More details:** expands in place with a height animation, and the card grows: wider when it
   floats (`max-w-2xl`), taller up to about 70% of the screen, scrolling inside itself (the
   scroll stays in the card). It shrinks back when shut. Inside, real paragraphs (founder: "each

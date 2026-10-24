@@ -1108,15 +1108,6 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
 .floating-card-width {
   transition: max-width var(--motion-slow) var(--ease-out-soft);
 }
-/* The card's buttons: one row; when they don't fit, it scrolls and the last edge fades. */
-.card-actions {
-  padding-right: 1.5rem;
-  scrollbar-width: none;
-  mask-image: linear-gradient(to right, black calc(100% - 1.5rem), transparent);
-}
-.card-actions::-webkit-scrollbar {
-  display: none;
-}
 @media (prefers-reduced-motion: reduce) {
   .floating-card-width {
     transition: none;
