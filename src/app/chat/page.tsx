@@ -99,7 +99,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       )}
 
       {/* Every message counts here, the floating ones too: the pulse counts them all. */}
-      {chat.scanning && <ScanRefresher shown={chat.hasEarlier ? -1 : chat.messages.length} />}
+      {chat.scanning && <ScanRefresher shown={chat.hasEarlier ? -1 : chat.counted} />}
 
       {/* Spec step 96: search everything said here, and what the person pinned. In the side
           panel the search is on the chat's own page. */}

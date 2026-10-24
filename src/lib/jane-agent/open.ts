@@ -64,6 +64,11 @@ async function talkedSince(userId: string, { client }: { client: PrismaClient })
   return typed !== null && (posted === null || typed.createdAt > posted.createdAt);
 }
 
+// What Jane posts by herself once she has looked: any of it means the first findings are in.
+const FOUND_KINDS: ReadonlySet<string> = new Set(["brief", "decision", "done", "heads_up"]);
+const isScanningHello = (m: { kind: string; body: string }) =>
+  m.kind === "brief" && m.body === SCANNING_HELLO;
+
 export async function openChat(
   userId: string,
   {
@@ -71,7 +76,13 @@ export async function openChat(
     now = new Date(),
     pages = 1,
   }: { client?: PrismaClient; now?: Date; pages?: number } = {},
-): Promise<{ messages: MessageView[]; hasEarlier: boolean; scanning: boolean } | null> {
+): Promise<{
+  messages: MessageView[];
+  hasEarlier: boolean;
+  scanning: boolean;
+  // What /api/chat/pulse counts for this feed: the messages shown plus any left out here.
+  counted: number;
+} | null> {
   if ((await scopedFor(userId, client).accounts.count()) === 0) return null;
   const timezone = await timezoneOf(userId, { client });
   // The first scan is still running (the sample person's, or a bank just linked): the chat
@@ -81,10 +92,18 @@ export async function openChat(
   if (scanning) {
     await postScanningHello(userId, { client, now });
     const feed = await chatFeed(userId, { client, pages, now });
+    // Once Jane has posted what she found so far, "still going through your accounts, stay on
+    // this page" is no longer what's happening, even while the scan's slower parts finish
+    // (speed pass, 2026-10-24: it sat beside her welcome, then vanished from under the person
+    // when the chat refreshed after their first question).
+    const found = feed.messages.some((m) => FOUND_KINDS.has(m.kind) && !isScanningHello(m));
     return {
-      messages: feed.messages.map((m) => toView(m, now, timezone)),
+      messages: feed.messages
+        .filter((m) => !(found && isScanningHello(m)))
+        .map((m) => toView(m, now, timezone)),
       hasEarlier: feed.hasEarlier,
       scanning: true,
+      counted: feed.messages.length,
     };
   }
   // Jane looks again on the first visit of the day, and (spec step 92) after a
@@ -101,10 +120,9 @@ export async function openChat(
   return {
     // With the scan done, "still going through your accounts, stay on this page" is no longer
     // true: the chat leaves it out (visitor walk: it sat above Jane's second hello for good).
-    messages: feed.messages
-      .filter((m) => !(m.kind === "brief" && m.body === SCANNING_HELLO))
-      .map((m) => toView(m, now, timezone)),
+    messages: feed.messages.filter((m) => !isScanningHello(m)).map((m) => toView(m, now, timezone)),
     hasEarlier: feed.hasEarlier,
     scanning: false,
+    counted: feed.messages.length,
   };
 }

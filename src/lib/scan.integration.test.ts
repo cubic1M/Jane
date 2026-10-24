@@ -265,6 +265,29 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     await openChat(trial.userId, { client });
     expect(await client.janeMessage.count({ where: { userId: trial.userId } })).toBe(1);
 
+    // Once Jane has posted what she found so far, "still going through your accounts" goes,
+    // though the scan's slower parts are still running: it no longer sits beside her welcome
+    // and then vanishes from under the person at the next refresh (speed pass, 2026-10-24).
+    const welcome = "Hi, I'm Jane. I look at your money every day.";
+    await client.janeMessage.create({
+      data: { userId: trial.userId, kind: "brief", body: welcome, dedupeKey: "test:welcome" },
+    });
+    const found = (await openChat(trial.userId, { client }))!;
+    expect(found.scanning).toBe(true);
+    expect(found.messages.map((m) => m.body)).toEqual([welcome]);
+    // The chat's refresher still compares the count /api/chat/pulse gives, hello included, so it
+    // doesn't reload on every pulse.
+    expect(found.counted).toBe(2);
+    // Something the person typed isn't Jane's findings: "still looking" stays until they come.
+    await client.janeMessage.deleteMany({
+      where: { userId: trial.userId, kind: "brief", body: welcome },
+    });
+    await client.janeMessage.create({
+      data: { userId: trial.userId, kind: "user", body: "hello?", dedupeKey: "test:user" },
+    });
+    const typed = (await openChat(trial.userId, { client }))!;
+    expect(typed.messages.map((m) => m.body)).toContain(SCANNING_HELLO);
+
     // When the scan finishes the chat is normal again: the hello comes, then the findings.
     await client.user.update({ where: { id: trial.userId }, data: { firstScanDoneAt: NOW } });
     const done = (await openChat(trial.userId, { client }))!;
