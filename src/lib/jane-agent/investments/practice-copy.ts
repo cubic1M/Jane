@@ -45,6 +45,7 @@ export const PRACTICE_ONLY_NOTE =
 export const RULE_LABELS: Readonly<Record<string, string>> = {
   model_buy: "buying the model for your level",
   rebalance: "rebalancing back to your mix",
+  theme_exit: "getting out of a news theme, as it said",
   ...Object.fromEntries(SCAN_KINDS.map((k) => [k, SCAN_LABELS[k as ScanKind].toLowerCase()])),
 };
 const MAX_LINES = 4;

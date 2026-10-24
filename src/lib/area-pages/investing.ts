@@ -320,7 +320,8 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
     );
 
   const p = input.practice;
-  const isNews = (kind: string) => kind === "news_idea";
+  // News ideas and news themes' ideas both come from the day's headlines.
+  const isNews = (kind: string) => kind === "news_idea" || kind === "theme_idea";
   const ideaItem = (branch: "practice" | "news") => (i: NonNullable<typeof p>["ideas"][number]) =>
     item(branch, i.key, {
       label: shortLabel(i.headline),
@@ -358,6 +359,10 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
           label: "The strategy each level follows",
           summary: "Seven ways of running each level, replayed on real prices every day.",
         }),
+        item("strategies", "menu", {
+          label: "More strategies",
+          summary: "Other well-known ways to run it, and crypto at Very high, each replayed.",
+        }),
         item("strategies", "backtests", {
           label: "Each level, replayed",
           summary: "How each risk level would have done over past prices.",
@@ -371,16 +376,22 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
 
   const newsIdeas = p ? p.ideas.filter((i) => isNews(i.kind)) : [];
   const news: AreaItem[] = p
-    ? newsIdeas.length > 0
-      ? newsIdeas.map(ideaItem("news"))
-      : [
-          item("news", "none", {
-            label: "Nothing in the news now",
-            status: "good",
-            summary:
-              "Jane reads the news on your practice stocks every day and brings what matters.",
-          }),
-        ]
+    ? [
+        ...(newsIdeas.length > 0
+          ? newsIdeas.map(ideaItem("news"))
+          : [
+              item("news", "none", {
+                label: "Nothing in the news now",
+                status: "good",
+                summary:
+                  "Jane reads the news on your practice stocks every day and brings what matters.",
+              }),
+            ]),
+        item("news", "themes", {
+          label: "News themes",
+          summary: "Which kinds of news moved which funds before, and which held up.",
+        }),
+      ]
     : [];
 
   const plan = [

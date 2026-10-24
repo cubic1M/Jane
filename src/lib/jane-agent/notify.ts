@@ -126,7 +126,7 @@ export function chooseToNotify<T extends Notifiable>(messages: T[], prefs: ChatN
     // Spec step 184: the day's agenda goes out like a decision when something on it needs a
     // yes (what it lists is hidden behind it, so it's the only message that can).
     const kind = m.kind === "brief" && (refs.items?.length ?? 0) > 0 ? "decision" : m.kind;
-    return notifiesKind(prefs, kind) && refs.alertId === undefined;
+    return notifiesKind(prefs, kind) && refs.alertId === undefined && refs.chatOnly !== true;
   });
 }
 

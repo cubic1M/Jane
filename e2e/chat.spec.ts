@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
+import { CHAT, landInChat } from "./chat-page";
 
 // Spec steps 81–82: link the demo bank, land in Jane's chat, see the morning brief, tap
 // Yes on a finding and see it answered. On a phone, with nothing sideways and the tab bar
@@ -36,7 +37,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
     if (page.url().endsWith("/connect")) {
       await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
     }
-    await expect(page).toHaveURL("/chat", { timeout: 15_000 });
+    await landInChat(page, 15_000);
   }).toPass({ timeout: 90_000 });
   // The first visit runs Jane's whole pass over the new bank, which can take a while.
   await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible({
@@ -97,7 +98,9 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(page).toHaveURL(/\/report\/[^?]+\?from=/);
   await expect(page.getByText("You chose: Yes, in the chat.")).toBeVisible();
   await page.getByRole("link", { name: /Back to the chat/ }).click();
-  await expect(page).toHaveURL(/\/chat#/);
+  // The chat has no page of its own: Home, with the chat open beside it at that message.
+  await expect(page).toHaveURL(/\/home(\?|$)/);
+  await page.goto(CHAT);
 
   // Spec step 83: the autopilot question, answered with one tap.
   const autopilot = messages.filter({ hasText: "How much should I do on my own?" });
@@ -107,12 +110,8 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(autopilot.getByRole("status")).toContainText("I'll handle the safe stuff");
   await expect(autopilot.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
 
-  // The chat's own page is the chat expanded (docs/design/home-hub.md): the area tabs are
-  // above it with none lit up, and no side chat beside it. The message box is at the end.
-  const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByRole("link", { name: "Home", exact: true })).toBeAttached();
-  await expect(nav.locator('[aria-current="page"]')).toHaveCount(0);
-  await expect(page.getByRole("complementary", { name: "Chat with Jane" })).toHaveCount(0);
+  // The chat as the side panel shows it: no page header of its own, the message box at the end.
+  await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
   await expect(ask).toHaveAttribute("placeholder", "Ask Jane anything");
 
   // Typing a question (spec step 84): it shows as the person's message, with Jane's answer
@@ -179,14 +178,14 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(remembers).toContainText("Payday is the 15th");
   await remembers.getByRole("button", { name: /Forget/ }).click();
   await expect(remembers).toContainText("Nothing yet.");
-  await page.goto("/chat");
+  await page.goto(CHAT);
 
   // Spec step 96: search the chat, and pin a message to the top.
   await page.getByRole("searchbox", { name: "Search the chat" }).first().fill("safe to spend");
   await page.getByRole("button", { name: "Search" }).first().click();
   await expect(page).toHaveURL(/\/chat\/search\?q=safe/);
   await expect(page.getByRole("status")).toContainText('found for "safe to spend"');
-  await page.goto("/chat");
+  await page.goto(CHAT);
   const pinIt = messages.filter({ hasText: /Good (morning|afternoon|evening)!/ });
   await pinIt.getByRole("button", { name: "Pin" }).click();
   await expect(page.getByRole("region", { name: "Pinned" })).toContainText(
@@ -198,6 +197,6 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   );
   expect(overflow).toBeLessThanOrEqual(0);
   // Opened at the end: the whole message box is on screen (no tab bar along the bottom now).
-  await page.goto("/chat");
+  await page.goto(CHAT);
   await expect(ask).toBeInViewport({ ratio: 1 });
 });

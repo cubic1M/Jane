@@ -5,6 +5,8 @@ vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
 import { RULE_TUNE_DROP_SLACK_POINTS, RULE_TUNE_MIN_GAIN } from "@/config/backtest";
 import { PRACTICE_UNIVERSE, strategyTickers } from "@/config/portfolios";
 import { OPPORTUNITY_RULES_OFF } from "@/config/practice-scan";
+import { THEMES } from "@/config/themes";
+import { menuTickers } from "./strategy-menu";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import { ruleReplays } from "@/lib/investments/rule-replay";
 import { keep, scoreOf, wins, type Scored } from "./rule-tuning";
@@ -62,10 +64,15 @@ describe("keep", () => {
 });
 
 describe("the real-closes fixture", () => {
-  it("has every practice and strategy ticker from Jan 4, 2016, oldest first", () => {
+  it("has every practice, strategy, theme and menu ticker from Jan 4, 2016, oldest first", () => {
     const bars = realFixtureBars();
     expect(new Set(Object.keys(bars))).toEqual(
-      new Set([...PRACTICE_UNIVERSE, ...strategyTickers()]),
+      new Set([
+        ...PRACTICE_UNIVERSE,
+        ...strategyTickers(),
+        ...Object.values(THEMES).flatMap((t) => [t.ticker, ...(t.alternatives ?? [])]),
+        ...menuTickers(),
+      ]),
     );
     for (const b of Object.values(bars)) {
       expect(b[0].date).toBe("2016-01-04");

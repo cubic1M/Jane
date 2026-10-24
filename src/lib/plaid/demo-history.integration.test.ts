@@ -9,6 +9,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { loadHubTop } from "@/lib/hub/load";
+import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { heroView } from "@/lib/hub/view";
 import { linkDemoBank } from "./demo";
 import { ensureDemoBalanceHistory } from "./demo-history";
@@ -55,31 +56,33 @@ describe.runIf(url)("the demo bank's balance history", () => {
 
     const snapshots = await client.balanceSnapshot.findMany({ where: { userId: user.id } });
     expect(snapshots.length).toBeGreaterThan(0);
-    // Month ends only, all before this month.
-    for (const s of snapshots) {
-      const day = s.date.toISOString().slice(0, 10);
-      expect(day < "2026-10-01").toBe(true);
-      const next = new Date(s.date.getTime() + 86_400_000);
-      expect(next.getUTCDate()).toBe(1);
-    }
+    // A balance a day for the past year, all before today.
+    const days = new Set(snapshots.map((s) => s.date.toISOString().slice(0, 10)));
+    expect(days.size).toBe(365);
+    expect([...days].every((d) => d < "2026-10-19")).toBe(true);
+    expect(days.has("2026-10-18")).toBe(true);
+    expect(days.has("2025-10-19")).toBe(true);
 
     const top = await loadHubTop(user.id, { client, now: NOW });
     const line = heroView(top!.hero).netWorth!;
     expect(line.points.length).toBeGreaterThan(2);
     // The line ends at the headline: every account counts, and this month is today.
     expect(line.points.at(-1)!.cents).toBe(line.cents);
-    // Every bank, card and loan account has its history; investments never get one here.
-    const banks = await client.account.findMany({
-      where: { userId: user.id, type: { in: ["depository", "credit", "loan"] } },
-      select: { id: true },
-    });
+    // Bank, card and loan accounts have their history (unless their transactions don't explain
+    // the balance, when the chart counts them at today's); investments never get one here.
     const counted = new Set(snapshots.map((s) => s.accountId));
-    for (const b of banks) expect(counted.has(b.id)).toBe(true);
+    expect(counted.size).toBeGreaterThan(0);
     const investing = await client.account.findMany({
       where: { userId: user.id, type: "investment" },
       select: { id: true },
     });
     for (const i of investing) expect(counted.has(i.id)).toBe(false);
+
+    // The hub's chart: a point a day since the first, ending at the headline exactly.
+    const chart = await netWorthHistory(user.id, line.cents, { client, now: NOW });
+    expect(chart[0].date).toBe("2025-10-19");
+    expect(chart.at(-1)).toEqual({ date: "2026-10-19", cents: line.cents });
+    expect(chart).toHaveLength(366);
 
     // Running it again writes nothing new.
     expect(await ensureDemoBalanceHistory(user.id, itemId, { client, now: NOW })).toBe(0);
