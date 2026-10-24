@@ -161,6 +161,13 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
       "Crypto trend",
       "Crypto momentum",
     ]);
+    expect(out.dayTrading.warning).toMatch(/Most people who day trade lose money/);
+    expect(out.dayTrading.inThePracticePortfolio).toBe(false);
+    expect(out.dayTrading.rules).toHaveLength(5);
+    for (const r of out.dayTrading.rules) {
+      expect(typeof r.since2024YearlyPercent).toBe("number");
+      expect(typeof r.moreReturnForItsRiskThanHolding).toBe("boolean");
+    }
     for (const s of out.strategies) {
       expect(typeof s.yearlyPercent).toBe("number");
       expect(typeof s.mixYearlyPercent).toBe("number");
@@ -208,6 +215,8 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
       "strategy_menu",
     );
     expect(names("is momentum better than my mix")).toContain("strategy_menu");
+    expect(names("can I day trade with the practice money")).toContain("strategy_menu");
+    expect(names("does VWAP reversion work")).toContain("strategy_menu");
     expect(names("what strategy is my practice portfolio on")).toContain("practice_portfolio");
     expect(names("what ideas do you have for my practice portfolio")).toContain(
       "practice_portfolio",

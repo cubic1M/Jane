@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { INTRADAY_SLIPPAGE } from "@/config/intraday-strategies";
+import { INTRADAY_EVIDENCE } from "@/config/intraday-evidence";
+import {
+  INTRADAY_RULE_IDS,
+  INTRADAY_RULES,
+  INTRADAY_SLIPPAGE,
+  INTRADAY_TRAIN_END,
+  INTRADAY_WARNING,
+} from "@/config/intraday-strategies";
 import type { IntradayBar } from "@/lib/market/types";
 import {
   holdReplay,
@@ -209,5 +216,26 @@ describe("intradayReplay", () => {
     expect(a.later.from).toBe("2024-01-02");
     expect(a.curve).toHaveLength(40);
     expect(a.curve[0]).toBe(100);
+  });
+});
+
+// The committed evidence comes from the research run on Alpaca's bars (too many to commit); it
+// must at least be a walk-forward of these rules and say honestly how each did against holding.
+describe("the committed evidence", () => {
+  it("has every rule, its setting from the grid, chosen before the years it is scored on", () => {
+    for (const id of INTRADAY_RULE_IDS) {
+      const r = INTRADAY_EVIDENCE[id];
+      expect(INTRADAY_RULES[id].grid).toContain(r.param);
+      expect(r.train.to <= INTRADAY_TRAIN_END).toBe(true);
+      expect(r.later.from > INTRADAY_TRAIN_END).toBe(true);
+      expect(r.holdLater.from).toBe(r.later.from);
+      expect(r.beatsHolding).toBe(r.later.sortino > r.holdLater.sortino);
+      expect(r.curve).toHaveLength(40);
+      expect(r.curve[0]).toBe(100);
+    }
+  });
+
+  it("warns plainly that most day traders lose money", () => {
+    expect(INTRADAY_WARNING).toMatch(/^Most people who day trade lose money/);
   });
 });

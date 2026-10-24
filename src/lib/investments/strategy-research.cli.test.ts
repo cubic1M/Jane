@@ -217,7 +217,7 @@ ${rows.join("\n")}
   const lines = [
     `# Day-trading research: ${source}`,
     "",
-    `Chosen on the sessions to ${INTRADAY_TRAIN_END} by Sortino, scored on the later ones, ${pct(INTRADAY_SLIPPAGE)} slippage each way. A replay of the past, not a forecast.`,
+    `Chosen on the sessions to ${INTRADAY_TRAIN_END} by Sortino, scored on the later ones, ${(INTRADAY_SLIPPAGE * 100).toFixed(2)}% slippage each way. A replay of the past, not a forecast.`,
     "",
     "| Rule | Setting | Train: a year | Train: drop | Later: trades | Later: win rate | Later: a year | Later: drop | Later: Sortino | Holding: a year | Holding: drop | Holding: Sortino |",
     "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",

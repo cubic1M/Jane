@@ -62,6 +62,8 @@ import {
 import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
 import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
 import { CRYPTO_STRATEGIES, CRYPTO_STRATEGY_IDS, CRYPTO_WARNING } from "@/config/crypto-strategies";
+import { INTRADAY_EVIDENCE, INTRADAY_EVIDENCE_SOURCE } from "@/config/intraday-evidence";
+import { INTRADAY_RULE_IDS, INTRADAY_RULES, INTRADAY_WARNING } from "@/config/intraday-strategies";
 import { MENU_STRATEGIES, MENU_STRATEGY_IDS } from "@/config/strategy-menu";
 import {
   MENU_EVIDENCE,
@@ -285,7 +287,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "strategy_menu",
     description:
-      'The strategy menu for the practice portfolio (demo advice mode only): well-known ways to run it besides Jane\'s pick for the person\'s level (value, momentum and quality tilts, dividend growth, equal weight, sector rotation, all-weather risk parity), and at Very high a small crypto sleeve (bitcoin and ether held, or run by a trend or momentum rule, against holding since 2022, with its warning), each replayed on real prices after costs at the person\'s level, with how it works, its yearly return and worst drop against the level\'s own mix over the same days (the whole replay and the years since 2022), whether it gave more or less return for its risk, and the levels it fits. For "what other strategies are there", "is momentum better" or "how does all-weather work". Always call it a replay of the past, never a forecast, and say plainly when a strategy did worse than the mix.',
+      'The strategy menu for the practice portfolio (demo advice mode only): well-known ways to run it besides Jane\'s pick for the person\'s level (value, momentum and quality tilts, dividend growth, equal weight, sector rotation, all-weather risk parity), and at Very high a small crypto sleeve (bitcoin and ether held, or run by a trend or momentum rule, against holding since 2022, with its warning) and day-trading rules on SPY\'s 5-minute bars (an opening-range break, a liquidity sweep of the prior day\'s low, a fair value gap, VWAP reversion, a volume imbalance; each after slippage against holding since 2024, with the warning that most day traders lose money), each replayed on real prices after costs at the person\'s level, with how it works, its yearly return and worst drop against the level\'s own mix over the same days (the whole replay and the years since 2022), whether it gave more or less return for its risk, and the levels it fits. For "what other strategies are there", "is momentum better", "how does all-weather work" or "can I day trade". Always call it a replay of the past, never a forecast, and say plainly when a strategy did worse than the mix.',
     input_schema: noInput,
   },
   // Phase AW: the news themes the practice portfolio watches, and how each did before.
@@ -1148,6 +1150,27 @@ export async function runInvestmentTool(
               since2022WorstDropPercent: pct(r.later.maxDrawdown),
               holdingSince2022YearlyPercent: pct(r.holdLater.cagr),
               holdingSince2022WorstDropPercent: pct(r.holdLater.maxDrawdown),
+              moreReturnForItsRiskThanHolding: r.beatsHolding,
+            };
+          }),
+        },
+        dayTrading: {
+          forLevels: "Very high only, a small sleeve, in and out of SPY the same day",
+          warning: INTRADAY_WARNING,
+          inThePracticePortfolio: false,
+          source: INTRADAY_EVIDENCE_SOURCE,
+          rules: INTRADAY_RULE_IDS.map((id) => {
+            const r = INTRADAY_EVIDENCE[id];
+            return {
+              rule: INTRADAY_RULES[id].label,
+              how: INTRADAY_RULES[id].how,
+              setting: `${r.param} (${INTRADAY_RULES[id].param})`,
+              since2024YearlyPercent: pct(r.later.cagr),
+              since2024WorstDropPercent: pct(r.later.maxDrawdown),
+              since2024Trades: r.later.trades,
+              since2024WinRatePercent: pct(r.later.winRate),
+              holdingSince2024YearlyPercent: pct(r.holdLater.cagr),
+              holdingSince2024WorstDropPercent: pct(r.holdLater.maxDrawdown),
               moreReturnForItsRiskThanHolding: r.beatsHolding,
             };
           }),

@@ -57,7 +57,9 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
   await page.goto("/investments");
   // More strategies, each a card with its curve, its numbers against the mix and the levels it fits.
   const menu = page.getByRole("region", { name: "More strategies" });
-  await expect(menu.locator('li[data-strategy]:not([data-strategy^="crypto_"])')).toHaveCount(7);
+  await expect(
+    menu.locator('li[data-strategy]:not([data-strategy^="crypto_"]):not([data-family="intraday"])'),
+  ).toHaveCount(7);
   const value = menu.getByRole("listitem").filter({ hasText: "Value tilt" });
   await expect(value.getByRole("img", { name: /^Value tilt: \$100 became \$\d+/ })).toBeVisible();
   await expect(value.getByText(/a year \(your mix [\d.]+%\), worst drop/)).toBeVisible();
@@ -73,6 +75,14 @@ test("an idea shows how sure Jane is, and a No changes what she brings", async (
       .filter({ hasText: "Crypto momentum" })
       .getByText(/Since 2022: .* \(holding: /),
   ).toBeVisible();
+  // Day trading, at Very high only: the warning first, each rule against holding.
+  await expect(menu.getByRole("heading", { name: "Day trading (Very high only)" })).toBeVisible();
+  await expect(menu.getByText(/^Most people who day trade lose money/)).toBeVisible();
+  const vwap = menu.getByRole("listitem").filter({ hasText: "VWAP reversion" });
+  await expect(
+    vwap.getByRole("img", { name: /^VWAP reversion: \$100 became \$\d+ since 2024/ }),
+  ).toBeVisible();
+  await expect(vwap.getByText(/Since 2024: .* trades, .* \(holding: /)).toBeVisible();
   // Choose it for the practice portfolio, then go back to Jane's pick.
   await value.getByRole("button", { name: "Use in practice" }).click();
   await expect(value.getByText("Your practice portfolio uses this")).toBeVisible();

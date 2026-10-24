@@ -7,6 +7,13 @@ import {
   CRYPTO_STRATEGY_IDS,
   CRYPTO_WARNING,
 } from "@/config/crypto-strategies";
+import { INTRADAY_EVIDENCE, INTRADAY_EVIDENCE_SOURCE } from "@/config/intraday-evidence";
+import {
+  INTRADAY_RULE_IDS,
+  INTRADAY_RULES,
+  INTRADAY_SLEEVE_BY_LEVEL,
+  INTRADAY_WARNING,
+} from "@/config/intraday-strategies";
 import { STRATEGY_CHOICES, type StrategyChoice } from "@/config/practice-preferences";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
@@ -84,6 +91,59 @@ function CryptoMenu() {
                   : ` (holding: ${pct(r.holdLater.cagr)}, worst ${pct(r.holdLater.maxDrawdown)}). ${r.beatsHolding ? "More return for its risk than holding." : "Less return for its risk than holding."}`}
               </p>
               <p className="text-xs text-zinc-500">Not in the practice portfolio yet.</p>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// Day trading, at Very high only: each rule on the sessions since its setting was chosen, after
+// slippage, against holding the fund, with the plain warning first.
+function IntradayMenu() {
+  return (
+    <div className="flex flex-col gap-2" aria-labelledby="intraday-menu-heading">
+      <h3 id="intraday-menu-heading" className="font-semibold">
+        Day trading (Very high only)
+      </h3>
+      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{INTRADAY_WARNING}</p>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        A small sleeve, {Math.round((INTRADAY_SLEEVE_BY_LEVEL[5] ?? 0) * 100)}% of the portfolio at
+        most, in and out of the S&amp;P 500 fund (SPY) the same day. Each rule&apos;s setting was
+        chosen on 2016 to 2023, then replayed from 2024 on 5-minute bars after slippage, against
+        simply holding.
+      </p>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {INTRADAY_RULE_IDS.map((id) => {
+          const s = INTRADAY_RULES[id];
+          const r = INTRADAY_EVIDENCE[id];
+          return (
+            <li
+              key={id}
+              data-strategy={id}
+              data-family="intraday"
+              className="flex flex-col gap-1 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium">{s.label}</p>
+                <Sparkline
+                  points={r.curve}
+                  label={`${s.label}: $100 became $${(r.curve.at(-1) ?? 100).toFixed(0)} since 2024`}
+                />
+              </div>
+              <p className="text-zinc-600 dark:text-zinc-400">{s.line}</p>
+              <p className="text-xs text-zinc-500">
+                Since 2024: {pct(r.later.cagr)} a year, worst drop {pct(r.later.maxDrawdown)},{" "}
+                {r.later.trades} trades, {pct(r.later.winRate)} won (holding:{" "}
+                {pct(r.holdLater.cagr)} a year, worst {pct(r.holdLater.maxDrawdown)}).{" "}
+                {r.beatsHolding
+                  ? "More return for its risk than holding."
+                  : "Less return for its risk than holding."}
+              </p>
+              <p className="text-xs text-zinc-500">
+                Fits: Very high only. Not in the practice portfolio yet.
+              </p>
             </li>
           );
         })}
@@ -185,9 +245,10 @@ export function StrategyMenuSection({
         })}
       </ul>
       <CryptoMenu />
+      <IntradayMenu />
       <p className="text-xs text-zinc-500">
-        {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}. {STRATEGY_NOT_A_FORECAST} Practice
-        money only.
+        {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}; day trading:{" "}
+        {INTRADAY_EVIDENCE_SOURCE}. {STRATEGY_NOT_A_FORECAST} Practice money only.
       </p>
       <DemoAdviceLabel />
     </section>
