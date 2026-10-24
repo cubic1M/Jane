@@ -6,6 +6,7 @@ import { loadDisasterRelief } from "@/lib/disasters";
 import { DISASTER_HREF, disasterReply, reliefLines } from "@/lib/jane-agent/disaster-message";
 import { requireUser } from "@/lib/session";
 import { ReliefButtons } from "./forms";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Disasters and losses (spec step 270): an IRS postponement for the person's county moving their
 // tax deadlines, and the casualty loss after insurance kept with the claim, once. The same lines
@@ -62,7 +63,7 @@ async function Content() {
 export default function DisastersPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content />
       </Suspense>
     </main>

@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/session";
 import { toggleAutoInvest } from "./actions";
 import { AutoInvestForm } from "./auto-form";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Automatic investing (spec step 134): set it up once, see every payday's contribution
 // (or why it was paused), pause and resume. Through the simulated brokerage, and said so.
@@ -135,7 +136,7 @@ async function AutoContent({
 export default function AutoInvestPage(props: PageProps<"/investments/auto">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <AutoContent searchParams={props.searchParams} />
       </Suspense>
     </main>

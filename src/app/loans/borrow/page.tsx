@@ -14,6 +14,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { checkAgainAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What you could borrow (spec step 250): a mortgage, a car loan, a personal loan and a card, each
 // with the likely amount and rate from soft checks, the day it was checked, and what would
@@ -135,7 +136,7 @@ async function BorrowContent({ searchParams }: Pick<PageProps<"/loans/borrow">, 
 export default function BorrowPage(props: PageProps<"/loans/borrow">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <BorrowContent searchParams={props.searchParams} />
       </Suspense>
     </main>

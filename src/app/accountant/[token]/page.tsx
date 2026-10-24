@@ -5,6 +5,7 @@ import { dayLabel } from "@/lib/day-label";
 import { viewByToken, type AccountantView } from "@/lib/accountant";
 import { formatCents } from "@/lib/money";
 import { AnswerForm } from "./answer-form";
+import { LoadingBar } from "@/components/loading-bar";
 
 // A read-only link for a person's accountant (spec step 222): tax information only, shown
 // from a token, until the date on the link or until it is revoked. Not indexed.
@@ -206,7 +207,7 @@ async function Shared({ params }: { params: Promise<{ token: string }> }) {
 export default function AccountantSharedPage({ params }: { params: Promise<{ token: string }> }) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Shared params={params} />
       </Suspense>
     </main>

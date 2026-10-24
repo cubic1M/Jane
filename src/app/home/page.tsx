@@ -33,12 +33,10 @@ import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
-import { openPopupMessages, POPUP_LIMIT, stackedSuggestions } from "@/lib/jane-agent/messages";
-import { isPopup, popupOrder } from "@/lib/jane-agent/popups";
-import { timezoneOf } from "@/lib/jane-agent/open";
-import { toView } from "@/lib/jane-agent/view";
+import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
 import { SuggestionCards } from "../chat/suggestion-cards";
 import { FirstWeekChecklist } from "./checklist";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Home, the hub (docs/design/home-hub.md; it was Today, spec step 79): graphs first, few
 // words. The hero row (safe to spend, net worth, saved), the next 30 days of bills and
@@ -131,28 +129,18 @@ async function HubContent() {
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, stackedRows, zone, popupRows] = await Promise.all([
+  const [top, checklist, autopilot, books, suggestions] = await Promise.all([
     loadHubTop(user.id),
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
-    // The day's suggestions still waiting, as the chat shows them.
-    stackedSuggestions(user.id),
-    timezoneOf(user.id),
-    // Anything else Jane brought up that waits on the person: a pop-up here too.
-    openPopupMessages(user.id),
+    // Jane's cards, as the chat shows them (on a computer the dock above the chat has them).
+    loadPopupStack(user.id),
   ]);
   if (!top) redirect("/connect");
   const { home } = top;
   // Net worth every day since the first day with Jane, ending at the hub's own figure.
   const line = await netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0);
-  const now = new Date();
-  const suggestions = [
-    ...stackedRows.map((m) => toView(m, now, zone)),
-    ...popupOrder(
-      popupRows.map((m) => toView(m, now, zone)).filter((m) => isPopup(m) && !m.suggestion),
-    ).slice(0, POPUP_LIMIT),
-  ];
   // What moved it: the chart's events, from its first day.
   const events = line[0]
     ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
@@ -177,7 +165,7 @@ async function HubContent() {
       />
 
       {/* Under the hero, before anything else: everything Jane does, as one tree. */}
-      <Suspense fallback={<div className="h-[480px] sm:h-[600px]" aria-hidden="true" />}>
+      <Suspense fallback={<LoadingBar label="Loading what Jane does" />}>
         <AreasTree treeData={treeData} />
       </Suspense>
 
@@ -211,7 +199,7 @@ async function HubContent() {
 export default function HomePage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading your hub…</p>}>
+      <Suspense fallback={<LoadingBar label="Loading your hub" />}>
         <HubContent />
       </Suspense>
     </main>

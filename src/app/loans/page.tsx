@@ -19,6 +19,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { clearTerms, saveTerms } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Every debt in one place (spec step 109): loans and cards with what the bank reports,
 // buy now, pay later plans found from payments, and terms the person typed for what the
@@ -527,7 +528,7 @@ async function LoansContent({
 export default function LoansPage({ searchParams }: PageProps<"/loans">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <LoansContent searchParams={searchParams} />
       </Suspense>
     </main>

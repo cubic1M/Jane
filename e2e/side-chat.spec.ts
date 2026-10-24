@@ -24,6 +24,13 @@ test("on a computer the chat docks beside the page, folds, expands and stays put
   test.skip(isMobile, "phones get the bottom sheet");
   await page.setViewportSize({ width: 1440, height: 900 });
   userId = await demoPerson(context, page, baseURL);
+  // A message of Jane's with a link in it (her cards are in the dock above the chat, not in it).
+  await addJaneMessage(userId, {
+    kind: "heads_up",
+    body: "Your insurance renews next month.",
+    refs: {},
+    actions: [{ id: "open", label: "See your insurance", kind: "link", href: "/insurance" }],
+  });
 
   await page.goto("/money");
   const panel = page.getByRole("complementary", { name: "Chat with Jane" });
@@ -50,10 +57,9 @@ test("on a computer the chat docks beside the page, folds, expands and stays put
   await expect(page).toHaveURL("/insurance");
   expect(await chat.locator("body").evaluate(() => (window as { kept?: boolean }).kept)).toBe(true);
 
-  // A link inside the chat opens in the main window, and the chat stays docked. Jane's own
-  // messages are pop-ups there: a card's link, behind More details.
-  await chat.getByRole("button", { name: "More details" }).first().click();
-  const link = chat.locator('main a[href^="/"]:not([href^="/chat"]):visible').first();
+  // A link inside the chat opens in the main window, and the chat stays docked.
+  await page.goto("/money");
+  const link = chat.getByRole("link", { name: /See your insurance/ });
   const href = (await link.getAttribute("href")) ?? "";
   await link.click();
   await expect.poll(() => new URL(page.url()).pathname).toBe(new URL(href, baseURL).pathname);

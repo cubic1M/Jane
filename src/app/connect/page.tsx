@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { linkDemo } from "./demo-actions";
 import { LinkButton } from "./link-button";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 const PRIMARY_BUTTON =
   "inline-flex h-12 w-full items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 sm:w-auto";
@@ -141,7 +142,7 @@ async function ConnectContent() {
 export default function ConnectPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ConnectContent />
       </Suspense>
     </main>

@@ -9,6 +9,7 @@ import { listPriorReturns } from "@/lib/prior-return";
 import { loadReturnReviews } from "@/lib/prior-return/review";
 import { requireUser } from "@/lib/session";
 import { PrepareForm, ReadingForm, SignAmendmentForm } from "./forms";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Last year's return, reviewed (spec step 172): what Jane read from an uploaded return, for
 // the person to confirm; then what she found against their accounts (demo advice); and an
@@ -114,7 +115,7 @@ async function Content() {
 export default function LastReturnPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content />
       </Suspense>
     </main>

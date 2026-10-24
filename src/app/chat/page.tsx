@@ -4,16 +4,11 @@ import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
-import {
-  markChatRead,
-  openPopupMessages,
-  pinnedMessages,
-  POPUP_LIMIT,
-  stackedSuggestions,
-} from "@/lib/jane-agent/messages";
-import { isPopup, popupOrder, withoutPopups } from "@/lib/jane-agent/popups";
-import { inTheList, toView, type MessageView } from "@/lib/jane-agent/view";
-import { openChat, timezoneOf } from "@/lib/jane-agent/open";
+import { markChatRead, pinnedMessages } from "@/lib/jane-agent/messages";
+import { chatList } from "@/lib/jane-agent/popups";
+import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
+import type { MessageView } from "@/lib/jane-agent/view";
+import { openChat } from "@/lib/jane-agent/open";
 import { practiceCards } from "@/lib/practice/cards";
 import { requireUser } from "@/lib/session";
 import { chatRedirect } from "@/lib/side-chat";
@@ -23,6 +18,7 @@ import { ScanRefresher } from "./scan-refresher";
 import { ScrollToEnd } from "./scroll-to-end";
 import { ChatCards } from "./chat-cards";
 import { EmbedBridge } from "./embed-bridge";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Jane's chat (spec step 81), shown only in the side panel since the founder's "I don't want an
 // individual chat": /chat itself opens Home with the panel open. What Jane noticed, did and suggests, newest
@@ -55,25 +51,15 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   // No chat page of its own: Home, with the side chat open (src/lib/side-chat.ts).
   if (!embed) redirect(chatRedirect(params));
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
-  const [chat, askHistory, pinned, stackedRows, zone, practice, popupRows] = await Promise.all([
+  const [chat, askHistory, pinned, stacked, practice] = await Promise.all([
     openChat(user.id, { pages }),
     scopedFor(user.id).askConversations.count(),
     pinnedMessages(user.id),
-    // The day's suggestions still waiting, one card at a time by the message box.
-    stackedSuggestions(user.id),
-    timezoneOf(user.id),
+    // Jane's cards: the day's suggestions, then whatever else waits on the person.
+    loadPopupStack(user.id),
     // Spec step 296: the practice portfolio's cards (demo advice mode only).
     practiceCards(user.id),
-    // Anything else Jane brought up that waits on the person: a pop-up too.
-    openPopupMessages(user.id),
   ]);
-  const now = new Date();
-  const stacked = [
-    ...stackedRows.map((m) => toView(m, now, zone)),
-    ...popupOrder(
-      popupRows.map((m) => toView(m, now, zone)).filter((m) => isPopup(m) && !m.suggestion),
-    ).slice(0, POPUP_LIMIT),
-  ];
   if (!chat) {
     return (
       <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -84,9 +70,10 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       </p>
     );
   }
-  // The floating cards are the one place a waiting suggestion or decision shows: the list has
-  // no card of its own, and no gap where one was.
-  const listed = withoutPopups(inTheList(chat.messages, stacked), stacked);
+  // The cards are the one place a suggestion or a waiting decision shows (on a computer, the
+  // dock above this chat; in the phone's sheet, over its message box): the list has no card
+  // of its own, and no gap where one was.
+  const listed = chatList(chat.messages, stacked);
   const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
 
@@ -189,7 +176,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
 export default function ChatPage({ searchParams }: PageProps<"/chat">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
-      <Suspense fallback={<p className="text-zinc-500">Loading your chat…</p>}>
+      <Suspense fallback={<LoadingBar label="Loading your chat" />}>
         <Chat searchParams={searchParams} />
       </Suspense>
     </main>

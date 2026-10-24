@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { buildLadder } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Short-term money, placed safely (spec step 234, demo advice): money needed within three
 // years, compared after tax in the person's own state, with a Treasury bill ladder that
@@ -152,7 +153,7 @@ async function Content({
 export default function ShortTermPage(props: PageProps<"/investments/short-term">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

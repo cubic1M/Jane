@@ -10,6 +10,7 @@ import type { MenuFund } from "@/planning/plan-menu";
 import { confirm, sendChange, useSample } from "./actions";
 import { ReadForm } from "./read-form";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The workplace plan's menu, used well (spec step 232, demo advice): the funds the plan
 // offers, read from a disclosure and confirmed, and the cheapest mix of them for the
@@ -171,7 +172,7 @@ async function Content({
 export default function PlanMenuPage(props: PageProps<"/investments/plan-menu">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

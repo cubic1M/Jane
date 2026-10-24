@@ -8,6 +8,7 @@ import { AdminNav } from "../admin-nav";
 import { markChecked, removeOption } from "./actions";
 import { OptionForm } from "./option-form";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 const KIND_LABEL: Record<string, string> = {
   plan: "Plans from other providers",
@@ -127,7 +128,7 @@ async function Options() {
 export default function OptionsPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Options />
       </Suspense>
     </main>

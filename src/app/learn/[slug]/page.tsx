@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { EXPLAINERS, REVIEW_NOTE, explainer } from "@/config/learn";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // One explainer (spec step 136), with its sources and its review status.
 
@@ -53,7 +54,7 @@ async function ExplainerContent({ params }: { params: PageProps<"/learn/[slug]">
 export default function ExplainerPage(props: PageProps<"/learn/[slug]">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ExplainerContent params={props.params} />
       </Suspense>
     </main>
