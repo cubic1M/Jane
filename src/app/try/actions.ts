@@ -23,6 +23,14 @@ export type TryState = { error: string } | { next: string } | null;
 const cookieName = (secure: boolean) =>
   secure ? "__Secure-authjs.session-token" : "authjs.session-token";
 
+// The same rule as Auth.js, which reads the cookie back: secure when the site's own address
+// (AUTH_URL) is HTTPS, or, without one, when the request came over HTTPS. A production build
+// served over plain HTTP (the end-to-end tests) then uses the plain name both ways.
+function secureCookies(forwardedProto: string | null, authUrl = process.env.AUTH_URL) {
+  if (authUrl) return authUrl.startsWith("https:");
+  return forwardedProto === "https";
+}
+
 export async function tryJane(_previous: TryState, formData: FormData): Promise<TryState> {
   // As at sign-up: the Terms are agreed to before anything is made.
   if (formData.get("consent") !== "on") {
@@ -47,7 +55,7 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
     throw error;
   }
   timing.mark("start_trial");
-  const secure = h.get("x-forwarded-proto") === "https" || process.env.NODE_ENV === "production";
+  const secure = secureCookies(h.get("x-forwarded-proto"));
   (await cookies()).set(cookieName(secure), session.sessionToken, {
     httpOnly: true,
     sameSite: "lax",
