@@ -307,9 +307,19 @@ export type OutcomeView = {
   proof: string | null;
   evidence: { id: string; date: string; description: string; amountCents: number }[];
   actedOn: string | null;
+  // Marked done (by the person), not just said yes to.
+  markedDone: boolean;
   // The day the transactions first showed it.
   verifiedOn: string | null;
 };
+
+// Why an expected saving isn't counted yet, in the person's words: "You said yes" until they mark
+// it done (QA round 11: it said "You did it" after a bare yes).
+export function expectedWhy(o: Pick<OutcomeView, "status" | "actedOn" | "markedDone">): string {
+  const did = o.markedDone ? "You did it" : "You said yes";
+  if (o.status === "unverifiable") return `${did}; it isn't something your transactions can show.`;
+  return `${did}${o.actedOn ? ` on ${o.actedOn}` : ""}. It counts once your transactions show it.`;
+}
 
 export type SavingsRecord = {
   confirmed: OutcomeView[];
@@ -363,6 +373,7 @@ export async function savingsRecord(
         : [];
     }),
     actedOn: (r.doneAt ?? r.answeredAt) ? isoDate((r.doneAt ?? r.answeredAt)!) : null,
+    markedDone: r.doneAt !== null,
     verifiedOn: r.verifiedAt ? isoDate(r.verifiedAt) : null,
   });
   const confirmed = rows

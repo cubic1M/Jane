@@ -199,7 +199,7 @@ export function SavedTile({
     ) : (
       <>
         {dollars(saved.cents)}
-        <span className="text-base font-normal text-zinc-500">/yr</span>
+        {saved.perYear && <span className="text-base font-normal text-zinc-500">/yr</span>}
       </>
     );
   return (
@@ -219,15 +219,16 @@ export function SavedTile({
           >
             {number}
           </span>
-          {/* What was said yes to, at its expected yearly value (one meaning of "saved", #587). */}
-          <span className="text-xs text-zinc-500">Expected</span>
-          {/* Of it, what the person's own transactions confirm (the verified savings record). */}
-          {saved.confirmedCents > 0 && (
+          {/* Confirmed money only (the verified savings record); what's expected is apart. */}
+          <span data-hub-confirmed="" className="text-xs text-zinc-500">
+            Confirmed in your transactions
+          </span>
+          {saved.expectedCents > 0 && (
             <span
-              data-hub-confirmed=""
+              data-hub-expected=""
               className="text-xs font-medium text-zinc-700 dark:text-zinc-300"
             >
-              {dollars(saved.confirmedCents)} confirmed in your transactions
+              Expected, not confirmed yet: {dollars(saved.expectedCents)}/yr
             </span>
           )}
           <span className="block w-full">

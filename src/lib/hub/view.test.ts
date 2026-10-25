@@ -135,25 +135,31 @@ describe("the hero row", () => {
 
   it("shows money saved once there is some, and money found before", () => {
     expect(heroView(hero()).saved).toMatchObject({ label: "Money found", cents: 290_000 });
-    expect(heroView(hero({ savedCents: 64_000 })).saved).toMatchObject({
-      label: "Saved so far",
-      cents: 64_000,
-    });
-    expect(heroView(hero({ savedCents: 64_000 })).saved.share).toBeCloseTo(64_000 / 290_000);
+    expect(heroView(hero({ savedCents: 64_000, confirmedCents: 21_588 })).saved.share).toBeCloseTo(
+      21_588 / 290_000,
+    );
   });
 
-  it("says how much of it the person's transactions confirm (the verified savings record)", () => {
-    expect(heroView(hero({ savedCents: 64_000 })).saved.confirmedCents).toBe(0);
+  it("counts only confirmed money as saved, with what's expected apart (QA round 11)", () => {
+    // A real account right after a yes: nothing confirmed yet, so $0 saved and the yes expected.
+    expect(heroView(hero({ savedCents: 43_500 })).saved).toMatchObject({
+      label: "Saved so far",
+      cents: 0,
+      perYear: false,
+      confirmedCents: 0,
+      expectedCents: 43_500,
+    });
     expect(heroView(hero({ savedCents: 64_000, confirmedCents: 21_588 })).saved).toMatchObject({
       label: "Saved so far",
-      cents: 64_000,
+      cents: 21_588,
       confirmedCents: 21_588,
+      expectedCents: 64_000 - 21_588,
     });
-    // Confirmed with nothing still expected (a refund that came back): still "Saved so far".
+    // Confirmed with nothing still expected (a sample person's seeded wins, a refund back).
     expect(heroView(hero({ savedCents: 0, confirmedCents: 4_500 })).saved).toMatchObject({
       label: "Saved so far",
       cents: 4_500,
-      confirmedCents: 4_500,
+      expectedCents: 0,
     });
   });
 
@@ -236,11 +242,11 @@ describe("the hero row", () => {
       steps: [
         { label: "Cancel Hulu", note: "a year", sign: "", cents: 21_600 },
         { label: "Get the overdraft fee back", note: "once", sign: "", cents: 3_500 },
-        { label: "Saved so far", sign: "=", cents: 25_100 },
+        { label: "Expected so far", sign: "=", cents: 25_100 },
         { label: "Lower your phone bill", sign: "+", cents: 40_000 },
         { label: "Shop your car insurance", sign: "+", cents: 30_000 },
         { label: "3 more things", sign: "+", cents: 20_000 },
-        { label: "Saved, plus your plan if you say yes", sign: "=", cents: 115_100 },
+        { label: "Expected, plus your plan if you say yes", sign: "=", cents: 115_100 },
       ],
     });
     // Nothing saved yet: the plan alone. No plan: nothing to open.
