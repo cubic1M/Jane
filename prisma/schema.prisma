@@ -4124,6 +4124,26 @@ model SuggestionOutcome {
   @@map("suggestion_outcomes")
 }
 
+// The learning loop: per kind of suggestion (topic), across everyone but trial people, how often
+// it was acted on when shown and how often what was acted on showed up in the transactions.
+// Rebuilt each night from suggestion_outcomes (src/lib/learning.ts); ranking reads it. Not a
+// person's data: no user_id, counts only.
+model SuggestionKindStat {
+  topic          String   @id
+  shown          Int      @default(0)
+  // Said yes or marked done.
+  acted          Int      @default(0)
+  declined       Int      @default(0)
+  // Acted on with something to watch, and checked to the end: confirmed, partial or not seen.
+  decided        Int      @default(0)
+  // Of those, confirmed or partly confirmed.
+  paidOff        Int      @default(0) @map("paid_off")
+  confirmedCents Int      @default(0) @map("confirmed_cents")
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("suggestion_kind_stats")
+}
+
 // Spec step 232: the funds a workplace plan offers, read from a fee disclosure or statement
 // the person gave and confirmed. Nothing is suggested from a menu that hasn't been confirmed.
 // status: proposed (read, to confirm) or confirmed.

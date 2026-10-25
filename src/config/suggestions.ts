@@ -177,3 +177,19 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "practice_portfolio",
   ...Object.values(PRACTICE_TOPIC),
 ];
+
+// The learning loop (src/lib/learning.ts): what everyone (never trial people) does with each kind
+// of suggestion moves it up or down for everyone, from two rates kept per kind. Each starts at a
+// prior worth PRIOR_WEIGHT showings, so a kind with little history stays near 1. FOR REVIEW.
+// How often a shown suggestion is acted on (a yes or a Mark done).
+export const ACT_PRIOR_RATE = 0.3;
+// How often what was acted on (and could be checked) showed up in the transactions.
+export const PAYOFF_PRIOR_RATE = 0.6;
+export const PRIOR_WEIGHT = 10;
+// How much each rate counts against its prior (an exponent), and the bounds on the factor.
+export const ACT_WEIGHT = 0.5;
+export const PAYOFF_WEIGHT = 0.5;
+export const KIND_MIN_FACTOR = 0.7;
+export const KIND_MAX_FACTOR = 1.4;
+// "People acted on this 7 of 10 times": said only once a kind was shown at least this often.
+export const PEOPLE_LINE_MIN_SHOWN = 10;

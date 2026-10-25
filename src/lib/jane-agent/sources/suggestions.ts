@@ -26,6 +26,7 @@ export const suggestionsSource: MessageSource = {
       refs: {
         suggestion: s.key,
         suggestionWhy: s.why,
+        ...(s.people ? { suggestionPeople: s.people } : {}),
         ...(s.advice ? { advice: true as const } : {}),
         ...(s.cardDetails ? { cardDetails: s.cardDetails } : {}),
       },
