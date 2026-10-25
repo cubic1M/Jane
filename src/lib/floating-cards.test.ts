@@ -52,6 +52,27 @@ describe("a line of cards", () => {
   });
 });
 
+describe("the set changing under the card showing (the dock reloading)", () => {
+  it("keeps the same card showing when a new one comes in ahead of it", () => {
+    const state = move(cards, initialState, 1);
+    expect(currentCard(cards, state)?.id).toBe("b");
+    const reloaded = [card("new"), ...cards];
+    expect(currentCard(reloaded, state)?.id).toBe("b");
+    expect(currentCard(reloaded, move(reloaded, state, 1))?.id).toBe("c");
+  });
+
+  it("keeps it when a card ahead of it is gone from the set", () => {
+    const state = move(cards, move(cards, initialState, 1), 1);
+    expect(currentCard(cards, state)?.id).toBe("c");
+    expect(currentCard([card("b"), card("c")], state)?.id).toBe("c");
+  });
+
+  it("falls back to the same place when the card itself is gone", () => {
+    const state = move(cards, initialState, 1);
+    expect(currentCard([card("a"), card("c")], state)?.id).toBe("c");
+  });
+});
+
 describe("options to pick one from", () => {
   it("counts through the options, and a Yes on one decides the whole set", () => {
     let state = move(cards, initialState, 1);

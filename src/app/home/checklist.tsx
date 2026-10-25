@@ -1,14 +1,15 @@
 import Link from "next/link";
 import type { ChecklistItem } from "@/lib/checklist";
-import { hideChecklist } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
+import { HideableChecklist } from "./hide-checklist";
 
 export function FirstWeekChecklist({ items }: { items: ChecklistItem[] }) {
   const done = items.filter((i) => i.done).length;
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-emerald-200 p-4 dark:border-emerald-900">
+    <HideableChecklist>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-semibold">Getting started</h2>
+        <h2 id="checklist-heading" className="font-semibold">
+          Getting started
+        </h2>
         <span className="text-sm text-zinc-600 dark:text-zinc-400">
           {done} of {items.length} done
         </span>
@@ -42,11 +43,6 @@ export function FirstWeekChecklist({ items }: { items: ChecklistItem[] }) {
           </li>
         ))}
       </ul>
-      <form action={hideChecklist}>
-        <SubmitButton className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
-          Hide this for good
-        </SubmitButton>
-      </form>
-    </section>
+    </HideableChecklist>
   );
 }

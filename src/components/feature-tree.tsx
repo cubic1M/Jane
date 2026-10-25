@@ -7,7 +7,7 @@ import type { AreaMap } from "@/lib/feature-map";
 import { InteractiveTree, TreeBadge, type TreeData } from "@/components/tree/interactive-tree";
 
 // "What Jane does" (docs/design/home-hub.md): each area's features as a tree you can open.
-// The area sits on the left, its branches beside it; opening a branch zooms the view onto its
+// It starts at the area's branches (its chip names it); opening a branch zooms the view onto its
 // features, each with one line and a "for you" mark when it has reached this person. Picking a
 // feature shows its page and "Ask Jane about this" under the map. Drawn with the tree engine
 // (src/components/tree/interactive-tree.tsx), as the area pages are.
@@ -85,6 +85,7 @@ export function FeatureTree({ maps, initial }: { maps: AreaMap[]; initial: AreaK
         picked={picked}
         onOpen={setOpen}
         onPick={setPicked}
+        rootless
       />
 
       <div aria-live="polite" className="min-h-14">

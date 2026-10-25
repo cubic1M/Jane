@@ -98,7 +98,8 @@ test("every kind of tap shows its change within 150 ms", async ({ context, page,
 
   // A tree branch (the feature map; every area page uses the same tree).
   await ready(page, "/home/map");
-  const branch = page.locator('[role="treeitem"][aria-level="2"][aria-expanded="false"]').first();
+  // The map starts at the branches (no node for the area's own name).
+  const branch = page.locator('[role="treeitem"][aria-level="1"][aria-expanded="false"]').first();
   const id = await branch.getAttribute("data-node");
   times["tree branch"] = await tapTime(
     page,

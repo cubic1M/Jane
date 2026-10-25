@@ -51,24 +51,12 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
   const ask = page.getByRole("textbox", { name: "Message Jane" });
 
-  // Spec step 184: the day in one message. It waits on the person, so it's a pop-up, not a
-  // card in the list: a short headline, "Approve all safe ones", and behind More details the
-  // whole day, with a Yes for each thing.
-  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)! / })).toHaveCount(0);
-  const agenda = await popupCard(page, /^Good (morning|afternoon|evening)!/);
-  await agenda.getByRole("button", { name: "More details" }).click();
-  await expect(agenda.locator('[id^="details-"]')).toContainText("need your yes:");
-  await expect(agenda.getByRole("button", { name: "Approve all safe ones" })).toBeVisible();
-  // Not Hulu's: it's asked about next, and once on the plan Jane answers it differently. Which
-  // finding comes first depends on the day.
-  await agenda
-    .getByRole("button", { name: /^Yes: / })
-    .filter({ hasNotText: /hulu/i })
-    .first()
-    .click();
-  await expect(agenda.getByRole("heading", { level: 3 })).not.toHaveText(
-    /^Good (morning|afternoon|evening)!/,
-  );
+  // The morning brief is off for now (MORNING_BRIEF, founder: "Remove the good morning thing
+  // for now"): no greeting, in the list or on a card.
+  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { level: 3, name: /^Good (morning|afternoon|evening)!/ }),
+  ).toHaveCount(0);
 
   // Asked about something, Jane answers with its Yes, No and "Why?" (spec step 90): "Why?"
   // answers in the chat from the finding's own evidence, and leaves the decision open.
