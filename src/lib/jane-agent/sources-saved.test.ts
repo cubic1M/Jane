@@ -88,6 +88,7 @@ describe("savedReply", () => {
       proof: "Last charged $11.99 on Aug 3, nothing since.",
       evidence: [],
       actedOn: "2026-08-01",
+      markedDone: true,
       verifiedOn: "2026-10-01",
     };
     const reply = savedReply({

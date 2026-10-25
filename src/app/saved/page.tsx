@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { formatCents } from "@/lib/money";
+import { expectedWhy } from "@/lib/outcomes";
 import { verifiedSavings, type Receipt } from "@/lib/savings-proof";
 import { requireUser } from "@/lib/session";
 import { ShareForm } from "./share-form";
@@ -112,12 +113,7 @@ async function SavedContent() {
             {record.expected.map((o) => (
               <li key={o.key} data-saved-outcome={o.status}>
                 <span className="font-medium">{o.title}</span>: about {formatCents(o.expectedCents)}
-                .{" "}
-                <span className="text-zinc-600 dark:text-zinc-400">
-                  {o.status === "unverifiable"
-                    ? "You did it; it isn't something your transactions can show."
-                    : `You did it${o.actedOn ? ` on ${o.actedOn}` : ""}. It counts once your transactions show it.`}
-                </span>
+                . <span className="text-zinc-600 dark:text-zinc-400">{expectedWhy(o)}</span>
               </li>
             ))}
           </ul>

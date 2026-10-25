@@ -134,8 +134,12 @@ export type SavedHero = {
   // saved"): the biggest few, and how many more.
   items: SavedItem[];
   more: number;
-  // Of it, what the person's own transactions confirm (0 until something shows).
+  // What the person's own transactions confirm: the number "Saved so far" shows (0 until
+  // something shows).
   confirmedCents: number;
+  // What they said yes to or did that isn't confirmed yet, a year: shown apart, labelled
+  // (QA round 11: "Saved so far" had counted it).
+  expectedCents: number;
 };
 
 export type HeroView = {
@@ -292,10 +296,10 @@ function planHero(input: HeroInput): PlanHero | null {
     input.savedCents > 0
       ? [
           ...savedLines,
-          { label: "Saved so far", sign: "=", cents: input.savedCents },
+          { label: "Expected so far", sign: "=", cents: input.savedCents },
           ...planLines,
           {
-            label: "Saved, plus your plan if you say yes",
+            label: "Expected, plus your plan if you say yes",
             sign: "=",
             cents: input.savedCents + plan.annualSavingsCents,
           },
@@ -399,16 +403,18 @@ function savedHero(
   items: SavedItem[],
   confirmedCents: number,
 ): SavedHero {
+  // Saved so far is confirmed money only (refunds once, lower bills and stopped charges a year),
+  // so it carries no "/yr"; what's still expected is beside it, labelled.
   if (savedCents > 0 || confirmedCents > 0) {
-    const cents = Math.max(savedCents, confirmedCents);
     return {
       label: "Saved so far",
-      cents,
-      perYear: true,
-      share: foundCents > 0 ? Math.min(1, cents / foundCents) : 1,
+      cents: confirmedCents,
+      perYear: false,
+      share: foundCents > 0 ? Math.min(1, confirmedCents / foundCents) : confirmedCents > 0 ? 1 : 0,
       items: items.slice(0, SAVED_SHOWN),
       more: Math.max(0, items.length - SAVED_SHOWN),
       confirmedCents,
+      expectedCents: Math.max(0, savedCents - confirmedCents),
     };
   }
   return {
@@ -419,6 +425,7 @@ function savedHero(
     items: [],
     more: 0,
     confirmedCents: 0,
+    expectedCents: 0,
   };
 }
 

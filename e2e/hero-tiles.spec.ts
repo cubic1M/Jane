@@ -162,7 +162,12 @@ test("saved so far opens on where the savings came from", async ({
     /^Cancel the gym · you did it\s*\$480\/yr$/,
     /^Cancel Hulu · you did it\s*\$216\/yr$/,
   ]);
-  await expect(tile.locator('[data-hub-number="saved"]')).toContainText("$696");
+  // Saved so far is confirmed money only: these were done by hand and aren't in the
+  // transactions yet, so $0 saved, with the $696 a year expected beside it, labelled.
+  await expect(tile.locator('[data-hub-number="saved"]')).toContainText("$0");
+  await expect(tile.locator("[data-hub-expected]")).toContainText(
+    "Expected, not confirmed yet: $696/yr",
+  );
   await expect(tile.getByRole("link", { name: /See every saving/ })).toHaveAttribute(
     "href",
     "/saved",
@@ -177,8 +182,8 @@ test("saved so far opens on where the savings came from", async ({
   await expect(page).toHaveURL(/\/home$/);
   const lines = popup.locator("[data-calc-lines] > div");
   await expect(lines.nth(0)).toContainText("Cancel the gym");
-  await expect(lines.filter({ hasText: "Saved so far" })).toContainText("$696");
-  await expect(lines.last()).toContainText("Saved, plus your plan if you say yes");
+  await expect(lines.filter({ hasText: "Expected so far" })).toContainText("$696");
+  await expect(lines.last()).toContainText("Expected, plus your plan if you say yes");
   await expect(popup.locator("[data-plan-goal]")).toBeVisible();
   await expect(page.locator("[data-popup-line] path")).toHaveAttribute("d", /^M/);
   await clearOf(page, popup, tile);
