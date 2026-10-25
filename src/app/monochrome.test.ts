@@ -15,6 +15,9 @@ const ROOT = join(__dirname, "..", "..");
 const SRC = join(ROOT, "src");
 const CSS = join(SRC, "app", "globals.css");
 const BASELINE = join(SRC, "app", "monochrome-baseline.json");
+// The landing page is the one page in colour (founder, 2026-10-24: "The rest of the landing page
+// should also match the color"): its palette, sampled from its art, is generated here.
+const LANDING = join(SRC, "app", "landing.css");
 
 const CHROMATIC = [
   "red",
@@ -90,7 +93,7 @@ describe("monochrome", () => {
   it("writes no colour outside the token file: every hex colour is a grey", () => {
     const found: string[] = [];
     for (const path of files(SRC)) {
-      if (path === CSS) continue;
+      if (path === CSS || path === LANDING) continue;
       const text = code(readFileSync(path, "utf8"));
       for (const m of text.matchAll(/(?<=["'`[(:\s,])#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)) {
         // "#112" is a store number; a three-digit colour has a letter in it.
