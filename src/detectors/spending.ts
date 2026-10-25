@@ -82,6 +82,15 @@ const duplicateSubscription: Detector = {
       urgency: "later",
       why: `You pay for ${listOf(names)} every month. Dropping the cheapest of each kind saves about ${formatCents(worth)} a year.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
+      // The cheapest of each kind stops being charged.
+      watch: {
+        kind: "charge_stops",
+        payees: cheapest.map((c) => ({
+          description: c.description,
+          amountCents: last(c),
+          perYear: 12,
+        })),
+      },
     };
   },
 };
@@ -133,6 +142,15 @@ const priceIncrease: Detector = {
       urgency: "soon",
       why: `${nice(top.s.description)} went from ${formatCents(top.before)} to ${formatCents(top.now)} a month${rises.length > 1 ? `, and ${rises.length - 1} more went up` : ""}: ${formatCents(worth)} more a year.`,
       action: { label: "See what changed", href: "/alerts" },
+      // The charge comes in below its new price again (the old price back, or a cheaper plan).
+      watch: {
+        kind: "bill_drops",
+        payees: rises.map((r) => ({
+          description: r.s.description,
+          beforeCents: r.now,
+          perYear: 12,
+        })),
+      },
     };
   },
 };
@@ -179,6 +197,14 @@ const billNegotiation: Detector = {
       urgency: "later",
       why: `You pay ${bills.map((b) => `${nice(b.s.description)} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. People who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
       action: { label: "See your bills", href: "/bills" },
+      watch: {
+        kind: "bill_drops",
+        payees: bills.map((b) => ({
+          description: b.s.description,
+          beforeCents: last(b.s),
+          perYear: 12,
+        })),
+      },
     };
   },
 };
@@ -223,6 +249,10 @@ const duplicateCharge: Detector = {
       urgency: "now",
       why: `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${S.duplicateChargeDays} days.`,
       action: { label: "See the charges", href: "/alerts" },
+      watch: {
+        kind: "refund",
+        payees: doubles.map((d) => ({ description: d.description, amountCents: d.amountCents })),
+      },
     };
   },
 };
@@ -269,6 +299,14 @@ const trialConversion: Detector = {
       urgency: "soon",
       why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}`).join("; ")}: ${formatCents(worth)} a year.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
+      watch: {
+        kind: "charge_stops",
+        payees: converted.map((c) => ({
+          description: c.description,
+          amountCents: c.price,
+          perYear: 12,
+        })),
+      },
     };
   },
 };

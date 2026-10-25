@@ -55,6 +55,17 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
       expect(o.confidencePercent).toBeGreaterThan(0);
     }
     expect(person.should).toContain(offered[0].topic);
+    // The verified savings record: each pick is on it as shown, with what to watch if any.
+    const outcomes = await client.suggestionOutcome.findMany({ where: { userId } });
+    expect(outcomes.map((o) => o.suggestionKey).sort()).toEqual([...out.selected].sort());
+    expect(outcomes.every((o) => o.status === "shown")).toBe(true);
+    const stored = await client.suggestion.findMany({
+      where: { userId, key: { in: out.selected } },
+      select: { key: true, watch: true },
+    });
+    for (const o of outcomes) {
+      expect(o.watch ?? null).toEqual(stored.find((r) => r.key === o.suggestionKey)!.watch ?? null);
+    }
   });
 
   it("is safe to run twice in a day, and ranks again tomorrow", async () => {
@@ -105,6 +116,14 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
       "open",
     ]);
     await answerSuggestion(userId, top.key, "no", { client, now: NOW });
+    // On the record as declined.
+    expect(
+      (
+        await client.suggestionOutcome.findFirstOrThrow({
+          where: { userId, suggestionKey: top.key },
+        })
+      ).status,
+    ).toBe("declined");
     expect((await offeredToday(userId, { client, now: NOW })).some((o) => o.key === top.key)).toBe(
       false,
     );

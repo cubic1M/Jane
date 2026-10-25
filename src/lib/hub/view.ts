@@ -39,6 +39,8 @@ export type HeroInput = {
   savedCents: number;
   // What the saved total is made of, biggest first (savedItems, src/lib/membership/service.ts).
   savedItems?: SavedItem[];
+  // What the person's transactions confirm (the verified savings record), a year.
+  confirmedCents?: number;
 };
 
 export type CashFlowInput = {
@@ -109,6 +111,8 @@ export type SavedHero = {
   // saved"): the biggest few, and how many more.
   items: SavedItem[];
   more: number;
+  // Of it, what the person's own transactions confirm (0 until something shows).
+  confirmedCents: number;
 };
 
 export type HeroView = { safe: SafeHero | null; netWorth: NetWorthHero | null; saved: SavedHero };
@@ -216,7 +220,12 @@ export function heroView(input: HeroInput): HeroView {
   return {
     safe: input.safe ? safeHero(input.safe) : null,
     netWorth: input.netWorth ? netWorthHero(input.netWorth) : null,
-    saved: savedHero(input.foundCents, input.savedCents, input.savedItems ?? []),
+    saved: savedHero(
+      input.foundCents,
+      input.savedCents,
+      input.savedItems ?? [],
+      input.confirmedCents ?? 0,
+    ),
   };
 }
 
@@ -268,18 +277,33 @@ function netWorthHero(nw: NonNullable<HeroInput["netWorth"]>): NetWorthHero {
   };
 }
 
-function savedHero(foundCents: number, savedCents: number, items: SavedItem[]): SavedHero {
-  if (savedCents > 0) {
+function savedHero(
+  foundCents: number,
+  savedCents: number,
+  items: SavedItem[],
+  confirmedCents: number,
+): SavedHero {
+  if (savedCents > 0 || confirmedCents > 0) {
+    const cents = Math.max(savedCents, confirmedCents);
     return {
       label: "Saved so far",
-      cents: savedCents,
+      cents,
       perYear: true,
-      share: foundCents > 0 ? Math.min(1, savedCents / foundCents) : 1,
+      share: foundCents > 0 ? Math.min(1, cents / foundCents) : 1,
       items: items.slice(0, SAVED_SHOWN),
       more: Math.max(0, items.length - SAVED_SHOWN),
+      confirmedCents,
     };
   }
-  return { label: "Money found", cents: foundCents, perYear: true, share: 0, items: [], more: 0 };
+  return {
+    label: "Money found",
+    cents: foundCents,
+    perYear: true,
+    share: 0,
+    items: [],
+    more: 0,
+    confirmedCents: 0,
+  };
 }
 
 // --- The cash-flow strip ---
