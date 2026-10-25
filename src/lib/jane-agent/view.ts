@@ -65,6 +65,8 @@ export type MessageView = {
   cardDetails?: CardExtras | null;
   // A suggestion's whole reason (refs.suggestionWhy), or null.
   cardWhy?: string | null;
+  // What everyone did with this kind of suggestion (refs.suggestionPeople), or null.
+  cardPeople?: string | null;
 };
 
 const TAGS: Record<MessageKind, string> = {
@@ -164,5 +166,6 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     chosen: chosenOf(message),
     cardDetails: message.refs.cardDetails ?? null,
     cardWhy: message.refs.suggestionWhy ?? null,
+    cardPeople: message.refs.suggestionPeople ?? null,
   };
 }

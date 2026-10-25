@@ -10,6 +10,7 @@ import { runDueJobs } from "@/lib/jobs";
 import { queueNightlyRuns } from "@/lib/controller";
 import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
 import { runRetention } from "@/lib/retention";
+import { refreshKindStats } from "@/lib/learning";
 import { takeSnapshots } from "@/lib/snapshots";
 import { remindAllDeadlines } from "@/lib/deadlines";
 import { insuranceDaily } from "@/lib/insurance/daily";
@@ -56,6 +57,8 @@ async function dailyWork() {
       agent: await runAgentFollowUps(),
       outcomes: await refreshMerchantOutcomes(),
       retention: await runRetention(),
+      // The learning loop: what everyone did with each kind of suggestion, for tomorrow's ranking.
+      learning: await refreshKindStats(),
       deadlines: await remindAllDeadlines(),
       // Spec steps 104 and 106: insurance reshopped and checked by itself.
       insurance: await insuranceDaily(),
@@ -111,6 +114,7 @@ async function dailyWork() {
     agent: await runAgentFollowUps(),
     outcomes: await refreshMerchantOutcomes(),
     retention: await runRetention(),
+    learning: await refreshKindStats(),
     deadlines: await remindAllDeadlines(),
     insurance: await insuranceDaily(),
     autoInvest: await runAutoInvestForAll(),

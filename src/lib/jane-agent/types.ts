@@ -443,6 +443,8 @@ export type MessageRefs = {
   // Its whole reason, with the figure the headline names ("If it fell by 30% you would lose
   // $77,748"), for the floating card's More details: the "Why you" line alone doesn't say it.
   suggestionWhy?: string;
+  // The learning loop: "People acted on this 7 of 10 times it was shown" (More details).
+  suggestionPeople?: string;
   // What a suggestion's floating card shows under More details beyond its why: a practice
   // idea's numbers and caps, and what its Yes does (Phase AW).
   cardDetails?: CardExtras;

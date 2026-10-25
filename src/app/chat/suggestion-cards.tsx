@@ -47,6 +47,8 @@ export function cardOf(message: MessageView): FloatingCardData {
   // A practice idea (Phase AW) also has its numbers and caps, and its own Yes.
   const extra = message.cardDetails;
   const notes = [
+    // The learning loop: what other people did with this kind of suggestion.
+    ...(message.cardPeople ? [message.cardPeople] : []),
     ...(extra?.caps ?? []).map((c) => `Cap: ${c}`),
     ...(message.advice ? ["Demo advice: sample data, not financial advice"] : []),
   ];
