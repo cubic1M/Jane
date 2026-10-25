@@ -10,10 +10,13 @@ import {
 } from "./db";
 import { CHAT, landInChat } from "./chat-page";
 
+// Page text is looked for in <main>: on a computer Jane's pop-up cards sit beside the page
+// (the side chat's dock) and can carry the same words.
+
 // A loans and credit page from the /loans tree's list of every page (docs/design/area-pages.md).
 async function openLoansPage(page: Page, link: string) {
   await page.goto("/loans");
-  await page.getByText("All loans and credit pages").click();
+  await page.getByRole("main").getByText("All loans and credit pages").click();
   await page
     .getByRole("list", { name: "All loans and credit pages" })
     .getByRole("link", { name: link })
@@ -78,7 +81,9 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
   await plan.getByLabel("Rate (APR %)").fill("15");
   await plan.getByLabel("Left to pay ($)").fill("537");
   await plan.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Saved. Jane counts it from now on.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText(
+    "Saved. Jane counts it from now on.",
+  );
   const saved = await affirm();
   await expect(saved).toContainText("15.00%");
   await expect(saved).toContainText("you typed it on");
@@ -107,7 +112,9 @@ test("the payoff plan picks an order for the demo bank and starts with one tap",
   await expect(plan.getByRole("note")).toHaveText("Demo advice: sample data, not financial advice");
   await expect(plan.getByRole("table", { name: "Paying more each month" })).toBeVisible();
   await plan.getByRole("button", { name: "Start this plan" }).click();
-  await expect(page.getByRole("status")).toContainText("Started. Jane checks it every month");
+  await expect(page.getByRole("main").getByRole("status")).toContainText(
+    "Started. Jane checks it every month",
+  );
   await expect(page.getByRole("region", { name: "Your way out of debt" })).toContainText(
     "This is your plan (highest rate first).",
   );
@@ -136,7 +143,9 @@ test("refinance offers compare total cost and pick one, labelled", async ({
   await expect(page.getByRole("heading", { level: 1, name: "Refinance offers" })).toBeVisible({
     timeout: 60_000,
   });
-  await expect(page.getByText("sample offers from a stand-in lender catalog")).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("sample offers from a stand-in lender catalog"),
+  ).toBeVisible();
   const car = page
     .getByRole("list", { name: "Offers by debt" })
     .getByRole("listitem")
@@ -152,7 +161,7 @@ test("refinance offers compare total cost and pick one, labelled", async ({
   await expect(card).toContainText("Jane's pick: pay it off from your cash");
   await expect(card.getByRole("button", { name: /^Apply with/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Check rates now" }).click();
-  await expect(page.getByRole("status")).toHaveText("Checked just now.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Checked just now.");
 });
 
 // Spec step 112: apply from the offers page; the terms must be reviewed before submitting.
@@ -174,7 +183,9 @@ test("apply prepares the application, and it's sent only once the terms are revi
   await page.getByRole("button", { name: "Apply with Harbor Auto Refi" }).click();
   await expect(page).toHaveURL(/\/loans\/apply\//);
   await expect(page.getByRole("heading", { level: 1, name: "Loan application" })).toBeVisible();
-  await expect(page.getByText("Ready for you to review and submit")).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("Ready for you to review and submit"),
+  ).toBeVisible();
   // Submit needs the terms reviewed (the server refuses without it too).
   await expect(page.getByLabel("I've reviewed the terms above")).toHaveAttribute("required", "");
   // By keyboard: on a phone the fixed bottom navigation can sit over these while the page
@@ -182,9 +193,11 @@ test("apply prepares the application, and it's sent only once the terms are revi
   await page.getByLabel("I've reviewed the terms above").press("Space");
   await expect(page.getByLabel("I've reviewed the terms above")).toBeChecked();
   await page.getByRole("button", { name: "Submit the application" }).press("Enter");
-  await expect(page.getByText("Approved by Harbor Auto Refi: waiting for your yes.")).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("Approved by Harbor Auto Refi: waiting for your yes."),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Accept the loan" }).press("Enter");
-  await expect(page.getByRole("status")).toContainText("Accepted.");
+  await expect(page.getByRole("main").getByRole("status")).toContainText("Accepted.");
   await expect(page.getByRole("list", { name: "Steps" })).toContainText("Accepted:");
 });
 
@@ -209,7 +222,9 @@ test("a 0% transfer counts its fee and is tracked once moved", async ({
   await expect(section).toContainText("Saving, fee counted");
   await expect(section).toContainText("transfer fee is counted");
   await section.getByRole("button", { name: /^I've moved it to / }).press("Enter");
-  await expect(page.getByRole("status")).toContainText("The 0% end is on your deadlines");
+  await expect(page.getByRole("main").getByRole("status")).toContainText(
+    "The 0% end is on your deadlines",
+  );
   // The deadline shows on /deadlines from 90 days before the end (unit tests check it's saved).
   await expect(page.getByRole("list", { name: "Your transfers" })).toContainText("0% until");
 });
@@ -242,10 +257,12 @@ test("student loan plans are compared, and every step links to studentaid.gov", 
   await page.getByLabel("Income from your last tax return ($)").fill("45000");
   await page.getByLabel("I work full time in public service").press("Space");
   await page.getByRole("button", { name: "Save", exact: true }).press("Enter");
-  await expect(page.getByRole("status")).toHaveText(
+  await expect(page.getByRole("main").getByRole("status")).toHaveText(
     "Saved. The plans are worked out again with it.",
   );
-  await expect(page.getByText(/toward Public Service Loan Forgiveness/)).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText(/toward Public Service Loan Forgiveness/),
+  ).toBeVisible();
 });
 
 // Spec step 115: the mortgage page: PMI waits for the home's value; escrow and extra
@@ -322,7 +339,10 @@ test("card rewards count the fee, and a better card is applied for with one tap"
 
   await openLoansPage(page, "See your card rewards");
   await expect(page.getByRole("heading", { level: 1, name: "Card rewards" })).toBeVisible();
-  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  // The page's own label (a pop-up card may carry the same words).
+  await expect(page.locator("[data-demo-advice]").first()).toHaveText(
+    "Demo advice: sample data, not financial advice",
+  );
   await expect(page.getByRole("region", { name: "Your cards" })).toContainText(
     "The fee doesn't pay for itself",
   );
@@ -331,7 +351,7 @@ test("card rewards count the fee, and a better card is applied for with one tap"
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
   await apply.focus();
   await apply.press("Enter");
-  await expect(page.getByRole("status")).toHaveText("Sent just now.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Sent just now.");
   await expect(page.getByRole("region", { name: "Your applications" })).toContainText("Approved");
 });
 
@@ -402,7 +422,9 @@ test("a tight month shows the plan, and a request is sent only on the tap", asyn
 
   await page.goto("/loans/tight");
   await expect(page.getByRole("heading", { level: 1, name: "When money is tight" })).toBeVisible();
-  await expect(page.getByRole("status").first()).toContainText("Checking is forecast to be");
+  await expect(page.getByRole("main").getByRole("status").first()).toContainText(
+    "Checking is forecast to be",
+  );
   await expect(page.getByRole("list", { name: "Bills in order" })).toBeVisible();
   const requests = page.getByRole("list", { name: "Requests" }).getByRole("listitem");
   await expect(requests.first()).toBeVisible();
@@ -411,7 +433,7 @@ test("a tight month shows the plan, and a request is sent only on the tap", asyn
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
   await send.focus();
   await send.press("Enter");
-  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Sent just now.")).toBeVisible();
   await expect(requests.first()).toContainText("Sent, answer in about 2 days");
 });
 
@@ -440,7 +462,9 @@ test("buying a car shows the all-in cost, preapprovals and a dealer check", asyn
   await expect(
     page.getByRole("list", { name: "Offers" }).getByRole("listitem").first(),
   ).toContainText("cheapest");
-  await expect(page.getByRole("status")).toContainText("more than the best preapproval");
+  await expect(page.getByRole("main").getByRole("status")).toContainText(
+    "more than the best preapproval",
+  );
   await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("Income:");
 });
 
@@ -467,15 +491,17 @@ test("buying a home shows the plan, its assumptions, and starts the goal on the 
   await expect(page.getByRole("region", { name: "Saving for it" })).toContainText("$52,000.00");
   await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("28%");
   // Loans QA: the 28/36 home and what you could borrow, said together with why they differ.
-  await expect(page.getByText(/^Two measures, two sizes: the usual 28\/36 rules/)).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText(/^Two measures, two sizes: the usual 28\/36 rules/),
+  ).toBeVisible();
   const start = page.getByRole("button", { name: /^Start a \$52,000\.00 goal/ });
   await start.scrollIntoViewIfNeeded();
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
   await start.focus();
   await start.press("Enter");
-  await expect(page.getByText("Started just now.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Started just now.")).toBeVisible();
   await page.goto("/goals");
-  await expect(page.getByText("Home down payment")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Home down payment")).toBeVisible();
 });
 
 // Spec step 180: a medical bill found in payments plus one typed in, with the letters
@@ -502,7 +528,7 @@ test("medical bills are found, letters are written, and a request is sent only o
   await page.getByLabel("Amount").fill("2400");
   await page.getByLabel("Date on the bill").fill("2026-09-01");
   await page.getByRole("button", { name: "Add this bill" }).press("Enter");
-  await expect(page.getByText("Added.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Added.")).toBeVisible();
   const mercy = page.getByRole("list", { name: "Requests for Mercy Hospital" });
   await expect(mercy).toContainText("financial assistance");
   await expect(mercy).toContainText("no interest");
@@ -512,7 +538,7 @@ test("medical bills are found, letters are written, and a request is sent only o
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
   await send.focus();
   await send.press("Enter");
-  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Sent just now.")).toBeVisible();
   await expect(mercy).toContainText("Sent, answer in about 2 days");
 });
 
@@ -549,10 +575,12 @@ test("report fixes show the letters with their rules, and a letter is sent only 
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
   await send.focus();
   await send.press("Enter");
-  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Sent just now.")).toBeVisible();
   await expect(letters).toContainText("answer due by");
   await page.goto("/deadlines");
-  await expect(page.getByText("Collector's validation due: Northstar Recovery")).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("Collector's validation due: Northstar Recovery"),
+  ).toBeVisible();
 });
 
 // Spec step 224: card interest, a 0% promotion off pace, and a request for a lower rate sent
@@ -583,7 +611,7 @@ test("card interest shows the cost, a promotion off pace, and a request sent on 
   await page.getByLabel("Started").fill("2026-06-01");
   await page.getByLabel("Ends").fill("2099-02-01");
   await page.getByRole("button", { name: "Add this promotion" }).press("Enter");
-  await expect(page.getByText("Promotion added.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Promotion added.")).toBeVisible();
   await expect(page.getByRole("list", { name: "Promotions" })).toContainText("0% ends on");
 
   const send = page.getByRole("button", { name: "Send this request" }).first();
@@ -591,7 +619,7 @@ test("card interest shows the cost, a promotion off pace, and a request sent on 
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
   await send.focus();
   await send.press("Enter");
-  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Sent just now.")).toBeVisible();
   await expect(cards).toContainText("Asked");
 });
 
@@ -615,7 +643,9 @@ test("student loans show PSLF month by month, save dates as deadlines, and warn 
   await page.getByLabel("I work full time in public service").check();
   await page.getByLabel("Qualifying payments already counted").fill("90");
   await page.getByRole("button", { name: "Save", exact: true }).press("Enter");
-  await expect(page.getByText("Saved. The plans are worked out again with it.")).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("Saved. The plans are worked out again with it."),
+  ).toBeVisible();
 
   const game = page.getByRole("region", { name: "The long game" });
   await expect(game).toContainText("qualifying payments counted for PSLF");
@@ -629,10 +659,12 @@ test("student loans show PSLF month by month, save dates as deadlines, and warn 
   const inSixMonths = new Date(Date.now() + 183 * 86_400_000).toISOString().slice(0, 10);
   await game.getByLabel("Income-driven plan recertified by").fill(inSixMonths);
   await game.getByRole("button", { name: "Save my dates" }).press("Enter");
-  await expect(page.getByText("Saved. The dates are on your deadlines.")).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("Saved. The dates are on your deadlines."),
+  ).toBeVisible();
   await page.goto("/deadlines");
   await expect(
-    page.getByText("Certify your employer for Public Service Loan Forgiveness"),
+    page.getByRole("main").getByText("Certify your employer for Public Service Loan Forgiveness"),
   ).toBeVisible();
 });
 
@@ -671,7 +703,7 @@ test("a payment-app transfer is a loan only after the tap, and the reminder is o
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
   await yes.focus();
   await yes.press("Enter");
-  await expect(page.getByText("Noted.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Noted.")).toBeVisible();
   const loans = page.getByRole("list", { name: "Loans" });
   await expect(loans).toContainText("Jordan Lee owes you $400.00");
   await expect(loans.getByRole("note")).toContainText("A kind reminder, for you to send");
@@ -710,14 +742,14 @@ test("a credit score goal is previewed, started on the tap, and ticked off month
   // Keyboard, so the fixed bottom nav on phones never takes the tap.
   await start.focus();
   await start.press("Enter");
-  await expect(page.getByText("Plan started.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Plan started.")).toBeVisible();
   const list = page.getByRole("list", { name: "This month's list" });
   await expect(list.getByRole("listitem")).toHaveCount(4);
   const mark = list.getByRole("button", { name: "Mark done" }).first();
   await mark.scrollIntoViewIfNeeded();
   await mark.focus();
   await mark.press("Enter");
-  await expect(page.getByText("Ticked off.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Ticked off.")).toBeVisible();
   await expect(list.getByText("Done", { exact: true })).toHaveCount(1);
 });
 
@@ -748,7 +780,7 @@ test("a home loan's PMI, escrow and project are worked out from what the person 
   const save = facts.getByRole("button", { name: "Save", exact: true });
   await save.focus();
   await save.press("Enter");
-  await expect(page.getByText("Saved.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Saved.")).toBeVisible();
 
   const pmi = page.getByRole("region", { name: "PMI" });
   await expect(pmi).toContainText("79.1% of the home's original value of $395,000.00");
@@ -763,7 +795,7 @@ test("a home loan's PMI, escrow and project are worked out from what the person 
   await sent.scrollIntoViewIfNeeded();
   await sent.focus();
   await sent.press("Enter");
-  await expect(page.getByText("Noted that you sent it.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Noted that you sent it.")).toBeVisible();
   await expect(page.getByRole("region", { name: "PMI" })).toContainText("You sent this on");
 
   const project = page.getByRole("region", { name: "A home project" });
@@ -776,7 +808,9 @@ test("a home loan's PMI, escrow and project are worked out from what the person 
   await expect(table).toContainText("Home equity line of credit (HELOC)");
   await expect(table).toContainText("Cash-out refinance");
   await expect(table).toContainText("Personal loan");
-  await expect(page.getByText("stand-in lender terms, not offers", { exact: false })).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("stand-in lender terms, not offers", { exact: false }),
+  ).toBeVisible();
 });
 
 // Spec step 229: the options when debt is too much, as facts, without advice.
@@ -798,7 +832,7 @@ test("the options when debt is too much are laid out as facts, with the pointer 
   await expect(
     page.getByRole("heading", { level: 1, name: "When debt is too much" }),
   ).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("of your");
+  await expect(page.getByRole("main").getByRole("status")).toContainText("of your");
   const hardship = page.getByRole("region", { name: "Hardship programs" });
   await expect(hardship).toContainText("hardship program");
   await expect(hardship).toContainText("forbearance");
@@ -836,7 +870,7 @@ test("the debt review lists every item, and the chat message keeps each button u
   await page.goto("/loans/review");
   await expect(page.getByRole("heading", { level: 1, name: "Your debt review" })).toBeVisible();
   // Linking the bank did the first review (or it's about to be: Jane's pass may still be running).
-  await expect(page.getByRole("status")).toContainText(/first debt review/i);
+  await expect(page.getByRole("main").getByRole("status")).toContainText(/first debt review/i);
   const items = page.getByRole("list", { name: "Review items" }).getByRole("listitem");
   await expect(items.first()).toContainText("Payments timed to statement dates");
   await expect(items.getByRole("heading", { name: "0% promotions on pace" })).toBeVisible();
@@ -860,8 +894,15 @@ test("the debt review lists every item, and the chat message keeps each button u
   const box = page.getByRole("textbox", { name: "Message Jane" });
   await box.fill("do my yearly debt review");
   await box.press("Enter");
-  await expect(page.getByText("Your debt review:").last()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/Payments timed to statement dates/).last()).toBeVisible();
+  await expect(page.getByRole("main").getByText("Your debt review:").last()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    page
+      .getByRole("main")
+      .getByText(/Payments timed to statement dates/)
+      .last(),
+  ).toBeVisible();
 });
 
 // Spec step 245: a dealer add-on found in the payments, confirmed, with the refund and the
@@ -894,7 +935,7 @@ test("a dealer add-on is confirmed, with its refund and a cancellation the team 
   await yes.scrollIntoViewIfNeeded();
   await yes.focus();
   await yes.press("Enter");
-  await expect(page.getByText("Done.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Done.")).toBeVisible();
   const addons = page.getByRole("list", { name: "Your add-ons" });
   await expect(addons).toContainText("Cancelling now could refund about");
   await expect(addons.getByLabel(/Cancellation letter/)).toContainText("cancel my GAP cover");
@@ -902,7 +943,7 @@ test("a dealer add-on is confirmed, with its refund and a cancellation the team 
   await team.scrollIntoViewIfNeeded();
   await team.focus();
   await team.press("Enter");
-  await expect(page.getByText("The team has this request.")).toBeVisible();
+  await expect(page.getByRole("main").getByText("The team has this request.")).toBeVisible();
 });
 
 // Spec step 246: a lump sum compared as extra principal, a recast and a refinance, against
@@ -935,8 +976,10 @@ test("a lump sum is compared on the mortgage: extra principal, recast, refinance
   await expect(table).toContainText("Recast the mortgage");
   await expect(table).toContainText("$250.00");
   await expect(table).toContainText("Not an option");
-  await expect(page.getByText(/Investing the same money for \d+ years instead/)).toBeVisible();
-  await expect(page.getByText("Paying down earns your 4% rate")).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText(/Investing the same money for \d+ years instead/),
+  ).toBeVisible();
+  await expect(page.getByRole("main").getByText("Paying down earns your 4% rate")).toBeVisible();
 });
 
 // Spec step 247: costly short-term borrowing found in the demo bank, with the cost in dollars
@@ -959,7 +1002,7 @@ test("costly short-term borrowing is found, costed, and the way out is laid out"
   await expect(
     page.getByRole("heading", { level: 1, name: "Costly short-term borrowing" }),
   ).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("over the last year");
+  await expect(page.getByRole("main").getByRole("status")).toContainText("over the last year");
   const found = page.getByRole("list", { name: "What you paid" });
   await expect(found.getByRole("listitem")).toHaveCount(4);
   await expect(found).toContainText("Payday loans");
@@ -987,7 +1030,9 @@ test("a deposit is followed to its due date and marked returned", async ({
 
   await page.goto("/loans/renting");
   await expect(page.getByRole("heading", { level: 1, name: "Your rent" })).toBeVisible();
-  await expect(page.getByText("I don't see rent payments in your bank data yet.")).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText("I don't see rent payments in your bank data yet."),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Report my rent" })).toHaveCount(0);
 
   const deposits = page.getByRole("region", { name: "Security deposits" });
@@ -997,7 +1042,7 @@ test("a deposit is followed to its due date and marked returned", async ({
   const follow = deposits.getByRole("button", { name: "Follow this deposit" });
   await follow.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status")).toHaveText("Deposit saved.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Deposit saved.");
   await expect(deposits).toContainText("$1,500.00 deposit (NY)");
   await expect(deposits).toContainText("New York General Obligations Law § 7-108");
 
@@ -1005,7 +1050,7 @@ test("a deposit is followed to its due date and marked returned", async ({
   const back = deposits.getByRole("button", { name: "It came back" });
   await back.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status")).toHaveText("Noted that it came back.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Noted that it came back.");
   await expect(deposits).toContainText("returned $1,400.00");
 });
 
@@ -1039,14 +1084,14 @@ test("a co-signed loan is counted in full and a missed payment lands on the pers
   const save = told.getByRole("button", { name: "Save" });
   await save.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Saved.");
   await expect(told).toContainText("Co-signed loan for Jess: $12,000.00 owed, $300.00 a month");
   await expect(cosign).toContainText("You've co-signed $12,000.00 in all, $300.00 a month.");
 
   const missed = told.getByRole("button", { name: "They missed a payment" });
   await missed.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status")).toHaveText("Updated.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Updated.");
   await expect(cosign).toContainText("Jess missed a payment: that's on your report too.");
 });
 
@@ -1070,10 +1115,17 @@ test("what you could borrow is shown with the day it was checked", async ({
   await expect(
     page.getByRole("heading", { level: 1, name: "What you could borrow" }),
   ).toBeVisible();
-  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  // The page's own label (a pop-up card may carry the same words).
+  await expect(page.locator("[data-demo-advice]").first()).toHaveText(
+    "Demo advice: sample data, not financial advice",
+  );
   // A card limit is a guess from a year of income, to the nearest $100.
-  await expect(page.getByText(/with a limit around \$[\d,]*00\.00/)).toBeVisible();
-  await expect(page.getByText(/^Two measures, two sizes: the usual 28\/36 rules/)).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText(/with a limit around \$[\d,]*00\.00/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("main").getByText(/^Two measures, two sizes: the usual 28\/36 rules/),
+  ).toBeVisible();
   const list = page.getByRole("list", { name: "What you could borrow" });
   await expect(list.getByRole("listitem").filter({ has: page.getByRole("heading") })).toHaveCount(
     4,
@@ -1082,5 +1134,5 @@ test("what you could borrow is shown with the day it was checked", async ({
   await expect(list).toContainText("A credit card");
   await expect(list.getByText(/^Checked \w+ \d+, \d{4}$/).first()).toBeVisible();
   await page.getByRole("button", { name: "Check again" }).click();
-  await expect(page.getByRole("status")).toHaveText("Checked again just now.");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Checked again just now.");
 });
