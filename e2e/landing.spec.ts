@@ -34,19 +34,22 @@ test("health check responds", async ({ request }) => {
   expect(await response.json()).toEqual({ ok: true });
 });
 
-// The column (founder, 2026-10-25): a realistic ASCII column at its real proportions, fixed
-// beside the story, panning from its cracked capital at the top of the page to its whole base
-// at the bottom.
+// The column (founder, 2026-10-25): a big ASCII Ionic column built from scratch, fixed beside
+// the story, panning from its broken capital at the top of the page to its whole base at the
+// bottom.
 test("the column pans from capital to base as the page scrolls", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 });
   await page.goto("/");
   const column = page.getByTestId("landing-column");
   const art = column.locator("pre");
   await expect(art).not.toBeEmpty();
-  // Taller than the screen, as a real column is in proportion to its width.
+  // Several screens tall: its shaft is about half the screen wide.
   await expect
     .poll(async () => Number(await column.getAttribute("data-height")))
-    .toBeGreaterThan(860);
+    .toBeGreaterThan(860 * 2);
+  // Broken at the top, whole at the bottom.
+  expect(Number(await column.getAttribute("data-damage-top"))).toBeGreaterThan(0);
+  expect(Number(await column.getAttribute("data-damage-bottom"))).toBe(0);
   const top = (await art.boundingBox())!.y;
   await page.evaluate(() =>
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),

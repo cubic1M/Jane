@@ -85,7 +85,7 @@ export default function Home() {
         {/* The column (founder, 2026-10-25): fixed to the screen while the story scrolls, panning
             from its cracked capital at the top of the page down to its whole base at the bottom.
             The right half of a wide screen; behind the words, faint, on a phone. */}
-        <div className="pillar-dock pointer-events-none fixed inset-0 -z-10 lg:left-1/2 lg:px-10 lg:py-0">
+        <div className="pillar-dock pointer-events-none fixed inset-0 -z-10 overflow-hidden lg:left-1/2">
           <ColumnArt />
         </div>
 

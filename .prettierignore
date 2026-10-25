@@ -9,5 +9,3 @@ docs
 CLAUDE.md
 AGENTS.md
 package-lock.json
-# Generated ASCII frames for the landing pillar (scripts/pillars/build.ts).
-public/landing/pillar-*.json
