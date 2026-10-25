@@ -5,7 +5,8 @@ import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 // Every page, signed out and in, light and dark: no serious or critical WCAG 2.1 A/AA
 // problems found by axe (step 33). Desktop only; the pages are the same on phones.
 
-test.setTimeout(300_000);
+// About 60 pages, each scanned in light and dark: near 5 minutes on a busy runner.
+test.setTimeout(600_000);
 
 async function violations(page: Page, path: string) {
   await page.goto(path);
