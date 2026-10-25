@@ -31,7 +31,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: modules
         with:
           path: node_modules
@@ -73,7 +73,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: modules
         with:
           path: node_modules
@@ -122,7 +122,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: modules
         with:
           path: node_modules
@@ -132,7 +132,7 @@ jobs:
       - name: Generate the Prisma client
         run: npx prisma generate
       # The build's own cache: an unchanged page isn't built again.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .next/cache
           key: next-build-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.ts', 'prisma/schema.prisma') }}
@@ -147,7 +147,7 @@ jobs:
           SIMULATED_AGENT: "1"
       - name: Pack the build (without its cache)
         run: tar --exclude=.next/cache -cf next-build.tar .next
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: e2e-build
           path: next-build.tar
@@ -187,7 +187,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: modules
         with:
           path: node_modules
@@ -196,7 +196,7 @@ jobs:
         run: npm ci
       - name: Generate the Prisma client
         run: npx prisma generate
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: e2e-build
       - name: Unpack the build
@@ -211,7 +211,7 @@ jobs:
       # trace (npx playwright show-trace) for a week.
       - name: Keep the failed tests' traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-results-${{ matrix.shard }}
           path: test-results/
