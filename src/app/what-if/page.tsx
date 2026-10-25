@@ -5,6 +5,7 @@ import { SCENARIOS, SCENARIO_LABELS } from "@/config/what-if";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { isScenario, whatIf } from "@/lib/what-if";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What if (spec step 203): pick a scenario, see it month by month and sector by sector,
 // with every assumption shown. Nothing here changes anything; "Use this plan" is in the chat.
@@ -115,7 +116,7 @@ async function WhatIfContent({
 export default function WhatIfPage({ searchParams }: PageProps<"/what-if">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <WhatIfContent searchParams={searchParams} />
       </Suspense>
     </main>

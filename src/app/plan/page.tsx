@@ -25,6 +25,7 @@ import { autopilotOf } from "@/lib/autopilot";
 import { YesToAll } from "./yes-to-all";
 import { loadYearPlan } from "@/lib/year-plan";
 import { YearPlanSection } from "./year-plan-section";
+import { LoadingBar } from "@/components/loading-bar";
 
 async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["searchParams"] }) {
   const user = await requireUser();
@@ -221,7 +222,7 @@ function setupView(p: Proposal): SetupView {
 export default function PlanPage({ searchParams }: PageProps<"/plan">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Putting your plan together…</p>}>
+      <Suspense fallback={<LoadingBar label="Putting your plan together" />}>
         <Plan searchParams={searchParams} />
       </Suspense>
     </main>

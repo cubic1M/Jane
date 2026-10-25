@@ -10,6 +10,7 @@ import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
 import { balancePhrase } from "@/planning/tax-estimate-copy";
 import { stateName } from "@/planning/tax-profile";
 import { SignForm, StartForm } from "./file-forms";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Filing (spec step 126): start the return with the filing partner, review what Jane handed
 // over, and sign it. Nothing is filed until the person signs.
@@ -163,7 +164,7 @@ async function Content() {
 export default function FilePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content />
       </Suspense>
     </main>

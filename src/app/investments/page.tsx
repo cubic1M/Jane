@@ -13,31 +13,19 @@ import { PracticeIdeasSummary } from "@/components/practice-ideas-summary";
 import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
-import { areaOfCapability } from "@/config/areas";
-import { SIMULATED_PARTNER } from "@/config/brokerage";
-import { PRACTICE_TOPIC } from "@/config/practice-suggestions";
-import { PAGES, investingTree, itemId } from "@/lib/area-pages/investing";
+import { PAGES, itemId } from "@/lib/area-pages/investing";
 import { explainer } from "@/config/learn";
 import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
-import { cryptoTotal } from "@/lib/crypto/crypto";
-import { loadReturns } from "@/lib/investments/returns";
-import { backtestsFor } from "@/lib/investments/backtest";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
-import { practiceIdeasView } from "@/lib/practice/ideas-view";
 import { practiceProfileOf } from "@/lib/practice/preferences";
-import { autopilotOf } from "@/lib/autopilot";
-import { investmentsByHerself } from "@/lib/jane-agent/investments/replies";
-import { autopilotFor } from "@/lib/sector-autopilot";
-import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
-import { loadInvestments } from "@/lib/investments/holdings";
-import { profileOf } from "@/lib/investments/profile";
-import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
+import { loadInvestingArea } from "@/lib/area-pages/investing-load";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
 // it and where each number came from, and the balances month by month. The page is a tree
@@ -47,7 +35,6 @@ import { requireUser } from "@/lib/session";
 
 const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const CARD = "flex flex-col gap-1 border border-zinc-200 p-4 dark:border-zinc-800";
-const PRACTICE_TOPICS: readonly string[] = Object.values(PRACTICE_TOPIC);
 
 const monthLabel = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
@@ -142,82 +129,21 @@ async function InvestmentsContent({
   const focus = typeof params.focus === "string" ? params.focus : undefined;
   // Constant search (Phase AW): a cheap practice scan, after the page is sent.
   after(() => scanOnOpenQuietly(user.id));
-  const db = scopedFor(user.id);
-  const data = await loadInvestments(user.id);
-  const [answers, simulated, level, investing, returns, crypto, backtests, suggestions] =
-    await Promise.all([
-      profileOf(user.id),
-      // Spec step 133: holdings shaped by simulated orders say so.
-      db.brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
-      // Spec step 137: what Jane does by herself at the person's autopilot level.
-      autopilotOf(user.id),
-      // Spec step 141: what the Investing area may do by itself.
-      autopilotFor(user.id, "investing"),
-      // Spec step 156: how they've done.
-      loadReturns(user.id, { investments: data }),
-      // Spec step 161: crypto, read-only, counted in the mix.
-      cryptoTotal(user.id),
-      // Spec step 295: each risk level replayed over past prices (demo advice only).
-      backtestsFor(user.id),
-      // Jane's open ideas on real money in this area (practice ideas are the practice branch's).
-      db.suggestions.findMany({
-        where: { status: { in: ["waiting", "selected"] } },
-        select: {
-          key: true,
-          capability: true,
-          topic: true,
-          short: true,
-          why: true,
-          worthCents: true,
-          worthKind: true,
-          urgency: true,
-          actionLabel: true,
-          actionHref: true,
-        },
-        orderBy: { score: "desc" },
-      }),
-    ]);
-  // The practice portfolio and its ideas: demo advice only.
-  const started = backtests.advice
-    ? !!(await db.practicePortfolios.findFirst({ select: { id: true } }))
-    : false;
-  const ideas = started ? await practiceIdeasView(user.id) : null;
-  const mine = suggestions.filter(
-    (s) => areaOfCapability(s.capability) === "investments" && !PRACTICE_TOPICS.includes(s.topic),
-  );
-  const byHerself = investmentsByHerself(level, investing);
-  const profile = profileSummary(answers, data.asOf);
-  const max = Math.max(1, ...data.months.map((m) => m.totalCents ?? 0));
-  const hasMonths = data.months.some((m) => m.totalCents !== null);
-
-  const area = investingTree({
-    suggestions: mine,
-    accounts: data.accounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      balanceCents: a.balanceCents,
-      holdings: a.holdings.length,
-    })),
-    totalCents: data.totalCents,
-    byType: data.byAssetClass.length,
-    cryptoCents: crypto,
-    profile: { complete: profile.complete, label: profile.complete ? profile.label : null },
-    returns: { periods: returns.periods.length },
-    months: data.accounts.length > 0,
-    practice: backtests.advice
-      ? {
-          started,
-          ideas: (ideas?.ideas ?? []).map((i) => ({
-            key: i.suggestionKey,
-            kind: i.kind,
-            headline: i.headline,
-            percent: i.confidence.percent,
-            worthCents: i.worthCents,
-          })),
-          strategy: ideas?.strategy ?? null,
-        }
-      : null,
-  });
+  const {
+    data,
+    simulated,
+    investing,
+    returns,
+    crypto,
+    backtests,
+    ideas,
+    mine,
+    byHerself,
+    profile,
+    max,
+    hasMonths,
+    area,
+  } = await loadInvestingArea(user.id);
 
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
@@ -409,9 +335,7 @@ async function InvestmentsContent({
       <BacktestsSection backtests={backtests.backtests} />
     );
   details[itemId("strategies", "rules")] = (
-    <Suspense
-      fallback={<p className="text-sm text-zinc-500">Replaying the autopilot&apos;s rules…</p>}
-    >
+    <Suspense fallback={<LoadingBar label="Replaying the autopilot's rules" />}>
       <RuleReplays userId={user.id} />
     </Suspense>
   );
@@ -510,7 +434,7 @@ async function InvestmentsContent({
 export default function InvestmentsPage({ searchParams }: PageProps<"/investments">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <InvestmentsContent searchParams={searchParams} />
       </Suspense>
     </main>

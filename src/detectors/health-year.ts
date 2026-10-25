@@ -145,7 +145,7 @@ const medicalBillDispute: Detector = {
       capability: "insurance",
       topic: "medical_bill_dispute",
       title: "Ask the team to check this medical bill",
-      headline: headlineOf("Ask us to check a medical bill", top.overCents, "saves", true),
+      headline: headlineOf("Check a medical bill with us", top.overCents, "saves", true),
       short: `${plain(top.bill.provider)} billed ${formatCents(top.paidCents)}; your share looks like ${formatCents(top.shouldPayCents)}.`,
       worthCents: top.overCents,
       worthKind: "saves",

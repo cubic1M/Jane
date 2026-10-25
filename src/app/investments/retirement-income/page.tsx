@@ -16,6 +16,7 @@ import { loadRetirementIncome } from "@/lib/investments/retirement-income";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { IncomeForm } from "./income-form";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Income in retirement (spec step 212, demo advice): Social Security at 62, full age and
 // 70, required minimum distributions, the order to draw, and a monthly paycheck with how
@@ -188,7 +189,7 @@ async function Content({
 export default function RetirementIncomePage(props: PageProps<"/investments/retirement-income">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

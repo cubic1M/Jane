@@ -4,9 +4,11 @@ import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
-import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
-import { inTheList, toView, type MessageView } from "@/lib/jane-agent/view";
-import { openChat, timezoneOf } from "@/lib/jane-agent/open";
+import { markChatRead, pinnedMessages } from "@/lib/jane-agent/messages";
+import { chatList } from "@/lib/jane-agent/popups";
+import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
+import type { MessageView } from "@/lib/jane-agent/view";
+import { openChat } from "@/lib/jane-agent/open";
 import { practiceCards } from "@/lib/practice/cards";
 import { requireUser } from "@/lib/session";
 import { chatRedirect } from "@/lib/side-chat";
@@ -16,6 +18,7 @@ import { ScanRefresher } from "./scan-refresher";
 import { ScrollToEnd } from "./scroll-to-end";
 import { ChatCards } from "./chat-cards";
 import { EmbedBridge } from "./embed-bridge";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Jane's chat (spec step 81), shown only in the side panel since the founder's "I don't want an
 // individual chat": /chat itself opens Home with the panel open. What Jane noticed, did and suggests, newest
@@ -48,17 +51,15 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   // No chat page of its own: Home, with the side chat open (src/lib/side-chat.ts).
   if (!embed) redirect(chatRedirect(params));
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
-  const [chat, askHistory, pinned, stackedRows, zone, practice] = await Promise.all([
+  const [chat, askHistory, pinned, stacked, practice] = await Promise.all([
     openChat(user.id, { pages }),
     scopedFor(user.id).askConversations.count(),
     pinnedMessages(user.id),
-    // The day's suggestions still waiting, one card at a time by the message box.
-    stackedSuggestions(user.id),
-    timezoneOf(user.id),
+    // Jane's cards: the day's suggestions, then whatever else waits on the person.
+    loadPopupStack(user.id),
     // Spec step 296: the practice portfolio's cards (demo advice mode only).
     practiceCards(user.id),
   ]);
-  const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
   if (!chat) {
     return (
       <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -69,8 +70,10 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       </p>
     );
   }
-  // The floating cards are the one place a waiting suggestion shows.
-  const listed = inTheList(chat.messages, stacked);
+  // The cards are the one place a suggestion or a waiting decision shows (on a computer, the
+  // dock above this chat; in the phone's sheet, over its message box): the list has no card
+  // of its own, and no gap where one was.
+  const listed = chatList(chat.messages, stacked);
   const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
 
@@ -145,7 +148,23 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </p>
       )}
 
-      {/* The message box (spec step 84): typing to Jane, answered under it. */}
+      {hasAskHistory && (
+        <Link
+          href="/ask"
+          className="inline-flex min-h-11 items-center self-start text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+        >
+          Your earlier Ask Jane conversations ›
+        </Link>
+      )}
+      {/* Room for the cards floating over the end of the chat (as tall as they are: none when
+          the dock above the panel has them), so the last message scrolls clear of them. */}
+      <div
+        aria-hidden="true"
+        className="shrink-0"
+        style={{ height: "var(--floating-cards-h, 0px)" }}
+      />
+      {/* The message box (spec step 84): typing to Jane, answered above it; pinned to the
+          bottom of the chat. */}
       <ChatComposer
         id="chat-end"
         maxLength={CHAT_MAX_MESSAGE}
@@ -153,14 +172,6 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
           .filter((m) => m.kind === "user")
           .map((m) => ({ id: m.id, body: m.body }))}
       />
-      {hasAskHistory && (
-        <Link
-          href="/ask"
-          className="-mt-4 inline-flex min-h-11 items-center self-start text-sm text-zinc-600 hover:underline dark:text-zinc-400"
-        >
-          Your earlier Ask Jane conversations ›
-        </Link>
-      )}
       {pages === 1 && <ScrollToEnd targetId="chat-end" />}
       {/* Last, so its room under the message box is the end of the page: one set of cards at
           a time, the options Jane just gave, then the day's suggestions, then the practice
@@ -172,8 +183,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
 
 export default function ChatPage({ searchParams }: PageProps<"/chat">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
-      <Suspense fallback={<p className="text-zinc-500">Loading your chat…</p>}>
+    // The whole height of its frame, the message box at the very bottom of it.
+    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-1 flex-col gap-6 px-4 pt-6 sm:px-6 sm:pt-10">
+      <Suspense fallback={<LoadingBar label="Loading your chat" />}>
         <Chat searchParams={searchParams} />
       </Suspense>
     </main>

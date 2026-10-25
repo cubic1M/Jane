@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { PROFILE_TABS, tabFor } from "@/config/navigation";
 import { signOutToHome } from "@/lib/auth-actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // The profile menu (spec step 79): who's signed in, What Jane did, Settings and Sign out. These
 // live here rather than in the area tabs; their pages (and /connect, /import) light the icon up.
@@ -79,12 +80,9 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
           </Link>
         ))}
         <form action={signOutToHome}>
-          <button
-            type="submit"
-            className="flex min-h-11 w-full items-center rounded-lg px-3 text-left font-medium text-emerald-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          >
+          <SubmitButton className="flex min-h-11 w-full items-center rounded-lg px-3 text-left font-medium text-emerald-700 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             Sign out
-          </button>
+          </SubmitButton>
         </form>
       </div>
     </div>

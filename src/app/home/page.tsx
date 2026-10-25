@@ -7,12 +7,18 @@ import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
-import { HomeTree } from "@/components/hub/home-tree";
-import { adviceMode } from "@/lib/advice-mode";
+import { GiantTree } from "@/components/hub/giant-tree";
 import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
+import { loadInvestingArea } from "@/lib/area-pages/investing-load";
+import { loadLoansArea } from "@/lib/area-pages/loans-load";
+import { moneyTree } from "@/lib/area-pages/money";
+import { loadMoneyArea } from "@/lib/area-pages/money-load";
+import { loadPlansArea } from "@/lib/area-pages/plans-load";
+import { loadTaxesArea } from "@/lib/area-pages/taxes-load";
+import type { AreaTrees } from "@/lib/giant-tree";
+import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
-import { homeTree } from "@/lib/hub/tree";
 import { CASH_FLOW_DAYS } from "@/config/areas";
 import { addDays } from "@/detection/units";
 import { autopilotOf } from "@/lib/autopilot";
@@ -24,14 +30,13 @@ import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
-import { cashFlowView, heroView, tilesView, type AreaTile } from "@/lib/hub/view";
+import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
-import { stackedSuggestions } from "@/lib/jane-agent/messages";
-import { timezoneOf } from "@/lib/jane-agent/open";
-import { toView } from "@/lib/jane-agent/view";
+import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
 import { SuggestionCards } from "../chat/suggestion-cards";
 import { FirstWeekChecklist } from "./checklist";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Home, the hub (docs/design/home-hub.md; it was Today, spec step 79): graphs first, few
 // words. The hero row (safe to spend, net worth, saved), the next 30 days of bills and
@@ -71,72 +76,71 @@ function NeedsYou({
   );
 }
 
-// What the home tree reads beyond the tiles, started with the page so it doesn't wait for them.
+// What the giant tree reads, started with the page so it doesn't wait for anything else. Each
+// area with a tree page shows that tree's branches, from the same loaders its page uses (a
+// loader that fails leaves its area showing what Jane looks for there).
+const quietly = <T,>(load: Promise<T>) => load.catch(() => undefined);
 const loadTreeData = (userId: string) =>
   Promise.all([
-    loadInsuranceArea(userId),
     scopedFor(userId).suggestions.findMany({ select: { key: true } }),
     adviceMode(userId),
+    quietly(loadInsuranceArea(userId)),
+    quietly(loadLoansArea(userId)),
+    quietly(loadTaxesArea(userId)),
+    quietly(loadPlansArea(userId)),
+    quietly(loadInvestingArea(userId)),
+    quietly(loadMoneyArea(userId).then(moneyTree)),
   ]);
 type TreeData = Awaited<ReturnType<typeof loadTreeData>>;
 
-async function Tiles({
-  userId,
-  home,
-  treeData,
-}: {
-  userId: string;
-  home: HomeSummary;
-  treeData: Promise<TreeData>;
-}) {
+async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
   const areas = await loadHubAreas(userId, {
     budgetsOver: home.budgetsOver.length,
     safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
   });
-  const tiles = tilesView(areas);
-  return (
-    <>
-      <AreaTiles tiles={tiles} />
-      <Suspense fallback={null}>
-        <AreasTree tiles={tiles} treeData={treeData} />
-      </Suspense>
-    </>
-  );
+  return <AreaTiles tiles={tilesView(areas)} />;
 }
 
-// The home tree: the areas' branches, from the same loaders their pages use.
-async function AreasTree({ tiles, treeData }: { tiles: AreaTile[]; treeData: Promise<TreeData> }) {
-  const [insurance, reached, advice] = await treeData;
+// The giant "What Jane does" tree (src/components/hub/giant-tree.tsx): Jane, the six areas,
+// their branches and features, all at once, from the same map as /home/map.
+async function AreasTree({ treeData }: { treeData: Promise<TreeData> }) {
+  const [reached, advice, insurance, loans, taxes, plans, investing, money] = await treeData;
+  const areaTrees: AreaTrees = {
+    insurance: insurance?.area,
+    loans: loans?.area,
+    taxes: taxes?.area,
+    ahead: plans?.area,
+    investments: investing?.area,
+    money,
+  };
   const maps = buildFeatureMap({
     examples: sampleExamples(),
     reached: new Set(reached.map((r) => r.key)),
     advice,
   });
-  return <HomeTree data={homeTree({ tiles, areaTrees: { insurance: insurance.area }, maps })} />;
+  return <GiantTree maps={maps} areaTrees={areaTrees} />;
 }
 
 async function HubContent() {
   await connection();
   const user = await requireUser();
   // Everything the hub reads starts at once (speed pass, 2026-10-24): the tree's data too, which
-  // the tiles' Suspense picks up when it's ready.
+  // the tree's Suspense picks up when it's ready.
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, stackedRows, zone] = await Promise.all([
+  const [top, checklist, autopilot, books, suggestions] = await Promise.all([
     loadHubTop(user.id),
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
-    // The day's suggestions still waiting, as the chat shows them.
-    stackedSuggestions(user.id),
-    timezoneOf(user.id),
+    // Jane's cards, as the chat shows them (on a computer the dock above the chat has them).
+    loadPopupStack(user.id),
   ]);
   if (!top) redirect("/connect");
   const { home } = top;
   // Net worth every day since the first day with Jane, ending at the hub's own figure.
   const line = await netWorthHistory(user.id, top.hero.netWorth?.todayCents ?? 0);
-  const suggestions = stackedRows.map((m) => toView(m, new Date(), zone));
   // What moved it: the chart's events, from its first day.
   const events = line[0]
     ? await netWorthEvents(user.id, line[0].date, top.hero.netWorth?.todayCents ?? 0)
@@ -160,13 +164,18 @@ async function HubContent() {
         chart={<NetWorthChart points={line} events={events} />}
       />
 
+      {/* Under the hero, before anything else: everything Jane does, as one tree. */}
+      <Suspense fallback={<LoadingBar label="Loading what Jane does" />}>
+        <AreasTree treeData={treeData} />
+      </Suspense>
+
       <CashFlowStrip
         view={cashFlowView(top.cashFlow)}
         endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
       />
 
       <Suspense fallback={<AreaTilesLoading />}>
-        <Tiles userId={user.id} home={home} treeData={treeData} />
+        <Tiles userId={user.id} home={home} />
       </Suspense>
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
@@ -182,7 +191,7 @@ async function HubContent() {
         </Link>
       </p>
 
-      <SuggestionCards messages={suggestions} />
+      <SuggestionCards messages={suggestions} foldOnPhone />
     </>
   );
 }
@@ -190,7 +199,7 @@ async function HubContent() {
 export default function HomePage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading your hub…</p>}>
+      <Suspense fallback={<LoadingBar label="Loading your hub" />}>
         <HubContent />
       </Suspense>
     </main>

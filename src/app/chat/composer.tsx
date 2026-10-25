@@ -145,6 +145,26 @@ export function ChatComposer({
 
   const shownError = error ?? (actionPending ? null : state.error);
 
+  // How tall the pinned box is, so the cards over the chat sit just above it.
+  useEffect(() => {
+    const el = form.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement;
+    const watch = new ResizeObserver(() =>
+      root.style.setProperty("--chat-composer-h", `${Math.round(el.offsetHeight)}px`),
+    );
+    watch.observe(el);
+    // Whatever is scrolled into view (a reply's buttons, a found message) stops above the box
+    // and the cards over it, never under them.
+    root.style.scrollPaddingBottom =
+      "calc(var(--chat-composer-h, 5.5rem) + var(--floating-cards-h, 0px) + 1rem)";
+    return () => {
+      watch.disconnect();
+      root.style.removeProperty("--chat-composer-h");
+      root.style.removeProperty("scroll-padding-bottom");
+    };
+  }, []);
+
   return (
     <>
       {draft && (
@@ -152,7 +172,10 @@ export function ChatComposer({
           {!typed.some((m) => !draft.before.has(m.id) && m.body === draft.question) && (
             <div className="flex flex-col items-end gap-1 self-end sm:max-w-[80%]">
               <span className="text-xs text-zinc-500">You</span>
-              <p className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]">
+              <p
+                data-draft-question=""
+                className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]"
+              >
                 {draft.question}
               </p>
             </div>
@@ -162,7 +185,9 @@ export function ChatComposer({
               <span className="font-semibold text-emerald-700">jane&gt;</span> answer
             </p>
             {draft.answer && (
-              <p className="whitespace-pre-line [overflow-wrap:anywhere]">{draft.answer}</p>
+              <p data-draft-answer="" className="whitespace-pre-line [overflow-wrap:anywhere]">
+                {draft.answer}
+              </p>
             )}
             {(draft.status || !draft.answer) && (
               <p role="status" className="text-sm text-zinc-500">
@@ -180,7 +205,11 @@ export function ChatComposer({
         ref={form}
         action={action}
         onSubmit={send}
-        className="flex scroll-mb-[calc(1rem+env(safe-area-inset-bottom))] flex-col gap-1"
+        // Pinned to the bottom edge (founder: "the place to type is fixed at the bottom right,
+        // and not leaving a blank space down below"): pushed down when the chat is short, held
+        // there when it scrolls.
+        data-chat-composer=""
+        className="sticky bottom-0 z-30 mt-auto -mx-4 flex flex-col gap-1 bg-white px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 dark:bg-zinc-950"
       >
         <div className="flex min-h-12 items-center gap-2 border border-zinc-400 px-3 focus-within:border-emerald-700 dark:border-zinc-600">
           <span aria-hidden="true" className="text-emerald-700">

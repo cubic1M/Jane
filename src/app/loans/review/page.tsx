@@ -11,6 +11,7 @@ import { computeCreditMonthly, loadCreditMonthly } from "@/lib/credit-monthly";
 import { ensureChecked } from "@/lib/refinance";
 import { loadDebtReview } from "@/lib/debt-review";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The yearly debt review (spec step 230): everything about debts and credit in one pass, what
 // Jane did by herself within the debt caps, and what waits for a tap (in the chat, where each
@@ -142,7 +143,7 @@ async function ReviewContent() {
 export default function ReviewPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ReviewContent />
       </Suspense>
     </main>

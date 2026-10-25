@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { AreaTabs } from "@/components/area-tabs";
 import { BackToChat } from "@/components/back-to-chat";
@@ -27,21 +26,23 @@ export function AppHeader({
 }) {
   return (
     <header className="flex flex-col gap-3 text-sm">
+      {/* Above the docked chat (z-40), so the profile menu opens over it and Sign out can be
+          pressed; the chat expanded to the whole window (z-50, later on the page) still covers it. */}
       <div
         id="app-top-bar"
-        className="flex flex-wrap items-center gap-x-3 gap-y-1 lg:fixed lg:inset-x-0 lg:top-0 lg:z-40 lg:h-14 lg:flex-nowrap lg:border-b lg:border-zinc-300 lg:bg-white lg:px-4 dark:lg:border-zinc-700 dark:lg:bg-zinc-950 print:static"
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 lg:fixed lg:inset-x-0 lg:top-0 lg:z-50 lg:h-14 lg:flex-nowrap lg:border-b lg:border-zinc-300 lg:bg-white lg:px-4 dark:lg:border-zinc-700 dark:lg:bg-zinc-950 print:static"
       >
-        <Link
-          href="/home"
-          // On every page: prefetching the hub would load all of its data each time.
-          prefetch={false}
-          className="inline-flex min-h-11 shrink-0 items-center text-base font-bold tracking-tight"
+        {/* Just the logo (founder: "It should just be the logo, and no interaction"): Home and
+            the area tabs are where the pages are. */}
+        <span
+          data-jane-logo=""
+          className="inline-flex min-h-11 shrink-0 cursor-default items-center text-base font-bold tracking-tight select-none"
         >
           <span aria-hidden className="text-emerald-700">
             &gt;
           </span>
           Jane
-        </Link>
+        </span>
         <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
           <AreaTabs />
         </div>
@@ -51,7 +52,9 @@ export function AppHeader({
         </div>
       </div>
       <SideChatUser userId={user.id} />
-      {/* The first scan's loading bar, across the top of every page while it runs. */}
+      {/* A tapped link's loading bar (src/components/nav-pending.tsx) shows here, in the flow. */}
+      <div id="page-loading" />
+      {/* The first scan's loading bar, under the top bar of every page while it runs. */}
       <Suspense>
         <ScanBarGate userId={user.id} />
       </Suspense>

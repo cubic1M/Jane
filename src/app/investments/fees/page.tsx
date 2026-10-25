@@ -10,6 +10,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What investing costs the person (spec step 130): each fund's yearly cost, advisory and
 // account fees, what it all costs over 30 years as a range, and, in demo advice mode, a
@@ -129,7 +130,7 @@ async function FeesContent() {
 export default function FeesPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <FeesContent />
       </Suspense>
     </main>

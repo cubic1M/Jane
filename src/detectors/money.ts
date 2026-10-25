@@ -210,7 +210,7 @@ const idleCash: Detector = {
       capability: "investing",
       topic: "idle_cash",
       title: "Put the cash you don't need to work",
-      headline: headlineOf("Move idle cash to a higher rate", idle.earnsCents, "earns"),
+      headline: headlineOf("Move idle cash to higher interest", idle.earnsCents, "earns"),
       short: `You keep ${formatCents(idle.balanceCents)} in cash; about ${formatCents(idle.excessCents)} is more than you need.`,
       worthCents: idle.earnsCents,
       worthKind: "earns",

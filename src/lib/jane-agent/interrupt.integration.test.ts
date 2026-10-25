@@ -3,6 +3,20 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
+// Something to do in the middle of Jane's run (her debt upkeep runs part way through it).
+const { midRun } = vi.hoisted(() => ({ midRun: { fn: null as null | (() => Promise<unknown>) } }));
+vi.mock("@/lib/debt-refresh", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/debt-refresh")>();
+  return {
+    ...real,
+    refreshDebts: async (...args: Parameters<typeof real.refreshDebts>) => {
+      const fn = midRun.fn;
+      midRun.fn = null;
+      if (fn) await fn();
+      return real.refreshDebts(...args);
+    },
+  };
+});
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
@@ -65,6 +79,45 @@ describe.runIf(url)("never interrupt, against a real database", () => {
     expect(kinds.slice(0, 2)).toEqual(["user", "reply"]);
     expect(kinds.slice(2).every((k) => ownKinds.includes(k))).toBe(true);
     expect(kinds.length).toBeGreaterThan(2);
+  });
+
+  // e2e/chat.spec.ts: the autopilot question landed after Jane's answer to "cancel hulu",
+  // because a run that began before they typed posted when it finished.
+  it("holds a run's messages when the person starts typing while it works", async () => {
+    const before = await client.janeMessage.count({ where: { userId: otherId } });
+    midRun.fn = () => sendToJane(otherId, "safe to spend", { client, now: at(3) });
+    expect(await runJaneAgent(otherId, { client, now: at(3), trigger: "sync" })).toEqual({
+      posted: 0,
+    });
+    const kinds = (
+      await client.janeMessage.findMany({
+        where: { userId: otherId },
+        orderBy: { createdAt: "asc" },
+        select: { kind: true },
+        skip: before,
+      })
+    ).map((m) => m.kind);
+    // Only their question and Jane's answer: nothing of Jane's own after it.
+    expect(kinds).toEqual(["user", "reply"]);
+  });
+
+  // A run asked for at one moment (a page's render) and started after the person typed: what
+  // they typed after that moment holds it too.
+  it("holds a run asked for before the person typed", async () => {
+    const before = await client.janeMessage.count({ where: { userId: otherId } });
+    await sendToJane(otherId, "safe to spend", { client, now: at(20) });
+    expect(await runJaneAgent(otherId, { client, now: at(19), trigger: "open" })).toEqual({
+      posted: 0,
+    });
+    const kinds = (
+      await client.janeMessage.findMany({
+        where: { userId: otherId },
+        orderBy: { createdAt: "asc" },
+        select: { kind: true },
+        skip: before,
+      })
+    ).map((m) => m.kind);
+    expect(kinds).toEqual(["user", "reply"]);
   });
 
   it("shows findings of one kind as one message, and each Yes is that finding's own", async () => {

@@ -19,7 +19,7 @@ import { loadTaxFound } from "@/lib/tax-scan";
 import { calendarReply } from "./tax-calendar-message";
 
 // Taxes QA (2026-10-22): with a real account next to the demo bank, the chat held back its tax
-// recommendations but the suggestion cards still said "Convert some pre-tax money to a Roth",
+// recommendations but the suggestion cards still said "Convert some pre-tax money to Roth",
 // "Sell a holding at a loss" or "Ask about an S corporation"; in demo advice mode the same
 // cards came without the demo label. And a self-employed person asking about a home office was
 // told only that it's "for people who work for themselves".

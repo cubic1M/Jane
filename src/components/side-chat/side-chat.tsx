@@ -12,6 +12,8 @@ import {
   type FrameMessage,
 } from "@/lib/side-chat";
 import { JaneAvatar } from "./avatar";
+import { CardDock } from "./card-dock";
+import { LoadingBar } from "@/components/loading-bar";
 import { sideChatStore } from "./store";
 
 // The side chat (docs/design/home-hub.md). On a computer the chat is docked on the right of
@@ -156,9 +158,29 @@ export function SideChat() {
       if (event.source !== frame.current?.contentWindow) return;
       if (!isFrameMessage(event.data)) return;
       if (event.data.type === "jane:ready") {
+        listening.current = true;
         post(whereRef.current);
         if (asking.current) post({ type: "jane:ask", text: asking.current });
         asking.current = null;
+        if (sending.current) post({ type: "jane:send", text: sending.current });
+        sending.current = null;
+        return;
+      }
+      // Where a question sent from the giant tree landed, in the page's coordinates, and when
+      // Jane starts and finishes: told to the page for its dotted line.
+      if (event.data.type === "jane:bubble") {
+        const r = frame.current?.getBoundingClientRect();
+        if (r) {
+          window.dispatchEvent(
+            new CustomEvent("jane:bubble", {
+              detail: { x: r.left + event.data.x, y: r.top + event.data.y },
+            }),
+          );
+        }
+        return;
+      }
+      if (event.data.type === "jane:answering" || event.data.type === "jane:answered") {
+        window.dispatchEvent(new Event(event.data.type));
         return;
       }
       if (event.data.type !== "jane:navigate") return;
@@ -169,6 +191,38 @@ export function SideChat() {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [router, wide]);
+
+  // "Ask Jane" from the giant tree: the chat comes into view and the question is sent at once,
+  // waiting for the framed chat if it isn't listening yet; asked before, it finds the answer.
+  const sending = useRef<string | null>(null);
+  // The framed chat said it's listening (its "ready"); a new page in the frame says it again.
+  const listening = useRef(false);
+  useEffect(() => {
+    const onSend = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      // Only once the framed chat is listening (loaded isn't enough: it may still be hydrating).
+      if (listening.current) post({ type: "jane:send", text });
+      else sending.current = text;
+    };
+    const onFind = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== "string" || !text) return;
+      if (wide) {
+        if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
+      } else sideChatStore.setSheet("half");
+      if (listening.current) post({ type: "jane:find", text });
+    };
+    window.addEventListener("jane:send", onSend);
+    window.addEventListener("jane:find", onFind);
+    return () => {
+      window.removeEventListener("jane:send", onSend);
+      window.removeEventListener("jane:find", onFind);
+    };
+  }, [wide, loaded]);
 
   // "Ask Jane about this" (the feature map): the chat comes into view with the question in its
   // message box, waiting for the framed chat if it isn't listening yet.
@@ -225,6 +279,26 @@ export function SideChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView]);
 
+  // The phone's keyboard: the sheet rides above it (src/app/globals.css, --keyboard-inset), so
+  // the message box is never under it.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (wide || !vv) return;
+    const root = document.documentElement;
+    const place = () => {
+      const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty("--keyboard-inset", `${inset}px`);
+    };
+    place();
+    vv.addEventListener("resize", place);
+    vv.addEventListener("scroll", place);
+    return () => {
+      vv.removeEventListener("resize", place);
+      vv.removeEventListener("scroll", place);
+      root.style.removeProperty("--keyboard-inset");
+    };
+  }, [wide]);
+
   // Escape docks the full panel, or closes the sheet.
   useEffect(() => {
     if (!shows) return;
@@ -262,9 +336,9 @@ export function SideChat() {
     />
   );
   const placeholder = !mountFrame && (
-    <p className="flex-1 p-4 text-sm text-zinc-500" aria-live="polite">
-      Opening the chat…
-    </p>
+    <div className="flex-1 px-4 py-3">
+      <LoadingBar label="Opening the chat" />
+    </div>
   );
 
   if (wide) {
@@ -275,24 +349,31 @@ export function SideChat() {
         className="side-chat fixed right-0 bottom-0 z-40 flex flex-col border-l border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-950 print:hidden"
       >
         {panel === "rail" ? (
-          <button
-            type="button"
-            onClick={() => sideChatStore.setPanel("open")}
-            className="relative flex h-full w-full flex-col items-center gap-3 pt-3 hover:bg-zinc-50 dark:hover:bg-zinc-900"
-          >
+          <div className="flex h-full w-full flex-col items-center gap-2 pt-3">
+            {/* Jane's mark is only a mark; the button under it opens the chat. */}
             <JaneAvatar />
-            <UnreadDot count={unread} />
-            {/* Its name is its text: "Open chat", and how many are new. */}
-            <span className="sr-only">{unread > 0 ? `Open chat, ${unread} new` : "Open chat"}</span>
-            <span
-              aria-hidden
-              className="text-xs font-medium text-zinc-600 [writing-mode:vertical-rl] dark:text-zinc-400"
+            <button
+              type="button"
+              onClick={() => sideChatStore.setPanel("open")}
+              className="relative flex w-full flex-1 flex-col items-center pt-2 hover:bg-zinc-50 dark:hover:bg-zinc-900"
             >
-              Chat with Jane
-            </span>
-          </button>
+              <UnreadDot count={unread} />
+              {/* Its name is its text: "Open chat", and how many are new. */}
+              <span className="sr-only">
+                {unread > 0 ? `Open chat, ${unread} new` : "Open chat"}
+              </span>
+              <span
+                aria-hidden
+                className="text-xs font-medium text-zinc-600 [writing-mode:vertical-rl] dark:text-zinc-400"
+              >
+                Open chat
+              </span>
+            </button>
+          </div>
         ) : (
           <>
+            {/* Jane's cards, above the chat and never in it. */}
+            <CardDock />
             <div className="flex h-14 shrink-0 items-center gap-2 border-b border-zinc-300 pl-3 dark:border-zinc-700">
               <JaneAvatar />
               <p className="flex-1 text-sm font-semibold">Jane</p>

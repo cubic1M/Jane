@@ -16,6 +16,8 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { RESHOP_DAYS_BEFORE_RENEWAL } from "@/config/insurance";
 import { openShops, type Shop } from "@/lib/insurance/shop";
 import { getQuotes, keepPolicy, switchToPick } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Quotes for one policy (spec step 103), like for like: same cover and deductible, or each
 // difference spelled out. From the stand-in carrier catalog until a licensed partner is
@@ -119,19 +121,14 @@ function PickCard({ shop, policyCarrier }: { shop: Shop; policyCarrier: string }
         <form action={switchToPick}>
           <input type="hidden" name="shopId" value={shop.id} />
           <input type="hidden" name="policyId" value={shop.policyId} />
-          <button type="submit" className={BUTTON}>
-            Yes, switch
-          </button>
+          <SubmitButton className={BUTTON}>Yes, switch</SubmitButton>
         </form>
         <form action={keepPolicy}>
           <input type="hidden" name="shopId" value={shop.id} />
           <input type="hidden" name="policyId" value={shop.policyId} />
-          <button
-            type="submit"
-            className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 font-semibold dark:border-zinc-700"
-          >
+          <SubmitButton className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 font-semibold dark:border-zinc-700">
             Not now
-          </button>
+          </SubmitButton>
         </form>
       </div>
     </section>
@@ -233,9 +230,9 @@ async function QuotesContent({
               )}
               <form action={getQuotes}>
                 <input type="hidden" name="policyId" value={policy.id} />
-                <button type="submit" className={BUTTON}>
+                <SubmitButton className={BUTTON}>
                   {quotes.length > 0 ? "Get fresh quotes" : "Get quotes"}
-                </button>
+                </SubmitButton>
               </form>
             </>
           )}
@@ -248,7 +245,7 @@ async function QuotesContent({
 export default function QuotesPage({ searchParams }: PageProps<"/insurance/quotes">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <QuotesContent searchParams={searchParams} />
       </Suspense>
     </main>

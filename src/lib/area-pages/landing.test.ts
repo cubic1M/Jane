@@ -65,6 +65,8 @@ const FIXED: Record<AreaRoot, ReadonlySet<string>> = {
     ...(["plan", "kinds", "costs"] as const).flatMap((b) => PAGES[b].map((p) => `${b}:${p.key}`)),
     "plan:profile",
     "practice:portfolio",
+    // The strategy menu sits with the practice view's other strategy items (#701).
+    "strategies:menu",
   ]),
   "/ahead": new Set([
     ...DECISIONS.map((d) => `decide:${d.key}`),
@@ -203,7 +205,8 @@ describe("every link Jane gives lands on something", () => {
       if (!/\.(ts|tsx)$/.test(f) || /\.test\.tsx?$/.test(f) || NOT_LINKS.test(where)) continue;
       for (const [, raw] of readFileSync(f, "utf8").matchAll(LITERAL)) {
         const top = raw.split(/[/?#]/)[1];
-        if (!TOP.has(top)) continue;
+        // A bare "/api/" is a prefix the code compares paths with, not a link.
+        if (!TOP.has(top) || raw === "/api/") continue;
         if (raw.includes("${")) {
           // A template's own parts (${id}) can be anything: its path, with one segment for
           // each part, must still be a page.

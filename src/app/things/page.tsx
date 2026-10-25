@@ -10,6 +10,8 @@ import { isAssetKind, listAssets, type AssetLine } from "@/lib/owned-assets";
 import { requireUser } from "@/lib/session";
 import { deleteAsset } from "./actions";
 import { AssetForm } from "./asset-form";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Things you own (spec step 67): a home, a car, anything else of value, at the value the
 // person gives. Counted in net worth; with the loan against it, shown as equity.
@@ -167,12 +169,9 @@ async function ThingsContent({
                 </details>
                 <form action={deleteAsset} className="self-end">
                   <input type="hidden" name="assetId" value={a.id} />
-                  <button
-                    type="submit"
-                    className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
-                  >
+                  <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
                     Remove
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -209,7 +208,7 @@ async function ThingsContent({
 export default function ThingsPage({ searchParams }: PageProps<"/things">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ThingsContent searchParams={searchParams} />
       </Suspense>
     </main>

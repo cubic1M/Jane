@@ -213,7 +213,7 @@ const duplicateCharge: Detector = {
       capability: "cost",
       topic: "duplicate_charge",
       title: "You may have been charged twice: ask for one back",
-      headline: headlineOf("Ask for a double charge back", total, "earns", true),
+      headline: headlineOf("Claim back a double charge", total, "earns", true),
       short: clip(
         `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} was charged twice.`,
       ),
@@ -254,7 +254,7 @@ const trialConversion: Detector = {
       capability: "subscriptions",
       topic: "trial_conversion",
       title: "A free trial turned into a paid subscription: keep it or cancel it",
-      headline: headlineOf("Cancel a trial that now bills you", worth, "saves"),
+      headline: headlineOf("Cancel a trial now billing you", worth, "saves"),
       short: clip(
         `${converted.map((c) => nice(c.description)).join(", ")} now costs you ${formatCents(worth)} a year.`,
       ),
@@ -367,7 +367,7 @@ const budgetOverrun: Detector = {
       capability: "spending",
       topic: "budget_overrun",
       title: `Set a budget for ${label}: last month ran well over your usual`,
-      headline: headlineOf(`Set a budget for ${label}`, Math.round(top.extra), "saves"),
+      headline: headlineOf(`Set a ${label} budget`, Math.round(top.extra), "saves"),
       short: `You spent ${formatCents(top.now)} on ${label} last month, usually about ${formatCents(Math.round(top.avg))}.`,
       worthCents: Math.round(top.extra),
       worthKind: "saves",

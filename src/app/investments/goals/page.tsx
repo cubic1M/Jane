@@ -7,6 +7,7 @@ import { GLIDE_PATH, GLIDE_PATH_SOURCE } from "@/config/investing";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Every goal invested for its timeline (spec step 157, demo advice): each goal's bucket and
 // mix, the glide path behind it, and what Jane does with new money.
@@ -119,7 +120,7 @@ async function GoalsContent() {
 export default function GoalsInvestedPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <GoalsContent />
       </Suspense>
     </main>

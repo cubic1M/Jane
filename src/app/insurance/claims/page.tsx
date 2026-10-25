@@ -23,6 +23,8 @@ import { adviceLines, payoutLine } from "@/lib/insurance/claim-worth";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
 import { StartClaimForm } from "./start-form";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Claims (spec step 107): when something happens, what to do now, what to collect, who to
 // call, and a tracker of the claim's steps. Every step stays on the claim until it's closed.
@@ -67,9 +69,7 @@ function Filing({ claim, filable }: { claim: Claim; filable: boolean }) {
         </ul>
         <form action={fileIt}>
           <input type="hidden" name="claimId" value={claim.id} />
-          <button type="submit" className={SMALL_BUTTON}>
-            File it
-          </button>
+          <SubmitButton className={SMALL_BUTTON}>File it</SubmitButton>
         </form>
       </div>
     );
@@ -93,9 +93,7 @@ function Filing({ claim, filable }: { claim: Claim; filable: boolean }) {
           className="min-w-0 rounded-lg border border-zinc-300 bg-transparent p-3 text-base dark:border-zinc-700"
         />
       </label>
-      <button type="submit" className={`${SMALL_BUTTON} self-start`}>
-        Write it up
-      </button>
+      <SubmitButton className={`${SMALL_BUTTON} self-start`}>Write it up</SubmitButton>
     </form>
   );
 }
@@ -145,9 +143,9 @@ function ClaimCard({ claim, filable = false }: { claim: Claim; filable?: boolean
               <form action={stepDone}>
                 <input type="hidden" name="claimId" value={claim.id} />
                 <input type="hidden" name="step" value={step.key} />
-                <button type="submit" className={SMALL_BUTTON}>
+                <SubmitButton className={SMALL_BUTTON}>
                   {next?.key === step.key ? "Done" : "Mark done"}
-                </button>
+                </SubmitButton>
               </form>
             )}
           </li>
@@ -170,15 +168,11 @@ function ClaimCard({ claim, filable = false }: { claim: Claim; filable?: boolean
                 className={INPUT}
               />
             </label>
-            <button type="submit" className={SMALL_BUTTON}>
-              Save
-            </button>
+            <SubmitButton className={SMALL_BUTTON}>Save</SubmitButton>
           </form>
           <form action={finishClaim}>
             <input type="hidden" name="claimId" value={claim.id} />
-            <button type="submit" className={SMALL_BUTTON}>
-              Close the claim
-            </button>
+            <SubmitButton className={SMALL_BUTTON}>Close the claim</SubmitButton>
           </form>
         </div>
       )}
@@ -321,7 +315,7 @@ export default function ClaimsPage({
 }) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ClaimsContent searchParams={searchParams} />
       </Suspense>
     </main>

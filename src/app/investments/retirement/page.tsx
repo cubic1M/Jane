@@ -20,6 +20,7 @@ import { loadRetirement } from "@/lib/investments/retirement";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { ROTH_WORDS, type Range } from "@/planning/retirement";
+import { LoadingBar } from "@/components/loading-bar";
 
 // On track for retirement? (spec step 132, demo advice). What the retirement accounts
 // could grow to by 67 as a range in today's dollars, against a target; the match, Roth or
@@ -184,7 +185,7 @@ async function RetirementContent() {
 export default function RetirementPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <RetirementContent />
       </Suspense>
     </main>

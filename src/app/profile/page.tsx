@@ -5,6 +5,8 @@ import { requireUser } from "@/lib/session";
 import { factSpec } from "@/profile/facts";
 import { forgetProfileCorrection } from "./actions";
 import { CorrectForm } from "./correct-form";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What Jane knows about you (spec step 253): every fact in the picture of you with where it
 // came from, how sure she is and why, and a way to correct it. A correction is used by
@@ -67,9 +69,9 @@ async function ProfileContent() {
                   {f.source === "told" && (
                     <form action={forgetProfileCorrection}>
                       <input type="hidden" name="key" value={f.key} />
-                      <button type="submit" className={`text-sm underline ${MUTED}`}>
+                      <SubmitButton className={`text-sm underline ${MUTED}`}>
                         Go back to what you see
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                 </div>
@@ -85,7 +87,7 @@ async function ProfileContent() {
 export default function ProfilePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className={MUTED}>Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ProfileContent />
       </Suspense>
     </main>
