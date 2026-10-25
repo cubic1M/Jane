@@ -12,7 +12,10 @@ export type CallMode = "simulated" | "off";
 // Spec step 138: a trial person's calls always go to the simulated number.
 export function callMode(userId?: string): CallMode {
   if (isTrialUser(userId)) return "simulated";
-  return process.env.NODE_ENV === "production" ? "off" : "simulated";
+  // SIMULATED_AGENT=1: a production build that must still simulate (the end-to-end tests).
+  return process.env.NODE_ENV === "production" && process.env.SIMULATED_AGENT !== "1"
+    ? "off"
+    : "simulated";
 }
 
 // A made-up number in the range set aside for fiction (555-0100 to 555-0199).
