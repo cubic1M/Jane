@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 
-import { generateCode, invitesRequired, isAdminEmail, normalizeCode } from "./invites";
+import {
+  generateCode,
+  inviteStatus,
+  invitesRequired,
+  isAdminEmail,
+  normalizeCode,
+} from "./invites";
 
 describe("invite codes", () => {
   afterEach(() => vi.unstubAllEnvs());
@@ -19,10 +25,25 @@ describe("invite codes", () => {
     expect(normalizeCode("ABCD-EFGH-JKM0")).toBeNull();
   });
 
-  it("are required unless OPEN_SIGNUPS is true", () => {
+  it("are required unless BETA_INVITE_ONLY is false (on by default)", () => {
     expect(invitesRequired()).toBe(true);
-    vi.stubEnv("OPEN_SIGNUPS", "true");
+    vi.stubEnv("BETA_INVITE_ONLY", "true");
+    expect(invitesRequired()).toBe(true);
+    vi.stubEnv("BETA_INVITE_ONLY", " FALSE ");
     expect(invitesRequired()).toBe(false);
+    vi.stubEnv("BETA_INVITE_ONLY", "0");
+    expect(invitesRequired()).toBe(false);
+  });
+
+  it("say whether a code still works, revoked first", () => {
+    const now = new Date("2026-10-25T00:00:00Z");
+    const base = { revokedAt: null, expiresAt: null, uses: 0, maxUses: 1 };
+    expect(inviteStatus(base, now)).toBe("active");
+    expect(inviteStatus({ ...base, uses: 1 }, now)).toBe("used_up");
+    expect(inviteStatus({ ...base, expiresAt: new Date("2026-10-24T00:00:00Z") }, now)).toBe(
+      "expired",
+    );
+    expect(inviteStatus({ ...base, uses: 1, revokedAt: now }, now)).toBe("revoked");
   });
 
   it("aren't needed by ADMIN_EMAILS, matched case-insensitively", () => {
