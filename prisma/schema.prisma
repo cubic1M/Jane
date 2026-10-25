@@ -380,30 +380,31 @@ model User {
 
   savedShares SavedShare[]
 
-  autopilotSectors  AutopilotSector[]
-  autopilotActs     AutopilotAct[]
-  collegePlans      CollegePlan[]
-  hsaReceipts       HsaReceipt[]
-  equityGrants      EquityGrant[]
-  cryptoConnections CryptoConnection[]
-  cryptoHoldings    CryptoHolding[]
-  controllerRuns    ControllerRun[]
-  moneyTransfers    MoneyTransfer[]
-  paycheckPlans     PaycheckPlan[]
-  healthScores      HealthScore[]
-  monthlyReports    MonthlyReport[]
-  monthCloses       MonthClose[]
-  whatIfPlans       WhatIfPlan[]
-  taxPlanEvents     TaxPlanEvent[]
-  propertyAppeals   PropertyAppeal[]
-  accountantLinks   AccountantLink[]
-  accountantNotes   AccountantNote[]
-  taxPayments       TaxPayment[]
-  leanPlans         LeanPlan[]
-  booksIssues       BooksIssue[]
-  suggestions       Suggestion[]
-  yearPlans         YearPlan[]
-  unusualAnswers    UnusualAnswer[]
+  autopilotSectors   AutopilotSector[]
+  autopilotActs      AutopilotAct[]
+  collegePlans       CollegePlan[]
+  hsaReceipts        HsaReceipt[]
+  equityGrants       EquityGrant[]
+  cryptoConnections  CryptoConnection[]
+  cryptoHoldings     CryptoHolding[]
+  controllerRuns     ControllerRun[]
+  moneyTransfers     MoneyTransfer[]
+  paycheckPlans      PaycheckPlan[]
+  healthScores       HealthScore[]
+  monthlyReports     MonthlyReport[]
+  monthCloses        MonthClose[]
+  whatIfPlans        WhatIfPlan[]
+  taxPlanEvents      TaxPlanEvent[]
+  propertyAppeals    PropertyAppeal[]
+  accountantLinks    AccountantLink[]
+  accountantNotes    AccountantNote[]
+  taxPayments        TaxPayment[]
+  leanPlans          LeanPlan[]
+  booksIssues        BooksIssue[]
+  suggestions        Suggestion[]
+  suggestionOutcomes SuggestionOutcome[]
+  yearPlans          YearPlan[]
+  unusualAnswers     UnusualAnswer[]
 
   payrollChanges PayrollChange[]
   oldPlans       OldPlan[]
@@ -4070,12 +4071,57 @@ model Suggestion {
   answeredAt        DateTime? @map("answered_at") @db.Timestamptz(3)
   firstSeenAt       DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz(3)
   lastSeenAt        DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  // What later transactions should show if the person acts (src/detectors/contract.ts Watch):
+  // a charge that stops, a bill that drops, a refund, fees that stop. Null when nothing can.
+  watch             Json?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, key])
   @@index([userId, status])
   @@map("suggestions")
+}
+
+// The verified savings record: what happened to each suggestion that reached the person, and
+// what their later transactions showed. One a suggestion (key). status: shown (not answered),
+// declined, open (said yes or done, waiting for the transactions), unverifiable (nothing to
+// watch: stays an expectation), confirmed, partial or not_seen. Cents are a year of it unless
+// yearly is false (a refund). evidenceTxIds are the transactions that show it.
+model SuggestionOutcome {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  suggestionKey     String    @map("suggestion_key")
+  capability        String
+  topic             String
+  title             String
+  firstShownAt      DateTime  @map("first_shown_at") @db.Timestamptz(3)
+  lastShownAt       DateTime  @map("last_shown_at") @db.Timestamptz(3)
+  timesShown        Int       @default(1) @map("times_shown")
+  openedAt          DateTime? @map("opened_at") @db.Timestamptz(3)
+  answer            String?
+  answeredAt        DateTime? @map("answered_at") @db.Timestamptz(3)
+  doneAt            DateTime? @map("done_at") @db.Timestamptz(3)
+  expectedCents     Int       @map("expected_cents")
+  worthKind         String    @map("worth_kind")
+  confidencePercent Int       @map("confidence_percent")
+  watch             Json?
+  status            String    @default("shown")
+  confirmedCents    Int?      @map("confirmed_cents")
+  yearly            Boolean   @default(true)
+  // How sure the check is that the transactions show it, a whole percentage.
+  verifiedPercent   Int?      @map("verified_percent")
+  evidenceTxIds     String[]  @default([]) @map("evidence_tx_ids")
+  proof             String?
+  checkedAt         DateTime? @map("checked_at") @db.Timestamptz(3)
+  verifiedAt        DateTime? @map("verified_at") @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, suggestionKey])
+  @@index([userId, status])
+  @@index([topic, status])
+  @@map("suggestion_outcomes")
 }
 
 // Spec step 232: the funds a workplace plan offers, read from a fee disclosure or statement

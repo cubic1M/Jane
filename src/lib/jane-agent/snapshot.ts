@@ -30,7 +30,7 @@ import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
-import { provenSavings } from "@/lib/savings-proof";
+import { verifiedSavings } from "@/lib/savings-proof";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -237,7 +237,7 @@ async function thinking(
   const [changes, lifeGuesses, saved, partner, health] = await Promise.all([
     loadChanges(userId, { client, now, input }),
     lifeGuessesFor(userId, { client, now, input }),
-    provenSavings(userId, { client, now, input }),
+    verifiedSavings(userId, { client, now, input }),
     moneyPartnerFor(userId, { client }),
     healthFor(userId, { client, now, input }),
   ]);

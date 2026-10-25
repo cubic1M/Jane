@@ -15,7 +15,7 @@ import { INSIGHT_MONTHS } from "@/config/insights";
 import { loadInsightTransactions } from "@/insights/load";
 import { loadAffordNumbers } from "@/lib/afford";
 import { loadChanges } from "@/lib/changes";
-import { provenSavings } from "@/lib/savings-proof";
+import { verifiedSavings } from "@/lib/savings-proof";
 import { scopedFor } from "@/lib/db-scoped";
 import { homeSummary } from "@/lib/home";
 import { matchCategory } from "../intents";
@@ -166,7 +166,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return billsReply(partner ? await loadBillPay(userId, { client, now }) : null, asOf);
     }
     case "saved":
-      return savedReply(await provenSavings(userId, { client, now }));
+      return savedReply(await verifiedSavings(userId, { client, now }));
     case "changes":
       return changesReply(await loadChanges(userId, { client, now }));
     case "review": {

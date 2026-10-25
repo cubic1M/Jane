@@ -6,6 +6,8 @@ import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
 import { timezoneOf } from "@/lib/jane-agent/open";
 import { toView, type MessageView } from "@/lib/jane-agent/view";
 import { requireUser } from "@/lib/session";
+import { scopedFor } from "@/lib/db-scoped";
+import { recordOpened } from "@/lib/outcomes";
 
 // A tap on a button in Jane's chat (spec step 81). Everything is checked again on the
 // server (src/lib/jane-agent/actions): the message is the person's own, still open, and
@@ -49,4 +51,16 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
     if (!(error instanceof ChatActionError)) throw error;
     return { message: previous.message, error: error.message };
   }
+}
+
+// More details opened on a suggestion card: kept on the verified savings record (it was looked
+// at). The message must be the person's own; anything else is ignored.
+export async function noteDetailsOpened(messageId: string): Promise<void> {
+  const user = await requireUser();
+  const message = await scopedFor(user.id).janeMessages.findFirst({
+    where: { id: messageId },
+    select: { refs: true },
+  });
+  const key = (message?.refs as { suggestion?: unknown } | null)?.suggestion;
+  if (typeof key === "string") await recordOpened(user.id, key);
 }

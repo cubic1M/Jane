@@ -210,6 +210,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     booksIssues: scoped.booksIssue,
     // What Jane suggests (spec step 255).
     suggestions: scoped.suggestion,
+    suggestionOutcomes: scoped.suggestionOutcome,
     // The year's money plan (spec step 205).
     yearPlans: scoped.yearPlan,
     // "This was me" / "not me" on unusual activity (spec step 208).

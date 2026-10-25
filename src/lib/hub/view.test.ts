@@ -142,6 +142,21 @@ describe("the hero row", () => {
     expect(heroView(hero({ savedCents: 64_000 })).saved.share).toBeCloseTo(64_000 / 290_000);
   });
 
+  it("says how much of it the person's transactions confirm (the verified savings record)", () => {
+    expect(heroView(hero({ savedCents: 64_000 })).saved.confirmedCents).toBe(0);
+    expect(heroView(hero({ savedCents: 64_000, confirmedCents: 21_588 })).saved).toMatchObject({
+      label: "Saved so far",
+      cents: 64_000,
+      confirmedCents: 21_588,
+    });
+    // Confirmed with nothing still expected (a refund that came back): still "Saved so far".
+    expect(heroView(hero({ savedCents: 0, confirmedCents: 4_500 })).saved).toMatchObject({
+      label: "Saved so far",
+      cents: 4_500,
+      confirmedCents: 4_500,
+    });
+  });
+
   it("says why safe to spend is that number, lines that add up to it", () => {
     const { safe } = heroView(hero());
     // The balance now, less each thing held back, equals it (founder: "a summary on why that

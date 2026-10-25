@@ -6,7 +6,7 @@ import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
 import { popupCard, type PopupCard } from "@/lib/jane-agent/popups";
-import { tapButton } from "./actions";
+import { noteDetailsOpened, tapButton } from "./actions";
 
 // Jane's pop-ups over the chat or the page (src/lib/jane-agent/popups.ts): the day's suggestions,
 // then anything else she brought up that waits on the person, one card at a time. A suggestion
@@ -112,6 +112,14 @@ export function SuggestionCards({
         links={links}
         foldOnPhone={foldOnPhone}
         docked={docked}
+        onDetails={(id) => {
+          // A suggestion looked at: kept for its outcome, after the screen has opened it.
+          if (messages.find((m) => m.id === id)?.suggestion) {
+            startTransition(async () => {
+              await noteDetailsOpened(id).catch(() => {});
+            });
+          }
+        }}
         onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
           const message = messages.find((m) => m.id === id)!;
