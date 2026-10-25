@@ -76,12 +76,19 @@ describe.runIf(url)("home summary against a real database", () => {
     // Spec step 79: the plan card's count and total are /plan's.
     const open = await client.finding.findMany({
       where: { userId, status: { in: ["new", "shown"] } },
-      select: { annualSavingsCents: true },
+      select: { title: true, annualSavingsCents: true },
     });
+    // The Saved tile's "Your plan" lists the biggest, by their titles.
+    const biggest = [...open].sort(
+      (a, b) => (b.annualSavingsCents ?? 0) - (a.annualSavingsCents ?? 0),
+    );
     expect(home?.plan).toEqual({
       items: 2,
       annualSavingsCents: open.reduce((sum, f) => sum + (f.annualSavingsCents ?? 0), 0),
+      top: biggest.map((f) => ({ title: f.title, cents: f.annualSavingsCents })),
     });
+    // No goal yet: nothing to save toward.
+    expect(home?.goal).toBeNull();
     expect(home?.newToDecide).toBe(2);
     expect(home?.comingUp).toEqual([
       {

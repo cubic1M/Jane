@@ -95,6 +95,12 @@ export function EmbedBridge() {
         const box = document.querySelector<HTMLInputElement>('input[name="message"]');
         if (box) {
           box.value = event.data.text;
+          // The composer shows the hint greyed after the text until the person types.
+          window.dispatchEvent(
+            new CustomEvent("jane:hint", {
+              detail: { text: event.data.text, hint: event.data.hint ?? null },
+            }),
+          );
           box.focus({ preventScroll: true });
           box.setSelectionRange(box.value.length, box.value.length);
           box.scrollIntoView({ block: "center" });

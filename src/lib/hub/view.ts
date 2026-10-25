@@ -5,6 +5,8 @@ import {
   CASH_FLOW_DAYS,
   GOALS_SHOWN,
   HEALTH_LOOK_BELOW,
+  PLAN_SHOWN,
+  SAFE_BILLS_SHOWN,
   SAVED_SHOWN,
   areaOfCapability,
   type AreaKey,
@@ -29,6 +31,8 @@ export type SafeInput = {
   goalsCents: number;
   setAsideCents: number;
   safeCents: number;
+  // The bills before payday, one by one (src/planning/safe-to-spend.ts).
+  bills?: { merchant: string; date: string; amountCents: number }[];
 };
 
 export type HeroInput = {
@@ -39,6 +43,11 @@ export type HeroInput = {
   savedCents: number;
   // What the saved total is made of, biggest first (savedItems, src/lib/membership/service.ts).
   savedItems?: SavedItem[];
+  // Jane's plan (src/lib/home.ts): how many things, their yearly total if the person says yes to
+  // all, and the biggest few.
+  plan?: { items: number; annualSavingsCents: number; top: { title: string; cents: number }[] };
+  // The goal savings go toward: the first one not reached yet.
+  goal?: { name: string; percent: number } | null;
 };
 
 export type CashFlowInput = {
@@ -90,7 +99,21 @@ export type SafeHero = {
   parts: { key: string; label: string; cents: number; share: number }[];
   // Why it's that number (founder: "it should expand first having a summary on why that number
   // is what it is"): the balance now, less each thing held back, equals it. 3 to 6 lines.
-  why: { label: string; sign: "" | "−" | "="; cents: number }[];
+  why: CalcLine[];
+  // "How it's worked out" (founder: "show a pop up page … right next to it showing the
+  // calculations"): the same sum with each bill on its own line.
+  steps: CalcLine[];
+};
+
+// One line of a worked-out sum: what it is, its sign, the amount, and a note (a bill's date).
+export type CalcLine = { label: string; sign: "" | "−" | "+" | "="; cents: number; note?: string };
+
+// "Your plan" beside Saved so far (founder: "Same for the Your plan next to saved so far"):
+// what's saved and where from, what the plan adds, and the goal it goes toward.
+export type PlanHero = {
+  count: number;
+  steps: CalcLine[];
+  goal: { name: string; percent: number } | null;
 };
 
 export type NetWorthHero = {
@@ -111,7 +134,12 @@ export type SavedHero = {
   more: number;
 };
 
-export type HeroView = { safe: SafeHero | null; netWorth: NetWorthHero | null; saved: SavedHero };
+export type HeroView = {
+  safe: SafeHero | null;
+  netWorth: NetWorthHero | null;
+  saved: SavedHero;
+  plan: PlanHero | null;
+};
 
 export type CashEvent = {
   key: string;
@@ -217,7 +245,57 @@ export function heroView(input: HeroInput): HeroView {
     safe: input.safe ? safeHero(input.safe) : null,
     netWorth: input.netWorth ? netWorthHero(input.netWorth) : null,
     saved: savedHero(input.foundCents, input.savedCents, input.savedItems ?? []),
+    plan: planHero(input),
   };
+}
+
+function planHero(input: HeroInput): PlanHero | null {
+  const plan = input.plan;
+  if (!plan || plan.items === 0) return null;
+  const saved = input.savedItems ?? [];
+  const savedLines: CalcLine[] = saved.slice(0, SAVED_SHOWN).map((item) => ({
+    label: item.title,
+    note: item.yearly ? "a year" : "once",
+    sign: "" as const,
+    cents: item.cents,
+  }));
+  const savedRest = saved.slice(SAVED_SHOWN);
+  if (savedRest.length > 0)
+    savedLines.push({
+      label: `${plural(savedRest.length, "more saving")}`,
+      sign: "",
+      cents: savedRest.reduce((sum, i) => sum + i.cents, 0),
+    });
+  const planLines: CalcLine[] = plan.top.slice(0, PLAN_SHOWN).map((t) => ({
+    label: t.title,
+    sign: "+" as const,
+    cents: t.cents,
+  }));
+  const shown = planLines.reduce((sum, l) => sum + l.cents, 0);
+  const others = plan.items - planLines.length;
+  if (others > 0)
+    planLines.push({
+      label: plural(others, "more thing"),
+      sign: "+",
+      cents: Math.max(0, plan.annualSavingsCents - shown),
+    });
+  const steps: CalcLine[] =
+    input.savedCents > 0
+      ? [
+          ...savedLines,
+          { label: "Saved so far", sign: "=", cents: input.savedCents },
+          ...planLines,
+          {
+            label: "Saved, plus your plan if you say yes",
+            sign: "=",
+            cents: input.savedCents + plan.annualSavingsCents,
+          },
+        ]
+      : [
+          ...planLines,
+          { label: "Your plan, if you say yes to all", sign: "=", cents: plan.annualSavingsCents },
+        ];
+  return { count: plan.items, steps, goal: input.goal ?? null };
 }
 
 function safeHero(safe: SafeInput): SafeHero {
@@ -249,7 +327,45 @@ function safeHero(safe: SafeInput): SafeHero {
       ...held.map((l) => ({ ...l, sign: "−" as const })),
       { label: short ? "Short before payday" : "Safe to spend", sign: "=", cents: safe.safeCents },
     ],
+    steps: safeSteps(safe, short),
   };
+}
+
+function safeSteps(safe: SafeInput, short: boolean): CalcLine[] {
+  const bills = [...(safe.bills ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+  const billLines: CalcLine[] =
+    bills.length === 0
+      ? safe.billsCents > 0
+        ? [{ label: "Bills before payday", sign: "−", cents: safe.billsCents }]
+        : []
+      : bills.slice(0, SAFE_BILLS_SHOWN).map((b) => ({
+          label: b.merchant,
+          note: shortDate(b.date),
+          sign: "−" as const,
+          cents: b.amountCents,
+        }));
+  const rest = bills.slice(SAFE_BILLS_SHOWN);
+  if (rest.length > 0)
+    billLines.push({
+      label: plural(rest.length, "more bill"),
+      sign: "−",
+      cents: rest.reduce((sum, b) => sum + b.amountCents, 0),
+    });
+  const held: CalcLine[] = [
+    { label: "Left in your budgets", sign: "−" as const, cents: safe.budgetsLeftCents },
+    { label: "Planned savings: goals this month", sign: "−" as const, cents: safe.goalsCents },
+    { label: "Set aside for yearly bills", sign: "−" as const, cents: safe.setAsideCents },
+  ].filter((l) => l.cents > 0);
+  return [
+    { label: "In checking today", sign: "", cents: safe.balanceCents },
+    ...billLines,
+    ...held,
+    {
+      label: short ? "Short before payday" : "Safe to spend",
+      sign: "=",
+      cents: safe.safeCents,
+    },
+  ];
 }
 
 function netWorthHero(nw: NonNullable<HeroInput["netWorth"]>): NetWorthHero {

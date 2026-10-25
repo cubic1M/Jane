@@ -161,6 +161,83 @@ describe("the hero row", () => {
     expect(short?.why.at(-1)).toEqual({ label: "Short before payday", sign: "=", cents: -5_000 });
   });
 
+  it("works safe to spend out line by line, each bill on its own, adding up to it", () => {
+    const bills = [
+      { merchant: "Rent", date: "2026-10-28", amountCents: 100_000 },
+      { merchant: "Phone", date: "2026-10-25", amountCents: 8_000 },
+      ...["A", "B", "C", "D", "E"].map((m, i) => ({
+        merchant: m,
+        date: `2026-10-2${6 + (i % 3)}`,
+        amountCents: 2_400,
+      })),
+    ];
+    const { safe } = heroView(hero({ safe: { ...hero().safe!, bills } }));
+    const steps = safe!.steps;
+    // Soonest first; the first 5 by name and date, the rest as one line.
+    expect(steps[0]).toEqual({ label: "In checking today", sign: "", cents: 300_000 });
+    expect(steps[1]).toEqual({ label: "Phone", note: "Oct 25", sign: "−", cents: 8_000 });
+    expect(steps.filter((l) => l.note).length).toBe(5);
+    expect(steps).toContainEqual({ label: "2 more bills", sign: "−", cents: 102_400 });
+    expect(steps).toContainEqual({
+      label: "Planned savings: goals this month",
+      sign: "−",
+      cents: 20_000,
+    });
+    expect(steps.at(-1)).toEqual({ label: "Safe to spend", sign: "=", cents: 120_000 });
+    const held = steps.slice(1, -1).reduce((sum, l) => sum + l.cents, 0);
+    expect(steps[0].cents - held).toBe(steps.at(-1)!.cents);
+    // Without the bills one by one, they're one line.
+    expect(heroView(hero()).safe!.steps[1]).toEqual({
+      label: "Bills before payday",
+      sign: "−",
+      cents: 120_000,
+    });
+  });
+
+  it("works out your plan: what's saved and where from, what the plan adds, and the goal", () => {
+    const items = [
+      { title: "Cancel Hulu", kind: "cancelled" as const, cents: 21_600, yearly: true },
+      { title: "Get the overdraft fee back", kind: "refund" as const, cents: 3_500, yearly: false },
+    ];
+    const plan = {
+      items: 5,
+      annualSavingsCents: 90_000,
+      top: [
+        { title: "Lower your phone bill", cents: 40_000 },
+        { title: "Shop your car insurance", cents: 30_000 },
+      ],
+    };
+    const view = heroView(
+      hero({
+        savedCents: 25_100,
+        savedItems: items,
+        plan,
+        goal: { name: "Emergency fund", percent: 42 },
+      }),
+    );
+    expect(view.plan).toEqual({
+      count: 5,
+      goal: { name: "Emergency fund", percent: 42 },
+      steps: [
+        { label: "Cancel Hulu", note: "a year", sign: "", cents: 21_600 },
+        { label: "Get the overdraft fee back", note: "once", sign: "", cents: 3_500 },
+        { label: "Saved so far", sign: "=", cents: 25_100 },
+        { label: "Lower your phone bill", sign: "+", cents: 40_000 },
+        { label: "Shop your car insurance", sign: "+", cents: 30_000 },
+        { label: "3 more things", sign: "+", cents: 20_000 },
+        { label: "Saved, plus your plan if you say yes", sign: "=", cents: 115_100 },
+      ],
+    });
+    // Nothing saved yet: the plan alone. No plan: nothing to open.
+    expect(heroView(hero({ plan })).plan?.steps.at(-1)).toEqual({
+      label: "Your plan, if you say yes to all",
+      sign: "=",
+      cents: 90_000,
+    });
+    expect(heroView(hero()).plan).toBeNull();
+    expect(heroView(hero({ plan: { ...plan, items: 0 } })).plan).toBeNull();
+  });
+
   it("says where the savings came from, the biggest few, and how many more", () => {
     const items = [
       { title: "Cancel Hulu", kind: "cancelled" as const, cents: 21_600, yearly: true },

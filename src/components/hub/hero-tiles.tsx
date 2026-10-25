@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import type { SafeHero, SavedHero } from "@/lib/hub/view";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { PlanHero, SafeHero, SavedHero } from "@/lib/hub/view";
 import type { SavedKind } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
+import { CalcLines, CalcPopup } from "./calc-popup";
 import { Meter, StackBar } from "./charts";
 
 // The home hub's Safe to spend and Saved tiles (founder: "When you click safe to spend till… it
@@ -23,8 +24,11 @@ const LINK = "self-start text-sm font-medium underline-offset-2 hover:underline"
 
 const dollars = (cents: number) => formatCents(cents).replace(/\.\d\d$/, "");
 
-// What goes in the chat's message box: the person types the amount and sends it themselves.
-export const AIM_PROMPT = "I'm planning to spend $";
+// What goes in the chat's message box: the person types the amount and sends it themselves. The
+// hint shows greyed after the cursor until they type, and is never sent (founder: "there should be
+// after 'I am aiming to spend' with a clue, like '[dollar amount]'").
+export const AIM_PROMPT = "I'm aiming to spend $";
+export const AIM_HINT = "[amount] on [what]";
 
 const KIND_WORDS: Record<SavedKind, string> = {
   refund: "refund",
@@ -83,11 +87,17 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
     };
     window.addEventListener("jane:box", onBox, { once: true });
     setTimeout(() => window.removeEventListener("jane:box", onBox), 5000);
-    window.dispatchEvent(new CustomEvent("jane:ask", { detail: AIM_PROMPT }));
+    window.dispatchEvent(
+      new CustomEvent("jane:ask", { detail: { text: AIM_PROMPT, hint: AIM_HINT } }),
+    );
   };
+  const tile = useRef<HTMLDivElement>(null);
+  const how = useRef<HTMLButtonElement>(null);
+  const [showHow, setShowHow] = useState(false);
+  const closeHow = useCallback(() => setShowHow(false), []);
 
   return (
-    <div data-hub-tile="safe" className={`${CARD} col-span-2 sm:col-span-1`}>
+    <div ref={tile} data-hub-tile="safe" className={`${CARD} col-span-2 sm:col-span-1`}>
       <button
         type="button"
         aria-expanded={open}
@@ -121,28 +131,21 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
         </span>
       </button>
       <Opens id="safe-why" open={open}>
-        <dl data-safe-why="" className="flex flex-col gap-1 text-sm tabular-nums">
-          {safe.why.map((l) => (
-            <div
-              key={l.label}
-              className={`flex justify-between gap-3 ${l.sign === "=" ? "border-t border-current pt-1 font-semibold" : ""}`}
-            >
-              <dt className="min-w-0">
-                <span aria-hidden="true" className="inline-block w-3">
-                  {l.sign}
-                </span>
-                {l.sign === "−" && <span className="sr-only">minus </span>}
-                {l.label}
-              </dt>
-              <dd className="shrink-0">
-                {l.cents < 0 ? `−${dollars(-l.cents)}` : dollars(l.cents)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <Link prefetch={false} href="/figures/safe_to_spend" className={LINK}>
+        <div data-safe-why="">
+          <CalcLines lines={safe.why} label="Why this number" />
+        </div>
+        <button
+          ref={how}
+          type="button"
+          aria-expanded={showHow}
+          aria-controls="safe-how"
+          aria-haspopup="dialog"
+          data-safe-how=""
+          onClick={() => setShowHow((o) => !o)}
+          className={`${LINK} text-left`}
+        >
           How it&apos;s worked out ›
-        </Link>
+        </button>
         <button
           ref={aim}
           type="button"
@@ -155,12 +158,39 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
         </button>
       </Opens>
       {line && <ChatLine from={line.from} to={line.to} fading={fading} />}
+      {showHow && (
+        <CalcPopup
+          id="safe-how"
+          title="How it's worked out"
+          anchor={tile}
+          trigger={how}
+          onClose={closeHow}
+          full={{ href: "/figures/safe_to_spend", label: "The full working" }}
+        >
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+            What&apos;s in checking, less what&apos;s already spoken for before payday.
+          </p>
+          <CalcLines lines={safe.steps} label="Safe to spend, worked out" />
+        </CalcPopup>
+      )}
     </div>
   );
 }
 
-export function SavedTile({ saved, planItems }: { saved: SavedHero; planItems: number }) {
+export function SavedTile({
+  saved,
+  planItems,
+  plan = null,
+}: {
+  saved: SavedHero;
+  planItems: number;
+  plan?: PlanHero | null;
+}) {
   const [open, setOpen] = useState(false);
+  const tile = useRef<HTMLDivElement>(null);
+  const planButton = useRef<HTMLButtonElement>(null);
+  const [showPlan, setShowPlan] = useState(false);
+  const closePlan = useCallback(() => setShowPlan(false), []);
   const savedSoFar = saved.label === "Saved so far";
   const number =
     saved.label === "Money found" && saved.cents === 0 && planItems > 0 ? (
@@ -173,7 +203,7 @@ export function SavedTile({ saved, planItems }: { saved: SavedHero; planItems: n
       </>
     );
   return (
-    <div data-hub-tile="saved" className={CARD}>
+    <div ref={tile} data-hub-tile="saved" className={CARD}>
       {savedSoFar ? (
         <button
           type="button"
@@ -239,15 +269,53 @@ export function SavedTile({ saved, planItems }: { saved: SavedHero; planItems: n
         </Opens>
       )}
       {planItems > 0 && (
-        <Link
-          prefetch={false}
-          href="/plan"
-          className="relative z-10 self-start text-sm font-medium underline-offset-2 hover:underline"
+        <button
+          ref={planButton}
+          type="button"
+          aria-expanded={showPlan}
+          aria-controls="saved-plan"
+          aria-haspopup="dialog"
+          data-saved-plan=""
+          onClick={() => setShowPlan((o) => !o)}
+          className="relative z-10 self-start text-left text-sm font-medium underline-offset-2 hover:underline"
         >
           {/* The plan's items, as the chat says them ("Your plan for this week is ready: 12
             things"); "ideas" are the tiles' suggestions, a different count (phone walk). */}
           Your plan: {planItems} {planItems === 1 ? "thing" : "things"} ›
-        </Link>
+        </button>
+      )}
+      {showPlan && (
+        <CalcPopup
+          id="saved-plan"
+          title="Your plan"
+          anchor={tile}
+          trigger={planButton}
+          onClose={closePlan}
+          full={{ href: "/plan", label: "See the whole plan" }}
+        >
+          {plan ? (
+            <CalcLines lines={plan.steps} label="Saved and planned, a year" />
+          ) : (
+            <p className="text-sm">
+              {planItems} {planItems === 1 ? "thing" : "things"} to decide.
+            </p>
+          )}
+          <p data-plan-goal="" className="text-sm">
+            {plan?.goal ? (
+              <>
+                Toward <span className="font-semibold">{plan.goal.name}</span>
+                <span className="text-zinc-500"> · {plan.goal.percent}% there</span>
+              </>
+            ) : (
+              <>
+                Not toward a goal yet.{" "}
+                <Link prefetch={false} href="/goals" className="font-medium underline">
+                  Set a goal
+                </Link>
+              </>
+            )}
+          </p>
+        </CalcPopup>
       )}
     </div>
   );
