@@ -229,18 +229,24 @@ function Feature({
 
 // The "Ask Jane" box under an open feature: one click sends its question into the side chat (no
 // Send to press), once per session; a dotted line runs from the box to the question as it
-// lands, and goes once Jane starts answering. Asked again, it finds the earlier answer.
+// lands, and goes once Jane starts answering. Asked again, it finds the earlier answer, marks it
+// and draws the line to it.
 function AskBox({ question }: { question: string }) {
   const box = useRef<HTMLButtonElement>(null);
-  const [state, setState] = useState<"ready" | "sending" | "answering" | "done">(() =>
+  // Asked already, it stays a button (founder: "when you asked already, u can no longer press
+  // the same button"): pressed again it finds the earlier answer in the chat, with its line.
+  const [state, setState] = useState<"ready" | "sending" | "answering" | "done" | "finding">(() =>
     askedBefore(question) ? "done" : "ready",
   );
   const [to, setTo] = useState<{ x: number; y: number } | null>(null);
   const [from, setFrom] = useState<{ x: number; y: number } | null>(null);
+  const drawing = state === "sending" || state === "answering" || state === "finding";
+  // When the line went up: a quick answer still leaves it long enough to be seen.
+  const started = useRef(0);
 
   // Where the line starts: the box's edge nearest the chat, kept as the page moves.
   useEffect(() => {
-    if (state !== "sending") return;
+    if (!drawing) return;
     const place = () => {
       const r = box.current?.getBoundingClientRect();
       if (r) setFrom({ x: r.right, y: r.top + r.height / 2 });
@@ -252,14 +258,18 @@ function AskBox({ question }: { question: string }) {
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [state]);
+  }, [drawing]);
 
-  // The side chat says where the question landed, when Jane starts and when she's done.
+  // The side chat says where the question is (every frame while it moves), when Jane starts
+  // and when she's done.
   useEffect(() => {
-    if (state === "ready" || state === "done") return;
+    if (!drawing) return;
     const onBubble = (e: Event) => setTo((e as CustomEvent<{ x: number; y: number }>).detail);
     const onAnswering = () => setState((s) => (s === "sending" ? "answering" : s));
-    const onAnswered = () => setState("done");
+    const onAnswered = () => {
+      const left = Math.max(0, LINE_MIN_MS - (performance.now() - started.current));
+      window.setTimeout(() => setState((s) => (s === "finding" ? s : "done")), left);
+    };
     window.addEventListener("jane:bubble", onBubble);
     window.addEventListener("jane:answering", onAnswering);
     window.addEventListener("jane:answered", onAnswered);
@@ -268,18 +278,26 @@ function AskBox({ question }: { question: string }) {
       window.removeEventListener("jane:answering", onAnswering);
       window.removeEventListener("jane:answered", onAnswered);
     };
+  }, [drawing]);
+
+  // Found: the line shows the way for a moment, then the box is back to "asked".
+  useEffect(() => {
+    if (state !== "finding") return;
+    const timer = window.setTimeout(() => setState("done"), FIND_LINE_MS);
+    return () => window.clearTimeout(timer);
   }, [state]);
 
   const send = () => {
     if (state === "sending" || state === "answering") return;
+    setTo(null);
     if (askedBefore(question)) {
-      // Already asked this session: the chat scrolls to that answer instead of asking again.
+      // Asked already: the chat scrolls to that answer and marks it; nothing is asked again.
+      setState("finding");
       window.dispatchEvent(new CustomEvent("jane:find", { detail: question }));
-      setState("done");
       return;
     }
     rememberAsked(question);
-    setTo(null);
+    started.current = performance.now();
     setState("sending");
     window.dispatchEvent(new CustomEvent("jane:send", { detail: question }));
   };
@@ -291,24 +309,34 @@ function AskBox({ question }: { question: string }) {
         ref={box}
         type="button"
         data-ask-jane=""
+        data-ask-state={state}
         onClick={send}
         disabled={busy}
         className="invert-scope flex w-full max-w-sm flex-col gap-1 border-2 border-zinc-500 bg-zinc-950 p-2 text-left text-sm text-white shadow-lg disabled:opacity-80 dark:bg-zinc-50 dark:text-zinc-950"
       >
         <span className="text-xs font-semibold tracking-wider">
           <span aria-hidden="true">[</span>
-          {busy ? "SENDING…" : state === "done" ? "ASKED · SEE CHAT" : "ASK JANE"}
+          {busy
+            ? "SENDING…"
+            : state === "finding"
+              ? "FINDING IT…"
+              : state === "done"
+                ? "ASKED ✓ · TAP TO SEE"
+                : "ASK JANE"}
           <span aria-hidden="true">]</span>
           <span className="sr-only">: </span>
         </span>
         <span className="[overflow-wrap:anywhere]">{question}</span>
       </button>
-      {(state === "sending" || state === "answering") && from && to && (
-        <AskLine from={from} to={to} fading={state === "answering"} />
-      )}
+      {drawing && from && to && <AskLine from={from} to={to} fading={state === "answering"} />}
     </>
   );
 }
+
+// How long the line to an earlier answer stays, and the least time the line to a new question
+// is up (a quick answer would otherwise take it away before it's seen).
+const FIND_LINE_MS = 1_800;
+const LINE_MIN_MS = 1_500;
 
 // The dotted curve from the box to the question in the chat, drawn over the page.
 function AskLine({

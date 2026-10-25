@@ -164,6 +164,8 @@ export function SideChat() {
         asking.current = null;
         if (sending.current) post({ type: "jane:send", text: sending.current });
         sending.current = null;
+        if (finding.current) post({ type: "jane:find", text: finding.current });
+        finding.current = null;
         return;
       }
       // Where a question sent from the giant tree landed, in the page's coordinates, and when
@@ -207,6 +209,7 @@ export function SideChat() {
   // "Ask Jane" from the giant tree: the chat comes into view and the question is sent at once,
   // waiting for the framed chat if it isn't listening yet; asked before, it finds the answer.
   const sending = useRef<string | null>(null);
+  const finding = useRef<string | null>(null);
   // The framed chat said it's listening (its "ready"); a new page in the frame says it again.
   const listening = useRef(false);
   useEffect(() => {
@@ -226,7 +229,9 @@ export function SideChat() {
       if (wide) {
         if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
       } else sideChatStore.setSheet("half");
+      // Waiting for the framed chat if it isn't listening yet (a folded panel, a closed sheet).
       if (listening.current) post({ type: "jane:find", text });
+      else finding.current = text;
     };
     window.addEventListener("jane:send", onSend);
     window.addEventListener("jane:find", onFind);

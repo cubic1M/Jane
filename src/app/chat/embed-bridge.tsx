@@ -43,10 +43,28 @@ export function EmbedBridge() {
     // "Ask Jane" from the giant tree: the question goes in the box and is sent at once, and the
     // page hears where it landed (for its dotted line), when Jane starts and when she's done.
     const tell = (message: FrameMessage) => window.parent.postMessage(message, origin);
-    const tellWhere = (el: Element) => {
+    // The person's own message with this question, the latest one.
+    const mineWith = (text: string) =>
+      [...document.querySelectorAll("li")].findLast((el) => el.textContent?.includes(text)) ?? null;
+    // Where the bubble is, told to the page every frame for a while (founder: the dotted line
+    // "sometimes doesn't" draw): the panel may still be sliding open or the sheet rising, the
+    // chat scrolling, the draft turning into the saved message. A new follow replaces the last.
+    let following = 0;
+    const follow = (find: () => Element | null, ms: number) => {
+      const id = ++following;
+      const until = performance.now() + ms;
+      const step = () => {
+        if (id !== following) return;
+        const el = find();
+        const r = el?.getBoundingClientRect();
+        if (r && r.height > 0) tell({ type: "jane:bubble", x: r.left, y: r.top + r.height / 2 });
+        if (performance.now() < until) requestAnimationFrame(step);
+      };
+      step();
+    };
+    const tellWhere = (el: Element, find: () => Element | null, ms: number) => {
       el.scrollIntoView({ block: "center" });
-      const r = el.getBoundingClientRect();
-      tell({ type: "jane:bubble", x: r.left, y: r.top + r.height / 2 });
+      follow(find, ms);
     };
     let watching: MutationObserver | null = null;
     const sendNow = (text: string) => {
@@ -62,13 +80,18 @@ export function EmbedBridge() {
         const question = document.querySelector("[data-draft-question]");
         if (question && !sent) {
           sent = true;
-          tellWhere(question);
+          tellWhere(
+            question,
+            () => document.querySelector("[data-draft-question]") ?? mineWith(text),
+            60_000,
+          );
         }
         if (document.querySelector("[data-draft-answer]") && !answering) {
           answering = true;
           tell({ type: "jane:answering" });
         }
         if (sent && !document.querySelector('[aria-label="Sending"]')) {
+          follow(() => mineWith(text), 800);
           tell({ type: "jane:answered" });
           watching?.disconnect();
           watching = null;
@@ -77,13 +100,14 @@ export function EmbedBridge() {
       watching.observe(document.body, { childList: true, subtree: true, characterData: true });
       form.requestSubmit();
     };
-    // Asked before: scroll to the person's own message with that question.
+    // Asked before: scroll to the person's own message with that question, mark it for a
+    // moment, and say where it is (no new question, no new answer).
     const findAsked = (text: string) => {
-      const mine = [...document.querySelectorAll("li")].findLast((el) =>
-        el.textContent?.includes(text),
-      );
-      if (mine) tellWhere(mine);
-      tell({ type: "jane:answered" });
+      const mine = mineWith(text);
+      if (!mine) return;
+      tellWhere(mine, () => mineWith(text), 2_000);
+      mine.classList.add("ask-found");
+      window.setTimeout(() => mine.classList.remove("ask-found"), 2_000);
     };
 
     const onMessage = (event: MessageEvent) => {
