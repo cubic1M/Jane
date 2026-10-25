@@ -1,7 +1,8 @@
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { YEARLY_BILLS_GOAL_PATTERN } from "@/config/irregular";
 import { COMING_UP_DAYS, COMING_UP_LIMIT } from "@/config/home";
-import { planTotal } from "@/detection/overlap";
+import { PLAN_SHOWN } from "@/config/areas";
+import { groupsCountedElsewhere, planTotal } from "@/detection/overlap";
 import { budgetSummary } from "@/insights/budgets";
 import { comingUp } from "@/insights/coming-up";
 import { irregularCosts } from "@/insights/irregular";
@@ -60,7 +61,7 @@ export async function homeSummary(
     // Jane's plan: every open finding is an item on it.
     db.findings.findMany({
       where: { status: { in: ["new", "shown"] } },
-      select: { status: true, annualSavingsCents: true, type: true, evidence: true },
+      select: { status: true, title: true, annualSavingsCents: true, type: true, evidence: true },
     }),
     loadDetectionInput(userId, { client, now }),
     db.plaidItems.findFirst({
@@ -124,7 +125,14 @@ export async function homeSummary(
       items: open.length,
       // The same total as /plan: every item's yearly saving, if the person says yes to all.
       annualSavingsCents: planTotal(open),
+      // The biggest few, as the Saved tile's "Your plan" lists them (one of overlapping items).
+      top: planTop(open),
     },
+    // The goal savings go toward: the first one (soonest date) not reached yet.
+    goal: (() => {
+      const g = goals.find((g) => g.progress.status !== "reached");
+      return g ? { name: g.name, percent: g.progress.percent } : null;
+    })(),
     // Findings the person hasn't seen yet; seeing the plan or a card marks them seen.
     newToDecide: open.filter((f) => f.status === "new").length,
     janeDid,
@@ -174,6 +182,17 @@ export async function homeSummary(
         }))
       : [],
   };
+}
+
+function planTop<
+  T extends { type: string; evidence: unknown; title: string; annualSavingsCents: number | null },
+>(open: readonly T[]): { title: string; cents: number }[] {
+  const skipped = groupsCountedElsewhere(open);
+  return open
+    .filter((f) => !skipped.has(f) && (f.annualSavingsCents ?? 0) > 0)
+    .sort((a, b) => (b.annualSavingsCents ?? 0) - (a.annualSavingsCents ?? 0))
+    .slice(0, PLAN_SHOWN)
+    .map((f) => ({ title: f.title, cents: f.annualSavingsCents ?? 0 }));
 }
 
 export type HomeSummary = NonNullable<Awaited<ReturnType<typeof homeSummary>>>;
