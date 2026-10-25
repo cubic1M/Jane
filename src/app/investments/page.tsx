@@ -8,16 +8,16 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BacktestsSection } from "@/components/backtests";
 import { LevelStrategiesSection } from "@/components/level-strategies";
 import { NewsThemesSection } from "@/components/news-themes";
-import { StrategyBoard } from "@/components/strategy-board";
+import { StrategyTree } from "@/components/strategy-tree";
 import { PracticeIdeasSummary } from "@/components/practice-ideas-summary";
 import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { PAGES, itemId } from "@/lib/area-pages/investing";
 import { explainer } from "@/config/learn";
-import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { RETURNS_NOTE } from "@/config/returns";
-import { strategyBoard } from "@/lib/investments/strategy-board";
+import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
+import { loadPractice } from "@/lib/practice/portfolio";
 import { formatReturn } from "@/insights/returns";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
@@ -100,27 +100,23 @@ async function LevelStrategies({ userId }: { userId: string }) {
   return <LevelStrategiesSection latest={latest} level={profile.level} />;
 }
 
-// The strategies tested at a risk level (the person's own unless ?level= picks another): one
-// graph of them all and the list right below it, from the stored research.
-async function Strategies({ userId, level }: { userId: string; level: RiskLevel | null }) {
-  const profile = await practiceProfileOf(userId);
-  const shown = level ?? profile.level;
-  const board = strategyBoard({
-    level: shown,
-    yourLevel: profile.level,
-    choice: profile.strategyChoice,
-    catalog: profile.catalog?.id ?? null,
-    crypto: profile.crypto?.strategy ?? null,
-    dayTrading: profile.dayTrade?.rule ?? null,
-  });
-  const levels = ([1, 2, 3, 4, 5] as const).map((l) => ({
-    level: l,
-    label: RISK_LEVELS[l].label,
-    href: `/investments?level=${l}`,
-    yours: l === profile.level,
-  }));
-  // Keyed by level: another level starts with nothing picked or open.
-  return <StrategyBoard key={shown} board={board} levels={levels} />;
+// The page's top, like Home: the practice portfolio's hero graph, three tiles and the strategy
+// tree, from the stored research (src/lib/investments/strategy-tree.ts).
+async function Strategies({ userId, ideas }: { userId: string; ideas: number }) {
+  const [{ tiles, board }, practice] = await Promise.all([
+    strategyTreeFor(userId),
+    loadPractice(userId),
+  ]);
+  return (
+    <StrategyTree
+      tiles={tiles}
+      board={board}
+      ideas={ideas}
+      practice={
+        practice ? { totalCents: practice.totalCents, startingCents: practice.startingCents } : null
+      }
+    />
+  );
 }
 
 async function RuleReplays({ userId }: { userId: string }) {
@@ -139,8 +135,6 @@ async function InvestmentsContent({
   await connection();
   const params = await searchParams;
   const focus = typeof params.focus === "string" ? params.focus : undefined;
-  const asked = Number(params.level);
-  const level = Object.hasOwn(RISK_LEVELS, asked) ? (asked as RiskLevel) : null;
   // Constant search (Phase AW): a cheap practice scan, after the page is sent.
   after(() => scanOnOpenQuietly(user.id));
   const {
@@ -388,7 +382,7 @@ async function InvestmentsContent({
 
       {backtests.advice && (
         <Suspense fallback={<LoadingBar label="Loading the strategies" />}>
-          <Strategies userId={user.id} level={level} />
+          <Strategies userId={user.id} ideas={ideas?.ideas.length ?? 0} />
         </Suspense>
       )}
 

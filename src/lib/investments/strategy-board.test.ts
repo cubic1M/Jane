@@ -4,6 +4,7 @@ import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
 import { CATALOG_IDS } from "@/config/strategy-catalog";
 import {
   BOARD_RANGES,
+  LOST_WARNING,
   STATUS_TAGS,
   boardInRange,
   onDates,
@@ -61,64 +62,34 @@ describe("the board at a level", () => {
     expect(day.length).toBeGreaterThan(0);
     for (const r of day) {
       expect(r.status).toBe("lost");
-      expect(r.choose).toBeNull();
+      expect(r.use.kind).toBe("no");
     }
     expect(b.rows.filter((r) => r.key.startsWith("crypto:")).length).toBe(3);
-    expect(b.rows.find((r) => r.key === "crypto:crypto_trend")!.choose).toEqual({
-      action: "crypto",
-      value: "crypto_trend",
-      label: "Use in practice",
-    });
+    expect(b.rows.find((r) => r.key === "crypto:crypto_trend")!.use).toEqual({ kind: "yes" });
     expect(b.sources.some((s) => s.startsWith("Day trading:"))).toBe(true);
   });
 
-  it("offers Use in practice only where the research allows, and only at the person's level", () => {
+  it("lets any strategy that runs on its own be used, warning first where it lost money", () => {
     const b = strategyBoard(at(3));
     expect(b.yours).toBe(true);
-    for (const r of b.rows.filter(
-      (x) => x.status === "watch" && x.key !== "catalog:managed_futures",
-    ))
-      expect(r.choose?.label, r.key).toBe("Use in practice");
-    // A plain tilt can be run through the strategy setting, as before.
-    expect(b.rows.find((r) => r.key === "catalog:value")!.choose).toEqual({
-      action: "strategy",
-      value: "value_tilt",
-      label: "Use in practice",
-    });
-    // Nothing else not recommended is offered.
-    for (const r of b.rows.filter(
-      (x) =>
-        x.status === "tested" &&
-        ![
-          "catalog:value",
-          "catalog:momentum",
-          "catalog:quality",
-          "catalog:dividend_growth",
-          "catalog:equal_weight",
-        ].includes(x.key),
-    ))
-      expect(r.choose, r.key).toBeNull();
-    // Another level is for reading: no buttons.
-    expect(strategyBoard(at(4)).rows.every((r) => r.choose === null)).toBe(true);
+    for (const r of b.rows.filter((x) => x.key.startsWith("catalog:"))) {
+      if (r.key === "catalog:managed_futures") expect(r.use.kind, r.key).toBe("no");
+      else if (r.status === "lost")
+        expect(r.use, r.key).toEqual({ kind: "confirm", warning: LOST_WARNING });
+      else expect(r.use, r.key).toEqual({ kind: "yes" });
+    }
+    expect(b.rows[0].use).toEqual({ kind: "yes" });
+    expect(strategyBoard(at(4)).yours).toBe(false);
   });
 
   it("highlights what the practice portfolio follows, with the way back", () => {
     const def = strategyBoard(at(3));
     expect(def.highlighted).toBe("default");
     expect(def.rows[0].current).toBe(true);
-    expect(def.rows[0].choose).toBeNull();
     const haa = strategyBoard(at(3, { catalog: "haa" }));
     expect(haa.highlighted).toBe("catalog:haa");
-    expect(haa.rows.find((r) => r.key === "catalog:haa")!.choose).toEqual({
-      action: "catalog",
-      value: "off",
-      label: "Back to Jane's pick",
-    });
-    expect(haa.rows[0].choose).toEqual({
-      action: "catalog",
-      value: "off",
-      label: "Back to Jane's pick",
-    });
+    expect(haa.rows.find((r) => r.key === "catalog:haa")!.current).toBe(true);
+    expect(haa.rows[0].current).toBe(false);
     const tilt = strategyBoard(at(3, { choice: "value_tilt" }));
     expect(tilt.highlighted).toBe("catalog:value");
     expect(tilt.followsElsewhere).toBeNull();

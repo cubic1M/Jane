@@ -13,8 +13,10 @@ import { redirect } from "next/navigation";
 import { adviceMode } from "@/lib/advice-mode";
 import { practiceProfileOf, savePreferences } from "@/lib/practice/preferences";
 import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
-import { CATALOG_IDS } from "@/config/strategy-catalog";
+import { CATALOG, CATALOG_IDS } from "@/config/strategy-catalog";
 import {
+  choosePracticeStrategy,
+  restorePracticeStrategy,
   usePracticeCatalog,
   usePracticeCrypto,
   usePracticeDayTrading,
@@ -64,19 +66,78 @@ describe("the strategy menu's buttons", () => {
     ]);
   });
 
-  it("follows a tested strategy only where the research rates it worth watching or better", async () => {
+  it("follows any tested strategy that runs on its own, never a sleeve", async () => {
     vi.mocked(practiceProfileOf).mockResolvedValue({ level: 3 } as never);
-    const ok = CATALOG_IDS.find((id) => CATALOG_EVIDENCE[id]?.[3]?.watch)!;
-    const no = CATALOG_IDS.find((id) => {
+    const watched = CATALOG_IDS.find((id) => CATALOG_EVIDENCE[id]?.[3]?.watch)!;
+    const not = CATALOG_IDS.find((id) => {
       const e = CATALOG_EVIDENCE[id]?.[3];
-      return e && !e.watch && !e.recommendable;
+      return e && !e.watch && !e.recommendable && CATALOG[id].kind !== "sleeve";
     })!;
-    await usePracticeCatalog(form({ strategy: ok }));
-    await usePracticeCatalog(form({ strategy: no }));
+    await usePracticeCatalog(form({ strategy: watched }));
+    await usePracticeCatalog(form({ strategy: not }));
+    await usePracticeCatalog(form({ strategy: "managed_futures" }));
     await usePracticeCatalog(form({ strategy: "off" }));
     expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
-      { catalogStrategy: ok },
+      { catalogStrategy: watched },
+      { catalogStrategy: not },
       { catalogStrategy: "off" },
     ]);
+  });
+});
+
+// The strategy tree's "Use this strategy" and Revert: instant on the page, saved behind, with
+// what it replaced handed back for Revert.
+describe("Use this strategy and Revert", () => {
+  const before = { catalogStrategy: "off", strategy: "level", cryptoSleeve: "off", riskLevel: 3 };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(adviceMode).mockResolvedValue(true);
+    vi.mocked(savePreferences).mockResolvedValue({ ok: true, before } as never);
+  });
+
+  it("saves a leaf by its key and hands back what it replaced, with no redirect", async () => {
+    vi.mocked(practiceProfileOf).mockResolvedValue({ level: 3 } as never);
+    expect(await choosePracticeStrategy("catalog:haa")).toEqual({
+      ok: true,
+      previous: { catalogStrategy: "off", strategy: "level", cryptoSleeve: "off" },
+    });
+    await choosePracticeStrategy("default");
+    expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
+      { catalogStrategy: "haa" },
+      { catalogStrategy: "off", strategy: "level" },
+    ]);
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("refuses day trading, sleeves, unknown keys, crypto below Very high and real accounts", async () => {
+    vi.mocked(practiceProfileOf).mockResolvedValue({ level: 3 } as never);
+    for (const key of [
+      "intraday:opening_range",
+      "catalog:managed_futures",
+      "catalog:moonshot",
+      "crypto:crypto_trend",
+      "nothing",
+    ])
+      expect((await choosePracticeStrategy(key)).ok, key).toBe(false);
+    vi.mocked(practiceProfileOf).mockResolvedValue({ level: 5 } as never);
+    expect((await choosePracticeStrategy("crypto:crypto_trend")).ok).toBe(true);
+    vi.mocked(adviceMode).mockResolvedValue(false);
+    expect(await choosePracticeStrategy("catalog:haa")).toMatchObject({ ok: false });
+    expect(vi.mocked(savePreferences).mock.calls.map((c) => c[1])).toEqual([
+      { cryptoSleeve: "crypto_trend" },
+    ]);
+  });
+
+  it("Revert puts back exactly what was there", async () => {
+    await restorePracticeStrategy({
+      catalogStrategy: "eaa",
+      strategy: "value_tilt",
+      cryptoSleeve: "off",
+    });
+    expect(vi.mocked(savePreferences).mock.calls[0][1]).toEqual({
+      catalogStrategy: "eaa",
+      strategy: "value_tilt",
+      cryptoSleeve: "off",
+    });
   });
 });

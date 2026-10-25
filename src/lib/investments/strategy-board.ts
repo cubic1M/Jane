@@ -55,12 +55,12 @@ export const STATUS_TAGS: Readonly<Record<BoardStatus, string>> = {
 // The order the list reads in: the default first, what lost money last.
 const STATUS_ORDER: readonly BoardStatus[] = ["default", "recommended", "watch", "tested", "lost"];
 
-// A button on a row: the server action it posts to and the value it sends.
-export type BoardChoice = {
-  action: "catalog" | "crypto" | "strategy";
-  value: string;
-  label: string;
-};
+// Whether a row can be run in the practice portfolio (at the person's own level): at once, after
+// a one-line warning (it lost money in the replay), or not at all, with why.
+export type BoardUse =
+  { kind: "yes" } | { kind: "confirm"; warning: string } | { kind: "no"; why: string };
+
+export const LOST_WARNING = "This lost money after costs in the replay. Use it anyway?";
 
 export type BoardRow = {
   key: string;
@@ -80,7 +80,7 @@ export type BoardRow = {
   values: (number | null)[];
   // The practice portfolio follows it now.
   current: boolean;
-  choose: BoardChoice | null;
+  use: BoardUse;
 };
 
 export type Board = {
@@ -178,18 +178,12 @@ function catalogRows(input: BoardInput, yours: boolean): BoardRow[] {
     const followed = input.catalog === id;
     const tilted = input.catalog === null && tilt !== undefined && input.choice === tilt;
     const current = yours && (followed || tilted);
-    const offered = (e.recommendable || e.watch) && CATALOG[id].kind !== "sleeve";
-    const choose: BoardChoice | null = !yours
-      ? null
-      : followed
-        ? { action: "catalog", value: "off", label: "Back to Jane's pick" }
-        : tilted
-          ? { action: "strategy", value: "level", label: "Back to Jane's pick" }
-          : offered
-            ? { action: "catalog", value: id, label: "Use in practice" }
-            : tilt
-              ? { action: "strategy", value: tilt, label: "Use in practice" }
-              : null;
+    const use: BoardUse =
+      CATALOG[id].kind === "sleeve"
+        ? { kind: "no", why: "It runs beside your mix's bonds, so it isn't run on its own." }
+        : status === "lost"
+          ? { kind: "confirm", warning: LOST_WARNING }
+          : { kind: "yes" };
     const regimes = (CATALOG_REGIME_EVIDENCE[id]?.[level] ?? []).flatMap((g) =>
       g.label !== "2008" && g.strategy !== null
         ? [{ label: g.label, strategy: g.strategy, mix: g.mix }]
@@ -220,7 +214,7 @@ function catalogRows(input: BoardInput, yours: boolean): BoardRow[] {
         regimes,
         values: curves.strategies[id] ?? CATALOG_CURVE_DATES.map(() => null),
         current,
-        choose,
+        use,
       },
     ];
   });
@@ -254,12 +248,11 @@ function veryHighRows(input: BoardInput, yours: boolean): BoardRow[] {
       regimes: [],
       values: onDates(r.curve, r.later.from, r.later.to, CATALOG_CURVE_DATES),
       current,
-      choose:
-        !yours || !open
-          ? null
-          : current
-            ? { action: "crypto", value: "off", label: "Turn the sleeve off" }
-            : { action: "crypto", value: id, label: "Use in practice" },
+      use: !open
+        ? { kind: "no", why: "Crypto is offered at Very high only." }
+        : r.later.cagr < 0
+          ? { kind: "confirm", warning: LOST_WARNING }
+          : { kind: "yes" },
     };
   });
   const day = INTRADAY_RULE_IDS.map((id): BoardRow => {
@@ -282,7 +275,10 @@ function veryHighRows(input: BoardInput, yours: boolean): BoardRow[] {
       regimes: [],
       values: onDates(r.curve, r.later.from, r.later.to, CATALOG_CURVE_DATES),
       current: false,
-      choose: null,
+      use: {
+        kind: "no",
+        why: "Not offered: every day-trading rule we tested lost money after costs.",
+      },
     };
   });
   return [...crypto, ...day];
@@ -312,12 +308,7 @@ export function strategyBoard(input: BoardInput): Board {
     regimes: [],
     values: pick?.values ?? curves.mix.values,
     current: onDefault,
-    choose:
-      !yours || onDefault
-        ? null
-        : input.catalog !== null
-          ? { action: "catalog", value: "off", label: "Back to Jane's pick" }
-          : { action: "strategy", value: "level", label: "Back to Jane's pick" },
+    use: { kind: "yes" },
   };
   const rest = [...catalogRows(input, yours), ...veryHighRows(input, yours)].sort(
     (a, b) =>

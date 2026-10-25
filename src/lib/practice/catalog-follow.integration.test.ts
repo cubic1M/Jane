@@ -15,8 +15,8 @@ import { startPractice } from "./portfolio";
 import { practiceProfileOf, savePreferences } from "./preferences";
 
 // Following a tested strategy in practice, against a real, migrated Postgres and the sample
-// market: one worth watching at the level runs the portfolio by its own rule; one that isn't
-// leaves the mix in place.
+// market: any tested at the level runs the portfolio by its own rule, worth watching or not;
+// a sleeve, which doesn't run on its own, leaves the mix in place.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-20T21:30:00Z");
@@ -62,8 +62,8 @@ describe.runIf(url)("following a tested strategy", () => {
     expect(trades[0].reason).toMatch(/^Following /);
   });
 
-  it("keeps the mix for one the research doesn't rate at the level", async () => {
-    const id = await person(at3(false));
+  it("keeps the mix for a sleeve, which doesn't run on its own", async () => {
+    const id = await person("managed_futures");
     const profile = await practiceProfileOf(id, { client, now: NOW });
     expect(profile.catalog).toBeNull();
     expect(profile.rules.join(" ")).toMatch(/waits/);
@@ -73,7 +73,7 @@ describe.runIf(url)("following a tested strategy", () => {
     expect(trades.some((t) => t.rule === "catalog_follow")).toBe(false);
   });
 
-  it("is offered in the chat only where the research rates it", async () => {
+  it("is offered in the chat for any that runs on its own", async () => {
     const id = await person("off");
     const yes = await proposePracticeChange(
       id,
@@ -81,12 +81,18 @@ describe.runIf(url)("following a tested strategy", () => {
       { client, now: NOW },
     );
     expect(yes.ok && yes.line).toMatch(/A tested strategy instead of the mix: Off → /);
-    const no = await proposePracticeChange(
+    const not = await proposePracticeChange(
       id,
       { catalog_strategy: at3(false) },
       { client, now: NOW },
     );
+    expect(not.ok).toBe(true);
+    const no = await proposePracticeChange(
+      id,
+      { catalog_strategy: "managed_futures" },
+      { client, now: NOW },
+    );
     expect(no.ok).toBe(false);
-    expect(!no.ok && no.error).toMatch(/doesn't rate .* worth watching/);
+    expect(!no.ok && no.error).toMatch(/wasn't tested on its own/);
   });
 });

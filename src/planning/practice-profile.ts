@@ -322,11 +322,10 @@ export function profileFor(
 
   const picked = prefs.catalogStrategy === "off" ? null : prefs.catalogStrategy;
   const verdict = picked ? CATALOG_EVIDENCE[picked]?.[level] : undefined;
+  // Any strategy tested at the level that runs on its own, whatever its verdict (founder: "choose
+  // which one you like"); the page warns before one that lost money.
   const catalog =
-    picked &&
-    verdict &&
-    (verdict.watch || verdict.recommendable) &&
-    CATALOG[picked].kind !== "sleeve"
+    picked && verdict && CATALOG[picked].kind !== "sleeve"
       ? {
           id: picked,
           param: CATALOG[picked].grid[Math.floor((CATALOG[picked].grid.length - 1) / 2)],
@@ -334,11 +333,11 @@ export function profileFor(
       : null;
   if (catalog) {
     rules.push(
-      `Follows ${CATALOG[catalog.id].label} instead of the mix, as you chose: ${CATALOG[catalog.id].rules} ${verdict?.recommendable ? "Recommendable at this level." : "Worth watching at this level: it beat the mix in later years, but the edge may be luck."} Jane's extra moves wait meanwhile.`,
+      `Follows ${CATALOG[catalog.id].label} instead of the mix, as you chose: ${CATALOG[catalog.id].rules} ${verdict?.recommendable ? "Recommendable at this level." : verdict?.watch ? "Worth watching at this level: it beat the mix in later years, but the edge may be luck." : verdict && verdict.cagr < 0 ? "It lost money after costs in the replay at this level." : "Not recommended at this level: it didn't beat the mix by enough."} Jane's extra moves wait meanwhile.`,
     );
   } else if (picked) {
     rules.push(
-      `The tested strategy you chose (${CATALOG[picked].label}) waits: at ${RISK_LEVELS[level].label} the research doesn't rate it worth watching, so the mix runs.`,
+      `The tested strategy you chose (${CATALOG[picked].label}) waits: it wasn't tested on its own at ${RISK_LEVELS[level].label}, so the mix runs.`,
     );
   }
 

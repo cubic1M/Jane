@@ -207,19 +207,25 @@ export async function proposePracticeChange(
         "Day trading isn't offered: every day-trading rule we tested lost money after costs, while simply holding SPY made far more.",
     };
   }
+  let warning = "";
   if (result.changed.includes("catalogStrategy") && result.preferences.catalogStrategy !== "off") {
     const level =
       result.preferences.riskLevel ?? (await practiceProfileOf(userId, { client, now })).level;
-    const e = CATALOG_EVIDENCE[result.preferences.catalogStrategy]?.[level];
-    if (!e || !(e.watch || e.recommendable))
+    const id = result.preferences.catalogStrategy;
+    const e = CATALOG_EVIDENCE[id]?.[level];
+    // Any strategy tested at the level that runs on its own, as on the investments page.
+    if (!e || CATALOG[id].kind === "sleeve")
       return {
         ok: false,
-        error: `At this level the research doesn't rate ${CATALOG[result.preferences.catalogStrategy].label} worth watching, so the practice portfolio won't follow it.`,
+        error: `${CATALOG[id].label} wasn't tested on its own at this level, so the practice portfolio won't follow it.`,
       };
+    if (e.cagr < 0)
+      warning = `\n${CATALOG[id].label} lost money after costs in the replay at this level.`;
   }
   const lines = describeChanges(before, result.preferences, result.changed);
   const extra =
-    result.changed.includes("avoid") && result.preferences.avoid.some((k) => k in EXCLUSIONS)
+    warning + result.changed.includes("avoid") &&
+    result.preferences.avoid.some((k) => k in EXCLUSIONS)
       ? `\n${BROAD_FUND_NOTE}`
       : "";
   const line = `Change your practice settings:\n${lines.map((l) => `- ${l}`).join("\n")}${extra}`;
