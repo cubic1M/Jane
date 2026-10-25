@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 
@@ -7,6 +7,18 @@ import { demoPerson } from "./demo-person";
 // range's change, one line from the first day to today, range chips (ALL first), and
 // scrubbing: hover on a computer, drag on a phone, the arrow keys anywhere; letting go returns
 // to today.
+
+// On a phone More details is a sheet along the bottom of the screen, all of it in view (QA
+// round 9: in the chart it ran off the screen, under the chat's button).
+async function expectSheet(page: Page, details: Locator) {
+  await expect(details).toHaveAttribute("data-sheet-details", "");
+  await expect(details).toBeInViewport({ ratio: 1 });
+  const box = (await details.boundingBox())!;
+  const screen = page.viewportSize()!;
+  expect(box.x).toBeLessThanOrEqual(1);
+  expect(box.width).toBeGreaterThanOrEqual(screen.width - 2);
+  expect(Math.abs(box.y + box.height - screen.height)).toBeLessThanOrEqual(2);
+}
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(180_000);
@@ -126,24 +138,28 @@ test("the significant days open where the money went, inside the chart", async (
     /^([+−]\$[\d,]+|\$[\d,]+ moved) · .+/,
   );
 
-  // More details: the full breakdown beside it (stacked on a phone), joined by a dotted line,
-  // every movement linked to where to see it.
+  // More details: the full breakdown beside it, joined by a dotted line (on a phone a sheet from
+  // the bottom of the screen), every movement linked to where to see it.
   await card.getByRole("button", { name: "[MORE DETAILS]" }).click();
-  const details = chart.locator("[data-net-worth-event-detail]");
+  const details = page.locator("[data-net-worth-event-detail]");
   await expect(details).toBeVisible();
-  await expect(chart.locator("[data-net-worth-connector]")).toBeAttached();
   await expect(details.getByRole("link").first()).toHaveAttribute(
     "href",
     /^\/(transactions|loans|investments|actions)/,
   );
   await expect(details).toContainText("That day");
-  // Both stay inside the chart: nothing outside it is covered.
   const area = (await chart.boundingBox())!;
-  for (const box of [await card.boundingBox(), await details.boundingBox()]) {
-    expect(box!.x).toBeGreaterThanOrEqual(area.x - 1);
-    expect(box!.y).toBeGreaterThanOrEqual(area.y - 1);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(area.x + area.width + 1);
-    expect(box!.y + box!.height).toBeLessThanOrEqual(area.y + area.height + 1);
+  if (isMobile) {
+    await expectSheet(page, details);
+  } else {
+    await expect(chart.locator("[data-net-worth-connector]")).toBeAttached();
+    // Both stay inside the chart: nothing outside it is covered.
+    for (const box of [await card.boundingBox(), await details.boundingBox()]) {
+      expect(box!.x).toBeGreaterThanOrEqual(area.x - 1);
+      expect(box!.y).toBeGreaterThanOrEqual(area.y - 1);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(area.x + area.width + 1);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(area.y + area.height + 1);
+    }
   }
   // Esc shuts both and returns to the dot; a click outside shuts them too.
   await page.keyboard.press("Escape");
@@ -209,12 +225,18 @@ test("expanded, every movement has a dot, and zooming in gives each its own", as
   await expect(card).toBeVisible();
   await expect(card.getByRole("listitem").first()).toHaveText(line.split("; ")[0]);
   await card.getByRole("button", { name: "[MORE DETAILS]" }).click();
-  await expect(chart.locator("[data-net-worth-event-detail]")).toBeVisible();
-  // Still inside the chart.
-  const area = (await chart.boundingBox())!;
-  const box = (await chart.locator("[data-net-worth-event-detail]").boundingBox())!;
-  expect(box.x + box.width).toBeLessThanOrEqual(area.x + area.width + 1);
-  expect(box.y + box.height).toBeLessThanOrEqual(area.y + area.height + 1);
+  const details = page.locator("[data-net-worth-event-detail]");
+  await expect(details).toBeVisible();
+  if (isMobile) {
+    await expectSheet(page, details);
+  } else {
+    // Still inside the chart.
+    const area = (await chart.boundingBox())!;
+    const box = (await details.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(area.x + area.width + 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(area.y + area.height + 1);
+  }
   await page.keyboard.press("Escape");
   await expect(card).toHaveCount(0);
+  await expect(details).toHaveCount(0);
 });

@@ -20,7 +20,9 @@ vi.mock("@/lib/invites", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/invites")>()),
   redeemInvite: vi.fn(),
   checkCode: vi.fn(),
+  joinWaitlist: vi.fn(),
 }));
+vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("next-auth", () => ({ AuthError }));
 vi.mock("@/auth", () => ({ auth: vi.fn(async () => null), signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/session", () => ({ HOME_PATH: "/import" }));
@@ -31,10 +33,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { auth, signIn, signOut } from "@/auth";
-import { checkCode, redeemInvite } from "@/lib/invites";
+import { track } from "@/lib/analytics";
+import { checkCode, joinWaitlist, redeemInvite } from "@/lib/invites";
 import { hit } from "@/lib/rate-limit";
 import { TERMS_VERSION } from "@/config/legal";
-import { signInWithEmail, signInWithGoogle, signOutToHome } from "./auth-actions";
+import { joinTheWaitlist, signInWithEmail, signInWithGoogle, signOutToHome } from "./auth-actions";
 
 function emailForm(email: string) {
   const form = new FormData();
@@ -167,5 +170,44 @@ describe("auth actions", () => {
     vi.mocked(auth).mockResolvedValueOnce({ user: { id: "u1" } } as never);
     await signInWithEmail(emailForm("maya@example.com"));
     expect(signOut).not.toHaveBeenCalled();
+  });
+
+  // The closed beta: an email left without an invite is stored, counted once, sent nothing.
+  it("puts an email on the waitlist, counts it once and sends no link", async () => {
+    vi.mocked(joinWaitlist).mockReset().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    vi.mocked(track).mockReset();
+    await expect(joinTheWaitlist(emailForm("new@example.com"))).rejects.toThrow(
+      "redirect:/signup?waitlist=joined",
+    );
+    await expect(joinTheWaitlist(emailForm("new@example.com"))).rejects.toThrow(
+      "redirect:/signup?waitlist=joined",
+    );
+    expect(joinWaitlist).toHaveBeenCalledWith("new@example.com");
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith(null, "waitlist_joined", {});
+    expect(signIn).not.toHaveBeenCalled();
+    await expect(joinTheWaitlist(new FormData())).rejects.toThrow(
+      "redirect:/signup?error=InvalidEmail",
+    );
+  });
+
+  it("rate-limits the waitlist like sign-in", async () => {
+    vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    vi.mocked(joinWaitlist).mockReset();
+    await expect(joinTheWaitlist(emailForm("new@example.com"))).rejects.toThrow(
+      "redirect:/login?error=TooManyRequests",
+    );
+    expect(joinWaitlist).not.toHaveBeenCalled();
+  });
+
+  it("names a revoked code and a code for someone else", async () => {
+    const form = emailForm("ada@example.com");
+    form.set("invite", "ABCD-EFGH-JKMN");
+    form.set("consent", "on");
+    vi.mocked(redeemInvite).mockResolvedValueOnce("revoked");
+    await expect(signInWithEmail(form)).rejects.toThrow("redirect:/signup?error=InviteRevoked");
+    vi.mocked(redeemInvite).mockResolvedValueOnce("wrong_email");
+    await expect(signInWithEmail(form)).rejects.toThrow("redirect:/signup?error=InviteWrongEmail");
+    expect(signIn).not.toHaveBeenCalled();
   });
 });

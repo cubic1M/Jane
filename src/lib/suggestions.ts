@@ -4,12 +4,13 @@ import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggesti
 import { runDetectors } from "@/detectors";
 import type { Suggestion } from "@/detectors/contract";
 import { ideaShortForms } from "@/detectors/helpers";
-import type { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadProfileInput } from "@/lib/profile";
+import { recordAnswer, recordOpened, recordShown } from "@/lib/outcomes";
 import type { CardExtras } from "@/lib/jane-agent/types";
 import { scrub } from "@/lib/scrub";
 import { resultsByKind } from "@/lib/worked";
@@ -206,6 +207,8 @@ export async function scanSuggestions(
       actionHref: landing(s.action.href, { key: s.id, topic: s.topic }),
       score: scores.get(s.id) ?? 0,
       lastSeenAt: now,
+      // What later transactions should show if the person acts (the verified savings record).
+      watch: s.watch ? (s.watch as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
     };
     const have = byKey.get(s.id);
     const answered = have?.status === "yes" || have?.status === "no";
@@ -257,6 +260,21 @@ export async function scanSuggestions(
       data: { status: "gone" },
     });
   }
+  // The day's picks reach the person: the verified savings record starts here.
+  await recordShown(
+    userId,
+    picked.map(({ suggestion: p }) => ({
+      key: p.id,
+      capability: p.capability,
+      topic: p.topic,
+      title: p.title,
+      worthCents: p.worthCents,
+      worthKind: p.worthKind,
+      confidencePercent: p.confidence.percent,
+      watch: p.watch ?? null,
+    })),
+    { client, now },
+  );
   return { fired: found.length, selected: [...pickedIds] };
 }
 
@@ -327,6 +345,7 @@ export async function answerSuggestion(
     where: { id: row.id },
     data: { status: answer, answeredAt: now },
   });
+  await recordAnswer(userId, key, answer, { client, now });
   await track(userId, "suggestion_answered", {
     topic: row.topic,
     answer,
@@ -340,10 +359,11 @@ export async function answerSuggestion(
 export async function explainSuggestion(
   userId: string,
   key: string,
-  { client = defaultClient }: Pick<Options, "client"> = {},
+  { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<string> {
   const row = await scopedFor(userId, client).suggestions.findFirst({ where: { key } });
   if (!row) throw new SuggestionError("That suggestion isn't there any more.");
+  await recordOpened(userId, key, { client, now });
   const end = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
   return [
     end(row.title),

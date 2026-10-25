@@ -196,6 +196,7 @@ export function FloatingCards({
   links,
   foldOnPhone = false,
   docked = false,
+  onDetails,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
@@ -218,6 +219,9 @@ export function FloatingCards({
   // In the dock above the side chat (src/components/side-chat/card-dock.tsx): in the flow
   // there, not floating; a little bigger, with arrows between the cards.
   docked?: boolean;
+  // Called when a card's More details is opened (the verified savings record keeps that a
+  // suggestion was looked at); nothing waits on it.
+  onDetails?: (id: string) => void;
 }) {
   const [state, setState] = useState(initialState);
   // A revertable card that was just chosen (founder, 2026-10-25): it stays on screen with its
@@ -449,7 +453,10 @@ export function FloatingCards({
                 aria-label="More details"
                 aria-expanded={open}
                 aria-controls={`details-${current.id}`}
-                onClick={() => setDetailsOpen((o) => (o === current.id ? null : current.id))}
+                onClick={() => {
+                  if (detailsOpen !== current.id) onDetails?.(current.id);
+                  setDetailsOpen((o) => (o === current.id ? null : current.id));
+                }}
                 className="-mt-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
               >
                 <svg

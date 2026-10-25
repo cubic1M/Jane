@@ -64,6 +64,7 @@ export async function exportUserData(
     booksIssues,
     monthCloses,
     suggestions,
+    suggestionOutcomes,
     leanPlans,
     whatIfPlans,
     monthlyReports,
@@ -468,6 +469,27 @@ export async function exportUserData(
         answeredAt: true,
       },
     }),
+    // The verified savings record: what happened to each suggestion, and what showed it.
+    db.suggestionOutcomes.findMany({
+      orderBy: { firstShownAt: "asc" },
+      select: {
+        suggestionKey: true,
+        title: true,
+        status: true,
+        firstShownAt: true,
+        openedAt: true,
+        answer: true,
+        answeredAt: true,
+        doneAt: true,
+        expectedCents: true,
+        confirmedCents: true,
+        yearly: true,
+        verifiedPercent: true,
+        evidenceTxIds: true,
+        proof: true,
+        verifiedAt: true,
+      },
+    }),
     db.leanPlans.findMany({
       orderBy: { createdAt: "asc" },
       select: {
@@ -708,6 +730,7 @@ export async function exportUserData(
     monthlyReports,
     whatIfPlans,
     suggestions,
+    suggestionOutcomes,
     leanPlans,
     booksIssues,
     monthCloses,

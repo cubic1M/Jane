@@ -18,7 +18,9 @@ for (const [path, heading] of [
     await page.goto(path);
 
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
-    await expect(page.getByRole("note")).toContainText("Draft, pending legal review");
+    await expect(page.getByRole("note")).toContainText(
+      "Draft for the closed beta, to be reviewed by a lawyer",
+    );
   });
 }
 

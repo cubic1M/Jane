@@ -13,6 +13,7 @@ import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/card
 import { comparisonFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { recordFindingDone } from "@/lib/outcomes";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
 import { hasKit } from "@/lib/diy";
 import { PlanOptionsError, parsePlanOptions } from "@/lib/plan-options";
@@ -342,4 +343,6 @@ export async function markDiyDone(
     { decision_id: decision.id },
   );
   await track(userId, "diy_done", {});
+  // The verified savings record: watched from today for the transactions to show it.
+  await recordFindingDone(userId, decision.findingId, { client, now });
 }

@@ -111,6 +111,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   admin_mfa_failed: own,
   user_made_admin: own,
   invite_code_created: notOnePerson,
+  invite_code_revoked: notOnePerson,
+  invite_redeemed: notOnePerson,
   terms_accepted: own,
   data_exported: own,
   admin_drafted_message: onAction(() => "Drafted a message for it"),
