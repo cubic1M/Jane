@@ -98,6 +98,11 @@ export function EmbedBridge() {
           box.focus({ preventScroll: true });
           box.setSelectionRange(box.value.length, box.value.length);
           box.scrollIntoView({ block: "center" });
+          // Where it is now, for the page's dotted line to it.
+          requestAnimationFrame(() => {
+            const r = box.getBoundingClientRect();
+            tell({ type: "jane:box", x: r.left, y: r.top + r.height / 2 });
+          });
         }
       } else if (event.data.type === "jane:send") {
         sendNow(event.data.text);

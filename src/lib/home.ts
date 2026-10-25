@@ -14,7 +14,7 @@ import { listGoals } from "@/lib/goals";
 import { roomFromPlan } from "@/planning/goal-tradeoffs";
 import { safeToSpend } from "@/planning/safe-to-spend";
 import { scopedFor } from "@/lib/db-scoped";
-import { savedToDate } from "@/lib/membership/service";
+import { savedItems } from "@/lib/membership/service";
 import { loadComingUp } from "@/lib/coming-up";
 import { whatJaneDid } from "@/lib/what-jane-did";
 
@@ -47,7 +47,7 @@ export async function homeSummary(
     plan,
   ] = await Promise.all([
     moneyFound(userId, { client }),
-    savedToDate(userId, { client }),
+    savedItems(userId, { client }),
     db.actions.findMany({
       where: { status: "waiting_on_user" },
       select: { id: true, userTodo: true, decision: { select: { cardSnapshot: true } } },
@@ -111,7 +111,9 @@ export async function homeSummary(
 
   return {
     moneyFoundCents: found,
-    savedToDateCents: saved,
+    savedToDateCents: saved.reduce((sum, i) => sum + i.cents, 0),
+    // What the saved total is made of, biggest first (the Saved tile's summary).
+    savedItems: saved,
     openActions,
     unreadAlerts: alerts,
     plan: {

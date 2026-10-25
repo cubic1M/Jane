@@ -1,9 +1,11 @@
+import type { SavedItem } from "@/lib/membership/service";
 import {
   AREA_HEALTH_PARTS,
   AREA_KEYS,
   CASH_FLOW_DAYS,
   GOALS_SHOWN,
   HEALTH_LOOK_BELOW,
+  SAVED_SHOWN,
   areaOfCapability,
   type AreaKey,
 } from "@/config/areas";
@@ -35,6 +37,8 @@ export type HeroInput = {
   netWorth: { todayCents: number; months: { month: string; netCents: number | null }[] } | null;
   foundCents: number;
   savedCents: number;
+  // What the saved total is made of, biggest first (savedItems, src/lib/membership/service.ts).
+  savedItems?: SavedItem[];
 };
 
 export type CashFlowInput = {
@@ -84,6 +88,9 @@ export type SafeHero = {
   short: boolean;
   // Today's checking balance, split into where it goes; shares add up to 1.
   parts: { key: string; label: string; cents: number; share: number }[];
+  // Why it's that number (founder: "it should expand first having a summary on why that number
+  // is what it is"): the balance now, less each thing held back, equals it. 3 to 6 lines.
+  why: { label: string; sign: "" | "−" | "="; cents: number }[];
 };
 
 export type NetWorthHero = {
@@ -93,7 +100,16 @@ export type NetWorthHero = {
   trend: "up" | "down" | "flat";
 };
 
-export type SavedHero = { label: string; cents: number; perYear: boolean; share: number };
+export type SavedHero = {
+  label: string;
+  cents: number;
+  perYear: boolean;
+  share: number;
+  // Where it came from (founder: "click on it, it expands and shows a summary of where was
+  // saved"): the biggest few, and how many more.
+  items: SavedItem[];
+  more: number;
+};
 
 export type HeroView = { safe: SafeHero | null; netWorth: NetWorthHero | null; saved: SavedHero };
 
@@ -200,7 +216,7 @@ export function heroView(input: HeroInput): HeroView {
   return {
     safe: input.safe ? safeHero(input.safe) : null,
     netWorth: input.netWorth ? netWorthHero(input.netWorth) : null,
-    saved: savedHero(input.foundCents, input.savedCents),
+    saved: savedHero(input.foundCents, input.savedCents, input.savedItems ?? []),
   };
 }
 
@@ -214,11 +230,25 @@ function safeHero(safe: SafeInput): SafeHero {
     { key: "safe", label: "Safe to spend", cents: Math.max(0, safe.safeCents) },
   ].filter((p) => p.cents > 0);
   const total = raw.reduce((sum, p) => sum + p.cents, 0);
+  const held = [
+    {
+      label: `Bills before ${safe.payday ? shortDate(safe.payday) : "payday"}`,
+      cents: safe.billsCents,
+    },
+    { label: "Left in your budgets", cents: safe.budgetsLeftCents },
+    { label: "Goals this month", cents: safe.goalsCents },
+    { label: "Set aside for yearly bills", cents: safe.setAsideCents },
+  ].filter((l) => l.cents > 0);
   return {
     label: safe.payday ? `Safe to spend until ${shortDate(safe.payday)}` : "Safe to spend",
     cents: short ? -safe.safeCents : safe.safeCents,
     short,
     parts: raw.map((p) => ({ ...p, share: total > 0 ? p.cents / total : 0 })),
+    why: [
+      { label: "In checking now", sign: "", cents: safe.balanceCents },
+      ...held.map((l) => ({ ...l, sign: "−" as const })),
+      { label: short ? "Short before payday" : "Safe to spend", sign: "=", cents: safe.safeCents },
+    ],
   };
 }
 
@@ -238,16 +268,18 @@ function netWorthHero(nw: NonNullable<HeroInput["netWorth"]>): NetWorthHero {
   };
 }
 
-function savedHero(foundCents: number, savedCents: number): SavedHero {
+function savedHero(foundCents: number, savedCents: number, items: SavedItem[]): SavedHero {
   if (savedCents > 0) {
     return {
       label: "Saved so far",
       cents: savedCents,
       perYear: true,
       share: foundCents > 0 ? Math.min(1, savedCents / foundCents) : 1,
+      items: items.slice(0, SAVED_SHOWN),
+      more: Math.max(0, items.length - SAVED_SHOWN),
     };
   }
-  return { label: "Money found", cents: foundCents, perYear: true, share: 0 };
+  return { label: "Money found", cents: foundCents, perYear: true, share: 0, items: [], more: 0 };
 }
 
 // --- The cash-flow strip ---
