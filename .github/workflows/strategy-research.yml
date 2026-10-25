@@ -63,7 +63,7 @@ jobs:
             exit 1
           fi
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bars
           path: research/bars.json
@@ -94,7 +94,7 @@ jobs:
           RESEARCH_LEVEL: ${{ matrix.level }}
           RESEARCH_DIR: research
         run: npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: level-${{ matrix.level }}
           path: research/level-${{ matrix.level }}.json
@@ -123,7 +123,7 @@ jobs:
         run: |
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/summary.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: strategy-research
           path: |
@@ -157,7 +157,7 @@ jobs:
           fi
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/intraday-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: intraday-research
           path: |
@@ -191,7 +191,7 @@ jobs:
           fi
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/strategy-results.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: catalog-research
           path: |
@@ -225,7 +225,7 @@ jobs:
           fi
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/crypto-summary.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: crypto-research
           path: |
@@ -252,7 +252,7 @@ jobs:
         run: |
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
           cat research/regimes.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: regimes-research
           path: |
