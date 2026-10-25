@@ -157,6 +157,13 @@ stay, and contrast between shades stays as designed. New code uses `neutral-*` o
 - a hex colour that isn't a grey (`#737373`; emails and icons included);
 - a file with more colour-named classes than it had in `src/app/monochrome-baseline.json`.
 
+**The landing page is the exception** (founder, 2026-10-24: "The rest of the landing page should
+also match the color so that it isn't ugly"). `/` is in its art's colours, in light and dark mode
+alike: `src/app/landing.css` holds four tokens (`--landing-bg`, `--landing-dot`, `--landing-mid`,
+`--landing-hi`) that `npm run render:landing-art` samples from the rendered art and checks for AA
+contrast, and the page, its pattern, text, borders, buttons and Try Jane form use only those.
+`monochrome.test.ts` skips that one generated file. Every signed-in page stays black and white.
+
 **Meaning lives in shape, words and weight:**
 
 | What | How |

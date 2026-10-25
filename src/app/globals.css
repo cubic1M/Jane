@@ -294,6 +294,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* The landing page's headline (src/app/fonts.ts). */
+  --font-display: "Agraham", var(--font-display-face), Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1243,4 +1245,20 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
   .floating-card-edge {
     transition: none;
   }
+}
+
+/* The landing page (src/app/page.tsx) is the one page in colour: its own palette, sampled from
+   its art (src/app/landing.css, generated), in light and dark mode alike, footer included. */
+.landing {
+  --background: var(--landing-bg);
+  --foreground: var(--landing-mid);
+  background: var(--landing-bg);
+  color: var(--landing-mid);
+}
+body:has(.landing) {
+  background: var(--landing-bg);
+  color: var(--landing-mid);
+}
+body:has(.landing) footer {
+  color: var(--landing-dot);
 }
