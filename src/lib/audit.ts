@@ -69,6 +69,8 @@ export type AuditEvent =
   | "admin_mfa_failed"
   | "user_made_admin"
   | "invite_code_created"
+  | "invite_code_revoked"
+  | "invite_redeemed"
   | "terms_accepted"
   | "data_exported"
   | "admin_drafted_message"
