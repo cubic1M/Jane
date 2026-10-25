@@ -549,6 +549,11 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
 .ask-line {
   animation: ask-line-march 0.6s linear infinite;
 }
+/* An earlier answer found from an "Ask Jane" box: marked for a moment (src/app/chat/embed-bridge.tsx). */
+.ask-found {
+  outline: 2px dashed currentColor;
+  outline-offset: 4px;
+}
 @keyframes ask-line-march {
   to {
     stroke-dashoffset: -9;
@@ -1265,10 +1270,13 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
   background: var(--landing-bg);
   color: var(--landing-mid);
 }
-body:has(.landing) {
+/* Around it (the body under the footer, the footer), only while the landing is the page
+   showing: src/app/landing-theme.tsx marks html[data-landing] and takes it off when the landing
+   goes, even though Next keeps it mounted, hidden, for Back (body:has(.landing) stayed true). */
+html[data-landing] body {
   background: var(--landing-bg);
   color: var(--landing-mid);
 }
-body:has(.landing) footer {
+html[data-landing] body footer {
   color: var(--landing-dot);
 }
