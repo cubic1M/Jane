@@ -99,6 +99,8 @@ export type AuditEvent =
   | "mfa_backup_codes_created"
   | "standing_rules_saved"
   | "autopilot_set"
+  // A chosen level taken back with Revert (src/lib/jane-agent/actions/choice.ts).
+  | "autopilot_reverted"
   // One autopilot, every sector (spec step 141): a sector's level or caps changed.
   | "autopilot_sector_set"
   // Money that moves itself (spec steps 144–145): a transfer or payment scheduled or undone.

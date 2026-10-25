@@ -8,6 +8,7 @@ import {
   paragraphs,
   waiting,
   type FloatingCardData,
+  restore,
 } from "./floating-cards";
 
 const card = (id: string): FloatingCardData => ({
@@ -89,5 +90,22 @@ describe("a card's details as paragraphs", () => {
       { kind: "p", text: "Most people keep it. You barely use it." },
     ]);
     expect(paragraphs("One. Two. Three.")).toEqual([{ kind: "p", text: "One. Two. Three." }]);
+  });
+});
+
+// Revert on a held card (founder, 2026-10-25): it's waiting again, and the one showing.
+describe("restore", () => {
+  const three = ["a", "b", "c"].map((id) => ({
+    id,
+    headline: id,
+    details: {},
+    yesLabel: "Yes",
+  }));
+  it("brings an answered card back and shows it", () => {
+    const answered = answer(three, initialState, "queue", "b");
+    expect(waiting(three, answered).map((c) => c.id)).toEqual(["a", "c"]);
+    const back = restore(three, answered, "b");
+    expect(waiting(three, back).map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(currentCard(three, back)?.id).toBe("b");
   });
 });

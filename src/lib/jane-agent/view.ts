@@ -45,6 +45,22 @@ export type MessageView = {
   // The same options as comparison cards (src/lib/comparison.ts), which the chat shows instead
   // when the card carries their numbers (cards saved before them don't).
   comparison?: Comparison | null;
+  // A pick-one choice that was made (founder, 2026-10-25): its choices stay, greyed, with this
+  // one marked and Revert among the buttons (unless it can't be taken back: final).
+  chosen?: {
+    // Which choice: its key among `choices` (a button's id, or an option's).
+    key: string;
+    label: string;
+    final: boolean;
+    // Done on its card: it no longer floats.
+    settled: boolean;
+    choices: {
+      id: ActionId;
+      key: string;
+      label: string;
+      kind: "primary" | "secondary" | "quick";
+    }[];
+  } | null;
   // A suggestion card's extra details (refs.cardDetails), or null.
   cardDetails?: CardExtras | null;
   // A suggestion's whole reason (refs.suggestionWhy), or null.
@@ -71,6 +87,32 @@ export function inTheList(
   return messages.filter((m) => !(m.status === "open" && waiting.has(m.id)));
 }
 
+// The choices a chosen message keeps: an option card's options, or the buttons it had.
+function chosenOf(message: ChatMessage): MessageView["chosen"] {
+  const chosen = message.refs.chosen;
+  if (!chosen) return null;
+  // An option card's options by their headline (a carrier can have several), or the buttons.
+  const choices = message.refs.options
+    ? message.refs.options.options.map((o) => ({
+        id: "option.pick" as ActionId,
+        key: o.id,
+        label: o.headline,
+        kind: "secondary" as const,
+      }))
+    : (message.refs.previousActions ?? []).flatMap((a) =>
+        a.kind === "link" || a.id === "snooze" || a.id.startsWith("undo.")
+          ? []
+          : [{ id: a.id, key: a.id, label: a.label, kind: a.kind }],
+      );
+  return {
+    key: chosen.actionId,
+    label: choices.find((c) => c.key === chosen.actionId)?.label ?? chosen.label,
+    final: chosen.final === true,
+    settled: chosen.settled === true,
+    choices,
+  };
+}
+
 export function toView(message: ChatMessage, now: Date, timezone: string | null): MessageView {
   const undoUntil = message.refs.undoUntil ?? null;
   const undoOpen = undoUntil === null || new Date(undoUntil) > now;
@@ -80,7 +122,8 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     const isUndo = a.id.startsWith("undo.");
     if (message.status === "dismissed") return [];
     if (isUndo && !undoOpen) return [];
-    if (message.status === "answered" && !isUndo) return [];
+    // A chosen message keeps Revert (and Done, for its card): src/lib/jane-agent/choices.ts.
+    if (message.status === "answered" && !isUndo && !a.id.startsWith("choice.")) return [];
     return [{ id: a.id, label: a.label, kind: a.kind }];
   });
   return {
@@ -118,6 +161,7 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
       message.status === "open" && message.refs.options?.options?.length
         ? toComparison(message.refs.options)
         : null,
+    chosen: chosenOf(message),
     cardDetails: message.refs.cardDetails ?? null,
     cardWhy: message.refs.suggestionWhy ?? null,
   };
