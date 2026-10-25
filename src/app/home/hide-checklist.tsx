@@ -15,7 +15,7 @@ export function HideableChecklist({ children }: { children: React.ReactNode }) {
   return (
     <section
       aria-labelledby="checklist-heading"
-      className="flex flex-col gap-3 rounded-xl border border-emerald-200 p-4 dark:border-emerald-900"
+      className="flex flex-col gap-3 border border-zinc-300 p-4 dark:border-zinc-700"
     >
       {children}
       {failed && (
