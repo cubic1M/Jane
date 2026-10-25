@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import { hideChecklist } from "./actions";
 
 // "Hide this for good" (founder: "if you click hide this for good, it should be instant"): the
@@ -26,8 +27,12 @@ export function HideableChecklist({ children }: { children: React.ReactNode }) {
       <button
         type="button"
         onClick={() => {
-          setHidden(true);
-          setFailed(false);
+          // Gone in this frame (QA round 12: it took about half a second), before the server
+          // is even asked.
+          flushSync(() => {
+            setHidden(true);
+            setFailed(false);
+          });
           startTransition(async () => {
             try {
               await hideChecklist();

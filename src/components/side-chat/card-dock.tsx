@@ -52,7 +52,7 @@ export function CardDock() {
   if (cards.length === 0) return null;
   return (
     <FollowHeight className="shrink-0 border-b border-zinc-300 dark:border-zinc-700">
-      <div className="max-h-[75vh] overflow-y-auto overscroll-contain">
+      <div className="max-h-[50vh] overflow-y-auto overscroll-contain">
         {/* One stack for good: a reload updates it in place, never starting it over. */}
         <SuggestionCards
           messages={cards}
