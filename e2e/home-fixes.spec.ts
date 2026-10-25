@@ -39,6 +39,19 @@ test("an opened card stays put through a reload and while stepping", async ({
   await more.click();
   await expect(more).toHaveAttribute("aria-expanded", "true");
   const was = (await headline.textContent()) ?? "";
+  // Opened, it stays short (QA round 12): its buttons in view inside the dock, and the chat
+  // under it keeps its room.
+  await page.waitForTimeout(500);
+  const dockBox = (await dock.boundingBox())!;
+  const buttons = showing.locator("[data-card-actions] button");
+  expect(await buttons.count()).toBeGreaterThan(0);
+  for (const button of await buttons.all()) {
+    await expect(button).toBeVisible();
+    const b = (await button.boundingBox())!;
+    expect(b.y + b.height).toBeLessThanOrEqual(dockBox.y + dockBox.height + 1);
+  }
+  const frame = (await page.locator('iframe[title="Chat with Jane"]').boundingBox())!;
+  expect(frame.height).toBeGreaterThan(900 * 0.3);
 
   // Something new comes in ahead of it, and the dock reloads in the background.
   await addJaneMessage(userId, {
@@ -79,8 +92,17 @@ test("Home: hide the checklist at once, trees start at their branches, no greeti
   // "Hide this for good": gone on the tap, and still gone after a reload.
   const checklist = page.getByRole("region", { name: "Getting started" });
   if ((await checklist.count()) > 0) {
-    await checklist.getByRole("button", { name: "Hide this for good" }).click();
-    await expect(checklist).toHaveCount(0, { timeout: 300 });
+    // Gone in the same frame as the tap (QA round 12: it took about half a second).
+    await expect(checklist.getByRole("button", { name: "Hide this for good" })).toBeEnabled();
+    const goneAtOnce = await page.evaluate(() => {
+      const button = [...document.querySelectorAll("button")].find(
+        (b) => b.textContent?.trim() === "Hide this for good",
+      )!;
+      button.click();
+      return document.getElementById("checklist-heading") === null;
+    });
+    expect(goneAtOnce).toBe(true);
+    await expect(checklist).toHaveCount(0);
     await page.waitForTimeout(1_500);
     await page.reload();
     await expect(page.locator("[data-giant-tree]")).toBeVisible({ timeout: 60_000 });

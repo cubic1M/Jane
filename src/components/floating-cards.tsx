@@ -494,7 +494,9 @@ export function FloatingCards({
             <Expanding id={`details-${current.id}`} open={open}>
               <div
                 className={`mx-3 mt-2 flex flex-col gap-3 overflow-y-auto overscroll-contain border-t border-zinc-300 pt-3 pb-1 text-sm leading-relaxed tabular-nums dark:border-zinc-700 ${
-                  docked ? "max-h-[60vh]" : "max-h-[55vh]"
+                  // Docked, the card stays short enough that its buttons and the chat under it
+                  // keep their room (QA round 12); the details scroll inside it.
+                  docked ? "max-h-[24vh]" : "max-h-[55vh]"
                 }`}
               >
                 {current.details.about && <Prose text={current.details.about} />}
