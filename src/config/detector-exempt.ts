@@ -25,6 +25,7 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 // never suggest by themselves, and why (spec step 254). Every other tool is covered by a
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
+  what_jane_did: "reports what Jane already did, when asked; nothing to suggest",
   strategy_menu:
     "reports the practice portfolio's strategy menu and each strategy's replay when asked; which way to run it is the person's choice, so there is nothing to suggest unasked",
   notification_settings:
