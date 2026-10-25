@@ -6,6 +6,8 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { SECTORS } from "@/config/autopilot-sectors";
+import { RULE_ACT_PREFIX } from "@/config/rules";
+import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { recordAct } from "@/lib/sector-autopilot";
 import { loadTimeline } from "./timeline";
 
@@ -53,6 +55,50 @@ describe.runIf(url)("everything Jane did, against a real database", () => {
     expect(timeline[0]).toMatchObject({ cents: 6_000, sector: "goals" });
     // Nothing missing against the record Jane keeps of her own acts.
     expect(await client.autopilotAct.count({ where: { userId } })).toBe(timeline.length);
+  });
+
+  it("lists a standing rule's yes once, as the rule's decision", async () => {
+    // Gap audit: the rule's decision and the area's act for it were both listed.
+    const userId = await person("timeline-rule");
+    const finding = await client.finding.create({
+      data: {
+        userId,
+        type: "bank_fees",
+        key: `fees-${crypto.randomUUID()}`,
+        title: "$270.00 in fees on Demo Checking",
+        annualSavingsCents: 27_000,
+        confidence: "high",
+        evidence: {},
+      },
+    });
+    await client.decision.create({
+      data: {
+        userId,
+        findingId: finding.id,
+        choice: "yes",
+        source: "rule",
+        ruleKey: "recover_bank_fees",
+        cardSnapshot: { title: finding.title },
+      },
+    });
+    await recordAct(userId, "bills", 0, `${RULE_ACT_PREFIX}${finding.title}`, { client });
+    const timeline = await loadTimeline(userId, { client });
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]).toMatchObject({
+      what: finding.title,
+      why: "A standing rule you set said yes to this.",
+    });
+    // The chat gets the same list (gap audit: Claude had no tool for it).
+    const tool = JSON.parse(
+      (await runChatTool(userId, "what_jane_did", {}, { client, now: new Date() })).content,
+    );
+    expect(tool.entries).toEqual([
+      expect.objectContaining({
+        what: finding.title,
+        by: "Jane, by herself",
+        why: "A standing rule you set said yes to this.",
+      }),
+    ]);
   });
 
   it("includes what the person tapped, with undo while it's pending", async () => {

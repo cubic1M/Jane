@@ -291,6 +291,26 @@ export function SideChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView]);
 
+  // The phone's keyboard: the sheet rides above it (src/app/globals.css, --keyboard-inset), so
+  // the message box is never under it.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (wide || !vv) return;
+    const root = document.documentElement;
+    const place = () => {
+      const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty("--keyboard-inset", `${inset}px`);
+    };
+    place();
+    vv.addEventListener("resize", place);
+    vv.addEventListener("scroll", place);
+    return () => {
+      vv.removeEventListener("resize", place);
+      vv.removeEventListener("scroll", place);
+      root.style.removeProperty("--keyboard-inset");
+    };
+  }, [wide]);
+
   // Escape docks the full panel, or closes the sheet.
   useEffect(() => {
     if (!shows) return;

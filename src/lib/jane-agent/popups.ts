@@ -133,9 +133,11 @@ export function popupCard(m: MessageView): PopupCard {
       notes: m.advice ? ["Demo advice: sample data, not financial advice"] : undefined,
     },
     yesLabel: main.label,
-    notNowLabel: snooze?.label ?? "Not now",
+    // Its own snooze is Not now, unless it is the only button (then Yes, and Not now just
+    // puts the card away here): never the same button twice.
+    notNowLabel: snooze && snooze !== main ? snooze.label : "Not now",
     yesAction: main.id,
-    notNowAction: snooze?.id ?? null,
+    notNowAction: snooze && snooze !== main ? snooze.id : null,
     choices: rest.filter((b) => b !== main).map((b) => ({ id: b.id, label: b.label })),
     noNever: true,
   };

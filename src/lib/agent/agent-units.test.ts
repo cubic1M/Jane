@@ -29,6 +29,10 @@ describe("agent mail", () => {
     expect(mailMode()).toBe("simulated");
     vi.stubEnv("NODE_ENV", "production");
     expect(mailMode()).toBe("off");
+    // A production build asked to simulate (the end-to-end tests).
+    vi.stubEnv("SIMULATED_AGENT", "1");
+    expect(mailMode()).toBe("simulated");
+    vi.stubEnv("SIMULATED_AGENT", "");
     vi.stubEnv("RESEND_API_KEY", "key");
     vi.stubEnv("EMAIL_FROM", "Jane <agent@jane.app>");
     vi.stubEnv("AGENT_INBOUND_DOMAIN", "reply.jane.app");

@@ -109,18 +109,61 @@ jobs:
           echo "static: ${{ needs.static.result }}, unit: ${{ needs.unit.result }}"
           test "${{ needs.static.result }}" = success && test "${{ needs.unit.result }}" = success
 
-  e2e:
-    name: End-to-end tests (${{ matrix.shard }}/2)
-    # About 35 minutes in one job, so it runs in two shards. More shards finish sooner alone but
-    # each one compiles the pages again, and with many PRs at once the extra runner time queues
-    # everything behind GitHub's concurrent-job limit. It runs on main after each merge
-    # and on PRs labelled "e2e", not on every PR push, so the other checks get runners sooner.
+  # The end-to-end tests run against a production build, made once here and handed to both
+  # shards: `next start` serves every page at once, where `next dev` compiled each page on its
+  # first visit, which made the shards slow and their timings flaky.
+  e2e-build:
+    name: End-to-end build
     if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/cache@v4
+        id: modules
+        with:
+          path: node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - name: Generate the Prisma client
+        run: npx prisma generate
+      # The build's own cache: an unchanged page isn't built again.
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-build-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.ts', 'prisma/schema.prisma') }}
+          restore-keys: next-build-${{ hashFiles('package-lock.json') }}-
+      # The landing page is built ahead, so what it shows (Try Jane) is decided here; the same
+      # switches are on when the server runs (playwright.config.ts).
+      - run: npm run build
+        env:
+          TRY_JANE: "1"
+          DEMO_BANK: "1"
+          DEMO_ADVICE: "1"
+          SIMULATED_AGENT: "1"
+      - name: Pack the build (without its cache)
+        run: tar --exclude=.next/cache -cf next-build.tar .next
+      - uses: actions/upload-artifact@v4
+        with:
+          name: e2e-build
+          path: next-build.tar
+          retention-days: 1
+
+  e2e:
+    name: End-to-end tests (${{ matrix.shard }}/3)
+    # Three shards, each serving the one build (about 8 minutes each; with no page to compile, a
+    # shard costs only its minute of setup). It runs on main after each merge and on PRs
+    # labelled "e2e", not on every PR push, so the other checks get runners sooner.
+    needs: [e2e-build]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     services:
       postgres:
         image: postgres:16
@@ -136,33 +179,58 @@ jobs:
           --health-retries 10
     env:
       E2E_DATABASE_URL: postgresql://postgres@localhost:5432/e2e
+      # playwright.config.ts: `next start` on the build, with what the tests need turned on.
+      E2E_PROD: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - uses: actions/cache@v4
+        id: modules
+        with:
+          path: node_modules
+          key: modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - name: Generate the Prisma client
+        run: npx prisma generate
+      - uses: actions/download-artifact@v4
+        with:
+          name: e2e-build
+      - name: Unpack the build
+        run: tar -xf next-build.tar
       - run: npx playwright install --with-deps chromium
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
-      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
+      # A flaky failure can't be read from the log alone: keep its error context and the retry's
+      # trace (npx playwright show-trace) for a week.
+      - name: Keep the failed tests' traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 7
 
-  # The one end-to-end result the branch ruleset requires: it passes when every shard passed, or
-  # when the end-to-end tests didn't run (a PR without the "e2e" label), so auto-merge waits
-  # for the shards of a labelled PR by itself.
+  # The one end-to-end result the branch ruleset requires: it passes when the build and every
+  # shard passed, or when the end-to-end tests didn't run (a PR without the "e2e" label), so
+  # auto-merge waits for the shards of a labelled PR by itself.
   e2e-result:
     name: End-to-end tests
     runs-on: ubuntu-latest
-    needs: [e2e]
+    needs: [e2e-build, e2e]
     if: always()
     steps:
-      - name: Fail if any shard failed or was cancelled
+      - name: Fail if the build or any shard failed or was cancelled
         run: |
-          echo "e2e: ${{ needs.e2e.result }}"
-          test "${{ needs.e2e.result }}" = success || test "${{ needs.e2e.result }}" = skipped
+          echo "build: ${{ needs.e2e-build.result }}, e2e: ${{ needs.e2e.result }}"
+          ok() { test "$1" = success || test "$1" = skipped; }
+          ok "${{ needs.e2e-build.result }}" && ok "${{ needs.e2e.result }}"
 
   dependency-audit:
     name: Dependency audit
