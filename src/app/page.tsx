@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { GetStartedButton } from "@/components/get-started-button";
-import { AsciiDiamond, DiamondBackground } from "@/components/ascii-diamond";
+import { PillarStory } from "@/components/pillar-story";
 import { TryButton } from "@/components/try-button";
 import { ViewTracker } from "@/components/view-tracker";
 import { trialEnabled } from "@/lib/trial";
 import { displayFont } from "./fonts";
-import "./landing.css";
 
 const POINTS = [
   {
@@ -22,8 +21,7 @@ const POINTS = [
   },
 ];
 
-// The kind of thing Jane does, shown as a short log under the headline. Examples of the
-// product, not results or promises.
+// The kind of thing Jane does, one beat each. Examples of the product, not results or promises.
 const MOMENTS = [
   {
     label: "Refund back",
@@ -46,81 +44,107 @@ const MOMENTS = [
 // long that may take.
 export const maxDuration = 60;
 
+// One beat of the story: about a screen tall, its words on a scrim so they read over the pillar on
+// a phone (on a computer the pillar is beside them).
+function Beat({ children, last = false }: { children: React.ReactNode; last?: boolean }) {
+  return (
+    <section className={`flex items-center py-10 ${last ? "min-h-dvh" : "min-h-[90dvh]"}`}>
+      <div className="flex w-full max-w-xl flex-col gap-5 bg-[var(--background)]/85 p-4 backdrop-blur-[1px] sm:p-6 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+const EYEBROW = "w-fit text-sm text-zinc-600 dark:text-zinc-400";
+
+// The landing page (founder, 2026-10-25): the story in eight beats beside an ASCII Roman column
+// that rebuilds itself as it scrolls (src/components/pillar-story.tsx), broken at the top and
+// whole beside "Try it with sample data" at the bottom.
 export default function Home() {
   return (
-    <main
-      className={`${displayFont.variable} landing relative isolate flex w-full flex-1 flex-col overflow-hidden`}
-    >
+    <main className={`${displayFont.variable} relative flex w-full flex-1 flex-col`}>
       <ViewTracker event="landing_viewed" />
-      {/* The whole page: the art's dotted diamonds (founder, 2026-10-24). */}
-      <DiamondBackground />
-
-      <section className="mx-auto grid min-h-[85vh] w-full max-w-6xl grid-cols-1 items-center gap-10 px-6 py-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:py-20">
-        {/* The words sit on a panel of the page's own colour, so the dots never cross them. */}
-        <div className="-mx-4 flex flex-col gap-7 bg-[var(--landing-bg)]/90 px-4 py-6 sm:-mx-6 sm:px-6">
-          <p className="w-fit text-sm text-[var(--landing-dot)]">
+      <PillarStory>
+        <Beat>
+          <p className={EYEBROW}>
             <span aria-hidden="true">[ </span>your money, looked after
             <span aria-hidden="true"> ]</span>
           </p>
-          <h1 className="font-display max-w-2xl text-5xl leading-[1.04] font-semibold tracking-tight text-balance text-[var(--landing-hi)] sm:text-7xl">
+          <h1 className="font-display max-w-2xl text-5xl leading-[1.04] font-semibold tracking-tight text-balance sm:text-7xl">
             See how much money you&apos;re losing
             <span aria-hidden="true" className="ascii-cursor font-mono">
               _
             </span>
           </h1>
-          <p className="max-w-xl text-lg text-[var(--landing-mid)]">
+          <p className="max-w-xl text-lg text-zinc-700 dark:text-zinc-300">
             We find the subscriptions, fees, idle cash and interest quietly costing you, and help
             you fix them.
           </p>
           <div className="flex flex-wrap items-center gap-6">
-            <GetStartedButton tone="landing" />
-            {trialEnabled() && <TryButton />}
+            <GetStartedButton />
             <Link
               href="/login"
-              className="font-medium text-[var(--landing-hi)] underline underline-offset-2 hover:no-underline"
+              className="font-medium underline underline-offset-2 hover:no-underline"
             >
               Sign in
             </Link>
           </div>
-          <ul
-            aria-label="Examples of what Jane does"
-            className="flex max-w-md flex-col gap-1 text-sm text-[var(--landing-mid)]"
-          >
-            {MOMENTS.map((moment) => (
-              <li key={moment.label} className="flex items-baseline gap-2">
-                <span aria-hidden="true">&gt;</span>
-                <span className="shrink-0">{moment.label.toLowerCase()}</span>
-                <span
-                  aria-hidden="true"
-                  className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-[var(--landing-dot)]"
-                >
-                  ................................................
-                </span>
-                <span className="shrink-0 font-semibold text-[var(--landing-hi)] tabular-nums">
-                  {moment.amount}
-                </span>
-                <span className="sr-only">: {moment.detail}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        {/* The picture as ASCII diamonds: beside the words on a wide screen, under them on a phone. */}
-        <AsciiDiamond className="mx-auto max-w-[640px]" />
-      </section>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400" aria-hidden="true">
+            Scroll ↓
+          </p>
+        </Beat>
 
-      <section className="mx-auto w-full max-w-6xl px-6 pb-20">
-        <ul className="grid gap-6 sm:grid-cols-3">
-          {POINTS.map((point) => (
-            <li
-              key={point.title}
-              className="flex flex-col gap-1 border border-[var(--landing-dot)]/50 bg-[var(--landing-bg)] p-5"
+        {MOMENTS.map((moment) => (
+          <Beat key={moment.label}>
+            <p className={EYEBROW}>
+              <span aria-hidden="true">[ </span>an example of what Jane does
+              <span aria-hidden="true"> ]</span>
+            </p>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{moment.label}</h2>
+            <p className="text-lg text-zinc-700 dark:text-zinc-300">
+              <span aria-hidden="true">&gt; </span>
+              {moment.detail}
+            </p>
+            <p className="flex items-baseline gap-2 text-lg">
+              <span className="text-zinc-600 dark:text-zinc-400">worth</span>
+              <span
+                aria-hidden="true"
+                className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-zinc-500"
+              >
+                ................................................
+              </span>
+              <span className="shrink-0 font-semibold tabular-nums">{moment.amount}</span>
+            </p>
+          </Beat>
+        ))}
+
+        {POINTS.map((point) => (
+          <Beat key={point.title}>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{point.title}</h2>
+            <p className="text-lg text-zinc-700 dark:text-zinc-300">{point.body}</p>
+          </Beat>
+        ))}
+
+        <Beat last>
+          <h2 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+            See it whole
+          </h2>
+          <p className="text-lg text-zinc-700 dark:text-zinc-300">
+            Try Jane with a sample person&apos;s money, or link your own.
+          </p>
+          {trialEnabled() && <TryButton />}
+          <div className="flex flex-wrap items-center gap-6">
+            <GetStartedButton />
+            <Link
+              href="/login"
+              className="font-medium underline underline-offset-2 hover:no-underline"
             >
-              <h2 className="font-semibold text-[var(--landing-hi)]">{point.title}</h2>
-              <p className="text-sm text-[var(--landing-mid)]">{point.body}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+              Sign in
+            </Link>
+          </div>
+        </Beat>
+      </PillarStory>
     </main>
   );
 }

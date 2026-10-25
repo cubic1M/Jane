@@ -7,8 +7,7 @@ import { PEOPLE } from "@/config/people";
 import { tryJane, type TryState } from "@/app/try/actions";
 
 // "Try it with sample data" on the landing page (spec step 138): a sample person with fake
-// data, deleted after a day. Agreeing to the Terms first, as at sign-up. In the landing page's own
-// colours (src/app/landing.css), the one page exempt from black and white.
+// data, deleted after a day. Agreeing to the Terms first, as at sign-up.
 export function TryButton() {
   const [state, action, pending] = useActionState<TryState, FormData>(tryJane, null);
   const router = useRouter();
@@ -26,37 +25,26 @@ export function TryButton() {
     // At most the screen's width: the people's long descriptions in the picker would otherwise
     // widen it past a phone's edge, button and all (phone walk, 375 px).
     <form action={action} className="flex w-full max-w-md min-w-0 flex-col gap-2">
-      <label className="flex items-start gap-2 text-sm text-[var(--landing-mid)]">
-        <input
-          type="checkbox"
-          name="consent"
-          required
-          className="mt-0.5 h-5 w-5 accent-[var(--landing-hi)]"
-        />
+      <label className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <input type="checkbox" name="consent" required className="mt-0.5 h-5 w-5" />
         <span>
           I agree to the{" "}
-          <Link
-            href="/terms"
-            className="font-medium text-[var(--landing-hi)] underline underline-offset-2 hover:no-underline"
-          >
+          <Link href="/terms" className="font-medium text-emerald-700 hover:underline">
             Terms
           </Link>{" "}
           and{" "}
-          <Link
-            href="/privacy"
-            className="font-medium text-[var(--landing-hi)] underline underline-offset-2 hover:no-underline"
-          >
+          <Link href="/privacy" className="font-medium text-emerald-700 hover:underline">
             Privacy Policy
           </Link>
           .
         </span>
       </label>
-      <label className="flex flex-col gap-1 text-sm text-[var(--landing-mid)]">
+      <label className="flex flex-col gap-1 text-sm text-zinc-600 dark:text-zinc-400">
         Whose money to try
         <select
           name="person"
           defaultValue="any"
-          className="h-11 w-full min-w-0 border border-[var(--landing-dot)] bg-[var(--landing-bg)] px-3 text-base text-[var(--landing-hi)]"
+          className="h-11 w-full min-w-0 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
         >
           <option value="any">Surprise me</option>
           {PEOPLE.map((p) => (
@@ -69,12 +57,12 @@ export function TryButton() {
       <button
         type="submit"
         disabled={pending || next !== null}
-        className="inline-flex h-12 items-center justify-center border border-[var(--landing-hi)] px-6 text-base font-semibold text-[var(--landing-hi)] transition-colors hover:bg-[var(--landing-hi)] hover:text-[var(--landing-bg)] disabled:opacity-60"
+        className="inline-flex h-12 items-center justify-center rounded-full border border-emerald-700 px-6 text-base font-semibold text-emerald-800 transition-colors hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-950"
       >
         {pending || next !== null ? "Setting up a sample person…" : "Try it with sample data"}
       </button>
       {state && "error" in state && (
-        <p role="alert" className="text-sm text-[var(--landing-hi)]">
+        <p role="alert" className="text-sm text-red-700">
           {state.error}
         </p>
       )}

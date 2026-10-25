@@ -972,6 +972,16 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
     transform: translateY(4px);
   }
 }
+/* The landing page's pillar is fixed to the screen, and a transform on the page around it would
+   carry it off while the page comes in: there the page only fades in. */
+.page-in:has(.pillar-art) {
+  animation-name: page-in-fade;
+}
+@keyframes page-in-fade {
+  from {
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .page-in {
     animation: none;
@@ -1247,18 +1257,14 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
   }
 }
 
-/* The landing page (src/app/page.tsx) is the one page in colour: its own palette, sampled from
-   its art (src/app/landing.css, generated), in light and dark mode alike, footer included. */
-.landing {
-  --background: var(--landing-bg);
-  --foreground: var(--landing-mid);
-  background: var(--landing-bg);
-  color: var(--landing-mid);
+/* The landing page's pillar (src/components/pillar-story.tsx): ASCII art as tall as most of the
+   screen, never wider than its column (a phone's whole width, half a computer's). */
+.pillar-art {
+  font-size: min(calc(88dvh / var(--pillar-rows)), calc(94vw / var(--pillar-cols)));
+  line-height: 1;
 }
-body:has(.landing) {
-  background: var(--landing-bg);
-  color: var(--landing-mid);
-}
-body:has(.landing) footer {
-  color: var(--landing-dot);
+@media (min-width: 1024px) {
+  .pillar-art {
+    font-size: min(calc(88dvh / var(--pillar-rows)), calc(44vw / var(--pillar-cols)));
+  }
 }
