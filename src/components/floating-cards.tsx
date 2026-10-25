@@ -37,12 +37,14 @@ const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `
 const SWIPE_PX = 50;
 const LEAVE_MS = MOTION.slowMs;
 const SPRING = MOTION.spring;
-const BUTTON = "inline-flex min-h-11 items-center justify-center px-4 text-sm font-semibold";
+const BUTTON = "inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold";
 const PRIMARY = `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800`;
 const SECONDARY = `${BUTTON} border border-zinc-400 bg-white hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:hover:bg-zinc-900`;
 
-const ARROW =
-  "inline-flex size-11 items-center justify-center text-lg font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50";
+// The card's buttons never run past it: a label longer than the card wraps inside its button.
+const COMPACT = "max-w-full text-left";
+const STEP =
+  "inline-flex min-h-11 items-center px-1 text-xs font-semibold text-zinc-700 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-50";
 
 export type CardAnswer = "yes" | "not_now" | "never";
 
@@ -60,6 +62,53 @@ const usePhone = () =>
     () => window.matchMedia(PHONE).matches,
     () => false,
   );
+
+// The dock's header line (founder read the old arrows beside the choices as "more choices"):
+// "JANE · 2 of 5 suggestions", and the steps between them, apart from any card's buttons. The
+// arrow keys step only while it has focus.
+function DockHeader({
+  position,
+  total,
+  onStep,
+}: {
+  position: number;
+  total: number;
+  onStep: (by: 1 | -1) => void;
+}) {
+  return (
+    <div
+      data-dock-header=""
+      role="group"
+      aria-label="Jane's suggestions"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowRight") onStep(1);
+        else if (e.key === "ArrowLeft") onStep(-1);
+        else return;
+        e.preventDefault();
+      }}
+      className="mb-2 flex min-h-11 items-center gap-2 text-xs font-semibold tracking-wider"
+    >
+      <p>
+        JANE · {position} of {total} {total === 1 ? "suggestion" : "suggestions"}
+      </p>
+      {total > 1 && (
+        // Named by their words (accessibility: the name holds what's shown).
+        <span className="ml-auto flex gap-1">
+          <button type="button" onClick={() => onStep(-1)} className={STEP}>
+            <span aria-hidden="true">[‹&nbsp;</span>previous
+            <span className="sr-only"> suggestion</span>
+            <span aria-hidden="true">]</span>
+          </button>
+          <button type="button" onClick={() => onStep(1)} className={STEP}>
+            <span aria-hidden="true">[</span>next<span className="sr-only"> suggestion</span>
+            <span aria-hidden="true">&nbsp;›]</span>
+          </button>
+        </span>
+      )}
+    </div>
+  );
+}
 
 // Details as paragraphs with room between them, lists as lists (src/lib/floating-cards.ts).
 function Prose({ text, lead }: { text: string; lead?: string }) {
@@ -167,6 +216,8 @@ export function FloatingCards({
   // Cards that just left, kept for the length of their exit slide, and which way they went.
   const [leaving, setLeaving] = useState<(FloatingCardData & { way: "yes" | "no" })[]>([]);
   const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
+  // Which way the last step went, for the next card's slide (none when one is answered).
+  const [slide, setSlide] = useState<"next" | "prev" | null>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const phone = usePhone();
   const [unfolded, setUnfolded] = useState(false);
@@ -187,6 +238,7 @@ export function FloatingCards({
     ]);
     setState((s) => answer(cards, s, mode, card.id));
     setDetailsOpen(null);
+    setSlide(null);
     onAnswer(card.id, how, choice);
     window.setTimeout(
       () => setLeaving((now) => now.filter((n) => !departing.some((d) => d.id === n.id))),
@@ -194,16 +246,47 @@ export function FloatingCards({
     );
   }
 
-  // Arrow keys move between cards unless someone is typing; Escape puts the card off.
+  // How tall the floating stack is, so the page scrolls things into view above it (the chat's
+  // message box adds it to its scroll padding).
+  const section = useRef<HTMLElement>(null);
+  const floating = !docked && !folded && current !== null;
   useEffect(() => {
-    // Docked, the arrows are buttons: the keys stay with the page.
+    const el = section.current;
+    const root = document.documentElement;
+    if (!floating || !el || typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(() =>
+      // Hidden (the dock has the cards), it is 0 tall.
+      root.style.setProperty("--floating-cards-h", `${Math.round(el.offsetHeight)}px`),
+    );
+    watch.observe(el);
+    return () => {
+      watch.disconnect();
+      root.style.removeProperty("--floating-cards-h");
+    };
+  }, [floating]);
+
+  // To the next or previous card: it slides in from that side, and opens as this one was
+  // (founder: switching never "collapses" the card), the height following it.
+  function step(by: 1 | -1) {
+    const next = move(cards, state, by);
+    const to = currentCard(cards, next);
+    setState(next);
+    setSlide(by > 0 ? "next" : "prev");
+    if (open && to) setDetailsOpen(to.id);
+  }
+
+  // Arrow keys move between cards unless someone is typing or is on one of the card's own
+  // buttons; Escape puts the card off.
+  useEffect(() => {
+    // Docked, the dock's header line has the arrows (its keys work only there).
     if (!current || folded || docked) return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
       if (target?.isContentEditable) return;
-      if (event.key === "ArrowRight") setState((s) => move(cards, s, 1));
-      else if (event.key === "ArrowLeft") setState((s) => move(cards, s, -1));
+      if (target?.closest?.("[data-card-actions]")) return;
+      if (event.key === "ArrowRight") step(1);
+      else if (event.key === "ArrowLeft") step(-1);
       else if (event.key === "Escape") respond(current, "not_now");
     };
     window.addEventListener("keydown", onKey);
@@ -246,6 +329,7 @@ export function FloatingCards({
     <section
       aria-label={label}
       data-floating-cards={mode}
+      ref={section}
       data-card-dock={docked ? "" : undefined}
       className={
         docked
@@ -263,13 +347,23 @@ export function FloatingCards({
         const t = e.changedTouches[0];
         const dx = t.clientX - start.x;
         if (Math.abs(dx) >= SWIPE_PX && Math.abs(dx) > Math.abs(t.clientY - start.y) * 1.5) {
-          setState((s) => move(cards, s, dx < 0 ? 1 : -1));
+          step(dx < 0 ? 1 : -1);
         }
       }}
     >
+      {docked && current && (
+        <DockHeader
+          position={Math.max(1, left.findIndex((c) => c.id === current.id) + 1)}
+          total={left.length}
+          onStep={step}
+        />
+      )}
       <div
         className={`relative w-full ${
-          docked ? "" : `floating-card-width ${open ? "max-w-2xl" : "max-w-md"}`
+          docked
+            ? ""
+            : // Wider opened, or with choices, so more of its buttons fit on one line.
+              `floating-card-width ${open || (current?.choices?.length ?? 0) > 0 ? "max-w-2xl" : "max-w-md"}`
         }`}
       >
         {/* The cards waiting behind, as edges under this one. */}
@@ -300,7 +394,7 @@ export function FloatingCards({
             key={current.id}
             aria-label={current.headline}
             data-card-state="showing"
-            className={`floating-card-in pointer-events-auto relative flex flex-col border border-l-4 shadow-lg ${accent}`}
+            className={`${slide ? `floating-card-slide-${slide}` : "floating-card-in"} pointer-events-auto relative flex flex-col border border-l-4 shadow-lg ${accent}`}
           >
             <div className="flex items-start gap-2 pt-3 pl-3">
               <span
@@ -411,17 +505,15 @@ export function FloatingCards({
                 )}
               </div>
             </Expanding>
-            <div className="flex items-center gap-2 p-3">
-              {/* One row, every label whole (founder: "lined up horizontally in one line instead
-                  of stacked"): too many to fit, it scrolls sideways under a fading edge. */}
-              <div
-                data-card-actions=""
-                className="card-actions flex min-w-0 flex-1 gap-2 overflow-x-auto overscroll-x-contain"
-              >
+            <div className="flex flex-wrap items-center gap-2 p-3">
+              {/* Every choice always in view, labels whole (founder: "not all the choices are
+                  shown"): one line when they fit (compact buttons), wrapping onto another
+                  rather than ever being cut off or scrolled out of sight. */}
+              <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => respond(current, "yes")}
-                  className={`${PRIMARY} shrink-0 whitespace-nowrap`}
+                  className={`${PRIMARY} ${COMPACT}`}
                 >
                   {current.yesLabel}
                 </button>
@@ -430,7 +522,7 @@ export function FloatingCards({
                     key={c.id}
                     type="button"
                     onClick={() => respond(current, "yes", c.id)}
-                    className={`${SECONDARY} shrink-0 whitespace-nowrap`}
+                    className={`${SECONDARY} ${COMPACT}`}
                   >
                     {c.label}
                   </button>
@@ -438,7 +530,7 @@ export function FloatingCards({
                 <button
                   type="button"
                   onClick={() => respond(current, "not_now")}
-                  className={`${SECONDARY} shrink-0 whitespace-nowrap`}
+                  className={`${SECONDARY} ${COMPACT}`}
                 >
                   {current.notNowLabel ?? "Not now"}
                 </button>
@@ -453,32 +545,12 @@ export function FloatingCards({
               >
                 {counter(cards, state, mode)}
               </p>
-              {mode === "queue" && behind > 0 && (
+              {mode === "queue" && !docked && behind > 0 && (
                 <span
                   aria-hidden="true"
-                  className="ml-auto text-xs font-semibold text-zinc-600 tabular-nums dark:text-zinc-400"
+                  className="ml-auto pl-1 text-xs font-semibold text-zinc-600 tabular-nums dark:text-zinc-400"
                 >
                   +{behind}
-                </span>
-              )}
-              {docked && mode === "queue" && left.length > 1 && (
-                <span className="flex">
-                  <button
-                    type="button"
-                    aria-label="Previous card"
-                    onClick={() => setState((s) => move(cards, s, -1))}
-                    className={ARROW}
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Next card"
-                    onClick={() => setState((s) => move(cards, s, 1))}
-                    className={ARROW}
-                  >
-                    ›
-                  </button>
                 </span>
               )}
             </div>

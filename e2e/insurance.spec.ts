@@ -120,7 +120,10 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await page.goto("/insurance/checkup");
   await expect(page.getByRole("heading", { name: "Coverage checkup", level: 1 })).toBeVisible();
   await expect(page.getByText(/Raise the injury cover on your GEICO car insurance/)).toBeVisible();
-  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  // The page's own label (a pop-up card may carry the same words).
+  await expect(page.locator("[data-demo-advice]").first()).toHaveText(
+    "Demo advice: sample data, not financial advice",
+  );
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

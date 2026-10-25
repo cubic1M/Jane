@@ -311,6 +311,22 @@ export async function linkDemoBank(
       })),
     });
   }
+  // Spec step 129: a sample person comes with their investor profile, as if they had answered
+  // the four questions, so the investing answers have their age, horizon and risk to work from.
+  const investor = person ? personById(person)?.investor : undefined;
+  if (investor && (await db.investorProfiles.count()) === 0) {
+    await db.investorProfiles.create({
+      data: {
+        userId,
+        age: investor.age,
+        ageOn: new Date(`${today(now)}T00:00:00Z`),
+        horizon: investor.horizon,
+        dropReaction: investor.dropReaction,
+        goals: [...investor.goals],
+        answeredAt: now,
+      },
+    });
+  }
   // Spec step 139: a sample person comes with what Jane already did for them, so "What Jane
   // saved you" has their own confirmed wins (src/lib/sample-wins.ts). Never a real account.
   if (person) {

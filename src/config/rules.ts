@@ -64,3 +64,7 @@ export const NEVER_BY_RULE: readonly ActionType[] = [
   "cancel_subscription",
   "review_cash_flow",
 ];
+
+// What a rule's yes is logged as in the area's acts (for the monthly count). The timeline shows
+// the rule's own decision instead, so the two aren't listed twice.
+export const RULE_ACT_PREFIX = "Said yes under a rule: ";

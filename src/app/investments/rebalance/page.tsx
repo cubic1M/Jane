@@ -89,6 +89,11 @@ async function RebalanceContent({
           </Link>
           .
         </p>
+      ) : plan.before.every((m) => m.share === 0) ? (
+        <p className="text-sm">
+          You don&apos;t have any investments to rebalance yet. Once money is in an investment or
+          retirement account, Jane keeps it at your mix.
+        </p>
       ) : plan.orders.length === 0 ? (
         <p className="text-sm">Your mix is on target: nothing to trade.</p>
       ) : (

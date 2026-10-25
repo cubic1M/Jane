@@ -179,6 +179,18 @@ export function SideChat() {
         }
         return;
       }
+      // Where the message box is once a question waits in it, for the home hub's dotted line.
+      if (event.data.type === "jane:box") {
+        const r = frame.current?.getBoundingClientRect();
+        if (r) {
+          window.dispatchEvent(
+            new CustomEvent("jane:box", {
+              detail: { x: r.left + event.data.x, y: r.top + event.data.y },
+            }),
+          );
+        }
+        return;
+      }
       if (event.data.type === "jane:answering" || event.data.type === "jane:answered") {
         window.dispatchEvent(new Event(event.data.type));
         return;
@@ -278,6 +290,26 @@ export function SideChat() {
     sideChatStore.setUnread(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView]);
+
+  // The phone's keyboard: the sheet rides above it (src/app/globals.css, --keyboard-inset), so
+  // the message box is never under it.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (wide || !vv) return;
+    const root = document.documentElement;
+    const place = () => {
+      const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty("--keyboard-inset", `${inset}px`);
+    };
+    place();
+    vv.addEventListener("resize", place);
+    vv.addEventListener("scroll", place);
+    return () => {
+      vv.removeEventListener("resize", place);
+      vv.removeEventListener("scroll", place);
+      root.style.removeProperty("--keyboard-inset");
+    };
+  }, [wide]);
 
   // Escape docks the full panel, or closes the sheet.
   useEffect(() => {

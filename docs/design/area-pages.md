@@ -205,10 +205,12 @@ is the answer (`ANSWER_WINDOW_MS`); anything else she posts meanwhile floats.
 **The card:**
 - **Headline:** eight words at most for the detectors (`HEADLINE_MAX_WORDS`, starting with a
   verb), with one number; anything else shows its first sentence whole, never cut with "…".
-- **Buttons:** one row (founder: "show the whole option lined up horizontally in one line
-  instead of stacked on each other"): the main action, the message's other choices, and Not now
-  (its own `snooze` when it has one), every label whole. Too many to fit, the row scrolls
-  sideways under a fading edge (`.card-actions`). An X puts it off too.
+- **Buttons:** every choice always in view, labels whole (founder: "not all the choices are
+  shown"): the main action, the message's other choices, and Not now (its own `snooze` when it
+  has one). One line when they fit (compact buttons; a floating card with choices is wider);
+  otherwise they wrap onto more lines with the same spacing, never scrolled or cut out of sight
+  (`e2e/card-choices.spec.ts` checks 1440, 1024, 768 and 375 px, shut and opened). An X puts it
+  off too.
 - **More details:** expands in place with a height animation, and the card grows: wider when it
   floats (`max-w-2xl`), taller up to about 70% of the screen, scrolling inside itself (the
   scroll stays in the card). It shrinks back when shut. Inside, real paragraphs (founder: "each
@@ -226,8 +228,12 @@ them right above the chat on the right (but not in the chat), also slightly bigg
 info isn't all gone"):
 - **On a computer:** in the dock directly above the side chat, in the right column
   (`src/components/side-chat/card-dock.tsx`, loading `/api/chat/cards`), on every page. One card
-  at a time, a little bigger, with "+N" and ‹ › arrows. The page's own floating stack and the
-  chat in the panel leave them out. With the chat folded to its rail, the page's stack shows.
+  at a time, a little bigger. Its header line says where you are and steps between them, apart
+  from any card's buttons (founder read arrows beside the choices as "more choices"): "JANE · 2
+  of 5 suggestions [‹ previous] [next ›]". The arrow keys step only while the header has focus,
+  never on a card's button. Stepping slides the next card in from that side, opened if this one
+  was, and the dock's height follows smoothly. The page's own floating stack and the chat in
+  the panel leave them out. With the chat folded to its rail, the page's stack shows.
 - **On a phone:** in the chat's sheet, over its message box; and on Home, folded into one line at
   the very bottom, "[JANE] 3 for you ▲", left of the Jane button, so the net worth is the first
   thing seen (QA round 6); a tap opens the card (`foldOnPhone`).
@@ -253,6 +259,16 @@ the content will be (`LoadingBar` in `src/components/loading-bar.tsx`, every Sus
 A tapped link shows it under the top bar (`#page-loading`, `src/components/nav-pending.tsx`),
 and the first scan's bar sits there too (`src/components/scan-bar.tsx`). None is fixed over the
 page, the card dock or the chat.
+
+## The chat's message box
+
+At the very bottom of the chat, always (founder: "the place to type is fixed at the bottom right,
+and not leaving a blank space down below"): the side panel is fixed full height under the top
+bar, and inside it the message box is sticky at the bottom edge, pushed down when the chat is
+short (`data-chat-composer` in `src/app/chat/composer.tsx`). The phone's sheet has it too,
+riding above the on-screen keyboard (`--keyboard-inset` from the visual viewport). Cards
+floating over the chat sit just above it (`--chat-composer-h`), the chat keeps room for them at
+its end (`--floating-cards-h`), and anything scrolled into view stops above both.
 
 ## The chat's scroll
 

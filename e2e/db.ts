@@ -167,8 +167,9 @@ export async function addJaneMessage(
   await client.connect();
   try {
     await client.query(
-      `INSERT INTO jane_messages (id, user_id, kind, body, refs, actions, dedupe_key)
-       VALUES ($1, $2, $3, $4, $5, $6, $1)`,
+      // Stamped by this machine's clock, as the app stamps its own (the database's may lag).
+      `INSERT INTO jane_messages (id, user_id, kind, body, refs, actions, dedupe_key, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $1, $7)`,
       [
         id,
         userId,
@@ -176,6 +177,7 @@ export async function addJaneMessage(
         message.body,
         JSON.stringify(message.refs),
         JSON.stringify(message.actions),
+        new Date(),
       ],
     );
   } finally {
@@ -348,6 +350,40 @@ export async function addThemeIdea(userId: string): Promise<void> {
           caps: ["Jane asks first, every time"],
           confidence: { percent: 67, reason: "it beat the market in 5 of 7 past events" },
           trades: [{ ticker: "ITA", side: "buy", amountCents: 40000 }],
+        }),
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
+// A change the person made themselves and marked done (a do-it-yourself decision), so Home's
+// Saved tile says "Saved so far" and opens on where it came from.
+export async function addSavedChange(
+  userId: string,
+  { title, annualCents }: { title: string; annualCents: number },
+): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const finding = `e2e-finding-${userId}-${annualCents}`;
+    await client.query(
+      `INSERT INTO findings (id, user_id, type, key, title, confidence, status, updated_at)
+       VALUES ($1, $2, 'subscription_review', $3, $4, 'high', 'approved', now())`,
+      [finding, userId, `e2e:${annualCents}`, title],
+    );
+    await client.query(
+      `INSERT INTO decisions (id, finding_id, user_id, choice, card_snapshot, diy_done_at)
+       VALUES ($1, $2, $3, 'diy', $4, now())`,
+      [
+        `e2e-decision-${userId}-${annualCents}`,
+        finding,
+        userId,
+        JSON.stringify({
+          title,
+          annualSavingsCents: annualCents,
+          actionType: "cancel_subscription",
         }),
       ],
     );

@@ -163,7 +163,7 @@ const OLD_ACCOUNTS =
 
 // Spec step 212: Social Security, minimum distributions and the retirement paycheck.
 const RETIREMENT_INCOME =
-  /\bsocial security\b|\brmds?\b|\brequired minimum distributions?\b|\bretirement (?:paycheck|income)\b|\bwhen (?:should|can) i (?:claim|take|start)\b.*\b(?:social security|benefits?)\b|\bhow long will my (?:money|savings|retirement) last\b|\bwhich accounts? (?:do i |should i )?(?:draw|withdraw|take) (?:from )?first\b|\bdrawdown\b/;
+  /\bsocial security\b|\brmds?\b|\brequired minimum distributions?\b|\bretirement (?:paycheck|income)\b|\bwhen (?:should|can) i (?:claim|take|start)\b.*\b(?:social security|benefits?)\b|\bhow long will my (?:money|savings|retirement) last\b|\bwhich accounts? (?:do i |should i )?(?:draw|withdraw|take) (?:from )?first\b|\bdrawdown\b|\b(?:savings|nest egg|401\(?k\)?|ira) into (?:a |an )?(?:paycheck|income)\b|\bpaycheck in retirement\b/;
 
 // Spec step 213: children's accounts and gifts to a child's college fund.
 const FAMILY =

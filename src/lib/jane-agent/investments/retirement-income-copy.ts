@@ -15,10 +15,12 @@ export const RI_LINK: MessageAction = {
 
 type View = Pick<
   RetirementIncomeView,
-  "ss" | "rmd" | "paycheck" | "spendMonthlyCents" | "retireAge" | "draw" | "balances"
+  "ss" | "rmd" | "paycheck" | "spendMonthlyCents" | "spendFrom" | "retireAge" | "draw" | "balances"
 >;
 
 export function ssLine(v: View): string | null {
+  if (v.ss.source === "deposits" && v.ss.fullMonthlyCents !== null)
+    return `Social Security: ${formatCents(v.ss.fullMonthlyCents)} a month coming in now (from the deposits in your account).`;
   const [early, full, late] = v.ss.options;
   if (!early || !full || !late) return null;
   return `Social Security: ${formatCents(early.monthlyCents)} a month if you start at 62, ${formatCents(full.monthlyCents)} at 67, ${formatCents(late.monthlyCents)} at 70 (${v.ss.source === "statement" ? "from your statement" : "an estimate from your pay"}).${v.ss.breakeven62to67 ? ` Waiting from 62 to 67 has paid more in total by about age ${v.ss.breakeven62to67}.` : ""}`;
@@ -29,7 +31,7 @@ export function paycheckLine(v: View): string | null {
   if (!p) return null;
   const low = Math.min(PLAN_TO_AGE, Math.round(p.lasts.lowAge));
   const high = Math.min(PLAN_TO_AGE, Math.round(p.lasts.highAge));
-  return `Spending ${formatCents(v.spendMonthlyCents)} a month from ${v.retireAge}, your money would last to about age ${low}${high > low ? ` to ${high}` : ""} (the plan runs to ${PLAN_TO_AGE}). The most that lasts to ${PLAN_TO_AGE} is ${formatCents(p.sustainableMonthly.lowCents)} to ${formatCents(p.sustainableMonthly.highCents)} a month before tax.`;
+  return `Spending ${formatCents(v.spendMonthlyCents)} a month${v.spendFrom === "spending" ? " (what you spend in a typical month now)" : ""} from ${v.retireAge}, your money would last to about age ${low}${high > low ? ` to ${high}` : ""} (the plan runs to ${PLAN_TO_AGE}). The most that lasts to ${PLAN_TO_AGE} is ${formatCents(p.sustainableMonthly.lowCents)} to ${formatCents(p.sustainableMonthly.highCents)} a month before tax.`;
 }
 
 export const rmdLine = (v: View) =>

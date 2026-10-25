@@ -109,6 +109,9 @@ export type FrameMessage =
   | { type: "jane:send"; text: string }
   | { type: "jane:find"; text: string }
   | { type: "jane:bubble"; x: number; y: number }
+  // Where the message box is once a question waits in it (jane:ask), for a dotted line to it
+  // (the home hub's "What are you aiming to spend?").
+  | { type: "jane:box"; x: number; y: number }
   | { type: "jane:answering" }
   | { type: "jane:answered" };
 
@@ -132,6 +135,7 @@ export function isFrameMessage(data: unknown): data is FrameMessage {
     case "jane:send":
     case "jane:find":
       return typeof m.text === "string" && m.text.length > 0 && m.text.length <= 300;
+    case "jane:box":
     case "jane:bubble":
       return Number.isFinite(m.x) && Number.isFinite(m.y);
     default:

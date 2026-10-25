@@ -5,6 +5,7 @@ import {
   RULE_UNDO_HOURS,
   STANDING_RULES,
   type RuleDefinition,
+  RULE_ACT_PREFIX,
 } from "@/config/rules";
 import type { FindingType, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -169,7 +170,7 @@ export async function applyStandingRules(
         { client },
       );
       used.set(rule.key, (used.get(rule.key) ?? 0) + 1);
-      await recordAct(userId, "bills", 0, `Said yes under a rule: ${finding.title}`, {
+      await recordAct(userId, "bills", 0, `${RULE_ACT_PREFIX}${finding.title}`, {
         client,
         now,
       });

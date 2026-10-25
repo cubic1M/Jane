@@ -20,6 +20,12 @@ const ranked = (id: PersonId, change?: (d: ProfileInput) => ProfileInput) =>
   rankSuggestions(run(id, change)).map((r) => r.suggestion);
 const tax = (id: PersonId, change?: (d: ProfileInput) => ProfileInput) =>
   run(id, change).filter((s) => s.capability === "taxes");
+// The sample people come with their investor profile (spec step 129); this is someone who
+// hasn't told Jane their age or how they'd take a fall.
+const untold = (d: ProfileInput): ProfileInput => {
+  const { age: _age, risk: _risk, ...told } = d.told;
+  return { ...d, told };
+};
 const topic = (id: PersonId, t: string, change?: (d: ProfileInput) => ProfileInput) =>
   tax(id, change).find((s) => s.topic === t)!;
 const inFebruary = (d: ProfileInput): ProfileInput => ({ ...d, today: "2027-02-10" });
@@ -109,10 +115,20 @@ describe("confidence", () => {
       ["renter", "year_end_moves", 50, /can't see what you've put in/],
     ];
     for (const [id, t, max, reason] of cases) {
-      const s = topic(id, t, t === "year_end_moves" ? inDecember : undefined);
+      const s = topic(
+        id,
+        t,
+        t === "year_end_moves" ? inDecember : t === "irmaa_watch" ? untold : undefined,
+      );
       expect(s.confidence.percent, `${id} ${t}`).toBeLessThanOrEqual(max);
       expect(s.confidence.reason, `${id} ${t}`).toMatch(reason);
     }
+  });
+
+  it("rises once the person has told Jane their age", () => {
+    expect(topic("preretire", "irmaa_watch").confidence.percent).toBeGreaterThan(
+      topic("preretire", "irmaa_watch", untold).confidence.percent,
+    );
   });
 
   it("is high only for what Jane counted: a loss she can see in a taxable account, an unpaid quarter", () => {
@@ -156,8 +172,8 @@ describe("a sensible top three, in the person's life", () => {
     expect(rank("equity", "withholding_gap")).toBeLessThan(5);
     // A Roth conversion Jane is 43% sure of waits behind everything she is sure of, and
     // leads what she isn't.
-    const preretire = ranked("preretire");
-    const roth = rank("preretire", "roth_conversion");
+    const preretire = ranked("preretire", untold);
+    const roth = rank("preretire", "roth_conversion", untold);
     expect(preretire[roth].confidence.percent).toBeLessThan(LOW_CONFIDENCE_PERCENT);
     expect(
       preretire.slice(0, roth).every((s) => s.confidence.percent >= LOW_CONFIDENCE_PERCENT),
