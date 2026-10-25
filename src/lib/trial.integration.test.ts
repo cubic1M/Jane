@@ -15,6 +15,9 @@ import { scopedFor } from "@/lib/db-scoped";
 import { sendEmail } from "@/lib/email";
 import { runRetention } from "@/lib/retention";
 import { callMode } from "@/lib/voice/provider";
+import { PEOPLE } from "@/config/people";
+import { profileOf } from "@/lib/investments/profile";
+import { riskLevelOf } from "@/planning/investor-profile";
 import { TrialError, cleanUpTrials, startTrial, trialEnabled } from "./trial";
 
 // Spec step 138 against a real, migrated Postgres: a visitor gets their own sample person
@@ -89,6 +92,31 @@ describe.runIf(url)("trying Jane with sample data", { timeout: 60_000 }, () => {
     await syncItem(started.itemId, { client, now: NOW });
     expect(await db.accounts.count()).toBeGreaterThan(0);
     expect(await db.findings.count()).toBeGreaterThan(0);
+  });
+
+  it("gives each sample person their investor profile, as if they had answered the four", async () => {
+    // Gap audit: without it every sample person's portfolio review, rebalance plan, goal
+    // buckets and retirement plan said the investor profile wasn't finished.
+    for (const person of PEOPLE) {
+      const trial = await startTrial({ client, now: NOW, defer: true, person: person.id });
+      created.push(trial.userId);
+      const profile = await profileOf(trial.userId, { client });
+      expect(profile, person.id).toMatchObject({
+        age: person.investor.age,
+        ageOn: "2026-10-18",
+        horizon: person.investor.horizon,
+        dropReaction: person.investor.dropReaction,
+        goals: [...person.investor.goals],
+        answeredAt: NOW,
+      });
+      expect(riskLevelOf(profile), person.id).not.toBeNull();
+    }
+  });
+
+  it("leaves the profile to the person on the plain demo bank", async () => {
+    // Anyone else answers the four in the chat (the investments integration test, step 129).
+    const plain = await start();
+    expect((await profileOf(plain.userId, { client })).answeredAt).toBeNull();
   });
 
   it("gives each visitor their own person, who sees only their own data", async () => {

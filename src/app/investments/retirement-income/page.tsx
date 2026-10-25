@@ -6,7 +6,9 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import {
   PLAN_TO_AGE,
   RMD_SOURCE,
+  SPEND_FROM_SPENDING_SOURCE,
   SPEND_SOURCE,
+  SS_DEPOSITS_SOURCE,
   SS_ESTIMATE_SOURCE,
   SS_SOURCE,
 } from "@/config/retirement-income";
@@ -65,8 +67,13 @@ async function Content({
           <h2 className="text-xl font-semibold">Your retirement paycheck</h2>
           <p className="text-sm">
             Spending {formatCents(v.spendMonthlyCents)} a month (
-            {v.spendFrom === "you" ? "what you told me" : SPEND_SOURCE}), retiring at {v.retireAge}:
-            the money would last to about age {Math.min(PLAN_TO_AGE, Math.round(p.lasts.lowAge))}
+            {v.spendFrom === "you"
+              ? "what you told me"
+              : v.spendFrom === "spending"
+                ? SPEND_FROM_SPENDING_SOURCE.toLowerCase()
+                : SPEND_SOURCE}
+            ), retiring at {v.retireAge}: the money would last to about age{" "}
+            {Math.min(PLAN_TO_AGE, Math.round(p.lasts.lowAge))}
             {p.lasts.highAge > p.lasts.lowAge + 0.5
               ? ` to ${Math.min(PLAN_TO_AGE, Math.round(p.lasts.highAge))}`
               : ""}{" "}
@@ -87,7 +94,11 @@ async function Content({
 
       <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Social Security</h2>
-        {v.ss.options.length === 0 ? (
+        {v.ss.source === "deposits" && v.ss.fullMonthlyCents !== null ? (
+          <p className="text-sm">
+            {formatCents(v.ss.fullMonthlyCents)} a month coming in now. {SS_DEPOSITS_SOURCE}.
+          </p>
+        ) : v.ss.options.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Enter your statement&apos;s amount below.
           </p>
