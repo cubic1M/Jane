@@ -83,9 +83,9 @@ export default function Home() {
       <ViewTracker event="landing_viewed" />
       <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* The column (founder, 2026-10-25): fixed to the screen while the story scrolls, panning
-            from its cracked capital at the top of the page down to its whole base at the bottom.
-            The right half of a wide screen; behind the words, faint, on a phone. */}
-        <div className="pillar-dock pointer-events-none fixed inset-0 -z-10 overflow-hidden lg:left-1/2">
+            from its broken capital at the top of the page down to its whole base at the bottom.
+            The right of a wide screen; behind the words, faint, on a phone. */}
+        <div className="pillar-dock pointer-events-none fixed inset-0 -z-10 overflow-hidden lg:left-[47%] lg:px-4">
           <ColumnArt />
         </div>
 

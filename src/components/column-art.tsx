@@ -1,41 +1,57 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { draw as model, HEIGHT, panOffset, toLines, weather } from "@/lib/column-art";
+import { panOffset, toLines } from "@/lib/column-art";
 
-// The landing page's column (founder, 2026-10-25), built from scratch (src/lib/column-art.ts):
-// an Ionic column in very fine ASCII, its shaft about half the screen wide, ruined at the top and
-// mended more and more down to a perfect base. It's several screens tall; as the page scrolls
-// it pans from the cracked capital at the top down to the base at the bottom.
+// The landing page's column (founder, 2026-10-25): the founder's drawing of a weathered column,
+// its capital broken and its shaft cracked, mending down to a perfect base
+// (public/landing/column.png), drawn in very fine ASCII as wide as its panel. It's several
+// screens tall; as the page scrolls it pans from the capital at the top down to the base.
 
 const FONT = "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace";
+const SOURCE = "/landing/column.png";
 
-type Drawing = { font: number; text: string; height: number; top: number; bottom: number };
+type Drawing = { font: number; text: string; height: number };
 
-function draw(width: number): Drawing | null {
+function load(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function draw(width: number): Promise<Drawing | null> {
   // Tiny characters for detail.
-  const font = width >= 600 ? 3.2 : 2.6;
+  const font = width >= 600 ? 3 : 2.6;
   const measure = document.createElement("canvas").getContext("2d");
   if (!measure) return null;
   measure.font = `${font}px ${FONT}`;
   const advance = measure.measureText("M").width || font * 0.6;
-  // The shaft's diameter: about half the screen on a computer, more on a phone.
-  const wide = window.innerWidth >= 1024;
-  const diameter = window.innerWidth * (wide ? 0.42 : 0.62);
+  const img = await load(SOURCE);
+  // As wide as the panel; as tall as the drawing's proportions make it.
   const cols = Math.floor(width / advance);
-  const dc = diameter / advance;
-  const dr = diameter / font;
-  const rows = Math.ceil(HEIGHT * dr);
+  const height = (cols * advance * img.height) / img.width;
+  const rows = Math.round(height / font);
   if (cols < 20 || rows < 20) return null;
-  const grid = model(cols, rows, cols / 2, dc, dr);
-  const damage = weather(grid, 7);
-  return {
-    font,
-    text: toLines(grid.lum, cols, rows).join("\n"),
-    height: rows * font,
-    top: damage.top,
-    bottom: damage.bottom,
-  };
+  const canvas = document.createElement("canvas");
+  canvas.width = cols;
+  canvas.height = rows;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, cols, rows);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, cols, rows);
+  const pixels = ctx.getImageData(0, 0, cols, rows).data;
+  const lum = new Float32Array(cols * rows);
+  // Deepen the mid-tones: the drawing is pale marble, and at this size light glyphs vanish.
+  for (let i = 0; i < lum.length; i++) {
+    const v = pixels[i * 4] / 255;
+    lum[i] = v > 0.95 ? v : Math.pow(v, 2.4);
+  }
+  return { font, text: toLines(lum, cols, rows).join("\n"), height: rows * font };
 }
 
 // How far down the page, 0 at the top and 1 at the bottom.
@@ -60,10 +76,11 @@ export function ColumnArt() {
       const next = Math.round(el.getBoundingClientRect().width);
       if (next === width) return;
       width = next;
-      // Off the main paint: the drawing takes a moment.
-      setTimeout(() => {
-        if (live) setDrawing(draw(next));
-      }, 0);
+      draw(next)
+        .then((d) => {
+          if (live) setDrawing(d);
+        })
+        .catch(() => {});
     };
     const observer = new ResizeObserver(() => {
       clearTimeout(timer);
@@ -108,8 +125,6 @@ export function ColumnArt() {
       ref={panel}
       data-testid="landing-column"
       data-height={drawing ? Math.round(drawing.height) : 0}
-      data-damage-top={drawing?.top ?? 0}
-      data-damage-bottom={drawing?.bottom ?? 0}
       aria-hidden="true"
       className="pointer-events-none h-full w-full overflow-hidden select-none"
     >
