@@ -1,4 +1,5 @@
 import type { FloatingCardData } from "@/lib/floating-cards";
+import { GREETING_START, MORNING_BRIEF } from "@/config/agent-chat";
 import type { MessageView } from "./view";
 
 // Jane's own messages as pop-ups (founder: "replace all the yellow cards in the chat as pop up
@@ -29,6 +30,11 @@ export function popupOrder(popups: readonly MessageView[]): MessageView[] {
   return [...popups.filter((m) => m.kind === "brief"), ...popups.filter((m) => m.kind !== "brief")];
 }
 
+// The morning brief is off for now (MORNING_BRIEF): a greeting already posted shows nowhere.
+export function hiddenBrief(m: Pick<MessageView, "kind" | "body">, on = MORNING_BRIEF): boolean {
+  return !on && m.kind === "brief" && GREETING_START.test(m.body.trim());
+}
+
 // One stack of cards (founder: "don't let the suggestion cards repeat"): the day's suggestions,
 // then the other pop-ups in their order, up to `limit`; one card per message and per headline,
 // so a finding a source also posted as a decision shows once.
@@ -50,7 +56,9 @@ export function popupStack(
   };
   for (const m of suggestions) add(m);
   let extra = 0;
-  for (const m of popupOrder(others.filter((o) => isPopup(o) && !o.suggestion))) {
+  for (const m of popupOrder(
+    others.filter((o) => isPopup(o) && !o.suggestion && !hiddenBrief(o)),
+  )) {
     if (extra >= limit) break;
     if (add(m)) extra += 1;
   }
@@ -68,6 +76,7 @@ export function chatList(
   return messages.filter(
     (m) =>
       !m.suggestion &&
+      !hiddenBrief(m) &&
       !floating.has(m.id) &&
       !(
         m.status === "open" &&

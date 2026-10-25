@@ -193,6 +193,7 @@ export function FloatingCards({
   links,
   foldOnPhone = false,
   docked = false,
+  onShowing,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
@@ -211,6 +212,8 @@ export function FloatingCards({
   // In the dock above the side chat (src/components/side-chat/card-dock.tsx): in the flow
   // there, not floating; a little bigger, with arrows between the cards.
   docked?: boolean;
+  // Told which card is showing (the dock keeps that one through a reload).
+  onShowing?: (id: string | null) => void;
 }) {
   const [state, setState] = useState(initialState);
   // Cards that just left, kept for the length of their exit slide, and which way they went.
@@ -245,6 +248,11 @@ export function FloatingCards({
       LEAVE_MS,
     );
   }
+
+  const showingId = current?.id ?? null;
+  useEffect(() => {
+    onShowing?.(showingId);
+  }, [onShowing, showingId]);
 
   // How tall the floating stack is, so the page scrolls things into view above it (the chat's
   // message box adds it to its scroll padding).

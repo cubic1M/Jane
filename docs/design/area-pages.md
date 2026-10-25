@@ -117,12 +117,15 @@ should also be there, and not like '...'".
   tablet, two by three on a phone. No "Jane" box above them; nothing to drag, pan or zoom. Each
   tile has its status, its full name (wrapping, never "…"), its line and `[+]`.
 - **Opening an area:** a tile opens its tree below the row (`[−]` shuts it; another tile swaps
-  it): the area with `[OPEN]`, a dotted line down to its branches side by side (as many columns
-  as fit), and each branch's features under it on a dotted line, as a terminal draws a tree.
-  An area with a tree page shows that tree's branches and items, from the page's own loader
-  (all six do); an area whose loader fails shows what Jane looks for there, from the feature
-  map, as `/home/map` does. The component is `src/components/hub/giant-tree.tsx`; what each
-  area holds is `giantAreas` in `src/lib/giant-tree.ts`.
+  it), straight into its branches: no node repeating the area's name, which the tile already
+  says (founder: "the tree should immediately begin going down, and not have an extra 1st
+  layer repeating the same name"). Its branches sit side by side (as many columns as fit), each
+  branch's features under it on a dotted line, and `[OPEN THE PAGE ›]` at the end. `/home/map`
+  starts at the branches too (`rootless` on the tree engine). An area with a tree page shows
+  that tree's branches and items, from the page's own loader (all six do); an area whose loader
+  fails shows what Jane looks for there, from the feature map. The component is
+  `src/components/hub/giant-tree.tsx`; what each area holds is `giantAreas` in
+  `src/lib/giant-tree.ts`.
 - **Opening a feature:** a click opens it in place: one line, `[OPEN]` into its page, and the
   Ask Jane box. The floating cards step aside while a feature is open; the dock stays.
 - **Ask Jane:** an inverted `[ASK JANE]` box under the open feature. One click sends its
@@ -244,6 +247,15 @@ info isn't all gone"):
 - **On a phone:** in the chat's sheet, over its message box; and on Home, folded into one line at
   the very bottom, "[JANE] 3 for you ▲", left of the Jane button, so the net worth is the first
   thing seen (QA round 6); a tap opens the card (`foldOnPhone`).
+- **Stays put:** the card showing is followed by its id, not its place in the line, so a reload
+  that brings a new card in ahead of it (the dock reloads every minute, on focus, after an
+  answer) never swaps it or shuts its details; and the dock keeps it until the person answers
+  it or steps off it, even if a reload left it out (founder: "when you click expand it sometimes
+  disappears, or the suggestion itself disappears").
+- **No greeting for now:** the morning brief is off (`MORNING_BRIEF` in
+  `src/config/agent-chat.ts`, founder: "Remove the good morning thing for now"): no "Good
+  morning!" card or day's agenda; what it gathered posts on its own, and a greeting already
+  posted shows nowhere. Set it to true to bring it back.
 - **Never twice:** one stack (`popupStack`, loaded by `loadPopupStack`): one card per message and
   per headline, so a finding a source also posted as a decision shows once. The chat's list
   (`chatList`) has no suggestion at all, waiting or answered, and nothing that's floating.

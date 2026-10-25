@@ -78,6 +78,13 @@ export const QUIET_END_HOUR = 8;
 // The morning brief: once a day, from this hour on (or whenever the person opens the chat
 // first that day). Bills due within this many days are in it.
 export const BRIEF_FROM_HOUR = 7;
+// Off for now (founder, 2026-10-25: "Remove the good morning thing for now"): the "Good
+// morning!" brief still keeps the day (it's what the agenda and its rules hang on), but it shows
+// nowhere, and what it bundled behind itself comes up as cards of their own. Set to true to
+// bring it back as it was.
+export const MORNING_BRIEF = false;
+// The greeting a brief starts with, to leave out the ones already posted while it's off.
+export const GREETING_START = /^Good (morning|afternoon|evening)!/;
 export const BRIEF_BILL_DAYS = 2;
 
 // Heads-ups about deadlines this many days ahead or fewer.

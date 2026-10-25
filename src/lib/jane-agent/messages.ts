@@ -1,6 +1,6 @@
 import { SUGGESTIONS_PER_DAY } from "@/config/suggestions";
 import { randomUUID } from "node:crypto";
-import { CHAT_PAGE_SIZE } from "@/config/agent-chat";
+import { CHAT_PAGE_SIZE, MORNING_BRIEF } from "@/config/agent-chat";
 import type {
   DecisionChoice,
   DecisionSource,
@@ -396,8 +396,13 @@ export async function openPopupMessages(
       status: "open",
       kind: { in: ["decision", "heads_up", "brief", "done"] },
       createdAt: { gte: new Date(now.getTime() - POPUP_DAYS * 24 * 60 * 60 * 1000), lte: now },
-      // Put off or put away (snoozed), it waits out of sight, as in the chat's feed.
-      OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
+      // Put off or put away (snoozed), it waits out of sight, as in the chat's feed; with the
+      // brief off, what an old agenda bundled behind itself comes up on its own.
+      OR: [
+        { snoozedUntil: null },
+        { snoozedUntil: { lte: now } },
+        ...(MORNING_BRIEF ? [] : [{ snoozedUntil: BUNDLED_UNTIL }]),
+      ],
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: MESSAGE_SELECT,

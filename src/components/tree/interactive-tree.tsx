@@ -58,9 +58,9 @@ function Badge({ text }: { text: string }) {
 }
 
 type Row =
-  | { kind: "root"; id: string; level: 1 }
-  | { kind: "branch"; id: string; level: 2; branch: TreeBranch; index: number }
-  | { kind: "leaf"; id: string; level: 3; leaf: TreeLeaf; branch: TreeBranch; index: number };
+  | { kind: "root"; id: string; level: number }
+  | { kind: "branch"; id: string; level: number; branch: TreeBranch; index: number }
+  | { kind: "leaf"; id: string; level: number; leaf: TreeLeaf; branch: TreeBranch; index: number };
 
 const NODE =
   "absolute flex flex-col justify-center gap-0.5 border px-3 text-left outline-offset-2 transition-colors";
@@ -72,6 +72,7 @@ export function InteractiveTree({
   picked,
   onOpen,
   onPick,
+  rootless = false,
 }: {
   data: TreeData;
   // The tree's accessible name.
@@ -81,8 +82,12 @@ export function InteractiveTree({
   picked: string | null;
   onOpen: (branchId: string | null) => void;
   onPick: (itemId: string | null) => void;
+  // No node for the tree's own name: it starts at the branches (/home/map, whose chip names it).
+  rootless?: boolean;
 }) {
-  const [focused, setFocused] = useState<string>(picked ?? open ?? data.key);
+  const [focused, setFocused] = useState<string>(
+    picked ?? open ?? (rootless ? (data.branches[0]?.id ?? data.key) : data.key),
+  );
   const [viewWidth, setViewWidth] = useState(1000);
   const view = useRef<HTMLDivElement>(null);
 
@@ -105,17 +110,21 @@ export function InteractiveTree({
     }),
     [data],
   );
-  const layout = useMemo(() => layoutMap(shape, open, viewWidth), [shape, open, viewWidth]);
+  const layout = useMemo(
+    () => layoutMap(shape, open, viewWidth, rootless),
+    [shape, open, viewWidth, rootless],
+  );
   const camera = cameraFor(layout.focus, viewWidth);
   const at = new Map(layout.nodes.map((n) => [n.id, n]));
 
   // What the keyboard walks through, in order: the root, its branches, the open one's items.
-  const rows: Row[] = [{ kind: "root", id: data.key, level: 1 }];
+  const top = rootless ? 0 : 1;
+  const rows: Row[] = rootless ? [] : [{ kind: "root", id: data.key, level: 1 }];
   data.branches.forEach((branch, index) => {
-    rows.push({ kind: "branch", id: branch.id, level: 2, branch, index });
+    rows.push({ kind: "branch", id: branch.id, level: top + 1, branch, index });
     if (branch.id === open) {
       branch.items.forEach((leaf, i) =>
-        rows.push({ kind: "leaf", id: leaf.id, level: 3, leaf, branch, index: i }),
+        rows.push({ kind: "leaf", id: leaf.id, level: top + 2, leaf, branch, index: i }),
       );
     }
   });
@@ -162,7 +171,7 @@ export function InteractiveTree({
         if (row.kind === "leaf") focusOn(row.branch.id);
         else if (row.kind === "branch") {
           if (open === row.id) toggle(row.branch);
-          else focusOn(data.key);
+          else if (!rootless) focusOn(data.key);
         }
         break;
       case "Enter":

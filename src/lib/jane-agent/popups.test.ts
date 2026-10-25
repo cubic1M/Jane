@@ -3,6 +3,7 @@ import {
   chatList,
   concise,
   firstSentence,
+  hiddenBrief,
   isPopup,
   popupCard,
   popupStack,
@@ -126,7 +127,9 @@ describe("one stack of cards, never repeated", () => {
           body: "Drop your mortgage insurance, save $1,562/yr\nFrom insurance.",
         }),
         message({ id: "d2" }),
-        message({ id: "b1", kind: "brief", body: "Good morning!" }),
+        message({ id: "b1", kind: "brief", body: "Hi, I'm Jane." }),
+        // The morning greeting is off for now (MORNING_BRIEF): never a card.
+        message({ id: "g1", kind: "brief", body: "Good morning! Three things today." }),
       ],
       12,
     );
@@ -151,6 +154,19 @@ describe("one stack of cards, never repeated", () => {
       stack,
     );
     expect(list.map((m) => m.id)).toEqual(["r1", "old"]);
+  });
+});
+
+describe("the morning greeting, off for now", () => {
+  it("hides a greeting brief while it's off, and only that", () => {
+    const greeting = message({ kind: "brief", body: "Good afternoon! $2,710 safe to spend." });
+    expect(hiddenBrief(greeting)).toBe(true);
+    expect(hiddenBrief(greeting, true)).toBe(false);
+    expect(hiddenBrief(message({ kind: "brief", body: "Hi, I'm Jane." }))).toBe(false);
+    expect(hiddenBrief(message({ kind: "decision", body: "Good morning! Not a brief." }))).toBe(
+      false,
+    );
+    expect(chatList([greeting], []).length).toBe(0);
   });
 });
 

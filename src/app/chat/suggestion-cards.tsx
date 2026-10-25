@@ -77,6 +77,7 @@ export function SuggestionCards({
   foldOnPhone = false,
   docked = false,
   onAnswered,
+  onShowing,
 }: {
   messages: MessageView[];
   // Home: start folded on a small phone, so the net worth shows first.
@@ -85,6 +86,8 @@ export function SuggestionCards({
   docked?: boolean;
   // Told once the server has the answer (the dock reloads its cards).
   onAnswered?: () => void;
+  // Told which card is showing.
+  onShowing?: (id: string | null) => void;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -112,6 +115,7 @@ export function SuggestionCards({
         links={links}
         foldOnPhone={foldOnPhone}
         docked={docked}
+        onShowing={onShowing}
         onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
           const message = messages.find((m) => m.id === id)!;

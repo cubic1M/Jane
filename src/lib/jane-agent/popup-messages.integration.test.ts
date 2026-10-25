@@ -4,10 +4,12 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
+import { MORNING_BRIEF } from "@/config/agent-chat";
 import { BUNDLED_UNTIL, openPopupMessages } from "./messages";
 
-// The pop-ups are Jane's open messages that wait on the person, and not what is out of sight in
-// the chat: put off until later, or bundled behind the day's agenda.
+// The pop-ups are Jane's open messages that wait on the person, and not what is put off until
+// later. While the morning brief is off (MORNING_BRIEF), what it bundled behind itself comes up
+// on its own.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-24T16:00:00Z");
@@ -44,8 +46,13 @@ describe.runIf(url)("the messages that pop up", () => {
     await client.$disconnect();
   });
 
-  it("leaves out what's put off or bundled, as the chat does, newest first", async () => {
+  it("leaves out what's put off, as the chat does, newest first", async () => {
     const rows = await openPopupMessages(userId, { client, now: NOW });
-    expect(rows.map((m) => m.body.split("\n")[0])).toEqual(["open", "back again"]);
+    const shown = rows.map((m) => m.body.split("\n")[0]);
+    expect(shown).not.toContain("put off");
+    expect(shown).not.toContain("answered");
+    expect(shown).toEqual(
+      MORNING_BRIEF ? ["open", "back again"] : ["open", "bundled", "back again"],
+    );
   });
 });

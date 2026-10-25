@@ -46,8 +46,12 @@ export type FloatingCardData = {
 export type CardsState = {
   // Cards no longer waiting (answered or put off).
   gone: readonly string[];
-  // Which waiting card is showing (an index into the waiting ones).
+  // Which waiting card is showing (an index into the waiting ones), for when `current` isn't
+  // among them.
   index: number;
+  // The card showing, by id: when the set changes under it (the dock reloads, a new card comes
+  // in ahead of it), it stays the one showing (founder: the card "disappears").
+  current?: string;
 };
 
 export const initialState: CardsState = { gone: [], index: 0 };
@@ -55,13 +59,19 @@ export const initialState: CardsState = { gone: [], index: 0 };
 export const waiting = (cards: readonly FloatingCardData[], state: CardsState) =>
   cards.filter((c) => !state.gone.includes(c.id));
 
+// Where the showing card is among the waiting ones.
+function position(left: readonly FloatingCardData[], state: CardsState): number {
+  const at = state.current ? left.findIndex((c) => c.id === state.current) : -1;
+  return at >= 0 ? at : Math.max(0, Math.min(state.index, left.length - 1));
+}
+
 export function currentCard(
   cards: readonly FloatingCardData[],
   state: CardsState,
 ): FloatingCardData | null {
   const left = waiting(cards, state);
   if (left.length === 0) return null;
-  return left[Math.max(0, Math.min(state.index, left.length - 1))];
+  return left[position(left, state)];
 }
 
 // Yes on a card: in "queue" just that card goes; in "pick" the whole set is decided.
@@ -72,9 +82,16 @@ export function answer(
   mode: CardMode,
   id: string,
 ): CardsState {
+  const left = waiting(cards, state);
+  const at = Math.max(
+    0,
+    left.findIndex((c) => c.id === id),
+  );
   const gone = mode === "pick" ? cards.map((c) => c.id) : [...new Set([...state.gone, id])];
   // The next card slides into the place of the one that left.
-  return { gone, index: state.index };
+  const after = waiting(cards, { gone, index: at });
+  const next = after[Math.min(at, after.length - 1)];
+  return { gone, index: at, current: next?.id };
 }
 
 export function move(
@@ -82,8 +99,10 @@ export function move(
   state: CardsState,
   by: 1 | -1,
 ): CardsState {
-  const last = Math.max(0, waiting(cards, state).length - 1);
-  return { ...state, index: Math.max(0, Math.min(last, state.index + by)) };
+  const left = waiting(cards, state);
+  const last = Math.max(0, left.length - 1);
+  const index = Math.max(0, Math.min(last, position(left, state) + by));
+  return { ...state, index, current: left[index]?.id };
 }
 
 // The small counter: "3 left" for a line of cards, "2 of 3" for options to pick from.
@@ -94,7 +113,7 @@ export function counter(
 ): string {
   const left = waiting(cards, state).length;
   if (mode === "queue") return `${left} left`;
-  return `${Math.min(state.index, Math.max(0, left - 1)) + 1} of ${left}`;
+  return `${position(waiting(cards, state), state) + 1} of ${left}`;
 }
 
 // Options of ONE choice (insurance plans to switch to, loan offers): each option is a card with

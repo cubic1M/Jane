@@ -103,6 +103,16 @@ describe("the feature map's layout", () => {
     expect(shut.focus).toEqual({ x: 0, y: 0, w: shut.width, h: shut.height });
   });
 
+  it("without its root, starts at the branches on the left edge (founder: no repeated name)", () => {
+    const shut = layoutMap(money, null, 1000, true);
+    expect(shut.nodes.filter((n) => n.level === 1)).toHaveLength(0);
+    expect(shut.nodes.filter((n) => n.level === 2)).toHaveLength(money.branches.length);
+    expect(Math.min(...shut.nodes.map((n) => n.x))).toBe(0);
+    expect(shut.edges).toHaveLength(0);
+    const open = layoutMap(money, money.branches[0].id, 1000, true);
+    expect(open.edges).toHaveLength(money.branches[0].features.length);
+  });
+
   it("opens a branch beside it, its features centred on it and joined to it", () => {
     const branch = money.branches[0];
     const open = layoutMap(money, branch.id, 700);

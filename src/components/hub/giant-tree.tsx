@@ -107,8 +107,8 @@ export function GiantTree({ maps, areaTrees = {} }: { maps: AreaMap[]; areaTrees
   );
 }
 
-// One area's tree under the tiles: the area, a dotted line down to its branches, and each
-// branch's features below it on a dotted line, as a tree is drawn in a terminal (└─).
+// One area's tree under the tiles: straight into its branches (the tile names the area), and
+// each branch's features below it on a dotted line, as a tree is drawn in a terminal (└─).
 function AreaTree({
   id,
   area,
@@ -128,15 +128,8 @@ function AreaTree({
       data-giant-area={area.key}
       className="giant-open flex flex-col"
     >
-      <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 self-start p-3 ${BOX}`}>
-        <Status status={area.status} />
-        <p className="font-semibold [overflow-wrap:anywhere]">{area.label}</p>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400">{area.line}</p>
-        <Link href={area.href} className="text-sm font-semibold hover:underline">
-          [OPEN]
-        </Link>
-      </div>
-      <span aria-hidden="true" className={`ml-6 h-4 border-l-2 ${LINE}`} />
+      {/* Straight down into the branches (founder: no "extra 1st layer repeating the same
+          name"; the tile above already says it). */}
       <ul
         className={`grid grid-cols-1 gap-x-4 gap-y-4 border-t-2 pt-4 sm:grid-cols-2 xl:grid-cols-3 ${LINE}`}
       >
@@ -171,6 +164,9 @@ function AreaTree({
           </li>
         ))}
       </ul>
+      <Link href={area.href} className="mt-3 self-end text-sm font-semibold hover:underline">
+        [OPEN THE PAGE ›]
+      </Link>
     </div>
   );
 }

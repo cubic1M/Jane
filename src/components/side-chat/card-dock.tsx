@@ -16,12 +16,19 @@ export function CardDock() {
   const pathname = usePathname();
   const [cards, setCards] = useState<MessageView[]>([]);
 
+  // The card showing now: a reload never takes it away while the person is on it (founder: "the
+  // suggestion itself disappears"); it goes when they answer it or step off it.
+  const showing = useRef<string | null>(null);
+  const onShowing = useCallback((id: string | null) => {
+    showing.current = id;
+  }, []);
+
   const load = useCallback(async () => {
     try {
       const response = await fetch("/api/chat/cards", { cache: "no-store" });
       if (!response.ok) return;
       const body = (await response.json()) as { cards?: MessageView[] };
-      setCards(body.cards ?? []);
+      setCards((now) => keepShowing(now, body.cards ?? [], showing.current));
     } catch {
       // Offline for a moment: the cards stay as they were until the next load.
     }
@@ -46,16 +53,30 @@ export function CardDock() {
   return (
     <FollowHeight className="shrink-0 border-b border-zinc-300 dark:border-zinc-700">
       <div className="max-h-[75vh] overflow-y-auto overscroll-contain">
-        {/* A new set is a new stack: what was answered here is gone from it already. */}
+        {/* One stack for good: a reload updates it in place, never starting it over. */}
         <SuggestionCards
-          key={cards.map((c) => c.id).join(",")}
           messages={cards}
           docked
           onAnswered={() => void load()}
+          onShowing={onShowing}
         />
       </div>
     </FollowHeight>
   );
+}
+
+// The reloaded cards, with the one showing kept in its place if the reload left it out.
+export function keepShowing(
+  before: readonly MessageView[],
+  after: readonly MessageView[],
+  shown: string | null,
+): MessageView[] {
+  if (!shown || after.some((c) => c.id === shown)) return [...after];
+  const at = before.findIndex((c) => c.id === shown);
+  if (at < 0) return [...after];
+  const out = [...after];
+  out.splice(Math.min(at, out.length), 0, before[at]);
+  return out;
 }
 
 // Its height follows what's inside, smoothly (a card opening, or the next card being taller),
