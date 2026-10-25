@@ -1,6 +1,7 @@
 import type { AccountBase, LiabilitiesObject, Transaction } from "plaid";
 import type { PfcDetailed } from "@/categorize/taxonomy";
 import type { PersonId } from "@/config/people";
+import { ledgered } from "./demo-ledger";
 import { PEOPLE_EXTRAS } from "./people-extras";
 import {
   accountId,
@@ -33,6 +34,8 @@ export type Recurring = {
   // Only days from this many days from the anchor (from, inclusive) up to (until, exclusive):
   // a job that ended or began.
   span?: { from?: number; until?: number };
+  // A card payment from checking: the card account it pays (the first card when left out).
+  pays?: string;
 };
 
 export type Once = Omit<Recurring, "days" | "months"> & { offsets: number[] };
@@ -95,6 +98,11 @@ type Def = {
   student?: Student;
   auto?: Auto;
   positions: Position[];
+  // How the year closes as a ledger (./demo-ledger.ts): `fixedCards` when the person pays the
+  // fixed amounts the templates give (a minimum payer) rather than each month's statement;
+  // `rest`, where money left over after savings goes ("transfer" to another bank's savings for
+  // income that comes in lumps, everyday spending otherwise).
+  ledger?: { fixedCards?: boolean; rest?: "spending" | "transfer" };
 };
 
 const R = (
@@ -505,6 +513,8 @@ const DEFS: Record<PersonId, Def> = {
   },
   // Paid by clients at irregular times; no tax withheld; solo.
   freelancer: {
+    // Clients pay in lumps: what's left over goes to savings at another bank on payday.
+    ledger: { rest: "transfer" },
     accounts: [
       {
         key: "checking",
@@ -987,6 +997,8 @@ const DEFS: Record<PersonId, Def> = {
   },
   // Many cards near their limits, overdrafts, a payday loan, a car loan.
   debt: {
+    // Pays the fixed minimums on the cards, so their balances climb.
+    ledger: { fixedCards: true },
     accounts: [
       {
         key: "checking",
@@ -1053,7 +1065,18 @@ const DEFS: Record<PersonId, Def> = {
         "Credit Acceptance",
       ),
       R("paya", "checking", "CARD A PAYMENT", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", 140, [20], null),
-      R("payb", "checking", "CARD B PAYMENT", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", 110, [21], null),
+      {
+        ...R(
+          "payb",
+          "checking",
+          "CARD B PAYMENT",
+          "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+          110,
+          [21],
+          null,
+        ),
+        pays: "card2",
+      },
       R(
         "payday",
         "checking",
@@ -1115,6 +1138,8 @@ const DEFS: Record<PersonId, Def> = {
   },
   // Runs a shop through an LLC; business and personal money mixed.
   owner: {
+    // Sales come in lumps: what's left over goes to savings at another bank on payday.
+    ledger: { rest: "transfer" },
     accounts: [
       {
         key: "checking",
@@ -1279,7 +1304,12 @@ export function personTransactions(
 ): Transaction[] {
   const def = defOf(demo);
   const start = after ?? addDays(through, -365);
-  const inRange = (day: string) => day > start && day <= through;
+  // Made from further back (the statements a payment pays, the year the ledger closes) and on
+  // to the anchor; only (start, through] is returned.
+  const yearAgo = addDays(demo.anchor, -365);
+  const from = addDays(start < yearAgo ? start : yearAgo, -45);
+  const until = through > demo.anchor ? through : demo.anchor;
+  const inRange = (day: string) => day > from && day <= until;
   const out: Transaction[] = [];
   const make = (t: Omit<Recurring, "days" | "months">, day: string): Transaction => {
     const [low, high] = Array.isArray(t.amount) ? t.amount : [t.amount, t.amount];
@@ -1300,8 +1330,8 @@ export function personTransactions(
       },
     } as unknown as Transaction;
   };
-  const first = new Date(`${start}T00:00:00Z`);
-  const last = new Date(`${through}T00:00:00Z`);
+  const first = new Date(`${from}T00:00:00Z`);
+  const last = new Date(`${until}T00:00:00Z`);
   for (
     let y = first.getUTCFullYear(), m = first.getUTCMonth();
     y < last.getUTCFullYear() || (y === last.getUTCFullYear() && m <= last.getUTCMonth());
@@ -1324,9 +1354,44 @@ export function personTransactions(
       if (inRange(day)) out.push(make(t, day));
     }
   }
-  return out.sort(
-    (a, b) => a.date.localeCompare(b.date) || a.transaction_id.localeCompare(b.transaction_id),
+  return ledgered(out, ledgerPlan(demo, def), start, through)
+    .filter((t) => t.date > start && t.date <= through)
+    .sort(
+      (a, b) => a.date.localeCompare(b.date) || a.transaction_id.localeCompare(b.transaction_id),
+    );
+}
+
+// What the ledger needs to know about a person (./demo-ledger.ts).
+function ledgerPlan(demo: DemoSeed, def: Def) {
+  const id = (key: string) => accountId(demo.seed, key);
+  const checking = def.accounts.find((a) => a.subtype === "checking");
+  const savings = def.accounts.find((a) => a.subtype === "savings");
+  const cards = def.accounts.filter((a) => a.type === "credit");
+  const pays = new Map(
+    [...def.monthly, ...def.once].map((t) => [t.key, t.pays ?? cards[0]?.key ?? null]),
   );
+  const prefix = `demo-${demo.seed}-`;
+  const pay = def.monthly.find(
+    (t) => t.account === checking?.key && t.category.startsWith("INCOME"),
+  );
+  return {
+    seed: demo.seed,
+    anchor: demo.anchor,
+    checking: id(checking?.key ?? "checking"),
+    savings: savings ? { id: id(savings.key), balance: savings.balance } : null,
+    cards: cards.map((c) => ({
+      id: id(c.key),
+      balance: c.balance,
+      fixed: def.ledger?.fixedCards === true,
+    })),
+    // `demo-<seed>-<key>-<YYYY-MM-DD>`.
+    paysCard: (transactionId: string) => {
+      const key = pays.get(transactionId.slice(prefix.length, -11));
+      return key ? id(key) : null;
+    },
+    payDay: pay?.days[0] ?? 1,
+    rest: def.ledger?.rest ?? "spending",
+  };
 }
 
 // Books QA (spec step 238): an account a sample person reaches through a second bank login, so

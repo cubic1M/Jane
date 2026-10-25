@@ -6,6 +6,7 @@ import { profileOf } from "@/lib/investments/profile";
 import { requireUser } from "@/lib/session";
 import { currentAge, profileSummary } from "@/planning/investor-profile";
 import { ProfileForm } from "./profile-form";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What the investments are for (spec step 129): the four answers, the risk level that
 // follows and why, changeable any time. Jane asks the same questions in the chat.
@@ -81,7 +82,7 @@ async function ProfileContent({
 export default function ProfilePage(props: PageProps<"/investments/profile">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ProfileContent searchParams={props.searchParams} />
       </Suspense>
     </main>

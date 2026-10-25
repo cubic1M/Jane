@@ -5,6 +5,290 @@
   --foreground: #171717;
 }
 
+/* Monochrome (docs/design/area-pages.md, "Visual language"): black, white and greys only, in
+   light and dark mode. Every Tailwind colour palette is remapped here to a grey of the same
+   lightness, so every existing class (text-emerald-700, bg-amber-50, ...) turns grey without
+   editing the pages, and contrast between shades stays as it was designed. Meaning never rests
+   on colour: status is a glyph (● ◐ ○) and a word, change is ▲ ▼ and a sign. Checked by
+   src/app/monochrome.test.ts. */
+@theme {
+  --color-red-50: oklch(97.1% 0 0);
+  --color-red-100: oklch(93.6% 0 0);
+  --color-red-200: oklch(88.5% 0 0);
+  --color-red-300: oklch(80.8% 0 0);
+  --color-red-400: oklch(70.4% 0 0);
+  --color-red-500: oklch(63.7% 0 0);
+  --color-red-600: oklch(57.7% 0 0);
+  --color-red-700: oklch(50.5% 0 0);
+  --color-red-800: oklch(44.4% 0 0);
+  --color-red-900: oklch(39.6% 0 0);
+  --color-red-950: oklch(25.8% 0 0);
+  --color-orange-50: oklch(98% 0 0);
+  --color-orange-100: oklch(95.4% 0 0);
+  --color-orange-200: oklch(90.1% 0 0);
+  --color-orange-300: oklch(83.7% 0 0);
+  --color-orange-400: oklch(75% 0 0);
+  --color-orange-500: oklch(70.5% 0 0);
+  --color-orange-600: oklch(64.6% 0 0);
+  --color-orange-700: oklch(55.3% 0 0);
+  --color-orange-800: oklch(47% 0 0);
+  --color-orange-900: oklch(40.8% 0 0);
+  --color-orange-950: oklch(26.6% 0 0);
+  --color-amber-50: oklch(98.7% 0 0);
+  --color-amber-100: oklch(96.2% 0 0);
+  --color-amber-200: oklch(92.4% 0 0);
+  --color-amber-300: oklch(87.9% 0 0);
+  --color-amber-400: oklch(82.8% 0 0);
+  --color-amber-500: oklch(76.9% 0 0);
+  --color-amber-600: oklch(66.6% 0 0);
+  --color-amber-700: oklch(55.5% 0 0);
+  --color-amber-800: oklch(47.3% 0 0);
+  --color-amber-900: oklch(41.4% 0 0);
+  --color-amber-950: oklch(27.9% 0 0);
+  --color-yellow-50: oklch(98.7% 0 0);
+  --color-yellow-100: oklch(97.3% 0 0);
+  --color-yellow-200: oklch(94.5% 0 0);
+  --color-yellow-300: oklch(90.5% 0 0);
+  --color-yellow-400: oklch(85.2% 0 0);
+  --color-yellow-500: oklch(79.5% 0 0);
+  --color-yellow-600: oklch(68.1% 0 0);
+  --color-yellow-700: oklch(55.4% 0 0);
+  --color-yellow-800: oklch(47.6% 0 0);
+  --color-yellow-900: oklch(42.1% 0 0);
+  --color-yellow-950: oklch(28.6% 0 0);
+  --color-lime-50: oklch(98.6% 0 0);
+  --color-lime-100: oklch(96.7% 0 0);
+  --color-lime-200: oklch(93.8% 0 0);
+  --color-lime-300: oklch(89.7% 0 0);
+  --color-lime-400: oklch(84.1% 0 0);
+  --color-lime-500: oklch(76.8% 0 0);
+  --color-lime-600: oklch(64.8% 0 0);
+  --color-lime-700: oklch(53.2% 0 0);
+  --color-lime-800: oklch(45.3% 0 0);
+  --color-lime-900: oklch(40.5% 0 0);
+  --color-lime-950: oklch(27.4% 0 0);
+  --color-green-50: oklch(98.2% 0 0);
+  --color-green-100: oklch(96.2% 0 0);
+  --color-green-200: oklch(92.5% 0 0);
+  --color-green-300: oklch(87.1% 0 0);
+  --color-green-400: oklch(79.2% 0 0);
+  --color-green-500: oklch(72.3% 0 0);
+  --color-green-600: oklch(62.7% 0 0);
+  --color-green-700: oklch(52.7% 0 0);
+  --color-green-800: oklch(44.8% 0 0);
+  --color-green-900: oklch(39.3% 0 0);
+  --color-green-950: oklch(26.6% 0 0);
+  --color-emerald-50: oklch(97.9% 0 0);
+  --color-emerald-100: oklch(95% 0 0);
+  --color-emerald-200: oklch(90.5% 0 0);
+  --color-emerald-300: oklch(84.5% 0 0);
+  --color-emerald-400: oklch(76.5% 0 0);
+  --color-emerald-500: oklch(69.6% 0 0);
+  --color-emerald-600: oklch(59.6% 0 0);
+  --color-emerald-700: oklch(50.8% 0 0);
+  --color-emerald-800: oklch(43.2% 0 0);
+  --color-emerald-900: oklch(37.8% 0 0);
+  --color-emerald-950: oklch(26.2% 0 0);
+  --color-teal-50: oklch(98.4% 0 0);
+  --color-teal-100: oklch(95.3% 0 0);
+  --color-teal-200: oklch(91% 0 0);
+  --color-teal-300: oklch(85.5% 0 0);
+  --color-teal-400: oklch(77.7% 0 0);
+  --color-teal-500: oklch(70.4% 0 0);
+  --color-teal-600: oklch(60% 0 0);
+  --color-teal-700: oklch(51.1% 0 0);
+  --color-teal-800: oklch(43.7% 0 0);
+  --color-teal-900: oklch(38.6% 0 0);
+  --color-teal-950: oklch(27.7% 0 0);
+  --color-cyan-50: oklch(98.4% 0 0);
+  --color-cyan-100: oklch(95.6% 0 0);
+  --color-cyan-200: oklch(91.7% 0 0);
+  --color-cyan-300: oklch(86.5% 0 0);
+  --color-cyan-400: oklch(78.9% 0 0);
+  --color-cyan-500: oklch(71.5% 0 0);
+  --color-cyan-600: oklch(60.9% 0 0);
+  --color-cyan-700: oklch(52% 0 0);
+  --color-cyan-800: oklch(45% 0 0);
+  --color-cyan-900: oklch(39.8% 0 0);
+  --color-cyan-950: oklch(30.2% 0 0);
+  --color-sky-50: oklch(97.7% 0 0);
+  --color-sky-100: oklch(95.1% 0 0);
+  --color-sky-200: oklch(90.1% 0 0);
+  --color-sky-300: oklch(82.8% 0 0);
+  --color-sky-400: oklch(74.6% 0 0);
+  --color-sky-500: oklch(68.5% 0 0);
+  --color-sky-600: oklch(58.8% 0 0);
+  --color-sky-700: oklch(50% 0 0);
+  --color-sky-800: oklch(44.3% 0 0);
+  --color-sky-900: oklch(39.1% 0 0);
+  --color-sky-950: oklch(29.3% 0 0);
+  --color-blue-50: oklch(97% 0 0);
+  --color-blue-100: oklch(93.2% 0 0);
+  --color-blue-200: oklch(88.2% 0 0);
+  --color-blue-300: oklch(80.9% 0 0);
+  --color-blue-400: oklch(70.7% 0 0);
+  --color-blue-500: oklch(62.3% 0 0);
+  --color-blue-600: oklch(54.6% 0 0);
+  --color-blue-700: oklch(48.8% 0 0);
+  --color-blue-800: oklch(42.4% 0 0);
+  --color-blue-900: oklch(37.9% 0 0);
+  --color-blue-950: oklch(28.2% 0 0);
+  --color-indigo-50: oklch(96.2% 0 0);
+  --color-indigo-100: oklch(93% 0 0);
+  --color-indigo-200: oklch(87% 0 0);
+  --color-indigo-300: oklch(78.5% 0 0);
+  --color-indigo-400: oklch(67.3% 0 0);
+  --color-indigo-500: oklch(58.5% 0 0);
+  --color-indigo-600: oklch(51.1% 0 0);
+  --color-indigo-700: oklch(45.7% 0 0);
+  --color-indigo-800: oklch(39.8% 0 0);
+  --color-indigo-900: oklch(35.9% 0 0);
+  --color-indigo-950: oklch(25.7% 0 0);
+  --color-violet-50: oklch(96.9% 0 0);
+  --color-violet-100: oklch(94.3% 0 0);
+  --color-violet-200: oklch(89.4% 0 0);
+  --color-violet-300: oklch(81.1% 0 0);
+  --color-violet-400: oklch(70.2% 0 0);
+  --color-violet-500: oklch(60.6% 0 0);
+  --color-violet-600: oklch(54.1% 0 0);
+  --color-violet-700: oklch(49.1% 0 0);
+  --color-violet-800: oklch(43.2% 0 0);
+  --color-violet-900: oklch(38% 0 0);
+  --color-violet-950: oklch(28.3% 0 0);
+  --color-purple-50: oklch(97.7% 0 0);
+  --color-purple-100: oklch(94.6% 0 0);
+  --color-purple-200: oklch(90.2% 0 0);
+  --color-purple-300: oklch(82.7% 0 0);
+  --color-purple-400: oklch(71.4% 0 0);
+  --color-purple-500: oklch(62.7% 0 0);
+  --color-purple-600: oklch(55.8% 0 0);
+  --color-purple-700: oklch(49.6% 0 0);
+  --color-purple-800: oklch(43.8% 0 0);
+  --color-purple-900: oklch(38.1% 0 0);
+  --color-purple-950: oklch(29.1% 0 0);
+  --color-fuchsia-50: oklch(97.7% 0 0);
+  --color-fuchsia-100: oklch(95.2% 0 0);
+  --color-fuchsia-200: oklch(90.3% 0 0);
+  --color-fuchsia-300: oklch(83.3% 0 0);
+  --color-fuchsia-400: oklch(74% 0 0);
+  --color-fuchsia-500: oklch(66.7% 0 0);
+  --color-fuchsia-600: oklch(59.1% 0 0);
+  --color-fuchsia-700: oklch(51.8% 0 0);
+  --color-fuchsia-800: oklch(45.2% 0 0);
+  --color-fuchsia-900: oklch(40.1% 0 0);
+  --color-fuchsia-950: oklch(29.3% 0 0);
+  --color-pink-50: oklch(97.1% 0 0);
+  --color-pink-100: oklch(94.8% 0 0);
+  --color-pink-200: oklch(89.9% 0 0);
+  --color-pink-300: oklch(82.3% 0 0);
+  --color-pink-400: oklch(71.8% 0 0);
+  --color-pink-500: oklch(65.6% 0 0);
+  --color-pink-600: oklch(59.2% 0 0);
+  --color-pink-700: oklch(52.5% 0 0);
+  --color-pink-800: oklch(45.9% 0 0);
+  --color-pink-900: oklch(40.8% 0 0);
+  --color-pink-950: oklch(28.4% 0 0);
+  --color-rose-50: oklch(96.9% 0 0);
+  --color-rose-100: oklch(94.1% 0 0);
+  --color-rose-200: oklch(89.2% 0 0);
+  --color-rose-300: oklch(81% 0 0);
+  --color-rose-400: oklch(71.2% 0 0);
+  --color-rose-500: oklch(64.5% 0 0);
+  --color-rose-600: oklch(58.6% 0 0);
+  --color-rose-700: oklch(51.4% 0 0);
+  --color-rose-800: oklch(45.5% 0 0);
+  --color-rose-900: oklch(41% 0 0);
+  --color-rose-950: oklch(27.1% 0 0);
+  --color-slate-50: oklch(98.4% 0 0);
+  --color-slate-100: oklch(96.8% 0 0);
+  --color-slate-200: oklch(92.9% 0 0);
+  --color-slate-300: oklch(86.9% 0 0);
+  --color-slate-400: oklch(70.4% 0 0);
+  --color-slate-500: oklch(55.4% 0 0);
+  --color-slate-600: oklch(44.6% 0 0);
+  --color-slate-700: oklch(37.2% 0 0);
+  --color-slate-800: oklch(27.9% 0 0);
+  --color-slate-900: oklch(20.8% 0 0);
+  --color-slate-950: oklch(12.9% 0 0);
+  --color-gray-50: oklch(98.5% 0 0);
+  --color-gray-100: oklch(96.7% 0 0);
+  --color-gray-200: oklch(92.8% 0 0);
+  --color-gray-300: oklch(87.2% 0 0);
+  --color-gray-400: oklch(70.7% 0 0);
+  --color-gray-500: oklch(55.1% 0 0);
+  --color-gray-600: oklch(44.6% 0 0);
+  --color-gray-700: oklch(37.3% 0 0);
+  --color-gray-800: oklch(27.8% 0 0);
+  --color-gray-900: oklch(21% 0 0);
+  --color-gray-950: oklch(13% 0 0);
+  --color-zinc-50: oklch(98.5% 0 0);
+  --color-zinc-100: oklch(96.7% 0 0);
+  --color-zinc-200: oklch(92% 0 0);
+  --color-zinc-300: oklch(87.1% 0 0);
+  --color-zinc-400: oklch(70.5% 0 0);
+  --color-zinc-500: oklch(55.2% 0 0);
+  --color-zinc-600: oklch(44.2% 0 0);
+  --color-zinc-700: oklch(37% 0 0);
+  --color-zinc-800: oklch(27.4% 0 0);
+  --color-zinc-900: oklch(21% 0 0);
+  --color-zinc-950: oklch(14.1% 0 0);
+  --color-stone-50: oklch(98.5% 0 0);
+  --color-stone-100: oklch(97% 0 0);
+  --color-stone-200: oklch(92.3% 0 0);
+  --color-stone-300: oklch(86.9% 0 0);
+  --color-stone-400: oklch(70.9% 0 0);
+  --color-stone-500: oklch(55.3% 0 0);
+  --color-stone-600: oklch(44.4% 0 0);
+  --color-stone-700: oklch(37.4% 0 0);
+  --color-stone-800: oklch(26.8% 0 0);
+  --color-stone-900: oklch(21.6% 0 0);
+  --color-stone-950: oklch(14.7% 0 0);
+  --color-mauve-50: oklch(98.5% 0 0);
+  --color-mauve-100: oklch(96% 0 0);
+  --color-mauve-200: oklch(92.2% 0 0);
+  --color-mauve-300: oklch(86.5% 0 0);
+  --color-mauve-400: oklch(71.1% 0 0);
+  --color-mauve-500: oklch(54.2% 0 0);
+  --color-mauve-600: oklch(43.5% 0 0);
+  --color-mauve-700: oklch(36.4% 0 0);
+  --color-mauve-800: oklch(26.3% 0 0);
+  --color-mauve-900: oklch(21.2% 0 0);
+  --color-mauve-950: oklch(14.5% 0 0);
+  --color-olive-50: oklch(98.8% 0 0);
+  --color-olive-100: oklch(96.6% 0 0);
+  --color-olive-200: oklch(93% 0 0);
+  --color-olive-300: oklch(88% 0 0);
+  --color-olive-400: oklch(73.7% 0 0);
+  --color-olive-500: oklch(58% 0 0);
+  --color-olive-600: oklch(46.6% 0 0);
+  --color-olive-700: oklch(39.4% 0 0);
+  --color-olive-800: oklch(28.6% 0 0);
+  --color-olive-900: oklch(22.8% 0 0);
+  --color-olive-950: oklch(15.3% 0 0);
+  --color-mist-50: oklch(98.7% 0 0);
+  --color-mist-100: oklch(96.3% 0 0);
+  --color-mist-200: oklch(92.5% 0 0);
+  --color-mist-300: oklch(87.2% 0 0);
+  --color-mist-400: oklch(72.3% 0 0);
+  --color-mist-500: oklch(56% 0 0);
+  --color-mist-600: oklch(45% 0 0);
+  --color-mist-700: oklch(37.8% 0 0);
+  --color-mist-800: oklch(27.5% 0 0);
+  --color-mist-900: oklch(21.8% 0 0);
+  --color-mist-950: oklch(14.8% 0 0);
+  --color-taupe-50: oklch(98.6% 0 0);
+  --color-taupe-100: oklch(96% 0 0);
+  --color-taupe-200: oklch(92.2% 0 0);
+  --color-taupe-300: oklch(86.8% 0 0);
+  --color-taupe-400: oklch(71.4% 0 0);
+  --color-taupe-500: oklch(54.7% 0 0);
+  --color-taupe-600: oklch(43.8% 0 0);
+  --color-taupe-700: oklch(36.7% 0 0);
+  --color-taupe-800: oklch(26.8% 0 0);
+  --color-taupe-900: oklch(21.4% 0 0);
+  --color-taupe-950: oklch(14.7% 0 0);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -59,9 +343,15 @@ body {
    less when it is folded to a rail (html[data-side-chat], set by the panel), and none on the
    chat's own pages (marked [data-chat-page] by the area tabs as they render). On a phone the
    page keeps room at the bottom for the Jane button. */
+/* The motion spec (docs/design/area-pages.md, "Motion"): three durations and two easings for
+   everything that moves; src/config/motion.ts has the same for JavaScript. All of it stops
+   under prefers-reduced-motion. */
 :root {
   --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15);
   --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 250ms;
 }
 
 @media (min-width: 1024px) {
@@ -71,7 +361,7 @@ body {
   }
   /* Animated only once the panel has taken over, so the first paint never slides. */
   html[data-side-chat] body:has(#app-top-bar) {
-    transition: padding-right 260ms var(--ease-out-soft);
+    transition: padding-right var(--motion-slow) var(--ease-out-soft);
   }
   html[data-side-chat="rail"] body:has(#app-top-bar) {
     padding-right: 56px;
@@ -95,8 +385,8 @@ body {
   top: 3.5rem;
   width: 380px;
   transition:
-    width 260ms var(--ease-spring),
-    top 260ms var(--ease-spring);
+    width var(--motion-slow) var(--ease-spring),
+    top var(--motion-slow) var(--ease-spring);
 }
 .side-chat[data-side-chat="rail"] {
   width: 56px;
@@ -111,17 +401,23 @@ body {
    while it is dragged (inline --sheet-share, no transition). */
 .side-chat-sheet {
   --sheet-share: 0;
-  height: calc(var(--sheet-share) * 100dvh);
+  /* Above the on-screen keyboard (--keyboard-inset, from the visual viewport), its message box
+     always in sight. */
+  bottom: var(--keyboard-inset, 0px);
+  height: min(
+    calc(var(--sheet-share) * 100dvh),
+    calc(100dvh - var(--keyboard-inset, 0px) - 2.5rem)
+  );
   visibility: hidden;
   transition:
-    height 280ms var(--ease-spring),
-    visibility 0s linear 280ms;
+    height var(--motion-slow) var(--ease-spring),
+    visibility 0s linear var(--motion-slow);
 }
 .side-chat-sheet[data-sheet="half"],
 .side-chat-sheet[data-sheet="full"] {
   visibility: visible;
   transition:
-    height 280ms var(--ease-spring),
+    height var(--motion-slow) var(--ease-spring),
     visibility 0s;
 }
 .side-chat-sheet[data-sheet="half"] {
@@ -136,7 +432,7 @@ body {
 .side-chat-scrim {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 200ms ease-out;
+  transition: opacity var(--motion-base) ease-out;
 }
 .side-chat-scrim[data-open] {
   opacity: 1;
@@ -158,19 +454,19 @@ body {
    pop in, once, as the page arrives. Still for reduced motion. */
 .hub-grow {
   transform-origin: left;
-  animation: hub-grow 420ms var(--ease-out-soft) both;
+  animation: hub-grow var(--motion-slow) var(--ease-out-soft) both;
 }
 .hub-rise {
   transform-box: fill-box;
   transform-origin: bottom;
-  animation: hub-rise 380ms var(--ease-spring) both;
+  animation: hub-rise var(--motion-slow) var(--ease-spring) both;
 }
 .hub-draw {
   stroke-dasharray: 1;
-  animation: hub-draw 800ms var(--ease-out-soft) both;
+  animation: hub-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 .hub-pop {
-  animation: hub-pop 260ms var(--ease-spring) both;
+  animation: hub-pop var(--motion-slow) var(--ease-spring) both;
 }
 @keyframes hub-grow {
   from {
@@ -205,17 +501,17 @@ body {
 /* The feature map (src/components/feature-tree.tsx): the view zooms and pans with a spring,
    edges draw themselves, and nodes pop in as a branch opens. Still for reduced motion. */
 .map-view {
-  transition: height 420ms var(--ease-spring);
+  transition: height var(--motion-slow) var(--ease-spring);
 }
 .map-world {
-  transition: transform 450ms var(--ease-spring);
+  transition: transform var(--motion-slow) var(--ease-spring);
 }
 .map-edge {
   stroke-dasharray: 1;
-  animation: hub-draw 500ms var(--ease-out-soft) both;
+  animation: hub-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 .map-pop {
-  animation: map-pop 280ms var(--ease-spring) both;
+  animation: map-pop var(--motion-slow) var(--ease-spring) both;
 }
 @keyframes map-pop {
   from {
@@ -234,11 +530,383 @@ body {
   }
 }
 
+/* The "What Jane does" tree on Home (src/components/hub/giant-tree.tsx): an area's tree opens
+   with the page's own fade-and-rise, and the dotted line from an "Ask Jane" box to the chat
+   marches while the question is sent. While a feature is open, the floating cards step aside
+   (the dock above the chat stays). Still under reduced motion. */
+html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
+  display: none;
+}
+/* The card dock follows its card's height (src/components/side-chat/card-dock.tsx). */
+.dock-height {
+  transition: height var(--motion-slow) var(--ease-out-soft);
+}
+.giant-open {
+  animation: page-in var(--motion-slow) var(--ease-out-soft) backwards;
+}
+.ask-line {
+  animation: ask-line-march 0.6s linear infinite;
+}
+@keyframes ask-line-march {
+  to {
+    stroke-dashoffset: -9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dock-height {
+    transition: none;
+  }
+  .giant-open,
+  .ask-line {
+    animation: none;
+  }
+}
+
+/* Primary buttons are inverted (the page's text colour as their background); secondary ones
+   are bracketed outlines. Unlayered, so they win over the utilities on every page. */
+.bg-emerald-600,
+.bg-emerald-700,
+.bg-emerald-800 {
+  background-color: var(--foreground);
+  color: var(--background);
+}
+.bg-emerald-600 .text-white,
+.bg-emerald-700 .text-white,
+.bg-emerald-800 .text-white {
+  color: inherit;
+}
+:is(a, button).bg-emerald-600:hover,
+:is(a, button).bg-emerald-700:hover,
+:is(a, button).bg-emerald-800:hover {
+  opacity: 0.85;
+}
+
+/* An error says so in words and weight, not in red: a heavy border and an [ERROR] tag. */
+[role="alert"]:is(.text-red-600, .text-red-700, .text-red-800) {
+  border: 2px solid currentColor;
+  --tw-border-style: solid;
+  padding: 0.25rem 0.5rem;
+  font-weight: 600;
+}
+[role="alert"]:is(.text-red-600, .text-red-700, .text-red-800)::before {
+  content: "[ERROR] ";
+}
+
+/* An inverted box (Jane's own cards, which must look unlike her answers): white on black in
+   light mode, black on white in dark mode. Inside it the page colours swap and every grey
+   mirrors (700 reads as 300 and so on), so its classes need no inverted twins. */
+.invert-scope {
+  --background: #171717;
+  --foreground: #ffffff;
+  --color-white: #171717;
+  --color-black: #ffffff;
+  --color-amber-50: oklch(27.9% 0 0);
+  --color-amber-100: oklch(41.4% 0 0);
+  --color-amber-200: oklch(47.3% 0 0);
+  --color-amber-300: oklch(55.5% 0 0);
+  --color-amber-400: oklch(66.6% 0 0);
+  --color-amber-500: oklch(76.9% 0 0);
+  --color-amber-600: oklch(82.8% 0 0);
+  --color-amber-700: oklch(87.9% 0 0);
+  --color-amber-800: oklch(92.4% 0 0);
+  --color-amber-900: oklch(96.2% 0 0);
+  --color-amber-950: oklch(98.7% 0 0);
+  --color-blue-50: oklch(28.2% 0 0);
+  --color-blue-100: oklch(37.9% 0 0);
+  --color-blue-200: oklch(42.4% 0 0);
+  --color-blue-300: oklch(48.8% 0 0);
+  --color-blue-400: oklch(54.6% 0 0);
+  --color-blue-500: oklch(62.3% 0 0);
+  --color-blue-600: oklch(70.7% 0 0);
+  --color-blue-700: oklch(80.9% 0 0);
+  --color-blue-800: oklch(88.2% 0 0);
+  --color-blue-900: oklch(93.2% 0 0);
+  --color-blue-950: oklch(97% 0 0);
+  --color-cyan-50: oklch(30.2% 0 0);
+  --color-cyan-100: oklch(39.8% 0 0);
+  --color-cyan-200: oklch(45% 0 0);
+  --color-cyan-300: oklch(52% 0 0);
+  --color-cyan-400: oklch(60.9% 0 0);
+  --color-cyan-500: oklch(71.5% 0 0);
+  --color-cyan-600: oklch(78.9% 0 0);
+  --color-cyan-700: oklch(86.5% 0 0);
+  --color-cyan-800: oklch(91.7% 0 0);
+  --color-cyan-900: oklch(95.6% 0 0);
+  --color-cyan-950: oklch(98.4% 0 0);
+  --color-emerald-50: oklch(26.2% 0 0);
+  --color-emerald-100: oklch(37.8% 0 0);
+  --color-emerald-200: oklch(43.2% 0 0);
+  --color-emerald-300: oklch(50.8% 0 0);
+  --color-emerald-400: oklch(59.6% 0 0);
+  --color-emerald-500: oklch(69.6% 0 0);
+  --color-emerald-600: oklch(76.5% 0 0);
+  --color-emerald-700: oklch(84.5% 0 0);
+  --color-emerald-800: oklch(90.5% 0 0);
+  --color-emerald-900: oklch(95% 0 0);
+  --color-emerald-950: oklch(97.9% 0 0);
+  --color-fuchsia-50: oklch(29.3% 0 0);
+  --color-fuchsia-100: oklch(40.1% 0 0);
+  --color-fuchsia-200: oklch(45.2% 0 0);
+  --color-fuchsia-300: oklch(51.8% 0 0);
+  --color-fuchsia-400: oklch(59.1% 0 0);
+  --color-fuchsia-500: oklch(66.7% 0 0);
+  --color-fuchsia-600: oklch(74% 0 0);
+  --color-fuchsia-700: oklch(83.3% 0 0);
+  --color-fuchsia-800: oklch(90.3% 0 0);
+  --color-fuchsia-900: oklch(95.2% 0 0);
+  --color-fuchsia-950: oklch(97.7% 0 0);
+  --color-gray-50: oklch(13% 0 0);
+  --color-gray-100: oklch(21% 0 0);
+  --color-gray-200: oklch(27.8% 0 0);
+  --color-gray-300: oklch(37.3% 0 0);
+  --color-gray-400: oklch(44.6% 0 0);
+  --color-gray-500: oklch(55.1% 0 0);
+  --color-gray-600: oklch(70.7% 0 0);
+  --color-gray-700: oklch(87.2% 0 0);
+  --color-gray-800: oklch(92.8% 0 0);
+  --color-gray-900: oklch(96.7% 0 0);
+  --color-gray-950: oklch(98.5% 0 0);
+  --color-green-50: oklch(26.6% 0 0);
+  --color-green-100: oklch(39.3% 0 0);
+  --color-green-200: oklch(44.8% 0 0);
+  --color-green-300: oklch(52.7% 0 0);
+  --color-green-400: oklch(62.7% 0 0);
+  --color-green-500: oklch(72.3% 0 0);
+  --color-green-600: oklch(79.2% 0 0);
+  --color-green-700: oklch(87.1% 0 0);
+  --color-green-800: oklch(92.5% 0 0);
+  --color-green-900: oklch(96.2% 0 0);
+  --color-green-950: oklch(98.2% 0 0);
+  --color-indigo-50: oklch(25.7% 0 0);
+  --color-indigo-100: oklch(35.9% 0 0);
+  --color-indigo-200: oklch(39.8% 0 0);
+  --color-indigo-300: oklch(45.7% 0 0);
+  --color-indigo-400: oklch(51.1% 0 0);
+  --color-indigo-500: oklch(58.5% 0 0);
+  --color-indigo-600: oklch(67.3% 0 0);
+  --color-indigo-700: oklch(78.5% 0 0);
+  --color-indigo-800: oklch(87% 0 0);
+  --color-indigo-900: oklch(93% 0 0);
+  --color-indigo-950: oklch(96.2% 0 0);
+  --color-lime-50: oklch(27.4% 0 0);
+  --color-lime-100: oklch(40.5% 0 0);
+  --color-lime-200: oklch(45.3% 0 0);
+  --color-lime-300: oklch(53.2% 0 0);
+  --color-lime-400: oklch(64.8% 0 0);
+  --color-lime-500: oklch(76.8% 0 0);
+  --color-lime-600: oklch(84.1% 0 0);
+  --color-lime-700: oklch(89.7% 0 0);
+  --color-lime-800: oklch(93.8% 0 0);
+  --color-lime-900: oklch(96.7% 0 0);
+  --color-lime-950: oklch(98.6% 0 0);
+  --color-mauve-50: oklch(14.5% 0 0);
+  --color-mauve-100: oklch(21.2% 0 0);
+  --color-mauve-200: oklch(26.3% 0 0);
+  --color-mauve-300: oklch(36.4% 0 0);
+  --color-mauve-400: oklch(43.5% 0 0);
+  --color-mauve-500: oklch(54.2% 0 0);
+  --color-mauve-600: oklch(71.1% 0 0);
+  --color-mauve-700: oklch(86.5% 0 0);
+  --color-mauve-800: oklch(92.2% 0 0);
+  --color-mauve-900: oklch(96% 0 0);
+  --color-mauve-950: oklch(98.5% 0 0);
+  --color-mist-50: oklch(14.8% 0 0);
+  --color-mist-100: oklch(21.8% 0 0);
+  --color-mist-200: oklch(27.5% 0 0);
+  --color-mist-300: oklch(37.8% 0 0);
+  --color-mist-400: oklch(45% 0 0);
+  --color-mist-500: oklch(56% 0 0);
+  --color-mist-600: oklch(72.3% 0 0);
+  --color-mist-700: oklch(87.2% 0 0);
+  --color-mist-800: oklch(92.5% 0 0);
+  --color-mist-900: oklch(96.3% 0 0);
+  --color-mist-950: oklch(98.7% 0 0);
+  --color-neutral-50: oklch(14.5% 0 0);
+  --color-neutral-100: oklch(20.5% 0 0);
+  --color-neutral-200: oklch(26.9% 0 0);
+  --color-neutral-300: oklch(37.1% 0 0);
+  --color-neutral-400: oklch(43.9% 0 0);
+  --color-neutral-500: oklch(55.6% 0 0);
+  --color-neutral-600: oklch(70.8% 0 0);
+  --color-neutral-700: oklch(87% 0 0);
+  --color-neutral-800: oklch(92.2% 0 0);
+  --color-neutral-900: oklch(97% 0 0);
+  --color-neutral-950: oklch(98.5% 0 0);
+  --color-olive-50: oklch(15.3% 0 0);
+  --color-olive-100: oklch(22.8% 0 0);
+  --color-olive-200: oklch(28.6% 0 0);
+  --color-olive-300: oklch(39.4% 0 0);
+  --color-olive-400: oklch(46.6% 0 0);
+  --color-olive-500: oklch(58% 0 0);
+  --color-olive-600: oklch(73.7% 0 0);
+  --color-olive-700: oklch(88% 0 0);
+  --color-olive-800: oklch(93% 0 0);
+  --color-olive-900: oklch(96.6% 0 0);
+  --color-olive-950: oklch(98.8% 0 0);
+  --color-orange-50: oklch(26.6% 0 0);
+  --color-orange-100: oklch(40.8% 0 0);
+  --color-orange-200: oklch(47% 0 0);
+  --color-orange-300: oklch(55.3% 0 0);
+  --color-orange-400: oklch(64.6% 0 0);
+  --color-orange-500: oklch(70.5% 0 0);
+  --color-orange-600: oklch(75% 0 0);
+  --color-orange-700: oklch(83.7% 0 0);
+  --color-orange-800: oklch(90.1% 0 0);
+  --color-orange-900: oklch(95.4% 0 0);
+  --color-orange-950: oklch(98% 0 0);
+  --color-pink-50: oklch(28.4% 0 0);
+  --color-pink-100: oklch(40.8% 0 0);
+  --color-pink-200: oklch(45.9% 0 0);
+  --color-pink-300: oklch(52.5% 0 0);
+  --color-pink-400: oklch(59.2% 0 0);
+  --color-pink-500: oklch(65.6% 0 0);
+  --color-pink-600: oklch(71.8% 0 0);
+  --color-pink-700: oklch(82.3% 0 0);
+  --color-pink-800: oklch(89.9% 0 0);
+  --color-pink-900: oklch(94.8% 0 0);
+  --color-pink-950: oklch(97.1% 0 0);
+  --color-purple-50: oklch(29.1% 0 0);
+  --color-purple-100: oklch(38.1% 0 0);
+  --color-purple-200: oklch(43.8% 0 0);
+  --color-purple-300: oklch(49.6% 0 0);
+  --color-purple-400: oklch(55.8% 0 0);
+  --color-purple-500: oklch(62.7% 0 0);
+  --color-purple-600: oklch(71.4% 0 0);
+  --color-purple-700: oklch(82.7% 0 0);
+  --color-purple-800: oklch(90.2% 0 0);
+  --color-purple-900: oklch(94.6% 0 0);
+  --color-purple-950: oklch(97.7% 0 0);
+  --color-red-50: oklch(25.8% 0 0);
+  --color-red-100: oklch(39.6% 0 0);
+  --color-red-200: oklch(44.4% 0 0);
+  --color-red-300: oklch(50.5% 0 0);
+  --color-red-400: oklch(57.7% 0 0);
+  --color-red-500: oklch(63.7% 0 0);
+  --color-red-600: oklch(70.4% 0 0);
+  --color-red-700: oklch(80.8% 0 0);
+  --color-red-800: oklch(88.5% 0 0);
+  --color-red-900: oklch(93.6% 0 0);
+  --color-red-950: oklch(97.1% 0 0);
+  --color-rose-50: oklch(27.1% 0 0);
+  --color-rose-100: oklch(41% 0 0);
+  --color-rose-200: oklch(45.5% 0 0);
+  --color-rose-300: oklch(51.4% 0 0);
+  --color-rose-400: oklch(58.6% 0 0);
+  --color-rose-500: oklch(64.5% 0 0);
+  --color-rose-600: oklch(71.2% 0 0);
+  --color-rose-700: oklch(81% 0 0);
+  --color-rose-800: oklch(89.2% 0 0);
+  --color-rose-900: oklch(94.1% 0 0);
+  --color-rose-950: oklch(96.9% 0 0);
+  --color-sky-50: oklch(29.3% 0 0);
+  --color-sky-100: oklch(39.1% 0 0);
+  --color-sky-200: oklch(44.3% 0 0);
+  --color-sky-300: oklch(50% 0 0);
+  --color-sky-400: oklch(58.8% 0 0);
+  --color-sky-500: oklch(68.5% 0 0);
+  --color-sky-600: oklch(74.6% 0 0);
+  --color-sky-700: oklch(82.8% 0 0);
+  --color-sky-800: oklch(90.1% 0 0);
+  --color-sky-900: oklch(95.1% 0 0);
+  --color-sky-950: oklch(97.7% 0 0);
+  --color-slate-50: oklch(12.9% 0 0);
+  --color-slate-100: oklch(20.8% 0 0);
+  --color-slate-200: oklch(27.9% 0 0);
+  --color-slate-300: oklch(37.2% 0 0);
+  --color-slate-400: oklch(44.6% 0 0);
+  --color-slate-500: oklch(55.4% 0 0);
+  --color-slate-600: oklch(70.4% 0 0);
+  --color-slate-700: oklch(86.9% 0 0);
+  --color-slate-800: oklch(92.9% 0 0);
+  --color-slate-900: oklch(96.8% 0 0);
+  --color-slate-950: oklch(98.4% 0 0);
+  --color-stone-50: oklch(14.7% 0 0);
+  --color-stone-100: oklch(21.6% 0 0);
+  --color-stone-200: oklch(26.8% 0 0);
+  --color-stone-300: oklch(37.4% 0 0);
+  --color-stone-400: oklch(44.4% 0 0);
+  --color-stone-500: oklch(55.3% 0 0);
+  --color-stone-600: oklch(70.9% 0 0);
+  --color-stone-700: oklch(86.9% 0 0);
+  --color-stone-800: oklch(92.3% 0 0);
+  --color-stone-900: oklch(97% 0 0);
+  --color-stone-950: oklch(98.5% 0 0);
+  --color-taupe-50: oklch(14.7% 0 0);
+  --color-taupe-100: oklch(21.4% 0 0);
+  --color-taupe-200: oklch(26.8% 0 0);
+  --color-taupe-300: oklch(36.7% 0 0);
+  --color-taupe-400: oklch(43.8% 0 0);
+  --color-taupe-500: oklch(54.7% 0 0);
+  --color-taupe-600: oklch(71.4% 0 0);
+  --color-taupe-700: oklch(86.8% 0 0);
+  --color-taupe-800: oklch(92.2% 0 0);
+  --color-taupe-900: oklch(96% 0 0);
+  --color-taupe-950: oklch(98.6% 0 0);
+  --color-teal-50: oklch(27.7% 0 0);
+  --color-teal-100: oklch(38.6% 0 0);
+  --color-teal-200: oklch(43.7% 0 0);
+  --color-teal-300: oklch(51.1% 0 0);
+  --color-teal-400: oklch(60% 0 0);
+  --color-teal-500: oklch(70.4% 0 0);
+  --color-teal-600: oklch(77.7% 0 0);
+  --color-teal-700: oklch(85.5% 0 0);
+  --color-teal-800: oklch(91% 0 0);
+  --color-teal-900: oklch(95.3% 0 0);
+  --color-teal-950: oklch(98.4% 0 0);
+  --color-violet-50: oklch(28.3% 0 0);
+  --color-violet-100: oklch(38% 0 0);
+  --color-violet-200: oklch(43.2% 0 0);
+  --color-violet-300: oklch(49.1% 0 0);
+  --color-violet-400: oklch(54.1% 0 0);
+  --color-violet-500: oklch(60.6% 0 0);
+  --color-violet-600: oklch(70.2% 0 0);
+  --color-violet-700: oklch(81.1% 0 0);
+  --color-violet-800: oklch(89.4% 0 0);
+  --color-violet-900: oklch(94.3% 0 0);
+  --color-violet-950: oklch(96.9% 0 0);
+  --color-yellow-50: oklch(28.6% 0 0);
+  --color-yellow-100: oklch(42.1% 0 0);
+  --color-yellow-200: oklch(47.6% 0 0);
+  --color-yellow-300: oklch(55.4% 0 0);
+  --color-yellow-400: oklch(68.1% 0 0);
+  --color-yellow-500: oklch(79.5% 0 0);
+  --color-yellow-600: oklch(85.2% 0 0);
+  --color-yellow-700: oklch(90.5% 0 0);
+  --color-yellow-800: oklch(94.5% 0 0);
+  --color-yellow-900: oklch(97.3% 0 0);
+  --color-yellow-950: oklch(98.7% 0 0);
+  --color-zinc-50: oklch(14.1% 0 0);
+  --color-zinc-100: oklch(21% 0 0);
+  --color-zinc-200: oklch(27.4% 0 0);
+  --color-zinc-300: oklch(37% 0 0);
+  --color-zinc-400: oklch(44.2% 0 0);
+  --color-zinc-500: oklch(55.2% 0 0);
+  --color-zinc-600: oklch(70.5% 0 0);
+  --color-zinc-700: oklch(87.1% 0 0);
+  --color-zinc-800: oklch(92% 0 0);
+  --color-zinc-900: oklch(96.7% 0 0);
+  --color-zinc-950: oklch(98.5% 0 0);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+@media (prefers-color-scheme: dark) {
+  .invert-scope {
+    --background: #ededed;
+    --foreground: #0a0a0a;
+    --color-white: #ededed;
+    --color-black: #0a0a0a;
+  }
+}
+
 /* The hub's net worth chart (src/components/hub/net-worth-chart.tsx): the line draws itself in
    when the range changes. Still for reduced motion. */
+/* Expanding grows the chart smoothly rather than jumping. */
+.nw-box {
+  transition: height var(--motion-slow) var(--ease-spring);
+}
 .nw-line {
   stroke-dasharray: 1;
-  animation: nw-draw 650ms var(--ease-out-soft) both;
+  animation: nw-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 @keyframes nw-draw {
   from {
@@ -246,9 +914,56 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .nw-box {
+    transition: none;
+  }
   .nw-line {
     animation: none;
   }
+}
+
+/* A page arriving: a fade and a few pixels' rise (src/app/template.tsx). "backwards" so
+   nothing is left transformed once it has played. */
+.page-in {
+  animation: page-in var(--motion-base) var(--ease-out-soft) backwards;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-in {
+    animation: none;
+  }
+}
+
+/* The first scan's loading bar (src/components/scan-bar.tsx): it fades out at 100%; under
+   reduced motion it just goes. */
+.scan-bar {
+  transition: opacity var(--motion-slow) var(--ease-out-soft);
+}
+.scan-bar-out {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-bar {
+    transition: none;
+  }
+}
+
+/* The chat never scrolls the page (founder: "Never let the chat scroll affect the whole screen
+   scroll"): scrolling past either end of the chat in the side panel or the phone's sheet stops
+   there, with a wheel, a trackpad or a finger (src/lib/contain-scroll.ts does the same where
+   the browser would still hand the scroll on, as when the chat is too short to scroll). */
+html[data-chat-embed],
+html[data-chat-embed] body,
+.side-chat,
+.side-chat-sheet,
+.side-chat iframe,
+.side-chat-sheet iframe {
+  overscroll-behavior: contain;
 }
 
 /* The chat inside the side panel (/chat?embed=1) has no footer of its own. */
@@ -361,6 +1076,15 @@ textarea {
     bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
 }
+/* Folded on a small phone: one line at the very bottom, level with the Jane button and left of
+   it, so the first screen stays clear. */
+@media (width < 640px) {
+  body .floating-cards.floating-cards-folded,
+  body:has(#jane-fab) .floating-cards.floating-cards-folded {
+    bottom: calc(1rem + 6px + env(safe-area-inset-bottom));
+    right: 5.5rem;
+  }
+}
 @media (min-width: 1024px) {
   body:has(#app-top-bar) .floating-cards {
     right: 380px;
@@ -373,6 +1097,23 @@ textarea {
     right: 0;
   }
 }
+/* On a computer with the chat docked, Jane's cards are in the dock above it
+   (src/components/side-chat/card-dock.tsx), so the page's own floating stack stays out. */
+@media (min-width: 1024px) {
+  html:not([data-side-chat="rail"]):not([data-side-chat="none"])
+    body:has(#app-top-bar):not(:has([data-chat-page]))
+    .floating-cards[data-floating-cards="queue"] {
+    display: none;
+  }
+}
+/* In the chat the cards sit just above its pinned message box (src/app/chat/composer.tsx sets
+   --chat-composer-h), never over it, and need no room of their own at the page's end. */
+body:has([data-chat-composer]) .floating-cards {
+  bottom: calc(var(--chat-composer-h, 5.5rem) + 0.5rem);
+}
+body:has([data-chat-composer]) [data-card-room] {
+  display: none;
+}
 /* In the side panel (/chat?embed=1) the suggestions wait until the page beside it says where it
    is: on Home the hub shows them, so the chat beside it leaves them out; anywhere else, or
    full screen, they show (src/app/chat/embed-bridge.tsx sets data-chat-embed-cards). Hidden by
@@ -384,21 +1125,49 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
   display: flex;
 }
 
+/* A card opened to its details grows wider (and taller, by its details' own animation). */
+.floating-card-width {
+  transition: max-width var(--motion-slow) var(--ease-out-soft);
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-card-width {
+    transition: none;
+  }
+}
 .floating-card-in {
-  animation: floating-card-in 260ms var(--ease-spring) both;
+  animation: floating-card-in var(--motion-slow) var(--ease-spring) both;
 }
 .floating-card-out {
-  animation: floating-card-out 200ms ease-in both;
+  animation: floating-card-out var(--motion-base) ease-in both;
 }
 .floating-card-out-yes {
-  animation: floating-card-out-yes 200ms ease-in both;
+  animation: floating-card-out-yes var(--motion-base) ease-in both;
 }
 .floating-card-edge {
   transition:
-    transform 260ms var(--ease-spring),
-    opacity 200ms ease-out;
+    transform var(--motion-slow) var(--ease-spring),
+    opacity var(--motion-base) ease-out;
 }
 
+/* Stepping between cards: the next slides in from the side it comes from. */
+.floating-card-slide-next {
+  animation: floating-card-slide-next var(--motion-slow) var(--ease-out-soft) both;
+}
+.floating-card-slide-prev {
+  animation: floating-card-slide-prev var(--motion-slow) var(--ease-out-soft) both;
+}
+@keyframes floating-card-slide-next {
+  from {
+    opacity: 0;
+    transform: translateX(2.5rem);
+  }
+}
+@keyframes floating-card-slide-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-2.5rem);
+  }
+}
 @keyframes floating-card-in {
   from {
     opacity: 0;
@@ -424,8 +1193,10 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .floating-card-in {
-    animation: floating-card-fade 120ms linear both;
+  .floating-card-in,
+  .floating-card-slide-next,
+  .floating-card-slide-prev {
+    animation: floating-card-fade var(--motion-fast) linear both;
   }
   .floating-card-out,
   .floating-card-out-yes {

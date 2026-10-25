@@ -17,6 +17,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { finishDeadline, removeDeadline } from "./actions";
 import { DeadlineForm } from "./deadline-form";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Deadlines (spec step 71): return windows, trials, renewals, payments and the person's
 // own dates, soonest first.
@@ -62,19 +64,16 @@ function Row({ deadline, today }: { deadline: Deadline; today: string }) {
           <>
             <form action={finishDeadline}>
               <input type="hidden" name="deadlineId" value={deadline.entryId} />
-              <button type="submit" className={LINK}>
-                Mark done
-              </button>
+              <SubmitButton className={LINK}>Mark done</SubmitButton>
             </form>
             <form action={removeDeadline}>
               <input type="hidden" name="deadlineId" value={deadline.entryId} />
-              <button
-                type="submit"
+              <SubmitButton
                 className="text-zinc-500 hover:text-red-700 hover:underline"
                 aria-label={`Delete ${deadline.title}`}
               >
                 Delete
-              </button>
+              </SubmitButton>
             </form>
           </>
         )}
@@ -144,7 +143,7 @@ async function DeadlinesContent() {
 export default function DeadlinesPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <DeadlinesContent />
       </Suspense>
     </main>

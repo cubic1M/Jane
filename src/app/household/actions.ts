@@ -20,6 +20,7 @@ import {
   setSplitRule,
 } from "@/lib/money-for-two";
 import { requireUser } from "@/lib/session";
+import { isTrialUser } from "@/lib/trial-ids";
 import { SharedBillError, settleUp, splitCharge, unsplitCharge } from "@/lib/shared-bills";
 
 export type HouseholdState = { ok: boolean; message: string; link?: string } | null;
@@ -39,7 +40,8 @@ export async function invite(
   }
   const link = `${appBase()}/household/join?${new URLSearchParams({ token })}`;
   // Email it when email is set up; the link is shown either way, so it can be sent by hand.
-  if (process.env.RESEND_API_KEY) {
+  // Never from a trial person (spec step 138): a visitor trying Jane can't make it email anyone.
+  if (process.env.RESEND_API_KEY && !isTrialUser(user.id)) {
     await sendEmail({
       to: email.trim(),
       subject: `${user.email} invited you to share a household on Financial Controller`,

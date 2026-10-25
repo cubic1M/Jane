@@ -68,7 +68,7 @@ export function GoalForm({
           <option value="">An amount I enter</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.name} balance
+              {a.name}
             </option>
           ))}
         </select>

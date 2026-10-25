@@ -9,6 +9,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { demoRental } from "./actions";
 import { RentalForm } from "./rental-form";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Property as an investment (spec step 214, demo advice): home equity, each rental's
 // figures from its own transactions, depreciation for the taxes side, and paying the
@@ -148,9 +150,7 @@ async function Content({
 
       {v.rentals.length === 0 && v.demo && (
         <form action={demoRental}>
-          <button type="submit" className={BUTTON}>
-            Add a demo rental
-          </button>
+          <SubmitButton className={BUTTON}>Add a demo rental</SubmitButton>
         </form>
       )}
       <section className="flex flex-col gap-2">
@@ -164,7 +164,7 @@ async function Content({
 export default function PropertyPage(props: PageProps<"/investments/property">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

@@ -167,8 +167,9 @@ export async function addJaneMessage(
   await client.connect();
   try {
     await client.query(
-      `INSERT INTO jane_messages (id, user_id, kind, body, refs, actions, dedupe_key)
-       VALUES ($1, $2, $3, $4, $5, $6, $1)`,
+      // Stamped by this machine's clock, as the app stamps its own (the database's may lag).
+      `INSERT INTO jane_messages (id, user_id, kind, body, refs, actions, dedupe_key, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $1, $7)`,
       [
         id,
         userId,
@@ -176,6 +177,7 @@ export async function addJaneMessage(
         message.body,
         JSON.stringify(message.refs),
         JSON.stringify(message.actions),
+        new Date(),
       ],
     );
   } finally {
@@ -329,7 +331,7 @@ export async function addThemeIdea(userId: string): Promise<void> {
         userId,
         JSON.stringify({
           ask: {
-            headline: "Try $400 of ITA on the news, in practice",
+            headline: "Try $400 of ITA on news, in practice",
             short:
               "After news today: it beat the market in 5 of 7 past events; out in about a month.",
             worthCents: 40000,

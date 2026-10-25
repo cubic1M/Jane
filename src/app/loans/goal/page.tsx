@@ -9,6 +9,8 @@ import { ESTIMATE_NOTE } from "@/lib/jane-agent/credit-goal-replies";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { endGoalAction, startGoalAction, tickItemAction } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // A credit score for a goal (spec step 227): the score and date needed, a month-by-month plan
 // from the score simulator, and each month's checklist. A stand-in score; every figure is an
@@ -138,9 +140,7 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
                         <form action={tickItemAction}>
                           <input type="hidden" name="goalId" value={g.id ?? ""} />
                           <input type="hidden" name="key" value={i.key} />
-                          <button type="submit" className={LINK}>
-                            Mark done
-                          </button>
+                          <SubmitButton className={LINK}>Mark done</SubmitButton>
                         </form>
                       )}
                     </li>
@@ -149,9 +149,7 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
               </div>
               <form action={endGoalAction}>
                 <input type="hidden" name="goalId" value={g.id ?? ""} />
-                <button type="submit" className={LINK}>
-                  End this plan
-                </button>
+                <SubmitButton className={LINK}>End this plan</SubmitButton>
               </form>
             </section>
           ))}
@@ -199,9 +197,7 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
               <input type="hidden" name="kind" value={preview.kind} />
               <input type="hidden" name="targetScore" value={preview.targetScore} />
               <input type="hidden" name="targetDate" value={preview.targetDate} />
-              <button type="submit" className={BUTTON}>
-                Start this plan
-              </button>
+              <SubmitButton className={BUTTON}>Start this plan</SubmitButton>
             </form>
           )}
           <a href={CREDIT_GOAL_SOURCE} className={`${LINK} text-sm`}>
@@ -216,7 +212,7 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
 export default function GoalPage({ searchParams }: PageProps<"/loans/goal">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <GoalContent searchParams={searchParams} />
       </Suspense>
     </main>

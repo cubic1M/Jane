@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { turnOffPartner } from "./actions";
 import { PartnerForm, type PartnerFormValues } from "./partner-form";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 const ACTION_TYPES = [
   "move_idle_cash",
@@ -82,12 +84,9 @@ async function Partners() {
                 {p.active ? (
                   <form action={turnOffPartner}>
                     <input type="hidden" name="id" value={p.id} />
-                    <button
-                      type="submit"
-                      className="rounded-full bg-red-700 px-4 py-1 text-xs font-semibold text-white"
-                    >
+                    <SubmitButton className="rounded-full bg-red-700 px-4 py-1 text-xs font-semibold text-white">
                       Turn off now
-                    </button>
+                    </SubmitButton>
                   </form>
                 ) : (
                   <span className="text-xs font-semibold text-zinc-500">Off</span>
@@ -126,7 +125,7 @@ async function Partners() {
 export default function PartnersPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Partners />
       </Suspense>
     </main>

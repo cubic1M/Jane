@@ -60,6 +60,8 @@ import {
   skipRenewal,
 } from "./actions";
 import { HouseholdForm, PolicyForm } from "./forms";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Insurance (spec step 102): every policy in one place, the household facts that matter
 // and the gaps, in plain words. Every figure comes from a policy record. Laid out as the area
@@ -167,9 +169,9 @@ function PolicyCard({ policy, asOf, editing }: { policy: Policy; asOf: string; e
       </details>
       <form action={deletePolicy} className="self-end">
         <input type="hidden" name="policyId" value={policy.id} />
-        <button type="submit" className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
+        <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
           {policy.status === "found" ? "Not insurance" : "Remove"}
-        </button>
+        </SubmitButton>
       </form>
     </div>
   );
@@ -279,9 +281,7 @@ async function InsuranceContent({
           )}
           <form action={notNeeded}>
             <input type="hidden" name="gap" value={gap.key} />
-            <button type="submit" className="underline">
-              I don&apos;t need it
-            </button>
+            <SubmitButton className="underline">I don&apos;t need it</SubmitButton>
           </form>
         </div>
       </div>
@@ -302,15 +302,13 @@ async function InsuranceContent({
         <div className="flex flex-wrap gap-3">
           <form action={applyOneSaving}>
             <input type="hidden" name="savingId" value={s.id} />
-            <button type="submit" className={BUTTON}>
+            <SubmitButton className={BUTTON}>
               {lowering([s]).length > 0 ? "Raise it" : "Do it"}
-            </button>
+            </SubmitButton>
           </form>
           <form action={skipSaving}>
             <input type="hidden" name="savingId" value={s.id} />
-            <button type="submit" className={`h-10 ${LINK}`}>
-              No thanks
-            </button>
+            <SubmitButton className={`h-10 ${LINK}`}>No thanks</SubmitButton>
           </form>
         </div>
         <DemoAdviceLabel />
@@ -329,15 +327,11 @@ async function InsuranceContent({
         <div className="flex flex-wrap gap-3 text-sm">
           <form action={callRenewal}>
             <input type="hidden" name="negotiationId" value={n.id} />
-            <button type="submit" className={BUTTON}>
-              Call them
-            </button>
+            <SubmitButton className={BUTTON}>Call them</SubmitButton>
           </form>
           <form action={skipRenewal}>
             <input type="hidden" name="negotiationId" value={n.id} />
-            <button type="submit" className={`h-10 ${LINK}`}>
-              No thanks
-            </button>
+            <SubmitButton className={`h-10 ${LINK}`}>No thanks</SubmitButton>
           </form>
         </div>
       ) : null;
@@ -362,15 +356,11 @@ async function InsuranceContent({
         <div className="flex flex-wrap gap-3">
           <form action={applyChanges}>
             <input type="hidden" name="coverEvent" value={ref} />
-            <button type="submit" className={BUTTON}>
-              {apply.label}
-            </button>
+            <SubmitButton className={BUTTON}>{apply.label}</SubmitButton>
           </form>
           <form action={dismissChanges}>
             <input type="hidden" name="coverEvent" value={ref} />
-            <button type="submit" className={`h-10 ${LINK}`}>
-              Not now
-            </button>
+            <SubmitButton className={`h-10 ${LINK}`}>Not now</SubmitButton>
           </form>
         </div>
       </div>
@@ -418,17 +408,16 @@ async function InsuranceContent({
     details[id] = (
       <form action={answerRiskForm} className="flex gap-3">
         <input type="hidden" name="riskId" value={r.id} />
-        <button type="submit" name="answer" value="yes" className={BUTTON}>
+        <SubmitButton name="answer" value="yes" className={BUTTON}>
           Yes
-        </button>
-        <button
-          type="submit"
+        </SubmitButton>
+        <SubmitButton
           name="answer"
           value="no"
           className="inline-flex h-10 items-center rounded-full border border-zinc-300 px-5 text-sm font-medium dark:border-zinc-700"
         >
           No
-        </button>
+        </SubmitButton>
       </form>
     );
     more[id] = <p>{riskQuestion(r)}</p>;
@@ -457,9 +446,7 @@ async function InsuranceContent({
         {family.people.some((p) => p.name === row.name) && (
           <form action={removePersonForm}>
             <input type="hidden" name="name" value={row.name} />
-            <button type="submit" className={`text-xs ${LINK}`}>
-              Remove
-            </button>
+            <SubmitButton className={`text-xs ${LINK}`}>Remove</SubmitButton>
           </form>
         )}
       </div>
@@ -494,9 +481,7 @@ async function InsuranceContent({
         <label className="flex items-center gap-2 pb-3 font-medium">
           <input type="checkbox" name="driver" /> Drives
         </label>
-        <button type="submit" className={BUTTON}>
-          Add them
-        </button>
+        <SubmitButton className={BUTTON}>Add them</SubmitButton>
       </form>
     </div>
   );
@@ -522,9 +507,9 @@ async function InsuranceContent({
               <form action={setSharedForm} className="inline-block pl-3">
                 <input type="hidden" name="policyId" value={p.id} />
                 <input type="hidden" name="shared" value={p.sharedWithHousehold ? "no" : "yes"} />
-                <button type="submit" className={LINK}>
+                <SubmitButton className={LINK}>
                   {p.sharedWithHousehold ? "Shared: stop sharing" : "Share with my household"}
-                </button>
+                </SubmitButton>
               </form>
               {family.people.map((person) => {
                 const covers = (mine?.covered ?? []).some((c) => c.name === person.name);
@@ -533,9 +518,9 @@ async function InsuranceContent({
                     <input type="hidden" name="policyId" value={p.id} />
                     <input type="hidden" name="name" value={person.name} />
                     <input type="hidden" name="covered" value={covers ? "no" : "yes"} />
-                    <button type="submit" className={LINK}>
+                    <SubmitButton className={LINK}>
                       {covers ? `Covers ${person.name}: remove` : `Add ${person.name}`}
-                    </button>
+                    </SubmitButton>
                   </form>
                 );
               })}
@@ -581,17 +566,17 @@ async function InsuranceContent({
           Your cover at a glance. Open a branch to see more.
         </p>
         <nav aria-label="Insurance pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/insurance/checkup" className={LINK}>
+          <Link prefetch={false} href="/insurance/checkup" className={LINK}>
             Checkup
           </Link>
-          <Link href="/insurance/claims" className={LINK}>
+          <Link prefetch={false} href="/insurance/claims" className={LINK}>
             Claims
           </Link>
-          <Link href="/insurance/benefits" className={LINK}>
+          <Link prefetch={false} href="/insurance/benefits" className={LINK}>
             Work benefits
           </Link>
           {advice && (
-            <Link href="/insurance/life" className={LINK}>
+            <Link prefetch={false} href="/insurance/life" className={LINK}>
               Life cover
             </Link>
           )}
@@ -681,7 +666,7 @@ async function InsuranceContent({
 export default function InsurancePage({ searchParams }: PageProps<"/insurance">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <InsuranceContent searchParams={searchParams} />
       </Suspense>
     </main>

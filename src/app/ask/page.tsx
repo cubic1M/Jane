@@ -4,6 +4,8 @@ import { AppHeader } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 import { deleteAskConversation } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The person's earlier Ask Jane conversations (spec step 23), to read and delete. New questions
 // go to the one chat, where Claude answers with every tool (docs/feature-audit.md, cluster 5):
@@ -83,12 +85,9 @@ async function Ask({ searchParams }: { searchParams: PageProps<"/ask">["searchPa
                 </Link>
                 <form action={deleteAskConversation}>
                   <input type="hidden" name="conversationId" value={conversation.id} />
-                  <button
-                    type="submit"
-                    className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
-                  >
+                  <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
                     Delete
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -102,7 +101,7 @@ async function Ask({ searchParams }: { searchParams: PageProps<"/ask">["searchPa
 export default function AskPage({ searchParams }: PageProps<"/ask">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Ask searchParams={searchParams} />
       </Suspense>
     </main>

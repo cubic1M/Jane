@@ -10,7 +10,7 @@ export const SCAN_MAX_MINUTES = 5;
 export const SCAN_PULSE_MS = 1_500;
 export const SCAN_SLOW_REFRESH_MS = 15_000;
 export const SCAN_REFRESH_MAX_MS = 120_000;
-// Jane's first line, until she has the rest.
+// The first line the scan used to post ("still going through your accounts"): no longer posted
+// (the page's loading bar says it instead); older chats leave it out by this text.
 export const SCANNING_HELLO =
   "Hi, I'm Jane. I'm still going through your accounts and transactions. What I find will show up here in a moment, so stay on this page.";
-export const SCANNING_HELLO_KEY = "hello";

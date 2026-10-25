@@ -5,7 +5,13 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { PracticeIdeasSection } from "@/components/practice-ideas";
 import { RISK_LEVELS } from "@/config/investing";
-import { HARVEST_PARTNERS, MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/portfolios";
+import {
+  CRYPTO_PRACTICE_TICKERS,
+  DAY_TRADE_TICKER,
+  HARVEST_PARTNERS,
+  MODEL_PORTFOLIOS,
+  PRACTICE_ETFS,
+} from "@/config/portfolios";
 import { adviceMode } from "@/lib/advice-mode";
 import { practicePaidIn } from "@/lib/investments/practice-paid-in";
 import { formatCents } from "@/lib/money";
@@ -15,6 +21,8 @@ import { loadPractice } from "@/lib/practice/portfolio";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { pauseSwitch, runNow, startPracticePortfolio, undoLast } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The practice portfolio (spec steps 288 to 294, Phase AW, Stage A): a paper portfolio run by
 // Jane on practice money, with its trade log and a pause switch. Nothing here is a real account
@@ -38,8 +46,15 @@ const MESSAGES: Record<string, string> = {
   idea_no: "OK, put away. Jane brings that kind of idea a little later now.",
   idea_gone: "That idea has already moved on.",
 };
-// A fund's name with its ticker, for the model funds and their swap partners; a stock by ticker.
+// A fund's name with its ticker, for the model funds and their swap partners; a coin by its name;
+// a stock by ticker.
+const COINS: Readonly<Record<string, string>> = {
+  [CRYPTO_PRACTICE_TICKERS.BTC]: "Bitcoin",
+  [CRYPTO_PRACTICE_TICKERS.ETH]: "Ether",
+};
 const fundName = (ticker: string) => {
+  if (COINS[ticker]) return `${COINS[ticker]} (crypto sleeve)`;
+  if (ticker === DAY_TRADE_TICKER) return `S&P 500 ETF (${ticker}, day trading)`;
   const fund = [...Object.values(PRACTICE_ETFS), ...Object.values(HARVEST_PARTNERS)].find(
     (e) => e?.ticker === ticker,
   );
@@ -126,9 +141,7 @@ async function Content({
               );
             })}
           </fieldset>
-          <button type="submit" className={`${BUTTON} self-start`}>
-            Start with practice money
-          </button>
+          <SubmitButton className={`${BUTTON} self-start`}>Start with practice money</SubmitButton>
           <Link href="/investments/practice/settings" className={`text-sm ${LINK}`}>
             Set your goal, extra moves and what to avoid first →
           </Link>
@@ -162,9 +175,9 @@ async function Content({
               <form action={pauseSwitch}>
                 <input type="hidden" name="which" value="all" />
                 <input type="hidden" name="paused" value={practice.paused ? "0" : "1"} />
-                <button type="submit" className={OUTLINE}>
+                <SubmitButton className={OUTLINE}>
                   {practice.paused ? "Resume Jane" : "Pause Jane"}
-                </button>
+                </SubmitButton>
               </form>
               <form action={pauseSwitch}>
                 <input type="hidden" name="which" value="opportunities" />
@@ -173,19 +186,17 @@ async function Content({
                   name="paused"
                   value={practice.opportunitiesPaused ? "0" : "1"}
                 />
-                <button type="submit" className={OUTLINE}>
+                <SubmitButton className={OUTLINE}>
                   {practice.opportunitiesPaused ? "Resume opportunities" : "Pause opportunities"}
-                </button>
+                </SubmitButton>
               </form>
               <form action={runNow}>
-                <button type="submit" className={OUTLINE} disabled={practice.paused}>
+                <SubmitButton className={OUTLINE} disabled={practice.paused}>
                   Check now
-                </button>
+                </SubmitButton>
               </form>
               <form action={undoLast}>
-                <button type="submit" className={OUTLINE}>
-                  Undo the last trade
-                </button>
+                <SubmitButton className={OUTLINE}>Undo the last trade</SubmitButton>
               </form>
             </div>
             {practice.paused && <p className="text-sm">Paused: no trades until you resume.</p>}
@@ -233,7 +244,7 @@ async function Content({
 export default function PracticePage(props: PageProps<"/investments/practice">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

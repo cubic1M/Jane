@@ -15,6 +15,8 @@ import { escrowLines, pmiLines } from "@/lib/jane-agent/home-equity-replies";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { requestSentAction, saveFactsAction } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // A home's equity, used well (spec step 228): PMI against the home's original value, escrow
 // against the real bills, and ways to borrow for a project with each one's total cost (demo
@@ -50,9 +52,9 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
   const sent = (which: "pmi" | "escrow") => (
     <form action={requestSentAction}>
       <input type="hidden" name="which" value={which} />
-      <button type="submit" className={BUTTON}>
+      <SubmitButton className={BUTTON}>
         {which === "pmi" ? "I sent the PMI request" : "I sent the escrow request"}
-      </button>
+      </SubmitButton>
     </form>
   );
   return (
@@ -123,9 +125,9 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
                   className={INPUT}
                 />
               </label>
-              <button type="submit" className={`${BUTTON} sm:col-span-3 sm:justify-self-start`}>
+              <SubmitButton className={`${BUTTON} sm:col-span-3 sm:justify-self-start`}>
                 Save
-              </button>
+              </SubmitButton>
             </form>
           </section>
 
@@ -298,7 +300,7 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
 export default function EquityPage({ searchParams }: PageProps<"/loans/equity">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <EquityContent searchParams={searchParams} />
       </Suspense>
     </main>

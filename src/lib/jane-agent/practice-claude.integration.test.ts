@@ -155,12 +155,28 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
       ]),
     );
     expect(out.crypto.warning).toMatch(/lost 70% to 80%/);
-    expect(out.crypto.inThePracticePortfolio).toBe(false);
+    expect(out.crypto.inThePracticePortfolio).toMatch(/^At Very high, as a sleeve/);
+    expect(out.crypto.practicePortfolioRuns).toBe("no crypto sleeve");
     expect(out.crypto.strategies.map((s: { strategy: string }) => s.strategy)).toEqual([
       "Crypto, held",
       "Crypto trend",
       "Crypto momentum",
     ]);
+    // Every catalog strategy tested, with what is recommendable and why the rest isn't.
+    const tested = out.tested;
+    expect(tested.how).toMatch(/haircut/);
+    expect(
+      tested.recommendable.length + tested.worthWatching.length + tested.notRecommended.length,
+    ).toBeGreaterThan(30);
+    for (const r of tested.notRecommended) expect(r.why.length).toBeGreaterThan(0);
+    expect(out.dayTrading.warning).toMatch(/Most people who day trade lose money/);
+    expect(out.dayTrading.inThePracticePortfolio).toMatch(/^At Very high, as a sleeve/);
+    expect(out.dayTrading.practicePortfolioRuns).toBe("no day trading");
+    expect(out.dayTrading.rules).toHaveLength(5);
+    for (const r of out.dayTrading.rules) {
+      expect(typeof r.since2024YearlyPercent).toBe("number");
+      expect(typeof r.moreReturnForItsRiskThanHolding).toBe("boolean");
+    }
     for (const s of out.strategies) {
       expect(typeof s.yearlyPercent).toBe("number");
       expect(typeof s.mixYearlyPercent).toBe("number");
@@ -208,6 +224,8 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
       "strategy_menu",
     );
     expect(names("is momentum better than my mix")).toContain("strategy_menu");
+    expect(names("can I day trade with the practice money")).toContain("strategy_menu");
+    expect(names("does VWAP reversion work")).toContain("strategy_menu");
     expect(names("what strategy is my practice portfolio on")).toContain("practice_portfolio");
     expect(names("what ideas do you have for my practice portfolio")).toContain(
       "practice_portfolio",

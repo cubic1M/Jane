@@ -8,6 +8,7 @@ import { formatRate } from "@/insights/loans";
 import { loadCar } from "@/lib/car";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Buying a car (spec step 178): what the person can afford with insurance and running
 // costs in, preapproval offers compared by what they cost in all, and a dealer's financing
@@ -236,7 +237,7 @@ async function CarContent({ searchParams }: Pick<PageProps<"/loans/car">, "searc
 export default function CarPage({ searchParams }: PageProps<"/loans/car">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <CarContent searchParams={searchParams} />
       </Suspense>
     </main>

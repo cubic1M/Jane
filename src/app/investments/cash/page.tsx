@@ -16,6 +16,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { canHoldEmergency } from "@/planning/cash";
 import { moveNow } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Cash done right (spec step 162, demo advice): where each dollar of cash sits and what it
 // earns, the plan for it, and its moves, each a tap. The emergency fund stays in reach.
@@ -131,11 +133,11 @@ async function CashContent({
             <form key={m.key} action={moveNow} className="flex flex-wrap items-center gap-3">
               <input type="hidden" name="key" value={plan.key} />
               <input type="hidden" name="move" value={m.key} />
-              <button type="submit" className={BUTTON}>
+              <SubmitButton className={BUTTON}>
                 {m.key === "checking_to_savings"
                   ? `Move ${formatCents(m.cents)} to ${m.toName}`
                   : `Put ${formatCents(m.cents)} in the money market fund`}
-              </button>
+              </SubmitButton>
               <span className="text-sm text-zinc-600 dark:text-zinc-400">
                 From {m.fromName}; about {formatCents(m.gainCents)} more a year.
               </span>
@@ -196,7 +198,7 @@ async function CashContent({
 export default function CashPage(props: PageProps<"/investments/cash">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <CashContent searchParams={props.searchParams} />
       </Suspense>
     </main>

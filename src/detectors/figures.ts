@@ -26,7 +26,7 @@ const businessIncome: Detector = {
       capability: "figures",
       topic: "figure_check",
       title: "Tell me what you pay yourself, so your income figure is right",
-      headline: `Tell me your pay: ${dollars(overstated)}/mo may not be income`,
+      headline: `Check your pay: ${dollars(overstated)}/mo may not be pay`,
       short: `I count ${formatCents(deposits)} a month of business deposits as your income.`,
       worthCents: overstated,
       worthKind: "risk",

@@ -3,6 +3,7 @@ import { CHAT_UNANSWERED_DAYS } from "@/config/agent-chat";
 import { loadUnanswered } from "@/lib/jane-agent/unanswered";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Spec step 93: what Jane couldn't answer in the chat, by kind of question and how it
 // ended, and which guardrail rules blocked answers: where to add rules or narrow a rule.
@@ -75,7 +76,7 @@ async function Chat() {
 export default function AdminChatPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Chat />
       </Suspense>
     </main>

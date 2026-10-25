@@ -9,6 +9,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // "What Jane does" (docs/design/home-hub.md), from the hub: each area's features as a tree,
 // generated from the detectors (src/lib/feature-map.ts), with what has reached this person
@@ -56,7 +57,7 @@ async function MapContent({
 export default function FeatureMapPage({ searchParams }: PageProps<"/home/map">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading the map…</p>}>
+      <Suspense fallback={<LoadingBar label="Loading the map" />}>
         <MapContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -51,10 +51,8 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   // The suggestion's message in the list, if it is there.
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
   const inList = (headline: string) => messages.filter({ hasText: headline });
-  // The agenda only says the suggestions are on the cards: none of their lines or buttons.
-  const agenda = messages.filter({ hasText: /Good (morning|afternoon|evening)!/ });
-  await expect(agenda).toContainText(/on the cards? at the bottom\./);
-  await expect(agenda.getByRole("button", { name: /Not for me:/ })).toHaveCount(0);
+  // The agenda waits on the person too, so it's a card in the stack, not a card in the list.
+  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(0);
 
   // Short: a headline with one number, Yes and Not now, and More details closed.
   const showing = overlay.locator('[data-card-state="showing"]');
@@ -93,15 +91,17 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   await expect(headline).not.toHaveText(first, { timeout: 100 });
   expect(Date.now() - started).toBeLessThan(1_000);
 
-  // Yes is just as quick, and the server catches up: the list then has it as history, with
-  // what was chosen and no buttons left to tap.
+  // Yes is just as quick, and the server catches up. A suggestion never shows in the chat,
+  // waiting or answered (founder: "Don't let the suggestion cards repeat in the chat again").
   const second = (await headline.textContent()) ?? "";
   await expect(inList(second)).toHaveCount(0);
   await showing.getByRole("button", { name: "Yes", exact: true }).click();
   await expect(counter).toHaveText(`${total - 2} left`, { timeout: 100 });
-  await expect(inList(second)).toHaveCount(1, { timeout: 15_000 });
-  await expect(inList(second)).toContainText("You chose:");
-  await expect(inList(second).getByRole("button", { name: /Not now|Not for me/ })).toHaveCount(0);
+  await page.waitForTimeout(3_000);
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "Message Jane" })).toBeVisible();
+  await expect(inList(second)).toHaveCount(0);
+  await expect(overlay.getByRole("heading", { level: 3, name: second })).toHaveCount(0);
 
   // The ✕ is Not now too.
   if (total - 2 >= 1) {

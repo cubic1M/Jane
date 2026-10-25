@@ -137,7 +137,7 @@ const withholdingGap: Detector = {
       capability: "taxes",
       topic: "withholding_gap",
       title: "Set aside the tax your stock vests won't have withheld",
-      headline: headlineOf("Set aside tax on your stock vests", short, "risk"),
+      headline: headlineOf("Set aside tax on stock vests", short, "risk"),
       short:
         `${assumed ? "About" : ""} ${formatCents(vested)} is vesting, and flat withholding leaves you short.`.trim(),
       // The bill itself can't be saved; planning for it avoids the penalty and the surprise,
@@ -209,7 +209,7 @@ const rothConversion: Detector = {
       capability: "taxes",
       topic: "roth_conversion",
       title: "Look at converting some of your pre-tax retirement money to a Roth",
-      headline: headlineOf("Convert some pre-tax money to a Roth", saves, "saves"),
+      headline: headlineOf("Convert some pre-tax money to Roth", saves, "saves"),
       short: `Done well, it could save about ${formatCents(saves)} a year in tax.`,
       worthCents: saves,
       worthKind: "saves",
@@ -258,7 +258,7 @@ const childcareTaxBreak: Detector = {
       capability: "taxes",
       topic: "childcare_tax_break",
       title: "Pay for childcare from a dependent care FSA",
-      headline: headlineOf("Use a dependent care FSA for childcare", saves, "saves"),
+      headline: headlineOf("Use a dependent care FSA", saves, "saves"),
       short: `You paid ${formatCents(spent)} for childcare in ${profile.months} months.`,
       worthCents: saves,
       worthKind: "saves",
@@ -273,7 +273,7 @@ const childcareTaxBreak: Detector = {
       ]),
       urgency: "later",
       why: `You paid ${formatCents(spent)} for childcare in ${profile.months} months. Paying ${formatCents(fsa)} of it from a dependent care FSA skips income and payroll tax, about ${formatCents(Math.round(fsa * (rate + payroll)))}, which beats the credit's ${formatCents(credit)} at your income. This is only open if your employer offers one, and you choose the amount when you enrol.`,
-      action: { label: "See family tax choices", href: "/taxes#family" },
+      action: { label: "See family tax choices", href: "/taxes?focus=life:family" },
     };
   },
 };
@@ -358,7 +358,7 @@ const yearEndMoves: Detector = {
       ]),
       urgency: profile.today.slice(5) >= "12-10" ? "now" : "soon",
       why: `Money you put into your 401(k) before December 31 is out of this year's income. About ${formatCents(room)} more, at your ${Math.round(rate * 100)}% bracket, would save roughly ${formatCents(saves)}. Payroll needs a few days, so ask HR before the last paycheck.`,
-      action: { label: "See your tax plan", href: "/taxes#plan" },
+      action: { label: "See your tax plan", href: "/taxes?focus=soon" },
     };
   },
 };
@@ -403,7 +403,7 @@ const charityReceipts: Detector = {
       ]),
       urgency: inFilingWindow(profile.today) ? "soon" : "later",
       why: `You gave ${formatCents(total)} in ${gifts.length === 1 ? "one gift" : `${gifts.length} gifts`} of ${formatCents(GIVING.receiptFromCents)} or more. If you itemize, a gift without the charity's written receipt can be disallowed, which would cost about ${formatCents(Math.round(total * rate))} at your ${Math.round(rate * 100)}% bracket.`,
-      action: { label: "Check your gifts", href: "/taxes#giving" },
+      action: { label: "Check your gifts", href: "/taxes?focus=life:giving" },
     };
   },
 };
@@ -495,7 +495,7 @@ const lossHarvest: Detector = {
       ]),
       urgency: month(profile.today) >= 11 ? "soon" : "later",
       why: `A taxable account holds ${formatCents(loss)} less than you paid for it. Selling at a loss offsets gains and up to ${formatCents(T.harvestOrdinaryOffsetCents)} of other income, about ${formatCents(saves)} off your tax. Don't buy the same thing back for 30 days (the wash-sale rule).`,
-      action: { label: "See your investment taxes", href: "/taxes#investments" },
+      action: { label: "See your investment taxes", href: "/taxes?focus=estimate:investments" },
     };
   },
 };
@@ -545,7 +545,7 @@ const fileReturn: Detector = {
       },
       urgency: days <= T.filingNowDays ? "now" : "soon",
       why: `Your return is due April 15, ${days} ${days === 1 ? "day" : "days"} from now. If you owe tax, filing more than 60 days late costs at least ${formatCents(T.lateFilingPenaltyCents)} (or all of it, if less); if you're due a refund there's no penalty, but it waits until you file. I collect your forms and get the return ready for you to review and sign.`,
-      action: { label: "See your forms", href: "/taxes#forms" },
+      action: { label: "See your forms", href: "/taxes?focus=records:forms" },
     };
   },
 };
@@ -781,7 +781,7 @@ const inheritedIra: Detector = {
         capability: "taxes",
         topic: "inherited_ira",
         title: "Take the rest of your inherited IRA out by December 31",
-        headline: headlineOf("Empty your inherited IRA by December 31", penalty, "risk"),
+        headline: headlineOf("Empty your inherited IRA this year", penalty, "risk"),
         short: `Your inherited IRA holds ${formatCents(balance)}; what's left after ${emptyBy} costs 25%.`,
         worthCents: penalty,
         worthKind: "risk",

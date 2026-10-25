@@ -249,6 +249,7 @@ function buyShort(
       input.prefs.taxSensitive && (input.rules ?? rulesOnAt(input.level)).has("tax_loss_harvest")
         ? { state: input.state, prices: input.prices }
         : null,
+      input.funds?.[c] ?? null,
     );
     if (!ticker) continue;
     const room =
@@ -612,7 +613,7 @@ function glideFlag(input: OpportunityInput): ScanFlag | null {
     ],
     confidence: SCAN_CONFIDENCE.glide_path,
     ask: {
-      headline: `Note the glide: ${wholeDollars(shift)} less in stocks, goal near`,
+      headline: `Move ${wholeDollars(shift)} out of stocks, goal near`,
       short: `Your goal is about ${years} years away; stocks are ${pct(now)} instead of ${pct(model)}.`,
       worthCents: shift,
       worthKind: "risk",
@@ -694,7 +695,7 @@ function maxDropFlag(input: OpportunityInput): ScanFlag | null {
     ],
     confidence: SCAN_CONFIDENCE.max_drop_near,
     ask: {
-      headline: `Step down a level: down ${wholeDollars(r.peakCents - r.nowCents)}, near your limit`,
+      headline: `Step down: down ${wholeDollars(r.peakCents - r.nowCents)}, near your limit`,
       short: `Down ${pct(r.drop)} from the high; you said you could take about ${pct(limit)}.`,
       worthCents: r.peakCents - r.nowCents,
       worthKind: "risk",
@@ -813,7 +814,7 @@ function themeFlags(
         reason: `It beat the market in ${record.hits} of ${record.events} past events of this kind; with so few, Jane keeps it near even. A replay of the past, not a forecast.`,
       },
       ask: {
-        headline: `Try ${wholeDollars(amount)} of ${theme.ticker} on the news, in practice`,
+        headline: `Try ${wholeDollars(amount)} of ${theme.ticker} on news, in practice`,
         short: `After news on ${h.date}: it beat the market in ${record.hits} of ${record.events} past events; out in about a month.`,
         worthCents: amount,
         worthKind: "risk",

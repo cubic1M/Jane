@@ -209,7 +209,7 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
     key: "idle_cash:savings",
     topic: "idle_cash",
     title: "Move $9,000 of idle cash to a savings account that pays 4%",
-    headline: "Move idle cash to a higher rate, earn $360 a year",
+    headline: "Move idle cash to higher interest, earn $360 a year",
     short: "You keep $9,000 in cash; about $8,000 is more than you need.",
     why: "You keep $9,000 in checking all year; people with that much usually earn about 4%.",
     worthCents: 36_000,

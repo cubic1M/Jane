@@ -22,6 +22,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { deleteDocument } from "./actions";
 import { FactsSection, UploadForm } from "./forms";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Insurance policies, warranties and receipts (spec step 68).
 
@@ -159,12 +161,9 @@ async function DocumentsContent() {
                   <form action={deleteDocument} className="mt-2 flex flex-wrap items-center gap-3">
                     <input type="hidden" name="documentId" value={d.id} />
                     <span className="text-sm">This removes the file and its facts for good.</span>
-                    <button
-                      type="submit"
-                      className="text-sm font-semibold text-red-700 hover:underline"
-                    >
+                    <SubmitButton className="text-sm font-semibold text-red-700 hover:underline">
                       Yes, delete it
-                    </button>
+                    </SubmitButton>
                   </form>
                 </details>
               </li>
@@ -187,7 +186,7 @@ async function DocumentsContent() {
 export default function DocumentsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <DocumentsContent />
       </Suspense>
     </main>

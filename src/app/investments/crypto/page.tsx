@@ -13,6 +13,8 @@ import { loadCrypto } from "@/lib/crypto/crypto";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { linkCrypto, refreshCrypto } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Crypto (spec step 161): seen and sized, never traded. Each balance says where it came
 // from and when; in demo advice mode, flags for too big a share and costly fees.
@@ -164,24 +166,18 @@ async function CryptoContent({
         {view.demo && !has("Demo Exchange") && (
           <form action={linkCrypto}>
             <input type="hidden" name="kind" value="exchange" />
-            <button type="submit" className={BUTTON}>
-              Connect a demo exchange
-            </button>
+            <SubmitButton className={BUTTON}>Connect a demo exchange</SubmitButton>
           </form>
         )}
         {view.demo && !has("Demo Wallet") && (
           <form action={linkCrypto}>
             <input type="hidden" name="kind" value="wallet" />
-            <button type="submit" className={SECONDARY}>
-              Add a demo wallet
-            </button>
+            <SubmitButton className={SECONDARY}>Add a demo wallet</SubmitButton>
           </form>
         )}
         {view.connections.length > 0 && (
           <form action={refreshCrypto}>
-            <button type="submit" className={SECONDARY}>
-              Read balances again
-            </button>
+            <SubmitButton className={SECONDARY}>Read balances again</SubmitButton>
           </form>
         )}
       </div>
@@ -192,7 +188,7 @@ async function CryptoContent({
 export default function CryptoPage(props: PageProps<"/investments/crypto">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <CryptoContent searchParams={props.searchParams} />
       </Suspense>
     </main>

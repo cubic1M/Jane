@@ -3,6 +3,7 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { LongGame } from "@/lib/student-long-game";
 import { saveDates } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // The long game on student loans (spec step 225): PSLF month by month, the dates that become
 // deadlines, the tax on forgiven debt, and what refinancing would give up.
@@ -104,12 +105,9 @@ export function LongGameSection({
           Income-driven plan recertified by
           <input name="recertifyOn" type="date" className={INPUT} />
         </label>
-        <button
-          type="submit"
-          className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800 sm:col-span-3 sm:w-fit"
-        >
+        <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800 sm:col-span-3 sm:w-fit">
           Save my dates
-        </button>
+        </SubmitButton>
       </form>
       <p className="text-xs text-zinc-600 dark:text-zinc-400">
         <a href={LONG_GAME_SOURCES.pslfCertify} className={LINK}>

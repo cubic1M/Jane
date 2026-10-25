@@ -1,13 +1,30 @@
+import {
+  usePracticeCrypto,
+  usePracticeDayTrading,
+  usePracticeStrategy,
+} from "@/app/investments/strategy-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { CATALOG_EVIDENCE, CATALOG_EVIDENCE_SOURCE } from "@/config/catalog-evidence";
 import { CRYPTO_EVIDENCE, CRYPTO_EVIDENCE_SOURCE } from "@/config/crypto-evidence";
 import {
   CRYPTO_SLEEVE_BY_LEVEL,
   CRYPTO_STRATEGIES,
   CRYPTO_STRATEGY_IDS,
   CRYPTO_WARNING,
+  type CryptoStrategyId,
 } from "@/config/crypto-strategies";
+import { INTRADAY_EVIDENCE, INTRADAY_EVIDENCE_SOURCE } from "@/config/intraday-evidence";
+import {
+  INTRADAY_RULE_IDS,
+  INTRADAY_RULES,
+  INTRADAY_SLEEVE_BY_LEVEL,
+  INTRADAY_WARNING,
+  type IntradayRuleId,
+} from "@/config/intraday-strategies";
+import { STRATEGY_CHOICES, type StrategyChoice } from "@/config/practice-preferences";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { STRATEGY_NOT_A_FORECAST } from "@/config/strategies";
+import { CATALOG, CATALOG_IDS, CATALOG_WALK_FROM_YEAR } from "@/config/strategy-catalog";
 import { MENU_STRATEGIES, MENU_STRATEGY_IDS, type MenuStrategyId } from "@/config/strategy-menu";
 import {
   MENU_EVIDENCE,
@@ -44,9 +61,14 @@ export function Sparkline({ points, label }: { points: readonly number[]; label:
   );
 }
 
+const BUTTON = "h-9 self-start rounded-lg px-3 text-sm font-medium";
+const PRIMARY = `${BUTTON} bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300`;
+const SECONDARY = `${BUTTON} border border-zinc-300 dark:border-zinc-700`;
+
 // Crypto, at Very high only: each rule on the years since its parameters were chosen, against
 // simply holding, with the plain warning.
-function CryptoMenu() {
+function CryptoMenu({ level, chosen }: { level: RiskLevel; chosen: CryptoStrategyId | null }) {
+  const open = CRYPTO_SLEEVE_BY_LEVEL[level] !== undefined;
   return (
     <div className="flex flex-col gap-2" aria-labelledby="crypto-menu-heading">
       <h3 id="crypto-menu-heading" className="font-semibold">
@@ -81,7 +103,29 @@ function CryptoMenu() {
                   ? "."
                   : ` (holding: ${pct(r.holdLater.cagr)}, worst ${pct(r.holdLater.maxDrawdown)}). ${r.beatsHolding ? "More return for its risk than holding." : "Less return for its risk than holding."}`}
               </p>
-              <p className="text-xs text-zinc-500">Not in the practice portfolio yet.</p>
+              {!open ? (
+                <p className="text-xs text-zinc-500">
+                  In the practice portfolio at Very high only.
+                </p>
+              ) : chosen === id ? (
+                <form action={usePracticeCrypto} className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                    <span aria-hidden="true">■ </span>
+                    Your practice portfolio runs this sleeve
+                  </span>
+                  <input type="hidden" name="sleeve" value="off" />
+                  <button type="submit" className={SECONDARY}>
+                    Turn the sleeve off
+                  </button>
+                </form>
+              ) : (
+                <form action={usePracticeCrypto}>
+                  <input type="hidden" name="sleeve" value={id} />
+                  <button type="submit" className={PRIMARY}>
+                    Use in practice
+                  </button>
+                </form>
+              )}
             </li>
           );
         })}
@@ -90,7 +134,166 @@ function CryptoMenu() {
   );
 }
 
-export function StrategyMenuSection({ level }: { level: RiskLevel }) {
+// Day trading, at Very high only: each rule on the sessions since its setting was chosen, after
+// slippage, against holding the fund, with the plain warning first.
+function IntradayMenu({ level, chosen }: { level: RiskLevel; chosen: IntradayRuleId | null }) {
+  const open = INTRADAY_SLEEVE_BY_LEVEL[level] !== undefined;
+  return (
+    <div className="flex flex-col gap-2" aria-labelledby="intraday-menu-heading">
+      <h3 id="intraday-menu-heading" className="font-semibold">
+        Day trading (Very high only)
+      </h3>
+      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+        <span aria-hidden="true">▲ </span>
+        {INTRADAY_WARNING}
+      </p>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        A small sleeve, {Math.round((INTRADAY_SLEEVE_BY_LEVEL[5] ?? 0) * 100)}% of the portfolio at
+        most, in and out of the S&amp;P 500 fund (SPY) the same day. Each rule&apos;s setting was
+        chosen on 2016 to 2023, then replayed from 2024 on 5-minute bars after slippage, against
+        simply holding.
+      </p>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {INTRADAY_RULE_IDS.map((id) => {
+          const s = INTRADAY_RULES[id];
+          const r = INTRADAY_EVIDENCE[id];
+          return (
+            <li
+              key={id}
+              data-strategy={id}
+              data-family="intraday"
+              className="flex flex-col gap-1 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium">{s.label}</p>
+                <Sparkline
+                  points={r.curve}
+                  label={`${s.label}: $100 became $${(r.curve.at(-1) ?? 100).toFixed(0)} since 2024`}
+                />
+              </div>
+              <p className="text-zinc-600 dark:text-zinc-400">{s.line}</p>
+              <p className="text-xs text-zinc-500">
+                Since 2024: {pct(r.later.cagr)} a year, worst drop {pct(r.later.maxDrawdown)},{" "}
+                {r.later.trades} trades, {pct(r.later.winRate)} won (holding:{" "}
+                {pct(r.holdLater.cagr)} a year, worst {pct(r.holdLater.maxDrawdown)}).{" "}
+                {r.beatsHolding
+                  ? "More return for its risk than holding."
+                  : "Less return for its risk than holding."}
+              </p>
+              {!open ? (
+                <p className="text-xs text-zinc-500">
+                  In the practice portfolio at Very high only.
+                </p>
+              ) : chosen === id ? (
+                <form action={usePracticeDayTrading} className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                    <span aria-hidden="true">■ </span>
+                    Your practice portfolio day trades with this
+                  </span>
+                  <input type="hidden" name="rule" value="off" />
+                  <button type="submit" className={SECONDARY}>
+                    Stop day trading
+                  </button>
+                </form>
+              ) : (
+                <form action={usePracticeDayTrading}>
+                  <input type="hidden" name="rule" value={id} />
+                  <button type="submit" className={PRIMARY}>
+                    Use in practice
+                  </button>
+                </form>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+const followable = (id: MenuStrategyId): id is MenuStrategyId & StrategyChoice =>
+  Object.hasOwn(STRATEGY_CHOICES, id);
+
+// Every strategy in the catalog (src/config/strategy-catalog.ts), as the research scored it at
+// the person's level: what is recommendable, what is worth watching, and what was tested and
+// not recommended, with the reason. Few words; the numbers are the walk-forward since
+// CATALOG_WALK_FROM_YEAR against the level's own mix.
+function CatalogMenu({ level }: { level: RiskLevel }) {
+  const rows = CATALOG_IDS.flatMap((id) => {
+    const e = CATALOG_EVIDENCE[id]?.[level];
+    return e ? [{ id, e }] : [];
+  });
+  if (rows.length === 0) return null;
+  const rec = rows.filter((r) => r.e.recommendable);
+  const watch = rows.filter((r) => r.e.watch);
+  const rest = rows.filter((r) => !r.e.recommendable && !r.e.watch);
+  const line = (r: (typeof rows)[number]) =>
+    `${pct(r.e.cagr)} a year since ${CATALOG_WALK_FROM_YEAR} (your mix ${pct(r.e.mixCagr)}), worst drop ${pct(r.e.maxDrawdown)}`;
+  return (
+    <div className="flex flex-col gap-2" aria-labelledby="catalog-menu-heading">
+      <h3 id="catalog-menu-heading" className="font-semibold">
+        Every strategy we tested ({rows.length})
+      </h3>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        Each replayed walk-forward against your mix at {RISK_LEVELS[level].label}, after costs, with
+        a haircut for testing so many at once.{" "}
+        {rec.length === 0
+          ? `None is recommendable at ${RISK_LEVELS[level].label}: none beat your mix by enough to rule out luck.`
+          : `${rec.length} recommendable at ${RISK_LEVELS[level].label}.`}
+      </p>
+      {rec.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm" aria-label="Recommendable">
+          {rec.map((r) => (
+            <li key={r.id} data-catalog={r.id}>
+              <span aria-hidden="true">■ </span>
+              <span className="font-medium">{CATALOG[r.id].label}</span>: {line(r)}.{" "}
+              {Math.round(r.e.dsr * 100)}% likely a real edge.
+            </li>
+          ))}
+        </ul>
+      )}
+      {watch.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm" aria-label="Worth watching">
+          {watch.map((r) => (
+            <li key={r.id} data-catalog={r.id}>
+              <span aria-hidden="true">▲ </span>
+              <span className="font-medium">{CATALOG[r.id].label}</span>, worth watching: {line(r)}.
+              Only {Math.round(r.e.dsr * 100)}% likely a real edge after the haircut.
+            </li>
+          ))}
+        </ul>
+      )}
+      <details className="text-sm">
+        <summary className="cursor-pointer text-zinc-600 dark:text-zinc-400">
+          Tested, not recommended ({rest.length})
+        </summary>
+        <ul className="mt-1 flex flex-col gap-1 text-xs text-zinc-500">
+          {rest.map((r) => (
+            <li key={r.id} data-catalog={r.id}>
+              {CATALOG[r.id].label}: {line(r)}. {r.e.why[0].toUpperCase()}
+              {r.e.why.slice(1)}.
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}
+
+export function StrategyMenuSection({
+  level,
+  choice,
+  crypto = null,
+  dayTrading = null,
+}: {
+  level: RiskLevel;
+  // The practice portfolio's strategy now (its settings).
+  choice: StrategyChoice;
+  // The crypto sleeve it runs (Very high only), or null.
+  crypto?: CryptoStrategyId | null;
+  // The day-trading rule it follows (Very high only), or null.
+  dayTrading?: IntradayRuleId | null;
+}) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="strategy-menu-heading">
       <div className="flex flex-col gap-1">
@@ -98,8 +301,11 @@ export function StrategyMenuSection({ level }: { level: RiskLevel }) {
           More strategies
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Your practice portfolio follows Jane&apos;s pick for {RISK_LEVELS[level].label}. These are
-          other well-known ways to run it, each replayed on real prices from{" "}
+          Your practice portfolio follows{" "}
+          {choice === "level"
+            ? `Jane's pick for ${RISK_LEVELS[level].label}`
+            : STRATEGY_CHOICES[choice].label}
+          . These are other well-known ways to run it, each replayed on real prices from{" "}
           {longDate(MENU_EVIDENCE_RANGE.from)} to {longDate(MENU_EVIDENCE_RANGE.to)} after costs,
           against your level&apos;s own mix over the same days.
         </p>
@@ -135,14 +341,41 @@ export function StrategyMenuSection({ level }: { level: RiskLevel }) {
                 Fits:{" "}
                 {fits.length > 0 ? fits.map((l) => RISK_LEVELS[l].label).join(", ") : "no level"}
               </p>
+              {!followable(id) ? (
+                <p className="text-xs text-zinc-500">
+                  Not in the practice portfolio yet: it holds funds the practice portfolio
+                  can&apos;t.
+                </p>
+              ) : choice === id ? (
+                <form action={usePracticeStrategy} className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                    <span aria-hidden="true">■ </span>
+                    Your practice portfolio uses this
+                  </span>
+                  <input type="hidden" name="strategy" value="level" />
+                  <button type="submit" className={SECONDARY}>
+                    Back to Jane&apos;s pick
+                  </button>
+                </form>
+              ) : (
+                <form action={usePracticeStrategy}>
+                  <input type="hidden" name="strategy" value={id} />
+                  <button type="submit" className={PRIMARY}>
+                    Use in practice
+                  </button>
+                </form>
+              )}
             </li>
           );
         })}
       </ul>
-      <CryptoMenu />
+      <CryptoMenu level={level} chosen={crypto} />
+      <IntradayMenu level={level} chosen={dayTrading} />
+      <CatalogMenu level={level} />
       <p className="text-xs text-zinc-500">
-        {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}. {STRATEGY_NOT_A_FORECAST} Practice
-        money only.
+        {MENU_EVIDENCE_SOURCE}; crypto: {CRYPTO_EVIDENCE_SOURCE}; day trading:{" "}
+        {INTRADAY_EVIDENCE_SOURCE}; every strategy tested: {CATALOG_EVIDENCE_SOURCE}.{" "}
+        {STRATEGY_NOT_A_FORECAST} Practice money only.
       </p>
       <DemoAdviceLabel />
     </section>

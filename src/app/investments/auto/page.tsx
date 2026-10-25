@@ -10,6 +10,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { toggleAutoInvest } from "./actions";
 import { AutoInvestForm } from "./auto-form";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Automatic investing (spec step 134): set it up once, see every payday's contribution
 // (or why it was paused), pause and resume. Through the simulated brokerage, and said so.
@@ -91,12 +93,9 @@ async function AutoContent({
                   name="status"
                   value={data.plan.status === "active" ? "paused" : "active"}
                 />
-                <button
-                  type="submit"
-                  className="h-11 rounded-lg border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700"
-                >
+                <SubmitButton className="h-11 rounded-lg border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700">
                   {data.plan.status === "active" ? "Pause" : "Resume"}
-                </button>
+                </SubmitButton>
               </form>
             </section>
           )}
@@ -137,7 +136,7 @@ async function AutoContent({
 export default function AutoInvestPage(props: PageProps<"/investments/auto">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <AutoContent searchParams={props.searchParams} />
       </Suspense>
     </main>

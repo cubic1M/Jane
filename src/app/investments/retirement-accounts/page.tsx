@@ -10,6 +10,8 @@ import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { linkRothIra, putInIra, raiseForMatch } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Retirement accounts used fully (spec step 210, demo advice): every limit with what's
 // used, the match left on the table, Roth or traditional, and the backdoor Roth.
@@ -113,9 +115,9 @@ async function Content({
               ) : (
                 <form action={raiseForMatch} className="flex flex-col gap-2">
                   <SimulatedBanner />
-                  <button type="submit" className={`${BUTTON} self-start`}>
+                  <SubmitButton className={`${BUTTON} self-start`}>
                     Raise to {pct(v.match.fullMatchRate)} of pay
-                  </button>
+                  </SubmitButton>
                 </form>
               )}
             </>
@@ -169,16 +171,14 @@ async function Content({
             <form action={putInIra} className="flex flex-col gap-2">
               <input type="hidden" name="cents" value={v.iraAllowedCents} />
               <SimulatedBanner />
-              <button type="submit" className={`${BUTTON} self-start`}>
+              <SubmitButton className={`${BUTTON} self-start`}>
                 Put {formatCents(v.iraAllowedCents)} in {v.ira.name}
-              </button>
+              </SubmitButton>
             </form>
           )}
           {!v.ira && v.demo && (
             <form action={linkRothIra}>
-              <button type="submit" className={BUTTON}>
-                Link a demo Roth IRA
-              </button>
+              <SubmitButton className={BUTTON}>Link a demo Roth IRA</SubmitButton>
             </form>
           )}
           <DemoAdviceLabel />
@@ -193,7 +193,7 @@ export default function RetirementAccountsPage(
 ) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

@@ -11,16 +11,18 @@ import type { FactKey } from "@/profile/facts";
 // docs/detectors.md has the contract and two worked examples.
 
 export const HEADLINE_MAX = 60;
-// About eight words: the card is read in a glance.
-export const HEADLINE_MAX_WORDS = 9;
+// Eight words at most: the card is read in a glance (founder: "very concise").
+export const HEADLINE_MAX_WORDS = 8;
 
 // The headline as the floating card shows it ("Cancel Planet Fitness, save $588/yr"): the
-// yearly figure shortened so the number reads in a glance.
+// yearly figure shortened so the number reads in a glance, and a risk said as what it protects
+// ("Look at life cover for your family, protect $1,287,200"; QA: "avoid $1,287,200" read
+// oddly). Never longer than "avoid $X" was: a card headline is nine words at most.
 export function cardHeadline(headline: string): string {
   return headline
     .replace(/[.!?]+$/, "")
     .replace(/\s+a year\b/g, "/yr")
-    .replace(/\bavoid up to\b/, "avoid");
+    .replace(/\bavoid up to\b/, "protect");
 }
 export const SHORT_MAX = 120;
 
