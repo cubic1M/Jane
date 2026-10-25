@@ -32,7 +32,7 @@ async function toCard(page: Page, scope: Locator, docked: boolean): Promise<Loca
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   for (let i = 0; i < 30; i += 1) {
     if (((await headline.textContent()) ?? "").trim() === HEADLINE) return showing;
-    if (docked) await showing.getByRole("button", { name: "Next card" }).click();
+    if (docked) await scope.getByRole("button", { name: "Next suggestion" }).click();
     else await page.keyboard.press("ArrowRight");
   }
   throw new Error("The card with the choices never came up");

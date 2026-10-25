@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SuggestionCards } from "@/app/chat/suggestion-cards";
 import { UNREAD_POLL_MS } from "@/config/side-chat";
 import type { MessageView } from "@/lib/jane-agent/view";
@@ -44,14 +44,38 @@ export function CardDock() {
 
   if (cards.length === 0) return null;
   return (
-    <div className="max-h-[75vh] shrink-0 overflow-y-auto overscroll-contain border-b border-zinc-300 dark:border-zinc-700">
-      {/* A new set is a new stack: what was answered here is gone from it already. */}
-      <SuggestionCards
-        key={cards.map((c) => c.id).join(",")}
-        messages={cards}
-        docked
-        onAnswered={() => void load()}
-      />
+    <FollowHeight className="shrink-0 border-b border-zinc-300 dark:border-zinc-700">
+      <div className="max-h-[75vh] overflow-y-auto overscroll-contain">
+        {/* A new set is a new stack: what was answered here is gone from it already. */}
+        <SuggestionCards
+          key={cards.map((c) => c.id).join(",")}
+          messages={cards}
+          docked
+          onAnswered={() => void load()}
+        />
+      </div>
+    </FollowHeight>
+  );
+}
+
+// Its height follows what's inside, smoothly (a card opening, or the next card being taller),
+// so the chat under it never jumps.
+function FollowHeight({ className, children }: { className: string; children: React.ReactNode }) {
+  const inner = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const el = inner.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(() => setHeight(el.offsetHeight));
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
+  return (
+    <div
+      className={`dock-height overflow-hidden ${className}`}
+      style={height === null ? undefined : { height }}
+    >
+      <div ref={inner}>{children}</div>
     </div>
   );
 }

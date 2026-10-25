@@ -153,3 +153,21 @@ describe("one stack of cards, never repeated", () => {
     expect(list.map((m) => m.id)).toEqual(["r1", "old"]);
   });
 });
+
+describe("a card whose only button is its snooze", () => {
+  it("shows it once, as Yes, with a plain Not now", () => {
+    const card = popupCard(
+      message({
+        kind: "heads_up",
+        body: "Coming up in 2 days: your card payment ($72.00).",
+        buttons: [{ id: "snooze", label: "Remind me tomorrow", kind: "secondary" }],
+      }),
+    );
+    expect(card).toMatchObject({
+      yesLabel: "Remind me tomorrow",
+      yesAction: "snooze",
+      notNowLabel: "Not now",
+      notNowAction: null,
+    });
+  });
+});

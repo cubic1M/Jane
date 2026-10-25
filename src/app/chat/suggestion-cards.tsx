@@ -136,7 +136,7 @@ export function SuggestionCards({
         }}
       />
       {/* Room at the end of the page so the message box is never under a card. */}
-      {open > 0 && !docked && <div aria-hidden="true" className="h-28" />}
+      {open > 0 && !docked && <div aria-hidden="true" data-card-room="" className="h-28" />}
     </>
   );
 }
