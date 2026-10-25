@@ -34,51 +34,53 @@ test("health check responds", async ({ request }) => {
   expect(await response.json()).toEqual({ ok: true });
 });
 
-// The hero (founder, 2026-10-24): the biggest words in the display serif, the picture as ASCII
-// diamonds beside them on a wide screen and under them on a phone, and the same dotted diamonds
-// across the whole page.
-test("the hero shows the ASCII diamond art beside the headline, as a canvas or its poster", async ({
-  page,
-}) => {
+// The pillar (founder, 2026-10-25): an ASCII Roman column, still on screen while the story scrolls,
+// broken at the top of the page and fully repaired at the bottom.
+test("the pillar stays put and is rebuilt as the page scrolls", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 });
   await page.goto("/");
-  const heading = page.getByRole("heading", { level: 1, name: "See how much money you're losing" });
-  const art = page.getByTestId("landing-art");
+  const pillar = page.getByTestId("landing-pillar");
+  const art = pillar.locator("pre");
   await expect(art).toBeVisible();
-  // Drawn on the canvas once the script runs; the poster until then.
-  await expect(art).toHaveAttribute("data-rendered", "canvas", { timeout: 15_000 });
-  const size = await art.locator("canvas").evaluate((c: HTMLCanvasElement) => [c.width, c.height]);
-  expect(size[0]).toBeGreaterThan(0);
-  expect(size[1]).toBeGreaterThan(0);
-  const [h, a] = [await heading.boundingBox(), await art.boundingBox()];
-  expect(a!.x).toBeGreaterThan(h!.x + h!.width - 1);
-  // The display face for the headline, the page's dotted diamonds behind everything.
+  await expect(pillar).toHaveAttribute("data-stage", "1");
+  const top = await art.textContent();
+  const where = (await pillar.boundingBox())!;
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(pillar).toHaveAttribute("data-stage", "8");
+  expect(await art.textContent()).not.toBe(top);
+  // Still in the same place on screen: it doesn't scroll with the words.
+  const after = (await pillar.boundingBox())!;
+  expect(Math.abs(after.y - where.y)).toBeLessThan(2);
+  // The headline face, and the white page.
+  const heading = page.getByRole("heading", { level: 1, name: "See how much money you're losing" });
   expect(await heading.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(
     /Agraham.*Playfair Display/,
   );
-  await expect(page.getByTestId("diamond-background")).toHaveCSS("background-image", /url\(/);
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
+    "rgb(255, 255, 255)",
+  );
 
-  // A phone: the art under the words, nothing wider than the screen.
+  // Back up: broken again.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(pillar).toHaveAttribute("data-stage", "1");
+
+  // A phone: behind the words, nothing wider than the screen.
   await page.setViewportSize({ width: 375, height: 812 });
-  await expect
-    .poll(async () => (await art.boundingBox())!.y)
-    .toBeGreaterThan((await heading.boundingBox())!.y + 10);
+  await expect(art).toBeAttached();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
   ).toBeLessThanOrEqual(0);
-  expect((await art.boundingBox())!.width).toBeLessThanOrEqual(375);
 });
 
-test("without JavaScript the hero shows the pre-rendered poster", async ({ browser, baseURL }) => {
+test("without JavaScript the page shows the broken pillar and the story", async ({
+  browser,
+  baseURL,
+}) => {
   const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
   const page = await context.newPage();
   await page.goto("/");
-  const art = page.getByTestId("landing-art");
-  await expect(art).toHaveAttribute("data-rendered", "poster");
-  const poster = art.locator("img");
-  await expect(poster).toBeVisible();
-  expect(
-    await poster.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
-  ).toBeGreaterThan(0);
+  await expect(page.getByTestId("landing-pillar").locator("pre")).not.toBeEmpty();
+  await expect(page.getByRole("heading", { name: "Money leaks quietly" })).toBeAttached();
   await context.close();
 });
