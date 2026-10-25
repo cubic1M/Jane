@@ -240,11 +240,13 @@ describe.runIf(url)("the practice portfolio", () => {
         where: { userId, undone: false, side: { in: ["buy", "sell"] } },
       }),
     ).toBe(trades - 1);
+    // Trades placed at the same instant: the id breaks the tie, as the ledger's own reads do.
     const rest = await client.practiceTrade.findMany({
       where: { userId, undone: false },
-      orderBy: { placedAt: "asc" },
+      orderBy: [{ placedAt: "asc" }, { id: "asc" }],
     });
-    expect(rest[0].rule).toBe("start");
+    // The starting money is never undone: still there, whatever order same-instant rows come in.
+    expect(rest.filter((t) => t.rule === "start")).toHaveLength(1);
     for (let i = 0; i < 20; i += 1) {
       try {
         await undoLastTrade(userId, { client });

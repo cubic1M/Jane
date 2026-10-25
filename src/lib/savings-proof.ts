@@ -14,6 +14,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { snapshotTitle } from "@/lib/hubs/jane";
 import { formatCents } from "@/lib/money";
+import { savingsRecord, type SavingsRecord } from "@/lib/outcomes";
 
 // What Jane saved you (spec step 139). Only what the person's own transactions show counts
 // as confirmed, each with its receipt: a refund that came back, a lower bill that arrived,
@@ -220,6 +221,43 @@ export async function provenSavings(
   };
 }
 
+// The whole verified record: what Jane did (provenSavings, from her actions) and what the person
+// did on her suggestions (savingsRecord, checked each night), confirmed apart from expected.
+// A suggestion confirmed by the same transaction as one of Jane's receipts counts once.
+export type VerifiedSavings = {
+  actions: ProvenSavings;
+  suggestions: SavingsRecord;
+  confirmedCents: number;
+  expectedCents: number;
+};
+
+export async function verifiedSavings(
+  userId: string,
+  options: Options = {},
+): Promise<VerifiedSavings> {
+  const [actions, record] = await Promise.all([
+    provenSavings(userId, options),
+    savingsRecord(userId, { client: options.client }),
+  ]);
+  const seen = new Set(
+    actions.confirmed.map((r) => `${r.seen.date}|${r.seen.description}|${r.seen.amountCents}`),
+  );
+  const fresh = record.confirmed.filter(
+    (o) => !o.evidence.some((t) => seen.has(`${t.date}|${t.description}|${t.amountCents}`)),
+  );
+  const suggestions: SavingsRecord = {
+    ...record,
+    confirmed: fresh,
+    confirmedCents: fresh.reduce((sum, o) => sum + (o.confirmedCents ?? 0), 0),
+  };
+  return {
+    actions,
+    suggestions,
+    confirmedCents: actions.confirmedCents + suggestions.confirmedCents,
+    expectedCents: actions.estimatedCents + suggestions.expectedCents,
+  };
+}
+
 const hashOf = (token: string) => createHash("sha256").update(token).digest("hex");
 
 // A link to the confirmed total as it is now. Only the total is on the shared page.
@@ -227,7 +265,7 @@ export async function shareSavedTotal(
   userId: string,
   options: Options = {},
 ): Promise<{ token: string; totalCents: number }> {
-  const { confirmedCents } = await provenSavings(userId, options);
+  const { confirmedCents } = await verifiedSavings(userId, options);
   const token = randomBytes(SHARE_TOKEN_BYTES).toString("base64url");
   await scopedFor(userId, options.client ?? defaultClient).savedShares.create({
     data: { userId, tokenHash: hashOf(token), totalCents: confirmedCents },

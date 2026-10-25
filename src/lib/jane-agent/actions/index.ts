@@ -55,6 +55,7 @@ import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
 import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
+import { choiceDone, choiceRevert } from "./choice";
 import { practicePrefsSave } from "./practice";
 import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
@@ -245,6 +246,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
+  "choice.revert": choiceRevert,
+  "choice.done": choiceDone,
   // Spec step 83.
   "autopilot.safe": autopilotSafe,
   "autopilot.all": autopilotAll,

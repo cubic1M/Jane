@@ -59,7 +59,7 @@ import { loadLongView } from "@/lib/long-view";
 import { loadProfile, sayFact } from "@/lib/profile";
 import { storedReport } from "@/lib/monthly-report-store";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
-import { provenSavings } from "@/lib/savings-proof";
+import { verifiedSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { HEALTH_SAY_IN_WORDS_BELOW } from "@/config/health-score";
@@ -721,22 +721,43 @@ export async function runChatTool(
       });
     }
     case "proven_savings": {
-      const saved = await provenSavings(userId, { client, now });
+      const saved = await verifiedSavings(userId, { client, now });
       return out({
         confirmedTotal: money(saved.confirmedCents),
-        receipts: saved.confirmed.map((r) => ({
-          what: r.title,
-          kind: r.kind,
-          saved: money(r.cents),
-          perYear: r.yearly,
-          proof: r.proof,
-        })),
-        estimatedTotal: money(saved.estimatedCents),
-        estimates: saved.estimated.map((e) => ({
-          what: e.title,
-          about: money(e.cents),
-          why: e.why,
-        })),
+        receipts: [
+          ...saved.actions.confirmed.map((r) => ({
+            what: r.title,
+            kind: r.kind,
+            saved: money(r.cents),
+            perYear: r.yearly,
+            proof: r.proof,
+          })),
+          // Suggestions the person acted on, confirmed by their own transactions.
+          ...saved.suggestions.confirmed.map((o) => ({
+            what: o.title,
+            kind: o.status === "partial" ? "partly confirmed" : "confirmed",
+            saved: money(o.confirmedCents ?? 0),
+            perYear: o.yearly,
+            proof: o.proof,
+            howSure: o.verifiedPercent === null ? null : `${o.verifiedPercent}%`,
+          })),
+        ],
+        estimatedTotal: money(saved.expectedCents),
+        estimates: [
+          ...saved.actions.estimated.map((e) => ({
+            what: e.title,
+            about: money(e.cents),
+            why: e.why,
+          })),
+          ...saved.suggestions.expected.map((o) => ({
+            what: o.title,
+            about: money(o.expectedCents),
+            why:
+              o.status === "unverifiable"
+                ? "Done, but it isn't something the transactions can show."
+                : "Done. It counts once your transactions show it.",
+          })),
+        ],
       });
     }
     case "my_profile": {

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createInvite, type InviteState } from "./actions";
+import { CopyButton } from "./copy-button";
 
 const FIELD = "h-10 rounded-lg border border-zinc-300 bg-transparent px-3 dark:border-zinc-700";
 
@@ -16,6 +17,15 @@ export function InviteForm() {
       <label className="flex flex-col gap-1">
         Expires in days (blank for never)
         <input name="expiresInDays" type="number" min={1} className={`${FIELD} w-28`} />
+      </label>
+      <label className="flex flex-col gap-1">
+        Only for this email (optional)
+        <input
+          name="email"
+          type="email"
+          placeholder="friend@example.com"
+          className={`${FIELD} w-56`}
+        />
       </label>
       <label className="flex flex-1 flex-col gap-1">
         Note
@@ -36,6 +46,7 @@ export function InviteForm() {
           {state.message}
         </p>
       )}
+      {state?.code && <CopyButton text={state.code} label="Copy code" />}
     </form>
   );
 }

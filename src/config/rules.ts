@@ -54,6 +54,9 @@ export const RULE_DEFAULT_MONTHLY_LIMIT = 3;
 
 // How long a rule's approval can be taken back, if the work hasn't started.
 export const RULE_UNDO_HOURS = 24;
+// A pick made on an option card (insurance cover, a switch, a loan) can be reverted this long,
+// while the team hasn't started on it (founder, 2026-10-25: "there should be a revert button").
+export const PICK_UNDO_HOURS = 24;
 
 // Never approved by a rule, whatever the person sets: moving money, phone calls,
 // cancelling things they use, and insurance. These always need a yes on the item itself.

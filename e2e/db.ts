@@ -66,6 +66,18 @@ export async function digestEnabled(userId: string): Promise<boolean> {
   }
 }
 
+// How much Jane does on her own (the autopilot level), or null before it's chosen.
+export async function autopilotLevel(userId: string): Promise<string | null> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT autopilot FROM users WHERE id = $1`, [userId]);
+    return rows[0]?.autopilot ?? null;
+  } finally {
+    await client.end();
+  }
+}
+
 export async function userExists(userId: string): Promise<boolean> {
   const client = new Client({ connectionString: E2E_DATABASE_URL });
   await client.connect();

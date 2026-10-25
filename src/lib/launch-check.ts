@@ -85,8 +85,8 @@ export function launchChecks(env: Env): Check[] {
     ),
     check(
       "Closed beta",
-      env.OPEN_SIGNUPS !== "true",
-      "Sign-up needs an invite code (OPEN_SIGNUPS isn't true)",
+      !["false", "0"].includes((env.BETA_INVITE_ONLY ?? "").trim().toLowerCase()),
+      "Sign-up needs an invite code (BETA_INVITE_ONLY isn't false)",
     ),
     check("Admins", isSet(env.ADMIN_EMAILS), "ADMIN_EMAILS names the team"),
     check(

@@ -1,4 +1,5 @@
 import type { FloatingCardData } from "@/lib/floating-cards";
+import { isChoice } from "./choices";
 import type { MessageView } from "./view";
 
 // Jane's own messages as pop-ups (founder: "replace all the yellow cards in the chat as pop up
@@ -14,6 +15,10 @@ export const POPUP_HEADLINE_WORDS = 8;
 // Waiting on the person, so it floats: from Jane (not an answer to what they typed), open, with
 // a button to tap. Options of one choice float as their own pick card.
 export function isPopup(m: MessageView): boolean {
+  // A choice just made floats on, marked, with Revert, until Done (founder, 2026-10-25).
+  if (m.fromJane && m.kind !== "reply" && m.chosen && !m.chosen.final && !m.chosen.settled) {
+    return m.status === "answered";
+  }
   return (
     m.fromJane &&
     m.kind !== "reply" &&
@@ -115,7 +120,8 @@ export function firstSentence(text: string): string {
 }
 
 export function popupCard(m: MessageView): PopupCard {
-  const live = m.buttons.filter((b) => !b.id.startsWith("undo."));
+  // Chosen: its choices as they were, the chosen one marked (src/components/floating-cards.tsx).
+  const live = m.chosen ? m.chosen.choices : m.buttons.filter((b) => !b.id.startsWith("undo."));
   const snooze = live.find((b) => b.id === "snooze") ?? null;
   const rest = live.filter((b) => b !== snooze);
   const main = rest.find((b) => b.kind === "primary") ?? rest[0] ?? snooze!;
@@ -140,5 +146,8 @@ export function popupCard(m: MessageView): PopupCard {
     notNowAction: snooze && snooze !== main ? snooze.id : null,
     choices: rest.filter((b) => b !== main).map((b) => ({ id: b.id, label: b.label })),
     noNever: true,
+    // One choice among several (how much Jane does): it stays on the card, with Revert.
+    revertable: live.some((b) => isChoice(b.id)),
+    ...(m.chosen ? { chosen: m.chosen.label } : {}),
   };
 }

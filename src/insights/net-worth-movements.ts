@@ -81,6 +81,9 @@ export function decodeMovements(wire: MovementWire): NetWorthEvent[] {
 
 // Two dots closer than this (px) are drawn as one, ×N, until zooming in parts them.
 export const DOT_GAP = 9;
+// On a phone's narrow chart a dot and its ×N label need more room: QA round 9 found them piled
+// on each other across the full range at 375px.
+export const DOT_GAP_NARROW = 16;
 
 export type Dot = {
   x: number;
@@ -138,18 +141,55 @@ export function layoutDots({
       raw.push({ x: px, y: spread ? lineAt(px) : y(days[i].cents), events: [e] });
     });
   }
-  // Left to right, a dot within `gap` of the group before it joins that group.
-  const dots: Dot[] = [];
-  for (const d of raw.sort((a, b) => a.x - b.x)) {
-    const last = dots[dots.length - 1];
-    if (last && Math.abs(d.x - last.x) < gap && Math.abs(d.y - last.y) < gap) {
-      const n = last.events.length;
-      last.x = (last.x * n + d.x) / (n + 1);
-      last.y = (last.y * n + d.y) / (n + 1);
-      last.events.push(...d.events);
-    } else dots.push({ x: d.x, y: d.y, events: [...d.events] });
+  // By pixel: a dot within `gap` of a group (across and up or down) joins it, found through a
+  // grid of gap-sized cells; again until no two groups are that close (a group's centre moves as
+  // it grows).
+  let dots = raw.sort((a, b) => a.x - b.x);
+  for (let pass = 0; pass < 6; pass++) {
+    const next = groupByPixel(dots, gap);
+    if (next.length === dots.length) break;
+    dots = next;
   }
   return dots;
+}
+
+function groupByPixel(dots: readonly Dot[], gap: number): Dot[] {
+  const out: Dot[] = [];
+  const cells = new Map<string, number[]>();
+  const cell = (cx: number, cy: number) => `${cx},${cy}`;
+  for (const d of dots) {
+    const cx = Math.floor(d.x / gap);
+    const cy = Math.floor(d.y / gap);
+    let near = -1;
+    let best = Infinity;
+    for (let i = cx - 1; i <= cx + 1; i++)
+      for (let j = cy - 1; j <= cy + 1; j++)
+        for (const k of cells.get(cell(i, j)) ?? []) {
+          const g = out[k];
+          const dx = Math.abs(g.x - d.x);
+          const dy = Math.abs(g.y - d.y);
+          if (dx < gap && dy < gap && dx + dy < best) {
+            best = dx + dy;
+            near = k;
+          }
+        }
+    if (near >= 0) {
+      const g = out[near];
+      const n = g.events.length;
+      const m = d.events.length;
+      g.x = (g.x * n + d.x * m) / (n + m);
+      g.y = (g.y * n + d.y * m) / (n + m);
+      g.events.push(...d.events);
+      g.events.sort((a, b) => a.date.localeCompare(b.date));
+    } else {
+      out.push({ x: d.x, y: d.y, events: [...d.events] });
+      const key = cell(cx, cy);
+      const list = cells.get(key);
+      if (list) list.push(out.length - 1);
+      else cells.set(key, [out.length - 1]);
+    }
+  }
+  return out.sort((a, b) => a.x - b.x);
 }
 
 // Which dot is at a point: a grid of cells over the chart, so a tap checks a few dots, not all

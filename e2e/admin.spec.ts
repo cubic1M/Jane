@@ -7,7 +7,13 @@ import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./d
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
 
-const ADMIN_PATHS = ["/admin", "/admin/queue", "/admin/metrics", "/admin/actions/anything"];
+const ADMIN_PATHS = [
+  "/admin",
+  "/admin/queue",
+  "/admin/metrics",
+  "/admin/learning",
+  "/admin/actions/anything",
+];
 
 for (const path of ADMIN_PATHS) {
   test(`signed-out visitors get a 404 at ${path}`, async ({ page }) => {
@@ -34,6 +40,18 @@ test.describe("signed in", () => {
       const response = await page.goto(path);
       expect(response?.status(), path).toBe(404);
     }
+  });
+
+  test("an admin sees the learning loop, kind by kind", async ({ context, page, baseURL }) => {
+    const user = await signedInUser("admin");
+    userId = user.userId;
+    await context.addCookies([
+      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+    ]);
+    const response = await page.goto("/admin/learning");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Learning", level: 1 })).toBeVisible();
+    await expect(page.getByText(/Trial people never count/)).toBeVisible();
   });
 
   test("an admin moves an action and the person sees it", async ({ context, page, baseURL }) => {

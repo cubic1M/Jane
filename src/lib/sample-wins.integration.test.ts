@@ -13,7 +13,7 @@ import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { savedToDate } from "@/lib/membership/service";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
-import { provenSavings } from "@/lib/savings-proof";
+import { provenSavings, verifiedSavings } from "@/lib/savings-proof";
 import { startTrial } from "@/lib/trial";
 import { SAMPLE_WIN_KEY, seedSampleWins } from "./sample-wins";
 
@@ -66,6 +66,9 @@ describe.runIf(url)("sample people's past wins", { timeout: 240_000 }, () => {
       expect(proven.confirmedCents).toBeGreaterThan(0);
       // Saved-to-date (/jane, home, the weekly email) counts the same.
       expect(await savedToDate(userId, { client })).toBe(proven.confirmedCents);
+      // The verified savings record (/saved, the home tile's confirmed figure): all confirmed.
+      const verified = await verifiedSavings(userId, { client, now: NOW });
+      expect(verified.confirmedCents).toBe(proven.confirmedCents);
       // The chat's tool says the same total.
       const out = JSON.parse(
         (await runChatTool(userId, "proven_savings", {}, { client, now: NOW })).content,

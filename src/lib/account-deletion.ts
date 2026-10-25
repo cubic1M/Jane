@@ -24,7 +24,14 @@ export async function deleteAllData(
     where: { userId },
     select: { householdId: true },
   });
+  // The closed beta's lists are keyed by email, not the user row: the invite they used and
+  // any waitlist entry go too (a new account would need a new invite).
+  const user = await client.user.findUnique({ where: { id: userId }, select: { email: true } });
   await client.$transaction(async (tx) => {
+    if (user?.email) {
+      await tx.betaAccess.deleteMany({ where: { email: user.email } });
+      await tx.waitlistEntry.deleteMany({ where: { email: user.email } });
+    }
     if (membership) {
       const where = { where: { householdId: membership.householdId } };
       await tx.sharedCharge.deleteMany(where);

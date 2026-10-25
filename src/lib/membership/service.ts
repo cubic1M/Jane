@@ -134,7 +134,7 @@ export async function savedItems(
 ): Promise<SavedItem[]> {
   const db = scopedFor(userId, client);
   const finished = between ? { gte: between.from, lt: between.to } : undefined;
-  const [done, diy] = await Promise.all([
+  const [done, diy, acted] = await Promise.all([
     db.actions.findMany({
       where: {
         status: "done",
@@ -157,6 +157,17 @@ export async function savedItems(
       },
       select: { cardSnapshot: true },
     }),
+    // Suggestions the person acted on (the verified savings record): what the transactions
+    // confirmed, else what was expected. Not one whose saving never showed up.
+    db.suggestionOutcomes.findMany({
+      where: {
+        status: { in: ["open", "unverifiable", "confirmed", "partial"] },
+        // A do-it-yourself finding card is already counted above (its decision).
+        NOT: { suggestionKey: { startsWith: "finding:" } },
+        ...(finished ? { OR: [{ doneAt: finished }, { doneAt: null, answeredAt: finished }] } : {}),
+      },
+      select: { title: true, expectedCents: true, confirmedCents: true, yearly: true },
+    }),
   ]);
   // A refund seen in the transactions, or a lower price confirmed on a call, counts for
   // what actually happened; otherwise the card's estimate, a year of it.
@@ -172,6 +183,12 @@ export async function savedItems(
       kind: "done_yourself" as const,
       cents: estimateOf(d.cardSnapshot),
       yearly: true,
+    })),
+    ...acted.map((o) => ({
+      title: o.title,
+      kind: "done_yourself" as const,
+      cents: o.confirmedCents ?? o.expectedCents,
+      yearly: o.yearly,
     })),
   ];
   return items.filter((i) => i.cents > 0).sort((a, b) => b.cents - a.cents);
