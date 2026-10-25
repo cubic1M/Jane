@@ -106,11 +106,17 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
   // The policy renews in 40 days, so Jane shopped it by herself when the bank linked
   // (spec step 104): her pick, why, labelled as demo advice.
-  const pick = page.getByRole("region", { name: /Jane's pick/ });
-  await expect(pick.getByRole("heading")).toHaveText("Jane's pick: Lighthouse Insurance (demo)");
-  await expect(pick.getByText("$408.00 a year less for the same cover")).toBeVisible();
+  // Her pick and the other cheaper quotes as comparison cards, hers tagged.
+  const pick = page.getByRole("region", { name: "Jane's pick" });
+  const hers = pick.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });
+  await expect(hers.getByRole("heading", { level: 4 })).toHaveText("Lighthouse Insurance (demo)");
+  await expect(hers.locator('[data-row="saves"] dd')).toHaveText("$408.00");
+  await expect(hers.locator('[data-row="cover"] dd')).toContainText("Same as now");
   await expect(pick.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
-  const lighthouse = page.getByRole("listitem").filter({ hasText: "Lighthouse Insurance (demo)" });
+  // The full list of quotes below the cards.
+  const lighthouse = page
+    .locator("li:not([data-option-id])")
+    .filter({ hasText: "Lighthouse Insurance (demo)" });
   await expect(lighthouse.getByText("Same cover and deductible as your policy.")).toBeVisible();
   await expect(
     lighthouse.getByText("$1,296.00 a year, $408.00 less than you pay now."),

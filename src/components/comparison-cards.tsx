@@ -21,6 +21,9 @@ import {
 // chooses: the card turns inverted at once and the pick is queued behind it. Black,
 // white and grey only (docs/design/area-pages.md): tags and glyphs, never colour, say what's
 // what. Rows the options differ on are bold; rows that are the same on every option are dimmed.
+// The phone's stack and table scroll sideways inside their own width (contain: inline-size paint):
+// without paint containment a phone's browser counts the cards scrolled out of sight as page
+// width and zooms the whole page out to fit them.
 
 const reducedMotion = () =>
   typeof window === "undefined" ||
@@ -159,7 +162,7 @@ export function ComparisonCards({
 
       <ol
         aria-label={`${comparison.title}, by ${PREFERENCES[preference].toLowerCase()}`}
-        className={`${table ? "hidden sm:grid" : "flex"} -mx-1 snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 sm:grid sm:overflow-visible ${GRID[ordered.length] ?? GRID[4]}`}
+        className={`${table ? "hidden sm:grid" : "flex"} -mx-1 [contain:inline-size_paint] snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 sm:grid sm:overflow-visible ${GRID[ordered.length] ?? GRID[4]}`}
       >
         {ordered.map((o, i) => {
           const isChosen = chosen === o.id;
@@ -295,7 +298,7 @@ function CompareTable({
   onChoose: (option: ComparedOption) => void;
 }) {
   return (
-    <div className="overflow-x-auto sm:hidden">
+    <div className="overflow-x-auto [contain:inline-size_paint] sm:hidden">
       <table
         className="w-full border-collapse text-xs [overflow-wrap:normal]"
         data-testid="compare-table"
