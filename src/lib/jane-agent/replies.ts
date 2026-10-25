@@ -653,8 +653,12 @@ export function matchFinding(
 
 // One finding as a decision, with the same words and buttons (Yes, Jane's pick, No, Open)
 // as its message from Jane's brain.
-export function findingReply(finding: SnapshotFinding, lead: string | null = null): Reply {
-  const candidate = findingCandidate(finding);
+export function findingReply(
+  finding: SnapshotFinding,
+  lead: string | null = null,
+  concierge = true,
+): Reply {
+  const candidate = findingCandidate(finding, concierge);
   // Spec step 90: "Remind me tomorrow" hides it until then, like "Not now".
   const actions = [
     ...candidate.actions.filter((a) => a.kind !== "link"),
@@ -711,12 +715,13 @@ export function actReply(
   const exact = intent.findingId
     ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
     : undefined;
-  if (snapshot && exact) return findingReply(exact, ACT_LEAD[intent.verb]);
+  if (snapshot && exact) return findingReply(exact, ACT_LEAD[intent.verb], snapshot.concierge);
   if (!intent.target) {
     const fitting = (snapshot?.findings ?? [])
       .filter((f) => VERB_TYPES[intent.verb].includes(f.type))
       .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1));
-    if (fitting.length === 1 && snapshot) return findingReply(fitting[0], ACT_LEAD[intent.verb]);
+    if (fitting.length === 1 && snapshot)
+      return findingReply(fitting[0], ACT_LEAD[intent.verb], snapshot.concierge);
     if (fitting.length > 1) {
       return clarifyReply(
         `Which one should I ${intent.verb === "refund" ? "claim" : intent.verb}?`,
@@ -746,7 +751,7 @@ export function actReply(
       ),
     );
   }
-  return findingReply(ranked[0].finding, ACT_LEAD[intent.verb]);
+  return findingReply(ranked[0].finding, ACT_LEAD[intent.verb], snapshot.concierge);
 }
 
 // Spec step 89: the answer to "cancel Hulu" comes first: yes, Jane can, once they tap.

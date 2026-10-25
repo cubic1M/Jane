@@ -3,7 +3,8 @@ import { TURNAROUND_BUSINESS_DAYS } from "@/config/concierge";
 import type { ActionType, DecisionChoice } from "@/generated/prisma/client";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { scopedFor } from "@/lib/db-scoped";
-import { DecisionError, UNDO_WINDOW_SECONDS, recordDecision } from "@/lib/decisions";
+import { DIY_KITS } from "@/config/diy";
+import { DecisionError, UNDO_WINDOW_SECONDS, markDiyDone, recordDecision } from "@/lib/decisions";
 import { partnerForUser } from "@/lib/referrals";
 import { findingFingerprint } from "../snapshot";
 import {
@@ -46,7 +47,7 @@ async function decide(
   context: ActionContext,
   choice: Extract<DecisionChoice, "yes" | "no">,
   switchTo?: string,
-): Promise<ActionOutcome & { decisionId?: string; actionType?: ActionType }> {
+): Promise<ActionOutcome & { decisionId?: string; actionType?: ActionType; diy?: boolean }> {
   const { userId, message, client } = context;
   const { findingId, fingerprint } = message.refs;
   if (!findingId) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
@@ -84,6 +85,7 @@ async function decide(
       decisionId: result.decisionId,
       actionType: ACTION_FOR_FINDING[finding.type],
       agentJobIds: [result.agentJobId],
+      diy: result.diy,
     };
   } catch (error) {
     if (!(error instanceof DecisionError)) throw error;
@@ -92,14 +94,72 @@ async function decide(
   }
 }
 
+// Read-only mode (CONCIERGE_ACTIONS): a real account's Yes is theirs to do. The steps in the
+// chat, the drafts (email, script, Copy) on the finding's page, and "Mark done" for when it's
+// done, so what it saved is counted.
+export function diySteps(type: ActionType): string {
+  const steps = DIY_KITS[type]?.steps ?? [];
+  return [
+    "Here's how to do it yourself:",
+    ...steps.map((step, i) => `${i + 1}. ${step}`),
+    "Tap Mark done once it's done.",
+  ].join("\n");
+}
+
+function diyOutcome(
+  context: ActionContext,
+  outcome: ActionOutcome & { decisionId?: string; actionType?: ActionType },
+): ActionOutcome {
+  const findingId = context.message.refs.findingId;
+  return {
+    ...outcome,
+    agentJobIds: [],
+    note: diySteps(outcome.actionType!),
+    refs: { ...context.message.refs, decisionId: outcome.decisionId },
+    actions: [
+      { id: "diy.done", label: "Mark done", kind: "primary" },
+      {
+        id: "open",
+        label: "Steps and drafts",
+        kind: "link",
+        href: `/report/${findingId}#diy`,
+      },
+    ],
+  };
+}
+
 export const findingYes: ActionHandler = {
   id: "finding.yes",
   on: "open",
   async run(context) {
     const outcome = await decide(context, "yes");
+    if (outcome.decisionId && outcome.actionType && outcome.diy) {
+      return diyOutcome(context, outcome);
+    }
     return outcome.decisionId && outcome.actionType
       ? { ...outcome, note: nextStep(outcome.actionType) }
       : outcome;
+  },
+};
+
+// "Mark done" on a Yes the person did themselves: counted from then on (markDiyDone).
+export const diyDone: ActionHandler = {
+  id: "diy.done",
+  on: "answered",
+  async run(context) {
+    const { decisionId } = context.message.refs;
+    if (!decisionId) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    try {
+      await markDiyDone(context.userId, decisionId, { client: context.client, now: context.now });
+    } catch (error) {
+      if (!(error instanceof DecisionError)) throw error;
+      throw new ChatActionError("not_found", "That's not there anymore.");
+    }
+    return {
+      answeredWith: context.action.label,
+      note: "Marked done. I'll count what it saves once it shows up in your accounts.",
+      actions: linksOf(context.message.actions),
+    };
   },
 };
 
@@ -110,6 +170,9 @@ export const findingPick: ActionHandler = {
     const switchTo = context.message.refs.pickOptionId;
     if (!switchTo) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
     const outcome = await decide(context, "yes", switchTo);
+    if (outcome.decisionId && outcome.actionType && outcome.diy) {
+      return diyOutcome(context, outcome);
+    }
     return outcome.decisionId
       ? {
           ...outcome,

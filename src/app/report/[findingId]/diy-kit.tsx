@@ -2,16 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { CopyButton } from "@/components/copy-button";
 import type { Kit } from "@/lib/diy";
 
-// The do-it-yourself kit on a card the person chose to handle themselves.
+// The do-it-yourself kit on a card the person chose to handle themselves (and, in read-only
+// mode, every yes from a real account): the company's link, the steps, the email or script
+// to copy, and Mark done so what it saves is counted.
 export function DiyKit({
   kit,
   decisionId,
   doneOn,
   usually = null,
+  switchLink = null,
 }: {
   kit: Kit;
+  // The option picked to switch to, with its sign-up link.
+  switchLink?: { label: string; url: string } | null;
   // Median minutes our team spends on this at this merchant, once there are enough cases.
   usually?: number | null;
   decisionId: string;
@@ -34,12 +40,25 @@ export function DiyKit({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-emerald-200 p-4 dark:border-emerald-900">
+    <section
+      id="diy"
+      className="flex scroll-mt-8 flex-col gap-3 rounded-xl border border-emerald-200 p-4 dark:border-emerald-900"
+    >
       <h2 className="font-semibold">Doing it yourself</h2>
       {usually !== null && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           With this company it usually takes about {usually} minutes.
         </p>
+      )}
+      {switchLink && (
+        <a
+          href={switchLink.url}
+          target="_blank"
+          rel="noreferrer"
+          className="self-start font-medium underline underline-offset-2 hover:no-underline"
+        >
+          {switchLink.label} ↗
+        </a>
       )}
       {kit.link && (
         <a
@@ -57,12 +76,22 @@ export function DiyKit({
         ))}
       </ol>
       {kit.email && (
-        <a
-          href={kit.email.mailto}
-          className="self-start font-medium text-emerald-700 hover:underline"
-        >
-          Write the email (opens your mail app)
-        </a>
+        <div className="flex flex-col gap-2">
+          <p className="font-medium">The email</p>
+          <p className="text-sm">Subject: {kit.email.subject}</p>
+          <pre className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere] font-sans border border-zinc-300 p-3 dark:border-zinc-700">
+            {kit.email.body}
+          </pre>
+          <div className="flex flex-wrap gap-2">
+            <CopyButton text={`${kit.email.subject}\n\n${kit.email.body}`} label="Copy the email" />
+            <a
+              href={kit.email.mailto}
+              className="inline-flex min-h-11 items-center self-start font-medium text-emerald-700 hover:underline"
+            >
+              Write the email (opens your mail app)
+            </a>
+          </div>
+        </div>
       )}
       {kit.script && (
         <div className="flex flex-col gap-1 text-sm">
@@ -74,6 +103,7 @@ export function DiyKit({
               </li>
             ))}
           </ul>
+          <CopyButton text={kit.script.join("\n")} label="Copy the script" />
         </div>
       )}
       {doneOn ? (
@@ -93,7 +123,7 @@ export function DiyKit({
             disabled={state === "sending"}
             className="inline-flex h-12 items-center justify-center self-start rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
           >
-            I did it
+            Mark done
           </button>
         </>
       )}

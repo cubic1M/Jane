@@ -44,6 +44,9 @@ export async function loadHubTop(
       foundCents: home.moneyFoundCents,
       savedCents: home.savedToDateCents,
       savedItems: home.savedItems,
+      confirmedCents: home.confirmedSavedCents,
+      plan: home.plan,
+      goal: home.goal,
     },
     cashFlow: {
       asOf,

@@ -6,13 +6,16 @@ import type {
   Prisma,
   PrismaClient,
 } from "@/generated/prisma/client";
+import { PICK_UNDO_HOURS } from "@/config/rules";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { recordFindingDone } from "@/lib/outcomes";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { hasKit } from "@/lib/diy";
 import { PlanOptionsError, parsePlanOptions } from "@/lib/plan-options";
 import { partnerForUser } from "@/lib/referrals";
@@ -53,6 +56,9 @@ type Options = { client?: PrismaClient; now?: Date };
 export type DecisionResult = {
   decisionId: string;
   actionId: string | null;
+  // Read-only mode: a Yes from a real account was recorded as the person's own to do (a DIY
+  // decision with its kit), with nothing queued for anyone.
+  diy?: boolean;
   // When the action agent took the action: its first job, for the caller to run now.
   agentJobId?: string;
 };
@@ -127,7 +133,11 @@ export async function recordDecision(
   if (cardHash(card) !== answer.cardHash) {
     throw new DecisionError("card_changed", "This card was updated. Please look at it again.");
   }
-  if (answer.choice === "diy" && !hasKit(card.actionType)) {
+  // Read-only mode (CONCIERGE_ACTIONS): for a real account nobody acts for them, so a Yes is
+  // theirs to do, with the kit's steps and drafts; nothing goes to the agent or the queue.
+  const choice: DecisionChoice =
+    answer.choice === "yes" && !(await conciergeMode(userId, { client })) ? "diy" : answer.choice;
+  if (choice === "diy" && !hasKit(card.actionType)) {
     throw new DecisionError("no_kit", "There's no do-it-yourself kit for this one.");
   }
   let options: Record<string, string | number> | null = null;
@@ -147,7 +157,7 @@ export async function recordDecision(
     // Claims the finding, so two clicks can't both record an answer.
     const claimed = await tx.findings.updateMany({
       where: { id: finding.id, status: { in: DECIDABLE } },
-      data: { status: STATUS_FOR[answer.choice] },
+      data: { status: STATUS_FOR[choice] },
     });
     if (claimed.count === 0) {
       throw new DecisionError("already_decided", "You've already answered this one.");
@@ -156,7 +166,7 @@ export async function recordDecision(
       data: {
         userId,
         findingId: finding.id,
-        choice: answer.choice,
+        choice,
         cardSnapshot: card as unknown as Prisma.InputJsonObject,
         source,
         ...(options ? { options } : {}),
@@ -167,13 +177,17 @@ export async function recordDecision(
       select: { id: true },
     });
     const action =
-      answer.choice === "yes"
+      choice === "yes"
         ? await tx.actions.create({
             data: { userId, decisionId: decision.id, type: card.actionType },
             select: { id: true },
           })
         : null;
-    return { decisionId: decision.id, actionId: action?.id ?? null };
+    return {
+      decisionId: decision.id,
+      actionId: action?.id ?? null,
+      ...(choice !== answer.choice ? { diy: true } : {}),
+    };
   });
 
   await logAudit(
@@ -181,7 +195,7 @@ export async function recordDecision(
     "decision_made",
     { type: "finding", id: finding.id },
     {
-      choice: answer.choice,
+      choice,
       source,
       changed_options: options !== null,
       decision_id: result.decisionId,
@@ -194,7 +208,7 @@ export async function recordDecision(
     result.agentJobId = await startAgent(userId, result.actionId, { client, source });
   }
   const EVENT = { yes: "decision_yes", no: "decision_no", diy: "diy_started" } as const;
-  await track(userId, EVENT[answer.choice], {
+  await track(userId, EVENT[choice], {
     finding_type: card.findingType,
     action_type: card.actionType,
     annual_savings_cents: card.annualSavingsCents,
@@ -246,6 +260,65 @@ export async function undoDecision(
   await track(userId, "decision_undone", {});
 }
 
+// Revert on a pick made in the chat or on an option card (founder, 2026-10-25: "there should be
+// a revert button"): within PICK_UNDO_HOURS and while the team hasn't started, its queued action
+// goes, the decision is marked undone, and the pick's own finding is put away under a retired
+// key, so the same choice can be made again and nothing comes back as a card. A pick with
+// nothing queued ("keep what you have") is simply undone.
+export async function undoPick(
+  userId: string,
+  decisionId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  const db = scopedFor(userId, client);
+  const decision = await db.decisions.findFirst({
+    where: { id: decisionId, source: "chat", undoneAt: null },
+    select: {
+      id: true,
+      findingId: true,
+      createdAt: true,
+      action: { select: { id: true, status: true } },
+      finding: { select: { key: true } },
+    },
+  });
+  const ageHours = decision ? (now.getTime() - decision.createdAt.getTime()) / 3_600_000 : Infinity;
+  const started = decision?.action && decision.action.status !== "queued";
+  if (!decision || ageHours > PICK_UNDO_HOURS || started) {
+    throw new DecisionError(
+      "cannot_undo",
+      "This can't be taken back anymore: the team has started.",
+    );
+  }
+  await db.transaction(async (tx) => {
+    if (decision.action) {
+      const removed = await tx.actions.deleteMany({
+        where: { id: decision.action.id, status: "queued" },
+      });
+      if (removed.count === 0) {
+        throw new DecisionError(
+          "cannot_undo",
+          "This can't be taken back anymore: the team has started.",
+        );
+      }
+    }
+    await tx.decisions.updateMany({ where: { id: decision.id }, data: { undoneAt: now } });
+    await tx.findings.updateMany({
+      where: { id: decision.findingId },
+      data: {
+        status: "declined",
+        ...(decision.finding?.key ? { key: `${decision.finding.key}:undone:${decision.id}` } : {}),
+      },
+    });
+  });
+  await logAudit(
+    { type: "user", id: userId },
+    "decision_undone",
+    { type: "finding", id: decision.findingId },
+    { decision_id: decision.id, source: "chat" },
+  );
+  await track(userId, "decision_undone", {});
+}
+
 // "I did it" on a do-it-yourself decision. Marks the finding done; from then on its
 // savings count in saved-to-date, once (a second click changes nothing).
 export async function markDiyDone(
@@ -282,4 +355,6 @@ export async function markDiyDone(
     { decision_id: decision.id },
   );
   await track(userId, "diy_done", {});
+  // The verified savings record: watched from today for the transactions to show it.
+  await recordFindingDone(userId, decision.findingId, { client, now });
 }

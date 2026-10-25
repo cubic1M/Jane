@@ -7,11 +7,23 @@ import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
+// Read-only mode leaves real accounts alone; the people these tests approve something for are
+// treated as the demo bank's (CONCIERGE_ACTIONS.demo), everyone else is checked for real.
+const actsFor = vi.hoisted(() => new Set<string>());
+vi.mock("@/lib/concierge-mode", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/concierge-mode")>();
+  return {
+    conciergeMode: async (...args: Parameters<typeof real.conciergeMode>) =>
+      actsFor.has(args[0]) || real.conciergeMode(...args),
+  };
+});
 
 import { AUTOPILOT_LEVELS } from "@/config/autopilot";
 import { logAudit } from "@/lib/audit";
 import { findingOfType } from "@/lib/__fixtures__/findings";
 import { setAutopilot } from "@/lib/autopilot";
+import { openPopupMessages } from "@/lib/jane-agent/messages";
+import { toView } from "@/lib/jane-agent/view";
 import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { recordDecision } from "@/lib/decisions";
 import { addDeadline } from "@/lib/deadlines";
@@ -102,6 +114,7 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
       },
       select: CARD_SELECT,
     });
+    actsFor.add(userId);
     const { actionId } = await recordDecision(
       userId,
       { findingId: finding.id, choice: "yes", cardHash: cardHash(buildCard(finding)) },
@@ -126,6 +139,88 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
     vi.unstubAllEnvs();
+  });
+
+  // Founder, 2026-10-25: a choice stays on the message, greyed with this one marked, and Revert
+  // puts back the level, the standing rules and the buttons.
+  it("keeps the autopilot choices after one is taken, and Revert puts everything back", async () => {
+    const userId = await plainPerson("choice-revert");
+    const before = await client.standingRule.findMany({ where: { userId } });
+    const question = await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: "How much should I do on my own?\nPick one.",
+        dedupeKey: "autopilot:revert-test",
+        actions: [
+          { id: "autopilot.safe", label: "Handle the safe stuff", kind: "primary" },
+          { id: "autopilot.all", label: "Handle everything allowed", kind: "secondary" },
+          { id: "autopilot.ask", label: "Ask me first", kind: "secondary" },
+        ],
+      },
+    });
+    const { message } = await takeChatAction(userId, question.id, "autopilot.all", {
+      client,
+      now: LINKED,
+    });
+    expect(message.status).toBe("answered");
+    expect(buttonIds(message)).toEqual(["choice.revert", "choice.done"]);
+    expect(message.refs.chosen).toMatchObject({
+      actionId: "autopilot.all",
+      label: "Handle everything allowed",
+    });
+    expect(message.refs.chosen?.autopilot?.level).toBeNull();
+    const view = toView(message, LINKED, "UTC");
+    // The chat shows Revert (and the card Done) on the answered message.
+    expect(view.buttons.map((b) => b.id)).toEqual(["choice.revert", "choice.done"]);
+    expect(view.chosen).toMatchObject({
+      key: "autopilot.all",
+      label: "Handle everything allowed",
+      final: false,
+      settled: false,
+    });
+    expect(view.chosen?.choices.map((c) => c.label)).toEqual([
+      "Handle the safe stuff",
+      "Handle everything allowed",
+      "Ask me first",
+    ]);
+    const user = await client.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user).toMatchObject({ autopilot: "all", acceptSimpleOffers: true });
+    // Chosen, it still floats (marked, with Revert) until Done.
+    expect((await openPopupMessages(userId, { client, now: LINKED })).map((m) => m.id)).toContain(
+      question.id,
+    );
+    // Done on its card settles it; Revert still works from the chat.
+    const { message: settled } = await takeChatAction(userId, question.id, "choice.done", {
+      client,
+      now: LINKED,
+    });
+    expect(settled.refs.chosen?.settled).toBe(true);
+    expect(buttonIds(settled)).toEqual(["choice.revert"]);
+    expect(
+      (await openPopupMessages(userId, { client, now: LINKED })).map((m) => m.id),
+    ).not.toContain(question.id);
+
+    const { message: back } = await takeChatAction(userId, question.id, "choice.revert", {
+      client,
+      now: LINKED,
+    });
+    expect(back).toMatchObject({ status: "open", answeredWith: null });
+    expect(buttonIds(back)).toEqual(["autopilot.safe", "autopilot.all", "autopilot.ask"]);
+    expect(back.refs.chosen).toBeUndefined();
+    expect(toView(back, LINKED, "UTC").chosen).toBeNull();
+    expect(await client.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({
+      autopilot: null,
+      acceptSimpleOffers: false,
+    });
+    const after = await client.standingRule.findMany({ where: { userId, enabled: true } });
+    expect(after).toHaveLength(before.filter((r) => r.enabled).length);
+    // And it can be chosen again.
+    const { message: again } = await takeChatAction(userId, question.id, "autopilot.ask", {
+      client,
+      now: LINKED,
+    });
+    expect(again.refs.chosen?.actionId).toBe("autopilot.ask");
   });
 
   describe("with the demo bank", () => {
@@ -450,6 +545,59 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
       await client.action.update({ where: { id: actionId }, data: { status: "in_progress" } });
       await openChat(userId, { client, now: LINKED });
       expect(buttonIds(await reloadMessage(message.id))).toEqual(["open"]);
+    });
+  });
+
+  describe("read-only mode, for a real account", () => {
+    it("a Yes gives the steps and Mark done, with nothing queued; Mark done counts it", async () => {
+      const userId = await plainPerson("chat-readonly");
+      const f = findingOfType("bank_fees");
+      const finding = await client.finding.create({
+        data: {
+          userId,
+          type: f.type,
+          key: `${f.key}-${crypto.randomUUID()}`,
+          title: f.title,
+          annualSavingsCents: f.annualSavingsCents,
+          amountCents: f.amountCents,
+          confidence: f.confidence,
+          evidence: f.evidence as Prisma.InputJsonObject,
+        },
+        select: { id: true },
+      });
+      await talk(userId);
+      const [message] = (await withButton(userId, "finding.yes")).filter(
+        (m) => parseRefs(m.refs).findingId === finding.id,
+      );
+      expect(message.body).toMatch(/Want the steps to do it yourself\?/);
+      expect(message.body).not.toMatch(/handle it/);
+
+      const { message: answered, agentJobIds } = await takeChatAction(
+        userId,
+        message.id,
+        "finding.yes",
+        { client, now: LINKED },
+      );
+      expect(answered.refs.note).toMatch(/^Here's how to do it yourself:\n1\. /);
+      expect(answered.actions.map((a) => a.id)).toEqual(["diy.done", "open"]);
+      expect(answered.actions[1]).toMatchObject({ href: `/report/${finding.id}#diy` });
+      expect(agentJobIds).toEqual([]);
+      expect(await client.action.count({ where: { userId } })).toBe(0);
+      const decision = await client.decision.findFirstOrThrow({ where: { findingId: finding.id } });
+      expect(decision.choice).toBe("diy");
+
+      const { message: done } = await takeChatAction(userId, message.id, "diy.done", {
+        client,
+        now: LINKED,
+      });
+      expect(done.refs.note).toMatch(/^Marked done\./);
+      expect(done.actions.map((a) => a.id)).toEqual(["open"]);
+      expect(
+        (await client.decision.findUniqueOrThrow({ where: { id: decision.id } })).diyDoneAt,
+      ).not.toBeNull();
+      expect((await client.finding.findUniqueOrThrow({ where: { id: finding.id } })).status).toBe(
+        "done",
+      );
     });
   });
 

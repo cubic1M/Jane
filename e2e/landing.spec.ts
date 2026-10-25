@@ -34,51 +34,51 @@ test("health check responds", async ({ request }) => {
   expect(await response.json()).toEqual({ ok: true });
 });
 
-// The hero (founder, 2026-10-24): the biggest words in the display serif, the picture as ASCII
-// diamonds beside them on a wide screen and under them on a phone, and the same dotted diamonds
-// across the whole page.
-test("the hero shows the ASCII diamond art beside the headline, as a canvas or its poster", async ({
-  page,
-}) => {
+// The column (founder, 2026-10-25): the founder's weathered column in fine ASCII, fixed beside
+// the story, panning from its broken capital at the top of the page to its whole base at the
+// bottom.
+test("the column pans from capital to base as the page scrolls", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 });
   await page.goto("/");
+  const column = page.getByTestId("landing-column");
+  const art = column.locator("pre");
+  await expect(art).not.toBeEmpty();
+  // Several screens tall.
+  await expect
+    .poll(async () => Number(await column.getAttribute("data-height")))
+    .toBeGreaterThan(860 * 2);
+  const top = (await art.boundingBox())!.y;
+  await page.evaluate(() =>
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),
+  );
+  // At the bottom of the page the base is in view: the drawing has slid up by its extra height.
+  await expect.poll(async () => (await art.boundingBox())!.y).toBeLessThan(top - 100);
+  const box = (await art.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(860 + 2);
+  // The panel itself stays put on screen.
+  expect(Math.abs((await column.boundingBox())!.y)).toBeLessThan(2);
+  // The headline face, and the white page.
   const heading = page.getByRole("heading", { level: 1, name: "See how much money you're losing" });
-  const art = page.getByTestId("landing-art");
-  await expect(art).toBeVisible();
-  // Drawn on the canvas once the script runs; the poster until then.
-  await expect(art).toHaveAttribute("data-rendered", "canvas", { timeout: 15_000 });
-  const size = await art.locator("canvas").evaluate((c: HTMLCanvasElement) => [c.width, c.height]);
-  expect(size[0]).toBeGreaterThan(0);
-  expect(size[1]).toBeGreaterThan(0);
-  const [h, a] = [await heading.boundingBox(), await art.boundingBox()];
-  expect(a!.x).toBeGreaterThan(h!.x + h!.width - 1);
-  // The display face for the headline, the page's dotted diamonds behind everything.
   expect(await heading.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(
     /Agraham.*Playfair Display/,
   );
-  await expect(page.getByTestId("diamond-background")).toHaveCSS("background-image", /url\(/);
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
+    "rgb(255, 255, 255)",
+  );
 
-  // A phone: the art under the words, nothing wider than the screen.
+  // A phone: behind the words, nothing wider than the screen.
   await page.setViewportSize({ width: 375, height: 812 });
-  await expect
-    .poll(async () => (await art.boundingBox())!.y)
-    .toBeGreaterThan((await heading.boundingBox())!.y + 10);
+  await expect(column).toBeAttached();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
   ).toBeLessThanOrEqual(0);
-  expect((await art.boundingBox())!.width).toBeLessThanOrEqual(375);
 });
 
-test("without JavaScript the hero shows the pre-rendered poster", async ({ browser, baseURL }) => {
+test("without JavaScript the page still tells the story", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
   const page = await context.newPage();
   await page.goto("/");
-  const art = page.getByTestId("landing-art");
-  await expect(art).toHaveAttribute("data-rendered", "poster");
-  const poster = art.locator("img");
-  await expect(poster).toBeVisible();
-  expect(
-    await poster.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
-  ).toBeGreaterThan(0);
+  await expect(page.getByRole("heading", { name: "Money leaks quietly" })).toBeAttached();
+  await expect(page.getByRole("heading", { name: "Put your money back together" })).toBeAttached();
   await context.close();
 });

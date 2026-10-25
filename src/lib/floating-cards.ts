@@ -41,6 +41,11 @@ export type FloatingCardData = {
   choices?: { id: string; label: string }[];
   // Not one of the day's suggestions: no "Don't suggest this again".
   noNever?: boolean;
+  // A pick-one choice (founder, 2026-10-25): once chosen, the card stays with its choices
+  // greyed, the chosen one marked, and Revert, until Done.
+  revertable?: boolean;
+  // Already chosen (the server has it): shown marked, with Revert and Done.
+  chosen?: string;
 };
 
 export type CardsState = {
@@ -92,6 +97,20 @@ export function answer(
   const after = waiting(cards, { gone, index: at });
   const next = after[Math.min(at, after.length - 1)];
   return { gone, index: at, current: next?.id };
+}
+
+// Revert on a held card: it's waiting again, and showing.
+export function restore(
+  cards: readonly FloatingCardData[],
+  state: CardsState,
+  id: string,
+): CardsState {
+  const gone = state.gone.filter((g) => g !== id);
+  const index = Math.max(
+    0,
+    cards.filter((c) => !gone.includes(c.id)).findIndex((c) => c.id === id),
+  );
+  return { gone, index };
 }
 
 export function move(

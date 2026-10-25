@@ -160,7 +160,7 @@ export function SideChat() {
       if (event.data.type === "jane:ready") {
         listening.current = true;
         post(whereRef.current);
-        if (asking.current) post({ type: "jane:ask", text: asking.current });
+        if (asking.current) post({ type: "jane:ask", ...asking.current });
         asking.current = null;
         if (sending.current) post({ type: "jane:send", text: sending.current });
         sending.current = null;
@@ -238,16 +238,25 @@ export function SideChat() {
 
   // "Ask Jane about this" (the feature map): the chat comes into view with the question in its
   // message box, waiting for the framed chat if it isn't listening yet.
-  const asking = useRef<string | null>(null);
+  // The detail is the question, or the question and a greyed hint after it.
+  const asking = useRef<{ text: string; hint?: string } | null>(null);
   useEffect(() => {
     const onAsk = (event: Event) => {
-      const text = (event as CustomEvent<string>).detail;
-      if (typeof text !== "string" || !text) return;
+      const detail = (event as CustomEvent<unknown>).detail;
+      const ask =
+        typeof detail === "string"
+          ? { text: detail }
+          : (detail as { text?: unknown; hint?: unknown } | null);
+      if (!ask || typeof ask.text !== "string" || !ask.text) return;
+      const message = {
+        text: ask.text,
+        ...(typeof ask.hint === "string" && ask.hint ? { hint: ask.hint } : {}),
+      };
       if (wide) {
         if (sideChatStore.get().panel === "rail") sideChatStore.setPanel("open");
       } else sideChatStore.setSheet("half");
-      if (loaded) post({ type: "jane:ask", text });
-      else asking.current = text;
+      if (loaded) post({ type: "jane:ask", ...message });
+      else asking.current = message;
     };
     window.addEventListener("jane:ask", onAsk);
     return () => window.removeEventListener("jane:ask", onAsk);

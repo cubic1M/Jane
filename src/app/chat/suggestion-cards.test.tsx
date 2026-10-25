@@ -113,6 +113,15 @@ describe("the card", () => {
       "Your company stock is $259,160.00, 64% of everything you invest. If it fell by 30% you would lose $77,748.00, and your job rides on the same company.";
     expect(cardOf(message(1, { cardWhy: why })).details.why).toBe(why);
   });
+
+  it("says in More details what people did with this kind (the learning loop)", () => {
+    const people = "People acted on this 7 of 10 times it was shown.";
+    expect(cardOf(message(1, { cardPeople: people })).details.notes?.[0]).toBe(people);
+    expect(cardOf(message(1, { advice: false })).details.notes).toBeUndefined();
+    expect(cardOf(message(1, { advice: false, cardPeople: people })).details.notes).toEqual([
+      people,
+    ]);
+  });
 });
 
 describe("the overlay", () => {

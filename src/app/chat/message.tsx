@@ -5,6 +5,13 @@ import { useActionState, useEffect, useOptimistic, useState } from "react";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { concise } from "@/lib/jane-agent/popups";
 import type { MessageView } from "@/lib/jane-agent/view";
+import {
+  DONE_ACTION,
+  REVERT_ACTION,
+  chosenView,
+  isChoice,
+  revertedView,
+} from "@/lib/jane-agent/choices";
 import { tapButton, type MessageState } from "./actions";
 import { ReadAloud } from "./read-aloud";
 import { togglePin } from "./pin";
@@ -52,6 +59,9 @@ function useUndoTimer(undoUntil: string | null): boolean {
 // What a tap looks like before the server has answered: answered with that button, its
 // buttons gone (links stay), and a line saying it's in hand.
 function tappedView(current: MessageView, tapped: MessageView["buttons"][number]): MessageView {
+  // A choice stays, marked, with Revert; Revert brings the choices back (founder, 2026-10-25).
+  if (isChoice(tapped.id)) return chosenView(current, tapped);
+  if (tapped.id === REVERT_ACTION) return revertedView(current);
   return {
     ...current,
     status: "answered",
@@ -84,7 +94,10 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
     return () => window.removeEventListener("beforeunload", keep);
   }, [pending]);
   const undoExpired = useUndoTimer(message.undoUntil);
-  const buttons = message.buttons.filter((b) => !(undoExpired && b.id.startsWith("undo.")));
+  // Done belongs to the floating card; in the chat a choice keeps Revert alone.
+  const buttons = message.buttons.filter(
+    (b) => !(undoExpired && b.id.startsWith("undo.")) && b.id !== DONE_ACTION,
+  );
 
   if (!message.fromJane) {
     return (
@@ -190,6 +203,41 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
           </SubmitButton>
         </form>
       </div>
+      {/* A choice that was made: every choice still here, the chosen one inverted and marked,
+          the others greyed and off (founder, 2026-10-25); Revert is among the buttons. */}
+      {message.chosen && message.chosen.choices.length > 0 && (
+        <div
+          role="group"
+          aria-label="Your choice"
+          data-chosen-choices=""
+          className="flex flex-wrap gap-2"
+        >
+          {message.chosen.choices.map((c) =>
+            c.key === message.chosen!.key ? (
+              <button
+                key={c.key}
+                type="button"
+                disabled
+                aria-pressed="true"
+                className="inline-flex min-h-11 items-center gap-1 border-2 border-zinc-950 bg-zinc-950 px-3 text-sm font-semibold text-white dark:border-white dark:bg-white dark:text-zinc-950"
+              >
+                {c.label} <span aria-hidden="true">[✓ chosen]</span>
+                <span className="sr-only">, chosen</span>
+              </button>
+            ) : (
+              <button
+                key={c.key}
+                type="button"
+                disabled
+                aria-pressed="false"
+                className="inline-flex min-h-11 items-center border border-zinc-400 px-3 text-sm opacity-40 dark:border-zinc-600"
+              >
+                {c.label}
+              </button>
+            ),
+          )}
+        </div>
+      )}
       {(buttons.length > 0 || message.links.length > 0) && (
         <div className="flex flex-wrap items-center gap-2">
           {buttons.length > 0 && (

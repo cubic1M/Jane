@@ -4,12 +4,14 @@ import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggesti
 import { runDetectors } from "@/detectors";
 import type { Suggestion } from "@/detectors/contract";
 import { ideaShortForms } from "@/detectors/helpers";
-import type { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadProfileInput } from "@/lib/profile";
+import { recordAnswer, recordOpened, recordShown } from "@/lib/outcomes";
+import { loadKindStats } from "@/lib/learning";
 import type { CardExtras } from "@/lib/jane-agent/types";
 import { scrub } from "@/lib/scrub";
 import { resultsByKind } from "@/lib/worked";
@@ -17,6 +19,7 @@ import { buildProfile } from "@/profile/build";
 import {
   byRank,
   mergeOverlaps,
+  peopleLine,
   pickForToday,
   rankSuggestions,
   type TopicHistory,
@@ -54,6 +57,8 @@ export type OfferedSuggestion = {
   advice: boolean;
   // A practice idea's numbers, caps and what its Yes does, for the card's More details.
   cardDetails?: CardExtras;
+  // The learning loop, for More details: "People acted on this 7 of 10 times it was shown."
+  people?: string;
 };
 
 export type ScanResult = { fired: number; selected: string[] };
@@ -163,7 +168,11 @@ export async function scanSuggestions(
     if (e.status === "yes") h.yes += 1;
     else h.no += 1;
   }
-  const results = await resultsByKind(userId, { client, now });
+  const [results, kinds] = await Promise.all([
+    resultsByKind(userId, { client, now }),
+    // The learning loop: what everyone did with each kind.
+    loadKindStats({ client }),
+  ]);
 
   // Never again after an answer; not again for a while after it was offered and left alone.
   const blocked = new Set<string>();
@@ -182,6 +191,7 @@ export async function scanSuggestions(
       history: history as TopicHistory,
       results,
       blocked,
+      kinds,
     }),
   );
   const picked = pickForToday(ranked);
@@ -206,6 +216,8 @@ export async function scanSuggestions(
       actionHref: landing(s.action.href, { key: s.id, topic: s.topic }),
       score: scores.get(s.id) ?? 0,
       lastSeenAt: now,
+      // What later transactions should show if the person acts (the verified savings record).
+      watch: s.watch ? (s.watch as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
     };
     const have = byKey.get(s.id);
     const answered = have?.status === "yes" || have?.status === "no";
@@ -257,6 +269,21 @@ export async function scanSuggestions(
       data: { status: "gone" },
     });
   }
+  // The day's picks reach the person: the verified savings record starts here.
+  await recordShown(
+    userId,
+    picked.map(({ suggestion: p }) => ({
+      key: p.id,
+      capability: p.capability,
+      topic: p.topic,
+      title: p.title,
+      worthCents: p.worthCents,
+      worthKind: p.worthKind,
+      confidencePercent: p.confidence.percent,
+      watch: p.watch ?? null,
+    })),
+    { client, now },
+  );
   return { fired: found.length, selected: [...pickedIds] };
 }
 
@@ -282,11 +309,14 @@ export async function offeredToday(
   const partOf = new Map(parts.map((p) => [p.key, p]));
   // Loaded when needed: the practice modules reach this file again (through the profile).
   const { practiceCardDetails } = await import("@/lib/practice/ideas");
-  const practice = await practiceCardDetails(
-    userId,
-    rows.map((r) => r.key),
-    { client },
-  );
+  const [practice, kinds] = await Promise.all([
+    practiceCardDetails(
+      userId,
+      rows.map((r) => r.key),
+      { client },
+    ),
+    loadKindStats({ client }),
+  ]);
   return rows.map((r) => {
     const mine = isIdea(r.key) ? partsOfIdea(r.key).flatMap((k) => partOf.get(k) ?? []) : [];
     const topics = mine.length > 0 ? mine.map((p) => p.topic) : [r.topic];
@@ -307,6 +337,7 @@ export async function offeredToday(
       more: mine.slice(1).map((p) => ({ label: p.actionLabel, href: p.actionHref })),
       advice: topics.some((t) => (ADVICE_TOPICS as readonly string[]).includes(t)),
       ...(practice.has(r.key) ? { cardDetails: practice.get(r.key) } : {}),
+      ...(peopleLine(r.topic, kinds) ? { people: peopleLine(r.topic, kinds)! } : {}),
     };
   });
 }
@@ -327,6 +358,7 @@ export async function answerSuggestion(
     where: { id: row.id },
     data: { status: answer, answeredAt: now },
   });
+  await recordAnswer(userId, key, answer, { client, now });
   await track(userId, "suggestion_answered", {
     topic: row.topic,
     answer,
@@ -340,10 +372,11 @@ export async function answerSuggestion(
 export async function explainSuggestion(
   userId: string,
   key: string,
-  { client = defaultClient }: Pick<Options, "client"> = {},
+  { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<string> {
   const row = await scopedFor(userId, client).suggestions.findFirst({ where: { key } });
   if (!row) throw new SuggestionError("That suggestion isn't there any more.");
+  await recordOpened(userId, key, { client, now });
   const end = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
   return [
     end(row.title),

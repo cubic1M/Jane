@@ -25,13 +25,13 @@ export function HeroRow({
   planItems: number;
   chart: ReactNode;
 }) {
-  const { safe, saved } = hero;
+  const { safe, saved, plan } = hero;
   return (
     <section aria-label="Your money at a glance" className="flex flex-col gap-3">
       {chart}
       <div className="grid grid-cols-2 gap-3">
         {safe && <SafeTile safe={safe} />}
-        <SavedTile saved={saved} planItems={planItems} />
+        <SavedTile saved={saved} planItems={planItems} plan={plan} />
       </div>
     </section>
   );

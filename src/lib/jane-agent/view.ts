@@ -45,10 +45,28 @@ export type MessageView = {
   // The same options as comparison cards (src/lib/comparison.ts), which the chat shows instead
   // when the card carries their numbers (cards saved before them don't).
   comparison?: Comparison | null;
+  // A pick-one choice that was made (founder, 2026-10-25): its choices stay, greyed, with this
+  // one marked and Revert among the buttons (unless it can't be taken back: final).
+  chosen?: {
+    // Which choice: its key among `choices` (a button's id, or an option's).
+    key: string;
+    label: string;
+    final: boolean;
+    // Done on its card: it no longer floats.
+    settled: boolean;
+    choices: {
+      id: ActionId;
+      key: string;
+      label: string;
+      kind: "primary" | "secondary" | "quick";
+    }[];
+  } | null;
   // A suggestion card's extra details (refs.cardDetails), or null.
   cardDetails?: CardExtras | null;
   // A suggestion's whole reason (refs.suggestionWhy), or null.
   cardWhy?: string | null;
+  // What everyone did with this kind of suggestion (refs.suggestionPeople), or null.
+  cardPeople?: string | null;
 };
 
 const TAGS: Record<MessageKind, string> = {
@@ -71,17 +89,79 @@ export function inTheList(
   return messages.filter((m) => !(m.status === "open" && waiting.has(m.id)));
 }
 
-export function toView(message: ChatMessage, now: Date, timezone: string | null): MessageView {
+// Read-only mode (CONCIERGE_ACTIONS): for a real account a Yes on a finding shows Jane's steps
+// for the person to follow, so its button says so; nobody approves a batch on their behalf.
+const DIY_LABELLED = (id: string) =>
+  id === "finding.yes" || id === "finding.pick" || /^bundle\.\d+$/.test(id);
+
+export function diyLabel(label: string): string {
+  const rest = label
+    .replace(/^\[?yes\b[:,]?\s*/i, "")
+    .replace(/\]$/, "")
+    .trim();
+  return rest ? `Show me how: ${rest}` : "Show me how";
+}
+
+// The choices a chosen message keeps: an option card's options, or the buttons it had.
+function chosenOf(message: ChatMessage, concierge: boolean): MessageView["chosen"] {
+  const chosen = message.refs.chosen;
+  if (!chosen) return null;
+  // An option card's options by their headline (a carrier can have several), or the buttons.
+  const choices = message.refs.options
+    ? message.refs.options.options.map((o) => ({
+        id: "option.pick" as ActionId,
+        key: o.id,
+        label: o.headline,
+        kind: "secondary" as const,
+      }))
+    : (message.refs.previousActions ?? []).flatMap((a) =>
+        a.kind === "link" || a.id === "snooze" || a.id.startsWith("undo.")
+          ? []
+          : [
+              {
+                id: a.id,
+                key: a.id,
+                label: !concierge && DIY_LABELLED(a.id) ? diyLabel(a.label) : a.label,
+                kind: a.kind,
+              },
+            ],
+      );
+  return {
+    key: chosen.actionId,
+    label: choices.find((c) => c.key === chosen.actionId)?.label ?? chosen.label,
+    final: chosen.final === true,
+    settled: chosen.settled === true,
+    choices,
+  };
+}
+
+export function toView(
+  message: ChatMessage,
+  now: Date,
+  timezone: string | null,
+  { concierge = true }: { concierge?: boolean } = {},
+): MessageView {
   const undoUntil = message.refs.undoUntil ?? null;
   const undoOpen = undoUntil === null || new Date(undoUntil) > now;
   const buttons = message.actions.flatMap((a) => {
     if (a.kind === "link") return [];
     if (a.id.startsWith("option.")) return [];
+    if (!concierge && a.id === "plan.approve_safe") return [];
     const isUndo = a.id.startsWith("undo.");
     if (message.status === "dismissed") return [];
     if (isUndo && !undoOpen) return [];
-    if (message.status === "answered" && !isUndo) return [];
-    return [{ id: a.id, label: a.label, kind: a.kind }];
+    // A chosen message keeps Revert (and Done, for its card): src/lib/jane-agent/choices.ts.
+    // "Mark done" stays on the answered Yes until it's tapped.
+    if (
+      message.status === "answered" &&
+      !isUndo &&
+      !a.id.startsWith("choice.") &&
+      a.id !== "diy.done"
+    ) {
+      return [];
+    }
+    const label = !concierge && DIY_LABELLED(a.id) ? diyLabel(a.label) : a.label;
+    return [{ id: a.id, label, kind: a.kind }];
   });
   return {
     id: message.id,
@@ -118,7 +198,9 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
       message.status === "open" && message.refs.options?.options?.length
         ? toComparison(message.refs.options)
         : null,
+    chosen: chosenOf(message, concierge),
     cardDetails: message.refs.cardDetails ?? null,
     cardWhy: message.refs.suggestionWhy ?? null,
+    cardPeople: message.refs.suggestionPeople ?? null,
   };
 }

@@ -425,7 +425,25 @@ export async function openPopupMessages(
       answers.add(next.id);
     }
   });
-  return rows.filter((r) => !answers.has(r.id)).map(toChatMessage);
+  // A choice just made floats on, marked, with Revert, until Done (founder, 2026-10-25): the
+  // recently answered ones whose choice isn't settled (read here, not with a JSON filter).
+  const chosen = (
+    await scopedFor(userId, client).janeMessages.findMany({
+      where: {
+        status: "answered",
+        kind: { in: ["decision", "heads_up", "brief", "done"] },
+        answeredAt: { gte: since },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: MESSAGE_SELECT,
+      take: POPUP_LIMIT,
+    })
+  )
+    .map(toChatMessage)
+    .filter((m) => m.refs.chosen && !m.refs.chosen.settled && !m.refs.chosen.final);
+  return [...chosen, ...rows.filter((r) => !answers.has(r.id)).map(toChatMessage)].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1),
+  );
 }
 
 // Jane's first message this soon after the person typed is her answer to it.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DIY_KITS } from "@/config/diy";
-import { ACTION_FOR_FINDING } from "./cards";
-import { buildKit } from "./diy";
+import { ACTION_FOR_FINDING, buildCard } from "./cards";
+import { buildKit, selfServe } from "./diy";
 import { draftPayload } from "./drafts";
 import { SECRET_STRINGS, findingOfType, sampleFindings } from "./__fixtures__/findings";
 import { checkGuardrails } from "./guardrails";
@@ -40,8 +40,16 @@ describe("buildKit", () => {
     expect(kit?.script?.join(" ")).toContain("loyalty discount");
   });
 
-  it("has no kit where there's nothing to do with a link", () => {
-    expect(buildKit("move_idle_cash", findingOfType("idle_cash"), null)).toBeNull();
+  // Read-only mode: a real account does every action itself, so every action has its steps.
+  it("has a kit for every action, steps only where there's nothing to send", () => {
+    for (const actionType of new Set(Object.values(ACTION_FOR_FINDING))) {
+      expect(DIY_KITS[actionType]?.steps.length, actionType).toBeGreaterThan(0);
+    }
+    const cash = buildKit("move_idle_cash", findingOfType("idle_cash"), null);
+    expect(cash?.email).toBeNull();
+    expect(cash?.script).toBeNull();
+    const card = buildKit("card_interest", findingOfType("card_interest"), null);
+    expect(card?.script?.join(" ")).toMatch(/lower my rate/);
   });
 
   it.each(cases)("%s: says nothing private, promises nothing", (type, finding) => {
@@ -52,5 +60,23 @@ describe("buildKit", () => {
     const words = [kit?.email?.subject, kit?.email?.body, ...(kit?.script ?? [])].join("\n");
     expect(checkGuardrails(words, allowed)).toEqual({ ok: true });
     expect(text).not.toMatch(/guarantee|will save|promise/i);
+  });
+});
+
+describe("selfServe (read-only mode)", () => {
+  it("says what the person does, never what we do, and keeps everything else", () => {
+    for (const finding of sampleFindings()) {
+      const card = buildCard({
+        ...finding,
+        id: `f-${finding.key}`,
+        explanation: null,
+        explanationHash: null,
+      });
+      const shown = selfServe(card);
+      expect(shown.whatChanges).toBe(DIY_KITS[card.actionType]?.summary);
+      expect(shown.whatChanges).toMatch(/^You /);
+      expect(shown.whatChanges).not.toMatch(/\b(we|our team)\b/i);
+      expect({ ...shown, whatChanges: card.whatChanges }).toEqual(card);
+    }
   });
 });

@@ -327,8 +327,18 @@ describe.runIf(url)("deleting data against a real database", () => {
   it("removes every Plaid item at Plaid, then leaves no rows for the user", async () => {
     const { userId, accessToken } = await fullUser();
     expect(Object.values(await rowsFor(userId)).every((n) => n > 0)).toBe(true);
+    // The closed beta's lists, keyed by email: the invite they used and a waitlist entry.
+    const { email } = await client.user.findUniqueOrThrow({ where: { id: userId } });
+    const invite = await client.inviteCode.create({
+      data: { code: `DEL${crypto.randomUUID().slice(0, 9)}`, maxUses: 1, uses: 1 },
+    });
+    await client.betaAccess.create({ data: { email, inviteCodeId: invite.id } });
+    await client.waitlistEntry.create({ data: { email } });
 
     await deleteAllData(userId, { client, api });
+    expect(await client.betaAccess.count({ where: { email } })).toBe(0);
+    expect(await client.waitlistEntry.count({ where: { email } })).toBe(0);
+    await client.inviteCode.delete({ where: { id: invite.id } });
 
     expect(itemRemove).toHaveBeenCalledWith({ access_token: accessToken });
     expect(Object.values(await rowsFor(userId)).every((n) => n === 0)).toBe(true);

@@ -6,7 +6,14 @@ import { redirect } from "next/navigation";
 import { auth, signIn, signOut } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
 import { INVITE_COOKIE } from "@/lib/auth-gate";
-import { checkCode, normalizeCode, redeemInvite, type CodeCheck } from "@/lib/invites";
+import { track } from "@/lib/analytics";
+import {
+  checkCode,
+  joinWaitlist,
+  normalizeCode,
+  redeemInvite,
+  type CodeCheck,
+} from "@/lib/invites";
 import { hit, ipKey } from "@/lib/rate-limit";
 import { TERMS_COOKIE } from "@/lib/terms";
 import { HOME_PATH } from "@/lib/session";
@@ -43,6 +50,8 @@ const INVITE_ERRORS: Record<Exclude<CodeCheck, "ok">, string> = {
   invalid: "InvalidInvite",
   used_up: "InviteUsedUp",
   expired: "InviteExpired",
+  revoked: "InviteRevoked",
+  wrong_email: "InviteWrongEmail",
 };
 
 const SHORT_COOKIE = {
@@ -92,6 +101,18 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
     (await cookies()).set(INVITE_COOKIE, normalizeCode(invite) as string, SHORT_COOKIE);
   }
   await signInOrShowError("google", {});
+}
+
+// The closed beta's waitlist, from /signup without an invite: the email is stored and
+// nothing is sent.
+export async function joinTheWaitlist(formData: FormData): Promise<void> {
+  const email = formData.get("email");
+  if (typeof email !== "string" || !email.includes("@") || email.length > 254) {
+    redirect("/signup?error=InvalidEmail");
+  }
+  await limitSignIn();
+  if (await joinWaitlist(email)) await track(null, "waitlist_joined", {});
+  redirect("/signup?waitlist=joined");
 }
 
 export async function signOutToHome(): Promise<void> {

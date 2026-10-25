@@ -107,6 +107,7 @@ export function BestOption({
   cardHash,
   undoSeconds,
   diy,
+  readOnly = false,
 }: {
   comparison: Comparison;
   keepLabel: string;
@@ -114,6 +115,8 @@ export function BestOption({
   cardHash: string;
   undoSeconds: number;
   diy: boolean;
+  // Read-only mode: the pick shows how to switch instead of asking Jane to.
+  readOnly?: boolean;
 }) {
   const [picked, setPicked] = useState(comparison.pick.option.id);
   const savings = comparison.current.kind === "savings";
@@ -165,6 +168,8 @@ export function BestOption({
         diy={diy}
         switchTo={picked}
         yesLabel={chosen ? `Yes, switch to ${chosen.option.name}` : "Yes, do this for me"}
+        readOnly={readOnly}
+        showLabel={chosen ? `Show me how to switch to ${chosen.option.name}` : "Show me how"}
       />
     </section>
   );

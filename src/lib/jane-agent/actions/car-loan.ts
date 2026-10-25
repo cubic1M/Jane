@@ -1,9 +1,11 @@
 import { CarLoanError, confirmAddon, dismissAddon, requestCancellation } from "@/lib/car-loan";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { formatCents } from "@/lib/money";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // Dealer add-ons on a car loan, from the chat (spec step 245). Confirming only records what
-// the payment was; a cancellation is sent by the person or by the team, never by Jane herself.
+// the payment was; a cancellation is sent by the person or by the team (the demo bank only,
+// read-only mode), never by Jane herself.
 
 const failed = (error: unknown) =>
   error instanceof CarLoanError ? new ChatActionError("failed", error.message) : error;
@@ -18,9 +20,10 @@ export const carAddonYes: ActionHandler = {
     if (!key) throw needTarget();
     try {
       const a = await confirmAddon(userId, key, {}, { client, now });
+      const team = await conciergeMode(userId, { client });
       return {
         answeredWith: action.label,
-        note: `Noted. Cancelling it now could refund about ${formatCents(a.refund.refundCents)}, an estimate. I drafted the cancellation; I'll ask whether you'd like to send it or have the team do it.`,
+        note: `Noted. Cancelling it now could refund about ${formatCents(a.refund.refundCents)}, an estimate. ${team ? "I drafted the cancellation; I'll ask whether you'd like to send it or have the team do it." : "I drafted the cancellation for you to send; it's on your car loan page to copy."}`,
       };
     } catch (error) {
       throw failed(error);
