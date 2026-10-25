@@ -34,24 +34,29 @@ test("health check responds", async ({ request }) => {
   expect(await response.json()).toEqual({ ok: true });
 });
 
-// The pillar (founder, 2026-10-25): an ASCII Roman column, still on screen while the story scrolls,
-// broken at the top of the page and fully repaired at the bottom.
-test("the pillar stays put and is rebuilt as the page scrolls", async ({ page }) => {
+// The column (founder, 2026-10-25): a realistic ASCII column at its real proportions, fixed
+// beside the story, panning from its cracked capital at the top of the page to its whole base
+// at the bottom.
+test("the column pans from capital to base as the page scrolls", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 });
   await page.goto("/");
-  const pillar = page.getByTestId("landing-pillar");
-  const art = pillar.locator("pre");
-  await expect(art).toBeVisible();
-  await expect(pillar).toHaveAttribute("data-stage", "1");
-  const top = await art.textContent();
-  const where = (await pillar.boundingBox())!;
-
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  await expect(pillar).toHaveAttribute("data-stage", "8");
-  expect(await art.textContent()).not.toBe(top);
-  // Still in the same place on screen: it doesn't scroll with the words.
-  const after = (await pillar.boundingBox())!;
-  expect(Math.abs(after.y - where.y)).toBeLessThan(2);
+  const column = page.getByTestId("landing-column");
+  const art = column.locator("pre");
+  await expect(art).not.toBeEmpty();
+  // Taller than the screen, as a real column is in proportion to its width.
+  await expect
+    .poll(async () => Number(await column.getAttribute("data-height")))
+    .toBeGreaterThan(860);
+  const top = (await art.boundingBox())!.y;
+  await page.evaluate(() =>
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),
+  );
+  // At the bottom of the page the base is in view: the drawing has slid up by its extra height.
+  await expect.poll(async () => (await art.boundingBox())!.y).toBeLessThan(top - 100);
+  const box = (await art.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(860 + 2);
+  // The panel itself stays put on screen.
+  expect(Math.abs((await column.boundingBox())!.y)).toBeLessThan(2);
   // The headline face, and the white page.
   const heading = page.getByRole("heading", { level: 1, name: "See how much money you're losing" });
   expect(await heading.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(
@@ -61,26 +66,19 @@ test("the pillar stays put and is rebuilt as the page scrolls", async ({ page })
     "rgb(255, 255, 255)",
   );
 
-  // Back up: broken again.
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await expect(pillar).toHaveAttribute("data-stage", "1");
-
   // A phone: behind the words, nothing wider than the screen.
   await page.setViewportSize({ width: 375, height: 812 });
-  await expect(art).toBeAttached();
+  await expect(column).toBeAttached();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
   ).toBeLessThanOrEqual(0);
 });
 
-test("without JavaScript the page shows the broken pillar and the story", async ({
-  browser,
-  baseURL,
-}) => {
+test("without JavaScript the page still tells the story", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
   const page = await context.newPage();
   await page.goto("/");
-  await expect(page.getByTestId("landing-pillar").locator("pre")).not.toBeEmpty();
   await expect(page.getByRole("heading", { name: "Money leaks quietly" })).toBeAttached();
+  await expect(page.getByRole("heading", { name: "Put your money back together" })).toBeAttached();
   await context.close();
 });

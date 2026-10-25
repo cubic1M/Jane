@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { GetStartedButton } from "@/components/get-started-button";
-import { PillarStory } from "@/components/pillar-story";
+import { ColumnArt } from "@/components/column-art";
 import { TryButton } from "@/components/try-button";
 import { ViewTracker } from "@/components/view-tracker";
 import { trialEnabled } from "@/lib/trial";
-import pillar from "../../public/landing/pillar-96.json";
 import { displayFont } from "./fonts";
 import "./landing.css";
 
@@ -82,11 +81,12 @@ export default function Home() {
       className={`${displayFont.variable} landing relative isolate flex w-full flex-1 flex-col`}
     >
       <ViewTracker event="landing_viewed" />
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        {/* The pillar: fixed to the screen while the story scrolls, rebuilt as it goes. The right
-            half of a wide screen; behind the words, faint, on a phone. */}
-        <div className="pillar-dock pointer-events-none fixed inset-0 -z-10 lg:left-1/2 lg:px-6 lg:py-8">
-          <PillarStory initial={pillar} />
+      <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        {/* The column (founder, 2026-10-25): fixed to the screen while the story scrolls, panning
+            from its cracked capital at the top of the page down to its whole base at the bottom.
+            The right half of a wide screen; behind the words, faint, on a phone. */}
+        <div className="pillar-dock pointer-events-none fixed inset-0 -z-10 lg:left-1/2 lg:px-10 lg:py-0">
+          <ColumnArt />
         </div>
 
         <div className="flex flex-col px-6 lg:col-start-1 lg:row-start-1">
