@@ -108,7 +108,7 @@ async function Invites() {
                     <input type="hidden" name="code" value={c.code} />
                     <button
                       type="submit"
-                      className="rounded-full border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
+                      className="rounded-full border border-zinc-900 px-3 py-1 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-100 dark:hover:bg-zinc-900"
                     >
                       Revoke
                     </button>

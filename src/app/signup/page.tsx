@@ -8,7 +8,7 @@ import { joinTheWaitlist } from "@/lib/auth-actions";
 import { invitesRequired, normalizeCode } from "@/lib/invites";
 
 const FIELD =
-  "h-12 rounded-lg border border-zinc-300 bg-transparent px-4 text-base focus-visible:outline-2 focus-visible:outline-emerald-700 dark:border-zinc-700";
+  "h-12 rounded-lg border border-zinc-300 bg-transparent px-4 text-base focus-visible:outline-2 focus-visible:outline-zinc-900 dark:border-zinc-700 dark:focus-visible:outline-zinc-100";
 
 type Params = Promise<{ invite?: string | string[]; waitlist?: string | string[] }>;
 
@@ -40,7 +40,7 @@ async function SignupForm({ searchParams }: { searchParams: Params }) {
             No invite yet?
           </h2>
           {joined ? (
-            <p role="status" className="text-sm text-emerald-700">
+            <p role="status" className="text-sm font-medium">
               You&apos;re on the waitlist. We keep your email for the beta and send nothing until a
               founder invites you.
             </p>
@@ -65,7 +65,7 @@ async function SignupForm({ searchParams }: { searchParams: Params }) {
           )}
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Or{" "}
-            <Link href="/" className="font-medium text-emerald-700 hover:underline">
+            <Link href="/" className="font-medium underline hover:no-underline">
               try Jane with sample data
             </Link>{" "}
             from the home page: no invite needed.
