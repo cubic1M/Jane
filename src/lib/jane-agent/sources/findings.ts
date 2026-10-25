@@ -43,7 +43,11 @@ const byPriority = (snapshot: Snapshot) => {
 
 // One finding as Jane's question about it. Also how she answers about it when asked
 // (spec step 88), whatever else is waiting.
-export function findingCandidate(finding: SnapshotFinding): Candidate {
+// Read-only mode: a real account is offered Jane's steps, never her doing it for them.
+export const ASK_TO_HANDLE = "Want me to handle it?";
+export const ASK_FOR_STEPS = "Want the steps to do it yourself?";
+
+export function findingCandidate(finding: SnapshotFinding, concierge = true): Candidate {
   const actions: MessageAction[] = [{ id: "finding.yes", label: "Yes", kind: "primary" }];
   if (finding.pick) {
     actions.push({
@@ -69,7 +73,7 @@ export function findingCandidate(finding: SnapshotFinding): Candidate {
       sentence(finding.title),
       sentence(finding.savings),
       finding.pick ? pickSentence(finding.pick) : null,
-      "Want me to handle it?",
+      concierge ? ASK_TO_HANDLE : ASK_FOR_STEPS,
     ]
       .filter(Boolean)
       .join(" "),
@@ -126,6 +130,6 @@ export const findingsSource: MessageSource = {
         askedQuiet.set(finding.type, asked + 1);
         return asked < WORKED_QUIET_PER_RUN;
       })
-      .map(findingCandidate);
+      .map((finding) => findingCandidate(finding, snapshot.concierge ?? true));
   },
 };

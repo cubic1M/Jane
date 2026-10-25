@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { runAgentNow, runQueuedFor } from "@/lib/agent/run";
 import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
 import { timezoneOf } from "@/lib/jane-agent/open";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { toView, type MessageView } from "@/lib/jane-agent/view";
 import { requireUser } from "@/lib/session";
 
@@ -24,24 +25,26 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
   try {
     // The timezone is read alongside the tap, and what the answer doesn't need (audit,
     // analytics, closing the messages it settled) follows the response.
-    const [{ message, agentJobIds, agentActionIds, posted }, timezone] = await Promise.all([
-      takeChatAction(user.id, messageId, actionId, {
-        ...(typeof choice === "string" && choice ? { choice: choice.slice(0, 80) } : {}),
-        defer: (work) =>
-          after(() =>
-            work().catch((error) =>
-              console.error("After a chat tap failed", { error: String(error) }),
+    const [{ message, agentJobIds, agentActionIds, posted }, timezone, concierge] =
+      await Promise.all([
+        takeChatAction(user.id, messageId, actionId, {
+          ...(typeof choice === "string" && choice ? { choice: choice.slice(0, 80) } : {}),
+          defer: (work) =>
+            after(() =>
+              work().catch((error) =>
+                console.error("After a chat tap failed", { error: String(error) }),
+              ),
             ),
-          ),
-      }),
-      timezoneOf(user.id),
-    ]);
+        }),
+        timezoneOf(user.id),
+        conciergeMode(user.id),
+      ]);
     // The agent's first step, after the response (src/lib/agent/run.ts).
     after(() => runAgentNow(agentJobIds));
     // Spec step 83: and what a new autopilot level approved at once, as Settings does.
     if (agentActionIds.length > 0) after(() => runQueuedFor(agentActionIds));
     return {
-      message: toView(message, new Date(), timezone),
+      message: toView(message, new Date(), timezone, { concierge }),
       error: null,
       ...(posted ? { postedAt: Date.now() } : {}),
     };

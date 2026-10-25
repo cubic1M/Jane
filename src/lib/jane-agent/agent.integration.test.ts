@@ -56,6 +56,15 @@ describe.runIf(url)("Jane's chat against a real database", () => {
     return user.id;
   }
 
+  // Read-only mode leaves real accounts alone: tests of what Jane does for someone make the
+  // person's data the demo bank's (a demo item, its accounts the demo bank's).
+  async function asDemoBank(userId: string) {
+    await client.plaidItem.create({
+      data: { userId, plaidItemId: `demo-${crypto.randomUUID()}`, accessTokenEncrypted: "test" },
+    });
+    await client.account.updateMany({ where: { userId }, data: { source: "plaid" } });
+  }
+
   const messagesOf = (userId: string) =>
     client.janeMessage.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
 
@@ -337,6 +346,7 @@ describe.runIf(url)("Jane's chat against a real database", () => {
 
     it("says what a standing rule approved, with Undo for a day only", async () => {
       const userId = await withFindings(["bank_fees", "bank_fees"]);
+      await asDemoBank(userId);
       await saveRules(
         userId,
         [{ key: "recover_bank_fees", enabled: true, monthlyLimit: 3, maxAnnualCents: null }],

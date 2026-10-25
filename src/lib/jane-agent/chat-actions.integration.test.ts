@@ -7,6 +7,16 @@ import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
+// Read-only mode leaves real accounts alone; the people these tests approve something for are
+// treated as the demo bank's (CONCIERGE_ACTIONS.demo), everyone else is checked for real.
+const actsFor = vi.hoisted(() => new Set<string>());
+vi.mock("@/lib/concierge-mode", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/concierge-mode")>();
+  return {
+    conciergeMode: async (...args: Parameters<typeof real.conciergeMode>) =>
+      actsFor.has(args[0]) || real.conciergeMode(...args),
+  };
+});
 
 import { AUTOPILOT_LEVELS } from "@/config/autopilot";
 import { logAudit } from "@/lib/audit";
@@ -102,6 +112,7 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
       },
       select: CARD_SELECT,
     });
+    actsFor.add(userId);
     const { actionId } = await recordDecision(
       userId,
       { findingId: finding.id, choice: "yes", cardHash: cardHash(buildCard(finding)) },
@@ -450,6 +461,59 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
       await client.action.update({ where: { id: actionId }, data: { status: "in_progress" } });
       await openChat(userId, { client, now: LINKED });
       expect(buttonIds(await reloadMessage(message.id))).toEqual(["open"]);
+    });
+  });
+
+  describe("read-only mode, for a real account", () => {
+    it("a Yes gives the steps and Mark done, with nothing queued; Mark done counts it", async () => {
+      const userId = await plainPerson("chat-readonly");
+      const f = findingOfType("bank_fees");
+      const finding = await client.finding.create({
+        data: {
+          userId,
+          type: f.type,
+          key: `${f.key}-${crypto.randomUUID()}`,
+          title: f.title,
+          annualSavingsCents: f.annualSavingsCents,
+          amountCents: f.amountCents,
+          confidence: f.confidence,
+          evidence: f.evidence as Prisma.InputJsonObject,
+        },
+        select: { id: true },
+      });
+      await talk(userId);
+      const [message] = (await withButton(userId, "finding.yes")).filter(
+        (m) => parseRefs(m.refs).findingId === finding.id,
+      );
+      expect(message.body).toMatch(/Want the steps to do it yourself\?/);
+      expect(message.body).not.toMatch(/handle it/);
+
+      const { message: answered, agentJobIds } = await takeChatAction(
+        userId,
+        message.id,
+        "finding.yes",
+        { client, now: LINKED },
+      );
+      expect(answered.refs.note).toMatch(/^Here's how to do it yourself:\n1\. /);
+      expect(answered.actions.map((a) => a.id)).toEqual(["diy.done", "open"]);
+      expect(answered.actions[1]).toMatchObject({ href: `/report/${finding.id}#diy` });
+      expect(agentJobIds).toEqual([]);
+      expect(await client.action.count({ where: { userId } })).toBe(0);
+      const decision = await client.decision.findFirstOrThrow({ where: { findingId: finding.id } });
+      expect(decision.choice).toBe("diy");
+
+      const { message: done } = await takeChatAction(userId, message.id, "diy.done", {
+        client,
+        now: LINKED,
+      });
+      expect(done.refs.note).toMatch(/^Marked done\./);
+      expect(done.actions.map((a) => a.id)).toEqual(["open"]);
+      expect(
+        (await client.decision.findUniqueOrThrow({ where: { id: decision.id } })).diyDoneAt,
+      ).not.toBeNull();
+      expect((await client.finding.findUniqueOrThrow({ where: { id: finding.id } })).status).toBe(
+        "done",
+      );
     });
   });
 

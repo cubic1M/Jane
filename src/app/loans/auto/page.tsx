@@ -172,11 +172,13 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
                         <input type="hidden" name="by" value="mine" />
                         <SubmitButton className={BUTTON}>I&apos;ll send it myself</SubmitButton>
                       </form>
-                      <form action={cancelAddonAction}>
-                        <input type="hidden" name="id" value={a.id} />
-                        <input type="hidden" name="by" value="team" />
-                        <SubmitButton className={OUTLINE}>Have the team send it</SubmitButton>
-                      </form>
+                      {data.team && (
+                        <form action={cancelAddonAction}>
+                          <input type="hidden" name="id" value={a.id} />
+                          <input type="hidden" name="by" value="team" />
+                          <SubmitButton className={OUTLINE}>Have the team send it</SubmitButton>
+                        </form>
+                      )}
                     </div>
                   ) : (
                     <p className="text-sm">

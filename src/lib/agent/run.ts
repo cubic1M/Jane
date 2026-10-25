@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import { isTrialUser } from "@/lib/trial-ids";
 import { randomBytes } from "node:crypto";
 import {
@@ -974,6 +975,8 @@ export async function refundChargesAfterCancel(
   userId: string,
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<string[]> {
+  // Read-only mode: for a real account the finding waits for the person, with its kit.
+  if (!(await conciergeMode(userId, { client }))) return [];
   const db = scopedFor(userId, client);
   const findings = await db.findings.findMany({
     where: { type: "charge_after_cancel", status: { in: ["new", "shown"] } },

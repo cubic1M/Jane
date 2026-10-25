@@ -28,6 +28,8 @@ export const ACTION_IDS = [
   ...DEBT_ACTION_IDS,
   "finding.no",
   "finding.pick",
+  // Read-only mode: "I did it" on something the person did themselves, with Jane's steps.
+  "diy.done",
   // The pick-one card in the chat (refs.options): pick an option (its id goes with the tap),
   // or put the whole set off.
   "option.pick",

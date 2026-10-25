@@ -24,11 +24,21 @@ describe.runIf(url)("standing rules against a real database", () => {
   let client: PrismaClient;
   const created: string[] = [];
 
-  async function person() {
+  // The demo bank's people, whom Jane acts for (read-only mode leaves real accounts alone).
+  async function person({ real = false } = {}) {
     const user = await client.user.create({
       data: { email: `rules-${crypto.randomUUID()}@example.com` },
     });
     created.push(user.id);
+    if (real) {
+      await client.account.create({
+        data: { userId: user.id, name: "Checking", type: "depository", source: "csv" },
+      });
+    } else {
+      await client.plaidItem.create({
+        data: { userId: user.id, plaidItemId: `demo-${user.id}`, accessTokenEncrypted: "test" },
+      });
+    }
     return user.id;
   }
 
@@ -92,6 +102,15 @@ describe.runIf(url)("standing rules against a real database", () => {
     // A new month, a new allowance.
     const nextMonth = new Date("2026-11-02T12:00:00Z");
     expect(await applyStandingRules(userId, { client, now: nextMonth })).toHaveLength(1);
+  });
+
+  it("approves nothing for a real account, whom nobody acts for (read-only mode)", async () => {
+    const userId = await person({ real: true });
+    const fee = await finding(userId, "bank_fees");
+    await saveRules(userId, [on("recover_bank_fees")], { client });
+    expect(await applyStandingRules(userId, { client, now: NOW })).toEqual([]);
+    expect(await client.decision.count({ where: { findingId: fee.id } })).toBe(0);
+    expect(await client.action.count({ where: { userId } })).toBe(0);
   });
 
   it("stops at once when a rule is turned off", async () => {

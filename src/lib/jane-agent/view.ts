@@ -71,17 +71,38 @@ export function inTheList(
   return messages.filter((m) => !(m.status === "open" && waiting.has(m.id)));
 }
 
-export function toView(message: ChatMessage, now: Date, timezone: string | null): MessageView {
+// Read-only mode (CONCIERGE_ACTIONS): for a real account a Yes on a finding shows Jane's steps
+// for the person to follow, so its button says so; nobody approves a batch on their behalf.
+const DIY_LABELLED = (id: string) =>
+  id === "finding.yes" || id === "finding.pick" || /^bundle\.\d+$/.test(id);
+
+export function diyLabel(label: string): string {
+  const rest = label
+    .replace(/^\[?yes\b[:,]?\s*/i, "")
+    .replace(/\]$/, "")
+    .trim();
+  return rest ? `Show me how: ${rest}` : "Show me how";
+}
+
+export function toView(
+  message: ChatMessage,
+  now: Date,
+  timezone: string | null,
+  { concierge = true }: { concierge?: boolean } = {},
+): MessageView {
   const undoUntil = message.refs.undoUntil ?? null;
   const undoOpen = undoUntil === null || new Date(undoUntil) > now;
   const buttons = message.actions.flatMap((a) => {
     if (a.kind === "link") return [];
     if (a.id.startsWith("option.")) return [];
+    if (!concierge && a.id === "plan.approve_safe") return [];
     const isUndo = a.id.startsWith("undo.");
     if (message.status === "dismissed") return [];
     if (isUndo && !undoOpen) return [];
-    if (message.status === "answered" && !isUndo) return [];
-    return [{ id: a.id, label: a.label, kind: a.kind }];
+    // "Mark done" stays on the answered Yes until it's tapped.
+    if (message.status === "answered" && !isUndo && a.id !== "diy.done") return [];
+    const label = !concierge && DIY_LABELLED(a.id) ? diyLabel(a.label) : a.label;
+    return [{ id: a.id, label, kind: a.kind }];
   });
   return {
     id: message.id,

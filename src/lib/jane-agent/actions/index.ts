@@ -6,7 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
-import { findingNo, findingPick, findingYes } from "./finding";
+import { diyDone, findingNo, findingPick, findingYes } from "./finding";
 import { optionLater, optionPick } from "./options";
 import {
   insuranceGapNo,
@@ -199,6 +199,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   ...DEBT_ACTION_HANDLERS,
   "finding.no": findingNo,
   "finding.pick": findingPick,
+  "diy.done": diyDone,
   "option.pick": optionPick,
   "option.later": optionLater,
   // Insurance (spec Phase X).

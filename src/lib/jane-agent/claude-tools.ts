@@ -19,6 +19,8 @@ import { loadInsightTransactions } from "@/insights/load";
 import { netWorth } from "@/insights/net-worth";
 import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
+import { conciergeMode } from "@/lib/concierge-mode";
+import { selfServe } from "@/lib/diy";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { FIGURE_IDS, type FigureId } from "@/config/figures";
@@ -607,7 +609,9 @@ export async function runChatTool(
         select: { ...CARD_SELECT, status: true },
       });
       if (!finding) return out({ error: "There's no finding with that id. Use open_findings." });
-      const card = buildCard(finding);
+      const built = buildCard(finding);
+      // A real account: whatChanges says what they'd do themselves (read-only mode).
+      const card = (await conciergeMode(userId, { client })) ? built : selfServe(built);
       if (card.annualSavingsCents !== null) money(card.annualSavingsCents);
       const comparison = await comparisonFor(finding, { userId, client, now });
       const scored = (s: Scored) => ({
@@ -1553,7 +1557,7 @@ export async function proposeAction(
     const snapshot = await loadSnapshotFast(userId, { client, now });
     const finding = snapshot?.findings.find((f) => f.findingId === str(args.finding_id));
     if (!snapshot || !finding) return refuse("That isn't one of the person's open findings.");
-    const candidate = findingCandidate(finding);
+    const candidate = findingCandidate(finding, snapshot.concierge ?? true);
     return { ok: true, actions: candidate.actions, refs: candidate.refs, line: candidate.body };
   }
 

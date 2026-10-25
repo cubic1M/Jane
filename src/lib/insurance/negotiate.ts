@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import { PREMIUM_FREQUENCIES, type PremiumFrequency } from "@/config/documents";
 import {
   NEGOTIATE_HISTORY_DAYS,
@@ -148,6 +149,8 @@ export async function negotiationsDue(
 ): Promise<Negotiation[]> {
   const calling = partner === undefined ? await partnerFor(userId, { client }) : partner;
   if (!calling) return [];
+  // Read-only mode: nobody calls an insurer for a real account.
+  if (!(await conciergeMode(userId, { client }))) return [];
   const db = scopedFor(userId, client);
   const policies = (await listPolicies(userId, { client })).filter(
     (p) => p.status === "active" && isQuotable(p.kind),
@@ -225,6 +228,11 @@ export async function callCarrier(
     select: SELECT,
   });
   if (!row) throw new NegotiationError("That one's already been answered.");
+  if (!(await conciergeMode(userId, { client }))) {
+    throw new NegotiationError(
+      "Jane can't call for you. Call the insurer, ask them to keep last year's price, and mention the cheaper quote.",
+    );
+  }
   const negotiation = toNegotiation(row);
   const policy = (await listPolicies(userId, { client })).find(
     (p) => p.id === negotiation.policyId && p.status === "active",

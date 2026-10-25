@@ -13,6 +13,7 @@ import { comparisonFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { hasKit } from "@/lib/diy";
 import { PlanOptionsError, parsePlanOptions } from "@/lib/plan-options";
 import { partnerForUser } from "@/lib/referrals";
@@ -53,6 +54,9 @@ type Options = { client?: PrismaClient; now?: Date };
 export type DecisionResult = {
   decisionId: string;
   actionId: string | null;
+  // Read-only mode: a Yes from a real account was recorded as the person's own to do (a DIY
+  // decision with its kit), with nothing queued for anyone.
+  diy?: boolean;
   // When the action agent took the action: its first job, for the caller to run now.
   agentJobId?: string;
 };
@@ -127,7 +131,11 @@ export async function recordDecision(
   if (cardHash(card) !== answer.cardHash) {
     throw new DecisionError("card_changed", "This card was updated. Please look at it again.");
   }
-  if (answer.choice === "diy" && !hasKit(card.actionType)) {
+  // Read-only mode (CONCIERGE_ACTIONS): for a real account nobody acts for them, so a Yes is
+  // theirs to do, with the kit's steps and drafts; nothing goes to the agent or the queue.
+  const choice: DecisionChoice =
+    answer.choice === "yes" && !(await conciergeMode(userId, { client })) ? "diy" : answer.choice;
+  if (choice === "diy" && !hasKit(card.actionType)) {
     throw new DecisionError("no_kit", "There's no do-it-yourself kit for this one.");
   }
   let options: Record<string, string | number> | null = null;
@@ -147,7 +155,7 @@ export async function recordDecision(
     // Claims the finding, so two clicks can't both record an answer.
     const claimed = await tx.findings.updateMany({
       where: { id: finding.id, status: { in: DECIDABLE } },
-      data: { status: STATUS_FOR[answer.choice] },
+      data: { status: STATUS_FOR[choice] },
     });
     if (claimed.count === 0) {
       throw new DecisionError("already_decided", "You've already answered this one.");
@@ -156,7 +164,7 @@ export async function recordDecision(
       data: {
         userId,
         findingId: finding.id,
-        choice: answer.choice,
+        choice,
         cardSnapshot: card as unknown as Prisma.InputJsonObject,
         source,
         ...(options ? { options } : {}),
@@ -167,13 +175,17 @@ export async function recordDecision(
       select: { id: true },
     });
     const action =
-      answer.choice === "yes"
+      choice === "yes"
         ? await tx.actions.create({
             data: { userId, decisionId: decision.id, type: card.actionType },
             select: { id: true },
           })
         : null;
-    return { decisionId: decision.id, actionId: action?.id ?? null };
+    return {
+      decisionId: decision.id,
+      actionId: action?.id ?? null,
+      ...(choice !== answer.choice ? { diy: true } : {}),
+    };
   });
 
   await logAudit(
@@ -181,7 +193,7 @@ export async function recordDecision(
     "decision_made",
     { type: "finding", id: finding.id },
     {
-      choice: answer.choice,
+      choice,
       source,
       changed_options: options !== null,
       decision_id: result.decisionId,
@@ -194,7 +206,7 @@ export async function recordDecision(
     result.agentJobId = await startAgent(userId, result.actionId, { client, source });
   }
   const EVENT = { yes: "decision_yes", no: "decision_no", diy: "diy_started" } as const;
-  await track(userId, EVENT[answer.choice], {
+  await track(userId, EVENT[choice], {
     finding_type: card.findingType,
     action_type: card.actionType,
     annual_savings_cents: card.annualSavingsCents,

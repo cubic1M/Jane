@@ -10,12 +10,13 @@ import { scopedDb } from "@/lib/db-scoped";
 import { UNDO_WINDOW_SECONDS } from "@/lib/decisions";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { buildKit, hasKit } from "@/lib/diy";
+import { buildKit, hasKit, selfServe } from "@/lib/diy";
 import { companyFacts } from "@/lib/merchants";
 import { comparisonFor } from "@/lib/compare";
 import { BestOption } from "./best-option";
 import { DecisionButtons } from "./decision-buttons";
 import { DiyKit } from "./diy-kit";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { savingsLine } from "@/lib/savings-text";
 import { policyForMerchant, policyLines } from "@/lib/documents/dates";
 import { CHOICE_WORDS, messageAboutFinding } from "@/lib/jane-agent/messages";
@@ -43,8 +44,21 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
     ? null
     : await db.decisions.findFirst({
         where: { findingId: finding.id, choice: "diy", undoneAt: null },
-        select: { id: true, diyDoneAt: true },
+        select: { id: true, diyDoneAt: true, options: true },
       });
+  // Read-only mode (src/lib/concierge-mode.ts): for a real account the yes is "Show me how".
+  const readOnly = !(await conciergeMode(user.id));
+  // What it shows: for a real account, what they'd do, never "We ...". The hash is the card's.
+  const shown = readOnly ? selfServe(card) : card;
+  // A switch picked on a do-it-yourself answer: its sign-up link goes with the steps.
+  const picked = (diyDecision?.options ?? null) as {
+    switchName?: unknown;
+    switchSignUpUrl?: unknown;
+  } | null;
+  const switchLink =
+    picked && typeof picked.switchSignUpUrl === "string" && typeof picked.switchName === "string"
+      ? { label: `Sign up for ${picked.switchName}`, url: picked.switchSignUpUrl }
+      : null;
   // Options compared for this person, with Jane's pick (spec step 76).
   const comparison = open ? await comparisonFor(finding, { userId: user.id }) : null;
   const merchantName = (finding.evidence as { merchant?: unknown } | null)?.merchant;
@@ -97,19 +111,24 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         {comparison && (
           <BestOption
             comparison={comparison}
-            keepLabel={card.whatChanges}
+            keepLabel={shown.whatChanges}
             findingId={finding.id}
             cardHash={cardHash(card)}
             undoSeconds={UNDO_WINDOW_SECONDS}
             diy={kit !== null}
+            readOnly={readOnly}
           />
         )}
 
         <section className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950">
           <h2 className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            {comparison ? "If you don't switch" : "What changes if you say yes"}
+            {comparison
+              ? "If you don't switch"
+              : readOnly
+                ? "What you'd do"
+                : "What changes if you say yes"}
           </h2>
-          <p className="mt-1">{card.whatChanges}</p>
+          <p className="mt-1">{shown.whatChanges}</p>
           <p className="mt-3 text-lg font-semibold">
             {savingsLine(card.findingType, card.annualSavingsCents)}
           </p>
@@ -194,10 +213,12 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
             cardHash={cardHash(card)}
             undoSeconds={UNDO_WINDOW_SECONDS}
             diy={kit !== null}
+            readOnly={readOnly}
           />
         ) : diyDecision && kit ? (
           <DiyKit
             kit={kit}
+            switchLink={switchLink}
             usually={outcome?.medianMinutes ?? null}
             decisionId={diyDecision.id}
             doneOn={diyDecision.diyDoneAt?.toISOString().slice(0, 10) ?? null}
