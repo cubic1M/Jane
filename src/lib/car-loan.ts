@@ -10,6 +10,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Debt, DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { creditBandFor } from "@/lib/credit";
@@ -61,6 +62,8 @@ export type AddonView = {
 export type CarLoan = {
   available: boolean;
   advice: boolean;
+  // Read-only mode: whether the team can send a cancellation for them (the demo bank only).
+  team: boolean;
   loan: {
     key: string;
     name: string;
@@ -91,6 +94,7 @@ export type CarLoan = {
 const none: CarLoan = {
   available: false,
   advice: false,
+  team: false,
   loan: null,
   refi: null,
   change: null,
@@ -153,7 +157,7 @@ export async function loadCarLoan(
   const db = scopedFor(userId, client);
   const asOf = isoDay(now);
   const since = new Date(now.getTime() - ADDON_LOOKBACK_DAYS * DAY_MS);
-  const [rows, txs, user, refinance, watch, advice] = await Promise.all([
+  const [rows, txs, user, refinance, watch, advice, team] = await Promise.all([
     db.carAddons.findMany({ orderBy: { startedOn: "desc" } }),
     db.transactions.findMany({
       where: {
@@ -171,6 +175,7 @@ export async function loadCarLoan(
     givenRefi ?? loadRefinance(userId, { client, now, book }),
     db.carLoanWatches.findFirst(),
     adviceMode(userId, { client }),
+    conciergeMode(userId, { client }),
   ]);
   const name = user?.name ?? "";
   const taken = new Set(rows.map((r) => r.key));
@@ -206,6 +211,7 @@ export async function loadCarLoan(
   return {
     available: true,
     advice,
+    team,
     loan: {
       key: loan.key,
       name: loan.name,
@@ -353,6 +359,10 @@ export async function requestCancellation(
   const row = await db.carAddons.findFirst({ where: { id: addonId } });
   if (!row || row.status !== "confirmed") {
     throw new CarLoanError("That add-on isn't waiting on a cancellation.");
+  }
+  // Read-only mode: nobody sends anything for a real account.
+  if (by === "team" && !(await conciergeMode(userId, { client }))) {
+    throw new CarLoanError("Jane can't send it for you. Copy the letter and send it yourself.");
   }
   await db.carAddons.updateMany({ where: { id: addonId }, data: { status: by } });
   await logAudit(

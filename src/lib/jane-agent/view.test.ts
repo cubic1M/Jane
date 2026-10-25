@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { OfferedOptions } from "@/lib/option-card";
 import { parseActions, toChatMessage, type ChatMessage } from "./types";
-import { inTheList, toView } from "./view";
+import { diyLabel, inTheList, toView } from "./view";
 
 // Spec step 81: an open message shows its buttons; an answered one shows the answer, keeps
 // its links, and keeps Undo only while Undo works.
@@ -203,5 +203,65 @@ describe("the list and the floating cards (suggestions in one place)", () => {
     const all = [brief, older, decision];
     expect(inTheList(all, [suggestion("s1")])).toEqual(all);
     expect(inTheList(all, [])).toEqual(all);
+  });
+});
+
+// Read-only mode (CONCIERGE_ACTIONS): for a real account a Yes on a finding is "Show me how",
+// nobody approves a batch for them, and "Mark done" stays until it's tapped.
+describe("toView for a real account", () => {
+  it("says Show me how on a finding's Yes, a pick and an agenda item", () => {
+    const view = toView(
+      message({
+        actions: [
+          { id: "finding.yes", label: "Yes: Netflix", kind: "primary" },
+          { id: "finding.pick", label: "Switch to Pine Mobile", kind: "primary" },
+          { id: "bundle.1", label: "Yes, cancel Hulu", kind: "primary" },
+          { id: "plan.approve_safe", label: "Approve all safe ones", kind: "secondary" },
+          { id: "finding.no", label: "No", kind: "secondary" },
+        ],
+      }),
+      NOW,
+      null,
+      { concierge: false },
+    );
+    expect(view.buttons.map((b) => b.label)).toEqual([
+      "Show me how: Netflix",
+      "Show me how: Switch to Pine Mobile",
+      "Show me how: cancel Hulu",
+      "No",
+    ]);
+    expect(diyLabel("Yes")).toBe("Show me how");
+  });
+
+  it("keeps the demo's labels and its Approve all", () => {
+    const view = toView(
+      message({
+        actions: [
+          { id: "finding.yes", label: "Yes", kind: "primary" },
+          { id: "plan.approve_safe", label: "Approve all safe ones", kind: "secondary" },
+        ],
+      }),
+      NOW,
+      null,
+    );
+    expect(view.buttons.map((b) => b.label)).toEqual(["Yes", "Approve all safe ones"]);
+  });
+
+  it("keeps Mark done on the answered Yes, and nothing else", () => {
+    const view = toView(
+      message({
+        status: "answered",
+        answeredWith: "Show me how",
+        actions: [
+          { id: "diy.done", label: "Mark done", kind: "primary" },
+          { id: "finding.no", label: "No", kind: "secondary" },
+          { id: "open", label: "Steps and drafts", kind: "link", href: "/report/f1#diy" },
+        ],
+      }),
+      NOW,
+      null,
+      { concierge: false },
+    );
+    expect(view.buttons).toEqual([{ id: "diy.done", label: "Mark done", kind: "primary" }]);
   });
 });

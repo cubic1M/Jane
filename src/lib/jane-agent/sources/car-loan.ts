@@ -36,9 +36,14 @@ export const carLoanSource: MessageSource = {
       if (a.status !== "confirmed" || !a.worthCancelling || !a.id) continue;
       out.push({
         kind: "decision",
-        body: refundQuestion(a),
+        body: refundQuestion(a, data.team),
         refs: { carAddon: { id: a.id } },
-        actions: [mineButton(), teamButton(), CAR_LOAN_PAGE, snoozeButton()],
+        actions: [
+          mineButton(),
+          ...(data.team ? [teamButton()] : []),
+          CAR_LOAN_PAGE,
+          snoozeButton(),
+        ],
         dedupeKey: `caraddon_refund:${a.id}`,
         priority: MESSAGE_PRIORITY.car_addon_refund,
       });

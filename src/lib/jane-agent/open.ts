@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -53,7 +54,10 @@ export async function openChat(
   }: { client?: PrismaClient; now?: Date; pages?: number } = {},
 ): Promise<{ messages: MessageView[]; hasEarlier: boolean; scanning: boolean } | null> {
   if ((await scopedFor(userId, client).accounts.count()) === 0) return null;
-  const timezone = await timezoneOf(userId, { client });
+  const [timezone, concierge] = await Promise.all([
+    timezoneOf(userId, { client }),
+    conciergeMode(userId, { client }),
+  ]);
   // The first scan is still running (the sample person's, or a bank just linked): the chat
   // opens at once with what's there, instead of waiting for the whole run; the scan's own run
   // posts her findings as it finishes, and the page's loading bar (src/components/scan-bar.tsx)
@@ -63,7 +67,9 @@ export async function openChat(
   if (scanning) {
     const feed = await chatFeed(userId, { client, pages, now });
     return {
-      messages: feed.messages.filter(notTheOldHello).map((m) => toView(m, now, timezone)),
+      messages: feed.messages
+        .filter(notTheOldHello)
+        .map((m) => toView(m, now, timezone, { concierge })),
       hasEarlier: feed.hasEarlier,
       scanning: true,
     };
@@ -80,7 +86,9 @@ export async function openChat(
   }
   const feed = await chatFeed(userId, { client, pages, now });
   return {
-    messages: feed.messages.filter(notTheOldHello).map((m) => toView(m, now, timezone)),
+    messages: feed.messages
+      .filter(notTheOldHello)
+      .map((m) => toView(m, now, timezone, { concierge })),
     hasEarlier: feed.hasEarlier,
     scanning: false,
   };

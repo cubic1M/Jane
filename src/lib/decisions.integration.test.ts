@@ -21,15 +21,27 @@ describe.runIf(url)("decisions against a real database", () => {
   const suffix = crypto.randomUUID();
   let userId: string;
   let otherUserId: string;
+  let realId: string;
 
   beforeAll(async () => {
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     userId = (await client.user.create({ data: { email: `decide-${suffix}@example.com` } })).id;
     otherUserId = (await client.user.create({ data: { email: `other-${suffix}@example.com` } })).id;
+    realId = (await client.user.create({ data: { email: `real-${suffix}@example.com` } })).id;
+    // The demo bank: Jane and the team act for these two (CONCIERGE_ACTIONS.demo).
+    for (const id of [userId, otherUserId]) {
+      await client.plaidItem.create({
+        data: { userId: id, plaidItemId: `demo-${id}`, accessTokenEncrypted: "test" },
+      });
+    }
+    // A real account (a CSV import): read-only mode, the person does it with Jane's steps.
+    await client.account.create({
+      data: { userId: realId, name: "Checking", type: "depository", source: "csv" },
+    });
   });
 
   afterAll(async () => {
-    await client.user.deleteMany({ where: { id: { in: [userId, otherUserId] } } });
+    await client.user.deleteMany({ where: { id: { in: [userId, otherUserId, realId] } } });
     await client.$disconnect();
   });
 
@@ -93,6 +105,33 @@ describe.runIf(url)("decisions against a real database", () => {
       },
     );
     expect(track).toHaveBeenCalledWith(userId, "decision_yes", expect.any(Object));
+  });
+
+  // Read-only mode: a real account's yes is theirs to do, with nothing queued for anyone.
+  it("a real account's yes is a do-it-yourself answer, with no action and no agent", async () => {
+    const f = await finding(realId);
+    const result = await recordDecision(
+      realId,
+      { findingId: f.id, choice: "yes", cardHash: cardHash(buildCard(f)) },
+      { client },
+    );
+    expect(result).toMatchObject({ actionId: null, diy: true });
+    expect(result.agentJobId).toBeUndefined();
+    const decision = await client.decision.findUniqueOrThrow({
+      where: { id: result.decisionId },
+      include: { action: true, finding: true },
+    });
+    expect(decision.choice).toBe("diy");
+    expect(decision.action).toBeNull();
+    expect(decision.finding.status).toBe("in_progress");
+    expect(await client.action.count({ where: { userId: realId } })).toBe(0);
+
+    // Mark done counts it, as with any do-it-yourself answer.
+    await markDiyDone(realId, result.decisionId, { client });
+    expect(
+      (await client.finding.findUniqueOrThrow({ where: { id: f.id }, select: { status: true } }))
+        .status,
+    ).toBe("done");
   });
 
   it("a no declines without an action, and can be undone within the window", async () => {
@@ -235,15 +274,16 @@ describe.runIf(url)("decisions against a real database", () => {
       );
     });
 
-    it("isn't offered where there's no kit", async () => {
+    // Read-only mode gives every action a kit (src/config/diy.ts), steps only where there's
+    // nothing to send.
+    it("is offered for every action, moving idle cash too", async () => {
       const f = await finding(userId, "idle_cash");
-      await expect(
-        recordDecision(
-          userId,
-          { findingId: f.id, choice: "diy", cardHash: cardHash(buildCard(f)) },
-          { client },
-        ),
-      ).rejects.toMatchObject({ code: "no_kit" });
+      const result = await recordDecision(
+        userId,
+        { findingId: f.id, choice: "diy", cardHash: cardHash(buildCard(f)) },
+        { client },
+      );
+      expect(result.actionId).toBeNull();
     });
   });
 });

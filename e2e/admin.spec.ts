@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
 
 // The team's queue: non-admins get a 404 everywhere under /admin; an admin can move an
 // approved action and the person sees the new status on /actions.
@@ -71,6 +71,8 @@ test.describe("signed in", () => {
     await page.getByRole("button", { name: "Preview" }).click();
     await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
     await expect(page).toHaveURL("/report", { timeout: 30_000 });
+    // A real account's yes is theirs to do (read-only mode); the queue is the demo bank's.
+    await treatAsDemoBank(user.userId);
     await page.getByRole("link", { name: /Geico insurance/i }).click();
     await page.getByRole("button", { name: "Yes, do this for me" }).click();
     await expect(page).toHaveURL("/actions");

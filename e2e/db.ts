@@ -250,6 +250,25 @@ export async function addBankNeedingSignIn(userId: string, name: string): Promis
   }
 }
 
+// Read-only mode: only the demo bank (and trial people) get the concierge flow, so a test of
+// the team's queue makes its CSV import count as the demo bank: its accounts as the demo
+// bank's, under a demo item.
+export async function treatAsDemoBank(userId: string): Promise<void> {
+  const id = crypto.randomUUID().replaceAll("-", "");
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO plaid_items (id, user_id, plaid_item_id, access_token_encrypted, institution_name, updated_at)
+       VALUES ($1, $2, $3, 'demo-token', 'Demo Bank', now())`,
+      [`pi${id}`, userId, `demo-e2e-${id}`],
+    );
+    await client.query(`UPDATE accounts SET source = 'plaid' WHERE user_id = $1`, [userId]);
+  } finally {
+    await client.end();
+  }
+}
+
 export async function sessionExists(id: string): Promise<boolean> {
   const client = new Client({ connectionString: E2E_DATABASE_URL });
   await client.connect();

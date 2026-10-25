@@ -44,3 +44,27 @@ describe("a finding's agenda line", () => {
     expect(line).toBe("Your AARP insurance could cost less: savings depend on the quotes we find");
   });
 });
+
+// Read-only mode (CONCIERGE_ACTIONS): a real account is offered the steps, never Jane doing it.
+describe("a finding's question", () => {
+  const base = {
+    findingId: "f1",
+    type: "subscription_review" as const,
+    title: "Review your Spotify subscription",
+    annualSavingsCents: 14_388,
+    savings: "Could save about $143.88 a year",
+    fingerprint: "fp",
+    urgent: false,
+    pick: null,
+  };
+
+  it("offers to handle it for the demo and trial people", () => {
+    expect(findingCandidate(base).body).toMatch(/Want me to handle it\?$/);
+  });
+
+  it("offers the steps to a real account, with no promise to act", () => {
+    const body = findingCandidate(base, false).body;
+    expect(body).toMatch(/Want the steps to do it yourself\?$/);
+    expect(body).not.toMatch(/handle it|I'll|our team/);
+  });
+});

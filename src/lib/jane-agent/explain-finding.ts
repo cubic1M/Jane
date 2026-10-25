@@ -1,6 +1,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { scopedFor } from "@/lib/db-scoped";
+import { selfServe } from "@/lib/diy";
 import { whyReply } from "./explain-replies";
 import type { Reply } from "./replies";
 import { findingFingerprint } from "./snapshot";
@@ -27,7 +29,9 @@ export async function whyFindingReply(
     },
   });
   if (!finding || (finding.status !== "new" && finding.status !== "shown")) return null;
-  const card = buildCard(finding);
+  const built = buildCard(finding);
+  // A real account hears what they'd do, never "We ..." (read-only mode).
+  const card = (await conciergeMode(userId, { client })) ? built : selfServe(built);
   const reply = whyReply(card, []);
   return {
     ...reply,
