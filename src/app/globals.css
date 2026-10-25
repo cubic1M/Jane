@@ -920,6 +920,15 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
 .nw-box-in {
   animation: nw-box-in var(--motion-slow) var(--ease-spring) both;
 }
+/* The net worth chart's More details on a phone: a sheet rising from the bottom. */
+.nw-sheet-in {
+  animation: nw-sheet-in var(--motion-slow) var(--ease-out-soft) both;
+}
+@keyframes nw-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
 @keyframes nw-box-in {
   from {
     opacity: 0;
@@ -953,7 +962,8 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   .nw-line {
     animation: none;
   }
-  .nw-box-in {
+  .nw-box-in,
+  .nw-sheet-in {
     animation: none;
   }
   .hub-open {

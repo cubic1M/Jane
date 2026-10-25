@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { movementOf, type NetWorthEvent } from "./net-worth-events";
 import {
   DOT_GAP,
+  DOT_GAP_NARROW,
   MIN_DAYS,
   decodeMovements,
   dotIndex,
@@ -92,6 +93,34 @@ describe("the dots at each zoom", () => {
     expect(dots.length).toBeLessThan(events.length);
     expect(dots.some((d) => d.events.length > 1)).toBe(true);
     expect(dots.reduce((n, d) => n + d.events.length, 0)).toBe(events.length);
+  });
+
+  it("on a phone's chart, no two dots are drawn closer than a dot and its label need", () => {
+    // A year a phone wide, with the line jumping about: neighbouring days far apart up and down.
+    const year = Array.from({ length: 365 }, (_, n) => ({
+      date: day(n % days.length),
+      cents: 1_000_000 + ((n * 7919) % 200) * 1_000,
+    }));
+    const shown = year.map((d, n) => ({ ...d, date: `2026-${String(n).padStart(3, "0")}` }));
+    const many = shown.flatMap((d, n) => [0, 1, 2].map((k) => ({ ...event(n, k), date: d.date })));
+    const dots = layoutDots({
+      events: many,
+      days: shown,
+      x: (i) => (i / (shown.length - 1)) * 340,
+      y: (v) => 300 - (v - 1_000_000) / 1_000,
+      gap: DOT_GAP_NARROW,
+    });
+    expect(dots.reduce((n, d) => n + d.events.length, 0)).toBe(many.length);
+    for (let i = 0; i < dots.length; i++)
+      for (let j = i + 1; j < dots.length; j++) {
+        const close =
+          Math.abs(dots[i].x - dots[j].x) < DOT_GAP_NARROW &&
+          Math.abs(dots[i].y - dots[j].y) < DOT_GAP_NARROW;
+        expect(close, `dots ${i} and ${j} overlap`).toBe(false);
+      }
+    // Each group's movements in date order.
+    for (const d of dots)
+      expect(d.events.map((e) => e.date)).toEqual([...d.events.map((e) => e.date)].sort());
   });
 
   it("finds the dot under a tap from the grid, not by checking them all", () => {
