@@ -154,15 +154,16 @@ jobs:
           retention-days: 1
 
   e2e:
-    name: End-to-end tests (${{ matrix.shard }}/2)
-    # Two shards, each serving the one build. It runs on main after each merge and on PRs
+    name: End-to-end tests (${{ matrix.shard }}/3)
+    # Three shards, each serving the one build (about 8 minutes each; with no page to compile, a
+    # shard costs only its minute of setup). It runs on main after each merge and on PRs
     # labelled "e2e", not on every PR push, so the other checks get runners sooner.
     needs: [e2e-build]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     services:
       postgres:
         image: postgres:16
@@ -205,7 +206,7 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
-      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
+      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
       # A flaky failure can't be read from the log alone: keep its error context and the retry's
       # trace (npx playwright show-trace) for a week.
       - name: Keep the failed tests' traces
