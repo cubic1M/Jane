@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
-import { CHAT, landInChat } from "./chat-page";
+import { CHAT, answerTo, landInChat, popupCard } from "./chat-page";
 
 // Spec steps 81–82: link the demo bank, land in Jane's chat, see the morning brief, tap
 // Yes on a finding and see it answered. On a phone, with nothing sideways and the tab bar
@@ -51,28 +51,24 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
   const ask = page.getByRole("textbox", { name: "Message Jane" });
 
-  // Spec step 184: the day in one message. The agenda says what needs a yes, a Yes each,
-  // and "Approve all safe ones"; each Yes is that thing's own.
-  const agenda = messages.filter({ hasText: /Good (morning|afternoon|evening)! / });
-  await expect(agenda).toHaveCount(1);
-  await expect(agenda).toContainText("need your yes:");
-  await expect(agenda.getByRole("button", { name: "Approve all safe ones" })).toBeVisible();
-  await agenda
-    .getByRole("button", { name: /^\[?Yes: / })
-    .first()
-    .click();
-  await expect(agenda.getByRole("status")).toContainText(":");
+  // The morning brief is off for now (MORNING_BRIEF, founder: "Remove the good morning thing
+  // for now"): no greeting, in the list or on a card.
+  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { level: 3, name: /^Good (morning|afternoon|evening)!/ }),
+  ).toHaveCount(0);
 
   // Asked about something, Jane answers with its Yes, No and "Why?" (spec step 90): "Why?"
   // answers in the chat from the finding's own evidence, and leaves the decision open.
   await ask.fill("cancel hulu");
   await ask.press("Enter");
-  await expect(messages.last()).toContainText("Want me to handle it?");
-  const body = (await messages.last().locator("p").nth(1).textContent()) ?? "";
+  // Jane's answer, by its words: the result of the Yes above may land after it.
+  const answer = await answerTo(page, "Hulu", "Want me to handle it?");
+  const body = (await answer.locator("p").nth(1).textContent()) ?? "";
   expect(body).toContain("Want me to handle it?");
   const finding = messages.filter({ hasText: body });
   await finding.getByRole("button", { name: "Why?" }).click();
-  await expect(messages.last()).toContainText("If you say yes:");
+  await expect(messages.filter({ hasText: "If you say yes:" }).last()).toBeVisible();
   await expect(finding.getByRole("button", { name: "Why?" })).toHaveCount(0);
   await expect(finding.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
 
@@ -102,13 +98,24 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(page).toHaveURL(/\/home(\?|$)/);
   await page.goto(CHAT);
 
-  // Spec step 83: the autopilot question, answered with one tap.
+  // Spec step 83: the autopilot question, answered with one tap on its pop-up. The card stays,
+  // its choices greyed and the chosen one marked, with Revert, until Done (founder, 2026-10-25);
+  // then it's one line of history in the list, its choices and Revert still there.
+  await expect(messages.filter({ hasText: "How much should I do on my own?" })).toHaveCount(0);
+  const autopilotCard = await popupCard(page, /^How much should I do on my own\?/);
+  await autopilotCard.getByRole("button", { name: "Handle the safe stuff" }).click();
+  await expect(autopilotCard.locator("[data-card-chosen]")).toBeVisible({ timeout: 150 });
+  await autopilotCard.getByRole("button", { name: "Done" }).click();
   const autopilot = messages.filter({ hasText: "How much should I do on my own?" });
-  await expect(autopilot).toHaveCount(1);
-  await autopilot.getByRole("button", { name: "Handle the safe stuff" }).click();
-  await expect(autopilot.getByText("You chose:")).toBeVisible();
+  await expect(autopilot.getByText("You chose:")).toBeVisible({ timeout: 15_000 });
+  await expect(autopilot).toHaveAttribute("data-history", "true");
   await expect(autopilot.getByRole("status")).toContainText("I'll handle the safe stuff");
-  await expect(autopilot.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
+  await expect(autopilot.locator("[data-chosen-choices] button")).toHaveCount(3);
+  await expect(autopilot.getByRole("button", { name: /^Handle the safe stuff/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(autopilot.getByRole("button", { name: /Revert/ })).toBeVisible();
 
   // The chat as the side panel shows it: no page header of its own, the message box at the end.
   await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
@@ -123,10 +130,8 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(ask).toHaveValue("");
   // Jane's answer looks different from what she brings up on her own.
   await expect(messages.last()).toHaveAttribute("data-from", "answer");
-  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveAttribute(
-    "data-from",
-    "jane",
-  );
+  // What she brings up on her own is a pop-up, not a card in the list.
+  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(0);
 
   // A command answers with buttons and does nothing until one is tapped.
   await ask.fill("yes to all");
@@ -169,8 +174,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   // Spec step 91: Jane remembers what she's told, only on the tap, and Settings can forget it.
   await ask.fill("payday is the 15th");
   await ask.press("Enter");
-  const told = messages.filter({ hasText: "I can remember that: payday is the 15th." }).last();
-  await expect(told).toBeVisible();
+  const told = await answerTo(page, "I can remember that: payday is the 15th.");
   await told.getByRole("button", { name: "Remember this" }).click();
   await expect(told.getByRole("status")).toContainText("Saved.");
   await page.goto("/settings#remembers");
@@ -186,11 +190,10 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(page).toHaveURL(/\/chat\/search\?q=safe/);
   await expect(page.getByRole("status")).toContainText('found for "safe to spend"');
   await page.goto(CHAT);
-  const pinIt = messages.filter({ hasText: /Good (morning|afternoon|evening)!/ });
+  // An answer in the list (Jane's own messages are pop-ups).
+  const pinIt = messages.filter({ hasText: /You have \$[\d,]+\.\d\d safe to spend/ }).last();
   await pinIt.getByRole("button", { name: "Pin" }).click();
-  await expect(page.getByRole("region", { name: "Pinned" })).toContainText(
-    /Good (morning|afternoon|evening)!/,
-  );
+  await expect(page.getByRole("region", { name: "Pinned" })).toContainText(/safe to spend/);
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

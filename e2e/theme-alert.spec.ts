@@ -40,15 +40,20 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   const overlay = page.getByRole("region", { name: "Suggestions for you" });
   const showing = overlay.locator('[data-card-state="showing"]');
   const headline = showing.getByRole("heading", { level: 3 });
+  // Through Jane's pop-ups to the theme's card: Not now puts each suggestion off (so the day's
+  // later ones come up after a reload), and a decision without it is stepped past.
   await expect(async () => {
     await page.goto(CHAT);
     await expect(overlay).toBeVisible({ timeout: 5_000 });
-    for (let i = 0; i < 8; i += 1) {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    for (let i = 0; i < 16; i += 1) {
       if (theme.test(((await headline.textContent({ timeout: 2_000 })) ?? "").trim())) return;
-      await showing.getByRole("button", { name: "Not now", exact: true }).first().click();
+      const notNow = showing.getByRole("button", { name: "Not now", exact: true });
+      if ((await notNow.count()) > 0) await notNow.first().click();
+      else await page.keyboard.press("ArrowRight");
     }
     throw new Error("No news theme card yet");
-  }).toPass({ timeout: 90_000 });
+  }).toPass({ timeout: 120_000 });
   await expect(headline).toHaveText(theme);
   await expect(showing.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
   // More details: how sure Jane is, when it gets out, and the demo advice label.

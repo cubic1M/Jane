@@ -12,6 +12,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { HorizontalBars, MonthBars } from "./bars";
+import { LoadingBar } from "@/components/loading-bar";
 
 const monthName = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
@@ -108,7 +109,7 @@ async function Insights() {
 export default function InsightsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Adding things up…</p>}>
+      <Suspense fallback={<LoadingBar label="Adding things up" />}>
         <Insights />
       </Suspense>
     </main>

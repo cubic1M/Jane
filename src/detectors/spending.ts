@@ -82,6 +82,15 @@ const duplicateSubscription: Detector = {
       urgency: "later",
       why: `You pay for ${listOf(names)} every month. Dropping the cheapest of each kind saves about ${formatCents(worth)} a year.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
+      // The cheapest of each kind stops being charged.
+      watch: {
+        kind: "charge_stops",
+        payees: cheapest.map((c) => ({
+          description: c.description,
+          amountCents: last(c),
+          perYear: 12,
+        })),
+      },
     };
   },
 };
@@ -133,6 +142,15 @@ const priceIncrease: Detector = {
       urgency: "soon",
       why: `${nice(top.s.description)} went from ${formatCents(top.before)} to ${formatCents(top.now)} a month${rises.length > 1 ? `, and ${rises.length - 1} more went up` : ""}: ${formatCents(worth)} more a year.`,
       action: { label: "See what changed", href: "/alerts" },
+      // The charge comes in below its new price again (the old price back, or a cheaper plan).
+      watch: {
+        kind: "bill_drops",
+        payees: rises.map((r) => ({
+          description: r.s.description,
+          beforeCents: r.now,
+          perYear: 12,
+        })),
+      },
     };
   },
 };
@@ -179,6 +197,14 @@ const billNegotiation: Detector = {
       urgency: "later",
       why: `You pay ${bills.map((b) => `${nice(b.s.description)} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. People who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
       action: { label: "See your bills", href: "/bills" },
+      watch: {
+        kind: "bill_drops",
+        payees: bills.map((b) => ({
+          description: b.s.description,
+          beforeCents: last(b.s),
+          perYear: 12,
+        })),
+      },
     };
   },
 };
@@ -213,7 +239,7 @@ const duplicateCharge: Detector = {
       capability: "cost",
       topic: "duplicate_charge",
       title: "You may have been charged twice: ask for one back",
-      headline: headlineOf("Ask for a double charge back", total, "earns", true),
+      headline: headlineOf("Claim back a double charge", total, "earns", true),
       short: clip(
         `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} was charged twice.`,
       ),
@@ -223,6 +249,10 @@ const duplicateCharge: Detector = {
       urgency: "now",
       why: `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${S.duplicateChargeDays} days.`,
       action: { label: "See the charges", href: "/alerts" },
+      watch: {
+        kind: "refund",
+        payees: doubles.map((d) => ({ description: d.description, amountCents: d.amountCents })),
+      },
     };
   },
 };
@@ -254,7 +284,7 @@ const trialConversion: Detector = {
       capability: "subscriptions",
       topic: "trial_conversion",
       title: "A free trial turned into a paid subscription: keep it or cancel it",
-      headline: headlineOf("Cancel a trial that now bills you", worth, "saves"),
+      headline: headlineOf("Cancel a trial now billing you", worth, "saves"),
       short: clip(
         `${converted.map((c) => nice(c.description)).join(", ")} now costs you ${formatCents(worth)} a year.`,
       ),
@@ -269,6 +299,14 @@ const trialConversion: Detector = {
       urgency: "soon",
       why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}`).join("; ")}: ${formatCents(worth)} a year.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
+      watch: {
+        kind: "charge_stops",
+        payees: converted.map((c) => ({
+          description: c.description,
+          amountCents: c.price,
+          perYear: 12,
+        })),
+      },
     };
   },
 };
@@ -367,7 +405,7 @@ const budgetOverrun: Detector = {
       capability: "spending",
       topic: "budget_overrun",
       title: `Set a budget for ${label}: last month ran well over your usual`,
-      headline: headlineOf(`Set a budget for ${label}`, Math.round(top.extra), "saves"),
+      headline: headlineOf(`Set a ${label} budget`, Math.round(top.extra), "saves"),
       short: `You spent ${formatCents(top.now)} on ${label} last month, usually about ${formatCents(Math.round(top.avg))}.`,
       worthCents: Math.round(top.extra),
       worthKind: "saves",

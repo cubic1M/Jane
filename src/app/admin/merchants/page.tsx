@@ -5,6 +5,8 @@ import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { MerchantForm, type MerchantFormValues } from "./merchant-form";
 import { confirmSuggestion } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 const CATEGORIES = Object.values(PFC_TAXONOMY).flat().sort();
 
@@ -75,22 +77,20 @@ async function Merchants() {
                   </span>
                   <form action={confirmSuggestion} className="flex gap-2">
                     <input type="hidden" name="id" value={m.id} />
-                    <button
-                      type="submit"
+                    <SubmitButton
                       name="accept"
                       value="yes"
                       className="rounded-full bg-emerald-700 px-3 py-1 text-sm font-semibold text-white hover:bg-emerald-800"
                     >
                       Use it<span className="sr-only"> for {m.name}</span>
-                    </button>
-                    <button
-                      type="submit"
+                    </SubmitButton>
+                    <SubmitButton
                       name="accept"
                       value="no"
                       className="rounded-full border border-zinc-300 px-3 py-1 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
                     >
                       Not right<span className="sr-only"> for {m.name}</span>
-                    </button>
+                    </SubmitButton>
                   </form>
                 </li>
               ))}
@@ -144,7 +144,7 @@ async function Merchants() {
 export default function MerchantsPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Merchants />
       </Suspense>
     </main>

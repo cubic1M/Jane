@@ -10,6 +10,8 @@ import { loadOldAccounts } from "@/lib/investments/old-accounts";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { addEmployer, answer, rollOver } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Old accounts brought home (spec step 211, demo advice): past employers, each asked about
 // once; found plans with fees compared; a direct rollover tracked step by step.
@@ -96,12 +98,12 @@ async function Content({
             <form action={answer} className="flex flex-wrap items-center gap-3">
               <input type="hidden" name="id" value={p.id} />
               <span className="text-sm">Did you have a 401(k) at {p.employer}?</span>
-              <button name="had" value="yes" className={BUTTON}>
+              <SubmitButton name="had" value="yes" className={BUTTON}>
                 Yes
-              </button>
-              <button name="had" value="no" className={SECONDARY}>
+              </SubmitButton>
+              <SubmitButton name="had" value="no" className={SECONDARY}>
                 No
-              </button>
+              </SubmitButton>
             </form>
           )}
           {p.status === "no_plan" && (
@@ -134,9 +136,7 @@ async function Content({
               <form action={rollOver} className="flex flex-col gap-2">
                 <input type="hidden" name="id" value={p.id} />
                 <SimulatedBanner />
-                <button type="submit" className={`${BUTTON} self-start`}>
-                  Roll it over
-                </button>
+                <SubmitButton className={`${BUTTON} self-start`}>Roll it over</SubmitButton>
               </form>
               <DemoAdviceLabel />
             </div>
@@ -173,9 +173,7 @@ async function Content({
             className="h-11 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700"
           />
         </label>
-        <button type="submit" className={SECONDARY}>
-          Add
-        </button>
+        <SubmitButton className={SECONDARY}>Add</SubmitButton>
       </form>
     </>
   );
@@ -184,7 +182,7 @@ async function Content({
 export default function OldAccountsPage(props: PageProps<"/investments/old-accounts">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

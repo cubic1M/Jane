@@ -1,4 +1,5 @@
 import { SECTOR_LABELS, type Sector } from "@/config/autopilot-sectors";
+import { RULE_ACT_PREFIX } from "@/config/rules";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -32,6 +33,8 @@ export async function loadTimeline(
   const db = scopedFor(userId, client);
   const [acts, transfers, rules] = await Promise.all([
     db.autopilotActs.findMany({
+      // A rule's yes is listed once, as the rule's decision below (gap audit: it showed twice).
+      where: { NOT: { what: { startsWith: RULE_ACT_PREFIX } } },
       orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       take: limit,
       select: { id: true, sector: true, cents: true, what: true, createdAt: true },

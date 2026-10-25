@@ -2,10 +2,14 @@ import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import {
   DEFAULT_RETIREMENT_TAX_RATE,
   PLAN_WITHIN_YEARS,
+  SPEND_HISTORY_MONTHS,
   SPEND_SHARE_OF_PAY,
   SS_CLAIM_SHARE,
+  SS_DEPOSITS_MIN,
   SS_FULL_AGE,
 } from "@/config/retirement-income";
+import { loadInsightTransactions } from "@/insights/load";
+import { typicalMonthlySpending } from "@/insights/typical-month";
 import { RETIREMENT_AGE } from "@/config/retirement";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -33,8 +37,9 @@ import { profileOf } from "./profile";
 // Income in retirement (spec step 212, demo advice), for its page, Jane's answers and her
 // tool: Social Security options, required minimum distributions, the order to draw, and a
 // monthly paycheck with how long the money lasts. Inputs the person gave (their Social
-// Security statement, when to retire, what they'd spend) are used first; the rest is
-// estimated and labelled so.
+// Security statement, when to retire, what they'd spend) are used first; then what their
+// accounts show (Social Security deposits already coming in, a typical month's spending);
+// the rest is estimated and labelled so.
 
 type Options = { client?: PrismaClient; now?: Date; investments?: Investments };
 
@@ -53,8 +58,8 @@ export type RetirementIncomeView = {
   balances: Balances;
   ss: {
     fullMonthlyCents: number | null;
-    // statement (the person's) or estimate (from pay).
-    source: "statement" | "estimate" | null;
+    // statement (the person's), deposits (already coming in) or estimate (from pay).
+    source: "statement" | "deposits" | "estimate" | null;
     options: SsOption[];
     breakeven62to67: number | null;
     breakeven67to70: number | null;
@@ -74,7 +79,7 @@ export type RetirementIncomeView = {
     nextDollarRate: number;
   } | null;
   spendMonthlyCents: number;
-  spendFrom: "you" | "pay" | "none";
+  spendFrom: "you" | "pay" | "spending" | "none";
   taxRate: number;
   paycheck: Paycheck | null;
   inputs: {
@@ -90,16 +95,19 @@ export async function loadRetirementIncome(
   { client = defaultClient, now = new Date(), investments: loaded }: Options = {},
 ): Promise<RetirementIncomeView> {
   const db = scopedFor(userId, client);
-  const [advice, answers, plan, saved, investments, estimate, taxes] = await Promise.all([
-    adviceMode(userId, { client }),
-    profileOf(userId, { client }),
-    employerPlanFor(userId, client),
-    db.retirementIncomes.findFirst(),
-    loaded ?? loadInvestments(userId, { client, now }),
-    loadTaxEstimate(userId, { client, now }).catch(() => null),
-    loadRetirementTaxes(userId, { client, now }).catch(() => null),
-  ]);
-  const age = currentAge(answers, now.toISOString().slice(0, 10));
+  const asOf = now.toISOString().slice(0, 10);
+  const [advice, answers, plan, saved, investments, estimate, taxes, transactions] =
+    await Promise.all([
+      adviceMode(userId, { client }),
+      profileOf(userId, { client }),
+      employerPlanFor(userId, client),
+      db.retirementIncomes.findFirst(),
+      loaded ?? loadInvestments(userId, { client, now }),
+      loadTaxEstimate(userId, { client, now }).catch(() => null),
+      loadRetirementTaxes(userId, { client, now }).catch(() => null),
+      loadInsightTransactions(db, asOf, SPEND_HISTORY_MONTHS + 1),
+    ]);
+  const age = currentAge(answers, asOf);
   const retireAge = saved?.retireAge ?? Math.max(age ?? 0, RETIREMENT_AGE);
   const sub = (s: string | null) => (s ?? "").toLowerCase();
   const sum = (kinds: string[]) =>
@@ -111,12 +119,24 @@ export async function loadRetirementIncome(
     preTaxCents: sum(PRE_TAX),
     rothCents: sum(ROTH),
   };
-  const fullMonthly = saved?.ssMonthlyCents ?? (plan ? estimateSsMonthly(plan.payCents) : null);
-  const startAge = saved?.ssStartAge ?? Math.max(retireAge, SS_FULL_AGE);
+  // Social Security already coming in (the retiree): the deposits are the benefit, from now.
+  const receiving =
+    !saved?.ssMonthlyCents && taxes !== null && taxes.ssDeposits >= SS_DEPOSITS_MIN
+      ? Math.round(taxes.ssBenefitsCents / 12)
+      : null;
+  // Pay for the estimate: the employer plan's, else the wages the tax estimate counts.
+  const payCents = plan?.payCents ?? (estimate?.input.income.socialSecurityWagesCents || null);
+  const fullMonthly =
+    saved?.ssMonthlyCents ?? receiving ?? (payCents ? estimateSsMonthly(payCents) : null);
+  const startAge =
+    saved?.ssStartAge ??
+    (receiving !== null && age !== null ? age : Math.max(retireAge, SS_FULL_AGE));
   const birthYear = age === null ? now.getUTCFullYear() - 45 : now.getUTCFullYear() - age;
   const taxRate = estimate?.estimate.marginalRate ?? DEFAULT_RETIREMENT_TAX_RATE;
   const spendFromPay = plan ? Math.round((plan.payCents * SPEND_SHARE_OF_PAY) / 12) : 0;
-  const spend = saved?.spendMonthlyCents ?? spendFromPay;
+  const spendNow =
+    spendFromPay > 0 ? 0 : typicalMonthlySpending(transactions, asOf, SPEND_HISTORY_MONTHS);
+  const spend = saved?.spendMonthlyCents ?? (spendFromPay || spendNow);
   const applies = age !== null && age >= retireAge - PLAN_WITHIN_YEARS;
   const view: RetirementIncomeView = {
     advice,
@@ -126,10 +146,17 @@ export async function loadRetirementIncome(
     balances,
     ss: {
       fullMonthlyCents: fullMonthly,
-      source: saved?.ssMonthlyCents ? "statement" : fullMonthly ? "estimate" : null,
-      options: fullMonthly ? ssOptions(fullMonthly) : [],
-      breakeven62to67: fullMonthly ? breakevenAge(fullMonthly, 62, 67) : null,
-      breakeven67to70: fullMonthly ? breakevenAge(fullMonthly, 67, 70) : null,
+      source: saved?.ssMonthlyCents
+        ? "statement"
+        : receiving !== null
+          ? "deposits"
+          : fullMonthly
+            ? "estimate"
+            : null,
+      // Already claimed: the choice of when to start is behind them.
+      options: fullMonthly && receiving === null ? ssOptions(fullMonthly) : [],
+      breakeven62to67: fullMonthly && receiving === null ? breakevenAge(fullMonthly, 62, 67) : null,
+      breakeven67to70: fullMonthly && receiving === null ? breakevenAge(fullMonthly, 67, 70) : null,
       startAge,
     },
     rmd:
@@ -156,7 +183,13 @@ export async function loadRetirementIncome(
           }
         : null,
     spendMonthlyCents: spend,
-    spendFrom: saved?.spendMonthlyCents ? "you" : spendFromPay > 0 ? "pay" : "none",
+    spendFrom: saved?.spendMonthlyCents
+      ? "you"
+      : spendFromPay > 0
+        ? "pay"
+        : spendNow > 0
+          ? "spending"
+          : "none",
     taxRate,
     paycheck: null,
     inputs: {
@@ -168,7 +201,12 @@ export async function loadRetirementIncome(
   };
   if (age !== null && spend > 0) {
     const claim = Math.min(70, Math.max(62, startAge));
-    const ssForPlan = fullMonthly ? Math.round(fullMonthly * SS_CLAIM_SHARE[claim]) : 0;
+    const ssForPlan =
+      receiving !== null
+        ? receiving
+        : fullMonthly
+          ? Math.round(fullMonthly * SS_CLAIM_SHARE[claim])
+          : 0;
     view.paycheck = paycheck({
       age,
       retireAge,

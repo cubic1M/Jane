@@ -80,3 +80,10 @@ export const CASH_FLOW_DAYS = 30;
 export const SPENDING_MONTHS = 6;
 // The goals tile draws at most this many goals.
 export const GOALS_SHOWN = 4;
+// The home hub's Saved tile, opened: the biggest this many savings, then "and N more".
+export const SAVED_SHOWN = 3;
+// The Safe to spend tile's "How it's worked out": each bill before payday on its own line, up to
+// this many, then the rest as one line.
+export const SAFE_BILLS_SHOWN = 5;
+// The Saved tile's "Your plan": the biggest this many things on the plan.
+export const PLAN_SHOWN = 3;

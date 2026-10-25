@@ -45,7 +45,7 @@ function withFinding(
       ? snapshot.findings.find((f) => f.findingId === charge.openFindingId)
       : undefined;
   if (finding && snapshot) {
-    const decision = findingReply(finding);
+    const decision = findingReply(finding, null, snapshot.concierge);
     return {
       body: `${body}\n${decision.body}`,
       actions: decision.actions,
@@ -131,7 +131,7 @@ export function subscriptionsReply(
     .filter((f) => ids.has(f.findingId))
     .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1))[0];
   if (best && snapshot) {
-    const decision = findingReply(best);
+    const decision = findingReply(best, null, snapshot.concierge);
     // The finding's own words are "Review X. Could save about $Y a year. Want me to handle
     // it?": joined into two sentences, so the whole answer stays at three.
     const said = decision.body.split(/(?<=[.!?])\s+/);

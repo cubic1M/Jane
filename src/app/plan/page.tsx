@@ -8,6 +8,8 @@ import { formatCents } from "@/lib/money";
 import { markPlanShown, planFor } from "@/lib/plan";
 import { savingsLine } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
+import { conciergeMode } from "@/lib/concierge-mode";
+import { selfServe } from "@/lib/diy";
 import { recentRuleApprovals } from "@/lib/standing-rules";
 import { openProposals, recentAutoCategories, refreshProposals } from "@/lib/proposals";
 import { categoryOptions } from "@/lib/categories";
@@ -25,19 +27,24 @@ import { autopilotOf } from "@/lib/autopilot";
 import { YesToAll } from "./yes-to-all";
 import { loadYearPlan } from "@/lib/year-plan";
 import { YearPlanSection } from "./year-plan-section";
+import { LoadingBar } from "@/components/loading-bar";
 
 async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["searchParams"] }) {
   const user = await requireUser();
   const db = await scopedDb();
   if ((await db.accounts.count()) === 0) redirect("/connect");
   await refreshProposals(user.id);
-  const [items, byRules, setup, autopilot, filed] = await Promise.all([
+  const [items, byRules, setup, autopilot, filed, concierge] = await Promise.all([
     planFor(user.id),
     recentRuleApprovals(user.id),
     openProposals(user.id),
     autopilotOf(user.id),
     recentAutoCategories(user.id),
+    conciergeMode(user.id),
   ]);
+  // Read-only mode: for a real account nobody acts for them, so each item is theirs to do,
+  // with Jane's steps on its page; no "Yes to all" and no autopilot.
+  const readOnly = !concierge;
   const year = await loadYearPlan(user.id).catch(() => null);
   const setupMoney = setup.filter((p) => p.kind !== "category").length;
   await markPlanShown(
@@ -85,23 +92,31 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
           </p>
         ) : (
           <p className="text-zinc-600 dark:text-zinc-400">
-            {items.length} {items.length === 1 ? "thing" : "things"} Jane can do for you
+            {items.length} {items.length === 1 ? "thing" : "things"}{" "}
+            {readOnly ? "you could do" : "Jane can do for you"}
             {total > 0
               ? `, worth up to about ${formatCents(total)} a year if you say yes to all`
               : ""}
-            . Jane has ticked what it would do: one tap to go ahead, or untick anything first.
-            Nothing happens until you do.
+            .{" "}
+            {readOnly
+              ? "Each has Jane's steps and drafts. Nothing changes unless you do it."
+              : "Jane has ticked what it would do: one tap to go ahead, or untick anything first. Nothing happens until you do."}
           </p>
         )}
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Want Jane to do more without asking?{" "}
-          <Link href="/settings#autopilot" className="font-medium text-emerald-700 hover:underline">
-            Autopilot settings
-          </Link>
-          .
-        </p>
+        {!readOnly && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Want Jane to do more without asking?{" "}
+            <Link
+              href="/settings#autopilot"
+              className="font-medium text-emerald-700 hover:underline"
+            >
+              Autopilot settings
+            </Link>
+            .
+          </p>
+        )}
       </div>
-      {autopilot === null && <AutopilotChooser compact />}
+      {autopilot === null && !readOnly && <AutopilotChooser compact />}
       {byRules.length > 0 && (
         <RuleApprovals
           approvals={byRules.map((a) => ({
@@ -112,7 +127,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
           }))}
         />
       )}
-      {items.length > 0 && (
+      {items.length > 0 && !readOnly && (
         <YesToAll
           items={items.map((i) => ({
             findingId: i.card.findingId,
@@ -154,11 +169,12 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
               cardHash: i.cardHash,
               actionType: i.card.actionType,
               title: i.card.title,
-              whatChanges: i.card.whatChanges,
+              whatChanges: (readOnly ? selfServe(i.card) : i.card).whatChanges,
               savings: savingsLine(i.card.findingType, i.card.annualSavingsCents),
               urgent: i.urgent,
               options: i.options,
             }}
+            readOnly={readOnly}
           />
         ))}
       </ul>
@@ -221,7 +237,7 @@ function setupView(p: Proposal): SetupView {
 export default function PlanPage({ searchParams }: PageProps<"/plan">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Putting your plan together…</p>}>
+      <Suspense fallback={<LoadingBar label="Putting your plan together" />}>
         <Plan searchParams={searchParams} />
       </Suspense>
     </main>

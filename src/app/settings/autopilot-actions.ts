@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import { runQueuedFor } from "@/lib/agent/run";
 import { AutopilotError, setAcceptSimpleOffers, setAutopilot } from "@/lib/autopilot";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 
@@ -33,6 +34,14 @@ export async function chooseAutopilot(
   // shows the new state.
   if (level === "ask")
     return { ok: true, message: "Got it: Jane will ask you before doing anything." };
+  // Read-only mode: nobody acts for a real account, so the level is saved for later.
+  if (!(await conciergeMode(user.id))) {
+    return {
+      ok: true,
+      message:
+        "Saved. For now Jane doesn't act on your accounts: she brings each thing with the steps to do it yourself.",
+    };
+  }
   return {
     ok: true,
     message:

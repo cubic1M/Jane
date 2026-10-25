@@ -50,11 +50,22 @@ describe("the saved source", () => {
 describe("savedReply", () => {
   it("keeps the confirmed total apart from estimates", () => {
     const reply = savedReply({
-      confirmed: [],
+      actions: {
+        confirmed: [],
+        confirmedCents: 0,
+        estimated: [],
+        estimatedCents: 6_000,
+        notShown: [],
+      },
+      suggestions: {
+        confirmed: [],
+        expected: [],
+        notSeen: [],
+        confirmedCents: 0,
+        expectedCents: 3_000,
+      },
       confirmedCents: 0,
-      estimated: [],
-      estimatedCents: 9_000,
-      notShown: [],
+      expectedCents: 9_000,
     });
     expect(reply.body).toBe(
       "Nothing's confirmed in your transactions yet. About $90.00 a year more is still an estimate until your transactions show it.",
@@ -62,5 +73,38 @@ describe("savedReply", () => {
     expect(reply.actions).toEqual([
       { id: "open", label: "See the receipts", kind: "link", href: "/saved" },
     ]);
+  });
+
+  it("counts the suggestions the person acted on with Jane's own receipts", () => {
+    const outcome = {
+      key: "subscriptions:subscriptions",
+      topic: "subscriptions",
+      title: "Cancel subscriptions you don't use",
+      status: "confirmed",
+      expectedCents: 12_000,
+      confirmedCents: 14_388,
+      yearly: true,
+      verifiedPercent: 95,
+      proof: "Last charged $11.99 on Aug 3, nothing since.",
+      evidence: [],
+      actedOn: "2026-08-01",
+      markedDone: true,
+      verifiedOn: "2026-10-01",
+    };
+    const reply = savedReply({
+      actions: { confirmed: [], confirmedCents: 0, estimated: [], estimatedCents: 0, notShown: [] },
+      suggestions: {
+        confirmed: [outcome],
+        expected: [],
+        notSeen: [],
+        confirmedCents: 14_388,
+        expectedCents: 0,
+      },
+      confirmedCents: 14_388,
+      expectedCents: 0,
+    });
+    expect(reply.body).toBe(
+      "I've saved you $143.88 so far, confirmed in your own transactions (1 receipt).",
+    );
   });
 });

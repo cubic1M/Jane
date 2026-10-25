@@ -12,6 +12,8 @@ import { PLAN_NAMES } from "@/planning/student-loans";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { saveProfile, stepDone } from "./actions";
 import { LongGameSection } from "./long-game";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Student loans (spec step 114): the federal plans compared at the person's income, from
 // the plans' published rules; forgiveness tracking; and studentaid.gov's steps, each with
@@ -208,12 +210,9 @@ async function StudentContent({
             />
             I work full time in public service
           </label>
-          <button
-            type="submit"
-            className="h-11 self-start rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
-          >
+          <SubmitButton className="h-11 self-start rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
             Save
-          </button>
+          </SubmitButton>
         </form>
       </section>
 
@@ -234,9 +233,9 @@ async function StudentContent({
         </ol>
         {profile.stepsDone < STUDENT_STEPS.length && (
           <form action={stepDone}>
-            <button type="submit" className={LINK}>
+            <SubmitButton className={LINK}>
               I&apos;ve done step {profile.stepsDone + 1}
-            </button>
+            </SubmitButton>
           </form>
         )}
       </section>
@@ -247,7 +246,7 @@ async function StudentContent({
 export default function StudentLoansPage({ searchParams }: PageProps<"/loans/student">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <StudentContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import type { PlanOption } from "@/config/plan";
 import { answerItem, undoItem, type ItemState } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const PRIMARY =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
@@ -44,9 +45,9 @@ function Done({ state }: { state: Exclude<ItemState, null> }) {
       <form action={undo} className="flex flex-wrap items-center gap-3">
         <p role="status">Skipped.</p>
         <input type="hidden" name="decisionId" value={state.decisionId} />
-        <button type="submit" disabled={undoing} className="text-sm font-medium underline">
+        <SubmitButton disabled={undoing} className="text-sm font-medium underline">
           Undo
-        </button>
+        </SubmitButton>
         {undoState?.kind === "error" && (
           <span role="alert" className="text-sm text-red-700 dark:text-red-400">
             {undoState.message}
@@ -58,7 +59,9 @@ function Done({ state }: { state: Exclude<ItemState, null> }) {
   return null;
 }
 
-export function PlanItem({ item }: { item: PlanItemView }) {
+// Read-only mode (a real account): "Show me how" opens the item's page, with Jane's steps,
+// drafts and Mark done, instead of a yes for Jane to act on.
+export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readOnly?: boolean }) {
   const [state, action, pending] = useActionState<ItemState, FormData>(answerItem, null);
   const [changing, setChanging] = useState(false);
   const answered = state && state.kind !== "error";
@@ -123,14 +126,26 @@ export function PlanItem({ item }: { item: PlanItemView }) {
             </fieldset>
           )}
           <div className="flex flex-wrap gap-2">
-            <button type="submit" name="choice" value="yes" disabled={pending} className={PRIMARY}>
-              {changing ? "Yes, with these changes" : "Yes"}
-              <span className="sr-only">: {item.title}</span>
-            </button>
+            {readOnly ? (
+              <Link href={`/report/${item.findingId}`} className={PRIMARY}>
+                Show me how<span className="sr-only">: {item.title}</span>
+              </Link>
+            ) : (
+              <button
+                type="submit"
+                name="choice"
+                value="yes"
+                disabled={pending}
+                className={PRIMARY}
+              >
+                {changing ? "Yes, with these changes" : "Yes"}
+                <span className="sr-only">: {item.title}</span>
+              </button>
+            )}
             <button type="submit" name="choice" value="no" disabled={pending} className={SECONDARY}>
               No<span className="sr-only">: {item.title}</span>
             </button>
-            {item.options.length > 0 && (
+            {item.options.length > 0 && !readOnly && (
               <button
                 type="button"
                 onClick={() => setChanging(!changing)}

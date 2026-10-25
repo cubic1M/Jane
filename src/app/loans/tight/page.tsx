@@ -9,6 +9,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { loadTightMoney } from "@/lib/tight-money";
 import { sendRequestAction } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // When money is tight (spec step 177): the bills in the order to pay them (housing,
 // utilities and insurance first), and the requests Jane prepared, each written out and sent
@@ -106,12 +108,9 @@ async function TightContent({ searchParams }: Pick<PageProps<"/loans/tight">, "s
                       ) : (
                         <form action={sendRequestAction} className="mt-2">
                           <input type="hidden" name="itemId" value={i.id} />
-                          <button
-                            type="submit"
-                            className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
-                          >
+                          <SubmitButton className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800">
                             Send this request
-                          </button>
+                          </SubmitButton>
                         </form>
                       )}
                     </li>
@@ -135,7 +134,7 @@ async function TightContent({ searchParams }: Pick<PageProps<"/loans/tight">, "s
 export default function TightPage({ searchParams }: PageProps<"/loans/tight">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <TightContent searchParams={searchParams} />
       </Suspense>
     </main>

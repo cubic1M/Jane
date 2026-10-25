@@ -29,6 +29,9 @@ export const itemId = (branch: LoansBranch, key: string) => `${branch}:${key}`;
 const TOPIC_BRANCH: Record<string, LoansBranch> = {
   refinance: "cheaper",
   auto_refinance: "cheaper",
+  // Card debt as one cheaper loan sits with the other loan choices, where Compare options is
+  // looked for (QA round 9).
+  consolidation: "cheaper",
   student_repayment: "cheaper",
   student_forgiveness: "cheaper",
   mortgage_extra: "cheaper",
@@ -46,6 +49,9 @@ const TOPIC_BRANCH: Record<string, LoansBranch> = {
 };
 
 // Six words or fewer per topic, not the detectors' long headlines.
+// A suggestion's own item on the tree (it's drawn there while it's open).
+export const loansTopicNode = (topic: string) => itemId(TOPIC_BRANCH[topic] ?? "costs", topic);
+
 export const TOPIC_LABELS: Record<string, string> = {
   card_interest: "Card interest you can cut",
   high_cost_loans: "Costly short-term borrowing",
@@ -292,4 +298,22 @@ export function loansTree(input: LoansTreeInput): AreaTree {
       items: by[id],
     })),
   });
+}
+
+// Comparison cards on the tree (founder, 2026-10-24): the suggestions that are a choice of loan
+// open the fit engine's options side by side ("Compare options"). What each one is priced for:
+// a car loan's refinance is that car loan; the rest let the engine pick the dearest debt.
+export const COMPARE_TOPICS = ["refinance", "auto_refinance", "consolidation"] as const;
+
+export function compareWant(
+  topic: string,
+  debts: readonly { key: string; kind: string }[],
+): { need: "refinance" | "consolidation"; debtKey?: string } | null {
+  if (topic === "consolidation") return { need: "consolidation" };
+  if (topic === "refinance") return { need: "refinance" };
+  if (topic === "auto_refinance") {
+    const car = debts.find((d) => d.kind === "auto");
+    return car ? { need: "refinance", debtKey: car.key } : { need: "refinance" };
+  }
+  return null;
 }

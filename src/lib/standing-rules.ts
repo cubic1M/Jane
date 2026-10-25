@@ -5,8 +5,10 @@ import {
   RULE_UNDO_HOURS,
   STANDING_RULES,
   type RuleDefinition,
+  RULE_ACT_PREFIX,
 } from "@/config/rules";
 import type { FindingType, PrismaClient } from "@/generated/prisma/client";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
@@ -122,6 +124,8 @@ export async function applyStandingRules(
   const db = scopedFor(userId, client);
   const rules = (await rulesFor(userId, { client })).filter((r) => r.enabled);
   if (rules.length === 0) return [];
+  // Read-only mode: for a real account nobody acts on their behalf, so no rule says yes.
+  if (!(await conciergeMode(userId, { client }))) return [];
   // Spec step 141: the rules are Subscriptions and bills' fine-tuning. They ask for money
   // back and move none, so only the person setting that area to "Always ask" stops them
   // ("Ask me first" already turns every rule off).
@@ -169,7 +173,7 @@ export async function applyStandingRules(
         { client },
       );
       used.set(rule.key, (used.get(rule.key) ?? 0) + 1);
-      await recordAct(userId, "bills", 0, `Said yes under a rule: ${finding.title}`, {
+      await recordAct(userId, "bills", 0, `${RULE_ACT_PREFIX}${finding.title}`, {
         client,
         now,
       });

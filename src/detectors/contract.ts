@@ -11,16 +11,18 @@ import type { FactKey } from "@/profile/facts";
 // docs/detectors.md has the contract and two worked examples.
 
 export const HEADLINE_MAX = 60;
-// About eight words: the card is read in a glance.
-export const HEADLINE_MAX_WORDS = 9;
+// Eight words at most: the card is read in a glance (founder: "very concise").
+export const HEADLINE_MAX_WORDS = 8;
 
 // The headline as the floating card shows it ("Cancel Planet Fitness, save $588/yr"): the
-// yearly figure shortened so the number reads in a glance.
+// yearly figure shortened so the number reads in a glance, and a risk said as what it protects
+// ("Look at life cover for your family, protect $1,287,200"; QA: "avoid $1,287,200" read
+// oddly). Never longer than "avoid $X" was: a card headline is nine words at most.
 export function cardHeadline(headline: string): string {
   return headline
     .replace(/[.!?]+$/, "")
     .replace(/\s+a year\b/g, "/yr")
-    .replace(/\bavoid up to\b/, "avoid");
+    .replace(/\bavoid up to\b/, "protect");
 }
 export const SHORT_MAX = 120;
 
@@ -38,6 +40,23 @@ export type Confidence = {
   // The evidence behind it, shown beside it: "3 overdraft fees in 12 months of data".
   reason: string;
 };
+
+// What the person's later transactions should show once they act on a suggestion: the verified
+// savings record (src/lib/outcomes.ts) checks it each night. Payees are the charges' own
+// descriptions. A detector whose saving can't be seen in transactions leaves it out.
+export type Watch =
+  // Charges that should stop (a cancelled subscription or trial): each payee, its usual charge
+  // and how often it comes a year.
+  | {
+      kind: "charge_stops";
+      payees: { description: string; amountCents: number; perYear: number }[];
+    }
+  // A bill that should come in lower: each payee and its price before, and how often a year.
+  | { kind: "bill_drops"; payees: { description: string; beforeCents: number; perYear: number }[] }
+  // Money that should come back from a payee: at least about this much.
+  | { kind: "refund"; payees: { description: string; amountCents: number }[] }
+  // Fees of these categories that should stop: what they came to a month before.
+  | { kind: "fee_stops"; pfcs: string[]; monthlyCents: number };
 
 export type Suggestion = {
   // "<capability>:<topic>": stable, so the same suggestion is never shown twice after a no.
@@ -60,6 +79,8 @@ export type Suggestion = {
   why: string;
   // The button: where it goes (a page or a registered chat action).
   action: { label: string; href: string };
+  // What later transactions should show if the person acts (the verified savings record).
+  watch?: Watch;
   // A strategist idea (step 256) combines several detectors' suggestions: their ids, and
   // every button they offer. Detectors leave both out.
   parts?: string[];

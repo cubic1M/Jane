@@ -1,7 +1,8 @@
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { YEARLY_BILLS_GOAL_PATTERN } from "@/config/irregular";
 import { COMING_UP_DAYS, COMING_UP_LIMIT } from "@/config/home";
-import { planTotal } from "@/detection/overlap";
+import { PLAN_SHOWN } from "@/config/areas";
+import { groupsCountedElsewhere, planTotal } from "@/detection/overlap";
 import { budgetSummary } from "@/insights/budgets";
 import { comingUp } from "@/insights/coming-up";
 import { irregularCosts } from "@/insights/irregular";
@@ -14,7 +15,8 @@ import { listGoals } from "@/lib/goals";
 import { roomFromPlan } from "@/planning/goal-tradeoffs";
 import { safeToSpend } from "@/planning/safe-to-spend";
 import { scopedFor } from "@/lib/db-scoped";
-import { savedToDate } from "@/lib/membership/service";
+import { savedItems } from "@/lib/membership/service";
+import { verifiedSavings } from "@/lib/savings-proof";
 import { loadComingUp } from "@/lib/coming-up";
 import { whatJaneDid } from "@/lib/what-jane-did";
 
@@ -47,7 +49,7 @@ export async function homeSummary(
     plan,
   ] = await Promise.all([
     moneyFound(userId, { client }),
-    savedToDate(userId, { client }),
+    savedItems(userId, { client }),
     db.actions.findMany({
       where: { status: "waiting_on_user" },
       select: { id: true, userTodo: true, decision: { select: { cardSnapshot: true } } },
@@ -59,7 +61,7 @@ export async function homeSummary(
     // Jane's plan: every open finding is an item on it.
     db.findings.findMany({
       where: { status: { in: ["new", "shown"] } },
-      select: { status: true, annualSavingsCents: true, type: true, evidence: true },
+      select: { status: true, title: true, annualSavingsCents: true, type: true, evidence: true },
     }),
     loadDetectionInput(userId, { client, now }),
     db.plaidItems.findFirst({
@@ -81,10 +83,12 @@ export async function homeSummary(
   ]);
   // The person's own day, as the bills and safe to spend read it (src/lib/today.ts).
   const asOf = input.asOf;
-  const [budgetRows, { bills, deposits, deadlines }] = await Promise.all([
+  const [budgetRows, { bills, deposits, deadlines }, verified] = await Promise.all([
     budgets.length === 0 ? null : loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
     // Bills and deadlines from the one coming-up source, reusing the transactions loaded above.
     loadComingUp(userId, { client, now, days: COMING_UP_DAYS, input }),
+    // What the person's transactions confirm (the verified savings record), for the Saved tile.
+    verifiedSavings(userId, { client, now, input }),
   ]);
   const budget = budgetRows === null ? null : budgetSummary(budgetRows, budgets, asOf);
 
@@ -111,14 +115,24 @@ export async function homeSummary(
 
   return {
     moneyFoundCents: found,
-    savedToDateCents: saved,
+    savedToDateCents: saved.reduce((sum, i) => sum + i.cents, 0),
+    confirmedSavedCents: verified.confirmedCents,
+    // What the saved total is made of, biggest first (the Saved tile's summary).
+    savedItems: saved,
     openActions,
     unreadAlerts: alerts,
     plan: {
       items: open.length,
       // The same total as /plan: every item's yearly saving, if the person says yes to all.
       annualSavingsCents: planTotal(open),
+      // The biggest few, as the Saved tile's "Your plan" lists them (one of overlapping items).
+      top: planTop(open),
     },
+    // The goal savings go toward: the first one (soonest date) not reached yet.
+    goal: (() => {
+      const g = goals.find((g) => g.progress.status !== "reached");
+      return g ? { name: g.name, percent: g.progress.percent } : null;
+    })(),
     // Findings the person hasn't seen yet; seeing the plan or a card marks them seen.
     newToDecide: open.filter((f) => f.status === "new").length,
     janeDid,
@@ -168,6 +182,17 @@ export async function homeSummary(
         }))
       : [],
   };
+}
+
+function planTop<
+  T extends { type: string; evidence: unknown; title: string; annualSavingsCents: number | null },
+>(open: readonly T[]): { title: string; cents: number }[] {
+  const skipped = groupsCountedElsewhere(open);
+  return open
+    .filter((f) => !skipped.has(f) && (f.annualSavingsCents ?? 0) > 0)
+    .sort((a, b) => (b.annualSavingsCents ?? 0) - (a.annualSavingsCents ?? 0))
+    .slice(0, PLAN_SHOWN)
+    .map((f) => ({ title: f.title, cents: f.annualSavingsCents ?? 0 }));
 }
 
 export type HomeSummary = NonNullable<Awaited<ReturnType<typeof homeSummary>>>;

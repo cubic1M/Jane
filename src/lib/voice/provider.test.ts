@@ -9,6 +9,10 @@ describe("calls", () => {
     expect(callMode()).toBe("simulated");
     vi.stubEnv("NODE_ENV", "production");
     expect(callMode()).toBe("off");
+    // A production build asked to simulate (the end-to-end tests).
+    vi.stubEnv("SIMULATED_AGENT", "1");
+    expect(callMode()).toBe("simulated");
+    vi.stubEnv("SIMULATED_AGENT", "");
   });
 
   it("answers the same way for the same action, with every outcome possible", () => {

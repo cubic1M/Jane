@@ -13,8 +13,8 @@ export function LegalPage({ title, children }: { title: string; children: ReactN
           role="note"
           className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200"
         >
-          Draft, pending legal review. This page describes how the app works today; the final
-          wording may change.
+          Draft for the closed beta, to be reviewed by a lawyer. It describes how Jane works today;
+          the final wording may change.
         </p>
       )}
       <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>

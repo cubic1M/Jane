@@ -89,7 +89,7 @@ const lifeInsurance: Detector = {
       topic: "life_insurance",
       title: "Look at life insurance for the people who depend on you",
       headline: headlineOf(
-        "Look at life cover for your family",
+        "Get life cover for your family",
         income.value * 12 * R.lifeCoverYears,
         "risk",
       ),

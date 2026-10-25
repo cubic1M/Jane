@@ -68,6 +68,7 @@ import {
   shopKindOf,
   withoutButtonTalk,
   withoutTapYes,
+  READ_ONLY,
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, healthHeadline, proposeAction } from "./claude-tools";
@@ -666,6 +667,22 @@ describe("proposeAction", () => {
     expect((await propose({ action: "open", page: "https://evil.example" })).ok).toBe(false);
     expect((await propose({ action: "autopilot.pause" })).ok).toBe(false);
     expect((await propose(null)).ok).toBe(false);
+  });
+
+  // Read-only mode (CONCIERGE_ACTIONS): a real account is told nobody acts for them, in a block
+  // of its own after the cached instructions, so the cache is the same for both modes.
+  it("tells Claude a real account does things itself, and the demo nothing extra", async () => {
+    create.mockResolvedValueOnce(final("Hi there."));
+    await askClaudeInChat("u1", [], "cancel netflix", { ...options, concierge: false });
+    const readOnly = create.mock.calls[0][0].system as { text: string }[];
+    expect(readOnly[0]).toMatchObject({ cache_control: { type: "ephemeral" } });
+    expect(readOnly[1].text).toBe(READ_ONLY);
+    expect(READ_ONLY).toMatch(/never cancel, call, email, switch/);
+
+    create.mockResolvedValueOnce(final("Hi there."));
+    await askClaudeInChat("u1", [], "cancel netflix", options);
+    const demo = create.mock.calls[1][0].system as { text: string }[];
+    expect(demo.map((b) => b.text)).not.toContain(READ_ONLY);
   });
 
   it("uses the chat model from the environment when one is set", async () => {

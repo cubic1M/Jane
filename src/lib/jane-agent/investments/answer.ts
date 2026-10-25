@@ -148,11 +148,12 @@ export async function answerInvestments(
       return feesReply(fees, advice);
     }
     case "retirement": {
-      const [data, advice] = await Promise.all([
+      const [data, advice, income] = await Promise.all([
         loadRetirement(userId, { client, now }),
         adviceMode(userId, { client }),
+        loadRetirementIncome(userId, { client, now }),
       ]);
-      return retirementReply(data, advice);
+      return retirementReply(data, advice, income);
     }
     case "overview": {
       const snapshot = await loadInvestmentSnapshot(userId, { client, now });

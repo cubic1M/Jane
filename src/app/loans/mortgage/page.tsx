@@ -9,6 +9,7 @@ import { loadMortgage } from "@/lib/mortgage";
 import { ensureChecked } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
 import { pmiTimelineLines } from "@/lib/jane-agent/home-equity-replies";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The mortgage, watched (spec step 115): PMI by the one rule (the home's value when the loan
 // began, as on /loans/equity, where the request is drafted), escrow changes, extra principal
@@ -179,7 +180,7 @@ async function MortgageContent() {
 export default function MortgagePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <MortgageContent />
       </Suspense>
     </main>

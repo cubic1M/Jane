@@ -37,9 +37,7 @@ export function ScanRefresher({ shown }: { shown: number }) {
     const slow = setInterval(() => router.refresh(), SCAN_SLOW_REFRESH_MS);
     return stop;
   }, [router, shown]);
-  return (
-    <p role="status" className="text-sm text-zinc-600 dark:text-zinc-400">
-      Jane is still looking through your accounts. This page fills in by itself.
-    </p>
-  );
+  // Nothing to read: the page's loading bar (src/components/scan-bar.tsx) says how far the
+  // scan has got (founder: the chat "should not show this message at all").
+  return null;
 }

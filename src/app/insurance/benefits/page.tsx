@@ -10,6 +10,8 @@ import { payrollFor } from "@/lib/insurance/payroll";
 import { benefitLine, QUESTIONS } from "@/lib/jane-agent/insurance/benefit-words";
 import { requireUser } from "@/lib/session";
 import { answer, compareNow, confirm, notThis } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Benefits through work (spec step 150): what Jane found on the pay stub (confirmed with a
 // tap), the cover the employer pays for (a few questions), the comparison with buying the
@@ -93,15 +95,11 @@ async function BenefitsContent() {
                 <span className="flex gap-2">
                   <form action={confirm}>
                     <input type="hidden" name="benefitId" value={b.id} />
-                    <button type="submit" className={PRIMARY}>
-                      Confirm
-                    </button>
+                    <SubmitButton className={PRIMARY}>Confirm</SubmitButton>
                   </form>
                   <form action={notThis}>
                     <input type="hidden" name="benefitId" value={b.id} />
-                    <button type="submit" className={SMALL}>
-                      Not this
-                    </button>
+                    <SubmitButton className={SMALL}>Not this</SubmitButton>
                   </form>
                 </span>
               </li>
@@ -125,9 +123,9 @@ async function BenefitsContent() {
                 <form key={a.id} action={answer}>
                   <input type="hidden" name="question" value={question} />
                   <input type="hidden" name="answer" value={value} />
-                  <button type="submit" className={a.kind === "primary" ? PRIMARY : SMALL}>
+                  <SubmitButton className={a.kind === "primary" ? PRIMARY : SMALL}>
                     {a.label}
-                  </button>
+                  </SubmitButton>
                 </form>,
               ];
             })}
@@ -175,9 +173,7 @@ async function BenefitsContent() {
           )}
           {ready && <DemoAdviceLabel />}
           <form action={compareNow}>
-            <button type="submit" className={SMALL}>
-              {ready ? "Compare again" : "Compare now"}
-            </button>
+            <SubmitButton className={SMALL}>{ready ? "Compare again" : "Compare now"}</SubmitButton>
           </form>
         </section>
       )}
@@ -188,7 +184,7 @@ async function BenefitsContent() {
 export default function BenefitsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <BenefitsContent />
       </Suspense>
     </main>

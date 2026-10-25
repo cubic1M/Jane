@@ -5,6 +5,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { yearInReview } from "@/lib/year";
 import { PrintButton } from "./print-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 const monthName = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
@@ -145,7 +146,7 @@ async function Year({ searchParams }: { searchParams: PageProps<"/year">["search
 export default function YearPage({ searchParams }: PageProps<"/year">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12 print:py-0">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Year searchParams={searchParams} />
       </Suspense>
     </main>

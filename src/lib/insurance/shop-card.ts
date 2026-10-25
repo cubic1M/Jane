@@ -42,6 +42,28 @@ function optionOf(shop: Shop, q: StoredQuote, isPick: boolean): CardOption {
         ? shop.why[0]
         : `${formatCents(saving)} a year less than you pay now${q.sameCover ? ", same cover" : ", but not the same cover"}.`,
     isPick,
+    compare: {
+      monthlyCents: Math.round(q.annualPremiumCents / 12),
+      totalCents: q.annualPremiumCents,
+      // The same cover as now is more than different cover; then a lower deductible.
+      coverScore: (q.sameCover ? 1_000_000_000 : 0) - (q.deductibleCents ?? 0),
+      payoffMonths: null,
+      rows: [
+        { key: "cover", label: "Cover", value: q.sameCover ? "Same as now" : "Different" },
+        {
+          key: "deductible",
+          label: "Deductible",
+          value: q.deductibleCents === null ? "none" : formatCents(q.deductibleCents),
+        },
+        { key: "saves", label: "Saves a year", value: formatCents(saving) },
+        { key: "rated", label: "Rated", value: q.carrier.rating },
+      ],
+      bestFor: isPick
+        ? "Best for price and rating together"
+        : q.sameCover
+          ? "Best for the same cover, another insurer"
+          : "Best for a lower price, different cover",
+    },
     details: [
       ...(isPick ? shop.why.slice(1) : q.differences),
       ...(q.demo ? ["A sample quote from the demo carrier catalog, not a real offer."] : []),

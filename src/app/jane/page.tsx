@@ -14,6 +14,7 @@ import { changeLine, scoreLine } from "@/lib/jane-agent/replies-health";
 import { formatCents } from "@/lib/money";
 import { loadTimeline } from "@/lib/timeline";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The Jane hub (spec step 80): everything Jane found and is doing, each list a short
 // summary of its full page.
@@ -71,8 +72,9 @@ async function JaneContent() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">What Jane is doing for you</h1>
         <p className={MUTED}>
-          What&apos;s waiting for your answer, what Jane and our team are working on, and
-          what&apos;s done.
+          {snapshot?.concierge === false
+            ? "What's waiting for your answer, what you're doing with Jane's steps, and what's done."
+            : "What's waiting for your answer, what Jane and our team are working on, and what's done."}
         </p>
       </div>
 
@@ -221,8 +223,9 @@ async function JaneContent() {
       <Section title="In progress" links={[{ href: "/actions", label: "See all" }]}>
         {inProgress.items.length === 0 ? (
           <p className={MUTED}>
-            Nothing underway. When you say yes to something, Jane and our team get to work and you
-            can follow along here.
+            {snapshot?.concierge === false
+              ? "Nothing underway. When you choose Show me how, Jane gives you the steps and drafts, and you can follow along here."
+              : "Nothing underway. When you say yes to something, Jane and our team get to work and you can follow along here."}
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -327,7 +330,7 @@ async function JaneContent() {
 export default function JanePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <JaneContent />
       </Suspense>
     </main>

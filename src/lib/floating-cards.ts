@@ -13,6 +13,8 @@ export type CardMode = "queue" | "pick";
 export type CardDetails = {
   // Why this person, in a sentence with their own number.
   why?: string;
+  // The whole message, when the headline is a cut of it (a decision, a heads-up): no label.
+  about?: string;
   // The figures used, each labelled.
   figures?: { label: string; value: string }[];
   // How sure Jane is, and the reason.
@@ -35,13 +37,26 @@ export type FloatingCardData = {
   badge?: string;
   yesLabel: string;
   notNowLabel?: string;
+  // Other answers than Yes (something Jane asked to decide between), behind More details.
+  choices?: { id: string; label: string }[];
+  // Not one of the day's suggestions: no "Don't suggest this again".
+  noNever?: boolean;
+  // A pick-one choice (founder, 2026-10-25): once chosen, the card stays with its choices
+  // greyed, the chosen one marked, and Revert, until Done.
+  revertable?: boolean;
+  // Already chosen (the server has it): shown marked, with Revert and Done.
+  chosen?: string;
 };
 
 export type CardsState = {
   // Cards no longer waiting (answered or put off).
   gone: readonly string[];
-  // Which waiting card is showing (an index into the waiting ones).
+  // Which waiting card is showing (an index into the waiting ones), for when `current` isn't
+  // among them.
   index: number;
+  // The card showing, by id: when the set changes under it (the dock reloads, a new card comes
+  // in ahead of it), it stays the one showing (founder: the card "disappears").
+  current?: string;
 };
 
 export const initialState: CardsState = { gone: [], index: 0 };
@@ -49,13 +64,19 @@ export const initialState: CardsState = { gone: [], index: 0 };
 export const waiting = (cards: readonly FloatingCardData[], state: CardsState) =>
   cards.filter((c) => !state.gone.includes(c.id));
 
+// Where the showing card is among the waiting ones.
+function position(left: readonly FloatingCardData[], state: CardsState): number {
+  const at = state.current ? left.findIndex((c) => c.id === state.current) : -1;
+  return at >= 0 ? at : Math.max(0, Math.min(state.index, left.length - 1));
+}
+
 export function currentCard(
   cards: readonly FloatingCardData[],
   state: CardsState,
 ): FloatingCardData | null {
   const left = waiting(cards, state);
   if (left.length === 0) return null;
-  return left[Math.max(0, Math.min(state.index, left.length - 1))];
+  return left[position(left, state)];
 }
 
 // Yes on a card: in "queue" just that card goes; in "pick" the whole set is decided.
@@ -66,9 +87,30 @@ export function answer(
   mode: CardMode,
   id: string,
 ): CardsState {
+  const left = waiting(cards, state);
+  const at = Math.max(
+    0,
+    left.findIndex((c) => c.id === id),
+  );
   const gone = mode === "pick" ? cards.map((c) => c.id) : [...new Set([...state.gone, id])];
   // The next card slides into the place of the one that left.
-  return { gone, index: state.index };
+  const after = waiting(cards, { gone, index: at });
+  const next = after[Math.min(at, after.length - 1)];
+  return { gone, index: at, current: next?.id };
+}
+
+// Revert on a held card: it's waiting again, and showing.
+export function restore(
+  cards: readonly FloatingCardData[],
+  state: CardsState,
+  id: string,
+): CardsState {
+  const gone = state.gone.filter((g) => g !== id);
+  const index = Math.max(
+    0,
+    cards.filter((c) => !gone.includes(c.id)).findIndex((c) => c.id === id),
+  );
+  return { gone, index };
 }
 
 export function move(
@@ -76,8 +118,10 @@ export function move(
   state: CardsState,
   by: 1 | -1,
 ): CardsState {
-  const last = Math.max(0, waiting(cards, state).length - 1);
-  return { ...state, index: Math.max(0, Math.min(last, state.index + by)) };
+  const left = waiting(cards, state);
+  const last = Math.max(0, left.length - 1);
+  const index = Math.max(0, Math.min(last, position(left, state) + by));
+  return { ...state, index, current: left[index]?.id };
 }
 
 // The small counter: "3 left" for a line of cards, "2 of 3" for options to pick from.
@@ -88,7 +132,7 @@ export function counter(
 ): string {
   const left = waiting(cards, state).length;
   if (mode === "queue") return `${left} left`;
-  return `${Math.min(state.index, Math.max(0, left - 1)) + 1} of ${left}`;
+  return `${position(waiting(cards, state), state) + 1} of ${left}`;
 }
 
 // Options of ONE choice (insurance plans to switch to, loan offers): each option is a card with
@@ -105,3 +149,40 @@ export type OptionSet = {
   title: string;
   options: OptionCardData[];
 };
+
+// A card's details as real paragraphs (founder: "each new paragraph is a new line with an empty
+// line in between to not make it so clunky and hard to read"): a blank line or a line break
+// starts a paragraph, "- " or "• " lines are a list, and a long run of sentences is split into
+// groups of two, so no block is a wall.
+export type DetailBlock = { kind: "p"; text: string } | { kind: "list"; items: string[] };
+
+const BULLET = /^\s*[-•*]\s+/;
+// A sentence ends at . ! or ? followed by a space and a capital, a digit or a quote: "$3.50" and
+// "e.g. this" stay whole.
+const SENTENCE_END = /(?<=[.!?])\s+(?=[A-Z0-9$"“(])/;
+const SENTENCES_PER_BLOCK = 2;
+const LONG_BLOCK = 3;
+
+export function paragraphs(text: string): DetailBlock[] {
+  const blocks: DetailBlock[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (BULLET.test(trimmed)) {
+      const item = trimmed.replace(BULLET, "");
+      const last = blocks[blocks.length - 1];
+      if (last?.kind === "list") last.items.push(item);
+      else blocks.push({ kind: "list", items: [item] });
+      continue;
+    }
+    const sentences = trimmed.split(SENTENCE_END);
+    if (sentences.length <= LONG_BLOCK) {
+      blocks.push({ kind: "p", text: trimmed });
+      continue;
+    }
+    for (let i = 0; i < sentences.length; i += SENTENCES_PER_BLOCK) {
+      blocks.push({ kind: "p", text: sentences.slice(i, i + SENTENCES_PER_BLOCK).join(" ") });
+    }
+  }
+  return blocks;
+}

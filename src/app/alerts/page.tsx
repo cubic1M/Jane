@@ -6,6 +6,7 @@ import { ViewTracker } from "@/components/view-tracker";
 import { ALERT_LABELS } from "@/config/alerts";
 import { listAlerts, markAlertsRead } from "@/lib/alerts";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 const when = (date: Date) =>
   date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -67,7 +68,7 @@ async function Alerts() {
 export default function AlertsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Alerts />
       </Suspense>
     </main>

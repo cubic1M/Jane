@@ -1,5 +1,9 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
-import { IDLE_CASH_MONTHS_OF_SPENDING, PROCESSOR_FEE_PAYEE } from "@/config/detection";
+import {
+  BANK_FEE_CATEGORIES,
+  IDLE_CASH_MONTHS_OF_SPENDING,
+  PROCESSOR_FEE_PAYEE,
+} from "@/config/detection";
 import { bankFeesYear } from "@/planning/bank-fees";
 import { idleCashOf } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
@@ -42,6 +46,23 @@ const subscriptions: Detector = {
     let yearly: number;
     let count: number;
     let n: number;
+    // The charges themselves, for what to watch afterwards (each one that stops is a saving).
+    const named = new Map<string, number[]>();
+    for (const t of tx(
+      data,
+      (x) =>
+        x.amountCents > 0 &&
+        x.amountCents < R.subscriptionMaxCents &&
+        SUBSCRIPTION_CATEGORIES.has(x.pfc ?? ""),
+    ))
+      named.set(t.description, [...(named.get(t.description) ?? []), t.amountCents]);
+    const payees = [...named.entries()]
+      .filter(([, list]) => list.length >= R.subscriptionMinCharges)
+      .map(([description, list]) => ({
+        description,
+        amountCents: Math.round(list.reduce((a, b) => a + b, 0) / list.length),
+        perYear: 12,
+      }));
     if (given !== undefined) {
       if (given === null || given.count < R.subscriptionsMin) return null;
       yearly = given.yearlyCents;
@@ -87,6 +108,7 @@ const subscriptions: Detector = {
       urgency: "later",
       why: `You pay about ${formatCents(Math.round(yearly))} a year across ${count} subscriptions; people who look at the list usually drop about a quarter.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
+      ...(payees.length > 0 ? { watch: { kind: "charge_stops" as const, payees } } : {}),
     };
   },
 };
@@ -119,6 +141,11 @@ const bankFees: Detector = {
       urgency: "soon",
       why: `You paid ${span}. A buffer in checking or a no-fee account avoids them.`,
       action: { label: "See the fees", href: "/insights" },
+      watch: {
+        kind: "fee_stops",
+        pfcs: [...BANK_FEE_CATEGORIES],
+        monthlyCents: Math.round(total / 12),
+      },
     };
   },
 };
@@ -145,6 +172,11 @@ const lateFees: Detector = {
       urgency: "soon",
       why: `You paid ${formatCents(total)} in ${fees.length} late fees. Paying at least the minimum automatically stops them.`,
       action: { label: "Set up payments", href: "/debt" },
+      watch: {
+        kind: "fee_stops",
+        pfcs: ["BANK_FEES_LATE_FEES"],
+        monthlyCents: Math.round(total / Math.max(1, profile.months)),
+      },
     };
   },
 };
@@ -188,6 +220,14 @@ const cardInterest: Detector = {
           : "paying the balance off ends it"
       }.`,
       action: { label: "Cut your card interest", href: "/loans/interest" },
+      watch: {
+        kind: "fee_stops",
+        pfcs: ["BANK_FEES_INTEREST_CHARGE"],
+        monthlyCents:
+          typeof yearly === "number"
+            ? Math.round(total / 12)
+            : Math.round(total / Math.max(1, profile.months)),
+      },
     };
   },
 };
@@ -210,7 +250,7 @@ const idleCash: Detector = {
       capability: "investing",
       topic: "idle_cash",
       title: "Put the cash you don't need to work",
-      headline: headlineOf("Move idle cash to a higher rate", idle.earnsCents, "earns"),
+      headline: headlineOf("Move idle cash to higher interest", idle.earnsCents, "earns"),
       short: `You keep ${formatCents(idle.balanceCents)} in cash; about ${formatCents(idle.excessCents)} is more than you need.`,
       worthCents: idle.earnsCents,
       worthKind: "earns",

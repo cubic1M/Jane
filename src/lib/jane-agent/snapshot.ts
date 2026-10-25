@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import { createHash } from "node:crypto";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 import { loadDetectionInput } from "@/detection/engine";
@@ -30,7 +31,7 @@ import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
-import { provenSavings } from "@/lib/savings-proof";
+import { verifiedSavings } from "@/lib/savings-proof";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -70,6 +71,9 @@ export type SnapshotFinding = {
 
 export type Snapshot = {
   timezone: string | null;
+  // Read-only mode (src/lib/concierge-mode.ts): false for a real account, where Jane shows how
+  // instead of offering to do it. Missing means the full flow (sample people, fixtures).
+  concierge?: boolean;
   // The day the loaders worked from (UTC), YYYY-MM-DD.
   asOf: string;
   // The Monday of the person's week, for the weekly plan.
@@ -237,7 +241,7 @@ async function thinking(
   const [changes, lifeGuesses, saved, partner, health] = await Promise.all([
     loadChanges(userId, { client, now, input }),
     lifeGuessesFor(userId, { client, now, input }),
-    provenSavings(userId, { client, now, input }),
+    verifiedSavings(userId, { client, now, input }),
     moneyPartnerFor(userId, { client }),
     healthFor(userId, { client, now, input }),
   ]);
@@ -282,7 +286,7 @@ export async function loadSnapshot(
   if (!home) return null;
   const db = scopedFor(userId, client);
   // The person's own timezone: users have their own helpers, so a direct read by id.
-  const [user, plan, ruleApprovals, alerts, said, preferences] = await Promise.all([
+  const [user, plan, ruleApprovals, alerts, said, preferences, concierge] = await Promise.all([
     client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
     planFor(userId, { client }),
     recentRuleApprovals(userId, { client, now }),
@@ -290,6 +294,7 @@ export async function loadSnapshot(
     // The "still looking" line doesn't count as Jane having said hello.
     db.janeMessages.count({ where: { NOT: { dedupeKey: "scanning:hello" } } }),
     listPreferences(userId, { client }),
+    conciergeMode(userId, { client }),
   ]);
   const findings = await db.findings.findMany({
     where: { id: { in: plan.map((i) => i.card.findingId) } },
@@ -367,6 +372,7 @@ export async function loadSnapshot(
 
   return {
     timezone: user?.timezone ?? null,
+    concierge,
     // The person's own day (src/lib/today.ts).
     asOf: localDate(now, user?.timezone),
     weekStart: weekStart(now, user?.timezone).toISOString().slice(0, 10),

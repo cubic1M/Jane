@@ -3,17 +3,25 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useOptimistic, useState } from "react";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { concise } from "@/lib/jane-agent/popups";
 import type { MessageView } from "@/lib/jane-agent/view";
+import {
+  DONE_ACTION,
+  REVERT_ACTION,
+  chosenView,
+  isChoice,
+  revertedView,
+} from "@/lib/jane-agent/choices";
 import { tapButton, type MessageState } from "./actions";
 import { ReadAloud } from "./read-aloud";
 import { togglePin } from "./pin";
+import { SubmitButton } from "@/components/submit-button";
 
-// One message in Jane's chat (spec step 81). Jane's sit on the left with their buttons; a
-// tap answers it in place, and it shows what was chosen instead of the buttons. Undo stays
-// only while it still works. What Jane brings up on her own (a brief, something to
-// decide, a heads-up, something done) has a yellow background and a thick yellow left edge;
-// her answers to what the person typed stay plain, so the two are never mixed up, with or
-// without seeing colour.
+// One message in Jane's chat (spec step 81). Jane's sit on the left. What she brings up on her
+// own that waits on the person floats as a pop-up (src/lib/jane-agent/popups.ts) and isn't in
+// the list until it's answered; then it's one line of history (what it was and what was
+// chosen, the whole message behind More details), with Undo while it still works. Her briefs
+// and answers are plain text tagged "jane>": no cards in the list.
 
 const BUTTON = "inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold";
 const STYLES = {
@@ -51,6 +59,9 @@ function useUndoTimer(undoUntil: string | null): boolean {
 // What a tap looks like before the server has answered: answered with that button, its
 // buttons gone (links stay), and a line saying it's in hand.
 function tappedView(current: MessageView, tapped: MessageView["buttons"][number]): MessageView {
+  // A choice stays, marked, with Revert; Revert brings the choices back (founder, 2026-10-25).
+  if (isChoice(tapped.id)) return chosenView(current, tapped);
+  if (tapped.id === REVERT_ACTION) return revertedView(current);
   return {
     ...current,
     status: "answered",
@@ -83,7 +94,10 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
     return () => window.removeEventListener("beforeunload", keep);
   }, [pending]);
   const undoExpired = useUndoTimer(message.undoUntil);
-  const buttons = message.buttons.filter((b) => !(undoExpired && b.id.startsWith("undo.")));
+  // Done belongs to the floating card; in the chat a choice keeps Revert alone.
+  const buttons = message.buttons.filter(
+    (b) => !(undoExpired && b.id.startsWith("undo.")) && b.id !== DONE_ACTION,
+  );
 
   if (!message.fromJane) {
     return (
@@ -100,27 +114,40 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
   }
 
   const ownIdea = message.kind !== "reply";
+  // A pop-up that was answered or put away: history, in one line.
+  const history = ownIdea && message.status !== "open";
 
   return (
     // Its id is the anchor notifications open (/chat#<id>, spec step 85).
     <li
       id={message.id}
       data-from={ownIdea ? "jane" : "answer"}
-      className={`flex w-full max-w-full scroll-mt-8 flex-col gap-2 self-start border p-3 sm:max-w-[85%] ${
-        ownIdea
-          ? "border-l-4 border-amber-500 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/40"
-          : "border-zinc-300 dark:border-zinc-700"
+      data-history={history || undefined}
+      className={`flex w-full max-w-full scroll-mt-8 flex-col self-start sm:max-w-[85%] ${
+        history ? "gap-1 py-1" : "gap-2 border border-zinc-300 p-3 dark:border-zinc-700"
       }`}
     >
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-500">
-        <span className={`font-semibold ${ownIdea ? "text-amber-800" : "text-emerald-700"}`}>
+        <span className="font-semibold text-zinc-950 dark:text-zinc-50">
           jane<span aria-hidden="true">&gt;</span>
         </span>
         <span>{message.tag}</span>
         <span aria-hidden="true">·</span>
         <time>{message.time}</time>
       </p>
-      <p className="whitespace-pre-line [overflow-wrap:anywhere]">{message.body}</p>
+      {history ? (
+        <details className="text-sm">
+          <summary className="cursor-pointer [overflow-wrap:anywhere]">
+            {concise(message.body)}
+            <span className="sr-only"> More details</span>
+          </summary>
+          <p className="mt-1 whitespace-pre-line text-zinc-700 [overflow-wrap:anywhere] dark:text-zinc-300">
+            {message.body}
+          </p>
+        </details>
+      ) : (
+        <p className="whitespace-pre-line [overflow-wrap:anywhere]">{message.body}</p>
+      )}
       {/* Spec step 94: a chart, table, timeline or progress bars, drawn in monospace text
           that fits a phone; screen readers get the text alternative instead. */}
       {message.block && (
@@ -171,14 +198,46 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
         <form action={togglePin}>
           <input type="hidden" name="messageId" value={message.id} />
           <input type="hidden" name="pinned" value={message.pinned ? "false" : "true"} />
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-zinc-500 hover:underline"
-          >
+          <SubmitButton className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-zinc-500 hover:underline">
             {message.pinned ? "Unpin" : "Pin"}
-          </button>
+          </SubmitButton>
         </form>
       </div>
+      {/* A choice that was made: every choice still here, the chosen one inverted and marked,
+          the others greyed and off (founder, 2026-10-25); Revert is among the buttons. */}
+      {message.chosen && message.chosen.choices.length > 0 && (
+        <div
+          role="group"
+          aria-label="Your choice"
+          data-chosen-choices=""
+          className="flex flex-wrap gap-2"
+        >
+          {message.chosen.choices.map((c) =>
+            c.key === message.chosen!.key ? (
+              <button
+                key={c.key}
+                type="button"
+                disabled
+                aria-pressed="true"
+                className="inline-flex min-h-11 items-center gap-1 border-2 border-zinc-950 bg-zinc-950 px-3 text-sm font-semibold text-white dark:border-white dark:bg-white dark:text-zinc-950"
+              >
+                {c.label} <span aria-hidden="true">[✓ chosen]</span>
+                <span className="sr-only">, chosen</span>
+              </button>
+            ) : (
+              <button
+                key={c.key}
+                type="button"
+                disabled
+                aria-pressed="false"
+                className="inline-flex min-h-11 items-center border border-zinc-400 px-3 text-sm opacity-40 dark:border-zinc-600"
+              >
+                {c.label}
+              </button>
+            ),
+          )}
+        </div>
+      )}
       {(buttons.length > 0 || message.links.length > 0) && (
         <div className="flex flex-wrap items-center gap-2">
           {buttons.length > 0 && (

@@ -53,7 +53,7 @@ describe("POST /api/decisions", () => {
     const response = await post({ findingId: "f1", choice: "yes", cardHash: HASH });
 
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ decisionId: "d1", actionId: "a1" });
+    expect(await response.json()).toEqual({ decisionId: "d1", actionId: "a1", diy: false });
     expect(recordDecision).toHaveBeenCalledWith("user_1", {
       findingId: "f1",
       choice: "yes",
@@ -67,7 +67,16 @@ describe("POST /api/decisions", () => {
     const response = await post({ findingId: "f1", choice: "diy", cardHash: HASH });
 
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ decisionId: "d2", actionId: null });
+    expect(await response.json()).toEqual({ decisionId: "d2", actionId: null, diy: false });
+  });
+
+  it("says when a real account's yes became theirs to do (read-only mode)", async () => {
+    vi.mocked(recordDecision).mockResolvedValue({ decisionId: "d3", actionId: null, diy: true });
+
+    const response = await post({ findingId: "f1", choice: "yes", cardHash: HASH });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ decisionId: "d3", actionId: null, diy: true });
   });
 
   it.each([

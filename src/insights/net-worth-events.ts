@@ -19,7 +19,9 @@ export type EventKind =
   | "loan_paid_off"
   | "investments"
   | "refund"
-  | "jane_saved";
+  | "jane_saved"
+  // Money moved between the person's own accounts (only among every movement, not the days).
+  | "transfer";
 
 export type NetWorthEvent = {
   date: string;
@@ -32,6 +34,23 @@ export type NetWorthEvent = {
   moved?: number;
   // Where to see it: the transaction, the account or what Jane did.
   href: string;
+  // The account it happened in, as the loan pages name it ("Chase ····5003"), when there is one.
+  account?: string;
+  // Who it was with ("Acme Corp", "Best Buy"), for a transaction.
+  name?: string;
+};
+
+// A kind in a word or two, as the dot's summary says it: "−$1,640 · card payment · Chase ····5003".
+export const EVENT_KIND_WORDS: Record<EventKind, string> = {
+  pay: "pay",
+  purchase: "purchase",
+  bill: "bill",
+  card_payment: "card payment",
+  loan_paid_off: "paid off",
+  investments: "investments",
+  refund: "refund",
+  jane_saved: "Jane saved",
+  transfer: "transfer",
 };
 
 export type EventGroup = { date: string; cents: number; events: NetWorthEvent[] };
@@ -44,6 +63,7 @@ export type EventTransaction = {
   pfcPrimary: string | null;
   pfcDetailed: string | null;
   accountType: string;
+  account?: string;
 };
 
 const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
@@ -54,7 +74,12 @@ const BILL_DETAILS = ["GENERAL_SERVICES_INSURANCE"];
 
 // One transaction as an event, or null for money moving between the person's own accounts.
 export function transactionEvent(t: EventTransaction): NetWorthEvent | null {
-  const base = { date: t.date, href: search(t.name) };
+  const base = {
+    date: t.date,
+    href: search(t.name),
+    name: t.name,
+    ...(t.account ? { account: t.account } : {}),
+  };
   const detailed = t.pfcDetailed ?? "";
   const primary = t.pfcPrimary ?? "";
   const out = t.amountCents > 0;
@@ -81,9 +106,36 @@ export function transactionEvent(t: EventTransaction): NetWorthEvent | null {
   return { ...base, kind: "purchase", label: `Bought: ${t.name}`, cents };
 }
 
+// Every transaction as a movement (founder: "a dot for EVERY single little movement in cash"):
+// the same as transactionEvent, and the ones it leaves out (money moving between the person's
+// own accounts, a card payment seen from the card's side) as a transfer or a card payment with
+// what they moved.
+export function movementOf(t: EventTransaction): NetWorthEvent {
+  const e = transactionEvent(t);
+  if (e) return e;
+  const base = {
+    date: t.date,
+    href: search(t.name),
+    name: t.name,
+    ...(t.account ? { account: t.account } : {}),
+    cents: 0,
+    moved: Math.abs(t.amountCents),
+  };
+  if ((t.pfcDetailed ?? "") === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT") {
+    return { ...base, kind: "card_payment", label: `Card payment: ${t.name}` };
+  }
+  return {
+    ...base,
+    kind: "transfer",
+    label: `${t.amountCents > 0 ? "Moved out" : "Moved in"}: ${t.name}`,
+  };
+}
+
 export type DebtBalances = {
   id: string;
   name: string;
+  // Its name with the last four digits, when known.
+  label?: string;
   // Oldest first.
   balances: { date: string; cents: number }[];
 };
@@ -101,6 +153,7 @@ export function paidOff(debt: DebtBalances): NetWorthEvent | null {
         cents: 0,
         moved: owed,
         href: "/loans",
+        account: debt.label ?? debt.name,
       };
     }
   }
@@ -122,6 +175,7 @@ export function investmentMonths(account: DebtBalances): NetWorthEvent[] {
         label: `Investments ${change > 0 ? "up" : "down"}: ${account.name}`,
         cents: change,
         href: "/investments",
+        account: account.label ?? account.name,
       },
     ];
   });

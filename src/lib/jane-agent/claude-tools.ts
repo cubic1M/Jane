@@ -19,6 +19,8 @@ import { loadInsightTransactions } from "@/insights/load";
 import { netWorth } from "@/insights/net-worth";
 import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
+import { conciergeMode } from "@/lib/concierge-mode";
+import { selfServe } from "@/lib/diy";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { FIGURE_IDS, type FigureId } from "@/config/figures";
@@ -57,7 +59,7 @@ import { loadLongView } from "@/lib/long-view";
 import { loadProfile, sayFact } from "@/lib/profile";
 import { storedReport } from "@/lib/monthly-report-store";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
-import { provenSavings } from "@/lib/savings-proof";
+import { verifiedSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { HEALTH_SAY_IN_WORDS_BELOW } from "@/config/health-score";
@@ -67,6 +69,7 @@ import { quotesAnswer } from "./insurance/quotes";
 import { calculate, type CalcInput } from "./calculate";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
+import { loadTimeline } from "@/lib/timeline";
 import { ACTION_HANDLERS } from "./actions";
 import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
@@ -166,6 +169,7 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   net_worth: { label: "See net worth", href: "/net-worth" },
   investments: { label: "See what you own", href: "/investments" },
   settings: { label: "Settings", href: "/settings" },
+  jane: { label: "What Jane did", href: "/jane" },
   // Taxes (spec steps 118–127).
   taxes: { label: "See your taxes", href: "/taxes" },
   tax_profile: { label: "See my tax profile", href: "/taxes/profile" },
@@ -272,6 +276,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "autopilot_settings",
     description:
       'How much Jane may do by herself in each area (spec step 141): subscriptions and bills, insurance, debt, taxes, investing, goals and budgets. Each area\'s level (always ask, the safe stuff, everything allowed), its caps each time and each month, and what it used this month. Over a cap Jane asks. To change an area, the person types it ("let Jane handle insurance up to $50 a month") or uses Settings.',
+    input_schema: noInput,
+  },
+  {
+    name: "what_jane_did",
+    description:
+      "Everything Jane did for the person, newest first (spec step 56, the What Jane did page): what she did by herself under the person's autopilot or a standing rule, and what she did when they tapped, each with when, the area, why she was allowed to, the money involved, and whether it can still be undone (and where). Use for 'what have you done for me', 'why did you do that', 'did you do anything by yourself'. The changes the team works on are list_actions.",
     input_schema: noInput,
   },
   {
@@ -599,7 +609,9 @@ export async function runChatTool(
         select: { ...CARD_SELECT, status: true },
       });
       if (!finding) return out({ error: "There's no finding with that id. Use open_findings." });
-      const card = buildCard(finding);
+      const built = buildCard(finding);
+      // A real account: whatChanges says what they'd do themselves (read-only mode).
+      const card = (await conciergeMode(userId, { client })) ? built : selfServe(built);
       if (card.annualSavingsCents !== null) money(card.annualSavingsCents);
       const comparison = await comparisonFor(finding, { userId, client, now });
       const scored = (s: Scored) => ({
@@ -709,22 +721,43 @@ export async function runChatTool(
       });
     }
     case "proven_savings": {
-      const saved = await provenSavings(userId, { client, now });
+      const saved = await verifiedSavings(userId, { client, now });
       return out({
         confirmedTotal: money(saved.confirmedCents),
-        receipts: saved.confirmed.map((r) => ({
-          what: r.title,
-          kind: r.kind,
-          saved: money(r.cents),
-          perYear: r.yearly,
-          proof: r.proof,
-        })),
-        estimatedTotal: money(saved.estimatedCents),
-        estimates: saved.estimated.map((e) => ({
-          what: e.title,
-          about: money(e.cents),
-          why: e.why,
-        })),
+        receipts: [
+          ...saved.actions.confirmed.map((r) => ({
+            what: r.title,
+            kind: r.kind,
+            saved: money(r.cents),
+            perYear: r.yearly,
+            proof: r.proof,
+          })),
+          // Suggestions the person acted on, confirmed by their own transactions.
+          ...saved.suggestions.confirmed.map((o) => ({
+            what: o.title,
+            kind: o.status === "partial" ? "partly confirmed" : "confirmed",
+            saved: money(o.confirmedCents ?? 0),
+            perYear: o.yearly,
+            proof: o.proof,
+            howSure: o.verifiedPercent === null ? null : `${o.verifiedPercent}%`,
+          })),
+        ],
+        estimatedTotal: money(saved.expectedCents),
+        estimates: [
+          ...saved.actions.estimated.map((e) => ({
+            what: e.title,
+            about: money(e.cents),
+            why: e.why,
+          })),
+          ...saved.suggestions.expected.map((o) => ({
+            what: o.title,
+            about: money(o.expectedCents),
+            why:
+              o.status === "unverifiable"
+                ? "Done, but it isn't something the transactions can show."
+                : "Done. It counts once your transactions show it.",
+          })),
+        ],
       });
     }
     case "my_profile": {
@@ -1112,6 +1145,21 @@ export async function runChatTool(
           why: r.why,
           findingId: r.kind === "finding" ? r.ref : null,
         })),
+      });
+    }
+    case "what_jane_did": {
+      const entries = await loadTimeline(userId, { client, limit: 20 });
+      return out({
+        entries: entries.map((e) => ({
+          on: e.at.toISOString().slice(0, 10),
+          area: e.sectorLabel,
+          by: e.by === "jane" ? "Jane, by herself" : "Jane, when you tapped",
+          what: e.what,
+          why: e.why,
+          money: e.cents === null ? null : money(e.cents),
+          canUndoAt: e.undoHref,
+        })),
+        page: "jane",
       });
     }
     case "nightly_log": {
@@ -1530,7 +1578,7 @@ export async function proposeAction(
     const snapshot = await loadSnapshotFast(userId, { client, now });
     const finding = snapshot?.findings.find((f) => f.findingId === str(args.finding_id));
     if (!snapshot || !finding) return refuse("That isn't one of the person's open findings.");
-    const candidate = findingCandidate(finding);
+    const candidate = findingCandidate(finding, snapshot.concierge ?? true);
     return { ok: true, actions: candidate.actions, refs: candidate.refs, line: candidate.body };
   }
 

@@ -7,19 +7,19 @@ import { AssetPrompts } from "@/components/asset-prompts";
 import { ViewTracker } from "@/components/view-tracker";
 import { sourceLabel, type Debt } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
-import { areaOfCapability } from "@/config/areas";
-import { itemId, loansTree, type LoansBranch } from "@/lib/area-pages/loans";
-import { loadCredit } from "@/lib/credit";
-import { loadDebtReview } from "@/lib/debt-review";
-import { loadPayoff } from "@/lib/debt-plan";
-import { scopedDb } from "@/lib/db-scoped";
-import { loadBnpl } from "@/lib/bnpl";
-import { loadDebts } from "@/lib/debts";
+import { ComparisonCards } from "@/components/comparison-cards";
+import { adviceMode } from "@/lib/advice-mode";
+import { COMPARE_TOPICS, compareWant, itemId, type LoansBranch } from "@/lib/area-pages/loans";
+import { loadLoansArea } from "@/lib/area-pages/loans-load";
+import { toComparison } from "@/lib/comparison";
+import { loadFit } from "@/lib/fit";
+import { fitCard } from "@/lib/fit-card";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
-import { assetPrompts } from "@/lib/owned-assets";
 import { requireUser } from "@/lib/session";
 import { clearTerms, saveTerms } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Every debt in one place (spec step 109): loans and cards with what the bank reports,
 // buy now, pay later plans found from payments, and terms the person typed for what the
@@ -123,24 +123,18 @@ function TermsForm({ debt, open, error }: { debt: Debt; open: boolean; error: st
           </label>
         )}
         <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
-          <button
-            type="submit"
-            className="h-11 rounded-full bg-zinc-900 px-5 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-          >
+          <SubmitButton className="h-11 rounded-full bg-zinc-900 px-5 font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300">
             Save
-          </button>
+          </SubmitButton>
           <span className="text-zinc-500">From your statement or the lender&apos;s app.</span>
         </div>
       </form>
       {debt.typedOn && (
         <form action={clearTerms} className="mt-2">
           <input type="hidden" name="debtKey" value={debt.key} />
-          <button
-            type="submit"
-            className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:hover:text-zinc-100"
-          >
+          <SubmitButton className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:hover:text-zinc-100">
             Clear what I typed
-          </button>
+          </SubmitButton>
         </form>
       )}
     </details>
@@ -309,69 +303,18 @@ async function LoansContent({
     const v = params[key];
     return typeof v === "string" ? v : "";
   };
-  const db = await scopedDb();
-  const book = await loadDebts(user.id);
-  const [loans, linked, bnpl, suggestions, payoff, credit, review] = await Promise.all([
-    db.accounts.findMany({
-      where: { type: "loan" },
-      select: { id: true, name: true, type: true, subtype: true },
-    }),
-    // Mortgages and car loans with a home or car linked (spec step 67).
-    db.ownedAssets.findMany({ select: { loanAccountId: true } }),
-    // Spec step 176: the plans' installments over the next month.
-    loadBnpl(user.id, { book }),
-    db.suggestions.findMany({
-      where: { status: { in: ["waiting", "selected"] } },
-      select: {
-        key: true,
-        capability: true,
-        topic: true,
-        short: true,
-        why: true,
-        worthCents: true,
-        worthKind: true,
-        urgency: true,
-        actionLabel: true,
-        actionHref: true,
-      },
-      orderBy: { score: "desc" },
-    }),
-    loadPayoff(user.id, { book }),
-    loadCredit(user.id, { book }),
-    loadDebtReview(user.id, { book }),
-  ]);
-  const prompts = assetPrompts(
-    loans,
-    linked.map((o) => o.loanAccountId),
-  );
-  const mine = suggestions.filter((s) => areaOfCapability(s.capability) === "loans");
-  const accounts = book.debts.filter((d) => d.inNetWorth);
-  const plans = book.debts.filter((d) => !d.inNetWorth);
+  const { book, bnpl, prompts, mine, accounts, plans, area } = await loadLoansArea(user.id);
   const saved = SAVED[one("saved")];
   const openKey = one("terms");
   const error = one("error");
-  const latest = credit.available ? credit.latest : null;
-
-  const area = loansTree({
-    asOf: new Date().toISOString().slice(0, 10),
-    debts: [...accounts, ...plans],
-    suggestions: mine,
-    installments: bnpl.installments.length,
-    payoff: book.debts.length > 0 ? { debtFreeMonth: payoff.debtFreeMonth } : null,
-    credit: latest
-      ? {
-          score: latest.score,
-          share: latest.utilisation?.share ?? null,
-          toUnderHighCents: latest.utilisation?.toUnderHighCents ?? 0,
-        }
-      : null,
-    review: review.available
-      ? {
-          needYou: review.items.filter((i) => i.status === "tap").length,
-          on: review.review?.on ?? null,
-        }
-      : null,
-  });
+  // "Compare options" on a loan choice (?compare=<topic>): the fit engine's options as comparison
+  // cards. Demo advice only, as picking one is (src/lib/fit-pick.ts).
+  const advice = await adviceMode(user.id);
+  const compareTopic = one("compare");
+  const want = advice ? compareWant(compareTopic, book.debts) : null;
+  const fit = want ? await loadFit(user.id, want) : null;
+  const fitOptions = fit ? fitCard(fit, true) : null;
+  const comparison = fitOptions ? toComparison(fitOptions) : null;
 
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
@@ -382,12 +325,32 @@ async function LoansContent({
     if (!branch) continue;
     const id = itemId(branch.id as LoansBranch, sug.topic);
     const page = TOPIC_PAGE[sug.topic];
+    const comparable = advice && (COMPARE_TOPICS as readonly string[]).includes(sug.topic);
     details[id] = (
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        <Link href={sug.actionHref} className={`text-sm ${LINK}`}>
-          {sug.actionLabel} ›
-        </Link>
-        {page && page !== sug.actionHref && <PageLink href={page} />}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link href={sug.actionHref} className={`text-sm ${LINK}`}>
+            {sug.actionLabel} ›
+          </Link>
+          {page && page !== sug.actionHref && <PageLink href={page} />}
+          {comparable && compareTopic !== sug.topic && (
+            <Link
+              href={`/loans?compare=${sug.topic}&focus=${encodeURIComponent(id)}#compare`}
+              className={`text-sm ${LINK}`}
+            >
+              Compare options ›
+            </Link>
+          )}
+        </div>
+        {comparable && compareTopic === sug.topic && (
+          <div id="compare">
+            {comparison ? (
+              <ComparisonCards comparison={comparison} />
+            ) : (
+              <p className="text-sm">No offers to compare for this right now.</p>
+            )}
+          </div>
+        )}
       </div>
     );
     more[id] = <p>{sug.why}</p>;
@@ -471,16 +434,16 @@ async function LoansContent({
             : `You owe ${formatCents(book.totalOwedCents)}, ${formatCents(book.monthlyCents)} due each month. Open a branch to see more.`}
         </p>
         <nav aria-label="Loans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link href="/debt" className={LINK}>
+          <Link prefetch={false} href="/debt" className={LINK}>
             Payoff plan
           </Link>
-          <Link href="/loans/refinance" className={LINK}>
+          <Link prefetch={false} href="/loans/refinance" className={LINK}>
             Refinance
           </Link>
-          <Link href="/loans/credit" className={LINK}>
+          <Link prefetch={false} href="/loans/credit" className={LINK}>
             Credit score
           </Link>
-          <Link href="/loans/borrow" className={LINK}>
+          <Link prefetch={false} href="/loans/borrow" className={LINK}>
             What you could borrow
           </Link>
         </nav>
@@ -565,7 +528,7 @@ async function LoansContent({
 export default function LoansPage({ searchParams }: PageProps<"/loans">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <LoansContent searchParams={searchParams} />
       </Suspense>
     </main>

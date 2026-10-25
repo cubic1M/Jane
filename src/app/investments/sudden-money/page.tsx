@@ -9,6 +9,8 @@ import { loadSuddenMoney } from "@/lib/investments/sudden-money";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answerKind, demoDeposit, stage } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Sudden money (spec step 235, demo advice): a bonus, an inheritance or a sale, with a staged
 // plan. Tax set aside first; every part is your tap.
@@ -67,13 +69,13 @@ async function Content({
               <input type="hidden" name="id" value={i.id} />
               <span className="text-sm">What was it?</span>
               {Object.entries(SUDDEN_KINDS).map(([k, label]) => (
-                <button key={k} name="kind" value={k} className={SECONDARY}>
+                <SubmitButton key={k} name="kind" value={k} className={SECONDARY}>
                   {label}
-                </button>
+                </SubmitButton>
               ))}
-              <button name="kind" value="transfer" className={SECONDARY}>
+              <SubmitButton name="kind" value="transfer" className={SECONDARY}>
                 Just a transfer
-              </button>
+              </SubmitButton>
             </form>
           ) : (
             <>
@@ -98,9 +100,7 @@ async function Content({
                         <form action={stage}>
                           <input type="hidden" name="id" value={i.id} />
                           <input type="hidden" name="stage" value={s.key} />
-                          <button type="submit" className={BUTTON}>
-                            Do this part
-                          </button>
+                          <SubmitButton className={BUTTON}>Do this part</SubmitButton>
                         </form>
                       ) : null}
                     </li>
@@ -121,9 +121,7 @@ async function Content({
       ))}
       {v.demo && v.items.length === 0 && (
         <form action={demoDeposit}>
-          <button type="submit" className={BUTTON}>
-            Add a demo bonus deposit
-          </button>
+          <SubmitButton className={BUTTON}>Add a demo bonus deposit</SubmitButton>
         </form>
       )}
     </>
@@ -133,7 +131,7 @@ async function Content({
 export default function SuddenMoneyPage(props: PageProps<"/investments/sudden-money">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

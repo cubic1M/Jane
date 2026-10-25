@@ -5,8 +5,10 @@ import {
   currentCard,
   initialState,
   move,
+  paragraphs,
   waiting,
   type FloatingCardData,
+  restore,
 } from "./floating-cards";
 
 const card = (id: string): FloatingCardData => ({
@@ -50,6 +52,27 @@ describe("a line of cards", () => {
   });
 });
 
+describe("the set changing under the card showing (the dock reloading)", () => {
+  it("keeps the same card showing when a new one comes in ahead of it", () => {
+    const state = move(cards, initialState, 1);
+    expect(currentCard(cards, state)?.id).toBe("b");
+    const reloaded = [card("new"), ...cards];
+    expect(currentCard(reloaded, state)?.id).toBe("b");
+    expect(currentCard(reloaded, move(reloaded, state, 1))?.id).toBe("c");
+  });
+
+  it("keeps it when a card ahead of it is gone from the set", () => {
+    const state = move(cards, move(cards, initialState, 1), 1);
+    expect(currentCard(cards, state)?.id).toBe("c");
+    expect(currentCard([card("b"), card("c")], state)?.id).toBe("c");
+  });
+
+  it("falls back to the same place when the card itself is gone", () => {
+    const state = move(cards, initialState, 1);
+    expect(currentCard([card("a"), card("c")], state)?.id).toBe("c");
+  });
+});
+
 describe("options to pick one from", () => {
   it("counts through the options, and a Yes on one decides the whole set", () => {
     let state = move(cards, initialState, 1);
@@ -62,5 +85,48 @@ describe("options to pick one from", () => {
   it("puts the whole set off with Not now", () => {
     const state = answer(cards, initialState, "pick", "a");
     expect(waiting(cards, state)).toHaveLength(0);
+  });
+});
+
+describe("a card's details as paragraphs", () => {
+  it("makes each line its own paragraph and skips blank lines", () => {
+    expect(paragraphs("Your rent is due Friday.\n\nIt's $1,850.")).toEqual([
+      { kind: "p", text: "Your rent is due Friday." },
+      { kind: "p", text: "It's $1,850." },
+    ]);
+  });
+
+  it("turns dashes and bullets into one list", () => {
+    expect(paragraphs("Three things:\n- Cancel Hulu\n• Call the bank\n- Pay rent")).toEqual([
+      { kind: "p", text: "Three things:" },
+      { kind: "list", items: ["Cancel Hulu", "Call the bank", "Pay rent"] },
+    ]);
+  });
+
+  it("splits a long run into groups of two sentences, keeping $3.50 whole", () => {
+    const text =
+      "It costs $3.50 a day. That's $1,277 a year. Most people keep it. You barely use it.";
+    expect(paragraphs(text)).toEqual([
+      { kind: "p", text: "It costs $3.50 a day. That's $1,277 a year." },
+      { kind: "p", text: "Most people keep it. You barely use it." },
+    ]);
+    expect(paragraphs("One. Two. Three.")).toEqual([{ kind: "p", text: "One. Two. Three." }]);
+  });
+});
+
+// Revert on a held card (founder, 2026-10-25): it's waiting again, and the one showing.
+describe("restore", () => {
+  const three = ["a", "b", "c"].map((id) => ({
+    id,
+    headline: id,
+    details: {},
+    yesLabel: "Yes",
+  }));
+  it("brings an answered card back and shows it", () => {
+    const answered = answer(three, initialState, "queue", "b");
+    expect(waiting(three, answered).map((c) => c.id)).toEqual(["a", "c"]);
+    const back = restore(three, answered, "b");
+    expect(waiting(three, back).map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(currentCard(three, back)?.id).toBe("b");
   });
 });

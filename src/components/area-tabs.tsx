@@ -41,6 +41,10 @@ export function AreaTabs() {
             <li key={tab.key} className="shrink-0">
               <Link
                 href={tab.href}
+                // Every area page reads the person's data when it renders, so prefetching all
+                // six on every page kept the database busy for the page being shown (speed pass,
+                // 2026-10-24). A tap loads it; its shell streams at once.
+                prefetch={false}
                 aria-current={current ? "page" : undefined}
                 className={`relative inline-flex min-h-11 items-center px-2.5 text-sm whitespace-nowrap ${
                   current

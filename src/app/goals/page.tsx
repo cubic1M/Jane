@@ -7,8 +7,11 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { GOALS_COPY, monthlyLine } from "@/planning/goals-copy";
 import { removeGoal } from "./actions";
+import { accountLabels } from "@/lib/account-labels";
 import { GoalForm } from "./goal-form";
 import { GoalTradeoffs } from "./tradeoffs";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 const EMPTY = { goalId: "", name: "", target: "", targetDate: "", accountId: "", saved: "" };
 const dollars = (cents: number | null) => (cents === null ? "" : (cents / 100).toFixed(2));
@@ -25,11 +28,17 @@ async function Goals() {
   const db = await scopedDb();
   const [goals, accounts, tradeoffs] = await Promise.all([
     listGoals(user.id),
-    db.accounts.findMany({
-      where: { type: "depository" },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
+    db.accounts
+      .findMany({
+        where: { type: "depository" },
+        select: { id: true, name: true, mask: true, createdAt: true },
+        orderBy: { name: "asc" },
+      })
+      // Each named so no two read the same.
+      .then((rows) => {
+        const labels = accountLabels(rows, " balance");
+        return rows.map((a) => ({ id: a.id, name: labels.get(a.id)! }));
+      }),
     // Spec step 241: only worth the year plan's work with two goals or more.
     db.savingsGoals.count().then((n) => (n >= 2 ? loadTradeoffs(user.id) : null)),
   ]);
@@ -99,12 +108,9 @@ async function Goals() {
               </details>
               <form action={removeGoal} className="self-end">
                 <input type="hidden" name="goalId" value={g.id} />
-                <button
-                  type="submit"
-                  className="text-xs text-zinc-500 hover:text-red-700 hover:underline"
-                >
+                <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
                   Delete goal
-                </button>
+                </SubmitButton>
               </form>
             </li>
           ))}
@@ -128,7 +134,7 @@ async function Goals() {
 export default function GoalsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Goals />
       </Suspense>
     </main>

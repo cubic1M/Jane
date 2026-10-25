@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { flushSync } from "react-dom";
 import { MicButton } from "./mic-button";
 import { sendMessage, type SendState } from "./send";
 
@@ -55,6 +56,24 @@ export function ChatComposer({
   const pending = actionPending || draft !== null || refreshing;
   // Spec step 194: a second tap or Enter in the same instant never sends it twice.
   const sending = useRef(false);
+  // A question put in the box for the person to finish (the home hub's "I'm aiming to spend $"),
+  // with a greyed hint after it ("[amount] on [what]") until they type; never sent. In a box too
+  // narrow for both (the docked panel, a phone), the hint goes on its own line just under it.
+  const [hint, setHint] = useState<{ text: string; hint: string; under: boolean } | null>(null);
+  const hintLine = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const onHint = (event: Event) => {
+      const d = (event as CustomEvent<{ text: string; hint: string | null }>).detail;
+      if (!d?.hint) return setHint(null);
+      // Drawn after the text first; cut off there, it moves under the box.
+      flushSync(() => setHint({ text: d.text, hint: d.hint!, under: false }));
+      const drawn = hintLine.current;
+      if (drawn && drawn.scrollWidth > drawn.clientWidth + 1)
+        setHint((h) => h && { ...h, under: true });
+    };
+    window.addEventListener("jane:hint", onHint);
+    return () => window.removeEventListener("jane:hint", onHint);
+  }, []);
 
   useEffect(() => {
     if (state.sentAt === 0) return;
@@ -79,7 +98,13 @@ export function ChatComposer({
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const question = input.current?.value.trim() ?? "";
+    // Left as it was put there, the sentence isn't finished: the box keeps it to type into.
+    if (hint && input.current?.value === hint.text) {
+      input.current.focus();
+      return;
+    }
     if (!question || pending || sending.current) return;
+    setHint(null);
     sending.current = true;
     setError(null);
     setHeard("");
@@ -145,6 +170,26 @@ export function ChatComposer({
 
   const shownError = error ?? (actionPending ? null : state.error);
 
+  // How tall the pinned box is, so the cards over the chat sit just above it.
+  useEffect(() => {
+    const el = form.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement;
+    const watch = new ResizeObserver(() =>
+      root.style.setProperty("--chat-composer-h", `${Math.round(el.offsetHeight)}px`),
+    );
+    watch.observe(el);
+    // Whatever is scrolled into view (a reply's buttons, a found message) stops above the box
+    // and the cards over it, never under them.
+    root.style.scrollPaddingBottom =
+      "calc(var(--chat-composer-h, 5.5rem) + var(--floating-cards-h, 0px) + 1rem)";
+    return () => {
+      watch.disconnect();
+      root.style.removeProperty("--chat-composer-h");
+      root.style.removeProperty("scroll-padding-bottom");
+    };
+  }, []);
+
   return (
     <>
       {draft && (
@@ -152,7 +197,10 @@ export function ChatComposer({
           {!typed.some((m) => !draft.before.has(m.id) && m.body === draft.question) && (
             <div className="flex flex-col items-end gap-1 self-end sm:max-w-[80%]">
               <span className="text-xs text-zinc-500">You</span>
-              <p className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]">
+              <p
+                data-draft-question=""
+                className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]"
+              >
                 {draft.question}
               </p>
             </div>
@@ -162,7 +210,9 @@ export function ChatComposer({
               <span className="font-semibold text-emerald-700">jane&gt;</span> answer
             </p>
             {draft.answer && (
-              <p className="whitespace-pre-line [overflow-wrap:anywhere]">{draft.answer}</p>
+              <p data-draft-answer="" className="whitespace-pre-line [overflow-wrap:anywhere]">
+                {draft.answer}
+              </p>
             )}
             {(draft.status || !draft.answer) && (
               <p role="status" className="text-sm text-zinc-500">
@@ -180,30 +230,55 @@ export function ChatComposer({
         ref={form}
         action={action}
         onSubmit={send}
-        className="flex scroll-mb-[calc(1rem+env(safe-area-inset-bottom))] flex-col gap-1"
+        // Pinned to the bottom edge (founder: "the place to type is fixed at the bottom right,
+        // and not leaving a blank space down below"): pushed down when the chat is short, held
+        // there when it scrolls.
+        data-chat-composer=""
+        className="sticky bottom-0 z-30 mt-auto -mx-4 flex flex-col gap-1 bg-white px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6 dark:bg-zinc-950"
       >
         <div className="flex min-h-12 items-center gap-2 border border-zinc-400 px-3 focus-within:border-emerald-700 dark:border-zinc-600">
           <span aria-hidden="true" className="text-emerald-700">
             &gt;
           </span>
-          <input
-            ref={input}
-            name="message"
-            type="text"
-            required
-            maxLength={maxLength}
-            autoComplete="off"
-            enterKeyHint="send"
-            aria-label="Message Jane"
-            placeholder="Ask Jane anything"
-            disabled={pending}
-            className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-zinc-500 disabled:opacity-60"
-          />
+          <div className="relative flex min-w-0 flex-1">
+            <input
+              ref={input}
+              name="message"
+              type="text"
+              required
+              maxLength={maxLength}
+              autoComplete="off"
+              enterKeyHint="send"
+              aria-label="Message Jane"
+              aria-describedby={hint ? `${id}-hint` : undefined}
+              placeholder="Ask Jane anything"
+              disabled={pending}
+              onInput={(e) => {
+                if (hint && e.currentTarget.value !== hint.text) setHint(null);
+              }}
+              className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-zinc-500 disabled:opacity-60"
+            />
+            {hint && !hint.under && (
+              // Drawn over the box just after the text: the text itself invisible, to measure.
+              <span
+                ref={hintLine}
+                id={`${id}-hint`}
+                data-composer-hint=""
+                className="pointer-events-none absolute inset-0 flex items-center overflow-hidden text-base whitespace-pre"
+              >
+                <span aria-hidden="true" className="invisible">
+                  {hint.text}
+                </span>
+                <span className="text-zinc-400 dark:text-zinc-500">{hint.hint}</span>
+              </span>
+            )}
+          </div>
           <MicButton
             disabled={pending}
             onStatus={setHeard}
             onText={(text, final) => {
               if (!input.current) return;
+              setHint(null);
               input.current.value = text.slice(0, maxLength);
               if (final) input.current.focus();
             }}
@@ -218,6 +293,16 @@ export function ChatComposer({
             <span aria-hidden="true">]</span>
           </button>
         </div>
+        {hint?.under && (
+          <p
+            id={`${id}-hint`}
+            data-composer-hint=""
+            className="pl-6 text-sm text-zinc-400 dark:text-zinc-500"
+          >
+            {hint.text.slice(-1)}
+            {hint.hint}
+          </p>
+        )}
         {heard && !pending && (
           <p role="status" className="text-sm text-zinc-500">
             {heard}

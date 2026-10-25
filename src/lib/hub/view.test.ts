@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cashFlowView,
+  cashGroups,
   chartText,
   heroView,
   shortMoney,
@@ -134,17 +135,176 @@ describe("the hero row", () => {
 
   it("shows money saved once there is some, and money found before", () => {
     expect(heroView(hero()).saved).toMatchObject({ label: "Money found", cents: 290_000 });
-    expect(heroView(hero({ savedCents: 64_000 })).saved).toMatchObject({
+    expect(heroView(hero({ savedCents: 64_000, confirmedCents: 21_588 })).saved.share).toBeCloseTo(
+      21_588 / 290_000,
+    );
+  });
+
+  it("counts only confirmed money as saved, with what's expected apart (QA round 11)", () => {
+    // A real account right after a yes: nothing confirmed yet, so $0 saved and the yes expected.
+    expect(heroView(hero({ savedCents: 43_500 })).saved).toMatchObject({
       label: "Saved so far",
-      cents: 64_000,
+      cents: 0,
+      perYear: false,
+      confirmedCents: 0,
+      expectedCents: 43_500,
     });
-    expect(heroView(hero({ savedCents: 64_000 })).saved.share).toBeCloseTo(64_000 / 290_000);
+    expect(heroView(hero({ savedCents: 64_000, confirmedCents: 21_588 })).saved).toMatchObject({
+      label: "Saved so far",
+      cents: 21_588,
+      confirmedCents: 21_588,
+      expectedCents: 64_000 - 21_588,
+    });
+    // Confirmed with nothing still expected (a sample person's seeded wins, a refund back).
+    expect(heroView(hero({ savedCents: 0, confirmedCents: 4_500 })).saved).toMatchObject({
+      label: "Saved so far",
+      cents: 4_500,
+      expectedCents: 0,
+    });
+  });
+
+  it("says why safe to spend is that number, lines that add up to it", () => {
+    const { safe } = heroView(hero());
+    // The balance now, less each thing held back, equals it (founder: "a summary on why that
+    // number is what it is"); nothing held back at zero is listed.
+    expect(safe?.why).toEqual([
+      { label: "In checking now", sign: "", cents: 300_000 },
+      { label: "Bills before Oct 31", sign: "−", cents: 120_000 },
+      { label: "Left in your budgets", sign: "−", cents: 40_000 },
+      { label: "Goals this month", sign: "−", cents: 20_000 },
+      { label: "Safe to spend", sign: "=", cents: 120_000 },
+    ]);
+    const [balance, ...rest] = safe!.why;
+    const total = rest.at(-1)!;
+    const held = rest.slice(0, -1).reduce((sum, l) => sum + l.cents, 0);
+    expect(balance.cents - held).toBe(total.cents);
+    const short = heroView(hero({ safe: { ...hero().safe!, safeCents: -5_000 } })).safe;
+    expect(short?.why.at(-1)).toEqual({ label: "Short before payday", sign: "=", cents: -5_000 });
+  });
+
+  it("works safe to spend out line by line, each bill on its own, adding up to it", () => {
+    const bills = [
+      { merchant: "Rent", date: "2026-10-28", amountCents: 100_000 },
+      { merchant: "Phone", date: "2026-10-25", amountCents: 8_000 },
+      ...["A", "B", "C", "D", "E"].map((m, i) => ({
+        merchant: m,
+        date: `2026-10-2${6 + (i % 3)}`,
+        amountCents: 2_400,
+      })),
+    ];
+    const { safe } = heroView(hero({ safe: { ...hero().safe!, bills } }));
+    const steps = safe!.steps;
+    // Soonest first; the first 5 by name and date, the rest as one line.
+    expect(steps[0]).toEqual({ label: "In checking today", sign: "", cents: 300_000 });
+    expect(steps[1]).toEqual({ label: "Phone", note: "Oct 25", sign: "−", cents: 8_000 });
+    expect(steps.filter((l) => l.note).length).toBe(5);
+    expect(steps).toContainEqual({ label: "2 more bills", sign: "−", cents: 102_400 });
+    expect(steps).toContainEqual({
+      label: "Planned savings: goals this month",
+      sign: "−",
+      cents: 20_000,
+    });
+    expect(steps.at(-1)).toEqual({ label: "Safe to spend", sign: "=", cents: 120_000 });
+    const held = steps.slice(1, -1).reduce((sum, l) => sum + l.cents, 0);
+    expect(steps[0].cents - held).toBe(steps.at(-1)!.cents);
+    // Without the bills one by one, they're one line.
+    expect(heroView(hero()).safe!.steps[1]).toEqual({
+      label: "Bills before payday",
+      sign: "−",
+      cents: 120_000,
+    });
+  });
+
+  it("works out your plan: what's saved and where from, what the plan adds, and the goal", () => {
+    const items = [
+      { title: "Cancel Hulu", kind: "cancelled" as const, cents: 21_600, yearly: true },
+      { title: "Get the overdraft fee back", kind: "refund" as const, cents: 3_500, yearly: false },
+    ];
+    const plan = {
+      items: 5,
+      annualSavingsCents: 90_000,
+      top: [
+        { title: "Lower your phone bill", cents: 40_000 },
+        { title: "Shop your car insurance", cents: 30_000 },
+      ],
+    };
+    const view = heroView(
+      hero({
+        savedCents: 25_100,
+        savedItems: items,
+        plan,
+        goal: { name: "Emergency fund", percent: 42 },
+      }),
+    );
+    expect(view.plan).toEqual({
+      count: 5,
+      goal: { name: "Emergency fund", percent: 42 },
+      steps: [
+        { label: "Cancel Hulu", note: "a year", sign: "", cents: 21_600 },
+        { label: "Get the overdraft fee back", note: "once", sign: "", cents: 3_500 },
+        { label: "Expected so far", sign: "=", cents: 25_100 },
+        { label: "Lower your phone bill", sign: "+", cents: 40_000 },
+        { label: "Shop your car insurance", sign: "+", cents: 30_000 },
+        { label: "3 more things", sign: "+", cents: 20_000 },
+        { label: "Expected, plus your plan if you say yes", sign: "=", cents: 115_100 },
+      ],
+    });
+    // Nothing saved yet: the plan alone. No plan: nothing to open.
+    expect(heroView(hero({ plan })).plan?.steps.at(-1)).toEqual({
+      label: "Your plan, if you say yes to all",
+      sign: "=",
+      cents: 90_000,
+    });
+    expect(heroView(hero()).plan).toBeNull();
+    expect(heroView(hero({ plan: { ...plan, items: 0 } })).plan).toBeNull();
+  });
+
+  it("says where the savings came from, the biggest few, and how many more", () => {
+    const items = [
+      { title: "Cancel Hulu", kind: "cancelled" as const, cents: 21_600, yearly: true },
+      { title: "Get the overdraft fee back", kind: "refund" as const, cents: 3_500, yearly: false },
+      { title: "Lower your phone bill", kind: "cheaper" as const, cents: 24_000, yearly: true },
+      { title: "Move idle cash", kind: "interest" as const, cents: 15_000, yearly: true },
+    ];
+    const { saved } = heroView(hero({ savedCents: 64_100, savedItems: items }));
+    expect(saved.items.map((i) => i.title)).toEqual(items.slice(0, 3).map((i) => i.title));
+    expect(saved.more).toBe(1);
+    // Before anything is saved, there's nothing to open.
+    expect(heroView(hero()).saved).toMatchObject({ items: [], more: 0 });
   });
 
   it("leaves out what isn't known", () => {
     const view = heroView(hero({ safe: null, netWorth: null }));
     expect(view.safe).toBeNull();
     expect(view.netWorth).toBeNull();
+  });
+});
+
+describe("the cash-flow strip's markers", () => {
+  const e = (key: string, kind: "bill" | "pay" | "deadline", day: number, weight = 0.5) => ({
+    key,
+    kind,
+    day,
+    date: `2026-11-${String(day).padStart(2, "0")}`,
+    label: key,
+    amountCents: 1_000,
+    weight,
+    href: null,
+  });
+
+  it("makes a day's events of one kind one marker, sized by the biggest, listing them all", () => {
+    const groups = cashGroups([
+      e("rent", "bill", 8, 1),
+      e("phone", "bill", 8, 0.2),
+      e("pay", "pay", 8),
+      e("netflix", "bill", 3),
+    ]);
+    expect(groups.map((g) => [g.kind, g.day, g.events.map((x) => x.key)])).toEqual([
+      ["bill", 3, ["netflix"]],
+      ["pay", 8, ["pay"]],
+      ["bill", 8, ["rent", "phone"]],
+    ]);
+    expect(groups[2].weight).toBe(1);
   });
 });
 

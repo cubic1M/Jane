@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { retry } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 const SHOWN = 50;
 const when = (date: Date) => date.toISOString().slice(0, 16).replace("T", " ");
@@ -58,12 +60,9 @@ async function Jobs() {
                   </span>
                   <form action={retry}>
                     <input type="hidden" name="jobId" value={j.id} />
-                    <button
-                      type="submit"
-                      className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold dark:border-zinc-700"
-                    >
+                    <SubmitButton className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold dark:border-zinc-700">
                       Retry
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
                 {j.lastError && (
@@ -99,7 +98,7 @@ async function Jobs() {
 export default function JobsPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Jobs />
       </Suspense>
     </main>

@@ -33,9 +33,9 @@ export type TreeData = { key: string; label: string; sub: string; branches: Tree
 
 // The status, never colour alone: a shape, and words for screen readers.
 export const STATUS: Record<TreeStatus, { shape: string; words: string; className: string }> = {
-  good: { shape: "■", words: "Good", className: "text-emerald-700" },
-  look: { shape: "▲", words: "Needs a look", className: "text-amber-700" },
-  act: { shape: "◆", words: "Urgent", className: "text-red-700" },
+  good: { shape: "○", words: "Good", className: "" },
+  look: { shape: "◐", words: "Needs a look", className: "" },
+  act: { shape: "●", words: "Urgent", className: "font-bold" },
 };
 
 export function StatusMark({ status }: { status?: TreeStatus }) {
@@ -51,16 +51,16 @@ export function StatusMark({ status }: { status?: TreeStatus }) {
 
 function Badge({ text }: { text: string }) {
   return (
-    <span className="shrink-0 bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
+    <span className="shrink-0 border border-current px-1.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase">
       {text}
     </span>
   );
 }
 
 type Row =
-  | { kind: "root"; id: string; level: 1 }
-  | { kind: "branch"; id: string; level: 2; branch: TreeBranch; index: number }
-  | { kind: "leaf"; id: string; level: 3; leaf: TreeLeaf; branch: TreeBranch; index: number };
+  | { kind: "root"; id: string; level: number }
+  | { kind: "branch"; id: string; level: number; branch: TreeBranch; index: number }
+  | { kind: "leaf"; id: string; level: number; leaf: TreeLeaf; branch: TreeBranch; index: number };
 
 const NODE =
   "absolute flex flex-col justify-center gap-0.5 border px-3 text-left outline-offset-2 transition-colors";
@@ -72,6 +72,7 @@ export function InteractiveTree({
   picked,
   onOpen,
   onPick,
+  rootless = false,
 }: {
   data: TreeData;
   // The tree's accessible name.
@@ -81,8 +82,12 @@ export function InteractiveTree({
   picked: string | null;
   onOpen: (branchId: string | null) => void;
   onPick: (itemId: string | null) => void;
+  // No node for the tree's own name: it starts at the branches (/home/map, whose chip names it).
+  rootless?: boolean;
 }) {
-  const [focused, setFocused] = useState<string>(picked ?? open ?? data.key);
+  const [focused, setFocused] = useState<string>(
+    picked ?? open ?? (rootless ? (data.branches[0]?.id ?? data.key) : data.key),
+  );
   const [viewWidth, setViewWidth] = useState(1000);
   const view = useRef<HTMLDivElement>(null);
 
@@ -105,17 +110,21 @@ export function InteractiveTree({
     }),
     [data],
   );
-  const layout = useMemo(() => layoutMap(shape, open, viewWidth), [shape, open, viewWidth]);
+  const layout = useMemo(
+    () => layoutMap(shape, open, viewWidth, rootless),
+    [shape, open, viewWidth, rootless],
+  );
   const camera = cameraFor(layout.focus, viewWidth);
   const at = new Map(layout.nodes.map((n) => [n.id, n]));
 
   // What the keyboard walks through, in order: the root, its branches, the open one's items.
-  const rows: Row[] = [{ kind: "root", id: data.key, level: 1 }];
+  const top = rootless ? 0 : 1;
+  const rows: Row[] = rootless ? [] : [{ kind: "root", id: data.key, level: 1 }];
   data.branches.forEach((branch, index) => {
-    rows.push({ kind: "branch", id: branch.id, level: 2, branch, index });
+    rows.push({ kind: "branch", id: branch.id, level: top + 1, branch, index });
     if (branch.id === open) {
       branch.items.forEach((leaf, i) =>
-        rows.push({ kind: "leaf", id: leaf.id, level: 3, leaf, branch, index: i }),
+        rows.push({ kind: "leaf", id: leaf.id, level: top + 2, leaf, branch, index: i }),
       );
     }
   });
@@ -162,7 +171,7 @@ export function InteractiveTree({
         if (row.kind === "leaf") focusOn(row.branch.id);
         else if (row.kind === "branch") {
           if (open === row.id) toggle(row.branch);
-          else focusOn(data.key);
+          else if (!rootless) focusOn(data.key);
         }
         break;
       case "Enter":
@@ -199,7 +208,7 @@ export function InteractiveTree({
             onPick(null);
             focusOn(open);
           }}
-          className="inline-flex min-h-11 items-center gap-1 self-start text-sm font-medium text-emerald-700 hover:underline"
+          className="inline-flex min-h-11 items-center gap-1 self-start text-sm font-medium hover:underline"
         >
           <span aria-hidden="true">‹</span> All of {data.label}
         </button>
@@ -258,7 +267,7 @@ export function InteractiveTree({
                       onOpen(null);
                       onPick(null);
                     }}
-                    className={`${NODE} cursor-pointer border-emerald-700 bg-emerald-700 text-white`}
+                    className={`${NODE} cursor-pointer border-zinc-950 bg-zinc-950 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-950`}
                   >
                     <span className="text-sm font-semibold">{data.label}</span>
                     <span className="text-xs opacity-90">{data.sub}</span>
@@ -281,8 +290,8 @@ export function InteractiveTree({
                     }}
                     className={`${NODE} map-pop cursor-pointer ${
                       isOpen
-                        ? "border-emerald-700 bg-white dark:bg-zinc-950"
-                        : "border-zinc-300 bg-white hover:border-emerald-700 dark:border-zinc-700 dark:bg-zinc-950"
+                        ? "border-2 border-zinc-950 bg-white dark:border-zinc-50 dark:bg-zinc-950"
+                        : "border-zinc-300 bg-white hover:border-zinc-950 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:border-zinc-50"
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -306,7 +315,7 @@ export function InteractiveTree({
                       )}
                       <span
                         aria-hidden="true"
-                        className={`text-emerald-700 transition-transform duration-200 motion-reduce:transition-none ${isOpen ? "rotate-90" : ""}`}
+                        className={`transition-transform duration-200 motion-reduce:transition-none ${isOpen ? "rotate-90" : ""}`}
                       >
                         ▸
                       </span>
@@ -334,8 +343,8 @@ export function InteractiveTree({
                   }}
                   className={`${NODE} map-pop cursor-pointer ${
                     isPicked
-                      ? "border-emerald-700 bg-emerald-50 dark:bg-emerald-950"
-                      : "border-zinc-300 bg-white hover:border-emerald-700 dark:border-zinc-700 dark:bg-zinc-950"
+                      ? "border-2 border-zinc-950 bg-zinc-100 dark:border-zinc-50 dark:bg-zinc-900"
+                      : "border-zinc-300 bg-white hover:border-zinc-950 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:border-zinc-50"
                   }`}
                   style={{ ...common.style, animationDelay: `${Math.min(row.index, 12) * 25}ms` }}
                 >

@@ -1,40 +1,16 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { chatFeed, closeSettled, postedToday } from "./messages";
-import { SCANNING_HELLO, SCANNING_HELLO_KEY } from "@/config/scan";
+import { SCANNING_HELLO } from "@/config/scan";
 import { scanInProgress } from "@/lib/scan";
-import { postMessages } from "./messages";
 import { runJaneAgentSafely } from "./run";
 import { toView, type MessageView } from "./view";
 
 // Opening the chat (spec step 81). The first visit of the day is never empty: with nothing
 // posted yet today, Jane's brain runs first (quiet hours don't apply, the person is
 // looking). Null when the person has no accounts yet, like Today.
-
-// "I'm still going through your accounts": the first thing in the chat during the first scan.
-// The scan posts it itself as soon as it starts (src/lib/plaid/sync.ts), so it always comes
-// before the brief; opening the chat posts it too if it isn't there, and it is said once.
-export async function postScanningHello(
-  userId: string,
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
-): Promise<void> {
-  await postMessages(
-    userId,
-    [
-      {
-        kind: "brief",
-        body: SCANNING_HELLO,
-        refs: {},
-        actions: [],
-        dedupeKey: `scanning:${SCANNING_HELLO_KEY}`,
-        priority: 0,
-        source: "scanning",
-      },
-    ],
-    { client, now },
-  );
-}
 
 // The person's timezone, for "today" and the times shown. Users have their own helpers,
 // so a read of this one column by id.
@@ -64,6 +40,11 @@ async function talkedSince(userId: string, { client }: { client: PrismaClient })
   return typed !== null && (posted === null || typed.createdAt > posted.createdAt);
 }
 
+// The scan's old "still going through your accounts" message, posted before it was removed:
+// never shown.
+const notTheOldHello = (m: { kind: string; body: string }) =>
+  !(m.kind === "brief" && m.body === SCANNING_HELLO);
+
 export async function openChat(
   userId: string,
   {
@@ -73,16 +54,22 @@ export async function openChat(
   }: { client?: PrismaClient; now?: Date; pages?: number } = {},
 ): Promise<{ messages: MessageView[]; hasEarlier: boolean; scanning: boolean } | null> {
   if ((await scopedFor(userId, client).accounts.count()) === 0) return null;
-  const timezone = await timezoneOf(userId, { client });
+  const [timezone, concierge] = await Promise.all([
+    timezoneOf(userId, { client }),
+    conciergeMode(userId, { client }),
+  ]);
   // The first scan is still running (the sample person's, or a bank just linked): the chat
-  // opens at once with Jane saying she's still looking, instead of waiting for the whole
-  // run; the scan's own run posts her findings as it finishes.
+  // opens at once with what's there, instead of waiting for the whole run; the scan's own run
+  // posts her findings as it finishes, and the page's loading bar (src/components/scan-bar.tsx)
+  // says how far it has got. No "still going through your accounts" message (founder: "remove
+  // this one from the chat").
   const scanning = await scanInProgress(userId, { client, now });
   if (scanning) {
-    await postScanningHello(userId, { client, now });
     const feed = await chatFeed(userId, { client, pages, now });
     return {
-      messages: feed.messages.map((m) => toView(m, now, timezone)),
+      messages: feed.messages
+        .filter(notTheOldHello)
+        .map((m) => toView(m, now, timezone, { concierge })),
       hasEarlier: feed.hasEarlier,
       scanning: true,
     };
@@ -99,11 +86,9 @@ export async function openChat(
   }
   const feed = await chatFeed(userId, { client, pages, now });
   return {
-    // With the scan done, "still going through your accounts, stay on this page" is no longer
-    // true: the chat leaves it out (visitor walk: it sat above Jane's second hello for good).
     messages: feed.messages
-      .filter((m) => !(m.kind === "brief" && m.body === SCANNING_HELLO))
-      .map((m) => toView(m, now, timezone)),
+      .filter(notTheOldHello)
+      .map((m) => toView(m, now, timezone, { concierge })),
     hasEarlier: feed.hasEarlier,
     scanning: false,
   };

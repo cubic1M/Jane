@@ -39,7 +39,7 @@ const practicePortfolio: Detector = {
       title: "Start a practice portfolio before putting real money in",
       // The worth is a fall met on practice money; the headline says so rather than promising to
       // "avoid" a loss of real money.
-      headline: `Try practice money first, a ${dollars(fall)} dip costs nothing`,
+      headline: `Try practice money: a ${dollars(fall)} dip costs nothing`,
       short: `You keep ${formatCents(cash)} in cash and no brokerage account yet.`,
       worthCents: fall,
       worthKind: "risk",

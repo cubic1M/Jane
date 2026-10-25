@@ -9,8 +9,9 @@ import {
   cardProblems,
   type CardOption,
   type OptionCard,
+  type OptionCompare,
 } from "@/lib/option-card";
-import type { FitOption } from "@/planning/fit";
+import type { FitLabel, FitOption } from "@/planning/fit";
 
 // The fit engine's options as the shared pick-one card (spec step 282, src/lib/option-card.ts),
 // kind "loan": a short headline with one dollar figure, the monthly payment, the facts (rate,
@@ -114,6 +115,42 @@ function whyOf(o: FitOption, view: FitView): string {
   }
 }
 
+// Who each option suits, for the comparison cards (src/lib/comparison.ts).
+const BEST_FOR: Record<FitLabel, string> = {
+  payoff: "Best for paying no more interest",
+  keep: "Best for changing nothing",
+  best_cost: "Best for the least paid in all",
+  lowest_payment: "Best for the smallest monthly bill",
+  fastest: "Best for being debt-free soonest",
+  alternative: "Best for a second lender to try",
+};
+
+// The numbers the comparison cards line up: the payment, everything paid, how soon it's gone.
+function compareOf(o: FitOption): OptionCompare {
+  const payoff = o.label === "payoff";
+  return {
+    monthlyCents: o.paymentCents,
+    totalCents: o.totalCostCents,
+    coverScore: null,
+    payoffMonths: o.termMonths,
+    rows: [
+      {
+        key: "apr",
+        label: "APR",
+        value: payoff ? "none" : `${formatRate(o.aprBps)}${o.rateType ? ` ${o.rateType}` : ""}`,
+      },
+      {
+        key: "term",
+        label: "Term",
+        value: payoff ? "paid off now" : `${o.termMonths} months`,
+      },
+      { key: "total", label: "Total cost", value: dollars(o.totalCostCents) },
+      { key: "fees", label: "Fees", value: o.feeCents > 0 ? dollars(o.feeCents) : "none" },
+    ],
+    bestFor: BEST_FOR[o.label],
+  };
+}
+
 // The pick first, then the others in the engine's order, at most MAX_CARD_OPTIONS.
 function ordered(view: FitView): FitOption[] {
   const pick = view.options.find((o) => o.id === view.pick);
@@ -137,6 +174,7 @@ export function fitCard(view: FitView, advice: boolean): OptionCard | null {
       isPick,
       ...(isPick && view.confidence ? { confidence: view.confidence } : {}),
       details: isPick ? [...o.details, DEMO_ADVICE_LABEL] : o.details,
+      compare: compareOf(o),
     };
   });
   return {

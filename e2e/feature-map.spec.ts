@@ -34,23 +34,21 @@ test("the feature map opens branch by branch, by mouse and keyboard", async ({
 
   const tree = page.getByRole("tree", { name: "What Jane does: Spending & bills" });
   await expect(tree).toBeVisible();
-  const root = tree.locator('[role="treeitem"][aria-level="1"]');
-  await expect(root).toHaveAttribute("aria-expanded", "true");
-  await expect(root).toHaveAccessibleName(/^Spending & bills\s*\d+ things · \d+ for you$/);
-  const branches = tree.locator('[role="treeitem"][aria-level="2"]');
+  // It starts at the branches: no node repeating the area's name (its chip above says it).
+  await expect(tree.getByRole("treeitem", { name: /^Spending & bills/ })).toHaveCount(0);
+  const branches = tree.locator('[role="treeitem"][aria-level="1"]');
   expect(await branches.count()).toBeGreaterThan(1);
-  await expect(tree.locator('[role="treeitem"][aria-level="3"]')).toHaveCount(0);
+  await expect(tree.locator('[role="treeitem"][aria-level="2"]')).toHaveCount(0);
   // One tab stop.
   await expect(tree.locator('[role="treeitem"][tabindex="0"]')).toHaveCount(1);
 
-  // The keyboard: down to a branch, right opens it and goes in, left comes back out.
-  await root.focus();
-  await page.keyboard.press("ArrowDown");
+  // The keyboard: on a branch, right opens it and goes in, left comes back out.
   const first = branches.first();
+  await first.focus();
   await expect(first).toBeFocused();
   await page.keyboard.press("ArrowRight");
   await expect(first).toHaveAttribute("aria-expanded", "true");
-  const features = tree.locator('[role="treeitem"][aria-level="3"]');
+  const features = tree.locator('[role="treeitem"][aria-level="2"]');
   expect(await features.count()).toBeGreaterThan(0);
   await page.keyboard.press("ArrowRight");
   await expect(features.first()).toBeFocused();

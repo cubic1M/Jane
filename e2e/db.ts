@@ -66,6 +66,18 @@ export async function digestEnabled(userId: string): Promise<boolean> {
   }
 }
 
+// How much Jane does on her own (the autopilot level), or null before it's chosen.
+export async function autopilotLevel(userId: string): Promise<string | null> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT autopilot FROM users WHERE id = $1`, [userId]);
+    return rows[0]?.autopilot ?? null;
+  } finally {
+    await client.end();
+  }
+}
+
 export async function userExists(userId: string): Promise<boolean> {
   const client = new Client({ connectionString: E2E_DATABASE_URL });
   await client.connect();
@@ -167,8 +179,9 @@ export async function addJaneMessage(
   await client.connect();
   try {
     await client.query(
-      `INSERT INTO jane_messages (id, user_id, kind, body, refs, actions, dedupe_key)
-       VALUES ($1, $2, $3, $4, $5, $6, $1)`,
+      // Stamped by this machine's clock, as the app stamps its own (the database's may lag).
+      `INSERT INTO jane_messages (id, user_id, kind, body, refs, actions, dedupe_key, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $1, $7)`,
       [
         id,
         userId,
@@ -176,6 +189,7 @@ export async function addJaneMessage(
         message.body,
         JSON.stringify(message.refs),
         JSON.stringify(message.actions),
+        new Date(),
       ],
     );
   } finally {
@@ -231,6 +245,25 @@ export async function addBankNeedingSignIn(userId: string, name: string): Promis
        VALUES ($1, $2, $3, 'not-a-token', $4, 'login_required', now() - interval '3 days', now())`,
       [`pi${id}`, userId, `e2e-item-${id}`, name],
     );
+  } finally {
+    await client.end();
+  }
+}
+
+// Read-only mode: only the demo bank (and trial people) get the concierge flow, so a test of
+// the team's queue makes its CSV import count as the demo bank: its accounts as the demo
+// bank's, under a demo item.
+export async function treatAsDemoBank(userId: string): Promise<void> {
+  const id = crypto.randomUUID().replaceAll("-", "");
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO plaid_items (id, user_id, plaid_item_id, access_token_encrypted, institution_name, updated_at)
+       VALUES ($1, $2, $3, 'demo-token', 'Demo Bank', now())`,
+      [`pi${id}`, userId, `demo-e2e-${id}`],
+    );
+    await client.query(`UPDATE accounts SET source = 'plaid' WHERE user_id = $1`, [userId]);
   } finally {
     await client.end();
   }
@@ -329,7 +362,7 @@ export async function addThemeIdea(userId: string): Promise<void> {
         userId,
         JSON.stringify({
           ask: {
-            headline: "Try $400 of ITA on the news, in practice",
+            headline: "Try $400 of ITA on news, in practice",
             short:
               "After news today: it beat the market in 5 of 7 past events; out in about a month.",
             worthCents: 40000,
@@ -348,6 +381,40 @@ export async function addThemeIdea(userId: string): Promise<void> {
           caps: ["Jane asks first, every time"],
           confidence: { percent: 67, reason: "it beat the market in 5 of 7 past events" },
           trades: [{ ticker: "ITA", side: "buy", amountCents: 40000 }],
+        }),
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
+// A change the person made themselves and marked done (a do-it-yourself decision), so Home's
+// Saved tile says "Saved so far" and opens on where it came from.
+export async function addSavedChange(
+  userId: string,
+  { title, annualCents }: { title: string; annualCents: number },
+): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const finding = `e2e-finding-${userId}-${annualCents}`;
+    await client.query(
+      `INSERT INTO findings (id, user_id, type, key, title, confidence, status, updated_at)
+       VALUES ($1, $2, 'subscription_review', $3, $4, 'high', 'approved', now())`,
+      [finding, userId, `e2e:${annualCents}`, title],
+    );
+    await client.query(
+      `INSERT INTO decisions (id, finding_id, user_id, choice, card_snapshot, diy_done_at)
+       VALUES ($1, $2, $3, 'diy', $4, now())`,
+      [
+        `e2e-decision-${userId}-${annualCents}`,
+        finding,
+        userId,
+        JSON.stringify({
+          title,
+          annualSavingsCents: annualCents,
+          actionType: "cancel_subscription",
         }),
       ],
     );

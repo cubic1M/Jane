@@ -2,12 +2,14 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { formatCents } from "@/lib/money";
-import { provenSavings, type Receipt } from "@/lib/savings-proof";
+import { expectedWhy } from "@/lib/outcomes";
+import { verifiedSavings, type Receipt } from "@/lib/savings-proof";
 import { requireUser } from "@/lib/session";
 import { ShareForm } from "./share-form";
 
-// What Jane saved you (spec step 139): what the person's own transactions prove, each with
-// its receipt, and apart from it what's still an estimate.
+// What Jane saved you (spec step 139, the verified savings record): what the person's own
+// transactions prove, each with its receipt (Jane's own work, and the suggestions the person
+// acted on), and apart from it what's still an estimate.
 
 const KIND_LABEL: Record<Receipt["kind"], string> = {
   refund: "Refund",
@@ -19,15 +21,15 @@ const KIND_LABEL: Record<Receipt["kind"], string> = {
 async function SavedContent() {
   const user = await requireUser();
   await connection();
-  const saved = await provenSavings(user.id);
+  const all = await verifiedSavings(user.id);
+  const saved = all.actions;
+  const record = all.suggestions;
   return (
     <>
       <AppHeader user={user} />
       <section className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">What Jane saved you</h1>
-        <p className="text-4xl font-semibold text-emerald-700">
-          {formatCents(saved.confirmedCents)}
-        </p>
+        <p className="text-4xl font-semibold text-emerald-700">{formatCents(all.confirmedCents)}</p>
         <p className="text-zinc-600 dark:text-zinc-400">
           Confirmed in your own transactions: refunds that came back, and a year of each lower bill
           and cancelled charge.
@@ -36,7 +38,7 @@ async function SavedContent() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Receipts</h2>
-        {saved.confirmed.length === 0 ? (
+        {saved.confirmed.length === 0 && record.confirmed.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">
             Nothing confirmed yet. When a refund comes back or a bill goes down, it shows here.
           </p>
@@ -61,6 +63,35 @@ async function SavedContent() {
                 </span>
               </li>
             ))}
+            {record.confirmed.map((o) => (
+              <li
+                key={o.key}
+                data-saved-outcome={o.status}
+                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800"
+              >
+                <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+                  {o.status === "partial" ? "Partly confirmed" : "Confirmed"}
+                  {o.verifiedPercent !== null ? ` · ${o.verifiedPercent}% sure` : ""}
+                </span>
+                <span className="font-semibold">
+                  {o.title}: {formatCents(o.confirmedCents ?? 0)}
+                  {o.yearly ? " a year" : ""}
+                </span>
+                {o.status === "partial" && (
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                    Expected about {formatCents(o.expectedCents)}; this much shows so far.
+                  </span>
+                )}
+                {o.proof && (
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">{o.proof}</span>
+                )}
+                {o.evidence.map((t) => (
+                  <span key={t.id} className="text-xs text-zinc-500">
+                    Seen: {t.date} · {t.description} · {formatCents(Math.abs(t.amountCents))}
+                  </span>
+                ))}
+              </li>
+            ))}
           </ul>
         )}
       </section>
@@ -68,10 +99,10 @@ async function SavedContent() {
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Still estimates</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          About {formatCents(saved.estimatedCents)} a year more, not counted until your transactions
+          About {formatCents(all.expectedCents)} a year more, not counted until your transactions
           show it.
         </p>
-        {saved.estimated.length > 0 && (
+        {(saved.estimated.length > 0 || record.expected.length > 0) && (
           <ul className="flex flex-col gap-2 text-sm">
             {saved.estimated.map((e) => (
               <li key={e.actionId}>
@@ -79,11 +110,17 @@ async function SavedContent() {
                 <span className="text-zinc-600 dark:text-zinc-400">{e.why}</span>
               </li>
             ))}
+            {record.expected.map((o) => (
+              <li key={o.key} data-saved-outcome={o.status}>
+                <span className="font-medium">{o.title}</span>: about {formatCents(o.expectedCents)}
+                . <span className="text-zinc-600 dark:text-zinc-400">{expectedWhy(o)}</span>
+              </li>
+            ))}
           </ul>
         )}
       </section>
 
-      {saved.notShown.length > 0 && (
+      {(saved.notShown.length > 0 || record.notSeen.length > 0) && (
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-semibold">Didn&apos;t show up</h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -94,6 +131,14 @@ async function SavedContent() {
             {saved.notShown.map((e) => (
               <li key={e.actionId}>
                 <span className="font-medium">{e.title}</span>
+              </li>
+            ))}
+            {record.notSeen.map((o) => (
+              <li key={o.key} data-saved-outcome="not_seen">
+                <span className="font-medium">{o.title}</span>
+                {o.proof ? (
+                  <span className="text-zinc-600 dark:text-zinc-400">: {o.proof}</span>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -16,7 +16,7 @@ import { toolsFor } from "./tool-select";
 
 // Found in the chat QA: "when can i stop working" got nothing for the couple near retirement.
 // It wasn't read as a retirement question, and the planner needed an answered investor
-// profile, which no sample person has. Now the question reaches the planner, and the planner
+// profile, which the sample people didn't have then. Now the question reaches the planner, and the planner
 // answers from their accounts with an age guessed from their stage of life, said as a guess.
 
 const url = process.env.TEST_DATABASE_URL;
@@ -67,6 +67,9 @@ describe.runIf(url)("the retirement planner without an investor profile", () => 
     { timeout: 120_000 },
     async () => {
       const userId = await linked("preretire");
+      // The sample people now come with their investor profile (spec step 129); someone who
+      // hasn't answered it is this person without it.
+      await client.investorProfile.deleteMany({ where: { userId } });
       const out = JSON.parse(
         (await runChatTool(userId, "retirement_plan", {}, { client, now: NOW })).content,
       );

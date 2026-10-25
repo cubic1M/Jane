@@ -9,6 +9,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answer, demoProducts } from "./actions";
 import { ProductForm } from "./product-form";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // What costly products really cost (spec step 215, demo advice): annuities, whole life and
 // advisory fees in dollars, with the surrender charge by year, what the same money would do
@@ -140,12 +142,12 @@ async function Content({
             You paid {a.provider} about {formatCents(a.yearlyCents)} in the last year. Is that a
             whole life policy?
           </span>
-          <button name="yes" value="yes" className={BUTTON}>
+          <SubmitButton name="yes" value="yes" className={BUTTON}>
             Yes
-          </button>
-          <button name="yes" value="no" className={SECONDARY}>
+          </SubmitButton>
+          <SubmitButton name="yes" value="no" className={SECONDARY}>
             No
-          </button>
+          </SubmitButton>
         </form>
       ))}
       {v.advisory && (
@@ -177,9 +179,7 @@ async function Content({
       )}
       {v.demo && v.products.length === 0 && (
         <form action={demoProducts}>
-          <button type="submit" className={BUTTON}>
-            Add demo products
-          </button>
+          <SubmitButton className={BUTTON}>Add demo products</SubmitButton>
         </form>
       )}
       <section className="flex flex-col gap-2">
@@ -193,7 +193,7 @@ async function Content({
 export default function CostlyProductsPage(props: PageProps<"/investments/costly-products">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

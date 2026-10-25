@@ -12,10 +12,15 @@ import { quotesFor, type StoredQuote } from "@/lib/insurance/quotes";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { RESHOP_DAYS_BEFORE_RENEWAL } from "@/config/insurance";
 import { openShops, type Shop } from "@/lib/insurance/shop";
-import { getQuotes, keepPolicy, switchToPick } from "./actions";
+import { ComparisonCards } from "@/components/comparison-cards";
+import type { PolicyKind } from "@/config/insurance";
+import { toComparison } from "@/lib/comparison";
+import { shopCard } from "@/lib/insurance/shop-card";
+import { getQuotes, keepPolicy } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Quotes for one policy (spec step 103), like for like: same cover and deductible, or each
 // difference spelled out. From the stand-in carrier catalog until a licensed partner is
@@ -89,51 +94,27 @@ function QuoteCard({
   );
 }
 
-// Jane's pick from her last reshop (spec step 104): demo advice, labelled, with Yes.
-function PickCard({ shop, policyCarrier }: { shop: Shop; policyCarrier: string }) {
-  if (!shop.pick || shop.savingCents === null) return null;
+// Jane's pick from her last reshop (spec step 104) and the other cheaper quotes, as comparison
+// cards (src/components/comparison-cards.tsx): demo advice, labelled. Choosing one starts the
+// switch (acceptShop with that quote, through src/lib/compare-actions.ts).
+function PickCard({ shop, policy }: { shop: Shop; policy: { carrier: string; kind: PolicyKind } }) {
+  const card = shopCard(shop, policy);
+  const comparison = card ? toComparison(card) : null;
+  if (!comparison) return null;
   return (
-    <section
-      aria-labelledby="pick"
-      className="flex flex-col gap-3 rounded-xl border-2 border-emerald-700 p-4 [overflow-wrap:anywhere]"
-    >
-      <h2 id="pick" className="text-xl font-semibold">
-        Jane&apos;s pick: {shop.pick.carrier.name}
-      </h2>
-      <p className="font-medium">
-        {formatCents(shop.pick.premiumCents)}{" "}
-        {PREMIUM_FREQUENCIES[shop.pick.premiumFrequency].label}, {formatCents(shop.savingCents)} a
-        year less for the same cover.
-      </p>
-      <ul className="list-disc pl-5 text-sm">
-        {shop.why.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-      <DemoAdviceLabel />
+    <section aria-label="Jane's pick" className="flex flex-col gap-3">
+      <ComparisonCards comparison={comparison} />
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Say yes and Jane switches you. Your {policyCarrier} policy stays in place until the new one
-        is.
+        Choose one and Jane switches you. Your {policy.carrier} policy stays in place until the new
+        one is.
       </p>
-      <div className="flex flex-wrap gap-3">
-        <form action={switchToPick}>
-          <input type="hidden" name="shopId" value={shop.id} />
-          <input type="hidden" name="policyId" value={shop.policyId} />
-          <button type="submit" className={BUTTON}>
-            Yes, switch
-          </button>
-        </form>
-        <form action={keepPolicy}>
-          <input type="hidden" name="shopId" value={shop.id} />
-          <input type="hidden" name="policyId" value={shop.policyId} />
-          <button
-            type="submit"
-            className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 font-semibold dark:border-zinc-700"
-          >
-            Not now
-          </button>
-        </form>
-      </div>
+      <form action={keepPolicy}>
+        <input type="hidden" name="shopId" value={shop.id} />
+        <input type="hidden" name="policyId" value={shop.policyId} />
+        <SubmitButton className="inline-flex h-11 items-center justify-center border border-zinc-400 px-6 font-semibold dark:border-zinc-600">
+          Not now
+        </SubmitButton>
+      </form>
     </section>
   );
 }
@@ -223,7 +204,7 @@ async function QuotesContent({
                   That pick was already answered, or its quotes expired.
                 </p>
               )}
-              {shop && <PickCard shop={shop} policyCarrier={policy.carrier} />}
+              {shop && <PickCard shop={shop} policy={policy} />}
               {quotes.length > 0 && (
                 <ul className="flex flex-col gap-3">
                   {quotes.map((q) => (
@@ -233,9 +214,9 @@ async function QuotesContent({
               )}
               <form action={getQuotes}>
                 <input type="hidden" name="policyId" value={policy.id} />
-                <button type="submit" className={BUTTON}>
+                <SubmitButton className={BUTTON}>
                   {quotes.length > 0 ? "Get fresh quotes" : "Get quotes"}
-                </button>
+                </SubmitButton>
               </form>
             </>
           )}
@@ -248,7 +229,7 @@ async function QuotesContent({
 export default function QuotesPage({ searchParams }: PageProps<"/insurance/quotes">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <QuotesContent searchParams={searchParams} />
       </Suspense>
     </main>

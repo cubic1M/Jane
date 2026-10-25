@@ -7,6 +7,7 @@ import { formatCents } from "@/lib/money";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { requireUser } from "@/lib/session";
 import { AnswersForm, IntentButton } from "./forms";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Property tax that's too high (spec step 221): the assessment against the market value,
 // the appeal window, the drafted appeal, and exemptions (demo advice). Nothing is filed
@@ -176,7 +177,7 @@ async function Content() {
 export default function PropertyPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content />
       </Suspense>
     </main>

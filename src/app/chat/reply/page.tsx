@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { viewReplyLink } from "@/lib/jane-agent/reply-links";
 import { getCurrentUser } from "@/lib/session";
 import { ReplyForm } from "./reply-form";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The link is private to the person: never indexed.
 export const metadata = { title: "Answer Jane", robots: { index: false, follow: false } };
@@ -56,6 +57,28 @@ async function Content({
     );
   }
 
+  // Used: the person usually lands here straight after tapping (the page reloads once the
+  // answer goes through), so it says what happened rather than only that the link is spent.
+  if (view.state === "used" && (view.note || view.answeredWith)) {
+    return (
+      <>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {view.answeredWith ? `Answered: ${view.answeredWith}` : "Answered"}
+        </h1>
+        {view.note && (
+          <p role="status" className="font-semibold">
+            <span aria-hidden="true">&gt; </span>
+            {view.note}
+          </p>
+        )}
+        <p className="text-zinc-600 dark:text-zinc-400">Each link works once.</p>
+        <Link href={`/chat#${view.messageId}`} className={LINK}>
+          Open the chat
+        </Link>
+      </>
+    );
+  }
+
   const text = {
     invalid: ["This link doesn't work", "Your messages from Jane are always in the chat."],
     expired: ["This link has expired", "Links from Jane's emails work for a few days."],
@@ -81,7 +104,7 @@ async function Content({
 export default function ReplyPage({ searchParams }: PageProps<"/chat/reply">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-4 py-16">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </main>

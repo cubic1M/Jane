@@ -20,6 +20,7 @@ import { loadRetirement } from "@/lib/investments/retirement";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { ROTH_WORDS, type Range } from "@/planning/retirement";
+import { LoadingBar } from "@/components/loading-bar";
 
 // On track for retirement? (spec step 132, demo advice). What the retirement accounts
 // could grow to by 67 as a range in today's dollars, against a target; the match, Roth or
@@ -27,7 +28,10 @@ import { ROTH_WORDS, type Range } from "@/planning/retirement";
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 const CARD = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-const span = (r: Range) => `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;
+const span = (r: Range) =>
+  r.lowCents === r.highCents
+    ? formatCents(r.lowCents)
+    : `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;
 const STATUS = {
   on_track: "On track, even at the low end",
   maybe: "On track only if returns are good",
@@ -79,7 +83,9 @@ async function RetirementContent() {
           <section className="grid gap-3 sm:grid-cols-2">
             <div className={CARD}>
               <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                By {retirement.retirementAge}, in today&apos;s dollars
+                {retirement.years === 0
+                  ? "In your retirement accounts now"
+                  : `By ${retirement.retirementAge}, in today's dollars`}
               </span>
               <span className="text-2xl font-semibold">{span(retirement.projection)}</span>
               <span className="text-xs text-zinc-500">
@@ -109,7 +115,16 @@ async function RetirementContent() {
 
           <section className="flex flex-col gap-3 rounded-xl border border-amber-300 p-4 dark:border-amber-800">
             <h2 className="text-xl font-semibold">What to change</h2>
-            {retirement.changes.length === 0 ? (
+            {retirement.changes.length === 0 && retirement.years === 0 ? (
+              <p className="text-sm">
+                You&apos;re at or past {retirement.retirementAge}: what matters now is the paycheck
+                your savings pay.{" "}
+                <Link href="/investments/retirement-income" className={LINK}>
+                  See your retirement income
+                </Link>
+                .
+              </p>
+            ) : retirement.changes.length === 0 ? (
               <p className="text-sm">Nothing: keep going as you are.</p>
             ) : (
               <ol className="flex list-decimal flex-col gap-3 pl-5 text-sm">
@@ -123,14 +138,16 @@ async function RetirementContent() {
             {retirement.rothOrTraditional && (
               <p className="text-sm">{ROTH_WORDS[retirement.rothOrTraditional]}</p>
             )}
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Room left this year: {formatCents(retirement.roomCents)} (the {LIMITS_YEAR} limit is{" "}
-              {formatCents(EMPLOYEE_DEFERRAL_LIMIT_CENTS)}
-              {retirement.catchUpCents > 0
-                ? `, plus ${formatCents(retirement.catchUpCents)} catch-up at your age`
-                : ""}
-              ).
-            </p>
+            {retirement.years > 0 && (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Room left this year: {formatCents(retirement.roomCents)} (the {LIMITS_YEAR} limit is{" "}
+                {formatCents(EMPLOYEE_DEFERRAL_LIMIT_CENTS)}
+                {retirement.catchUpCents > 0
+                  ? `, plus ${formatCents(retirement.catchUpCents)} catch-up at your age`
+                  : ""}
+                ).
+              </p>
+            )}
             <DemoAdviceLabel />
           </section>
 
@@ -168,7 +185,7 @@ async function RetirementContent() {
 export default function RetirementPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <RetirementContent />
       </Suspense>
     </main>

@@ -14,6 +14,7 @@ import { listQueue } from "@/lib/concierge";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { DecisionError, undoPick } from "@/lib/decisions";
 import { describePlanOptions } from "@/lib/plan-options";
 import { loadFit } from "./fit";
 import { fitCard, fitCardProblems } from "./fit-card";
@@ -149,6 +150,39 @@ describe.runIf(url)("picking a loan option", { timeout: 60_000 }, () => {
     await expect(
       pickFitOption(reyes, card.topic, card.options[0].id, { client, now: NOW }),
     ).rejects.toThrow(new FitPickError("You've already chosen one of these this month."));
+  });
+
+  it("takes a pick back with Revert while it's queued, and the same choice can be made again", async () => {
+    const view = await loadFit(
+      reyes,
+      { need: "personal", amountCents: 800_000 },
+      { client, now: NOW },
+    );
+    const card = fitCard(view, true)!;
+    const first = await pickFitOption(reyes, card.topic, card.options[0].id, { client, now: NOW });
+    await undoPick(reyes, first.decisionId, { client, now: NOW });
+    expect(await client.action.count({ where: { decisionId: first.decisionId } })).toBe(0);
+    const undone = await client.decision.findUniqueOrThrow({
+      where: { id: first.decisionId },
+      include: { finding: true },
+    });
+    expect(undone.undoneAt).not.toBeNull();
+    expect(undone.finding.status).toBe("declined");
+    // Picked again, another option this time: allowed, and queued.
+    const again = await pickFitOption(reyes, card.topic, card.options[1].id, { client, now: NOW });
+    expect(again.actionId).not.toBeNull();
+    // Not twice, and not someone else's.
+    await expect(undoPick(reyes, first.decisionId, { client, now: NOW })).rejects.toThrow(
+      DecisionError,
+    );
+    await expect(undoPick(real, again.decisionId, { client, now: NOW })).rejects.toThrow(
+      DecisionError,
+    );
+    // Not once the team has started.
+    await client.action.update({ where: { id: again.actionId! }, data: { status: "in_progress" } });
+    await expect(undoPick(reyes, again.decisionId, { client, now: NOW })).rejects.toThrow(
+      "the team has started",
+    );
   });
 
   it("refuses an option that isn't on the card, a topic it can't read, and outside advice mode", async () => {

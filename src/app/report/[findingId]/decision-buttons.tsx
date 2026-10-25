@@ -22,6 +22,8 @@ export function DecisionButtons({
   diy = false,
   switchTo,
   yesLabel = "Yes, do this for me",
+  readOnly = false,
+  showLabel = "Show me how",
 }: {
   findingId: string;
   cardHash: string;
@@ -31,6 +33,11 @@ export function DecisionButtons({
   // The compared option picked to switch to, or "keep" (spec step 76).
   switchTo?: string;
   yesLabel?: string;
+  // Read-only mode (a real account): nobody acts for them, so the yes is "Show me how", which
+  // records it as theirs to do and opens the steps and drafts here.
+  readOnly?: boolean;
+  // The yes in read-only mode.
+  showLabel?: string;
 }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: "idle" });
@@ -62,14 +69,18 @@ export function DecisionButtons({
           ...(choice === "yes" && switchTo ? { switchTo } : {}),
         }),
       });
-      const body = (await response.json()) as { decisionId?: string; error?: string };
+      const body = (await response.json()) as {
+        decisionId?: string;
+        error?: string;
+        diy?: boolean;
+      };
       if (!response.ok || !body.decisionId) {
         setState({ kind: "error", message: body.error ?? "Something went wrong. Try again." });
         return;
       }
-      if (choice === "yes") {
+      if (choice === "yes" && !body.diy) {
         router.push("/actions");
-      } else if (choice === "diy") {
+      } else if (choice === "diy" || body.diy) {
         // The card page shows the kit once the answer is saved.
         setState({ kind: "idle" });
         router.refresh();
@@ -125,7 +136,7 @@ export function DecisionButtons({
           disabled={state.kind === "sending"}
           className={PRIMARY_BUTTON}
         >
-          {yesLabel}
+          {readOnly ? showLabel : yesLabel}
         </button>
         <button
           type="button"
@@ -136,7 +147,7 @@ export function DecisionButtons({
           No thanks
         </button>
       </div>
-      {diy && (
+      {diy && !readOnly && (
         <button
           type="button"
           onClick={() => decide("diy")}

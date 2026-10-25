@@ -8,6 +8,8 @@ import { adviceMode } from "@/lib/advice-mode";
 import { latestCheckup, markCheckupSeen } from "@/lib/insurance/checkups";
 import { requireUser } from "@/lib/session";
 import { checkAgain } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The coverage checkup (spec step 106): Jane's recommendations on the person's cover, each
 // with what it costs or saves and the risk it changes. Demo advice only, labelled.
@@ -83,9 +85,7 @@ async function CheckupContent() {
             </section>
           )}
           <form action={checkAgain}>
-            <button type="submit" className={BUTTON}>
-              Check again
-            </button>
+            <SubmitButton className={BUTTON}>Check again</SubmitButton>
           </form>
         </>
       )}
@@ -96,7 +96,7 @@ async function CheckupContent() {
 export default function CheckupPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <CheckupContent />
       </Suspense>
     </main>

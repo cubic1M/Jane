@@ -103,7 +103,19 @@ export type FrameMessage =
   | { type: "jane:refresh" }
   // The framed chat is listening: the page tells it where it is.
   | { type: "jane:ready" }
-  | { type: "jane:ask"; text: string };
+  // A hint shown greyed after what's typed until the person types (the home hub's "[amount] on
+  // [what]"); it's never sent.
+  | { type: "jane:ask"; text: string; hint?: string }
+  // "Ask Jane" from the giant tree: send this now (no Send to press), or find where it was
+  // asked before; the chat says where the question landed, and when Jane starts and finishes.
+  | { type: "jane:send"; text: string }
+  | { type: "jane:find"; text: string }
+  | { type: "jane:bubble"; x: number; y: number }
+  // Where the message box is once a question waits in it (jane:ask), for a dotted line to it
+  // (the home hub's "What are you aiming to spend?").
+  | { type: "jane:box"; x: number; y: number }
+  | { type: "jane:answering" }
+  | { type: "jane:answered" };
 
 export function isFrameMessage(data: unknown): data is FrameMessage {
   if (!data || typeof data !== "object") return false;
@@ -118,9 +130,22 @@ export function isFrameMessage(data: unknown): data is FrameMessage {
       );
     case "jane:refresh":
     case "jane:ready":
+    case "jane:answering":
+    case "jane:answered":
       return true;
     case "jane:ask":
+      return (
+        typeof m.text === "string" &&
+        m.text.length > 0 &&
+        m.text.length <= 300 &&
+        (m.hint === undefined || (typeof m.hint === "string" && m.hint.length <= 60))
+      );
+    case "jane:send":
+    case "jane:find":
       return typeof m.text === "string" && m.text.length > 0 && m.text.length <= 300;
+    case "jane:box":
+    case "jane:bubble":
+      return Number.isFinite(m.x) && Number.isFinite(m.y);
     default:
       return false;
   }

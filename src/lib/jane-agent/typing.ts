@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import { randomUUID } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import {
@@ -262,6 +263,7 @@ async function answer(
     onEvent,
     primerMs,
     advice: await adviceMode(userId, { client }),
+    concierge: await conciergeMode(userId, { client }),
     style: styleInstructions(style),
     topic,
   }).catch((error): Awaited<ReturnType<typeof askClaudeInChat>> => {

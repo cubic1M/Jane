@@ -24,9 +24,16 @@ export type MapLayout = {
 const right = (b: Box) => ({ x: b.x + b.w, y: b.y + b.h / 2 });
 const left = (b: Box) => ({ x: b.x, y: b.y + b.h / 2 });
 
-export function layoutMap(map: TreeShape, open: string | null, viewWidth: number): MapLayout {
+// `rootless`: no node for the area itself, the branches at the left edge (the feature map on
+// /home/map: the area's chip above it already names it).
+export function layoutMap(
+  map: TreeShape,
+  open: string | null,
+  viewWidth: number,
+  rootless = false,
+): MapLayout {
   const { root, group, feature } = MAP_NODE;
-  const branchX = root.w + MAP_GAP.column;
+  const branchX = rootless ? 0 : root.w + MAP_GAP.column;
   const featureX = branchX + group.w + MAP_GAP.column;
   const branchesH = Math.max(
     root.h,
@@ -48,12 +55,14 @@ export function layoutMap(map: TreeShape, open: string | null, viewWidth: number
     w: group.w,
     h: group.h,
   }));
-  const nodes: PlacedNode[] = [rootBox, ...branchBoxes];
-  const edges: Edge[] = branchBoxes.map((b) => ({
-    id: `${map.key}>${b.id}`,
-    from: right(rootBox),
-    to: left(b),
-  }));
+  const nodes: PlacedNode[] = rootless ? [...branchBoxes] : [rootBox, ...branchBoxes];
+  const edges: Edge[] = rootless
+    ? []
+    : branchBoxes.map((b) => ({
+        id: `${map.key}>${b.id}`,
+        from: right(rootBox),
+        to: left(b),
+      }));
 
   const openIndex = map.branches.findIndex((b) => b.id === open);
   let height = branchesH;

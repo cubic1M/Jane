@@ -6,7 +6,10 @@ import { PEOPLE } from "@/config/people";
 import {
   HISTORY_FLOOR_BY_TOPIC,
   HISTORY_MIN_FACTOR,
+  KIND_MAX_FACTOR,
+  KIND_MIN_FACTOR,
   LOW_CONFIDENCE_PERCENT,
+  PEOPLE_LINE_MIN_SHOWN,
   SAFETY_HISTORY_FLOOR,
   SUGGESTIONS_PER_DAY,
 } from "@/config/suggestions";
@@ -14,7 +17,9 @@ import type { Suggestion } from "@/detectors/contract";
 import { reportFor } from "@/detectors/harness";
 import {
   historyFactor,
+  kindFactor,
   mergeOverlaps,
+  peopleLine,
   pickForToday,
   rankSuggestions,
   scoreOf,
@@ -261,5 +266,57 @@ describe("expected values and requirements in ranking", () => {
     expect(scoreOf(expected)).toBeGreaterThan(scoreOf(loss));
     expect(scoreOf(expected)).toBe(Math.round(500_000 * 0.8));
     expect(scoreOf({ ...expected, required: true })).toBe(scoreOf(expected) * 3);
+  });
+});
+
+describe("the learning loop: what everyone does with each kind", () => {
+  const stat = (topic: string, shown: number, acted: number, decided = 0, paidOff = 0) =>
+    [topic, { topic, shown, acted, decided, paidOff }] as const;
+
+  it("leaves a kind with no history alone, and one at its priors near 1", () => {
+    expect(kindFactor("bank_fees")).toBe(1);
+    expect(kindFactor("bank_fees", new Map([stat("bank_fees", 10, 3, 10, 6)]))).toBeCloseTo(1);
+  });
+
+  it("raises kinds people act on and that pay off, lowers the others, within bounds", () => {
+    const stats = new Map([
+      stat("bank_fees", 40, 30, 20, 18),
+      stat("price_increase", 40, 2, 10, 1),
+      stat("subscriptions", 4000, 4000, 4000, 4000),
+      stat("late_fees", 4000, 0, 4000, 0),
+    ]);
+    expect(kindFactor("bank_fees", stats)).toBeGreaterThan(1.2);
+    expect(kindFactor("price_increase", stats)).toBeLessThan(0.8);
+    expect(kindFactor("subscriptions", stats)).toBe(KIND_MAX_FACTOR);
+    expect(kindFactor("late_fees", stats)).toBe(KIND_MIN_FACTOR);
+  });
+
+  it("feeds ranking: of two equal suggestions, the kind that pays off comes first", () => {
+    const fees = make({ topic: "bank_fees" });
+    const rise = make({ topic: "price_increase" });
+    expect(rankSuggestions([fees, rise]).map((r) => r.suggestion.topic)[0]).toBe("bank_fees");
+    const kinds = new Map([
+      stat("bank_fees", 40, 2, 10, 1),
+      stat("price_increase", 40, 30, 20, 18),
+    ]);
+    expect(rankSuggestions([fees, rise], { kinds }).map((r) => r.suggestion.topic)).toEqual([
+      "price_increase",
+      "bank_fees",
+    ]);
+    expect(scoreOf(fees, {}, [], kinds)).toBe(
+      Math.round(100_000 * 0.8 * kindFactor("bank_fees", kinds)),
+    );
+  });
+
+  it("says what people did on the card, once there's enough to say", () => {
+    expect(
+      peopleLine("bank_fees", new Map([stat("bank_fees", PEOPLE_LINE_MIN_SHOWN - 1, 5)])),
+    ).toBeNull();
+    expect(peopleLine("bank_fees", new Map([stat("bank_fees", 10, 7)]))).toBe(
+      "People acted on this 7 of 10 times it was shown.",
+    );
+    expect(peopleLine("bank_fees", new Map([stat("bank_fees", 37, 26, 20, 15)]))).toBe(
+      "People acted on this about 7 of every 10 times it was shown. About 8 of every 10 who did saw the saving in their transactions.",
+    );
   });
 });

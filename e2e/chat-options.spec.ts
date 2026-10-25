@@ -48,28 +48,27 @@ test("a pick on the options card is instant, and the next card follows within 10
   await page.getByRole("link", { name: "See options" }).click();
   const shown = page.getByTestId("option-card");
   await expect(shown).toBeVisible();
-  const title = ((await shown.getByRole("heading", { level: 3 }).textContent()) ?? "").trim();
-  const rows = await shown.locator("li:has(form)").evaluateAll((items) =>
-    items.map((li) => {
-      const value = (name: string) =>
-        (li.querySelector(`input[name="${name}"]`) as HTMLInputElement | null)?.value ?? "";
-      const lines = [...li.querySelectorAll(":scope > p")].map((p) => p.textContent ?? "");
-      return {
-        need: value("need"),
-        policy: value("policy"),
-        id: value("option"),
-        headline: lines[0].replace(" · Jane's pick", ""),
-        isPick: lines[0].includes("Jane's pick"),
-        why: lines[1] ?? "",
-      };
-    }),
+  const compared = shown.getByTestId("comparison");
+  const title = ((await compared.getByRole("heading", { level: 3 }).textContent()) ?? "").trim();
+  const need = (await compared.getAttribute("data-topic")) ?? "";
+  const policy = (await compared.getAttribute("data-policy")) ?? "";
+  // A card saved as older chat messages were (no comparison numbers): the floating pick card.
+  const rows = await compared.locator("li[data-option-id]").evaluateAll((items) =>
+    items.map((li) => ({
+      id: li.getAttribute("data-option-id") ?? "",
+      name: li.querySelector("h4")?.textContent ?? "",
+      year: li.querySelector('[data-row="year"] dd')?.textContent ?? "",
+      isPick: (li.textContent ?? "").includes("JANE'S PICK"),
+      why: li.querySelector("[id^=why-] p")?.textContent ?? "",
+    })),
   );
-  expect(rows.length).toBeGreaterThanOrEqual(2);
+  // Her pick first, as the chat's card has it.
+  rows.sort((a, b) => Number(b.isPick) - Number(a.isPick));
   const options = rows.map((r) => ({
     id: r.id,
-    label: r.headline.split(",")[0],
-    headline: r.headline,
-    priceCents: Math.round(Number((DOLLARS.exec(r.headline)?.[1] ?? "0").replace(/,/g, "")) * 100),
+    label: r.name,
+    headline: `${r.name}, ${r.year} a year`,
+    priceCents: Math.round(Number((DOLLARS.exec(r.year)?.[1] ?? "0").replace(/,/g, "")) * 100),
     pricePeriod: "year",
     facts: [],
     whyThisOne: r.why,
@@ -86,11 +85,11 @@ test("a pick on the options card is instant, and the next card follows within 10
       options: {
         kind: "insurance",
         title,
-        topic: rows[0].need,
-        newCover: !rows[0].policy,
+        topic: need,
+        newCover: !policy,
         advice: true,
         options,
-        ...(rows[0].policy ? { policyId: rows[0].policy } : {}),
+        ...(policy ? { policyId: policy } : {}),
       },
     },
     actions: [
@@ -128,7 +127,14 @@ test("a pick on the options card is instant, and the next card follows within 10
 
   // Behind it, the pick went to the team, and the chat's history shows what was chosen.
   await expect(answer.getByText("You chose:")).toBeVisible({ timeout: 30_000 });
-  await expect(answer.getByText(options[0].label)).toBeVisible();
+  // The options stay, greyed, the chosen one marked, with Revert (founder, 2026-10-25).
+  const choices = answer.locator("[data-chosen-choices] button");
+  await expect(choices).toHaveCount(options.length);
+  await expect(answer.locator('[data-chosen-choices] [aria-pressed="true"]')).toContainText(
+    options[0].label,
+  );
+  for (const choice of await choices.all()) await expect(choice).toBeDisabled();
+  await expect(answer.getByRole("button", { name: /Revert/ })).toBeVisible();
   await expect(answer.getByText(/My team will/)).toBeVisible();
 
   // Reloaded, the card stays gone.
@@ -137,8 +143,10 @@ test("a pick on the options card is instant, and the next card follows within 10
 });
 
 // Gap audit: switching to cheaper insurance is a pick-one card too, Jane's pick first and the
-// other cheaper quotes after; a pick starts the switch.
-test("cheaper car insurance comes as a pick-one card, and a pick starts the switch", async ({
+// other cheaper quotes after; a pick starts the switch. Its card carries the comparison's
+// numbers, so on a phone it's the comparison sheet (founder, 2026-10-24): a stack to swipe, a
+// Compare toggle that lines the options up, and one tap to choose, shown at once.
+test("cheaper car insurance comes as comparison cards, and a pick starts the switch", async ({
   context,
   page,
   baseURL,
@@ -161,20 +169,37 @@ test("cheaper car insurance comes as a pick-one card, and a pick starts the swit
   const ask = page.getByRole("textbox", { name: "Message Jane" });
   await ask.fill("find me cheaper car insurance");
   await ask.press("Enter");
-  const card = page.getByRole("region", { name: /^Switch your .+ car insurance$/ });
-  await expect(card).toBeVisible({ timeout: 30_000 });
-  const showing = card.locator('[data-card-state="showing"]');
-  await expect(showing.getByText("Jane's pick")).toBeVisible();
-  const headline = (await showing.getByRole("heading", { level: 3 }).textContent()) ?? "";
-  expect(headline).toMatch(/, \$[\d,]+\/yr$/);
-  const carrier = headline.split(",")[0];
+  const sheet = page.getByRole("dialog", { name: /^Switch your .+ car insurance$/ });
+  await expect(sheet).toBeVisible({ timeout: 30_000 });
+  const cards = sheet.locator("li[data-option-id]");
+  const first = cards.first();
+  await expect(first.getByText("JANE'S PICK")).toBeVisible();
+  await expect(first.getByText("/mo")).toBeVisible();
+  const carrier = ((await first.getByRole("heading", { level: 4 }).textContent()) ?? "").trim();
+  // On a phone: a stack to swipe through, the page itself not wider than the screen.
+  if ((await cards.count()) > 1) {
+    const list = sheet.getByRole("list").first();
+    expect(await list.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  }
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+  ).toBeLessThanOrEqual(0);
+  // Compare lines them up as a table, and back.
+  await sheet.getByRole("button", { name: "▥ Compare" }).click();
+  await expect(sheet.getByTestId("compare-table")).toBeVisible();
+  await sheet.getByRole("button", { name: "▤ Cards" }).click();
 
   const started = Date.now();
-  await showing.getByRole("button", { name: "Pick this one" }).click();
-  await expect(card).toHaveCount(0, { timeout: 100 });
+  await first.getByRole("button", { name: `Choose ${carrier}` }).click();
+  await expect(first).toHaveAttribute("data-chosen", "", { timeout: 100 });
+  await expect(sheet.getByRole("status")).toContainText(`Chosen: ${carrier}`, { timeout: 100 });
   expect(Date.now() - started).toBeLessThan(1_000);
   // Behind it, the switch started, and the chat's history says what was chosen.
+  await expect(sheet.getByRole("status")).toContainText("I'm switching you now", {
+    timeout: 30_000,
+  });
+  await sheet.getByRole("button", { name: "Close" }).click();
+  await expect(sheet).toHaveCount(0);
   const answer = page.getByRole("listitem").filter({ hasText: "You chose:" }).last();
   await expect(answer).toContainText(carrier, { timeout: 30_000 });
-  await expect(answer).toContainText("I'm switching you now");
 });

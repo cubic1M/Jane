@@ -99,7 +99,7 @@ export async function decideTax(
         ? made(
             `Itemize. ${fact} Itemizing lowers your federal tax by about ${roundDollars(worth)}.`,
             [itemized, standard, worth],
-            "/taxes/home",
+            "/taxes?focus=life:home",
           )
         : made(
             `Take the standard deduction. ${fact} Itemizing would cost you about ${roundDollars(worth)} more.`,
@@ -137,13 +137,13 @@ export async function decideTax(
         return made(
           "I can't tell yet: I need to see your pay stubs to check your withholding.",
           [],
-          "/taxes#withholding",
+          "/taxes?focus=estimate:withholding",
         );
       if (check.status === "on_track")
         return made(
           `No, it's about right. You're on course for ${e.refundCents >= 0 ? `a refund of ${roundDollars(e.refundCents)}` : `owing ${roundDollars(-e.refundCents)}`}.`,
           [e.refundCents],
-          "/taxes#withholding",
+          "/taxes?focus=estimate:withholding",
         );
       const change = check.thisYear ?? check.fromJanuary;
       const per = Math.abs(change.perPaycheckCents);
@@ -151,12 +151,12 @@ export async function decideTax(
         ? made(
             `Yes, lower it. You're on course for a refund of ${roundDollars(e.refundCents)}, your own money held until spring. A new W-4 would put about ${roundDollars(per)} more in each paycheck.`,
             [e.refundCents, per],
-            "/taxes#withholding",
+            "/taxes?focus=estimate:withholding",
           )
         : made(
             `Yes, raise it. You're on course to owe about ${roundDollars(-e.refundCents)} in April. A new W-4 would take about ${roundDollars(per)} more from each paycheck to cover it.`,
             [-e.refundCents, per],
-            "/taxes#withholding",
+            "/taxes?focus=estimate:withholding",
           );
     }
     case "estimated": {
@@ -252,7 +252,7 @@ export async function decideTax(
       const gate = recommend(
         "Harvesting a loss means selling a holding below what you paid.",
         [],
-        "/taxes#investments",
+        "/taxes?focus=estimate:investments",
       );
       if (gate) return gate;
       const top = inv.harvest[0];
@@ -260,12 +260,12 @@ export async function decideTax(
         ? made(
             `Yes, ${inv.harvest.length === 1 ? "one holding is" : `${inv.harvest.length} holdings are`} below cost. Selling ${top.holding.name} would realise a loss of ${roundDollars(top.lossCents)}, which lowers your tax by about ${roundDollars(Math.round(Math.min(top.lossCents, 300_000) * e.marginalRate))}. Don't buy the same thing back for 30 days.`,
             [top.lossCents],
-            "/taxes#investments",
+            "/taxes?focus=estimate:investments",
           )
         : made(
             "No. I don't see a holding in a taxable account that's below what you paid, so there's no loss to harvest.",
             [],
-            "/taxes#investments",
+            "/taxes?focus=estimate:investments",
           );
     }
     case "donate_stock": {
@@ -273,7 +273,7 @@ export async function decideTax(
       const gate = recommend(
         `You've given ${formatCents(g.totalCents)} this year.`,
         [g.totalCents],
-        "/taxes#giving",
+        "/taxes?focus=life:giving",
       );
       if (gate) return gate;
       const shares = g.options.find((o) => o.key === "shares");
@@ -281,12 +281,12 @@ export async function decideTax(
         ? made(
             `Yes. Giving shares you've held over a year, instead of cash, saves about ${roundDollars(shares.savesCents)} because you skip the tax on their gain.`,
             [shares.savesCents],
-            "/taxes#giving",
+            "/taxes?focus=life:giving",
           )
         : made(
             `Not at your level of giving. You've given ${formatCents(g.totalCents)} this year, and the standard deduction is bigger than your itemized total, so the gift wouldn't change your tax.`,
             [g.totalCents],
-            "/taxes#giving",
+            "/taxes?focus=life:giving",
           );
     }
     case "home_office": {
@@ -330,7 +330,7 @@ export async function decideTax(
       return made(
         `Your federal tax comes to ${roundDollars(tax)} and about ${roundDollars(paid)} is being withheld, so the ${e.refundCents >= 0 ? "refund" : "bill"} is ${roundDollars(Math.abs(e.refundCents))}. The more that comes out of each paycheck beyond your tax, the bigger the refund; deductions and credits you can claim shrink the tax itself.`,
         [tax, paid, e.refundCents],
-        "/taxes#withholding",
+        "/taxes?focus=estimate:withholding",
       );
     }
     case "effective_rate": {
@@ -416,12 +416,12 @@ export async function decideTax(
         ? made(
             `All ${roundDollars(m.cents)} of your mortgage interest can be deducted, but only if you itemize; the limit applies to loans over $750,000. ${e.deduction.kind === "itemized" ? "You're itemizing, so it counts." : "You're taking the standard deduction, so it doesn't change your tax."}`,
             [m.cents],
-            "/taxes/home",
+            "/taxes?focus=life:home",
           )
         : made(
             "I don't see a mortgage in your accounts, so there's no mortgage interest to deduct.",
             [],
-            "/taxes/home",
+            "/taxes?focus=life:home",
           );
     }
   }

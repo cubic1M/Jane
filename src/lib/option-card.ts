@@ -21,6 +21,28 @@ export type CardOption = {
   confidence?: { percent: number; reason: string };
   // For "More details": the comparison and the working.
   details: string[];
+  // The numbers the comparison cards line up side by side and re-rank by (src/lib/comparison.ts).
+  // Every builder sets it; a card saved in an older chat message may not have it.
+  compare?: OptionCompare;
+};
+
+// One row of a comparison card: "APR" "6.90% fixed". Rows with the same key line up across the
+// options, so the ones that differ can be told from the ones that don't.
+export type CompareRow = { key: string; label: string; value: string };
+
+export type OptionCompare = {
+  // The headline number: what it costs a month (insurance: the yearly premium over twelve).
+  monthlyCents: number;
+  // What it costs in all: a year of premium, or everything paid over a loan's term, fees in.
+  totalCents: number;
+  // How much cover it gives, comparable within one card only (higher is more); null for loans.
+  coverScore: number | null;
+  // Months until the debt is gone (0: paid off now); null for insurance.
+  payoffMonths: number | null;
+  // Three or four rows: cover and deductible, or APR, term, total cost and fees.
+  rows: CompareRow[];
+  // Who it suits, in one short line: "Best for the lowest bill".
+  bestFor: string;
 };
 
 export type OptionCard = {

@@ -173,6 +173,15 @@ export const PAGES: Record<"plan" | "kinds" | "costs", readonly Page[]> = {
   ],
 };
 
+// The old section anchors (/investments#backtests-heading in Jane's messages) and the item
+// each opens.
+export const INVESTING_ANCHORS: Record<string, string> = {
+  "backtests-heading": "strategies:backtests",
+  "rule-replay-heading": "strategies:rules",
+  "level-strategies-heading": "strategies:levels",
+  "returns-heading": "done:returns",
+};
+
 // Jane's ideas by topic, in six words or fewer; the detector's own line is the summary.
 export const TOPIC_LABELS: Record<string, string> = {
   employer_match: "Get the full match",
