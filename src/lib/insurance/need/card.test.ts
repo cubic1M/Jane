@@ -77,4 +77,26 @@ describe("insuranceCard", () => {
     const { need, set } = await setAndNeed();
     expect(insuranceCard({ ...set, policyId: null }, need, true).newCover).toBe(true);
   });
+
+  it("carries the comparison cards' numbers: a month, a year, how much cover", async () => {
+    const { need, set } = await setAndNeed();
+    const card = insuranceCard(set, need, true);
+    for (const o of card.options) {
+      const source = set.options.find((x) => x.id === o.id)!;
+      expect(o.compare).toMatchObject({
+        monthlyCents: Math.round(source.annualPremiumCents / 12),
+        totalCents: source.annualPremiumCents,
+        payoffMonths: null,
+      });
+      expect(o.compare!.rows.map((r) => r.key)).toEqual(["cover", "deductible", "year", "rated"]);
+    }
+    // More injury liability is more cover.
+    const byCover = [...card.options].sort(
+      (a, b) => a.compare!.coverScore! - b.compare!.coverScore!,
+    );
+    const perPerson = byCover.map(
+      (o) => set.options.find((x) => x.id === o.id)!.coverage.bodilyInjuryPerPerson as number,
+    );
+    expect(perPerson).toEqual([...perPerson].sort((a, b) => a - b));
+  });
 });

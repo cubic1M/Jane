@@ -79,6 +79,21 @@ describe("shopCard", () => {
     for (const o of set.options) expect(o.headline.match(/\$[\d,]+/g)).toHaveLength(1);
   });
 
+  it("carries the comparison cards' numbers, the same cover counted as more cover", () => {
+    const card = shopCard(shop(), policy)!;
+    for (const o of card.options) {
+      expect(o.compare!.totalCents).toBe(o.priceCents);
+      expect(o.compare!.monthlyCents).toBe(Math.round(o.priceCents / 12));
+      expect(o.compare!.rows.map((r) => r.label)).toEqual([
+        "Cover",
+        "Deductible",
+        "Saves a year",
+        "Rated",
+      ]);
+    }
+    expect(card.options[0].compare!.bestFor).toBe("Best for price and rating together");
+  });
+
   it("is nothing when the shop is answered or has no pick", () => {
     expect(shopCard(shop({ status: "accepted" }), policy)).toBeNull();
     expect(shopCard(shop({ pick: null }), policy)).toBeNull();

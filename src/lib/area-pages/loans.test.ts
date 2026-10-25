@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { LOANS_BRANCHES, TOPIC_LABELS, loansTree, type LoansTreeInput } from "./loans";
+import {
+  COMPARE_TOPICS,
+  LOANS_BRANCHES,
+  TOPIC_LABELS,
+  compareWant,
+  loansTree,
+  type LoansTreeInput,
+} from "./loans";
 import { LABEL_MAX_WORDS, SUMMARY_MAX_SENTENCES, sentences, words } from "./tree";
 
 // The Loans & credit page as a tree (docs/design/area-pages.md): few words per node, money lost
@@ -135,5 +142,20 @@ describe("the Loans & credit tree", () => {
     expect(tree.branches.find((b) => b.id === "cheaper")!.items.map((i) => i.label)).toEqual([
       "Refinance offers",
     ]);
+  });
+});
+
+describe("compareWant", () => {
+  const debts = [
+    { key: "card:1", kind: "card" },
+    { key: "auto:1", kind: "auto" },
+  ];
+  it("prices a loan choice for comparison cards, a car refinance for the car loan", () => {
+    expect(compareWant("refinance", debts)).toEqual({ need: "refinance" });
+    expect(compareWant("consolidation", debts)).toEqual({ need: "consolidation" });
+    expect(compareWant("auto_refinance", debts)).toEqual({ need: "refinance", debtKey: "auto:1" });
+    expect(compareWant("auto_refinance", [])).toEqual({ need: "refinance" });
+    expect(compareWant("credit_building", debts)).toBeNull();
+    for (const t of COMPARE_TOPICS) expect(compareWant(t, debts)).not.toBeNull();
   });
 });
