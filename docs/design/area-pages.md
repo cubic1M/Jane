@@ -126,6 +126,11 @@ should also be there, and not like '...'".
   fails shows what Jane looks for there, from the feature map. The component is
   `src/components/hub/giant-tree.tsx`; what each area holds is `giantAreas` in
   `src/lib/giant-tree.ts`.
+- **One status per area:** an area's tile on Home and its tile here read the same status and
+  line, from the area's own tree (`areaStatus` in `src/lib/hub/area-status.ts`: its worst
+  branch, and the tree's own line); the tiles fall back to their own reading only when an area
+  has no tree. `src/lib/hub/area-status.integration.test.ts` holds them together for all 8
+  sample people.
 - **Opening a feature:** a click opens it in place: one line, `[OPEN]` into its page, and the
   Ask Jane box. The floating cards step aside while a feature is open; the dock stays.
 - **Ask Jane:** an inverted `[ASK JANE]` box under the open feature. One click sends its

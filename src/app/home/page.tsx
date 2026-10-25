@@ -8,14 +8,8 @@ import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
 import { GiantTree } from "@/components/hub/giant-tree";
-import { loadInsuranceArea } from "@/lib/area-pages/insurance-load";
-import { loadInvestingArea } from "@/lib/area-pages/investing-load";
-import { loadLoansArea } from "@/lib/area-pages/loans-load";
-import { moneyTree } from "@/lib/area-pages/money";
-import { loadMoneyArea } from "@/lib/area-pages/money-load";
-import { loadPlansArea } from "@/lib/area-pages/plans-load";
-import { loadTaxesArea } from "@/lib/area-pages/taxes-load";
-import type { AreaTrees } from "@/lib/giant-tree";
+import { loadAreaTrees } from "@/lib/hub/area-trees";
+import { withAreaStatus } from "@/lib/hub/area-status";
 import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { buildFeatureMap, sampleExamples } from "@/lib/feature-map";
@@ -80,40 +74,38 @@ function NeedsYou({
 // What the giant tree reads, started with the page so it doesn't wait for anything else. Each
 // area with a tree page shows that tree's branches, from the same loaders its page uses (a
 // loader that fails leaves its area showing what Jane looks for there).
-const quietly = <T,>(load: Promise<T>) => load.catch(() => undefined);
 const loadTreeData = (userId: string) =>
   Promise.all([
     scopedFor(userId).suggestions.findMany({ select: { key: true } }),
     adviceMode(userId),
-    quietly(loadInsuranceArea(userId)),
-    quietly(loadLoansArea(userId)),
-    quietly(loadTaxesArea(userId)),
-    quietly(loadPlansArea(userId)),
-    quietly(loadInvestingArea(userId)),
-    quietly(loadMoneyArea(userId).then(moneyTree)),
+    loadAreaTrees(userId),
   ]);
 type TreeData = Awaited<ReturnType<typeof loadTreeData>>;
 
-async function Tiles({ userId, home }: { userId: string; home: HomeSummary }) {
-  const areas = await loadHubAreas(userId, {
-    budgetsOver: home.budgetsOver.length,
-    safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
-  });
-  return <AreaTiles tiles={tilesView(areas)} />;
+// The tiles take each area's status from its tree, as the tree below does: one status per area.
+async function Tiles({
+  userId,
+  home,
+  treeData,
+}: {
+  userId: string;
+  home: HomeSummary;
+  treeData: Promise<TreeData>;
+}) {
+  const [areas, [, , trees]] = await Promise.all([
+    loadHubAreas(userId, {
+      budgetsOver: home.budgetsOver.length,
+      safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
+    }),
+    treeData,
+  ]);
+  return <AreaTiles tiles={withAreaStatus(tilesView(areas), trees)} />;
 }
 
 // The giant "What Jane does" tree (src/components/hub/giant-tree.tsx): Jane, the six areas,
 // their branches and features, all at once, from the same map as /home/map.
 async function AreasTree({ treeData }: { treeData: Promise<TreeData> }) {
-  const [reached, advice, insurance, loans, taxes, plans, investing, money] = await treeData;
-  const areaTrees: AreaTrees = {
-    insurance: insurance?.area,
-    loans: loans?.area,
-    taxes: taxes?.area,
-    ahead: plans?.area,
-    investments: investing?.area,
-    money,
-  };
+  const [reached, advice, areaTrees] = await treeData;
   const maps = buildFeatureMap({
     examples: sampleExamples(),
     reached: new Set(reached.map((r) => r.key)),
@@ -203,7 +195,7 @@ async function HubContent() {
       />
 
       <Suspense fallback={<AreaTilesLoading />}>
-        <Tiles userId={user.id} home={home} />
+        <Tiles userId={user.id} home={home} treeData={treeData} />
       </Suspense>
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />

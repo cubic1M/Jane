@@ -1,7 +1,7 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import type { AreaKey } from "@/config/areas";
 import type { AreaTree } from "@/lib/area-pages/tree";
-import { worst } from "@/lib/area-pages/tree";
+import { areaStatus } from "@/lib/hub/area-status";
 import type { AreaMap } from "@/lib/feature-map";
 
 // The "What Jane does" tree on Home (founder: "it's too big, I think you should not make it drag
@@ -95,9 +95,10 @@ export function giantAreas(maps: readonly AreaMap[], areaTrees: AreaTrees = {}):
     return {
       key: map.key,
       label: map.name,
-      line: own ? own.tree.sub : `${things(map.features)} · ${map.forYou} for you`,
+      // From the area's own tree, as its tile on Home (src/lib/hub/area-status.ts).
+      line: own ? areaStatus(own).why : `${things(map.features)} · ${map.forYou} for you`,
       forYou: !own && map.forYou > 0,
-      status: own ? worst(own.tree.branches.map((b) => b.status)) : undefined,
+      status: own ? areaStatus(own).status : undefined,
       href: map.href,
       branches: branchesOf(map, own),
     };
