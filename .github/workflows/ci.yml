@@ -149,6 +149,15 @@ jobs:
         env:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
       - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
+      # A flaky failure can't be read from the log alone: keep its error context and the retry's
+      # trace (npx playwright show-trace) for a week.
+      - name: Keep the failed tests' traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 7
 
   # The one end-to-end result the branch ruleset requires: it passes when every shard passed, or
   # when the end-to-end tests didn't run (a PR without the "e2e" label), so auto-merge waits
