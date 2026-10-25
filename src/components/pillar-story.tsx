@@ -12,9 +12,10 @@ type Frames = { cols: number; rows: number; frames: string[] };
 
 // The widths built by the script, the largest that fits each screen.
 const WIDTHS = [
-  { min: 1024, cols: 160 },
-  { min: 640, cols: 110 },
-  { min: 0, cols: 72 },
+  { min: 1280, cols: 300 },
+  { min: 1024, cols: 220 },
+  { min: 640, cols: 150 },
+  { min: 0, cols: 96 },
 ];
 const GLYPH_ASPECT = 0.6;
 

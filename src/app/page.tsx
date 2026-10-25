@@ -4,7 +4,7 @@ import { PillarStory } from "@/components/pillar-story";
 import { TryButton } from "@/components/try-button";
 import { ViewTracker } from "@/components/view-tracker";
 import { trialEnabled } from "@/lib/trial";
-import pillar from "../../public/landing/pillar-72.json";
+import pillar from "../../public/landing/pillar-96.json";
 import { displayFont } from "./fonts";
 import "./landing.css";
 
