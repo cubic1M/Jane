@@ -29,9 +29,9 @@ export async function usePracticeStrategy(formData: FormData): Promise<void> {
   if (user && Object.hasOwn(STRATEGY_CHOICES, strategy)) {
     await savePreferences(user.id, { strategy }, "page");
   }
-  // Back to the same card, drawn afresh: the investing tree opens on More strategies.
+  // Back to the same list, drawn afresh.
   revalidatePath("/investments");
-  redirect("/investments?focus=strategies:menu");
+  redirect("/investments");
 }
 
 // "Use in practice" on a crypto card, and "Turn the sleeve off" (Very high only): the crypto
@@ -46,7 +46,7 @@ export async function usePracticeCrypto(formData: FormData): Promise<void> {
     }
   }
   revalidatePath("/investments");
-  redirect("/investments?focus=strategies:menu");
+  redirect("/investments");
 }
 
 // "Use in practice" on a day-trading card, and "Stop day trading" (Very high only): the
@@ -62,7 +62,7 @@ export async function usePracticeDayTrading(formData: FormData): Promise<void> {
     void INTRADAY_SLEEVE_BY_LEVEL;
   }
   revalidatePath("/investments");
-  redirect("/investments?focus=strategies:menu");
+  redirect("/investments");
 }
 
 // "Use in practice" on a tested strategy, and "Back to your mix": only one the research rates
@@ -77,5 +77,5 @@ export async function usePracticeCatalog(formData: FormData): Promise<void> {
       await savePreferences(user.id, { catalogStrategy: strategy }, "page");
   }
   revalidatePath("/investments");
-  redirect("/investments?focus=strategies:menu");
+  redirect("/investments");
 }

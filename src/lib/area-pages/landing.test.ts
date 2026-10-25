@@ -65,8 +65,6 @@ const FIXED: Record<AreaRoot, ReadonlySet<string>> = {
     ...(["plan", "kinds", "costs"] as const).flatMap((b) => PAGES[b].map((p) => `${b}:${p.key}`)),
     "plan:profile",
     "practice:portfolio",
-    // The strategy menu sits with the practice view's other strategy items (#701).
-    "strategies:menu",
   ]),
   "/ahead": new Set([
     ...DECISIONS.map((d) => `decide:${d.key}`),

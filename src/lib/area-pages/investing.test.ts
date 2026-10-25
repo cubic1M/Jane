@@ -96,7 +96,8 @@ describe("the investing tree", () => {
       // The news themes and their past record, always there to open.
       ["News themes", undefined],
     ]);
-    expect(branch("strategies").items.map((i) => i.label)).toContain("More strategies");
+    // Every strategy tested is on the page's strategy board, above the tree, not an item.
+    expect(branch("strategies").items.map((i) => i.label)).not.toContain("More strategies");
     expect(branch("strategies").items[0]).toMatchObject({
       label: "Your strategy today",
       status: "look",

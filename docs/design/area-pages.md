@@ -105,6 +105,27 @@ A branch takes the worst status of its items (`worst()`), and its line says "N u
    `/<area>?focus=…`. The page and Home read the same data, so they never disagree.
    All six areas are wired.
 
+## Investments: the strategy board
+
+The founder (2026-10-25): "it is very wordy and does not look good. I want you to show the graph
+showing the different investment strategies, and list all the ones you tested right below the
+specific risk tolerance." On `/investments`, above the tree, with demo advice on:
+
+- **The level** on top: five links (`?level=`), the person's own marked "(yours)", and what it
+  means in one line.
+- **One graph**: growth of $100 in every strategy tested at that level, out of sample since 2020
+  after costs. What the practice portfolio follows is bold, the level's mix dashed, the rest thin
+  grey. Hover or tap a line for its name, yearly return, worst drop and Sortino. Range chips:
+  Since 2020, Since 2022, Past year; each redraws from $100.
+- **The list, right below**: Jane's pick first, then every strategy in status order: `[DEFAULT]`,
+  `[RECOMMENDED]`, `[WORTH WATCHING]`, `[TESTED, NOT RECOMMENDED]`, `[LOST MONEY AFTER COSTS]`.
+  Crypto and day trading appear only at Very high. A row brings its line forward and opens the
+  evidence, past regimes and, at the person's own level, Use in practice or the way back.
+
+Data: `strategyBoard` in `src/lib/investments/strategy-board.ts` (pure, unit tested), from the
+stored research only: `src/config/catalog-curves.ts` (written by the catalog research run) and the
+evidence files. No prices are fetched when the page loads. Drawing: `src/components/strategy-board.tsx`.
+
 ## The home tree: "What Jane does"
 
 On `/home`, right under the net worth hero. The founder, first: "one giant tree graph, not like u

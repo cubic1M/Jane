@@ -41,7 +41,7 @@ describe("the strategy menu's buttons", () => {
       { strategy: "value_tilt" },
       { cryptoSleeve: "crypto_trend" },
     ]);
-    expect(vi.mocked(redirect)).toHaveBeenCalledWith("/investments?focus=strategies:menu");
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith("/investments");
   });
 
   it("never change a real account's settings", async () => {
