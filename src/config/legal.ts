@@ -1,6 +1,6 @@
 // Bump TERMS_VERSION whenever the Terms or Privacy Policy change in a way people should
 // agree to again; everyone accepts the new version once, on their next visit.
-export const TERMS_VERSION = "2026-10-18";
+export const TERMS_VERSION = "2026-10-25";
 
 // The pages show a "draft" banner until counsel has reviewed them and LEGAL_REVIEWED is
 // set to "true".

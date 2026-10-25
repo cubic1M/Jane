@@ -1901,14 +1901,20 @@ model Settlement {
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.
 model InviteCode {
-  id        String    @id @default(cuid())
-  code      String    @unique
-  maxUses   Int       @map("max_uses")
-  uses      Int       @default(0)
+  id          String    @id @default(cuid())
+  code        String    @unique
+  maxUses     Int       @map("max_uses")
+  uses        Int       @default(0)
   // What the code is for, e.g. "Friends of Sam". Team-only.
-  note      String?
-  expiresAt DateTime? @map("expires_at") @db.Timestamptz(3)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  note        String?
+  // Only this email may use the code (lowercase); null: anyone with the code.
+  email       String?
+  // The admin who made it (a user id; kept if they leave).
+  createdById String?   @map("created_by_id")
+  // Revoked codes stop working at once; the accounts made with them stay.
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   access BetaAccess[]
 
@@ -1925,6 +1931,16 @@ model BetaAccess {
   inviteCode InviteCode @relation(fields: [inviteCodeId], references: [id], onDelete: Cascade)
 
   @@map("beta_access")
+}
+
+// The closed beta's waitlist: an email someone left on /signup without an invite. Nothing
+// is sent to it; the founders read the list on /admin/invites.
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("waitlist")
 }
 
 // Fixed-window request counters for rate limiting (src/lib/rate-limit.ts). Keys hold a
