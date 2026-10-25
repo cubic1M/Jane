@@ -24,6 +24,7 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
 import { StartClaimForm } from "./start-form";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Claims (spec step 107): when something happens, what to do now, what to collect, who to
 // call, and a tracker of the claim's steps. Every step stays on the claim until it's closed.
@@ -314,7 +315,7 @@ export default function ClaimsPage({
 }) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ClaimsContent searchParams={searchParams} />
       </Suspense>
     </main>

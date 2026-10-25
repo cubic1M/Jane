@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { validTimezone } from "@/lib/digest/week";
 import { requireUser } from "@/lib/session";
 import { teamAccessFor } from "@/lib/team-access-loader";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Who saw my data (spec step 74): every time our concierge team or Jane's agent viewed or
 // acted on the person's data, newest first, by role only.
@@ -91,7 +92,7 @@ async function TeamAccessContent() {
 export default function TeamAccessPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <TeamAccessContent />
       </Suspense>
     </main>

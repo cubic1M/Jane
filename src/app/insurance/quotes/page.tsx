@@ -17,6 +17,7 @@ import { RESHOP_DAYS_BEFORE_RENEWAL } from "@/config/insurance";
 import { openShops, type Shop } from "@/lib/insurance/shop";
 import { getQuotes, keepPolicy, switchToPick } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Quotes for one policy (spec step 103), like for like: same cover and deductible, or each
 // difference spelled out. From the stand-in carrier catalog until a licensed partner is
@@ -244,7 +245,7 @@ async function QuotesContent({
 export default function QuotesPage({ searchParams }: PageProps<"/insurance/quotes">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <QuotesContent searchParams={searchParams} />
       </Suspense>
     </main>

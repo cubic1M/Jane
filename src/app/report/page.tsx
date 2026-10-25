@@ -11,6 +11,7 @@ import { explanationFor } from "@/lib/card-text";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsLine } from "@/lib/savings-text";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Shown when nothing was found, so the person knows what we looked at.
 const WHAT_WE_CHECK = [
@@ -127,7 +128,7 @@ async function ReportContent() {
 export default function ReportPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ReportContent />
       </Suspense>
     </main>

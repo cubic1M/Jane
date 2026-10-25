@@ -118,12 +118,19 @@ describe("ranges", () => {
       cents: 10,
       share: null,
     });
-    // Starting below zero, getting less negative is up.
+    // From a start below zero or of a few dollars, a percentage is alarming and means nothing
+    // (QA: "−$7,344 (−487.4%)"): only the dollars.
     expect(
       changeOver([
-        { date: "a", cents: -200 },
-        { date: "b", cents: -100 },
+        { date: "a", cents: -150_000 },
+        { date: "b", cents: -885_100 },
+      ]),
+    ).toEqual({ cents: -735_100, share: null });
+    expect(
+      changeOver([
+        { date: "a", cents: 50_000 },
+        { date: "b", cents: 90_000 },
       ]).share,
-    ).toBe(0.5);
+    ).toBeNull();
   });
 });

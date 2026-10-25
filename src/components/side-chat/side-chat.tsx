@@ -12,6 +12,8 @@ import {
   type FrameMessage,
 } from "@/lib/side-chat";
 import { JaneAvatar } from "./avatar";
+import { CardDock } from "./card-dock";
+import { LoadingBar } from "@/components/loading-bar";
 import { sideChatStore } from "./store";
 
 // The side chat (docs/design/home-hub.md). On a computer the chat is docked on the right of
@@ -277,6 +279,26 @@ export function SideChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView]);
 
+  // The phone's keyboard: the sheet rides above it (src/app/globals.css, --keyboard-inset), so
+  // the message box is never under it.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (wide || !vv) return;
+    const root = document.documentElement;
+    const place = () => {
+      const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty("--keyboard-inset", `${inset}px`);
+    };
+    place();
+    vv.addEventListener("resize", place);
+    vv.addEventListener("scroll", place);
+    return () => {
+      vv.removeEventListener("resize", place);
+      vv.removeEventListener("scroll", place);
+      root.style.removeProperty("--keyboard-inset");
+    };
+  }, [wide]);
+
   // Escape docks the full panel, or closes the sheet.
   useEffect(() => {
     if (!shows) return;
@@ -314,9 +336,9 @@ export function SideChat() {
     />
   );
   const placeholder = !mountFrame && (
-    <p className="flex-1 p-4 text-sm text-zinc-500" aria-live="polite">
-      Opening the chat…
-    </p>
+    <div className="flex-1 px-4 py-3">
+      <LoadingBar label="Opening the chat" />
+    </div>
   );
 
   if (wide) {
@@ -327,24 +349,31 @@ export function SideChat() {
         className="side-chat fixed right-0 bottom-0 z-40 flex flex-col border-l border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-950 print:hidden"
       >
         {panel === "rail" ? (
-          <button
-            type="button"
-            onClick={() => sideChatStore.setPanel("open")}
-            className="relative flex h-full w-full flex-col items-center gap-3 pt-3 hover:bg-zinc-50 dark:hover:bg-zinc-900"
-          >
+          <div className="flex h-full w-full flex-col items-center gap-2 pt-3">
+            {/* Jane's mark is only a mark; the button under it opens the chat. */}
             <JaneAvatar />
-            <UnreadDot count={unread} />
-            {/* Its name is its text: "Open chat", and how many are new. */}
-            <span className="sr-only">{unread > 0 ? `Open chat, ${unread} new` : "Open chat"}</span>
-            <span
-              aria-hidden
-              className="text-xs font-medium text-zinc-600 [writing-mode:vertical-rl] dark:text-zinc-400"
+            <button
+              type="button"
+              onClick={() => sideChatStore.setPanel("open")}
+              className="relative flex w-full flex-1 flex-col items-center pt-2 hover:bg-zinc-50 dark:hover:bg-zinc-900"
             >
-              Chat with Jane
-            </span>
-          </button>
+              <UnreadDot count={unread} />
+              {/* Its name is its text: "Open chat", and how many are new. */}
+              <span className="sr-only">
+                {unread > 0 ? `Open chat, ${unread} new` : "Open chat"}
+              </span>
+              <span
+                aria-hidden
+                className="text-xs font-medium text-zinc-600 [writing-mode:vertical-rl] dark:text-zinc-400"
+              >
+                Open chat
+              </span>
+            </button>
+          </div>
         ) : (
           <>
+            {/* Jane's cards, above the chat and never in it. */}
+            <CardDock />
             <div className="flex h-14 shrink-0 items-center gap-2 border-b border-zinc-300 pl-3 dark:border-zinc-700">
               <JaneAvatar />
               <p className="flex-1 text-sm font-semibold">Jane</p>

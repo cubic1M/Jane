@@ -189,9 +189,9 @@ const oldAccounts: Detector = {
       id: suggestionId("investing", "old_accounts"),
       capability: "investing",
       topic: "old_accounts",
-      title: "Roll an old employer plan into one account",
+      title: "Roll old employer plans into one account",
       headline: headlineOf(
-        "Roll an old employer plan into one",
+        "Roll old employer plans into one",
         Math.round((old * R.oldPlanFeeGapBps) / 10_000),
         "saves",
       ),

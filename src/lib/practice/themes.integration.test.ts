@@ -106,7 +106,7 @@ describe.runIf(url)("news themes in the practice portfolio", () => {
     expect(alert.kind).toBe("decision");
     // A suggestion's short card: the headline, why this person, how sure Jane is.
     const [headline, why, sure] = alert.body.split("\n");
-    expect(headline).toMatch(/^News theme: Try \$/);
+    expect(headline).toMatch(/^News theme: Try \$[\d,]+ of [A-Z]+ in practice$/);
     expect(why).toMatch(/^Why you: /);
     expect(sure).toMatch(/^\d+% sure: /);
     const refs = alert.refs as Record<string, unknown>;

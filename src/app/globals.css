@@ -343,9 +343,15 @@ body {
    less when it is folded to a rail (html[data-side-chat], set by the panel), and none on the
    chat's own pages (marked [data-chat-page] by the area tabs as they render). On a phone the
    page keeps room at the bottom for the Jane button. */
+/* The motion spec (docs/design/area-pages.md, "Motion"): three durations and two easings for
+   everything that moves; src/config/motion.ts has the same for JavaScript. All of it stops
+   under prefers-reduced-motion. */
 :root {
   --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15);
   --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 250ms;
 }
 
 @media (min-width: 1024px) {
@@ -355,7 +361,7 @@ body {
   }
   /* Animated only once the panel has taken over, so the first paint never slides. */
   html[data-side-chat] body:has(#app-top-bar) {
-    transition: padding-right 260ms var(--ease-out-soft);
+    transition: padding-right var(--motion-slow) var(--ease-out-soft);
   }
   html[data-side-chat="rail"] body:has(#app-top-bar) {
     padding-right: 56px;
@@ -379,8 +385,8 @@ body {
   top: 3.5rem;
   width: 380px;
   transition:
-    width 260ms var(--ease-spring),
-    top 260ms var(--ease-spring);
+    width var(--motion-slow) var(--ease-spring),
+    top var(--motion-slow) var(--ease-spring);
 }
 .side-chat[data-side-chat="rail"] {
   width: 56px;
@@ -395,17 +401,23 @@ body {
    while it is dragged (inline --sheet-share, no transition). */
 .side-chat-sheet {
   --sheet-share: 0;
-  height: calc(var(--sheet-share) * 100dvh);
+  /* Above the on-screen keyboard (--keyboard-inset, from the visual viewport), its message box
+     always in sight. */
+  bottom: var(--keyboard-inset, 0px);
+  height: min(
+    calc(var(--sheet-share) * 100dvh),
+    calc(100dvh - var(--keyboard-inset, 0px) - 2.5rem)
+  );
   visibility: hidden;
   transition:
-    height 280ms var(--ease-spring),
-    visibility 0s linear 280ms;
+    height var(--motion-slow) var(--ease-spring),
+    visibility 0s linear var(--motion-slow);
 }
 .side-chat-sheet[data-sheet="half"],
 .side-chat-sheet[data-sheet="full"] {
   visibility: visible;
   transition:
-    height 280ms var(--ease-spring),
+    height var(--motion-slow) var(--ease-spring),
     visibility 0s;
 }
 .side-chat-sheet[data-sheet="half"] {
@@ -420,7 +432,7 @@ body {
 .side-chat-scrim {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 200ms ease-out;
+  transition: opacity var(--motion-base) ease-out;
 }
 .side-chat-scrim[data-open] {
   opacity: 1;
@@ -442,19 +454,19 @@ body {
    pop in, once, as the page arrives. Still for reduced motion. */
 .hub-grow {
   transform-origin: left;
-  animation: hub-grow 420ms var(--ease-out-soft) both;
+  animation: hub-grow var(--motion-slow) var(--ease-out-soft) both;
 }
 .hub-rise {
   transform-box: fill-box;
   transform-origin: bottom;
-  animation: hub-rise 380ms var(--ease-spring) both;
+  animation: hub-rise var(--motion-slow) var(--ease-spring) both;
 }
 .hub-draw {
   stroke-dasharray: 1;
-  animation: hub-draw 800ms var(--ease-out-soft) both;
+  animation: hub-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 .hub-pop {
-  animation: hub-pop 260ms var(--ease-spring) both;
+  animation: hub-pop var(--motion-slow) var(--ease-spring) both;
 }
 @keyframes hub-grow {
   from {
@@ -489,17 +501,17 @@ body {
 /* The feature map (src/components/feature-tree.tsx): the view zooms and pans with a spring,
    edges draw themselves, and nodes pop in as a branch opens. Still for reduced motion. */
 .map-view {
-  transition: height 420ms var(--ease-spring);
+  transition: height var(--motion-slow) var(--ease-spring);
 }
 .map-world {
-  transition: transform 450ms var(--ease-spring);
+  transition: transform var(--motion-slow) var(--ease-spring);
 }
 .map-edge {
   stroke-dasharray: 1;
-  animation: hub-draw 500ms var(--ease-out-soft) both;
+  animation: hub-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 .map-pop {
-  animation: map-pop 280ms var(--ease-spring) both;
+  animation: map-pop var(--motion-slow) var(--ease-spring) both;
 }
 @keyframes map-pop {
   from {
@@ -518,15 +530,19 @@ body {
   }
 }
 
-/* The giant tree on Home (src/components/hub/giant-tree.tsx): the camera glides when a click,
-   a button or the keyboard moves it (never while dragging or zooming with the wheel), and the
-   dotted line from an "Ask Jane" box to the chat marches while the question is sent. A static
-   dotted line and no glide for reduced motion. */
-html[data-giant-picked] [data-floating-cards="queue"] {
+/* The "What Jane does" tree on Home (src/components/hub/giant-tree.tsx): an area's tree opens
+   with the page's own fade-and-rise, and the dotted line from an "Ask Jane" box to the chat
+   marches while the question is sent. While a feature is open, the floating cards step aside
+   (the dock above the chat stays). Still under reduced motion. */
+html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   display: none;
 }
-.giant-glide {
-  transition: transform 420ms var(--ease-out-soft);
+/* The card dock follows its card's height (src/components/side-chat/card-dock.tsx). */
+.dock-height {
+  transition: height var(--motion-slow) var(--ease-out-soft);
+}
+.giant-open {
+  animation: page-in var(--motion-slow) var(--ease-out-soft) backwards;
 }
 .ask-line {
   animation: ask-line-march 0.6s linear infinite;
@@ -537,9 +553,10 @@ html[data-giant-picked] [data-floating-cards="queue"] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .giant-glide {
+  .dock-height {
     transition: none;
   }
+  .giant-open,
   .ask-line {
     animation: none;
   }
@@ -883,9 +900,13 @@ html[data-giant-picked] [data-floating-cards="queue"] {
 
 /* The hub's net worth chart (src/components/hub/net-worth-chart.tsx): the line draws itself in
    when the range changes. Still for reduced motion. */
+/* Expanding grows the chart smoothly rather than jumping. */
+.nw-box {
+  transition: height var(--motion-slow) var(--ease-spring);
+}
 .nw-line {
   stroke-dasharray: 1;
-  animation: nw-draw 650ms var(--ease-out-soft) both;
+  animation: nw-draw var(--motion-slow) var(--ease-out-soft) both;
 }
 @keyframes nw-draw {
   from {
@@ -893,7 +914,27 @@ html[data-giant-picked] [data-floating-cards="queue"] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .nw-box {
+    transition: none;
+  }
   .nw-line {
+    animation: none;
+  }
+}
+
+/* A page arriving: a fade and a few pixels' rise (src/app/template.tsx). "backwards" so
+   nothing is left transformed once it has played. */
+.page-in {
+  animation: page-in var(--motion-base) var(--ease-out-soft) backwards;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-in {
     animation: none;
   }
 }
@@ -901,7 +942,7 @@ html[data-giant-picked] [data-floating-cards="queue"] {
 /* The first scan's loading bar (src/components/scan-bar.tsx): it fades out at 100%; under
    reduced motion it just goes. */
 .scan-bar {
-  transition: opacity 600ms ease-out;
+  transition: opacity var(--motion-slow) var(--ease-out-soft);
 }
 .scan-bar-out {
   opacity: 0;
@@ -910,6 +951,19 @@ html[data-giant-picked] [data-floating-cards="queue"] {
   .scan-bar {
     transition: none;
   }
+}
+
+/* The chat never scrolls the page (founder: "Never let the chat scroll affect the whole screen
+   scroll"): scrolling past either end of the chat in the side panel or the phone's sheet stops
+   there, with a wheel, a trackpad or a finger (src/lib/contain-scroll.ts does the same where
+   the browser would still hand the scroll on, as when the chat is too short to scroll). */
+html[data-chat-embed],
+html[data-chat-embed] body,
+.side-chat,
+.side-chat-sheet,
+.side-chat iframe,
+.side-chat-sheet iframe {
+  overscroll-behavior: contain;
 }
 
 /* The chat inside the side panel (/chat?embed=1) has no footer of its own. */
@@ -1022,6 +1076,15 @@ textarea {
     bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
 }
+/* Folded on a small phone: one line at the very bottom, level with the Jane button and left of
+   it, so the first screen stays clear. */
+@media (width < 640px) {
+  body .floating-cards.floating-cards-folded,
+  body:has(#jane-fab) .floating-cards.floating-cards-folded {
+    bottom: calc(1rem + 6px + env(safe-area-inset-bottom));
+    right: 5.5rem;
+  }
+}
 @media (min-width: 1024px) {
   body:has(#app-top-bar) .floating-cards {
     right: 380px;
@@ -1034,6 +1097,23 @@ textarea {
     right: 0;
   }
 }
+/* On a computer with the chat docked, Jane's cards are in the dock above it
+   (src/components/side-chat/card-dock.tsx), so the page's own floating stack stays out. */
+@media (min-width: 1024px) {
+  html:not([data-side-chat="rail"]):not([data-side-chat="none"])
+    body:has(#app-top-bar):not(:has([data-chat-page]))
+    .floating-cards[data-floating-cards="queue"] {
+    display: none;
+  }
+}
+/* In the chat the cards sit just above its pinned message box (src/app/chat/composer.tsx sets
+   --chat-composer-h), never over it, and need no room of their own at the page's end. */
+body:has([data-chat-composer]) .floating-cards {
+  bottom: calc(var(--chat-composer-h, 5.5rem) + 0.5rem);
+}
+body:has([data-chat-composer]) [data-card-room] {
+  display: none;
+}
 /* In the side panel (/chat?embed=1) the suggestions wait until the page beside it says where it
    is: on Home the hub shows them, so the chat beside it leaves them out; anywhere else, or
    full screen, they show (src/app/chat/embed-bridge.tsx sets data-chat-embed-cards). Hidden by
@@ -1045,21 +1125,49 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
   display: flex;
 }
 
+/* A card opened to its details grows wider (and taller, by its details' own animation). */
+.floating-card-width {
+  transition: max-width var(--motion-slow) var(--ease-out-soft);
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-card-width {
+    transition: none;
+  }
+}
 .floating-card-in {
-  animation: floating-card-in 260ms var(--ease-spring) both;
+  animation: floating-card-in var(--motion-slow) var(--ease-spring) both;
 }
 .floating-card-out {
-  animation: floating-card-out 200ms ease-in both;
+  animation: floating-card-out var(--motion-base) ease-in both;
 }
 .floating-card-out-yes {
-  animation: floating-card-out-yes 200ms ease-in both;
+  animation: floating-card-out-yes var(--motion-base) ease-in both;
 }
 .floating-card-edge {
   transition:
-    transform 260ms var(--ease-spring),
-    opacity 200ms ease-out;
+    transform var(--motion-slow) var(--ease-spring),
+    opacity var(--motion-base) ease-out;
 }
 
+/* Stepping between cards: the next slides in from the side it comes from. */
+.floating-card-slide-next {
+  animation: floating-card-slide-next var(--motion-slow) var(--ease-out-soft) both;
+}
+.floating-card-slide-prev {
+  animation: floating-card-slide-prev var(--motion-slow) var(--ease-out-soft) both;
+}
+@keyframes floating-card-slide-next {
+  from {
+    opacity: 0;
+    transform: translateX(2.5rem);
+  }
+}
+@keyframes floating-card-slide-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-2.5rem);
+  }
+}
 @keyframes floating-card-in {
   from {
     opacity: 0;
@@ -1085,8 +1193,10 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .floating-card-in {
-    animation: floating-card-fade 120ms linear both;
+  .floating-card-in,
+  .floating-card-slide-next,
+  .floating-card-slide-prev {
+    animation: floating-card-fade var(--motion-fast) linear both;
   }
   .floating-card-out,
   .floating-card-out-yes {

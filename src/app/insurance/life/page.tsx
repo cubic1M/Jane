@@ -18,6 +18,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { answer, apply, buy, notNow, setDependants, submit } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Life cover (spec step 153), demo advice only: how much and for how long, with the method;
 // term quotes; the application's health questions one at a time; the carrier's decision.
@@ -216,7 +217,7 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
 export default function LifePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <LifeContent searchParams={searchParams} />
       </Suspense>
     </main>

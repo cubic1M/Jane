@@ -30,6 +30,7 @@ import { RecordsSection } from "./records-section";
 import { HomeSection } from "./home-section";
 import { type TaxDocumentsView } from "@/lib/tax-documents";
 import { COMPARED } from "@/planning/tax-document-check";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. The page is a
 // tree (docs/design/area-pages.md): what's due soon, ways to pay less, this year's numbers,
@@ -369,7 +370,7 @@ async function TaxesContent({
 export default function TaxesPage({ searchParams }: PageProps<"/taxes">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <TaxesContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -7,6 +7,7 @@ import { AreaPage } from "@/components/area-page/area-page";
 import { DECISIONS, itemId } from "@/lib/area-pages/plans";
 import { requireUser } from "@/lib/session";
 import { loadPlansArea } from "@/lib/area-pages/plans-load";
+import { LoadingBar } from "@/components/loading-bar";
 
 // Plans & goals (spec step 80; docs/design/area-pages.md): the area's tree, with what's coming
 // up first, then goals and net worth, then the planning tools and the look-backs. Math from
@@ -126,7 +127,7 @@ async function AheadContent({
 export default function AheadPage({ searchParams }: PageProps<"/ahead">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <AheadContent searchParams={searchParams} />
       </Suspense>
     </main>

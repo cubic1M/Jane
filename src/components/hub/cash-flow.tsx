@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatCents } from "@/lib/money";
-import type { CashEvent, CashFlowView } from "@/lib/hub/view";
+import { cashGroups, type CashEvent, type CashFlowView, type CashGroup } from "@/lib/hub/view";
 
 // The hub's cash-flow strip (docs/design/home-hub.md): the next 30 days on one line, paydays
 // above it, bills below it (sized by amount against the biggest), other dates on it. Hover,
-// focus or tap shows what and how much, with a link to its page. One tab stop: the arrow keys
-// move along the line.
+// focus or tap shows what and how much, with a link to its page; a day's events of one kind are
+// one marker whose card lists them all. One tab stop: the arrow keys move along the line.
 
 const shortDate = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -33,25 +33,29 @@ const describe = (e: CashEvent) =>
     .filter(Boolean)
     .join(", ");
 
+const describeGroup = (g: CashGroup) =>
+  g.events.length === 1
+    ? describe(g.events[0])
+    : `${g.events.length} ${KIND_WORD[g.kind]}s, ${shortDate(g.date)}: ${g.events
+        .map((e) =>
+          [e.label, e.amountCents !== null ? formatCents(e.amountCents) : null]
+            .filter(Boolean)
+            .join(" "),
+        )
+        .join("; ")}`;
+
 export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: string }) {
   const [active, setActive] = useState(0);
   const [shown, setShown] = useState<number | null>(null);
   const events = view.events;
-  // Events on the same day stack away from the line.
-  const stack = new Map<string, number>();
-  const offsets = events.map((e) => {
-    const k = `${e.kind}|${e.day}`;
-    const n = stack.get(k) ?? 0;
-    stack.set(k, n + 1);
-    return n;
-  });
+  const groups = cashGroups(events);
   const bills = events.filter((e) => e.kind === "bill").length;
   const pays = events.filter((e) => e.kind === "pay").length;
   const at = (day: number) => `${(day / view.days) * 100}%`;
-  const open = shown === null ? null : events[shown];
+  const open = shown === null ? null : groups[shown];
 
   const move = (to: number) => {
-    const i = Math.max(0, Math.min(events.length - 1, to));
+    const i = Math.max(0, Math.min(groups.length - 1, to));
     setActive(i);
     setShown(i);
     document.getElementById(`cash-event-${i}`)?.focus();
@@ -87,7 +91,7 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
             if (event.key === "ArrowRight") move(active + 1);
             else if (event.key === "ArrowLeft") move(active - 1);
             else if (event.key === "Home") move(0);
-            else if (event.key === "End") move(events.length - 1);
+            else if (event.key === "End") move(groups.length - 1);
             else if (event.key === "Escape") setShown(null);
             else return;
             event.preventDefault();
@@ -102,9 +106,9 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
             aria-hidden
             className="absolute top-1/2 left-0 size-2 -translate-y-1/2 bg-zinc-900 dark:bg-zinc-100"
           />
-          {events.map((e, i) => {
+          {groups.map((e, i) => {
             const size = e.kind === "deadline" ? 10 : Math.round(9 + e.weight * 11);
-            const away = 6 + offsets[i] * (size + 3);
+            const away = 6;
             const pos =
               e.kind === "pay"
                 ? { bottom: `calc(50% + ${away}px)` }
@@ -117,7 +121,7 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
                 id={`cash-event-${i}`}
                 type="button"
                 tabIndex={i === active ? 0 : -1}
-                aria-label={describe(e)}
+                aria-label={describeGroup(e)}
                 aria-describedby={shown === i ? "cash-tip" : undefined}
                 onMouseEnter={() => setShown(i)}
                 onFocus={() => {
@@ -152,6 +156,11 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
                     />
                   )}
                 </svg>
+                {e.events.length > 1 && (
+                  <span aria-hidden className="ml-0.5 text-[10px] font-semibold tabular-nums">
+                    ×{e.events.length}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -167,22 +176,28 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
                   : { bottom: "calc(50% + 0.75rem)" }),
               }}
             >
-              <p className="font-semibold [overflow-wrap:anywhere]">{open.label}</p>
-              <p className="text-zinc-600 dark:text-zinc-400">
-                {shortDate(open.date)}
-                {open.amountCents !== null && (
-                  <span className="font-medium text-zinc-900 tabular-nums dark:text-zinc-100">
-                    {" "}
-                    · {open.kind === "pay" ? "+" : ""}
-                    {formatCents(open.amountCents)}
-                  </span>
-                )}
-              </p>
-              {open.href && (
-                <Link href={open.href} className="font-medium text-emerald-700 hover:underline">
-                  Open ›
-                </Link>
-              )}
+              <p className="text-zinc-600 dark:text-zinc-400">{shortDate(open.date)}</p>
+              <ul className="flex flex-col gap-1">
+                {open.events.map((ev) => (
+                  <li key={ev.key}>
+                    <p className="font-semibold [overflow-wrap:anywhere]">
+                      {ev.label}
+                      {ev.amountCents !== null && (
+                        <span className="font-medium tabular-nums">
+                          {" "}
+                          · {ev.kind === "pay" ? "+" : ""}
+                          {formatCents(ev.amountCents)}
+                        </span>
+                      )}
+                    </p>
+                    {ev.href && (
+                      <Link href={ev.href} className="font-medium text-emerald-700 hover:underline">
+                        Open ›
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

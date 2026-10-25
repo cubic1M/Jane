@@ -16,6 +16,7 @@ import { OfferForm } from "./offer-form";
 import { AgentTimeline } from "@/components/agent-timeline";
 import { savingsLine } from "@/lib/savings-text";
 import type { FindingType } from "@/generated/prisma/client";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The card text saved with the decision: what the person agreed to.
 function agreedTo(snapshot: unknown) {
@@ -256,7 +257,7 @@ async function ActionsContent({
 export default function ActionsPage({ searchParams }: PageProps<"/actions">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <ActionsContent searchParams={searchParams} />
       </Suspense>
     </main>

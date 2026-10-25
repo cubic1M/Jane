@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { investHsa, linkHsa, reimburse } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The HSA as an investment (spec step 159): cash and invested, the cash cushion, room under
 // the limit, and the receipts vault of medical charges to pay back tax-free later.
@@ -144,7 +145,7 @@ async function HsaContent({
 export default function HsaPage(props: PageProps<"/investments/hsa">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <HsaContent searchParams={props.searchParams} />
       </Suspense>
     </main>

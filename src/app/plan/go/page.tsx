@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { viewPlanLink } from "@/lib/plan-links";
 import { GoAheadForm, TakeBackForm } from "./go-forms";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The link is private to the person: never indexed.
 export const metadata = { robots: { index: false, follow: false } };
@@ -76,7 +77,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/plan/go">["
 export default function GoPage({ searchParams }: PageProps<"/plan/go">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-4 py-16">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <Content searchParams={searchParams} />
       </Suspense>
     </main>

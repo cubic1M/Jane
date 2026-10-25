@@ -5,6 +5,7 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { formatCents } from "@/lib/money";
 import { cleanOverrides, loadLongView } from "@/lib/long-view";
 import { requireUser } from "@/lib/session";
+import { LoadingBar } from "@/components/loading-bar";
 
 // The long view (spec step 209): net worth in 10, 20 and 30 years as a range, in today's
 // dollars, with every assumption shown and editable. A range, never a promise.
@@ -147,7 +148,7 @@ async function LongViewContent({
 export default function LongViewPage({ searchParams }: PageProps<"/long-view">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+      <Suspense fallback={<LoadingBar />}>
         <LongViewContent searchParams={searchParams} />
       </Suspense>
     </main>

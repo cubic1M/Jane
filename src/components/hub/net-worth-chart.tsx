@@ -206,7 +206,7 @@ export function NetWorthChart({
               aria-valuemax={shown.length - 1}
               aria-valuenow={at}
               aria-valuetext={`${at === shown.length - 1 ? "Today" : longDate(point.date)}: ${dollars(point.cents)}`}
-              className="relative -mx-1 cursor-crosshair touch-pan-y outline-offset-4 select-none"
+              className="nw-box relative -mx-1 cursor-crosshair touch-pan-y outline-offset-4 select-none"
               style={{ height: H }}
               onPointerDown={(e) => {
                 if (e.pointerType !== "mouse") {
