@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   changeOver,
   pointsIn,
@@ -16,6 +17,8 @@ import {
   type NetWorthEvent,
 } from "@/insights/net-worth-events";
 import {
+  DOT_GAP,
+  DOT_GAP_NARROW,
   MIN_DAYS,
   decodeMovements,
   dotIndex,
@@ -291,7 +294,9 @@ export function NetWorthChart({
     if (!expanded || !moves || shown.length === 0) return null;
     const xs = (i: number) => (shown.length < 2 ? width : (i / (shown.length - 1)) * width);
     const ys = (v: number) => PAD_Y + (1 - (v - lo) / (hi - lo)) * (H - PAD_Y * 2);
-    const dots = layoutDots({ events: moves, days: shown, x: xs, y: ys });
+    // A phone's narrow chart groups more: a dot and its ×N label need the room (QA round 9).
+    const gap = narrow ? DOT_GAP_NARROW : DOT_GAP;
+    const dots = layoutDots({ events: moves, days: shown, x: xs, y: ys, gap });
     const inView = new Set(shown.map((p) => p.date));
     return {
       dots,
@@ -299,7 +304,7 @@ export function NetWorthChart({
       count: moves.filter((m) => inView.has(m.date)).length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, moves, win.from, win.to, width, H, lo, hi]);
+  }, [expanded, moves, win.from, win.to, width, H, lo, hi, narrow]);
 
   // The wheel's handler, with this render's window; the page scrolls again once the chart can't
   // zoom further that way.
@@ -364,7 +369,8 @@ export function NetWorthChart({
         width,
         height: H,
         summary: sizes.summary,
-        detail: details ? sizes.detail : null,
+        // On a phone More details is a sheet from the bottom, not a box in the chart.
+        detail: details && !narrow ? sizes.detail : null,
       })
     : null;
 
@@ -686,7 +692,14 @@ export function NetWorthChart({
                     onDetails={() => setDetails((d) => !d)}
                     onClose={shut}
                   />
-                  {details && place.detail && (
+                  {details && narrow && (
+                    <DetailsSheet
+                      group={open.group}
+                      title={open.title}
+                      onClose={() => setDetails(false)}
+                    />
+                  )}
+                  {details && !narrow && place.detail && (
                     <>
                       <Connector from={place.summary} to={place.detail} stacked={place.stacked} />
                       <DayDetails
@@ -1086,6 +1099,58 @@ function DayDetails({
       className="nw-box-in pointer-events-auto absolute z-10 flex flex-col gap-2 border-2 border-dashed border-current bg-white p-2 text-xs shadow-lg dark:bg-zinc-950"
       style={{ left: at.left, top: at.top, width: at.width }}
     >
+      <DetailsBody group={group} title={title} onClose={onClose} />
+    </div>
+  );
+}
+
+// On a phone, More details is a sheet from the bottom of the screen over a dimmed page (QA round
+// 9: in the chart it ran past the screen, under the chat's button). Esc, [X] or a tap on the page
+// above shuts it.
+function DetailsSheet({
+  group,
+  title,
+  onClose,
+}: {
+  group: EventGroup;
+  title: string;
+  onClose: () => void;
+}) {
+  const sheet = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    sheet.current?.focus({ preventScroll: true });
+  }, []);
+  return createPortal(
+    <>
+      <div aria-hidden="true" className="fixed inset-0 z-[60] bg-zinc-950/40" />
+      <div
+        ref={sheet}
+        id="net-worth-day-details"
+        role="dialog"
+        aria-label={`Every movement on ${title}`}
+        tabIndex={-1}
+        data-net-worth-event-detail=""
+        data-sheet-details=""
+        className="nw-sheet-in fixed inset-x-0 bottom-0 z-[61] flex max-h-[70vh] flex-col gap-2 overflow-y-auto border-t-2 border-dashed border-current bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-sm shadow-2xl outline-none dark:bg-zinc-950"
+      >
+        <DetailsBody group={group} title={title} onClose={onClose} />
+      </div>
+    </>,
+    document.body,
+  );
+}
+
+function DetailsBody({
+  group,
+  title,
+  onClose,
+}: {
+  group: EventGroup;
+  title: string;
+  onClose: () => void;
+}) {
+  return (
+    <>
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-semibold"># {title}</p>
         <button
@@ -1121,7 +1186,7 @@ function DayDetails({
         <span>{group.events.some((e) => e.date !== group.date) ? "Together" : "That day"}</span>
         <span>{group.cents === 0 ? "No change" : signed(group.cents)}</span>
       </p>
-    </div>
+    </>
   );
 }
 
