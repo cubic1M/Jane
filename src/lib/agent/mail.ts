@@ -16,7 +16,10 @@ export function mailMode(userId?: string): MailMode {
   if (process.env.RESEND_API_KEY && process.env.EMAIL_FROM && process.env.AGENT_INBOUND_DOMAIN) {
     return "email";
   }
-  return process.env.NODE_ENV === "production" ? "off" : "simulated";
+  // SIMULATED_AGENT=1: a production build that must still simulate (the end-to-end tests).
+  return process.env.NODE_ENV === "production" && process.env.SIMULATED_AGENT !== "1"
+    ? "off"
+    : "simulated";
 }
 
 // The address a company's reply goes to: unique per action, so it finds its way back.

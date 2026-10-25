@@ -120,6 +120,23 @@ describe("tryJane", () => {
     expect(set.mock.calls[0][2]).toMatchObject({ secure: true });
   });
 
+  // The same rule as Auth.js, which reads it back: the site's own address decides first.
+  it("follows the site's address over HTTP, even in a production build", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("AUTH_URL", "http://localhost:3000");
+    await tryJane(null, agreed());
+    expect(set.mock.calls[0][0]).toBe("authjs.session-token");
+    expect(set.mock.calls[0][2]).toMatchObject({ secure: false });
+    vi.unstubAllEnvs();
+  });
+
+  it("uses the secure cookie when the site's address is HTTPS", async () => {
+    vi.stubEnv("AUTH_URL", "https://jane.example");
+    await tryJane(null, agreed());
+    expect(set.mock.calls[0][0]).toBe("__Secure-authjs.session-token");
+    vi.unstubAllEnvs();
+  });
+
   it("needs the Terms agreed to first, as at sign-up", async () => {
     expect(await tryJane(null, agreed(false))).toEqual({
       error: "Tick the box to agree to the Terms and Privacy Policy first.",
