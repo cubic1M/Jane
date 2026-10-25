@@ -26,6 +26,7 @@ import { regimeReport, regimesEvidenceModule, regimesMarkdown } from "@/planning
 import { sensitivity, sensitivityMarkdown } from "@/planning/catalog/sensitivity";
 import { fetchYahooDaily, yahooBars } from "@/lib/market/yahoo";
 import { evidenceModule, resultsMarkdown } from "@/planning/catalog/report";
+import { catalogCurves } from "@/planning/catalog/curves";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import type { Bar } from "@/lib/market/types";
 import { alignUniverse, type Metrics } from "@/planning/strategies/engine";
@@ -261,7 +262,7 @@ async function runCatalogResearch() {
   const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const alpaca = new AlpacaMarketData({ id, secret }, undefined, undefined, feed);
   const bars: Record<string, Bar[]> = {};
-  for (const t of catalogTickers()) {
+  for (const t of [...new Set([...catalogTickers(), ...strategyTickers()])]) {
     bars[t] = await alpaca.prices(t, from, to);
     console.log(`${t}: ${bars[t].length} bars from ${bars[t][0]?.date ?? "none"}`);
   }
@@ -270,13 +271,18 @@ async function runCatalogResearch() {
   ).map((b) => ({ date: b.t.slice(0, 10), o: b.o, h: b.h, l: b.l, c: b.c }));
   const u = alignCatalog(bars, spy);
   if (!u) throw new Error("No VTI bars to align on.");
-  const { results, trials } = runCatalog(u);
+  const run = runCatalog(u);
+  const { results, trials } = run;
   const meta = {
     source: `Alpaca ${feed.toUpperCase()} daily closes`,
     from: u.dates[0],
     to: u.dates[u.dates.length - 1],
     trials,
   };
+  writeFileSync(
+    join(DIR, "catalog-curves.ts"),
+    catalogCurves(u, run, alignUniverse(bars), `${meta.source}, ${meta.from} to ${meta.to}`),
+  );
   writeFileSync(join(DIR, "catalog-results.json"), JSON.stringify({ meta, results }, null, 1));
   writeFileSync(join(DIR, "strategy-results.md"), resultsMarkdown(results, meta));
   writeFileSync(join(DIR, "catalog-evidence.ts"), evidenceModule(results, meta));

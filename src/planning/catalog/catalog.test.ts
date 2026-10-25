@@ -6,7 +6,18 @@ import { catalogMarkdown } from "./catalog-doc";
 import { evidenceModule, resultsMarkdown } from "./report";
 import { regimeReport, regimesMarkdown } from "./regimes";
 import { sensitivity, sensitivityMarkdown } from "./sensitivity";
-import { alignCatalog, metricsOver, mixReturns, runCatalog, standalone } from "./engine";
+import { strategyTickers } from "@/config/portfolios";
+import { alignUniverse } from "../strategies/engine";
+import { catalogCurves } from "./curves";
+import {
+  alignCatalog,
+  metricsOver,
+  mixReturns,
+  monthAxis,
+  pathOnAxis,
+  runCatalog,
+  standalone,
+} from "./engine";
 import {
   expectedMaxSharpe,
   hrp,
@@ -198,6 +209,48 @@ describe("the write-up", () => {
     const ev = evidenceModule(results, meta);
     expect(ev).toContain("export const CATALOG_EVIDENCE");
     expect(ev).toContain("faber_gtaa5:");
+  });
+});
+
+describe("the graph's curves", () => {
+  it("reads month ends from the last close before the year, compounding from 100", () => {
+    const u = universe();
+    const axis = monthAxis(u, 2020);
+    expect(u.dates[axis[0]] < "2020-01-01").toBe(true);
+    expect(u.dates[axis[1]].slice(0, 7)).toBe("2020-01");
+    expect(axis.at(-1)).toBe(u.dates.length - 1);
+    const flat = u.dates.map(() => 0.01);
+    const p = pathOnAxis(flat, axis);
+    expect(p[0]).toBe(100);
+    expect(p[1]).toBeCloseTo(100 * 1.01 ** (axis[1] - axis[0]), 0);
+    // Returns that start later: nothing before, then from 100.
+    const late = flat.map((x, t) => (t > axis[5] ? x : Number.NaN));
+    const q = pathOnAxis(late, axis);
+    expect(q.slice(0, 6).every((x) => x === null)).toBe(true);
+    expect(q[6]).toBeCloseTo(100 * 1.01 ** (axis[6] - axis[5]), 0);
+  });
+
+  it("writes every strategy, the mix and Jane's pick at every level on one axis", () => {
+    const u = universe();
+    const run = runCatalog(u, ["faber_gtaa5", "mix_trend_overlay"]);
+    const bars = Object.fromEntries(
+      strategyTickers().map((t) => [
+        t,
+        u.dates.map((date, i) => ({ date, closeCents: 10_000 + i + t.length })),
+      ]),
+    );
+    const mod = catalogCurves(u, run, alignUniverse(bars), "made-up closes");
+    expect(mod).toContain("export const CATALOG_CURVES");
+    const dates = JSON.parse(mod.match(/CATALOG_CURVE_DATES: readonly string\[\] = (.*);/)![1]);
+    expect(dates).toEqual(run.axis);
+    for (const level of [1, 2, 3, 4, 5]) {
+      const row = JSON.parse(mod.match(new RegExp(`^  ${level}: (.*),$`, "m"))![1]);
+      expect(row.mix.values).toHaveLength(dates.length);
+      expect(row.mix.values[0]).toBe(100);
+      expect(row.pick.values).toHaveLength(dates.length);
+      expect(row.pick.label.length).toBeGreaterThan(0);
+      expect(row.strategies.faber_gtaa5).toHaveLength(dates.length);
+    }
   });
 });
 
