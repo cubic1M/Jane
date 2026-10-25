@@ -50,9 +50,14 @@ describe.runIf(url)(
         const userId = made.get(person.id)!;
         await planQuestion(userId, { client, now: NOW });
         const q = await nextQuestion(userId, { client, now: NOW });
-        expect(q?.fact).toBe(person.firstQuestion);
+        expect(q?.fact).toBe(person.firstQuestion ?? undefined);
         const snapshot = await loadSnapshot(userId, { client, now: NOW });
         const [message] = questionsSource.gather(snapshot!, { now: NOW } as never);
+        // The retiree's investor profile answers what was left (spec step 129): nothing to ask.
+        if (person.firstQuestion === null) {
+          expect(message).toBeUndefined();
+          return;
+        }
         expect(message.refs.askFact).toBe(person.firstQuestion);
         expect(message.actions.at(-1)?.label).toBe("Skip");
         expect(message.actions.length).toBeLessThanOrEqual(5);

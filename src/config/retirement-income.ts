@@ -76,6 +76,15 @@ export const RMD_LAST_AGE = 100;
 // a common target is about 80% of working pay.
 export const SPEND_SHARE_OF_PAY = 0.8;
 export const SPEND_SOURCE = "A common planning target: about 80% of working pay";
+// Without their own figure or pay from an employer plan: what they spend in a typical month
+// now (one-off costs left out), over this many complete months.
+export const SPEND_HISTORY_MONTHS = 3;
+export const SPEND_FROM_SPENDING_SOURCE =
+  "What you spend in a typical month now, one-off costs left out";
+// Social Security already coming in: at least this many deposits in the last year make it the
+// person's benefit, a year of them divided by twelve.
+export const SS_DEPOSITS_MIN = 3;
+export const SS_DEPOSITS_SOURCE = "From the Social Security deposits in your account";
 
 // The share of a withdrawal from a pre-tax account that is taxed as ordinary income is
 // all of it; Roth and (mostly) taxable-account withdrawals are not. Taxable accounts: only

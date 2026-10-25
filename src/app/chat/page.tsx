@@ -148,7 +148,23 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </p>
       )}
 
-      {/* The message box (spec step 84): typing to Jane, answered under it. */}
+      {hasAskHistory && (
+        <Link
+          href="/ask"
+          className="inline-flex min-h-11 items-center self-start text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+        >
+          Your earlier Ask Jane conversations ›
+        </Link>
+      )}
+      {/* Room for the cards floating over the end of the chat (as tall as they are: none when
+          the dock above the panel has them), so the last message scrolls clear of them. */}
+      <div
+        aria-hidden="true"
+        className="shrink-0"
+        style={{ height: "var(--floating-cards-h, 0px)" }}
+      />
+      {/* The message box (spec step 84): typing to Jane, answered above it; pinned to the
+          bottom of the chat. */}
       <ChatComposer
         id="chat-end"
         maxLength={CHAT_MAX_MESSAGE}
@@ -156,14 +172,6 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
           .filter((m) => m.kind === "user")
           .map((m) => ({ id: m.id, body: m.body }))}
       />
-      {hasAskHistory && (
-        <Link
-          href="/ask"
-          className="-mt-4 inline-flex min-h-11 items-center self-start text-sm text-zinc-600 hover:underline dark:text-zinc-400"
-        >
-          Your earlier Ask Jane conversations ›
-        </Link>
-      )}
       {pages === 1 && <ScrollToEnd targetId="chat-end" />}
       {/* Last, so its room under the message box is the end of the page: one set of cards at
           a time, the options Jane just gave, then the day's suggestions, then the practice
@@ -175,7 +183,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
 
 export default function ChatPage({ searchParams }: PageProps<"/chat">) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
+    // The whole height of its frame, the message box at the very bottom of it.
+    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-1 flex-col gap-6 px-4 pt-6 sm:px-6 sm:pt-10">
       <Suspense fallback={<LoadingBar label="Loading your chat" />}>
         <Chat searchParams={searchParams} />
       </Suspense>

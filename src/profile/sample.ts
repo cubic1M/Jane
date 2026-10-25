@@ -8,7 +8,7 @@ import {
   DEMO_BENEFICIARIES_MISSING,
   DEMO_VALUES_EXCLUDES,
 } from "@/data-sources/demo/people-extras/investing";
-import { isPersonId, type PersonId } from "@/config/people";
+import { isPersonId, personById, type PersonId } from "@/config/people";
 import { SAMPLE_RELIEF } from "@/config/disasters";
 import { goalProgress } from "@/planning/goals";
 import { tradeGoalOf } from "@/planning/goal-tradeoffs";
@@ -110,10 +110,18 @@ function familyCreditFor(person: string): Pick<ProfileInput, "familyCredit"> {
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };
   const holdings = demoHoldings(demo, SAMPLE_TODAY);
+  // Spec step 129: their investor profile comes with the demo bank (src/lib/plaid/demo.ts), so
+  // their age and how they'd take a fall are told, as src/lib/profile.ts reads them.
+  const investor = isPersonId(person) ? personById(person)?.investor : undefined;
   const input: ProfileInput = {
     today: SAMPLE_TODAY,
-    // What they told Jane that no bank shows (people-extras/told.ts), under anything a test says.
-    told: { ...demoToldFor(person, SAMPLE_TODAY), ...told },
+    // What they told Jane that no bank shows (people-extras/told.ts), their investor profile's
+    // age and risk (spec step 129), then anything a test says.
+    told: {
+      ...demoToldFor(person, SAMPLE_TODAY),
+      ...(investor ? { age: investor.age, risk: investor.dropReaction } : {}),
+      ...told,
+    },
     // Credit they help family with, as the profile loader totals it (src/lib/profile.ts).
     ...familyCreditFor(person),
     extras: {

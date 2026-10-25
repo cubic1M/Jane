@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
-import { CHAT, landInChat, popupCard } from "./chat-page";
+import { CHAT, answerTo, landInChat, popupCard } from "./chat-page";
 
 // Spec steps 81–82: link the demo bank, land in Jane's chat, see the morning brief, tap
 // Yes on a finding and see it answered. On a phone, with nothing sideways and the tab bar
@@ -59,8 +59,11 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await agenda.getByRole("button", { name: "More details" }).click();
   await expect(agenda.locator('[id^="details-"]')).toContainText("need your yes:");
   await expect(agenda.getByRole("button", { name: "Approve all safe ones" })).toBeVisible();
+  // Not Hulu's: it's asked about next, and once on the plan Jane answers it differently. Which
+  // finding comes first depends on the day.
   await agenda
     .getByRole("button", { name: /^Yes: / })
+    .filter({ hasNotText: /hulu/i })
     .first()
     .click();
   await expect(agenda.getByRole("heading", { level: 3 })).not.toHaveText(
@@ -72,8 +75,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await ask.fill("cancel hulu");
   await ask.press("Enter");
   // Jane's answer, by its words: the result of the Yes above may land after it.
-  const answer = messages.filter({ hasText: "Hulu" }).filter({ hasText: "Want me to handle it?" });
-  await expect(answer).toHaveCount(1);
+  const answer = await answerTo(page, "Hulu", "Want me to handle it?");
   const body = (await answer.locator("p").nth(1).textContent()) ?? "";
   expect(body).toContain("Want me to handle it?");
   const finding = messages.filter({ hasText: body });
@@ -176,8 +178,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   // Spec step 91: Jane remembers what she's told, only on the tap, and Settings can forget it.
   await ask.fill("payday is the 15th");
   await ask.press("Enter");
-  const told = messages.filter({ hasText: "I can remember that: payday is the 15th." }).last();
-  await expect(told).toBeVisible();
+  const told = await answerTo(page, "I can remember that: payday is the 15th.");
   await told.getByRole("button", { name: "Remember this" }).click();
   await expect(told.getByRole("status")).toContainText("Saved.");
   await page.goto("/settings#remembers");

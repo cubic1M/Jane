@@ -16,8 +16,8 @@ describe("the one question worth asking", () => {
     expect(
       best?.spec.fact,
       JSON.stringify(missingFacts(profile, data).map((m) => [m.spec.fact, m.unlockCents])),
-    ).toBe(person.firstQuestion);
-    expect(best!.unlockCents).toBeGreaterThan(0);
+    ).toBe(person.firstQuestion ?? undefined);
+    if (best) expect(best.unlockCents).toBeGreaterThan(0);
   });
 
   it("goes down the list as each is asked, never repeating, until none are left", () => {
@@ -33,7 +33,7 @@ describe("the one question worth asking", () => {
         asked.add(next.spec.fact);
         order.push(next.spec.fact);
       }
-      expect(order[0]).toBe(person.firstQuestion);
+      expect(order[0]).toBe(person.firstQuestion ?? undefined);
       // Most valuable first.
       const values = missingFacts(profile, data).map((m) => m.unlockCents);
       expect(values).toEqual([...values].sort((a, b) => b - a));

@@ -396,6 +396,8 @@ export async function openPopupMessages(
       status: "open",
       kind: { in: ["decision", "heads_up", "brief", "done"] },
       createdAt: { gte: new Date(now.getTime() - POPUP_DAYS * 24 * 60 * 60 * 1000), lte: now },
+      // Put off or put away (snoozed), it waits out of sight, as in the chat's feed.
+      OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: MESSAGE_SELECT,

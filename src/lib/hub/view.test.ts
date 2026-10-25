@@ -142,6 +142,39 @@ describe("the hero row", () => {
     expect(heroView(hero({ savedCents: 64_000 })).saved.share).toBeCloseTo(64_000 / 290_000);
   });
 
+  it("says why safe to spend is that number, lines that add up to it", () => {
+    const { safe } = heroView(hero());
+    // The balance now, less each thing held back, equals it (founder: "a summary on why that
+    // number is what it is"); nothing held back at zero is listed.
+    expect(safe?.why).toEqual([
+      { label: "In checking now", sign: "", cents: 300_000 },
+      { label: "Bills before Oct 31", sign: "−", cents: 120_000 },
+      { label: "Left in your budgets", sign: "−", cents: 40_000 },
+      { label: "Goals this month", sign: "−", cents: 20_000 },
+      { label: "Safe to spend", sign: "=", cents: 120_000 },
+    ]);
+    const [balance, ...rest] = safe!.why;
+    const total = rest.at(-1)!;
+    const held = rest.slice(0, -1).reduce((sum, l) => sum + l.cents, 0);
+    expect(balance.cents - held).toBe(total.cents);
+    const short = heroView(hero({ safe: { ...hero().safe!, safeCents: -5_000 } })).safe;
+    expect(short?.why.at(-1)).toEqual({ label: "Short before payday", sign: "=", cents: -5_000 });
+  });
+
+  it("says where the savings came from, the biggest few, and how many more", () => {
+    const items = [
+      { title: "Cancel Hulu", kind: "cancelled" as const, cents: 21_600, yearly: true },
+      { title: "Get the overdraft fee back", kind: "refund" as const, cents: 3_500, yearly: false },
+      { title: "Lower your phone bill", kind: "cheaper" as const, cents: 24_000, yearly: true },
+      { title: "Move idle cash", kind: "interest" as const, cents: 15_000, yearly: true },
+    ];
+    const { saved } = heroView(hero({ savedCents: 64_100, savedItems: items }));
+    expect(saved.items.map((i) => i.title)).toEqual(items.slice(0, 3).map((i) => i.title));
+    expect(saved.more).toBe(1);
+    // Before anything is saved, there's nothing to open.
+    expect(heroView(hero()).saved).toMatchObject({ items: [], more: 0 });
+  });
+
   it("leaves out what isn't known", () => {
     const view = heroView(hero({ safe: null, netWorth: null }));
     expect(view.safe).toBeNull();

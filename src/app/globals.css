@@ -403,7 +403,13 @@ body {
    while it is dragged (inline --sheet-share, no transition). */
 .side-chat-sheet {
   --sheet-share: 0;
-  height: calc(var(--sheet-share) * 100dvh);
+  /* Above the on-screen keyboard (--keyboard-inset, from the visual viewport), its message box
+     always in sight. */
+  bottom: var(--keyboard-inset, 0px);
+  height: min(
+    calc(var(--sheet-share) * 100dvh),
+    calc(100dvh - var(--keyboard-inset, 0px) - 2.5rem)
+  );
   visibility: hidden;
   transition:
     height var(--motion-slow) var(--ease-spring),
@@ -533,6 +539,10 @@ body {
 html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   display: none;
 }
+/* The card dock follows its card's height (src/components/side-chat/card-dock.tsx). */
+.dock-height {
+  transition: height var(--motion-slow) var(--ease-out-soft);
+}
 .giant-open {
   animation: page-in var(--motion-slow) var(--ease-out-soft) backwards;
 }
@@ -545,6 +555,9 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .dock-height {
+    transition: none;
+  }
   .giant-open,
   .ask-line {
     animation: none;
@@ -902,12 +915,49 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
     stroke-dashoffset: 1;
   }
 }
+/* A net worth day's summary and details boxes, and the home hub's tiles opening: they arrive
+   on --motion-slow with the spring; nothing moves with reduced motion. */
+.nw-box-in {
+  animation: nw-box-in var(--motion-slow) var(--ease-spring) both;
+}
+@keyframes nw-box-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+.hub-open {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--motion-base) var(--ease-out-soft);
+}
+.hub-open[data-open] {
+  grid-template-rows: 1fr;
+  transition-duration: var(--motion-slow);
+}
+.hub-open > * {
+  overflow: hidden;
+  min-height: 0;
+  /* Shut, it's hidden once the closing animation is done (not just clipped). */
+  visibility: hidden;
+  transition: visibility 0s linear var(--motion-base);
+}
+.hub-open[data-open] > * {
+  visibility: visible;
+  transition: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .nw-box {
     transition: none;
   }
   .nw-line {
     animation: none;
+  }
+  .nw-box-in {
+    animation: none;
+  }
+  .hub-open {
+    transition: none;
   }
 }
 
@@ -1095,6 +1145,14 @@ textarea {
     display: none;
   }
 }
+/* In the chat the cards sit just above its pinned message box (src/app/chat/composer.tsx sets
+   --chat-composer-h), never over it, and need no room of their own at the page's end. */
+body:has([data-chat-composer]) .floating-cards {
+  bottom: calc(var(--chat-composer-h, 5.5rem) + 0.5rem);
+}
+body:has([data-chat-composer]) [data-card-room] {
+  display: none;
+}
 /* In the side panel (/chat?embed=1) the suggestions wait until the page beside it says where it
    is: on Home the hub shows them, so the chat beside it leaves them out; anywhere else, or
    full screen, they show (src/app/chat/embed-bridge.tsx sets data-chat-embed-cards). Hidden by
@@ -1109,15 +1167,6 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
 /* A card opened to its details grows wider (and taller, by its details' own animation). */
 .floating-card-width {
   transition: max-width var(--motion-slow) var(--ease-out-soft);
-}
-/* The card's buttons: one row; when they don't fit, it scrolls and the last edge fades. */
-.card-actions {
-  padding-right: 1.5rem;
-  scrollbar-width: none;
-  mask-image: linear-gradient(to right, black calc(100% - 1.5rem), transparent);
-}
-.card-actions::-webkit-scrollbar {
-  display: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .floating-card-width {
@@ -1139,6 +1188,25 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
     opacity var(--motion-base) ease-out;
 }
 
+/* Stepping between cards: the next slides in from the side it comes from. */
+.floating-card-slide-next {
+  animation: floating-card-slide-next var(--motion-slow) var(--ease-out-soft) both;
+}
+.floating-card-slide-prev {
+  animation: floating-card-slide-prev var(--motion-slow) var(--ease-out-soft) both;
+}
+@keyframes floating-card-slide-next {
+  from {
+    opacity: 0;
+    transform: translateX(2.5rem);
+  }
+}
+@keyframes floating-card-slide-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-2.5rem);
+  }
+}
 @keyframes floating-card-in {
   from {
     opacity: 0;
@@ -1164,7 +1232,9 @@ html[data-chat-embed-cards] body:has([data-chat-embed]) [data-floating-cards="qu
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .floating-card-in {
+  .floating-card-in,
+  .floating-card-slide-next,
+  .floating-card-slide-prev {
     animation: floating-card-fade var(--motion-fast) linear both;
   }
   .floating-card-out,

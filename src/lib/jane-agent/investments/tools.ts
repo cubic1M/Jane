@@ -750,6 +750,11 @@ export async function runInvestmentTool(
       return out({
         socialSecurity: {
           source: v.ss.source,
+          // Already claimed: the deposits coming in now, a month.
+          monthlyNow:
+            v.ss.source === "deposits" && v.ss.fullMonthlyCents !== null
+              ? money(v.ss.fullMonthlyCents)
+              : null,
           options: v.ss.options.map((o) => ({
             startAge: o.age,
             monthly: money(o.monthlyCents),
@@ -767,6 +772,7 @@ export async function runInvestmentTool(
           ? "advice only in demo advice mode"
           : v.paycheck && {
               spendingAMonth: money(v.spendMonthlyCents),
+              spendingFrom: v.spendFrom,
               retireAge: v.retireAge,
               moneyLastsToAge: { low: v.paycheck.lasts.lowAge, high: v.paycheck.lasts.highAge },
               mostAMonthThatLastsTo95: {
