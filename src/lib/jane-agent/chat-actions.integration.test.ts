@@ -12,6 +12,8 @@ import { AUTOPILOT_LEVELS } from "@/config/autopilot";
 import { logAudit } from "@/lib/audit";
 import { findingOfType } from "@/lib/__fixtures__/findings";
 import { setAutopilot } from "@/lib/autopilot";
+import { openPopupMessages } from "@/lib/jane-agent/messages";
+import { toView } from "@/lib/jane-agent/view";
 import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { recordDecision } from "@/lib/decisions";
 import { addDeadline } from "@/lib/deadlines";
@@ -126,6 +128,88 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
     vi.unstubAllEnvs();
+  });
+
+  // Founder, 2026-10-25: a choice stays on the message, greyed with this one marked, and Revert
+  // puts back the level, the standing rules and the buttons.
+  it("keeps the autopilot choices after one is taken, and Revert puts everything back", async () => {
+    const userId = await plainPerson("choice-revert");
+    const before = await client.standingRule.findMany({ where: { userId } });
+    const question = await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: "How much should I do on my own?\nPick one.",
+        dedupeKey: "autopilot:revert-test",
+        actions: [
+          { id: "autopilot.safe", label: "Handle the safe stuff", kind: "primary" },
+          { id: "autopilot.all", label: "Handle everything allowed", kind: "secondary" },
+          { id: "autopilot.ask", label: "Ask me first", kind: "secondary" },
+        ],
+      },
+    });
+    const { message } = await takeChatAction(userId, question.id, "autopilot.all", {
+      client,
+      now: LINKED,
+    });
+    expect(message.status).toBe("answered");
+    expect(buttonIds(message)).toEqual(["choice.revert", "choice.done"]);
+    expect(message.refs.chosen).toMatchObject({
+      actionId: "autopilot.all",
+      label: "Handle everything allowed",
+    });
+    expect(message.refs.chosen?.autopilot?.level).toBeNull();
+    const view = toView(message, LINKED, "UTC");
+    // The chat shows Revert (and the card Done) on the answered message.
+    expect(view.buttons.map((b) => b.id)).toEqual(["choice.revert", "choice.done"]);
+    expect(view.chosen).toMatchObject({
+      key: "autopilot.all",
+      label: "Handle everything allowed",
+      final: false,
+      settled: false,
+    });
+    expect(view.chosen?.choices.map((c) => c.label)).toEqual([
+      "Handle the safe stuff",
+      "Handle everything allowed",
+      "Ask me first",
+    ]);
+    const user = await client.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user).toMatchObject({ autopilot: "all", acceptSimpleOffers: true });
+    // Chosen, it still floats (marked, with Revert) until Done.
+    expect((await openPopupMessages(userId, { client, now: LINKED })).map((m) => m.id)).toContain(
+      question.id,
+    );
+    // Done on its card settles it; Revert still works from the chat.
+    const { message: settled } = await takeChatAction(userId, question.id, "choice.done", {
+      client,
+      now: LINKED,
+    });
+    expect(settled.refs.chosen?.settled).toBe(true);
+    expect(buttonIds(settled)).toEqual(["choice.revert"]);
+    expect(
+      (await openPopupMessages(userId, { client, now: LINKED })).map((m) => m.id),
+    ).not.toContain(question.id);
+
+    const { message: back } = await takeChatAction(userId, question.id, "choice.revert", {
+      client,
+      now: LINKED,
+    });
+    expect(back).toMatchObject({ status: "open", answeredWith: null });
+    expect(buttonIds(back)).toEqual(["autopilot.safe", "autopilot.all", "autopilot.ask"]);
+    expect(back.refs.chosen).toBeUndefined();
+    expect(toView(back, LINKED, "UTC").chosen).toBeNull();
+    expect(await client.user.findUniqueOrThrow({ where: { id: userId } })).toMatchObject({
+      autopilot: null,
+      acceptSimpleOffers: false,
+    });
+    const after = await client.standingRule.findMany({ where: { userId, enabled: true } });
+    expect(after).toHaveLength(before.filter((r) => r.enabled).length);
+    // And it can be chosen again.
+    const { message: again } = await takeChatAction(userId, question.id, "autopilot.ask", {
+      client,
+      now: LINKED,
+    });
+    expect(again.refs.chosen?.actionId).toBe("autopilot.ask");
   });
 
   describe("with the demo bank", () => {

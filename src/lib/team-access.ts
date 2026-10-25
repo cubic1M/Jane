@@ -144,6 +144,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   mfa_backup_codes_created: own,
   standing_rules_saved: own,
   autopilot_set: own,
+  autopilot_reverted: own,
   autopilot_sector_set: own,
   money_transfer_scheduled: own,
   money_transfer_cancelled: own,

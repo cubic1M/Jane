@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   answer,
+  restore,
   counter,
   currentCard,
   initialState,
@@ -189,6 +190,8 @@ export function FloatingCards({
   mode = "queue",
   label,
   onAnswer,
+  onRevert,
+  onSettle,
   neverLabel,
   links,
   foldOnPhone = false,
@@ -202,6 +205,10 @@ export function FloatingCards({
   // Called at once when a card is answered (with the choice, when one of a card's other
   // choices was taken); the caller does the server work behind it.
   onAnswer: (id: string, answer: CardAnswer, choice?: string) => void;
+  // Revert on a chosen revertable card (the caller undoes the choice on the server).
+  onRevert?: (id: string) => void;
+  // Done on a chosen card: it settles into the history (the caller tells the server).
+  onSettle?: (id: string) => void;
   // A third, quieter choice inside the details ("Don't suggest this again"); omit for none.
   neverLabel?: string;
   // Page links to show inside a card's details, by card id.
@@ -217,6 +224,10 @@ export function FloatingCards({
   onDetails?: (id: string) => void;
 }) {
   const [state, setState] = useState(initialState);
+  // A revertable card that was just chosen (founder, 2026-10-25): it stays on screen with its
+  // choices greyed and the chosen one marked, Revert and Done, while the server catches up;
+  // after Revert (chosen null) it's open again at once.
+  const [held, setHeld] = useState<{ card: FloatingCardData; chosen: string | null } | null>(null);
   // Cards that just left, kept for the length of their exit slide, and which way they went.
   const [leaving, setLeaving] = useState<(FloatingCardData & { way: "yes" | "no" })[]>([]);
   const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
@@ -225,7 +236,7 @@ export function FloatingCards({
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const phone = usePhone();
   const [unfolded, setUnfolded] = useState(false);
-  const current = currentCard(cards, state);
+  const current = held?.card ?? currentCard(cards, state);
   const left = waiting(cards, state);
   const open = current !== null && detailsOpen === current.id;
   // Cards waiting behind the one showing, drawn as edges under it.
@@ -233,6 +244,18 @@ export function FloatingCards({
   const folded = foldOnPhone && phone && !unfolded && current !== null;
 
   function respond(card: FloatingCardData, how: CardAnswer, choice?: string) {
+    if (how === "yes" && card.revertable) {
+      // Chosen: the card stays, marked, in the same frame; the server work follows.
+      const label = choice
+        ? (card.choices?.find((c) => c.id === choice)?.label ?? card.yesLabel)
+        : card.yesLabel;
+      setHeld({ card, chosen: label });
+      setState((s) => answer(cards, s, mode, card.id));
+      setDetailsOpen(null);
+      onAnswer(card.id, how, choice);
+      return;
+    }
+    setHeld(null);
     // The set first, so the next card is on screen in the same frame; then the caller's work.
     const departing = mode === "pick" ? left : [card];
     const way: "yes" | "no" = how === "yes" ? "yes" : "no";
@@ -272,6 +295,7 @@ export function FloatingCards({
   // To the next or previous card: it slides in from that side, and opens as this one was
   // (founder: switching never "collapses" the card), the height following it.
   function step(by: 1 | -1) {
+    setHeld(null);
     const next = move(cards, state, by);
     const to = currentCard(cards, next);
     setState(next);
@@ -516,32 +540,56 @@ export function FloatingCards({
               {/* Every choice always in view, labels whole (founder: "not all the choices are
                   shown"): one line when they fit (compact buttons), wrapping onto another
                   rather than ever being cut off or scrolled out of sight. */}
-              <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => respond(current, "yes")}
-                  className={`${PRIMARY} ${COMPACT}`}
-                >
-                  {current.yesLabel}
-                </button>
-                {current.choices?.map((c) => (
+              {(held?.chosen && held.card.id === current.id) ||
+              (current.chosen && !(held?.card.id === current.id && held.chosen === null)) ? (
+                <ChosenActions
+                  card={current}
+                  chosen={
+                    held?.card.id === current.id && held.chosen ? held.chosen : current.chosen!
+                  }
+                  onRevert={
+                    onRevert
+                      ? () => {
+                          onRevert(current.id);
+                          setState((s) => restore(cards, s, current.id));
+                          setHeld({ card: current, chosen: null });
+                        }
+                      : undefined
+                  }
+                  onDone={() => {
+                    setHeld(null);
+                    setState((s) => answer(cards, s, mode, current.id));
+                    onSettle?.(current.id);
+                  }}
+                />
+              ) : (
+                <div data-card-actions="" className="flex min-w-0 flex-wrap gap-2">
                   <button
-                    key={c.id}
                     type="button"
-                    onClick={() => respond(current, "yes", c.id)}
+                    onClick={() => respond(current, "yes")}
+                    className={`${PRIMARY} ${COMPACT}`}
+                  >
+                    {current.yesLabel}
+                  </button>
+                  {current.choices?.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => respond(current, "yes", c.id)}
+                      className={`${SECONDARY} ${COMPACT}`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => respond(current, "not_now")}
                     className={`${SECONDARY} ${COMPACT}`}
                   >
-                    {c.label}
+                    {current.notNowLabel ?? "Not now"}
                   </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => respond(current, "not_now")}
-                  className={`${SECONDARY} ${COMPACT}`}
-                >
-                  {current.notNowLabel ?? "Not now"}
-                </button>
-              </div>
+                </div>
+              )}
               <p
                 aria-live="polite"
                 className={
@@ -565,5 +613,57 @@ export function FloatingCards({
         )}
       </div>
     </section>
+  );
+}
+
+// A chosen pick-one card (founder, 2026-10-25): every choice still in view, the chosen one
+// inverted and marked, the others greyed and off; Revert takes it back, Done moves on.
+function ChosenActions({
+  card,
+  chosen,
+  onRevert,
+  onDone,
+}: {
+  card: FloatingCardData;
+  chosen: string;
+  onRevert?: () => void;
+  onDone: () => void;
+}) {
+  const labels = [card.yesLabel, ...(card.choices ?? []).map((c) => c.label)];
+  return (
+    <div data-card-actions="" data-card-chosen="" className="flex min-w-0 flex-wrap gap-2">
+      {labels.map((label) =>
+        label === chosen ? (
+          <button
+            key={label}
+            type="button"
+            disabled
+            aria-pressed="true"
+            className={`${COMPACT} inline-flex items-center gap-1 border-2 border-current bg-zinc-950 px-3 font-semibold text-white dark:bg-white dark:text-zinc-950`}
+          >
+            {label} <span aria-hidden="true">[✓ chosen]</span>
+            <span className="sr-only">, chosen</span>
+          </button>
+        ) : (
+          <button
+            key={label}
+            type="button"
+            disabled
+            aria-pressed="false"
+            className={`${SECONDARY} ${COMPACT} opacity-40`}
+          >
+            {label}
+          </button>
+        ),
+      )}
+      {onRevert && (
+        <button type="button" onClick={onRevert} className={`${SECONDARY} ${COMPACT}`}>
+          <span aria-hidden="true">↶ </span>Revert
+        </button>
+      )}
+      <button type="button" onClick={onDone} className={`${SECONDARY} ${COMPACT}`}>
+        Done
+      </button>
+    </div>
   );
 }

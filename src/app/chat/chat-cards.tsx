@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { PickResult } from "@/lib/compare-actions";
+import type { PickResult, RevertResult } from "@/lib/compare-actions";
+import { REVERT_ACTION } from "@/lib/jane-agent/choices";
 import { ComparisonCards } from "@/components/comparison-cards";
 import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
 import type { Comparison } from "@/lib/comparison";
@@ -60,7 +61,23 @@ export function ChatCards({
     router.refresh();
     return result.error
       ? ({ ok: false, error: result.error } satisfies PickResult)
-      : ({ ok: true, note: result.message.note ?? "" } satisfies PickResult);
+      : ({
+          ok: true,
+          note: result.message.note ?? "",
+          final: result.message.chosen?.final === true,
+        } satisfies PickResult);
+  }
+
+  // Revert on the sheet: the message's own choice.revert, which takes the pick back.
+  async function revertOn(message: MessageView) {
+    const data = new FormData();
+    data.set("messageId", message.id);
+    data.set("actionId", REVERT_ACTION);
+    const result = await tapButton({ message, error: null }, data);
+    router.refresh();
+    return result.error
+      ? ({ ok: false, error: result.error } satisfies RevertResult)
+      : ({ ok: true } satisfies RevertResult);
   }
 
   function closeSheet(message: MessageView) {
@@ -114,6 +131,7 @@ export function ChatCards({
                 key={sheet.message.id}
                 comparison={sheet.comparison}
                 onPick={(id) => pickOn(sheet.message, sheet.comparison, id)}
+                onRevert={() => revertOn(sheet.message)}
                 onLater={() => onAnswer(sheet.message, "", "not_now")}
               />
             </div>

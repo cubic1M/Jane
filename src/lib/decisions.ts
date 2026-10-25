@@ -6,6 +6,7 @@ import type {
   Prisma,
   PrismaClient,
 } from "@/generated/prisma/client";
+import { PICK_UNDO_HOURS } from "@/config/rules";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
@@ -243,6 +244,65 @@ export async function undoDecision(
     "decision_undone",
     { type: "finding", id: decision.findingId },
     { decision_id: decision.id },
+  );
+  await track(userId, "decision_undone", {});
+}
+
+// Revert on a pick made in the chat or on an option card (founder, 2026-10-25: "there should be
+// a revert button"): within PICK_UNDO_HOURS and while the team hasn't started, its queued action
+// goes, the decision is marked undone, and the pick's own finding is put away under a retired
+// key, so the same choice can be made again and nothing comes back as a card. A pick with
+// nothing queued ("keep what you have") is simply undone.
+export async function undoPick(
+  userId: string,
+  decisionId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  const db = scopedFor(userId, client);
+  const decision = await db.decisions.findFirst({
+    where: { id: decisionId, source: "chat", undoneAt: null },
+    select: {
+      id: true,
+      findingId: true,
+      createdAt: true,
+      action: { select: { id: true, status: true } },
+      finding: { select: { key: true } },
+    },
+  });
+  const ageHours = decision ? (now.getTime() - decision.createdAt.getTime()) / 3_600_000 : Infinity;
+  const started = decision?.action && decision.action.status !== "queued";
+  if (!decision || ageHours > PICK_UNDO_HOURS || started) {
+    throw new DecisionError(
+      "cannot_undo",
+      "This can't be taken back anymore: the team has started.",
+    );
+  }
+  await db.transaction(async (tx) => {
+    if (decision.action) {
+      const removed = await tx.actions.deleteMany({
+        where: { id: decision.action.id, status: "queued" },
+      });
+      if (removed.count === 0) {
+        throw new DecisionError(
+          "cannot_undo",
+          "This can't be taken back anymore: the team has started.",
+        );
+      }
+    }
+    await tx.decisions.updateMany({ where: { id: decision.id }, data: { undoneAt: now } });
+    await tx.findings.updateMany({
+      where: { id: decision.findingId },
+      data: {
+        status: "declined",
+        ...(decision.finding?.key ? { key: `${decision.finding.key}:undone:${decision.id}` } : {}),
+      },
+    });
+  });
+  await logAudit(
+    { type: "user", id: userId },
+    "decision_undone",
+    { type: "finding", id: decision.findingId },
+    { decision_id: decision.id, source: "chat" },
   );
   await track(userId, "decision_undone", {});
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
+import { DONE_ACTION, REVERT_ACTION } from "@/lib/jane-agent/choices";
 import { popupCard, type PopupCard } from "@/lib/jane-agent/popups";
 import { noteDetailsOpened, tapButton } from "./actions";
 
@@ -89,6 +90,8 @@ export function SuggestionCards({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [open, setOpen] = useState(messages.length);
+  // Each card's last tap still on its way to the server, so a Revert follows its choice.
+  const sending = useRef(new Map<string, Promise<unknown>>());
   const cards = useMemo(
     () =>
       messages.map((m): FloatingCardData | PopupCard => (m.suggestion ? cardOf(m) : popupCard(m))),
@@ -132,19 +135,45 @@ export function SuggestionCards({
               ? (choice ?? card.yesAction)
               : card.notNowAction;
           if (!actionId) return;
-          // The server work follows the screen: the card is already gone.
+          // The server work follows the screen: the card is already gone (or, for a choice,
+          // already marked).
+          const data = new FormData();
+          data.set("messageId", id);
+          data.set("actionId", actionId);
+          // In order behind the card's last tap (a choice right after a Revert).
+          const sent = (sending.current.get(id) ?? Promise.resolve())
+            .catch(() => undefined)
+            .then(() => tapButton({ message, error: null }, data));
+          sending.current.set(id, sent);
           startTransition(async () => {
-            const data = new FormData();
-            data.set("messageId", id);
-            data.set("actionId", actionId);
-            await tapButton({ message, error: null }, data);
+            await sent;
             router.refresh();
             onAnswered?.();
           });
         }}
+        onRevert={(id) => send(id, REVERT_ACTION)}
+        onSettle={(id) => send(id, DONE_ACTION)}
       />
       {/* Room at the end of the page so the message box is never under a card. */}
       {open > 0 && !docked && <div aria-hidden="true" data-card-room="" className="h-28" />}
     </>
   );
+
+  // Revert or Done on a chosen card: after the card's last tap has reached the server.
+  function send(id: string, actionId: string) {
+    const message = messages.find((m) => m.id === id);
+    if (!message) return;
+    const data = new FormData();
+    data.set("messageId", id);
+    data.set("actionId", actionId);
+    const sent = (sending.current.get(id) ?? Promise.resolve())
+      .catch(() => undefined)
+      .then(() => tapButton({ message, error: null }, data));
+    sending.current.set(id, sent);
+    startTransition(async () => {
+      await sent;
+      router.refresh();
+      onAnswered?.();
+    });
+  }
 }

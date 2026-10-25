@@ -83,6 +83,9 @@ export const ACTION_IDS = [
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
+  // Founder, 2026-10-25: a pick-one choice stays on the message, with Revert.
+  "choice.revert",
+  "choice.done",
   // Spec step 83: the rest of Jane from the chat.
   "autopilot.safe",
   "autopilot.all",
@@ -361,6 +364,24 @@ export const ACTION_IDS = [
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
+// What a choice changed, so Revert can put it back (src/lib/jane-agent/actions/choice.ts).
+export type ChosenRef = {
+  actionId: string;
+  label: string;
+  // An autopilot level: the level and the standing rules from before it.
+  autopilot?: {
+    level: string | null;
+    acceptSimpleOffers: boolean;
+    rules: { key: string; enabled: boolean; monthlyLimit: number; maxAnnualCents: number | null }[];
+  };
+  // A pick queued for the team (insurance cover, a loan): its decision.
+  decisionId?: string;
+  // Started at once (an insurance switch): kept on the message, with no Revert.
+  final?: boolean;
+  // Done on its card: settled into the chat's history (it no longer floats).
+  settled?: boolean;
+};
+
 export type MessageAction =
   // quick (spec step 90): a quick reply under an answer ("Why?", "Show options"), which
   // answers in the chat and leaves the message's own buttons as they are.
@@ -470,6 +491,9 @@ export type MessageRefs = {
   undoUntil?: string;
   // The buttons to bring back when an answer is undone.
   previousActions?: MessageAction[];
+  // A pick-one choice that was made and stays on the message (founder, 2026-10-25): the
+  // choices greyed, this one marked, and Revert, which puts back what's kept here.
+  chosen?: ChosenRef;
   // A line under the answer: what happened when the button was tapped.
   note?: string;
   // Spec step 241: the goal order a "Use this order" button picks (goal ids, comma-joined).
