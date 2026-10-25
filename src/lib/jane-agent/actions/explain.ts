@@ -1,6 +1,8 @@
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { scopedFor } from "@/lib/db-scoped";
+import { selfServe } from "@/lib/diy";
 import { optionsReply, whyReply } from "../explain-replies";
 import { storeReply } from "../messages";
 import {
@@ -28,7 +30,9 @@ async function explain(context: ActionContext, what: "why" | "options"): Promise
   if (finding.status !== "new" && finding.status !== "shown") {
     throw answeredElsewhere("You've already answered this one.");
   }
-  const card = buildCard(finding);
+  const built = buildCard(finding);
+  // A real account hears what they'd do, never "We ..." (read-only mode).
+  const card = (await conciergeMode(userId, { client })) ? built : selfServe(built);
   const reply =
     what === "why"
       ? whyReply(card, message.actions)

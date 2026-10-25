@@ -6,10 +6,13 @@ const MESSAGES: Record<string, string> = {
     "That email already has an account with a different sign-in method. Use the one you signed up with.",
   AccessDenied: "Sign-in was cancelled or not allowed.",
   ConsentRequired: "Please agree to the Terms and Privacy Policy to sign up.",
-  InviteRequired: "The beta is invite-only. Enter your invite code to sign up.",
+  InviteRequired: "Jane is in private beta. Ask a founder for an invite, then enter its code.",
   InvalidInvite: "That invite code isn't valid. Check it and try again.",
   InviteUsedUp: "That invite code has been used up. Ask for a new one.",
   InviteExpired: "That invite code has expired. Ask for a new one.",
+  InviteRevoked: "That invite code is no longer active. Ask a founder for a new one.",
+  InviteWrongEmail:
+    "That invite code is for a different email address. Sign up with the address it was sent to.",
   TooManyRequests: "Too many sign-in attempts. Wait a few minutes and try again.",
 };
 

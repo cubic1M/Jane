@@ -16,6 +16,7 @@ import { roomFromPlan } from "@/planning/goal-tradeoffs";
 import { safeToSpend } from "@/planning/safe-to-spend";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedItems } from "@/lib/membership/service";
+import { verifiedSavings } from "@/lib/savings-proof";
 import { loadComingUp } from "@/lib/coming-up";
 import { whatJaneDid } from "@/lib/what-jane-did";
 
@@ -82,10 +83,12 @@ export async function homeSummary(
   ]);
   // The person's own day, as the bills and safe to spend read it (src/lib/today.ts).
   const asOf = input.asOf;
-  const [budgetRows, { bills, deposits, deadlines }] = await Promise.all([
+  const [budgetRows, { bills, deposits, deadlines }, verified] = await Promise.all([
     budgets.length === 0 ? null : loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
     // Bills and deadlines from the one coming-up source, reusing the transactions loaded above.
     loadComingUp(userId, { client, now, days: COMING_UP_DAYS, input }),
+    // What the person's transactions confirm (the verified savings record), for the Saved tile.
+    verifiedSavings(userId, { client, now, input }),
   ]);
   const budget = budgetRows === null ? null : budgetSummary(budgetRows, budgets, asOf);
 
@@ -113,6 +116,7 @@ export async function homeSummary(
   return {
     moneyFoundCents: found,
     savedToDateCents: saved.reduce((sum, i) => sum + i.cents, 0),
+    confirmedSavedCents: verified.confirmedCents,
     // What the saved total is made of, biggest first (the Saved tile's summary).
     savedItems: saved,
     openActions,

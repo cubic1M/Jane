@@ -1,7 +1,12 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { pickCompared, type PickResult } from "@/lib/compare-actions";
+import {
+  pickCompared,
+  revertCompared,
+  type PickResult,
+  type RevertResult,
+} from "@/lib/compare-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { MOTION } from "@/config/motion";
 import {
@@ -41,19 +46,27 @@ const BUTTON =
   "inline-flex min-h-11 items-center justify-center border px-3 text-sm font-semibold uppercase tracking-wide disabled:cursor-not-allowed";
 
 export type PickHandler = (optionId: string) => Promise<PickResult>;
+// Takes back the pick (its decision, from the pick's result).
+export type RevertHandler = (decisionId: string | undefined) => Promise<RevertResult>;
 
 export function ComparisonCards({
   comparison,
   onPick,
+  onRevert,
   onLater,
 }: {
   comparison: Comparison;
   // Defaults to the area pages' server action; the chat sends its own (option.pick).
   onPick?: PickHandler;
+  // Defaults to the area pages' server action; the chat sends its own (choice.revert).
+  onRevert?: RevertHandler;
   onLater?: () => void;
 }) {
   const [preference, setPreference] = useState<Preference>(comparison.initial);
   const [chosen, setChosen] = useState<string | null>(null);
+  // The pick on its way to the server (a Revert waits for it), and what it returned.
+  const picking = useRef<Promise<PickResult> | null>(null);
+  const [picked, setPicked] = useState<{ decisionId?: string; final?: boolean } | null>(null);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [table, setTable] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -101,14 +114,49 @@ export function ComparisonCards({
           id,
         ));
     // Not in a transition: the answer shows as soon as it's back, whatever the page does.
-    void pick(option.id)
-      .catch((): PickResult => ({ ok: false, error: "That didn't go through. Try again." }))
+    const sent = pick(option.id).catch((): PickResult => ({
+      ok: false,
+      error: "That didn't go through. Try again.",
+    }));
+    picking.current = sent;
+    setPicked(null);
+    void sent.then((result) => {
+      if (picking.current !== sent) return;
+      if (result.ok) {
+        setPicked({ decisionId: result.decisionId, final: result.final });
+        setStatus({ ok: true, text: `Chosen: ${option.name}. ${result.note}` });
+      } else {
+        setChosen(null);
+        setStatus({ ok: false, text: result.error });
+      }
+    });
+  }
+
+  // Revert (founder, 2026-10-25): the choices open again at once; the pick is taken back behind,
+  // after it has reached the server, and put back with a line if that fails.
+  function revert() {
+    const was = chosen;
+    const sent = picking.current;
+    if (!was || !sent) return;
+    setChosen(null);
+    setPicked(null);
+    picking.current = null;
+    setStatus({ ok: true, text: "Reverted: nothing is chosen." });
+    void sent
+      .then((result) =>
+        result.ok
+          ? (
+              onRevert ??
+              ((id) => (id ? revertCompared(id) : Promise.resolve({ ok: true } as const)))
+            )(result.decisionId)
+          : ({ ok: true } as const),
+      )
+      .catch((): RevertResult => ({ ok: false, error: "That didn't go through. Try again." }))
       .then((result) => {
-        if (result.ok) setStatus({ ok: true, text: `Chosen: ${option.name}. ${result.note}` });
-        else {
-          setChosen(null);
-          setStatus({ ok: false, text: result.error });
-        }
+        if (result.ok) return;
+        setChosen(was);
+        picking.current = sent;
+        setStatus({ ok: false, text: result.error });
       });
   }
 
@@ -179,7 +227,7 @@ export function ComparisonCards({
               className={`flex w-[85%] shrink-0 snap-center flex-col gap-2 border p-3 sm:w-auto ${
                 isChosen
                   ? "border-zinc-950 bg-zinc-950 text-white dark:border-white dark:bg-white dark:text-zinc-950"
-                  : "border-zinc-400 bg-white dark:border-zinc-600 dark:bg-zinc-950"
+                  : `border-zinc-400 bg-white dark:border-zinc-600 dark:bg-zinc-950 ${chosen ? "opacity-50" : ""}`
               }`}
             >
               <p className="flex min-h-5 flex-wrap gap-1 text-[11px] font-semibold">
@@ -227,7 +275,7 @@ export function ComparisonCards({
                       : "border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-700 disabled:opacity-40 dark:border-white dark:bg-white dark:text-zinc-950"
                   }`}
                 >
-                  {isChosen ? "✓ Chosen" : "Choose"}
+                  {isChosen ? "[✓ chosen]" : "Choose"}
                 </button>
                 <button
                   type="button"
@@ -272,6 +320,15 @@ export function ComparisonCards({
         {WHAT_A_PICK_DOES[comparison.kind]}
       </p>
       {comparison.advice && <DemoAdviceLabel />}
+      {chosen && !picked?.final && (
+        <button
+          type="button"
+          onClick={revert}
+          className={`${BUTTON} self-start border-zinc-400 dark:border-zinc-600`}
+        >
+          <span aria-hidden="true">↶ </span>Revert
+        </button>
+      )}
       {onLater && !chosen && (
         <button
           type="button"

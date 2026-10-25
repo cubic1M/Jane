@@ -6,7 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
-import { findingNo, findingPick, findingYes } from "./finding";
+import { diyDone, findingNo, findingPick, findingYes } from "./finding";
 import { optionLater, optionPick } from "./options";
 import {
   insuranceGapNo,
@@ -55,6 +55,7 @@ import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
 import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
+import { choiceDone, choiceRevert } from "./choice";
 import { practicePrefsSave } from "./practice";
 import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
@@ -199,6 +200,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   ...DEBT_ACTION_HANDLERS,
   "finding.no": findingNo,
   "finding.pick": findingPick,
+  "diy.done": diyDone,
   "option.pick": optionPick,
   "option.later": optionLater,
   // Insurance (spec Phase X).
@@ -244,6 +246,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
+  "choice.revert": choiceRevert,
+  "choice.done": choiceDone,
   // Spec step 83.
   "autopilot.safe": autopilotSafe,
   "autopilot.all": autopilotAll,

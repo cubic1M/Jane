@@ -12,7 +12,7 @@ import { sendEmail } from "@/lib/email";
 import { healthFor } from "@/lib/health-score";
 import { rankedFor } from "@/lib/jane-agent/priorities";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
-import { provenSavings } from "@/lib/savings-proof";
+import { verifiedSavings } from "@/lib/savings-proof";
 import {
   monthName,
   receiptWords,
@@ -42,7 +42,7 @@ export async function buildMonthlyReport(
 ): Promise<MonthlyReport> {
   const db = scopedFor(userId, client);
   const [saved, checkIn, transfers, snapshot, health] = await Promise.all([
-    provenSavings(userId, { client, now }),
+    verifiedSavings(userId, { client, now }),
     loadCheckIn(userId, month, { client, now }),
     db.moneyTransfers.findMany({
       where: {
@@ -61,7 +61,11 @@ export async function buildMonthlyReport(
   const planned = yearPlanView?.months.find((m) => m.month === month);
   const upcoming = yearPlanView?.months.find((m) => m.month === yearPlanView.currentMonth);
   const kinds = await resultsByKind(userId, { client, now });
-  const receipts = saved.confirmed.filter((r) => r.seen.date.startsWith(month));
+  const receipts = saved.actions.confirmed.filter((r) => r.seen.date.startsWith(month));
+  // Suggestions the person acted on, first seen in the transactions this month.
+  const fromSuggestions = saved.suggestions.confirmed.filter((o) =>
+    o.verifiedOn?.startsWith(month),
+  );
   const [next] = snapshot ? rankedFor(snapshot) : [];
   const [summary, year] = await Promise.all([
     summaryFor(userId, checkIn, { client }),
@@ -79,7 +83,9 @@ export async function buildMonthlyReport(
     year,
     saved: {
       totalCents: saved.confirmedCents,
-      monthCents: receipts.reduce((s, r) => s + r.cents, 0),
+      monthCents:
+        receipts.reduce((s, r) => s + r.cents, 0) +
+        fromSuggestions.reduce((s, o) => s + (o.confirmedCents ?? 0), 0),
     },
     earnedCents: checkIn.incomeCents,
     paidDownCents: checkIn.debtPaymentsCents,
@@ -91,7 +97,7 @@ export async function buildMonthlyReport(
       change: health.change?.delta ?? null,
     },
     worked: {
-      confirmed: receipts.length,
+      confirmed: receipts.length + fromSuggestions.length,
       notShown: kinds.reduce((s, k) => s + k.notShown, 0),
     },
     plan:

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
 
 // The team's queue: non-admins get a 404 everywhere under /admin; an admin can move an
 // approved action and the person sees the new status on /actions.
@@ -7,7 +7,13 @@ import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
 
-const ADMIN_PATHS = ["/admin", "/admin/queue", "/admin/metrics", "/admin/actions/anything"];
+const ADMIN_PATHS = [
+  "/admin",
+  "/admin/queue",
+  "/admin/metrics",
+  "/admin/learning",
+  "/admin/actions/anything",
+];
 
 for (const path of ADMIN_PATHS) {
   test(`signed-out visitors get a 404 at ${path}`, async ({ page }) => {
@@ -36,6 +42,18 @@ test.describe("signed in", () => {
     }
   });
 
+  test("an admin sees the learning loop, kind by kind", async ({ context, page, baseURL }) => {
+    const user = await signedInUser("admin");
+    userId = user.userId;
+    await context.addCookies([
+      { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+    ]);
+    const response = await page.goto("/admin/learning");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Learning", level: 1 })).toBeVisible();
+    await expect(page.getByText(/Trial people never count/)).toBeVisible();
+  });
+
   test("an admin moves an action and the person sees it", async ({ context, page, baseURL }) => {
     const user = await signedInUser("admin");
     userId = user.userId;
@@ -53,6 +71,8 @@ test.describe("signed in", () => {
     await page.getByRole("button", { name: "Preview" }).click();
     await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
     await expect(page).toHaveURL("/report", { timeout: 30_000 });
+    // A real account's yes is theirs to do (read-only mode); the queue is the demo bank's.
+    await treatAsDemoBank(user.userId);
     await page.getByRole("link", { name: /Geico insurance/i }).click();
     await page.getByRole("button", { name: "Yes, do this for me" }).click();
     await expect(page).toHaveURL("/actions");

@@ -16,12 +16,15 @@ const FIELD =
 // One form for both ways in, so the invite code (on /signup) goes with either button.
 // On /signup (signUp) it also asks for an invite code (during the closed beta) and
 // agreement to the Terms.
+// `invite`: a code from an invite link (/signup?invite=CODE), filled in.
 export function AuthForm({
   submitLabel,
   signUp = false,
+  invite: code,
 }: {
   submitLabel: string;
   signUp?: boolean;
+  invite?: string;
 }) {
   const invite = signUp && invitesRequired();
   return (
@@ -36,6 +39,7 @@ export function AuthForm({
               id="invite"
               name="invite"
               required
+              defaultValue={code}
               autoComplete="off"
               autoCapitalize="characters"
               placeholder="ABCD-EFGH-JKMN"

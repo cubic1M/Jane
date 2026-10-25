@@ -127,7 +127,14 @@ test("a pick on the options card is instant, and the next card follows within 10
 
   // Behind it, the pick went to the team, and the chat's history shows what was chosen.
   await expect(answer.getByText("You chose:")).toBeVisible({ timeout: 30_000 });
-  await expect(answer.getByText(options[0].label)).toBeVisible();
+  // The options stay, greyed, the chosen one marked, with Revert (founder, 2026-10-25).
+  const choices = answer.locator("[data-chosen-choices] button");
+  await expect(choices).toHaveCount(options.length);
+  await expect(answer.locator('[data-chosen-choices] [aria-pressed="true"]')).toContainText(
+    options[0].label,
+  );
+  for (const choice of await choices.all()) await expect(choice).toBeDisabled();
+  await expect(answer.getByRole("button", { name: /Revert/ })).toBeVisible();
   await expect(answer.getByText(/My team will/)).toBeVisible();
 
   // Reloaded, the card stays gone.

@@ -34,7 +34,7 @@ describe("launchChecks", () => {
       "Database",
     ]);
     expect(failing({ ...READY, TOKEN_ENCRYPTION_KEY: "short" })).toEqual(["Token encryption key"]);
-    expect(failing({ ...READY, OPEN_SIGNUPS: "true" })).toEqual(["Closed beta"]);
+    expect(failing({ ...READY, BETA_INVITE_ONLY: "false" })).toEqual(["Closed beta"]);
   });
 
   it("treats Stripe as optional, but a test key as wrong once set", () => {

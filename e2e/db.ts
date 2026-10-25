@@ -66,6 +66,18 @@ export async function digestEnabled(userId: string): Promise<boolean> {
   }
 }
 
+// How much Jane does on her own (the autopilot level), or null before it's chosen.
+export async function autopilotLevel(userId: string): Promise<string | null> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT autopilot FROM users WHERE id = $1`, [userId]);
+    return rows[0]?.autopilot ?? null;
+  } finally {
+    await client.end();
+  }
+}
+
 export async function userExists(userId: string): Promise<boolean> {
   const client = new Client({ connectionString: E2E_DATABASE_URL });
   await client.connect();
@@ -233,6 +245,25 @@ export async function addBankNeedingSignIn(userId: string, name: string): Promis
        VALUES ($1, $2, $3, 'not-a-token', $4, 'login_required', now() - interval '3 days', now())`,
       [`pi${id}`, userId, `e2e-item-${id}`, name],
     );
+  } finally {
+    await client.end();
+  }
+}
+
+// Read-only mode: only the demo bank (and trial people) get the concierge flow, so a test of
+// the team's queue makes its CSV import count as the demo bank: its accounts as the demo
+// bank's, under a demo item.
+export async function treatAsDemoBank(userId: string): Promise<void> {
+  const id = crypto.randomUUID().replaceAll("-", "");
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO plaid_items (id, user_id, plaid_item_id, access_token_encrypted, institution_name, updated_at)
+       VALUES ($1, $2, $3, 'demo-token', 'Demo Bank', now())`,
+      [`pi${id}`, userId, `demo-e2e-${id}`],
+    );
+    await client.query(`UPDATE accounts SET source = 'plaid' WHERE user_id = $1`, [userId]);
   } finally {
     await client.end();
   }

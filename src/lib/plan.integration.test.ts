@@ -5,6 +5,9 @@ import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
+// The concierge flow is what's tested here (the demo bank and trial people get it); read-only
+// mode for real accounts is in src/lib/decisions.integration.test.ts.
+vi.mock("@/lib/concierge-mode", () => ({ conciergeMode: vi.fn(async () => true) }));
 
 import { track } from "@/lib/analytics";
 import { findingOfType } from "./__fixtures__/findings";

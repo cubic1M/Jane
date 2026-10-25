@@ -1,3 +1,4 @@
+import { conciergeMode } from "@/lib/concierge-mode";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { startAgent } from "@/lib/agent/run";
 import { track } from "@/lib/analytics";
@@ -58,6 +59,12 @@ export async function acceptShop(
     quoteId?: string;
   } = {},
 ): Promise<{ decisionId: string; actionId: string; agentJobId: string }> {
+  // Read-only mode: nobody switches insurers for a real account.
+  if (!(await conciergeMode(userId, { client }))) {
+    throw new AcceptShopError(
+      "Jane can't switch for you. Buy the new policy from the insurer, and cancel the old one once it starts.",
+    );
+  }
   const db = scopedFor(userId, client);
   const shop = await shopById(userId, shopId, { client });
   if (!shop || shop.status !== "open" || !shop.pick || shop.savingCents === null) {

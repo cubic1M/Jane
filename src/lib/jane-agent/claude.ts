@@ -123,6 +123,10 @@ ${NO_ADVICE}
 - If a question isn't about their money in this app, say briefly what you can help with.`;
 const SYSTEM_DEMO_ADVICE = SYSTEM.replace(NO_ADVICE, DEMO_ADVICE);
 
+// Read-only mode (CONCIERGE_ACTIONS): for a real account nobody acts on the person's behalf.
+// Its own block after the cached instructions, so both modes share the cache.
+export const READ_ONLY = `This person's accounts are real, and nobody acts on their behalf: Jane and the app never cancel, call, email, switch, negotiate or dispute anything for them. Never say "I'll take care of it", "I'll cancel / call / write to them" or "our team will". When they want something done, say how they can do it themselves in two or three short steps; a button (propose_action) gives them Jane's full steps and drafts (an email, a call script, a letter) to copy, and Mark done when it's done.`;
+
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
 export type ClaudeAnswer =
@@ -144,6 +148,9 @@ type Options = {
   // Demo advice mode (src/lib/advice-mode.ts, spec step 98): the demo guardrail profile,
   // and advice labelled. Off unless the caller checked adviceMode.
   advice?: boolean;
+  // Read-only mode (src/lib/concierge-mode.ts): false for a real account, where Jane only
+  // shows how. On unless the caller says otherwise (the demo and trial flow).
+  concierge?: boolean;
   // Spec step 193: what the last answer was about, so "it" and "the other one" mean something.
   topic?: Topic | null;
   // Spec step 188: how the person likes answers (src/lib/jane-agent/style.ts).
@@ -466,6 +473,7 @@ async function askClaude(
     maxTurns = CHAT_CLAUDE_MAX_TURNS,
     onEvent = () => {},
     advice = false,
+    concierge = true,
     style = null,
     topic = null,
     firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
@@ -646,6 +654,7 @@ async function askClaude(
       text: advice ? SYSTEM_DEMO_ADVICE : SYSTEM,
       cache_control: { type: "ephemeral" },
     },
+    ...(concierge ? [] : [{ type: "text" as const, text: READ_ONLY }]),
     // Everything below changes with the person and the question, after the cached part.
     {
       type: "text",

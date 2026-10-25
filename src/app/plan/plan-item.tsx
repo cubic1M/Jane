@@ -59,7 +59,9 @@ function Done({ state }: { state: Exclude<ItemState, null> }) {
   return null;
 }
 
-export function PlanItem({ item }: { item: PlanItemView }) {
+// Read-only mode (a real account): "Show me how" opens the item's page, with Jane's steps,
+// drafts and Mark done, instead of a yes for Jane to act on.
+export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readOnly?: boolean }) {
   const [state, action, pending] = useActionState<ItemState, FormData>(answerItem, null);
   const [changing, setChanging] = useState(false);
   const answered = state && state.kind !== "error";
@@ -124,14 +126,26 @@ export function PlanItem({ item }: { item: PlanItemView }) {
             </fieldset>
           )}
           <div className="flex flex-wrap gap-2">
-            <button type="submit" name="choice" value="yes" disabled={pending} className={PRIMARY}>
-              {changing ? "Yes, with these changes" : "Yes"}
-              <span className="sr-only">: {item.title}</span>
-            </button>
+            {readOnly ? (
+              <Link href={`/report/${item.findingId}`} className={PRIMARY}>
+                Show me how<span className="sr-only">: {item.title}</span>
+              </Link>
+            ) : (
+              <button
+                type="submit"
+                name="choice"
+                value="yes"
+                disabled={pending}
+                className={PRIMARY}
+              >
+                {changing ? "Yes, with these changes" : "Yes"}
+                <span className="sr-only">: {item.title}</span>
+              </button>
+            )}
             <button type="submit" name="choice" value="no" disabled={pending} className={SECONDARY}>
               No<span className="sr-only">: {item.title}</span>
             </button>
-            {item.options.length > 0 && (
+            {item.options.length > 0 && !readOnly && (
               <button
                 type="button"
                 onClick={() => setChanging(!changing)}

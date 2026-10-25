@@ -46,8 +46,9 @@ export function refundLine(a: AddonView): string {
   return `${a.label} (${a.name}, ${formatCents(a.paidCents)}): cancelling now could refund about ${formatCents(r.refundCents)}, ${r.monthsLeft} of ${a.termMonths} months unused${r.feeCents > 0 ? `, less about ${formatCents(r.feeCents)} in fees` : ""}.`;
 }
 
-export function refundQuestion(a: AddonView): string {
-  return `${refundLine(a)} I drafted the cancellation. You can send it yourself, or the team can send it for you. It's an estimate: your contract has the final say.`;
+// team: whether the team can send it (not for a real account, read-only mode).
+export function refundQuestion(a: AddonView, team = true): string {
+  return `${refundLine(a)} I drafted the cancellation. ${team ? "You can send it yourself, or the team can send it for you." : "Copy it from your car loan page and send it yourself."} It's an estimate: your contract has the final say.`;
 }
 
 export function carLoanReply(data: CarLoan): Reply {
@@ -98,7 +99,7 @@ export function carLoanReply(data: CarLoan): Reply {
     actions.push(yesButton(ask.label), noButton());
     refs = { ...refs, carAddon: { key: ask.key } };
   } else if (open?.id) {
-    actions.push(mineButton(), teamButton());
+    actions.push(mineButton(), ...(data.team ? [teamButton()] : []));
     refs = { ...refs, carAddon: { id: open.id } };
   }
   lines.push(`Sources: ${ADDON_SOURCES.map((s) => s.label).join("; ")}.`);

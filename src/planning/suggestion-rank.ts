@@ -1,4 +1,12 @@
 import {
+  ACT_PRIOR_RATE,
+  ACT_WEIGHT,
+  KIND_MAX_FACTOR,
+  KIND_MIN_FACTOR,
+  PAYOFF_PRIOR_RATE,
+  PAYOFF_WEIGHT,
+  PEOPLE_LINE_MIN_SHOWN,
+  PRIOR_WEIGHT,
   HISTORY_FLOOR_BY_TOPIC,
   HISTORY_MAX_FACTOR,
   MONEY_GROUPS,
@@ -32,6 +40,48 @@ export type KindResults = readonly {
 
 export type Ranked = { suggestion: Suggestion; score: number };
 
+// What everyone did with each kind of suggestion (the learning loop, src/lib/learning.ts).
+export type KindStat = {
+  topic: string;
+  shown: number;
+  acted: number;
+  decided: number;
+  paidOff: number;
+};
+export type KindStats = ReadonlyMap<string, KindStat>;
+
+// A rate with its prior: as if PRIOR_WEIGHT more showings had gone the prior's way.
+const withPrior = (hits: number, of: number, prior: number) =>
+  (hits + prior * PRIOR_WEIGHT) / (of + PRIOR_WEIGHT);
+
+// The learning loop: kinds people act on, and whose savings then show up, rank higher for
+// everyone; kinds they pass over, or that don't pay off, lower. 1 with no history, within
+// KIND_MIN_FACTOR and KIND_MAX_FACTOR.
+export function kindFactor(topic: string, stats: KindStats = new Map()): number {
+  const k = stats.get(topic);
+  if (!k) return 1;
+  const act = withPrior(k.acted, k.shown, ACT_PRIOR_RATE) / ACT_PRIOR_RATE;
+  const payoff = withPrior(k.paidOff, k.decided, PAYOFF_PRIOR_RATE) / PAYOFF_PRIOR_RATE;
+  const factor = Math.pow(act, ACT_WEIGHT) * Math.pow(payoff, PAYOFF_WEIGHT);
+  return Math.min(KIND_MAX_FACTOR, Math.max(KIND_MIN_FACTOR, factor));
+}
+
+// The card's More details, once a kind has history: "People acted on this 7 of 10 times." In
+// whole tens when there's more (never a false precision), with how often it paid off once that
+// is known too. Null below PEOPLE_LINE_MIN_SHOWN.
+export function peopleLine(topic: string, stats: KindStats = new Map()): string | null {
+  const k = stats.get(topic);
+  if (!k || k.shown < PEOPLE_LINE_MIN_SHOWN) return null;
+  const tenths = Math.round((10 * k.acted) / k.shown);
+  const acted =
+    k.shown <= 10
+      ? `People acted on this ${k.acted} of ${k.shown} times it was shown.`
+      : `People acted on this about ${tenths} of every 10 times it was shown.`;
+  if (k.decided < PEOPLE_LINE_MIN_SHOWN) return acted;
+  const paid = Math.round((10 * k.paidOff) / k.decided);
+  return `${acted} About ${paid} of every 10 who did saw the saving in their transactions.`;
+}
+
 // What the person's own answers do to a topic: 1 with none, up with yes, down with no. A
 // safety topic never falls below its floor (HISTORY_FLOOR_BY_TOPIC).
 export function historyFactor(topic: string, history: TopicHistory): number {
@@ -58,6 +108,7 @@ export function scoreOf(
   s: Suggestion,
   history: TopicHistory = {},
   results: KindResults = [],
+  kinds: KindStats = new Map(),
 ): number {
   return Math.round(
     (s.rankCents ??
@@ -65,7 +116,8 @@ export function scoreOf(
       (s.required ? REQUIRED_BOOST : 1) *
       (s.confidence.percent / 100) *
       historyFactor(s.topic, history) *
-      workedFactor(s.topic, results),
+      workedFactor(s.topic, results) *
+      kindFactor(s.topic, kinds),
   );
 }
 
@@ -105,11 +157,18 @@ export function rankSuggestions(
     history = {},
     results = [],
     blocked = new Set<string>(),
-  }: { history?: TopicHistory; results?: KindResults; blocked?: ReadonlySet<string> } = {},
+    kinds = new Map(),
+  }: {
+    history?: TopicHistory;
+    results?: KindResults;
+    blocked?: ReadonlySet<string>;
+    // What everyone did with each kind (the learning loop).
+    kinds?: KindStats;
+  } = {},
 ): Ranked[] {
   return suggestions
     .filter((s) => !blocked.has(s.id))
-    .map((suggestion) => ({ suggestion, score: scoreOf(suggestion, history, results) }))
+    .map((suggestion) => ({ suggestion, score: scoreOf(suggestion, history, results, kinds) }))
     .sort((a, b) => byRank(keyOf(a), keyOf(b)));
 }
 

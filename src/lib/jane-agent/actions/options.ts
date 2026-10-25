@@ -6,6 +6,7 @@ import { shopIdOf } from "@/lib/insurance/shop-card";
 import type { NeedKind } from "@/lib/insurance/need/types";
 import type { OfferedOptions } from "@/lib/option-card";
 import type { MessageAction } from "../types";
+import { keepChoice } from "./choice";
 import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
 
 // The pick-one card in the chat (refs.options, shown as the floating pick card). The screen
@@ -36,12 +37,18 @@ export async function pickOffered(
   card: Pick<OfferedOptions, "kind" | "topic" | "policyId">,
   optionId: string,
   at: { client?: PrismaClient; now?: Date } = {},
-): Promise<{ note: string; agentJobId?: string }> {
+): Promise<{ note: string; decisionId: string; agentJobId?: string; final?: boolean }> {
   // A reshop's quotes (step 104): the switch to the picked one, which Jane's agent does.
   const shopId = card.kind === "insurance" ? shopIdOf(card.topic) : null;
   if (shopId) {
-    const { agentJobId } = await acceptShop(userId, shopId, { ...at, quoteId: optionId });
+    const { agentJobId, decisionId } = await acceptShop(userId, shopId, {
+      ...at,
+      quoteId: optionId,
+    });
+    // Jane's agent starts the switch at once, so it can't be reverted.
     return {
+      decisionId,
+      final: true,
       note: "Done. I'm switching you now: your current policy stays in place until the new one's first payment goes through, then I cancel it from the same day.",
       agentJobId,
     };
@@ -52,6 +59,7 @@ export async function pickOffered(
       ...(card.policyId ? { policyId: card.policyId } : {}),
     });
     return {
+      decisionId: picked.decisionId,
       note: picked.newCover
         ? "Got it. My team will add that cover for you and tell you when it's done."
         : "Got it. My team will change that on your policy and tell you when it's done.",
@@ -59,6 +67,7 @@ export async function pickOffered(
   }
   const picked = await pickFitOption(userId, card.topic, optionId, at);
   return {
+    decisionId: picked.decisionId,
     note: picked.kept
       ? "Got it: you keep what you have. Nothing to apply for."
       : "Got it. My team will send you the lender's steps; you apply yourself.",
@@ -68,18 +77,30 @@ export async function pickOffered(
 export const optionPick: ActionHandler = {
   id: "option.pick",
   on: "open",
-  async run({ userId, message, choice, client, now }) {
+  async run({ userId, message, action, choice, client, now }) {
     const card = message.refs.options;
     const chosen = card?.options.find((o) => o.id === choice);
     if (!card || !chosen) {
       throw new ChatActionError("not_offered", "That option isn't on this card.");
     }
     try {
-      const { note, agentJobId } = await pickOffered(userId, card, chosen.id, { client, now });
+      const { note, agentJobId, decisionId, final } = await pickOffered(userId, card, chosen.id, {
+        client,
+        now,
+      });
+      // The card's choices stay with this one marked, and Revert (./choice.ts), unless the
+      // work has already started (a switch).
+      const kept = keepChoice(
+        message,
+        { ...action, label: chosen.label },
+        final ? { final } : { decisionId },
+      );
       return {
         answeredWith: chosen.label,
         note,
         ...(agentJobId ? { agentJobIds: [agentJobId] } : {}),
+        refs: { ...kept.refs, chosen: { ...kept.refs!.chosen!, actionId: chosen.id } },
+        actions: kept.actions,
       };
     } catch (error) {
       if (isPickError(error)) throw answeredElsewhere(error.message);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { GetStartedButton } from "@/components/get-started-button";
-import { AsciiDiamond, DiamondBackground } from "@/components/ascii-diamond";
+import { ColumnArt } from "@/components/column-art";
 import { TryButton } from "@/components/try-button";
 import { ViewTracker } from "@/components/view-tracker";
 import { trialEnabled } from "@/lib/trial";
@@ -42,6 +42,35 @@ const MOMENTS = [
   },
 ];
 
+// The story the pillar is rebuilt along, one beat per screen (founder, 2026-10-25).
+const BEATS = [
+  {
+    tag: "the leak",
+    title: "Money leaks quietly",
+    body: "Subscriptions you forgot, fees you never agreed to, cash earning nothing, interest that compounds against you.",
+  },
+  {
+    tag: "the read",
+    title: "Jane reads all of it",
+    body: "Every account, every transaction, every bill and policy, every day.",
+  },
+  {
+    tag: "the find",
+    title: "She finds what you'd miss",
+    body: "A price that crept up, a charge made twice, a plan that costs more than one just as good.",
+  },
+  {
+    tag: "the fix",
+    title: "One card, one decision",
+    body: "What it's worth, how sure she is, and the fix, ready for your yes.",
+  },
+  {
+    tag: "the whole picture",
+    title: "Every part of your money",
+    body: "Spending and bills, insurance, loans, taxes, investing and your goals, in one place.",
+  },
+];
+
 // "Try Jane" runs its first scan after the response (src/app/try/actions.ts); this is how
 // long that may take.
 export const maxDuration = 60;
@@ -49,78 +78,123 @@ export const maxDuration = 60;
 export default function Home() {
   return (
     <main
-      className={`${displayFont.variable} landing relative isolate flex w-full flex-1 flex-col overflow-hidden`}
+      className={`${displayFont.variable} landing relative isolate flex w-full flex-1 flex-col`}
     >
       <ViewTracker event="landing_viewed" />
-      {/* The whole page: the art's dotted diamonds (founder, 2026-10-24). */}
-      <DiamondBackground />
-
-      <section className="mx-auto grid min-h-[85vh] w-full max-w-6xl grid-cols-1 items-center gap-10 px-6 py-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:py-20">
-        {/* The words sit on a panel of the page's own colour, so the dots never cross them. */}
-        <div className="-mx-4 flex flex-col gap-7 bg-[var(--landing-bg)]/90 px-4 py-6 sm:-mx-6 sm:px-6">
-          <p className="w-fit text-sm text-[var(--landing-dot)]">
-            <span aria-hidden="true">[ </span>your money, looked after
-            <span aria-hidden="true"> ]</span>
-          </p>
-          <h1 className="font-display max-w-2xl text-5xl leading-[1.04] font-semibold tracking-tight text-balance text-[var(--landing-hi)] sm:text-7xl">
-            See how much money you&apos;re losing
-            <span aria-hidden="true" className="ascii-cursor font-mono">
-              _
-            </span>
-          </h1>
-          <p className="max-w-xl text-lg text-[var(--landing-mid)]">
-            We find the subscriptions, fees, idle cash and interest quietly costing you, and help
-            you fix them.
-          </p>
-          <div className="flex flex-wrap items-center gap-6">
-            <GetStartedButton tone="landing" />
-            {trialEnabled() && <TryButton />}
-            <Link
-              href="/login"
-              className="font-medium text-[var(--landing-hi)] underline underline-offset-2 hover:no-underline"
-            >
-              Sign in
-            </Link>
-          </div>
-          <ul
-            aria-label="Examples of what Jane does"
-            className="flex max-w-md flex-col gap-1 text-sm text-[var(--landing-mid)]"
-          >
-            {MOMENTS.map((moment) => (
-              <li key={moment.label} className="flex items-baseline gap-2">
-                <span aria-hidden="true">&gt;</span>
-                <span className="shrink-0">{moment.label.toLowerCase()}</span>
-                <span
-                  aria-hidden="true"
-                  className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-[var(--landing-dot)]"
-                >
-                  ................................................
-                </span>
-                <span className="shrink-0 font-semibold text-[var(--landing-hi)] tabular-nums">
-                  {moment.amount}
-                </span>
-                <span className="sr-only">: {moment.detail}</span>
-              </li>
-            ))}
-          </ul>
+      <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        {/* The column (founder, 2026-10-25): fixed to the screen while the story scrolls, panning
+            from its broken capital at the top of the page down to its whole base at the bottom.
+            The right of a wide screen; behind the words, faint, on a phone. */}
+        <div className="pillar-dock pointer-events-none fixed inset-0 -z-10 overflow-hidden lg:left-[47%] lg:px-4">
+          <ColumnArt />
         </div>
-        {/* The picture as ASCII diamonds: beside the words on a wide screen, under them on a phone. */}
-        <AsciiDiamond className="mx-auto max-w-[640px]" />
-      </section>
 
-      <section className="mx-auto w-full max-w-6xl px-6 pb-20">
-        <ul className="grid gap-6 sm:grid-cols-3">
-          {POINTS.map((point) => (
-            <li
-              key={point.title}
-              className="flex flex-col gap-1 border border-[var(--landing-dot)]/50 bg-[var(--landing-bg)] p-5"
-            >
-              <h2 className="font-semibold text-[var(--landing-hi)]">{point.title}</h2>
-              <p className="text-sm text-[var(--landing-mid)]">{point.body}</p>
-            </li>
+        <div className="flex flex-col px-6 lg:col-start-1 lg:row-start-1">
+          <section id="start" className="flex min-h-dvh flex-col justify-center py-16">
+            <div className="landing-panel flex flex-col gap-7">
+              <p className="w-fit text-sm text-[var(--landing-dot)]">
+                <span aria-hidden="true">[ </span>your money, looked after
+                <span aria-hidden="true"> ]</span>
+              </p>
+              <h1 className="font-display max-w-2xl text-5xl leading-[1.04] font-semibold tracking-tight text-balance text-[var(--landing-hi)] sm:text-7xl">
+                See how much money you&apos;re losing
+                <span aria-hidden="true" className="ascii-cursor font-mono">
+                  _
+                </span>
+              </h1>
+              <p className="max-w-xl text-lg text-[var(--landing-mid)]">
+                We find the subscriptions, fees, idle cash and interest quietly costing you, and
+                help you fix them.
+              </p>
+              <div className="flex flex-wrap items-center gap-6">
+                <GetStartedButton tone="landing" />
+                {trialEnabled() && <TryButton />}
+                <Link
+                  href="/login"
+                  className="font-medium text-[var(--landing-hi)] underline underline-offset-2 hover:no-underline"
+                >
+                  Sign in
+                </Link>
+              </div>
+              <ul
+                aria-label="Examples of what Jane does"
+                className="flex max-w-md flex-col gap-1 text-sm text-[var(--landing-mid)]"
+              >
+                {MOMENTS.map((moment) => (
+                  <li key={moment.label} className="flex items-baseline gap-2">
+                    <span aria-hidden="true">&gt;</span>
+                    <span className="shrink-0">{moment.label.toLowerCase()}</span>
+                    <span
+                      aria-hidden="true"
+                      className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-[var(--landing-dot)]"
+                    >
+                      ................................................
+                    </span>
+                    <span className="shrink-0 font-semibold text-[var(--landing-hi)] tabular-nums">
+                      {moment.amount}
+                    </span>
+                    <span className="sr-only">: {moment.detail}</span>
+                  </li>
+                ))}
+              </ul>
+              <p aria-hidden="true" className="text-sm text-[var(--landing-dot)]">
+                scroll ↓
+              </p>
+            </div>
+          </section>
+
+          {BEATS.map((beat) => (
+            <section key={beat.title} className="flex min-h-[80dvh] flex-col justify-center py-16">
+              <div className="landing-panel flex max-w-xl flex-col gap-4">
+                <p className="text-sm text-[var(--landing-dot)]">
+                  <span aria-hidden="true">[ </span>
+                  {beat.tag}
+                  <span aria-hidden="true"> ]</span>
+                </p>
+                <h2 className="font-display text-4xl leading-tight font-semibold text-[var(--landing-hi)] sm:text-5xl">
+                  {beat.title}
+                </h2>
+                <p className="text-lg text-[var(--landing-mid)]">{beat.body}</p>
+              </div>
+            </section>
           ))}
-        </ul>
-      </section>
+
+          <section className="flex min-h-[80dvh] flex-col justify-center py-16">
+            <ul className="landing-panel flex max-w-xl flex-col gap-6">
+              {POINTS.map((point) => (
+                <li
+                  key={point.title}
+                  className="flex flex-col gap-1 border border-dashed border-[var(--landing-dot)] p-5"
+                >
+                  <h2 className="font-semibold text-[var(--landing-hi)]">{point.title}</h2>
+                  <p className="text-sm text-[var(--landing-mid)]">{point.body}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="flex min-h-dvh flex-col justify-center py-16">
+            <div className="landing-panel flex max-w-xl flex-col gap-5">
+              <p className="text-sm text-[var(--landing-dot)]">
+                <span aria-hidden="true">[ </span>rebuilt
+                <span aria-hidden="true"> ]</span>
+              </p>
+              <h2 className="font-display text-4xl leading-tight font-semibold text-[var(--landing-hi)] sm:text-6xl">
+                Put your money back together
+              </h2>
+              <p className="text-lg text-[var(--landing-mid)]">
+                Link a bank, or try Jane with a sample person in a few seconds.
+              </p>
+              <a
+                href="#start"
+                className="w-fit font-medium text-[var(--landing-hi)] underline underline-offset-2 hover:no-underline"
+              >
+                Start now ↑
+              </a>
+            </div>
+          </section>
+        </div>
+      </div>
     </main>
   );
 }

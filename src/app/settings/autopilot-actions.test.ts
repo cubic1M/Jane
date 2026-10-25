@@ -8,6 +8,7 @@ vi.mock("@/lib/db-scoped", () => ({
   scopedDb: vi.fn(async () => ({ actions: { findMany: vi.fn(async () => [{ id: "a1" }]) } })),
 }));
 vi.mock("@/lib/agent/run", () => ({ runQueuedFor: vi.fn() }));
+vi.mock("@/lib/concierge-mode", () => ({ conciergeMode: vi.fn(async () => true) }));
 vi.mock("@/lib/autopilot", () => {
   class AutopilotError extends Error {}
   return { AutopilotError, setAutopilot: vi.fn(async () => 3), setAcceptSimpleOffers: vi.fn() };
@@ -15,6 +16,7 @@ vi.mock("@/lib/autopilot", () => {
 
 import { after } from "next/server";
 import { AutopilotError, setAcceptSimpleOffers, setAutopilot } from "@/lib/autopilot";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { chooseAutopilot, saveCallOffers } from "./autopilot-actions";
 
 const form = (level: string) => {
@@ -31,6 +33,13 @@ describe("choosing autopilot", () => {
     });
     expect(setAutopilot).toHaveBeenCalledWith("u1", "safe");
     expect(after).toHaveBeenCalled();
+  });
+
+  it("promises nothing to a real account, whom nobody acts for (read-only mode)", async () => {
+    vi.mocked(conciergeMode).mockResolvedValueOnce(false);
+    const result = await chooseAutopilot(null, form("all"));
+    expect(result).toMatchObject({ ok: true, message: expect.stringContaining("do it yourself") });
+    expect(result?.message).not.toMatch(/will handle|started on/);
   });
 
   it("explains a bad choice", async () => {

@@ -29,6 +29,9 @@ export const itemId = (branch: LoansBranch, key: string) => `${branch}:${key}`;
 const TOPIC_BRANCH: Record<string, LoansBranch> = {
   refinance: "cheaper",
   auto_refinance: "cheaper",
+  // Card debt as one cheaper loan sits with the other loan choices, where Compare options is
+  // looked for (QA round 9).
+  consolidation: "cheaper",
   student_repayment: "cheaper",
   student_forgiveness: "cheaper",
   mortgage_extra: "cheaper",

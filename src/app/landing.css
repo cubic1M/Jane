@@ -1,10 +1,25 @@
-/* The landing page's colours, sampled from its rendered art by scripts/render-landing-art.ts
-   (npm run render:landing-art). Generated: don't edit by hand. The landing page alone is exempt
-   from the black-and-white rule (docs/design/area-pages.md, "Visual language").
-   Contrast on the background: mid 13.29:1, highlight 17.52:1. */
+/* The landing page's colours (founder, 2026-10-25): the pillar drawings' paper and ink, so a
+   white page with near-black ASCII. Greys only, like the rest of Jane. */
 :root {
-  --landing-bg: #1b1918;
-  --landing-dot: #949291;
-  --landing-mid: #e1e0df;
-  --landing-hi: #ffffff;
+  --landing-bg: #ffffff;
+  --landing-dot: #6b6b6b;
+  --landing-mid: #2e2e2e;
+  --landing-hi: #0a0a0a;
+}
+
+/* On a phone the pillar sits behind the words, faint, and each block of words gets the page's
+   own white behind it so the characters never cross the text. */
+.pillar-dock {
+  opacity: 0.16;
+}
+.landing-panel {
+  background: color-mix(in srgb, var(--landing-bg) 88%, transparent);
+}
+@media (min-width: 1024px) {
+  .pillar-dock {
+    opacity: 1;
+  }
+  .landing-panel {
+    background: transparent;
+  }
 }

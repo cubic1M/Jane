@@ -176,6 +176,35 @@ describe.runIf(url)(
       );
     });
 
+    it("never offers the team to a real account: the person sends it (read-only mode)", async () => {
+      const id = await demoPerson("car-addon-real");
+      // A real bank next to the demo bank makes it a real account.
+      await client.plaidItem.create({
+        data: {
+          userId: id,
+          plaidItemId: `item-${crypto.randomUUID()}`,
+          accessTokenEncrypted: "test",
+          institutionName: "First Real Bank",
+        },
+      });
+      await pay(id, "2025-10-18", 69_500, "DEALER GAP INSURANCE");
+      const [candidate] = (await loadCarLoan(id, opts())).candidates;
+      await confirmAddon(id, candidate.key, {}, { client, now: later() });
+      const loan = await loadCarLoan(id, opts());
+      expect(loan.team).toBe(false);
+      const addon = loan.addons[0];
+
+      const [refund] = await fromSource(id);
+      expect(parseActions(refund.actions).map((a) => a.id)).not.toContain("caraddon.team");
+      expect(refund.body).toContain("send it yourself");
+      expect(refund.body).not.toMatch(/the team/);
+      await expect(requestCancellation(id, addon.id!, "team", opts())).rejects.toThrow(
+        CarLoanError,
+      );
+      await requestCancellation(id, addon.id!, "mine", opts());
+      expect((await loadCarLoan(id, opts())).addons[0].status).toBe("mine");
+    });
+
     it("takes an add-on typed in, and refuses a bad one", async () => {
       const id = await demoPerson("car-typed");
       await addTypedAddon(

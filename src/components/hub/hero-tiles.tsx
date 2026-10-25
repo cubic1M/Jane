@@ -221,6 +221,15 @@ export function SavedTile({
           </span>
           {/* What was said yes to, at its expected yearly value (one meaning of "saved", #587). */}
           <span className="text-xs text-zinc-500">Expected</span>
+          {/* Of it, what the person's own transactions confirm (the verified savings record). */}
+          {saved.confirmedCents > 0 && (
+            <span
+              data-hub-confirmed=""
+              className="text-xs font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              {dollars(saved.confirmedCents)} confirmed in your transactions
+            </span>
+          )}
           <span className="block w-full">
             <Meter
               share={saved.share}

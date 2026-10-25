@@ -380,30 +380,31 @@ model User {
 
   savedShares SavedShare[]
 
-  autopilotSectors  AutopilotSector[]
-  autopilotActs     AutopilotAct[]
-  collegePlans      CollegePlan[]
-  hsaReceipts       HsaReceipt[]
-  equityGrants      EquityGrant[]
-  cryptoConnections CryptoConnection[]
-  cryptoHoldings    CryptoHolding[]
-  controllerRuns    ControllerRun[]
-  moneyTransfers    MoneyTransfer[]
-  paycheckPlans     PaycheckPlan[]
-  healthScores      HealthScore[]
-  monthlyReports    MonthlyReport[]
-  monthCloses       MonthClose[]
-  whatIfPlans       WhatIfPlan[]
-  taxPlanEvents     TaxPlanEvent[]
-  propertyAppeals   PropertyAppeal[]
-  accountantLinks   AccountantLink[]
-  accountantNotes   AccountantNote[]
-  taxPayments       TaxPayment[]
-  leanPlans         LeanPlan[]
-  booksIssues       BooksIssue[]
-  suggestions       Suggestion[]
-  yearPlans         YearPlan[]
-  unusualAnswers    UnusualAnswer[]
+  autopilotSectors   AutopilotSector[]
+  autopilotActs      AutopilotAct[]
+  collegePlans       CollegePlan[]
+  hsaReceipts        HsaReceipt[]
+  equityGrants       EquityGrant[]
+  cryptoConnections  CryptoConnection[]
+  cryptoHoldings     CryptoHolding[]
+  controllerRuns     ControllerRun[]
+  moneyTransfers     MoneyTransfer[]
+  paycheckPlans      PaycheckPlan[]
+  healthScores       HealthScore[]
+  monthlyReports     MonthlyReport[]
+  monthCloses        MonthClose[]
+  whatIfPlans        WhatIfPlan[]
+  taxPlanEvents      TaxPlanEvent[]
+  propertyAppeals    PropertyAppeal[]
+  accountantLinks    AccountantLink[]
+  accountantNotes    AccountantNote[]
+  taxPayments        TaxPayment[]
+  leanPlans          LeanPlan[]
+  booksIssues        BooksIssue[]
+  suggestions        Suggestion[]
+  suggestionOutcomes SuggestionOutcome[]
+  yearPlans          YearPlan[]
+  unusualAnswers     UnusualAnswer[]
 
   payrollChanges PayrollChange[]
   oldPlans       OldPlan[]
@@ -1900,14 +1901,20 @@ model Settlement {
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.
 model InviteCode {
-  id        String    @id @default(cuid())
-  code      String    @unique
-  maxUses   Int       @map("max_uses")
-  uses      Int       @default(0)
+  id          String    @id @default(cuid())
+  code        String    @unique
+  maxUses     Int       @map("max_uses")
+  uses        Int       @default(0)
   // What the code is for, e.g. "Friends of Sam". Team-only.
-  note      String?
-  expiresAt DateTime? @map("expires_at") @db.Timestamptz(3)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  note        String?
+  // Only this email may use the code (lowercase); null: anyone with the code.
+  email       String?
+  // The admin who made it (a user id; kept if they leave).
+  createdById String?   @map("created_by_id")
+  // Revoked codes stop working at once; the accounts made with them stay.
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   access BetaAccess[]
 
@@ -1924,6 +1931,16 @@ model BetaAccess {
   inviteCode InviteCode @relation(fields: [inviteCodeId], references: [id], onDelete: Cascade)
 
   @@map("beta_access")
+}
+
+// The closed beta's waitlist: an email someone left on /signup without an invite. Nothing
+// is sent to it; the founders read the list on /admin/invites.
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("waitlist")
 }
 
 // Fixed-window request counters for rate limiting (src/lib/rate-limit.ts). Keys hold a
@@ -4070,12 +4087,77 @@ model Suggestion {
   answeredAt        DateTime? @map("answered_at") @db.Timestamptz(3)
   firstSeenAt       DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz(3)
   lastSeenAt        DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  // What later transactions should show if the person acts (src/detectors/contract.ts Watch):
+  // a charge that stops, a bill that drops, a refund, fees that stop. Null when nothing can.
+  watch             Json?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, key])
   @@index([userId, status])
   @@map("suggestions")
+}
+
+// The verified savings record: what happened to each suggestion that reached the person, and
+// what their later transactions showed. One a suggestion (key). status: shown (not answered),
+// declined, open (said yes or done, waiting for the transactions), unverifiable (nothing to
+// watch: stays an expectation), confirmed, partial or not_seen. Cents are a year of it unless
+// yearly is false (a refund). evidenceTxIds are the transactions that show it.
+model SuggestionOutcome {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  suggestionKey     String    @map("suggestion_key")
+  capability        String
+  topic             String
+  title             String
+  firstShownAt      DateTime  @map("first_shown_at") @db.Timestamptz(3)
+  lastShownAt       DateTime  @map("last_shown_at") @db.Timestamptz(3)
+  timesShown        Int       @default(1) @map("times_shown")
+  openedAt          DateTime? @map("opened_at") @db.Timestamptz(3)
+  answer            String?
+  answeredAt        DateTime? @map("answered_at") @db.Timestamptz(3)
+  doneAt            DateTime? @map("done_at") @db.Timestamptz(3)
+  expectedCents     Int       @map("expected_cents")
+  worthKind         String    @map("worth_kind")
+  confidencePercent Int       @map("confidence_percent")
+  watch             Json?
+  status            String    @default("shown")
+  confirmedCents    Int?      @map("confirmed_cents")
+  yearly            Boolean   @default(true)
+  // How sure the check is that the transactions show it, a whole percentage.
+  verifiedPercent   Int?      @map("verified_percent")
+  evidenceTxIds     String[]  @default([]) @map("evidence_tx_ids")
+  proof             String?
+  checkedAt         DateTime? @map("checked_at") @db.Timestamptz(3)
+  verifiedAt        DateTime? @map("verified_at") @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, suggestionKey])
+  @@index([userId, status])
+  @@index([topic, status])
+  @@map("suggestion_outcomes")
+}
+
+// The learning loop: per kind of suggestion (topic), across everyone but trial people, how often
+// it was acted on when shown and how often what was acted on showed up in the transactions.
+// Rebuilt each night from suggestion_outcomes (src/lib/learning.ts); ranking reads it. Not a
+// person's data: no user_id, counts only.
+model SuggestionKindStat {
+  topic          String   @id
+  shown          Int      @default(0)
+  // Said yes or marked done.
+  acted          Int      @default(0)
+  declined       Int      @default(0)
+  // Acted on with something to watch, and checked to the end: confirmed, partial or not seen.
+  decided        Int      @default(0)
+  // Of those, confirmed or partly confirmed.
+  paidOff        Int      @default(0) @map("paid_off")
+  confirmedCents Int      @default(0) @map("confirmed_cents")
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("suggestion_kind_stats")
 }
 
 // Spec step 232: the funds a workplace plan offers, read from a fee disclosure or statement

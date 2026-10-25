@@ -41,6 +41,23 @@ export type Confidence = {
   reason: string;
 };
 
+// What the person's later transactions should show once they act on a suggestion: the verified
+// savings record (src/lib/outcomes.ts) checks it each night. Payees are the charges' own
+// descriptions. A detector whose saving can't be seen in transactions leaves it out.
+export type Watch =
+  // Charges that should stop (a cancelled subscription or trial): each payee, its usual charge
+  // and how often it comes a year.
+  | {
+      kind: "charge_stops";
+      payees: { description: string; amountCents: number; perYear: number }[];
+    }
+  // A bill that should come in lower: each payee and its price before, and how often a year.
+  | { kind: "bill_drops"; payees: { description: string; beforeCents: number; perYear: number }[] }
+  // Money that should come back from a payee: at least about this much.
+  | { kind: "refund"; payees: { description: string; amountCents: number }[] }
+  // Fees of these categories that should stop: what they came to a month before.
+  | { kind: "fee_stops"; pfcs: string[]; monthlyCents: number };
+
 export type Suggestion = {
   // "<capability>:<topic>": stable, so the same suggestion is never shown twice after a no.
   id: string;
@@ -62,6 +79,8 @@ export type Suggestion = {
   why: string;
   // The button: where it goes (a page or a registered chat action).
   action: { label: string; href: string };
+  // What later transactions should show if the person acts (the verified savings record).
+  watch?: Watch;
   // A strategist idea (step 256) combines several detectors' suggestions: their ids, and
   // every button they offer. Detectors leave both out.
   parts?: string[];
