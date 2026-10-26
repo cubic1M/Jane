@@ -178,6 +178,17 @@ describe("catch-up", () => {
       reason: "Ether: a planned upgrade went live (test).",
       source: "events",
     },
+    // And one with a tight stop, so the stop's state is carried between ticks too.
+    {
+      id: "news-2",
+      at: btc[600].t,
+      until: btc[1_100].t,
+      ticker: "ETH/USD",
+      weight: 0.4,
+      reason: "Ether: a second event (test).",
+      source: "events",
+      stopPct: 0.004,
+    },
   ];
 
   for (const policy of policiesFor("crypto").filter((_, i) => i % 3 === 0)) {
@@ -198,6 +209,9 @@ describe("catch-up", () => {
       expect(trades).toEqual(once.trades);
       expect(values).toEqual(once.values);
       expect(state).toEqual(once.state);
+      // The tight stop fired along the way, and the pieces agree on it.
+      expect(once.trades.some((t) => t.reason.startsWith("Stopped: ETH/USD"))).toBe(true);
+      expect(state.stops?.["news-2"]).toBe("hit");
     });
   }
 
@@ -288,5 +302,58 @@ describe("the clock", () => {
     });
     const b = runAgent(startState(1_000_000), { "BTC/USD": btc }, [], cryptoConfig(policy));
     expect(a).toEqual(b);
+  });
+});
+
+describe("a signal's stop", () => {
+  // Ether at $50 for two bars, then the given closes; bitcoin flat. The signal buys a quarter in
+  // ether at bar 1's open (it is in force when bar 0 closes).
+  const run = (closes: number[], stopPct: number | null) => {
+    const n = closes.length + 2;
+    const times = Array.from(
+      { length: n },
+      (_, i) => `2026-01-05T${String(i).padStart(2, "0")}:00:00Z`,
+    );
+    const eth = [5_000, 5_000, ...closes];
+    return runAgent(
+      startState(1_000_000),
+      {
+        "BTC/USD": times.map((t) => bar(t, 10_000)),
+        "ETH/USD": times.map((t, i) => bar(t, i === 0 ? 5_000 : eth[i - 1], eth[i])),
+      },
+      [
+        {
+          id: "e",
+          at: "2026-01-05T00:30:00Z",
+          until: null,
+          ticker: "ETH/USD",
+          weight: 0.25,
+          reason: "An event (test).",
+          source: "events",
+          stopPct,
+        },
+      ],
+      { ...cryptoConfig(scripted({})), costs: NO_COSTS },
+    );
+  };
+
+  it("ends the signal when the ticker closes that far against its fill, and sells at the next open", () => {
+    // Filled at $50; bar 3 closes at $46 (8% down, past a 7% stop): sold at bar 4's open.
+    const r = run([4_900, 4_600, 4_700, 4_800], 0.07);
+    expect(r.trades.map((t) => [t.at.slice(11, 16), t.side, t.ticker])).toEqual([
+      ["01:00", "buy", "ETH/USD"],
+      ["04:00", "sell", "ETH/USD"],
+    ]);
+    expect(r.trades[1].reason).toBe(
+      "Stopped: ETH/USD closed 8% below the signal's fill (its stop is 7%).",
+    );
+    expect(r.trades[1].source).toBe("events");
+    expect(r.state.stops).toEqual({ e: "hit" });
+    expect(r.state.units["ETH/USD"]).toBeUndefined();
+  });
+
+  it("holds through a smaller fall, and without a stop", () => {
+    expect(run([4_900, 4_700, 4_800], 0.07).trades).toHaveLength(1);
+    expect(run([4_900, 4_000, 4_100], null).trades).toHaveLength(1);
   });
 });
