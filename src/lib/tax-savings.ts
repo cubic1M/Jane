@@ -16,8 +16,6 @@ import { payeeOf } from "@/planning/tax-tags";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export class TaxSavingsError extends Error {}
-
 // Plaid investment subtypes for workplace plans with pre-tax contributions.
 const WORKPLACE_PLANS = [
   "401k",

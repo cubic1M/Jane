@@ -132,3 +132,26 @@ describe("a line of suggestions", () => {
     expect(html).not.toContain("✕");
   });
 });
+
+// A card that will fold on a phone isn't painted full size first (it was Home's last layout
+// shift): the server's HTML keeps it out of sight on a small screen until the page has hydrated.
+describe("a card that folds on a phone", () => {
+  const render = (foldOnPhone: boolean) =>
+    renderToStaticMarkup(
+      <FloatingCards
+        cards={set.options}
+        mode="pick"
+        label={set.title}
+        onAnswer={vi.fn()}
+        foldOnPhone={foldOnPhone}
+      />,
+    );
+
+  it("is hidden on a small screen in the first HTML", () => {
+    expect(render(true)).toContain("max-sm:hidden");
+  });
+
+  it("is not hidden where it never folds", () => {
+    expect(render(false)).not.toContain("max-sm:hidden");
+  });
+});

@@ -12,6 +12,7 @@ import type { DebtTrouble } from "@/lib/debt-trouble";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Jane's answers when debt is too much (spec step 229), from src/lib/debt-trouble.ts. Pure.
 // Facts and doors to knock on: it doesn't choose between them, never advises on settlement
@@ -25,7 +26,6 @@ export const TROUBLE_PAGE: MessageAction = {
   href: "/loans/help",
 };
 
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 const SHOWN_DEBTS = 5;
 
 export function headline(data: DebtTrouble): string {

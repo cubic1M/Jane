@@ -92,7 +92,6 @@ export const STUDENT_STEPS = [
     url: "https://studentaid.gov/manage-loans/repayment/plans/income-driven",
   },
 ] as const;
-export type StudentStepKey = (typeof STUDENT_STEPS)[number]["key"];
 
 // Payments seen this long ago or less count toward forgiveness tracking from transactions.
 export const STUDENT_PAYMENT_LOOKBACK_DAYS = 400;

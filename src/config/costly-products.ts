@@ -4,11 +4,6 @@
 // contract or statement always wins.
 
 export type ProductKind = "annuity" | "whole_life" | "advisory";
-export const PRODUCT_KINDS: Readonly<Record<ProductKind, string>> = {
-  annuity: "Variable annuity",
-  whole_life: "Whole life insurance",
-  advisory: "Advisory account",
-};
 
 // What the same money costs in a low-cost index fund, a year (basis points).
 export const LOW_COST_BPS = 4;
@@ -21,13 +16,6 @@ export const EXIT_HORIZON_YEARS = 10;
 // Leaving or waiting has to save at least this much (cents) over the horizon to be worth
 // saying; below it, staying is fine.
 export const EXIT_MIN_SAVING_CENTS = 50_000;
-
-// Typical total yearly cost of a variable annuity (insurance charge, administration, fund
-// costs and riders), shown when the person hasn't entered their own. SEC investor
-// bulletin: variable annuities commonly charge 2% a year or more in all.
-export const TYPICAL_ANNUITY_BPS = 240;
-export const TYPICAL_ANNUITY_SOURCE =
-  "SEC investor bulletin on variable annuities (often 2% a year or more in all)";
 
 // A common surrender schedule: the share charged for leaving in contract year 1, 2, ...
 // (zero after the last). The person's own contract wins.

@@ -26,6 +26,7 @@ import {
   type TaxProfileView,
   type WorkingProfile,
 } from "@/planning/tax-profile";
+import { cachedCopy } from "@/lib/read-cache";
 
 // The tax profile (spec step 118): loads what Jane found in the person's own accounts and
 // what they told it, and saves their answers. Always for one person, through scopedFor.
@@ -47,6 +48,16 @@ const PROFILE_SELECT = {
 } as const;
 
 export async function loadTaxFacts(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<{ found: FoundFacts; stored: StoredTaxProfile | null }> {
+  // Read once per day in a sync (src/lib/read-cache.ts): many tax features ask.
+  return cachedCopy(`taxFacts:${userId}:${iso(now)}`, client, () =>
+    loadTaxFactsFrom(userId, { client, now }),
+  );
+}
+
+async function loadTaxFactsFrom(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ found: FoundFacts; stored: StoredTaxProfile | null }> {

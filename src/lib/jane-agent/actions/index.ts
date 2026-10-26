@@ -191,6 +191,7 @@ import {
 } from "./bundle";
 import { multiCancel, multiConfirm, multiUndo } from "./multi";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
+import { withReadCache } from "@/lib/read-cache";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -483,17 +484,32 @@ type Options = {
 // A tap on a button. Checked here, whatever the page sent: the message is the person's
 // own, the button is one it offers, and the message is in the state the button works on
 // (still open, or within Undo's time). Returns the message as it is now.
-export async function takeChatAction(
-  userId: string,
-  messageId: string,
-  actionId: string,
-  { client = defaultClient, now = new Date(), defer, choice }: Options = {},
-): Promise<{
+type TakenAction = {
   message: ChatMessage;
   agentJobIds: (string | undefined)[];
   agentActionIds: string[];
   posted: boolean;
-}> {
+};
+
+// A tap often reads the person's facts many times over (a bundle does several things): one read
+// each until something changes (src/lib/read-cache.ts).
+export async function takeChatAction(
+  userId: string,
+  messageId: string,
+  actionId: string,
+  options: Options = {},
+): Promise<TakenAction> {
+  return withReadCache(options.client ?? defaultClient, (client) =>
+    takeChatActionWork(userId, messageId, actionId, { ...options, client }),
+  );
+}
+
+async function takeChatActionWork(
+  userId: string,
+  messageId: string,
+  actionId: string,
+  { client = defaultClient, now = new Date(), defer, choice }: Options = {},
+): Promise<TakenAction> {
   const db = scopedFor(userId, client);
   const row = MESSAGE_ID.test(messageId)
     ? await db.janeMessages.findFirst({ where: { id: messageId }, select: MESSAGE_SELECT })

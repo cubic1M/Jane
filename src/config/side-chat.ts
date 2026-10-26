@@ -3,8 +3,6 @@
 
 // The panel docks from this width up; below it the chat is a bottom sheet.
 export const SIDE_CHAT_MIN_WIDTH_PX = 1024;
-export const SIDE_CHAT_WIDTH_PX = 380;
-export const SIDE_CHAT_RAIL_PX = 56;
 
 // The bottom sheet's resting heights, as shares of the screen's height.
 export const SHEET_HALF = 0.5;

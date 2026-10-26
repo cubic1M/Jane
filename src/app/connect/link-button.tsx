@@ -5,7 +5,7 @@ import { useState } from "react";
 import { sendEvent } from "@/lib/analytics-client";
 
 // Opens Plaid Link. With an itemId it opens update mode, so the person can sign in to
-// that bank again. Plaid's script is loaded the first time the button is pressed.
+// that bank again (or share its new accounts). Plaid's script is loaded the first time the button is pressed.
 
 const LINK_SCRIPT = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
 
@@ -66,7 +66,8 @@ export function LinkButton({
         token: token.body.linkToken,
         onSuccess: async (publicToken, metadata) => {
           if (itemId) {
-            // Update mode keeps the same item; Plaid's webhook triggers the next sync.
+            // Update mode keeps the same item: it stops asking, and syncs (the server's job).
+            await post("/api/plaid/repaired", { itemId });
             router.refresh();
             setBusy(false);
             return;

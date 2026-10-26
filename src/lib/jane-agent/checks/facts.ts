@@ -7,6 +7,7 @@ import { spendingInsights } from "@/insights/spending";
 import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { dollarFigures } from "@/lib/guardrails";
+import { withReadCache } from "@/lib/read-cache";
 import { CHAT_TOOLS, runChatTool } from "../claude-tools";
 import { loadSnapshot } from "../snapshot";
 
@@ -38,6 +39,14 @@ const LOOKUPS = CHAT_TOOLS.filter((t) => {
 }).map((t) => t.name);
 
 export async function loadFacts(
+  userId: string,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<Facts> {
+  // The lookups share most of what they read: read once (src/lib/read-cache.ts).
+  return withReadCache(client, (client) => loadFactsWork(userId, { client, now }));
+}
+
+async function loadFactsWork(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Facts> {

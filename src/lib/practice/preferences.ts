@@ -21,6 +21,7 @@ import { practiceLevel } from "@/planning/practice-level";
 import { profileFor, type PracticeProfile } from "@/planning/practice-profile";
 import { MODEL_PORTFOLIOS, type PracticeClass } from "@/config/portfolios";
 import { strategyToday } from "@/lib/investments/strategy-today";
+import { cachedCopy } from "@/lib/read-cache";
 
 // The person's practice-portfolio preferences (Phase AW, Stage A): read with the defaults filled
 // in, and changed through the one check (applyPatch) from the settings page or the chat. Every
@@ -53,6 +54,16 @@ const SELECT = {
 } as const;
 
 export async function loadPreferences(
+  userId: string,
+  { client = defaultClient }: Options = {},
+): Promise<PracticePreferences> {
+  // Read once per sync (src/lib/read-cache.ts): each practice day asks.
+  return cachedCopy(`practicePrefs:${userId}`, client, () =>
+    loadPreferencesFrom(userId, { client }),
+  );
+}
+
+async function loadPreferencesFrom(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<PracticePreferences> {

@@ -6,7 +6,6 @@
 // (src/config/retirement.ts). Anyone, including a parent, can supply the money.
 export const CHILD_ROTH_SOURCE =
   "IRS: the contribution can't exceed the child's earned income or the IRA limit";
-export const CHILD_ROTH_MIN_AGE = 14;
 
 // Custodial accounts (UTMA/UGMA): the money is the child's. A child's unearned income above
 // this much a year is taxed at the parents' rate (the "kiddie tax"), 2026.

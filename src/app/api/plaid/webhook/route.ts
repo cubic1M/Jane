@@ -1,10 +1,10 @@
 import { NextResponse, after } from "next/server";
-import { syncItem } from "@/lib/plaid/sync";
 import { verifyPlaidWebhook } from "@/lib/plaid/webhook-verify";
-import { planWebhook } from "@/lib/plaid/webhooks";
+import { firstDelivery, planWebhook, syncFromWebhook } from "@/lib/plaid/webhooks";
 
-// Plaid's webhooks. Nothing is read or changed until the signature checks out; syncs run
-// after the response so Plaid isn't kept waiting.
+// Plaid's webhooks: what keeps each bank's data fresh (the daily job is only the backstop).
+// Nothing is read or changed until the signature checks out; a delivery Plaid repeats is
+// acknowledged and ignored; syncs run after the response so Plaid isn't kept waiting.
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const verified = await verifyPlaidWebhook(rawBody, request.headers.get("plaid-verification"));
@@ -17,12 +17,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  if (!(await firstDelivery(rawBody, body))) return NextResponse.json({ received: true });
   const plan = await planWebhook(body);
   if (plan?.sync) {
     after(async () => {
       try {
-        await syncItem(plan.itemId);
+        await syncFromWebhook(plan.itemId);
       } catch (error) {
+        // A PlaidRequestError's message is its code and status only: never the request.
         console.error("Plaid sync from webhook failed", {
           itemId: plan.itemId,
           error: String(error),

@@ -28,7 +28,10 @@ describe.runIf(url)("the learning loop", { timeout: 120_000 }, () => {
   });
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: { in: created } } });
-    await client.suggestionKindStat.deleteMany({ where: { topic: { in: [T, QUIET] } } });
+    // refreshKindStats rebuilds the stats from every person in the database, other test files'
+    // too, and ranking reads them: leave none behind (empty is what every other test expects).
+    // CI runs this file on its own, after the rest (.github/workflows/ci.yml).
+    await client.suggestionKindStat.deleteMany({});
     await client.$disconnect();
   });
 

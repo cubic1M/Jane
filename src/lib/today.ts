@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { localTime } from "@/lib/jane-agent/quiet-hours";
+import { cachedRead } from "@/lib/read-cache";
 
 // The person's own "today" (founder, 2026-10-23): "due today", "as of" and the brief's and
 // agenda's dates are their day, in their timezone (users.timezone, US Pacific when unknown),
@@ -21,6 +22,8 @@ export async function todayOf(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<string> {
   const timezone =
-    client === defaultClient ? await timezoneOnce(userId) : await timezoneFrom(userId, client);
+    client === defaultClient
+      ? await timezoneOnce(userId)
+      : await cachedRead(`timezone:${userId}`, client, () => timezoneFrom(userId, client));
   return localDate(now, timezone);
 }

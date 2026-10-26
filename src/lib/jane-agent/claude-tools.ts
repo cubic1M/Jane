@@ -34,6 +34,7 @@ import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import type { TradeOrder } from "@/planning/goal-tradeoffs";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
+import { withReadCache } from "@/lib/read-cache";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
@@ -75,6 +76,7 @@ import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { NEWS_TOOLS, isNewsTool, runNewsTool } from "./news-tools";
+import { EVENTS_TOOLS, isEventsTool, runEventsTool } from "./events-tools";
 import { PRACTICE_TOOLS, isPracticeTool, runPracticeTool } from "./practice-tools";
 import {
   SETTINGS_CHAT_PAGES,
@@ -512,6 +514,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...INVESTMENT_TOOLS,
   // Spec step 293: the practice portfolio's news.
   ...NEWS_TOOLS,
+  // The events overlay on the paper account.
+  ...EVENTS_TOOLS,
   // Phase AW: the practice portfolio's settings, read and changed with a confirmation card.
   ...PRACTICE_TOOLS,
   // Connected banks and what Jane sends the person (./settings-tools.ts).
@@ -520,8 +524,19 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
-// A read-only tool. Ask's own tools run through runAskTool unchanged.
+// A read-only tool. Ask's own tools run through runAskTool unchanged. With a read cache
+// (src/lib/read-cache.ts): a tool's parts load the same facts (Jane's snapshot asks for the tax
+// estimate 11 times); inside a chat message or a sync, the message's or sync's own.
 export async function runChatTool(
+  userId: string,
+  name: string,
+  input: unknown,
+  { client, now }: Options,
+): Promise<ToolOutput> {
+  return withReadCache(client, (client) => runChatToolWork(userId, name, input, { client, now }));
+}
+
+async function runChatToolWork(
   userId: string,
   name: string,
   input: unknown,
@@ -533,6 +548,7 @@ export async function runChatTool(
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   if (isNewsTool(name)) return runNewsTool(userId, name, input, { client, now });
+  if (isEventsTool(name)) return runEventsTool(userId, name, input, { client, now });
   if (isPracticeTool(name)) return runPracticeTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   if (isSettingsTool(name)) return runSettingsTool(userId, name, input, { client, now });

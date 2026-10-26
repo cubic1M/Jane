@@ -8,6 +8,7 @@ import {
 } from "@/config/auto-invest";
 import { CORE_FUNDS } from "@/config/funds";
 import { TARGET_MIXES, type RiskLevel } from "@/config/investing";
+import { formatWholeDollars as dollars } from "@/lib/money";
 
 // Automatic investing (spec step 134): how much goes in on a payday, if anything. Pure.
 // Safe to spend comes first: Jane never invests money it needs, and pauses the payday
@@ -17,8 +18,6 @@ export type AutoInvestMode = "fixed" | "leftover";
 
 export type Contribution =
   { status: "invested"; amountCents: number } | { status: "paused"; reason: string };
-
-const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
 export function decideContribution({
   mode,

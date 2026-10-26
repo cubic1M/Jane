@@ -22,9 +22,6 @@ export const ESSENTIAL_WORDS = {
   insurance: ["insurance", "geico", "state farm", "allstate", "progressive", "premium"],
 } as const;
 export type EssentialGroup = keyof typeof ESSENTIAL_WORDS;
-
-// A card rate at or above this is worth asking to lower.
-export const LOWER_RATE_MIN_BPS = 1_500;
 // A late fee in the last this-many days is worth asking to have waived.
 export const LATE_FEE_LOOKBACK_DAYS = 60;
 // How long the stand-in lender takes to answer a request, in days.

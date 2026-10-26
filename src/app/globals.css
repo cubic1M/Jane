@@ -1288,3 +1288,11 @@ html[data-landing] body {
 html[data-landing] body footer {
   color: var(--landing-dot);
 }
+
+/* The site footer waits while a page is still loading. It sits at the bottom of the screen under
+   the loading bar; when the streamed content arrived it was pushed down, which was the biggest
+   layout shift on every signed-in page. Without a box it can't move, and it appears below the
+   content once the bar has gone. */
+body:has([data-loading-bar]) > footer {
+  display: none;
+}

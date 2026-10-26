@@ -189,7 +189,7 @@ export function planButtons(first: Strategy, label: (s: Strategy) => string): Me
 // debt, with the planner's math. In demo advice mode Jane picks the order and says why
 // (labelled); otherwise both orders side by side, as math, not a recommendation.
 export function payoffReply(payoff: Payoff, asOf: string): Reply {
-  const { summary, advice, stored } = payoff;
+  const { summary, stored } = payoff;
   const planner = link("Open the payoff planner", "/debt");
   if (summary.cards.length === 0) {
     return {

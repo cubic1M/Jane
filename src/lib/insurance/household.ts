@@ -18,6 +18,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { cachedCopy } from "@/lib/read-cache";
 import { scopedFor } from "@/lib/db-scoped";
 import { runsBusiness, type SelfEmployment } from "./business-rules";
 
@@ -117,6 +118,16 @@ export function resolveHousehold(
 export async function loadHousehold(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
+): Promise<Household> {
+  // Read once per piece of work (src/lib/read-cache.ts): every insurance view asks.
+  return cachedCopy(`household:${userId}:${now.toISOString()}`, client, () =>
+    loadHouseholdFrom(userId, { client, now }),
+  );
+}
+
+async function loadHouseholdFrom(
+  userId: string,
+  { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Household> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - RENT_LOOKBACK_DAYS * 86_400_000);
