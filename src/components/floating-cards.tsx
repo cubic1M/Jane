@@ -64,6 +64,16 @@ const usePhone = () =>
     () => window.matchMedia(PHONE).matches,
     () => false,
   );
+// False in the server's HTML and while the page hydrates, true after: a card that will fold on a
+// phone is kept out of sight until then (CSS, below), so it isn't painted full size and then
+// shrunk to its one line, which was Home's last layout shift.
+const noop = () => () => {};
+const useHydrated = () =>
+  useSyncExternalStore(
+    noop,
+    () => true,
+    () => false,
+  );
 
 // The dock's header line (founder read the old arrows beside the choices as "more choices"):
 // "JANE · 2 of 5 suggestions", and the steps between them, apart from any card's buttons. The
@@ -241,6 +251,7 @@ export function FloatingCards({
   const [slide, setSlide] = useState<"next" | "prev" | null>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const phone = usePhone();
+  const hydrated = useHydrated();
   const [unfolded, setUnfolded] = useState(false);
   const current = held?.card ?? currentCard(cards, state);
   const left = waiting(cards, state);
@@ -380,7 +391,9 @@ export function FloatingCards({
       className={
         docked
           ? "flex w-full flex-col px-3 pt-3 pb-4"
-          : "floating-cards pointer-events-none fixed inset-x-0 z-40 flex justify-center px-3"
+          : `floating-cards pointer-events-none fixed inset-x-0 z-40 flex justify-center px-3${
+              foldOnPhone && !hydrated ? " max-sm:hidden" : ""
+            }`
       }
       onTouchStart={(e) => {
         const t = e.touches[0];
