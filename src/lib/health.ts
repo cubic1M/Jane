@@ -4,12 +4,15 @@ import { logAudit } from "@/lib/audit";
 import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { rlsCoverage, rlsSwitchWorks } from "@/lib/rls-coverage";
 import { scrub } from "@/lib/scrub";
 
 // Knowing when something quietly stops: every scheduled run is recorded, /admin/health
 // shows the latest of each, and a daily job that hasn't succeeded in JOB_STALE_HOURS is
 // emailed to the team once per outage. The check runs at the start of every scheduled
-// job, so one job reports the other; if every job stops, the health page still shows it.
+// job, so one job reports the other; if every job stops, the health page still shows it. The
+// same check emails the team, once per lapse, when row-level security stops covering every
+// user-owned table (src/lib/rls-coverage.ts).
 
 type Options = { client?: PrismaClient; now?: Date; send?: typeof sendEmail };
 
@@ -106,7 +109,48 @@ export const teamEmails = () =>
     .map((e) => e.trim())
     .filter(Boolean);
 
-// Emails the team about each missed daily job, once per outage.
+const RLS_NOTICE = "rls:coverage";
+
+// Emails the team once when row-level security stops covering every user-owned table, and
+// again only after it has been whole in between. True when it sent (or would have, with no team).
+export async function reportRlsGaps({
+  client = defaultClient,
+  now = new Date(),
+  send = sendEmail,
+}: Options = {}): Promise<boolean> {
+  const coverage = await rlsCoverage({ client });
+  if (coverage.ok) {
+    await client.healthNotice.deleteMany({ where: { key: RLS_NOTICE } });
+    return false;
+  }
+  const { count } = await client.healthNotice.createMany({
+    data: [{ key: RLS_NOTICE, reportedAt: now }],
+    skipDuplicates: true,
+  });
+  if (count === 0) return false;
+  const what = !coverage.role
+    ? "the database has no jane_rls role"
+    : coverage.tables.length === 0
+      ? "no user-owned tables were found"
+      : `${coverage.missing.length} of ${coverage.tables.length} user-owned tables aren't covered: ${coverage.missing.slice(0, 20).join(", ")}${coverage.missing.length > 20 ? ", ..." : ""}`;
+  const to = teamEmails();
+  try {
+    const message = {
+      subject: "Row-level security has a gap",
+      text: `Row-level security (docs/security/rls.md) no longer covers every user-owned table: ${what}. The app's own filters still apply. Check /admin/health; the next deploy re-runs scripts/rls-protect.mjs. You'll get one email per lapse.`,
+      html: `<p>Row-level security no longer covers every user-owned table: ${what}.</p><p>The app's own filters still apply. Check <a href="${process.env.APP_URL ?? ""}/admin/health">/admin/health</a>; the next deploy re-runs <code>scripts/rls-protect.mjs</code>.</p><p>You'll get one email per lapse.</p>`,
+    };
+    await Promise.all(to.map((address) => send({ ...message, to: address })));
+  } catch (error) {
+    await client.healthNotice.deleteMany({ where: { key: RLS_NOTICE } });
+    console.error("Row-level security email failed", { error: String(error) });
+    return false;
+  }
+  return true;
+}
+
+// Emails the team about each missed daily job, once per outage, and about a gap in row-level
+// security ("row-level security" in what it returns).
 export async function reportMissedJobs({
   client = defaultClient,
   now = new Date(),
@@ -114,6 +158,12 @@ export async function reportMissedJobs({
 }: Options = {}): Promise<string[]> {
   const missed = (await jobHealth({ client, now })).filter((j) => j.missed);
   const reported: string[] = [];
+  try {
+    if (await reportRlsGaps({ client, now, send })) reported.push("row-level security");
+  } catch (error) {
+    // Never stops the job report.
+    console.error("Row-level security check failed", { error: String(error) });
+  }
   for (const job of missed) {
     const key = `missed:${job.name}`;
     // Claims the report, so two jobs checking at once send one email.
@@ -151,7 +201,7 @@ export async function healthReport(
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
   const since = new Date(now.getTime() - HEALTH_ERROR_HOURS * HOUR);
-  const [jobs, items, lastSync, jobCounts, errors] = await Promise.all([
+  const [jobs, items, lastSync, jobCounts, errors, coverage, switchWorks] = await Promise.all([
     jobHealth({ client, now }),
     client.plaidItem.groupBy({ by: ["status"], _count: { _all: true } }),
     client.plaidItem.findFirst({
@@ -161,6 +211,8 @@ export async function healthReport(
     }),
     client.job.groupBy({ by: ["status"], _count: { _all: true } }),
     client.errorEvent.count({ where: { createdAt: { gte: since } } }),
+    rlsCoverage({ client }),
+    rlsSwitchWorks(admin.id, { client }).catch(() => false),
   ]);
   await logAudit({ type: "admin", id: admin.id }, "admin_viewed_health", null, {});
   return {
@@ -171,5 +223,6 @@ export async function healthReport(
     },
     backgroundJobs: Object.fromEntries(jobCounts.map((j) => [j.status, j._count._all])),
     errorsLastDay: errors,
+    rls: { ...coverage, switchWorks },
   };
 }
