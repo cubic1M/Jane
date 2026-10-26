@@ -471,6 +471,11 @@ export const PAYMENT_CATEGORY_BY_ACCOUNT: Readonly<Record<string, string>> = {
   "home equity": "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
   personal: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
 };
+// A card payment from checking is found by its other side when the card company's name isn't in
+// the keyword rules (accuracy bench: "BARCLAYCARD US PAYMENT" was counted as spending and missed
+// from "Coming up"): the same amount, out of a bank account, within this many days of the card's
+// "payment, thank you".
+export const CARD_PAYMENT_MATCH_DAYS = 3;
 // Money moved between the person's own accounts (chat QA): saving, investing or into an HSA.
 // Never a recurring charge. Payment-app transfers and wires stay: they can be rent to a person.
 export const OWN_ACCOUNT_TRANSFERS: readonly string[] = [
