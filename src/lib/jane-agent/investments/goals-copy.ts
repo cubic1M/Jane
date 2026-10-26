@@ -1,8 +1,7 @@
 import type { Bucket } from "@/planning/goal-buckets";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Jane's words about investing by goal (spec step 157). Pure.
-
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 
 export const bucketLine = (b: Bucket) =>
   b.nearTerm

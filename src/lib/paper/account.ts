@@ -33,6 +33,7 @@ import { agentIsStale, tickTradingAgent } from "@/lib/trading-agent/agent";
 import "@/lib/events/agent-source";
 import { latestCloses, paperPrices, type PaperPrices } from "./prices";
 import { strategyTargets } from "./targets";
+import { formatPercent as pct } from "@/lib/percent";
 
 // The paper account (2026-10-26): simulated money the person starts from the investments page,
 // run by the strategy they picked ("Use this strategy") on real daily closes. Each day after the
@@ -47,7 +48,6 @@ type Options = { client?: PrismaClient; now?: Date; prices?: PaperPrices };
 export class PaperError extends Error {}
 
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 // The investments page's key for what the practice portfolio runs: a tested strategy, else Jane's
 // pick for the level.

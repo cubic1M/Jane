@@ -8,12 +8,12 @@ import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Every goal invested for its timeline (spec step 157, demo advice): each goal's bucket and
 // mix, the glide path behind it, and what Jane does with new money.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 
 async function GoalsContent() {
   const user = await requireUser();
