@@ -29,6 +29,87 @@ type Snapshot = {
 };
 
 const snapshots = new Map<string, Snapshot>();
+
+// Shared by the run's test files (src/test-setup/sync-snapshots-dir.ts makes the folder): a file
+// gets a copy of a sync another file made, when everything in the key matches, its own mocked
+// modules included. Without the folder (one file run on its own) only the file's own are kept.
+async function load(key: string): Promise<Snapshot | null> {
+  const kept = snapshots.get(key);
+  if (kept) return kept;
+  const dir = process.env.SYNC_SNAPSHOT_DIR;
+  if (!dir) return null;
+  const { readFile } = await import("node:fs/promises");
+  try {
+    const s = JSON.parse(await readFile(`${dir}/${key}.json`, "utf8")) as Snapshot;
+    snapshots.set(key, s);
+    return s;
+  } catch {
+    return null;
+  }
+}
+
+async function save(key: string, s: Snapshot) {
+  snapshots.set(key, s);
+  const dir = process.env.SYNC_SNAPSHOT_DIR;
+  if (!dir) return;
+  const { rename, writeFile } = await import("node:fs/promises");
+  const tmp = `${dir}/${key}.${process.pid}.tmp`;
+  await writeFile(tmp, JSON.stringify(s));
+  await rename(tmp, `${dir}/${key}.json`);
+}
+
+// Environment that differs between files without changing what a sync writes: the file's own
+// encryption key, vitest's worker numbers, these snapshots' own switches.
+const PER_FILE_ENV = /^(TOKEN_ENCRYPTION_KEY|VITEST_POOL_ID|VITEST_WORKER_ID|SYNC_SNAPSHOT.*)$/;
+
+// The modules this test file mocks: a sync under other mocks may write other rows.
+let mockedModules: string[] | null = null;
+async function mocksOfFile(): Promise<string[]> {
+  if (mockedModules) return mockedModules;
+  const path = expect.getState().testPath;
+  const { readFile } = await import("node:fs/promises");
+  const source = path ? await readFile(path, "utf8").catch(() => "") : "";
+  mockedModules = [...source.matchAll(/vi\.(?:do)?[mM]ock\(\s*["'`]([^"'`]+)["'`]/g)]
+    .map((m) => m[1])
+    .sort();
+  return mockedModules;
+}
+
+// The shared rows (outside any person) a copy points to must still be there; a file's cleanup
+// may have removed some. Foreign keys from the user-owned tables to the others.
+let sharedRefs: { table: string; column: string; target: string }[] | null = null;
+async function sharedRowsExist(client: PrismaClient, s: Snapshot): Promise<boolean> {
+  if (!sharedRefs) {
+    const own = new Set(await tablesOf(client));
+    const fks = await client.$queryRawUnsafe<{ t: string; c: string; ref: string }[]>(
+      `SELECT tc.table_name AS t, kcu.column_name AS c, ccu.table_name AS ref
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+       JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name
+       WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'`,
+    );
+    sharedRefs = fks
+      .filter((f) => own.has(f.t) && !own.has(f.ref) && !["users", "plaid_items"].includes(f.ref))
+      .map((f) => ({ table: f.t, column: f.c, target: f.ref }));
+  }
+  const wanted = new Map<string, Set<string>>();
+  for (const ref of sharedRefs)
+    for (const row of s.tables[ref.table] ?? []) {
+      const v = row[ref.column];
+      if (typeof v === "string") {
+        if (!wanted.has(ref.target)) wanted.set(ref.target, new Set());
+        wanted.get(ref.target)!.add(v);
+      }
+    }
+  for (const [table, ids] of wanted) {
+    const found = await client.$queryRawUnsafe<{ n: number }[]>(
+      `SELECT count(*)::int AS n FROM "${table}" WHERE id = ANY($1::text[])`,
+      [...ids],
+    );
+    if (found[0].n !== ids.size) return false;
+  }
+  return true;
+}
 // What this file's demo syncs did, for CI's log: one line per file that synced any.
 const tally = { real: 0, copied: 0, skipped: 0, ms: 0, people: [] as string[] };
 afterAll(() => {
@@ -261,10 +342,16 @@ vi.mock("@/lib/plaid/sync", async (importOriginal) => {
         today: new Date().toISOString().slice(0, 10),
         trial: userId.startsWith("trial_"),
         before: fingerprint(before, user, item),
-        env: Object.entries(process.env).sort(([a], [b]) => a.localeCompare(b)),
+        // The encryption key is each file's own (the copy never carries anything it encrypted).
+        env: Object.entries(process.env)
+          .filter(([k]) => !PER_FILE_ENV.test(k))
+          .sort(([a], [b]) => a.localeCompare(b)),
+        mocks: await mocksOfFile(),
+        database: process.env.TEST_DATABASE_URL ?? null,
       }),
     );
-    const kept = snapshots.get(key);
+    const found = await load(key);
+    const kept = found && (await sharedRowsExist(client, found)) ? found : null;
     debug(kept ? "copy" : "real", key.slice(0, 8));
     if (kept) {
       tally.copied += 1;
@@ -278,7 +365,7 @@ vi.mock("@/lib/plaid/sync", async (importOriginal) => {
     tally.people.push(
       `${rest.join(":") || "demo"}@${options.now?.toISOString().slice(0, 16) ?? "now"}`,
     );
-    snapshots.set(key, {
+    await save(key, {
       userId,
       itemId,
       seed,
