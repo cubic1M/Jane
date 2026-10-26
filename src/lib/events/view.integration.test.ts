@@ -21,8 +21,8 @@ import { loadEventsView } from "./view";
 // once in the pop-up, with Revert taking them back and closing the slice. A real account gets none.
 
 const url = process.env.TEST_DATABASE_URL;
-// Tuesday 2026-10-20, after the close.
-const NOW = new Date("2026-10-20T22:30:00Z");
+// Tuesday 2027-10-19, after the close.
+const NOW = new Date("2027-10-19T22:30:00Z");
 
 // Weekday closes for any ticker, the same for the same day whatever range is asked for: a steady
 // climb from a price set by its name, times `bump`.
@@ -45,6 +45,11 @@ const fakePrices = (bump: (ticker: string, date: string) => number = () => 1): P
     }
     return out;
   },
+});
+
+// Market events are shared by every test file: this one keeps to 2027, and clears only those.
+const ownYear = () => ({
+  date: { gte: new Date("2027-01-01T00:00:00Z"), lt: new Date("2028-01-01T00:00:00Z") },
 });
 
 describe.runIf(url)("the Events box and its updates", () => {
@@ -89,10 +94,10 @@ describe.runIf(url)("the Events box and its updates", () => {
   });
   beforeEach(async () => {
     vi.clearAllMocks();
-    await client.marketEvent.deleteMany({});
+    await client.marketEvent.deleteMany({ where: ownYear() });
   });
   afterAll(async () => {
-    await client.marketEvent.deleteMany({});
+    await client.marketEvent.deleteMany({ where: ownYear() });
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
   });
@@ -101,7 +106,7 @@ describe.runIf(url)("the Events box and its updates", () => {
     const id = await person("demo");
     await startPaperAccount(id, 1_000_000, {
       client,
-      now: new Date("2026-10-12T21:30:00Z"),
+      now: new Date("2027-10-11T21:30:00Z"),
       prices,
     });
     return id;
@@ -110,8 +115,8 @@ describe.runIf(url)("the Events box and its updates", () => {
   it("shows in the box what it would do, then what it did, and its update in the pop-up, with Revert", async () => {
     const prices = fakePrices();
     const id = await startedOn(prices);
-    const key = uniqueKey("gdelt:chip_boom:2026-10-19");
-    await event({ key, type: "chip_boom", date: "2026-10-19", knownAt: "2026-10-20T00:15:00Z" });
+    const key = uniqueKey("gdelt:chip_boom:2027-10-18");
+    await event({ key, type: "chip_boom", date: "2027-10-18", knownAt: "2027-10-19T00:15:00Z" });
 
     // Off: what it would do, how sure, and its record.
     const off = (await loadEventsView(id, { client, now: NOW }))!;
@@ -124,7 +129,7 @@ describe.runIf(url)("the Events box and its updates", () => {
     expect(off.record).toHaveLength(9);
     expect(off.label).toBe("Demo advice: sample data, not financial advice");
 
-    await setEventsOverlay(id, true, { client, now: new Date("2026-10-19T15:00:00Z") });
+    await setEventsOverlay(id, true, { client, now: new Date("2027-10-18T15:00:00Z") });
     await runEventOverlay(id, { client, now: NOW, prices });
     const on = (await loadEventsView(id, { client, now: NOW }))!;
     expect(on.on).toBe(true);

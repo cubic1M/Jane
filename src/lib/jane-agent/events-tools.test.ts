@@ -17,6 +17,7 @@ const client = {} as PrismaClient;
 
 const VIEW: EventsView = {
   on: true,
+  agent: false,
   hasAccount: true,
   level: 3,
   label: "Demo advice: sample data, not financial advice",
