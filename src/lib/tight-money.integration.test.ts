@@ -14,7 +14,7 @@ import { takeChatAction } from "@/lib/jane-agent/actions";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
-import { parseActions, parseRefs } from "@/lib/jane-agent/types";
+import { parseActions } from "@/lib/jane-agent/types";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { TightMoneyError, loadTightMoney, refreshTightMoney, sendTightItem } from "./tight-money";

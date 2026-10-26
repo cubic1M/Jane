@@ -10,7 +10,6 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { CHAT_MAX_MESSAGE, CHAT_PRIMER_TOOLS, CHAT_TRIAL_MESSAGES } from "@/config/agent-chat";
 import { TRIAL_CAP_TEXT, addMonthlySpend } from "./claude-limits";
-import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import { RATE_LIMITS } from "@/config/rate-limits";
 import { track } from "@/lib/analytics";
 import { exportUserData } from "@/lib/data-export";
@@ -23,7 +22,7 @@ import { addSpend, overDailyCap, spentTodayCents } from "./spend";
 import { runChatTool } from "./claude-tools";
 import { chatFeed, closeSettled, postedToday } from "./messages";
 import { parseActions } from "./types";
-import { ChatInputError, lastTopic, recentTurns, sendToJane } from "./typing";
+import { ChatInputError, DAILY_LIMIT_NOTE, lastTopic, recentTurns, sendToJane } from "./typing";
 import { toView } from "./view";
 
 // Spec step 84 against a real, migrated Postgres: link the demo bank, type "cancel Hulu",
@@ -401,9 +400,20 @@ describe.runIf(url)("typing to Jane against a real database", () => {
         },
       );
       expect(create).not.toHaveBeenCalled();
-      expect(source).toBe("claude_unavailable");
-      // Said honestly, then the data, never a generic status passed off as the answer.
-      expect(reply.body).toMatch(/^I've reached today's limit for answering in detail/);
+      expect(source).toBe("capped");
+      // Said honestly and briefly, never a generic status passed off as the answer.
+      expect(reply.body).toBe(DAILY_LIMIT_NOTE);
+      // A question the data answers: the note, then that answer with its buttons, for free.
+      const free = await sendToJane(capped, "safe to spend", { client, now: when, claude });
+      expect(create).not.toHaveBeenCalled();
+      expect(free.reply.body).toMatch(
+        /^I've hit today's limit for written answers, back tomorrow\. .*safe to spend/,
+      );
+      // Without a key (dev, tests, e2e) the note is the same.
+      vi.stubEnv("ANTHROPIC_API_KEY", "");
+      const noKey = await sendToJane(capped, "safe to spend", { client, now: when });
+      expect(noKey.reply.body).toMatch(/^I've hit today's limit for written answers/);
+      vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
       // The next day it's asked again.
       expect(
         await overDailyCap(capped, { client, now: new Date(when.getTime() + 24 * 60 * 60 * 1000) }),

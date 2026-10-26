@@ -3,6 +3,13 @@
 Finds money users are losing and turns each finding into a yes/no decision card. See
 [docs/spec.md](docs/spec.md) for the full spec and [CLAUDE.md](CLAUDE.md) for the rules.
 
+## How it fits together
+
+[docs/architecture.md](docs/architecture.md) is the map: the folders and what lives where, how
+data moves from a bank to Jane's cards and chat, the rules every change keeps (user scoping,
+the audit log, guardrails, advice mode, trial people, the paper account), the scheduled jobs,
+and how deploys work.
+
 ## Setup
 
 1. Use Node from `.nvmrc` (`nvm use`).
