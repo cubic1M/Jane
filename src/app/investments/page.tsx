@@ -19,6 +19,9 @@ import { RETURNS_NOTE } from "@/config/returns";
 import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
 import { loadPaperView, runPaperIfStale, strategyLabel, strategyOf } from "@/lib/paper/account";
 import { PaperAccount } from "@/components/paper-account";
+import { EventsBox } from "@/components/events-box";
+import { runEventsIfStale } from "@/lib/events/run";
+import { loadEventsView } from "@/lib/events/view";
 import { formatReturn } from "@/insights/returns";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
@@ -111,14 +114,17 @@ async function LevelStrategies({ userId }: { userId: string }) {
 // The page's top, like Home: the practice portfolio's hero graph, three tiles and the strategy
 // tree, from the stored research (src/lib/investments/strategy-tree.ts).
 async function Strategies({ userId, ideas }: { userId: string; ideas: number }) {
-  const [{ tiles, board }, paper, chosen] = await Promise.all([
+  const [{ tiles, board }, paper, chosen, events] = await Promise.all([
     strategyTreeFor(userId),
     loadPaperView(userId),
     strategyOf(userId),
+    loadEventsView(userId),
   ]);
   return (
     <>
       <PaperAccount view={paper} strategy={strategyLabel(chosen.key, chosen.level)} />
+      {/* The events overlay: its own box, apart from the suggestion dock (advice mode only). */}
+      {events && <EventsBox view={events} />}
       <StrategyTree tiles={tiles} board={board} ideas={ideas} />
     </>
   );
@@ -144,6 +150,8 @@ async function InvestmentsContent({
   after(() => scanOnOpenQuietly(user.id));
   // The paper account valued at the latest closes, when its last run is stale.
   after(() => runPaperIfStale(user.id));
+  // The events overlay on top of it, when its daily run was missed.
+  after(() => runEventsIfStale(user.id));
   const {
     data,
     simulated,
