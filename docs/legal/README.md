@@ -8,19 +8,70 @@ bumping `TERMS_VERSION`, which asks every user to accept once on their next visi
 
 ## What the drafts say, and where it comes from in the code
 
+Rewritten 2026-10-26 from the code as it is today (`TERMS_VERSION` 2026-10-26, so everyone accepts
+once more). `src/app/legal-pages.test.tsx` checks each claim below against the code it names, so
+a change in one breaks the test until the pages say it too.
+
 | Claim | Source |
 | --- | --- |
-| Sign-up needs an invite (closed beta); Try Jane is open to all | `BETA_INVITE_ONLY`, `src/lib/invites.ts`, `src/lib/auth-gate.ts` |
-| Bank access is read-only through Plaid; Jane never moves money | Plaid Transactions, with Liabilities and Investments optional, all read-only (`src/lib/plaid/link.ts`); no payment or transfer product |
-| Plaid tokens encrypted with AES-256-GCM | `TOKEN_ENCRYPTION_KEY`, `src/lib/crypto.ts` |
-| CSV uploads parsed in memory, never stored raw | `src/app/import/` |
-| What Claude (Anthropic) receives | Chat tools (`src/lib/jane-agent/claude.ts`, `claude-tools.ts`), explanations (`src/lib/explain.ts`), document reading (`src/lib/documents/extract.ts`) |
-| No investment, tax or legal advice for real accounts; demo advice on sample data, labelled | `REAL_ACCOUNT_ADVICE = false` (`src/config/advice.ts`), `src/lib/advice-mode.ts`, `src/lib/guardrails.ts` |
+| Sign-up needs an invite (closed beta); Try Jane only "when it's offered" | `BETA_INVITE_ONLY` (`src/lib/launch-check.ts`), `src/lib/auth-gate.ts`; `trialEnabled()` in `src/lib/trial.ts` (production only with `TRY_JANE=1`) |
+| Bank access is read-only through Plaid; Jane never moves money | Plaid Transactions, with Liabilities and Investments optional (`src/lib/plaid/link.ts`); no Auth, Transfer or Payment Initiation product |
+| Real accounts: you make changes yourself; Jane and the team don't contact companies | `CONCIERGE_ACTIONS.realAccounts = false` (`src/config/concierge.ts`), `src/lib/concierge-mode.ts` |
+| Plaid tokens and uploaded documents encrypted with AES-256-GCM | `TOKEN_ENCRYPTION_KEY`, `src/lib/crypto.ts`; `src/lib/documents/store.ts` |
+| CSV uploads parsed in memory, never stored as a file | `src/app/import/` |
+| What Anthropic receives (chat, card text, check-in, weekly review, uploaded documents, merchant names) and never (passwords, bank sign-in, Plaid connection, account numbers, raw descriptions) | `src/lib/jane-agent/claude.ts`, `src/lib/ask/tools.ts`, `src/lib/explain.ts`, `src/lib/check-in.ts`, `src/lib/strategist.ts`, `src/lib/documents/extract.ts`, `src/lib/tax-notices/read.ts`, `src/lib/prior-return/read.ts`, `src/lib/draft-return/read.ts`, `src/lib/subscription-check.ts` |
+| No financial advice for real accounts; demo advice on sample data, labelled | `REAL_ACCOUNT_ADVICE = false` (`src/config/advice.ts`), `src/lib/advice-mode.ts`, `src/lib/guardrails.ts` |
+| Practice portfolio and paper account: simulated money only, sample data only for now; prices from Alpaca or Yahoo by ticker | `src/lib/paper/` (`adviceMode` gate), `src/app/investments/practice/page.tsx`, `src/lib/paper/prices.ts` |
 | Retention periods | `src/config/retention.ts` (the privacy page reads it directly) |
-| Delete everything in one step | `deleteAllData` (`src/lib/account-deletion.ts`): Plaid items removed, then every user-owned row |
-| PostHog gets event names and some figures, keyed by user id, server-side only | `src/lib/analytics.ts` |
+| Banks disconnected after 60 days unused, with an email 7 days before | `INACTIVE_ITEM_DAYS`, `REMOVAL_WARNING_DAYS` (`src/config/retention.ts`) |
+| Delete everything in one step; Plaid first, nothing deleted if Plaid can't be reached; ids-only audit record; /goodbye | `deleteAllData` (`src/lib/account-deletion.ts`), `src/app/goodbye/page.tsx` |
+| Trials deleted after `TRIAL_HOURS`, never emailed or counted | `src/lib/trial.ts`, `src/config/trial.ts`, `src/lib/analytics.ts` (`isTrialUser`) |
+| PostHog gets event names and some figures, keyed by a random id, from the server, only when configured | `src/lib/analytics.ts` (`POSTHOG_KEY`) |
 | Resend sends sign-in links and the emails people opt into | `src/lib/email.ts` |
-| Sample-data trials deleted after `TRIAL_HOURS`, never in analytics | `src/lib/trial.ts`, `src/config/trial.ts` |
+| Browser push carries notifications when turned on | `src/lib/push.ts` (`VAPID_*`) |
+| Cookies: the sign-in cookie; `fc_invite` and `fc_terms` (15 minutes); `fc_aid` (a random id, a year); browser storage for display choices | Auth.js; `src/lib/auth-actions.ts`; `src/app/api/events/route.ts`; `src/components/side-chat/store.ts`, `src/lib/ask-jane.ts`, `src/app/landing-mode-switch.tsx` |
+| Contact address | `contactEmail()` (`src/config/legal.ts`): `SUPPORT_EMAIL`, else the first `ADMIN_EMAILS` address, else a "[contact email to be added]" placeholder |
+
+## Claims a lawyer must check
+
+1. **The operator.** "Jane, run by Financial Controller" (`COMPANY_NAME`): the legal entity, its
+   address, governing law and venue are missing.
+2. **Contact.** Until `SUPPORT_EMAIL` is set the pages show a founder's admin address, or a
+   placeholder. Is an email enough, or is a postal address or privacy contact required?
+3. **"Jane never moves money" and "read-only".** True of the Plaid products asked for; confirm
+   the wording against Plaid's own terms and its production checklist disclosures.
+4. **"Jane and our team don't contact companies for you" (real accounts).** True while
+   `CONCIERGE_ACTIONS.realAccounts` is false; the demo and trial flow still has a simulated agent.
+   The Terms will need agency or authorisation wording before concierge comes back for real
+   accounts.
+5. **"No financial advice for your real accounts" / "general information".** Is that enough for a
+   service that explains people's own money with AI? Do the labelled demo recommendations on
+   sample data raise investment-adviser questions?
+6. **Practice and paper accounts.** "Simulated money only, … not a forecast". Is that enough
+   disclaimer for strategy replays and trade alerts with a confidence percentage, even on sample
+   data, and would offering them to real accounts later need registration?
+7. **Anthropic.** The list of what Claude receives, and the absolute "never receives …". Should
+   the policy describe Anthropic's API retention and no-training terms, and is consent needed
+   beyond accepting the policy?
+8. **"We don't sell your data" and "not for advertising".** Check against CCPA/CPRA's definitions
+   of sale and sharing, including PostHog analytics.
+9. **Cookies.** The list (sign-in, two 15-minute sign-up cookies, a year-long random visit id)
+   and "no advertising cookies or tracking pixels". Does the visit id need a notice or consent in
+   any state we serve?
+10. **Retention.** Account data is kept until the person deletes it; banks are disconnected after
+    60 days unused; analytics records 395 days; error reports 90 days; the audit log keeps ids-only
+    deletion records indefinitely. Are these acceptable, and is "until you delete it" allowed for
+    inactive accounts?
+11. **Deletion.** "Deletes your account and everything in it" except the ids-only security record.
+    Does that meet deletion-request rules (timing, confirmation, backups)?
+12. **Trials.** "Deleted after 24 hours" (`TRIAL_HOURS`) and "never emailed, never counted".
+13. **Partners and the membership test.** The referral-fee disclosure and "we'll tell you before
+    any recurring charge"; insurance referral fees stay off until counsel answers
+    (`COUNSEL_INSURANCE_REFERRALS`).
+14. **Age, eligibility, invite sharing, suspension, "as is" and the liability limit.** Enforceable
+    as written? Is an arbitration clause or class-action waiver advisable?
+15. **GLBA and state privacy laws.** Does reading bank data through Plaid make us a financial
+    institution needing a GLBA notice? Which state laws apply to an invite-only beta?
 
 ## Open questions for the lawyer
 
