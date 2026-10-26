@@ -68,17 +68,22 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   );
   expect(new Set(spots).size).toBe(spots.length);
 
-  // A tile per area, in tab order, each with a health word or what to set up, and a chart.
-  const tiles = page.getByRole("region", { name: "Your areas" }).getByRole("listitem");
-  await expect(tiles).toHaveCount(6);
+  // One set of area tiles (audit round 2: the areas were on Home twice): "What Jane does", a
+  // tile per area in tab order, each with its status and its figure; no "Your areas" too.
+  await expect(page.getByRole("region", { name: "Your areas" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Your areas" })).toHaveCount(0);
+  const tiles = page.locator("[data-giant-tree] [data-giant-area-tile]");
+  await expect(tiles).toHaveCount(6, { timeout: 60_000 });
+  await expect(tiles.last()).toBeVisible();
   for (const [i, name] of AREAS.entries()) {
-    await expect(tiles.nth(i).getByRole("link").first()).toHaveText(name);
-    await expect(tiles.nth(i)).toContainText(/Good|Look|Act|Not set up/);
+    await expect(tiles.nth(i)).toContainText(name);
+    // A status (said in words for screen readers), or what to set up.
+    await expect(tiles.nth(i)).toContainText(/Good: |Needs a look: |Urgent: |Not set up/);
   }
-  await expect(page.locator("[data-health]").first()).toBeVisible();
   // Few numbers: three up top and at most one per tile.
-  const tileNumbers = await tiles.locator("p.text-2xl").count();
+  const tileNumbers = await tiles.locator("span.text-lg").count();
   expect(tileNumbers).toBeLessThanOrEqual(6);
+  expect(tileNumbers).toBeGreaterThan(0);
 
   // On a computer the chat is docked beside the hub; on a phone nothing scrolls sideways.
   if (!isMobile) {
@@ -91,8 +96,11 @@ test("the hub shows the money at a glance, the month ahead and every area", asyn
   );
   expect(overflow).toBeLessThanOrEqual(0);
 
-  // A tile opens its tab.
-  await tiles.nth(1).getByRole("link", { name: "Insurance" }).click();
+  // A tile opens its tree, and the tree's link opens its page.
+  await tiles.nth(1).click();
+  const insurance = page.locator('[data-giant-area="insurance"]');
+  await expect(insurance).toBeVisible();
+  await insurance.getByRole("link", { name: "[OPEN THE PAGE ›]" }).click();
   await expect(page).toHaveURL("/insurance");
 });
 
