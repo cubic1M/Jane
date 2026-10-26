@@ -43,7 +43,7 @@ test("every page has the security headers, a fresh nonce, and nothing blocked", 
 }) => {
   const violations = await watchViolations(page);
   const nonces = new Set<string>();
-  for (const path of ["/", "/login", "/signup", "/security", "/privacy", "/try"]) {
+  for (const path of ["/", "/login", "/signup", "/security", "/privacy", "/terms"]) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBe(200);
     const headers = response!.headers();
