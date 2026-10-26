@@ -9,7 +9,7 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     restoreMocks: true,
     // Spec step 293: no test calls Anthropic; a request to its API fails the test.
-    setupFiles: ["src/test-setup/no-anthropic.ts"],
+    setupFiles: ["src/test-setup/no-anthropic.ts", "src/test-setup/sync-snapshots.ts"],
     // The integration tests run against a real database on shared CI runners; with dozens of
     // pull requests running at once, tests that finish in 3-4 seconds locally have passed 20
     // seconds (flows, loan applications, tax profile); 60s was still hit under load. A test that hangs still fails, just later.
