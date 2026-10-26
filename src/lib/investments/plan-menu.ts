@@ -24,7 +24,7 @@ import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
 
 // The workplace plan's menu, used well (spec step 232, demo advice), for its page, Jane's
-// answers and her buttons. The menu is read from a fee disclosure the person pastes, shown
+// answers and its buttons. The menu is read from a fee disclosure the person pastes, shown
 // back for them to confirm, and only then used. The suggestion is the cheapest mix of the
 // plan's own funds that matches their target; a change goes to the payroll stand-in on
 // their tap.

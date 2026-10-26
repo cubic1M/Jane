@@ -1,5 +1,5 @@
 // The tax year that runs itself (spec step 223). FOR REVIEW. The year's tax calendar: what
-// Jane does each month, by herself within the sector caps (src/config/autopilot-sectors.ts)
+// Jane does each month, on its own within the sector caps (src/config/autopilot-sectors.ts)
 // or by asking for a tap. Dates come from the same config as the rest of taxes
 // (ESTIMATED_TAX_DATES, the filing season, the IP PIN season).
 
@@ -75,7 +75,7 @@ export const TAX_CALENDAR: Readonly<Record<number, readonly CalendarKey[]>> = {
 };
 
 // Jane pays an estimated payment this many days before it is due (and up to PAY_GRACE_DAYS
-// after, if it was missed), when it fits the caps; otherwise she asks.
+// after, if it was missed), when it fits the caps; otherwise it asks.
 export const ESTIMATE_PAY_LEAD_DAYS = 5;
 export const ESTIMATE_PAY_GRACE_DAYS = 30;
 

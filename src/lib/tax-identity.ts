@@ -18,7 +18,7 @@ import {
 
 // A protected tax identity (spec step 218): the January IP PIN reminder, and, on a sign of
 // tax identity theft, a case with its steps in order, tracked to done. Jane never contacts
-// the IRS or a bureau: every step is the person's, and she keeps the list.
+// the IRS or a bureau: every step is the person's, and it keeps the list.
 
 type Options = { client?: PrismaClient; now?: Date };
 

@@ -70,13 +70,13 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_policies",
     description:
-      "The person's insurance profile, and what Jane does with it by herself at their autopilot level: every policy on file (kind, insurer, price, how often it's paid, deductible, cover limits, what it covers, next renewal date and where it came from), their household facts (own or rent, cars, dependants, pets) and coverage gaps Jane found, each with why it matters. Figures only come from these records; when something isn't on file, say so.",
+      "The person's insurance profile, and what Jane does with it on its own at their autopilot level: every policy on file (kind, insurer, price, how often it's paid, deductible, cover limits, what it covers, next renewal date and where it came from), their household facts (own or rent, cars, dependants, pets) and coverage gaps Jane found, each with why it matters. Figures only come from these records; when something isn't on file, say so.",
     input_schema: noInput,
   },
   {
     name: "insurance_quotes",
     description:
-      "Quotes Jane already got for the person's policies from the insurance partner (spec step 103), cheapest first, and Jane's own pick with why when she reshopped it (demo advice): carrier, rating, price per payment and a year, the saving against what they pay now, and whether the cover and deductible are the same or what's different. Demo quotes are sample prices from a made-up catalog, not real offers; say so. It never asks for new quotes: the person can ask Jane \"find me cheaper car insurance\" for that.",
+      "Quotes Jane already got for the person's policies from the insurance partner (spec step 103), cheapest first, and Jane's own pick with why when it reshopped it (demo advice): carrier, rating, price per payment and a year, the saving against what they pay now, and whether the cover and deductible are the same or what's different. Demo quotes are sample prices from a made-up catalog, not real offers; say so. It never asks for new quotes: the person can ask Jane \"find me cheaper car insurance\" for that.",
     input_schema: noInput,
   },
   {
@@ -88,7 +88,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_claims",
     description:
-      "Claims the person is tracking with Jane (spec step 107): what happened and when, the insurer and its claims line when known, the claim number, and every step with when it's due and whether it's done. Jane reminds the person; she never files a claim or talks to the insurer for them. For something that just happened, the person can tell Jane, like \"I had a car accident\", for what to do now.",
+      "Claims the person is tracking with Jane (spec step 107): what happened and when, the insurer and its claims line when known, the claim number, and every step with when it's due and whether it's done. Jane reminds the person; it never files a claim or talks to the insurer for them. For something that just happened, the person can tell Jane, like \"I had a car accident\", for what to do now.",
     input_schema: noInput,
   },
   {
@@ -133,7 +133,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_review",
     description:
-      "The yearly insurance review (spec step 202): what Jane did by herself within the person's autopilot caps, what still needs their tap, and the yearly money involved. Say it as an estimate. 'Keep me covered' is a button the person taps: you never do it for them.",
+      "The yearly insurance review (spec step 202): what Jane did on its own within the person's autopilot caps, what still needs their tap, and the yearly money involved. Say it as an estimate. 'Keep me covered' is a button the person taps: you never do it for them.",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -168,7 +168,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_risks",
     description:
-      "Risks Jane noticed in how the person lives that their cover may miss (spec step 197): rideshare or delivery income, a home business, a new dog, an expensive ring or camera, a boat, renting the home out. Each is one question, asked once; says what she saw, whether they've answered (a no is never asked again), and the gap a yes opened.",
+      "Risks Jane noticed in how the person lives that their cover may miss (spec step 197): rideshare or delivery income, a home business, a new dog, an expensive ring or camera, a boat, renting the home out. Each is one question, asked once; says what it saw, whether they've answered (a no is never asked again), and the gap a yes opened.",
     input_schema: noInput,
   },
   {
@@ -198,7 +198,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_documents",
     description:
-      "Policies Jane read from the person's uploaded declarations pages and renewal notices (spec step 151): each field she read (insurer, kind, price, deductible, cover limits, renewal date) with where it came from (the document, what they typed, their payments, or the policy already on file), what the rules left out, and whether they've confirmed it. Nothing read is on their insurance until they confirm.",
+      "Policies Jane read from the person's uploaded declarations pages and renewal notices (spec step 151): each field it read (insurer, kind, price, deductible, cover limits, renewal date) with where it came from (the document, what they typed, their payments, or the policy already on file), what the rules left out, and whether they've confirmed it. Nothing read is on their insurance until they confirm.",
     input_schema: noInput,
   },
 ];
@@ -700,7 +700,7 @@ export async function runInsuranceTool(
         dependants: fact(household.dependants),
         pets: fact(household.pets),
       },
-      // Spec steps 108 and 141: what Jane does with insurance by herself.
+      // Spec steps 108 and 141: what Jane does with insurance on its own.
       whatJaneDoesByHerself: (await autopilotAnswer(userId, { client })).body,
       // Spec step 105: switches Jane is doing, and ones finished lately.
       switches: switches.map((sw) => ({

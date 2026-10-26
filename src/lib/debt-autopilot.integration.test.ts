@@ -18,8 +18,8 @@ import { loadDebtAutopilot, runDebtAutopilot } from "./debt-autopilot";
 
 // Spec step 117 against a real, migrated Postgres, on the demo bank: Jane watches every rate
 // the bank reports and says when one changes, drafts the request to move the student loan's
-// payment (due on the 28th, just before the 1st's payday), starts the payoff plan by herself
-// only when the debt autopilot does the safe stuff, and answers what she does and what's due.
+// payment (due on the 28th, just before the 1st's payday), starts the payoff plan on its own
+// only when the debt autopilot does the safe stuff, and answers what it does and what's due.
 
 const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
@@ -106,7 +106,7 @@ describe.runIf(url)("debt on autopilot against a real database", () => {
     );
   });
 
-  it("starts the payoff plan by herself when the debt autopilot does the safe stuff", async () => {
+  it("starts the payoff plan on its own when the debt autopilot does the safe stuff", async () => {
     await client.user.update({ where: { id: userId }, data: { autopilot: "safe" } });
     const { planStarted } = await runDebtAutopilot(userId, opts());
     expect(planStarted).toBe(true);

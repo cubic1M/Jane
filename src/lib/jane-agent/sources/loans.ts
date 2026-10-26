@@ -5,7 +5,7 @@ import { formatCents } from "@/lib/money";
 import type { Candidate, MessageAction } from "../types";
 import type { MessageSource } from "./source";
 
-// Loan applications (spec step 112): Jane follows each one by herself
+// Loan applications (spec step 112): Jane follows each one on its own
 // (src/lib/loan-applications.ts refreshLoanApplications) and says how it's going: an
 // approved loan still waiting for the person's yes (a reminder, a day on), the lender
 // funding it, the old loan reaching zero, and an old loan that still shows a balance well

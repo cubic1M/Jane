@@ -2,9 +2,9 @@
 // that matter for cover, and the gaps Jane points out. src/lib/insurance reads every limit
 // and rule from here.
 //
-// What Jane does by herself, at every autopilot level (src/config/autopilot.ts): she keeps
+// What Jane does on its own, at every autopilot level (src/config/autopilot.ts): it keeps
 // the profile up to date from documents (and, from step 99, from payments) and points out
-// gaps. She never buys, changes or cancels cover without the person's own tap.
+// gaps. It never buys, changes or cancels cover without the person's own tap.
 
 // The kinds of policy, as the profile and the forms name them.
 export const POLICY_KINDS = {
@@ -305,7 +305,7 @@ export const MEDICAL_LOOKBACK_DAYS = 365;
 // Quotes come from an insurance partner (src/lib/insurance/partner.ts). Until a licensed
 // partner is connected, a stand-in carrier catalog (src/data-sources/demo/demo-carriers.ts)
 // prices policies for demo-bank people with the fixed rules below. Real accounts get no
-// quotes. At every autopilot level Jane may ask for quotes by herself: they cost nothing and
+// quotes. At every autopilot level Jane may ask for quotes on its own: they cost nothing and
 // commit to nothing. Buying (binding) always needs the person's tap.
 
 // Which partner answers: "demo" (the stand-in, for demo-bank people only) until a real one
@@ -443,8 +443,8 @@ export const DEMO_PRICING = {
 } as const;
 
 // --- Shopped for you (spec step 104) ------------------------------------------------------
-// Jane reshops every policy by herself, at every autopilot level: this many days before it
-// renews, and whenever its price goes up. She picks the lowest price for the same cover,
+// Jane reshops every policy on its own, at every autopilot level: this many days before it
+// renews, and whenever its price goes up. It picks the lowest price for the same cover,
 // weighted by the carrier's rating, and asks once. Nothing is bought without a tap.
 export const RESHOP_DAYS_BEFORE_RENEWAL = 45;
 // A carrier's price counts this much more for each rating point below 100 (0.5% a point),
@@ -466,10 +466,10 @@ export const RESHOP_DAILY_LIMIT = 200;
 export const RESHOP_NEWS_DAYS = 7;
 
 // --- One-tap switch (spec step 105) --------------------------------------------------------
-// After the Yes, Jane does the rest by herself, at every autopilot level: she binds the pick
+// After the Yes, Jane does the rest on its own, at every autopilot level: it binds the pick
 // through the insurance partner to start the day the current policy renews (or tomorrow),
 // waits for its first payment, and only then cancels the old policy, from the same day, so
-// there's never a gap in cover. She stores the new policy's documents on /documents.
+// there's never a gap in cover. It stores the new policy's documents on /documents.
 // If the first payment hasn't gone through this many days after the start, the team takes
 // over (the old policy is still in place).
 export const SWITCH_PAYMENT_DAYS = 10;
@@ -477,7 +477,7 @@ export const SWITCH_PAYMENT_DAYS = 10;
 export const SWITCH_NEWS_DAYS = 7;
 
 // --- Coverage checkup (spec step 106) -------------------------------------------------------
-// Demo advice only (spec step 98). Jane runs it by herself once a year and after a life event
+// Demo advice only (spec step 98). Jane runs it on its own once a year and after a life event
 // (spec step 100), at every autopilot level; changing cover always needs the person's tap.
 // Each recommendation shows what it costs (or saves) a year, from DEMO_PRICING's fixed
 // rules, and the risk it changes.
@@ -504,11 +504,11 @@ export const LIFE_COVER_DEFAULT_CENTS = 50_000_000;
 export const CHECKUP_DAILY_LIMIT = 200;
 
 // --- Insurance on autopilot (spec step 108) ------------------------------------------------
-// What Jane does with insurance by herself at each autopilot level (src/config/autopilot.ts).
+// What Jane does with insurance on its own at each autopilot level (src/config/autopilot.ts).
 // Insurance is never approved by a standing rule (NEVER_BY_RULE): buying, changing or
 // cancelling cover always takes the person's own tap.
-// What Jane keeps up with insurance at each step 57 level. Whether she buys or switches by
-// herself is the Insurance area's own setting (spec step 141), said after this by byHerself
+// What Jane keeps up with insurance at each step 57 level. Whether it buys or switches by
+// itself is the Insurance area's own setting (spec step 141), said after this by byHerself
 // (src/lib/jane-agent/replies-autopilot.ts).
 export const INSURANCE_AUTOPILOT: Record<"ask" | "safe" | "all" | "custom" | "none", string> = {
   none: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them.",
@@ -607,7 +607,7 @@ export const COVER_CHANGES = [
   "get_auto",
 ] as const;
 export type CoverChangeKind = (typeof COVER_CHANGES)[number];
-// Changes that never change the price: at "handle everything" Jane makes them herself.
+// Changes that never change the price: at "handle everything" Jane makes them itself.
 export const NO_PRICE_CHANGES: readonly CoverChangeKind[] = ["address"];
 // Changes made with the carrier through the partner; the rest are reviews and links.
 export const CARRIER_CHANGES: readonly CoverChangeKind[] = [
@@ -634,7 +634,7 @@ export const NEGOTIATE_HISTORY_DAYS = 365;
 // The stand-in carrier meets a cheaper competing quote this close (share above it), or
 // takes off this share of the rise for a loyal customer, never below today's price.
 export const DEMO_NEGOTIATE = { matchMargin: 0.02, loyaltyShareOfRise: 0.5 } as const;
-// Jane files claims up to this amount herself through the partner; bigger ones stay with
+// Jane files claims up to this amount itself through the partner; bigger ones stay with
 // the person and the claims helper.
 export const SMALL_CLAIM_MAX_CENTS = 250_000;
 // The stand-in carrier's claim, day by day after filing: received, then reviewing, then

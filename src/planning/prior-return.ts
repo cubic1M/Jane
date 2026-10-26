@@ -96,7 +96,7 @@ export type ReviewInput = {
   year: number;
   today: string;
   filed: Fields;
-  // Jane's own estimate input for that year, and what she knows beyond it.
+  // Jane's own estimate input for that year, and what it knows beyond it.
   input: EstimateInput;
   studentLoanInterestCents: number;
   tuitionCents: number;

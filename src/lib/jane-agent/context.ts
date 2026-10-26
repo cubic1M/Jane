@@ -4,7 +4,7 @@ import { PRONOUNS, type ActVerb, type Intent } from "./intents";
 import { levelAndYear } from "./investments/intents";
 
 // What the conversation is about (spec step 88): the last finding, merchant, category or
-// month Jane answered about, kept on her reply (refs.topic). A follow-up ("and Hulu?",
+// month Jane answered about, kept on its reply (refs.topic). A follow-up ("and Hulu?",
 // "what about last month?", "cancel it") is read against it. Only the last reply counts,
 // only within CHAT_CONTEXT_MINUTES and on the same day (src/lib/jane-agent/typing.ts), so
 // "it" never points at something from another day. Pure.

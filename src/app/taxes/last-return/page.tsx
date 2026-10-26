@@ -12,7 +12,7 @@ import { PrepareForm, ReadingForm, SignAmendmentForm } from "./forms";
 import { LoadingBar } from "@/components/loading-bar";
 
 // Last year's return, reviewed (spec step 172): what Jane read from an uploaded return, for
-// the person to confirm; then what she found against their accounts (demo advice); and an
+// the person to confirm; then what it found against their accounts (demo advice); and an
 // amended return the person reviews and signs. Nothing is amended without that signature.
 
 const LINK = "font-medium text-emerald-700 underline";
@@ -38,7 +38,7 @@ async function Content() {
           <Link href="/documents" className={LINK}>
             Documents
           </Link>{" "}
-          (choose &quot;Tax return&quot;). Jane reads it, you check it and confirm, and she looks
+          (choose &quot;Tax return&quot;). Jane reads it, you check it and confirm, and Jane looks
           for money left behind. Nothing is used until you confirm, and nothing is amended without
           your review and signature.
         </p>

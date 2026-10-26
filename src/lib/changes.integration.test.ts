@@ -27,7 +27,7 @@ import { loadChanges, markChangeExpected } from "./changes";
 
 // Spec step 97 against a real, migrated Postgres, with the demo bank: Jane notices the
 // Netflix price rise, the new overdraft fee and the big Apple purchase; at "Handle the safe
-// stuff" she has already asked for the old price by herself; "That's expected" sticks; and
+// stuff" it has already asked for the old price on its own; "That's expected" sticks; and
 // the heads-ups' buttons work through the features' own code.
 
 const url = process.env.TEST_DATABASE_URL;
@@ -166,7 +166,7 @@ describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_00
     });
   });
 
-  it("brings a change up by herself in her usual morning run, within the daily limits", async () => {
+  it("brings a change up on its own in its usual morning run, within the daily limits", async () => {
     const userId = await demoPerson("changes-run");
     await setAutopilot(userId, "ask", { client, now: LINKED });
     await runJaneAgent(userId, { client, now: NEXT_DAY, trigger: "cron" });

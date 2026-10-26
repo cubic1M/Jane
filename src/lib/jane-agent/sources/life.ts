@@ -5,8 +5,8 @@ import { lifeOffer } from "../replies-life";
 import type { Candidate } from "../types";
 import type { MessageSource } from "./source";
 
-// Life events spotted (spec step 100): Jane asks once about each one she has two or more
-// signs of, with Yes (she runs the checklist herself), Not me and Don't ask again.
+// Life events spotted (spec step 100): Jane asks once about each one it has two or more
+// signs of, with Yes (it runs the checklist itself), Not me and Don't ask again.
 
 const list = (items: string[]) =>
   items.length <= 2 ? items.join(" and ") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;

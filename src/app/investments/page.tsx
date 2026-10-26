@@ -409,10 +409,10 @@ async function InvestmentsContent({
       {/* Below the tree: nothing open by default (docs/design/area-pages.md). */}
       <div className="flex flex-col gap-2">
         <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
-          <summary className={`cursor-pointer text-sm ${LINK}`}>What Jane does by herself</summary>
-          <section aria-labelledby="by-herself" className="mt-2 flex flex-col gap-2 text-sm">
-            <h2 id="by-herself" className="sr-only">
-              What Jane does by herself
+          <summary className={`cursor-pointer text-sm ${LINK}`}>What Jane does on its own</summary>
+          <section aria-labelledby="by-itself" className="mt-2 flex flex-col gap-2 text-sm">
+            <h2 id="by-itself" className="sr-only">
+              What Jane does on its own
             </h2>
             <ul className="list-disc pl-5">
               {byHerself.map((line) => (

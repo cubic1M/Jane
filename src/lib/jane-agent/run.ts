@@ -60,20 +60,20 @@ export async function runJaneAgent(
   const typedAtStart = await typedCount(userId, client);
 
   // The first run of a first scan (`early`) is only for the first brief: it must reach the
-  // person inside the host's 60 seconds, so it skips everything Jane keeps current by herself.
+  // person inside the host's 60 seconds, so it skips everything Jane keeps current on its own.
   // The scan's last run does all of it.
   // Spec step 101: what autopilot keeps up to date by itself, before Jane looks.
   if (!early) {
     await runPlanUpkeep(userId, { client, now }).catch((error) =>
       console.error("Plan upkeep failed", { userId, error: String(error) }),
     );
-    // Loans and debt (spec Phase Y): what Jane keeps current by herself, before she looks.
+    // Loans and debt (spec Phase Y): what Jane keeps current on its own, before it looks.
     await refreshDebts(userId, { client, now });
   }
   // The bank data, loaded once for what follows.
   // (The early run's light snapshot reads none of it.)
   const input = early ? undefined : await loadDetectionInput(userId, { client, now });
-  // What Jane keeps current by herself, before she looks. These don't depend on each other
+  // What Jane keeps current on its own, before it looks. These don't depend on each other
   // (except money moving, which runs in order), so they run together: a new person's first
   // run waits on all of it.
   const safely = (what: string, run: () => Promise<unknown>) =>
@@ -119,7 +119,7 @@ export async function runJaneAgent(
       safely("Checking outcomes", () => verifyOutcomes(userId, { client, now, input })),
       // Spec step 204: a paycheck that hasn't come in gets one question; pay back ends the plan.
       safely("Lean check", () => runLeanCheck(userId, { client, now, input })),
-      // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
+      // Taxes (spec steps 123–127): what Jane sets up on its own, at the person's level.
       runTaxAutopilotSafely(userId, { client, now }),
     ]);
   // Spec step 244: last month closed once the books are checked and its report is made.

@@ -37,8 +37,8 @@ export type InsuranceSnapshot = {
   advice: boolean;
   // Whether an insurance partner can quote for this person (spec step 103).
   canQuote: boolean;
-  // Spec step 104: Jane shops this person's policies herself (a partner and demo advice
-  // mode), her open picks, and reshops that found nothing better lately.
+  // Spec step 104: Jane shops this person's policies itself (a partner and demo advice
+  // mode), its open picks, and reshops that found nothing better lately.
   // Optional, so a snapshot built without them (in tests) says nothing about reshops.
   shopsItself?: boolean;
   shops?: Shop[];

@@ -17,7 +17,7 @@ import {
 } from "@/planning/property";
 
 // Property as an investment (spec step 214, demo advice), for its page, Jane's answers and
-// her tool: home equity, each rental's figures from its own transactions (rent in, the
+// its tool: home equity, each rental's figures from its own transactions (rent in, the
 // mortgage, property tax, repairs), depreciation handed to the taxes side (step 173 reads
 // rentalDepreciationFor), and whether paying the mortgage down beats investing.
 

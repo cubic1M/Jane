@@ -121,7 +121,7 @@ const BENIGN_LEGAL =
 
 // Sentences in which Jane refuses ("I can't help hide income from the IRS") or, in demo
 // advice, points to a lawyer, are not advice about the thing they name: they are taken out
-// before checking. `refusalsOnly` (the standard profile) takes out only her own "I can't".
+// before checking. `refusalsOnly` (the standard profile) takes out only its own "I can't".
 function withoutReferrals(text: string, refusalsOnly = false): string {
   const patterns = [...(refusalsOnly ? REFERRAL.slice(0, 2) : REFERRAL), ...HANDLERS];
   const sensitive = [...LEGAL, ...TAX];

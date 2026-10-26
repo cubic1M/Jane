@@ -11,7 +11,7 @@ import type { TagSource } from "@/planning/tax-tags";
 import { CheckButtons, TagForm } from "./tag-form";
 import { LoadingBar } from "@/components/loading-bar";
 
-// Tax tags (spec step 119): what Jane tagged for the year, the ones she's unsure about,
+// Tax tags (spec step 119): what Jane tagged for the year, the ones it's unsure about,
 // and a search to tag anything else (a work expense). Tags never change spending.
 
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";

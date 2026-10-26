@@ -4,7 +4,7 @@ import type { LoanApplicationView } from "@/lib/loan-application-status";
 import { loansSource } from "./sources/loans";
 import type { Snapshot } from "./snapshot";
 
-// Spec step 112: Jane follows each loan application by herself and says how it's going,
+// Spec step 112: Jane follows each loan application on its own and says how it's going,
 // once each.
 
 const NOW = new Date("2026-10-25T15:00:00Z");

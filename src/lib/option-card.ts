@@ -1,5 +1,5 @@
 // The one "pick one of N" card (insurance and loans share it). A person is shown a few options,
-// each short, with her pick first and a "More details" for the working; picking one queues the
+// each short, with its pick first and a "More details" for the working; picking one queues the
 // action for the concierge team. Pure types and a validator; each sector builds its own cards.
 
 export type OptionCardKind = "insurance" | "loan";
@@ -15,9 +15,9 @@ export type CardOption = {
   facts: string[];
   // One line on why this one.
   whyThisOne: string;
-  // Her pick. Only ever true in demo advice mode (the label shows with it).
+  // Its pick. Only ever true in demo advice mode (the label shows with it).
   isPick: boolean;
-  // How sure she is of the pick, with the evidence; only on the pick.
+  // How sure Jane is of the pick, with the evidence; only on the pick.
   confidence?: { percent: number; reason: string };
   // For "More details": the comparison and the working.
   details: string[];
@@ -53,7 +53,7 @@ export type OptionCard = {
   // Whether the options add cover that is missing (true) or replace what they have (false).
   newCover: boolean;
   options: CardOption[];
-  // Whether Jane's advice (her pick, the label) is shown: demo advice mode.
+  // Whether Jane's advice (its pick, the label) is shown: demo advice mode.
   advice: boolean;
 };
 

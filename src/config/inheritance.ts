@@ -1,5 +1,5 @@
 // Inherited money and gifts (spec step 268). FOR REVIEW: rules and limits by year, with
-// sources. Jane states facts and points to counsel; she gives no legal advice.
+// sources. Jane states facts and points to counsel; it gives no legal advice.
 //
 // Sources: IRS Publication 590-B (inherited IRAs and the 10-year rule, final regulations of
 // July 2024: a beneficiary of an owner who had begun required withdrawals also takes yearly

@@ -39,7 +39,7 @@ export async function chooseAutopilot(
     return {
       ok: true,
       message:
-        "Saved. For now Jane doesn't act on your accounts: she brings each thing with the steps to do it yourself.",
+        "Saved. For now Jane doesn't act on your accounts: it brings each thing with the steps to do it yourself.",
     };
   }
   return {

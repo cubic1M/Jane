@@ -37,7 +37,7 @@ import { shortDate, snoozeButton, type MessageSource } from "./source";
 // Insurance (spec Phase X).
 // - Step 102: cover that looks missing, as a heads-up, once per gap: "I have this" opens the
 //   add form for that kind, "I don't need it" never brings it up again, "Not now" until
-//   tomorrow. In demo advice mode (spec step 98) she also says what to add, labelled.
+//   tomorrow. In demo advice mode (spec step 98) it also says what to add, labelled.
 // - Step 104: what Jane's own reshops found. A cheaper policy for the same cover asks once,
 //   with Yes, Show options and Not now; a reshop that found nothing better says so. Jane
 //   never buys cover without the Yes.
@@ -202,7 +202,7 @@ function switchMessages(insurance: InsuranceSnapshot): Candidate[] {
   });
 }
 
-// Spec step 106: the coverage checkup Jane ran by herself (demo advice): the top
+// Spec step 106: the coverage checkup Jane ran on its own (demo advice): the top
 // recommendations with what each costs and the risk it changes, or "nothing to change".
 function checkupMessages(insurance: InsuranceSnapshot): Candidate[] {
   const checkup = insurance.checkup;
@@ -289,7 +289,7 @@ function benefitMessages(insurance: InsuranceSnapshot): Candidate[] {
 }
 
 // Spec step 151: each policy read from a document, for one Confirm tap. At every autopilot
-// level Jane reads the document herself and asks; nothing is saved without the tap.
+// level Jane reads the document itself and asks; nothing is saved without the tap.
 function readingMessages(insurance: InsuranceSnapshot): Candidate[] {
   return (insurance.readings ?? []).map((reading) => ({
     kind: "decision",
@@ -307,7 +307,7 @@ function readingMessages(insurance: InsuranceSnapshot): Candidate[] {
 
 // Spec step 153 (demo advice): the dependants question, then the amount and term with the
 // method and the best quote. Applying and buying happen in the same message, a tap each;
-// at no autopilot level does Jane apply or buy by herself.
+// at no autopilot level does Jane apply or buy on its own.
 function lifeMessages(insurance: InsuranceSnapshot, asOf: string): Candidate[] {
   if (insurance.lifeAsk === "dependants") {
     return [

@@ -196,7 +196,7 @@ describe("the figures are the person's own", () => {
       maya.findIndex((r) => r.suggestion.topic === "employer_match"),
     );
     // Sam's uninsured car is required, but Jane is only 49% sure of it: it waits behind every
-    // suggestion she is sure of. An uninsured business still leads for its owner.
+    // suggestion it is sure of. An uninsured business still leads for its owner.
     const sam = ranked("freelancer").map((r) => r.suggestion);
     const car = sam.findIndex((s) => s.topic === "auto_insurance");
     expect(sam[car].confidence.percent).toBeLessThan(LOW_CONFIDENCE_PERCENT);

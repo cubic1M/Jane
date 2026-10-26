@@ -25,7 +25,7 @@ export type ProofQuestion = {
   text: string;
   understood: boolean;
   answer: string;
-  // Asked about a suggestion Jane made: an answer that says she sees nothing for it
+  // Asked about a suggestion Jane made: an answer that says it sees nothing for it
   // contradicts the suggestion.
   about?: string;
   contradicts?: boolean;

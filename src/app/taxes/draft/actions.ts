@@ -10,7 +10,7 @@ import {
 import { requireUser } from "@/lib/session";
 import { draftFieldsFrom } from "./fields";
 
-// Your draft return (spec step 272): confirming what Jane read (then she checks it), or saying
+// Your draft return (spec step 272): confirming what Jane read (then it checks it), or saying
 // it isn't a draft return. Nothing here files anything.
 
 export type DraftState = { ok: boolean; message: string } | null;

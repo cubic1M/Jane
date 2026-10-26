@@ -27,7 +27,7 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date };
 
-// Jane's own messages, as opposed to what the person typed (step 84). Her answers to it
+// Jane's own messages, as opposed to what the person typed (step 84). Its answers to it
 // ("reply") don't count either: typing before the day's first visit still gets a brief.
 const JANE_KINDS = ["brief", "decision", "done", "heads_up"];
 
@@ -410,7 +410,7 @@ export async function openPopupMessages(
   });
   // An answer to what the person typed (a finding with Yes and No after "cancel hulu") stays in
   // the conversation: Jane's first message after each thing they typed, within the window.
-  // Anything else she posts meanwhile (the scan finishing) is hers, and floats.
+  // Anything else it posts meanwhile (the scan finishing) is its, and floats.
   const since = new Date(now.getTime() - POPUP_DAYS * 24 * 60 * 60 * 1000);
   const timeline = await scopedFor(userId, client).janeMessages.findMany({
     where: { createdAt: { gte: since, lte: now } },
@@ -446,5 +446,5 @@ export async function openPopupMessages(
   );
 }
 
-// Jane's first message this soon after the person typed is her answer to it.
+// Jane's first message this soon after the person typed is its answer to it.
 export const ANSWER_WINDOW_MS = 5 * 60 * 1000;

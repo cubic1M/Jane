@@ -2,8 +2,8 @@ import { STYLE_LIST_LINES_SHORT } from "@/config/agent-chat";
 import type { Preference, PreferenceDraft } from "./preferences";
 import type { Reply } from "./replies";
 
-// Jane's way of talking (spec step 188): how long her answers are, whether the numbers come
-// first, and how often she posts. Picked up from what the person says ("keep it short") and
+// Jane's way of talking (spec step 188): how long its answers are, whether the numbers come
+// first, and how often it posts. Picked up from what the person says ("keep it short") and
 // saved only on their tap (step 91), or set in Settings. The rules' answers and Claude's
 // instructions follow it; the answer shape (step 89: the answer first, with their figure)
 // holds at every length. Pure.

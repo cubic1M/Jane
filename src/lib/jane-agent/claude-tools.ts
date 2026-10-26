@@ -134,7 +134,7 @@ export const PROPOSABLE: readonly ActionId[] = [
 ];
 
 // Shopping a policy for the person: Jane gets the quotes now and, in demo advice, offers the
-// switch with her pick (insurance/quotes.ts). The buttons it returns are the quote reply's.
+// switch with its pick (insurance/quotes.ts). The buttons it returns are the quote reply's.
 export const RESHOP = "insurance.reshop";
 
 // The score and its band, or, when it is low, words instead: "0, Building" would read as a
@@ -275,19 +275,19 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "autopilot_settings",
     description:
-      'How much Jane may do by herself in each area (spec step 141): subscriptions and bills, insurance, debt, taxes, investing, goals and budgets. Each area\'s level (always ask, the safe stuff, everything allowed), its caps each time and each month, and what it used this month. Over a cap Jane asks. To change an area, the person types it ("let Jane handle insurance up to $50 a month") or uses Settings.',
+      'How much Jane may do on its own in each area (spec step 141): subscriptions and bills, insurance, debt, taxes, investing, goals and budgets. Each area\'s level (always ask, the safe stuff, everything allowed), its caps each time and each month, and what it used this month. Over a cap Jane asks. To change an area, the person types it ("let Jane handle insurance up to $50 a month") or uses Settings.',
     input_schema: noInput,
   },
   {
     name: "what_jane_did",
     description:
-      "Everything Jane did for the person, newest first (spec step 56, the What Jane did page): what she did by herself under the person's autopilot or a standing rule, and what she did when they tapped, each with when, the area, why she was allowed to, the money involved, and whether it can still be undone (and where). Use for 'what have you done for me', 'why did you do that', 'did you do anything by yourself'. The changes the team works on are list_actions.",
+      "Everything Jane did for the person, newest first (spec step 56, the What Jane did page): what it did on its own under the person's autopilot or a standing rule, and what it did when they tapped, each with when, the area, why it was allowed to, the money involved, and whether it can still be undone (and where). Use for 'what have you done for me', 'why did you do that', 'did you do anything by yourself'. The changes the team works on are list_actions.",
     input_schema: noInput,
   },
   {
     name: "nightly_log",
     description:
-      "What Jane checked for the person last night (spec step 142): one line per area (bank sync, changes, insurance reshops, debts and rates, taxes, investing drift, goals and budgets), in the order she ran them, with what each found or did, and any that failed and will be tried again.",
+      "What Jane checked for the person last night (spec step 142): one line per area (bank sync, changes, insurance reshops, debts and rates, taxes, investing drift, goals and budgets), in the order it ran them, with what each found or did, and any that failed and will be tried again.",
     input_schema: noInput,
   },
   {
@@ -405,7 +405,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "month_close",
     description:
-      "The monthly close (spec step 244): the latest month Jane closed (on the first of the next), or the one waiting on charges she wasn't sure of: what came in and went out, the top categories, net worth at the close, plan against actual, what worked, whether the books added up, and whether a correction changed it since. A closed month's figures only change when the person corrects something in it.",
+      "The monthly close (spec step 244): the latest month Jane closed (on the first of the next), or the one waiting on charges it wasn't sure of: what came in and went out, the top categories, net worth at the close, plan against actual, what worked, whether the books added up, and whether a correction changed it since. A closed month's figures only change when the person corrects something in it.",
     input_schema: noInput,
   },
   {
@@ -435,7 +435,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "money_moves",
     description:
-      "Money that moves itself (spec step 144): the newest paycheck's plan (what goes to each goal, the emergency fund, the tax set-aside and extra debt payments, kept above safe to spend's cushion) with what Jane moved by herself and what waits for a tap; cards and loans due in the next three weeks (spec step 145) with what pays each (the person's own autopay, a payment Jane scheduled, one she can schedule with a tap, or checking would run short and a due date worth moving after payday); and the latest transfers with their status. Until a money-movement partner is connected these are sample transfers: no real money moves.",
+      "Money that moves itself (spec step 144): the newest paycheck's plan (what goes to each goal, the emergency fund, the tax set-aside and extra debt payments, kept above safe to spend's cushion) with what Jane moved on its own and what waits for a tap; cards and loans due in the next three weeks (spec step 145) with what pays each (the person's own autopay, a payment Jane scheduled, one it can schedule with a tap, or checking would run short and a due date worth moving after payday); and the latest transfers with their status. Until a money-movement partner is connected these are sample transfers: no real money moves.",
     input_schema: noInput,
   },
   {
@@ -1153,7 +1153,7 @@ export async function runChatTool(
         entries: entries.map((e) => ({
           on: e.at.toISOString().slice(0, 10),
           area: e.sectorLabel,
-          by: e.by === "jane" ? "Jane, by herself" : "Jane, when you tapped",
+          by: e.by === "jane" ? "Jane, on its own" : "Jane, when you tapped",
           what: e.what,
           why: e.why,
           money: e.cents === null ? null : money(e.cents),

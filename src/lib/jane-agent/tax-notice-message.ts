@@ -6,7 +6,7 @@ import { centsOf, type Check } from "@/planning/tax-notice";
 import type { MessageAction, MessageRefs } from "./types";
 
 // Letters from the IRS and the state in the chat (spec step 217): a notice Jane read, to
-// confirm; then what it says, what she found against the person's records, and the
+// confirm; then what it says, what it found against the person's records, and the
 // response to draft; then the draft, to send (the team or the person). Never paid or sent
 // without a tap.
 

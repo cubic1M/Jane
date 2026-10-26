@@ -599,7 +599,7 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
   content: "[ERROR] ";
 }
 
-/* An inverted box (Jane's own cards, which must look unlike her answers): white on black in
+/* An inverted box (Jane's own cards, which must look unlike its answers): white on black in
    light mode, black on white in dark mode. Inside it the page colours swap and every grey
    mirrors (700 reads as 300 and so on), so its classes need no inverted twins. */
 .invert-scope {

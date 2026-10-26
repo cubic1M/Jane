@@ -7,7 +7,7 @@ import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 
-// Renewal negotiation and claims, done by Jane, in her chat (spec step 155): the call she
+// Renewal negotiation and claims, done by Jane, in its chat (spec step 155): the call it
 // offers to make (or made on autopilot) and what the carrier said; a claim's draft for the
 // person to check before it's filed, and the carrier's status as it moves. Pure.
 

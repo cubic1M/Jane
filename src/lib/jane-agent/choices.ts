@@ -4,7 +4,7 @@ import type { MessageView } from "./view";
 // the others greyed, and Revert (the server's half is ./actions/choice.ts). Pure, so the chat,
 // the pop-up cards and the tests share it.
 
-// The buttons that are one choice among several: how much Jane does on her own.
+// The buttons that are one choice among several: how much Jane does on its own.
 export const CHOICE_ACTIONS: readonly string[] = [
   "autopilot.safe",
   "autopilot.all",

@@ -1,7 +1,7 @@
 // The return, checked before you file (spec step 272). FOR REVIEW.
 //
 // A draft return (a PDF from tax software or an accountant) is read line by line, confirmed by
-// the person, and checked against what Jane knows for the year: the forms she collected (step
+// the person, and checked against what Jane knows for the year: the forms it collected (step
 // 166), the accounts, and the estimate (step 120). Line numbers are Form 1040 and Schedule 1
 // for tax year 2025 and on (IRS, "Form 1040 instructions"). ESTIMATE TO VERIFY each year.
 

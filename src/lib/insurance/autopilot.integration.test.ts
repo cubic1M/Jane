@@ -17,8 +17,8 @@ import { autopilotFor, setSectorAutopilot } from "@/lib/sector-autopilot";
 import { reshopPerson, shopById } from "./shop";
 
 // Insurance on autopilot against a real, migrated Postgres (spec step 108): at "handle
-// everything" Jane keeps her pick ready for the one tap; at every level renewals are
-// reshopped without being asked; and Jane says what she does by herself.
+// everything" Jane keeps its pick ready for the one tap; at every level renewals are
+// reshopped without being asked; and Jane says what it does on its own.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-19T16:00:00Z");

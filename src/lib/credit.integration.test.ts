@@ -18,7 +18,7 @@ import { creditBandFor, creditPartnerFor, loadCredit, pullCredit, refreshCredit 
 
 // Spec step 116 against a real, migrated Postgres, on the demo bank: Jane's monthly soft
 // pull of a stand-in score, labelled; what's helping and hurting with card use from the
-// card balances; what she's doing about it; the score's band pricing the lender stand-ins;
+// card balances; what it's doing about it; the score's band pricing the lender stand-ins;
 // and nothing pulled for a real account.
 
 const url = process.env.TEST_DATABASE_URL;
@@ -63,7 +63,7 @@ describe.runIf(url)("the credit score against a real database", () => {
     vi.unstubAllEnvs();
   });
 
-  it("pulls a labelled stand-in score once a month, by herself", async () => {
+  it("pulls a labelled stand-in score once a month, on its own", async () => {
     await client.creditReport.deleteMany({ where: { userId } });
     expect(await refreshCredit(userId, opts())).toBe(true);
     expect(await refreshCredit(userId, opts(later(10)))).toBe(false);

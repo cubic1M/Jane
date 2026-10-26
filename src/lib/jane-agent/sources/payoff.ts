@@ -4,9 +4,9 @@ import { monthName } from "@/planning/payoff";
 import { payoffReply } from "../debt-replies";
 import { type MessageSource } from "./source";
 
-// Payoff plans (spec step 110). Jane builds the plan by herself: once there are debts to
-// pay off and no plan yet, she brings it up with the buttons that start it (demo advice
-// mode: her pick and why, labelled). Once a plan is running she checks it every month
+// Payoff plans (spec step 110). Jane builds the plan on its own: once there are debts to
+// pay off and no plan yet, it brings it up with the buttons that start it (demo advice
+// mode: its pick and why, labelled). Once a plan is running it checks it every month
 // (src/lib/debt-plan.ts refreshDebtPlan) and says how it went: behind, with what's owed
 // against what the plan expected and the new debt-free month, or on track.
 

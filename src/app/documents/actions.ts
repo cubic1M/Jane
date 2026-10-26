@@ -72,7 +72,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
       return {
         ok: true,
         message:
-          "Saved. Check what Jane read on Your draft return (Taxes) or in the chat, and confirm it: then she checks it before you file.",
+          "Saved. Check what Jane read on Your draft return (Taxes) or in the chat, and confirm it: then Jane checks it before you file.",
       };
     }
   }
@@ -102,7 +102,7 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
       return {
         ok: true,
         message:
-          "Saved. Jane read the policy in it: confirm what she read on Insurance or in the chat, and it's added.",
+          "Saved. Jane read the policy in it: confirm what Jane read on Insurance or in the chat, and it's added.",
       };
     }
   }

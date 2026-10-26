@@ -24,7 +24,7 @@ import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed"
 
 // Audit-ready records (spec step 171), loaded from the person's own accounts: every
 // deduction and credit Jane counts, tied to its transactions, the receipts in their
-// document vault, the forms she collected and their answers; an audit pack per year; and
+// document vault, the forms it collected and their answers; an audit pack per year; and
 // how long to keep each year's records, with a reminder before they can be thrown away.
 // Jane never deletes anything.
 

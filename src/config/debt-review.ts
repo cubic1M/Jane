@@ -1,5 +1,5 @@
 // Debt on autopilot, round two (spec step 230): one yearly review of everything about debts
-// and credit, done for the person where Jane may and handed to them where she may not.
+// and credit, done for the person where Jane may and handed to them where it may not.
 
 // A review is done at least this often...
 export const REVIEW_EVERY_DAYS = 365;

@@ -16,7 +16,7 @@ import {
   type Range,
 } from "@/planning/college";
 
-// College savings (spec step 158), for its page, Jane's answers and her buttons. The state
+// College savings (spec step 158), for its page, Jane's answers and its buttons. The state
 // tax break uses the tax profile's state and filing status. Setting it up saves a college
 // goal, which step 157's buckets and automatic investing fund by themselves.
 

@@ -5,9 +5,9 @@ import type { PolicyKind } from "./insurance";
 // stand-in for demo-bank people until a payroll partner (Plaid Income, or a pay stub upload)
 // is connected.
 //
-// What Jane does by herself, at every autopilot level: she reads the pay stubs, lists the
-// benefits she finds (they count only once the person confirms each one), compares them with
-// the same cover bought privately, and gets her recommendation ready before the employer's
+// What Jane does on its own, at every autopilot level: it reads the pay stubs, lists the
+// benefits it finds (they count only once the person confirms each one), compares them with
+// the same cover bought privately, and gets its recommendation ready before the employer's
 // open enrollment. Enrolling is always the person's own step with their employer.
 
 // Which deductions are which benefit, by their pay-stub label. The first match wins; any

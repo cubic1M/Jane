@@ -94,7 +94,7 @@ function QuoteCard({
   );
 }
 
-// Jane's pick from her last reshop (spec step 104) and the other cheaper quotes, as comparison
+// Jane's pick from its last reshop (spec step 104) and the other cheaper quotes, as comparison
 // cards (src/components/comparison-cards.tsx): demo advice, labelled. Choosing one starts the
 // switch (acceptShop with that quote, through src/lib/compare-actions.ts).
 function PickCard({ shop, policy }: { shop: Shop; policy: { carrier: string; kind: PolicyKind } }) {
@@ -167,7 +167,7 @@ async function QuotesContent({
               Asked for with the same cover and deductible as your policy
               {current !== null && `, which costs ${formatCents(current)} a year`}. Getting quotes
               costs nothing and changes nothing: nothing is bought without your tap. Jane shops it
-              by herself {RESHOP_DAYS_BEFORE_RENEWAL} days before it renews and whenever its price
+              on its own {RESHOP_DAYS_BEFORE_RENEWAL} days before it renews and whenever its price
               goes up.
             </p>
           </div>

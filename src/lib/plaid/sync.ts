@@ -773,7 +773,7 @@ export async function syncItem(
     confirmSwitches({ client, now, userId: item.userId }),
     // Spec step 105: an insurance switch whose first payment went through.
     confirmInsuranceSwitches({ client, now, userId: item.userId }),
-    // Spec step 104: Jane reshops insurance that renews soon or went up, by herself. A
+    // Spec step 104: Jane reshops insurance that renews soon or went up, on its own. A
     // problem there never fails the sync; the daily run tries again.
     // Spec step 106: and checks the cover once a year and after a life event.
     insuranceAfterSync(item.userId, { client, now }),

@@ -3,7 +3,7 @@ import { CreditCardError, applyForCard } from "@/lib/credit-cards";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // Applying for a card from the chat (spec step 174), through src/lib/credit-cards.ts: the
-// person's tap is the application. Jane never applies by herself.
+// person's tap is the application. Jane never applies on its own.
 
 export const creditCardApply: ActionHandler = {
   id: "credit_card.apply",

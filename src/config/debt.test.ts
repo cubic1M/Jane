@@ -25,7 +25,7 @@ describe("the debt autopilot steps", () => {
     expect(total).toBeLessThan(2_000);
   });
 
-  it("says in full what Jane does at each level, and never that she acts without a tap on money", () => {
+  it("says in full what Jane does at each level, and never that it acts without a tap on money", () => {
     for (const l of levels) {
       for (const s of DEBT_AUTOPILOT[l])
         expect(s.does.length, `${l} ${s.step}`).toBeGreaterThan(40);

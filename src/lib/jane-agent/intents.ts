@@ -107,7 +107,7 @@ export type Intent =
   | { kind: "balance_forecast" }
   // "What if I save $200 more a month".
   | { kind: "save_more"; monthlyCents: number }
-  // Spec step 187: everything Jane did, or why she did the last thing.
+  // Spec step 187: everything Jane did, or why it did the last thing.
   | { kind: "timeline"; why: boolean }
   // Spec step 185: money into a goal ("put the savings in my emergency fund"); "savings" is
   // what the steps before it save, a month's worth.

@@ -16,7 +16,7 @@ import type { FitLabel, FitOption } from "@/planning/fit";
 // The fit engine's options as the shared pick-one card (spec step 282, src/lib/option-card.ts),
 // kind "loan": a short headline with one dollar figure, the monthly payment, the facts (rate,
 // term, total interest, fees), why this one, and "More details" with the maths. Jane's pick and
-// how sure she is are set only in demo advice mode. Pure; the chat turns it into the floating
+// how sure Jane is are set only in demo advice mode. Pure; the chat turns it into the floating
 // card, and a pick goes through ./fit-pick.ts.
 
 // The topic carries what the options were priced for, so a pick can be priced again on the

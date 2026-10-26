@@ -5,7 +5,7 @@ import type { Reply } from "./replies";
 import { dateAndDays } from "./sources/source";
 import type { MessageAction } from "./types";
 
-// A paycheck's plan in the chat (spec step 144): what Jane moved by herself, what she'd
+// A paycheck's plan in the chat (spec step 144): what Jane moved on its own, what it'd
 // like to move, and that the stand-in moves no real money.
 
 const and = (items: string[]) =>

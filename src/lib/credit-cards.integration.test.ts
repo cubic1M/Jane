@@ -181,7 +181,7 @@ describe.runIf(url)("credit card rewards against a real database", { timeout: 60
     expect(after.wallet.picks.some((p) => p.cardId === best.card.id)).toBe(true);
   });
 
-  it("keeps which card to use for what in the chat by herself from Handle the safe stuff", async () => {
+  it("keeps which card to use for what in the chat on its own from Handle the safe stuff", async () => {
     const id = await demoPerson("cards-safe");
     const best = (await loadCreditCards(id, opts())).better[0];
     await applyForCard(id, best.card.id, opts());

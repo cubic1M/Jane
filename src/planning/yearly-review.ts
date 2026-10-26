@@ -1,5 +1,5 @@
 // The yearly investing review (spec step 216, demo advice). Pure: one list of items, each
-// with where it stands, what Jane did by herself within the person's caps, or what waits
+// with where it stands, what Jane did on its own within the person's caps, or what waits
 // for a tap. The review itself never moves money: it only lists, and every tap is its own.
 
 export type ReviewItem = {

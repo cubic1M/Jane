@@ -15,7 +15,7 @@ import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
 
-// Jane's rule answers about the practice portfolio (spec step 297, Phase AW, Stage A): what she
+// Jane's rule answers about the practice portfolio (spec step 297, Phase AW, Stage A): what it
 // bought and sold this week and why, the pause switch, and how a level would have done in a
 // past year. Pure: the numbers in, the words out. Practice money and sample data only; every
 // answer is demo advice, and none of it is a forecast.

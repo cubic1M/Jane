@@ -4,7 +4,7 @@ import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
 // The yearly debt review (spec step 230): once for each review Jane did, one message with
-// every item's button (what she did by herself is listed, without one). Items are read fresh
+// every item's button (what it did on its own is listed, without one). Items are read fresh
 // from the snapshot, so a button is only there while there is still something to tap.
 
 export const debtReviewSource: MessageSource = {

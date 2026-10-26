@@ -48,7 +48,7 @@ const GOALS: Bucket[] = [
 const DROP = { key: "1m", windowLabel: "the last month", rate: -0.1 };
 
 describe("Jane never says what markets will do", () => {
-  it("keeps every steady-hand message free of predictions, and says she can't know", () => {
+  it("keeps every steady-hand message free of predictions, and says it can't know", () => {
     const texts = [
       steadyMessage(DROP, GOALS),
       steadyMessage(DROP, []),

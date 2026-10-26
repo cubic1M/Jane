@@ -10,7 +10,7 @@ import { coverageCheckup, type Recommendation } from "./checkup";
 import { loadHousehold } from "./household";
 import { listPolicies } from "./policies";
 
-// Running the coverage checkup (spec step 106): by herself once a year and after a life
+// Running the coverage checkup (spec step 106): on its own once a year and after a life
 // event (spec step 100), or when the person asks. Only in demo advice mode (spec step 98):
 // it recommends. Each run is kept with its recommendations as they were shown.
 

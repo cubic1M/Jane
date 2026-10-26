@@ -80,7 +80,7 @@ export type MoreSnapshot = {
   mortgage?: Mortgage | null;
   // Spec step 116: the latest credit score Jane pulled, and what's behind it.
   credit?: Credit;
-  // Spec step 117: what Jane does about debts by herself, and what she found.
+  // Spec step 117: what Jane does about debts on its own, and what it found.
   debtAutopilot?: DebtAutopilot;
   // Spec step 174: what each card earns on the person's spending, and a card that'd earn more.
   creditCards?: CreditCards;

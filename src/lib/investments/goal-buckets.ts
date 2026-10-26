@@ -8,11 +8,11 @@ import { goalBuckets, type Bucket } from "@/planning/goal-buckets";
 import { profileSummary } from "@/planning/investor-profile";
 import { profileOf } from "./profile";
 
-// Every goal invested for its timeline (spec step 157), for its page, Jane's answers, her
+// Every goal invested for its timeline (spec step 157), for its page, Jane's answers, its
 // tools and automatic investing: the person's savings goals and, when the money is for
 // retirement, retirement at 67. Needs a finished profile (its risk level caps the stocks).
 
-// Jane splits new money by bucket by herself at these autopilot levels; below them she
+// Jane splits new money by bucket on its own at these autopilot levels; below them it
 // only shows the buckets.
 export const BUCKETS_BY_HERSELF: readonly string[] = ["safe", "all", "custom"];
 

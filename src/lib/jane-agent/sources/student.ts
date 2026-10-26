@@ -8,7 +8,7 @@ import { snoozeButton, type MessageSource } from "./source";
 
 // Student loans (spec step 114). With a federal student loan, Jane walks the person through
 // studentaid.gov's steps in one message (each with its official page), and in demo advice
-// mode says which plan she'd pick when it costs less than the one they're on. Each once.
+// mode says which plan it'd pick when it costs less than the one they're on. Each once.
 
 export const studentSource: MessageSource = {
   key: "student",

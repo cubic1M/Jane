@@ -13,7 +13,7 @@ import { practiceCardDetails } from "@/lib/practice/ideas";
 import { isTrialUser } from "@/lib/trial-ids";
 
 // A news theme's idea as an alert (Phase AW, Stage A): when the practice scan finds one, Jane
-// posts it in the chat as a suggestion, so it comes up as a floating card to decide (why now, the past record and how sure she is, the
+// posts it in the chat as a suggestion, so it comes up as a floating card to decide (why now, the past record and how sure Jane is, the
 // slice, the risk, when it gets out) with Yes and No, then sends what's due as the person set
 // their notifications. At most THEME_ALERTS_PER_DAY a day; one card per idea, ever (its
 // dedupeKey). A trial or sample person gets the card only, never a push or an email: their

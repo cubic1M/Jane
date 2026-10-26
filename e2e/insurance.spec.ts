@@ -104,14 +104,14 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await pickItem(page, "Insurance", "Your policies", "GEICO car");
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
-  // The policy renews in 40 days, so Jane shopped it by herself when the bank linked
-  // (spec step 104): her pick, why, labelled as demo advice.
-  // Her pick and the other cheaper quotes as comparison cards, hers tagged.
+  // The policy renews in 40 days, so Jane shopped it on its own when the bank linked
+  // (spec step 104): its pick, why, labelled as demo advice.
+  // Its pick and the other cheaper quotes as comparison cards, Jane's tagged.
   const pick = page.getByRole("region", { name: "Jane's pick" });
-  const hers = pick.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });
-  await expect(hers.getByRole("heading", { level: 4 })).toHaveText("Lighthouse Insurance (demo)");
-  await expect(hers.locator('[data-row="saves"] dd')).toHaveText("$408.00");
-  await expect(hers.locator('[data-row="cover"] dd')).toContainText("Same as now");
+  const janes = pick.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });
+  await expect(janes.getByRole("heading", { level: 4 })).toHaveText("Lighthouse Insurance (demo)");
+  await expect(janes.locator('[data-row="saves"] dd')).toHaveText("$408.00");
+  await expect(janes.locator('[data-row="cover"] dd')).toContainText("Same as now");
   await expect(pick.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // The full list of quotes below the cards.
   const lighthouse = page
@@ -122,7 +122,7 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
     lighthouse.getByText("$1,296.00 a year, $408.00 less than you pay now."),
   ).toBeVisible();
 
-  // Spec step 106: Jane checked the cover by herself when the bank linked.
+  // Spec step 106: Jane checked the cover on its own when the bank linked.
   await page.goto("/insurance/checkup");
   await expect(page.getByRole("heading", { name: "Coverage checkup", level: 1 })).toBeVisible();
   await expect(page.getByText(/Raise the injury cover on your GEICO car insurance/)).toBeVisible();
@@ -159,7 +159,7 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
     await page.getByRole("link", { name: "Compare quotes" }).click({ timeout: 10_000 });
     await expect(page.getByText("JANE'S PICK")).toBeVisible({ timeout: 10_000 });
   }).toPass({ timeout: 90_000 });
-  // Jane's pick and the other cheaper quotes side by side; choosing her pick starts the switch.
+  // Jane's pick and the other cheaper quotes side by side; choosing its pick starts the switch.
   const pick = page.locator("li[data-option-id]").filter({ hasText: "JANE'S PICK" });
   await pick.getByRole("button", { name: /^Choose / }).click();
   await expect(page.getByRole("status").filter({ hasText: "Chosen:" })).toContainText(

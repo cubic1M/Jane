@@ -261,7 +261,7 @@ describe.runIf(url)("property tax against a real database", { timeout: 60_000 },
         where: { userId, title: "Appeal your 2026 property tax assessment" },
       }),
     ).toBe(1);
-    // Nothing is drafted or filed by herself.
+    // Nothing is drafted or filed on its own.
     expect(await client.propertyAppeal.count({ where: { userId } })).toBe(0);
   });
 

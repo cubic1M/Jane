@@ -9,7 +9,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
 
 // What Jane knows about you (spec step 253): every fact in the picture of you with where it
-// came from, how sure she is and why, and a way to correct it. A correction is used by
+// came from, how sure Jane is and why, and a way to correct it. A correction is used by
 // every part of Jane at once.
 
 const MUTED = "text-zinc-600 dark:text-zinc-400";

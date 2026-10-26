@@ -3,7 +3,7 @@ import type { ChangeView } from "@/lib/changes";
 import type { FindingType } from "@/generated/prisma/client";
 import type { Reply } from "./replies";
 
-// What Jane offers to do about a change, and says she did, for each finding a change can
+// What Jane offers to do about a change, and says it did, for each finding a change can
 // lead to (src/lib/changes.ts). `yes` names the button that says yes, when "Look into it"
 // would undersell it.
 export const CHANGE_ASK: Partial<
@@ -38,7 +38,7 @@ export function changeLine(change: ChangeView): string {
 }
 
 // "What changed?" (spec step 97): the changes Jane noticed lately, newest first, in the
-// same words as her heads-ups.
+// same words as its heads-ups.
 export function changesReply(changes: ChangeView[]): Reply {
   const links = [{ id: "open", label: "See insights", kind: "link", href: "/insights" } as const];
   if (changes.length === 0) {

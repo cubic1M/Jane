@@ -140,7 +140,7 @@ describe.runIf(url)("building credit against a real database", { timeout: 30_000
     });
   });
 
-  it("never pays by herself at Ask me first; at Handle the safe stuff she does, within the caps", async () => {
+  it("never pays on its own at Ask me first; at Handle the safe stuff it does, within the caps", async () => {
     const id = await demoPerson("build-auto");
     expect(await runCreditBuilding(id, opts())).toBe(false);
     expect(await client.moneyTransfer.count({ where: { userId: id } })).toBe(0);

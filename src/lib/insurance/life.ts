@@ -14,7 +14,7 @@ import { listPolicies } from "./policies";
 
 // Life insurance, sized and bought (spec step 153). Demo advice only. Jane works out how
 // much cover the person needs and for how long, from their own accounts, shows the method,
-// and gets term quotes from the insurance partner by herself. Applying (the health
+// and gets term quotes from the insurance partner on its own. Applying (the health
 // questions, one at a time, then Send), and buying the carrier's offer, each take the
 // person's tap.
 

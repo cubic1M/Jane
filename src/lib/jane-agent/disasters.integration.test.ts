@@ -206,7 +206,7 @@ describe.runIf(url)("disasters and losses against a real database", { timeout: 1
     await setAutopilot(userId, "all", { client, now: LINKED });
     await setSectorAutopilot(userId, "taxes", { level: "all" }, { client, now: LINKED });
     const r = await runTaxAutopilot(userId, { client, now: LINKED });
-    // Hers, and the tax plan's deadlines the same run put on the list: every one in the window.
+    // Its, and the tax plan's deadlines the same run put on the list: every one in the window.
     expect(r.disasterMoved).toBeGreaterThanOrEqual(3);
     expect((await dueOf(userId))["Pay estimated tax for Q4"]).toBe("2027-05-03");
     const v = await loadDisasterRelief(userId, { client, now: LINKED });

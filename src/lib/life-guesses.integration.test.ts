@@ -16,8 +16,8 @@ import { lifeSource } from "@/lib/jane-agent/sources/life";
 import { lifeGuessesFor } from "./life-guesses";
 
 // Spec step 100 against a real, migrated Postgres: someone paying a mover and a new
-// landlord is asked once if they're moving; Yes starts the checklist and Jane does what she
-// can herself (a Home budget, an insurance review and reminders on Deadlines); Not me and
+// landlord is asked once if they're moving; Yes starts the checklist and Jane does what it
+// can itself (a Home budget, an insurance review and reminders on Deadlines); Not me and
 // Don't ask again stop the question; one signal never asks.
 
 const url = process.env.TEST_DATABASE_URL;

@@ -6,7 +6,7 @@ import { profileSummary, type ProfileSummary } from "@/planning/investor-profile
 import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
 
-// The portfolio review (spec step 131), loaded for its page, Jane's answers and her tools.
+// The portfolio review (spec step 131), loaded for its page, Jane's answers and its tools.
 // Null until the investor profile is complete: nothing is recommended from half an answer.
 // Advice: the callers show it only in demo advice mode.
 

@@ -18,7 +18,7 @@ import { loadInvestments, type Investments } from "./holdings";
 import { loadRetirement } from "./retirement";
 
 // The right account for each dollar (spec step 135), loaded for its page, Jane's answers
-// and her tools: the order to fill accounts in (from the profile, the employer match and
+// and its tools: the order to fill accounts in (from the profile, the employer match and
 // the marginal rate in the tax estimate, step 120), where each holding is best kept, and
 // gains and losses not yet realised. The order needs a finished profile; the gains are
 // facts for everyone; the order and the moves are advice, shown in demo advice mode only.

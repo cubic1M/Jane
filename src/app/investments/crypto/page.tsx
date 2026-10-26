@@ -58,8 +58,8 @@ async function CryptoContent({
         </Link>
         <h1 className="text-3xl font-semibold tracking-tight">Crypto</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Jane reads what your exchanges and wallets hold and counts it in your net worth. She never
-          buys, sells or moves crypto, and never asks for keys.
+          Jane reads what your exchanges and wallets hold and counts it in your net worth. Jane
+          never buys, sells or moves crypto, and never asks for keys.
         </p>
       </div>
       {typeof done === "string" && Object.hasOwn(DONE, done) && (

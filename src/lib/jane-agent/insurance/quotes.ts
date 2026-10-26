@@ -147,7 +147,7 @@ export async function quotesAnswer(
     };
   }
   const [policy] = candidates;
-  // Spec step 104: in demo advice mode Jane shops it, with her pick and why.
+  // Spec step 104: in demo advice mode Jane shops it, with its pick and why.
   if (shopsItself) {
     const shop = await shopNow(userId, policy.id, { client, now });
     if (shop?.status === "open") {

@@ -9,7 +9,7 @@ import type { Need } from "@/lib/insurance/need/types";
 // Your perfect coverage (spec step 279): what cover they need, what they have and the gap, with
 // the same numbers the chat and the nightly detectors use. On the area tree each need is an
 // item (docs/design/area-pages.md); "See options" opens the options as comparison cards, and
-// choosing one queues it for the team. Her pick, and the options themselves, are demo advice: a real
+// choosing one queues it for the team. Its pick, and the options themselves, are demo advice: a real
 // account sees the need and the gap as facts.
 
 const LINK = "font-medium text-emerald-700 hover:underline";

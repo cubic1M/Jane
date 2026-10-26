@@ -7,7 +7,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-// What Jane keeps current by herself, counted: the first brief must not wait for any of it.
+// What Jane keeps current on its own, counted: the first brief must not wait for any of it.
 const { kept } = vi.hoisted(() => ({ kept: { calls: 0 } }));
 vi.mock("@/lib/money-movement/bill-pay", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/money-movement/bill-pay")>();

@@ -23,7 +23,7 @@ import type { Need, NeedLine, NeedPolicy } from "./types";
 // four variants of cover are priced by the quote stand-in: like for like, cheaper with a stated
 // trade-off, the one that meets the need, and better cover for a stated price. Each comes back
 // as the best carrier for that cover with one line on why, and Jane's pick is marked with how
-// sure she is. Pure: the IO (asking the partner) is ./options-for.ts. Demo advice only.
+// sure it is. Pure: the IO (asking the partner) is ./options-for.ts. Demo advice only.
 
 export type OptionRole = "like_for_like" | "meets_need" | "cheaper" | "better";
 

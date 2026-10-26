@@ -217,12 +217,12 @@ every page and answer describes.
 
 **What the person sees that doesn't match**
 
-- **Two answers to "what does Jane do by herself?"** Set Insurance to "Everything allowed" in
-  Settings and Jane really does switch a policy by herself within the caps; but `/insurance`
+- **Two answers to "what does Jane do on its own?"** Set Insurance to "Everything allowed" in
+  Settings and Jane really does switch a policy on its own within the caps; but `/insurance`
   and the chat still read the step 57 level and say "I never buy, change or cancel cover
   without your tap". The same split exists for investing and taxes. Debt already reads its
   sector, and is the model.
-- **Taxes use the wrong dial.** Whether Jane uses tax facts she found before you confirm them
+- **Taxes use the wrong dial.** Whether Jane uses tax facts it found before you confirm them
   follows the overall level, not the Taxes setting, so turning Taxes to "Always ask" doesn't
   change it.
 

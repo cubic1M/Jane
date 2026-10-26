@@ -2,7 +2,7 @@ import { markHomeRequestSent } from "@/lib/home-equity";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // "I sent it" on a drafted PMI or escrow request (spec step 228). Jane sends nothing: this
-// only records that the person did, so she can follow up.
+// only records that the person did, so it can follow up.
 
 export const homeEquitySent: ActionHandler = {
   id: "homeeq.sent",

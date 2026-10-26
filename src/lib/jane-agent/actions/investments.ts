@@ -149,7 +149,7 @@ export const investRebalance: ActionHandler = {
 };
 
 // Automatic investing (spec step 134): starting it is the person's one tap; after that Jane
-// runs it on every payday herself. Through automatic investing's own code, like its page.
+// runs it on every payday itself. Through automatic investing's own code, like its page.
 function autoStart(id: ActionId, mode: "fixed" | "leftover"): ActionHandler {
   return {
     id,

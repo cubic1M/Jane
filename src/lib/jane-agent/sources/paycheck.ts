@@ -2,7 +2,7 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { paycheckReply } from "../replies-paycheck";
 import type { MessageSource } from "./source";
 
-// Money that moves itself (spec step 144): once per paycheck, what Jane moved and what she'd
+// Money that moves itself (spec step 144): once per paycheck, what Jane moved and what it'd
 // like to move, with Move them, Not this time and Undo.
 export const paycheckSource: MessageSource = {
   key: "paycheck",

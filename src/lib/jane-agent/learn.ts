@@ -3,7 +3,7 @@ import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 
 // Learn in the chat (spec step 136): "what's an index fund?" answered with the fixed
-// explainer, and a "Learn" link Jane adds under her own answers and messages. Pure.
+// explainer, and a "Learn" link Jane adds under its own answers and messages. Pure.
 
 export type LearnIntent = { kind: "learn"; slug: string };
 

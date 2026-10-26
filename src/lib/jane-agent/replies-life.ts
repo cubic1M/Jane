@@ -5,7 +5,7 @@ import type { ChecklistRun } from "@/lib/life-guesses";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 
-// Life events in the chat (spec step 100): what Jane offers to do, what she did, and the
+// Life events in the chat (spec step 100): what Jane offers to do, what it did, and the
 // answer to "I'm moving".
 
 const shortDate = (iso: string) =>

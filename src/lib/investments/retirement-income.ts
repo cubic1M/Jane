@@ -34,7 +34,7 @@ import { employerPlanFor } from "./employer-plan";
 import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
 
-// Income in retirement (spec step 212, demo advice), for its page, Jane's answers and her
+// Income in retirement (spec step 212, demo advice), for its page, Jane's answers and its
 // tool: Social Security options, required minimum distributions, the order to draw, and a
 // monthly paycheck with how long the money lasts. Inputs the person gave (their Social
 // Security statement, when to retire, what they'd spend) are used first; then what their

@@ -31,7 +31,7 @@ recorded for every answered question.
 The nightly run (`.github/workflows/chat-quality.yml`, the only place the key is used) records
 three measures and two timings, in the Nightly table below:
 
-- **Understood**: the share of questions Jane answered (an answer of her own, not the "I couldn't
+- **Understood**: the share of questions Jane answered (an answer of its own, not the "I couldn't
   look into that" or "I can't answer that one yet" fallback, and not blocked). Bar: 95%.
 - **Figures right**: of the questions that must show the person's figures, the share that show
   every one. Bar: 100%.

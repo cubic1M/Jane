@@ -43,7 +43,7 @@ async function CheckupContent() {
         <h1 className="text-3xl font-semibold tracking-tight">Coverage checkup</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Whether you have the right amount of cover: deductibles that fit your savings, too little
-          or too much cover, bundling, and cover that no longer fits. Jane runs it by herself every{" "}
+          or too much cover, bundling, and cover that no longer fits. Jane runs it on its own every{" "}
           {Math.round(CHECKUP_EVERY_DAYS / 30)} months and after a life event. Nothing changes
           unless you say so.
         </p>

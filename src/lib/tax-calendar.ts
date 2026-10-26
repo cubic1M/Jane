@@ -29,7 +29,7 @@ import {
 } from "@/planning/tax-calendar";
 
 // The tax year that runs itself (spec step 223). A calendar of what Jane does each month for
-// taxes, by herself within the "taxes" sector's level and caps, or by asking for a tap:
+// taxes, on its own within the "taxes" sector's level and caps, or by asking for a tap:
 // the January IP PIN and the form chase, estimated payments paid through the payment stand-in
 // a few days before they're due, the mid-year withholding check, December's year-end moves
 // in one message, filing day, and the refund tracked. Nothing is paid above the cap, or at
@@ -53,7 +53,7 @@ export type CalendarItemView = {
 export type DueEstimate = {
   dueOn: string;
   cents: number;
-  // Why Jane doesn't pay it by herself: null when she will (or did).
+  // Why Jane doesn't pay it on its own: null when it will (or did).
   needsTap: "level" | "action_cap" | "monthly_cap" | "no_partner" | null;
   paid: boolean;
 };
@@ -63,7 +63,7 @@ export type TaxCalendarView = {
   month: number;
   label: string;
   advice: boolean;
-  // Jane may act by herself for taxes (level "safe" or above).
+  // Jane may act on its own for taxes (level "safe" or above).
   acts: boolean;
   items: CalendarItemView[];
   due: DueEstimate[];
@@ -368,7 +368,7 @@ export async function payEstimate(
   return { cents: planned.cents, confirmation };
 }
 
-// What Jane does by herself each run, at the levels that let her act: pays each estimated
+// What Jane does on its own each run, at the levels that let it act: pays each estimated
 // payment in its window that fits the caps. The rest are left for the person's tap.
 export async function runTaxCalendar(
   userId: string,

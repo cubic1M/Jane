@@ -17,10 +17,10 @@ import { ReadAloud } from "./read-aloud";
 import { togglePin } from "./pin";
 import { SubmitButton } from "@/components/submit-button";
 
-// One message in Jane's chat (spec step 81). Jane's sit on the left. What she brings up on her
+// One message in Jane's chat (spec step 81). Jane's sit on the left. What it brings up on its
 // own that waits on the person floats as a pop-up (src/lib/jane-agent/popups.ts) and isn't in
 // the list until it's answered; then it's one line of history (what it was and what was
-// chosen, the whole message behind More details), with Undo while it still works. Her briefs
+// chosen, the whole message behind More details), with Undo while it still works. Its briefs
 // and answers are plain text tagged "jane>": no cards in the list.
 
 const BUTTON = "inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold";

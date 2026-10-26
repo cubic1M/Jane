@@ -25,7 +25,7 @@ import { sendToJane } from "./typing";
 // Spec step 123 against a real, migrated Postgres: a demo-bank person who also freelances
 // (Upwork payments added to the demo checking account). The quarterly amounts add up to the
 // estimate, the reminder comes before the due date with the amount, each payment says what
-// to set aside, Jane starts the set-aside goal by herself at Handle the safe stuff, and the
+// to set aside, Jane starts the set-aside goal on its own at Handle the safe stuff, and the
 // helpers (home office, miles, payments made elsewhere) feed the estimate.
 
 const url = process.env.TEST_DATABASE_URL;

@@ -63,7 +63,7 @@ async function LifeContent({ searchParams }: { searchParams: Promise<{ error?: s
       {sized.kind === "no_advice" && (
         <p>
           Jane can&apos;t recommend an amount of life insurance on your real accounts yet:
-          that&apos;s advice, which she&apos;ll only give once a licensed partner is connected.
+          that&apos;s advice, which it&apos;ll only give once a licensed partner is connected.
         </p>
       )}
       {sized.kind === "ask_dependants" && (

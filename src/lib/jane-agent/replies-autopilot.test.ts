@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SECTORS } from "@/config/autopilot-sectors";
 import { byHerself, sectorLine } from "./replies-autopilot";
 
-// One sentence per area for what Jane does by herself, at the area's own level (spec step 141).
+// One sentence per area for what Jane does on its own, at the area's own level (spec step 141).
 // Insurance, investing and taxes end their own "on autopilot" answers and pages with it, so
 // they say what mayAct allows (docs/feature-audit.md, cluster 1).
 

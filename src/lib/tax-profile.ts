@@ -28,7 +28,7 @@ import {
 } from "@/planning/tax-profile";
 
 // The tax profile (spec step 118): loads what Jane found in the person's own accounts and
-// what they told her, and saves their answers. Always for one person, through scopedFor.
+// what they told it, and saves their answers. Always for one person, through scopedFor.
 
 type Options = { client?: PrismaClient; now?: Date };
 
@@ -92,7 +92,7 @@ export async function loadTaxProfile(
 }
 
 // The profile Jane works with at the Taxes area's autopilot level (spec step 141,
-// src/config/tax.ts usesFoundAnswers), and that setting, for saying what she does by herself.
+// src/config/tax.ts usesFoundAnswers), and that setting, for saying what it does on its own.
 export async function loadWorkingProfile(
   userId: string,
   options: Options = {},
@@ -177,7 +177,7 @@ export async function saveTaxAnswers(
   await track(userId, "tax_profile_answered", { fields: fields.join(","), via });
 }
 
-// "That's right" on what Jane found: saves what she showed as the person's answer.
+// "That's right" on what Jane found: saves what it showed as the person's answer.
 export async function confirmFound(
   userId: string,
   field: Extract<ProfileField, "incomeKinds" | "state" | "dependants">,

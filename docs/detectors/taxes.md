@@ -197,7 +197,7 @@ Priya's brokerage.
 **Tools with no detector, and why** (`TOOL_EXEMPT` in `src/config/detector-exempt.ts`): the tax
 profile (shows and sets answers), refunds (the plan arrives when a deposit lands), states (needs
 the person to say they moved), the last return and notices (react to an upload) and the accountant
-(a link is a credential, so Jane never makes one by herself).
+(a link is a credential, so Jane never makes one on its own).
 
 **Seasonal detectors never fire on the sample date** (October 17): `identity_ip_pin` and
 `file_return` run in January to April, `year_end_moves` from November 15. The tests set the date

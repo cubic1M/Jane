@@ -56,7 +56,7 @@ import type { TagCheck } from "@/planning/tax-tags";
 export type TaxSnapshot = {
   tax?: {
     profile: TaxProfileView;
-    // Spec step 119: merchants Jane is unsure about this year, what she tagged last month,
+    // Spec step 119: merchants Jane is unsure about this year, what it tagged last month,
     // and, from late January to the filing deadline, last year's forms not yet in.
     tagChecks?: TagCheck[];
     lastMonth?: {

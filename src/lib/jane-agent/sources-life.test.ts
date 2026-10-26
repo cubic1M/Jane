@@ -5,7 +5,7 @@ import { gather, plan, type BrainSettings } from "./brain";
 import { checklistNote, lifeEventReply, lifeOffer } from "./replies-life";
 import type { Snapshot } from "./snapshot";
 
-// Spec step 100: the question about a life event Jane spotted, and her words for it.
+// Spec step 100: the question about a life event Jane spotted, and its words for it.
 
 const MORNING = new Date("2026-10-19T13:00:00Z");
 const SYNC: BrainSettings = { trigger: "sync" };
@@ -77,13 +77,13 @@ describe("the life events source", () => {
 });
 
 describe("Jane's words for life events", () => {
-  it("offers what she'll do for each kind", () => {
+  it("offers what it'll do for each kind", () => {
     expect(lifeOffer("new_baby")).toBe(
       "I'll set Shopping and Personal care budgets if you don't have them, flag your insurance to review and put reminders on your deadlines.",
     );
   });
 
-  it("says what she did", () => {
+  it("says what it did", () => {
     expect(
       checklistNote("new_job", {
         eventId: "e1",

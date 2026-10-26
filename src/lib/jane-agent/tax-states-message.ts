@@ -13,7 +13,7 @@ import { shortDate, snoozeButton } from "./sources/source";
 import type { MessageAction, MessageRefs } from "./types";
 
 // State and local taxes in the chat (spec step 165): a move Jane spotted (at the levels
-// that let her act, already counted), a move on the life-events checklist, the city income
+// that let it act, already counted), a move on the life-events checklist, the city income
 // tax question, and the answer to "what state taxes do I pay".
 
 export const STATES_HREF = "/taxes/profile#states";

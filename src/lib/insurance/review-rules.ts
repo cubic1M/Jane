@@ -3,15 +3,15 @@ import { lowersCover } from "./saving-rules";
 import type { SavingKind } from "@/config/insurance";
 
 // The yearly insurance review (spec step 202): everything the year's checks found, in one
-// message. What Jane did by herself within the person's caps, what needs their tap, and the
+// message. What Jane did on its own within the person's caps, what needs their tap, and the
 // yearly money involved. Pure: the data in, the lines and buttons out.
 
 export type ReviewInput = {
   // The autopilot level for insurance ("all" is Everything allowed).
   level: string;
-  // What Jane did by herself lately, within the caps.
+  // What Jane did on its own lately, within the caps.
   did: string[];
-  // What the savings applied lately come to a year, by her or by the person's tap.
+  // What the savings applied lately come to a year, by it or by the person's tap.
   savedYearlyCents: number;
   // Savings offered and waiting (a tap away), by kind.
   savings: { kind: SavingKind; yearlySavingCents: number }[];

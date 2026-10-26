@@ -10,7 +10,7 @@ import { saveStyle } from "./memory-actions";
 import { SubmitButton } from "@/components/submit-button";
 
 // How Jane talks (spec step 188): answer length, numbers first or plain words first, and how
-// often she posts. Saved on Save, the same as saying it in the chat and tapping Remember.
+// often it posts. Saved on Save, the same as saying it in the chat and tapping Remember.
 const LABEL = "flex flex-col gap-1 text-sm font-medium";
 const SELECT =
   "min-h-11 rounded-none border border-zinc-400 bg-transparent px-2 text-base dark:border-zinc-600";

@@ -29,7 +29,7 @@ async function Content() {
         <h1 className="text-3xl font-semibold tracking-tight">Disasters and losses</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           When the IRS postpones tax deadlines for your county after a disaster, Jane moves yours,
-          and keeps a loss insurance didn&apos;t cover with the claim. She files nothing.
+          and keeps a loss insurance didn&apos;t cover with the claim. Jane files nothing.
         </p>
       </div>
       {v.relief.length === 0 ? (

@@ -42,7 +42,7 @@ export const TAX_SOURCES: Readonly<Record<SuddenKind, string>> = {
   home_sale:
     "IRC §121: up to $250,000 ($500,000 jointly) of gain is tax-free on a home you lived in",
   other_sale:
-    "Long-term capital gains rates on the gain; Jane assumes half the proceeds is gain unless you tell her",
+    "Long-term capital gains rates on the gain; Jane assumes half the proceeds is gain unless you tell it",
   gift: "IRS: a gift isn't income to the person who receives it",
 };
 

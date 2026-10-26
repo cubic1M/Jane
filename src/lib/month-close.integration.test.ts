@@ -26,7 +26,7 @@ import { loadClose, runMonthClose } from "./month-close";
 
 // Spec step 244 against a real, migrated Postgres: on the first of November Jane closes
 // October. With nothing uncertain it closes with no taps; a closed month's figures stay put
-// until the person corrects something in it; charges she wasn't sure of are asked about in one
+// until the person corrects something in it; charges it wasn't sure of are asked about in one
 // message, and one tap closes it.
 
 const url = process.env.TEST_DATABASE_URL;

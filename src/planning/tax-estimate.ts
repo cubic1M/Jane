@@ -30,7 +30,7 @@ export { bracketTax };
 // The tax estimate (spec step 120): federal and state tax for a year from the person's
 // income and profile, with every figure in cents and every one an estimate. Pure. It's a
 // planning estimate, not a return: it leaves out what Jane can't see (property tax, most
-// credits she has no data for) and says what it assumed.
+// credits it has no data for) and says what it assumed.
 
 export type EstimateIncome = {
   // Box 1 wages: gross pay less pre-tax retirement and health deductions.

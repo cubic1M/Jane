@@ -99,7 +99,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "debt_autopilot",
     description:
-      "What Jane does about the person's debts by herself at their debt autopilot level (step by step), loan and card payments due in the next month (soonest first, overdue first), payments due just before payday with the drafted request to move the date, rate changes the bank reported, and whether Jane started the payoff plan herself. Jane never applies for credit, moves money or signs without a tap.",
+      "What Jane does about the person's debts on its own at their debt autopilot level (step by step), loan and card payments due in the next month (soonest first, overdue first), payments due just before payday with the drafted request to move the date, rate changes the bank reported, and whether Jane started the payoff plan itself. Jane never applies for credit, moves money or signs without a tap.",
     input_schema: noInput,
   },
   {
@@ -111,7 +111,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "credit_cards",
     description:
-      "The person's credit cards and their rewards, from a year of their own spending (demo-bank people only, from a stand-in card catalog; nothing for real accounts until a card partner is connected): spending by kind (dining, groceries, gas, travel, streaming, online, everything else), each card's rewards, what it earns and its annual fee, whether each fee pays for itself against the best no-fee card, which card to use for each kind, and up to three cards that would earn more after their fee, with any sign-up bonus. Applying is a hard credit check and only ever the person's tap (the credit_card.apply button); Jane never applies by herself. Demo advice.",
+      "The person's credit cards and their rewards, from a year of their own spending (demo-bank people only, from a stand-in card catalog; nothing for real accounts until a card partner is connected): spending by kind (dining, groceries, gas, travel, streaming, online, everything else), each card's rewards, what it earns and its annual fee, whether each fee pays for itself against the best no-fee card, which card to use for each kind, and up to three cards that would earn more after their fee, with any sign-up bonus. Applying is a hard credit check and only ever the person's tap (the credit_card.apply button); Jane never applies on its own. Demo advice.",
     input_schema: noInput,
   },
   {
@@ -138,7 +138,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "tight_money",
     description:
-      "Help when the person's money is tight (demo-bank people only): whether the checking forecast dips under its cushion in the next month and when, the bills before then in the order to pay them (housing, utilities and insurance first, never delayed), the requests Jane has prepared (moving a due date after payday, a hardship program, a lower card rate, a late fee waived) with the exact text of each and whether it was sent, and what each lender answered. Sending any request needs the person's tap (the tight.send button); Jane never sends one by herself.",
+      "Help when the person's money is tight (demo-bank people only): whether the checking forecast dips under its cushion in the next month and when, the bills before then in the order to pay them (housing, utilities and insurance first, never delayed), the requests Jane has prepared (moving a due date after payday, a hardship program, a lower card rate, a late fee waived) with the exact text of each and whether it was sent, and what each lender answered. Sending any request needs the person's tap (the tight.send button); Jane never sends one on its own.",
     input_schema: noInput,
   },
   {
@@ -180,19 +180,19 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "medical_bills",
     description:
-      "The person's medical bills (demo-bank people only; nothing for real accounts): bills of $100 or more found in recent payments to doctors, dentists and hospitals (pharmacy left out) plus any they typed in, whether they have an active health plan on file, and for each bill the requests Jane has written (an itemized bill, a check against their insurance, a financial assistance application for bills of $500 or more, and a payment plan with no interest for bills of $300 or more) with the exact letter, whether it was sent and what the provider answered, including what assistance took off. Amounts are the bills' own. Sending any request needs the person's tap (the medical.send button); Jane never sends one by herself.",
+      "The person's medical bills (demo-bank people only; nothing for real accounts): bills of $100 or more found in recent payments to doctors, dentists and hospitals (pharmacy left out) plus any they typed in, whether they have an active health plan on file, and for each bill the requests Jane has written (an itemized bill, a check against their insurance, a financial assistance application for bills of $500 or more, and a payment plan with no interest for bills of $300 or more) with the exact letter, whether it was sent and what the provider answered, including what assistance took off. Amounts are the bills' own. Sending any request needs the person's tap (the medical.send button); Jane never sends one on its own.",
     input_schema: noInput,
   },
   {
     name: "credit_report_fixes",
     description:
-      "Collections and possible errors on the person's credit report, from a monthly soft pull (demo-bank people only, a stand-in report; nothing for real accounts): each item with its creditor, amount and what's wrong, whether a dispute already fixed it, and the letters Jane wrote for it (a debt validation letter to a collector under the Fair Debt Collection Practices Act, section 809(b), with the last day to ask; a dispute to the three bureaus under the Fair Credit Reporting Act, section 611, which they must answer within 30 days) with the exact text, whether each was sent and what came back. Sending a letter needs the person's tap (the creditfix.send button); Jane never sends one by herself.",
+      "Collections and possible errors on the person's credit report, from a monthly soft pull (demo-bank people only, a stand-in report; nothing for real accounts): each item with its creditor, amount and what's wrong, whether a dispute already fixed it, and the letters Jane wrote for it (a debt validation letter to a collector under the Fair Debt Collection Practices Act, section 809(b), with the last day to ask; a dispute to the three bureaus under the Fair Credit Reporting Act, section 611, which they must answer within 30 days) with the exact text, whether each was sent and what came back. Sending a letter needs the person's tap (the creditfix.send button); Jane never sends one on its own.",
     input_schema: noInput,
   },
   {
     name: "card_interest",
     description:
-      "How much interest the person's cards cost and how to cut it (demo-bank people only; nothing for real accounts): each card's balance, rate, a year of interest, what paying its usual payment now instead of on the due date saves, when its statement closes; any 0% promotions they typed in with the days left, the monthly amount that clears the balance by the end, whether they're on pace, and (for deferred interest) what missing the end would cost, with the deadline Jane raised when off pace; and for each card at 15% or more with a balance the written request for a lower rate with a call script and the yearly saving, whether it was sent and what the lender answered. Sending a request needs the person's tap (the cardrate.send button); Jane never sends one by herself.",
+      "How much interest the person's cards cost and how to cut it (demo-bank people only; nothing for real accounts): each card's balance, rate, a year of interest, what paying its usual payment now instead of on the due date saves, when its statement closes; any 0% promotions they typed in with the days left, the monthly amount that clears the balance by the end, whether they're on pace, and (for deferred interest) what missing the end would cost, with the deadline Jane raised when off pace; and for each card at 15% or more with a balance the written request for a lower rate with a call script and the yearly saving, whether it was sent and what the lender answered. Sending a request needs the person's tap (the cardrate.send button); Jane never sends one on its own.",
     input_schema: noInput,
   },
   {
@@ -222,13 +222,13 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "renting",
     description:
-      "Renting, counted: the person's rent as found in their payments (monthly amount, any increase against what is usual, using a stand-in local trend), whether their rent is being reported to the credit bureaus (only ever after their own yes; the monthly fee and what reporting can and can't do are stated), and any security deposits they have told Jane about with the day each is due back after moving out (days from the state's law, with the citation, to be confirmed against the lease). Facts and the person's own choices; Jane reports nothing and sends nothing herself.",
+      "Renting, counted: the person's rent as found in their payments (monthly amount, any increase against what is usual, using a stand-in local trend), whether their rent is being reported to the credit bureaus (only ever after their own yes; the monthly fee and what reporting can and can't do are stated), and any security deposits they have told Jane about with the day each is due back after moving out (days from the state's law, with the citation, to be confirmed against the lease). Facts and the person's own choices; Jane reports nothing and sends nothing itself.",
     input_schema: noInput,
   },
   {
     name: "credit_monthly",
     description:
-      "The monthly credit check-up Jane does by herself: the day she did it and, for this month, each item with its status (done by Jane, needs the person, or fine): her soft checks of loan rates and what the person could borrow, a cheaper rate on a loan (the fit engine's refinance pick with fees counted), car loan add-ons worth cancelling with the refund, costly borrowing creeping back in the last 30 days, a security deposit due back or a rent rise worth asking about, and a lower-rate request to a card (sent by Jane only at Handle everything, once a month). Each item that needs the person names the page where they act. Nothing that runs a hard credit check, applies for credit, opens an account or cancels cover happens without the person's tap.",
+      "The monthly credit check-up Jane does on its own: the day it did it and, for this month, each item with its status (done by Jane, needs the person, or fine): its soft checks of loan rates and what the person could borrow, a cheaper rate on a loan (the fit engine's refinance pick with fees counted), car loan add-ons worth cancelling with the refund, costly borrowing creeping back in the last 30 days, a security deposit due back or a rent rise worth asking about, and a lower-rate request to a card (sent by Jane only at Handle everything, once a month). Each item that needs the person names the page where they act. Nothing that runs a hard credit check, applies for credit, opens an account or cancels cover happens without the person's tap.",
     input_schema: noInput,
   },
   {
@@ -312,7 +312,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "debt_review",
     description:
-      "The yearly debt review (once a year, and after a raise, a new loan or a missed payment): when the last one was done and why, whether one is due now, and each item with whether Jane did it herself, it waits for the person's tap, or it is fine: payments timed to statement dates, 0% promotions on pace, lower-rate requests, PMI and escrow, and credit score goals. Jane acts by herself only within the debt autopilot level and caps (a payment before a statement at Handle the safe stuff; also a lower-rate request at Handle everything) and nothing above a cap happens without the person's tap; the buttons are credit_build.pay, cardrate.send, homeeq.sent and creditgoal.done.",
+      "The yearly debt review (once a year, and after a raise, a new loan or a missed payment): when the last one was done and why, whether one is due now, and each item with whether Jane did it itself, it waits for the person's tap, or it is fine: payments timed to statement dates, 0% promotions on pace, lower-rate requests, PMI and escrow, and credit score goals. Jane acts on its own only within the debt autopilot level and caps (a payment before a statement at Handle the safe stuff; also a lower-rate request at Handle everything) and nothing above a cap happens without the person's tap; the buttons are credit_build.pay, cardrate.send, homeeq.sent and creditgoal.done.",
     input_schema: noInput,
   },
   {
@@ -360,7 +360,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "loan_applications",
     description:
-      "The person's loan applications for refinance offers (spec step 112): the lender, the loan it pays off, the terms (rate, months, monthly payment, fee, total, saving) and where each stands: draft (prepared, not sent), approved (waiting for their yes), declined, accepted, funded (old loan being paid off), paid_off (old loan at zero) or withdrawn. Jane never submits or accepts one herself.",
+      "The person's loan applications for refinance offers (spec step 112): the lender, the loan it pays off, the terms (rate, months, monthly payment, fee, total, saving) and where each stands: draft (prepared, not sent), approved (waiting for their yes), declined, accepted, funded (old loan being paid off), paid_off (old loan at zero) or withdrawn. Jane never submits or accepts one itself.",
     input_schema: noInput,
   },
 ];
@@ -1582,7 +1582,7 @@ export function familyCreditToolOutput(d: FamilyCredit, money: (cents: number) =
 }
 
 // The options card (spec step 282) rides along: the chat shows it as the pick-one card. Jane's
-// pick and how sure she is are only given in demo advice mode, with its label.
+// pick and how sure Jane is are only given in demo advice mode, with its label.
 export function loanFitToolOutput(
   view: FitView,
   money: (cents: number) => string,

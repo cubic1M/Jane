@@ -108,7 +108,7 @@ Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its 
 | 83 Every feature from the chat | PR #102 | Five more message sources and twelve more buttons, each through the feature's own code and checked again on the server. Autopilot: until the person picks a level, one "How much should I do on my own?" message with Handle the safe stuff, Handle everything allowed and Ask me first (setAutopilot, as in Settings; asked once and outside the daily limit). Set-up suggestions: each budget and goal on the plan, the Yearly bills goal included, said as math from their own numbers, with Set it up, No and (with more than one) Use all N suggestions (answerProposal, acceptAllProposals). Things waiting on the person: a company's question with Answer (opens that action), an offer made on a call with Accept and Decline (answerOffer), a company that only cancels online with Open cancel page and I've cancelled (markSelfCancelled), and a switch with Sign up; the general "I need you for one step" message skips these. Budgets nearly used up (90%, in src/config/agent-chat.ts) with Open and Snooze, and Snooze on one gone over. Deadlines in the next 3 days: Mark done on ones the person typed in (markDeadlineDone) and Remind me tomorrow on all. Urgent alerts: Got it marks that alert read. Things you own: a mortgage or car loan with nothing linked gets "Add your home's value" (or car's), opening the form prefilled. "Not now" (and Snooze, Remind me tomorrow) hides a heads-up until the start of the person's tomorrow (jane_messages.snoozed_until); Jane never posts it again before then and brings it back at the bottom with its buttons after, if it still applies. Messages answered elsewhere (autopilot in Settings, a suggestion on the plan, a step on Actions, a deadline, an alert) lose their buttons. Calls, cancellations, insurance and moving money still only happen with the person's own tap. None of these pages has an undo, so these buttons have none either |
 | 84 Typing to Jane | PR #101 | The box at the bottom of the chat is a real one: what you type is a "user" message and Jane's answer a "reply" right under it, capped at 500 characters and 60 messages an hour. Rules answer first, with no key needed (src/lib/jane-agent/intents.ts, pure): "can I afford $900 for a trip in March" (the effect on safe to spend, goals and checking from the afford page's math; for a later month a "Start a goal for it" button), "how much did I spend on food last month" (categories in everyday words, or a merchant), "what's due (this week)", "safe to spend", "cancel Hulu" / "lower my phone bill" / "get my refund from Target" (the matching open finding with its Yes, No and Jane's pick, or "I don't see anything open" with Open subscriptions), "what did you do", "yes to all" (offers Approve all safe ones), "undo" (offers Undo on a rule's yes), "pause autopilot" (offers a Pause button) and "help". Typing never acts: every change is a button, checked again when tapped; two new buttons were added to the registry (Start a goal, Pause autopilot). With ANTHROPIC_API_KEY set, anything else goes to Claude with the last 10 typed messages and answers only, read-only tools (Ask's, plus safe to spend, coming up, findings, goals, budgets and net worth), at most 6 rounds and Ask's hourly limit; its one propose_action tool can only offer a registered button (a finding's Yes and No, Approve all safe ones, a goal, or a link to a known page). Every Claude answer passes the guardrails or is replaced by safe text with no buttons. Typed text is in Download my data, deleted with the account and never logged (analytics get only the kind of question). /ask still works and its old conversations stay readable there, linked from the chat when you have some |
 | 85 Jane's messages as notifications | PR #103 | Jane's important chat messages now reach the person outside the app: things to decide and the week's plan, heads-ups, and "I did this" with Undo (the morning brief only if they turn it on; heads-ups about alerts go out as alerts, never twice). With phone notifications on, each goes straight away as a notification titled "Jane" with the message and up to two of its buttons ("Yes", "No"); tapping a button answers it through a new signed-in endpoint (/api/chat/act) with the chat's own checks, and signed out it just opens the message in the chat (/chat#message). Without a phone, or for people who prefer email, one email lists everything that sat unread for an hour (from the daily run straight away), in Jane's ASCII look, each button a one-tap link to a small confirm page (/chat/reply) with the message and one button: hashed token, works once, for 3 days, only that person's own message, and someone else signed in is refused. Limits in src/config/chat-notify.ts: 6 a day, 2 emails a day, 5 messages an email, nothing older than a day, nothing in quiet hours (9pm to 8am) and nothing already read, answered or sent (jane_messages.notified_at and notified_via). Sending is a job (chat_notify) so failures retry. Settings → Notifications has "Messages from Jane": phone notifications (email until they're on), email, both or off, and which kinds; changes apply at once, and the email's "Stop these emails" link turns email off. Audited (chat_notification_sent: channel and kind only) and tracked. Phone notifications need the VAPID keys and email needs Resend's key |
-| Chat fixes after Phase U | PRs #105–#112 | From the founder trying the chat: "can I spend $500 this week for food" is an affordability question with the food budget and a usual week next to it (#105); free questions use a faster model (ANTHROPIC_CHAT_MODEL, default Sonnet 5.5, low effort) with the person's main numbers sent up front and the answer streamed a sentence at a time, each past the guardrails (#106); every figure in what Jane was given counts for the guardrails and a failed answer gets one rewrite before the fallback, and greetings are answered by rules (#107); finding_details and subscriptions tools so Jane suggests what to do from the evidence and the compared options (#109); Jane's own messages have a yellow edge, her answers stay plain (#111); /transactions no longer scrolls sideways on phones (#108); the header reads the session once (#110); automatic Vercel deploys are off (#112) |
+| Chat fixes after Phase U | PRs #105–#112 | From the founder trying the chat: "can I spend $500 this week for food" is an affordability question with the food budget and a usual week next to it (#105); free questions use a faster model (ANTHROPIC_CHAT_MODEL, default Sonnet 5.5, low effort) with the person's main numbers sent up front and the answer streamed a sentence at a time, each past the guardrails (#106); every figure in what Jane was given counts for the guardrails and a failed answer gets one rewrite before the fallback, and greetings are answered by rules (#107); finding_details and subscriptions tools so Jane suggests what to do from the evidence and the compared options (#109); Jane's own messages have a yellow edge, its answers stay plain (#111); /transactions no longer scrolls sideways on phones (#108); the header reads the session once (#110); automatic Vercel deploys are off (#112) |
 | 86 The tabs become details | PR #117 | Chat lane. The other places open from the chat and sit behind a Details menu; every old address still works |
 | 87 Jane's answer checks | PRs #122, #128 | Chat lane. A graded question bank over the demo bank; the rules-only part runs in CI, the Claude-graded part needs ANTHROPIC_API_KEY (none locally, so it's skipped and reported). #128 kept tax wording out of the help examples so the checks stay at their floor |
 | 97 Jane notices changes | PR #120 | Thinking lane. Bill amount changes, new subscriptions, paycheck changes, spending running hot and new fees, as heads-ups with buttons; price rises and new fees start the fix by themselves at the right autopilot level |
@@ -118,7 +118,7 @@ Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its 
 | 101 Plans that keep up, and a weekly review | PR #126 | Thinking lane |
 | 102 Every policy, understood | PR #125 | Insurance lane. Insurance profile, coverage gaps, in the chat |
 | 103 Quote engine | PR #133 | Insurance lane. An insurance partner interface with a stand-in carrier catalog, compared like for like |
-| 104 Shopped for you | PR #137 | Insurance lane. Jane reshops by herself, picks the best and asks once |
+| 104 Shopped for you | PR #137 | Insurance lane. Jane reshops on its own, picks the best and asks once |
 | 109 Every debt in one place | PR #121 | Loans lane |
 | 110 Payoff plans | PR #141 | Loans lane |
 | 118 Tax profile | PR #119 | Taxes lane. Worked out from the accounts, asked in the chat |
@@ -1840,13 +1840,13 @@ Ground rules for every step in this phase:
 The goal is an agent that is the person's complete financial controller and needs as little
 from them as possible. So every step from 87 on, in every sector, follows these rules:
 
-- **Automation first.** Jane does the work herself: she finds, compares, prepares and,
+- **Automation first.** Jane does the work itself: it finds, compares, prepares and,
   within the person's autopilot level (step 57), acts. The person's part is a yes, a no, or
-  nothing at all. Each step says what Jane does on her own at each autopilot level; anything
+  nothing at all. Each step says what Jane does on its own at each autopilot level; anything
   that moves money, signs a contract, applies for credit, cancels cover or files with a
   government still needs one tap.
 - **In the chat.** Each feature is built into Jane's chat in the same step: a message source
-  for the brain (when Jane brings it up by herself), buttons through the feature's own code
+  for the brain (when Jane brings it up on its own), buttons through the feature's own code
   with the chat's server checks, rule answers for the questions people will ask about it,
   and Claude tools so free questions about it get real answers. A feature isn't done until
   Jane can talk about it and act on it.
@@ -1902,7 +1902,7 @@ from them as possible. So every step from 87 on, in every sector, follows these 
 > 1. The answer in the first sentence, then the reason with the person's figures, then one
 >    suggestion (ranked by what it saves) with its button; a short list only when comparing.
 > 2. One voice: warm, brief, no filler; "$17.99 a month"; "Oct 28 (in 3 days)".
-> 3. No dead ends: when Jane can't answer, the closest things she can do, as buttons.
+> 3. No dead ends: when Jane can't answer, the closest things it can do, as buttons.
 >
 > Acceptance criteria:
 > - Step 87's shape and tone grades go up; rule answers follow the same shape
@@ -1924,7 +1924,7 @@ from them as possible. So every step from 87 on, in every sector, follows these 
 
 ### Step 91: Jane remembers
 
-> Read CLAUDE.md. Jane remembers what the person tells her.
+> Read CLAUDE.md. Jane remembers what the person tells it.
 >
 > Build:
 > 1. jane_preferences (user-owned, exported, deleted with the account): "don't suggest
@@ -1946,7 +1946,7 @@ from them as possible. So every step from 87 on, in every sector, follows these 
 >    Jane's own posts, most valuable first.
 >
 > Acceptance criteria:
-> - Nothing Jane posts by herself lands between a question and its answer
+> - Nothing Jane posts on its own lands between a question and its answer
 
 ### Step 93: Fast and reliable
 
@@ -2037,7 +2037,7 @@ from them as possible. So every step from 87 on, in every sector, follows these 
 
 ### Step 99: Insurance and renewals from payments
 
-> Read CLAUDE.md. Jane fills in what she can see.
+> Read CLAUDE.md. Jane fills in what it can see.
 >
 > Build:
 > 1. Policies found from regular payments to insurers, added as "found from your
@@ -2054,7 +2054,7 @@ from them as possible. So every step from 87 on, in every sector, follows these 
 >
 > Build:
 > 1. Rules for moving, a new job and a new baby (two or more signals each); Jane asks once
->    and, on Yes, runs the checklist herself: updates budgets, flags insurance to review,
+>    and, on Yes, runs the checklist itself: updates budgets, flags insurance to review,
 >    sets reminders.
 >
 > Acceptance criteria:
@@ -2075,7 +2075,7 @@ from them as possible. So every step from 87 on, in every sector, follows these 
 
 ## Phase X: insurance (steps 102–108)
 
-Jane handles insurance end to end: she knows every policy, checks the cover, shops it every
+Jane handles insurance end to end: it knows every policy, checks the cover, shops it every
 renewal and switches with one tap. Quotes come from a stand-in carrier catalog until a
 licensed insurance partner is connected.
 
@@ -2116,7 +2116,7 @@ licensed insurance partner is connected.
 > 1. For each policy, quotes from the engine; the pick (lowest cost for the same cover,
 >    weighted by the carrier's rating), why in three lines, the runners-up.
 > 2. Automation: Jane reshops every policy 45 days before renewal and whenever a premium
->    goes up, by herself.
+>    goes up, on its own.
 > 3. In the chat: "I found car insurance $312 a year cheaper for the same cover" with Yes,
 >    Show options, Not now.
 >
@@ -2211,7 +2211,7 @@ partner is connected.
 >    catalog: student, auto, mortgage, personal.
 > 2. For each debt, offers compared by total cost over the same term with fees; the pick,
 >    why in three lines, break-even for mortgages.
-> 3. Automation: Jane checks rates every month by herself and posts only when a switch saves
+> 3. Automation: Jane checks rates every month on its own and posts only when a switch saves
 >    a set amount.
 >
 > Acceptance criteria:
@@ -2547,7 +2547,7 @@ and a registered adviser partner are connected.
 
 ### Step 140: Help inside the chat
 
-> Read CLAUDE.md. New people learn Jane by using her.
+> Read CLAUDE.md. New people learn Jane by using it.
 >
 > Build:
 > 1. A short first-run conversation and a grouped "help", each with links.
@@ -2558,14 +2558,14 @@ and a registered adviser partner are connected.
 ## Phase AC: Jane runs the money (steps 141–148)
 
 With every sector built, Jane can see and do a lot, but each sector still runs on its own
-schedule and asks on its own. This phase makes her one controller: one nightly run across
+schedule and asks on its own. This phase makes it one controller: one nightly run across
 everything, one ranked list of what matters, money that goes where it should by itself
 (through stand-ins until a money-movement partner is connected), and fewer, better-timed
 asks. The goal stays the founder's: as little from the person as possible.
 
 ### Step 141: One autopilot, every sector
 
-> Read CLAUDE.md. One place to say how much Jane may do by herself.
+> Read CLAUDE.md. One place to say how much Jane may do on its own.
 >
 > Build:
 > 1. Autopilot per sector (subscriptions and bills, insurance, debt, taxes, investing,
@@ -2647,7 +2647,7 @@ asks. The goal stays the founder's: as little from the person as possible.
 > Read CLAUDE.md. Jane learns when and how the person answers.
 >
 > Build:
-> 1. Which messages the person acts on, when, and on which channel; Jane times her asks
+> 1. Which messages the person acts on, when, and on which channel; Jane times its asks
 >    and bundles to match, and stops kinds they never act on (with a note in Settings).
 >
 > Acceptance criteria:
@@ -2666,7 +2666,7 @@ asks. The goal stays the founder's: as little from the person as possible.
 
 ## Phase AD: insurance, all of it (steps 149–155)
 
-Phase X handles the policies Jane already knows about. This phase makes her cover the rest:
+Phase X handles the policies Jane already knows about. This phase makes it cover the rest:
 every kind of insurance, the cover hiding in employer benefits and credit cards, policies
 read from documents with no typing, and the events that change what someone needs, with
 Jane doing the work and the person tapping once.
@@ -2874,7 +2874,7 @@ connected.
 >
 > Build:
 > 1. At "handle everything" with an investing cap, Jane contributes, rebalances, invests
->    new cash and harvests losses (step 124) through the stand-in brokerage by herself,
+>    new cash and harvests losses (step 124) through the stand-in brokerage on its own,
 >    posting one summary a month; everything above the cap asks first.
 >
 > Acceptance criteria:
@@ -2920,7 +2920,7 @@ recommendations are demo advice; figures live in config, marked for review, with
 > Build:
 > 1. A calendar of tax moves with their deadlines (retirement and HSA contributions,
 >    estimated payments, December harvesting, giving before year-end, the W-4 after a life
->    event), each prepared by Jane and done by herself at the right autopilot level.
+>    event), each prepared by Jane and done on its own at the right autopilot level.
 >
 > Acceptance criteria:
 > - Every move has a deadline from config; nothing past its deadline is offered
@@ -3097,8 +3097,8 @@ stand-ins; advice is demo advice.
 ## Phase AH: Jane the agent, round two (steps 182–188)
 
 Phase V made the chat professional. This round makes Jane the one place the person needs:
-she gets payday right, answers across every sector at once, runs the day in one message,
-takes requests that span several sectors, can be talked to, shows everything she did, and
+it gets payday right, answers across every sector at once, runs the day in one message,
+takes requests that span several sectors, can be talked to, shows everything it did, and
 fits how each person likes to be spoken to.
 
 ### Step 182: Paydays that are right
@@ -3169,7 +3169,7 @@ fits how each person likes to be spoken to.
 > Read CLAUDE.md. A full, honest record.
 >
 > Build:
-> 1. An activity timeline in the chat and on /jane: every action Jane took by herself or on
+> 1. An activity timeline in the chat and on /jane: every action Jane took on its own or on
 >    a tap, across sectors, with why, the money involved and undo while it works; "why did
 >    you do that?" answered from it.
 >
@@ -3270,7 +3270,7 @@ replaces rules-first). Every change is measured on one question bank.
 >
 > Build:
 > 1. Follow-ups use what was just said ("what about the other one", "do it", "and for my
->    wife's car?"); the topic carries until it changes. When Jane isn't sure, she asks one
+>    wife's car?"); the topic carries until it changes. When Jane isn't sure, it asks one
 >    short question with the likely choices, never the three generic buttons when a tool
 >    fits. Two questions in one message get both answers.
 >
@@ -3404,7 +3404,7 @@ step 189).
 >
 > Build:
 > 1. Once a year (and after a life event) Jane runs every check from this phase and
->    Phase AD together and sends one message: what she did by herself within the caps,
+>    Phase AD together and sends one message: what it did on its own within the caps,
 >    what needs a tap, and the yearly money involved. "Keep me covered" handles renewals,
 >    payment plans and discounts at "Everything allowed".
 > 2. Every insurance capability in the registry, with bank questions that score well.
@@ -3416,7 +3416,7 @@ step 189).
 ## Phase AK: Jane runs the money, round two (steps 203–209)
 
 Phase AC gave Jane one autopilot, a nightly run, a ranked next step, bills paid on time and
-a monthly report. This round has her plan the year, handle what life throws at the person,
+a monthly report. This round has it plan the year, handle what life throws at the person,
 notice what's unusual, learn what works for each person, and show the long view. Each step
 is built into the chat through the step 190 registry, with questions in step 189's bank.
 
@@ -3841,7 +3841,7 @@ existing feature to it. Phases AO, AP and AQ wait until both are done.
 >    investments and documents: a young renter with a first job, a family with kids and a
 >    mortgage, a freelancer with uneven income, a high earner with stock pay, a couple
 >    near retirement, a retiree, someone in debt trouble, and a small-business owner. Each
->    has a written list of what Jane should suggest and what she must not.
+>    has a written list of what Jane should suggest and what it must not.
 > 2. "Try Jane" lets the visitor pick a life (or picks one), and tests can build any of them.
 >
 > Acceptance criteria:
@@ -4107,7 +4107,7 @@ demo advice; legal questions go to counsel.
 
 Founder-approved 2026-10-21. Jane works out what cover each person needs from their own data,
 shows the gap against what they have, and offers several options to pick from, each with its
-price, cover and a one-line reason, her pick marked with a confidence percentage. Picking one
+price, cover and a one-line reason, its pick marked with a confidence percentage. Picking one
 queues the action for the concierge team at once. Every threshold lives in
 `src/config/insurance.ts`; nothing is inline. Recommendations are demo advice (the label, the
 `demo_advice` guardrail profile); `REAL_ACCOUNT_ADVICE` stays false, so real accounts see
@@ -4154,7 +4154,7 @@ ships with its detector, its chat answers and its bank questions.
 >
 > Build:
 > 1. Option data in the shape the chat's "pick one of N" card takes (agreed with the chat lane):
->    short cards, a "More details" for the working and the comparison, her pick first.
+>    short cards, a "More details" for the working and the comparison, its pick first.
 > 2. Choosing an option queues the action for the concierge team instantly (bind, endorse or
 >    quote request through the stand-in), with the choice recorded; nothing changes cover
 >    without that tap.
@@ -4605,7 +4605,7 @@ with questions in step 189's bank.
 
 ### Deferred Phase AP: Jane runs the money, round three (steps 238–244)
 
-Phases AC and AK have Jane plan, route, watch and learn. This round makes her a controller
+Phases AC and AK have Jane plan, route, watch and learn. This round makes it a controller
 people can trust with everything: books that always balance, every figure explained and
 correctable, a steady paycheck from uneven income, goals that trade off openly, money run
 well for couples, price rises seen before they land, and a monthly close that runs itself.

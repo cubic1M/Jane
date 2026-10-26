@@ -7,8 +7,8 @@ import { MicButton } from "./mic-button";
 import { sendMessage, type SendState } from "./send";
 
 // The message box at the bottom of Jane's chat (spec step 84). What the person typed shows
-// at once, then what Jane is looking up and her answer as it's written (streamed from
-// /api/chat/send). When she's done, the chat reloads with both messages as stored, buttons
+// at once, then what Jane is looking up and its answer as it's written (streamed from
+// /api/chat/send). When it's done, the chat reloads with both messages as stored, buttons
 // and all, and the box clears and stays at the end. Without JavaScript the form's server
 // action sends it instead. Its scroll margin is as tall as the phone tab bar, so the bar
 // never covers it.
@@ -38,7 +38,7 @@ export function ChatComposer({
   id: string;
   maxLength: number;
   // The person's own messages on the page, so a typed question that is already stored there
-  // (a refresh while Jane writes her answer) isn't shown a second time.
+  // (a refresh while Jane writes its answer) isn't shown a second time.
   typed?: { id: string; body: string }[];
 }) {
   const [state, action, actionPending] = useActionState<SendState, FormData>(sendMessage, {

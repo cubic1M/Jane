@@ -128,9 +128,9 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(page.getByText("safe to spend", { exact: true })).toBeVisible();
   await expect(messages.last()).toContainText(/You have \$[\d,]+\.\d\d safe to spend/);
   await expect(ask).toHaveValue("");
-  // Jane's answer looks different from what she brings up on her own.
+  // Jane's answer looks different from what it brings up on its own.
   await expect(messages.last()).toHaveAttribute("data-from", "answer");
-  // What she brings up on her own is a pop-up, not a card in the list.
+  // What it brings up on its own is a pop-up, not a card in the list.
   await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(0);
 
   // A command answers with buttons and does nothing until one is tapped.
@@ -171,7 +171,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await flow.getByRole("button", { name: "Cancel" }).click();
   await expect(flow.getByRole("status")).toContainText("Nothing was changed.");
 
-  // Spec step 91: Jane remembers what she's told, only on the tap, and Settings can forget it.
+  // Spec step 91: Jane remembers what it's told, only on the tap, and Settings can forget it.
   await ask.fill("payday is the 15th");
   await ask.press("Enter");
   const told = await answerTo(page, "I can remember that: payday is the 15th.");

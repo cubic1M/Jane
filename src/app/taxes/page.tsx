@@ -36,7 +36,7 @@ import { LoadingBar } from "@/components/loading-bar";
 // tree (docs/design/area-pages.md): what's due soon, ways to pay less, this year's numbers,
 // records and forms, their situation, the tax profile, filing and special cases. Each item's
 // detail is the section it had before. Step 118: the tax profile, and what Jane does by
-// herself at their autopilot level.
+// itself at their autopilot level.
 
 const CARD = "flex flex-col gap-3 border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "font-medium underline underline-offset-2 hover:no-underline";
@@ -336,10 +336,10 @@ async function TaxesContent({
       {/* Below the tree: nothing open by default (docs/design/area-pages.md). */}
       <div className="flex flex-col gap-2">
         <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
-          <summary className={`cursor-pointer text-sm ${LINK}`}>What Jane does by herself</summary>
-          <section aria-labelledby="by-herself" className="mt-2 flex flex-col gap-2 text-sm">
-            <h2 id="by-herself" className="sr-only">
-              What Jane does by herself
+          <summary className={`cursor-pointer text-sm ${LINK}`}>What Jane does on its own</summary>
+          <section aria-labelledby="by-itself" className="mt-2 flex flex-col gap-2 text-sm">
+            <h2 id="by-itself" className="sr-only">
+              What Jane does on its own
             </h2>
             <ul className="flex list-disc flex-col gap-1 pl-5">
               {whatJaneDoes(taxes.level).map((line) => (

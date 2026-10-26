@@ -23,8 +23,8 @@ import {
 
 // Disasters and losses (spec step 270). A disaster declared for the person's county (from the
 // disaster feed: the stand-in for demo-bank people, nobody else until a real feed) postpones
-// their federal tax deadlines: Jane moves each one on their list (by herself at the levels that
-// let her act, on a tap at "ask first"), and shows the dates she works out herself moved too.
+// their federal tax deadlines: Jane moves each one on their list (on its own at the levels that
+// let it act, on a tap at "ask first"), and shows the dates it works out itself moved too.
 // Repairs since the disaster, less what insurance and FEMA paid back, are the casualty loss,
 // recorded once with the insurance claim, so it is never claimed twice.
 

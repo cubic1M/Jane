@@ -4,7 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { CoverOption, OptionRole, OptionSet } from "./options";
 import type { Need } from "./types";
 
-// An option set as the shared pick-one card (spec step 276). Her pick and its confidence are
+// An option set as the shared pick-one card (spec step 276). Its pick and its confidence are
 // part of demo advice: a real account gets the options and no pick.
 
 const TITLES: Record<Need["kind"], string> = {
@@ -114,7 +114,7 @@ export function insuranceCard(set: OptionSet, need: Need, advice: boolean): Opti
       compare: compareOf(o, need.kind),
     };
   });
-  // Her pick first, the rest as priced.
+  // Its pick first, the rest as priced.
   options.sort((a, b) => Number(b.isPick) - Number(a.isPick));
   return {
     kind: "insurance",

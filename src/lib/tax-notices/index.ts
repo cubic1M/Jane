@@ -31,7 +31,7 @@ import { readNotice } from "./read";
 // A letter from the IRS or the state (spec step 217): read from an uploaded copy for the
 // person to confirm; then a deadline, a check against what Jane knows, and a drafted
 // response (agree, pay or dispute). The response is sent by the team or by the person, on
-// their tap; Jane never pays or sends by herself.
+// their tap; Jane never pays or sends on its own.
 
 type Options = { client?: PrismaClient; now?: Date };
 
@@ -253,7 +253,7 @@ export async function dismissTaxNotice(
   if (res.count === 0) throw new NoticeError("That one's already been answered.");
 }
 
-// What Jane knows that bears on a notice: the forms she collected for its year, the income
+// What Jane knows that bears on a notice: the forms it collected for its year, the income
 // the accounts show from each payer, and payments to the IRS and the state.
 export async function noticeFacts(
   userId: string,
@@ -324,7 +324,7 @@ export async function checkNoticeFor(
   return { ...check, points: advice ? check.points : null, advice };
 }
 
-// The person chooses a response; Jane drafts it, with the documents she'd attach.
+// The person chooses a response; Jane drafts it, with the documents it'd attach.
 export async function chooseResponse(
   userId: string,
   id: string,

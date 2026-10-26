@@ -24,7 +24,7 @@ import { marginalRateOf } from "@/planning/tax-estimate";
 import { loadInvestments, type Investments } from "./holdings";
 
 // The right investment in the right account (spec step 231, demo advice), for its page,
-// Jane's answers and her buttons. Every one of the person's own accounts counts as one
+// Jane's answers and its buttons. Every one of the person's own accounts counts as one
 // allocation (a partner's accounts only if they were shared, and none are). The swaps keep
 // the overall mix the same, are bought and sold together, and each one that sells at a gain
 // says what it costs. A tap does the swaps that cost no tax together; the others are each

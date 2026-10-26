@@ -9,7 +9,7 @@ import { parseMoneyToCents } from "@/lib/money";
 
 // A tax notice from the IRS or the state (spec step 217). Pure.
 // - The reading rules: what Jane read off a notice, checked before the person sees it.
-// - The check: what the notice says against what Jane knows (the forms she collected, the
+// - The check: what the notice says against what Jane knows (the forms it collected, the
 //   income in the accounts, the payments to the tax agency), and which response that
 //   points to (demo advice; the person decides).
 // - The drafts: the response letter for agreeing, paying or disputing.

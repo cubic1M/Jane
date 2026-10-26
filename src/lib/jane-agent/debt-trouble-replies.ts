@@ -14,7 +14,7 @@ import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 
 // Jane's answers when debt is too much (spec step 229), from src/lib/debt-trouble.ts. Pure.
-// Facts and doors to knock on: she doesn't choose between them, never advises on settlement
+// Facts and doors to knock on: it doesn't choose between them, never advises on settlement
 // or bankruptcy, and sends nothing. The fact sentences are the reviewed ones in
 // src/config/debt-trouble.ts, word for word.
 

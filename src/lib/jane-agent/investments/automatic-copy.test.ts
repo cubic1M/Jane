@@ -4,7 +4,7 @@ import { summaryBody } from "./automatic-copy";
 // Spec step 164: the monthly summary says exactly what the log says.
 
 describe("summaryBody", () => {
-  it("lists what Jane did by herself with the total, and what waits for a tap", () => {
+  it("lists what Jane did on its own with the total, and what waits for a tap", () => {
     const body = summaryBody(
       [
         {

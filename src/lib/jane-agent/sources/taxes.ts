@@ -51,13 +51,13 @@ import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flo
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
 
-// Taxes (spec steps 118–127), what Jane brings up by herself:
+// Taxes (spec steps 118–127), what Jane brings up on its own:
 // - Step 118: the tax profile, asked one question at a time in one message
-//   (../tax-flow.ts); then, when she sees a kind of income that isn't on it, she asks
-//   before adding it. Jane never adds anything to the profile by herself.
-// - Step 165: a move she spotted, or one on the checklist, and the city income tax question.
-// - Step 119: a merchant she tagged but isn't sure about ("is MasterClass education?"),
-//   once each; at the levels that let her act, what she tagged last month; and from late
+//   (../tax-flow.ts); then, when it sees a kind of income that isn't on it, it asks
+//   before adding it. Jane never adds anything to the profile on its own.
+// - Step 165: a move it spotted, or one on the checklist, and the city income tax question.
+// - Step 119: a merchant it tagged but isn't sure about ("is MasterClass education?"),
+//   once each; at the levels that let it act, what it tagged last month; and from late
 //   January, each tax form that should have arrived, until the person has it.
 
 const monthName = (month: string) =>
@@ -155,7 +155,7 @@ export const taxesSource: MessageSource = {
     }
 
     // Spec step 165: a move Jane spotted in payments to state agencies (at the levels that
-    // let her act, already counted), or one started on the checklist; then, living in a
+    // let it act, already counted), or one started on the checklist; then, living in a
     // state with city income taxes, whether the person lives in one.
     const residency = estimate?.residency;
     if (estimate && residency && !residency.told) {
@@ -350,7 +350,7 @@ export const taxesSource: MessageSource = {
     // it's already on the deadlines; otherwise one tap puts it there.
     for (const m of tax.plan?.moves ?? []) {
       if (!m.open || m.ownMessage || m.handled === "no") continue;
-      // Jane adds open moves herself at the levels that let her act (then says so); at the
+      // Jane adds open moves itself at the levels that let it act (then says so); at the
       // others the person adds them, so there's nothing more to say.
       if ((m.handled === null) === acts) continue;
       out.push({
@@ -639,7 +639,7 @@ export const taxesSource: MessageSource = {
     }
 
     // Spec step 218: the IP PIN in January (already on the deadlines at the levels that let
-    // Jane act); a sign of identity theft she noticed; and an open case's next step.
+    // Jane act); a sign of identity theft it noticed; and an open case's next step.
     const identity = tax.identity;
     if (identity) {
       if (identity.season && !identity.havePin) {
@@ -777,9 +777,9 @@ export const taxesSource: MessageSource = {
       }
     }
 
-    // Spec step 166: with a document partner, Jane collects the forms herself: a form that
+    // Spec step 166: with a document partner, Jane collects the forms itself: a form that
     // doesn't match the accounts, the ones collected, and one still missing a week after its
-    // date. Without one, she asks whether each has arrived (below).
+    // date. Without one, it asks whether each has arrived (below).
     const docs = tax.documents;
     if (docs?.collecting) {
       for (const f of docs.flagged) {

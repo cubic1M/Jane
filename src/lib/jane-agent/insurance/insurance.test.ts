@@ -368,7 +368,7 @@ describe("Jane's own reshops in the chat (spec step 104)", () => {
     );
   });
 
-  it("asks instead of the generic insurance finding when Jane shops by herself", () => {
+  it("asks instead of the generic insurance finding when Jane shops on its own", () => {
     const finding = {
       findingId: "f1",
       type: "insurance_reshop" as const,
@@ -505,7 +505,7 @@ it("leaves a check-up on other things alone", () => {
 });
 
 describe("insurance on autopilot (spec step 108)", () => {
-  it("reads what Jane does by herself and how to reach the insurer", () => {
+  it("reads what Jane does on its own and how to reach the insurer", () => {
     expect(parseIntent("what do you do with my insurance on your own", ASOF)).toMatchObject({
       kind: "insurance",
       ask: "autopilot",
@@ -516,7 +516,7 @@ describe("insurance on autopilot (spec step 108)", () => {
     });
   });
 
-  it("says the level, then what the Insurance area lets Jane buy by herself", () => {
+  it("says the level, then what the Insurance area lets Jane buy on its own", () => {
     const ask = {
       sector: "insurance",
       level: "ask",

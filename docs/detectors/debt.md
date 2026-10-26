@@ -12,7 +12,7 @@ Conventions:
 - **Value** is dollars a year, or the dollars at risk. The rates and thresholds live in
   `src/config/detectors.ts` and `src/config/detectors-debt.ts`, never in a detector.
 - **Confidence** is `confidenceOf` (src/profile/confidence.ts): a fact the person told is 100%; one
-  Jane saw gains with months of data and clean matches; one she guessed is capped at 75%. A
+  Jane saw gains with months of data and clean matches; one it guessed is capped at 75%. A
   suggestion takes the weakest of the facts it rests on. Where approval or an outcome depends on
   something Jane cannot see (a lender's decision, a contract's terms), the detector adds a guessed
   piece so the percentage stays honest.

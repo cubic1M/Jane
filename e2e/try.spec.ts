@@ -19,7 +19,7 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
     "deleted after a day",
   );
   // While Jane reads the sample person's accounts, a loading bar across the top of the page
-  // says how far she's got, and goes when she's done; the chat never says "still going
+  // says how far it's got, and goes when it's done; the chat never says "still going
   // through your accounts" (founder: "remove this one from the chat"). On a fast run the scan
   // may be over before the page is drawn: then there's no bar to see.
   const bar = page.locator("[data-scan-bar]");
@@ -38,11 +38,11 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
       );
     }
   }
-  // Her chat by itself for the checks below.
+  // Its chat by itself for the checks below.
   await page.goto(CHAT);
   // Jane's first card shows on the open page by itself (no reload here) within 25 seconds of
   // the click: it was in the database long before it showed, once. (The morning greeting is
-  // off for now, MORNING_BRIEF; whatever she brings first counts.)
+  // off for now, MORNING_BRIEF; whatever it brings first counts.)
   await expect(page.locator('[data-card-state="showing"]').first()).toBeVisible({
     timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
   });

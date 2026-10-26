@@ -19,7 +19,7 @@ import { tuneUpChanges, type TuneUpChange } from "@/planning/tune-up";
 
 // Plans that keep up (spec step 101): a budget tune-up in the first days of each month and
 // transfers to savings counted toward a goal tracked by hand. At "Handle the safe stuff"
-// and "Handle everything allowed" (Goals and budgets' autopilot, spec step 141) Jane applies both by herself, with
+// and "Handle everything allowed" (Goals and budgets' autopilot, spec step 141) Jane applies both on its own, with
 // Undo on the tune-up; below that nothing changes without a tap (Accept all, Count it).
 
 type Options = { client?: PrismaClient; now?: Date };
@@ -289,8 +289,8 @@ export async function loadUpkeep(userId: string, options: Options = {}): Promise
   return { tuneUp, transfers, counted };
 }
 
-// What Jane does by herself at the levels that allow it: applies this month's tune-up and
-// counts new transfers toward the goal. Run before her brain looks at the person's money.
+// What Jane does on its own at the levels that allow it: applies this month's tune-up and
+// counts new transfers toward the goal. Run before its brain looks at the person's money.
 export async function runPlanUpkeep(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

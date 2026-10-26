@@ -9,7 +9,7 @@ import { employerPlanFor } from "./employer-plan";
 import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
 
-// The retirement planner (spec step 132), loaded for its page, Jane's answers and her
+// The retirement planner (spec step 132), loaded for its page, Jane's answers and its
 // tools: retirement balances, the last 12 months of contributions, the employer plan
 // (a stand-in) and the age from the investor profile. Null until the profile is complete.
 

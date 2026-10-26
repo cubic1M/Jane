@@ -156,7 +156,7 @@ describe.runIf(url)("the yearly debt review against a real database", { timeout:
     ).rejects.toThrow();
   });
 
-  it("at Handle the safe stuff pays before the statement by herself, within the caps", async () => {
+  it("at Handle the safe stuff pays before the statement on its own, within the caps", async () => {
     const id = await demoPerson("rev-safe");
     await fresh(id);
     await level(id, "safe");

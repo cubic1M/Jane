@@ -31,9 +31,9 @@ import { complexity, linkState, type LinkState, type Question } from "@/planning
 import type { TaxPack } from "@/planning/tax-pack";
 
 // Working with an accountant (spec step 222): a read-only link with the tax pack, the
-// documents Jane collected, the questions she has and a place to answer them; the answers
+// documents Jane collected, the questions it has and a place to answer them; the answers
 // come back into Jane. The link holds only tax data, expires, can be revoked, and every view
-// is in the audit log. Jane never sends anything to the accountant herself: the person makes
+// is in the audit log. Jane never sends anything to the accountant itself: the person makes
 // the link and shares it.
 
 type Options = { client?: PrismaClient; now?: Date };
@@ -72,7 +72,7 @@ export type AccountantPageView = {
   questions: Question[];
 };
 
-// The questions Jane has for an accountant, from what she found: deductions missing their
+// The questions Jane has for an accountant, from what it found: deductions missing their
 // proof, a form that doesn't match the accounts, side income not yet called a business or a
 // hobby, and a letter still open.
 export async function loadQuestions(

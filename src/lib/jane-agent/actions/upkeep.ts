@@ -64,7 +64,7 @@ export const tuneUpKeep: ActionHandler = {
   },
 };
 
-// Undo works on Jane's own message about what she changed, while it's still open.
+// Undo works on Jane's own message about what it changed, while it's still open.
 export const tuneUpUndo: ActionHandler = {
   id: "tuneup.undo",
   on: "open",

@@ -8,7 +8,7 @@ import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 
 // Jane's answers about a home's equity (spec step 228), from src/lib/home-equity.ts. Pure.
-// PMI and escrow are rules she can state for anyone; comparing ways to borrow for a project
+// PMI and escrow are rules it can state for anyone; comparing ways to borrow for a project
 // is advice, so it is demo advice mode only and carries the label.
 
 export const EQUITY_PAGE: MessageAction = {

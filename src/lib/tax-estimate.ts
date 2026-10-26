@@ -60,7 +60,7 @@ export type TaxEstimateView = {
   incomeSoFarCents: number;
   estimate: TaxEstimate;
   pay: PayPicture;
-  // False when Jane can see paychecks but not what was withheld: she can say the tax, not
+  // False when Jane can see paychecks but not what was withheld: it can say the tax, not
   // whether it's a refund.
   withholdingKnown: boolean;
   // Everything Jane assumed, said plainly.

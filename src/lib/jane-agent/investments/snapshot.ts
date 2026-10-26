@@ -66,7 +66,7 @@ export type InvestmentSnapshot = {
   // Spec step 135: which account first and where to hold what; order null until the
   // profile is done.
   accountPlan: Pick<AccountPlan, "order" | "location">;
-  // Spec step 137: the monthly note's facts, and how much Jane does by herself.
+  // Spec step 137: the monthly note's facts, and how much Jane does on its own.
   month: { month: string; previousCents: number | null; contributedCents: number };
   // Spec step 157: each goal's bucket; null until the profile is done.
   goalBuckets: { byHerself: boolean; buckets: Bucket[] | null };
@@ -107,7 +107,7 @@ export type InvestmentSnapshot = {
   values: Pick<ValuesView, "prefs" | "plan" | "note">;
   // Spec step 235: large deposits that aren't pay, and their plans.
   sudden: Pick<SuddenMoneyView, "items">;
-  // Spec step 164: what Jane did by herself in the last month, and what she asked about.
+  // Spec step 164: what Jane did on its own in the last month, and what it asked about.
   automatic: Awaited<ReturnType<typeof automaticLog>>;
   // Spec step 162: the cash plan.
   cash: Pick<CashView, "plan">;

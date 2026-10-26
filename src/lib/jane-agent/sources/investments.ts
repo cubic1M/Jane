@@ -96,13 +96,13 @@ import {
 import { learnLink } from "../learn";
 import { snoozeButton, type MessageSource } from "./source";
 
-// Investments in the chat (spec step 128 on). What Jane does by herself, at every autopilot
+// Investments in the chat (spec step 128 on). What Jane does on its own, at every autopilot
 // level:
-// - Step 128: keeps the holdings up to date on each sync, and says once that she can see
+// - Step 128: keeps the holdings up to date on each sync, and says once that it can see
 //   them. Nothing to approve.
-// - Step 129: in demo advice mode, asks the four investor-profile questions once she can see
-//   holdings, and again a year after they were answered. She never answers or changes them
-//   herself; nothing uses the profile until all four are in.
+// - Step 129: in demo advice mode, asks the four investor-profile questions once it can see
+//   holdings, and again a year after they were answered. It never answers or changes them
+//   itself; nothing uses the profile until all four are in.
 // - Step 130: in demo advice mode, finds what investing costs and a lower-cost equivalent
 //   for each costly fund, and says so once (again if the funds change). Switching moves
 //   money, so it always waits for the person's tap (step 133).
@@ -113,28 +113,28 @@ import { snoozeButton, type MessageSource } from "./source";
 //   it always waits for that tap, at every autopilot level.
 // - Step 134: in demo advice mode, once the profile is complete, offers once to invest
 //   automatically every payday (starting it is the person's tap); then on each payday
-//   invests by herself, at every autopilot level, says what she invested, and pauses that
-//   payday by herself when safe to spend is low, saying why.
+//   invests on its own, at every autopilot level, says what it invested, and pauses that
+//   payday on its own when safe to spend is low, saying why.
 // - Step 135: in demo advice mode, once the profile is complete, says once which account to
 //   fill first and where each holding is best kept (again when that changes). Moving money
 //   between accounts is the person's step.
 // - Step 157: in demo advice mode, gives each goal a mix by when it's needed (cash under 3
 //   years) and says so once per set of goals; at "Handle the safe stuff" and above, splits
-//   automatic investing's new money by goal by herself.
+//   automatic investing's new money by goal on its own.
 // - Step 158: in demo advice mode, when the tax profile has children and there's no college
 //   plan, offers once to plan for college; starting one is the person's tap, then the goal
 //   is funded by step 157's buckets and automatic investing.
-// - Step 159: saves medical charges to the HSA receipts vault by herself, says so once per
+// - Step 159: saves medical charges to the HSA receipts vault on its own, says so once per
 //   batch, and in demo advice mode offers to invest the HSA's cash beyond its cushion (a
 //   tap), or a demo HSA when there's none.
 // - Step 137: a monthly note on how the investments stand (no predictions), with at most
 //   one decision (the orders when the mix has drifted); a nudge when automatic investing
-//   has been paused for a month; and what she does by herself at each autopilot level
+//   has been paused for a month; and what it does on its own at each autopilot level
 //   (src/config/investing.ts INVESTMENT_AUTOPILOT).
 // - Step 132: in demo advice mode, once the profile is complete, checks the retirement
 //   projection and the employer match, and says so when the person is behind or missing
 //   match money (again when that changes). Raising a contribution is done at the
-//   employer's plan, so Jane says how and checks the next contributions herself.
+//   employer's plan, so Jane says how and checks the next contributions itself.
 
 const list = (names: string[]) =>
   names.length <= 1
@@ -317,7 +317,7 @@ export const investmentsSource: MessageSource = {
         priority: MESSAGE_PRIORITY.college,
       });
     }
-    // Step 159: the HSA. Receipts are saved by herself at every level; investing the cash
+    // Step 159: the HSA. Receipts are saved on its own at every level; investing the cash
     // beyond the cushion moves money, so it waits for a tap.
     const hsa = inv.hsa;
     if (hsa.receipts > 0) {
@@ -656,8 +656,8 @@ export const investmentsSource: MessageSource = {
         priority: MESSAGE_PRIORITY.retirement_accounts,
       });
     }
-    // Step 164: once a month, what Jane did by herself in investing within the person's
-    // caps (one line each, from the log), and what she's waiting on a tap for.
+    // Step 164: once a month, what Jane did on its own in investing within the person's
+    // caps (one line each, from the log), and what it's waiting on a tap for.
     const handled = inv.automatic;
     if (inv.advice && handled.did.length + handled.asked.length > 0) {
       out.push({
@@ -683,7 +683,7 @@ export const investmentsSource: MessageSource = {
       });
     }
     // Step 162: cash earning what it should. Each move is a tap; with no move Jane can do,
-    // she says what the person could do (open a high-yield savings account).
+    // it says what the person could do (open a high-yield savings account).
     const cash = inv.cash.plan;
     if (inv.advice && cash && cash.gainCents >= CASH_MIN_GAIN_CENTS) {
       out.push({
@@ -695,7 +695,7 @@ export const investmentsSource: MessageSource = {
         priority: MESSAGE_PRIORITY.cash,
       });
     }
-    // Step 161: crypto, read-only. Jane says once that she can see it (facts, for everyone);
+    // Step 161: crypto, read-only. Jane says once that it can see it (facts, for everyone);
     // in demo advice mode, too big a share and costly fees are flagged once each. Nothing is
     // ever traded, at any level.
     const crypto = inv.crypto;

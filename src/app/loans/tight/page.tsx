@@ -35,7 +35,7 @@ async function TightContent({ searchParams }: Pick<PageProps<"/loans/tight">, "s
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">When money is tight</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Jane watches your checking forecast. If it dips under its cushion, she prepares what to
+          Jane watches your checking forecast. If it dips under its cushion, Jane prepares what to
           pay first and what to ask for. Nothing is sent until you tap.
         </p>
       </div>

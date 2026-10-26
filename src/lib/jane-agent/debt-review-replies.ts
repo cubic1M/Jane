@@ -9,7 +9,7 @@ import type { MessageAction, MessageRefs } from "./types";
 
 // Jane's debt review in the chat (spec step 230), from src/lib/debt-review.ts. Pure. One
 // message with every item that waits for a tap, each with its own button; what Jane did by
-// herself is listed without one.
+// itself is listed without one.
 
 export const REVIEW_PAGE: MessageAction = {
   id: "open",

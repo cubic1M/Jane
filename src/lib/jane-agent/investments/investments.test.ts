@@ -1295,7 +1295,7 @@ describe("overviewReply and autopilotReply", () => {
     });
   });
 
-  it("says what Jane does by herself at each level, then what the Investing area allows", () => {
+  it("says what Jane does on its own at each level, then what the Investing area allows", () => {
     const ask = {
       sector: "investing",
       level: "ask",

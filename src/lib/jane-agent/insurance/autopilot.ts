@@ -7,8 +7,8 @@ import type { Reply } from "../replies";
 import { byHerself } from "../replies-autopilot";
 
 // "What do you do with my insurance on your own?" (spec step 108): what Jane keeps up at the
-// person's autopilot level, then what the Insurance area's own setting lets her buy or switch
-// by herself (spec step 141), so the answer matches what she does.
+// person's autopilot level, then what the Insurance area's own setting lets it buy or switch
+// on its own (spec step 141), so the answer matches what it does.
 
 export function autopilotReply(
   level: string | null,

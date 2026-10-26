@@ -53,7 +53,7 @@ describe("ComparisonCards", () => {
     for (const label of ["Lowest total cost", "Lowest monthly", "Fastest payoff"]) {
       expect(html).toContain(label);
     }
-    // Opens on lowest total, which puts her pick first.
+    // Opens on lowest total, which puts its pick first.
     expect(html).toMatch(/checked="" value="lowest_total"/);
     expect(html.indexOf('data-option-id="Lakeside"')).toBeLessThan(
       html.indexOf('data-option-id="Harbor"'),

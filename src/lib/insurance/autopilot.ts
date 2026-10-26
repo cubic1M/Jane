@@ -6,7 +6,7 @@ import { acceptShop, AcceptShopError } from "./accept";
 import { openShops } from "./shop";
 
 // Insurance's autopilot (spec step 141). Only when the person set Insurance to "Everything
-// allowed": Jane says yes to her own pick by herself (the switch of spec step 105, same
+// allowed": Jane says yes to its own pick on its own (the switch of spec step 105, same
 // cover, no gap) when its monthly premium fits the sector's caps. Anything over a cap waits
 // for the person's tap, as before. Every yes is recorded against the caps.
 

@@ -252,7 +252,7 @@ async function RefinanceContent({
   const user = await requireUser();
   await connection();
   const params = await searchParams;
-  // Opened before Jane's first monthly check: she checks now.
+  // Opened before Jane's first monthly check: it checks now.
   await ensureChecked(user.id);
   const [refi, apps, transfers] = await Promise.all([
     loadRefinance(user.id),

@@ -152,7 +152,7 @@ describe.runIf(url)(
       expect(addon.letter).toContain("cancel my GAP cover");
       expect(logAuditCalled("car_addon_confirmed")).toBe(true);
 
-      // The refund question: the team can send it; Jane sends nothing herself.
+      // The refund question: the team can send it; Jane sends nothing itself.
       const [refund] = await fromSource(id);
       expect(refund).toMatchObject({
         dedupeKey: `caraddon_refund:${addon.id}`,

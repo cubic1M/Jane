@@ -1,7 +1,7 @@
 import type { Checkup } from "@/lib/insurance/checkups";
 
 // The coverage checkup's words in Jane's chat (spec step 106), for the message Jane posts by
-// herself and for "check my insurance". Pure.
+// itself and for "check my insurance". Pure.
 
 // Recommendations said in the chat; the rest are on the checkup page. As many as fit in the
 // chars too, so a long one (a business's liability, spec step 201) doesn't make the answer long.

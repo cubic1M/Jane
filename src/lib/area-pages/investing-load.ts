@@ -26,7 +26,7 @@ export async function loadInvestingArea(userId: string) {
       profileOf(userId),
       // Spec step 133: holdings shaped by simulated orders say so.
       db.brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
-      // Spec step 137: what Jane does by herself at the person's autopilot level.
+      // Spec step 137: what Jane does on its own at the person's autopilot level.
       autopilotOf(userId),
       // Spec step 141: what the Investing area may do by itself.
       autopilotFor(userId, "investing"),

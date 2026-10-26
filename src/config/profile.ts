@@ -1,4 +1,4 @@
-// The picture of you (spec step 253): how Jane works out what she knows about a person.
+// The picture of you (spec step 253): how Jane works out what it knows about a person.
 // Thresholds and the confidence recipe live here, never inline.
 
 export const PROFILE_MONTHS = 12;

@@ -4,7 +4,7 @@ import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
 // What you could borrow (spec step 250): when Jane's monthly soft check finds a lower likely rate
-// or a bigger amount than the check before, she says so once, with the page to see the rest.
+// or a bigger amount than the check before, it says so once, with the page to see the rest.
 
 export const borrowingPowerSource: MessageSource = {
   key: "borrowing_power",

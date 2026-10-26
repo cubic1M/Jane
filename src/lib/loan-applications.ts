@@ -18,7 +18,7 @@ import {
 export { statusLine, type ApplicationStatus, type LoanApplicationView };
 
 // One-tap apply (spec step 112). Jane prepares the application for a refinance offer from
-// what she already knows (the person's name and email, the loan being paid off and what's
+// what it already knows (the person's name and email, the loan being paid off and what's
 // owed); the person reviews the terms and taps Submit (a soft check with the lender
 // partner); if approved, they tap Accept to sign; then Jane watches the lender fund it and
 // the old loan reach zero. Every step after "prepare" needs the person's tap.
@@ -272,7 +272,7 @@ export async function withdrawApplication(
   await track(userId, "loan_application_withdrawn");
 }
 
-// Jane following applications by herself, before her brain looks (src/lib/debt-refresh.ts):
+// Jane following applications on its own, before its brain looks (src/lib/debt-refresh.ts):
 // an accepted loan the lender funded, and a funded one whose old loan now shows zero. Returns
 // what changed.
 export async function refreshLoanApplications(

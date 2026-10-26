@@ -77,7 +77,7 @@ async function GoalsContent() {
           <p className="text-sm">
             {byHerself
               ? "New money from automatic investing goes to each goal by itself: near-term goals first, kept in cash."
-              : "On “Ask me first”, automatic investing uses your one mix. Choose “Handle the safe stuff” in Settings and Jane splits new money by goal by herself."}
+              : "On “Ask me first”, automatic investing uses your one mix. Choose “Handle the safe stuff” in Settings and Jane splits new money by goal on its own."}
           </p>
           <DemoAdviceLabel />
         </section>

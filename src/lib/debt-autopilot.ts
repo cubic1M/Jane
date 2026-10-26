@@ -13,10 +13,10 @@ import { rateChanges, type RateChange } from "@/planning/rate-watch";
 
 export { rateChanges, type RateChange };
 
-// Debt on autopilot (spec step 117). What Jane keeps up by herself for debts, at the
-// person's debt autopilot level (step 141's sectors): she watches every rate the bank
+// Debt on autopilot (spec step 117). What Jane keeps up on its own for debts, at the
+// person's debt autopilot level (step 141's sectors): it watches every rate the bank
 // reports and records changes, drafts the request to move a payment that falls just before
-// payday, and, when the debt sector allows the safe stuff, starts the payoff plan herself
+// payday, and, when the debt sector allows the safe stuff, starts the payoff plan itself
 // so the monthly check (step 110) has something to keep current. Nothing here moves money.
 
 type Options = { client?: PrismaClient; now?: Date };
@@ -26,7 +26,7 @@ const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 // The latest rate changes kept.
 const CHANGES_KEPT = 10;
 
-// Jane's pass before her brain looks at the person's money (src/lib/debt-refresh.ts).
+// Jane's pass before its brain looks at the person's money (src/lib/debt-refresh.ts).
 export async function runDebtAutopilot(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

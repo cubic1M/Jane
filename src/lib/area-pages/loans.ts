@@ -247,7 +247,7 @@ export function loansTree(input: LoansTreeInput): AreaTree {
   by.credit.push(
     item("credit", "goal", {
       label: "A score for a goal",
-      summary: "Tell Jane the score you need and by when, and she plans it month by month.",
+      summary: "Tell Jane the score you need and by when, and Jane plans it month by month.",
     }),
   );
 

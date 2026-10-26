@@ -55,7 +55,7 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   tax_notices:
     "reads a letter the person uploads, checks it and drafts a reply; nothing is visible until one is uploaded",
   tax_accountant:
-    "makes a read-only link when the person asks; a link is a credential, so Jane never makes one by herself",
+    "makes a read-only link when the person asks; a link is a credential, so Jane never makes one on its own",
   search_transactions: "looks up transactions the person asks about",
   spending_by_category: "answers what was spent where",
   monthly_totals: "answers month totals",
@@ -99,7 +99,7 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   yearly_review: "rolls up what the other investing detectors found, once a year",
   steady_hand: "a calm message after a market drop; it follows an event, not a profile",
   crypto: "reports linked crypto read-only; nothing to suggest",
-  debt_autopilot: "reports what Jane does by herself for debts at the person's level",
+  debt_autopilot: "reports what Jane does on its own for debts at the person's level",
   credit_monthly:
     "gathers the credit items the other detectors raise (refinance, car add-ons, costly borrowing, rent), once a month, into one message",
   debt_review:

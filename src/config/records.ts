@@ -4,7 +4,7 @@
 // the date it was filed (or the due date, if later); 6 years if you left out more than
 // 25% of your income; 7 years for a loss from worthless securities or a bad debt; records
 // for property (a home, shares) until the period of limitations for the year you sell it
-// ends. Jane never deletes anything: she reminds, and the person decides.
+// ends. Jane never deletes anything: it reminds, and the person decides.
 
 export type RetentionKey = "return" | "property";
 

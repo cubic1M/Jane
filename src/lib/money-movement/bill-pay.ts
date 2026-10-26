@@ -21,9 +21,9 @@ import { scheduleTransfer, TransferError } from "./transfers";
 // Bills paid on time (spec step 145), through the money-movement partner (the stand-in for
 // demo-bank people; nobody else yet). For each card or loan due in the next few weeks that
 // the person's own autopay doesn't cover, Jane schedules a payment a couple of days early,
-// by herself where Subscriptions and bills' autopilot allows it within its caps, otherwise
+// on its own where Subscriptions and bills' autopilot allows it within its caps, otherwise
 // with one tap. Never one that would take checking's forecast below zero. A due date before
-// payday on which checking runs short is worth moving, and she says so.
+// payday on which checking runs short is worth moving, and it says so.
 
 type Options = { client?: PrismaClient; now?: Date; partner?: MoneyMovementPartner | null };
 
@@ -234,7 +234,7 @@ export async function payBill(
   }
 }
 
-// What Jane does by herself: each bill Subscriptions and bills' autopilot may pay within its
+// What Jane does on its own: each bill Subscriptions and bills' autopilot may pay within its
 // caps. The rest waits for the person's tap in the chat.
 export async function runBillPay(
   userId: string,

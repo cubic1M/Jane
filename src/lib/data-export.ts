@@ -402,7 +402,7 @@ export async function exportUserData(
     }),
     // Shared savings totals (spec step 139): never the token itself.
     db.savedShares.findMany({ select: { totalCents: true, createdAt: true, revokedAt: true } }),
-    // One autopilot, every sector (spec step 141): what was set, and what Jane did by herself.
+    // One autopilot, every sector (spec step 141): what was set, and what Jane did on its own.
     db.autopilotSectors.findMany({
       select: {
         sector: true,

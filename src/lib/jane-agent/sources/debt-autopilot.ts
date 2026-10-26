@@ -4,10 +4,10 @@ import { rateChangeLine } from "../debt-autopilot-replies";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
-// Debt on autopilot (spec step 117): what Jane did or found by herself. A rate the bank
+// Debt on autopilot (spec step 117): what Jane did or found on its own. A rate the bank
 // changed (once per change, with what it means for the payoff plan), a payment due just
 // before payday with the request to move it drafted (once per debt), and the payoff plan
-// she started herself (once).
+// it started itself (once).
 
 const LOANS = {
   id: "open" as const,

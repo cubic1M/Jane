@@ -1,6 +1,6 @@
 // Letters from the IRS and the state (spec step 217). FOR REVIEW: the days are the usual
 // ones printed on each notice; the notice itself always has the date that applies, and
-// Jane uses that when she reads it.
+// Jane uses that when it reads it.
 //
 // Sources: irs.gov/individuals/understanding-your-cp2000-notice, /understanding-your-cp14-
 // notice, /understanding-your-cp501-notice, /understanding-your-cp503-notice,

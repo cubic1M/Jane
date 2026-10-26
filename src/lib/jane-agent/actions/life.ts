@@ -9,7 +9,7 @@ import {
 } from "./handler";
 
 // Buttons on a life event Jane spotted (spec step 100), through the checklists' own code:
-// Yes starts the checklist and runs what Jane can do herself (budgets, an insurance review
+// Yes starts the checklist and runs what Jane can do itself (budgets, an insurance review
 // and reminders); Not me and Don't ask again stop the question for good.
 
 function kindOf({ message }: ActionContext) {

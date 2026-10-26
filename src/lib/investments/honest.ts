@@ -11,7 +11,7 @@ import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
 import { loadReturns } from "./returns";
 
-// Honest performance (spec step 233), for the investments page, Jane's answers and her
+// Honest performance (spec step 233), for the investments page, Jane's answers and its
 // tool: how the money really did over 1, 3 and 5 years, after fees and taxes, against a
 // benchmark mix with the same risk, and why they differ. Facts about the past only.
 

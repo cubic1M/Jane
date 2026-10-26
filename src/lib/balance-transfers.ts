@@ -13,7 +13,7 @@ import {
   type TransferComparison,
 } from "@/planning/balance-transfer";
 
-// Balance transfers (spec step 113). Jane finds 0% transfer cards for each card with her
+// Balance transfers (spec step 113). Jane finds 0% transfer cards for each card with its
 // monthly rate check (src/lib/refinance.ts checkRates) and compares them, fee counted. Opening
 // the card and moving the money are the person's; once they say they've moved a balance,
 // Jane keeps the promo's end in view: a deadline on /deadlines and reminders before it.

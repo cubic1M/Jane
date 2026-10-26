@@ -229,7 +229,7 @@ export async function savePropertyAnswers(
 }
 
 // A reminder for the appeal window's last day, once. Reminding is safe at any autopilot
-// level that lets Jane act; the appeal itself is never filed by her.
+// level that lets Jane act; the appeal itself is never filed by it.
 export async function remindAppealWindow(
   userId: string,
   {
@@ -331,7 +331,7 @@ export async function draftPropertyAppeal(
 }
 
 // "My team files it" or "I'll file it": a record of who, on the person's tap. The team's
-// filing is the concierge queue (a stand-in); Jane files nothing herself.
+// filing is the concierge queue (a stand-in); Jane files nothing itself.
 export async function chooseFiler(
   userId: string,
   by: "team" | "you" | "drop",

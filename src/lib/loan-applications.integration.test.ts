@@ -28,7 +28,7 @@ import {
 } from "./loan-applications";
 
 // Spec step 112 against a real, migrated Postgres, on the demo bank: "Apply" on Jane's
-// refinance pick prepares the application from what she knows, the terms are reviewed
+// refinance pick prepares the application from what it knows, the terms are reviewed
 // before anything is sent, the stand-in lender approves on a soft check, the person
 // accepts, the lender funds it, the demo bank shows the old loan at zero, and Jane
 // confirms the payoff and counts the new loan.
@@ -135,7 +135,7 @@ describe.runIf(url)("one-tap apply against a real database", () => {
     expect((await listApplications(userId, opts()))[0].status).toBe("accepted");
   });
 
-  it("follows it by herself: funded, then the old loan at zero, then the new loan counted", async () => {
+  it("follows it on its own: funded, then the old loan at zero, then the new loan counted", async () => {
     expect(await refreshLoanApplications(userId, opts(later(1)))).toEqual({
       funded: 0,
       paidOff: 0,

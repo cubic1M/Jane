@@ -612,10 +612,10 @@ async function InsuranceContent({
               <Link href="/documents" className={LINK}>
                 policy documents
               </Link>{" "}
-              and adds each one once you confirm what she read. Unless you let her switch for you in
-              Settings, she never buys, changes or cancels insurance without your tap.
+              and adds each one once you confirm what Jane read. Unless you let Jane switch for you
+              in Settings, it never buys, changes or cancels insurance without your tap.
             </p>
-            {/* Spec steps 108 and 141: what Jane does with insurance by herself. */}
+            {/* Spec steps 108 and 141: what Jane does with insurance on its own. */}
             <p>
               On autopilot: {autopilotReply(autopilot, insuranceArea).body}{" "}
               <Link href="/settings#sectors" className={LINK}>
@@ -629,7 +629,7 @@ async function InsuranceContent({
           <summary className={`cursor-pointer text-sm ${LINK}`}>Your household details</summary>
           <div className="mt-2 flex flex-col gap-2">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Leave a box blank and Jane reads it from your accounts where she can.
+              Leave a box blank and Jane reads it from your accounts where it can.
             </p>
             <HouseholdForm
               values={{

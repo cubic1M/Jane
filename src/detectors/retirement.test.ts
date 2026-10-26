@@ -23,7 +23,7 @@ describe("medicare", () => {
     expect(s.worthKind).toBe("risk");
     expect(s.why).toMatch(/20 or more people, Part B can wait/);
     expect(s.urgency).toBe("later");
-    // Their investor profile (spec step 129) tells Jane their age, so she's sure of it.
+    // Their investor profile (spec step 129) tells Jane their age, so it's sure of it.
     expect(s.confidence.reason).not.toMatch(/don't know your age/);
     expect(s.confidence.percent).toBeGreaterThan(55);
   });

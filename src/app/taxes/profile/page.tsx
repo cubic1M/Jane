@@ -76,7 +76,7 @@ async function ProfileContent() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Your tax profile</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          What Jane needs to know for your {TAX_YEAR} taxes. She works out what she can from your
+          What Jane needs to know for your {TAX_YEAR} taxes. Jane works out what it can from your
           accounts and marks it; everything else is your answer, and you can change any of it.
         </p>
       </div>

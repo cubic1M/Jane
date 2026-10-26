@@ -5,7 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 
 // What Jane remembers about the person (spec step 91), in jane_preferences. Only ever saved
 // on the person's own tap: "Don't suggest again" on a suggestion, or "Remember this" under
-// something they told her in the chat. Jane's brain, her answers and every sector read them
+// something they told it in the chat. Jane's brain, its answers and every sector read them
 // through the helpers here; Settings lists them, each deletable.
 //
 // Keys: kind "never" is a suggestion not to make again: "finding:<the finding's key>" or

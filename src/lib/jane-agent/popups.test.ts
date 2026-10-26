@@ -40,7 +40,7 @@ const message = (over: Partial<MessageView> = {}): MessageView => ({
 });
 
 describe("what floats", () => {
-  it("floats Jane's own open messages with a button, never her answers or what's done", () => {
+  it("floats Jane's own open messages with a button, never its answers or what's done", () => {
     expect(isPopup(message())).toBe(true);
     expect(isPopup(message({ kind: "reply" }))).toBe(false);
     expect(isPopup(message({ status: "answered" }))).toBe(false);

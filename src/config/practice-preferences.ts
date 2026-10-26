@@ -13,16 +13,16 @@ import type { ScanKind } from "@/config/practice-scan";
 // these can raise a hard limit: AUTOPILOT_LIMITS (src/config/portfolios.ts) and the opportunity
 // hard caps below always win.
 
-// Whether Jane trades the practice portfolio herself or only says what she would do.
+// Whether Jane trades the practice portfolio itself or only says what it would do.
 export const AUTOPILOT_MODES = {
   suggest: {
     label: "Suggest only",
-    description: "Jane says what she would do; nothing is traded, even with practice money.",
+    description: "Jane says what it would do; nothing is traded, even with practice money.",
   },
   act: {
     label: "Act within the limits",
     description:
-      "Jane trades the practice portfolio herself, inside every limit. Practice money only.",
+      "Jane trades the practice portfolio itself, inside every limit. Practice money only.",
   },
 } as const;
 export type AutopilotMode = keyof typeof AUTOPILOT_MODES;

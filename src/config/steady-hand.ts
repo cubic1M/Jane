@@ -1,5 +1,5 @@
 // A steady hand (spec step 163, demo advice): when markets drop, Jane keeps the plan.
-// She says what changed, what it means for each goal's timeline, and what the plan is. She
+// It says what changed, what it means for each goal's timeline, and what the plan is. It
 // never says what markets will do, in any message, reply or tool. FOR REVIEW.
 
 // A "big drop": the investments' own return (money in and out left out) over a window.

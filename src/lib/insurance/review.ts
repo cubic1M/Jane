@@ -20,7 +20,7 @@ import { applySaving, listSavings, SavingError } from "./savings";
 // The yearly insurance review (spec step 202). "Keep me covered" does what leaves the cover
 // as it is: pays less for the same cover (a payment plan, autopay, paperless, a bundle) and
 // calls the insurer about a renewal that's going up. At "Everything allowed" Jane does it by
-// herself, within the person's caps; below that it takes their tap on "Keep me covered".
+// itself, within the person's caps; below that it takes their tap on "Keep me covered".
 // Nothing that lowers the cover (a higher deductible) and nothing that changes cover is ever
 // done without a tap.
 

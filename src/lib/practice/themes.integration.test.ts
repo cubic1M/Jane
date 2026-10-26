@@ -17,7 +17,7 @@ import { runPracticeDay, runPracticeDayForAll } from "./scan";
 import { postThemeAlerts } from "./theme-alerts";
 
 // The news themes against a real, migrated Postgres and the sample market: the day's news
-// brings a theme idea that waits for a yes even when Jane acts by herself, Yes buys the small
+// brings a theme idea that waits for a yes even when Jane acts on its own, Yes buys the small
 // slice, and the autopilot gets out after the month, as the idea said. Practice money only.
 
 const url = process.env.TEST_DATABASE_URL;
@@ -49,7 +49,7 @@ describe.runIf(url)("news themes in the practice portfolio", () => {
     await startPractice(user.id, 4, { client, now: at("2026-09-01") });
     await runAutopilot(user.id, { client, now: at("2026-09-01") });
 
-    // The sample's war on October 16: an idea, kept waiting though Jane acts by herself.
+    // The sample's war on October 16: an idea, kept waiting though Jane acts on its own.
     await runPracticeDay(user.id, { client, now: at("2026-10-16") });
     const rows = await client.practiceOpportunity.findMany({
       where: { userId: user.id, kind: "theme_idea" },

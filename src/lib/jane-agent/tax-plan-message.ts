@@ -3,7 +3,7 @@ import { shortDate } from "./sources/source";
 import type { MessageAction, MessageRefs } from "./types";
 
 // The year-round tax plan in the chat (spec step 167): a move that's open now, with its
-// deadline and what Jane prepared (at the levels that let her act, already on the
+// deadline and what Jane prepared (at the levels that let it act, already on the
 // deadlines), and the answer to "my tax plan".
 
 export const PLAN_HREF = "/taxes?focus=soon";

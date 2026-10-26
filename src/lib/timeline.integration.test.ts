@@ -11,8 +11,8 @@ import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { recordAct } from "@/lib/sector-autopilot";
 import { loadTimeline } from "./timeline";
 
-// Spec step 187 against a real Postgres: every action Jane takes by herself is written when
-// she takes it (recordAct), and every one appears on the timeline with its reason; nothing
+// Spec step 187 against a real Postgres: every action Jane takes on its own is written when
+// it takes it (recordAct), and every one appears on the timeline with its reason; nothing
 // of another person's does.
 
 const url = process.env.TEST_DATABASE_URL;
@@ -53,7 +53,7 @@ describe.runIf(url)("everything Jane did, against a real database", () => {
     );
     expect(timeline.every((e) => e.by === "jane" && e.why.length > 0)).toBe(true);
     expect(timeline[0]).toMatchObject({ cents: 6_000, sector: "goals" });
-    // Nothing missing against the record Jane keeps of her own acts.
+    // Nothing missing against the record Jane keeps of its own acts.
     expect(await client.autopilotAct.count({ where: { userId } })).toBe(timeline.length);
   });
 
@@ -95,7 +95,7 @@ describe.runIf(url)("everything Jane did, against a real database", () => {
     expect(tool.entries).toEqual([
       expect.objectContaining({
         what: finding.title,
-        by: "Jane, by herself",
+        by: "Jane, on its own",
         why: "A standing rule you set said yes to this.",
       }),
     ]);

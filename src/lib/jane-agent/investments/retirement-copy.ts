@@ -2,8 +2,8 @@ import { WITHDRAWAL_RATE } from "@/config/retirement";
 import { formatCents } from "@/lib/money";
 import type { Range, RetirementPlan } from "@/planning/retirement";
 
-// Jane's words about retirement (spec step 132), shared by her message, her rule answer
-// and her tool. Pure. Always a range, never a promise.
+// Jane's words about retirement (spec step 132), shared by its message, its rule answer
+// and its tool. Pure. Always a range, never a promise.
 
 export const range = (r: Range) => `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;
 

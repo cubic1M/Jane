@@ -30,7 +30,7 @@ const estimatedTaxes: Detector = {
     );
     if (paid.length > 0) return null;
     // A shop's deposits are sales, not profit: tax is owed on what's left after costs, which
-    // Jane can't see, so she assumes a share and says so.
+    // Jane can't see, so it assumes a share and says so.
     const business = pattern.value === "business";
     const taxable = Math.round(
       annualIncome(income.value) * (business ? R.tax.businessProfitShare : 1),
@@ -49,7 +49,7 @@ const estimatedTaxes: Detector = {
       short: `Nobody withholds tax from your pay; about ${formatCents(owed)} a year is due.`,
       worthCents: Math.round(owed * R.underpaymentPenaltyRate),
       worthKind: "risk",
-      // The tax is owed whatever she does; planning for it avoids the penalty and the surprise,
+      // The tax is owed whatever it does; planning for it avoids the penalty and the surprise,
       // so it counts for a share of the bill in ranking.
       rankCents: Math.round(owed * R.tax.rankShareOfBill),
       confidence: weakest([

@@ -16,7 +16,7 @@ import { scopedFor } from "@/lib/db-scoped";
 // account's bank-fee finding; a new subscription is its subscription card, so the chat asks
 // once (docs/feature-audit.md, cluster 10). Detection runs the standing rules right after it
 // finds them (src/lib/standing-rules.ts), so at "Handle the safe stuff" and above Jane has already
-// asked for the old price (small rises) or the fee back by herself: `handled` says so. At
+// asked for the old price (small rises) or the fee back on its own: `handled` says so. At
 // "Ask me first", or for a reshop or a call (never by rule), "Look into it" is the one tap
 // (src/lib/jane-agent/actions/changes.ts).
 

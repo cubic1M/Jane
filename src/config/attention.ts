@@ -1,7 +1,7 @@
 // Asking less, at the right time (spec step 147): what Jane learns from how the person
-// answers her, and the limits on it. Read by src/lib/jane-agent/attention.ts.
+// answers it, and the limits on it. Read by src/lib/jane-agent/attention.ts.
 
-// How far back Jane looks at her own messages and the answers to them.
+// How far back Jane looks at its own messages and the answers to them.
 export const ATTENTION_DAYS = 60;
 // The person's usual hour is known once they've answered this many times.
 export const ATTENTION_MIN_ANSWERS = 5;
@@ -15,7 +15,7 @@ export const ATTENTION_STOP_AFTER = 4;
 // A channel (push or email) is learned once each has carried this many messages.
 export const ATTENTION_MIN_NOTIFIED = 4;
 // Never held and never stopped: urgent alerts and deadlines (heads_ups), bills to pay,
-// money in motion, the brief and Jane's one-time questions, and her own note about
+// money in motion, the brief and Jane's one-time questions, and its own note about
 // stopping something.
 export const ATTENTION_ALWAYS: readonly string[] = [
   "heads_ups",

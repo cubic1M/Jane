@@ -4,7 +4,7 @@ import { shortMonth } from "@/planning/balance-transfer";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // Balance transfers from the chat (spec step 113), through src/lib/balance-transfers.ts.
-// Jane can't open a card or move money: "I've moved it" tells her the person did, so she
+// Jane can't open a card or move money: "I've moved it" tells it the person did, so it
 // can keep the 0% end in view; "It's paid off" ends the reminders.
 
 const failed = (error: unknown) =>

@@ -57,7 +57,7 @@ export function HomeForm({ values }: { values: HomeValues }) {
     >
       <h2 className="font-semibold">Your home</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Jane finds your mortgage interest and property tax herself. Add points you paid in{" "}
+        Jane finds your mortgage interest and property tax itself. Add points you paid in{" "}
         {values.year} and a home sale; leave a part empty to clear it.
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

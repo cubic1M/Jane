@@ -95,7 +95,7 @@ export type ScanPreferences = {
   taxSensitive: boolean;
   // Cash waiting that is kept, not invested.
   cashBufferCents: number;
-  // "suggest": Jane only suggests (no trades); "act": she acts within the caps.
+  // "suggest": Jane only suggests (no trades); "act": it acts within the caps.
   mode: "suggest" | "act";
 };
 

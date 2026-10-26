@@ -177,7 +177,7 @@ export async function runAutomaticInvestingForAll({
   return { people: sectors.length, acted };
 }
 
-// The month's log for the summary: what Jane did on her own, and what she asked first.
+// The month's log for the summary: what Jane did on its own, and what it asked first.
 export async function automaticLog(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

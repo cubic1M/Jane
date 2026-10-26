@@ -6,8 +6,8 @@ import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 
 // Everything Jane did (spec step 187): one honest record across sectors. Every action
-// Jane takes by herself is written to autopilot_acts (recordAct, src/lib/sector-autopilot.ts)
-// when she takes it, so each appears here with its reason; what the person tapped through
+// Jane takes on its own is written to autopilot_acts (recordAct, src/lib/sector-autopilot.ts)
+// when it takes it, so each appears here with its reason; what the person tapped through
 // the money-movement partner and yes-answers from standing rules are added. Transfers
 // still pending can be undone from /transfers.
 

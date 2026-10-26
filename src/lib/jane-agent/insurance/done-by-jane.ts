@@ -13,8 +13,8 @@ import {
 } from "./done-by-jane-words";
 
 // "Can you get my renewal lowered?" and "file my claim for me" (spec step 155), answered
-// from what Jane has: a renewal she can call about (with the person's OK, or done within
-// their autopilot limits), and a claim she can file once they've checked the draft.
+// from what Jane has: a renewal it can call about (with the person's OK, or done within
+// their autopilot limits), and a claim it can file once they've checked the draft.
 
 const INSURANCE = {
   id: "open",

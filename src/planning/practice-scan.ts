@@ -47,7 +47,7 @@ import { apply, LedgerError, type LedgerState } from "./practice-ledger";
 
 // The daily scan of a practice portfolio (spec step 292, Phase AW, Stage A). Pure: from what the
 // ledger holds, the market data and the trades so far, four kinds of flag, each with what Jane
-// does about it in the practice ledger, the numbers, the caps it was held to and how sure she is:
+// does about it in the practice ledger, the numbers, the caps it was held to and how sure Jane is:
 // - drift_rebalance: the mix has drifted past the band (the autopilot's rebalance does it);
 // - dip_buy: a model holding has dropped, bought only with cash waiting to be invested and never
 //   past its target plus a margin;

@@ -23,7 +23,7 @@ import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { cashPlan, type CashPlace, type CashPlan } from "@/planning/cash";
 import { loadInvestments, type Investments } from "./holdings";
 
-// Cash done right (spec step 162), for its page, Jane's answers, her buttons and tools.
+// Cash done right (spec step 162), for its page, Jane's answers, its buttons and tools.
 // Cash in checking, savings and the brokerage's sweep, at stand-in rates; the plan from
 // src/planning/cash.ts; and the two taps, through the money-movement and brokerage
 // stand-ins. Moving money is always the person's tap.

@@ -28,7 +28,7 @@ import {
 
 // Tax moves over several years (spec step 220), loaded from the person's own plan: the
 // year's estimate (step 120), the pay and the retirement accounts Jane sees, what they told
-// her about retiring and the bonuses and sales they plan. The moves are demo advice: shown
+// it about retiring and the bonuses and sales they plan. The moves are demo advice: shown
 // only where adviceMode is on, each with what it saves over all the years, and "put it on
 // my plan" adds a deadline for the person (or the investing side, once there is one) to
 // carry out. Jane moves no money.
@@ -204,7 +204,7 @@ export async function removePlanEvent(
 }
 
 // "Put it on my plan": a deadline for the move, in the year it is for. Demo advice, so only
-// where advice is on; Jane doesn't convert, sell or give anything herself.
+// where advice is on; Jane doesn't convert, sell or give anything itself.
 export async function putMoveOnPlan(
   userId: string,
   key: string,

@@ -27,7 +27,7 @@ import { cancelTransfer, scheduleTransfer, TransferError } from "./transfers";
 
 // Money that moves itself (spec step 144). When a paycheck lands, Jane works out its plan
 // (src/planning/paycheck-plan.ts) and, through the money-movement partner, moves each part
-// by herself where its sector's autopilot allows it and the amount fits the caps (step 141);
+// on its own where its sector's autopilot allows it and the amount fits the caps (step 141);
 // the rest waits for one tap. Every transfer is on /transfers and can be undone while
 // pending. Only with a partner: the stand-in for demo-bank people, nobody else yet.
 

@@ -5,8 +5,8 @@ import type { PolicyKind } from "./insurance";
 // it happened). Plain guidance, not legal advice. Step keys are stored on each claim
 // (insurance_claims.steps), so never rename one; add a new key.
 //
-// What Jane does by herself, at every autopilot level: she keeps the tracker and reminds
-// the person of the next step when it's due. She never files a claim or talks to the
+// What Jane does on its own, at every autopilot level: it keeps the tracker and reminds
+// the person of the next step when it's due. It never files a claim or talks to the
 // insurer for them: the claim is the person's own statement.
 
 export type ClaimStep = { key: string; label: string; dueDays: number };

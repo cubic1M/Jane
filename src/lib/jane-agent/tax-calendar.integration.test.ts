@@ -331,7 +331,7 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     const after = await loadTaxCalendar(userId, { client, now });
     expect(after.items[0]).toMatchObject({ status: "done" });
 
-    // Handle the safe stuff: Jane puts them on the deadlines herself, and the message says so.
+    // Handle the safe stuff: Jane puts them on the deadlines itself, and the message says so.
     const auto = await freelancer("cal-yearend-auto");
     await setAutopilot(auto, "safe", { client, now: LINKED });
     expect((await loadTaxCalendar(auto, { client, now })).items[0]).toMatchObject({

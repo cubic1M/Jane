@@ -25,7 +25,7 @@ const months = (n: number) =>
 async function MortgageContent() {
   const user = await requireUser();
   await connection();
-  // The break-even needs offers: before Jane's first monthly check, she checks now.
+  // The break-even needs offers: before Jane's first monthly check, it checks now.
   await ensureChecked(user.id);
   const m = await loadMortgage(user.id);
 
@@ -75,7 +75,7 @@ async function MortgageContent() {
                 <Link href="/loans/equity" className={LINK}>
                   Tell Jane the home&apos;s value when the loan began
                 </Link>{" "}
-                and she works out when it can come off.
+                and it works out when it can come off.
               </p>
             )}
             {m.pmi && (

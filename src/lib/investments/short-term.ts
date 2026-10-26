@@ -26,7 +26,7 @@ import {
 import { loadCash } from "./cash";
 
 // Short-term money, placed safely (spec step 234, demo advice), for its page, Jane's answers
-// and her buttons. Money needed within three years is compared after tax in the person's own
+// and its buttons. Money needed within three years is compared after tax in the person's own
 // state; a Treasury bill ladder matures when the money is needed and, through a stand-in,
 // rolls itself over until then. Nothing is ever locked past the goal date. The emergency
 // fund's floor stays in high-yield savings; only what's above it can go in bills, which can

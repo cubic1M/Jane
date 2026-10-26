@@ -6,7 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadInvestments, type Investments } from "./holdings";
 
 // What investing costs the person (spec step 130), loaded for the fees page, Jane's
-// answers and her tools: the holdings, and fee transactions from the last 12 months.
+// answers and its tools: the holdings, and fee transactions from the last 12 months.
 
 const YEAR_MS = 365 * 86_400_000;
 

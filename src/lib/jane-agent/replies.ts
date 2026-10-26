@@ -132,8 +132,8 @@ export function nearbyChoices(text: string, asOf: string): { label: string; inte
     .map(({ n }) => ({ label: n.label, intent: n.intent(asOf) }));
 }
 
-// What Jane says when she can't answer: always the same words, so the answer checks know
-// it (src/lib/jane-agent/checks), with the closest things she can answer as buttons.
+// What Jane says when it can't answer: always the same words, so the answer checks know
+// it (src/lib/jane-agent/checks), with the closest things it can answer as buttons.
 export const UNKNOWN_TEXT =
   "I can't answer that one yet. Tap one of these and I'll answer it now, with your numbers.";
 
