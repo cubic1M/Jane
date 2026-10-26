@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,13 +8,10 @@ vi.mock("@/lib/audit", () => ({
   SYSTEM_ACTOR: { type: "system", id: null },
 }));
 
-import { EVENT_HOLD_DAYS, EVENT_TILT_BY_LEVEL } from "@/config/events";
 import { PrismaClient } from "@/generated/prisma/client";
-import { logAudit } from "@/lib/audit";
 import type { Bar } from "@/lib/market/types";
 import { loadPaperView, startPaperAccount } from "@/lib/paper/account";
 import type { PaperPrices } from "@/lib/paper/prices";
-import type { Fetcher } from "./gdelt";
 import { runEventOverlay, setEventsOverlay } from "./run";
 import { eventUpdates, markEventSeen, revertEventAction } from "./updates";
 import { loadEventsView } from "./view";
