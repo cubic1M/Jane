@@ -50,3 +50,10 @@ html[data-landing-mode="dark"] {
     background: transparent;
   }
 }
+
+/* Highlighted text (founder, 2026-10-26): the highlighter is the ink and the words turn to
+   paper, so black on white highlights black with white words, and the dark page the reverse. */
+.landing ::selection {
+  background-color: var(--landing-hi);
+  color: var(--landing-bg);
+}
