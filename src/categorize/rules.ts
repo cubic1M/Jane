@@ -54,10 +54,31 @@ const RULES: readonly Rule[] = [
     ],
   },
 
-  // Paying a credit card, from either side
+  // Paying a credit card, from either side. The checking side is written by the card company
+  // ("CHASE CREDIT CRD AUTOPAY", "AMEX EPAYMENT"): never spending, since the purchases are
+  // already counted on the card (messy-bank QA: $4,607 of card payments counted twice).
   {
     category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
-    keywords: ["PAYMENT TO CHASE CARD", "PAYMENT THANK YOU", "CREDIT CARD PAYMENT"],
+    keywords: [
+      "PAYMENT TO CHASE CARD",
+      "PAYMENT THANK YOU",
+      "CREDIT CARD PAYMENT",
+      "CREDIT CRD AUTOPAY",
+      "CREDIT CRD EPAY",
+      "CRD AUTOPAY",
+      "CARD AUTOPAY",
+      "AMEX EPAYMENT",
+      "AMERICAN EXPRESS ACH PMT",
+      "CAPITAL ONE ONLINE PMT",
+      "CAPITAL ONE MOBILE PMT",
+      "DISCOVER E-PAYMENT",
+      "CITI AUTOPAY",
+      "CITI CARD ONLINE PAYMENT",
+      "APPLECARD GSBANK PAYMENT",
+      "BK OF AMER VISA ONLINE PMT",
+      "WF CREDIT CARD AUTO PAY",
+      "SYNCHRONY BANK PAYMENT",
+    ],
   },
 
   // Income
@@ -72,6 +93,12 @@ const RULES: readonly Rule[] = [
     direction: "in",
   },
   { category: "INCOME_TAX_REFUND", keywords: ["TAX REF", "IRS TREAS"], direction: "in" },
+  // Payouts for work done on one's own: income, never a refund that shrinks spending.
+  {
+    category: "INCOME_CONTRACTOR",
+    keywords: ["STRIPE TRANSFER", "STRIPE PAYOUT", "UPWORK", "FIVERR", "SHOPIFY PAYOUT"],
+    direction: "in",
+  },
   {
     category: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
     keywords: ["IRS USATAXPYMT", "FRANCHISE TAX"],
@@ -110,7 +137,7 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "FOOD_AND_DRINK_COFFEE",
-    keywords: ["STARBUCKS", "DUNKIN", "PEET'S", "PEETS", "BLUE BOTTLE"],
+    keywords: ["STARBUCKS", "DUNKIN", "PEET'S", "PEETS", "BLUE BOTTLE", "COFFEE", "CAFE"],
   },
   {
     category: "FOOD_AND_DRINK_FAST_FOOD",
@@ -154,6 +181,29 @@ const RULES: readonly Rule[] = [
     keywords: ["COMCAST", "XFINITY", "SPECTRUM"],
   },
   { category: "RENT_AND_UTILITIES_TELEPHONE", keywords: ["VERIZON", "AT&T", "T-MOBILE"] },
+  // Not a bare "RENT": "ENTERPRISE RENT-A-CAR" is a car.
+  {
+    category: "RENT_AND_UTILITIES_RENT",
+    keywords: [
+      "PROPERTY MGMT",
+      "PROPERTY MANAGEMENT",
+      "RENT PAYMENT",
+      "BILT RENT",
+      "RENTCAFE",
+      "APPFOLIO",
+    ],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
+    keywords: ["PG&E", "CON ED", "CONEDISON", "DUKE ENERGY", "SCE", "COMED", "NATIONAL GRID"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_WATER",
+    keywords: ["WATER UTIL", "WATER DEPT"],
+    direction: "out",
+  },
   {
     category: "GENERAL_SERVICES_INSURANCE",
     keywords: [
@@ -183,6 +233,21 @@ const RULES: readonly Rule[] = [
   { category: "TRANSFER_OUT_WITHDRAWAL", bankType: ["ATM"], direction: "out" },
   { category: "FOOD_AND_DRINK_GROCERIES", bankCategory: ["Groceries"], direction: "out" },
   { category: "TRANSPORTATION_GAS", bankCategory: ["Gas"], direction: "out" },
+  // A card's own categories (Chase's), in either direction, so a return nets against its
+  // purchase. Broad, so last: the keyword rules above are more specific.
+  { category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK", bankCategory: ["Food & Drink"] },
+  { category: "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE", bankCategory: ["Shopping"] },
+  { category: "TRAVEL_OTHER_TRAVEL", bankCategory: ["Travel"] },
+  { category: "ENTERTAINMENT_OTHER_ENTERTAINMENT", bankCategory: ["Entertainment"] },
+  { category: "MEDICAL_OTHER_MEDICAL", bankCategory: ["Health & Wellness"] },
+  { category: "RENT_AND_UTILITIES_OTHER_UTILITIES", bankCategory: ["Bills & Utilities"] },
+  { category: "TRANSPORTATION_OTHER_TRANSPORTATION", bankCategory: ["Automotive"] },
+  { category: "HOME_IMPROVEMENT_OTHER_HOME_IMPROVEMENT", bankCategory: ["Home"] },
+  { category: "PERSONAL_CARE_OTHER_PERSONAL_CARE", bankCategory: ["Personal"] },
+  { category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES", bankCategory: ["Professional Services"] },
+  { category: "GENERAL_SERVICES_EDUCATION", bankCategory: ["Education"] },
+  { category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS", bankCategory: ["Gifts & Donations"] },
+  { category: "BANK_FEES_OTHER_BANK_FEES", bankCategory: ["Fees & Adjustments"], direction: "out" },
 ];
 
 function escape(text: string): string {

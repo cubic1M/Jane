@@ -5,7 +5,6 @@ import { capabilityFor } from "./capabilities";
 import { topicOf, withTopic, type Topic } from "./context";
 import type { Intent } from "./intents";
 import { clarifyReply, type Reply } from "./replies";
-import { loadSnapshot } from "./snapshot";
 
 // Answers a typed message by rules (spec step 84): loads only what the intent needs, with
 // the same loaders as the pages, all scoped to the person, and words it with ./replies.

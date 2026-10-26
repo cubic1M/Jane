@@ -64,6 +64,14 @@ export function normalizeTransaction(t: Transaction): NormalizedTransaction {
   };
 }
 
+// Money in the app is US dollars. A transaction in another currency (an account held abroad,
+// or a crypto wallet's unofficial code) can't be added to dollars, so it's left out rather
+// than counted as if it were dollars (messy-bank QA: EUR 35.00 read as $35.00). A card's
+// foreign purchases are already converted by the card company and come in USD.
+export const inDollars = (
+  t: Pick<Transaction, "iso_currency_code" | "unofficial_currency_code">,
+) => (t.iso_currency_code ? t.iso_currency_code === "USD" : !t.unofficial_currency_code);
+
 export class PlaidDataSource implements DataSource {
   readonly kind = "plaid" as const;
 
@@ -134,7 +142,7 @@ export class PlaidDataSource implements DataSource {
     return {
       accounts: kept,
       transactions: [...changed.values()]
-        .filter((t) => keptRefs.has(t.account_id))
+        .filter((t) => keptRefs.has(t.account_id) && inDollars(t))
         .map(normalizeTransaction),
       skipped: [],
       removedTransactionIds: [...removed],

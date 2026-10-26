@@ -95,6 +95,29 @@ describe("PlaidDataSource", () => {
     expect(batch.removedTransactionIds).toEqual(["gone"]);
   });
 
+  // Messy-bank QA: EUR 35.00 isn't $35.00.
+  it("leaves out transactions that aren't in US dollars", async () => {
+    const sync = vi.fn().mockResolvedValueOnce(
+      syncPage({
+        added: [
+          plaidTransaction({ iso_currency_code: "USD" }),
+          plaidTransaction({ transaction_id: "eur", iso_currency_code: "EUR", amount: 35 }),
+          plaidTransaction({
+            transaction_id: "btc",
+            iso_currency_code: null,
+            unofficial_currency_code: "BTC",
+          }),
+          plaidTransaction({ transaction_id: "no_code", iso_currency_code: null }),
+        ],
+        next_cursor: "c1",
+      }),
+    );
+
+    const batch = await new PlaidDataSource(apiWith(sync), "access-sandbox-x", null).load();
+
+    expect(batch.transactions.map((t) => t.externalId)).toEqual(["txn_1", "no_code"]);
+  });
+
   it("keeps loan accounts for their balance, but not their transactions", async () => {
     const loan = plaidAccount({ account_id: "acc_loan", type: "loan", subtype: "auto" } as never);
     const sync = vi.fn().mockResolvedValueOnce(

@@ -5,7 +5,11 @@ vi.mock("@/lib/market/history", async (original) => {
   return { ...actual, loadHistory: vi.fn(async () => []) };
 });
 
-import { loadHistory } from "@/lib/market/history";
+// Runs are recorded for /admin/health; here the recorder just runs the job.
+vi.mock("@/lib/health", () => ({ recordRun: vi.fn((_name: string, run: () => unknown) => run()) }));
+
+import { recordRun } from "@/lib/health";
+import { HistoryError, loadHistory } from "@/lib/market/history";
 import { GET } from "./route";
 
 // The daily history load: only Vercel Cron (with the secret) runs it, and it reads Alpaca's SIP
@@ -42,5 +46,20 @@ describe("GET /api/cron/market-history", () => {
     vi.stubEnv("ALPACA_HISTORY_FEED", "iex");
     await call("Bearer cron-secret");
     expect(feedOf()).toBe("iex");
+  });
+
+  it("records each run for /admin/health, a missing Alpaca setup as skipped, not failed", async () => {
+    vi.mocked(recordRun).mockClear();
+    await call("Bearer cron-secret");
+    expect(recordRun).toHaveBeenCalledWith("market-history", expect.any(Function));
+    vi.mocked(loadHistory).mockImplementationOnce(async () => {
+      throw new HistoryError("Alpaca isn't set up");
+    });
+    const response = await call("Bearer cron-secret");
+    expect(response.status).toBe(409);
+    // The recorded run returned normally (a skip), so it never counts as an outage.
+    await expect(vi.mocked(recordRun).mock.results.at(-1)!.value).resolves.toEqual({
+      skipped: "Alpaca isn't set up",
+    });
   });
 });

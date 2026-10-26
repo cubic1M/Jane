@@ -22,7 +22,6 @@ import {
   checkGuardrails,
   guardrailMatches,
   dollarFigures,
-  isAdvice,
   unsupportedFigures,
   type GuardrailIssue,
 } from "@/lib/guardrails";

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { loadHistory, HistoryError } from "@/lib/market/history";
 import { marketData } from "@/lib/market";
+import { recordRun } from "@/lib/health";
 
 // The one-time market history load (spec step 289, Phase AW): pulls daily closes for the model
 // portfolios' ETFs from Alpaca into our database. On the Vercel schedule once a day (vercel.json):
@@ -17,13 +18,21 @@ export async function GET(request: Request) {
   }
   try {
     const feed = process.env.ALPACA_HISTORY_FEED || "sip";
-    return NextResponse.json({
-      loaded: await loadHistory(marketData({ ...process.env, ALPACA_DATA_FEED: feed })),
+    // Recorded for /admin/health (src/lib/health.ts). Without Alpaca's keys (the sample market)
+    // there's nothing to load: a skipped run, not a failure, so it never reads as an outage.
+    const run = await recordRun("market-history", async () => {
+      try {
+        return {
+          loaded: await loadHistory(marketData({ ...process.env, ALPACA_DATA_FEED: feed })),
+        };
+      } catch (error) {
+        if (error instanceof HistoryError) return { skipped: error.message };
+        throw error;
+      }
     });
+    if ("skipped" in run) return NextResponse.json({ error: run.skipped }, { status: 409 });
+    return NextResponse.json(run);
   } catch (error) {
-    if (error instanceof HistoryError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
-    }
     console.error("Market history load failed", { error: String(error) });
     return NextResponse.json({ error: "The load failed; see the logs." }, { status: 500 });
   }
