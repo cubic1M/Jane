@@ -28,7 +28,7 @@ import { listTransfers } from "./transfers";
 
 // Spec step 145 against a real, migrated Postgres, with the demo bank: Jane leaves bills the
 // person's own autopay covers alone; pays a card nothing covers a couple of days early,
-// by herself within Subscriptions and bills' autopilot caps or with one tap; never
+// on its own within Subscriptions and bills' autopilot caps or with one tap; never
 // schedules a payment that would take checking's forecast below its cushion; and, when a
 // bill lands before payday and checking runs short, suggests moving the due date.
 

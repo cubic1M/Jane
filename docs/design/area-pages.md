@@ -266,7 +266,7 @@ The founder: "replace all the yellow cards in the chat as pop up ones that do no
 in the chat area. The yellow cards should also be very concise and easy and direct to
 understand, with users having the ability to click more details to see more."
 
-**What floats.** Everything Jane brings up on her own that waits on the person:
+**What floats.** Everything Jane brings up on its own that waits on the person:
 - the day's suggestions;
 - the morning brief and agenda;
 - something to decide, like the autopilot question;
@@ -274,9 +274,9 @@ understand, with users having the ability to click more details to see more."
 
 It floats as a card over the page or the chat, taking no room in the chat's list
 (`isPopup` in `src/lib/jane-agent/popups.ts`). The day's suggestions come first, then the day's
-brief, then the rest, newest first, with "+N" for the cards waiting behind. Her answers to what
-the person typed stay in the conversation: her first message after theirs, within five minutes,
-is the answer (`ANSWER_WINDOW_MS`); anything else she posts meanwhile floats.
+brief, then the rest, newest first, with "+N" for the cards waiting behind. Its answers to what
+the person typed stay in the conversation: its first message after theirs, within five minutes,
+is the answer (`ANSWER_WINDOW_MS`); anything else it posts meanwhile floats.
 
 **The card:**
 - **Headline:** eight words at most for the detectors (`HEADLINE_MAX_WORDS`, starting with a

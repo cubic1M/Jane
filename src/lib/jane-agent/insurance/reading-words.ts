@@ -6,7 +6,7 @@ import type { Reading } from "@/lib/insurance/readings";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 
-// A policy read from a document in Jane's chat (spec step 151): what she read, each field
+// A policy read from a document in Jane's chat (spec step 151): what it read, each field
 // with where it came from, and what the rules left out, for one Confirm tap. Pure.
 
 export const READING_LABELS: Record<string, string> = {

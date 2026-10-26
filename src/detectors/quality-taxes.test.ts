@@ -131,7 +131,7 @@ describe("confidence", () => {
     );
   });
 
-  it("is high only for what Jane counted: a loss she can see in a taxable account, an unpaid quarter", () => {
+  it("is high only for what Jane counted: a loss it can see in a taxable account, an unpaid quarter", () => {
     expect(topic("equity", "tax_loss_harvest").confidence.percent).toBeGreaterThanOrEqual(75);
     expect(topic("freelancer", "estimated_taxes").confidence.percent).toBeGreaterThanOrEqual(75);
   });
@@ -170,8 +170,8 @@ describe("a sensible top three, in the person's life", () => {
     const rank = (id: PersonId, t: string, change?: (d: ProfileInput) => ProfileInput) =>
       ranked(id, change).findIndex((s) => s.topic === t);
     expect(rank("equity", "withholding_gap")).toBeLessThan(5);
-    // A Roth conversion Jane is 43% sure of waits behind everything she is sure of, and
-    // leads what she isn't.
+    // A Roth conversion Jane is 43% sure of waits behind everything it is sure of, and
+    // leads what it isn't.
     const preretire = ranked("preretire", untold);
     const roth = rank("preretire", "roth_conversion", untold);
     expect(preretire[roth].confidence.percent).toBeLessThan(LOW_CONFIDENCE_PERCENT);

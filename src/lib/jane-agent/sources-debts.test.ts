@@ -8,7 +8,7 @@ import { gather, plan, type BrainSettings } from "./brain";
 import { debtsToolOutput } from "./debt-tools";
 import type { Snapshot } from "./snapshot";
 
-// Spec step 109: Jane brings up a buy now, pay later plan she found and a debt with no
+// Spec step 109: Jane brings up a buy now, pay later plan it found and a debt with no
 // rate, once each, and Claude's debts tool records every figure it gives.
 
 const MORNING = new Date("2026-10-19T13:00:00Z");
@@ -81,7 +81,7 @@ function snapshot(over: Partial<Snapshot> = {}): Snapshot {
 const fromDebts = (s: Snapshot) => gather(s, MORNING, SYNC).filter((m) => m.source === "debts");
 
 describe("Jane's debt messages", () => {
-  it("says she found a plan, and asks for a missing rate with a link to the form", () => {
+  it("says it found a plan, and asks for a missing rate with a link to the form", () => {
     const [found, rate] = fromDebts(snapshot());
     expect(found).toMatchObject({
       kind: "heads_up",

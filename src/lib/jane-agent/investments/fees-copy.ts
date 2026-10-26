@@ -2,7 +2,7 @@ import { formatBps } from "@/insights/investments";
 import { equivalentsSaving, type Equivalent, type Range } from "@/insights/investment-fees";
 import { formatCents } from "@/lib/money";
 
-// Jane's words about investment fees (spec step 130), shared by her message, her rule
+// Jane's words about investment fees (spec step 130), shared by its message, its rule
 // answer and the fees page. Pure.
 
 export const feeRange = (r: Range) => `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;

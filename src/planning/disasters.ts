@@ -81,7 +81,7 @@ export function deadlineMoves(
     .map((d) => ({ id: d.id, title: d.title, from: d.dueOn, to: r.postponedTo }));
 }
 
-// The federal dates Jane works out herself that the relief moves: each estimated payment, and
+// The federal dates Jane works out itself that the relief moves: each estimated payment, and
 // filing day with the prior year's IRA and HSA contributions.
 export function computedMoves(r: Relief, years: readonly number[]): Move[] {
   const out: Move[] = [];

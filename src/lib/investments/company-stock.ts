@@ -34,7 +34,7 @@ import { marginalRateOf } from "@/planning/tax-estimate";
 import { loadInvestments } from "./holdings";
 import { profileOf } from "./profile";
 
-// Company stock (spec step 160), for its page, Jane's answers, her buttons and tools. The
+// Company stock (spec step 160), for its page, Jane's answers, its buttons and tools. The
 // employer is spotted from who pays the person; vested shares are holdings; what's still
 // coming is in equity_grants. The plan's tax cost uses step 124's lots and step 120's rates.
 // Selling is always the person's tap, one part at a time.

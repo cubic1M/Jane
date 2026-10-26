@@ -1,7 +1,7 @@
 import { DraftReturnError, confirmDraftReturn, dismissDraftReturn } from "@/lib/draft-return";
 import { ChatActionError, type ActionHandler } from "./handler";
 
-// The draft return from the chat (spec step 272): confirming what Jane read (then she checks
+// The draft return from the chat (spec step 272): confirming what Jane read (then it checks
 // it), or saying it isn't a draft return. Nothing is filed.
 
 const failed = (error: unknown): never => {

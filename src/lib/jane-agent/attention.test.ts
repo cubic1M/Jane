@@ -3,7 +3,7 @@ import { ATTENTION_ALWAYS, ATTENTION_STOP_AFTER } from "@/config/attention";
 import { holds, hourWords, learnAttention, type AttentionMessage } from "./attention";
 
 // Spec step 147, pure: Jane learns when the person answers, which channel gets answers and
-// which kinds of message they never say yes to; she holds what isn't urgent for their hour
+// which kinds of message they never say yes to; it holds what isn't urgent for their hour
 // (never more than a day) and never holds or stops urgent alerts, deadlines and bills.
 
 const NOW = new Date("2026-10-19T15:00:00Z"); // 8am in Los Angeles

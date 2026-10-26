@@ -83,7 +83,7 @@ describe("toComparison", () => {
     });
   });
 
-  it("re-ranks by each preference, and opens on the one that puts her pick first", () => {
+  it("re-ranks by each preference, and opens on the one that puts its pick first", () => {
     expect(ids(rank(c.options, "lowest_total"))).toEqual(["best", "fast", "low"]);
     expect(ids(rank(c.options, "lowest_monthly"))).toEqual(["low", "best", "fast"]);
     expect(ids(rank(c.options, "fastest_payoff"))).toEqual(["fast", "best", "low"]);
@@ -105,7 +105,7 @@ describe("toComparison", () => {
     expect(same.rows.every((r) => !r.differs)).toBe(true);
   });
 
-  it("shows her pick and how sure she is only as demo advice", () => {
+  it("shows its pick and how sure Jane is only as demo advice", () => {
     expect(c.options[0]).toMatchObject({ isPick: true, confidence: { percent: 72 } });
     // The label is shown once under the cards, not in each card's details.
     expect(c.options[0].details).toEqual(["APR: 6.90%", "Working for best"]);
@@ -183,7 +183,7 @@ describe("insurance", () => {
     expect(c.rows.find((r) => r.key === "rated")?.differs).toBe(false);
   });
 
-  it("opens cheapest first when no preference puts her pick first", () => {
+  it("opens cheapest first when no preference puts its pick first", () => {
     expect(c.initial).toBe("cheapest");
     expect(c.preferences).toEqual(["cheapest", "best_cover"] satisfies Preference[]);
   });

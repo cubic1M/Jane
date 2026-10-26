@@ -20,7 +20,7 @@ export type InsuranceAsk =
   | "checkup"
   // claim: something happened (spec step 107).
   | "claim"
-  // autopilot: what Jane does with insurance by herself; contact: how to reach the insurer
+  // autopilot: what Jane does with insurance on its own; contact: how to reach the insurer
   // (spec step 108).
   | "autopilot"
   | "contact"

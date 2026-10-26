@@ -25,7 +25,7 @@ import {
 } from "./refinance";
 
 // Spec step 111 against a real, migrated Postgres, on the demo bank: Jane asks the
-// stand-in lender partner for offers once a month by herself, compares each with keeping
+// stand-in lender partner for offers once a month on its own, compares each with keeping
 // the debt over the same months (fees in), picks one only when it saves enough, says so
 // once per offer in the chat, and never applies for anything. A real account gets no
 // offers at all.
@@ -73,7 +73,7 @@ describe.runIf(url)("refinance offers against a real database", () => {
     vi.unstubAllEnvs();
   });
 
-  it("checks rates by herself once a month, and keeps the offers", async () => {
+  it("checks rates on its own once a month, and keeps the offers", async () => {
     // Jane's run after the demo bank's first sync already asked.
     expect((await loadRefinance(userId, opts())).checkedOn).toBe("2026-10-18");
     expect(await refreshRefinance(userId, opts())).toBe(false);

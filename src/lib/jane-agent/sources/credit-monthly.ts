@@ -4,7 +4,7 @@ import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
 // The monthly credit check-up (spec step 251): once for each month Jane did it, one message with
-// what she did and a button for each item that waits for the person. Quiet when nothing does.
+// what it did and a button for each item that waits for the person. Quiet when nothing does.
 
 export const creditMonthlySource: MessageSource = {
   key: "credit_monthly",

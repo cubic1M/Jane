@@ -4,7 +4,7 @@ import { formatCents } from "@/lib/money";
 import { SEE_OFFERS } from "../refinance-replies";
 import { snoozeButton, type MessageSource } from "./source";
 
-// Refinance offers (spec step 111). Jane checks rates every month by herself
+// Refinance offers (spec step 111). Jane checks rates every month on its own
 // (src/lib/refinance.ts) and brings one up only when switching would save at least
 // REFI_MIN_SAVING_CENTS over the same months, fees included. Once per offer: a better one
 // next month is news again, the same one isn't. Labelled demo advice. "Apply" only prepares

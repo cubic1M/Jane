@@ -247,8 +247,8 @@ export function profileFor(
   const rules: string[] = [];
   rules.push(
     trades
-      ? "Jane trades the practice portfolio herself, inside every limit."
-      : "Suggest only: Jane says what she would do and places no practice trades.",
+      ? "Jane trades the practice portfolio itself, inside every limit."
+      : "Suggest only: Jane says what it would do and places no practice trades.",
   );
   rules.push(
     level === chosenLevel

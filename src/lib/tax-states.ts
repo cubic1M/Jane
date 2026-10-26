@@ -26,7 +26,7 @@ export type ResidencyView = {
   told: Move[] | null;
   // A move Jane spotted, when the person hasn't said.
   spotted: Move | null;
-  // What the estimate uses: told; else, at the levels that let Jane act, what she spotted.
+  // What the estimate uses: told; else, at the levels that let Jane act, what it spotted.
   inUse: Move[];
   usingSpotted: boolean;
   workState: string | null;

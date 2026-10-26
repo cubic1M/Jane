@@ -40,7 +40,7 @@ import { loadCash } from "./cash";
 import { loadRetirementAccounts, contributeToIra } from "./retirement-accounts";
 import { profileOf } from "./profile";
 
-// Sudden money (spec step 235, demo advice), for its page, Jane's question and her buttons.
+// Sudden money (spec step 235, demo advice), for its page, Jane's question and its buttons.
 // A large deposit that isn't pay is asked about once; then a staged plan across every
 // sector: tax set aside first (figured by kind), high-interest debt, the emergency fund, the
 // retirement limits, goals, and investing last. Every stage is the person's own tap: nothing

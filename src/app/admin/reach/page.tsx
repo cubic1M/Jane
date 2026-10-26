@@ -63,7 +63,7 @@ async function Reach() {
       <AdminNav email={admin.email} />
       <h1 className="text-3xl font-semibold tracking-tight">Reach</h1>
       <p className={MUTED}>
-        Which of Jane&apos;s features reach which people, and whether her confidence is honest.
+        Which of Jane&apos;s features reach which people, and whether its confidence is honest.
       </p>
 
       <section className="flex flex-col gap-2">

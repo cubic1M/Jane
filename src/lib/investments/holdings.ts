@@ -10,7 +10,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 
 // What the person owns (spec step 128), loaded once for the investments page, Jane's
-// answers and her tools, all scoped to the person. Every later investment step starts
+// answers and its tools, all scoped to the person. Every later investment step starts
 // from this.
 
 export type Investments = InvestmentSummary & {

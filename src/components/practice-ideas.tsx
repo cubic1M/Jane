@@ -19,7 +19,7 @@ export function PracticeIdeasSection({ view }: { view: PracticeIdeasView }) {
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Jane looks for chances every day and when you open this page: dips to buy within the plan,
-          losses to harvest, idle cash, cheaper funds, drift and more. What she&apos;d like you to
+          losses to harvest, idle cash, cheaper funds, drift and more. What it&apos;d like you to
           decide waits here.
         </p>
       </div>

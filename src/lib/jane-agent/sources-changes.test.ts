@@ -7,8 +7,8 @@ import { changeLine, changesReply } from "./replies-changes";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 
 // Spec step 97: Jane's heads-ups about changes. Each kind gets its words and buttons; one
-// she can act on asks with "Look into it" (and isn't asked again as a finding); one a
-// standing rule already acted on isn't asked about; a few a day, what she can act on first.
+// it can act on asks with "Look into it" (and isn't asked again as a finding); one a
+// standing rule already acted on isn't asked about; a few a day, what it can act on first.
 
 const MORNING = new Date("2026-10-19T13:00:00Z");
 const SYNC: BrainSettings = { trigger: "sync" };

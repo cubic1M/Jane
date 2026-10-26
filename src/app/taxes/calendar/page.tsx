@@ -36,8 +36,8 @@ async function Content() {
         <h1 className="text-3xl font-semibold tracking-tight">Your tax calendar</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           {v.acts
-            ? "Jane runs the safe parts of your tax year herself and asks for a tap on anything that moves money above your cap for taxes. Signing and filing your return are always yours."
-            : "You asked Jane to ask first, so she tells you what is due each month and waits for your tap."}
+            ? "Jane runs the safe parts of your tax year itself and asks for a tap on anything that moves money above your cap for taxes. Signing and filing your return are always yours."
+            : "You asked Jane to ask first, so it tells you what is due each month and waits for your tap."}
         </p>
       </div>
       <section aria-labelledby="now" className={CARD}>

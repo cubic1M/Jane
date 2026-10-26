@@ -2,7 +2,7 @@ import type { Preference } from "@/lib/jane-agent/preferences";
 import { forgetPreference } from "./memory-actions";
 import { SubmitButton } from "@/components/submit-button";
 
-// What Jane remembers (spec step 91): each thing the person told her or asked her not to
+// What Jane remembers (spec step 91): each thing the person told it or asked it not to
 // suggest, with "Forget" next to it.
 export function MemoryList({ preferences }: { preferences: Preference[] }) {
   if (preferences.length === 0) {

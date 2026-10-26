@@ -74,8 +74,8 @@ import { startTrial } from "@/lib/trial";
 import { syncItem } from "@/lib/plaid/sync";
 
 // The chat opens early during the first scan (the sample person's too): once the accounts and
-// transactions are in it shows at once with Jane saying she's still looking, before the slow
-// sectors have finished, and her findings are posted before that slow work starts.
+// transactions are in it shows at once with Jane saying it's still looking, before the slow
+// sectors have finished, and its findings are posted before that slow work starts.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-16T15:00:00Z");
@@ -230,7 +230,7 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     } finally {
       failSector.on = false;
     }
-    // The scan ended, and Jane's agenda came with what she found: not "still going through your
+    // The scan ended, and Jane's agenda came with what it found: not "still going through your
     // accounts" for good.
     expect(
       (await client.user.findUniqueOrThrow({ where: { id: trial.userId } })).firstScanDoneAt,

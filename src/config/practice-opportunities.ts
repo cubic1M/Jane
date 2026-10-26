@@ -108,7 +108,7 @@ export const OPPORTUNITY_CONFIDENCE: Readonly<
   },
 };
 
-// Kinds that trade but always ask first, even when Jane acts by herself: a news theme is a bet
+// Kinds that trade but always ask first, even when Jane acts on its own: a news theme is a bet
 // beside the plan, so it waits for the person's yes.
 export const ASK_FIRST_KINDS: readonly OpportunityKind[] = ["theme_idea"];
 

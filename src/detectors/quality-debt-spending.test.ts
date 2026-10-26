@@ -72,7 +72,7 @@ describe("dollars", () => {
 });
 
 describe("confidence", () => {
-  it("is lower for what Jane guessed or can't see than for what she counted", () => {
+  it("is lower for what Jane guessed or can't see than for what it counted", () => {
     const guessedTopics = [
       ["family", "car_addons"],
       ["family", "student_forgiveness"],

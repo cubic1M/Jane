@@ -5,7 +5,7 @@ const many = (n: number, rightCount: number, percent: number, detector: string):
   Array.from({ length: n }, (_, i) => ({ detector, percent, right: i < rightCount }));
 
 describe("is the confidence honest?", () => {
-  it("compares what Jane said with how often she was right, by band", () => {
+  it("compares what Jane said with how often it was right, by band", () => {
     const bands = bandsOf([...many(10, 8, 82, "a:x"), ...many(10, 5, 55, "b:y")]);
     expect(bands).toEqual([
       { from: 50, to: 60, count: 10, stated: 55, actual: 50 },

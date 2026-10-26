@@ -2,8 +2,8 @@ import type { PolicyKind } from "@/config/insurance";
 import type { PremiumFrequency } from "@/config/documents";
 
 // Insurance and renewals from payments (spec step 99): how Jane recognizes an insurer in
-// someone's regular payments, what kind of cover it likely is, and the yearly dates she
-// works out by herself. Every policy found this way is "found" until the person confirms
+// someone's regular payments, what kind of cover it likely is, and the yearly dates it
+// works out on its own. Every policy found this way is "found" until the person confirms
 // it, and every date is an estimate.
 
 // Regular payments in this category are insurance.

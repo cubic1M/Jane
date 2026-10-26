@@ -163,7 +163,7 @@ describe("the gap a yes opens, and how Jane asks", () => {
     seenOn: "2026-10-07",
     ...over,
   });
-  it("asks each as one question with what she saw", () => {
+  it("asks each as one question with what it saw", () => {
     expect(riskQuestion(risk({}))).toBe(
       "Are you driving for Uber? I saw $412.00 come in from Uber Driver on Oct 7. A personal car policy may not cover you while you drive for pay.",
     );

@@ -14,7 +14,7 @@ import { dayLabel } from "@/lib/day-label";
 
 // The credit score (spec step 116). Once a month Jane asks the credit partner for the
 // person's score with a soft pull (it never affects the score), and explains what's
-// helping and hurting, with card utilisation from their card balances, and what she's doing
+// helping and hurting, with card utilisation from their card balances, and what it's doing
 // about it. Only the stand-in exists, so only demo-bank people get a score, always labelled;
 // nothing is pulled for a real account.
 
@@ -91,7 +91,7 @@ export async function pullCredit(
   return row;
 }
 
-// Jane's monthly pull, before she looks at the person's money (src/lib/debt-refresh.ts).
+// Jane's monthly pull, before it looks at the person's money (src/lib/debt-refresh.ts).
 export async function refreshCredit(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

@@ -3,7 +3,7 @@ import type { Reply } from "./replies";
 import type { MessageAction, MessageRefs } from "./types";
 
 // The monthly credit check-up in the chat (spec step 251), from src/lib/credit-monthly.ts.
-// Pure. One message: what Jane did by herself, and each item that waits for the person with a
+// Pure. One message: what Jane did on its own, and each item that waits for the person with a
 // button to the page where they act (applying, cancelling and sending stay there, on a tap).
 
 export const MONTHLY_PAGE: MessageAction = {

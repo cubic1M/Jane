@@ -24,8 +24,8 @@ export type Facts = {
   // Spending by month (YYYY-MM): the total and each category's.
   months: Record<string, { totalCents: number; categories: Record<string, number> }>;
   findings: { id: string; type: string; title: string }[];
-  // Spec step 137: whether Jane is in demo advice mode for this person (step 98): her
-  // answers are then checked with the demo advice guardrails, as she checks them herself.
+  // Spec step 137: whether Jane is in demo advice mode for this person (step 98): its
+  // answers are then checked with the demo advice guardrails, as it checks them itself.
   advice?: boolean;
   // Spec step 137: what's in investment and retirement accounts.
   investments?: { totalCents: number; accounts: { name: string; balanceCents: number | null }[] };

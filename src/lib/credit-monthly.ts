@@ -26,10 +26,10 @@ import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
 import { rateStep } from "@/planning/card-interest";
 
-// Credit on autopilot, round three (spec step 251): every month, after her soft checks, Jane
+// Credit on autopilot, round three (spec step 251): every month, after its soft checks, Jane
 // goes over borrowing in one pass: a cheaper rate on each loan (the fit engine's pick, the same
 // as the loan options card), car loan add-ons worth cancelling, costly borrowing creeping back,
-// and the rent and deposit dates. Within the debt caps she does what is free and safe herself
+// and the rent and deposit dates. Within the debt caps it does what is free and safe itself
 // (the soft checks at every level; at Handle everything, the next lower-rate request to a card);
 // the rest is one message with a button per item. Nothing that runs a hard pull, opens an
 // account, applies for credit or cancels cover happens here without a tap.
@@ -63,7 +63,7 @@ export type CreditMonthly = {
   month: string;
   checkedOn: string | null;
   items: MonthlyItem[];
-  // What Jane did by herself in it.
+  // What Jane did on its own in it.
   did: string[];
 };
 
@@ -263,7 +263,7 @@ export async function computeCreditMonthly(
 }
 
 // Jane's monthly pass (src/lib/debt-refresh.ts), after the soft checks, once a month: at Handle
-// everything she sends the next lower-rate request herself (free, and not a credit
+// everything it sends the next lower-rate request itself (free, and not a credit
 // application), at most once a month; then the check-up is kept for the chat to post once.
 // Everything else waits for a tap. Returns the check-up, or null when this month's is done.
 export async function runCreditMonthly(

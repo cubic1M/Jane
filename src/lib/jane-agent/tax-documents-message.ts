@@ -8,7 +8,7 @@ import type { MessageAction, MessageRefs } from "./types";
 
 // Tax forms that collect themselves, in the chat (spec step 166): a form that doesn't match
 // the accounts (flagged, not used), the forms collected (ticked off by Jane at the levels
-// that let her act, one tap otherwise), a form still missing, and the answer to "my tax
+// that let it act, one tap otherwise), a form still missing, and the answer to "my tax
 // forms".
 
 export const FORMS_HREF = "/taxes?focus=records:forms";

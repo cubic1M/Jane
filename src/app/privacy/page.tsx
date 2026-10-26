@@ -28,7 +28,7 @@ export default function PrivacyPage() {
         </li>
         <li>CSV statements you upload. Each file is read once in memory and never stored.</li>
         <li>
-          What you tell Jane: your chat messages, answers to her questions (like your tax filing
+          What you tell Jane: your chat messages, answers to its questions (like your tax filing
           status or goals), and the documents you choose to keep with us, such as insurance policies
           or receipts.
         </li>

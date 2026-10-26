@@ -35,7 +35,7 @@ export type ExpectedForm = {
   what: string;
   // YYYY-MM-DD, the usual date it must be sent by.
   by: string;
-  // What Jane saw for it this year, when she saw an amount.
+  // What Jane saw for it this year, when it saw an amount.
   amountCents: number | null;
   // Below the reporting threshold: the payer may not send one.
   mayNotSend: boolean;

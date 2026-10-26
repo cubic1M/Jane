@@ -27,7 +27,7 @@ import {
 } from "@/planning/rollover";
 import { profileOf } from "./profile";
 
-// Old accounts brought home (spec step 211), for its page, Jane's questions and her
+// Old accounts brought home (spec step 211), for its page, Jane's questions and its
 // buttons. Past employers come from payroll history and the person's own answers (a
 // stand-in for demo-bank people); each is asked about once. A found plan is read-only with
 // its fees compared; a rollover is direct (never a check to the person), tracked step by

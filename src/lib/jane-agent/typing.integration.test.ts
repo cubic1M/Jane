@@ -149,7 +149,7 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     expect(parseActions(after.actions).every((a) => a.kind === "link")).toBe(true);
   });
 
-  it("doesn't count Jane's answers as her first message of the day", async () => {
+  it("doesn't count Jane's answers as its first message of the day", async () => {
     const fresh = await person("typing-fresh");
     await sendToJane(fresh, "help", { client, now: LINKED });
     expect(await postedToday(fresh, null, { client, now: LINKED })).toBe(false);

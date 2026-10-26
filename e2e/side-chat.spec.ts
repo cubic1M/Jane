@@ -24,7 +24,7 @@ test("on a computer the chat docks beside the page, folds, expands and stays put
   test.skip(isMobile, "phones get the bottom sheet");
   await page.setViewportSize({ width: 1440, height: 900 });
   userId = await demoPerson(context, page, baseURL);
-  // A message of Jane's with a link in it (her cards are in the dock above the chat, not in it).
+  // A message of Jane's with a link in it (its cards are in the dock above the chat, not in it).
   await addJaneMessage(userId, {
     kind: "heads_up",
     body: "Your insurance renews next month.",

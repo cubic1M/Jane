@@ -5,7 +5,7 @@ import { formatCents } from "@/lib/money";
 import { SEE_DEBTS } from "../debt-replies";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
 
-// Debts (spec step 109): Jane keeps every debt up to date by herself and says so when
+// Debts (spec step 109): Jane keeps every debt up to date on its own and says so when
 // something new turns up. A buy now, pay later plan found from payments gets one message
 // ("I've added it"); a debt with money owed and no rate from anywhere gets one asking for
 // it, with a link to the form. Each once per debt.

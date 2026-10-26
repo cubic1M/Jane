@@ -39,7 +39,7 @@ export function NewsThemesSection() {
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Jane reads the news for events that have moved one kind of fund before. When one breaks,
-          she brings a practice idea: a small slice ({slices} of the portfolio at most), out after
+          Jane brings a practice idea: a small slice ({slices} of the portfolio at most), out after
           about a month ({THEME_HOLD_DAYS} trading days) or if it falls{" "}
           {Math.round(THEME_STOP_LOSS * 100)}%. Each was tested on its past events; only the ones
           that held up are offered.

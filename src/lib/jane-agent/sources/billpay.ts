@@ -3,7 +3,7 @@ import { billPayReply } from "../replies-billpay";
 import type { MessageSource } from "./source";
 
 // Bills paid on time (spec step 145): each card or loan due soon that Jane scheduled by
-// herself, would like to pay with one tap, or can't pay without checking running short.
+// itself, would like to pay with one tap, or can't pay without checking running short.
 export const billPaySource: MessageSource = {
   key: "billpay",
   gather(snapshot) {

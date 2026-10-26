@@ -3,7 +3,7 @@ import { dollarFigures } from "@/lib/guardrails";
 import { practiceIdeasView } from "@/lib/practice/ideas-view";
 
 // The practice_portfolio tool's ideas (Phase AW, Stage A): what Jane is waiting on the person
-// for, each with how sure she is; the strategy the autopilot follows today; and what their
+// for, each with how sure Jane is; the strategy the autopilot follows today; and what their
 // answers changed. The same view as the practice page (src/lib/practice/ideas-view.ts). Every
 // dollar figure in an idea's numbers is registered, so Claude may quote it.
 

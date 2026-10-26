@@ -686,7 +686,7 @@ describe("news themes (src/config/themes.ts)", () => {
         themeConfidence(THEME_EVIDENCE[f.ticker === "ITA" ? "conflict_defense" : "chip_boom"]),
       );
       expectShortForms(f);
-      // Even when Jane acts by herself, a theme waits for the person's yes.
+      // Even when Jane acts on its own, a theme waits for the person's yes.
       expect(flagStatus(f, held.state, await pricesOn(DAY), 0, "act").status).toBe("suggested");
     }
   });

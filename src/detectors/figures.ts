@@ -4,7 +4,7 @@ import { type Detector, suggestionId } from "./contract";
 import { dollars, factEvidence } from "./helpers";
 
 // Every figure explained, and correctable (spec step 239), brought to the person unasked: a
-// headline figure resting on something Jane can't know by herself. Pure; see ./contract.ts.
+// headline figure resting on something Jane can't know on its own. Pure; see ./contract.ts.
 
 // A business's deposits are sales, not pay, so "monthly income" (and the budget, safe to
 // spend and health score built on it) counts far more than the owner takes home until they

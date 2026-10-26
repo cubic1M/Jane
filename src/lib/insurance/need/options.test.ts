@@ -13,7 +13,7 @@ import {
 } from "./index";
 import { buildOptions, optionRequests, type OptionRequest, type PricedRequest } from "./options";
 
-// Options to pick from (spec step 275): three or four variants priced by the stand-in, her
+// Options to pick from (spec step 275): three or four variants priced by the stand-in, its
 // pick marked with a confidence that never claims more than sample prices allow.
 
 const car: NeedPolicy = {
@@ -76,7 +76,7 @@ async function setFor(
 }
 
 describe("options", () => {
-  it("offers like for like, the cover I'd size and a better one for car liability, her pick first", async () => {
+  it("offers like for like, the cover I'd size and a better one for car liability, its pick first", async () => {
     const [need] = liabilityNeedsFor(input({ netWorthCents: 20_000_000 }));
     const { requests, set } = await setFor(need, car, 170_400, 20_000_000);
     expect(requests.map((r) => r.role)).toEqual(["like_for_like", "meets_need", "better"]);

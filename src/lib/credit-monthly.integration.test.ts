@@ -22,7 +22,7 @@ import { loadCreditMonthly, runCreditMonthly } from "./credit-monthly";
 
 // Spec step 251 against a real, migrated Postgres, on the demo bank: the monthly credit
 // check-up after Jane's soft checks, kept so the chat posts it once as one message with a
-// button per item, what Jane does by herself at each level, and nothing that runs a hard pull
+// button per item, what Jane does on its own at each level, and nothing that runs a hard pull
 // or opens an account without a tap.
 
 const url = process.env.TEST_DATABASE_URL;

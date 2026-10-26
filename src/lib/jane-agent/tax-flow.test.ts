@@ -67,7 +67,7 @@ describe("the tax profile questions", () => {
       }),
     );
     expect(q?.body).toContain("How many children under 17 will you claim for 2026?");
-    // A new-baby checklist: Jane says why she's asking, never assumes.
+    // A new-baby checklist: Jane says why it's asking, never assumes.
     expect(q?.body).toContain("I'm asking rather than guessing");
     expect(ids(q)).toEqual(["tax.kids_0", "tax.kids_1", "tax.kids_2", "tax.kids_3", "open"]);
 

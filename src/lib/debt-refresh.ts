@@ -16,7 +16,7 @@ import { refreshDebtPlan } from "@/lib/debt-plan";
 import { refreshLoanApplications } from "@/lib/loan-applications";
 import { refreshRefinance } from "@/lib/refinance";
 
-// What Jane keeps current about debts by herself before her brain looks at the person's
+// What Jane keeps current about debts on its own before its brain looks at the person's
 // money (src/lib/jane-agent/run.ts): the payoff plan's monthly check (spec step 110) and
 // the monthly refinance rate check (spec step 111). One
 // failing never stops the others or the run.

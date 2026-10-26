@@ -11,7 +11,7 @@ import type { RefinanceComparison, ScoredOffer } from "@/planning/refinance";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 
-// Jane's answers about refinancing (spec step 111), from the offers she keeps
+// Jane's answers about refinancing (spec step 111), from the offers it keeps
 // (src/lib/refinance.ts). Pure. A pick is a loan recommendation, so it only exists in demo
 // advice mode (the stand-in catalog is only for demo-bank people) and is labelled.
 

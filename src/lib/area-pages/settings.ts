@@ -126,7 +126,7 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
     item("autopilot", "sectors", {
       label: "Area by area",
       figure: `${input.sectorsOn} of ${input.sectors}`,
-      summary: `Jane may act by herself in ${plural(input.sectorsOn, "area")}, up to the caps you set.`,
+      summary: `Jane may act on its own in ${plural(input.sectorsOn, "area")}, up to the caps you set.`,
     }),
     item("autopilot", "rules", {
       label: "Standing rules",
@@ -153,7 +153,7 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
     }),
     item("notify", "asking", {
       label: "Asking less",
-      summary: "When Jane asks you things, and what she stopped bringing up.",
+      summary: "When Jane asks you things, and what it stopped bringing up.",
     }),
   ];
 
@@ -161,8 +161,7 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
     item("memory", "told", {
       label: "What Jane remembers",
       figure: String(input.remembered),
-      summary:
-        "What you've told Jane in the chat, and suggestions you asked her not to make again.",
+      summary: "What you've told Jane in the chat, and suggestions you asked it not to make again.",
     }),
     item("memory", "style", {
       label: "How Jane talks",

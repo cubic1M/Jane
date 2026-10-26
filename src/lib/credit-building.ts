@@ -27,9 +27,9 @@ import {
 } from "@/planning/credit-building";
 
 // Building credit (spec step 175). Before a card's statement closes Jane works out what to
-// pay so a lower balance is reported: from "Handle the safe stuff" she schedules it by
-// herself through the money-movement stand-in within the debt autopilot's caps, otherwise
-// she reminds with one tap. She counts the on-time streak, offers a credit-builder stand-in
+// pay so a lower balance is reported: from "Handle the safe stuff" it schedules it by
+// itself through the money-movement stand-in within the debt autopilot's caps, otherwise
+// it reminds with one tap. It counts the on-time streak, offers a credit-builder stand-in
 // for a thin file, and estimates the score after each change with the credit partner's
 // simulator, always labelled an estimate. Only demo-bank people: nothing changes a real
 // account.
@@ -220,8 +220,8 @@ async function schedule(
   );
 }
 
-// Jane's own step before her brain looks: from "Handle the safe stuff", the payment before
-// the statement closes, within the debt autopilot's caps. True when she scheduled it.
+// Jane's own step before its brain looks: from "Handle the safe stuff", the payment before
+// the statement closes, within the debt autopilot's caps. True when it scheduled it.
 export async function runCreditBuilding(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

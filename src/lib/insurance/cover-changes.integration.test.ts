@@ -113,7 +113,7 @@ describe.runIf(url)("cover changes with life events against a real database", ()
     ).toEqual([1_500, 14_200]);
   });
 
-  it("a move at 'Everything allowed': Jane updates the address herself", async () => {
+  it("a move at 'Everything allowed': Jane updates the address itself", async () => {
     const me = await person();
     await policy(me, "renters", "Lemonade", 1_500);
     await setAutopilot(me, "all", opts());

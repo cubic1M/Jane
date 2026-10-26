@@ -1,5 +1,5 @@
-// Books that balance (spec step 238): what Jane checks every day about the data she stands
-// behind, and when she counts something as off.
+// Books that balance (spec step 238): what Jane checks every day about the data it stands
+// behind, and when it counts something as off.
 
 // A balance that moves by more or less than the transactions between two snapshots, by more
 // than this, is off.

@@ -3,7 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
-// Something to do in the middle of Jane's run (her debt upkeep runs part way through it).
+// Something to do in the middle of Jane's run (its debt upkeep runs part way through it).
 const { midRun } = vi.hoisted(() => ({ midRun: { fn: null as null | (() => Promise<unknown>) } }));
 vi.mock("@/lib/debt-refresh", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/debt-refresh")>();

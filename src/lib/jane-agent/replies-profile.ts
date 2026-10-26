@@ -2,7 +2,7 @@ import { sayFact } from "@/lib/profile";
 import { type Profile } from "@/profile/build";
 import type { Reply } from "./replies";
 
-// What Jane knows about the person (spec step 253), in a few lines: the facts she's most
+// What Jane knows about the person (spec step 253), in a few lines: the facts it's most
 // sure of, how many are guesses, and the page where any of them can be corrected.
 const SHOWN = 8;
 

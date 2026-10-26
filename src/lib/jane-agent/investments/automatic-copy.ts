@@ -2,7 +2,7 @@ import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 
 // Fully automatic investing in the chat (spec step 164): one summary a month of what Jane
-// did within the person's caps and what she asked about instead. Every line is from the log.
+// did within the person's caps and what it asked about instead. Every line is from the log.
 
 export const AUTO_LOG_LINK: MessageAction = {
   id: "open",

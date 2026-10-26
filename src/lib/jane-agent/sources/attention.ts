@@ -3,7 +3,7 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import type { MessageSource } from "./source";
 
 // Asking less (spec step 147): when Jane stops bringing up a kind of message the person
-// never says yes to, she says so once, with how to bring it back.
+// never says yes to, it says so once, with how to bring it back.
 export const attentionSource: MessageSource = {
   key: "attention",
   gather(snapshot) {

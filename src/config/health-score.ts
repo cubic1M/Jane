@@ -1,6 +1,6 @@
 // Money health score (spec step 146): one number from 0 to 100, made of parts that each
 // count for these many points. Parts Jane can't see yet are left out, and the score is
-// scaled over the parts she can, so nobody loses points for what isn't linked.
+// scaled over the parts it can, so nobody loses points for what isn't linked.
 export const HEALTH_WEIGHTS = {
   // Months of spending the person's cash would cover.
   cushion: 25,

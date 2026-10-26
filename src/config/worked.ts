@@ -1,5 +1,5 @@
 // What worked (spec step 207): how long Jane waits for a saving to show in the person's
-// transactions before saying it didn't, and what she learns from the results.
+// transactions before saying it didn't, and what it learns from the results.
 
 // A finished action whose saving hasn't shown after this many days is marked as not shown.
 export const WORKED_GRACE_DAYS = 60;

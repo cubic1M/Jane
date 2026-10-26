@@ -4,7 +4,7 @@ import { draftCents, type DraftFinding } from "@/planning/draft-return";
 import type { MessageAction, MessageRefs } from "./types";
 
 // The return, checked before you file, in the chat (spec step 272): a draft Jane read and wants
-// confirmed, each thing her check found as a card with its dollars, and the answer to "check my
+// confirmed, each thing its check found as a card with its dollars, and the answer to "check my
 // return before I file". Jane never files.
 
 export const DRAFT_HREF = "/taxes/draft";

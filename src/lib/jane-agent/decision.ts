@@ -15,7 +15,7 @@ import type { MessageAction } from "./types";
 // A decision question ("should I buy bitcoin?") answered from the person's own numbers: what
 // they owe and at what rate, whether their cash cushion is built, and the goals still short.
 // The thing itself (a coin, a house) is only a follow-up. In demo advice mode Jane says what
-// she'd do first; on a real account she gives the facts and no recommendation (REAL_ACCOUNT_
+// it'd do first; on a real account it gives the facts and no recommendation (REAL_ACCOUNT_
 // ADVICE stays off). Never a prediction of what the thing will do.
 
 export type DecisionFacts = {

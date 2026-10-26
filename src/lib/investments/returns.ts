@@ -21,7 +21,7 @@ import { lastClose, marketDataFor, type MarketDataPartner } from "@/lib/market-d
 import { loadInvestments, type Investments } from "./holdings";
 
 // How the investments have done (spec step 156), for the investments page, Jane's answers
-// and her tools. Daily values come from the daily balance snapshots; before the first one,
+// and its tools. Daily values come from the daily balance snapshots; before the first one,
 // from what's held today at the market-data partner's prices (demo bank only, until a real
 // provider is connected). Money paid in counts as money in, not as a gain. Facts only.
 

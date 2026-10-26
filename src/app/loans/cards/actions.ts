@@ -5,7 +5,7 @@ import { CreditCardError, applyForCard } from "@/lib/credit-cards";
 import { requireUser } from "@/lib/session";
 
 // "Apply" on /loans/cards (spec step 174): the person's tap is the application, a hard
-// credit check with the issuer. Jane never applies by herself.
+// credit check with the issuer. Jane never applies on its own.
 export async function applyCardAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   let status: string;

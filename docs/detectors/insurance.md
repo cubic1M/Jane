@@ -71,7 +71,7 @@ record supports: the saving is "up to", from a sample quote.
 
 "Fires" below means the detector should produce a suggestion for that person on their
 written list. "Must not" means a suggestion would be wrong for them (and is part of the
-person's "what she must not" list).
+person's "what it must not" list).
 
 ## What is built so far
 
@@ -487,7 +487,7 @@ The profile input gained `unreadPolicyDocuments` (policy readings waiting for a 
 
 - **Source:** `review-rules.ts`, `review.ts`, `checkups.ts`; asks `keep_covered`, `review`.
 - **Fires when:** a yearly checkup runs (or after a life event), in advice mode. One message
-  with what Jane did within her caps, what needs a tap (a button each), and the yearly money.
+  with what Jane did within its caps, what needs a tap (a button each), and the yearly money.
   `keepCovered` applies the same-cover savings (`KEEP_COVERED_SAVING_KINDS`: `pay_in_full`,
   `autopay`, `paperless`, `bundle`) and calls the insurer about renewals going up, by itself
   only at "Everything allowed" and within the sector caps; below that, on the person's tap.

@@ -1,6 +1,6 @@
 // Fully automatic investing (spec step 164): at "Everything allowed" for the investing
 // sector (src/config/autopilot-sectors.ts), with the person's own caps, Jane rebalances,
-// invests new cash and harvests losses by herself through the simulated brokerage. Every
+// invests new cash and harvests losses on its own through the simulated brokerage. Every
 // move needs the sector level AND to fit the action cap and the month's cap; anything
 // above either asks first, as before. FOR REVIEW: automatic trading needs a registered
 // adviser and a real brokerage before it goes near real accounts (REAL_ACCOUNT_ADVICE).

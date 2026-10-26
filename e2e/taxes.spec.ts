@@ -73,8 +73,8 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   await expect(profile.getByText("California")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it").first()).toBeVisible();
   // Spec step 141: what the Taxes area may do by itself, as Settings has it, below the tree.
-  await page.getByText("What Jane does by herself", { exact: true }).first().click();
-  const byHerself = page.getByRole("region", { name: "What Jane does by herself" });
+  await page.getByText("What Jane does on its own", { exact: true }).first().click();
+  const byHerself = page.getByRole("region", { name: "What Jane does on its own" });
   await expect(byHerself).toContainText("Taxes is set to");
   await expect(byHerself).toContainText("Nothing is ever filed or signed without your tap.");
   expect(await axe(page)).toEqual([]);
@@ -113,7 +113,7 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   );
 });
 
-test("tax tags: Jane's tags, her questions, and tagging a work expense", async ({
+test("tax tags: Jane's tags, its questions, and tagging a work expense", async ({
   context,
   page,
   baseURL,

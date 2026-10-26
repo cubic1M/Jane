@@ -334,7 +334,7 @@ export async function sendRateRequest(
 
 // Jane's own lower-rate request: only at Handle everything within the debt caps (it's free and
 // not a credit application), and at most one in RATE_REQUEST_EVERY_DAYS whichever review
-// sends it. Returns the card she asked, or null.
+// sends it. Returns the card it asked, or null.
 export async function askNextRateHerself(
   userId: string,
   { client = defaultClient, now = new Date(), book }: Options = {},

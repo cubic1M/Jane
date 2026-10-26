@@ -262,7 +262,7 @@ function AskBox({ question }: { question: string }) {
   }, [drawing]);
 
   // The side chat says where the question is (every frame while it moves), when Jane starts
-  // and when she's done.
+  // and when it's done.
   useEffect(() => {
     if (!drawing) return;
     const onBubble = (e: Event) => setTo((e as CustomEvent<{ x: number; y: number }>).detail);

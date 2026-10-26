@@ -4,7 +4,7 @@ import { E2E_DATABASE_URL, addThemeIdea, deleteUser, signedInUser } from "./db";
 
 // A news theme's alert (Phase AW, Stage A): when the practice scan finds a theme idea, Jane puts
 // it in the chat as a floating card: the headline, Yes and Not now, and behind More details why
-// now, how sure she is, the risk and when it gets out. A sample person gets the card only.
+// now, how sure Jane is, the risk and when it gets out. A sample person gets the card only.
 // Practice money and demo advice only.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");

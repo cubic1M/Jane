@@ -9,7 +9,7 @@ import { STAND_IN_NOTE } from "@/lib/jane-agent/replies-paycheck";
 import { undoTransfer } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 
-// Transfers (spec steps 144–145): every transfer and payment Jane scheduled, by herself or on
+// Transfers (spec steps 144–145): every transfer and payment Jane scheduled, on its own or on
 // a tap, and Undo while it's pending.
 
 const STATUS: Record<string, string> = {

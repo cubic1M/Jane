@@ -21,8 +21,8 @@ import { reviewReason } from "@/planning/debt-review";
 // Debt on autopilot, round two (spec step 230): the yearly debt review. Once a year, and early
 // after a raise, a new loan or a missed payment, Jane goes over everything about debts and
 // credit in one pass: payments timed to statement dates, 0% promotions on pace, lower-rate
-// requests, PMI and escrow, and score goals. What she may do by herself within the debt
-// caps she does (a payment before a statement; at Handle everything, a rate request); the
+// requests, PMI and escrow, and score goals. What it may do on its own within the debt
+// caps it does (a payment before a statement; at Handle everything, a rate request); the
 // rest becomes one message with each item's button. Nothing above a cap happens without a tap.
 
 type Parts = {
@@ -281,8 +281,8 @@ export async function loadDebtReview(
   };
 }
 
-// Jane's pass (src/lib/debt-refresh.ts): when a review is due she does what she may within
-// the debt caps, then notes the review so the chat can post it once. Returns what she did.
+// Jane's pass (src/lib/debt-refresh.ts): when a review is due it does what it may within
+// the debt caps, then notes the review so the chat can post it once. Returns what it did.
 export async function runDebtReview(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

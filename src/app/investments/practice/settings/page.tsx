@@ -31,8 +31,8 @@ import { LoadingBar } from "@/components/loading-bar";
 
 // What the person wants from the practice portfolio (Phase AW, Stage A), in plain words: how much
 // risk, a goal and its date, the monthly practice money, extra moves, what never to buy, loss
-// harvesting, cash to keep, whether Jane acts or only suggests, and how she invests: the
-// strategy, how often she rebalances, what she may buy and the most in one fund. The same settings change from
+// harvesting, cash to keep, whether Jane acts or only suggests, and how it invests: the
+// strategy, how often it rebalances, what it may buy and the most in one fund. The same settings change from
 // the chat. Practice money and demo advice only; the hard limits always win.
 
 const LINK = "font-medium text-emerald-700 hover:underline";

@@ -6,7 +6,7 @@ import { STAND_IN_NOTE } from "./replies-paycheck";
 import { dateAndDays, shortDate } from "./sources/source";
 import type { MessageAction } from "./types";
 
-// Bills paid on time in the chat (spec step 145): what Jane scheduled by herself, what she'd
+// Bills paid on time in the chat (spec step 145): what Jane scheduled on its own, what it'd
 // like to pay (one tap), and a due date worth moving when it lands before payday.
 
 const SEE_TRANSFERS: MessageAction = {

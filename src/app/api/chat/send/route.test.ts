@@ -56,7 +56,7 @@ describe("POST /api/chat/send", () => {
     expect(sendToJane).not.toHaveBeenCalled();
   });
 
-  it("streams what Jane is doing and her answer, then done", async () => {
+  it("streams what Jane is doing and its answer, then done", async () => {
     const response = await post({ message: "how's my food budget" });
     expect(response.headers.get("content-type")).toContain("application/x-ndjson");
     expect(await lines(response)).toEqual([

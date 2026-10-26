@@ -19,7 +19,7 @@ import { currentTuneUp, pendingGoalTransfers, runPlanUpkeep } from "./plan-upkee
 // Spec step 101 against a real, migrated Postgres: on Nov 2 a Food budget of $300 meets
 // three months of about $450, and $250 moved to savings; at "Ask me first" nothing changes
 // until a tap (Accept all, Keep, Count it, Not this one); at "Handle the safe stuff" Jane
-// applies the tune-up and counts the transfer by herself, with Undo on the tune-up.
+// applies the tune-up and counts the transfer on its own, with Undo on the tune-up.
 
 const url = process.env.TEST_DATABASE_URL;
 // 9am in Los Angeles on Monday Nov 2, 2026.
@@ -149,7 +149,7 @@ describe.runIf(url)("plans that keep up, against a real database", { timeout: 30
     expect(await food(userId)).toBe(30_000);
   });
 
-  it("applies both by herself at 'Handle the safe stuff', and Undo puts the budget back", async () => {
+  it("applies both on its own at 'Handle the safe stuff', and Undo puts the budget back", async () => {
     const userId = await person("upkeep-safe", "safe");
     await runJaneAgent(userId, { client, now: NOW, trigger: "cron" });
     expect(await food(userId)).toBe(45_000);

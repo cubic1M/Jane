@@ -1397,7 +1397,7 @@ function ledgerPlan(demo: DemoSeed, def: Def) {
 // Books QA (spec step 238): an account a sample person reaches through a second bank login, so
 // it comes in twice: the Reyes' savings, once through each parent's login. The second login
 // words any transactions its own way, so Jane can't prove the two copies the same and merge
-// them by herself; she asks.
+// them on its own; it asks.
 export const DEMO_SECOND_LOGINS: Readonly<
   Partial<Record<PersonId, { login: string; account: string; prefix: string }>>
 > = {

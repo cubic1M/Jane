@@ -11,7 +11,7 @@ import type { CardOption, OptionCard } from "@/lib/option-card";
 //   CARD_HEADLINE_WORDS words and one dollar figure.
 // - whyThisOne is the one-line summary.
 // - The facts and the details are behind More details.
-// - Her pick and how sure she is show only when the card carries them (demo advice mode),
+// - Its pick and how sure Jane is show only when the card carries them (demo advice mode),
 //   always with the demo advice label.
 // - The pick first, then the rest by price, cheapest first.
 

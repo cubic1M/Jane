@@ -4,7 +4,7 @@ import { bringBack } from "./attention-actions";
 import { SubmitButton } from "@/components/submit-button";
 
 // Asking less (spec step 147): what Jane learned about when and how the person answers, and
-// each kind of message she stopped bringing up, with why and Bring them back.
+// each kind of message it stopped bringing up, with why and Bring them back.
 export function AttentionList({ attention }: { attention: Attention }) {
   const muted = "text-zinc-600 dark:text-zinc-400";
   return (

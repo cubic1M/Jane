@@ -14,7 +14,7 @@ import { storedReport } from "@/lib/monthly-report-store";
 import { monthFigures, uncertainOf, type CloseFigures, type CloseTx } from "@/planning/month-close";
 
 // The monthly close (spec step 244). From the first of the month Jane closes the month before,
-// like a company's books: the books checked (step 238), the charges she wasn't sure of asked
+// like a company's books: the books checked (step 238), the charges it wasn't sure of asked
 // about in one message, a net worth snapshot, plan against actual (step 205) and what worked
 // (step 207) from the month's report (step 148). With nothing uncertain it closes with no taps.
 // A closed month's figures are kept and only change when the person corrects something in it.

@@ -268,7 +268,7 @@ export function packReply(pack: TaxPack): Reply {
   };
 }
 
-// Spec step 120: the estimate, as Jane brings it up and as she answers "how much will I
+// Spec step 120: the estimate, as Jane brings it up and as it answers "how much will I
 // owe?". Always called an estimate.
 export function estimateMessage(view: TaxEstimateView): Reply {
   const e = view.estimate;

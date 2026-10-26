@@ -31,9 +31,9 @@ const dollars = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Automatic investing (spec step 134). Set up once with a tap (an amount every payday, or
-// the rest after bills and goals); after that Jane runs it by herself on each new paycheck,
+// the rest after bills and goals); after that Jane runs it on its own on each new paycheck,
 // at every autopilot level, through the brokerage partner (the simulation until a real one
-// is connected), and pauses that payday by herself when safe to spend is low. Every payday
+// is connected), and pauses that payday on its own when safe to spend is low. Every payday
 // is recorded, invested or paused, and shown. Demo advice mode with a finished profile only.
 
 type Options = { client?: PrismaClient; now?: Date };

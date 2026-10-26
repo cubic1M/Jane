@@ -34,8 +34,8 @@ async function Content() {
           <Link href="/documents" className={LINK}>
             Documents
           </Link>{" "}
-          as &ldquo;Draft tax return&rdquo;. Jane reads it, you confirm what she read, and she
-          checks every line against your forms and accounts. She never files it.
+          as &ldquo;Draft tax return&rdquo;. Jane reads it, you confirm what Jane read, and Jane
+          checks every line against your forms and accounts. Jane never files it.
         </p>
       </div>
       {drafts.length === 0 && <p className="text-sm">No draft yet.</p>}

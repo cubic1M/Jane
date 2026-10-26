@@ -10,7 +10,7 @@ import { popupCard, type PopupCard } from "@/lib/jane-agent/popups";
 import { noteDetailsOpened, tapButton } from "./actions";
 
 // Jane's pop-ups over the chat or the page (src/lib/jane-agent/popups.ts): the day's suggestions,
-// then anything else she brought up that waits on the person, one card at a time. A suggestion
+// then anything else it brought up that waits on the person, one card at a time. A suggestion
 // message is three lines (src/lib/jane-agent/sources/suggestions.ts): the
 // headline, "Why you: …" and "85% sure: reason." The card shows the headline with Yes and Not
 // now; the rest is behind More details, already on the page. A tap is answered on screen at

@@ -17,7 +17,7 @@ import { US_STATES } from "@/config/referrals";
 // out from their transactions where it can be and asked where it can't. Pure.
 //
 // Nothing is assumed silently: every field is either the person's own answer ("yours"),
-// something Jane found and shows with where she found it ("found", waiting for a yes), or
+// something Jane found and shows with where it found it ("found", waiting for a yes), or
 // "missing". Every answer can be changed.
 
 export type ProfileField = "incomeKinds" | "filingStatus" | "dependants" | "state";
@@ -51,7 +51,7 @@ export type ProfileTransaction = {
 
 export type ProfileAccount = { name: string; type: string; subtype: string | null };
 
-// One kind of income Jane spotted, with who paid it, so she can say where she saw it.
+// One kind of income Jane spotted, with who paid it, so it can say where it saw it.
 export type FoundIncome = {
   kind: IncomeKind;
   // Payers (or accounts) most paid first, at most TAX_PROFILE_PAYERS_SHOWN.
@@ -252,7 +252,7 @@ export function taxProfileView(stored: StoredTaxProfile | null, found: FoundFact
   return { ...view, next, complete: next === null };
 }
 
-// The profile Jane works with: the person's answers, plus what she found when she may use
+// The profile Jane works with: the person's answers, plus what it found when it may use
 // it (src/config/tax.ts usesFoundAnswers). Missing stays missing.
 export type WorkingProfile = {
   filingStatus: FilingStatus | null;

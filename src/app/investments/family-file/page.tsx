@@ -41,7 +41,7 @@ async function Content({
         <h1 className="text-3xl font-semibold tracking-tight">The family looked after</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Who is named on each account, and a file of what your family would need. Jane records what
-          you tell her; she doesn&apos;t change anything at a bank or a plan. The form is yours to
+          you tell it; Jane doesn&apos;t change anything at a bank or a plan. The form is yours to
           file with them.
         </p>
       </div>

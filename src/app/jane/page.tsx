@@ -133,7 +133,7 @@ async function JaneContent() {
         <h2 className="text-xl font-semibold">Everything Jane did</h2>
         {timeline.length === 0 ? (
           <p className={MUTED}>
-            Nothing yet. Whatever Jane does by herself, or for you with a tap, is listed here with
+            Nothing yet. Whatever Jane does on its own, or for you with a tap, is listed here with
             why.
           </p>
         ) : (
@@ -152,7 +152,7 @@ async function JaneContent() {
                   {" · "}
                   {e.sectorLabel}
                   {" · "}
-                  {e.by === "jane" ? "Jane, by herself" : "At your tap"}
+                  {e.by === "jane" ? "Jane, on its own" : "At your tap"}
                   {e.cents ? ` · ${formatCents(e.cents)}` : ""}
                 </span>
                 <span className={`text-sm ${MUTED}`}>Why: {e.why}</span>

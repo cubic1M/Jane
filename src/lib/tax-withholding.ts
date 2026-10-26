@@ -9,7 +9,7 @@ import { withholdingCheck, type W4Step, type WithholdingCheck } from "@/planning
 
 // The withholding checkup (spec step 121), from the same estimate as /taxes. The W-4
 // suggestion is demo advice: only in demo advice mode; everyone else sees the comparison and
-// the IRS's own estimator. Jane never sends a W-4: the person does, and tells her.
+// the IRS's own estimator. Jane never sends a W-4: the person does, and tells it.
 
 type Options = { client?: PrismaClient; now?: Date };
 

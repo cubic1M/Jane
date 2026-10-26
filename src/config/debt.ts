@@ -96,7 +96,7 @@ export const DEBT_MESSAGE_PRIORITY = {
   credit_utilisation: 47,
   credit_moved: 34,
   // Spec step 117: a rate the bank changed is news; a due date to move and a plan Jane
-  // started by herself can wait a little.
+  // started on its own can wait a little.
   debt_rate_changed: 63,
   debt_due_move: 33,
   debt_plan_started: 49,
@@ -204,7 +204,7 @@ export const DEBT_AUTOPILOT_SHORT: Readonly<Record<number, string>> = {
   251: "Checks rates, add-ons, costly borrowing and rent dates monthly; one message.",
 };
 
-// What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
+// What Jane does about debts on its own at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
 // at every level. Steps 110–117, 174–181 and 224–230 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
@@ -333,7 +333,7 @@ export const DEBT_AUTOPILOT: Readonly<
     },
     {
       step: 251,
-      does: "Every month, after her soft checks, goes over a cheaper rate on each loan, car loan add-ons worth cancelling, costly borrowing creeping back, and your rent and deposit dates, then asks for each in one message. Everything is your tap.",
+      does: "Every month, after its soft checks, goes over a cheaper rate on each loan, car loan add-ons worth cancelling, costly borrowing creeping back, and your rent and deposit dates, then asks for each in one message. Everything is your tap.",
     },
   ],
   safe: [
@@ -459,7 +459,7 @@ export const DEBT_AUTOPILOT: Readonly<
     },
     {
       step: 251,
-      does: "Every month, after her soft checks, goes over a cheaper rate on each loan, car loan add-ons worth cancelling, costly borrowing creeping back, and your rent and deposit dates, then asks for the rest in one message. Applying, cancelling and opening anything stay your tap.",
+      does: "Every month, after its soft checks, goes over a cheaper rate on each loan, car loan add-ons worth cancelling, costly borrowing creeping back, and your rent and deposit dates, then asks for the rest in one message. Applying, cancelling and opening anything stay your tap.",
     },
   ],
   all: [
@@ -585,7 +585,7 @@ export const DEBT_AUTOPILOT: Readonly<
     },
     {
       step: 251,
-      does: "Every month, after her soft checks, goes over a cheaper rate on each loan, car loan add-ons worth cancelling, costly borrowing creeping back, and your rent and deposit dates; sends the next lower-rate request to a card herself, and asks for the rest in one message. Nothing that runs a hard credit check, applies or opens an account happens without your tap.",
+      does: "Every month, after its soft checks, goes over a cheaper rate on each loan, car loan add-ons worth cancelling, costly borrowing creeping back, and your rent and deposit dates; sends the next lower-rate request to a card itself, and asks for the rest in one message. Nothing that runs a hard credit check, applies or opens an account happens without your tap.",
     },
   ],
 };
@@ -640,7 +640,7 @@ export const REFI_TERM_RANGE_MONTHS: Readonly<Record<LoanProduct, { min: number;
   student: { min: 60, max: 240 },
   mortgage: { min: 120, max: 360 },
 };
-// Jane asks the lender partner for offers this often, by herself.
+// Jane asks the lender partner for offers this often, on its own.
 export const REFI_CHECK_DAYS = 30;
 // And brings one up only when it saves at least this much over the same term, fees in.
 export const REFI_MIN_SAVING_CENTS = 30_000;
@@ -698,7 +698,7 @@ export const ESCROW_CHANGE_MIN_CENTS = 1_000;
 // a real score); "none" turns it off. A real credit partner (a bureau or a licensed score
 // provider, soft pulls only) is a new value here and a new CreditPartner implementation.
 export const CREDIT_PARTNER: "demo" | "none" = "demo";
-// Jane pulls the score this often by herself (a soft pull: it never affects the score).
+// Jane pulls the score this often on its own (a soft pull: it never affects the score).
 export const CREDIT_CHECK_DAYS = 30;
 // Card utilisation: the share of card limits in use. Under the first is helping; over the
 // second is hurting. Paying down before the statement closes brings the reported share down.

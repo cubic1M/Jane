@@ -2,8 +2,8 @@ import type { PfcDetailed } from "@/categorize/taxonomy";
 import type { SectorLevel } from "@/config/autopilot-sectors";
 import { CHARITY_CATEGORIES, PREPARER_GROUPS } from "@/config/tax-pack";
 
-// Taxes (spec steps 118–127): what Jane needs to know, how she works it out from the
-// person's accounts and what she does by herself at each autopilot level. Tax rates,
+// Taxes (spec steps 118–127): what Jane needs to know, how it works it out from the
+// person's accounts and what it does on its own at each autopilot level. Tax rates,
 // brackets and limits are in src/config/tax-rates.ts.
 
 // The tax year Jane works on during the year. Until the filing deadline the pack still
@@ -22,7 +22,7 @@ export type FilingStatus = keyof typeof FILING_STATUSES;
 export const isFilingStatus = (value: unknown): value is FilingStatus =>
   typeof value === "string" && Object.hasOwn(FILING_STATUSES, value);
 
-// Kinds of income, how Jane says it when she's seen it, the form each usually comes on, and how Jane spots each in the
+// Kinds of income, how Jane says it when it's seen it, the form each usually comes on, and how Jane spots each in the
 // person's transactions (Plaid personal finance categories) and accounts (Plaid
 // investment subtypes for taxable accounts, from Plaid's account type docs). Pensions and
 // unemployment are taxable too, so they're asked about as well.
@@ -105,7 +105,7 @@ export const TAX_PROFILE_MIN_PAYCHECKS = 2;
 // Payers named in Jane's message, most paid first.
 export const TAX_PROFILE_PAYERS_SHOWN = 2;
 
-// Spending that hints at children, so Jane mentions it when she asks (never assumes).
+// Spending that hints at children, so Jane mentions it when it asks (never assumes).
 // A child counts for the child tax credit while under this age at the end of the year (and
 // as another dependant after); the tax profile's "Children under 17" (src/config/tax-rates.ts).
 export const CHILD_TAX_CREDIT_AGE = 17;
@@ -122,7 +122,7 @@ export const STATE_AGENCY_CATEGORIES: readonly PfcDetailed[] = [
 export const MAX_DEPENDANTS = 15;
 
 // Spec step 119: tax tags on transactions. Jane tags spending in these categories by
-// herself; "check" tags are ones she asks about (an online course may not be education
+// itself; "check" tags are ones it asks about (an online course may not be education
 // for taxes). Work expenses are only ever tagged by the person. Tags sit beside the
 // spending categories and never change them, so spending totals stay the same.
 export const TAX_TAGS = {
@@ -318,7 +318,7 @@ export const FILING_SEASON = { from: "01-20", until: "10-15" } as const;
 export const DEMO_FILING_ACCEPT_HOURS = 24;
 
 // Spec step 166: tax forms Jane collects from the document partner (a stand-in for the
-// demo bank). She looks for each expected form from its usual date (TAX_FORMS by) until the
+// demo bank). It looks for each expected form from its usual date (TAX_FORMS by) until the
 // filing deadline, once a day. A form agrees with the transactions when the amounts are
 // within the larger of matchCents and matchShare of them (post-tax deductions such as a
 // Roth 401(k) can make a W-2's take-home differ); otherwise it's flagged and not used until
@@ -440,8 +440,8 @@ export const TAX_MESSAGE_PRIORITY = {
   exemption: 30,
 } as const;
 
-// What Jane does about taxes by herself, shown on /taxes and said in the chat, one entry per
-// feature: what she does when the Taxes area always asks, and at its levels that let her act
+// What Jane does about taxes on its own, shown on /taxes and said in the chat, one entry per
+// feature: what it does when the Taxes area always asks, and at its levels that let it act
 // (the safe stuff, everything allowed). The Taxes area's own level (spec step 141) decides it,
 // the same setting its payments go by (docs/feature-audit.md, cluster 1); by default it follows
 // the step 57 level. Nothing is ever filed or signed without a tap.
@@ -617,6 +617,6 @@ export function whatJaneDoes(level: SectorLevel): string[] {
   return TAX_AUTOPILOT.map((line) => (usesFoundAnswers(level) ? line.auto : line.ask));
 }
 
-// Whether Jane may use what she found before the person has said yes to it: the Taxes area
+// Whether Jane may use what it found before the person has said yes to it: the Taxes area
 // doesn't always ask.
 export const usesFoundAnswers = (level: SectorLevel): boolean => level !== "ask";

@@ -33,7 +33,7 @@ import { employerPlanFor } from "./employer-plan";
 import { profileOf } from "./profile";
 
 // Retirement accounts used fully (spec step 210, demo advice), for its page, Jane's
-// answers and her buttons. Every limit tracked across accounts, the match left on the
+// answers and its buttons. Every limit tracked across accounts, the match left on the
 // table, Roth or traditional by bracket, the backdoor Roth. A payroll change goes through
 // the payroll stand-in and an IRA contribution through the simulated brokerage, each only
 // on the person's tap.

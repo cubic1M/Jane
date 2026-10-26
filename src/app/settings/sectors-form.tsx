@@ -67,7 +67,7 @@ function SectorForm({ row }: { row: SectorRow }) {
         </button>
       </div>
       <p className="text-xs text-zinc-500">
-        Everything allowed lets Jane {row.allMeans}. Anything over a cap, she asks.
+        Everything allowed lets Jane {row.allMeans}. Anything over a cap, Jane asks.
       </p>
       {state && (
         <p

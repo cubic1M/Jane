@@ -15,7 +15,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-test("an idea shows how sure Jane is, and a No changes what she brings", async ({
+test("an idea shows how sure Jane is, and a No changes what it brings", async ({
   context,
   page,
   baseURL,

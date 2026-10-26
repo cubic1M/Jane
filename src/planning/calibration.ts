@@ -1,6 +1,6 @@
 import { CALIBRATION_BAND, CALIBRATION_MIN_SAMPLE, CALIBRATION_TOLERANCE } from "@/config/reach";
 
-// Is Jane's confidence honest? (spec step 258). Pure. Of the suggestions she was about 80%
+// Is Jane's confidence honest? (spec step 258). Pure. Of the suggestions it was about 80%
 // sure of, about 80% should prove right. "Right" here is what the person did with it: yes is
 // right, no is wrong (the results of what then worked, step 207, refine it per kind of
 // finding). Only answered suggestions count.

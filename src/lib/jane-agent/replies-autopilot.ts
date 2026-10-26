@@ -11,7 +11,7 @@ import type { SectorIntent } from "./autopilot-intents";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 
-// One autopilot, every sector (spec step 141): what Jane does by herself, area by area, and
+// One autopilot, every sector (spec step 141): what Jane does on its own, area by area, and
 // a change typed in the chat, set only on the person's tap.
 
 const settings: MessageAction = {

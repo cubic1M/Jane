@@ -110,7 +110,7 @@ describe("toOptionSet", () => {
     }
   });
 
-  it("in demo advice mode shows her pick and how sure she is, with the label", () => {
+  it("in demo advice mode shows its pick and how sure Jane is, with the label", () => {
     const set = toOptionSet(
       insurance(true, [
         option({ id: "cheap", priceCents: 50_000, headline: "Cheap, $500.00 a year" }),

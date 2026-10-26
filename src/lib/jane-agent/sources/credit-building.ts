@@ -5,7 +5,7 @@ import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
 // Building credit (spec step 175). Before a card's statement closes: the payment Jane
-// scheduled by herself (from "Handle the safe stuff", within the debt caps), or the one to
+// scheduled on its own (from "Handle the safe stuff", within the debt caps), or the one to
 // make with one tap. A well done at each on-time streak milestone, and a credit-builder
 // stand-in for a thin file, once a year.
 

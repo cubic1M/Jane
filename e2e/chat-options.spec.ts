@@ -62,7 +62,7 @@ test("a pick on the options card is instant, and the next card follows within 10
       why: li.querySelector("[id^=why-] p")?.textContent ?? "",
     })),
   );
-  // Her pick first, as the chat's card has it.
+  // Its pick first, as the chat's card has it.
   rows.sort((a, b) => Number(b.isPick) - Number(a.isPick));
   const options = rows.map((r) => ({
     id: r.id,
@@ -104,7 +104,7 @@ test("a pick on the options card is instant, and the next card follows within 10
   expect(await pickCard.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
   const showing = pickCard.locator('[data-card-state="showing"]');
   await expect(pickCard.locator("p[aria-live]")).toHaveText(`1 of ${options.length}`);
-  // Her pick first, labelled, the headline short with its price as the one figure.
+  // Its pick first, labelled, the headline short with its price as the one figure.
   await expect(showing.getByText("Jane's pick")).toBeVisible();
   const headline = (await showing.getByRole("heading", { level: 3 }).textContent()) ?? "";
   expect(headline).toMatch(/\/yr$/);

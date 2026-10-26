@@ -96,7 +96,7 @@ describe.runIf(url)("the tax organizer against a real database", () => {
     expect(payees("medical").sort()).toEqual(["BRIGHT SMILES DENTAL", "CVS Pharmacy"]);
     expect(payees("education").sort()).toEqual(["Duolingo", "MasterClass"]);
     expect(view.totals.work.count).toBe(0);
-    // Jane isn't sure online courses count, so she asks.
+    // Jane isn't sure online courses count, so it asks.
     expect(view.checks.map((c) => c.payee)).toEqual(["MasterClass", "Duolingo"]);
   });
 
@@ -254,7 +254,7 @@ describe.runIf(url)("the tax organizer against a real database", () => {
 
   it("asks from late January whether each form has arrived, and I have it ticks it off", async () => {
     // Spec step 166: the demo bank's forms collect themselves, so Jane only asks people
-    // whose payers she can't collect from: here, a real account's W-2.
+    // whose payers it can't collect from: here, a real account's W-2.
     const january = new Date("2027-01-21T16:00:00Z");
     const local = { date: "2027-01-21", hour: 8 };
     const gather = async (who: string, now: Date, date = local) =>

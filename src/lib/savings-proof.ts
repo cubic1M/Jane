@@ -221,8 +221,8 @@ export async function provenSavings(
   };
 }
 
-// The whole verified record: what Jane did (provenSavings, from her actions) and what the person
-// did on her suggestions (savingsRecord, checked each night), confirmed apart from expected.
+// The whole verified record: what Jane did (provenSavings, from its actions) and what the person
+// did on its suggestions (savingsRecord, checked each night), confirmed apart from expected.
 // A suggestion confirmed by the same transaction as one of Jane's receipts counts once.
 export type VerifiedSavings = {
   actions: ProvenSavings;

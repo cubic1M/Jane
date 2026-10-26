@@ -5,7 +5,7 @@ import { loadGoalBuckets } from "./goal-buckets";
 import { loadReturns, type Returns } from "./returns";
 import type { Bucket } from "@/planning/goal-buckets";
 
-// A steady hand (spec step 163), for Jane's message, her reply, the pause and the tool.
+// A steady hand (spec step 163), for Jane's message, its reply, the pause and the tool.
 
 type Options = { client?: PrismaClient; now?: Date; returns?: Returns };
 

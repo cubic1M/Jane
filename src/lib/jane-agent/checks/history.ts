@@ -5,8 +5,8 @@ import type { CheckRun } from "./run";
 // Only scores and the questions that failed: never an answer's words. Pure.
 
 // The depth bar (docs/spec.md, "Depth first"): the share of questions Jane understood (an
-// answer, not a fallback), the share of figures she got right, the share of follow-ups and
-// two-part questions she handled (scoring at least FAIL_BELOW), and how long answers take.
+// answer, not a fallback), the share of figures it got right, the share of follow-ups and
+// two-part questions it handled (scoring at least FAIL_BELOW), and how long answers take.
 export type Metrics = {
   understoodPct: number | null;
   figuresPct: number | null;

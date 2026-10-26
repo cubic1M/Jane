@@ -85,7 +85,7 @@ function toView(row: {
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-// What Jane knows for a tax year: her estimate, the forms she collected (only usable ones), and
+// What Jane knows for a tax year: its estimate, the forms it collected (only usable ones), and
 // the tags for tuition and childcare.
 export async function knownFor(
   userId: string,

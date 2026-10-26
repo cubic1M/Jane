@@ -16,7 +16,7 @@ import { addDeadline } from "@/lib/deadlines";
 import { LifeEventError, startLifeEvent, toggleLifeEventItem } from "@/lib/life-events";
 
 // Life events spotted (spec step 100): Jane's guesses (src/insights/life-signals.ts) for
-// one person, minus the kinds they answered, and what she does by herself on Yes: starts
+// one person, minus the kinds they answered, and what it does on its own on Yes: starts
 // the checklist (step 72), sets the budgets it needs, flags insurance to review and puts
 // reminders on Deadlines. Nothing here moves money, so Yes runs it at every autopilot
 // level; nothing runs without the Yes.
@@ -70,7 +70,7 @@ export type ChecklistRun = {
   reminders: { title: string; dueOn: string }[];
 };
 
-// Yes: the checklist, run by Jane as far as she can.
+// Yes: the checklist, run by Jane as far as it can.
 export async function runLifeChecklist(
   userId: string,
   kind: LifeEventKind,

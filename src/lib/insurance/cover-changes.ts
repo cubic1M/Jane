@@ -21,7 +21,7 @@ import { listPolicies, type Policy } from "./policies";
 // baby, marries or starts a new job (from step 100's life events, their accounts, or what
 // they tell Jane), Jane prepares the cover changes it needs and asks once. Each change is
 // made with the carrier through the insurance partner on the person's tap. The one change
-// that never moves the price, an address, Jane makes herself when Insurance is set to
+// that never moves the price, an address, Jane makes itself when Insurance is set to
 // "Everything allowed". Without a partner, the person makes the changes with their insurer
 // and taps Done.
 
@@ -133,7 +133,7 @@ export async function listCoverChanges(
 }
 
 // Prepares the changes for each event, once: an event already prepared, made or dismissed
-// isn't prepared again. Then, at "Everything allowed", Jane makes the no-price ones herself.
+// isn't prepared again. Then, at "Everything allowed", Jane makes the no-price ones itself.
 export async function prepareCoverChanges(
   userId: string,
   {

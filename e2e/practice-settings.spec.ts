@@ -30,7 +30,7 @@ test("practice settings save and change what Jane does", async ({ context, page,
   await page.goto("/investments/practice/settings");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Practice settings");
   const doing = page.getByRole("region", { name: "What Jane does now" });
-  await expect(doing.getByText(/trades the practice portfolio herself/)).toBeVisible();
+  await expect(doing.getByText(/trades the practice portfolio itself/)).toBeVisible();
   await expect(doing.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
 
   // Fits a phone: nothing wider than the screen.
@@ -42,7 +42,7 @@ test("practice settings save and change what Jane does", async ({ context, page,
   await page.getByLabel("Oil, gas and coal companies").check();
   await page.getByLabel(/^Off/).check();
   await page.getByLabel(/^Suggest only/).check();
-  // How Jane invests: the strategy, the pace, what she may buy and the most in one fund.
+  // How Jane invests: the strategy, the pace, what it may buy and the most in one fund.
   await page.getByLabel(/^Just the level's mix/).check();
   await page.getByLabel("How often to rebalance").selectOption("rarely");
   await page.getByLabel("What Jane may buy").selectOption("funds_only");
@@ -50,7 +50,7 @@ test("practice settings save and change what Jane does", async ({ context, page,
   await page.getByRole("button", { name: "Save settings" }).click();
 
   await expect(page.getByRole("status")).toHaveText("Saved. Jane uses it from the next run.");
-  await expect(doing.getByText(/Suggest only: Jane says what she would do/)).toBeVisible();
+  await expect(doing.getByText(/Suggest only: Jane says what it would do/)).toBeVisible();
   await expect(doing.getByText("The mix is the Low model.")).toBeVisible();
   await expect(doing.getByText("Never bought: Oil, gas and coal companies.")).toBeVisible();
   await expect(doing.getByText("No extra moves: just the model, kept on target.")).toBeVisible();

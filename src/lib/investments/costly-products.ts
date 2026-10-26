@@ -28,7 +28,7 @@ import {
 import { loadFees } from "./fees";
 
 // What costly products really cost (spec step 215, demo advice), for its page, Jane's
-// answers and her tool. Variable annuities and whole life are found from the person's
+// answers and its tool. Variable annuities and whole life are found from the person's
 // payments (asked about once) or entered by them; advisory accounts are read from the fee
 // transactions. Always the yearly cost in dollars, the surrender charge and when it ends,
 // and what the same money would do in a low-cost fund as a range. Jane never says "leave"

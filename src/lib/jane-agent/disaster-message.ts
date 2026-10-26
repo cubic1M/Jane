@@ -4,7 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { MessageAction, MessageRefs } from "./types";
 
 // Disasters and losses in the chat (spec step 270): a postponement declared for the person's
-// county (Jane moves their tax deadlines by herself at the levels that let her act, on a tap at
+// county (Jane moves their tax deadlines on its own at the levels that let it act, on a tap at
 // "ask first"), the casualty loss after insurance kept with the claim, and the answer to "do I
 // get more time on my taxes after the storm", "can I deduct storm damage". Facts: what the IRS
 // postponed and the loss rules; nothing is filed.

@@ -29,7 +29,7 @@ const card = (over: Partial<OptionCard> = {}): OptionCard => ({
 });
 
 describe("cardProblems", () => {
-  it("accepts a good card, with her pick first", () => {
+  it("accepts a good card, with its pick first", () => {
     expect(cardProblems(card())).toEqual([]);
     expect(cardProblems(card({ kind: "loan" }))).toEqual([]);
   });

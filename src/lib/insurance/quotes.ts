@@ -14,7 +14,7 @@ import { POLICY_SELECT, nextRenewal, toPolicy, yearlyPremium, type Policy } from
 // Quotes for one of the person's policies (spec step 103): asked of the insurance partner
 // with the policy's own cover and deductible, compared like for like, and kept until the
 // next request. Getting quotes costs nothing and commits to nothing, so Jane may do it by
-// herself at every autopilot level; buying always needs a tap.
+// itself at every autopilot level; buying always needs a tap.
 
 type Options = { client?: PrismaClient; now?: Date; partner?: InsurancePartner | null };
 

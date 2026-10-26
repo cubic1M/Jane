@@ -11,7 +11,7 @@ import { ChatActionError, type ActionContext, type ActionHandler } from "./handl
 
 // Property tax from the chat (spec step 221): draft an appeal, say who files it, set the
 // deadline, and handle an exemption. Each is the person's tap; Jane files and applies for
-// nothing herself.
+// nothing itself.
 
 const failed = (error: unknown): never => {
   if (error instanceof PropertyTaxError) throw new ChatActionError("failed", error.message);

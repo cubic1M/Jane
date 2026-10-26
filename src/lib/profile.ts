@@ -473,7 +473,7 @@ export async function correctFact(
   }
 }
 
-// Takes a correction back, so Jane goes back to what she sees.
+// Takes a correction back, so Jane goes back to what it sees.
 export async function clearCorrection(
   userId: string,
   key: string,

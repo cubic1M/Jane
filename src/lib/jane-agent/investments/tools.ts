@@ -137,7 +137,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "investments_overview",
     description:
-      "How the person's investments stand this month: the total, the change from a month ago (from daily balances, counting what went in), what went in last month, fees a year, whether the mix is on target (demo advice), whether orders are ready, and what Jane does with investments by herself at their autopilot level. Facts about the past only: never say where markets are going.",
+      "How the person's investments stand this month: the total, the change from a month ago (from daily balances, counting what went in), what went in last month, fees a year, whether the mix is on target (demo advice), whether orders are ready, and what Jane does with investments on its own at their autopilot level. Facts about the past only: never say where markets are going.",
     input_schema: noInput,
   },
   {
@@ -149,7 +149,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "goal_buckets",
     description:
-      "In demo advice mode: each of the person's goals (and retirement) with how far away it is, the mix it's invested in by the glide path (cash under 3 years, safer as the date nears, stocks capped by their risk level), what it needs a month, and whether Jane splits automatic investing's new money by goal by herself at their autopilot level.",
+      "In demo advice mode: each of the person's goals (and retirement) with how far away it is, the mix it's invested in by the glide path (cash under 3 years, safer as the date nears, stocks capped by their risk level), what it needs a month, and whether Jane splits automatic investing's new money by goal on its own at their autopilot level.",
     input_schema: noInput,
   },
   {
@@ -216,7 +216,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "yearly_review",
     description:
-      "The yearly investing review in one list: what Jane did by herself within the person's caps and what is waiting for their tap; retirement account room and the employer match; old 401(k)s that could come home; whether the mix has drifted; tax-loss harvesting chances; what investing costs; and every goal with what it still needs. Report it as the list it is; every change is the person's own tap on Jane's message, never something you do.",
+      "The yearly investing review in one list: what Jane did on its own within the person's caps and what is waiting for their tap; retirement account room and the employer match; old 401(k)s that could come home; whether the mix has drifted; tax-loss harvesting chances; what investing costs; and every goal with what it still needs. Report it as the list it is; every change is the person's own tap on Jane's message, never something you do.",
     input_schema: noInput,
   },
   {
@@ -283,7 +283,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "practice_portfolio",
     description:
-      "The person's practice portfolio (demo advice mode only): a paper portfolio Jane runs on practice money, never real money, at a risk level (Very low to Very high). Gives the level, what it's worth and started with, cash, each position, whether Jane is paused (all trading, or opportunities only), this week's trades with the rule and the reason for each, the ideas Jane is waiting on the person for (each with how sure she is, as a percent, and why), the strategy the autopilot follows today and whether the person's settings let it, and what their yes and no to past ideas changed (which kinds now come sooner or later). For \"what are you thinking of doing\", \"what strategy is mine on\" or \"have you learned what I like\". Say plainly that it's practice money and nothing real was bought or sold. To pause or resume it, offer practice.pause or practice.resume with propose_action; you can't change it yourself.",
+      "The person's practice portfolio (demo advice mode only): a paper portfolio Jane runs on practice money, never real money, at a risk level (Very low to Very high). Gives the level, what it's worth and started with, cash, each position, whether Jane is paused (all trading, or opportunities only), this week's trades with the rule and the reason for each, the ideas Jane is waiting on the person for (each with how sure Jane is, as a percent, and why), the strategy the autopilot follows today and whether the person's settings let it, and what their yes and no to past ideas changed (which kinds now come sooner or later). For \"what are you thinking of doing\", \"what strategy is mine on\" or \"have you learned what I like\". Say plainly that it's practice money and nothing real was bought or sold. To pause or resume it, offer practice.pause or practice.resume with propose_action; you can't change it yourself.",
     input_schema: noInput,
   },
   // Phase AW: the strategy menu, each replayed at the person's level against their mix.

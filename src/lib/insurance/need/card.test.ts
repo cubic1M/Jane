@@ -51,7 +51,7 @@ async function setAndNeed() {
 }
 
 describe("insuranceCard", () => {
-  it("builds a card that holds to the shared shape, her pick first, with advice", async () => {
+  it("builds a card that holds to the shared shape, its pick first, with advice", async () => {
     const { need, set } = await setAndNeed();
     const card = insuranceCard(set, need, true);
     expect(cardProblems(card)).toEqual([]);

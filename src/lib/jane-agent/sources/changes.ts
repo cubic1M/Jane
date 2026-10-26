@@ -6,7 +6,7 @@ import type { Candidate, MessageAction } from "../types";
 import { CHANGE_ASK } from "../replies-changes";
 import type { MessageSource } from "./source";
 
-// Jane notices changes (spec step 97): a heads-up for each change she spotted, with "Look
+// Jane notices changes (spec step 97): a heads-up for each change it spotted, with "Look
 // into it", "Set a budget" and "That's expected". One a standing rule (autopilot) already
 // acted on isn't asked about: the rule's own "I did this" message says so.
 
@@ -127,7 +127,7 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
   }
 }
 
-// What Jane brings up first, as only a couple a day are said: what she can act on (or
+// What Jane brings up first, as only a couple a day are said: what it can act on (or
 // did), then paychecks, then other bills and fees, new charges, and spending pace last.
 const RANK: Record<ChangeView["kind"], number> = {
   paycheck_late: 1,

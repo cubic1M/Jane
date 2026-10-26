@@ -41,7 +41,7 @@ export function percentFor(done: number, creep: number): number {
 }
 
 // What a slow scan offers instead of the bar: where this screen was heading. From Try Jane
-// (then=home) that's Home, whose chat opens with Jane saying she's still looking.
+// (then=home) that's Home, whose chat opens with Jane saying it's still looking.
 export function slowLink(next: "/report" | "/home"): {
   href: string;
   label: string;
@@ -51,7 +51,7 @@ export function slowLink(next: "/report" | "/home"): {
     ? {
         href: "/home",
         label: "Open Jane",
-        after: "and Jane will post what she finds as it's ready.",
+        after: "and Jane will post what it finds as it's ready.",
       }
     : {
         href: "/report",

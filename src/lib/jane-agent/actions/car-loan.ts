@@ -5,7 +5,7 @@ import { ChatActionError, type ActionHandler } from "./handler";
 
 // Dealer add-ons on a car loan, from the chat (spec step 245). Confirming only records what
 // the payment was; a cancellation is sent by the person or by the team (the demo bank only,
-// read-only mode), never by Jane herself.
+// read-only mode), never by Jane itself.
 
 const failed = (error: unknown) =>
   error instanceof CarLoanError ? new ChatActionError("failed", error.message) : error;

@@ -55,7 +55,7 @@ async function BenefitsContent() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Benefits through work</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          The cover that comes with your job. Jane reads your pay stub by herself, compares each
+          The cover that comes with your job. Jane reads your pay stub on its own, compares each
           benefit with buying the same cover yourself, and gets ready for open enrollment. A benefit
           only counts once you confirm it, and enrolling is always yours to do.
         </p>

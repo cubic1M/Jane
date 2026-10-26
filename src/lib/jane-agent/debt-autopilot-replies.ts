@@ -18,7 +18,7 @@ const SETTINGS: MessageAction = {
 };
 const LOANS: MessageAction = { id: "open", label: "See every debt", kind: "link", href: "/loans" };
 
-// "What do you do about my debts?": what Jane does by herself at the person's debt level.
+// "What do you do about my debts?": what Jane does on its own at the person's debt level.
 export function debtAutopilotReply(data: DebtAutopilot): Reply {
   const lines = [
     `Your debt autopilot is set to "${SECTOR_LEVEL_LABELS[data.level]}", so here's what I do by myself.`,

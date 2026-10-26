@@ -1,7 +1,7 @@
 import type { DropReaction, Goal, Horizon } from "@/config/investing";
 
 // The eight sample people (spec step 252): different lives to prove suggestions on, not one.
-// Each has a written list of what Jane should suggest and what she must not; the detector
+// Each has a written list of what Jane should suggest and what it must not; the detector
 // harness (step 254) checks every detector against these lists. The demo bank data for each
 // is in src/data-sources/demo/demo-people.ts.
 

@@ -4,7 +4,7 @@ import type { Reply } from "../replies";
 import { riskActions, riskQuestion } from "./risk-words";
 
 // "What am I missing?" (spec step 197): the question Jane has about how they live, with
-// Yes and No right there, or what she's already noticed and been told.
+// Yes and No right there, or what it's already noticed and been told.
 
 const INSURANCE = {
   id: "open",

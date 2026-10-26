@@ -14,7 +14,7 @@ import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 
 // The return, checked before you file (spec step 272). Pure. Three parts:
 // - the reading rules: a draft read off an uploaded PDF, checked before the person confirms it;
-// - the review: each line against what Jane knows for the year (the forms she collected, the
+// - the review: each line against what Jane knows for the year (the forms it collected, the
 //   accounts, the estimate): income missing, deductions or credits left out, figures that don't
 //   match the forms, each with the tax it changes;
 // - the demo draft: the stand-in reader's draft for demo-bank people, built from their own
@@ -76,9 +76,9 @@ export const draftCents = (fields: DraftFields, key: DraftFieldKey): number =>
 // What Jane knows for the year, and where from.
 export type Known = {
   year: number;
-  // Her estimate input for the year (the tax effects are worked out on it).
+  // Its estimate input for the year (the tax effects are worked out on it).
   input: EstimateInput;
-  // From the forms she collected (usable ones only), or null when there's no form.
+  // From the forms it collected (usable ones only), or null when there's no form.
   w2WagesCents: number | null;
   withheldCents: number | null;
   interestCents: number;

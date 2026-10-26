@@ -81,7 +81,7 @@ describe("document actions (spec step 68)", () => {
     expect(await uploadDocument(null, uploadForm())).toEqual({
       ok: true,
       message:
-        "Saved. Jane read the policy in it: confirm what she read on Insurance or in the chat, and it's added.",
+        "Saved. Jane read the policy in it: confirm what Jane read on Insurance or in the chat, and it's added.",
     });
     const [userId, documentId, options] = vi.mocked(readPolicyDocument).mock.calls[0];
     expect([userId, documentId]).toEqual(["u1", "d1"]);

@@ -81,7 +81,7 @@ const RETURN_SELECT = {
   partnerReturnId: true,
 } as const;
 
-// What Jane hands over: what she knows, never account numbers or tokens.
+// What Jane hands over: what it knows, never account numbers or tokens.
 export async function buildPackage(
   userId: string,
   year: number,

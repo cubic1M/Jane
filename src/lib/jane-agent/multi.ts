@@ -111,7 +111,7 @@ async function savingsAccount(userId: string, words: string, client: PrismaClien
 }
 
 // Without a money-movement partner Jane can't move money in someone's bank, and neither can
-// the team: a short guide for doing it themselves, and a reminder offer. She'll do it herself
+// the team: a short guide for doing it themselves, and a reminder offer. It'll do it itself
 // once a partner is connected.
 export function moveGuideReply(amountCents: number | "savings", where: string): Reply {
   const amount = amountCents === "savings" ? "the amount" : formatCents(amountCents);

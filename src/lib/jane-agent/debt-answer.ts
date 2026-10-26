@@ -86,7 +86,7 @@ export async function answerDebt(
       );
     case "refinance": {
       let refi = await loadRefinance(userId, { client, now });
-      // Asked before Jane's first monthly check: she checks now.
+      // Asked before Jane's first monthly check: it checks now.
       if (refi.available && refi.checkedOn === null) {
         await checkRates(userId, { client, now });
         refi = await loadRefinance(userId, { client, now });
@@ -100,7 +100,7 @@ export async function answerDebt(
     case "build_credit":
     case "credit_simulate": {
       let data = await loadCreditBuilding(userId, { client, now });
-      // Asked before Jane's first monthly pull: she pulls now (a soft pull).
+      // Asked before Jane's first monthly pull: it pulls now (a soft pull).
       if (data.available && data.score === null) {
         await pullCredit(userId, { client, now });
         data = await loadCreditBuilding(userId, { client, now });
@@ -266,7 +266,7 @@ export async function answerDebt(
       return betterCardReply(await loadCreditCards(userId, { client, now }));
     case "credit_score": {
       let credit = await loadCredit(userId, { client, now });
-      // Asked before Jane's first monthly pull: she pulls now (a soft pull), then answers.
+      // Asked before Jane's first monthly pull: it pulls now (a soft pull), then answers.
       if (credit.available && !credit.latest) {
         await pullCredit(userId, { client, now });
         credit = await loadCredit(userId, { client, now });

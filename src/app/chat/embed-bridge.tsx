@@ -41,7 +41,7 @@ export function EmbedBridge() {
       else if (stay) router.push(stay);
     };
     // "Ask Jane" from the giant tree: the question goes in the box and is sent at once, and the
-    // page hears where it landed (for its dotted line), when Jane starts and when she's done.
+    // page hears where it landed (for its dotted line), when Jane starts and when it's done.
     const tell = (message: FrameMessage) => window.parent.postMessage(message, origin);
     // The person's own message with this question, the latest one.
     const mineWith = (text: string) =>

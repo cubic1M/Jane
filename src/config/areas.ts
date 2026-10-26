@@ -3,7 +3,7 @@ import type { TabKey } from "@/config/navigation";
 
 // The areas of the home hub and the feature map (docs/design/home-hub.md): one per area tab
 // after Home, in tab order. Each of Jane's capabilities (src/lib/jane-agent/capabilities)
-// belongs to one area, or to Jane herself (null); the hub's health dots and the feature map
+// belongs to one area, or to Jane itself (null); the hub's health dots and the feature map
 // both read this, and ./areas.test.ts fails on a capability with no entry.
 
 export type AreaKey = Extract<
@@ -48,7 +48,7 @@ export const AREA_OF_CAPABILITY: Readonly<Record<string, AreaKey | null>> = {
   long_view: "ahead",
   tradeoffs: "ahead",
   life_event: "ahead",
-  // Jane herself: what she did, her autopilot, what she remembers, the whole picture.
+  // Jane itself: what it did, its autopilot, what it remembers, the whole picture.
   whole_picture: null,
   profile: null,
   did: null,

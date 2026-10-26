@@ -45,9 +45,9 @@ async function AutoContent({
         </Link>
         <h1 className="text-3xl font-semibold tracking-tight">Automatic investing</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Every payday, Jane invests for you, but only what safe to spend doesn&apos;t need: she
+          Every payday, Jane invests for you, but only what safe to spend doesn&apos;t need: Jane
           keeps at least {formatCents(SAFE_TO_SPEND_FLOOR_CENTS)} of it and pauses that payday by
-          herself when it&apos;s low.
+          itself when it&apos;s low.
         </p>
       </div>
       <SimulatedBanner />

@@ -204,7 +204,7 @@ describe.runIf(url)("books that balance", { timeout: 120_000 }, () => {
     const said = gather(snapshot, NOW, { trigger: "open", sources: [booksSource] });
     expect(said.length).toBeGreaterThan(0);
     expect(said.length).toBeLessThanOrEqual(2);
-    // Asked, she answers by the rules and Claude has the same.
+    // Asked, it answers by the rules and Claude has the same.
     const answer = await answerByRules(userId, { kind: "books" }, { client, now: NOW });
     expect(answer?.body).toMatch(/^Not everything adds up yet\./);
     const tool = JSON.parse(

@@ -209,14 +209,14 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await page.getByRole("link", { name: "← Learn" }).click();
   await expect(page.getByRole("link", { name: "Standard deduction" })).toBeVisible();
 
-  // Step 137: what Jane does by herself, and how it's going.
+  // Step 137: what Jane does on its own, and how it's going.
   await page.goto("/investments");
   await page
     .getByRole("main")
-    .getByText("What Jane does by herself", { exact: true })
+    .getByText("What Jane does on its own", { exact: true })
     .first()
     .click();
-  await expect(page.getByRole("region", { name: "What Jane does by herself" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "What Jane does on its own" })).toBeVisible();
   await page.goto(CHAT);
   await page.getByRole("textbox", { name: "Message Jane" }).fill("how are my investments doing");
   await page.getByRole("button", { name: "Send" }).click();

@@ -41,9 +41,9 @@ const byPriority = (snapshot: Snapshot) => {
   return (a: SnapshotFinding, b: SnapshotFinding) => at(a) - at(b);
 };
 
-// One finding as Jane's question about it. Also how she answers about it when asked
+// One finding as Jane's question about it. Also how it answers about it when asked
 // (spec step 88), whatever else is waiting.
-// Read-only mode: a real account is offered Jane's steps, never her doing it for them.
+// Read-only mode: a real account is offered Jane's steps, never its doing it for them.
 export const ASK_TO_HANDLE = "Want me to handle it?";
 export const ASK_FOR_STEPS = "Want the steps to do it yourself?";
 
@@ -109,7 +109,7 @@ export const findingsSource: MessageSource = {
         c.finding && !c.finding.handledBy ? [c.finding.id] : [],
       ),
     );
-    // Spec step 104: when Jane shops insurance herself, her own reshop asks instead of the
+    // Spec step 104: when Jane shops insurance itself, its own reshop asks instead of the
     // generic "could cost less" finding.
     const shopsInsurance = snapshot.insurance?.shopsItself ?? false;
     // Spec step 207 read by step 147: a kind whose finished actions never showed a saving is

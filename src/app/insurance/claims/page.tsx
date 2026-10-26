@@ -77,7 +77,7 @@ function Filing({ claim, filable }: { claim: Claim; filable: boolean }) {
   return (
     <form action={draftClaimForm} className="flex flex-col gap-2 text-sm">
       <p className="font-medium">
-        Jane can file this claim for you. She&apos;ll show you before it goes.
+        Jane can file this claim for you. It&apos;ll show you before it goes.
       </p>
       <input type="hidden" name="claimId" value={claim.id} />
       <label htmlFor={`amount-${claim.id}`} className="flex flex-col gap-1 font-medium">
@@ -267,8 +267,8 @@ async function ClaimsContent({
         <p className="text-zinc-600 dark:text-zinc-400">
           When something happens, tell Jane in the chat (&ldquo;I had a car accident&rdquo;) or
           start a tracker here. Jane shows what to do now and what to collect, and reminds you of
-          each step until it&apos;s done. For a small claim on a policy she can reach, Jane can file
-          it with your insurer once you&apos;ve checked what she wrote.
+          each step until it&apos;s done. For a small claim on a policy Jane can reach, it can file
+          it with your insurer once you&apos;ve checked its draft.
         </p>
       </div>
       {error && (

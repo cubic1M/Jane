@@ -14,7 +14,7 @@ import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
 
 // The yearly debt review (spec step 230): everything about debts and credit in one pass, what
-// Jane did by herself within the debt caps, and what waits for a tap (in the chat, where each
+// Jane did on its own within the debt caps, and what waits for a tap (in the chat, where each
 // has its button, or on the page it belongs to).
 
 const LINK = "font-medium text-emerald-700 hover:underline";
@@ -32,7 +32,7 @@ async function ReviewContent() {
   const user = await requireUser();
   await connection();
   const [data, kept] = await Promise.all([loadDebtReview(user.id), loadCreditMonthly(user.id)]);
-  // Before Jane's first monthly pass (her runs skip quiet hours), worked out now, read-only:
+  // Before Jane's first monthly pass (its runs skip quiet hours), worked out now, read-only:
   // nothing is sent or applied for from here.
   if (!kept) {
     // The soft checks it reads, as the offers pages do on first open: they never touch the score.

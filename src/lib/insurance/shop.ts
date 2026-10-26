@@ -21,7 +21,7 @@ import { pickQuote } from "./pick";
 import { POLICY_SELECT, nextRenewal, toPolicy, yearlyPremium, type Policy } from "./policies";
 import { requestQuotes, type StoredQuote } from "./quotes";
 
-// Shopped for you (spec step 104). Jane reshops each policy by herself, at every autopilot
+// Shopped for you (spec step 104). Jane reshops each policy on its own, at every autopilot
 // level: RESHOP_DAYS_BEFORE_RENEWAL days before it renews, and whenever its price goes up
 // (a higher price saved on the policy, or a higher charge from the insurer). Each reshop is
 // kept as a shop: the pick and why, or "nothing better". The person then says Yes (a
@@ -231,7 +231,7 @@ export async function reshopDue(
   return null;
 }
 
-// Spec step 108: at "handle everything", Jane keeps her open picks ready for the one tap:
+// Spec step 108: at "handle everything", Jane keeps its open picks ready for the one tap:
 // quotes about to expire are asked for again and the same pick is updated in place (no new
 // message). A pick that's no longer the best, or gone, is left to expire.
 export async function refreshPicks(

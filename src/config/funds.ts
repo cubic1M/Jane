@@ -198,7 +198,7 @@ export const DEMO_EMPLOYER_PLAN_MENU: readonly string[] = [
   "DSVXX",
 ];
 
-// Spec step 131: the low-cost index fund Jane uses for each kind of investment when she
+// Spec step 131: the low-cost index fund Jane uses for each kind of investment when it
 // moves money to the target mix (and step 133 turns into orders). All are on the demo
 // plan's menu, so they work in the 401(k) too. Stand-in, like the rest of this table.
 export const CORE_FUNDS: Readonly<Record<Exclude<AssetClass, "other">, string>> = {

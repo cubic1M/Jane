@@ -60,7 +60,7 @@ export function fixedChecks(
     NOT_ANSWERED.includes(body);
   checks.push(
     fellBack
-      ? fail("answered", "Jane didn't answer: she fell back to what she can do.")
+      ? fail("answered", "Jane didn't answer: it fell back to what it can do.")
       : answer.source === "claude_blocked"
         ? fail("answered", "The guardrails blocked Jane's answer.")
         : pass("answered"),
@@ -108,7 +108,7 @@ export function fixedChecks(
     body,
     answer.source === "claude" ? allowed : [...shown],
     undefined,
-    // As Jane checks her own answers for this person (spec steps 98, 137).
+    // As Jane checks its own answers for this person (spec steps 98, 137).
     facts.advice ? "demo_advice" : "standard",
   );
   checks.push(

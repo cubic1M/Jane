@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 // The chat has no page of its own: /chat opens Home with the side chat open, and Try Jane and
-// linking a bank land on Home. The tests that talk to Jane open her chat by itself, as the
+// linking a bank land on Home. The tests that talk to Jane open its chat by itself, as the
 // side panel shows it (/chat?embed=1).
 export const CHAT = "/chat?embed=1";
 
@@ -11,7 +11,7 @@ export async function landInChat(page: Page, timeout = 60_000) {
   await page.goto(CHAT);
 }
 
-// Jane's answer to what was just typed, found by its own words (every part given): one of her
+// Jane's answer to what was just typed, found by its own words (every part given): one of its
 // own messages, or the result of a tap just before, may land after it, so never "the last
 // message". It can take a while on a cold dev server (the answer, then the chat's refresh); a
 // failure says what Jane's newest messages said instead.
@@ -31,7 +31,7 @@ export async function answerTo(page: Page, ...words: string[]): Promise<Locator>
   return found.last();
 }
 
-// Jane's pop-ups (src/lib/jane-agent/popups.ts): anything she brings up that waits on the
+// Jane's pop-ups (src/lib/jane-agent/popups.ts): anything it brings up that waits on the
 // person floats as a card, not in the chat's list. The card showing, once it's the one with
 // this headline (the arrow keys step through the stack), or a failure if it never comes.
 export async function popupCard(page: Page, headline: RegExp, timeout = 30_000) {

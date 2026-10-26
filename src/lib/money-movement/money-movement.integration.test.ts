@@ -35,7 +35,7 @@ import {
 } from "./transfers";
 
 // Spec step 144 against a real, migrated Postgres, with the demo bank: the day after the
-// 15th's payroll, Jane plans the paycheck, moves the goals' shares by herself within Goals'
+// 15th's payroll, Jane plans the paycheck, moves the goals' shares on its own within Goals'
 // autopilot caps through the stand-in (no real money), keeps safe to spend's cushion, lets
 // every transfer be undone while pending, and asks with one tap for what autopilot can't do.
 

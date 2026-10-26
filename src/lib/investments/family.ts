@@ -18,7 +18,7 @@ import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { childRothRoom, giftOk, percentFunded } from "@/planning/family";
 
 // Investing for the family (spec step 213, demo advice), for its page, Jane's answers and
-// her buttons: a custodial account for a child, a Roth IRA for a child with earned income,
+// its buttons: a custodial account for a child, a Roth IRA for a child with earned income,
 // and gifts into the child's college fund through a share link whose public page shows only
 // the goal and how far along it is. Contributions go through the simulated brokerage, each a tap.
 

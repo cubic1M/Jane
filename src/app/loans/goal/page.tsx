@@ -68,7 +68,7 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">A credit score for a goal</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Tell Jane the score you need and by when, and she plans it month by month from the score
+          Tell Jane the score you need and by when, and Jane plans it month by month from the score
           simulator.
         </p>
       </div>

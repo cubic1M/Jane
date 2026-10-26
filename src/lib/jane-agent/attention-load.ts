@@ -6,7 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { alwaysSaid, labelOf, learnAttention, type Attention } from "./attention";
 import { BUNDLED_UNTIL } from "./messages";
 
-// Asking less (spec step 147): what Jane learned, from her own messages of the last couple
+// Asking less (spec step 147): what Jane learned, from its own messages of the last couple
 // of months, and bringing a stopped kind back (from Settings or the chat), kept in
 // jane_preferences as kind "attention", key "resume:<source>".
 

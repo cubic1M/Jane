@@ -539,8 +539,8 @@ export function overviewReply(snapshot: InvestmentSnapshot): Reply {
 }
 
 // Spec step 137: what Jane keeps up with investments at the person's level, then what the
-// Investing area's own setting lets her trade by herself (spec step 141), so it matches what
-// she does. The page, the answer and Claude's tool all say these lines.
+// Investing area's own setting lets it trade on its own (spec step 141), so it matches what
+// it does. The page, the answer and Claude's tool all say these lines.
 export function investmentsByHerself(
   level: string | null,
   investing: Parameters<typeof byHerself>[0],

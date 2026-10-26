@@ -18,7 +18,7 @@ type Options = { client?: PrismaClient; now?: Date; partner?: InsurancePartner |
 
 const MAX_DESCRIPTION = 500;
 
-// Whether Jane can file this claim herself: open, on a policy, not filed yet, and a partner.
+// Whether Jane can file this claim itself: open, on a policy, not filed yet, and a partner.
 export async function canFile(
   userId: string,
   claim: Pick<Claim, "status" | "policyId" | "filing">,

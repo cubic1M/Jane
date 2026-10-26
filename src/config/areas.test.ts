@@ -7,7 +7,7 @@ import { CAPABILITIES } from "@/lib/jane-agent/capabilities";
 import { AREA_KEYS, AREA_OF_CAPABILITY, areaOfCapability } from "./areas";
 import { AREA_TABS } from "./navigation";
 
-// Every capability belongs to an area or to Jane herself, and every detector to an area, so
+// Every capability belongs to an area or to Jane itself, and every detector to an area, so
 // the hub's health dots and the feature map miss nothing (docs/design/home-hub.md).
 describe("areas", () => {
   it("are the area tabs after Home, in the same order", () => {

@@ -3,7 +3,7 @@ import type { Benefit, BenefitAnswer, BenefitQuestion } from "@/lib/insurance/be
 import { formatCents } from "@/lib/money";
 import type { ActionId, MessageAction } from "../types";
 
-// Benefits through work in Jane's chat (spec step 150): what she found on the pay stub, and
+// Benefits through work in Jane's chat (spec step 150): what it found on the pay stub, and
 // the short guided questions for cover no pay stub shows. Pure.
 
 const PER = {

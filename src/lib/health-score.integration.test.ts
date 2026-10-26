@@ -69,7 +69,7 @@ describe.runIf(url)("money health score", { timeout: 120_000 }, () => {
     }
     // The demo has no goals yet: left out, not counted against the person.
     expect(view.left.map((l) => l.part)).toContain("goals");
-    // Reading doesn't keep it; Jane's run does (the sync ran her once already).
+    // Reading doesn't keep it; Jane's run does (the sync ran it once already).
     expect(await healthOfMonth(user.id, "2026-10", { client })).not.toBeNull();
     await client.healthScore.deleteMany({ where: { userId: user.id } });
     await healthFor(user.id, { client, now: NOW });

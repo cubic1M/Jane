@@ -277,7 +277,7 @@ async function SettingsContent({
   );
   more[itemId("autopilot", "sectors")] = (
     <p className={MUTED}>
-      Over a cap, she asks. Free checks (reshopping, rate checks) run in every area.
+      Over a cap, Jane asks. Free checks (reshopping, rate checks) run in every area.
     </p>
   );
   details[itemId("autopilot", "rules")] = (
@@ -369,7 +369,7 @@ async function SettingsContent({
     </div>
   );
   more[itemId("memory", "told")] = (
-    <p className={MUTED}>She uses these in her answers and suggestions.</p>
+    <p className={MUTED}>Jane uses these in its answers and suggestions.</p>
   );
   details[itemId("memory", "style")] = (
     <div className={BOX}>

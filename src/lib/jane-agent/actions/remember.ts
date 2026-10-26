@@ -4,7 +4,7 @@ import { findingNo } from "./finding";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // Spec step 91: Jane remembers, only on the person's tap.
-// "Remember this" saves what they told her (refs.preference). "Don't suggest again" on a
+// "Remember this" saves what they told it (refs.preference). "Don't suggest again" on a
 // suggestion is a No to it (with its Undo, like No on its card) and a promise: the
 // suggestion, or the same one found again later, never comes back.
 

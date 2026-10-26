@@ -14,8 +14,8 @@ import { loadTaxSavings, type TaxSavingsView } from "@/lib/tax-savings";
 import { taxPlan, type PlanMove } from "@/planning/tax-plan";
 
 // The year-round tax plan (spec step 167), loaded from what Jane knows about the tax year.
-// Each move that's open now is brought up once: at the levels that let Jane act she puts its
-// reminder on the deadlines herself; otherwise "Add to my deadlines" does. Nothing past its
+// Each move that's open now is brought up once: at the levels that let Jane act it puts its
+// reminder on the deadlines itself; otherwise "Add to my deadlines" does. Nothing past its
 // deadline is offered, and nothing here moves money: contributions, payments, sales and
 // gifts are always the person's.
 
@@ -144,7 +144,7 @@ export async function dismissPlanMove(
 }
 
 // At the levels that let Jane act: every move open now and not handled goes on the
-// deadlines. Returns the moves she added.
+// deadlines. Returns the moves it added.
 export async function addOpenPlanMoves(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},

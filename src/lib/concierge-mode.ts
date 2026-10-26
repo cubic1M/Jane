@@ -6,7 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { isDemoItemId } from "@/lib/plaid/demo";
 import { isTrialUser } from "@/lib/trial-ids";
 
-// Read-only mode: whether Jane (her agent, and the queue behind it) acts for this person, or
+// Read-only mode: whether Jane (its agent, and the queue behind it) acts for this person, or
 // shows them how to do it themselves. Like demo advice (src/lib/advice-mode.ts), the demo
 // side is only a person whose every account comes from the demo bank, or a trial person: a
 // real bank or a CSV import next to the demo bank makes them a real account.

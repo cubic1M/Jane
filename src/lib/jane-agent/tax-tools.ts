@@ -67,7 +67,7 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
   {
     name: "tax_profile",
     description:
-      "The person's tax profile: how they file, dependants, the state they file in and their kinds of income, each marked as told by the person, found by Jane from their accounts (not yet checked) or not set; where Jane saw each kind of income and how much came in over the last year; and what Jane does about taxes by herself at their autopilot level.",
+      "The person's tax profile: how they file, dependants, the state they file in and their kinds of income, each marked as told by the person, found by Jane from their accounts (not yet checked) or not set; where Jane saw each kind of income and how much came in over the last year; and what Jane does about taxes on its own at their autopilot level.",
     input_schema: noInput,
   },
   {
@@ -137,7 +137,7 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
   {
     name: "tax_plan",
     description:
-      "The person's year-round tax plan for the tax year: each tax move that applies (workplace plan and IRA or HSA contributions, open enrollment, estimated payments, selling at a loss before year-end, gifts before December 31, a W-4 check after a new job or baby, filing), each with its deadline, when Jane brings it up, what she'd put on their deadlines, and whether it's there already or they said no. Moves past their deadline aren't included. Contribution, sale and gift moves are demo advice.",
+      "The person's year-round tax plan for the tax year: each tax move that applies (workplace plan and IRA or HSA contributions, open enrollment, estimated payments, selling at a loss before year-end, gifts before December 31, a W-4 check after a new job or baby, filing), each with its deadline, when Jane brings it up, what it'd put on their deadlines, and whether it's there already or they said no. Moves past their deadline aren't included. Contribution, sale and gift moves are demo advice.",
     input_schema: noInput,
   },
   {
@@ -203,13 +203,13 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
   {
     name: "tax_property",
     description:
-      "The person's property tax check: their home's assessed value against its market value (their own figures, or sample data), how far over it is and what that costs a year, the county's appeal window and deadline, and in demo advice mode whether an appeal is worth making, the comparable sales behind a drafted appeal, who files it, and exemptions (homestead, senior, veteran, disabled) they may not have claimed with what each does. Jane files and applies for nothing herself.",
+      "The person's property tax check: their home's assessed value against its market value (their own figures, or sample data), how far over it is and what that costs a year, the county's appeal window and deadline, and in demo advice mode whether an appeal is worth making, the comparable sales behind a drafted appeal, who files it, and exemptions (homestead, senior, veteran, disabled) they may not have claimed with what each does. Jane files and applies for nothing itself.",
     input_schema: noInput,
   },
   {
     name: "tax_accountant",
     description:
-      "Where working with an accountant stands: whether the person's taxes include things people usually bring an accountant to (self-employment, rental income, stock options or crypto, income in more than one state, a home sale, an open IRS letter, a tax identity problem, large gains), their read-only accountant links (live, expired or revoked, how many times each was opened), the questions Jane has for an accountant, and the answers that came back. A link shows only tax information, ends on a date the person picks, can be revoked, and every view is logged. Jane never sends a link herself: the person makes and shares it.",
+      "Where working with an accountant stands: whether the person's taxes include things people usually bring an accountant to (self-employment, rental income, stock options or crypto, income in more than one state, a home sale, an open IRS letter, a tax identity problem, large gains), their read-only accountant links (live, expired or revoked, how many times each was opened), the questions Jane has for an accountant, and the answers that came back. A link shows only tax information, ends on a date the person picks, can be revoked, and every view is logged. Jane never sends a link itself: the person makes and shares it.",
     input_schema: noInput,
   },
   {
@@ -251,7 +251,7 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
   {
     name: "tax_draft_check",
     description:
-      "The person's draft tax returns (uploaded to Documents as a draft before filing): what Jane read off each (line by line, waiting for the person to confirm, or confirmed), and for a confirmed draft what her check against their collected forms, accounts and estimate found: income missing (interest, dividends, capital gains, business income, wages lower than the W-2), deductions or credits left out (student loan interest, itemizing, education and care credits, estimated payments), figures that don't match the forms (withholding), each with its line and the federal tax it changes (more tax owed, or money back). Jane never files or changes the draft.",
+      "The person's draft tax returns (uploaded to Documents as a draft before filing): what Jane read off each (line by line, waiting for the person to confirm, or confirmed), and for a confirmed draft what its check against their collected forms, accounts and estimate found: income missing (interest, dividends, capital gains, business income, wages lower than the W-2), deductions or credits left out (student loan interest, itemizing, education and care credits, estimated payments), figures that don't match the forms (withholding), each with its line and the federal tax it changes (more tax owed, or money back). Jane never files or changes the draft.",
     input_schema: noInput,
   },
   {

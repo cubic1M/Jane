@@ -618,12 +618,12 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
   );
 
   it(
-    "step 159: receipts saved by herself, a demo HSA, its extra cash invested with a tap",
+    "step 159: receipts saved on its own, a demo HSA, its extra cash invested with a tap",
     SLOW,
     async () => {
       const userId = await demoPerson();
       // The demo bank's pharmacy, dentist and imaging charges (the imaging bill is from last
-      // year, spec step 200), saved by Jane's brain on the first sync by herself, once each.
+      // year, spec step 200), saved by Jane's brain on the first sync on its own, once each.
       expect(await client.hsaReceipt.count({ where: { userId } })).toBe(4);
       expect(await collectReceipts(userId, { client, now: LINKED })).toBe(0);
       // Two collections at once (a page and the brain) save each charge once, without error.
@@ -960,7 +960,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(await orders()).toBe(0);
       expect((await automaticLog(userId, { client, now: LINKED })).asked).toHaveLength(1);
 
-      // With room under the caps, she does it, and the log says what and why.
+      // With room under the caps, it does it, and the log says what and why.
       await setSectorAutopilot(
         userId,
         "investing",

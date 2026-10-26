@@ -260,7 +260,7 @@ export const MESSAGE_PRIORITY = {
   family_file: 31,
   // Spec step 235: a large deposit that isn't pay comes up high, with its question.
   sudden_money: 52,
-  // Spec step 164: the month's summary of what Jane did by herself in investing.
+  // Spec step 164: the month's summary of what Jane did on its own in investing.
   investing_summary: 40,
   auto_invest_run: 31,
 } as const;

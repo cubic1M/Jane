@@ -17,8 +17,8 @@ import { runTaxCalendar } from "@/lib/tax-calendar";
 import { remindDueRecords } from "@/lib/audit-records";
 import { remindReceipts } from "@/lib/giving";
 
-// What Jane does about taxes by herself before she talks (spec steps 123–127), at the
-// autopilot levels that let her act (src/config/tax.ts TAX_AUTOPILOT). Nothing here moves
+// What Jane does about taxes on its own before it talks (spec steps 123–127), at the
+// autopilot levels that let it act (src/config/tax.ts TAX_AUTOPILOT). Nothing here moves
 // money, signs or files: it only sets up things the person can see and change.
 //
 // Step 123: for freelance income, in demo advice mode, a "Taxes set aside" goal for the
@@ -47,7 +47,7 @@ export async function runTaxAutopilot(
   // is enough.
   const acts = (await mayAct(userId, "taxes", { needs: "safe", cents: 0 }, { client, now })).ok;
   // Spec step 166: collecting tax forms only reads, so Jane does it at every level; ticking
-  // off the ones that check out is for the levels that let her act.
+  // off the ones that check out is for the levels that let it act.
   const documents = await collectTaxDocuments(userId, { client, now, tick: acts });
   if (!acts) {
     return {

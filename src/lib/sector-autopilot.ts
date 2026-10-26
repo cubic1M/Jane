@@ -61,7 +61,7 @@ export async function sectorAutopilots(
     : sectorAutopilotsFrom(userId, client, monthStart(now));
 }
 
-// Read once per server render (React's cache): every area's "what Jane does by herself" asks.
+// Read once per server render (React's cache): every area's "what Jane does on its own" asks.
 const sectorAutopilotsOnce = cache((userId: string, month: string) =>
   sectorAutopilotsFrom(userId, defaultClient, new Date(month)),
 );
@@ -182,7 +182,7 @@ export async function setSectorAutopilot(
   }
   if ((await globalLevel(userId, client)) === "ask") {
     throw new SectorAutopilotError(
-      "You've asked Jane to ask first about everything. Pick a level for her in Settings first.",
+      "You've asked Jane to ask first about everything. Pick a level for it in Settings first.",
     );
   }
   const current = await autopilotFor(userId, sector, { client, now });

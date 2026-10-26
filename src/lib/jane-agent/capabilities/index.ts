@@ -11,7 +11,7 @@ import { moneyAnswer } from "./money";
 import type { Capability } from "./shared";
 import { taxAnswer, taxDecide } from "./tax";
 
-// Every capability of Jane's chat in one place (spec step 190): what she answers, the tools
+// Every capability of Jane's chat in one place (spec step 190): what it answers, the tools
 // Claude has for it and the bank questions that test it. Each sector's intents, replies and
 // tools used to be registered in several scattered files; now there is one entry per
 // capability here, and ../registry.test.ts holds the list to its rules: no two capabilities
@@ -91,7 +91,7 @@ export const CAPABILITIES: readonly Capability[] = [
     answer: moneyAnswer,
   },
 
-  // Jane herself.
+  // Jane itself.
   {
     id: "whole_picture",
     bank: ["whole", "life"],

@@ -63,7 +63,7 @@ export type Comparison = {
   // Every row key in order, and whether the options differ on it (differing rows are
   // emphasised, identical ones dimmed).
   rows: { key: string; label: string; differs: boolean }[];
-  // In the card's own order (Jane's pick first when she has one).
+  // In the card's own order (Jane's pick first when it has one).
   options: ComparedOption[];
 };
 

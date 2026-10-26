@@ -3,7 +3,7 @@ import { AmendmentError, prepareAmendment } from "@/lib/tax-amendment";
 import { ChatActionError, type ActionHandler } from "./handler";
 
 // Last year's return from the chat (spec step 172): confirm what Jane read (the tap that
-// lets her use it), say it isn't a return, or prepare the amended return. Signing it is on
+// lets it use it), say it isn't a return, or prepare the amended return. Signing it is on
 // the page only.
 
 const failed = (error: unknown): never => {

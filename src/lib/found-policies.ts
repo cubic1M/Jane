@@ -10,7 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { PolicyError, removePolicy } from "@/lib/insurance/policies";
 
 // Insurance found from payments (spec step 99). Jane adds every insurer the person pays
-// regularly to their insurance profile by herself, at every autopilot level, as "found from
+// regularly to their insurance profile on its own, at every autopilot level, as "found from
 // your payments": it doesn't count as cover (gaps, reshops) until they tap Confirm, and its
 // renewal date is an estimate. Not insurance takes it off for good. An insurer that already
 // has a policy of any kind or status (typed, from a document, the demo's, removed) is

@@ -1,7 +1,7 @@
 import type { LifeEventKind } from "@/config/life-events";
 
 // Life events spotted from someone's money (spec step 100): the signals for each, how many
-// it takes before Jane asks, and what she does by herself on Yes. The checklists themselves
+// it takes before Jane asks, and what it does on its own on Yes. The checklists themselves
 // are in src/config/life-events.ts (step 72).
 
 // Signals count only inside this window, and Jane asks only once at least this many kinds
@@ -46,7 +46,7 @@ export const MOVING_FURNITURE_MIN_CENTS = 50_000;
 // A paycheck this much bigger or smaller than before counts toward a new job.
 export const NEW_JOB_PAY_CHANGE_SHARE = 0.1;
 
-// What Jane does by herself on Yes, at every autopilot level (nothing here moves money):
+// What Jane does on its own on Yes, at every autopilot level (nothing here moves money):
 // - budgets: categories to budget at their usual month (rounded up like the suggestions),
 //   when the person doesn't have one yet; ticks the checklist's "budget" item.
 // - insurance: a reminder to review cover, this many days out.

@@ -1,5 +1,5 @@
 // What the person's investments are for (spec step 129): the four questions Jane asks, the
-// answers she offers, and how the answers become a risk level. Later investment steps read
+// answers it offers, and how the answers become a risk level. Later investment steps read
 // the level (src/planning/investor-profile.ts), never the raw answers.
 //
 // The method is the common one in investor questionnaires: the level is the lower of what
@@ -153,11 +153,11 @@ export const QUALIFIED_DIVIDEND_RATE = 0.15;
 // moving into a tax-deferred account.
 export const MIN_TAX_DRAG_CENTS = 1_000;
 
-// Spec step 137: what Jane does with investments by herself at each autopilot level (spec
+// Spec step 137: what Jane does with investments on its own at each autopilot level (spec
 // step 57), shown on /investments and said in the chat. Anything that buys, sells or moves
 // money waits for the person's tap at every level; automatic investing runs only after the
 // person has started it with a tap.
-// What Jane keeps up with investments at each step 57 level. Whether she trades by herself
+// What Jane keeps up with investments at each step 57 level. Whether it trades on its own
 // (spec step 164) is the Investing area's own setting (spec step 141), said after these by
 // byHerself (src/lib/jane-agent/replies-autopilot.ts).
 export const INVESTMENT_AUTOPILOT: Readonly<

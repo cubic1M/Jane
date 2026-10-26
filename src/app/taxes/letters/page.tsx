@@ -44,7 +44,7 @@ async function Content() {
           <Link href="/documents" className={LINK}>
             Documents
           </Link>{" "}
-          (choose &quot;Tax notice&quot;). Jane reads it, you check it, and she puts its date on
+          (choose &quot;Tax notice&quot;). Jane reads it, you check it, and Jane puts its date on
           your deadlines, checks it against your records and drafts a reply. A notice isn&apos;t
           always right, and it isn&apos;t always wrong. Nothing is paid or sent until you tap.
         </p>

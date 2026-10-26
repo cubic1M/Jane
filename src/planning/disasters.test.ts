@@ -68,7 +68,7 @@ describe("a postponement moves every affected deadline", () => {
     expect(covers(harris, "2027-05-03")).toBe(false);
   });
 
-  it("moves the dates Jane works out herself: estimated payments and filing day", () => {
+  it("moves the dates Jane works out itself: estimated payments and filing day", () => {
     const moves = computedMoves(harris, [2025, 2026, 2027]);
     expect(moves.map((m) => [m.from, m.title])).toEqual([
       ["2026-09-15", "the estimated tax payment for 2026"],

@@ -27,7 +27,7 @@ async function CreditContent({ searchParams }: Pick<PageProps<"/loans/credit">, 
   const user = await requireUser();
   await connection();
   let credit = await loadCredit(user.id);
-  // Opened before Jane's first monthly pull: she pulls now (a soft pull).
+  // Opened before Jane's first monthly pull: it pulls now (a soft pull).
   if (credit.available && !credit.latest) {
     await pullCredit(user.id);
     credit = await loadCredit(user.id);

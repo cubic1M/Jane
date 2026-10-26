@@ -35,7 +35,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       if (intent.ask === "checkup") return checkupAnswer(userId, { client, now });
       // Spec step 107: something happened.
       if (intent.ask === "claim") return claimAnswer(userId, intent, { client, now });
-      // Spec step 108: what Jane does with insurance by herself.
+      // Spec step 108: what Jane does with insurance on its own.
       if (intent.ask === "autopilot") return autopilotAnswer(userId, { client });
       // Spec step 150: cover through work.
       if (intent.ask === "benefits") return benefitsAnswer(userId, { client, now });

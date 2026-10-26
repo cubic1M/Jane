@@ -23,7 +23,7 @@ import type {
 import { compareRefinance, refinanceable, type RefinanceComparison } from "@/planning/refinance";
 
 // Refinance offers (spec step 111). Once a month Jane asks the lender partner, by
-// herself, what the person prequalifies for on each loan and card (a soft check), and
+// itself, what the person prequalifies for on each loan and card (a soft check), and
 // keeps the offers. Each is compared with keeping the debt over the same months, fees
 // included. Only the stand-in catalog exists, so only demo-bank people get offers, always
 // labelled as demo advice; nothing is ever applied for without a tap (spec step 112).
@@ -151,7 +151,7 @@ const unjudged = (quotes: unknown) =>
   Array.isArray(quotes) &&
   quotes.some((q) => !(q as Quote).verdict || !("pickLender" in (q as Quote).verdict!));
 
-// Jane's monthly check, before her brain looks at the person's money: asks again once
+// Jane's monthly check, before its brain looks at the person's money: asks again once
 // REFI_CHECK_DAYS have passed. True when it asked.
 export async function refreshRefinance(
   userId: string,
@@ -217,7 +217,7 @@ export async function loadRefinance(
   };
 }
 
-// Before Jane's first monthly check (her runs skip quiet hours), asking now: when the
+// Before Jane's first monthly check (its runs skip quiet hours), asking now: when the
 // person opens the offers. Returns whether it asked.
 export async function ensureChecked(
   userId: string,

@@ -57,7 +57,7 @@ import { type CapabilityContext } from "./shared";
 import { ackReply } from "../ack-reply";
 import { whyFindingReply } from "../explain-finding";
 
-// Jane herself: the whole picture, what she did, autopilot, memory, help and plans (spec step 190): the rules' answers for these kinds of question, one registered
+// Jane itself: the whole picture, what it did, autopilot, memory, help and plans (spec step 190): the rules' answers for these kinds of question, one registered
 // capability each in ./index.ts. Moved out of ../answer.ts unchanged.
 
 async function answer(ctx: CapabilityContext): Promise<Reply | null> {

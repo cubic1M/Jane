@@ -528,7 +528,7 @@ const familyLoans: Detector = {
       // The payment alone doesn't say it was a loan; only the person can.
       confidence: evidence("guessed", profile.months, sent.length, "large payment-app transfers"),
       urgency: "later",
-      why: `You sent ${formatCents(total)} through a payment app and nothing has come back. If it was a loan, Jane can keep track of it and draft a kind reminder for you to send; she never messages the other person.`,
+      why: `You sent ${formatCents(total)} through a payment app and nothing has come back. If it was a loan, Jane can keep track of it and draft a kind reminder for you to send; it never messages the other person.`,
       action: { label: "Who owes whom", href: "/loans/family" },
     };
   },

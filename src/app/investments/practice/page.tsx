@@ -98,7 +98,7 @@ async function Content({
         </Link>
         <h1 className="text-3xl font-semibold tracking-tight">Practice portfolio</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Jane runs a portfolio on practice money: she buys a model for your risk level, keeps it on
+          Jane runs a portfolio on practice money: it buys a model for your risk level, keeps it on
           target and adds a little each month. It is a paper portfolio. No real money moves and no
           real account is touched.
         </p>

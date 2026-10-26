@@ -78,7 +78,7 @@ export type CreditCards = {
   // At most three, the best first.
   better: BetterCard[];
   // The debt autopilot level: from "Handle the safe stuff" Jane keeps the card for each
-  // kind of spending up to date in the chat by herself.
+  // kind of spending up to date in the chat on its own.
   level: "ask" | "safe" | "all";
   applications: CardApplicationView[];
 };

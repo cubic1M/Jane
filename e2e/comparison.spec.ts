@@ -77,7 +77,7 @@ test("insurance options side by side, re-ranked by preference, chosen in one tap
   expect(byCover[0]).not.toBe(cheapest[0]);
   expect(requests).toEqual([]);
 
-  // More details: the reasoning and how sure she is, on her pick.
+  // More details: the reasoning and how sure Jane is, on its pick.
   const pick = cards.filter({ hasText: "JANE'S PICK" });
   await pick.getByRole("button", { name: /More details/ }).click();
   await expect(pick.getByText(/\d+% sure:/)).toBeVisible();

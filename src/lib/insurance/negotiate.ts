@@ -21,9 +21,9 @@ import { higherCharge, policyCharges, shopPolicy } from "./shop";
 // Renewal negotiation (spec step 155). Before a renewal with a price rise (a renewal notice
 // Jane read, or a higher charge from the insurer), Jane asks the carrier for a better rate
 // through the insurance partner, step 54's call flow, and reshops at the same time so the
-// call has a like-for-like quote behind it. She calls by herself only within the person's
+// call has a like-for-like quote behind it. It calls on its own only within the person's
 // Insurance autopilot limits (Everything allowed, and the monthly rise under its caps);
-// otherwise she asks first. A lower price for the same cover is taken; anything that
+// otherwise it asks first. A lower price for the same cover is taken; anything that
 // changes the cover is never accepted on the call, only passed on.
 
 type Options = { client?: PrismaClient; now?: Date; partner?: InsurancePartner | null };

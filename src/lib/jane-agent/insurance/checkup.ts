@@ -5,7 +5,7 @@ import type { Reply } from "../replies";
 import { checkupBody } from "./checkup-words";
 
 // The coverage checkup in Jane's chat (spec step 106): the same words for the message Jane
-// posts by herself and for "check my insurance". Demo advice: always labelled.
+// posts on its own and for "check my insurance". Demo advice: always labelled.
 
 const SEE = {
   id: "open",
