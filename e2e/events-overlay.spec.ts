@@ -113,5 +113,6 @@ test("the Events box is never empty: what it watches, and what happened or that 
   // Either the events of the last five days, or a plain line that nothing big happened.
   await expect(box.locator("[data-events-now]")).toBeVisible();
   await expect(box.locator("[data-events-now]")).not.toHaveText("");
-  await expect(box.getByRole("table")).toHaveCount(1);
+  // The track record is a tap away.
+  await expect(box.locator("[data-events-record]")).toHaveCount(1);
 });
