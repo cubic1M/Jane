@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runDigests } from "@/lib/digest/send";
+import { sendErrorDigest } from "@/lib/error-alerts";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
@@ -19,6 +20,12 @@ export async function GET(request: Request) {
     await reportMissedJobs();
   } catch (error) {
     console.error("Health check failed", { error: String(error) });
+  }
+  // Once a day: the last day's server errors, counted by kind (src/lib/error-alerts.ts).
+  try {
+    await sendErrorDigest();
+  } catch (error) {
+    console.error("Error digest failed", { error: String(error) });
   }
   return NextResponse.json(
     await recordRun("digest", async () => {

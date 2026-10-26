@@ -102,8 +102,14 @@ export async function reachReport({ client = defaultClient }: { client?: PrismaC
     cap.offered += 1;
     totals.dollarsCents += r.worthCents;
     cap.dollarsCents += r.worthCents;
-    if (r.status === "yes") ((totals.yes += 1), (cap.yes += 1));
-    if (r.status === "no") ((totals.no += 1), (cap.no += 1));
+    if (r.status === "yes") {
+      totals.yes += 1;
+      cap.yes += 1;
+    }
+    if (r.status === "no") {
+      totals.no += 1;
+      cap.no += 1;
+    }
     map.set(r.capability, cap);
     // Real people's answers are what confidence is checked against; sample people's too, as
     // they are the ones testers answer for.

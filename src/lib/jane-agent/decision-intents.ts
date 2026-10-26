@@ -9,7 +9,6 @@ export type CoreSubject =
   "crypto" | "stocks" | "invest" | "home" | "car" | "payoff_or_invest" | "other";
 
 // What the question is about: a core subject or one a sector added (src/config/decisions.ts).
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type DecisionItem = CoreSubject | (string & {});
 
 export type DecisionIntent = {

@@ -78,7 +78,7 @@ async function SignupForm({ searchParams }: { searchParams: Params }) {
 
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-20">
+    <div className="flex flex-col gap-6">
       <Suspense>
         <RedirectIfSignedIn />
       </Suspense>
@@ -104,6 +104,6 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
           Sign in
         </Link>
       </p>
-    </main>
+    </div>
   );
 }
