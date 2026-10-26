@@ -85,13 +85,6 @@ export const FIT_NO_SCORE_EVIDENCE = {
   reason: "I haven't pulled your credit score yet",
 } as const;
 
-export const FIT_SOURCES = [
-  {
-    label: "CFPB: what is a debt-to-income ratio",
-    url: "https://www.consumerfinance.gov/ask-cfpb/what-is-a-debt-to-income-ratio-why-is-the-43-debt-to-income-ratio-important-en-1791/",
-  },
-] as const;
-
 // Consolidating cards into one loan is only worth bringing up when the cards owe at least this
 // much, at a weighted rate of at least this, so a small or cheap balance isn't nagged about.
 export const FIT_CONSOLIDATION_MIN_CENTS = 150_000;

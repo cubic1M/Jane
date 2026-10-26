@@ -155,14 +155,4 @@ export async function refreshClaimStatuses(
   return moved;
 }
 
-// Pure: the claim as it would go to the carrier, for the review.
-export function draftLines(claim: Claim): string[] {
-  return [
-    `To: ${claim.carrier ?? "your insurer"}`,
-    `What happened: ${claim.description ?? ""}`,
-    `On: ${claim.happenedOn}`,
-    `Claiming: ${claim.amountCents ? formatCents(claim.amountCents) : ""}`,
-  ];
-}
-
 export { STATUS_WORDS } from "./claim-rules";

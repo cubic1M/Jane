@@ -3,12 +3,6 @@
 // cheaper ways out. Assumptions and rules live here with where they come from.
 
 export type CostlyKind = "payday" | "cash_advance" | "overdraft" | "pay_app";
-export const COSTLY_KINDS: readonly CostlyKind[] = [
-  "payday",
-  "cash_advance",
-  "overdraft",
-  "pay_app",
-];
 
 export const COSTLY_LABELS: Readonly<Record<CostlyKind, string>> = {
   payday: "Payday loans",

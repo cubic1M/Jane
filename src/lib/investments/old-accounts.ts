@@ -20,7 +20,6 @@ import {
   arrivesOn,
   feeComparison,
   isComplete,
-  newSteps,
   olderPlans,
   stepsOn,
   type Step,
@@ -326,5 +325,3 @@ export async function settleAllRollovers({
   for (const { userId } of people) done += await settleRollovers(userId, { client, now });
   return { people: people.length, done };
 }
-
-export const rolloverSteps = newSteps;

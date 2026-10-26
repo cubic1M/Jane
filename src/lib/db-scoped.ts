@@ -387,5 +387,3 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
           }),
   });
 }
-
-export type SharedView = Awaited<ReturnType<typeof sharedReadFor>>;

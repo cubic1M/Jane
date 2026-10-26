@@ -1,4 +1,3 @@
-import { HOME_GOAL_NAME } from "@/config/home-buying";
 import { formatRate } from "@/insights/loans";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeBuying } from "@/lib/home-buying";
@@ -65,5 +64,3 @@ export function homeReply(
     },
   };
 }
-
-export const HOME_GOAL = HOME_GOAL_NAME;
