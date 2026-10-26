@@ -202,7 +202,14 @@ export async function rowsOf(client: PrismaClient, userId: string): Promise<Reco
     )
     .join(" UNION ALL ");
   const out = await client.$queryRawUnsafe<{ t: string; rows: Row[] }[]>(sql, userId);
-  return Object.fromEntries(out.filter((r) => r.rows.length > 0).map((r) => [r.t, r.rows]));
+  // In table order: Postgres may run the parts of a UNION ALL in parallel and return them in any
+  // order, and a person's fingerprint (a snapshot's key) must not change with it.
+  return Object.fromEntries(
+    out
+      .filter((r) => r.rows.length > 0)
+      .sort((a, b) => a.t.localeCompare(b.t))
+      .map((r) => [r.t, r.rows]),
+  );
 }
 
 export const rowOf = async (client: PrismaClient, table: string, id: string) =>

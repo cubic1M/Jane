@@ -11,9 +11,9 @@ import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { cachedCopy, cachedRead, inReadCache, withReadCache } from "./read-cache";
 
 // The read cache for one sync (src/lib/read-cache.ts), against a real, migrated Postgres: a
-// read is made once until anything is written through the scope's client, by any route (a model
-// call, the user-scoped helper, an interactive transaction or a raw query), so it can never hand
-// back something stale.
+// read is made once until a table it was worked out from is written through the scope's client,
+// by any route (a model call, the user-scoped helper, an interactive transaction or a raw
+// query), so it can never hand back something stale.
 
 const url = process.env.TEST_DATABASE_URL;
 
@@ -56,7 +56,7 @@ describe.runIf(url)("the read cache", () => {
     expect(read).toHaveBeenCalledTimes(2);
   });
 
-  it("forgets everything on any write, by every route", async () => {
+  it("forgets a value it can't trace to tables on any write, by every route", async () => {
     const writes: [string, (c: PrismaClient) => Promise<unknown>][] = [
       ["a model write", (c) => c.user.update({ where: { id: userId }, data: { name: "A" } })],
       [
@@ -89,6 +89,103 @@ describe.runIf(url)("the read cache", () => {
       });
       expect(read, name).toHaveBeenCalledTimes(2);
     }
+  });
+
+  it("keeps what a write to another table can't change", async () => {
+    await withReadCache(client, async (c) => {
+      const goals = scopedFor(userId, c).savingsGoals;
+      const read = vi.fn(() => goals.findMany({ where: { name: { startsWith: "T" } } }));
+      await cachedRead("goals", c, read);
+      await c.user.update({ where: { id: userId }, data: { name: "D" } });
+      await cachedRead("goals", c, read);
+      expect(read).toHaveBeenCalledTimes(1);
+      await goals.create({
+        data: { userId, name: "Car", targetCents: 500_000, targetDate: new Date("2028-01-01") },
+      });
+      await cachedRead("goals", c, read);
+      expect(read).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("forgets on any write what read other tables too, and after a delete or nested write", async () => {
+    const goal = { name: "Bike", targetCents: 50_000, targetDate: new Date("2027-03-01") };
+    const cases: [
+      string,
+      (c: PrismaClient) => Promise<unknown>,
+      (c: PrismaClient) => Promise<unknown>,
+    ][] = [
+      [
+        "an include",
+        (c) => c.user.findUnique({ where: { id: userId }, include: { savingsGoals: true } }),
+        (c) => c.savingsGoal.create({ data: { userId, ...goal } }),
+      ],
+      [
+        "a relation filter",
+        (c) => c.user.findMany({ where: { id: userId, savingsGoals: { some: {} } } }),
+        (c) => c.savingsGoal.create({ data: { userId, ...goal } }),
+      ],
+      [
+        "a relation count",
+        (c) => c.user.findUnique({ where: { id: userId }, select: { _count: true } }),
+        (c) => c.savingsGoal.create({ data: { userId, ...goal } }),
+      ],
+      [
+        "a delete, which may cascade",
+        (c) => c.savingsGoal.findMany({ where: { userId } }),
+        (c) => c.user.deleteMany({ where: { id: "no-such-person" } }),
+      ],
+      [
+        "a nested write",
+        (c) => c.savingsGoal.findMany({ where: { userId } }),
+        (c) => c.user.update({ where: { id: userId }, data: { savingsGoals: { create: goal } } }),
+      ],
+    ];
+    for (const [name, read, write] of cases) {
+      const reader = vi.fn(read);
+      await withReadCache(client, async (c) => {
+        await cachedRead("k", c, () => reader(c));
+        await write(c);
+        await cachedRead("k", c, () => reader(c));
+      });
+      expect(reader, name).toHaveBeenCalledTimes(2);
+    }
+  });
+
+  it("traces a read to the related tables it joins", async () => {
+    await withReadCache(client, async (c) => {
+      const read = vi.fn(() =>
+        c.user.findMany({
+          where: { id: userId, savingsGoals: { some: { name: { startsWith: "T" } } } },
+          select: { id: true, savingsGoals: { select: { name: true } } },
+        }),
+      );
+      await cachedRead("joined", c, read);
+      await c.janePreference.upsert({
+        where: { userId_kind_key: { userId, kind: "note", key: "read-cache" } },
+        create: { userId, kind: "note", key: "read-cache", label: "A note" },
+        update: { label: "Another note" },
+      });
+      await cachedRead("joined", c, read);
+      expect(read).toHaveBeenCalledTimes(1);
+      await c.savingsGoal.updateMany({ where: { userId }, data: { targetCents: 2 } });
+      await cachedRead("joined", c, read);
+      expect(read).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("forgets a value worked out from another when the other's table is written", async () => {
+    await withReadCache(client, async (c) => {
+      const inner = vi.fn(() => c.savingsGoal.findMany({ where: { userId } }));
+      const outer = vi.fn(async () => (await cachedRead("inner", c, inner)).length);
+      await cachedRead("outer", c, outer);
+      await c.user.update({ where: { id: userId }, data: { name: "E" } });
+      await cachedRead("outer", c, outer);
+      expect(outer).toHaveBeenCalledTimes(1);
+      await c.savingsGoal.updateMany({ where: { userId }, data: { targetCents: 1 } });
+      await cachedRead("outer", c, outer);
+      expect(outer).toHaveBeenCalledTimes(2);
+      expect(inner).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("keeps reads across reads, and hands each caller its own copy", async () => {
