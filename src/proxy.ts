@@ -10,6 +10,9 @@ import { newNonce, pageCsp } from "@/lib/security-headers";
 //   request and puts the nonce on its own scripts; nothing else runs (docs/security/edge.md).
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // API routes set their own headers (next.config.ts).
+  if (pathname.startsWith("/api/")) return NextResponse.next();
+
   const csp = pageCsp(pathname, newNonce(), process.env.NODE_ENV === "development");
   const headers = new Headers(request.headers);
   headers.set("content-security-policy", csp);
@@ -31,8 +34,7 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Pages only: API routes, Next.js's own files and the files in public/ (anything with a dot,
-// like sw.js or a font) don't need a page policy (next.config.ts gives API routes their own).
+// Not Next.js's own files or the files in public/ (anything with a dot, like sw.js or a font).
 export const config = {
-  matcher: ["/((?!api/|_next/static|_next/image|.*\\.[a-zA-Z0-9]+$).*)"],
+  matcher: ["/((?!_next/static|_next/image|.*\\.[a-zA-Z0-9]+$).*)"],
 };
