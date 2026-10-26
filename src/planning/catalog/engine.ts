@@ -233,6 +233,31 @@ const indexOfDate = (u: Universe, d: string) => {
   return i < 0 ? u.dates.length : i;
 };
 
+// The days the app's graph draws on: the last close before fromYear, then each month's last
+// close, and the last close of all.
+export function monthAxis(u: Universe, fromYear: number): number[] {
+  const i0 = indexOfDate(u, `${fromYear}-01-01`) - 1;
+  if (i0 < 0) return [];
+  const out = [i0];
+  for (let t = i0 + 1; t < u.dates.length; t += 1)
+    if (t === u.dates.length - 1 || u.dates[t].slice(0, 7) !== u.dates[t + 1].slice(0, 7))
+      out.push(t);
+  return out;
+}
+
+// Daily returns compounded from 100 and read on the axis; null before they start.
+export function pathOnAxis(r: readonly number[], axis: readonly number[]): (number | null)[] {
+  if (axis.length === 0) return [];
+  let v: number | null = Number.isFinite(r[axis[0] + 1]) ? 100 : null;
+  const out: (number | null)[] = [v];
+  for (let j = 1; j < axis.length; j += 1) {
+    for (let t = axis[j - 1] + 1; t <= axis[j]; t += 1)
+      if (Number.isFinite(r[t])) v = (v ?? 100) * (1 + r[t]);
+    out.push(v === null ? null : Math.round(v * 10) / 10);
+  }
+  return out;
+}
+
 export type CatalogResult = {
   id: CatalogId;
   level: RiskLevel;
@@ -257,6 +282,8 @@ export type CatalogResult = {
   why: string;
   // The walk-forward's path, 40 points from 100.
   curve: number[];
+  // The walk-forward's path on the month-end axis (monthAxis), from 100; null before it starts.
+  monthly: (number | null)[];
 };
 
 type Trial = {
@@ -370,8 +397,11 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
       if (run) trials.push({ id, p, run, s: daily(run.values) });
     }
   const results: CatalogResult[] = [];
+  const axis = monthAxis(u, CATALOG_WALK_FROM_YEAR);
+  const mixMonthly = {} as Record<RiskLevel, (number | null)[]>;
   for (const level of [1, 2, 3, 4, 5] as const) {
     const mix = mixReturns(u, level);
+    mixMonthly[level] = pathOnAxis(mix, axis);
     const evals = ids.flatMap((id) => {
       const mine = trials.filter((t) => t.id === id);
       return mine.length > 0 ? [{ id, e: evaluate(u, mine, level, mix) }] : [];
@@ -451,8 +481,9 @@ export function runCatalog(u: Universe, ids: readonly CatalogId[] = CATALOG_IDS)
             ? "beat the mix after the haircut, inside the risk budget"
             : reasons.join("; "),
         curve,
+        monthly: pathOnAxis(e.walk, axis),
       });
     }
   }
-  return { results, trials: trials.length };
+  return { results, trials: trials.length, axis: axis.map((t) => u.dates[t]), mixMonthly };
 }

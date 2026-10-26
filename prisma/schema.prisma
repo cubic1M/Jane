@@ -4409,6 +4409,8 @@ model PracticePreferences {
   cryptoSleeve    String    @default("off") @map("crypto_sleeve")
   // DAY_TRADING_CHOICES: off, or the intraday rule the day-trading sleeve follows (Very high only).
   dayTrading      String    @default("off") @map("day_trading")
+  // "off", or the catalog strategy (CATALOG) followed instead of the mix.
+  catalogStrategy String    @default("off") @map("catalog_strategy")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

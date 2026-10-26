@@ -8,7 +8,7 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BacktestsSection } from "@/components/backtests";
 import { LevelStrategiesSection } from "@/components/level-strategies";
 import { NewsThemesSection } from "@/components/news-themes";
-import { StrategyMenuSection } from "@/components/strategy-menu";
+import { StrategyTree } from "@/components/strategy-tree";
 import { PracticeIdeasSummary } from "@/components/practice-ideas-summary";
 import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
@@ -16,6 +16,8 @@ import { ViewTracker } from "@/components/view-tracker";
 import { PAGES, itemId } from "@/lib/area-pages/investing";
 import { explainer } from "@/config/learn";
 import { RETURNS_NOTE } from "@/config/returns";
+import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
+import { loadPractice } from "@/lib/practice/portfolio";
 import { formatReturn } from "@/insights/returns";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
@@ -98,15 +100,21 @@ async function LevelStrategies({ userId }: { userId: string }) {
   return <LevelStrategiesSection latest={latest} level={profile.level} />;
 }
 
-// More strategies, at the person's own level.
-async function StrategyMenu({ userId }: { userId: string }) {
-  const profile = await practiceProfileOf(userId);
+// The page's top, like Home: the practice portfolio's hero graph, three tiles and the strategy
+// tree, from the stored research (src/lib/investments/strategy-tree.ts).
+async function Strategies({ userId, ideas }: { userId: string; ideas: number }) {
+  const [{ tiles, board }, practice] = await Promise.all([
+    strategyTreeFor(userId),
+    loadPractice(userId),
+  ]);
   return (
-    <StrategyMenuSection
-      level={profile.level}
-      choice={profile.strategyChoice}
-      crypto={profile.crypto?.strategy ?? null}
-      dayTrading={profile.dayTrade?.rule ?? null}
+    <StrategyTree
+      tiles={tiles}
+      board={board}
+      ideas={ideas}
+      practice={
+        practice ? { totalCents: practice.totalCents, startingCents: practice.startingCents } : null
+      }
     />
   );
 }
@@ -328,7 +336,6 @@ async function InvestmentsContent({
   details[itemId("news", "none")] = go("/investments/practice", "Your practice portfolio");
   details[itemId("strategies", "today")] = go("/investments/practice", "Your practice portfolio");
   details[itemId("strategies", "levels")] = <LevelStrategies userId={user.id} />;
-  details[itemId("strategies", "menu")] = <StrategyMenu userId={user.id} />;
   details[itemId("news", "themes")] = <NewsThemesSection />;
   if (backtests.advice)
     details[itemId("strategies", "backtests")] = (
@@ -355,8 +362,7 @@ async function InvestmentsContent({
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Investments</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Your retirement and investment accounts, as your bank reports them. Open a branch to see
-          more.
+          Your accounts, as your bank reports them.
         </p>
         <nav aria-label="Investing pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/investments/practice" className={LINK}>
@@ -373,6 +379,12 @@ async function InvestmentsContent({
           </Link>
         </nav>
       </div>
+
+      {backtests.advice && (
+        <Suspense fallback={<LoadingBar label="Loading the strategies" />}>
+          <Strategies userId={user.id} ideas={ideas?.ideas.length ?? 0} />
+        </Suspense>
+      )}
 
       {data.accounts.length === 0 && (
         <p className="text-zinc-600 dark:text-zinc-400">

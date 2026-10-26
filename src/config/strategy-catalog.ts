@@ -807,6 +807,62 @@ export const CATALOG = {
     grid: [1.5, 2],
     tickers: ["SPY", "BIL"],
   },
+  factor_rotation: {
+    label: "Factor rotation",
+    family: "factor",
+    kind: "equity",
+    source: {
+      title: "Arnott, Clements, Kalesnik & Linnainmaa, Factor Momentum (2021)",
+      url: "https://alphaarchitect.com/using-momentum-to-find-value/",
+    },
+    rules:
+      "Each month, the US-stocks share split between the 2 of value (VTV), momentum (MTUM), quality (QUAL), low volatility (USMV) and small companies (IJR) with the best last N months.",
+    param: "months of look-back",
+    grid: [6, 12],
+    tickers: ["VTV", "MTUM", "QUAL", "USMV", "IJR"],
+  },
+  low_vol_trend: {
+    label: "Low volatility with a trend filter",
+    family: "factor",
+    kind: "equity",
+    source: {
+      title: "Baker, Bradley & Wurgler (2011) with Faber's 10-month rule (2007)",
+      url: "https://papers.ssrn.com/abstract=1745108",
+    },
+    rules:
+      "At each month-end, the US-stocks share in the minimum-volatility fund (USMV) while it closes above its 10-month average, else in bills (BIL).",
+    param: "months in the average",
+    grid: [10],
+    tickers: ["USMV", "BIL"],
+  },
+  hrp_trend: {
+    label: "Hierarchical risk parity with a trend filter",
+    family: "risk",
+    kind: "portfolio",
+    source: {
+      title: "López de Prado (2016) with Faber's 10-month rule (2007)",
+      url: "https://papers.ssrn.com/abstract=2708678",
+    },
+    rules:
+      "HRP over the ten asset ETFs (252 days), each fund below its 10-month average held as bills (BIL) instead. Monthly.",
+    param: "trading days of history",
+    grid: [252],
+    tickers: ["SPY", "EFA", "EEM", "VNQ", "DBC", "GLD", "TLT", "IEF", "LQD", "TIP", "BIL"],
+  },
+  max_div_trend: {
+    label: "Maximum diversification with a trend filter",
+    family: "risk",
+    kind: "portfolio",
+    source: {
+      title: "Choueifaty & Coignard (2008) with Faber's 10-month rule (2007)",
+      url: "https://ideas.repec.org/a/rsk/journ6/2255764.html",
+    },
+    rules:
+      "Maximum diversification over the ten asset ETFs (252 days, at most 40% in one), each fund below its 10-month average held as bills (BIL) instead. Monthly.",
+    param: "trading days of history",
+    grid: [252],
+    tickers: ["SPY", "EFA", "EEM", "VNQ", "DBC", "GLD", "TLT", "IEF", "LQD", "TIP", "BIL"],
+  },
   watch_blend: {
     label: "Watch-list blend",
     family: "combination",
@@ -916,6 +972,17 @@ export const CATALOG_REGIMES: readonly { label: string; from: string; to: string
   { label: "2020 crash", from: "2020-02-19", to: "2020-03-23" },
   { label: "2022", from: "2022-01-01", to: "2022-12-31" },
 ];
+// Batch 10, how much the watch list depends on its setting: each worth-watching strategy over a
+// wider range of settings than its grid, scored since CATALOG_WALK_FROM_YEAR at fixed settings.
+// Descriptive (not trials): an edge that only one setting shows is likely luck.
+export const CATALOG_SENSITIVITY: Readonly<Partial<Record<CatalogId, readonly number[]>>> = {
+  haa: [2, 3, 4, 5, 6],
+  faber_gtaa_top: [2, 3, 4, 5, 6],
+  eaa: [0.5, 1, 2, 3],
+  sector_rotation: [3, 6, 9, 12],
+  daa: [3, 4, 5, 6],
+  faber_gtaa5: [6, 8, 10, 12],
+};
 // The fixed split the founder asked for: chosen on the years to the end of 2021, scored after.
 export const CATALOG_TRAIN_END = "2021-12-31";
 // Recommendable only with a deflated Sharpe ratio (Bailey & López de Prado) of the excess over

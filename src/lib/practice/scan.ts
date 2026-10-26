@@ -112,6 +112,10 @@ export async function scanPractice(
   const { portfolio, state } = ledger;
   // Pausing takes effect before the next scan (step 294).
   if (portfolio.paused) return { scanned: false, why: "paused" };
+  // Following a tested strategy (src/planning/catalog-follow.ts): its rule runs the portfolio,
+  // so the scan's upkeep and extra moves wait.
+  if ((await practiceProfileOf(userId, { client, now })).catalog)
+    return { scanned: true, flags: [] };
 
   const today = now.toISOString().slice(0, 10);
   const feed = marketData();

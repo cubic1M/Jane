@@ -1,3 +1,4 @@
+import type { CatalogId } from "@/config/strategy-catalog";
 import type { RiskLevel } from "@/config/investing";
 import {
   AUTOPILOT_LIMITS,
@@ -164,6 +165,11 @@ export const DAY_TRADING_CHOICES = {
 } as const;
 export type DayTradingChoice = keyof typeof DAY_TRADING_CHOICES;
 
+// A strategy from the catalog (src/config/strategy-catalog.ts) the practice portfolio follows
+// instead of the level's mix, or off. Only one the research rates worth watching or
+// recommendable at the person's level is followed (src/config/catalog-evidence.ts).
+export type CatalogChoice = "off" | CatalogId;
+
 // How far a kind may drift from its target before the autopilot rebalances: the person's pace.
 // Normal is the autopilot's own band (AUTOPILOT_LIMITS.rebalanceBand). Rarely means fewer trades
 // and more drift between them. FOR REVIEW.
@@ -236,6 +242,7 @@ export const PREFERENCE_DEFAULTS = {
   maxFundPercent: null as number | null,
   cryptoSleeve: "off" as CryptoSleeveChoice,
   dayTrading: "off" as DayTradingChoice,
+  catalogStrategy: "off" as CatalogChoice,
 };
 
 // The level when nothing else says one (no choice, no portfolio, no questionnaire): Medium.

@@ -1,4 +1,5 @@
 import { INTRADAY_TICKER } from "@/config/intraday-strategies";
+import { catalogTickers } from "@/config/strategy-catalog";
 import { TARGET_MIXES, type RiskLevel } from "@/config/investing";
 import { THEMES } from "@/config/themes";
 
@@ -112,6 +113,8 @@ export const LEDGER_UNIVERSE: ReadonlySet<string> = new Set([
   ...PRACTICE_UNIVERSE,
   ...CRYPTO_TICKERS,
   DAY_TRADE_TICKER,
+  // A followed catalog strategy's funds (src/planning/catalog-follow.ts).
+  ...catalogTickers(),
 ]);
 
 // Practice money a new portfolio starts with: a stated sample amount, never linked to anything.

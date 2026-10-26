@@ -170,7 +170,7 @@ describe.runIf(url)("the practice portfolio for Claude", () => {
     ).toBeGreaterThan(30);
     for (const r of tested.notRecommended) expect(r.why.length).toBeGreaterThan(0);
     expect(out.dayTrading.warning).toMatch(/Most people who day trade lose money/);
-    expect(out.dayTrading.inThePracticePortfolio).toMatch(/^At Very high, as a sleeve/);
+    expect(out.dayTrading.inThePracticePortfolio).toMatch(/^Not offered: every rule lost money/);
     expect(out.dayTrading.practicePortfolioRuns).toBe("no day trading");
     expect(out.dayTrading.rules).toHaveLength(5);
     for (const r of out.dayTrading.rules) {

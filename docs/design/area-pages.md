@@ -105,6 +105,37 @@ A branch takes the worst status of its items (`worst()`), and its line says "N u
    `/<area>?focus=…`. The page and Home read the same data, so they never disagree.
    All six areas are wired.
 
+## Investments: the strategy tree
+
+The founder (2026-10-25): "it is very wordy and does not look good … show the graph showing the
+different investment strategies", then: "similar to the homepage … interactive, and you can click
+through the tree graphs showcasing the different strategies and choose which one you like. It
+should be very easy for the user to use." On `/investments`, above the area tree, with demo advice
+on (`StrategyTree` in `src/components/strategy-tree.tsx`):
+
+- **Hero:** the practice portfolio's value, and a graph of the strategy in view (what it runs,
+  or the picked leaf) against the level's plain mix (dashed), from $100: walk-forward since 2020
+  after costs, with return a year, worst drop and Sortino. Range chips: Since 2020, Since 2022,
+  Past year. On a computer it stays in view (sticky) while the tree scrolls.
+- **Tiles:** risk level, the current strategy (opens its leaf), practice ideas.
+- **The tree:** the five levels as fixed tiles, the person's own open (another level loads from
+  `/api/investments/strategies?level=`). A level's families are its branches: Steady mixes, Trend
+  & momentum, Factor tilts, Timing rules, and at Very high only Day trading & crypto. Each leaf has
+  a glyph and tag (■ `[DEFAULT]`, ● `[RECOMMENDED]`, ◐ `[WORTH WATCHING]`, ○ `[NOT RECOMMENDED]`,
+  ▼ `[LOST MONEY]`) and its return a year.
+- **Picking a leaf:** the hero shows it at once; a panel beside the graph (a bottom sheet on a
+  phone, with its own small graph) holds its idea, numbers, "Use this strategy" and, behind More,
+  the evidence and past regimes, joined to the leaf by a marching dotted line. Use is instant,
+  saved behind (`choosePracticeStrategy`), with Revert (`restorePracticeStrategy`), as #732. Any
+  tested strategy that runs on its own can be used; one that lost money asks first. Day trading
+  stays not offered (every rule lost money after costs); another level's leaves say to change
+  the level first.
+
+Data: `strategyBoard` (`src/lib/investments/strategy-board.ts`) and `branchesOf`
+(`src/lib/investments/strategy-tree.ts`), pure and unit tested, from the stored research only
+(`src/config/catalog-curves.ts`, written by the catalog research run, and the evidence files).
+No prices are fetched for it when the page loads.
+
 ## The home tree: "What Jane does"
 
 On `/home`, right under the net worth hero. The founder, first: "one giant tree graph, not like u

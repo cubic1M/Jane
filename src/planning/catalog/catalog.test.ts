@@ -5,7 +5,19 @@ import type { Bar } from "@/lib/market/types";
 import { catalogMarkdown } from "./catalog-doc";
 import { evidenceModule, resultsMarkdown } from "./report";
 import { regimeReport, regimesMarkdown } from "./regimes";
-import { alignCatalog, metricsOver, mixReturns, runCatalog, standalone } from "./engine";
+import { sensitivity, sensitivityMarkdown } from "./sensitivity";
+import { strategyTickers } from "@/config/portfolios";
+import { alignUniverse } from "../strategies/engine";
+import { catalogCurves } from "./curves";
+import {
+  alignCatalog,
+  metricsOver,
+  mixReturns,
+  monthAxis,
+  pathOnAxis,
+  runCatalog,
+  standalone,
+} from "./engine";
 import {
   expectedMaxSharpe,
   hrp,
@@ -200,6 +212,48 @@ describe("the write-up", () => {
   });
 });
 
+describe("the graph's curves", () => {
+  it("reads month ends from the last close before the year, compounding from 100", () => {
+    const u = universe();
+    const axis = monthAxis(u, 2020);
+    expect(u.dates[axis[0]] < "2020-01-01").toBe(true);
+    expect(u.dates[axis[1]].slice(0, 7)).toBe("2020-01");
+    expect(axis.at(-1)).toBe(u.dates.length - 1);
+    const flat = u.dates.map(() => 0.01);
+    const p = pathOnAxis(flat, axis);
+    expect(p[0]).toBe(100);
+    expect(p[1]).toBeCloseTo(100 * 1.01 ** (axis[1] - axis[0]), 0);
+    // Returns that start later: nothing before, then from 100.
+    const late = flat.map((x, t) => (t > axis[5] ? x : Number.NaN));
+    const q = pathOnAxis(late, axis);
+    expect(q.slice(0, 6).every((x) => x === null)).toBe(true);
+    expect(q[6]).toBeCloseTo(100 * 1.01 ** (axis[6] - axis[5]), 0);
+  });
+
+  it("writes every strategy, the mix and Jane's pick at every level on one axis", () => {
+    const u = universe();
+    const run = runCatalog(u, ["faber_gtaa5", "mix_trend_overlay"]);
+    const bars = Object.fromEntries(
+      strategyTickers().map((t) => [
+        t,
+        u.dates.map((date, i) => ({ date, closeCents: 10_000 + i + t.length })),
+      ]),
+    );
+    const mod = catalogCurves(u, run, alignUniverse(bars), "made-up closes");
+    expect(mod).toContain("export const CATALOG_CURVES");
+    const dates = JSON.parse(mod.match(/CATALOG_CURVE_DATES: readonly string\[\] = (.*);/)![1]);
+    expect(dates).toEqual(run.axis);
+    for (const level of [1, 2, 3, 4, 5]) {
+      const row = JSON.parse(mod.match(new RegExp(`^  ${level}: (.*),$`, "m"))![1]);
+      expect(row.mix.values).toHaveLength(dates.length);
+      expect(row.mix.values[0]).toBe(100);
+      expect(row.pick.values).toHaveLength(dates.length);
+      expect(row.pick.label.length).toBeGreaterThan(0);
+      expect(row.strategies.faber_gtaa5).toHaveLength(dates.length);
+    }
+  });
+});
+
 describe("through past regimes", () => {
   it("reads each strategy at its middle setting through each regime, against the mix", () => {
     const u = universe();
@@ -213,6 +267,18 @@ describe("through past regimes", () => {
     const md = regimesMarkdown(rows, "made-up closes", ["faber_gtaa5"]);
     expect(md).toContain("**Faber GTAA / Ivy 5**");
     expect(md).toContain("### Very high");
+  });
+});
+
+describe("how much the watch list depends on its setting", () => {
+  it("scores each setting fixed since 2020, at Medium and Very high, against the mix", () => {
+    const u = universe();
+    const rows = sensitivity(u);
+    const haa = rows.filter((r) => r.id === "haa");
+    expect(haa.map((r) => r.param)).toEqual([2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
+    expect(new Set(haa.map((r) => r.level))).toEqual(new Set([3, 5]));
+    const md = sensitivityMarkdown(rows, "made-up closes");
+    expect(md).toMatch(/Ahead of the mix at \d+ of \d+ settings and levels/);
   });
 });
 

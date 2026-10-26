@@ -49,6 +49,7 @@ export const RULE_LABELS: Readonly<Record<string, string>> = {
   theme_exit: "getting out of a news theme, as it said",
   crypto_sleeve: "the crypto sleeve you chose",
   day_trade: "the day trading you chose",
+  catalog_follow: "the tested strategy you chose to follow",
   ...Object.fromEntries(SCAN_KINDS.map((k) => [k, SCAN_LABELS[k as ScanKind].toLowerCase()])),
 };
 const MAX_LINES = 4;

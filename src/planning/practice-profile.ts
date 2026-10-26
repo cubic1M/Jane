@@ -1,8 +1,8 @@
+import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
+import { CATALOG, type CatalogId } from "@/config/strategy-catalog";
 import { CRYPTO_EVIDENCE } from "@/config/crypto-evidence";
-import { INTRADAY_EVIDENCE } from "@/config/intraday-evidence";
 import {
   INTRADAY_RULES,
-  INTRADAY_SLEEVE_BY_LEVEL,
   INTRADAY_WARNING,
   type IntradayRuleId,
 } from "@/config/intraday-strategies";
@@ -91,6 +91,10 @@ export type PracticeProfile = {
   // The day-trading sleeve the person chose (src/config/intraday-strategies.ts), the same way:
   // null when off or below Very high.
   dayTrade: { rule: IntradayRuleId; param: number; share: number } | null;
+  // A tested strategy (src/config/strategy-catalog.ts) the portfolio follows instead of the mix,
+  // at its published middle setting: only one the research rates worth watching or recommendable
+  // at this level (src/config/catalog-evidence.ts). Null otherwise.
+  catalog: { id: CatalogId; param: number } | null;
   // The fund the person chose for a kind (a strategy menu tilt), set with the strategy below.
   funds?: Partial<Record<PracticeClass, string>>;
   // The level's strategy (the daily evaluation's choice, src/lib/investments/strategy-today.ts):
@@ -306,19 +310,34 @@ export function profileFor(
     );
   }
 
+  // Day trading isn't offered: every rule lost money after costs (src/config/intraday-evidence.ts).
+  // A choice made before stays saved and waits; the sleeve's code stays for the research.
   const dayRule = prefs.dayTrading === "off" ? null : prefs.dayTrading;
-  const dayShare = INTRADAY_SLEEVE_BY_LEVEL[level] ?? 0;
-  const dayTrade =
-    dayRule && dayShare > 0
-      ? { rule: dayRule, param: INTRADAY_EVIDENCE[dayRule].param, share: dayShare }
-      : null;
-  if (dayTrade) {
+  const dayTrade: PracticeProfile["dayTrade"] = null;
+  if (dayRule) {
     rules.push(
-      `Day trading (${INTRADAY_RULES[dayTrade.rule].label}) with up to ${pct(dayTrade.share)} of the portfolio, kept in cash for it: ${INTRADAY_RULES[dayTrade.rule].how} ${INTRADAY_WARNING}`,
+      `The day trading you chose (${INTRADAY_RULES[dayRule].label}) waits: every day-trading rule we tested lost money after costs, so it isn't offered. ${INTRADAY_WARNING}`,
     );
-  } else if (dayRule) {
+  }
+
+  const picked = prefs.catalogStrategy === "off" ? null : prefs.catalogStrategy;
+  const verdict = picked ? CATALOG_EVIDENCE[picked]?.[level] : undefined;
+  // Any strategy tested at the level that runs on its own, whatever its verdict (founder: "choose
+  // which one you like"); the page warns before one that lost money.
+  const catalog =
+    picked && verdict && CATALOG[picked].kind !== "sleeve"
+      ? {
+          id: picked,
+          param: CATALOG[picked].grid[Math.floor((CATALOG[picked].grid.length - 1) / 2)],
+        }
+      : null;
+  if (catalog) {
     rules.push(
-      `The day trading you chose (${INTRADAY_RULES[dayRule].label}) waits: it runs at Very high only.`,
+      `Follows ${CATALOG[catalog.id].label} instead of the mix, as you chose: ${CATALOG[catalog.id].rules} ${verdict?.recommendable ? "Recommendable at this level." : verdict?.watch ? "Worth watching at this level: it beat the mix in later years, but the edge may be luck." : verdict && verdict.cagr < 0 ? "It lost money after costs in the replay at this level." : "Not recommended at this level: it didn't beat the mix by enough."} Jane's extra moves wait meanwhile.`,
+    );
+  } else if (picked) {
+    rules.push(
+      `The tested strategy you chose (${CATALOG[picked].label}) waits: it wasn't tested on its own at ${RISK_LEVELS[level].label}, so the mix runs.`,
     );
   }
 
@@ -350,6 +369,7 @@ export function profileFor(
     universe: prefs.universe,
     crypto,
     dayTrade,
+    catalog,
     rules,
   };
 }

@@ -359,10 +359,6 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
           label: "The strategy each level follows",
           summary: "Seven ways of running each level, replayed on real prices every day.",
         }),
-        item("strategies", "menu", {
-          label: "More strategies",
-          summary: "Other well-known ways to run it, and crypto at Very high, each replayed.",
-        }),
         item("strategies", "backtests", {
           label: "Each level, replayed",
           summary: "How each risk level would have done over past prices.",

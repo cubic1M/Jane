@@ -25,7 +25,7 @@ export function resultsMarkdown(
   const lines = [
     "# Strategy results",
     "",
-    `Every strategy in [the catalog](strategy-catalog.md), replayed on ${meta.source}, ${meta.from} to ${meta.to}, after costs. A replay of the past, not a forecast; practice money and demo advice only.`,
+    `Every strategy in [the catalog](strategy-catalog.md), replayed on ${meta.source}, ${meta.from} to ${meta.to}, after costs. A replay of the past, not a forecast; practice money and demo advice only. Through 2008, the 2020 crash and 2022 on a longer history: [strategy-regimes.md](strategy-regimes.md).`,
     "",
     "- **Walk-forward:** each year from " +
       `${CATALOG_WALK_FROM_YEAR} is scored with the setting (and, for whole portfolios, the blend with bills that matches the level's volatility) chosen by Sortino on the years before it.`,

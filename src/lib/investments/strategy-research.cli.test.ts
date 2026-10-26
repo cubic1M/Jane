@@ -22,9 +22,11 @@ import {
 } from "@/config/crypto-strategies";
 import { alignCrypto, cryptoResult } from "@/planning/crypto-strategies";
 import { alignCatalog, runCatalog } from "@/planning/catalog/engine";
-import { regimeReport, regimesMarkdown } from "@/planning/catalog/regimes";
+import { regimeReport, regimesEvidenceModule, regimesMarkdown } from "@/planning/catalog/regimes";
+import { sensitivity, sensitivityMarkdown } from "@/planning/catalog/sensitivity";
 import { fetchYahooDaily, yahooBars } from "@/lib/market/yahoo";
 import { evidenceModule, resultsMarkdown } from "@/planning/catalog/report";
+import { catalogCurves } from "@/planning/catalog/curves";
 import { realFixtureBars } from "@/lib/market/__fixtures__/real";
 import type { Bar } from "@/lib/market/types";
 import { alignUniverse, type Metrics } from "@/planning/strategies/engine";
@@ -50,7 +52,7 @@ import { selectForLevel } from "@/planning/strategies/select";
 //   replayed walk-forward (src/planning/crypto-strategies.ts), into crypto-summary.md and
 //   crypto-results.json;
 // - regimes: every catalog fund's adjusted daily closes from Yahoo Finance's keyless chart, from
-//   2007 (VXUS spliced with VEU before it began in 2011), every strategy at its middle setting
+//   2005 (each younger fund spliced with an older look-alike), every strategy at its middle setting
 //   through 2008, the 2020 crash and 2022 (src/planning/catalog/regimes.ts), into regimes.md.
 // Keys are read from the environment and never written or printed. Practice research only.
 
@@ -260,7 +262,7 @@ async function runCatalogResearch() {
   const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const alpaca = new AlpacaMarketData({ id, secret }, undefined, undefined, feed);
   const bars: Record<string, Bar[]> = {};
-  for (const t of catalogTickers()) {
+  for (const t of [...new Set([...catalogTickers(), ...strategyTickers()])]) {
     bars[t] = await alpaca.prices(t, from, to);
     console.log(`${t}: ${bars[t].length} bars from ${bars[t][0]?.date ?? "none"}`);
   }
@@ -269,16 +271,25 @@ async function runCatalogResearch() {
   ).map((b) => ({ date: b.t.slice(0, 10), o: b.o, h: b.h, l: b.l, c: b.c }));
   const u = alignCatalog(bars, spy);
   if (!u) throw new Error("No VTI bars to align on.");
-  const { results, trials } = runCatalog(u);
+  const run = runCatalog(u);
+  const { results, trials } = run;
   const meta = {
     source: `Alpaca ${feed.toUpperCase()} daily closes`,
     from: u.dates[0],
     to: u.dates[u.dates.length - 1],
     trials,
   };
+  writeFileSync(
+    join(DIR, "catalog-curves.ts"),
+    catalogCurves(u, run, alignUniverse(bars), `${meta.source}, ${meta.from} to ${meta.to}`),
+  );
   writeFileSync(join(DIR, "catalog-results.json"), JSON.stringify({ meta, results }, null, 1));
   writeFileSync(join(DIR, "strategy-results.md"), resultsMarkdown(results, meta));
   writeFileSync(join(DIR, "catalog-evidence.ts"), evidenceModule(results, meta));
+  writeFileSync(
+    join(DIR, "sensitivity.md"),
+    sensitivityMarkdown(sensitivity(u), `${meta.source}, ${meta.from} to ${meta.to}`),
+  );
   for (const r of results.filter((x) => x.recommendable))
     console.log(`recommendable at ${r.level}: ${r.id}`);
   console.log(`${results.length} results, ${trials} trials`);
@@ -335,7 +346,7 @@ function splice(newer: Bar[], older: Bar[]): Bar[] {
 }
 
 async function runRegimes() {
-  const from = process.env.RESEARCH_FROM ?? "2007-01-01";
+  const from = process.env.RESEARCH_FROM ?? "2005-01-01";
   const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const bars: Record<string, Bar[]> = {};
   let spy: { date: string; o: number; h: number; l: number; c: number }[] = [];
@@ -350,12 +361,26 @@ async function runRegimes() {
       bars[t] = [];
     }
   }
-  bars.VXUS = splice(bars.VXUS ?? [], bars.VEU ?? []);
+  // Younger funds read through an older look-alike before they began (labelled in the source).
+  const SPLICES: [string, string][] = [
+    ["VEU", "EFA"],
+    ["VXUS", "VEU"],
+    ["BIL", "SHY"],
+    ["BND", "AGG"],
+    ["HYG", "LQD"],
+    ["VWO", "EEM"],
+    ["SCZ", "EFA"],
+    ["GSG", "DBC"],
+    ["REM", "VNQ"],
+    ["DLS", "EFA"],
+    ["DGS", "EEM"],
+  ];
+  for (const [young, old] of SPLICES) bars[young] = splice(bars[young] ?? [], bars[old] ?? []);
   const u = alignCatalog(bars, spy);
   if (!u) throw new Error("No VTI history.");
   const { results } = runCatalog(u);
   const watch = [...new Set(results.filter((r) => r.watch || r.recommendable).map((r) => r.id))];
-  const source = `Yahoo Finance adjusted daily closes, ${u.dates[0]} to ${u.dates.at(-1)} (VXUS spliced with VEU before 2011)`;
+  const source = `Yahoo Finance adjusted daily closes, ${u.dates[0]} to ${u.dates.at(-1)}, each younger fund read through an older look-alike before it began (${SPLICES.map(([y, o]) => `${y} through ${o}`).join(", ")})`;
   const md = regimesMarkdown(regimeReport(u), source, watch);
   writeFileSync(join(DIR, "regimes.md"), md);
   writeFileSync(

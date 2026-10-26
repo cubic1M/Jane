@@ -329,6 +329,23 @@ export function decide(
       if (share < 1) add(w, rest, 1 - share);
       return w;
     }
+    case "factor_rotation": {
+      if (!isMonthEnd(u, t) || !has(u, e.tickers, t, p * MONTH)) return null;
+      return equal(top([...e.tickers], 2, (x) => ret(c(u, x), t, p * MONTH)!));
+    }
+    case "low_vol_trend": {
+      if (!isMonthEnd(u, t) || !has(u, ["USMV", "BIL"], t, p * MONTH)) return null;
+      return { [c(u, "USMV")[t] > sma(c(u, "USMV"), t, p * MONTH)! ? "USMV" : "BIL"]: 1 };
+    }
+    case "hrp_trend":
+    case "max_div_trend": {
+      const w = optimized(u, t, TEN, p, id === "hrp_trend" ? "hrp" : "maxdiv");
+      if (!w || !has(u, ["BIL"], t, 0)) return null;
+      const out: Weights = {};
+      for (const [x, v] of Object.entries(w))
+        add(out, c(u, x)[t] > sma(c(u, x), t, 10 * MONTH)! ? x : "BIL", v);
+      return out;
+    }
     case "watch_blend":
     case "haa_no_brainer": {
       if (!isMonthEnd(u, t)) return null;

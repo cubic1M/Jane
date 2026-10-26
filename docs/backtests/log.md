@@ -238,11 +238,11 @@ return and worst drop, and that the evidence quotes the replay's own numbers.
 
 ## 2026-10-24: the strategy catalog, every strategy at every level
 
-The founder asked for every well-documented, rules-based strategy, backtested thoroughly, with only the good-enough ones recommended. [The catalog](strategy-catalog.md) has 48 strategies from public sources (Faber, Antonacci, Keller & Keuning, Keller & Butler, Butler et al., Kipnis, López de Prado, Choueifaty, the factor literature, Connors, the seasonal anomalies). They were replayed in GitHub Actions on Alpaca SIP daily closes, 2016 to October 2026, after costs, at every risk level (run 40083022347); the results are in [strategy-results.md](strategy-results.md).
+The founder asked for every well-documented, rules-based strategy, backtested thoroughly, with only the good-enough ones recommended. [The catalog](strategy-catalog.md) has 56 strategies from public sources (Faber, Antonacci, Keller & Keuning, Keller & Butler, Butler et al., Kipnis, López de Prado, Choueifaty, the factor literature, Connors, the seasonal anomalies). They were replayed in GitHub Actions on Alpaca SIP daily closes, 2016 to October 2026, after costs, at every risk level (run 40085267743); the results are in [strategy-results.md](strategy-results.md).
 
-- 77 trials (every strategy at every setting). Each was scored out of sample twice: walk-forward from 2020, and chosen to 2021 then scored from 2022.
-- The deflated Sharpe ratio of each walk-forward's excess over the level's mix, against the best of 77 lucky trials, is the haircut.
-- **Nothing is recommendable at any level.** None beat its level's mix by enough to rule out luck after testing 77 at once.
+- 86 trials (every strategy at every setting). Each was scored out of sample twice: walk-forward from 2020, and chosen to 2021 then scored from 2022.
+- The deflated Sharpe ratio of each walk-forward's excess over the level's mix, against the best of 86 lucky trials, is the haircut.
+- **Nothing is recommendable at any level.** None beat its level's mix by enough to rule out luck after testing 86 at once.
 - **Worth watching:** each beat the mix out of sample, inside the risk budget, with more return and not just less risk, and still ahead measured from 2021 and from 2022.
   - Hybrid asset allocation (HAA): every level, 5 to 10% likely a real edge.
   - Sector rotation: every level, strongest at High and Very high (18 to 22%).
@@ -251,3 +251,17 @@ The founder asked for every well-documented, rules-based strategy, backtested th
 - The last three added (sector rotation with a trend filter, bond rotation, trend with volatility targeting) cut risk but gave up more return than they saved; none is worth watching. Of the three lazy portfolios, the No-Brainer is worth watching at Very low and Low and the Coffeehouse at Very low; the Larry portfolio trailed every level's mix.
 - Most of the rest did worse than simply keeping the level's mix, the honest result for most published rules once costs and out-of-sample years are counted.
 - The day-trading rules (every one lost after slippage) and the crypto rules are scored separately: `intraday-evidence.ts` and `crypto-evidence.ts`.
+- Batch 7 tried combinations of the watch list.
+  - The blend of HAA, EAA and Faber's aggressive GTAA, a third each, is worth watching at every level (6 to 10%).
+  - HAA half-and-half with the No-Brainer is worth watching at every level but Very high (6 to 13%).
+  - Trend and absolute-momentum overlays on the level's own mix cut risk but gave up more return; neither is worth watching.
+- The day-trading rules re-run on Alpaca's 5-minute bars to October 23 (run 40083791242) gave the same result: every one lost after slippage while holding SPY made 19.9% a year.
+- Batch 8 ran every strategy through 2008, the 2020 crash and 2022 on Yahoo's adjusted closes from 2005 (run 40084992464, [strategy-regimes.md](strategy-regimes.md)). Each younger fund is read through an older look-alike before it began. Every strategy is at its published middle setting, so this is descriptive, not out of sample.
+  - The watch list held up where the mixes fell. Through the 2008 crash the mixes fell 17% to 52%; meanwhile HAA gained 5.9%, the watch-list blend 11.1% and EAA 13.0%.
+  - In the 2020 crash: HAA 0.0%, the blend +1.4%, EAA +4.1%, against −12% to −31%. In 2022: +3.5%, +1.6% and +5.2%, against −13% to −17%.
+  - HAA with the No-Brainer fell 23% in the 2008 crash, its fixed half doing what fixed mixes do.
+  - This doesn't change the verdicts: on the out-of-sample years the edge still doesn't clear the haircut.
+- Batch 9 tried new variants on the earlier ideas: factor rotation, and low volatility, HRP and maximum diversification each with a trend filter (run 40085267743). None is worth watching; the watch list is unchanged after 86 trials.
+- The crypto rules re-run on Alpaca's own crypto bars (from 2021, run 40084765919): trend and momentum beat holding for the risk, as on the Yahoo fixture, but still fell 46% and 50% at their worst.
+- Batch 10 checked the watch list across wider settings (run 40085916843, [strategy-sensitivity.md](strategy-sensitivity.md)). HAA, EAA and Faber's aggressive GTAA beat the mix at every setting tried, sector rotation at 6 of 8, DAA at 4 of 8. The edge isn't one lucky setting, but it still doesn't clear the haircut.
+- Final: nothing is recommendable under the rule set before the results; the watch list is above. See the summary at the top of [strategy-results.md](strategy-results.md).

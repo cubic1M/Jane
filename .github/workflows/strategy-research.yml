@@ -197,7 +197,9 @@ jobs:
           path: |
             research/strategy-results.md
             research/catalog-evidence.ts
+            research/catalog-curves.ts
             research/catalog-results.json
+            research/sensitivity.md
           retention-days: 30
 
   crypto:
@@ -247,7 +249,7 @@ jobs:
       - name: Every catalog strategy through 2008, 2020 and 2022
         env:
           STRATEGY_RESEARCH: regimes
-          RESEARCH_FROM: "2007-01-01"
+          RESEARCH_FROM: "2005-01-01"
           RESEARCH_DIR: research
         run: |
           npx vitest run src/lib/investments/strategy-research.cli.test.ts --silent=false
@@ -258,4 +260,5 @@ jobs:
           path: |
             research/regimes.md
             research/regimes.json
+            research/catalog-regimes.ts
           retention-days: 30
