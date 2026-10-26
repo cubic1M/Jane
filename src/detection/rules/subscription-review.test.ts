@@ -32,6 +32,32 @@ describe("subscription_review", () => {
     expect(run(input({ transactions })).map((f) => f.key)).toEqual(["merchant:dropbox"]);
   });
 
+  it("finds each subscription billed through an app store, under its own key", () => {
+    const apple = {
+      description: "APPLE.COM/BILL 866-712-7753 CA",
+      pfcPrimary: "GENERAL_MERCHANDISE",
+    };
+    const transactions = [
+      ...monthly(3, 299, apple).map((t) => ({ ...t, date: t.date.slice(0, 8) + "05" })),
+      ...monthly(3, 1099, apple),
+    ];
+
+    expect(run(input({ transactions })).map((f) => f.key)).toEqual([
+      "merchant:apple",
+      "merchant:apple@1099",
+    ]);
+  });
+
+  it("never calls a payment on a debt a subscription, whatever its name", () => {
+    const transactions = monthly(4, 25_000, {
+      description: "APPLE CARD PAYMENT",
+      pfcPrimary: "LOAN_PAYMENTS",
+      pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    });
+
+    expect(run(input({ transactions }))).toEqual([]);
+  });
+
   it("finds nothing for recurring charges that aren't subscriptions", () => {
     const transactions = [...monthly(4, 5000, GROCERIES), ...monthly(4, 9800, GEICO)];
 

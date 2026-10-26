@@ -85,6 +85,13 @@ describe("categorizeByRules", () => {
     expect(out("CITY PARKING TICKETS")).toBeNull();
   });
 
+  it("files utilities named for what they sell as utilities", () => {
+    expect(out("XCEL ENERGY-PSCO PPD ID: 8840011")).toBe("RENT_AND_UTILITIES_GAS_AND_ELECTRICITY");
+    expect(out("SOUTHERN CALIFORNIA EDISON")).toBe("RENT_AND_UTILITIES_GAS_AND_ELECTRICITY");
+    expect(out("SEATTLE CITY LIGHT UTILITIES")).toBe("RENT_AND_UTILITIES_OTHER_UTILITIES");
+    expect(into("XCEL ENERGY REFUND")).toBeNull();
+  });
+
   it("counts a payout for one's own work as income, not a refund", () => {
     expect(into("STRIPE TRANSFER ST-K3J9Q2 PPD ID: 4270465600")).toBe("INCOME_CONTRACTOR");
     expect(out("STRIPE TRANSFER ST-K3J9Q2")).toBeNull();

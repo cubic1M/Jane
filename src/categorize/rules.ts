@@ -203,12 +203,33 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
-    keywords: ["PG&E", "CON ED", "CONEDISON", "DUKE ENERGY", "SCE", "COMED", "NATIONAL GRID"],
+    keywords: [
+      "PG&E",
+      "CON ED",
+      "CONEDISON",
+      "DUKE ENERGY",
+      "SCE",
+      "COMED",
+      "NATIONAL GRID",
+      // Utilities named for what they sell (accuracy bench: "XCEL ENERGY", "SOUTHERN
+      // CALIFORNIA EDISON" were never bills).
+      "ENERGY",
+      "ELECTRIC",
+      "EDISON",
+      "GAS & ELECTRIC",
+      "GAS CO",
+      "GAS COMPANY",
+    ],
     direction: "out",
   },
   {
     category: "RENT_AND_UTILITIES_WATER",
     keywords: ["WATER UTIL", "WATER DEPT"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_OTHER_UTILITIES",
+    keywords: ["UTILITIES", "UTILITY"],
     direction: "out",
   },
   {
