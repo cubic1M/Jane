@@ -40,7 +40,6 @@ import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
 import { isPolicyKind } from "@/config/insurance";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
-import { autopilotOf } from "@/lib/autopilot";
 import { autopilotAnswer } from "./autopilot";
 import { eventLabel, listClaims } from "@/lib/insurance/claims";
 import { formatCents } from "@/lib/money";

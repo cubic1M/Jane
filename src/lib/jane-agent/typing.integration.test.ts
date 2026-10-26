@@ -10,7 +10,6 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { CHAT_MAX_MESSAGE, CHAT_PRIMER_TOOLS, CHAT_TRIAL_MESSAGES } from "@/config/agent-chat";
 import { TRIAL_CAP_TEXT, addMonthlySpend } from "./claude-limits";
-import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import { RATE_LIMITS } from "@/config/rate-limits";
 import { track } from "@/lib/analytics";
 import { exportUserData } from "@/lib/data-export";

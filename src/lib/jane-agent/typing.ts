@@ -27,7 +27,7 @@ import {
   type ChatStreamEvent,
   type ChatTurn,
 } from "./claude";
-import { resolvePronoun, withTopic, type Topic } from "./context";
+import { resolvePronoun, type Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { storeReply } from "./messages";

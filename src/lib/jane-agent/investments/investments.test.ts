@@ -189,7 +189,6 @@ describe("the investments message", () => {
   const now = new Date("2026-10-19T13:00:00Z");
 
   it("says once that Jane can see what's in the accounts", () => {
-    const data = demoInvestments();
     const [message] = gather(
       {
         ...base,

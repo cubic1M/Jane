@@ -75,7 +75,7 @@ export type PropertyView = {
 export async function rentalDepreciationFor(
   userId: string,
   year: number,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient }: Options = {},
 ) {
   const side = await loadSideIncome(userId, { client, now: new Date(Date.UTC(year, 11, 31)) });
   const d = side.rental?.depreciation;
