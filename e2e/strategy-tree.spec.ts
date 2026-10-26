@@ -1,12 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
-import { expectMarchingLine } from "./marching";
 
 // The investments page laid out like Home (founder: "you can click through the tree graphs
 // showcasing the different strategies and choose which one you like"): the hero graph, the
 // tiles, the levels as tiles with the person's own open, families as branches, strategies as
-// leaves. Picking a leaf shows it in the hero at once, with its panel (a bottom sheet on a
-// phone); Use this strategy is instant and saved, and Revert puts it back. Demo advice on
+// leaves. Picking a leaf opens its own box right under it (never an overlay), and the hero, which
+// scrolls with the page, shows it too; Use this strategy is instant and saved, and Revert puts it
+// back. Demo advice on
 // practice money only. On a computer and at 375 px.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -28,8 +28,8 @@ async function signIn(page: Page, baseURL: string | undefined) {
 }
 
 for (const size of [
-  { name: "a computer", width: 1280, height: 900, phone: false },
-  { name: "a phone", width: 375, height: 812, phone: true },
+  { name: "a computer", width: 1280, height: 900 },
+  { name: "a phone", width: 375, height: 812 },
 ]) {
   test(`pick a strategy in the tree, see it in the graph, use it and revert, on ${size.name}`, async ({
     page,
@@ -70,7 +70,10 @@ for (const size of [
     await expect(tree.getByText("[NOT RECOMMENDED]").first()).toBeVisible();
     await expect(tree.locator('[data-strategy-leaf="default"]')).toContainText(/[+−]\d+\.\d%\/yr/);
 
-    // Pick a worth-watching leaf: the hero shows it at once, the panel opens beside it.
+    // The hero scrolls with the page: it never stays on top of the tree.
+    expect(await hero.evaluate((el) => getComputedStyle(el).position)).not.toBe("sticky");
+
+    // Pick a worth-watching leaf: its own box opens right under it, and the hero shows it.
     const leaf = tree
       .locator('[data-status="watch"]:not([data-strategy-leaf="catalog:managed_futures"])')
       .first();
@@ -79,14 +82,15 @@ for (const size of [
     await leaf.click();
     await expect(hero.locator("[data-hero-line]")).toHaveAttribute("data-hero-line", key);
     await expect(hero.locator(`path[data-graph-line="${key}"]`)).toBeVisible();
-    const panel: Locator = size.phone
-      ? page.getByRole("dialog", { name: label })
-      : hero.locator("[data-strategy-panel]");
+    const panel: Locator = page.getByRole("region", { name: label, exact: true });
+    await expect(panel).toHaveAttribute("data-strategy-box", key);
     await expect(panel.getByText(label, { exact: true })).toBeVisible();
-    if (!size.phone) {
-      await expect(page.locator("[data-panel-line]")).toHaveCount(1);
-      await expectMarchingLine(page.locator("[data-panel-line]"));
-    }
+    await expect(panel.locator(`path[data-graph-line="${key}"]`)).toBeVisible();
+    // A box in the page, not an overlay: no dialog, nothing fixed, narrower than the screen.
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(await panel.evaluate((el) => getComputedStyle(el).position)).not.toBe("fixed");
+    const box = (await panel.boundingBox())!;
+    expect(box.width).toBeLessThan(size.width);
     await panel.getByText("More", { exact: true }).click();
     await expect(panel.getByText(/^Past regimes: /)).toBeVisible();
 
@@ -108,9 +112,7 @@ for (const size of [
     const steady = page.locator('[data-branch="steady"] [data-strategy-leaf]').nth(1);
     const steadyKey = (await steady.getAttribute("data-strategy-leaf"))!;
     await steady.click();
-    const panel2: Locator = size.phone
-      ? page.getByRole("dialog")
-      : hero.locator("[data-strategy-panel]");
+    const panel2: Locator = page.locator(`[data-strategy-box="${steadyKey}"]`);
     await panel2.getByRole("button", { name: "Use this strategy" }).click();
     await expect(steady).toContainText("■ YOURS");
     await panel2.getByRole("button", { name: "Revert" }).click();
@@ -141,9 +143,7 @@ for (const size of [
     const day = high.locator('[data-strategy-leaf="intraday:opening_range"]');
     await expect(day).toContainText("[LOST MONEY]");
     await day.click();
-    const panel3: Locator = size.phone
-      ? page.getByRole("dialog")
-      : hero.locator("[data-strategy-panel]");
+    const panel3: Locator = high.locator('[data-strategy-box="intraday:opening_range"]');
     await expect(panel3.getByText(/^Your level is /)).toBeVisible();
     await expect(panel3.getByRole("button", { name: "Use this strategy" })).toHaveCount(0);
     await expect(

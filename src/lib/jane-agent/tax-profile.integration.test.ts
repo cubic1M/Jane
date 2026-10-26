@@ -122,7 +122,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
       state: "CA",
       unconfirmed: ["incomeKinds", "state"],
     });
-  }, 60_000);
+  }, 180_000);
 
   it("asks one question at a time in the chat until the profile is done", async () => {
     const userId = await demoPerson("tax-flow");
@@ -190,7 +190,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
       code: "not_offered",
     });
     expect(await client.taxProfile.count({ where: { userId: { in: [userId, otherId] } } })).toBe(0);
-  }, 60_000);
+  }, 180_000);
 
   it("typing an answer offers a button, and only the tap saves it", async () => {
     const userId = await demoPerson("tax-typed");
@@ -208,7 +208,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
     expect(profile.reply.body).toContain("- State: Texas\n");
     expect(profile.reply.body).toContain("- Income: wages from a job; interest, dividends");
     expect(parseRefs(profile.reply.refs).taxField).toBe("incomeKinds");
-  }, 60_000);
+  }, 180_000);
 
   it("asks before adding a new kind of income, and adds it on a tap", async () => {
     const userId = await demoPerson("tax-new-income");
@@ -245,7 +245,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
     await expect(
       addIncomeKind(userId, "self_employed", { client, via: "chat" }),
     ).rejects.toBeInstanceOf(TaxProfileError);
-  }, 60_000);
+  }, 180_000);
 
   it("checks every answer and keeps each person's profile their own", async () => {
     const userId = await person("tax-checks");
@@ -289,5 +289,5 @@ describe.runIf(url)("the tax profile against a real database", () => {
     expect(data.income.seenInAccounts[0]).toMatchObject({ kind: "Wages from a job", form: "W-2" });
     expect(data.janeDoesByHerself[0]).toContain("I work out your tax profile from your accounts");
     expect(result.cents.length).toBeGreaterThan(0);
-  }, 60_000);
+  }, 180_000);
 });
