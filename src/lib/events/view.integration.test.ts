@@ -118,7 +118,8 @@ describe.runIf(url)("the Events box and its updates", () => {
     const key = uniqueKey("gdelt:chip_boom:2027-10-18");
     await event({ key, type: "chip_boom", date: "2027-10-18", knownAt: "2027-10-19T00:15:00Z" });
 
-    // Off: what it would do, how sure, and its record.
+    // Switched off: what it would do, how sure, and its record.
+    await setEventsOverlay(id, false, { client, now: new Date("2027-10-18T14:00:00Z") });
     const off = (await loadEventsView(id, { client, now: NOW }))!;
     expect(off).toMatchObject({ on: false, hasAccount: true });
     expect(off.now).toEqual([
@@ -153,6 +154,33 @@ describe.runIf(url)("the Events box and its updates", () => {
       await client.paperSignal.count({ where: { userId: id, source: "events", status: "open" } }),
     ).toBe(0);
     expect(await markEventSeen(id, update.id, { client, now: NOW })).toEqual({ ok: false });
+  });
+
+  it("is never empty: what it watches, and when nothing is fresh, says so and shows the latest", async () => {
+    const id = await startedOn();
+    // Only an event from two weeks before: nothing in the last five days.
+    await event({
+      key: uniqueKey("gdelt:war:2027-10-05"),
+      type: "war",
+      date: "2027-10-05",
+      knownAt: "2027-10-06T00:15:00Z",
+    });
+    const view = (await loadEventsView(id, { client, now: NOW }))!;
+    expect(view.on).toBe(true);
+    expect(view.now).toEqual([]);
+    expect(view.quiet).toBe(true);
+    expect(view.earlier).toEqual([
+      expect.objectContaining({ label: "A war breaks out", date: "2027-10-05" }),
+    ]);
+    expect(view.earlier[0].why).toBe("14 days ago: older than 5 days, so not acted on");
+    expect(view.watching.sources.map((s) => s.label)).toEqual([
+      "GDELT news coverage",
+      "Federal Reserve statements",
+      "BLS inflation releases",
+      "EIA energy news",
+      "Stored headlines",
+      "Sharp price moves",
+    ]);
   });
 
   it("shows a real account no box", async () => {

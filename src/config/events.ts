@@ -234,6 +234,27 @@ export const EVENT_COST_BPS = 5;
 export const EVENT_FRESH_DAYS = 5;
 // A paper account that missed days catches up this many closes at most.
 export const EVENT_CATCH_UP_DAYS = 10;
+// Events are stored this many days back (the box shows the most recent even when none is fresh).
+export const EVENT_STORE_DAYS = 30;
+
+// --- Refreshing (src/lib/events/refresh.ts): the daily cron reads every source; opening the
+// investments page refreshes too when the last check is older than this, one request at a time
+// (a lock), so a busy page never asks GDELT more than once in EVENTS_REFRESH_MINUTES. ---
+export const EVENTS_REFRESH_MINUTES = 60;
+// A claimed refresh that never finished frees the lock after this long.
+export const EVENTS_LOCK_SECONDS = 240;
+// A page view's refresh asks GDELT about this many event types (the least recently checked),
+// so it finishes inside a page's time; the cron asks about all of them.
+export const EVENTS_VIEW_GDELT_TYPES = 3;
+// The sources watched, for the box ("Watching N sources").
+export const EVENT_SOURCE_LABELS: Readonly<Record<string, string>> = {
+  gdelt: "GDELT news coverage",
+  fed: "Federal Reserve statements",
+  bls_cpi: "BLS inflation releases",
+  eia: "EIA energy news",
+  headlines: "Stored headlines",
+  prices: "Sharp price moves",
+};
 
 // --- How sure: each type's own record so far, never the future ---
 // A type starts at EVENT_PRIOR_CONFIDENCE (a coin flip) worth EVENT_PRIOR_WEIGHT past events, and

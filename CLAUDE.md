@@ -48,7 +48,8 @@ investment advice in this MVP.
   ever. Its prices are real and free (Alpaca, else Yahoo); advice mode only for now. Its trade
   alerts live in their own pop-up (src/components/trade-popup.tsx), never in the suggestion dock
 - The events overlay (src/lib/events/, src/config/events.ts) sits on top of the paper account's
-  strategy: it tilts a small slice on an event and undoes it, never replaces the strategy, trades
+  strategy (on by default, with a switch): it tilts a small slice on an event and undoes it, never
+  replaces the strategy, trades
   simulated money only, runs in advice mode only, uses rules (no Claude call), and acts on an
   event only at a close after it became public (no lookahead; docs/backtests/events.md)
 - Write tests for every rule and every API route you add

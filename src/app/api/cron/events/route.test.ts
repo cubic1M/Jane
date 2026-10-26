@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/health", () => ({
   recordRun: vi.fn((_name: string, run: () => Promise<unknown>) => run()),
 }));
-vi.mock("@/lib/events/run", () => ({
+vi.mock("@/lib/events/refresh", () => ({
   runEventsForAll: vi.fn(async () => ({
     collected: { found: 3, stored: 2, failed: [] },
     overlays: 1,
@@ -14,7 +14,7 @@ vi.mock("@/lib/events/run", () => ({
 }));
 
 import { recordRun } from "@/lib/health";
-import { runEventsForAll } from "@/lib/events/run";
+import { runEventsForAll } from "@/lib/events/refresh";
 import { GET, maxDuration } from "./route";
 
 const call = (authorization?: string) =>
