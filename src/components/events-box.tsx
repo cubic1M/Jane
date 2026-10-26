@@ -72,6 +72,11 @@ export function EventsBox({ view }: { view: EventsView }) {
         small slice for a few weeks, then undoes it. Simulated money only.
         {!view.hasAccount && " Start a paper account first."}
       </p>
+      {view.agent && (
+        <p className="text-xs font-semibold" data-events-agent="">
+          The 24-hour agent runs your paper account: it takes these slices as its own trades.
+        </p>
+      )}
       {note && (
         <p role="status" className="text-xs font-semibold" data-events-note="">
           {note}

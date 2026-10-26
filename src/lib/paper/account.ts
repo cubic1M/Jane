@@ -29,6 +29,8 @@ import {
 } from "@/planning/paper";
 import type { LedgerState } from "@/planning/practice-ledger";
 import { agentIsStale, tickTradingAgent } from "@/lib/trading-agent/agent";
+// The events overlay's signals for the agent's ticks (registers itself when loaded).
+import "@/lib/events/agent-source";
 import { latestCloses, paperPrices, type PaperPrices } from "./prices";
 import { strategyTargets } from "./targets";
 
