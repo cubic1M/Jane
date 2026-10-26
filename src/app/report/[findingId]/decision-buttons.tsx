@@ -2,18 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const PRIMARY_BUTTON =
   "inline-flex h-12 w-full items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 sm:w-auto";
 const SECONDARY_BUTTON =
   "inline-flex h-12 w-full items-center justify-center rounded-full border border-zinc-300 px-6 font-semibold hover:bg-zinc-100 disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:hover:bg-zinc-900";
 
-type State =
-  | { kind: "idle" }
-  | { kind: "sending" }
-  | { kind: "declined"; decisionId: string; secondsLeft: number }
-  | { kind: "error"; message: string };
+const CHOSEN_BUTTON =
+  "inline-flex h-12 w-full items-center justify-center gap-1 rounded-full border-2 border-zinc-950 bg-zinc-950 px-6 font-semibold text-white sm:w-auto dark:border-white dark:bg-white dark:text-zinc-950";
+const GREYED_BUTTON =
+  "inline-flex h-12 w-full items-center justify-center rounded-full border border-zinc-300 px-6 font-semibold opacity-40 sm:w-auto dark:border-zinc-700";
+
+type State = { kind: "idle" } | { kind: "sending" } | { kind: "error"; message: string };
+
+// What the server said about an answer: its decision (for Revert), or why not.
+type Answer = { decisionId: string; diy?: boolean } | { error: string };
 
 export function DecisionButtons({
   findingId,
@@ -41,23 +45,20 @@ export function DecisionButtons({
 }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: "idle" });
+  // The answer marked on screen at once (founder, 2026-10-25: "it should be instant ... just
+  // grey them out, and there should be a revert button"), and the save on its way behind it.
+  const [chosen, setChosen] = useState<"yes" | "no" | null>(null);
+  const sending = useRef<Promise<Answer> | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
 
-  // Counts down the undo window after a no, then goes back to the report.
+  // A No can be taken back for a few seconds: Revert counts them down, then goes.
   useEffect(() => {
-    if (state.kind !== "declined") return;
-    if (state.secondsLeft <= 0) {
-      router.push("/report");
-      return;
-    }
-    const timer = setTimeout(
-      () => setState({ ...state, secondsLeft: state.secondsLeft - 1 }),
-      1000,
-    );
+    if (chosen !== "no" || secondsLeft <= 0) return;
+    const timer = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearTimeout(timer);
-  }, [state, router]);
+  }, [chosen, secondsLeft]);
 
-  async function decide(choice: "yes" | "no" | "diy") {
-    setState({ kind: "sending" });
+  async function send(choice: "yes" | "no" | "diy"): Promise<Answer> {
     try {
       const response = await fetch("/api/decisions", {
         method: "POST",
@@ -75,49 +76,110 @@ export function DecisionButtons({
         diy?: boolean;
       };
       if (!response.ok || !body.decisionId) {
-        setState({ kind: "error", message: body.error ?? "Something went wrong. Try again." });
-        return;
+        return { error: body.error ?? "Something went wrong. Try again." };
       }
-      if (choice === "yes" && !body.diy) {
-        router.push("/actions");
-      } else if (choice === "diy" || body.diy) {
-        // The card page shows the kit once the answer is saved.
-        setState({ kind: "idle" });
-        router.refresh();
-      } else {
-        setState({ kind: "declined", decisionId: body.decisionId, secondsLeft: undoSeconds });
-      }
+      return { decisionId: body.decisionId, diy: body.diy };
     } catch {
-      setState({ kind: "error", message: "We couldn't reach the server. Try again." });
+      return { error: "We couldn't reach the server. Try again." };
     }
   }
 
-  async function undo(decisionId: string) {
-    setState({ kind: "sending" });
-    const response = await fetch(`/api/decisions/${decisionId}/undo`, { method: "POST" }).catch(
-      () => null,
-    );
-    if (!response?.ok) {
-      setState({ kind: "error", message: "It was too late to undo that." });
+  // Yes or No: marked at once, the other greyed, Revert offered; an error puts it back.
+  function decide(choice: "yes" | "no") {
+    // Read-only, the yes is "Show me how": recorded as theirs to do, and the steps open here.
+    if (readOnly && choice === "yes") {
+      setState({ kind: "sending" });
+      void send("yes").then((answer) => {
+        if ("error" in answer) setState({ kind: "error", message: answer.error });
+        else {
+          setState({ kind: "idle" });
+          router.refresh();
+        }
+      });
       return;
     }
+    setChosen(choice);
+    setSecondsLeft(undoSeconds);
     setState({ kind: "idle" });
-    router.refresh();
+    const sent = send(choice);
+    sending.current = sent;
+    void sent.then((answer) => {
+      if (sending.current !== sent) return;
+      if ("error" in answer) {
+        setChosen(null);
+        setState({ kind: "error", message: answer.error });
+      } else if (answer.diy) {
+        // The card page shows the kit once the answer is saved.
+        router.refresh();
+      }
+    });
   }
 
-  if (state.kind === "declined") {
-    return (
-      <div
-        role="status"
-        className="flex flex-col gap-3 rounded-xl bg-zinc-100 p-4 sm:flex-row sm:items-center sm:justify-between dark:bg-zinc-900"
-      >
-        <p>Got it, we&apos;ll leave this alone.</p>
-        <button type="button" onClick={() => undo(state.decisionId)} className={SECONDARY_BUTTON}>
-          Undo ({state.secondsLeft}s)
-        </button>
-      </div>
-    );
+  function revert() {
+    const was = chosen;
+    const sent = sending.current;
+    if (!was || !sent) return;
+    setChosen(null);
+    sending.current = null;
+    setState({ kind: "idle" });
+    void sent
+      .then(async (answer) => {
+        if ("error" in answer) return null;
+        const response = await fetch(`/api/decisions/${answer.decisionId}/revert`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ choice: was }),
+        });
+        if (response.ok) return null;
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        return body.error ?? "It was too late to take that back.";
+      })
+      .catch(() => "We couldn't reach the server. Try again.")
+      .then((message) => {
+        if (!message) {
+          router.refresh();
+          return;
+        }
+        setChosen(was);
+        sending.current = sent;
+        setState({ kind: "error", message });
+      });
   }
+
+  async function diyNow() {
+    setState({ kind: "sending" });
+    const answer = await send("diy");
+    if ("error" in answer) setState({ kind: "error", message: answer.error });
+    else {
+      setState({ kind: "idle" });
+      router.refresh();
+    }
+  }
+
+  const yesText = readOnly ? showLabel : yesLabel;
+  const button = (choice: "yes" | "no", label: string, style: string) =>
+    chosen ? (
+      <button
+        type="button"
+        disabled
+        aria-pressed={chosen === choice}
+        className={chosen === choice ? CHOSEN_BUTTON : GREYED_BUTTON}
+      >
+        {label}
+        {chosen === choice && <span aria-hidden="true"> [✓ chosen]</span>}
+        {chosen === choice && <span className="sr-only">, chosen</span>}
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={() => decide(choice)}
+        disabled={state.kind === "sending"}
+        className={style}
+      >
+        {label}
+      </button>
+    );
+  const canRevert = chosen === "yes" || (chosen === "no" && secondsLeft > 0);
 
   return (
     <div className="flex flex-col gap-3">
@@ -129,37 +191,60 @@ export function DecisionButtons({
           </button>
         </p>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          onClick={() => decide("yes")}
-          disabled={state.kind === "sending"}
-          className={PRIMARY_BUTTON}
-        >
-          {readOnly ? showLabel : yesLabel}
-        </button>
-        <button
-          type="button"
-          onClick={() => decide("no")}
-          disabled={state.kind === "sending"}
-          className={SECONDARY_BUTTON}
-        >
-          No thanks
-        </button>
+      <div className="flex flex-col gap-3 sm:flex-row" data-decision-buttons="">
+        {button("yes", yesText, PRIMARY_BUTTON)}
+        {button("no", "No thanks", SECONDARY_BUTTON)}
+        {chosen && canRevert && (
+          <button type="button" onClick={revert} className={SECONDARY_BUTTON}>
+            <span aria-hidden="true">↶ </span>Revert
+            {chosen === "no" ? ` (${secondsLeft}s)` : ""}
+          </button>
+        )}
       </div>
-      {diy && !readOnly && (
+      {chosen && (
+        <p role="status">
+          {chosen === "yes" ? (
+            <>
+              Approved. Jane is on it.{" "}
+              <Link
+                href="/actions"
+                // After the yes is saved, so the action is there when the page opens.
+                onClick={(e) => {
+                  const sent = sending.current;
+                  if (!sent) return;
+                  e.preventDefault();
+                  void sent.then(() => router.push("/actions"));
+                }}
+                className="font-medium underline"
+              >
+                Follow it on your actions ›
+              </Link>
+            </>
+          ) : (
+            <>
+              Got it, we&apos;ll leave this alone.{" "}
+              <Link href="/report" className="font-medium underline">
+                Back to your report ›
+              </Link>
+            </>
+          )}
+        </p>
+      )}
+      {diy && !readOnly && !chosen && (
         <button
           type="button"
-          onClick={() => decide("diy")}
+          onClick={diyNow}
           disabled={state.kind === "sending"}
           className="self-start text-sm font-medium text-emerald-700 hover:underline disabled:opacity-50"
         >
           I&apos;ll do it myself: show me how
         </button>
       )}
-      <Link href="/report" className="text-sm text-zinc-500 hover:underline">
-        Decide later
-      </Link>
+      {!chosen && (
+        <Link href="/report" className="text-sm text-zinc-500 hover:underline">
+          Decide later
+        </Link>
+      )}
     </div>
   );
 }

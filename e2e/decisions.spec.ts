@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { openFinding } from "./report-page";
 
 // Read-only mode, on a 375px-wide screen. A real account (a CSV import): import -> report ->
 // "Show me how" -> the steps and drafts to do it themselves, Copy and Mark done, and nothing
@@ -50,7 +51,7 @@ test.describe("a real account", () => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText("We found");
     await expectNoSidewaysScroll(page);
 
-    await page.getByRole("link", { name: /Netflix went up/ }).click();
+    await openFinding(page, /Netflix went up/);
     await expect(
       page.getByRole("article").getByText("Could save about $30.00 a year", { exact: true }),
     ).toBeVisible();
@@ -106,9 +107,13 @@ test.describe("a real account", () => {
 
   test("a no can be undone and puts the card back", async ({ page }) => {
     await importSampleCard(page);
-    await page.getByRole("link", { name: /Geico/ }).click();
+    await openFinding(page, /Geico/);
+    // No is marked at once, Yes greyed, and Revert puts both back.
     await page.getByRole("button", { name: "No thanks" }).click();
-    await page.getByRole("button", { name: /Undo/ }).click();
+    await expect(page.getByRole("button", { name: /^No thanks.*chosen$/ })).toBeVisible({
+      timeout: 150,
+    });
+    await page.getByRole("button", { name: /^Revert/ }).click();
 
     await expect(page.getByRole("button", { name: "Show me how", exact: true })).toBeVisible();
   });
@@ -122,16 +127,19 @@ test.describe("the demo bank", () => {
   }) => {
     userId = await demoPerson(context, page, baseURL);
     await page.goto("/report");
-    await page.getByRole("link", { name: /Netflix went up/ }).click();
+    await openFinding(page, /Netflix went up/);
     // The demo's Netflix has Jane's pick to switch to: one yes, and the team or the agent acts.
     await expect(page.getByRole("button", { name: /I'll do it myself/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Show me how/ })).toHaveCount(0);
-    await expect(async () => {
-      if (!page.url().endsWith("/actions")) {
-        await page.getByRole("button", { name: /^Yes, switch to / }).click({ timeout: 5_000 });
-      }
-      await expect(page).toHaveURL("/actions", { timeout: 10_000 });
-    }).toPass({ timeout: 45_000 });
+    // Yes is marked at once, with Revert, and the action is on /actions.
+    await page.getByRole("button", { name: /^Yes, switch to / }).click();
+    await expect(page.getByRole("button", { name: /^Yes, switch to .*chosen$/ })).toBeVisible({
+      timeout: 150,
+    });
+    await expect(page.getByRole("button", { name: "No thanks" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /^Revert/ })).toBeVisible();
+    await page.getByRole("link", { name: /Follow it on your actions/ }).click();
+    await expect(page).toHaveURL("/actions", { timeout: 10_000 });
     const action = page.getByRole("listitem").filter({ hasText: "Netflix went up" });
     // The agent starts right away on a card's yes, and the simulated company answers in
     // seconds, so a fast run may already show it working, or even done.

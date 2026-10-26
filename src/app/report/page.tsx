@@ -12,6 +12,12 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsLine } from "@/lib/savings-text";
 import { LoadingBar } from "@/components/loading-bar";
+import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
+
+// How many findings the report opens with; the rest are behind "more" (founder: "show what
+// matters, hide the rest").
+const TOP = 3;
+const MORE = "cursor-pointer text-sm font-medium underline underline-offset-2 hover:no-underline";
 
 // Shown when nothing was found, so the person knows what we looked at.
 const WHAT_WE_CHECK = [
@@ -40,6 +46,34 @@ async function ReportContent() {
     moneyFound(user.id),
   ]);
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
+  // Worth the most first (the query's order); the time-sensitive ones ahead of them.
+  const ordered = [
+    ...findings.filter((f) => PLAN_URGENT_FINDING_TYPES.includes(f.type)),
+    ...findings.filter((f) => !PLAN_URGENT_FINDING_TYPES.includes(f.type)),
+  ];
+  const top = ordered.slice(0, TOP);
+  const rest = ordered.slice(TOP);
+  const row = (finding: (typeof findings)[number]) => {
+    const text = explanationFor(finding);
+    return (
+      <li key={finding.id}>
+        <Link
+          href={`/report/${finding.id}`}
+          className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 p-4 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+        >
+          <span className="flex flex-col gap-1">
+            <span className="font-semibold">{text.title}</span>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              {savingsLine(finding.type, finding.annualSavingsCents)}
+            </span>
+          </span>
+          <span aria-hidden className="text-zinc-400">
+            ›
+          </span>
+        </Link>
+      </li>
+    );
+  };
 
   return (
     <>
@@ -61,14 +95,16 @@ async function ReportContent() {
         <section className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">Nothing to fix right now</h1>
           <p className="text-zinc-600 dark:text-zinc-400">
-            We read {transactions} transactions and didn&apos;t find anything new. Here&apos;s what
-            we checked:
+            We read {transactions} transactions and didn&apos;t find anything new.
           </p>
-          <ul className="flex list-disc flex-col gap-1 pl-5">
-            {WHAT_WE_CHECK.map((check) => (
-              <li key={check}>{check}</li>
-            ))}
-          </ul>
+          <details>
+            <summary className={MORE}>What we checked</summary>
+            <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
+              {WHAT_WE_CHECK.map((check) => (
+                <li key={check}>{check}</li>
+              ))}
+            </ul>
+          </details>
           <Link href="/actions" className="font-medium text-emerald-700 hover:underline">
             See what we&apos;re working on
           </Link>
@@ -82,44 +118,38 @@ async function ReportContent() {
                 : `We found ${findings.length} ${findings.length === 1 ? "thing" : "things"} to look at`}
             </h1>
             <p className="text-zinc-600 dark:text-zinc-400">
-              Estimates from {transactions} transactions. Open each one to decide; nothing changes
-              until you say yes.
+              Estimates from {transactions} transactions. The three that matter most are first; open
+              one to decide.
             </p>
           </div>
-          <ul className="flex flex-col gap-3">
-            {findings.map((finding) => {
-              const text = explanationFor(finding);
-              return (
-                <li key={finding.id}>
-                  <Link
-                    href={`/report/${finding.id}`}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 p-4 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                  >
-                    <span className="flex flex-col gap-1">
-                      <span className="font-semibold">{text.title}</span>
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {savingsLine(finding.type, finding.annualSavingsCents)}
-                      </span>
-                    </span>
-                    <span aria-hidden className="text-zinc-400">
-                      ›
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+          {/* What matters now (docs/design/area-pages.md): the three worth the most, open; the
+              rest behind "more". */}
+          <h2 className="text-xl font-semibold">What matters now</h2>
+          <ul aria-label="What matters now" className="flex flex-col gap-3">
+            {top.map(row)}
           </ul>
+          {rest.length > 0 && (
+            <details
+              data-report-more=""
+              className="border-t border-zinc-200 pt-3 dark:border-zinc-800"
+            >
+              <summary className={MORE}>{rest.length} more to look at</summary>
+              <ul className="mt-3 flex flex-col gap-3">{rest.map(row)}</ul>
+            </details>
+          )}
         </section>
       )}
 
       {accounts.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Accounts we read</h2>
-          <AccountList accounts={accounts} />
-          <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
-            Add or manage accounts
-          </Link>
-        </section>
+        <details className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <summary className={MORE}>Accounts we read ({accounts.length})</summary>
+          <div className="mt-3 flex flex-col gap-3">
+            <AccountList accounts={accounts} />
+            <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
+              Add or manage accounts
+            </Link>
+          </div>
+        </details>
       )}
     </>
   );
