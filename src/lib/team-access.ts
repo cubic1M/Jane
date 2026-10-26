@@ -135,6 +135,9 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   saved_reply_saved: notOnePerson,
   saved_reply_deleted: notOnePerson,
   admin_viewed_health: notOnePerson,
+  // Key rotation re-locks everyone's values without reading them; the report is counts only.
+  admin_viewed_keys: notOnePerson,
+  encryption_keys_rotated: notOnePerson,
   charge_split: own,
   household_settled: own,
   mfa_enabled: own,
