@@ -156,8 +156,13 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
                     />
                   )}
                 </svg>
+                {/* Beside the marker, on the side towards the middle, without widening it:
+                    a "×2" on the last day widened the page on a phone (messy-bank CI). */}
                 {e.events.length > 1 && (
-                  <span aria-hidden className="ml-0.5 text-[10px] font-semibold tabular-nums">
+                  <span
+                    aria-hidden
+                    className={`absolute top-1/2 -translate-y-1/2 text-[10px] font-semibold tabular-nums ${e.day > view.days / 2 ? "right-full" : "left-full"}`}
+                  >
                     ×{e.events.length}
                   </span>
                 )}

@@ -115,6 +115,25 @@ describe("forecastAccounts", () => {
     expect(f.lowest).toEqual({ date: "2026-10-15", balanceCents: 20_000 });
   });
 
+  // Messy-bank QA: a monthly move to savings is no bill, but it still leaves checking.
+  it("takes scheduled moves to savings out of checking without calling them bills", () => {
+    const toSavings = {
+      description: "Online Transfer to SAV ...4521 transaction#: 1234567",
+      merchantName: null,
+      pfcPrimary: "TRANSFER_OUT",
+      pfcDetailed: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+    };
+    const data = input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 20_000 }],
+      transactions: [...monthly(4, 9_800, GEICO), ...monthly(4, 50_000, toSavings)],
+    });
+
+    expect(upcomingBills(data, 31).map((b) => b.merchant)).toEqual(["Geico"]);
+    const [f] = forecastAccounts(data, 31);
+    expect(f.bills.map((b) => b.merchant)).toEqual(["Geico"]);
+    expect(f.days.at(-1)?.balanceCents).toBe(20_000 - 9_800 - 50_000);
+  });
+
   it("skips accounts without a balance and non-checking accounts", () => {
     const data = input({
       accounts: [{ ...CHECKING, currentBalanceCents: null }],
