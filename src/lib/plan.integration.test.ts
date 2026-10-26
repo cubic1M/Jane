@@ -11,7 +11,9 @@ vi.mock("@/lib/concierge-mode", () => ({ conciergeMode: vi.fn(async () => true) 
 
 import { track } from "@/lib/analytics";
 import { findingOfType } from "./__fixtures__/findings";
+import { PICK_UNDO_HOURS } from "@/config/rules";
 import { answerPlanItem, markPlanShown, planFor, yesToAll } from "./plan";
+import { undoApproval } from "./standing-rules";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -159,6 +161,41 @@ describe.runIf(url)("Jane's plan against a real database", () => {
     expect(
       (await client.decision.findFirstOrThrow({ where: { findingId: bill.id } })).options,
     ).toBeNull();
+  });
+
+  // Founder, 2026-10-25: Revert on a plan item puts it back on the plan while the work hasn't
+  // started.
+  it("takes back a Yes with Revert, the item back on the plan, until the work starts", async () => {
+    const userId = await person();
+    const bill = await finding(userId, "bill_negotiation", 54_000);
+    const fee = await finding(userId, "bank_fees", 3_500);
+    const plan = await planFor(userId, { client });
+    const item = (id: string) => plan.find((i) => i.card.findingId === id)!;
+    const yes = await answerPlanItem(
+      userId,
+      { findingId: bill.id, cardHash: item(bill.id).cardHash, choice: "yes" },
+      { client },
+    );
+    if (!yes.ok) throw new Error("expected a yes");
+    expect((await planFor(userId, { client })).map((i) => i.card.findingId)).not.toContain(bill.id);
+    await undoApproval(userId, yes.decisionId, "plan", PICK_UNDO_HOURS, { client });
+    expect(await client.action.count({ where: { decisionId: yes.decisionId } })).toBe(0);
+    expect((await planFor(userId, { client })).map((i) => i.card.findingId)).toContain(bill.id);
+
+    // Once the team has started, it stays.
+    const second = await answerPlanItem(
+      userId,
+      { findingId: fee.id, cardHash: item(fee.id).cardHash, choice: "yes" },
+      { client },
+    );
+    if (!second.ok) throw new Error("expected a yes");
+    await client.action.updateMany({
+      where: { decisionId: second.decisionId },
+      data: { status: "in_progress" },
+    });
+    await expect(
+      undoApproval(userId, second.decisionId, "plan", PICK_UNDO_HOURS, { client }),
+    ).rejects.toThrow("the work has started");
   });
 
   it("ticks what Jane would do, leaving low-confidence items unticked and on the plan", async () => {

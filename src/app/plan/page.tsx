@@ -29,6 +29,11 @@ import { loadYearPlan } from "@/lib/year-plan";
 import { YearPlanSection } from "./year-plan-section";
 import { LoadingBar } from "@/components/loading-bar";
 
+// How many items the plan opens with; the rest are behind "More" (founder: "show what matters,
+// hide the rest").
+const TOP = 3;
+const MORE = "cursor-pointer text-sm font-medium underline underline-offset-2 hover:no-underline";
+
 async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["searchParams"] }) {
   const user = await requireUser();
   const db = await scopedDb();
@@ -63,6 +68,25 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
   };
   const approved = count(params.approved);
   const skipped = count(params.skipped) ?? 0;
+  // The plan comes urgent first, then by what it's worth (src/lib/plan.ts).
+  const top = items.slice(0, TOP);
+  const rest = items.slice(TOP);
+  const itemOf = (i: (typeof items)[number]) => (
+    <PlanItem
+      key={i.card.findingId}
+      item={{
+        findingId: i.card.findingId,
+        cardHash: i.cardHash,
+        actionType: i.card.actionType,
+        title: i.card.title,
+        whatChanges: (readOnly ? selfServe(i.card) : i.card).whatChanges,
+        savings: savingsLine(i.card.findingType, i.card.annualSavingsCents),
+        urgent: i.urgent,
+        options: i.options,
+      }}
+      readOnly={readOnly}
+    />
+  );
 
   return (
     <>
@@ -100,7 +124,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
             .{" "}
             {readOnly
               ? "Each has Jane's steps and drafts. Nothing changes unless you do it."
-              : "Jane has ticked what it would do: one tap to go ahead, or untick anything first. Nothing happens until you do."}
+              : "The three that matter most are first; one tap to go ahead, and Revert if you change your mind."}
           </p>
         )}
         {!readOnly && (
@@ -116,68 +140,91 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
           </p>
         )}
       </div>
-      {autopilot === null && !readOnly && <AutopilotChooser compact />}
-      {byRules.length > 0 && (
-        <RuleApprovals
-          approvals={byRules.map((a) => ({
-            decisionId: a.decisionId,
-            title: a.title,
-            ruleLabel: a.ruleLabel,
-            canUndo: a.canUndo,
-          }))}
-        />
-      )}
-      {items.length > 0 && !readOnly && (
-        <YesToAll
-          items={items.map((i) => ({
-            findingId: i.card.findingId,
-            cardHash: i.cardHash,
-            title: i.card.title,
-            savings: savingsLine(i.card.findingType, i.card.annualSavingsCents),
-            preselected: i.preselected,
-          }))}
-        />
-      )}
-      {setup.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Set up, from your own numbers</h2>
-          {setupMoney > 1 && <UseAllSuggestions count={setupMoney} />}
-          <ul className="flex flex-col gap-3">
-            {setup.map((p) => (
-              <SetupItem key={p.key} item={setupView(p)} />
-            ))}
-          </ul>
+      {/* What matters now (docs/design/area-pages.md): the three that matter most, open; the
+          rest of the plan and everything else behind closed "More" sections. */}
+      {top.length > 0 && (
+        <section aria-labelledby="plan-top" className="flex flex-col gap-3">
+          <h2 id="plan-top" className="text-xl font-semibold">
+            What matters now
+          </h2>
+          <ul className="flex flex-col gap-3">{top.map(itemOf)}</ul>
         </section>
       )}
-      {filed.length > 0 && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Jane filed {filed.map((f) => f.merchantName).join(", ")} into{" "}
-          {filed.length === 1 ? "a category" : "categories"} from our merchant directory.{" "}
-          <Link href="/transactions" className="font-medium text-emerald-700 hover:underline">
-            Change or undo
-          </Link>
-        </p>
+      {rest.length > 0 && (
+        <details data-plan-more="" className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <summary className={MORE}>{rest.length} more on your plan</summary>
+          <ul className="mt-3 flex flex-col gap-3">{rest.map(itemOf)}</ul>
+        </details>
       )}
-      {year && <YearPlanSection plan={year} />}
-      {items.length > 0 && <h2 className="text-xl font-semibold">Each item</h2>}
-      <ul className="flex flex-col gap-3">
-        {items.map((i) => (
-          <PlanItem
-            key={i.card.findingId}
-            item={{
-              findingId: i.card.findingId,
-              cardHash: i.cardHash,
-              actionType: i.card.actionType,
-              title: i.card.title,
-              whatChanges: (readOnly ? selfServe(i.card) : i.card).whatChanges,
-              savings: savingsLine(i.card.findingType, i.card.annualSavingsCents),
-              urgent: i.urgent,
-              options: i.options,
-            }}
-            readOnly={readOnly}
-          />
-        ))}
-      </ul>
+      {items.length > 1 && !readOnly && (
+        <details className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <summary className={MORE}>Go ahead with several at once</summary>
+          <div className="mt-3">
+            <YesToAll
+              items={items.map((i) => ({
+                findingId: i.card.findingId,
+                cardHash: i.cardHash,
+                title: i.card.title,
+                savings: savingsLine(i.card.findingType, i.card.annualSavingsCents),
+                preselected: i.preselected,
+              }))}
+            />
+          </div>
+        </details>
+      )}
+      {autopilot === null && !readOnly && (
+        <details className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <summary className={MORE}>How much Jane does on its own</summary>
+          <div className="mt-3">
+            <AutopilotChooser compact />
+          </div>
+        </details>
+      )}
+      {byRules.length > 0 && (
+        <details className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <summary className={MORE}>Done by your rules ({byRules.length})</summary>
+          <div className="mt-3">
+            <RuleApprovals
+              approvals={byRules.map((a) => ({
+                decisionId: a.decisionId,
+                title: a.title,
+                ruleLabel: a.ruleLabel,
+                canUndo: a.canUndo,
+              }))}
+            />
+          </div>
+        </details>
+      )}
+      {(setup.length > 0 || filed.length > 0) && (
+        <details className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <summary className={MORE}>Set up, from your own numbers ({setup.length})</summary>
+          <div className="mt-3 flex flex-col gap-3">
+            {setupMoney > 1 && <UseAllSuggestions count={setupMoney} />}
+            <ul className="flex flex-col gap-3">
+              {setup.map((p) => (
+                <SetupItem key={p.key} item={setupView(p)} />
+              ))}
+            </ul>
+            {filed.length > 0 && (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Jane filed {filed.map((f) => f.merchantName).join(", ")} into{" "}
+                {filed.length === 1 ? "a category" : "categories"} from our merchant directory.{" "}
+                <Link href="/transactions" className="font-medium text-emerald-700 hover:underline">
+                  Change or undo
+                </Link>
+              </p>
+            )}
+          </div>
+        </details>
+      )}
+      {year && (
+        <details className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <summary className={MORE}>Your year</summary>
+          <div className="mt-3">
+            <YearPlanSection plan={year} />
+          </div>
+        </details>
+      )}
     </>
   );
 }
