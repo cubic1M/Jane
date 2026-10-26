@@ -1,3 +1,4 @@
+import { cardPaymentOutflows } from "@/categorize/card-payments";
 import { categorizeByRules } from "@/categorize/rules";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { detect } from "@/detection/detect";
@@ -37,8 +38,9 @@ type Categorized = History["rows"][number] & {
   pfcDetailed: string | null;
 };
 
+// The keyword rules, then the card payments matched from the card's side, as an import does.
 function categorized(h: History): Categorized[] {
-  return h.rows.map((row) => {
+  const rows = h.rows.map((row) => {
     const category = categorizeByRules({
       description: row.description,
       amountCents: row.amountCents,
@@ -51,6 +53,12 @@ function categorized(h: History): Categorized[] {
       pfcDetailed: category?.detailed ?? null,
     };
   });
+  const paid = new Set(cardPaymentOutflows(rows, h.accounts));
+  return rows.map((r) =>
+    paid.has(r.id)
+      ? { ...r, pfcPrimary: "LOAN_PAYMENTS", pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" }
+      : r,
+  );
 }
 
 export function detectionInputOf(h: History): DetectionInput {

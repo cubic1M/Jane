@@ -24,10 +24,11 @@ const CSV_ACCOUNT = {
 
 const findUnique = vi.fn();
 const createMany = vi.fn();
+const findManyAccounts = vi.fn(async () => [{ id: "acct_1", type: "depository" }]);
 const db = {
   userId: "user_1",
-  accounts: { findUnique },
-  transactions: { createMany },
+  accounts: { findUnique, findMany: findManyAccounts },
+  transactions: { createMany, findMany: vi.fn(async () => []), updateMany: vi.fn() },
   merchantCategories: { findMany: vi.fn(async () => []), createMany: vi.fn() },
 } as unknown as ScopedDb;
 

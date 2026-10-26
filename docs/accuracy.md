@@ -75,9 +75,9 @@ Tuning set (60 people, 16326 transactions):
 | double_charges | 100.0% | 100.0% | 0.0% | 24 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 14 | 0 | 0 |
-| bills | 99.7% | 73.3% | 1.7% | 297 | 1 | 108 |
+| bills | 99.7% | 76.0% | 1.7% | 308 | 1 | 97 |
 | income | 100.0% | 100.0% | 0.0% | 1391 | 0 | 0 |
-| transfers | 100.0% | 92.6% | 0.0% | 1493 | 0 | 120 |
+| transfers | 100.0% | 100.0% | 0.0% | 1613 | 0 | 0 |
 
 Calibration, tuning set:
 
@@ -100,9 +100,9 @@ Held-out set (40 people, 10008 transactions):
 | double_charges | 100.0% | 100.0% | 0.0% | 31 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
-| bills | 98.2% | 55.5% | 7.5% | 161 | 3 | 129 |
+| bills | 98.3% | 59.3% | 7.5% | 172 | 3 | 118 |
 | income | 100.0% | 100.0% | 0.0% | 774 | 0 | 0 |
-| transfers | 100.0% | 87.7% | 0.0% | 733 | 0 | 103 |
+| transfers | 100.0% | 99.6% | 0.0% | 833 | 0 | 3 |
 
 Calibration, held-out set:
 
@@ -125,9 +125,9 @@ Second held-out set (40 people, 10748 transactions):
 | double_charges | 100.0% | 100.0% | 0.0% | 20 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 12 | 0 | 0 |
-| bills | 99.4% | 54.7% | 2.5% | 156 | 1 | 129 |
+| bills | 99.4% | 61.1% | 2.5% | 174 | 1 | 111 |
 | income | 100.0% | 100.0% | 0.0% | 780 | 0 | 0 |
-| transfers | 100.0% | 82.4% | 0.0% | 733 | 0 | 157 |
+| transfers | 100.0% | 99.8% | 0.0% | 888 | 0 | 2 |
 
 Calibration, second held-out set:
 
@@ -137,7 +137,7 @@ Calibration, second held-out set:
 | 50–59% | 28 | 57% | 100% |
 | 60–69% | 18 | 64% | 100% |
 | 70–79% | 8 | 75% | 100% |
-| 80–89% | 19 | 86% | 100% |
+| 80–89% | 18 | 86% | 100% |
 | 90–100% | 18 | 95% | 100% |
 <!-- scoreboard:end -->
 
@@ -158,6 +158,7 @@ Calibration, second held-out set:
 Each fix was made by reading the tuning set's mistakes only. The held-out sets were scored, not read, until the tuning-set rules were final; where a held-out mistake then suggested a fix, it says so, and the second held-out set is the clean check for it.
 
 - **Double charges (precision 55.8% → 100% on the tuning set, 44.9% → 100% and 42.6% → 100% held out; recall stays 100%).** Every false "Charged twice?" was a group buying a seat each: two or three tickets or fares at one price on one day. Those are left out now: Plaid's event and flight categories (`DUPLICATE_CHARGE_PER_SEAT_CATEGORIES`), ticket sellers filed as events by the keyword rules (Ticketmaster, Live Nation, StubHub, SeatGeek and others), and cinemas by name (`DUPLICATE_CHARGE_PER_SEAT_WORDS`; Plaid files cinemas with streaming, where a double charge is real). Two bank fees on one day aren't a double charge either: the bank fees finding asks for those back. The cinema and bank-fee rules came from reading the first held-out set's mistakes (seats at AMC, two overdraft fees in a day); the second held-out set, with a cinema and ticket seller of its own, confirms them. A real double charge at a ticket seller is now missed; the card's dispute process still covers it.
+- **Own-account transfers (recall 92.6% → 100% on the tuning set, 87.7% → 99.6% and 82.4% → 99.8% held out; precision stays 100%).** Every miss was a card payment from checking written by a card company no keyword rule knows ("BARCLAYCARD US PAYMENT"), so it counted as spending, and the card payment was missing from "Coming up". The card's own side always says what it is ("Payment Thank You", the bank's "Payment" type). Now an outflow from a bank account of the same amount within `CARD_PAYMENT_MATCH_DAYS` (3) of the card's payment is that payment, whichever company wrote it (`src/categorize/card-payments.ts`). It runs after every CSV import, over all the person's accounts, so it works whichever account was imported first; it only changes rows with no category or Claude's guess, never the person's own or Plaid's (Plaid names card payments itself). What's left: a payment made on the last day, before the card posted its side.
 
 ## Calibration
 
