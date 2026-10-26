@@ -35,7 +35,7 @@ const NOW = new Date("2026-10-18T15:00:00Z");
 const DAY = 86_400_000;
 const context = { now: NOW, local: { date: "2026-10-18", hour: 8 }, trigger: "open" as const };
 
-describe.runIf(url)("what you could borrow against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("what you could borrow against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let userId: string;
   const created: string[] = [];

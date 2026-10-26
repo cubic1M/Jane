@@ -55,6 +55,39 @@ describe("categorizeByRules", () => {
     expect(into("CORNER MARKET", { bankCategory: "Groceries" })).toBeNull();
   });
 
+  // Messy-bank QA: what real checking accounts and card exports write.
+  it.each([
+    ["CHASE CREDIT CRD AUTOPAY PPD ID: 4760039224", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
+    ["AMEX EPAYMENT ACH PMT W4562", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
+    ["CAPITAL ONE ONLINE PMT 9F2K", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
+    ["DISCOVER E-PAYMENT 7731", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
+    ["RIVERSIDE PROPERTY MGMT RENT PPD ID: 5550001", "RENT_AND_UTILITIES_RENT"],
+    ["PG&E WEB ONLINE PPD ID: 9471234567", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["SQ *JOES COFFEE 4421", "FOOD_AND_DRINK_COFFEE"],
+  ])("puts the messy outgoing %j in %s", (description, category) => {
+    expect(out(description)).toBe(category);
+  });
+
+  it("never files a car rental as rent", () => {
+    expect(out("ENTERPRISE RENT-A-CAR 1234")).not.toBe("RENT_AND_UTILITIES_RENT");
+  });
+
+  it("counts a payout for one's own work as income, not a refund", () => {
+    expect(into("STRIPE TRANSFER ST-K3J9Q2 PPD ID: 4270465600")).toBe("INCOME_CONTRACTOR");
+    expect(out("STRIPE TRANSFER ST-K3J9Q2")).toBeNull();
+  });
+
+  it("uses a card's own categories, both ways, so a return nets against its purchase", () => {
+    const shop = { bankCategory: "Shopping" };
+    expect(out("BEST BUY 00012345", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
+    expect(into("BEST BUY 00012345", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
+    expect(out("TST* SHAKE SHACK 1234", { bankCategory: "Food & Drink" })).toBe(
+      "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+    );
+    // A keyword still wins over the card's broad label.
+    expect(out("NETFLIX.COM", { bankCategory: "Shopping" })).toBe("ENTERTAINMENT_TV_AND_MOVIES");
+  });
+
   it("leaves unknown merchants for the LLM", () => {
     expect(out("MYSTERY SHOP 555")).toBeNull();
   });
