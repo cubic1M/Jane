@@ -30,7 +30,7 @@ Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had be
   - fee and card-interest accounts;
   - double charges, by the second charge;
   - idle cash, by person;
-  - upcoming bills, by merchant. A bank's monthly service fee is a bill (it comes every month, so the forecast has to take it out), and a yearly plan is one only when it renews within the month. Before the two sets, both were missing from the truth: 3 of #766's labels were corrected, rows unchanged;
+  - upcoming bills, by merchant. A bank's monthly service fee is a bill (it comes every month, so the forecast has to take it out), and a yearly plan is one only when it renews within the month. Before the two sets, both were missing from the truth; and a yearly plan paid before the person's history starts was labelled though no charge of it is in the data, so no detector could find it (2 of #766's 28 missed subscriptions). 5 of #766's labels were corrected, rows unchanged;
   - income and own-account transfers, by transaction.
 - **Scoring:** `src/accuracy/score.ts` runs the real pipeline: the categorizer's rules, then the finding rules (`detect`), recurring charges, upcoming bills, the spending classification and the suggestion detectors. It's pure and needs no database, and makes no Claude calls.
   - **Precision:** of what Jane said, how much is true.
@@ -68,7 +68,7 @@ Tuning set (60 people, 16326 transactions):
 
 | Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| subscriptions | 100.0% | 59.4% | 0.0% | 95 | 0 | 65 |
+| subscriptions | 100.0% | 63.8% | 0.0% | 95 | 0 | 54 |
 | price_rises | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
 | fees | 100.0% | 100.0% | 0.0% | 31 | 0 | 0 |
 | double_charges | 55.8% | 100.0% | 23.3% | 24 | 19 | 0 |
@@ -93,13 +93,13 @@ Held-out set (40 people, 10008 transactions):
 
 | Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| subscriptions | 100.0% | 38.2% | 0.0% | 52 | 0 | 84 |
+| subscriptions | 100.0% | 41.9% | 0.0% | 52 | 0 | 72 |
 | price_rises | 100.0% | 100.0% | 0.0% | 8 | 0 | 0 |
 | fees | 100.0% | 100.0% | 0.0% | 20 | 0 | 0 |
 | double_charges | 44.9% | 100.0% | 55.0% | 31 | 38 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
-| bills | 98.2% | 55.1% | 7.5% | 161 | 3 | 131 |
+| bills | 98.2% | 55.5% | 7.5% | 161 | 3 | 129 |
 | income | 100.0% | 100.0% | 0.0% | 774 | 0 | 0 |
 | transfers | 100.0% | 87.7% | 0.0% | 733 | 0 | 103 |
 

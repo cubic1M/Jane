@@ -511,10 +511,11 @@ function person(index: number, set: BenchSet = "tuning"): History {
     b.labels.subscriptions.push(keyOf("APPLE.COM/BILL 866-712-7753 CA"));
     b.bill("APPLE.COM/BILL 866-712-7753 CA");
   }
-  // A yearly one: seen once (or twice in a long history).
+  // A yearly one: seen once (or twice in a long history). Paid before the history starts, the
+  // data can't show it, so it isn't in the truth either.
   if (r.chance(0.3)) {
     const renews = addMonths(AS_OF, -r.int(1, 11), r.int(1, 28));
-    b.add({
+    const paid = b.add({
       accountId: spendOn,
       date: renews,
       amountCents: 13_900,
@@ -528,8 +529,10 @@ function person(index: number, set: BenchSet = "tuning"): History {
       description: "AMAZON PRIME*2K4AB7XY0",
       ...onCard("Shopping"),
     });
-    b.labels.subscriptions.push(keyOf("AMAZON PRIME*2K4AB7XY0"));
-    b.renewal(renews, "AMAZON PRIME*2K4AB7XY0");
+    if (paid.id) {
+      b.labels.subscriptions.push(keyOf("AMAZON PRIME*2K4AB7XY0"));
+      b.renewal(renews, "AMAZON PRIME*2K4AB7XY0");
+    }
   }
   if (causes) {
     // Several subscriptions billed through one app store, each at its own price and day.
@@ -559,15 +562,17 @@ function person(index: number, set: BenchSet = "tuning"): History {
       const key = keyOf(plan.description);
       const renews = addMonths(AS_OF, -x.int(1, 11), x.int(1, 28));
       if (!b.labels.subscriptions.includes(key)) {
-        b.add({
+        const paid = b.add({
           accountId: spendOn,
           date: renews,
           amountCents: plan.cents,
           description: plan.description,
           ...onCard("Entertainment"),
         });
-        b.labels.subscriptions.push(key);
-        b.renewal(renews, plan.description);
+        if (paid.id) {
+          b.labels.subscriptions.push(key);
+          b.renewal(renews, plan.description);
+        }
       }
     }
     // One-off purchases where subscriptions are also sold: a book, a rental, an app.
