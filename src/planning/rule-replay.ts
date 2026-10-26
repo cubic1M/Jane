@@ -2,7 +2,6 @@ import type { RiskLevel } from "@/config/investing";
 import {
   AUTOPILOT_LIMITS,
   classTickers,
-  MODEL_PORTFOLIOS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
   CRYPTO_TICKERS,

@@ -131,7 +131,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
             {items.length} {items.length === 1 ? "thing" : "things"}{" "}
             {readOnly ? "you could do" : "Jane can do for you"}
             {total > 0
-              ? `, worth up to about ${formatCents(total)} a year if you say yes to all`
+              ? `, worth up to about ${formatCents(total)} a year ${readOnly ? "if you do them all" : "if you say yes to all"}`
               : ""}
             .{" "}
             {readOnly

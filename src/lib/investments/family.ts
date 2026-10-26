@@ -26,8 +26,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class FamilyError extends Error {}
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-
 export type ChildView = {
   id: string;
   name: string;

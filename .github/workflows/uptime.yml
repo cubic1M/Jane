@@ -1,0 +1,110 @@
+# Knowing when Jane is down before people tell us (founder, 2026-10-26). Every 15 minutes it
+# checks the live site: the app answers (/api/health), the database answers (/api/health/db, ok
+# or not and nothing more), and the landing page loads. A failure opens one issue labelled
+# "outage" (or updates the open one); the first good run after closes it. The repository is
+# public: this prints only names, addresses and HTTP status codes, never a response body, and
+# uses no secret but the workflow's own token.
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE: https://jane-dusky.vercel.app
+    steps:
+      - name: Check the live site
+        id: check
+        run: |
+          failed=""
+          # name, address, and what the body must contain (empty: any).
+          check() {
+            local name="$1" url="$2" expect="$3" code="000" ok=""
+            for attempt in 1 2 3; do
+              code=$(curl -sS -o body.txt -w "%{http_code}" --max-time 20 "$url" 2>/dev/null || true)
+              if [ "$code" = "200" ] && { [ -z "$expect" ] || grep -q "$expect" body.txt; }; then
+                ok=1
+                break
+              fi
+              sleep 10
+            done
+            rm -f body.txt
+            if [ -n "$ok" ]; then
+              echo "$name: ok"
+            else
+              echo "$name: failing (HTTP ${code:-000})"
+              failed="${failed}- ${name}: ${url} answered HTTP ${code:-000}"$'\n'
+            fi
+          }
+          check "App" "$SITE/api/health" '"ok":true'
+          check "Database" "$SITE/api/health/db" '"ok":true'
+          check "Landing page" "$SITE/" ""
+          {
+            echo "failed<<EOF_FAILED"
+            printf "%s" "$failed"
+            echo "EOF_FAILED"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open, update or close the outage issue
+        uses: actions/github-script@v7
+        env:
+          FAILED: ${{ steps.check.outputs.failed }}
+        with:
+          script: |
+            const failed = (process.env.FAILED || "").trim();
+            const { owner, repo } = context.repo;
+            const label = "outage";
+            const when = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            try {
+              await github.rest.issues.createLabel({ owner, repo, name: label, color: "000000" });
+            } catch (error) {
+              if (error.status !== 422) throw error; // 422: it exists already.
+            }
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner, repo, labels: label, state: "open", per_page: 1,
+            });
+            const issue = open[0];
+            if (failed) {
+              const body = [
+                "The uptime check (.github/workflows/uptime.yml) found the live site failing:",
+                "",
+                failed,
+                "",
+                `Last checked ${when}: ${run}`,
+                "",
+                "This issue closes by itself on the first good check.",
+              ].join("\n");
+              if (issue) {
+                await github.rest.issues.update({ owner, repo, issue_number: issue.number, body });
+                core.info(`Still down: updated #${issue.number}`);
+              } else {
+                const { data } = await github.rest.issues.create({
+                  owner, repo, labels: [label], title: `Outage: the live site is failing (${when})`, body,
+                });
+                core.info(`Down: opened #${data.number}`);
+              }
+              core.setFailed("The live site is failing");
+            } else if (issue) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number,
+                body: `Back up: every check passed at ${when}. ${run}`,
+              });
+              await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: "closed" });
+              core.info(`Recovered: closed #${issue.number}`);
+            } else {
+              core.info("All good");
+            }

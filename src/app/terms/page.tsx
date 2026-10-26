@@ -4,8 +4,9 @@ import { TRIAL_HOURS } from "@/config/trial";
 
 export const metadata = { title: `Terms of Service | ${COMPANY_NAME}` };
 
-// The closed beta's terms (a draft for counsel; open questions in docs/legal/README.md).
-// Written from what the app does: keep them in step with src/app/privacy/page.tsx.
+// The closed beta's terms (a draft for counsel; the claims to check are in docs/legal/README.md).
+// Written from what the code does today, not from the spec: keep them in step with
+// src/app/privacy/page.tsx.
 export default function TermsPage() {
   return (
     <LegalPage title="Terms of Service">
@@ -17,8 +18,8 @@ export default function TermsPage() {
       <h2>A closed beta</h2>
       <ul>
         <li>
-          Jane is in a private beta for the founders and people they invite. Creating an account
-          needs an invite. Anyone can try Jane with sample data, without an account.
+          Jane is in a private beta for the founders and the people they invite. Creating an account
+          needs an invite code.
         </li>
         <li>
           Jane is provided &quot;as is&quot;. Features may change or stop, the service may be down,
@@ -43,29 +44,43 @@ export default function TermsPage() {
           holds your funds.
         </li>
         <li>
-          When you say yes to a specific suggestion, such as cancelling a subscription, Jane or our
-          team asks the company for you. Nothing is done for you without a yes, and we keep a record
-          of each one. We never ask for or keep your passwords for other services.
+          When you decide to make a change, such as cancelling a subscription, Jane gives you the
+          steps and a draft message, and you make the change yourself. For your real accounts, Jane
+          and our team don&apos;t contact companies for you.
         </li>
-        <li>Companies can say no; we&apos;ll tell you when we couldn&apos;t complete something.</li>
+        <li>We never ask for or keep your passwords for your bank or any other service.</li>
       </ul>
 
-      <h2>No investment, tax or legal advice</h2>
+      <h2>No financial advice for your real accounts</h2>
       <ul>
         <li>
           For your real accounts, Jane gives general information about your own money. It
           doesn&apos;t give investment, tax, legal or other professional advice, and it doesn&apos;t
-          recommend specific investments, tax positions or loans.
+          recommend specific investments, tax positions, insurance or loans.
         </li>
         <li>
           Savings figures are estimates from your past transactions, not promises. Talk to a
           licensed professional before a big financial decision.
         </li>
         <li>
-          With sample data only, Jane may show example recommendations, labelled &quot;Demo advice:
-          sample data, not financial advice&quot;. They are made up for the sample person and are
-          not advice to you.
+          With sample data only (the demo bank or Try Jane), Jane may show example recommendations,
+          labelled &quot;Demo advice: sample data, not financial advice&quot;. They&apos;re made for
+          the sample person and are not advice to you.
         </li>
+      </ul>
+
+      <h2>Practice and paper accounts</h2>
+      <ul>
+        <li>
+          Jane&apos;s practice portfolio and paper account use simulated money only. No real order
+          is ever placed, there is no broker, and no real account is opened or changed.
+        </li>
+        <li>
+          The paper account runs the strategy you pick on real market prices. Its trade alerts, and
+          the strategies&apos; past results, are a replay and a simulation, not a forecast: real
+          results would be different.
+        </li>
+        <li>For now, both are offered only with sample data (the demo bank or Try Jane).</li>
       </ul>
 
       <h2>Answers written by AI</h2>
@@ -79,7 +94,7 @@ export default function TermsPage() {
       <ul>
         <li>You must be 18 or older and only link accounts that are yours to share.</li>
         <li>Keep your email secure: sign-in links go there.</li>
-        <li>Don&apos;t share your invite with others unless a founder says you can.</li>
+        <li>Don&apos;t share your invite code unless a founder says you can.</li>
         <li>
           You can disconnect a bank, download your data, or delete everything at any time in
           Settings.
@@ -89,9 +104,10 @@ export default function TermsPage() {
 
       <h2>Trying Jane with sample data</h2>
       <p>
-        &quot;Try Jane&quot; signs you in as a made-up sample person for {TRIAL_HOURS} hours. It
-        never uses real accounts, never contacts a real company, and is deleted afterwards with
-        everything done in it.
+        When it&apos;s offered, &quot;Try Jane&quot; signs you in as a made-up sample person for{" "}
+        {TRIAL_HOURS} hours, without an account. It never uses real accounts, never emails you,
+        never contacts a real company (any company it writes to is simulated), and is deleted
+        afterwards with everything done in it.
       </p>
 
       <h2>Partners and payments</h2>
