@@ -12,7 +12,7 @@ test("landing page shows the promise and leads to sign-up", async ({ page }) => 
   await expect(
     page.getByRole("heading", { level: 1, name: "See how much money you're losing" }),
   ).toBeVisible();
-  for (const point of ["Read-only access", "You approve everything", "Delete anytime"]) {
+  for (const point of ["Read-only access", "You stay in charge", "Delete anytime"]) {
     await expect(page.getByRole("heading", { name: point })).toBeVisible();
   }
   expect((await landingViewed).status()).toBe(204);
