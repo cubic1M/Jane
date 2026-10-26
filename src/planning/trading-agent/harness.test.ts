@@ -83,13 +83,16 @@ describe("runGroup", () => {
     expect(group.from).toBe(tl.times[Math.floor(tl.times.length * AGENT_TRAIN_SHARE)]);
     for (const r of group.results) {
       expect(r.walk.from).toBe(group.from);
-      expect(r.hold).toEqual(group.hold);
+      // Each rule against holding its own asset: ether's rules against ether.
+      const own = policies.find((p) => p.key === r.key)!.hold ?? crypto.hold;
+      if (own === crypto.hold) expect(r.hold).toEqual(group.hold);
+      else expect(r.hold.cagr).not.toBe(group.hold.cagr);
       expect(r.chosen).toHaveLength(3);
       expect(r.dsr).toBeGreaterThanOrEqual(0);
       expect(r.dsr).toBeLessThanOrEqual(1);
-      expect(r.excessCagr).toBeCloseTo(r.walk.cagr - group.hold.cagr, 12);
+      expect(r.excessCagr).toBeCloseTo(r.walk.cagr - r.hold.cagr, 12);
       if (r.walk.cagr < 0) expect(r.verdict).toBe("loses_money");
-      if (r.verdict === "beats_hold") expect(r.walk.cagr).toBeGreaterThan(group.hold.cagr);
+      if (r.verdict === "beats_hold") expect(r.walk.cagr).toBeGreaterThan(r.hold.cagr);
     }
   });
 
