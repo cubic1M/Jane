@@ -84,6 +84,7 @@ const SECTORS = {
       "cash_plan",
       "crypto",
       "market_news",
+      "events_overlay",
       "backtest_by_level",
       "practice_portfolio",
       "news_themes",
@@ -92,7 +93,7 @@ const SECTORS = {
       "change_practice_settings",
     ]),
     words:
-      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|news|headlines?|filings?|8-?k|10-?q|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk\w*|what is a|profile|about me|goals?|buckets?|split|practice|paper money|extra moves?|avoid\w*|harvest\w*|cash buffer|suggest only|need (?:this|the|that|my) money|extra rules|dip.?buys?|news themes?|wars?|oil (?:stocks?|prices?|etfs?|funds?)|energy (?:stocks?|etfs?|funds?)|defen[cs]e (?:stocks?|etfs?|funds?)|gold (?:etfs?|funds?|prices?)|chip (?:stocks?|makers?)|semiconductors?|rate cuts?|strateg\w*|momentum|value tilt|quality tilt|dividend growth|equal.?weight|sector rotation|all.?weather|risk parity|day.?trad\w*|intraday|vwap|opening.?range|fair value gaps?|liquidity sweeps?|dual momentum|gtaa|tactical|permanent portfolio|golden butterfly|minimum variance|max(?:imum)? diversification|hierarchical risk parity|hrp|cppi|sell in may|rsi\s?\(?2\)?|bollinger|backtest\w*)\b/,
+      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|news|events? overlay|overlay|current events|headlines?|filings?|8-?k|10-?q|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk\w*|what is a|profile|about me|goals?|buckets?|split|practice|paper money|extra moves?|avoid\w*|harvest\w*|cash buffer|suggest only|need (?:this|the|that|my) money|extra rules|dip.?buys?|news themes?|wars?|oil (?:stocks?|prices?|etfs?|funds?)|energy (?:stocks?|etfs?|funds?)|defen[cs]e (?:stocks?|etfs?|funds?)|gold (?:etfs?|funds?|prices?)|chip (?:stocks?|makers?)|semiconductors?|rate cuts?|strateg\w*|momentum|value tilt|quality tilt|dividend growth|equal.?weight|sector rotation|all.?weather|risk parity|day.?trad\w*|intraday|vwap|opening.?range|fair value gaps?|liquidity sweeps?|dual momentum|gtaa|tactical|permanent portfolio|golden butterfly|minimum variance|max(?:imum)? diversification|hierarchical risk parity|hrp|cppi|sell in may|rsi\s?\(?2\)?|bollinger|backtest\w*)\b/,
   },
 } as const;
 
