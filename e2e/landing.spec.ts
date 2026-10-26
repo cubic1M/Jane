@@ -82,3 +82,34 @@ test("without JavaScript the page still tells the story", async ({ browser, base
   await expect(page.getByRole("heading", { name: "Put your money back together" })).toBeAttached();
   await context.close();
 });
+
+// The inverted landing (founder, 2026-10-26): a switch at the top right turns the page into its
+// negative, black paper and light ink, and the choice is remembered on this device.
+test("the top-right switch inverts the landing and remembers it", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await page.goto("/");
+  const bodyColour = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const toggle = page.getByRole("button", { name: "Dark mode" });
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  expect(await bodyColour()).toBe("rgb(255, 255, 255)");
+  // Top right of the screen.
+  const box = (await toggle.boundingBox())!;
+  expect(box.x + box.width).toBeGreaterThan(1280 - 80);
+  expect(box.y).toBeLessThan(60);
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(bodyColour).toBe("rgb(0, 0, 0)");
+  const column = page.getByTestId("landing-column").locator("pre");
+  expect(await column.evaluate((el) => getComputedStyle(el).color)).toBe("rgb(245, 245, 245)");
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Dark mode" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect.poll(bodyColour).toBe("rgb(0, 0, 0)");
+
+  await page.getByRole("button", { name: "Dark mode" }).click();
+  await expect.poll(bodyColour).toBe("rgb(255, 255, 255)");
+});
