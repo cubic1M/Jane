@@ -298,7 +298,7 @@ export function StrategyTree({
         {!board.yours ? (
           <p className="text-xs">
             Your level is {ownTile?.label}.{" "}
-            <Link href="/investments/profile" className="underline underline-offset-2">
+            <Link href="/investments/practice/settings" className="underline underline-offset-2">
               Change it
             </Link>{" "}
             to run this one.
@@ -407,7 +407,10 @@ export function StrategyTree({
         <li className={`flex flex-col gap-0.5 p-3 ${BOX}`}>
           <span className="text-xs text-zinc-600 dark:text-zinc-400">Risk level</span>
           <span className="font-semibold">{ownTile?.label}</span>
-          <Link href="/investments/profile" className="text-xs underline underline-offset-2">
+          <Link
+            href="/investments/practice/settings"
+            className="text-xs underline underline-offset-2"
+          >
             Change it
           </Link>
         </li>

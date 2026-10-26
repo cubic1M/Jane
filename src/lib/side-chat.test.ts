@@ -29,7 +29,7 @@ describe("the panel's state", () => {
     for (const path of ["/home", "/money", "/loans/cards", "/settings", "/report/abc"]) {
       expect(panelShowsOn(path), path).toBe(true);
     }
-    for (const path of ["/chat", "/chat/reply", "/ask", "/", "/login", "/admin/queue"]) {
+    for (const path of ["/chat", "/", "/login", "/admin/queue"]) {
       expect(panelShowsOn(path), path).toBe(false);
     }
   });

@@ -78,7 +78,7 @@ describe("navigation", () => {
 
   it("maps the pages people know to the agreed tabs", () => {
     expect(tabFor("/home")).toBe("today");
-    for (const path of ["/jane", "/plan", "/report", "/report/abc", "/actions", "/alerts"]) {
+    for (const path of ["/jane", "/plan", "/report", "/report/abc", "/actions"]) {
       expect(tabFor(path), path).toBe("jane");
     }
     for (const path of ["/money", "/bills", "/subscriptions", "/transfers"]) {
@@ -99,9 +99,7 @@ describe("navigation", () => {
     for (const path of ["/ahead", "/afford", "/deadlines", "/life-events", "/check-in", "/year"]) {
       expect(tabFor(path), path).toBe("ahead");
     }
-    // Spec step 81: Ask is opened from the chat, and lights up Chat.
     expect(tabFor("/chat")).toBe("chat");
-    expect(tabFor("/ask")).toBe("chat");
     // Documents, things you own and the household are under Settings.
     for (const path of [
       "/settings",

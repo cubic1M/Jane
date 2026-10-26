@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -303,9 +304,13 @@ async function RefinanceContent({
               <ul className="flex flex-col gap-1 text-sm">
                 {shownApps.map((a) => (
                   <li key={a.id}>
-                    <Link href={`/loans/apply/${a.id}`} className={LINK}>
-                      {a.lender} for your {a.oldName}
-                    </Link>
+                    {isHiddenPage(`/loans/apply/${a.id}`) ? (
+                      `${a.lender} for your ${a.oldName}`
+                    ) : (
+                      <Link href={`/loans/apply/${a.id}`} className={LINK}>
+                        {a.lender} for your {a.oldName}
+                      </Link>
+                    )}
                     : {statusLine(a)}
                   </li>
                 ))}

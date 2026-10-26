@@ -333,8 +333,10 @@ export async function offeredToday(
       confidencePercent: r.confidencePercent,
       confidenceReason: r.confidenceReason,
       actionLabel: mine[0]?.actionLabel ?? r.actionLabel,
-      actionHref: mine[0]?.actionHref ?? r.actionHref,
-      more: mine.slice(1).map((p) => ({ label: p.actionLabel, href: p.actionHref })),
+      // Landed again as shown, so one stored before a page was hidden (src/config/hidden-pages.ts)
+      // opens its area page instead.
+      actionHref: landing(mine[0]?.actionHref ?? r.actionHref, { key: r.key, topic: r.topic }),
+      more: mine.slice(1).map((p) => ({ label: p.actionLabel, href: landing(p.actionHref) })),
       advice: topics.some((t) => (ADVICE_TOPICS as readonly string[]).includes(t)),
       ...(practice.has(r.key) ? { cardDetails: practice.get(r.key) } : {}),
       ...(peopleLine(r.topic, kinds) ? { people: peopleLine(r.topic, kinds)! } : {}),

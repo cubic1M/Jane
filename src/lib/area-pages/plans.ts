@@ -1,4 +1,5 @@
 import type { Route } from "next";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config/hubs";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
@@ -21,6 +22,14 @@ export const PLANS_BRANCHES = {
 export type PlansBranch = keyof typeof PLANS_BRANCHES;
 
 export const itemId = (branch: PlansBranch, key: string) => `${branch}:${key}`;
+
+// The page an item that is only a way to a page opens.
+export const ITEM_PAGE: Readonly<Record<string, string>> = {
+  "life:open": "/life-events",
+  "life:start": "/life-events",
+  "back:monthly": "/monthly",
+  "back:year": "/year",
+};
 
 // The planning tools, each opening its own page.
 export const DECISIONS: readonly { key: string; label: string; what: string; href: Route }[] = [
@@ -168,7 +177,10 @@ export function plansTree(input: PlansTreeInput): AreaTree {
       ]
     : [];
 
-  const decide = DECISIONS.map((d) => item("decide", d.key, { label: d.label, summary: d.what }));
+  // A page the read-only beta hides (src/config/hidden-pages.ts) isn't in the tree.
+  const decide = DECISIONS.filter((d) => !isHiddenPage(d.href)).map((d) =>
+    item("decide", d.key, { label: d.label, summary: d.what }),
+  );
 
   const { newest } = input.lifeEvents;
   const life = [
@@ -218,7 +230,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     }),
   ];
 
-  const branches: { id: PlansBranch; items: AreaItem[] }[] = [
+  const all: { id: PlansBranch; items: AreaItem[] }[] = [
     { id: "coming", items: coming },
     { id: "goals", items: goals },
     { id: "worth", items: worth },
@@ -227,6 +239,11 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     { id: "back", items: back },
     { id: "money", items: money },
   ];
+  // An item that only opens a page the read-only beta hides isn't in the tree.
+  const branches = all.map((b) => ({
+    ...b,
+    items: b.items.filter((i) => !isHiddenPage(ITEM_PAGE[i.id] ?? "")),
+  }));
   const real = input.goals.filter((g) => g.status !== "reached");
   return buildAreaTree({
     key: "ahead",

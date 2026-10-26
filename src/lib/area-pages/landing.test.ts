@@ -4,7 +4,14 @@ import { describe, expect, it } from "vitest";
 import { PEOPLE } from "@/config/people";
 import { reportFor } from "@/detectors/harness";
 import { INSURANCE_BRANCHES } from "./insurance";
-import { INVESTING_ANCHORS, INVESTING_BRANCHES, PAGES, investingTree } from "./investing";
+import { isHiddenPage } from "@/config/hidden-pages";
+import {
+  INVESTING_ANCHORS,
+  INVESTING_BRANCHES,
+  PAGES,
+  PROFILE_HREF,
+  investingTree,
+} from "./investing";
 import { AREA_ANCHORS, isAreaRoot, landing, type AreaRoot } from "./landing";
 import { LOANS_BRANCHES, loansTree } from "./loans";
 import { DECISIONS, PLANS_BRANCHES } from "./plans";
@@ -57,17 +64,21 @@ const FIXED: Record<AreaRoot, ReadonlySet<string>> = {
   "/loans": new Set(),
   "/taxes": new Set([
     ...Object.values(TAXES_ANCHORS),
-    ...(["filing", "topics"] as const).flatMap((b) => TOPICS[b].map((t) => `${b}:${t.key}`)),
+    ...(["filing", "topics"] as const).flatMap((b) =>
+      TOPICS[b].filter((t) => !isHiddenPage(t.href)).map((t) => `${b}:${t.key}`),
+    ),
     ...["estimate", "withholding", "refund", "investments"].map((k) => `estimate:${k}`),
   ]),
   "/investments": new Set([
     ...Object.values(INVESTING_ANCHORS),
-    ...(["plan", "kinds", "costs"] as const).flatMap((b) => PAGES[b].map((p) => `${b}:${p.key}`)),
-    "plan:profile",
+    ...(["plan", "kinds", "costs"] as const).flatMap((b) =>
+      PAGES[b].filter((p) => !isHiddenPage(p.href)).map((p) => `${b}:${p.key}`),
+    ),
+    ...(isHiddenPage(PROFILE_HREF) ? [] : ["plan:profile"]),
     "practice:portfolio",
   ]),
   "/ahead": new Set([
-    ...DECISIONS.map((d) => `decide:${d.key}`),
+    ...DECISIONS.filter((d) => !isHiddenPage(d.href)).map((d) => `decide:${d.key}`),
     "coming:all",
     "goals:add",
     "goals:tradeoffs",
@@ -147,7 +158,7 @@ describe("landing", () => {
       "/investments?focus=strategies:backtests",
     );
     expect(landing("/taxes?focus=soon#plan")).toBe("/taxes?focus=soon#plan");
-    expect(landing("/taxes/profile#states")).toBe("/taxes/profile#states");
+    expect(landing("/taxes/tags#checks")).toBe("/taxes/tags#checks");
     expect(landing("/insurance?need=life#options")).toBe("/insurance?need=life#options");
     expect(landing("https://www.irs.gov")).toBe("https://www.irs.gov");
   });
@@ -170,6 +181,20 @@ describe("landing", () => {
     expect(landing("/insurance", s("something_new"))).toBe("/insurance");
     expect(landing("/loans/refinance", s("refinance"))).toBe("/loans/refinance");
   });
+
+  it("lands a hidden page's link on its area page, on the suggestion's node when it has one", () => {
+    // Pages the read-only beta hides (src/config/hidden-pages.ts).
+    expect(landing("/loans/costly")).toBe("/loans");
+    expect(landing("/taxes/profile#income")).toBe("/taxes");
+    expect(landing("/actions")).toBe("/jane");
+    expect(landing("/loans/costly", { key: "x:high_cost_loans", topic: "high_cost_loans" })).toBe(
+      "/loans?focus=costs:high_cost_loans",
+    );
+    expect(landing("/investments/hsa", { key: "x:hsa", topic: "hsa" })).toBe(
+      "/investments?focus=ideas:x:hsa",
+    );
+    expect(isHiddenPage(landing("/loans/apply/abc"))).toBe(false);
+  });
 });
 
 describe("every link Jane gives lands on something", () => {
@@ -179,11 +204,11 @@ describe("every link Jane gives lands on something", () => {
       const bad: string[] = [];
       for (const s of reportFor(person).fired) {
         const own = landing(s.action.href, { key: s.id, topic: s.topic });
-        const why = problem(own, s);
+        const why = isHiddenPage(own) ? "a hidden page" : problem(own, s);
         if (why) bad.push(`${s.topic}: ${own}: ${why}`);
         for (const m of s.more ?? []) {
           const href = landing(m.href);
-          const whyMore = problem(href);
+          const whyMore = isHiddenPage(href) ? "a hidden page" : problem(href);
           if (whyMore) bad.push(`${s.topic} (More): ${href}: ${whyMore}`);
         }
       }

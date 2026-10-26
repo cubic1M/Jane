@@ -1,4 +1,5 @@
 import { PLAN_SOON_DAYS, type PlanMoveKey } from "@/config/tax-plan";
+import { isHiddenPage } from "@/config/hidden-pages";
 import type { Route } from "next";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
@@ -184,6 +185,14 @@ export const TOPICS: Record<"filing" | "topics", readonly Topic[]> = {
 };
 
 // The old section anchors (/taxes#withholding in Jane's messages) and the item each opens.
+// The tree's items whose page the read-only beta hides (src/config/hidden-pages.ts): they aren't
+// in the tree, so nothing lands on them.
+export const HIDDEN_TAX_ITEMS: ReadonlySet<string> = new Set(
+  (["filing", "topics"] as const).flatMap((b) =>
+    TOPICS[b].filter((t) => isHiddenPage(t.href)).map((t) => itemId(b, t.key)),
+  ),
+);
+
 export const TAXES_ANCHORS: Record<string, string> = {
   plan: "soon",
   savings: "savings",
@@ -200,7 +209,10 @@ export const TAXES_ANCHORS: Record<string, string> = {
   giving: "life:giving",
   profile: "profile",
   ...Object.fromEntries(
-    (["filing", "topics"] as const).flatMap((b) => TOPICS[b].map((t) => [t.key, itemId(b, t.key)])),
+    // A topic whose page the read-only beta hides isn't in the tree, so it has no anchor.
+    (["filing", "topics"] as const).flatMap((b) =>
+      TOPICS[b].filter((t) => !isHiddenPage(t.href)).map((t) => [t.key, itemId(b, t.key)]),
+    ),
   ),
 };
 
@@ -429,8 +441,11 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       }),
     );
 
+  // A page the read-only beta hides (src/config/hidden-pages.ts) isn't in the tree.
   const links = (branch: "filing" | "topics") =>
-    TOPICS[branch].map((t) => item(branch, t.key, { label: t.label, summary: t.what }));
+    TOPICS[branch]
+      .filter((t) => !isHiddenPage(t.href))
+      .map((t) => item(branch, t.key, { label: t.label, summary: t.what }));
 
   const branches: { id: TaxesBranch; items: AreaItem[] }[] = [
     { id: "soon", items: soon },

@@ -2,7 +2,7 @@
 // along the top (Home, Spending & bills, Insurance, Loans & credit, Taxes, Investing, Plans &
 // goals), each landing on a hub that links its own sub-pages. The chat is the side panel, not a
 // tab; What Jane did and Settings are in the profile menu. A page's sub-pages (/report/abc,
-// /settings/two-factor) belong with it. Ask lights up Chat.
+// /settings/two-factor) belong with it.
 
 export type TabKey =
   | "chat"
@@ -33,7 +33,7 @@ export type Tab = {
 // Jane did, and lights that up. Documents, things you own and the household are under it,
 // linked from Spending & bills and Settings.
 export const TABS: readonly Tab[] = [
-  { key: "chat", label: "Chat", href: "/chat", paths: ["/chat", "/ask"] },
+  { key: "chat", label: "Chat", href: "/chat", paths: ["/chat"] },
   { key: "today", label: "Home", href: "/home", paths: ["/home"] },
   {
     key: "money",
@@ -95,7 +95,7 @@ export const TABS: readonly Tab[] = [
     key: "jane",
     label: "What Jane did",
     href: "/jane",
-    paths: ["/jane", "/plan", "/report", "/actions", "/alerts", "/saved", "/learn", "/profile"],
+    paths: ["/jane", "/plan", "/report", "/actions", "/saved", "/profile"],
   },
 ];
 

@@ -63,8 +63,8 @@ describe("the plans and goals tree", () => {
       "goals",
       "worth",
       "decide",
-      "life",
-      "back",
+      // Life events and the look-backs open pages the read-only beta hides
+      // (src/config/hidden-pages.ts), so those branches are empty for now.
       "money",
     ]);
     // No accounts linked: no net worth to show.

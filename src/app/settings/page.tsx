@@ -382,11 +382,6 @@ async function SettingsContent({
     </p>
   );
 
-  details[itemId("household", "household")] = (
-    <Link href="/household" className={`self-start text-sm ${LINK}`}>
-      Manage your household
-    </Link>
-  );
   details[itemId("household", "state")] = (
     <div id="where-you-live" className={BOX}>
       <StateForm state={prefs.state} states={US_STATES} />
@@ -427,11 +422,6 @@ async function SettingsContent({
     <div id="sessions" className={BOX}>
       <SessionsList sessions={sessions} />
     </div>
-  );
-  details[itemId("security", "access")] = (
-    <Link href="/settings/team-access" className={`self-start text-sm ${LINK}`}>
-      See who saw my data
-    </Link>
   );
   details[itemId("security", "calendar")] = (
     <div id="calendar" className={BOX}>
@@ -490,9 +480,6 @@ async function SettingsContent({
           </Link>
           <Link href="/documents" className={LINK}>
             Documents
-          </Link>
-          <Link href="/household" className={LINK}>
-            Household
           </Link>
         </nav>
       </div>

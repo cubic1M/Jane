@@ -1,4 +1,5 @@
 import { actionWorthCents } from "@/lib/saved-amount";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { ALERT_TYPES, ALERTS_PAGE_LIMIT } from "@/config/alerts";
 import { moneyFound } from "@/detection/engine";
 import { alertPrefs } from "@/lib/alerts";
@@ -181,8 +182,8 @@ function linksFor(digestId: string, userId: string): DigestLinks {
   return {
     plan: clickLink(digestId, "/plan"),
     report: clickLink(digestId, "/report"),
-    actions: clickLink(digestId, "/actions"),
-    alerts: clickLink(digestId, "/alerts"),
+    actions: clickLink(digestId, "/jane"),
+    alerts: clickLink(digestId, "/jane"),
     budgets: clickLink(digestId, "/budgets"),
     goals: clickLink(digestId, "/goals"),
     netWorth: clickLink(digestId, "/net-worth"),
@@ -248,7 +249,10 @@ export async function runDigests({
       });
       // A one-tap link for this week's no-risk items. Its token only goes in the email
       // (and the notification), never in the stored digest.
-      const goAhead = await createPlanLink(user.id, { client, now }).catch(() => null);
+      // The one-tap go-ahead page (/plan/go) is hidden in the read-only beta.
+      const goAhead = isHiddenPage("/plan/go")
+        ? null
+        : await createPlanLink(user.id, { client, now }).catch(() => null);
       const links = { ...linksFor(digest.id, user.id), ...(goAhead ? { goAhead } : {}) };
       const email = renderDigest(payload, links);
       try {

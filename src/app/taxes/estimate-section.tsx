@@ -1,4 +1,5 @@
 import { formatCents } from "@/lib/money";
+import { ShownLink } from "@/components/shown-link";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { FILING_STATUSES } from "@/config/tax";
 import { ESTIMATE_NOTE, federalLine, stateLine, stateSource } from "@/planning/tax-estimate-copy";
@@ -150,12 +151,12 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
               </>
             )}
             , for review.{" "}
-            <a
+            <ShownLink
               href="/taxes/profile#states"
               className="underline underline-offset-2 hover:no-underline"
             >
               Moved, or work for an employer in another state?
-            </a>
+            </ShownLink>
           </p>
         )}
       </details>

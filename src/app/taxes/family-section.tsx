@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { FamilyView } from "@/lib/family-taxes";
 import { roundDollars } from "@/planning/tax-estimate-copy";
@@ -18,9 +18,9 @@ export function FamilySection({ view }: { view: FamilyView }) {
       {view.choices.length === 0 ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           No family choices for {view.year} from what Jane knows.{" "}
-          <Link href="/taxes/profile#family" className="underline underline-offset-2">
+          <ShownLink href="/taxes/profile#family" className="underline underline-offset-2">
             Add family details
-          </Link>
+          </ShownLink>
         </p>
       ) : (
         <ul className="flex flex-col gap-4">
@@ -63,9 +63,9 @@ export function FamilySection({ view }: { view: FamilyView }) {
       <p className="text-xs text-zinc-600 dark:text-zinc-400">
         Federal tax for {view.year}, estimated; a 529&apos;s figures include your state tax.
         Choosing is yours.{" "}
-        <Link href="/taxes/profile#family" className="underline underline-offset-2">
+        <ShownLink href="/taxes/profile#family" className="underline underline-offset-2">
           Family details
-        </Link>
+        </ShownLink>
       </p>
       <DemoAdviceLabel />
     </section>

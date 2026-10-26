@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkGuardrails, dollarFigures, recommendsAChoice } from "@/lib/guardrails";
-import { EXPLAINERS, FINDING_EXPLAINERS, REVIEW_NOTE, explainer } from "./learn";
+import { EXPLAINERS, REVIEW_NOTE } from "./learn";
 
 // Spec step 136: each explainer is reviewed text; every link resolves.
 
@@ -51,32 +51,20 @@ describe("the explainers", () => {
   });
 });
 
-// Every page under src that links to an explainer, by slug.
-function linkedSlugs(dir = join(process.cwd(), "src")): string[] {
+// The /learn pages were removed (founder, 2026-10-26): the chat answers "what's an index fund?"
+// with the explainer itself, and nothing links to a page that's gone.
+function learnLinks(dir = join(process.cwd(), "src")): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) return linkedSlugs(path);
-    if (!/\.tsx?$/.test(entry.name) || entry.name.endsWith(".test.ts")) return [];
+    if (entry.isDirectory()) return entry.name === "generated" ? [] : learnLinks(path);
+    if (!/\.tsx?$/.test(entry.name) || /\.test\.tsx?$/.test(entry.name)) return [];
     const source = readFileSync(path, "utf8");
-    return [
-      ...[...source.matchAll(/learnLink\("([a-z-]+)"\)/g)].map((m) => m[1]),
-      ...[...source.matchAll(/["`]\/learn\/([a-z][a-z-]+)["`]/g)].map((m) => m[1]),
-      ...[
-        ...source.matchAll(/"(index-funds|fees|the-match|roth-vs-traditional|rebalancing)"/g),
-      ].map((m) => m[1]),
-    ];
+    return [...source.matchAll(/["`]\/learn(?:\/[a-z-]*)?["`?#]/g)].map((m) => `${path}: ${m[0]}`);
   });
 }
 
-describe("every link to an explainer resolves", () => {
-  it("in the app's code", () => {
-    const slugs = new Set(linkedSlugs());
-    expect(slugs.size).toBeGreaterThan(4);
-    for (const slug of slugs) expect(explainer(slug), slug).not.toBeNull();
-  });
-
-  it("from finding cards", () => {
-    for (const slug of Object.values(FINDING_EXPLAINERS))
-      expect(explainer(slug), slug).not.toBeNull();
+describe("the explainers", () => {
+  it("have no pages, and nothing links to one", () => {
+    expect(learnLinks()).toEqual([]);
   });
 });

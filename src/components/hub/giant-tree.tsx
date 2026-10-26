@@ -75,9 +75,6 @@ export function GiantTree({
         </h2>
         <p className="flex flex-wrap items-baseline gap-x-3 text-xs text-zinc-600 dark:text-zinc-400">
           Pick an area to open its tree
-          <Link prefetch={false} href="/home/map" className="font-semibold hover:underline">
-            [MAP ›]
-          </Link>
         </p>
       </div>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">

@@ -90,7 +90,7 @@ import { locationPlan, type PlanAccount } from "@/planning/location";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
-import { learnLink, learnReply } from "../learn";
+import { learnReply } from "../learn";
 import { goalBuckets } from "@/planning/goal-buckets";
 import { comparePlans } from "@/planning/college";
 import { hsaPlan } from "@/planning/hsa";
@@ -793,12 +793,7 @@ describe("the review message with orders ready", () => {
       kind: "decision",
       refs: { advice: true, rebalanceKey: PLAN.key },
     });
-    expect(message.actions.map((a) => a.id)).toEqual([
-      "invest.rebalance",
-      "open",
-      "open",
-      "snooze",
-    ]);
+    expect(message.actions.map((a) => a.id)).toEqual(["invest.rebalance", "open", "snooze"]);
     expect(message.body).toContain(
       "Tap and I'll place them in the simulated brokerage (no real money moves).",
     );
@@ -1169,28 +1164,19 @@ describe("what-is questions, by rules", () => {
   );
 });
 
-describe("learnReply and learn links", () => {
-  it("answers with the explainer's summary and first paragraph, and a link to the rest", () => {
+// The /learn pages were removed (2026-10-26): the explainer is the answer, with no link to a page.
+describe("learnReply", () => {
+  it("answers with the explainer's summary and first paragraph, and links nowhere", () => {
     const reply = learnReply("index-funds");
     expect(reply.body).toMatch(/^An index fund owns every company in a market list/);
-    expect(reply.actions).toEqual([
-      { id: "open", label: "Read more", kind: "link", href: "/learn/index-funds" },
-    ]);
+    expect(reply.actions).toEqual([]);
     expect(reply.refs).toEqual({});
     expect(learnReply("nope").body).toMatch(/^I can explain: index funds, /);
   });
 
-  it("puts a Learn link under Jane's investment answers", () => {
-    expect(learnLink("the-match")).toEqual({
-      id: "open",
-      label: "Learn: the employer match",
-      kind: "link",
-      href: "/learn/the-match",
-    });
+  it("adds no Learn link under Jane's investment answers", () => {
     const reply = rebalanceReply(true, PLAN, profileSummary(FULL, ASOF));
-    expect(reply.actions.map((a) => (a.kind === "link" ? a.href : a.id))).toContain(
-      "/learn/rebalancing",
-    );
+    expect(reply.actions.some((a) => a.kind === "link" && a.href.startsWith("/learn"))).toBe(false);
   });
 
   it("gives Claude the fixed text", async () => {
@@ -1203,10 +1189,9 @@ describe("learnReply and learn links", () => {
         now: new Date(),
       },
     );
-    expect(JSON.parse(out.content)).toMatchObject({
-      title: "Deductibles",
-      page: "/learn/deductibles",
-    });
+    const content = JSON.parse(out.content);
+    expect(content).toMatchObject({ title: "Deductibles" });
+    expect(content.page).toBeUndefined();
   });
 });
 

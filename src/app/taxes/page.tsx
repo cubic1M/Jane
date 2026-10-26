@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -80,9 +81,11 @@ function ProfileCard({
         <h2 id="profile" className="text-xl font-semibold">
           Your tax profile
         </h2>
-        <Link href="/taxes/profile" className={LINK}>
-          {complete ? "Change it" : "Finish it"}
-        </Link>
+        {!isHiddenPage("/taxes/profile") && (
+          <Link href="/taxes/profile" className={LINK}>
+            {complete ? "Change it" : "Finish it"}
+          </Link>
+        )}
       </div>
       <dl className="flex flex-col gap-2 text-sm">
         {fields.map((f) => (
@@ -92,10 +95,15 @@ function ProfileCard({
       {confirm}
       {newIncome.length > 0 && (
         <p className="text-sm font-medium">
-          New since you answered: {newIncome.join("; ")}.{" "}
-          <Link href="/taxes/profile#income" className={LINK}>
-            Add it
-          </Link>
+          New since you answered: {newIncome.join("; ")}.
+          {!isHiddenPage("/taxes/profile") && (
+            <>
+              {" "}
+              <Link href="/taxes/profile#income" className={LINK}>
+                Add it
+              </Link>
+            </>
+          )}
         </p>
       )}
     </section>
@@ -307,12 +315,6 @@ async function TaxesContent({
           Kept organised all year from your accounts. Open a branch to see more.
         </p>
         <nav aria-label="Tax pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link prefetch={false} href="/taxes/file" className={LINK}>
-            File
-          </Link>
-          <Link prefetch={false} href="/taxes/profile" className={LINK}>
-            Profile
-          </Link>
           <Link prefetch={false} href="/taxes/tags" className={LINK}>
             Tags
           </Link>
