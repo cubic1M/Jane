@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { preload } from "react-dom";
 import { GetStartedButton } from "@/components/get-started-button";
 import { ColumnArt } from "@/components/column-art";
+import { COLUMN_IMAGE } from "@/lib/column-art";
 import { TryButton } from "@/components/try-button";
 import { ViewTracker } from "@/components/view-tracker";
 import { trialEnabled } from "@/lib/trial";
@@ -91,6 +93,8 @@ const BEATS = [
 export const maxDuration = 60;
 
 export default function Home() {
+  // The column's drawing starts downloading with the page, not after the script that draws it.
+  preload(COLUMN_IMAGE, { as: "image" });
   return (
     <main
       className={`${displayFont.variable} landing relative isolate flex w-full flex-1 flex-col`}

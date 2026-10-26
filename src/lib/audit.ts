@@ -255,6 +255,8 @@ export type AuditEvent =
   | "paper_agent_started"
   | "paper_agent_stopped"
   | "paper_signal_skipped"
+  // The events overlay on the paper account (src/lib/events/run.ts): switched on or off.
+  | "paper_events_switched"
   | "practice_trade"
   // The person's practice-portfolio preferences changed, from the page or the chat (which fields,
   // never the amounts).

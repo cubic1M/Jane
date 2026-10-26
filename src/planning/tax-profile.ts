@@ -28,8 +28,6 @@ export const PROFILE_FIELDS: readonly ProfileField[] = [
   "dependants",
   "state",
 ];
-export const isProfileField = (value: unknown): value is ProfileField =>
-  typeof value === "string" && (PROFILE_FIELDS as readonly string[]).includes(value);
 
 // What the person told Jane (the tax_profiles row), or null before any answer.
 export type StoredTaxProfile = {

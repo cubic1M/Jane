@@ -248,6 +248,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   paper_signal_skipped: own,
   paper_agent_started: own,
   paper_agent_stopped: own,
+  paper_events_switched: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

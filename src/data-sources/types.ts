@@ -73,8 +73,6 @@ export type SyncedKind = AccountKind | LoanKind | InvestmentKind;
 
 export const SYNCED_KINDS = { ...ACCOUNT_KINDS, ...LOAN_KINDS, ...INVESTMENT_KINDS } as const;
 
-export const isLoanKind = (kind: SyncedKind): kind is LoanKind => Object.hasOwn(LOAN_KINDS, kind);
-
 // Whether an account's transactions are kept: checking, savings and cards. Loans and
 // investments are kept for their balances only.
 export const keepsTransactions = (kind: SyncedKind) => Object.hasOwn(ACCOUNT_KINDS, kind);
