@@ -40,3 +40,6 @@ next-env.d.ts
 
 # generated prisma client
 /src/generated/
+
+# Licensed font files: their licences forbid sharing them, and this repo is public.
+/public/fonts/
