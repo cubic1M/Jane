@@ -28,6 +28,7 @@ import {
   type PaperOrder,
 } from "@/planning/paper";
 import type { LedgerState } from "@/planning/practice-ledger";
+import { agentIsStale, tickTradingAgent } from "@/lib/trading-agent/agent";
 import { latestCloses, paperPrices, type PaperPrices } from "./prices";
 import { strategyTargets } from "./targets";
 
@@ -217,6 +218,12 @@ export async function runPaperDay(
 ): Promise<RunReport> {
   const account = await loadAccount(userId, client);
   if (!account || !(await adviceMode(userId, { client }))) return { ran: false, signals: 0 };
+  // The 24-hour agent runs the account instead (src/lib/trading-agent/agent.ts): its catch-up
+  // replays every bar since the last, and the daily rule's pop-up trades wait while it runs.
+  if (account.agentPolicy) {
+    const tick = await tickTradingAgent(userId, { client, now });
+    return { ran: tick.ran, signals: 0 };
+  }
   const db = scopedFor(userId, client);
   const source = prices ?? paperPrices();
   const asOf = dayOf(now);
@@ -348,10 +355,16 @@ export async function runPaperIfStale(userId: string, options: Options = {}) {
   const now = options.now ?? new Date();
   const client = options.client ?? defaultClient;
   const a = await scopedFor(userId, client).paperAccounts.findFirst({
-    select: { lastRunAt: true },
+    select: { lastRunAt: true, agentInterval: true, agentLastBarAt: true, agentStartedAt: true },
   });
   if (!a) return;
-  if (a.lastRunAt && now.getTime() - a.lastRunAt.getTime() < PAPER_RUN_EVERY_HOURS * 3_600_000)
+  // The 24-hour agent: whenever a bar has closed since its last.
+  if (a.agentInterval) {
+    if (!agentIsStale(a, now)) return;
+  } else if (
+    a.lastRunAt &&
+    now.getTime() - a.lastRunAt.getTime() < PAPER_RUN_EVERY_HOURS * 3_600_000
+  )
     return;
   try {
     await runPaperDay(userId, options);
@@ -489,6 +502,14 @@ export async function revertTrade(
   const account = await loadAccount(userId, client);
   if (!trade || !account || trade.accountId !== account.id || trade.source === "start")
     return { ok: false, error: "That trade can't be taken back." };
+  // The 24-hour agent's trades are its own: taking one back would leave it holding what it didn't
+  // decide. Stop the agent to trade by hand.
+  if (
+    account.agentPolicy &&
+    (!["rule", "news"].includes(trade.source) ||
+      (account.agentStartedAt !== null && trade.placedAt >= account.agentStartedAt))
+  )
+    return { ok: false, error: "The 24-hour agent's trades can't be taken back while it runs." };
   let done;
   try {
     done = revert(stateOf(account), {

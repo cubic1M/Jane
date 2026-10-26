@@ -19,6 +19,9 @@ import { RETURNS_NOTE } from "@/config/returns";
 import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
 import { loadPaperView, runPaperIfStale, strategyLabel, strategyOf } from "@/lib/paper/account";
 import { PaperAccount } from "@/components/paper-account";
+import { TradingAgent } from "@/components/trading-agent";
+import { AGENT_INTERVAL_IDS, AGENT_MARKET_IDS } from "@/config/trading-agent";
+import { agentChoices, loadAgentView } from "@/lib/trading-agent/agent";
 import { formatReturn } from "@/insights/returns";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
@@ -111,14 +114,22 @@ async function LevelStrategies({ userId }: { userId: string }) {
 // The page's top, like Home: the practice portfolio's hero graph, three tiles and the strategy
 // tree, from the stored research (src/lib/investments/strategy-tree.ts).
 async function Strategies({ userId, ideas }: { userId: string; ideas: number }) {
-  const [{ tiles, board }, paper, chosen] = await Promise.all([
+  const [{ tiles, board }, paper, chosen, agent] = await Promise.all([
     strategyTreeFor(userId),
     loadPaperView(userId),
     strategyOf(userId),
+    loadAgentView(userId),
   ]);
+  // The 24-hour agent's choices: every strategy the intraday replay ran, by market and interval.
+  const choices = Object.fromEntries(
+    AGENT_MARKET_IDS.flatMap((m) =>
+      AGENT_INTERVAL_IDS.map((i) => [`${m}:${i}`, agentChoices(m, i)]),
+    ),
+  );
   return (
     <>
       <PaperAccount view={paper} strategy={strategyLabel(chosen.key, chosen.level)} />
+      {paper && <TradingAgent view={agent} choices={choices} />}
       <StrategyTree tiles={tiles} board={board} ideas={ideas} />
     </>
   );
