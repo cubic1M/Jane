@@ -14,6 +14,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "./db-scoped";
+import { withReadCache } from "./read-cache";
 
 type Hook = (call: {
   model: string;
@@ -52,6 +53,16 @@ describe("the scoped client's shared reads", () => {
     ]);
     await run("findMany", { select: { id: true } });
     expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves repeated reads to the read cache inside one, which notes every table read", async () => {
+    const { run, query } = hookFor("u1");
+    const client = { $extends: () => client } as unknown as PrismaClient;
+    await withReadCache(client, async () => {
+      await run("findMany", { select: { id: true } });
+      await run("findMany", { select: { id: true } });
+    });
+    expect(query).toHaveBeenCalledTimes(2);
   });
 
   it("asks again when the question differs", async () => {

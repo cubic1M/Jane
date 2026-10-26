@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { evidenceRefs, onSharedAccountsOnly } from "@/lib/finding-accounts";
+import { inReadCache } from "@/lib/read-cache";
 import { forgetReads, memoKey, memoRead, READ_OPERATIONS } from "@/lib/read-memo";
 import { requireUser } from "@/lib/session";
 
@@ -79,6 +80,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
               forgetReads();
             }
           }
+          // Inside a read cache (src/lib/read-cache.ts) every read must reach it, which notes the
+          // tables each cached value came from; it shares repeated reads itself.
+          if (inReadCache()) return query(scopedArgs);
           return memoRead(memoKey(userId, model, operation, scopedArgs), () =>
             Promise.resolve(query(scopedArgs)),
           );
