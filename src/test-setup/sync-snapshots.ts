@@ -64,6 +64,46 @@ async function save(key: string, s: Snapshot) {
 // encryption key, vitest's worker numbers, these snapshots' own switches.
 const PER_FILE_ENV = /^(TOKEN_ENCRYPTION_KEY|VITEST_POOL_ID|VITEST_WORKER_ID|SYNC_SNAPSHOT.*)$/;
 
+// Files that start together all want the same first syncs: the first to ask syncs for real and
+// holds a lock; the others wait for its snapshot (up to LOCK_WAIT_MS, then sync for real).
+const LOCK_WAIT_MS = 90_000;
+async function claim(key: string): Promise<"mine" | "theirs" | null> {
+  const dir = process.env.SYNC_SNAPSHOT_DIR;
+  if (!dir) return null;
+  const { open } = await import("node:fs/promises");
+  try {
+    await (await open(`${dir}/${key}.lock`, "wx")).close();
+    return "mine";
+  } catch {
+    return "theirs";
+  }
+}
+async function release(key: string) {
+  const dir = process.env.SYNC_SNAPSHOT_DIR;
+  if (!dir) return;
+  const { rm } = await import("node:fs/promises");
+  await rm(`${dir}/${key}.lock`, { force: true });
+}
+async function waitFor(key: string): Promise<Snapshot | null> {
+  const dir = process.env.SYNC_SNAPSHOT_DIR!;
+  const { access } = await import("node:fs/promises");
+  const until = Date.now() + LOCK_WAIT_MS;
+  while (Date.now() < until) {
+    const s = await load(key);
+    if (s) return s;
+    // The lock gone with no snapshot: that sync failed; this one syncs for real.
+    if (
+      !(await access(`${dir}/${key}.lock`).then(
+        () => true,
+        () => false,
+      ))
+    )
+      return null;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return null;
+}
+
 // The modules this test file mocks: a sync under other mocks may write other rows.
 let mockedModules: string[] | null = null;
 async function mocksOfFile(): Promise<string[]> {
@@ -213,7 +253,24 @@ export function fingerprint(tables: Record<string, Row[]>, user: Row, item: Row)
 
 const hash = (s: string) => createHash("sha1").update(s).digest("hex");
 
-function rewriter(s: Snapshot, userId: string, itemId: string, seed: string) {
+// Values a sync stores that are a hash of rows: rewritten with the rows they hash. A message
+// about a finding keeps its fingerprint (src/lib/jane-agent/snapshot.ts) to tell whether the
+// finding changed since; a copy's must be the copied finding's.
+type Fingerprints = (finding: {
+  id: string;
+  type: string;
+  title: string;
+  annualSavingsCents: number | null;
+  evidence: unknown;
+}) => string;
+
+function rewriter(
+  s: Snapshot,
+  userId: string,
+  itemId: string,
+  seed: string,
+  fingerprint: Fingerprints,
+) {
   const ids = new Map<string, string>([
     [s.userId, userId],
     [s.itemId, itemId],
@@ -243,6 +300,17 @@ function rewriter(s: Snapshot, userId: string, itemId: string, seed: string) {
       return Object.fromEntries(Object.entries(v).map(([k, x]) => [str(k), value(x)]));
     return v;
   };
+  for (const f of s.tables.findings ?? []) {
+    const fp = (r: Row) =>
+      fingerprint({
+        id: String(r.id),
+        type: String(r.type),
+        title: String(r.title),
+        annualSavingsCents: (r.annual_savings_cents as number | null) ?? null,
+        evidence: r.evidence,
+      });
+    ids.set(fp(f), fp(value(f) as Row));
+  }
   // Random tokens that must be unique across everyone (a reply token, a link's hash) are the
   // person's own too: same length, new.
   const own = (t: string) => hash(`${t}:${userId}`).repeat(2).slice(0, t.length);
@@ -260,7 +328,8 @@ async function restore(
   itemId: string,
   seed: string,
 ) {
-  const rewrite = rewriter(s, userId, itemId, seed);
+  const { findingFingerprint } = await import("@/lib/jane-agent/snapshot");
+  const rewrite = rewriter(s, userId, itemId, seed, findingFingerprint);
   const tables = await tablesOf(client);
   await client.$transaction(
     async (tx) => {
@@ -351,7 +420,13 @@ vi.mock("@/lib/plaid/sync", async (importOriginal) => {
         database: process.env.TEST_DATABASE_URL ?? null,
       }),
     );
-    const found = await load(key);
+    let found = await load(key);
+    let mine = false;
+    if (!found) {
+      const claimed = await claim(key);
+      if (claimed === "theirs") found = await waitFor(key);
+      mine = claimed === "mine";
+    }
     const kept = found && (await sharedRowsExist(client, found)) ? found : null;
     debug(kept ? "copy" : "real", key.slice(0, 8));
     if (kept) {
@@ -360,7 +435,13 @@ vi.mock("@/lib/plaid/sync", async (importOriginal) => {
       return kept.result;
     }
     const started = Date.now();
-    const result = await actual.syncItem(itemId, options);
+    let result: Awaited<ReturnType<typeof actual.syncItem>>;
+    try {
+      result = await actual.syncItem(itemId, options);
+    } catch (error) {
+      if (mine) await release(key);
+      throw error;
+    }
     tally.real += 1;
     tally.ms += Date.now() - started;
     tally.people.push(
@@ -379,6 +460,7 @@ vi.mock("@/lib/plaid/sync", async (importOriginal) => {
       ),
       result,
     });
+    if (mine) await release(key);
     return result;
   };
   return { ...actual, syncItem };

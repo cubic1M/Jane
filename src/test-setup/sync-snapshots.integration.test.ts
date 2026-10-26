@@ -8,6 +8,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { findingFingerprint } from "@/lib/jane-agent/snapshot";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { fingerprint, rowOf, rowsOf } from "./sync-snapshots";
@@ -72,6 +73,19 @@ describe.runIf(url)("demo-sync snapshots", { timeout: 600_000 }, () => {
       Object.fromEntries(Object.entries(await rowsOf(client, u)).map(([t, r]) => [t, r.length]));
     expect(await counts(copy.userId)).toEqual(await counts(kept.userId));
     expect(await state(copy)).toBe(await state(kept));
+    // A message about a finding still matches it: its fingerprint is the copied finding's.
+    const messages = await client.janeMessage.findMany({ where: { userId: copy.userId } });
+    let checked = 0;
+    for (const m of messages) {
+      const refs = m.refs as { findingId?: string; fingerprint?: string } | null;
+      if (!refs?.findingId || !refs.fingerprint) continue;
+      const finding = await client.finding.findUniqueOrThrow({ where: { id: refs.findingId } });
+      expect(finding.userId).toBe(copy.userId);
+      expect(refs.fingerprint).toBe(findingFingerprint(finding));
+      checked += 1;
+    }
+    // The plain demo person's first scan posts messages about findings (the others' may not).
+    if (id === undefined) expect(checked).toBeGreaterThan(0);
     // A later sync, for real on both, adds the same accounts and transactions. (What it finds in
     // them follows each item's own seed, as for any two people.)
     await syncItem(kept.itemId, { client, api: plaid, now: LATER });
