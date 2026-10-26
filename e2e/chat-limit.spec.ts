@@ -26,9 +26,15 @@ async function spendTheDay(userId: string) {
   await client.connect();
   try {
     await client.query(
-      `INSERT INTO rate_limits (key, window_start, count) VALUES ($1, $2, $3)
+      // Written as the app's database client writes it (UTC, without an offset), so it is the
+      // same row whatever the database's own time zone.
+      `INSERT INTO rate_limits (key, window_start, count) VALUES ($1, $2::timestamp, $3)
        ON CONFLICT (key, window_start) DO UPDATE SET count = $3`,
-      [`chatspend:${userId}`, new Date(Math.floor(Date.now() / DAY_MS) * DAY_MS), 1_000_000],
+      [
+        `chatspend:${userId}`,
+        new Date(Math.floor(Date.now() / DAY_MS) * DAY_MS).toISOString().replace("Z", ""),
+        1_000_000,
+      ],
     );
   } finally {
     await client.end();
