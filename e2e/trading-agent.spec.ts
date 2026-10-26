@@ -51,8 +51,12 @@ for (const size of [
     await agent.getByRole("button", { name: "Start the 24-hour agent" }).click();
 
     // It caught up on the last day: trades with their time, price, fees and reason.
-    await expect(agent.getByText(/Caught up to the bar at .* ET\./)).toBeVisible({ timeout: 60_000 });
-    await expect(agent.getByText(/every 15 minutes, bitcoin and ether, around the clock\./)).toBeVisible();
+    await expect(agent.getByText(/Caught up to the bar at .* ET\./)).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(
+      agent.getByText(/every 15 minutes, bitcoin and ether, around the clock\./),
+    ).toBeVisible();
     await expect(agent.getByText("Sample prices: development only, not real.")).toBeVisible();
     const rows = agent
       .getByRole("table", { name: "The 24-hour agent's trades" })
