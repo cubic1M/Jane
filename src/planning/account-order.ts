@@ -19,6 +19,7 @@ import {
 import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
 import { CONTRIBUTION_LIMITS } from "@/config/tax-rates";
 import type { HoldingView, InvestmentAccountView } from "@/insights/investments";
+import { formatWholeDollars as dollars } from "@/lib/money";
 
 // The right account for each dollar (spec step 135, demo advice). Pure.
 // - The order to fill accounts in, each step with how much room it has and why, changing
@@ -56,7 +57,6 @@ export type OrderInput = {
   hasHsa: boolean;
 };
 
-const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 const pct = (rate: number) => `${Math.round(rate * 1000) / 10}%`;
 
 export function rothOrTraditionalByRate(

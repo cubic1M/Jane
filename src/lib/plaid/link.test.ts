@@ -3,7 +3,7 @@ import type { PlaidApi } from "plaid";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { scoped } = vi.hoisted(() => ({
-  scoped: { plaidItems: { findFirst: vi.fn(), create: vi.fn() } },
+  scoped: { plaidItems: { findFirst: vi.fn(), create: vi.fn(), updateMany: vi.fn() } },
 }));
 
 vi.mock("@/lib/db", () => ({ db: {} }));
@@ -14,7 +14,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { decrypt, encrypt } from "@/lib/crypto";
-import { ItemNotFoundError, createLinkToken, exchangePublicToken } from "./link";
+import { ItemNotFoundError, createLinkToken, exchangePublicToken, markItemRepaired } from "./link";
 
 const linkTokenCreate = vi.fn();
 const itemPublicTokenExchange = vi.fn();
@@ -28,6 +28,7 @@ describe("Plaid Link", () => {
     itemPublicTokenExchange.mockReset();
     scoped.plaidItems.findFirst.mockReset();
     scoped.plaidItems.create.mockReset().mockResolvedValue({ id: "item_row_1" });
+    scoped.plaidItems.updateMany.mockReset().mockResolvedValue({ count: 1 });
     vi.mocked(track).mockReset();
     vi.mocked(logAudit).mockReset();
   });
@@ -63,6 +64,44 @@ describe("Plaid Link", () => {
     expect(request.access_token).toBe("access-sandbox-item");
     expect(request.products).toBeUndefined();
     expect(request.optional_products).toBeUndefined();
+  });
+
+  it("lets the person pick new accounts to share when the bank has some", async () => {
+    scoped.plaidItems.findFirst.mockResolvedValue({
+      accessTokenEncrypted: encrypt("access-sandbox-item"),
+      newAccountsAvailable: true,
+    });
+    await createLinkToken("user_1", "item_row_1", { api });
+    expect(linkTokenCreate.mock.calls[0][0]).toMatchObject({
+      access_token: "access-sandbox-item",
+      update: { account_selection_enabled: true },
+    });
+    // A plain sign-in doesn't ask about accounts.
+    scoped.plaidItems.findFirst.mockResolvedValue({
+      accessTokenEncrypted: encrypt("access-sandbox-item"),
+      newAccountsAvailable: false,
+    });
+    await createLinkToken("user_1", "item_row_1", { api });
+    expect(linkTokenCreate.mock.calls[1][0].update).toBeUndefined();
+  });
+
+  it("stops asking once update mode is done, and says so in the audit log", async () => {
+    await markItemRepaired("user_1", "item_row_1");
+    expect(scoped.plaidItems.updateMany).toHaveBeenCalledWith({
+      where: { id: "item_row_1" },
+      data: {
+        status: "active",
+        newAccountsAvailable: false,
+        lastErrorCode: null,
+        lastErrorAt: null,
+      },
+    });
+    expect(logAudit).toHaveBeenCalledWith({ type: "user", id: "user_1" }, "item_relinked", {
+      type: "plaid_item",
+      id: "item_row_1",
+    });
+    scoped.plaidItems.updateMany.mockResolvedValue({ count: 0 });
+    await expect(markItemRepaired("user_1", "item_x")).rejects.toBeInstanceOf(ItemNotFoundError);
   });
 
   it("refuses update mode for an item the user doesn't have", async () => {

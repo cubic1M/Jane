@@ -3,6 +3,7 @@ import { isHiddenPage, shownHref } from "../src/config/hidden-pages";
 import { areaTree, openBranch, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
+import { openFinding } from "./report-page";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -29,15 +30,17 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
   await landInChat(page, 60_000);
   await page.goto("/report");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("We found");
-  await expect(page.getByRole("link", { name: /Netflix went up/ })).toBeVisible();
+  // On the report, open or folded behind "more".
+  await expect(page.locator("main a", { hasText: /Netflix went up/ })).toBeAttached();
   await expect(page.getByRole("note")).toContainText("demo bank with fake data");
 
   // The best option for this person, picked and ready for one yes (spec steps 76–77).
-  await page.getByRole("link", { name: /Verizon Wireless phone bill/ }).click();
+  await openFinding(page, /Verizon Wireless phone bill/);
   const best = page.getByRole("region", { name: "The best option for you" });
   await expect(best.getByText("Jane's pick")).toBeVisible();
   await expect(best.getByRole("radio", { name: /Pine Mobile Unlimited/ })).toBeChecked();
   await page.getByRole("button", { name: "Yes, switch to Pine Mobile Unlimited" }).click();
+  await page.getByRole("link", { name: /^Follow it on / }).click();
   // Your actions, or What Jane did while /actions is hidden (src/config/hidden-pages.ts).
   await expect(page).toHaveURL(shownHref("/actions"));
   if (!isHiddenPage("/actions"))

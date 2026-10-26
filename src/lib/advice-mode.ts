@@ -5,6 +5,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { isDemoItemId } from "@/lib/plaid/demo";
 import { isTrialUser } from "@/lib/trial-ids";
+import { cachedRead } from "@/lib/read-cache";
 
 // Demo advice mode (spec step 98): whether Jane may give this person recommendations on
 // investments, taxes, insurance and loans. Only when every account they have comes from the
@@ -21,7 +22,9 @@ export async function adviceMode(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<boolean> {
-  return client === defaultClient ? adviceModeOnce(userId) : adviceModeFrom(userId, client);
+  return client === defaultClient
+    ? adviceModeOnce(userId)
+    : cachedRead(`adviceMode:${userId}`, client, () => adviceModeFrom(userId, client));
 }
 
 // Worked out once per server render (React's cache): a page's parts each ask (speed pass,

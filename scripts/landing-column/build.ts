@@ -5,7 +5,8 @@
 //
 //   node scripts/landing-column/build.ts
 //
-// Writes public/landing/column.png.
+// Writes public/landing/column.webp: the page only reads its lightness, so a lossy greyscale WebP
+// (about 56 kB, against 324 kB as a colour PNG) draws the same ASCII and is quick on a phone.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -46,9 +47,9 @@ async function main() {
     .greyscale()
     // Paper to pure white: anything this light is background.
     .linear(1.08, -4)
-    .png({ compressionLevel: 9 })
-    .toFile(join(OUT, "column.png"));
-  console.log(`column.png: ${box.width}×${box.height} (from ${box.left},${box.top})`);
+    .webp({ quality: 80, effort: 6, smartSubsample: false })
+    .toFile(join(OUT, "column.webp"));
+  console.log(`column.webp: ${box.width}×${box.height} (from ${box.left},${box.top})`);
 }
 
 await main();

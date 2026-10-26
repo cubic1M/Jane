@@ -14,6 +14,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { cachedCopy } from "@/lib/read-cache";
 
 // The person's step 57 level. Read here rather than through src/lib/autopilot.ts, which
 // applies the standing rules, which read this module.
@@ -58,7 +59,9 @@ export async function sectorAutopilots(
 ): Promise<SectorAutopilot[]> {
   return client === defaultClient
     ? sectorAutopilotsOnce(userId, monthStart(now).toISOString())
-    : sectorAutopilotsFrom(userId, client, monthStart(now));
+    : cachedCopy(`sectorAutopilots:${userId}:${monthStart(now).toISOString()}`, client, () =>
+        sectorAutopilotsFrom(userId, client, monthStart(now)),
+      );
 }
 
 // Read once per server render (React's cache): every area's "what Jane does on its own" asks.

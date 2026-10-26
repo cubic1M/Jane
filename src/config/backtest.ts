@@ -17,8 +17,7 @@ export const BACKTEST_FEE_BPS: Readonly<Record<PracticeClass, number>> = {
   bonds: 3,
   cash: 13.59,
 };
-export const BACKTEST_FEE_SOURCE =
-  "Fund pages: Vanguard VTI, VXUS and BND; SPDR BIL (October 2026); FOR REVIEW";
+// Source: Fund pages: Vanguard VTI, VXUS and BND; SPDR BIL (October 2026); FOR REVIEW
 
 // Rebalancing: back to the targets on any day a class drifts more than this many percentage
 // points from its target. The same band as the portfolio review's off-target check.

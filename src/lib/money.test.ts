@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCents, parseMoneyToCents } from "./money";
+import { formatCents, formatWholeDollars, parseMoneyToCents } from "./money";
 
 describe("parseMoneyToCents", () => {
   it.each([
@@ -33,5 +33,14 @@ describe("formatCents", () => {
   it("formats dollars", () => {
     expect(formatCents(123456)).toBe("$1,234.56");
     expect(formatCents(-500)).toBe("-$5.00");
+  });
+});
+
+describe("formatWholeDollars", () => {
+  it("rounds to whole dollars with thousands separators", () => {
+    expect(formatWholeDollars(123_456)).toBe("$1,235");
+    expect(formatWholeDollars(123_449)).toBe("$1,234");
+    expect(formatWholeDollars(0)).toBe("$0");
+    expect(formatWholeDollars(100_000_000)).toBe("$1,000,000");
   });
 });

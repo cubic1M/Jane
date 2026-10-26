@@ -27,3 +27,7 @@ export function parseMoneyToCents(input: string): number | null {
 export function formatCents(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
+
+// Whole dollars, rounded, with thousands separators: "$1,235" for 123,456 cents.
+export const formatWholeDollars = (cents: number): string =>
+  `$${Math.round(cents / 100).toLocaleString("en-US")}`;

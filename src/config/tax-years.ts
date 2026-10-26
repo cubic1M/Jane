@@ -33,15 +33,6 @@ export const MIN_CONVERSION_CENTS = 100_000;
 export const indexFactor = (year: number): number =>
   (1 + BRACKET_INDEXING_RATE) ** (year - TAX_RATES_YEAR);
 
-// The explicit table the projection uses, one row per year, so a reviewer can see (and
-// override) each year's scale.
-export function yearTable(from: number, years: number) {
-  return Array.from({ length: years }, (_, i) => ({
-    year: from + i,
-    factor: indexFactor(from + i),
-  }));
-}
-
 export const PLANNED_EVENT_KINDS = {
   bonus: "A bonus",
   sale: "Selling an investment or property at a gain",

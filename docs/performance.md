@@ -80,6 +80,42 @@ Server work per warm page (family sample person, local database):
 about 5 percent). `npm run check:perf-budget` runs after the CI build and fails when a page is
 over. Lower a number when a page gets lighter; raise one only with a reason in the pull request.
 
-## After
+## After (2026-10-26): the landing column, the footer, shared reads
 
-(Filled in per pull request: what changed, and the same table row before and after.)
+Pull requests: landing column image and window (#774), footer waits while a page loads (#781),
+identical reads in a render share one answer (#784), Home's suggestion card not painted full size on
+a phone (#786). Same method as the baseline, on a quiet machine (the baseline was taken while other
+builds were running, so its TBT is inflated; the weight, CLS and statement numbers don't depend on
+that).
+
+| Page | Perf | LCP | CLS | TBT | TTI | Page weight |
+| --- | --- | --- | --- | --- | --- | --- |
+| Landing `/` | 63 to **94** | 3.84 to **3.02 s** | 0 | 1,288 to **21 ms** | 5.13 to **3.30 s** | 644 to **384 kB** |
+| `/home` | 85 to **94** | 3.75 to **3.00 s** | 0.091 to **0.050** (0.00 with #786) | 83 to 6 ms | 3.75 to 3.07 s | 373 to 354 kB |
+| `/money` | 91 to **96** | 3.40 to **2.80 s** | 0.043 to **0** | 68 to 14 ms | 3.45 to 2.95 s | 354 to 336 kB |
+| `/investments` | 91 to **94** | 3.41 to **3.10 s** | 0.023 to **0.011** | 57 to 6 ms | 3.47 to 3.17 s | 372 to 352 kB |
+| `/loans` | 94 to **96** | 3.07 to **2.79 s** | 0.032 to **0.004** | 32 to 14 ms | 3.13 to 2.88 s | 314 to 296 kB |
+| `/insurance` | 91 to **96** | 3.40 to **2.79 s** | 0.051 to **0** | 43 to 7 ms | 3.52 to 2.96 s | 322 to 302 kB |
+| `/taxes` | 90 to **96** | 3.30 to **2.79 s** | 0.025 to **0.002** | 59 to 8 ms | 3.39 to 2.95 s | 324 to 310 kB |
+| `/plan` | 91 to **96** | 3.25 to **2.78 s** | 0.078 to **0** | 50 to 6 ms | 3.32 to 2.95 s | 346 to 328 kB |
+
+SQL statements per warm render (local database): `/home` about 560 to 270-360, `/taxes` 217 to
+141, `/insurance` 145 to 126, `/plan` 172 to 161 (about half of `/home`'s 520 scoped reads were
+repeats). The remaining ones differ in their `select` and are for the loaders themselves to share.
+
+### Real throttling versus Lighthouse
+Lighthouse's simulated 2.8 to 3.0 s LCP on the signed-in pages is a floor of its own model (the
+text's paint is placed after the streamed document and the scripts it estimates behind it). With
+real network throttling in Chromium (150 ms RTT, 1.6 Mbit/s down, 4x CPU) the same pages measure
+FCP 0.96 to 1.0 s and LCP 1.06 to 1.3 s, so a phone sees the content about a second after it asks.
+A header shown ahead of the page's data (tried on `/money`) did not move either number and was
+dropped.
+
+### Where the rest is
+- **JavaScript is framework.** Of `/money`'s 517 kB first-load JS, 359 kB is React and Next's
+  runtime (two chunks of 225 and 134 kB); the app's own code is about 100 kB, so there is little
+  to lazy-load. The budget stays at the baseline plus 5 percent.
+- **HTML size.** `/investments` sends 331 kB of HTML (the 48-strategy catalog in the page) and
+  `/home` 218 kB (the giant tree); folding what is off screen on a phone would cut both.
+- **Reads that differ only in their `select`** (36 transaction lists and 26 account lists on
+  `/home`) could be one read each.

@@ -12,6 +12,7 @@ import {
   TRADITIONAL_ABOVE_PAY_CENTS,
   WITHDRAWAL_RATE,
 } from "@/config/retirement";
+import { formatWholeDollars as dollars } from "@/lib/money";
 
 // On track for retirement? (spec step 132, demo advice). From the person's retirement
 // balances and what goes in each year, what they could have at 67 as a range in today's
@@ -97,7 +98,6 @@ export function rothOrTraditional(payCents: number | null): RetirementPlan["roth
   return "mix";
 }
 
-const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 const pct = (rate: number) => `${Math.round(rate * 1000) / 10}%`;
 
 export function retirementPlan(input: RetirementInput): RetirementPlan {

@@ -130,9 +130,6 @@ export function maxDiversification(cov: readonly (readonly number[])[], cap = 1)
   );
 }
 
-export const diversificationRatio = (w: readonly number[], cov: readonly (readonly number[])[]) =>
-  w.reduce((s, wi, i) => s + wi * Math.sqrt(cov[i][i]), 0) / Math.sqrt(portVar(w, cov));
-
 // Hierarchical risk parity (López de Prado, 2016): single-linkage clustering on the correlation
 // distance √((1 − ρ)/2), quasi-diagonal order, then recursive bisection by inverse variance.
 export function hrp(cov: readonly (readonly number[])[]): number[] {

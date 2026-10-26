@@ -497,8 +497,7 @@ export const HOME_UNDER_INSURED_SHARE = 0.8;
 export const HOME_OVER_INSURED_SHARE = 1.5;
 // Carriers usually take this share off when car and home (or renters) are with them both.
 export const BUNDLE_DISCOUNT_SHARE = 0.1;
-// Term life worth this many years of pay, after a new baby with no life cover.
-export const LIFE_COVER_YEARS_OF_PAY = 10;
+// Term life cover, after a new baby with no life cover.
 export const LIFE_COVER_DEFAULT_CENTS = 50_000_000;
 // People checked per daily run.
 export const CHECKUP_DAILY_LIMIT = 200;

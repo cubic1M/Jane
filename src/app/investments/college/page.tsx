@@ -17,13 +17,13 @@ import { requireUser } from "@/lib/session";
 import type { Range } from "@/planning/college";
 import { CollegeForm } from "./college-form";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatPercent as pct } from "@/lib/percent";
 
 // College savings (spec step 158, demo advice): what college could cost, what to put aside
 // a month, which 529 plan comes out ahead with the state's tax break, set up as a goal.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 const span = (r: Range) => `${formatCents(r.lowCents)} to ${formatCents(r.highCents)}`;
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 async function CollegeContent({
   searchParams,

@@ -1,4 +1,5 @@
 import { CONTRIBUTION_LIMITS, STANDARD_DEDUCTION, TAX_RATES_YEAR } from "@/config/tax-rates";
+import { formatWholeDollars as dollars } from "@/lib/money";
 
 // Learn (spec step 136): short, fixed explainers in plain words, one tap from Jane's answers
 // and cards. Education, not advice: none says what this person should do, none promises an
@@ -16,8 +17,6 @@ export type Explainer = {
   sources: string[];
   review: { status: ReviewStatus; writtenOn: string; reviewedBy: string | null };
 };
-
-const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
 const AWAITING = { status: "awaiting_counsel" as const, writtenOn: "2026-10-19", reviewedBy: null };
 
