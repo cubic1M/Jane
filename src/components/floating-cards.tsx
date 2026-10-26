@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { PixelIcon } from "@/components/pixel-icon";
 import {
   answer,
   restore,
@@ -473,16 +474,10 @@ export function FloatingCards({
                 onClick={() => setExpanded((e) => !e)}
                 className="-mt-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
               >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  className={`size-5 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
-                >
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
+                <PixelIcon
+                  name="chevronDown"
+                  className={`size-4 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                />
               </button>
               {/* X puts it off, as Not now does. */}
               <button
