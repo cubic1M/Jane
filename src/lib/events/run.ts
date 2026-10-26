@@ -2,6 +2,7 @@ import { EVENT_EVIDENCE } from "@/config/event-evidence";
 import {
   EVENT_CATCH_UP_DAYS,
   EVENT_FRESH_DAYS,
+  EVENT_STORE_DAYS,
   EVENT_TYPES,
   EVENT_TYPE_IDS,
   GDELT_BASELINE_DAYS,
@@ -43,7 +44,7 @@ import { toEvent } from "./rows";
 // event that set it off, and surfaces in the trade pop-up. Demo advice only (advice mode): a real
 // account's overlay never runs. Rules only: no Claude call.
 
-type Options = {
+export type Options = {
   client?: PrismaClient;
   now?: Date;
   prices?: PaperPrices;
@@ -56,7 +57,13 @@ const DAY_MS = 86_400_000;
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
-export type CollectReport = { found: number; stored: number; failed: string[] };
+export type CollectReport = {
+  found: number;
+  stored: number;
+  failed: string[];
+  // The GDELT event types asked about this time (a page view's refresh asks about a few).
+  gdelt: EventTypeId[];
+};
 
 // Today's events from every source, kept once per type per cool-off (against what is stored),
 // stored with the time each became public. A source that fails is named; the rest go on.
@@ -66,7 +73,8 @@ export async function collectEvents({
   prices,
   fetcher = fetch as unknown as Fetcher,
   spacingMs,
-}: Options = {}): Promise<CollectReport> {
+  types = EVENT_TYPE_IDS,
+}: Options & { types?: readonly EventTypeId[] } = {}): Promise<CollectReport> {
   const today = dayOf(now);
   // GDELT's days are complete only once they end (UTC): yesterday is the last whole one.
   const yesterday = dayOf(new Date(now.getTime() - DAY_MS));
@@ -74,13 +82,13 @@ export async function collectEvents({
   const failed: string[] = [];
 
   const gdelt = await fetchCoverage(
-    EVENT_TYPE_IDS,
+    types,
     daysBefore(yesterday, GDELT_BASELINE_DAYS + 10),
     yesterday,
     { fetcher, ...(spacingMs === undefined ? {} : { spacingMs }) },
   );
   failed.push(...gdelt.failed.map((t) => `gdelt:${t}`));
-  const spikes = EVENT_TYPE_IDS.flatMap((t) => coverageSpikes(t, gdelt.coverage[t] ?? []));
+  const spikes = types.flatMap((t) => coverageSpikes(t, gdelt.coverage[t] ?? []));
 
   const feeds = await feedEvents({ fetcher });
   failed.push(...feeds.failed);
@@ -102,11 +110,16 @@ export async function collectEvents({
   }
   const shocks = priceShocks(bars);
 
+  // Stored back to EVENT_STORE_DAYS, so the box can show the most recent events even when none is
+  // fresh; the overlay acts only on fresh ones (from just before it was switched on).
+  const kept30 = daysBefore(today, EVENT_STORE_DAYS);
   const found = [...spikes, ...feeds.events, ...news, ...shocks].filter(
-    (e) => e.date >= fresh && e.knownAt <= now.toISOString(),
+    (e) => e.date >= kept30 && e.knownAt <= now.toISOString(),
   );
   const stored = (
-    await client.marketEvent.findMany({ where: { date: { gte: dateOf(daysBefore(today, 30)) } } })
+    await client.marketEvent.findMany({
+      where: { date: { gte: dateOf(daysBefore(today, EVENT_STORE_DAYS + 30)) } },
+    })
   ).map(toEvent);
   const storedKeys = new Set(stored.map((e) => e.key));
   const kept = withCoolOff([...stored, ...found]).filter((e) => !storedKeys.has(e.key));
@@ -124,7 +137,7 @@ export async function collectEvents({
       })),
       skipDuplicates: true,
     });
-  return { found: found.length, stored: kept.length, failed };
+  return { found: found.length, stored: kept.length, failed, gdelt: [...types] };
 }
 
 type LiveState = OverlayState & { open: (EventSlice & { units?: number })[] };
@@ -155,12 +168,25 @@ export async function runEventOverlay(
 ): Promise<OverlayReport> {
   const none = { ran: false, days: 0, trades: 0, actions: 0 };
   const db = scopedFor(userId, client);
-  const overlay = await db.paperEventOverlays.findFirst({});
-  if (!overlay?.on || !(await adviceMode(userId, { client }))) return none;
+  if (!(await adviceMode(userId, { client }))) return none;
   const account = await db.paperAccounts.findFirst({
     select: { id: true, level: true, agentPolicy: true },
   });
-  if (!account || account.id !== overlay.accountId) return none;
+  if (!account) return none;
+  // On by default (founder, 2026-10-26): an account without a row yet gets one, switched on now,
+  // so it acts on the last few days' events from here.
+  const overlay =
+    (await db.paperEventOverlays.findFirst({})) ??
+    (await db.paperEventOverlays.create({
+      data: {
+        accountId: account.id,
+        userId,
+        on: true,
+        switchedAt: now,
+        state: emptyOverlay() as unknown as Prisma.InputJsonValue,
+      },
+    }));
+  if (!overlay.on || account.id !== overlay.accountId) return none;
   // The 24-hour agent runs this account: it takes the overlay's slices as its own signals
   // (./agent-source.ts), so the overlay places no trades of its own here and nothing trades twice.
   if (account.agentPolicy) return none;
@@ -363,15 +389,19 @@ async function act(
 }
 
 // Opening the investments page catches up an overlay whose daily run was missed (its last close
-// is older than yesterday), after the page is sent.
-export async function runEventsIfStale(userId: string, options: Options = {}) {
+// is older than yesterday), or runs it when the page's refresh found new events, after the page is
+// sent.
+export async function runEventsIfStale(userId: string, options: Options & { news?: boolean } = {}) {
   const now = options.now ?? new Date();
   const client = options.client ?? defaultClient;
   const overlay = await scopedFor(userId, client).paperEventOverlays.findFirst({
     select: { on: true, lastDate: true },
   });
-  if (!overlay?.on) return;
-  if (overlay.lastDate && dayOf(overlay.lastDate) >= daysBefore(dayOf(now), 1)) return;
+  // No row yet: on by default, and never run.
+  if (overlay && !overlay.on) return;
+  // Up to date, and no new events since: nothing to do.
+  if (!options.news && overlay?.lastDate && dayOf(overlay.lastDate) >= daysBefore(dayOf(now), 1))
+    return;
   try {
     await runEventOverlay(userId, options);
   } catch (error) {
@@ -379,37 +409,9 @@ export async function runEventsIfStale(userId: string, options: Options = {}) {
   }
 }
 
-// Vercel Cron: today's events, then every account with the overlay on, one at a time; one failing
-// stops none.
-export async function runEventsForAll({
-  client = defaultClient,
-  now = new Date(),
-  ...rest
-}: Options = {}) {
-  const collected = await collectEvents({ client, now, ...rest }).catch((error) => {
-    console.error("Collecting events failed", { error: String(error) });
-    return null;
-  });
-  const overlays = await client.paperEventOverlay.findMany({
-    where: { on: true },
-    select: { userId: true },
-  });
-  let ran = 0;
-  let failed = 0;
-  for (const { userId } of overlays) {
-    try {
-      if ((await runEventOverlay(userId, { client, now, ...rest })).ran) ran += 1;
-    } catch (error) {
-      failed += 1;
-      console.error("An events overlay run failed", { error: String(error) });
-    }
-  }
-  return { collected, overlays: overlays.length, ran, failed };
-}
-
 export class EventsError extends Error {}
 
-// The box's switch: on or off for the person's paper account. Off by default; switching on
+// The box's switch: on or off for the person's paper account. On by default; switching back on
 // starts from today's events (and those of the last few days), never from older news.
 export async function setEventsOverlay(
   userId: string,
