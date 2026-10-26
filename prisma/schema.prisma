@@ -428,6 +428,7 @@ model User {
   familyFile           FamilyFile?
   practicePortfolio    PracticePortfolio?
   practicePreferences  PracticePreferences?
+  paperAccount         PaperAccount?
 
   @@map("users")
 }
@@ -4542,4 +4543,114 @@ model StrategyEvaluation {
 
   @@index([ranAt])
   @@map("strategy_evaluations")
+}
+
+// The paper account (2026-10-26, founder: "start a paper trading account that users can now run
+// … it's actually using one of the strategies"): simulated money the person starts, run by the
+// strategy they picked on real daily closes (src/lib/paper/). Never a real order, broker or
+// account. Money in cents, times in UTC.
+model PaperAccount {
+  id            String    @id @default(cuid())
+  userId        String    @unique @map("user_id")
+  startingCents Int       @map("starting_cents")
+  cashCents     Int       @map("cash_cents")
+  level         Int
+  // The strategy it follows, as the investments page's key ("default", "catalog:haa").
+  strategy      String
+  // Where its prices come from: "alpaca", "yahoo" or "sample" (development only).
+  priceSource   String    @map("price_source")
+  // Just holding: the level's mix bought at the start and never traded, units by ticker.
+  hold          Json
+  // The last closes it was valued at, by ticker, and their day (the page reads these).
+  prices        Json      @default("{}")
+  pricesDate    DateTime? @map("prices_date") @db.Date
+  startedAt     DateTime  @map("started_at") @db.Timestamptz(3)
+  lastRunAt     DateTime? @map("last_run_at") @db.Timestamptz(3)
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions PaperPosition[]
+  trades    PaperTrade[]
+  values    PaperValue[]
+  signals   PaperSignal[]
+
+  @@map("paper_accounts")
+}
+
+model PaperPosition {
+  id             String @id @default(cuid())
+  accountId      String @map("account_id")
+  userId         String @map("user_id")
+  ticker         String
+  quantity       Float
+  costBasisCents Int    @map("cost_basis_cents")
+
+  account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, ticker])
+  @@index([userId])
+  @@map("paper_positions")
+}
+
+// source: "start" (the first buys), "rule" (the strategy's rule) or "news" (a news idea).
+model PaperTrade {
+  id          String    @id @default(cuid())
+  accountId   String    @map("account_id")
+  userId      String    @map("user_id")
+  placedAt    DateTime  @map("placed_at") @db.Timestamptz(3)
+  ticker      String
+  side        String
+  quantity    Float
+  priceCents  Int       @map("price_cents")
+  amountCents Int       @map("amount_cents")
+  reason      String
+  source      String
+  signalId    String?   @map("signal_id")
+  revertedAt  DateTime? @map("reverted_at") @db.Timestamptz(3)
+
+  account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, placedAt])
+  @@index([userId])
+  @@map("paper_trades")
+}
+
+// The account's value at a day's close, and just holding's.
+model PaperValue {
+  id         String   @id @default(cuid())
+  accountId  String   @map("account_id")
+  userId     String   @map("user_id")
+  date       DateTime @db.Date
+  valueCents Int      @map("value_cents")
+  holdCents  Int      @map("hold_cents")
+
+  account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, date])
+  @@index([userId])
+  @@map("paper_values")
+}
+
+// A trade to decide in the trade pop-up: the strategy's rule firing, or a news idea.
+// status: "open", "taken", "skipped" or "expired". key dedupes ("rule:2026-09-30:VTI:buy").
+model PaperSignal {
+  id          String    @id @default(cuid())
+  accountId   String    @map("account_id")
+  userId      String    @map("user_id")
+  createdAt   DateTime  @map("created_at") @db.Timestamptz(3)
+  key         String
+  source      String
+  ticker      String
+  side        String
+  amountCents Int       @map("amount_cents")
+  priceCents  Int       @map("price_cents")
+  reason      String
+  confidence  Int
+  status      String
+  decidedAt   DateTime? @map("decided_at") @db.Timestamptz(3)
+
+  account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, key])
+  @@index([userId, status])
+  @@map("paper_signals")
 }

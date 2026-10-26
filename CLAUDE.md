@@ -44,6 +44,9 @@ investment advice in this MVP.
 - Trial people (step 138, ids starting "trial_", src/lib/trial.ts) are sample data:
   never emailed, never contact a company (the agent uses the simulated company and
   number), never in analytics or metrics, and deleted after TRIAL_HOURS
+- The paper account (src/lib/paper/) is simulated money only: no real order, broker or account,
+  ever. Its prices are real and free (Alpaca, else Yahoo); advice mode only for now. Its trade
+  alerts live in their own pop-up (src/components/trade-popup.tsx), never in the suggestion dock
 - Write tests for every rule and every API route you add
 - Prefer small, readable modules over clever abstractions
 - When unsure about a Plaid field or category name, check the Plaid docs instead

@@ -23,12 +23,11 @@ import {
   leafFigure,
   type LevelTile,
 } from "@/lib/investments/strategy-tree";
-import { formatCents } from "@/lib/money";
 
 // The investments page, laid out like Home (founder: "similar to the homepage … interactive, and
 // you can click through the tree graphs showcasing the different strategies and choose which one
-// you like. It should be very easy for the user to use"). A hero graph: the practice portfolio's
-// value, and the strategy in view against the level's plain mix (dashed). Three compact tiles.
+// you like. It should be very easy for the user to use"). A hero graph: the strategy in view
+// against the level's plain mix (dashed). Three compact tiles.
 // The strategy tree: the five risk levels as fixed tiles, the person's own open; a level's
 // families as branches; each strategy a leaf with its glyph, tag and return a year. Picking a
 // leaf opens its own box right under it, on the tree's dotted line (founder: "a separate box, not
@@ -47,7 +46,6 @@ const CHIP_OFF = "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hove
 
 const pct = (n: number) => `${(Math.round(Math.abs(n) * 1000) / 10).toFixed(1)}%`;
 const signed = (n: number) => `${n >= 0 ? "+" : "−"}${pct(n)}`;
-const signedCents = (c: number) => `${c >= 0 ? "+" : "−"}${formatCents(Math.abs(c))}`;
 
 type Current = { main: string | null; crypto: string | null };
 type Picked = { level: RiskLevel; key: string };
@@ -190,13 +188,11 @@ function Graph({
 export function StrategyTree({
   tiles,
   board: own,
-  practice,
   ideas,
 }: {
   tiles: LevelTile[];
   // The person's own level's board.
   board: Board;
-  practice: { totalCents: number; startingCents: number } | null;
   ideas: number;
 }) {
   const yourLevel = own.level;
@@ -369,23 +365,11 @@ export function StrategyTree({
   return (
     <div className="flex flex-col gap-4" data-strategy-tree="">
       {/* The hero scrolls with the page (founder: it shouldn't stay on top and block the rest). */}
-      <section aria-label="Your practice portfolio" className="flex flex-col gap-2">
+      <section aria-label="Your strategy" className="flex flex-col gap-2">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400">
-            PRACTICE PORTFOLIO
+            YOUR STRATEGY, REPLAYED
           </p>
-          {practice ? (
-            <p className="flex flex-wrap items-baseline gap-x-3">
-              <span className="text-3xl font-semibold tabular-nums">
-                {formatCents(practice.totalCents)}
-              </span>
-              <span className="text-sm tabular-nums">
-                {signedCents(practice.totalCents - practice.startingCents)} since you started
-              </span>
-            </p>
-          ) : (
-            <p className="text-sm">Starts with your first scan.</p>
-          )}
           <p className="text-sm" data-hero-line={heroRow.key} aria-live="polite">
             <span className="font-semibold">{heroRow.label}</span>
             <span className="text-xs text-zinc-600 dark:text-zinc-400">

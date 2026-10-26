@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+vi.mock("next/server", () => ({ after: vi.fn((run: () => unknown) => void run()) }));
+vi.mock("@/lib/paper/account", () => ({ runPaperDay: vi.fn(async () => ({ ran: true })) }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
 vi.mock("@/lib/practice/preferences", () => ({
@@ -10,6 +12,7 @@ vi.mock("@/lib/practice/preferences", () => ({
 }));
 
 import { redirect } from "next/navigation";
+import { runPaperDay } from "@/lib/paper/account";
 import { adviceMode } from "@/lib/advice-mode";
 import { practiceProfileOf, savePreferences } from "@/lib/practice/preferences";
 import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
@@ -107,6 +110,8 @@ describe("Use this strategy and Revert", () => {
       { catalogStrategy: "off", strategy: "level" },
     ]);
     expect(redirect).not.toHaveBeenCalled();
+    // The paper account picks up the new strategy straight away.
+    expect(runPaperDay).toHaveBeenCalledWith("u1");
   });
 
   it("refuses day trading, sleeves, unknown keys, crypto below Very high and real accounts", async () => {

@@ -138,6 +138,34 @@ Data: `strategyBoard` (`src/lib/investments/strategy-board.ts`) and `branchesOf`
 (`src/config/catalog-curves.ts`, written by the catalog research run, and the evidence files).
 No prices are fetched for it when the page loads.
 
+## Investments: the paper account and the trade pop-up
+
+The founder (2026-10-26): "start a paper trading account that users can now run (so it's not just
+from the sample data anymore, it's actually using one of the strategies). And jane should be
+recommending trades when opportunities arise, and not blend it in the suggestion boxes, but a
+separate pop up."
+
+- **The paper account** (`src/lib/paper/`, Prisma `PaperAccount`, `PaperPosition`, `PaperTrade`,
+  `PaperValue`, `PaperSignal`): started on `/investments` with a balance (default $10,000,
+  `src/config/paper.ts`), bought into the strategy chosen with "Use this strategy" at the last
+  closes. Prices are real and free (`paperPrices`): Alpaca's daily bars when its keys are set,
+  else Yahoo Finance's keyless daily chart in production; the sample market only outside
+  production or with `PAPER_SAMPLE_PRICES=1` (the e2e tests), and then labelled so.
+- **Each day** (`/api/cron/paper-run`, 22:00 UTC, and when `/investments` opens on a run older than
+  `PAPER_RUN_EVERY_HOURS`): the account is valued against just holding the level's mix, and the
+  trades the strategy's rule asks for (more than `PAPER_BAND` off target), plus any news idea from
+  the practice scan, wait as signals. Picking another strategy runs it at once.
+- **On the page:** one number, a graph of the account against just holding (dashed) with a dot for
+  every trade, positions and the trade log behind a tap, and where the prices come from.
+- **The trade pop-up** (`src/components/trade-popup.tsx`, in the root layout): its own box at the
+  bottom left (above the bottom bar on a phone), never in the suggestion dock. `[TRADE]`, the
+  ticker, buy or sell, size, one line why, how sure, and Paper trade it (instant, then Revert),
+  Skip and More details. The words follow the advice rule (`signalCard`): Jane's recommendation
+  with `DEMO_ADVICE_LABEL` in advice mode; a real account would see only "Your strategy's rule: …",
+  "Simulated, not advice", and never a news idea.
+- **Advice mode only for now:** a real account can't pick a strategy (the catalog's ratings are
+  advice), so it can't start a paper account. Simulated money only: never a real order.
+
 ## The home tree: "What Jane does"
 
 On `/home`, right under the net worth hero. The founder, first: "one giant tree graph, not like u
