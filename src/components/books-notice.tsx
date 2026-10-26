@@ -3,9 +3,18 @@ import type { BooksView } from "@/lib/books";
 import { booksFix } from "@/lib/books-fix";
 
 // Books that balance (spec step 238): figures that rely on data Jane isn't sure of are marked
-// until it's fixed, with what's wrong in words and where to fix each one.
-export function BooksNotice({ books }: { books: BooksView }) {
-  const worrying = books.open.filter((o) => o.kind !== "transfer");
+// until it's fixed, with what's wrong in words and where to fix each one. skipItems: banks
+// whose trouble is already said elsewhere on the page (Home's bank notice), not said twice.
+export function BooksNotice({
+  books,
+  skipItems = [],
+}: {
+  books: BooksView;
+  skipItems?: readonly string[];
+}) {
+  const worrying = books.open.filter(
+    (o) => o.kind !== "transfer" && !(o.itemId && skipItems.includes(o.itemId)),
+  );
   if (worrying.length === 0) return null;
   return (
     <aside

@@ -56,6 +56,8 @@ export type AuditEvent =
   | "decision_made"
   | "decision_undone"
   | "item_linked"
+  // A bank signed in again (or its new accounts shared) through Link's update mode.
+  | "item_relinked"
   // Admin tools: every view of user data and every status change.
   | "admin_viewed_queue"
   | "admin_viewed_action"

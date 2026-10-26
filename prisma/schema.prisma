@@ -499,6 +499,16 @@ model PlaidItem {
   // "hsa" for a demo HSA.
   demoExtras           String[]  @default([]) @map("demo_extras")
   lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  // Plaid's NEW_ACCOUNTS_AVAILABLE: the bank has accounts the person hasn't shared yet (Link
+  // update mode with account selection shares them).
+  newAccountsAvailable Boolean   @default(false) @map("new_accounts_available")
+  // The last failed sync or ITEM ERROR webhook that isn't a sign-in (an outage, a rate limit),
+  // so the person is told plainly why the data is old. Cleared by the next good sync.
+  lastErrorCode        String?   @map("last_error_code")
+  lastErrorAt          DateTime? @map("last_error_at") @db.Timestamptz(3)
+  // A sync started from a webhook holds this while it runs, so a burst of webhooks (or Plaid
+  // retrying one) runs one sync, not several at once.
+  syncingSince         DateTime? @map("syncing_since") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -507,6 +517,21 @@ model PlaidItem {
 
   @@index([userId])
   @@map("plaid_items")
+}
+
+// Plaid webhooks already handled, by a hash of their body, so a delivery Plaid repeats is
+// acknowledged without being acted on twice. A system table: webhooks come before any
+// session, keyed by Plaid's item id (the item's owner is found from it).
+model PlaidWebhookEvent {
+  id          String   @id @default(cuid())
+  bodyHash    String   @unique @map("body_hash")
+  plaidItemId String?  @map("plaid_item_id")
+  webhookType String   @map("webhook_type")
+  webhookCode String   @map("webhook_code")
+  receivedAt  DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  @@index([receivedAt])
+  @@map("plaid_webhook_events")
 }
 
 model Account {
