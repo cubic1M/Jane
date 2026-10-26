@@ -1,0 +1,58 @@
+{
+  "query_details": {
+    "title": "(iran OR israel OR saudi OR hormuz OR houthi OR yemen OR lebanon) (missile OR airstrike OR \"drone attack\" OR strikes)",
+    "date_resolution": "day"
+  },
+  "timeline": [
+    {
+      "series": "Article Count",
+      "data": [
+        { "date": "20170101T000000Z", "value": 1106, "norm": 427906 },
+        { "date": "20170102T000000Z", "value": 1176, "norm": 592774 },
+        { "date": "20170103T000000Z", "value": 1714, "norm": 757916 },
+        { "date": "20170104T000000Z", "value": 1535, "norm": 822862 },
+        { "date": "20170105T000000Z", "value": 1023, "norm": 830028 },
+        { "date": "20170106T000000Z", "value": 1457, "norm": 766969 },
+        { "date": "20170107T000000Z", "value": 1114, "norm": 520691 },
+        { "date": "20170108T000000Z", "value": 1353, "norm": 488784 },
+        { "date": "20170109T000000Z", "value": 1651, "norm": 813487 },
+        { "date": "20170110T000000Z", "value": 1630, "norm": 884856 },
+        { "date": "20170111T000000Z", "value": 2259, "norm": 879968 },
+        { "date": "20170112T000000Z", "value": 1700, "norm": 873198 },
+        { "date": "20170113T000000Z", "value": 2870, "norm": 847105 },
+        { "date": "20170114T000000Z", "value": 992, "norm": 538257 },
+        { "date": "20170115T000000Z", "value": 922, "norm": 485270 },
+        { "date": "20170116T000000Z", "value": 1610, "norm": 778396 },
+        { "date": "20170117T000000Z", "value": 1490, "norm": 872725 },
+        { "date": "20170118T000000Z", "value": 1345, "norm": 903497 },
+        { "date": "20170119T000000Z", "value": 1584, "norm": 897136 },
+        { "date": "20170120T000000Z", "value": 1708, "norm": 840244 },
+        { "date": "20170121T000000Z", "value": 1516, "norm": 542714 },
+        { "date": "20170122T000000Z", "value": 1881, "norm": 507306 },
+        { "date": "20170123T000000Z", "value": 2474, "norm": 816816 },
+        { "date": "20170124T000000Z", "value": 1495, "norm": 882520 },
+        { "date": "20170125T000000Z", "value": 1276, "norm": 888646 },
+        { "date": "20170126T000000Z", "value": 1365, "norm": 850165 },
+        { "date": "20170127T000000Z", "value": 1016, "norm": 814253 },
+        { "date": "20170128T000000Z", "value": 1048, "norm": 540104 },
+        { "date": "20170129T000000Z", "value": 2847, "norm": 492134 },
+        { "date": "20170130T000000Z", "value": 3298, "norm": 800343 },
+        { "date": "20170131T000000Z", "value": 5879, "norm": 866957 },
+        { "date": "20170201T000000Z", "value": 6140, "norm": 877514 },
+        { "date": "20170202T000000Z", "value": 8783, "norm": 878535 },
+        { "date": "20170203T000000Z", "value": 10907, "norm": 849054 },
+        { "date": "20170204T000000Z", "value": 6092, "norm": 547610 },
+        { "date": "20170205T000000Z", "value": 3420, "norm": 489387 },
+        { "date": "20170206T000000Z", "value": 6205, "norm": 810397 },
+        { "date": "20170207T000000Z", "value": 4436, "norm": 886593 },
+        { "date": "20170208T000000Z", "value": 3253, "norm": 908408 },
+        { "date": "20170209T000000Z", "value": 4171, "norm": 895654 },
+        { "date": "20170210T000000Z", "value": 3455, "norm": 851022 },
+        { "date": "20170211T000000Z", "value": 2462, "norm": 535178 },
+        { "date": "20170212T000000Z", "value": 2164, "norm": 501551 },
+        { "date": "20170213T000000Z", "value": 2545, "norm": 828201 },
+        { "date": "20170214T000000Z", "value": 2051, "norm": 888105 }
+      ]
+    }
+  ]
+}

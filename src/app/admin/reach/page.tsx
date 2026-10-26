@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import { reachReport, type Totals } from "@/lib/reach";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { AdminTable } from "../admin-table";
 import { LoadingBar } from "@/components/loading-bar";
 
 // Spec step 258: proof that the features reach people. The eight sample people one by one;
@@ -25,30 +26,19 @@ function TotalsTable({ title, totals }: { title: string; totals: Totals }) {
             {totals.offered} offered, {formatCents(totals.dollarsCents)} a year shown, yes rate{" "}
             {rate(totals.yes, totals.no)}, {totals.no} said no.
           </p>
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="py-2 pr-4 font-semibold">Capability</th>
-                <th className="py-2 pr-4 font-semibold">Offered</th>
-                <th className="py-2 pr-4 font-semibold">Shown</th>
-                <th className="py-2 pr-4 font-semibold">Yes rate</th>
-                <th className="py-2 font-semibold">No</th>
-              </tr>
-            </thead>
-            <tbody>
-              {totals.byCapability.map((c) => (
-                <tr key={c.capability} className="border-b border-zinc-100 dark:border-zinc-900">
-                  <td className="py-2 pr-4">
-                    {c.capability === "strategist" ? "strategist ideas" : c.capability}
-                  </td>
-                  <td className="py-2 pr-4">{c.offered}</td>
-                  <td className="py-2 pr-4">{formatCents(c.dollarsCents)}</td>
-                  <td className="py-2 pr-4">{rate(c.yes, c.no)}</td>
-                  <td className="py-2">{c.no}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <AdminTable
+            head={["Capability", "Offered", "Shown", "Yes rate", "No"]}
+            rows={totals.byCapability.map((c) => ({
+              key: c.capability,
+              cells: [
+                c.capability === "strategist" ? "strategist ideas" : c.capability,
+                c.offered,
+                formatCents(c.dollarsCents),
+                rate(c.yes, c.no),
+                c.no,
+              ],
+            }))}
+          />
         </>
       )}
     </section>
@@ -192,26 +182,13 @@ async function Reach() {
         {report.bands.length === 0 ? (
           <p className={MUTED}>No suggestion has been answered yet.</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="py-2 pr-4 font-semibold">Jane said</th>
-                <th className="py-2 pr-4 font-semibold">Answered</th>
-                <th className="py-2 font-semibold">Said yes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.bands.map((b) => (
-                <tr key={b.from} className="border-b border-zinc-100 dark:border-zinc-900">
-                  <td className="py-2 pr-4">
-                    {b.from}–{b.to}% (average {b.stated}%)
-                  </td>
-                  <td className="py-2 pr-4">{b.count}</td>
-                  <td className="py-2">{b.actual}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <AdminTable
+            head={["Jane said", "Answered", "Said yes"]}
+            rows={report.bands.map((b) => ({
+              key: String(b.from),
+              cells: [`${b.from}–${b.to}% (average ${b.stated}%)`, b.count, `${b.actual}%`],
+            }))}
+          />
         )}
         <h3 className="font-semibold">Detectors to correct</h3>
         {report.off.length === 0 ? (

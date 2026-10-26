@@ -6,7 +6,6 @@ import {
   SOCIAL_SECURITY_PAYEE,
 } from "@/config/retirement-taxes";
 import {
-  FILING_STATUSES,
   BUSINESS_SALES_CATEGORIES,
   INCOME_KINDS,
   TAXABLE_INVESTMENT_SUBTYPES,
@@ -542,8 +541,6 @@ export async function loadTaxEstimate(
     lastYearRefundCents: lastYearRefundCents > 0 ? lastYearRefundCents : null,
   };
 }
-
-export const filingLabel = (status: FilingStatus) => FILING_STATUSES[status];
 
 // Spec step 123: estimated tax payments the person told Jane about, for the tax year (Feb 1
 // to Jan 31 of the next year, like the ones seen in transactions).

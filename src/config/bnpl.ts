@@ -12,5 +12,4 @@ export const INSTALLMENT_MATCH_DAYS = 3;
 // Checking keeps at least this much after a payoff paid early.
 export const PAYOFF_CUSHION_CENTS = 50_000;
 // Where the rule that Pay in 4 plans charge no interest or fee for paying early comes from.
-export const BNPL_EARLY_PAYOFF_SOURCE =
-  "https://www.consumerfinance.gov/data-research/research-reports/consumer-use-of-buy-now-pay-later/";
+// Source: https://www.consumerfinance.gov/data-research/research-reports/consumer-use-of-buy-now-pay-later/

@@ -1,4 +1,3 @@
-import { HARDSHIP_SOURCE } from "@/config/tight-money";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { TightMoney } from "@/lib/tight-money";
@@ -73,5 +72,3 @@ export function tightReply(data: TightMoney): Reply {
     refs: next ? { advice: true, tightItem: { id: next.id } } : { advice: true },
   };
 }
-
-export const HARDSHIP_LINK = HARDSHIP_SOURCE;

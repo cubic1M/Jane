@@ -119,6 +119,7 @@ describe.runIf(url)("health checks against a real database", () => {
       "market-history",
       "paper-run",
       "practice-scan",
+      "events",
     ]);
     expect(logAudit).toHaveBeenCalledWith(
       { type: "admin", id: "admin_1" },

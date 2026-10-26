@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { isHiddenPage } from "../src/config/hidden-pages";
+import { isHiddenPage, shownHref } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
+import { openFinding } from "./report-page";
 
 // The team's queue: non-admins get a 404 everywhere under /admin; an admin can move an
 // approved action and the person sees the new status on /actions.
@@ -76,9 +77,10 @@ test.describe("signed in", () => {
     await expect(page).toHaveURL("/report", { timeout: 30_000 });
     // A real account's yes is theirs to do (read-only mode); the queue is the demo bank's.
     await treatAsDemoBank(user.userId);
-    await page.getByRole("link", { name: /Geico insurance/i }).click();
+    await openFinding(page, /Geico insurance/i);
     await page.getByRole("button", { name: "Yes, do this for me" }).click();
-    await expect(page).toHaveURL("/actions");
+    await page.getByRole("link", { name: /^Follow it on / }).click();
+    await expect(page).toHaveURL(shownHref("/actions"));
 
     await page.goto("/admin/queue");
     // Other test runs share the queue; pick this user's action.

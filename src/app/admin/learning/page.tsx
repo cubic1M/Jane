@@ -6,6 +6,7 @@ import { kindReport } from "@/lib/learning";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { AdminTable } from "../admin-table";
 import { formatPercent as pct } from "@/lib/percent";
 
 // The learning loop, kind by kind: how often each kind of suggestion is acted on when shown,
@@ -33,41 +34,40 @@ async function Learning() {
         <p className={MUTED}>Nothing shown yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table data-learning-table="" className="w-full text-left text-sm tabular-nums">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="py-2 pr-4 font-semibold">Kind</th>
-                <th className="py-2 pr-4 font-semibold">Shown</th>
-                <th className="py-2 pr-4 font-semibold">Acted on</th>
-                <th className="py-2 pr-4 font-semibold">Said no</th>
-                <th className="py-2 pr-4 font-semibold">Checked</th>
-                <th className="py-2 pr-4 font-semibold">Paid off</th>
-                <th className="py-2 pr-4 font-semibold">Confirmed</th>
-                <th className="py-2 font-semibold">Rank</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.topic} className="border-b border-zinc-100 dark:border-zinc-900">
-                  <td className="py-2 pr-4">{r.topic}</td>
-                  <td className="py-2 pr-4">{r.shown}</td>
-                  <td className="py-2 pr-4">
-                    {r.acted} <span className={MUTED}>({pct(r.actRate)})</span>
-                  </td>
-                  <td className="py-2 pr-4">{r.declined}</td>
-                  <td className="py-2 pr-4">{r.decided}</td>
-                  <td className="py-2 pr-4">
-                    {r.paidOff} <span className={MUTED}>({pct(r.payoffRate)})</span>
-                  </td>
-                  <td className="py-2 pr-4">{formatCents(r.confirmedCents)}</td>
-                  <td className="py-2">
-                    ×{r.factor.toFixed(2)}
-                    {r.saysPeople ? "" : <span className={MUTED}> · card quiet</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <AdminTable
+            data-learning-table=""
+            className="tabular-nums"
+            head={[
+              "Kind",
+              "Shown",
+              "Acted on",
+              "Said no",
+              "Checked",
+              "Paid off",
+              "Confirmed",
+              "Rank",
+            ]}
+            rows={rows.map((r) => ({
+              key: r.topic,
+              cells: [
+                r.topic,
+                r.shown,
+                <>
+                  {r.acted} <span className={MUTED}>({pct(r.actRate)})</span>
+                </>,
+                r.declined,
+                r.decided,
+                <>
+                  {r.paidOff} <span className={MUTED}>({pct(r.payoffRate)})</span>
+                </>,
+                formatCents(r.confirmedCents),
+                <>
+                  ×{r.factor.toFixed(2)}
+                  {r.saysPeople ? "" : <span className={MUTED}> · card quiet</span>}
+                </>,
+              ],
+            }))}
+          />
         </div>
       )}
       <p className={`text-sm ${MUTED}`}>

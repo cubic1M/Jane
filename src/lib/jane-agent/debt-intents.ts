@@ -139,8 +139,6 @@ export const DEBT_KINDS = new Set<string>([
   "debt_decision",
   "loan_fit",
 ]);
-export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
-  DEBT_KINDS.has(intent.kind);
 
 // The decisions people ask about debt and credit, in the order they're tried.
 export const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [

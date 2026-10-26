@@ -329,28 +329,6 @@ async function dayTrade(
   return out;
 }
 
-// Every portfolio, for the daily run (step 292 calls this beside the scan). One person's problem
-// never stops the rest.
-export async function runAutopilotForAll({
-  client = defaultClient,
-  now = new Date(),
-}: Options = {}) {
-  const rows = await client.practicePortfolio.findMany({
-    where: { paused: false },
-    select: { userId: true },
-  });
-  let trades = 0;
-  for (const { userId } of rows) {
-    try {
-      const r = await runAutopilot(userId, { client, now });
-      if (r.ran) trades += r.fills.length;
-    } catch (error) {
-      console.error("Practice autopilot failed", { error: String(error) });
-    }
-  }
-  return { portfolios: rows.length, trades };
-}
-
 // The pause switch: the whole portfolio, or opportunities alone (step 292). Takes effect before
 // the next run.
 export async function setPaused(

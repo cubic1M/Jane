@@ -5,6 +5,7 @@ import { spendToday } from "@/lib/jane-agent/spend";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { AdminTable } from "../admin-table";
 import { LoadingBar } from "@/components/loading-bar";
 
 // Spec step 93: what Jane couldn't answer in the chat, by kind of question and how it
@@ -59,27 +60,13 @@ async function Chat() {
         {data.byKind.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">Everything got an answer.</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="py-2 pr-4 font-semibold">Question kind</th>
-                <th className="py-2 pr-4 font-semibold">What happened</th>
-                <th className="py-2 font-semibold">Times</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.byKind.map((row) => (
-                <tr
-                  key={`${row.intent}|${row.how}`}
-                  className="border-b border-zinc-100 dark:border-zinc-900"
-                >
-                  <td className="py-2 pr-4">{row.intent}</td>
-                  <td className="py-2 pr-4">{HOW[row.how] ?? row.how}</td>
-                  <td className="py-2">{row.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <AdminTable
+            head={["Question kind", "What happened", "Times"]}
+            rows={data.byKind.map((row) => ({
+              key: `${row.intent}|${row.how}`,
+              cells: [row.intent, HOW[row.how] ?? row.how, row.count],
+            }))}
+          />
         )}
       </section>
       <section className="flex flex-col gap-2">

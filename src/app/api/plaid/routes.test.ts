@@ -16,19 +16,30 @@ vi.mock("@/lib/plaid/link", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/plaid/link")>()),
   createLinkToken: vi.fn(),
   exchangePublicToken: vi.fn(),
+  markItemRepaired: vi.fn(),
 }));
 vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(), ITEM_STATUS: { active: "active" } }));
 vi.mock("@/lib/plaid/webhook-verify", () => ({ verifyPlaidWebhook: vi.fn() }));
-vi.mock("@/lib/plaid/webhooks", () => ({ planWebhook: vi.fn() }));
+vi.mock("@/lib/plaid/webhooks", () => ({
+  planWebhook: vi.fn(),
+  firstDelivery: vi.fn(),
+  syncFromWebhook: vi.fn(),
+}));
 
 import { PlaidRequestError } from "@/lib/plaid/client";
-import { ItemNotFoundError, createLinkToken, exchangePublicToken } from "@/lib/plaid/link";
+import {
+  ItemNotFoundError,
+  createLinkToken,
+  exchangePublicToken,
+  markItemRepaired,
+} from "@/lib/plaid/link";
 import { syncItem } from "@/lib/plaid/sync";
 import { verifyPlaidWebhook } from "@/lib/plaid/webhook-verify";
-import { planWebhook } from "@/lib/plaid/webhooks";
+import { firstDelivery, planWebhook, syncFromWebhook } from "@/lib/plaid/webhooks";
 import { getCurrentUser } from "@/lib/session";
 import { POST as exchange } from "./exchange/route";
 import { POST as linkToken } from "./link-token/route";
+import { POST as repaired } from "./repaired/route";
 import { POST as webhook } from "./webhook/route";
 
 const json = (url: string, body: unknown, headers: Record<string, string> = {}) =>
@@ -46,9 +57,12 @@ beforeEach(() => {
     .mockResolvedValue({ id: "user_1" } as never);
   vi.mocked(createLinkToken).mockReset().mockResolvedValue("link-sandbox-1");
   vi.mocked(exchangePublicToken).mockReset().mockResolvedValue("item_row_1");
+  vi.mocked(markItemRepaired).mockReset().mockResolvedValue(undefined);
   vi.mocked(syncItem).mockReset();
   vi.mocked(verifyPlaidWebhook).mockReset();
   vi.mocked(planWebhook).mockReset();
+  vi.mocked(firstDelivery).mockReset().mockResolvedValue(true);
+  vi.mocked(syncFromWebhook).mockReset().mockResolvedValue(true);
   afterCallbacks.length = 0;
 });
 
@@ -146,6 +160,7 @@ describe("POST /api/plaid/webhook", () => {
     expect(response.status).toBe(401);
     expect(verifyPlaidWebhook).toHaveBeenCalledWith(BODY, "jwt");
     expect(planWebhook).not.toHaveBeenCalled();
+    expect(firstDelivery).not.toHaveBeenCalled();
     expect(afterCallbacks).toHaveLength(0);
   });
 
@@ -158,7 +173,20 @@ describe("POST /api/plaid/webhook", () => {
     expect(response.status).toBe(200);
     expect(planWebhook).toHaveBeenCalledWith(JSON.parse(BODY));
     for (const callback of afterCallbacks) await callback();
-    expect(syncItem).toHaveBeenCalledWith("item_row_1");
+    // One sync at a time per bank (src/lib/plaid/webhooks.ts).
+    expect(syncFromWebhook).toHaveBeenCalledWith("item_row_1");
+  });
+
+  it("acknowledges a delivery Plaid repeats without acting on it again", async () => {
+    vi.mocked(verifyPlaidWebhook).mockResolvedValue(true);
+    vi.mocked(firstDelivery).mockResolvedValue(false);
+
+    const response = await post();
+
+    expect(response.status).toBe(200);
+    expect(firstDelivery).toHaveBeenCalledWith(BODY, JSON.parse(BODY));
+    expect(planWebhook).not.toHaveBeenCalled();
+    expect(afterCallbacks).toHaveLength(0);
   });
 
   it("acknowledges events that need no sync", async () => {
@@ -166,6 +194,30 @@ describe("POST /api/plaid/webhook", () => {
     vi.mocked(planWebhook).mockResolvedValue(null);
 
     expect((await post()).status).toBe(200);
+    expect(afterCallbacks).toHaveLength(0);
+  });
+});
+
+describe("POST /api/plaid/repaired", () => {
+  const post = (body: unknown) => repaired(json("http://localhost/api/plaid/repaired", body));
+
+  it("refuses visitors who aren't signed in", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(null);
+    expect((await post({ itemId: "item1" })).status).toBe(401);
+  });
+
+  it("stops asking for the bank and syncs it after responding", async () => {
+    const response = await post({ itemId: "item1" });
+    expect(response.status).toBe(200);
+    expect(markItemRepaired).toHaveBeenCalledWith("user_1", "item1");
+    for (const callback of afterCallbacks) await callback();
+    expect(syncFromWebhook).toHaveBeenCalledWith("item1");
+  });
+
+  it("rejects a malformed item and answers 404 for someone else's", async () => {
+    expect((await post({ itemId: "../x" })).status).toBe(400);
+    vi.mocked(markItemRepaired).mockRejectedValue(new ItemNotFoundError());
+    expect((await post({ itemId: "item2" })).status).toBe(404);
     expect(afterCallbacks).toHaveLength(0);
   });
 });

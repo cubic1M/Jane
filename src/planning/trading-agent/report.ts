@@ -76,7 +76,7 @@ const round = (n: number) => Math.round(n * 10_000) / 10_000;
 
 function row(r: StrategyResult): string {
   const w = r.walk;
-  return `| ${r.label} | ${r.chosen.join(", ")} | ${pct(w.cagr)} | ${pct(w.maxDrawdown)} | ${num(w.sharpe)} | ${w.winRate === null ? "–" : pct(w.winRate)} | ${Math.round(w.tradesPerYear)} | ${num(w.turnover)}× | ${pct(r.excessCagr)} | ${Math.round(r.dsr * 100)}% | ${VERDICT_WORDS[r.verdict]} |`;
+  return `| ${r.label} | ${r.chosen.join(", ")} | ${pct(w.cagr)} | ${pct(r.hold.cagr)} | ${pct(w.maxDrawdown)} | ${num(w.sharpe)} | ${w.winRate === null ? "–" : pct(w.winRate)} | ${Math.round(w.tradesPerYear)} | ${num(w.turnover)}× | ${pct(r.excessCagr)} | ${Math.round(r.dsr * 100)}% | ${VERDICT_WORDS[r.verdict]} |`;
 }
 
 export function intradayMarkdown(
@@ -106,7 +106,7 @@ export function intradayMarkdown(
     `- **Left out:** ${CALENDAR_RULES.join(", ")}. They are calendar rules, and a made-up calendar means nothing to them; their daily results are in strategy-results.md.`,
     `- **Walk-forward:** the first ${Math.round(AGENT_TRAIN_SHARE * 100)}% of bars only train. The rest is cut into ${AGENT_FOLDS} folds, each scored with the setting the bars before it chose by Sharpe ratio (\"Settings\" lists them in order). Every figure below is from those out-of-sample folds.`,
     `- **The haircut:** the catalog's, the deflated Sharpe ratio of each strategy's bar returns over holding's, against the best of every trial run (the count is in each table). A strategy beats holding only when that is at least ${Math.round(AGENT_MIN_DSR * 100)}% and its growth is higher too.`,
-    '- **Figures:** CAGR is yearly growth; worst drop is peak to trough; Sharpe is yearly, from bar returns with no cash hurdle; win rate is the share of sells above what was paid, costs included; trades a year; turnover is what changed hands in a year over the average value; "vs hold" is CAGR minus just holding\'s.',
+    '- **Figures:** CAGR is yearly growth; worst drop is peak to trough; Sharpe is yearly, from bar returns with no cash hurdle; win rate is the share of sells above what was paid, costs included; trades a year; turnover is what changed hands in a year over the average value. "Holding it" is just holding the rule\'s own asset over the same bars (QQQ or ether for a rule pointed at them, else SPY or bitcoin), and "vs hold" is CAGR minus that.',
     "",
   );
   for (const { group: g, source } of groups) {
@@ -116,8 +116,8 @@ export function intradayMarkdown(
       "",
       `Bars: ${source}. Scored ${day(g.from)} to ${day(g.to)} (${g.bars.toLocaleString("en-US")} bars), ${g.trials} trials in the haircut. **Just holding ${m.hold.replace("/USD", "")}: ${pct(g.hold.cagr)} a year, worst drop ${pct(g.hold.maxDrawdown)}, Sharpe ${num(g.hold.sharpe)}.**`,
       "",
-      "| Strategy | Settings | CAGR | Worst drop | Sharpe | Win rate | Trades/yr | Turnover/yr | vs hold | DSR | Verdict |",
-      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      "| Strategy | Settings | CAGR | Holding it | Worst drop | Sharpe | Win rate | Trades/yr | Turnover/yr | vs hold | DSR | Verdict |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
       ...g.results.map(row),
       "",
     );

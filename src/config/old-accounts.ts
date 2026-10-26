@@ -16,7 +16,6 @@ export const ROLLOVER_STEPS = [
   { key: "arrives", label: "The old plan sends the money to your IRA" },
   { key: "invested", label: "Invested in your target mix" },
 ] as const;
-export type RolloverStepKey = (typeof ROLLOVER_STEPS)[number]["key"];
 
 // The stand-in plan takes this many days to send the money.
 export const ROLLOVER_DAYS = 3;
