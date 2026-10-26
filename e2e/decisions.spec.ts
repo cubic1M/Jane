@@ -144,8 +144,16 @@ test.describe("the demo bank", () => {
     // The agent starts right away on a card's yes, and the simulated company answers in
     // seconds, so a fast run may already show it working, or even done (What Jane did lists
     // it under In progress or Done while /actions is hidden).
-    if (isHiddenPage("/actions")) await expect(action).toBeVisible();
-    else await expect(action).toContainText(/Queued|In progress|Waiting on you|Done/);
+    if (isHiddenPage("/actions")) {
+      // What's underway shows open; once done it's in Done, folded, a tap away.
+      await expect(async () => {
+        const done = page.locator('[data-jane-section="Done"]');
+        if (!(await action.isVisible()) && (await done.getAttribute("open")) === null) {
+          await done.locator("> summary").click();
+        }
+        await expect(action).toBeVisible({ timeout: 2_000 });
+      }).toPass({ timeout: 20_000 });
+    } else await expect(action).toContainText(/Queued|In progress|Waiting on you|Done/);
     await expectNoSidewaysScroll(page);
   });
 });
