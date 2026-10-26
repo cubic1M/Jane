@@ -2,6 +2,7 @@ import {
   EVENT_HOLD_DAYS,
   EVENT_MAX_EXPOSURE_BY_LEVEL,
   EVENT_MIN_CONFIDENCE,
+  EVENT_STOP,
   EVENT_TILT_BY_LEVEL,
   EVENT_TYPES,
   type EventTypeId,
@@ -19,7 +20,8 @@ import type { AgentSignal } from "./trading-agent/types";
 // its record is at least EVENT_MIN_CONFIDENCE, one slice per type at a time, and all slices in force
 // together at most the level's EVENT_MAX_EXPOSURE_BY_LEVEL. A trim holds the fund at the strategy's
 // own weight less the slice (never below zero), so it needs the strategy's weights; without them a
-// trim is left out. The overlay's 7% stop isn't part of an AgentSignal: only the time exit is.
+// trim is left out. The overlay's stop (EVENT_STOP) goes with each signal: the agent undoes its trade
+// once a close moves that far against the fill.
 
 const DAY_MS = 86_400_000;
 
@@ -77,6 +79,7 @@ export function eventAgentSignals(
         weight,
         reason: `${e.title}. ${type.why} ${confidence}% sure, from its record.`,
         source: "events",
+        stopPct: EVENT_STOP,
         type: e.type,
         slice: perLeg,
       });

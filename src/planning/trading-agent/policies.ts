@@ -75,6 +75,7 @@ function catalogPolicy(id: CatalogId, map: Mapping, on: string | null): Policy {
   const back = Object.fromEntries(Object.entries(map).map(([a, b]) => [b, a]));
   return {
     key: on ? `catalog:${id}@${on}` : `catalog:${id}`,
+    ...(on ? { hold: on } : {}),
     label: on ? `${entry.label} on ${on.replace("/USD", "")}` : entry.label,
     tickers: entry.tickers.map((t) => map[t] ?? t),
     grid: entry.grid,

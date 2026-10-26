@@ -3,6 +3,7 @@ import history from "../../../../docs/chat-quality-history.json";
 import type { NightEntry } from "@/lib/jane-agent/checks/history";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { AdminTable } from "../admin-table";
 import { LoadingBar } from "@/components/loading-bar";
 
 // Spec step 195: how well Jane's chat answers, night by night. The nightly run
@@ -11,7 +12,6 @@ import { LoadingBar } from "@/components/loading-bar";
 // failed the last time. Scores and question wording only, never anyone's own words.
 
 const nights = history as NightEntry[];
-const cell = "py-2 pr-4";
 
 function Chart({ rows }: { rows: NightEntry[] }) {
   const scores = rows.filter((r) => r.score !== null);
@@ -52,37 +52,21 @@ async function ChatQuality() {
           <Chart rows={nights.slice(-60)} />
           <section className="flex flex-col gap-2">
             <h2 className="text-xl font-semibold">Nights</h2>
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className={`${cell} font-semibold`}>Night</th>
-                  <th className={`${cell} font-semibold`}>Run</th>
-                  <th className={`${cell} font-semibold`}>Score</th>
-                  <th className={`${cell} font-semibold`}>Graded</th>
-                  <th className={`${cell} font-semibold`}>Failing</th>
-                  <th className={`${cell} font-semibold`}>First words</th>
-                  <th className="py-2 font-semibold">Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.slice(0, 30).map((r) => (
-                  <tr
-                    key={`${r.date}${r.mode}`}
-                    className="border-b border-zinc-100 dark:border-zinc-900"
-                  >
-                    <td className={cell}>{r.date}</td>
-                    <td className={cell}>{r.mode === "full" ? "With Claude" : "Rules only"}</td>
-                    <td className={cell}>{r.score ?? "–"}</td>
-                    <td className={cell}>{r.graded}</td>
-                    <td className={cell}>{r.failed.length}</td>
-                    <td className={cell}>
-                      {r.firstWordsMs === null ? "–" : `${r.firstWordsMs} ms`}
-                    </td>
-                    <td className="py-2">${(r.costCents / 100).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <AdminTable
+              head={["Night", "Run", "Score", "Graded", "Failing", "First words", "Cost"]}
+              rows={recent.slice(0, 30).map((r) => ({
+                key: `${r.date}${r.mode}`,
+                cells: [
+                  r.date,
+                  r.mode === "full" ? "With Claude" : "Rules only",
+                  r.score ?? "–",
+                  r.graded,
+                  r.failed.length,
+                  r.firstWordsMs === null ? "–" : `${r.firstWordsMs} ms`,
+                  `$${(r.costCents / 100).toFixed(2)}`,
+                ],
+              }))}
+            />
           </section>
           <section className="flex flex-col gap-2">
             <h2 className="text-xl font-semibold">Failed on {last.date}</h2>

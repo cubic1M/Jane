@@ -92,6 +92,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   decision_made: own,
   decision_undone: own,
   item_linked: own,
+  item_relinked: own,
   admin_viewed_queue: {
     shown: true,
     whose: "queue",
@@ -246,6 +247,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   paper_trade_taken: own,
   paper_trade_reverted: own,
   paper_signal_skipped: own,
+  paper_agent_started: own,
+  paper_agent_stopped: own,
   paper_events_switched: own,
 };
 
