@@ -194,6 +194,120 @@ describe.runIf(url)("syncItem against a real database", () => {
     });
   });
 
+  it("replaces a pending transaction with its posted one, never counting both", async () => {
+    const acc = `${suffix}-acc`;
+    const noStreams = { data: { outflow_streams: [], inflow_streams: [] } };
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [plaidAccount({ account_id: acc })],
+        added: [{ ...netflix("p1", "2026-10-10", 9.99), account_id: acc, pending: true }],
+        next_cursor: "cursor-4",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce(noStreams);
+    await syncItem(itemId, { client, api, now: NOW });
+    // The person files the pending charge under a category of their own.
+    await client.transaction.updateMany({
+      where: { plaidTransactionId: `${suffix}-p1` },
+      data: { pfcPrimary: "ENTERTAINMENT", categorySource: "user" },
+    });
+
+    // It posts: Plaid adds the posted one, pointing at the pending one, before (or without)
+    // listing the pending one as removed.
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [plaidAccount({ account_id: acc })],
+        added: [
+          {
+            ...netflix("posted1", "2026-10-11", 9.99),
+            account_id: acc,
+            pending: false,
+            pending_transaction_id: `${suffix}-p1`,
+          },
+        ],
+        next_cursor: "cursor-5",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce(noStreams);
+    await syncItem(itemId, { client, api, now: NOW });
+    const ids = (await transactions()).map((t) => t.plaidTransactionId);
+    expect(ids).toContain(`${suffix}-posted1`);
+    expect(ids).not.toContain(`${suffix}-p1`);
+    expect(
+      await client.transaction.findFirstOrThrow({
+        where: { plaidTransactionId: `${suffix}-posted1` },
+      }),
+    ).toMatchObject({ pending: false, pfcPrimary: "ENTERTAINMENT", categorySource: "user" });
+
+    // Plaid's later removal of the pending one changes nothing.
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [plaidAccount({ account_id: acc })],
+        removed: [{ transaction_id: `${suffix}-p1`, account_id: acc }],
+        next_cursor: "cursor-6",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce(noStreams);
+    await syncItem(itemId, { client, api, now: NOW });
+    expect((await transactions()).filter((t) => t.amountCents === 999)).toHaveLength(1);
+  });
+
+  it("keeps its cursor through a failure, says why, and the next sync resumes from it", async () => {
+    transactionsSync.mockRejectedValueOnce(plaidApiError("INVALID_FIELD", 400));
+    await expect(syncItem(itemId, { client, api, now: NOW })).rejects.toMatchObject({
+      code: "INVALID_FIELD",
+    });
+    const failed = await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } });
+    expect(failed).toMatchObject({
+      transactionsCursor: "cursor-6",
+      status: "active",
+      lastErrorCode: "INVALID_FIELD",
+    });
+    expect(failed.lastErrorAt).toEqual(NOW);
+
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [plaidAccount({ account_id: `${suffix}-acc` })],
+        next_cursor: "cursor-7",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+    await syncItem(itemId, { client, api, now: NOW });
+    expect(transactionsSync.mock.calls.at(-1)![0].cursor).toBe("cursor-6");
+    expect(await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } })).toMatchObject({
+      transactionsCursor: "cursor-7",
+      lastErrorCode: null,
+      lastErrorAt: null,
+    });
+  });
+
+  it("marks the bank for signing in again when Plaid says so, and a good sync clears it", async () => {
+    transactionsSync.mockRejectedValueOnce(plaidApiError("ITEM_LOGIN_REQUIRED", 400));
+    await expect(syncItem(itemId, { client, api, now: NOW })).rejects.toMatchObject({
+      code: "ITEM_LOGIN_REQUIRED",
+    });
+    expect(await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } })).toMatchObject({
+      status: "login_required",
+      transactionsCursor: "cursor-7",
+    });
+
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [plaidAccount({ account_id: `${suffix}-acc` })],
+        next_cursor: "cursor-8",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+    await syncItem(itemId, { client, api, now: NOW });
+    expect((await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } })).status).toBe(
+      "active",
+    );
+  });
+
   it("reads loans and card rates for items linked with Liabilities", async () => {
     const loanItem = await client.plaidItem.create({
       data: {

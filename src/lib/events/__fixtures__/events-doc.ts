@@ -1,0 +1,218 @@
+import {
+  EVENT_COOL_OFF_DAYS,
+  EVENT_COST_BPS,
+  EVENT_HOLD_DAYS,
+  EVENT_MAX_EXPOSURE_BY_LEVEL,
+  EVENT_MIN_CONFIDENCE,
+  EVENT_STOP,
+  EVENT_TILT_BY_LEVEL,
+  EVENT_TYPES,
+  GDELT_BASELINE_DAYS,
+  GDELT_MIN_ARTICLES,
+  GDELT_SPIKE_RATIO,
+  PRICE_SHOCKS,
+} from "@/config/events";
+import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
+import type { BacktestResult, Metrics } from "@/planning/event-backtest";
+import {
+  BACKTEST_FROM,
+  BACKTEST_LEVELS,
+  BACKTEST_TO,
+  EVIDENCE_LEVEL,
+  backtest,
+  historicalEvents,
+} from "./backtests";
+import { GDELT_FIXTURE_SOURCE } from "./index";
+
+// Where the replay's prices come from (src/lib/market/__fixtures__/real/README.md).
+const REAL_FIXTURE_SOURCE =
+  "Yahoo Finance adjusted daily closes, 2016-01-04 to 2026-10-21, downloaded 2026-10-22";
+
+// Writes docs/backtests/events.md and src/config/event-evidence.ts from the backtests, so the
+// numbers in both always come from a run (src/planning/event-backtest.research.test.ts writes
+// them; src/planning/event-evidence.test.ts checks they still match).
+
+const pct = (x: number, digits = 1) => `${(x * 100).toFixed(digits)}%`;
+const signed = (x: number, digits = 1) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(digits)}`;
+const bps = (x: number) => `${x >= 0 ? "+" : ""}${Math.round(x * 10_000)}`;
+
+const row = (m: Metrics) =>
+  `${pct(m.yearly)} | ${pct(m.totalReturn, 0)} | ${pct(m.maxDrawdown)} | ${m.sharpe.toFixed(2)}`;
+
+export type DocRuns = { full: Record<number, BacktestResult>; halves: BacktestResult[][] };
+
+export function runAll(): DocRuns {
+  const full: Record<number, BacktestResult> = {};
+  for (const level of BACKTEST_LEVELS) full[level] = backtest(level);
+  const halves = BACKTEST_LEVELS.map((level) => [
+    backtest(level, { to: "2021-12-31" }),
+    backtest(level, { from: "2022-01-03" }),
+  ]);
+  return { full, halves };
+}
+
+// Whether the overlay helped at a level: a Sharpe ratio higher by more than rounding, and no
+// deeper drawdown. Hurt: a Sharpe ratio lower by more than rounding. Otherwise no clear difference.
+const SHARPE_MARGIN = 0.02;
+const verdictOf = (r: BacktestResult): "helped" | "hurt" | "no clear difference" => {
+  const d = r.overlay.sharpe - r.base.sharpe;
+  if (d > SHARPE_MARGIN && r.overlay.maxDrawdown >= r.base.maxDrawdown - 0.002) return "helped";
+  if (d < -SHARPE_MARGIN) return "hurt";
+  return "no clear difference";
+};
+
+const range = (xs: number[], f: (x: number) => string) => {
+  const lo = Math.min(...xs);
+  const hi = Math.max(...xs);
+  return f(lo) === f(hi) ? f(lo) : `${f(lo)} to ${f(hi)}`;
+};
+
+function verdict(runs: DocRuns): string {
+  const all = BACKTEST_LEVELS.map((l) => runs.full[l]);
+  const kinds = all.map(verdictOf);
+  const points = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} points`;
+  const sharpe = (x: number) => `${x >= 0 ? "+" : ""}${x.toFixed(2)}`;
+  const facts = `Against the strategy alone, at the levels tested: yearly return ${range(
+    all.map((r) => r.overlay.yearly - r.base.yearly),
+    points,
+  )}, Sharpe ratio ${range(
+    all.map((r) => r.overlay.sharpe - r.base.sharpe),
+    sharpe,
+  )}, worst drop ${range(
+    all.map((r) => r.overlay.maxDrawdown - r.base.maxDrawdown),
+    points,
+  )}.`;
+  const halves = runs.halves.map(([a, b]) => [
+    a.overlay.sharpe - a.base.sharpe,
+    b.overlay.sharpe - b.base.sharpe,
+  ]);
+  const split =
+    halves.every(([a]) => a < 0) && halves.every(([, b]) => b > 0)
+      ? " It lagged in the first half (2017 to 2021) and led in the second (2022 to now), so the result isn't stable."
+      : halves.every(([a, b]) => a > 0 && b > 0)
+        ? " It led in both halves."
+        : halves.every(([a, b]) => a < 0 && b < 0)
+          ? " It lagged in both halves."
+          : "";
+  const head = kinds.every((k) => k === "helped")
+    ? "With these rules the overlay **helped at every level tested**: a higher Sharpe ratio with no deeper drawdown. See the caveats: the event types and their funds were chosen knowing how such events went."
+    : kinds.every((k) => k === "hurt")
+      ? "With these rules the overlay **hurt at every level tested**: a lower Sharpe ratio than the strategy alone."
+      : kinds.some((k) => k === "helped")
+        ? `With these rules the overlay **helped at ${kinds.filter((k) => k === "helped").length} of ${kinds.length} levels** and not at the others.`
+        : `With these rules the overlay **made no clear difference**: no level's Sharpe ratio moved by more than ${SHARPE_MARGIN} with no deeper drawdown.`;
+  return `${head} ${facts}${split} It stays off by default, and each type trades only while its own record so far is at least a coin flip.`;
+}
+
+export function eventsDoc(runs: DocRuns = runAll()): string {
+  const events = historicalEvents();
+  const levelName = (l: RiskLevel) => `${RISK_LEVELS[l].label} (${l})`;
+  const lines: string[] = [];
+  lines.push(
+    "# Events overlay: backtest",
+    "",
+    "Generated by `EVENTS_BACKTEST_OUT=1 npx vitest run src/planning/event-backtest.research.test.ts`",
+    "from `src/lib/events/__fixtures__/events-doc.ts`. Don't edit by hand: `src/planning/event-evidence.test.ts`",
+    "fails when this file no longer matches a fresh run.",
+    "",
+    "A replay of the past on real prices, not a forecast. Simulated money only.",
+    "",
+    "## Verdict",
+    "",
+    verdict(runs),
+    "",
+    "## Strategy alone vs strategy + events",
+    "",
+    `${BACKTEST_FROM} to ${BACKTEST_TO}, each level's plain mix (VTI, VXUS, BND, BIL) rebalanced monthly. Yearly return, total return, worst drop from a peak, Sharpe ratio (against BIL).`,
+    "",
+    "| Level | Alone: yearly | total | max drawdown | Sharpe | With events: yearly | total | max drawdown | Sharpe | Verdict |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...BACKTEST_LEVELS.map(
+      (l) =>
+        `| ${levelName(l)} | ${row(runs.full[l].base)} | ${row(runs.full[l].overlay)} | ${verdictOf(runs.full[l])} |`,
+    ),
+    "",
+    "The same, in two halves (is it stable?):",
+    "",
+    "| Level | Period | Alone: yearly | Sharpe | With events: yearly | Sharpe |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...BACKTEST_LEVELS.flatMap((l, i) =>
+      runs.halves[i].map(
+        (r) =>
+          `| ${levelName(l)} | ${r.from} to ${r.to} | ${pct(r.base.yearly)} | ${r.base.sharpe.toFixed(2)} | ${pct(r.overlay.yearly)} | ${r.overlay.sharpe.toFixed(2)} |`,
+      ),
+    ),
+    "",
+    `## By event type (${levelName(EVIDENCE_LEVEL)})`,
+    "",
+    "Events traded, and events followed only (skipped because the type's record was under the bar or one of the same kind was already open: nothing traded, but its result counts in the record, so a type can earn its way back). Hit rate: over every event of the type, the share whose slices beat the strategy over the same days. Help: the average per traded event, in basis points of the whole account.",
+    "",
+    "| Event | Funds | Traded | Followed | Hit rate (all) | Help per traded event (bps) |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...runs.full[EVIDENCE_LEVEL].types.map((t) => {
+      const type = EVENT_TYPES[t.type];
+      const funds = type.legs.map((l) => `${l.side} ${l.tickers[0]}`).join(", ");
+      return `| ${type.label} | ${funds} | ${t.events} | ${t.watched} | ${t.hitRate === null ? "–" : pct(t.hitRate, 0)} | ${t.averageHelp === null ? "–" : bps(t.averageHelp)} |`;
+    }),
+    "",
+    `Events found in ${BACKTEST_FROM} to ${BACKTEST_TO}: ${events.length} (${events.filter((e) => e.source === "gdelt").length} news-coverage spikes, ${events.filter((e) => e.source === "price").length} price shocks), one per type per ${EVENT_COOL_OFF_DAYS} days.`,
+    "",
+    "## How it was tested",
+    "",
+    `- **Events.** GDELT's daily article count for each type's query (\`src/config/events.ts\`), as a share of all articles that day. A day is an event when its share is at least ${GDELT_SPIKE_RATIO} times the median of the ${GDELT_BASELINE_DAYS} days before it, with at least ${GDELT_MIN_ARTICLES} articles. Plus price shocks: ${PRICE_SHOCKS.map((p) => `${p.ticker} ${signed(p.move)}% in a day`).join(", ")}. Source: ${GDELT_FIXTURE_SOURCE}.`,
+    "- **No lookahead.** Each event carries the time it became public: a GDELT day 15 minutes after it ends (UTC), a price shock after that close, a Fed statement at its release. The overlay acts only at a close after that time, using closes up to that day. Confidence uses each type's own closed events before that day. A test cuts the history off at a date, and doubles every later close, and checks that no decision before the date changes.",
+    `- **Overlay.** Each event adds a slice of ${BACKTEST_LEVELS.map((l) => `${pct(EVENT_TILT_BY_LEVEL[l], 1)} (level ${l})`).join(", ")} of the account, split across its funds, paid for by scaling the whole mix down; a trim moves that share of a held fund to cash. All slices at most ${BACKTEST_LEVELS.map((l) => `${pct(EVENT_MAX_EXPOSURE_BY_LEVEL[l], 0)} (level ${l})`).join(", ")}. Out after ${EVENT_HOLD_DAYS} trading days or at a ${pct(EVENT_STOP, 0)} move against it. A type trades only while its record so far is at least ${EVENT_MIN_CONFIDENCE}% (a coin flip to start); its skipped events are still followed and scored.`,
+    `- **Costs.** ${EVENT_COST_BPS} basis points on every trade, both portfolios. No taxes. Prices: ${REAL_FIXTURE_SOURCE}.`,
+    "",
+    "## Caveats",
+    "",
+    "- The event types, their queries and their funds were picked knowing how such events have tended to go (energy after Gulf fighting, gold in a scare). That is a form of fitting to the past, so the true edge is likely smaller than shown.",
+    "- Few events per type: a hit rate over a dozen events moves a lot with one more.",
+    "- GDELT's coverage is a count of articles, not of what happened: a busy news week can look like an event, and a real event that the press under-covers can be missed.",
+    "- Live, the paper account also reads the Fed's, BLS's and EIA's feeds and the stored headlines, which this replay doesn't (their archives aren't point-in-time).",
+    "",
+  );
+  return lines.join("\n");
+}
+
+// The record that seeds the paper account's confidence: the evidence level's full run.
+export function evidenceValues(runs: DocRuns = runAll()) {
+  const r = runs.full[EVIDENCE_LEVEL];
+  const summary = (m: Metrics) => ({
+    yearly: Number(m.yearly.toFixed(4)),
+    maxDrawdown: Number(m.maxDrawdown.toFixed(4)),
+    sharpe: Number(m.sharpe.toFixed(2)),
+  });
+  return {
+    EVENT_EVIDENCE: Object.fromEntries(
+      r.types.map((t) => [
+        t.type,
+        {
+          events: t.events + t.watched,
+          hits: Math.round((t.hitRate ?? 0) * (t.events + t.watched) * 10) / 10,
+        },
+      ]),
+    ),
+    EVENT_EVIDENCE_RANGE: { from: r.from, to: r.to, level: EVIDENCE_LEVEL },
+    EVENT_EVIDENCE_SUMMARY: { alone: summary(r.base), withEvents: summary(r.overlay) },
+  };
+}
+
+export function evidenceSource(runs: DocRuns = runAll()): string {
+  const v = evidenceValues(runs);
+  const json = (x: unknown) => JSON.stringify(x, null, 2);
+  return `import type { EventTypeId } from "@/config/events";
+
+// The events overlay's past record (docs/backtests/events.md), written by the backtest
+// (src/lib/events/__fixtures__/events-doc.ts) and checked against a fresh run by
+// src/planning/event-evidence.test.ts: don't edit by hand. Per event type, at level
+// ${EVIDENCE_LEVEL}: every event scored (traded or followed) and how many helped. It seeds the paper account's confidence
+// (src/planning/event-overlay.ts confidenceFor), so a type starts from its record, not a guess.
+
+export const EVENT_EVIDENCE: Readonly<Record<EventTypeId, { events: number; hits: number }>> = ${json(v.EVENT_EVIDENCE)};
+
+export const EVENT_EVIDENCE_RANGE = ${json(v.EVENT_EVIDENCE_RANGE)} as const;
+
+export const EVENT_EVIDENCE_SUMMARY = ${json(v.EVENT_EVIDENCE_SUMMARY)} as const;
+`;
+}

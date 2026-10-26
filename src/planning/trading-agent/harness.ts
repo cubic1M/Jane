@@ -184,8 +184,19 @@ export function runGroup(
   const n = tl.times.length;
   const trainEnd = Math.floor(n * AGENT_TRAIN_SHARE);
   if (n < 200 || n - trainEnd < AGENT_FOLDS * 30) return null;
-  const hold = holdReplay(holdTicker, tl, costs);
-  const holdR = barReturns(hold.values);
+  // Just holding: the market's own asset for the heading, and each rule's own asset for its row.
+  const holds = new Map<string, { r: number[]; metrics: Metrics }>();
+  const holdOf = (ticker: string) => {
+    let h = holds.get(ticker);
+    if (!h) {
+      const run = holdReplay(ticker, tl, costs);
+      const r = barReturns(run.values);
+      h = { r, metrics: metricsOf(tl.times, r, trainEnd, n - 1, [], mean(run.values)) };
+      holds.set(ticker, h);
+    }
+    return h;
+  };
+  const holdFor = (p: Policy) => holdOf(p.hold && tl.close[p.hold] ? p.hold : holdTicker);
   const trials: Trial[] = [];
   for (const policy of policies) {
     if (policy.tickers.some((t) => !tl.close[t]?.some((c) => c > 0))) continue;
@@ -196,6 +207,7 @@ export function runGroup(
   }
   // The haircut: how much the trials' Sharpe ratios over holding vary, and how many there were.
   const perBar = trials.map((t) => {
+    const holdR = holdFor(t.policy).r;
     const ex = t.r.map((x, i) => x - holdR[i]).slice(1);
     const s = sd(ex);
     return s > 0 ? mean(ex) / s : 0;
@@ -211,7 +223,7 @@ export function runGroup(
     const s = sd(xs);
     return s > 0 ? mean(xs) / s : -Infinity;
   };
-  const holdMetrics = metricsOf(tl.times, holdR, trainEnd, n - 1, [], mean(hold.values));
+  const marketHold = holdOf(holdTicker).metrics;
   const results: StrategyResult[] = [];
   for (const policy of policies) {
     const mine = trials.filter((t) => t.policy.key === policy.key);
@@ -243,7 +255,9 @@ export function runGroup(
     // Trades are scaled to each fold's start so turnover reads against an index from 1.
     const w = metricsOf(tl.times, walk, trainEnd, n - 1, walkTrades, valueSum / (n - trainEnd));
     w.costsCents = Math.round(w.costsCents * START_CENTS);
-    const ex = walk.slice(trainEnd).map((x, k) => x - holdR[trainEnd + k]);
+    const own = holdFor(policy);
+    const holdMetrics = own.metrics;
+    const ex = walk.slice(trainEnd).map((x, k) => x - own.r[trainEnd + k]);
     const dsr = probabilisticSharpe(ex, sr0);
     const verdict: Verdict =
       w.cagr < 0
@@ -270,6 +284,6 @@ export function runGroup(
     bars: n - trainEnd,
     trials: trials.length + extraTrials,
     results: results.sort((a, b) => b.walk.sharpe - a.walk.sharpe),
-    hold: holdMetrics,
+    hold: marketHold,
   };
 }

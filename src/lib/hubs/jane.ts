@@ -169,5 +169,3 @@ export async function loadJaneHub(
     },
   };
 }
-
-export type JaneHub = Awaited<ReturnType<typeof loadJaneHub>>;

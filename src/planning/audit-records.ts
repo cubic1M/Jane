@@ -1,4 +1,4 @@
-import { ITEM_RETENTION, RETENTION, RETENTION_REMIND_DAYS } from "@/config/records";
+import { RETENTION, RETENTION_REMIND_DAYS } from "@/config/records";
 import { addDays } from "@/lib/dates";
 
 // Audit-ready records (spec step 171). Pure. Every deduction and credit Jane counts is an
@@ -103,8 +103,6 @@ export function retentionFor(year: number, key: keyof typeof RETENTION, today: s
 export function retentionSchedule(years: number[], today: string): Retention[] {
   return [...new Set(years)].sort().map((y) => retentionFor(y, "return", today));
 }
-
-export const retentionOfItem = (itemKey: string) => ITEM_RETENTION[itemKey] ?? "return";
 
 const csvCell = (value: string): string => {
   const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;

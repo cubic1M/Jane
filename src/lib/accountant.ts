@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
   ANSWER_MAX,
-  DEFAULT_LINK_DAYS,
   LABEL_MAX,
   LARGE_GAINS_CENTS,
   LINK_DAYS_CHOICES,
@@ -432,5 +431,3 @@ export async function answerByToken(
   );
   await track(userId, "accountant_answered", {});
 }
-
-export const DEFAULT_DAYS = DEFAULT_LINK_DAYS;

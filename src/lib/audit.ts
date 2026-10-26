@@ -56,6 +56,8 @@ export type AuditEvent =
   | "decision_made"
   | "decision_undone"
   | "item_linked"
+  // A bank signed in again (or its new accounts shared) through Link's update mode.
+  | "item_relinked"
   // Admin tools: every view of user data and every status change.
   | "admin_viewed_queue"
   | "admin_viewed_action"
@@ -251,7 +253,12 @@ export type AuditEvent =
   | "paper_account_started"
   | "paper_trade_taken"
   | "paper_trade_reverted"
+  // The 24-hour agent (src/lib/trading-agent/agent.ts), on simulated money.
+  | "paper_agent_started"
+  | "paper_agent_stopped"
   | "paper_signal_skipped"
+  // The events overlay on the paper account (src/lib/events/run.ts): switched on or off.
+  | "paper_events_switched"
   | "practice_trade"
   // The person's practice-portfolio preferences changed, from the page or the chat (which fields,
   // never the amounts).

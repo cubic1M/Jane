@@ -1,11 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ALL_DETAILED, type PfcDetailed } from "./taxonomy";
 
-// The LLM only classifies merchants the keyword rules couldn't place. It sees cleaned
-// merchant names and nothing else: no amounts, dates, account details, names or emails.
-
-export const CATEGORIZE_PROMPT_VERSION = "categorize-v1";
-
 const DEFAULT_MODEL = "claude-opus-5-5";
 const BATCH_SIZE = 50;
 const UNKNOWN = "UNKNOWN";

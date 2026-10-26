@@ -98,7 +98,9 @@ function reasonFor(item: Ranked, all: Ranked[], asOf: string): string {
           : `it saves ${cents} a year`,
     );
   }
-  reasons.push(timeWords(item.minutes));
+  // The time is said last; when it's the only reason it needs its own "it" (QA: "Because takes
+  // one tap.").
+  reasons.push(`${reasons.length === 0 ? "it " : ""}${timeWords(item.minutes)}`);
   return reasons.join(" and ").replace(/ and (?=[^,]* and )/, ", ");
 }
 

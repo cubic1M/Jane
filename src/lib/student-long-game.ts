@@ -4,7 +4,7 @@ import type { DebtBook } from "@/insights/debts";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { DeadlineError, addDeadline, markDeadlineDone } from "@/lib/deadlines";
+import { DeadlineError, addDeadline } from "@/lib/deadlines";
 import { formatCents } from "@/lib/money";
 import { loadRefinance } from "@/lib/refinance";
 import { loadStudentLoans, type StudentLoans } from "@/lib/student-loans";
@@ -254,17 +254,4 @@ export async function syncStudentDeadlines(
     );
   }
   return added;
-}
-
-// Ticks off the deadlines of a date that moved on (a certification done, a year later).
-export async function clearStudentDeadline(
-  userId: string,
-  field: "certifyDeadlineId" | "recertifyDeadlineId",
-  { client = defaultClient, now = new Date() }: Options = {},
-): Promise<void> {
-  const db = scopedFor(userId, client);
-  const row = await db.studentLoanProfiles.findFirst({ select: { [field]: true } });
-  const id = (row as Record<string, string | null> | null)?.[field];
-  if (id) await markDeadlineDone(userId, id, { client, now });
-  await db.studentLoanProfiles.updateMany({ where: {}, data: { [field]: null } });
 }
