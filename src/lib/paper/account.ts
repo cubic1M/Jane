@@ -407,6 +407,10 @@ export async function takeSignal(
   const account = await loadAccount(userId, client);
   if (!signal || !account || signal.accountId !== account.id)
     return { ok: false, error: "That trade isn't waiting any more." };
+  // While the 24-hour agent runs the account, it alone trades it: a trade from outside would
+  // leave its state behind. The events overlay reaches it as signals (registerAgentSignals).
+  if (account.agentPolicy)
+    return { ok: false, error: "The 24-hour agent runs this account; stop it to trade by hand." };
   const state = stateOf(account);
   const heldCents = Math.floor((state.positions[signal.ticker]?.quantity ?? 0) * signal.priceCents);
   const amount =

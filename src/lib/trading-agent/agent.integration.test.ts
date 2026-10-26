@@ -12,7 +12,7 @@ import { AGENT_INTERVALS, AGENT_LOOKBACK_BARS, AGENT_MARKETS } from "@/config/tr
 import { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import type { Bar } from "@/lib/market/types";
-import { revertTrade, runPaperDay, startPaperAccount } from "@/lib/paper/account";
+import { revertTrade, runPaperDay, startPaperAccount, takeSignal } from "@/lib/paper/account";
 import type { PaperPrices } from "@/lib/paper/prices";
 import { runAgent, startState } from "@/planning/trading-agent/engine";
 import { policyByKey } from "@/planning/trading-agent/policies";
@@ -256,6 +256,27 @@ describe.runIf(url)("the 24-hour agent", () => {
     const run = await runPaperDay(userId, { client, now: hours(10), prices: dailyPrices });
     expect(run.signals).toBe(0);
     expect(await client.paperSignal.count({ where: { userId, status: "open" } })).toBe(0);
+    // Nothing else trades the account while it runs (the events overlay sends it signals instead).
+    const signal = await client.paperSignal.create({
+      data: {
+        accountId: (await client.paperAccount.findUniqueOrThrow({ where: { userId } })).id,
+        userId,
+        createdAt: hours(10),
+        key: "test:outside",
+        source: "events",
+        ticker: "SPY",
+        side: "buy",
+        amountCents: 10_000,
+        priceCents: 50_000,
+        reason: "From outside (test).",
+        confidence: 60,
+        status: "open",
+      },
+    });
+    expect(await takeSignal(userId, signal.id, { client, now: hours(10) })).toEqual({
+      ok: false,
+      error: "The 24-hour agent runs this account; stop it to trade by hand.",
+    });
     // Its trades can't be taken back while it runs.
     const last = (await agentTrades(userId)).at(-1);
     if (last)
