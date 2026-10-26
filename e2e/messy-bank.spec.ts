@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { expectFinding } from "./report-page";
 
 // A messy real bank (founder, 2026-10-26), through the CSV import: Chase checking and savings
 // exports and two card exports that overlap by a month (e2e/fixtures/messy). Card payments,
@@ -59,9 +60,7 @@ test("a messy bank's exports: nothing counted twice, no false subscriptions, no 
   await importInto(page, "Chase Freedom (Credit card)", ["card-jul-sep.csv", "card-aug-oct.csv"]);
 
   // The report: the price rise, and no coffee, Amazon or card payment as something to fix.
-  await expect(
-    page.getByRole("link", { name: /Netflix went up from \$15\.49 to \$17\.99/ }),
-  ).toBeVisible();
+  await expectFinding(page, /Netflix went up from \$15\.49 to \$17\.99/);
   const report = page.getByRole("main");
   await expect(report).not.toContainText(/Joes Coffee|Autopay|Transfer/i);
 
