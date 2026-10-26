@@ -251,6 +251,9 @@ export type AuditEvent =
   | "paper_account_started"
   | "paper_trade_taken"
   | "paper_trade_reverted"
+  // The 24-hour agent (src/lib/trading-agent/agent.ts), on simulated money.
+  | "paper_agent_started"
+  | "paper_agent_stopped"
   | "paper_signal_skipped"
   // The events overlay on the paper account (src/lib/events/run.ts): switched on or off.
   | "paper_events_switched"
