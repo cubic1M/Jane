@@ -4,6 +4,9 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/rate-limit", () => ({
+  hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
+}));
 vi.mock("@/lib/invites", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/invites")>()),
   createInviteCode: vi.fn(),
@@ -12,6 +15,7 @@ vi.mock("@/lib/invites", async (importOriginal) => ({
 
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { hit } from "@/lib/rate-limit";
 import { createInviteCode, revokeInviteCode } from "@/lib/invites";
 import { requireAdmin } from "@/lib/session";
 import { createInvite, revokeInvite } from "./actions";
@@ -67,6 +71,13 @@ describe("the invite admin actions", () => {
       uses: 1,
       locked_to_email: true,
     });
+  });
+
+  it("makes only so many codes an hour per admin", async () => {
+    vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
+    expect(await createInvite(null, form({ maxUses: "1" }))).toMatchObject({ ok: false });
+    expect(hit).toHaveBeenCalledWith("invites", "admin_1");
+    expect(createInviteCode).not.toHaveBeenCalled();
   });
 
   it("refuses bad uses and a bad email", async () => {

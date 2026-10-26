@@ -1,8 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
+import { edgeLimit } from "@/lib/edge-limits";
 import { newNonce, pageCsp } from "@/lib/security-headers";
 
-// Runs before every page. Two jobs:
+// Runs before every page, API route and server action. Three jobs:
+// - Rate limits for every API route and server action, per IP and per session
+//   (src/lib/edge-limits.ts): over the limit, a calm 429 and nothing else runs.
 // - /admin answers everyone but admins with a 404, so its existence isn't revealed, and
 //   sends admins who haven't entered a two-factor code in this session to /mfa. The pages
 //   check again with requireAdmin(); this runs first so the status is a real 404.
@@ -10,6 +13,13 @@ import { newNonce, pageCsp } from "@/lib/security-headers";
 //   request and puts the nonce on its own scripts; nothing else runs (docs/security/edge.md).
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const limited = await edgeLimit({
+    method: request.method,
+    pathname,
+    headers: request.headers,
+    cookies: request.cookies,
+  });
+  if (limited) return limited;
   // API routes set their own headers (next.config.ts).
   if (pathname.startsWith("/api/")) return NextResponse.next();
 

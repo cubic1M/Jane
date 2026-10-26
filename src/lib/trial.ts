@@ -1,6 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { personById, type PersonId } from "@/config/people";
-import { TRIAL_EMAIL_DOMAIN, TRIAL_HOURS, TRIAL_ID_PREFIX } from "@/config/trial";
+import {
+  TRIAL_EMAIL_DOMAIN,
+  TRIAL_HOURS,
+  TRIAL_ID_PREFIX,
+  TRIAL_SESSION_PREFIX,
+} from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { demoBankEnabled, linkDemoBank } from "@/lib/plaid/demo";
@@ -77,7 +82,7 @@ export async function startTrial({
   });
   timing.mark("create_user");
   const expires = new Date(now.getTime() + TRIAL_HOURS * HOUR_MS);
-  const sessionToken = randomBytes(32).toString("hex");
+  const sessionToken = `${TRIAL_SESSION_PREFIX}${randomBytes(32).toString("hex")}`;
   // These only need the new person to exist, so they go together instead of one after another
   // (each is a round trip to the database, and the visitor is waiting).
   const [, { itemId }] = await Promise.all([

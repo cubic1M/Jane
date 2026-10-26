@@ -61,6 +61,8 @@ describe.runIf(url)("trying Jane with sample data", { timeout: 120_000 }, () => 
   it("makes a sample person with the demo bank, signed in for a day", async () => {
     const { userId, sessionToken, expires } = await start();
     expect(userId).toMatch(/^trial_[0-9a-f]{24}$/);
+    // Marked, so the proxy gives sample people their own rate limits (src/lib/edge-limits.ts).
+    expect(sessionToken).toMatch(/^trial_[0-9a-f]{64}$/);
     expect(expires.getTime() - NOW.getTime()).toBe(TRIAL_HOURS * HOUR);
     const session = await client.session.findUniqueOrThrow({ where: { sessionToken } });
     expect(session).toMatchObject({ userId, expires, userAgent: "Test browser" });
