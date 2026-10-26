@@ -173,10 +173,17 @@ where a plain query would just have queued.
 - `src/lib/rls-pg.test.ts`: what the app's pool sends for each statement Prisma writes.
 - The rest of the suite (cron, trial clean-up, retention, admin, demo bank) runs with RLS on, in
   CI and against a scratch database set up like Neon (a non-superuser owner with `BYPASSRLS`).
-- In production: `/admin/errors` (and the Vercel logs) show "Row-level security is off" if the
-  switch ever fails. To check by hand, from a database console:
-  `SELECT count(*) FROM pg_class WHERE relrowsecurity;` (about 154) and
-  `SELECT * FROM jane_rls_protect_all();` (nothing skipped).
+- In production, without touching the database: **`/admin/health`** (admins only) has a
+  "Row-level security" line, read live from the database's catalog
+  (`src/lib/rls-coverage.ts`). It shows "On: N of N user-owned tables covered · this server
+  switches to it", or an `[ERROR]` box naming each table that isn't covered. "Every table" lists
+  each one with RLS on or off and its policy count. "This server switches to it" means the page
+  just tried the same switch every scoped query makes and the database answered as `jane_rls`.
+- The daily health check (`reportMissedJobs` in `src/lib/health.ts`, from the digest and Plaid
+  sync crons) emails `ADMIN_EMAILS` once per lapse if coverage ever drops ("Row-level security
+  has a gap"), and again only after it has been whole in between.
+- `/admin/errors` (and the Vercel logs) show "Row-level security is off" if the switch ever
+  fails at runtime.
 
 ## Adding a table
 
