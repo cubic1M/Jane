@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { expect, vi } from "vitest";
+import { afterAll, expect, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { syncItem as SyncItem } from "@/lib/plaid/sync";
 
@@ -29,6 +29,14 @@ type Snapshot = {
 };
 
 const snapshots = new Map<string, Snapshot>();
+// What this file's demo syncs did, for CI's log: one line per file that synced any.
+const tally = { real: 0, copied: 0, skipped: 0, ms: 0, people: [] as string[] };
+afterAll(() => {
+  if (tally.real + tally.copied + tally.skipped === 0) return;
+  console.log(
+    `[sync-snapshots] ${(expect.getState().testPath ?? "").replace(/.*\/src\//, "src/")}: ${tally.real} real (${Math.round(tally.ms / 1000)}s), ${tally.copied} copied, ${tally.skipped} not eligible; ${tally.people.join(" ")}`,
+  );
+});
 let userTables: string[] | null = null;
 
 // Columns holding a random token unique across everyone (src: the schema's unique indexes).
@@ -51,14 +59,16 @@ async function tablesOf(client: PrismaClient): Promise<string[]> {
   if (userTables) return userTables;
   const rows = await client.$queryRawUnsafe<{ table_name: string }[]>(
     `SELECT table_name FROM information_schema.columns
-     WHERE table_schema = 'public' AND column_name = 'user_id' AND table_name <> 'plaid_items'
+     WHERE table_schema = 'public' AND column_name = 'user_id'
+       AND table_name NOT IN ('plaid_items', 'sessions', 'auth_accounts')
      ORDER BY table_name`,
   );
   userTables = rows.map((r) => r.table_name);
   return userTables;
 }
 
-// Every row a person has in the user-owned tables (but their banks), one query.
+// Every row a person has in the user-owned tables, one query: not their banks, sessions or
+// sign-in accounts, which are theirs alone and never written by a sync.
 export async function rowsOf(client: PrismaClient, userId: string): Promise<Record<string, Row[]>> {
   const tables = await tablesOf(client);
   const sql = tables
@@ -216,28 +226,32 @@ vi.mock("@/lib/plaid/sync", async (importOriginal) => {
   const debug = (...a: unknown[]) => {
     if (process.env.SYNC_SNAPSHOTS === "debug") console.log("[sync-snapshots]", ...a);
   };
+  const skip = (itemId: string, options: Parameters<typeof actual.syncItem>[1]) => {
+    tally.skipped += 1;
+    return actual.syncItem(itemId, options);
+  };
   const syncItem: typeof actual.syncItem = async (itemId, options = {}) => {
     debug("sync", itemId);
-    if (off() || options.progressive || options.onReady) return actual.syncItem(itemId, options);
+    if (off() || options.progressive || options.onReady) return skip(itemId, options);
     const { db } = await import("@/lib/db");
     const client = (options.client ?? db) as PrismaClient;
     const item = await rowOf(client, "plaid_items", itemId);
-    if (!item || item.transactions_cursor) return actual.syncItem(itemId, options);
+    if (!item || item.transactions_cursor) return skip(itemId, options);
     const userId = String(item.user_id);
     const { decrypt } = await import("@/lib/crypto");
     let token: string;
     try {
       token = decrypt(String(item.access_token_encrypted));
     } catch {
-      return actual.syncItem(itemId, options);
+      return skip(itemId, options);
     }
     const [prefix, seed, ...rest] = token.split(":");
-    if (prefix !== "demo" || !seed) return actual.syncItem(itemId, options);
+    if (prefix !== "demo" || !seed) return skip(itemId, options);
     const banks = await client.$queryRawUnsafe<{ n: number }[]>(
       `SELECT count(*)::int AS n FROM plaid_items WHERE user_id = $1`,
       userId,
     );
-    if (banks[0].n !== 1) return actual.syncItem(itemId, options);
+    if (banks[0].n !== 1) return skip(itemId, options);
     const user = (await rowOf(client, "users", userId))!;
     const before = await rowsOf(client, userId);
     const key = hash(
@@ -253,10 +267,17 @@ vi.mock("@/lib/plaid/sync", async (importOriginal) => {
     const kept = snapshots.get(key);
     debug(kept ? "copy" : "real", key.slice(0, 8));
     if (kept) {
+      tally.copied += 1;
       await restore(client, kept, userId, itemId, seed);
       return kept.result;
     }
+    const started = Date.now();
     const result = await actual.syncItem(itemId, options);
+    tally.real += 1;
+    tally.ms += Date.now() - started;
+    tally.people.push(
+      `${rest.join(":") || "demo"}@${options.now?.toISOString().slice(0, 16) ?? "now"}`,
+    );
     snapshots.set(key, {
       userId,
       itemId,

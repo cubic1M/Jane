@@ -45,7 +45,8 @@ export async function withReadCache<T>(
   work: (client: PrismaClient) => Promise<T>,
 ): Promise<T> {
   const outer = scopes.getStore();
-  if (outer) return work(client);
+  // A nested call shares the outer cache; a stand-in client (a test's stub) gets none.
+  if (outer || typeof client.$extends !== "function") return work(client);
   const scope: Scope = { cache: new Map(), client };
   const wrapped = tracked(client, () => scopes.getStore());
   scope.client = wrapped;
