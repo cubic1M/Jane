@@ -12,6 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseApr } from "@/planning/debt";
+import { cachedCopy } from "@/lib/read-cache";
 
 // Every debt in one place (spec step 109), loaded for one person with the same code the
 // loans page, Jane's chat and Claude's tools use: loans and cards with their bank details,
@@ -23,6 +24,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export async function loadDebts(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<DebtBook> {
+  // Read once per sync (src/lib/read-cache.ts): every debt feature asks.
+  return cachedCopy(`debts:${userId}:${now.toISOString()}`, client, () =>
+    loadDebtsFrom(userId, { client, now }),
+  );
+}
+
+async function loadDebtsFrom(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<DebtBook> {

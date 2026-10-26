@@ -60,7 +60,9 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
+        # The database lives in memory: the tests' writes never wait on the runner's disk.
         options: >-
+          --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
@@ -82,21 +84,33 @@ jobs:
         run: npm ci
       - if: steps.modules.outputs.cache-hit == 'true'
         run: npx prisma generate
+      # Vitest starts the files that took longest last time first, from its results file, so a
+      # shard doesn't end on one slow file running alone. Kept between runs, per shard.
+      - uses: actions/cache@v6
+        with:
+          path: node_modules/.vite/vitest
+          key: vitest-results-${{ matrix.shard }}-${{ github.run_id }}
+          restore-keys: vitest-results-${{ matrix.shard }}-
+      - name: No waiting on commits (a throwaway database)
+        run: node scripts/fast-test-postgres.mjs "$TEST_DATABASE_URL"
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
-      # Trial and retention cleanup delete every expired sample person in the database, so they
-      # run on their own after shard 1's tests, never alongside tests that create sample people.
+      # Trial and retention cleanup delete every expired sample person in the database, and the
+      # learning loop rebuilds its stats from every person in it (which ranking reads), so they
+      # run on their own after shard 1's tests, never alongside tests that make people.
       - run: >-
           npx vitest run --shard=${{ matrix.shard }}/4
           --exclude src/lib/trial.integration.test.ts
           --exclude src/lib/retention.integration.test.ts
+          --exclude src/lib/learning.integration.test.ts
       - if: matrix.shard == 1
-        name: Trial and retention cleanup tests, alone
+        name: Trial, retention and learning-loop tests, alone
         run: >-
           npx vitest run --no-file-parallelism
           src/lib/trial.integration.test.ts src/lib/retention.integration.test.ts
+          src/lib/learning.integration.test.ts
 
   checks:
     name: Lint, typecheck and unit tests
@@ -175,7 +189,9 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
+        # The database lives in memory: the tests' writes never wait on the runner's disk.
         options: >-
+          --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
@@ -205,6 +221,8 @@ jobs:
       - name: Unpack the build
         run: tar -xf next-build.tar
       - run: npx playwright install --with-deps chromium
+      - name: No waiting on commits (a throwaway database)
+        run: node scripts/fast-test-postgres.mjs "$E2E_DATABASE_URL"
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
         env:

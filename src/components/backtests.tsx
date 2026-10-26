@@ -5,6 +5,7 @@ import { formatReturn } from "@/insights/returns";
 import { longDate, type Backtests } from "@/lib/investments/backtest";
 import { formatCents } from "@/lib/money";
 import { monthlyPath } from "@/planning/backtest";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Backtests by level on the investments page (spec step 295): the value paths as one chart, a
 // few figures per level and the assumptions beside them. Demo advice, always labelled, and
@@ -16,7 +17,6 @@ const monthYear = (iso: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 const bps = (n: number) => `${(n / 100).toFixed(2)}%`;
 const drop = (fraction: number) => (fraction === 0 ? "None" : formatReturn(fraction));
 

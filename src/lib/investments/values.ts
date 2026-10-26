@@ -17,6 +17,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { valuesPlan, type Prefs, type ValuesPlan } from "@/planning/values";
 import { loadInvestments } from "./holdings";
+import { cachedCopy } from "@/lib/read-cache";
 
 // Investing by your values (spec step 236): the person's list, the plan that applies it to
 // the funds they hold, and the tap that makes the switches through the brokerage partner.
@@ -30,6 +31,14 @@ const isExclusion = (k: string): k is Exclusion => Object.hasOwn(VALUES_EXCLUSIO
 const isTheme = (k: string): k is Theme => Object.hasOwn(VALUES_THEMES, k);
 
 export async function loadPrefs(
+  userId: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<Prefs> {
+  // Read once per sync (src/lib/read-cache.ts): each practice day asks.
+  return cachedCopy(`valuesPrefs:${userId}`, client, () => loadPrefsFrom(userId, { client }));
+}
+
+async function loadPrefsFrom(
   userId: string,
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<Prefs> {

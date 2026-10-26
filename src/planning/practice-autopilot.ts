@@ -12,6 +12,7 @@ import type { RiskLevel } from "@/config/investing";
 import { DRIFT_STOCKS_BAND, HARVEST_MIN_LOSS_SHARE } from "@/config/practice-scan";
 import { HARVEST_MIN_LOSS_CENTS } from "@/config/tax";
 import type { LedgerState } from "./practice-ledger";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Autopilot for the practice portfolio (spec step 291, Phase AW, Stage A). Pure: given the model
 // portfolio for the person's level, what the ledger holds and today's prices, the trades that
@@ -46,7 +47,6 @@ const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 // One formatter, made once: the rule replay formats thousands of reasons.
 const USD = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dollars = (cents: number) => `$${USD.format(cents / 100)}`;
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 // One decimal, so a small gap doesn't read as none ("4.8% against 5%", not "5% against 5%").
 const pctTenth = (n: number) => `${(Math.round(n * 1000) / 10).toString()}%`;
 const LABEL: Record<PracticeClass, string> = {

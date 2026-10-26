@@ -32,6 +32,7 @@ import { SUBSCRIPTION_PROMPT_VERSION, checkSubscriptions } from "@/lib/subscript
 import type { Candidate, DetectionInput } from "./types";
 import { isoDate, monthsBefore } from "./units";
 import { copiesToLeaveOut } from "@/planning/books";
+import { cachedRead } from "@/lib/read-cache";
 
 // Findings the person can still act on, and the ones where they've said yes.
 const OPEN_STATUSES: FindingStatus[] = ["new", "shown", "approved", "in_progress"];
@@ -248,7 +249,12 @@ export async function loadDetectionInput(
 ): Promise<DetectionInput> {
   // The person's own day (src/lib/today.ts): what's due today is due on their calendar.
   const asOf = await todayOf(userId, { client, now });
-  if (client !== defaultClient) return loadInput(scopedFor(userId, client), asOf, client);
+  if (client !== defaultClient)
+    return {
+      ...(await cachedRead(`detectionInput:${userId}:${asOf}`, client, () =>
+        loadInput(scopedFor(userId, client), asOf, client),
+      )),
+    };
   // Each caller gets its own copy of the top level: some set subscriptionMerchantKeys on it.
   return { ...(await inputOnce(userId, asOf)) };
 }

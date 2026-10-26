@@ -44,6 +44,10 @@ import { loadReview } from "@/lib/investments/review";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
+import { INTRADAY_AGENT_EVIDENCE } from "@/config/intraday-agent-evidence";
+import { AGENT_INTERVALS, AGENT_MARKETS } from "@/config/trading-agent";
+import { loadAgentView } from "@/lib/trading-agent/agent";
+import { VERDICT_WORDS, type EvidenceRow } from "@/planning/trading-agent/report";
 import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
 import { STAGE_AGES } from "@/config/retirement";
 import {
@@ -300,6 +304,13 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
       'The news themes Jane watches for the practice portfolio (demo advice mode only): each kind of event (a Middle East supply shock, a war, a market scare, a Fed rate cut, a chip boom), the fund it points to, and how that fund did on the theme\'s past events against the whole US market over about a month, with the confidence and whether Jane offers it (only the ones that held up are). Also the slice by level and when the idea gets out. For "what do you do when there\'s a war", "should I buy oil" or "what news do you watch". Always call the numbers a replay of the past, never a forecast, and say when a theme didn\'t hold up.',
     input_schema: noInput,
   },
+  // The 24-hour agent on the paper account (src/lib/trading-agent/).
+  {
+    name: "trading_agent",
+    description:
+      'The 24-hour agent on the paper account (demo advice mode only, simulated money): whether it runs, the strategy, how often (every 15 minutes or every hour) and the market (bitcoin and ether around the clock, or US funds in market hours), the last bar it caught up to, its latest trades each with the time, price, fees and the reason, and how its strategy did in the replay of past bars against just holding. Also every strategy the replay ran for each market and interval, with its yearly growth, worst drop and verdict (beat holding after the haircut, made less than holding, or lost money). For "what is the agent doing", "what did it trade overnight", "which strategy should the agent run" or "do any of these beat holding bitcoin". Always call the figures a replay of the past, never a forecast; say plainly that most of them lost money after costs, and that nothing real is ever bought or sold.',
+    input_schema: noInput,
+  },
   {
     name: "explainer",
     description:
@@ -316,6 +327,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
 // What the person sees while Jane looks it up.
 export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   holdings: "Looking at what you own…",
+  trading_agent: "Looking at the 24-hour agent…",
   investor_profile: "Checking your investor profile…",
   investment_fees: "Adding up your investment fees…",
   portfolio_review: "Reviewing your investments…",
@@ -1405,6 +1417,51 @@ export async function runInvestmentTool(
         text: e.paragraphs,
         sources: e.sources,
         review: REVIEW_NOTE,
+      });
+    }
+    case "trading_agent": {
+      if (!(await adviceMode(userId, { client }))) return out({ note: PRACTICE_ONLY_NOTE });
+      const [agent, paper] = await Promise.all([
+        loadAgentView(userId, { client }),
+        client.paperAccount.findUnique({ where: { userId }, select: { id: true } }),
+      ]);
+      const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+      const row = (r: EvidenceRow) => ({
+        strategy: r.label,
+        key: r.key,
+        yearlyGrowth: pct(r.cagr),
+        justHolding: pct(r.holdCagr),
+        worstDrop: pct(r.maxDrawdown),
+        verdict: VERDICT_WORDS[r.verdict],
+      });
+      return out({
+        simulatedOnly: "Simulated money: nothing real is ever bought or sold.",
+        paperAccount: paper ? "started" : "not started (the investments page starts one)",
+        agent: agent
+          ? {
+              strategy: agent.label,
+              every: agent.intervalLabel,
+              market: agent.marketLabel,
+              caughtUpTo: agent.lastBarAt,
+              prices: agent.prices === "sample" ? "sample prices (not real)" : "real prices",
+              replay: agent.evidence ? row(agent.evidence) : null,
+              latestTrades: agent.trades.slice(0, 10).map((t) => ({
+                at: t.at,
+                trade: `${t.side} ${t.ticker}`,
+                amount: money(t.amountCents),
+                price: money(t.priceCents),
+                fees: money(t.feeCents + t.spreadCents),
+                why: t.reason,
+              })),
+            }
+          : null,
+        replay: INTRADAY_AGENT_EVIDENCE.map((g) => ({
+          market: AGENT_MARKETS[g.market].label,
+          every: AGENT_INTERVALS[g.interval].label,
+          scored: `${g.from} to ${g.to}`,
+          strategies: g.rows.map(row),
+        })),
+        note: "A replay of past bars, not a forecast. See docs/backtests/intraday.md.",
       });
     }
     default:

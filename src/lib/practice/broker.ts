@@ -5,6 +5,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
 import { apply, LedgerError, type LedgerState } from "@/planning/practice-ledger";
+import { cachedCopy } from "@/lib/read-cache";
 
 // The practice broker (spec step 290, Phase AW, Stage A). A Broker places orders and reports
 // positions; the only implementation is the paper one, which writes to the practice ledger in the
@@ -49,7 +50,13 @@ export interface Broker {
 
 export class NoPracticePortfolio extends Error {}
 
+// Read once until the next trade in a sync's practice replay (src/lib/read-cache.ts): each day's
+// scan and autopilot ask for it several times.
 export async function loadLedger(userId: string, client: PrismaClient) {
+  return cachedCopy(`ledger:${userId}`, client, () => loadLedgerFrom(userId, client));
+}
+
+async function loadLedgerFrom(userId: string, client: PrismaClient) {
   const db = scopedFor(userId, client);
   const portfolio = await db.practicePortfolios.findFirst({});
   if (!portfolio) throw new NoPracticePortfolio("Start a practice portfolio first.");

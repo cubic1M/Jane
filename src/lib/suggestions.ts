@@ -24,6 +24,7 @@ import {
   rankSuggestions,
   type TopicHistory,
 } from "@/planning/suggestion-rank";
+import { withReadCache } from "@/lib/read-cache";
 
 // The nightly scan (spec step 255): every detector for one person, ranked by dollars x
 // confidence x urgency and adjusted by what they have said yes and no to (step 207). Only the
@@ -65,7 +66,17 @@ export type ScanResult = { fired: number; selected: string[] };
 
 // Every detector for one person, tonight: what applies to them and what Jane may show them
 // (no recommendations on investments, taxes, insurance or loans outside demo advice mode).
+// Every detector, over the same facts read once (src/lib/read-cache.ts).
 export async function detectFor(
+  userId: string,
+  options: Options = {},
+): Promise<{ suggestions: Suggestion[]; advice: boolean; today: string }> {
+  return withReadCache(options.client ?? defaultClient, (client) =>
+    detectForWork(userId, { ...options, client }),
+  );
+}
+
+async function detectForWork(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ suggestions: Suggestion[]; advice: boolean; today: string }> {
@@ -134,7 +145,14 @@ function openIdeas(
   });
 }
 
-export async function scanSuggestions(
+// The nightly scan runs every detector over the same facts: one read each (src/lib/read-cache.ts).
+export async function scanSuggestions(userId: string, options: Options = {}): Promise<ScanResult> {
+  return withReadCache(options.client ?? defaultClient, (client) =>
+    scanSuggestionsWork(userId, { ...options, client }),
+  );
+}
+
+async function scanSuggestionsWork(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ScanResult> {

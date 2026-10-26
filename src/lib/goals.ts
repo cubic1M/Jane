@@ -5,6 +5,7 @@ import { parseMoneyToCents } from "@/lib/money";
 import { GOAL_ORDER_FACT } from "@/config/tradeoffs";
 import { orderGoals, parseGoalOrder } from "@/planning/goal-tradeoffs";
 import { goalProgress, type GoalProgress } from "@/planning/goals";
+import { cachedCopy } from "@/lib/read-cache";
 
 // Savings goals: adding, updating and listing them with their progress.
 
@@ -104,6 +105,16 @@ export type GoalView = {
 };
 
 export async function listGoals(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<GoalView[]> {
+  // Read once per sync (src/lib/read-cache.ts).
+  return cachedCopy(`goals:${userId}:${now.toISOString()}`, client, () =>
+    listGoalsFrom(userId, { client, now }),
+  );
+}
+
+async function listGoalsFrom(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<GoalView[]> {

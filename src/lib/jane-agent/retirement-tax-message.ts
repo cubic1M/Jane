@@ -3,6 +3,7 @@ import { formatCents } from "@/lib/money";
 import type { RetirementTaxView } from "@/lib/retirement-taxes";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import type { MessageAction, MessageRefs } from "./types";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Taxes on retirement income in the chat (spec step 271): Social Security's taxable part that
 // nothing withholds, Medicare's surcharge line two years ahead, and the answer to "is my Social
@@ -13,7 +14,6 @@ export const RETIREMENT_PAYCHECK_HREF = "/investments/retirement-income";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
-const pct = (x: number) => `${Math.round(x * 100)}%`;
 const paycheck: MessageAction = {
   id: "open",
   label: "See my retirement paycheck",

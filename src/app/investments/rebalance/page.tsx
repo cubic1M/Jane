@@ -10,13 +10,13 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { RebalanceButton } from "./rebalance-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Rebalance with one tap (spec step 133): the orders that move each account to the target
 // mix, the mix before and after, and the confirmations. Orders go to the simulated
 // brokerage, and the page says so first.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 const signed = (cents: number) =>
   cents < 0 ? `a loss of ${formatCents(-cents)}` : `a gain of ${formatCents(cents)}`;
 
