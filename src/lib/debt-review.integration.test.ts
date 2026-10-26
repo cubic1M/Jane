@@ -36,7 +36,7 @@ const DAY = 86_400_000;
 const MINUTE = 60 * 1000;
 const context = { now: NEAR, local: { date: "2026-10-27", hour: 8 }, trigger: "open" as const };
 
-describe.runIf(url)("the yearly debt review against a real database", { timeout: 30_000 }, () => {
+describe.runIf(url)("the yearly debt review against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

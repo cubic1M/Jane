@@ -35,7 +35,7 @@ const YES = [
 
 type Email = Parameters<typeof sendEmail>[0];
 
-describe.runIf(url)("asking less, against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("asking less, against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
 

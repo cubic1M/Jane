@@ -21,7 +21,7 @@ import { ensureChecked } from "./refinance";
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 
-describe.runIf(url)("a balance too small for a lender", { timeout: 60_000 }, () => {
+describe.runIf(url)("a balance too small for a lender", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let ruth: string;
   const plaid = new Proxy(

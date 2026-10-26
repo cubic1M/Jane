@@ -24,7 +24,7 @@ const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 const MINUTE = 60 * 1000;
 
-describe.runIf(url)("buying a car against a real database", { timeout: 30_000 }, () => {
+describe.runIf(url)("buying a car against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

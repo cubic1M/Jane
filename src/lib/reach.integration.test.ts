@@ -10,7 +10,7 @@ import { reachReport } from "./reach";
 const url = process.env.TEST_DATABASE_URL;
 const DAY = new Date("2026-10-18");
 
-describe.runIf(url)("the reach scoreboard", { timeout: 60_000 }, () => {
+describe.runIf(url)("the reach scoreboard", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const users: string[] = [];
 

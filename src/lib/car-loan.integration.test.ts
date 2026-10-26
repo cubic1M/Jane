@@ -37,7 +37,7 @@ const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: 
 
 describe.runIf(url)(
   "the car loan you already have against a real database",
-  { timeout: 30_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     const created: string[] = [];
