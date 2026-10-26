@@ -42,7 +42,9 @@ test("an API route answers 429 past its limit, calmly, and cron routes aren't li
   expect(refused.headers()["x-content-type-options"]).toBe("nosniff");
 
   // Someone else's IP is unaffected.
-  expect((await request.get("/api/health", { headers: { "x-forwarded-for": freshIp() } })).status()).toBe(200);
+  expect(
+    (await request.get("/api/health", { headers: { "x-forwarded-for": freshIp() } })).status(),
+  ).toBe(200);
 
   // Cron routes check CRON_SECRET instead: the same IP gets "unauthorized", not 429.
   const cron = await request.get("/api/cron/digest", { headers });
