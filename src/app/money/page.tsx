@@ -10,6 +10,7 @@ import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
+import { ProgressBar } from "@/components/progress-bar";
 
 // Spending & bills (spec step 80; docs/design/area-pages.md): what matters now, the area's
 // tree, and the detail of the one thing picked. Each detail links to the page that has the
@@ -125,16 +126,7 @@ async function MoneyContent({
     const share = Math.min(100, Math.round((p.spentCents / p.budgetCents) * 100));
     details[itemId("budgets", p.category)] = (
       <>
-        <div
-          role="progressbar"
-          aria-label={`${p.category} budget used`}
-          aria-valuenow={share}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
-        >
-          <div className="h-full bg-zinc-900 dark:bg-zinc-100" style={{ width: `${share}%` }} />
-        </div>
+        <ProgressBar label={`${p.category} budget used`} percent={share} fill="plain" />
         <Go href="/budgets">Change your budgets</Go>
       </>
     );

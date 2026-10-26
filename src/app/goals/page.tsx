@@ -12,6 +12,7 @@ import { GoalForm } from "./goal-form";
 import { GoalTradeoffs } from "./tradeoffs";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { ProgressBar } from "@/components/progress-bar";
 
 const EMPTY = { goalId: "", name: "", target: "", targetDate: "", accountId: "", saved: "" };
 const dollars = (cents: number | null) => (cents === null ? "" : (cents / 100).toFixed(2));
@@ -65,19 +66,7 @@ async function Goals() {
                   {day(g.targetDate)}
                 </span>
               </div>
-              <div
-                role="progressbar"
-                aria-label={`${g.name} progress`}
-                aria-valuenow={g.progress.percent}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
-              >
-                <div
-                  className="h-full bg-emerald-600"
-                  style={{ width: `${g.progress.percent}%` }}
-                />
-              </div>
+              <ProgressBar label={`${g.name} progress`} percent={g.progress.percent} />
               <p className="text-sm">
                 {g.progress.status === "reached"
                   ? GOALS_COPY.reached

@@ -6,6 +6,7 @@ import { GIFT_ANNUAL_EXCLUSION_CENTS, GIFT_EXCLUSION_SOURCE } from "@/config/fam
 import { giftPage } from "@/lib/investments/family";
 import { formatCents } from "@/lib/money";
 import { GiftForm } from "./gift-form";
+import { ProgressBar } from "@/components/progress-bar";
 
 // A gift link (spec step 213): the goal and how far along it is, and nothing else about
 // the family. Not indexed by search engines. A demo: no real money moves.
@@ -42,16 +43,7 @@ async function Page({
       <p className="text-zinc-600 dark:text-zinc-400">
         The goal is {formatCents(gift.targetCents)}, and it is {gift.percent}% of the way there.
       </p>
-      <div
-        role="progressbar"
-        aria-label="How far along the goal is"
-        aria-valuenow={gift.percent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        className="h-3 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
-      >
-        <div className="h-full bg-emerald-600" style={{ width: `${gift.percent}%` }} />
-      </div>
+      <ProgressBar label="How far along the goal is" percent={gift.percent} tall />
       {thanks === "1" && (
         <p
           role="status"

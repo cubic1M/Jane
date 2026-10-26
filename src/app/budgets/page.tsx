@@ -14,6 +14,7 @@ import { deleteBudget } from "./actions";
 import { BudgetForm } from "./budget-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { ProgressBar } from "@/components/progress-bar";
 
 const HOW_OFTEN: Record<IrregularItem["frequency"], string> = {
   QUARTERLY: "Every 3 months",
@@ -73,19 +74,11 @@ async function Budgets() {
                       : `, ${formatCents(p.leftCents)} left`}
                   </span>
                 </div>
-                <div
-                  role="progressbar"
-                  aria-label={`${p.category} budget used`}
-                  aria-valuenow={share}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
-                >
-                  <div
-                    className={`h-full ${p.over ? "bg-red-600" : "bg-emerald-600"}`}
-                    style={{ width: `${share}%` }}
-                  />
-                </div>
+                <ProgressBar
+                  label={`${p.category} budget used`}
+                  percent={share}
+                  fill={p.over ? "over" : "good"}
+                />
                 <form action={deleteBudget} className="self-end">
                   <input type="hidden" name="category" value={p.category} />
                   <SubmitButton className="text-xs text-zinc-500 hover:text-red-700 hover:underline">
