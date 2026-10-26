@@ -4567,11 +4567,14 @@ model PaperAccount {
   startedAt     DateTime  @map("started_at") @db.Timestamptz(3)
   lastRunAt     DateTime? @map("last_run_at") @db.Timestamptz(3)
 
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  positions PaperPosition[]
-  trades    PaperTrade[]
-  values    PaperValue[]
-  signals   PaperSignal[]
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions    PaperPosition[]
+  trades       PaperTrade[]
+  values       PaperValue[]
+  signals      PaperSignal[]
+  // The events overlay on it (src/lib/events/run.ts) and what it did.
+  eventOverlay PaperEventOverlay?
+  eventLogs    PaperEventLog[]
 
   @@map("paper_accounts")
 }
@@ -4653,4 +4656,72 @@ model PaperSignal {
   @@unique([accountId, key])
   @@index([userId, status])
   @@map("paper_signals")
+}
+
+// The events overlay (src/config/events.ts): an event in the world that the overlay may act on,
+// from GDELT's coverage, the Fed's, BLS's or EIA's feeds, a sharp price move, or a stored
+// headline. Not a person's: no user_id. knownAt is when it became public; nothing acts on it
+// before a close after that time.
+model MarketEvent {
+  id        String   @id @default(cuid())
+  // `${source}:${type}:${date}`
+  key       String   @unique
+  type      String
+  source    String
+  date      DateTime @db.Date
+  knownAt   DateTime @map("known_at") @db.Timestamptz(3)
+  title     String
+  url       String?
+  strength  Float
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([knownAt])
+  @@map("market_events")
+}
+
+// The events overlay on one paper account: on or off (off until the person switches it on), the
+// slices open and closed (src/planning/event-overlay.ts OverlayState) and the last close it ran
+// at, so a missed day is caught up.
+model PaperEventOverlay {
+  id         String    @id @default(cuid())
+  accountId  String    @unique @map("account_id")
+  userId     String    @unique @map("user_id")
+  on         Boolean   @default(false)
+  switchedAt DateTime  @map("switched_at") @db.Timestamptz(3)
+  lastDate   DateTime? @map("last_date") @db.Date
+  state      Json      @default("{}")
+
+  account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("paper_event_overlays")
+}
+
+// Everything the overlay did or decided not to do, with the event that set it off. kind: "enter",
+// "exit", "stop" or "skip". tradeIds: the paper trades it placed. seenAt: when the trade pop-up
+// showed it.
+model PaperEventLog {
+  id          String    @id @default(cuid())
+  accountId   String    @map("account_id")
+  userId      String    @map("user_id")
+  at          DateTime  @db.Timestamptz(3)
+  // The close it acted at.
+  date        DateTime  @db.Date
+  kind        String
+  eventKey    String    @map("event_key")
+  eventType   String    @map("event_type")
+  eventTitle  String    @map("event_title")
+  ticker      String?
+  side        String?
+  tilt        Float?
+  amountCents Int?      @map("amount_cents")
+  confidence  Int
+  reason      String
+  tradeIds    String[]  @map("trade_ids")
+  seenAt      DateTime? @map("seen_at") @db.Timestamptz(3)
+
+  account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, eventKey, kind, ticker])
+  @@index([userId, at])
+  @@map("paper_event_logs")
 }
