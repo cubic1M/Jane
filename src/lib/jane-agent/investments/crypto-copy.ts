@@ -20,7 +20,7 @@ const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 export const sizeLine = (size: CryptoSize, sources: string[]) =>
   `Your crypto is ${formatCents(size.totalCents)}, ${pct(size.share)} of everything you've invested, from ${sources.join(" and ")} (read-only).`;
 
-export const shareFlag = (size: CryptoSize) =>
+export const shareFlag = (_size: CryptoSize) =>
   `That's above the ${pct(CRYPTO_SHARE_FLAG)} a common rule of thumb keeps a speculative holding to: crypto can fall by half or more in a year.`;
 
 export const feeFlag = (fees: CryptoFees) =>
