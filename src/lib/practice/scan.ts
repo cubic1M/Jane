@@ -114,7 +114,8 @@ export async function scanPractice(
   if (portfolio.paused) return { scanned: false, why: "paused" };
   // Following a tested strategy (src/planning/catalog-follow.ts): its rule runs the portfolio,
   // so the scan's upkeep and extra moves wait.
-  if ((await practiceProfileOf(userId, { client, now })).catalog) return { scanned: true, flags: [] };
+  if ((await practiceProfileOf(userId, { client, now })).catalog)
+    return { scanned: true, flags: [] };
 
   const today = now.toISOString().slice(0, 10);
   const feed = marketData();
