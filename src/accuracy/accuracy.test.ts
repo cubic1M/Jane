@@ -1,13 +1,20 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import baseline from "./baseline.json";
-import { fromFixture, generateHistories, toFixture } from "./generate";
+import {
+  HELD_OUT_COUNT,
+  PEOPLE_COUNT,
+  fromFixture,
+  generateHeldOut,
+  generateHistories,
+  toFixture,
+} from "./generate";
 import { DETECTOR_NAMES, calibration, judgedSuggestions, scoreboard } from "./score";
 
-// The accuracy gate (docs/accuracy.md): every detector on the 40 labelled histories must keep
-// its precision and recall within ALLOWED_DROP of the recorded baseline (src/accuracy/
-// baseline.json, written by `ACCURACY_WRITE=1 npm run accuracy`). A change that makes a
-// detector better passes; record the new baseline with it so the gain is kept.
+// The accuracy gate (docs/accuracy.md): every detector, on the tuning set and on the held-out
+// set, must keep its precision and recall within ALLOWED_DROP of the recorded baseline
+// (src/accuracy/baseline.json, written by `ACCURACY_WRITE=1 npm run accuracy`). A change that
+// makes a detector better passes; record the new baseline with it so the gain is kept.
 
 // "A few points": a drop of more than this fails.
 const ALLOWED_DROP = 0.03;
@@ -16,18 +23,33 @@ const ALLOWED_DROP = 0.03;
 const BUCKET_MIN = 10;
 const OVERCONFIDENT_BY = 10;
 
-const fixture = JSON.parse(readFileSync("src/accuracy/__fixtures__/histories.json", "utf8"));
-const histories = fromFixture(fixture);
+const SETS = [
+  {
+    set: "tuning",
+    path: "src/accuracy/__fixtures__/histories.json",
+    generate: generateHistories,
+    count: PEOPLE_COUNT,
+  },
+  {
+    set: "held-out",
+    path: "src/accuracy/__fixtures__/held-out.json",
+    generate: generateHeldOut,
+    count: HELD_OUT_COUNT,
+  },
+] as const;
 
-describe("the accuracy bench", () => {
+describe.each(SETS)("the accuracy bench's $set set", ({ set, path, generate, count }) => {
+  const fixture = JSON.parse(readFileSync(path, "utf8"));
+  const histories = fromFixture(fixture);
+
   it("is the generator's fixed-seed output, so the labels can't drift from the data", () => {
-    expect(JSON.stringify(toFixture(generateHistories()))).toBe(JSON.stringify(fixture));
-    expect(histories).toHaveLength(40);
+    expect(JSON.stringify(toFixture(generate()))).toBe(JSON.stringify(fixture));
+    expect(histories).toHaveLength(count);
   });
 
   const { scores } = scoreboard(histories);
   it.each(DETECTOR_NAMES)("keeps %s's precision and recall at its baseline", (name) => {
-    const base = baseline[name];
+    const base = baseline[set][name];
     const now = scores[name];
     expect(now.precision, `${name} precision`).toBeGreaterThanOrEqual(
       base.precision - ALLOWED_DROP,
