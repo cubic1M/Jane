@@ -52,6 +52,11 @@ const fakePrices = (bump: (ticker: string, date: string) => number = () => 1): P
   },
 });
 
+// Market events are shared by every test file: this one keeps to 2026, and clears only those.
+const ownYear = () => ({
+  date: { gte: new Date("2026-01-01T00:00:00Z"), lt: new Date("2027-01-01T00:00:00Z") },
+});
+
 describe.runIf(url)("the events overlay on the paper account", () => {
   let client: PrismaClient;
   const created: string[] = [];
@@ -94,10 +99,10 @@ describe.runIf(url)("the events overlay on the paper account", () => {
   });
   beforeEach(async () => {
     vi.clearAllMocks();
-    await client.marketEvent.deleteMany({});
+    await client.marketEvent.deleteMany({ where: ownYear() });
   });
   afterAll(async () => {
-    await client.marketEvent.deleteMany({});
+    await client.marketEvent.deleteMany({ where: ownYear() });
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
   });

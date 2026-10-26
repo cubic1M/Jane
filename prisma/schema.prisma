@@ -499,6 +499,16 @@ model PlaidItem {
   // "hsa" for a demo HSA.
   demoExtras           String[]  @default([]) @map("demo_extras")
   lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  // Plaid's NEW_ACCOUNTS_AVAILABLE: the bank has accounts the person hasn't shared yet (Link
+  // update mode with account selection shares them).
+  newAccountsAvailable Boolean   @default(false) @map("new_accounts_available")
+  // The last failed sync or ITEM ERROR webhook that isn't a sign-in (an outage, a rate limit),
+  // so the person is told plainly why the data is old. Cleared by the next good sync.
+  lastErrorCode        String?   @map("last_error_code")
+  lastErrorAt          DateTime? @map("last_error_at") @db.Timestamptz(3)
+  // A sync started from a webhook holds this while it runs, so a burst of webhooks (or Plaid
+  // retrying one) runs one sync, not several at once.
+  syncingSince         DateTime? @map("syncing_since") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -507,6 +517,21 @@ model PlaidItem {
 
   @@index([userId])
   @@map("plaid_items")
+}
+
+// Plaid webhooks already handled, by a hash of their body, so a delivery Plaid repeats is
+// acknowledged without being acted on twice. A system table: webhooks come before any
+// session, keyed by Plaid's item id (the item's owner is found from it).
+model PlaidWebhookEvent {
+  id          String   @id @default(cuid())
+  bodyHash    String   @unique @map("body_hash")
+  plaidItemId String?  @map("plaid_item_id")
+  webhookType String   @map("webhook_type")
+  webhookCode String   @map("webhook_code")
+  receivedAt  DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  @@index([receivedAt])
+  @@map("plaid_webhook_events")
 }
 
 model Account {
@@ -4435,6 +4460,39 @@ model MarketPrice {
   @@map("market_prices")
 }
 
+// The 24-hour agent's bar cache (src/lib/trading-agent/bar-store.ts): intraday bars by source,
+// ticker and interval ("15m", "1h"), prices in cents, so a catch-up asks the source only for bars
+// it hasn't kept. Market data, not anyone's: no user_id.
+model MarketBar {
+  id       String   @id @default(cuid())
+  source   String
+  ticker   String
+  interval String
+  t        DateTime @db.Timestamptz(3)
+  o        Int
+  h        Int
+  l        Int
+  c        Int
+  v        Float
+
+  @@unique([source, ticker, interval, t])
+  @@map("market_bars")
+}
+
+// The range of bars kept for a source, ticker and interval (asked for, even where there were none:
+// a weekend has no fund bars).
+model MarketBarRange {
+  id       String   @id @default(cuid())
+  source   String
+  ticker   String
+  interval String
+  fromAt   DateTime @map("from_at") @db.Timestamptz(3)
+  toAt     DateTime @map("to_at") @db.Timestamptz(3)
+
+  @@unique([source, ticker, interval])
+  @@map("market_bar_ranges")
+}
+
 // What was loaded for a ticker, from where and for which dates.
 model MarketHistoryLoad {
   id       String   @id @default(cuid())
@@ -4566,6 +4624,17 @@ model PaperAccount {
   pricesDate    DateTime? @map("prices_date") @db.Date
   startedAt     DateTime  @map("started_at") @db.Timestamptz(3)
   lastRunAt     DateTime? @map("last_run_at") @db.Timestamptz(3)
+  // The 24-hour agent (src/lib/trading-agent/), when it runs the account: its strategy's key,
+  // setting, bar interval ("15m", "1h") and market ("crypto", "stocks"), its state between ticks
+  // (src/planning/trading-agent/types.ts AgentState, with just holding's units), when it started,
+  // and the last bar it acted on (so two ticks at once can't both write).
+  agentPolicy    String?   @map("agent_policy")
+  agentParam     Float?    @map("agent_param")
+  agentInterval  String?   @map("agent_interval")
+  agentMarket    String?   @map("agent_market")
+  agentState     Json?     @map("agent_state")
+  agentStartedAt DateTime? @map("agent_started_at") @db.Timestamptz(3)
+  agentLastBarAt DateTime? @map("agent_last_bar_at") @db.Timestamptz(3)
 
   user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   positions    PaperPosition[]
@@ -4609,6 +4678,10 @@ model PaperTrade {
   source      String
   signalId    String?   @map("signal_id")
   revertedAt  DateTime? @map("reverted_at") @db.Timestamptz(3)
+  // The 24-hour agent's trades (source "agent", or its signal's source): the broker's fee on top
+  // of the amount, and what the spread and slippage cost (already in the price). 0 for the rest.
+  feeCents    Int       @default(0) @map("fee_cents")
+  spreadCents Int       @default(0) @map("spread_cents")
 
   account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 

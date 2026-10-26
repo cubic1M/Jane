@@ -5,6 +5,7 @@ import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
+import { BankStatusNotice } from "@/components/bank-status-notice";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
 import { HeroRow } from "@/components/hub/hub";
@@ -19,7 +20,6 @@ import { addDays } from "@/detection/units";
 import { autopilotOf } from "@/lib/autopilot";
 import { openBooks } from "@/lib/books";
 import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
-import { dayLabel } from "@/lib/day-label";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
@@ -30,6 +30,7 @@ import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
+import { loadBankNotices, updatedAgo } from "@/lib/plaid/bank-status";
 import { SuggestionCards } from "../chat/suggestion-cards";
 import { FirstWeekChecklist } from "./checklist";
 import { LoadingBar } from "@/components/loading-bar";
@@ -149,13 +150,14 @@ async function HubContent() {
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, suggestions] = await Promise.all([
+  const [top, checklist, autopilot, books, suggestions, banks] = await Promise.all([
     loadHubTop(user.id),
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
     openBooks(user.id),
     // Jane's cards, as the chat shows them (on a computer the dock above the chat has them).
     loadPopupStack(user.id),
+    loadBankNotices(user.id),
   ]);
   if (!top) redirect("/connect");
   const { home } = top;
@@ -170,7 +172,8 @@ async function HubContent() {
   return (
     <>
       <AppHeader user={user} />
-      <BooksNotice books={books} />
+      <BankStatusNotice notices={banks} />
+      <BooksNotice books={books} skipItems={banks.map((b) => b.itemId)} />
       <h1 className="sr-only">Home</h1>
 
       <HeroRow
@@ -201,7 +204,7 @@ async function HubContent() {
 
       <p className="text-xs text-zinc-500">
         {home.lastUpdated
-          ? `Data last updated ${dayLabel(home.lastUpdated, { year: true })}.`
+          ? `Data last updated ${updatedAgo(home.lastUpdated, new Date())}.`
           : "Waiting for your first update."}{" "}
         <Link href="/connect" className="hover:underline">
           Manage accounts

@@ -23,6 +23,8 @@ const SOURCE_WORDS: Record<string, string> = {
   alpaca: "Real daily closes (Alpaca)",
   yahoo: "Real daily closes (Yahoo Finance)",
   sample: "Sample prices: development only, not real",
+  // The 24-hour agent's bars (src/lib/trading-agent/bar-store.ts).
+  live: "Real prices, bar by bar (Alpaca, or Yahoo Finance for funds)",
 };
 
 function Start({ strategy }: { strategy: string }) {

@@ -40,6 +40,9 @@ export type Policy = {
   tickers: readonly string[];
   // The settings it is tried with.
   grid: readonly number[];
+  // What just holding means for this rule: the asset it is pointed at (QQQ, ether), else the
+  // market's own (SPY, bitcoin).
+  hold?: string;
   // The weights to hold after bar t's close, from bars up to and including t, or null to keep
   // what it holds. Must never read bar t+1 or later.
   decide(tl: Timeline, t: number, param: number, ctx: PolicyContext): Weights | null;
@@ -57,6 +60,10 @@ export type AgentSignal = {
   weight: number;
   reason: string;
   source: string;
+  // A stop: once the signal's trade has filled, if the ticker closes this share against the fill
+  // (down for a buy, up for a sell), the signal ends early and its trade is undone at the next
+  // bar's open. Absent: only `until` ends it.
+  stopPct?: number | null;
 };
 
 // The agent's state between ticks. Cash and units are kept exact (not rounded to cents) so a
@@ -76,7 +83,11 @@ export type AgentState = {
     weights: Record<string, number>;
     reasons: Record<string, string>;
     source: string;
+    // The signal behind each ticker's trade, for its stop (signals with a stop only).
+    signals?: Record<string, string>;
   } | null;
+  // Each stopped signal's fill (its side and price), or "hit" once its stop has ended it.
+  stops?: Record<string, { side: "buy" | "sell"; price: number } | "hit">;
   // The value it started with (cents), for the index.
   startValue: number;
   // The last bar it has acted on, and its count on the agent's axis (./clock.ts).

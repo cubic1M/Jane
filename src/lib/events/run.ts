@@ -20,12 +20,7 @@ import type { Bar } from "@/lib/market/types";
 import { strategyOf, takeSignal } from "@/lib/paper/account";
 import { daysBefore, paperPrices, type PaperPrices } from "@/lib/paper/prices";
 import { strategyTargets } from "@/lib/paper/targets";
-import {
-  coverageSpikes,
-  priceShocks,
-  withCoolOff,
-  type MarketEvent,
-} from "@/planning/event-detect";
+import { coverageSpikes, priceShocks, withCoolOff } from "@/planning/event-detect";
 import { closeOrders, openOrders } from "@/planning/event-orders";
 import {
   emptyOverlay,
@@ -37,6 +32,7 @@ import {
 import { mixWeights, type PaperOrder } from "@/planning/paper";
 import { feedEvents, headlineEvents } from "./feeds";
 import { fetchCoverage, type Fetcher } from "./gdelt";
+import { toEvent } from "./rows";
 
 // The events overlay, live (founder, 2026-10-26). Once a day after the close (Vercel Cron), the
 // events job reads GDELT's coverage, the Fed's, BLS's and EIA's feeds, the stored headlines and
@@ -59,26 +55,6 @@ type Options = {
 const DAY_MS = 86_400_000;
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
-
-const toEvent = (r: {
-  key: string;
-  type: string;
-  source: string;
-  date: Date;
-  knownAt: Date;
-  title: string;
-  url: string | null;
-  strength: number;
-}): MarketEvent => ({
-  key: r.key,
-  type: r.type as EventTypeId,
-  source: r.source as MarketEvent["source"],
-  date: dayOf(r.date),
-  knownAt: r.knownAt.toISOString(),
-  title: r.title,
-  url: r.url,
-  strength: r.strength,
-});
 
 export type CollectReport = { found: number; stored: number; failed: string[] };
 
@@ -181,8 +157,13 @@ export async function runEventOverlay(
   const db = scopedFor(userId, client);
   const overlay = await db.paperEventOverlays.findFirst({});
   if (!overlay?.on || !(await adviceMode(userId, { client }))) return none;
-  const account = await db.paperAccounts.findFirst({ select: { id: true, level: true } });
+  const account = await db.paperAccounts.findFirst({
+    select: { id: true, level: true, agentPolicy: true },
+  });
   if (!account || account.id !== overlay.accountId) return none;
+  // The 24-hour agent runs this account: it takes the overlay's slices as its own signals
+  // (./agent-source.ts), so the overlay places no trades of its own here and nothing trades twice.
+  if (account.agentPolicy) return none;
 
   const source = prices ?? paperPrices();
   const today = dayOf(now);
