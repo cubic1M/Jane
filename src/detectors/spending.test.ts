@@ -180,6 +180,14 @@ describe("a category running over", () => {
     expect(s.title).toContain("food and drink");
     expect(s.action.href).toBe("/budgets");
   });
+  // Messy-bank QA: one big purchase isn't a month running over.
+  it("leaves a one-off big purchase out", () => {
+    const meals = ["2026-06", "2026-07", "2026-08", "2026-09"].flatMap((m) =>
+      ["05", "12", "19"].map((d) => t(`${m}-${d}`, 6_000, "BIG EATS", "FOOD_AND_DRINK_RESTAURANT")),
+    );
+    const banquet = t("2026-09-20", 190_000, "BIG EATS", "FOOD_AND_DRINK_RESTAURANT");
+    expect(topics("freelancer", withFood(...meals, banquet))).not.toContain("budget_overrun");
+  });
   it("leaves rent, loans and transfers out, and small swings alone", () => {
     expect(
       topics(

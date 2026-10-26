@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { AccountList } from "@/components/account-list";
 import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
-import { moneyFound } from "@/detection/engine";
+import { isFirstDetectionComplete, moneyFound } from "@/detection/engine";
 import { listAccountSummaries } from "@/lib/accounts";
 import { CARD_SELECT } from "@/lib/cards";
 import { scopedDb } from "@/lib/db-scoped";
@@ -12,8 +12,12 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsLine } from "@/lib/savings-text";
 import { LoadingBar } from "@/components/loading-bar";
+import { scanInProgress } from "@/lib/scan";
+import { RefreshWhenScanned } from "./refresh-when-scanned";
+import { reportState } from "./state";
 
-// Shown when nothing was found, so the person knows what we looked at.
+// Shown when nothing was found, and while the first scan runs, so the person knows what we
+// look at.
 const WHAT_WE_CHECK = [
   "Subscriptions you may not use",
   "Paying for two services that do the same thing",
@@ -30,7 +34,7 @@ const WHAT_WE_CHECK = [
 async function ReportContent() {
   const user = await requireUser();
   const db = await scopedDb();
-  const [accounts, findings, found] = await Promise.all([
+  const [accounts, findings, found, firstDetectionDone, scanRunning] = await Promise.all([
     listAccountSummaries(db),
     db.findings.findMany({
       where: { status: { in: ["new", "shown"] } },
@@ -38,15 +42,71 @@ async function ReportContent() {
       orderBy: [{ annualSavingsCents: { sort: "desc", nulls: "last" } }, { id: "asc" }],
     }),
     moneyFound(user.id),
+    isFirstDetectionComplete(user.id),
+    scanInProgress(user.id),
   ]);
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
+  const state = reportState({
+    transactions,
+    findings: findings.length,
+    firstDetectionDone,
+    scanRunning,
+  });
+  const list = (
+    <ul className="flex flex-col gap-3">
+      {findings.map((finding) => {
+        const text = explanationFor(finding);
+        return (
+          <li key={finding.id}>
+            <Link
+              href={`/report/${finding.id}`}
+              className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 p-4 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+            >
+              <span className="flex flex-col gap-1">
+                <span className="font-semibold">{text.title}</span>
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {savingsLine(finding.type, finding.annualSavingsCents)}
+                </span>
+              </span>
+              <span aria-hidden className="text-zinc-400">
+                ›
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   return (
     <>
       <AppHeader user={user} />
       <ViewTracker event="report_viewed" />
 
-      {transactions === 0 ? (
+      {state === "scanning" ? (
+        <section className="flex flex-col gap-3" data-report-scanning="">
+          <RefreshWhenScanned />
+          <h1 className="text-3xl font-semibold tracking-tight">Still reading your accounts</h1>
+          <LoadingBar label="Reading your transactions" />
+          <p className="text-zinc-600 dark:text-zinc-400">
+            {transactions > 0
+              ? `Jane has read ${transactions} transactions so far. What it finds shows here as it goes.`
+              : "Jane is reading your accounts. What it finds shows here as it goes."}
+          </p>
+          {findings.length > 0 && (
+            <>
+              <h2 className="text-xl font-semibold">Found so far</h2>
+              {list}
+            </>
+          )}
+          <h2 className="text-xl font-semibold">What Jane is checking</h2>
+          <ul className="flex list-disc flex-col gap-1 pl-5">
+            {WHAT_WE_CHECK.map((check) => (
+              <li key={check}>{check}</li>
+            ))}
+          </ul>
+        </section>
+      ) : state === "no_data" ? (
         <section className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">Your money report</h1>
           <p className="text-zinc-600 dark:text-zinc-400">
@@ -57,7 +117,7 @@ async function ReportContent() {
             Link an account
           </Link>
         </section>
-      ) : findings.length === 0 ? (
+      ) : state === "nothing" ? (
         <section className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">Nothing to fix right now</h1>
           <p className="text-zinc-600 dark:text-zinc-400">
@@ -86,29 +146,7 @@ async function ReportContent() {
               until you say yes.
             </p>
           </div>
-          <ul className="flex flex-col gap-3">
-            {findings.map((finding) => {
-              const text = explanationFor(finding);
-              return (
-                <li key={finding.id}>
-                  <Link
-                    href={`/report/${finding.id}`}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 p-4 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                  >
-                    <span className="flex flex-col gap-1">
-                      <span className="font-semibold">{text.title}</span>
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {savingsLine(finding.type, finding.annualSavingsCents)}
-                      </span>
-                    </span>
-                    <span aria-hidden className="text-zinc-400">
-                      ›
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          {list}
         </section>
       )}
 

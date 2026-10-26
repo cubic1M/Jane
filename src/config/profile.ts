@@ -22,6 +22,10 @@ export const UNSURE_BELOW = 50;
 export const SALARY_DEPOSITS_MIN = 6;
 export const UNEVEN_DEPOSITS_MIN = 3;
 export const BUSINESS_DEPOSITS_MIN = 24;
+// A payment that says it's for a car ("GEICO *AUTO", "AUTOZONE", "AUTO LOAN"), not one that
+// only says how it's paid: "CHASE CREDIT CRD AUTOPAY" or "T-MOBILE AUTO PAY" (messy-bank QA:
+// three card payments made someone with no car "probably drive").
+export const CAR_WORDS = /\bAUTO(?:ZONE)?\b(?!\s*-?\s*(?:PAY|PMT|DEBIT|DRAFT))/i;
 export const PENSION_PATTERN =
   /SSA TREAS|SOCIAL SEC|PENSION|RETIREMENT SYSTEM|TEACHERS RETIREMENT/i;
 

@@ -1,5 +1,6 @@
 import { SPENDING_DETECTOR_RATES as S } from "@/config/detectors-spending";
 import { categoryOf } from "@/categorize/taxonomy";
+import { LARGE_CHARGE_MEDIAN_MULTIPLE, LARGE_CHARGE_MIN_CENTS } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
 import { type Detector, suggestionId } from "./contract";
@@ -374,12 +375,28 @@ const budgetOverrun: Detector = {
     const lastMonth = monthOf(1);
     const prior = [monthOf(2), monthOf(3), monthOf(4)];
     const totals = new Map<string, Map<string, number>>();
-    for (const t of tx(data, (x) => x.amountCents > 0 && x.pfc !== null)) {
-      const pfc = t.pfc!;
-      if (excluded.some((p) => pfc.startsWith(p))) continue;
-      const group = categoryOf(pfc)?.primary ?? pfc;
+    const charges = tx(data, (x) => x.amountCents > 0 && x.pfc !== null).filter((t) => {
       const m = month(t.date);
-      if (m !== lastMonth && !prior.includes(m)) continue;
+      return !excluded.some((p) => t.pfc!.startsWith(p)) && (m === lastMonth || prior.includes(m));
+    });
+    const groupOf = (t: ProfileTx) => categoryOf(t.pfc!)?.primary ?? t.pfc!;
+    // A one-off big purchase (a laptop, a flight) isn't a month running over: it's left out
+    // (messy-bank QA: one $1,899.99 purchase said "set a budget for general merchandise").
+    const medians = new Map<string, number>();
+    for (const group of new Set(charges.map(groupOf))) {
+      const amounts = charges
+        .filter((t) => groupOf(t) === group)
+        .map((t) => t.amountCents)
+        .sort((a, b) => a - b);
+      medians.set(group, amounts[Math.floor(amounts.length / 2)]);
+    }
+    const oneOff = (t: ProfileTx) =>
+      t.amountCents >= LARGE_CHARGE_MIN_CENTS &&
+      t.amountCents >= (medians.get(groupOf(t)) ?? 0) * LARGE_CHARGE_MEDIAN_MULTIPLE;
+    for (const t of charges) {
+      if (oneOff(t)) continue;
+      const group = groupOf(t);
+      const m = month(t.date);
       const cat = totals.get(group) ?? new Map<string, number>();
       cat.set(m, (cat.get(m) ?? 0) + t.amountCents);
       totals.set(group, cat);

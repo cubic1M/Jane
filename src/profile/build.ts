@@ -6,6 +6,7 @@ import {
   APPROACHING_PAYOFF_YEARS,
   BUSINESS_DEPOSITS_MIN,
   EARNER_ACTIVE_DAYS,
+  CAR_WORDS,
   PENSION_PATTERN,
   PET_PURCHASES_MIN,
   PROFILE_MONTHS,
@@ -397,7 +398,7 @@ export function buildProfile(input: ProfileInput): Profile {
       (t) =>
         t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT" ||
         t.pfc === "TRANSPORTATION_GAS" ||
-        /AUTO/i.test(t.description),
+        CAR_WORDS.test(t.description),
     ) + accounts.filter((a) => a.subtype === "auto").length;
   set("has_car", carSigns > 0, "guessed", "car payments, gas or auto cover", carSigns);
   const petSigns = count(
