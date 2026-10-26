@@ -17,6 +17,7 @@ import {
   type TagTotals,
   type Tagged,
 } from "@/planning/tax-tags";
+import { cachedCopy } from "@/lib/read-cache";
 
 // The tax organizer (spec step 119): the year's tax tags and the forms to expect, loaded
 // from the person's own transactions and loans; their own tags and "I have it" saved here.
@@ -36,7 +37,9 @@ export async function loadOverrides(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<TagOverrides> {
-  return client === defaultClient ? overridesOnce(userId) : overridesFrom(userId, client);
+  return client === defaultClient
+    ? overridesOnce(userId)
+    : cachedCopy(`taxOverrides:${userId}`, client, () => overridesFrom(userId, client));
 }
 
 // Read once per server render (React's cache): /taxes's sections each ask (31 times).

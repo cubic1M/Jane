@@ -60,7 +60,9 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
+        # The database lives in memory: the tests' writes never wait on the runner's disk.
         options: >-
+          --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
@@ -82,6 +84,8 @@ jobs:
         run: npm ci
       - if: steps.modules.outputs.cache-hit == 'true'
         run: npx prisma generate
+      - name: No waiting on commits (a throwaway database)
+        run: node scripts/fast-test-postgres.mjs "$TEST_DATABASE_URL"
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
         env:
@@ -89,7 +93,7 @@ jobs:
       # Trial and retention cleanup delete every expired sample person in the database, so they
       # run on their own after shard 1's tests, never alongside tests that create sample people.
       - run: >-
-          npx vitest run --shard=${{ matrix.shard }}/4
+          npx vitest run --shard=${{ matrix.shard }}/4 --maxWorkers=6
           --exclude src/lib/trial.integration.test.ts
           --exclude src/lib/retention.integration.test.ts
       - if: matrix.shard == 1
@@ -172,7 +176,9 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
+        # The database lives in memory: the tests' writes never wait on the runner's disk.
         options: >-
+          --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
@@ -202,6 +208,8 @@ jobs:
       - name: Unpack the build
         run: tar -xf next-build.tar
       - run: npx playwright install --with-deps chromium
+      - name: No waiting on commits (a throwaway database)
+        run: node scripts/fast-test-postgres.mjs "$E2E_DATABASE_URL"
       - name: Apply migrations to an empty database
         run: npx prisma migrate deploy
         env:
