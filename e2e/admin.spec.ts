@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { isHiddenPage } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
 
 // The team's queue: non-admins get a 404 everywhere under /admin; an admin can move an
@@ -55,6 +56,8 @@ test.describe("signed in", () => {
   });
 
   test("an admin moves an action and the person sees it", async ({ context, page, baseURL }) => {
+    // The person's side is /actions, hidden in the read-only beta (src/config/hidden-pages.ts).
+    test.skip(isHiddenPage("/actions"), "/actions is hidden in the read-only beta");
     const user = await signedInUser("admin");
     userId = user.userId;
     await context.addCookies([

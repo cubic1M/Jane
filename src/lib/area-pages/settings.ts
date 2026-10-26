@@ -1,4 +1,5 @@
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { isHiddenPage } from "@/config/hidden-pages";
 
 // Settings as a tree (docs/design/area-pages.md): Settings → its branches (banks and files,
 // how much Jane does, how Jane reaches you, what Jane knows, home and household, sign-in and
@@ -25,7 +26,9 @@ export const SETTINGS_ANCHORS: Readonly<Record<string, string>> = {
   accounts: "banks",
   banks: "banks",
   "your-accounts": "banks",
-  household: itemId("household", "household"),
+  // While a page is hidden in the read-only beta (src/config/hidden-pages.ts), its item isn't in
+  // the tree, so its anchor opens the branch.
+  household: isHiddenPage("/household") ? "household" : itemId("household", "household"),
   "where-you-live": itemId("household", "state"),
   notifications: "notify",
   "jane-messages": itemId("notify", "messages"),
@@ -39,7 +42,7 @@ export const SETTINGS_ANCHORS: Readonly<Record<string, string>> = {
   privacy: "security",
   "two-factor": itemId("security", "two-factor"),
   sessions: itemId("security", "sessions"),
-  "team-access": itemId("security", "access"),
+  "team-access": isHiddenPage("/settings/team-access") ? "security" : itemId("security", "access"),
   calendar: itemId("security", "calendar"),
   "your-data": itemId("data", "download"),
   delete: itemId("data", "delete"),
@@ -170,10 +173,15 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
   ];
 
   const household = [
-    item("household", "household", {
-      label: "Household",
-      summary: "Share chosen accounts with a partner, read-only.",
-    }),
+    // Hidden in the read-only beta (src/config/hidden-pages.ts).
+    ...(isHiddenPage("/household")
+      ? []
+      : [
+          item("household", "household", {
+            label: "Household",
+            summary: "Share chosen accounts with a partner, read-only.",
+          }),
+        ]),
     item("household", "state", {
       label: "Where you live",
       figure: input.state ?? "Not set",
@@ -203,10 +211,14 @@ export function settingsTree(input: SettingsTreeInput): AreaTree {
       label: "Where you're signed in",
       summary: "Don't recognize one? Sign it out; it stops working straight away.",
     }),
-    item("security", "access", {
-      label: "Who saw my data",
-      summary: "Every time our team or Jane's agent looked at or acted on your data.",
-    }),
+    ...(isHiddenPage("/settings/team-access")
+      ? []
+      : [
+          item("security", "access", {
+            label: "Who saw my data",
+            summary: "Every time our team or Jane's agent looked at or acted on your data.",
+          }),
+        ]),
     item("security", "calendar", {
       label: "Money calendar",
       figure: input.calendar ? "On" : "Off",

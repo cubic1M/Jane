@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { useRef, useState } from "react";
 import type { PlanOption } from "@/config/plan";
 import { answerItem, revertItem, type ItemState } from "./actions";
@@ -199,11 +200,15 @@ export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readO
             <p role="status" className="text-sm">
               {chosen.choice === "yes" ? (
                 <>
-                  Approved{chosen.changed ? " with your changes" : ""}. Jane is on it; follow along
-                  on{" "}
-                  <Link href="/actions" className="font-medium underline">
-                    your actions
-                  </Link>
+                  Approved{chosen.changed ? " with your changes" : ""}. Jane is on it
+                  {!isHiddenPage("/actions") && (
+                    <>
+                      ; follow along on{" "}
+                      <Link href="/actions" className="font-medium underline">
+                        your actions
+                      </Link>
+                    </>
+                  )}
                   .
                 </>
               ) : (

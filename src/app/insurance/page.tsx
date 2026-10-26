@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -569,16 +570,16 @@ async function InsuranceContent({
           <Link prefetch={false} href="/insurance/checkup" className={LINK}>
             Checkup
           </Link>
-          <Link prefetch={false} href="/insurance/claims" className={LINK}>
+          <ShownLink prefetch={false} href="/insurance/claims" className={LINK}>
             Claims
-          </Link>
-          <Link prefetch={false} href="/insurance/benefits" className={LINK}>
+          </ShownLink>
+          <ShownLink prefetch={false} href="/insurance/benefits" className={LINK}>
             Work benefits
-          </Link>
+          </ShownLink>
           {advice && (
-            <Link prefetch={false} href="/insurance/life" className={LINK}>
+            <ShownLink prefetch={false} href="/insurance/life" className={LINK}>
               Life cover
-            </Link>
+            </ShownLink>
           )}
         </nav>
       </div>

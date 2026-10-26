@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { shownHref } from "@/config/hidden-pages";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -79,7 +80,8 @@ export function DecisionButtons({
         return;
       }
       if (choice === "yes" && !body.diy) {
-        router.push("/actions");
+        // What Jane did, while /actions is hidden (src/config/hidden-pages.ts).
+        router.push(shownHref("/actions"));
       } else if (choice === "diy" || body.diy) {
         // The card page shows the kit once the answer is saved.
         setState({ kind: "idle" });

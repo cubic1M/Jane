@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -94,10 +95,15 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
       <ViewTracker event="plan_viewed" />
       {approved !== null && (
         <p role="status" className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950">
-          Approved {approved} {approved === 1 ? "thing" : "things"}. Jane is on it; follow along on{" "}
-          <Link href="/actions" className="font-medium text-emerald-700 underline">
-            your actions
-          </Link>
+          Approved {approved} {approved === 1 ? "thing" : "things"}. Jane is on it
+          {!isHiddenPage("/actions") && (
+            <>
+              ; follow along on{" "}
+              <Link href="/actions" className="font-medium text-emerald-700 underline">
+                your actions
+              </Link>
+            </>
+          )}
           .
           {skipped > 0 &&
             ` ${skipped} changed or were already answered, so they were left for you to look at again.`}
@@ -108,11 +114,17 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
         {items.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">
             Nothing to decide right now. Jane keeps watching and adds to your plan when it finds
-            something. See what&apos;s underway on{" "}
-            <Link href="/actions" className="font-medium text-emerald-700 hover:underline">
-              your actions
-            </Link>
-            .
+            something.
+            {!isHiddenPage("/actions") && (
+              <>
+                {" "}
+                See what&apos;s underway on{" "}
+                <Link href="/actions" className="font-medium text-emerald-700 hover:underline">
+                  your actions
+                </Link>
+                .
+              </>
+            )}
           </p>
         ) : (
           <p className="text-zinc-600 dark:text-zinc-400">

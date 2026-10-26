@@ -66,7 +66,7 @@ describe("sendPush", () => {
   });
   afterEach(() => vi.unstubAllEnvs());
 
-  const message = { title: "Possible double charge", body: "b", url: "/alerts" };
+  const message = { title: "Possible double charge", body: "b", url: "/jane#alerts" };
 
   it("sends to every device with the VAPID keys", async () => {
     send.mockResolvedValue({});

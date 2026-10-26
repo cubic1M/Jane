@@ -1,4 +1,5 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { formatRate } from "@/insights/loans";
 import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
@@ -46,6 +47,16 @@ const TOPIC_BRANCH: Record<string, LoansBranch> = {
   cosign_risk: "family",
   rent_reporting: "family",
   rent_increase: "family",
+};
+
+// The page an item that is only a way to a page opens.
+export const ITEM_PAGE: Readonly<Record<string, string>> = {
+  "credit:goal": "/loans/goal",
+  "borrow:power": "/loans/borrow",
+  "borrow:home": "/loans/home",
+  "borrow:car": "/loans/car",
+  "borrow:cards": "/loans/cards",
+  "reviews:debt": "/loans/review",
 };
 
 // Six words or fewer per topic, not the detectors' long headlines.
@@ -282,6 +293,11 @@ export function loansTree(input: LoansTreeInput): AreaTree {
       }),
     );
   }
+
+  // An item that only opens a page the read-only beta hides (src/config/hidden-pages.ts) isn't
+  // in the tree.
+  for (const b of Object.keys(by) as LoansBranch[])
+    by[b] = by[b].filter((i) => !isHiddenPage(ITEM_PAGE[i.id] ?? ""));
 
   return buildAreaTree({
     key: "loans",

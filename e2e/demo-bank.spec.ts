@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { isHiddenPage, shownHref } from "../src/config/hidden-pages";
 import { areaTree, openBranch, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
@@ -37,8 +38,12 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
   await expect(best.getByText("Jane's pick")).toBeVisible();
   await expect(best.getByRole("radio", { name: /Pine Mobile Unlimited/ })).toBeChecked();
   await page.getByRole("button", { name: "Yes, switch to Pine Mobile Unlimited" }).click();
-  await expect(page).toHaveURL("/actions");
-  await expect(page.getByRole("link", { name: "Sign up for Pine Mobile Unlimited" })).toBeVisible();
+  // Your actions, or What Jane did while /actions is hidden (src/config/hidden-pages.ts).
+  await expect(page).toHaveURL(shownHref("/actions"));
+  if (!isHiddenPage("/actions"))
+    await expect(
+      page.getByRole("link", { name: "Sign up for Pine Mobile Unlimited" }),
+    ).toBeVisible();
 
   await page.goto("/loans");
   await openBranch(page, "Loans & credit", "Your debts");

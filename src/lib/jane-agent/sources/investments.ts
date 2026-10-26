@@ -93,7 +93,6 @@ import {
   shareFlag,
   sizeLine,
 } from "../investments/crypto-copy";
-import { learnLink } from "../learn";
 import { snoozeButton, type MessageSource } from "./source";
 
 // Investments in the chat (spec step 128 on). What Jane does on its own, at every autopilot
@@ -188,7 +187,6 @@ export const investmentsSource: MessageSource = {
         refs: { advice: true },
         actions: [
           { id: "open", label: "See the fees", kind: "link", href: "/investments/fees" },
-          learnLink("index-funds"),
           snoozeButton(),
         ],
         dedupeKey: `fees:${tickers.join(",")}`,
@@ -207,7 +205,6 @@ export const investmentsSource: MessageSource = {
         actions: [
           ...(plan ? [rebalanceButton()] : []),
           { id: "open", label: "See the review", kind: "link", href: "/investments/review" },
-          learnLink("rebalancing"),
           snoozeButton(),
         ],
         // Step 137: drift is watched every day; while the mix stays off target Jane says so
@@ -239,7 +236,6 @@ export const investmentsSource: MessageSource = {
             kind: "link",
             href: "/investments/retirement",
           },
-          learnLink("the-match"),
           snoozeButton(),
         ],
         dedupeKey: `retirement:${retirement.status}:${retirement.match?.captured ?? "none"}`,
@@ -255,7 +251,6 @@ export const investmentsSource: MessageSource = {
         refs: { advice: true },
         actions: [
           { id: "open", label: "See why", kind: "link", href: "/investments/accounts" },
-          learnLink("roth-vs-traditional"),
           snoozeButton(),
         ],
         dedupeKey: `accounts:${order.map((s) => s.key).join(",")}:${inv.accountPlan.location.map((m) => m.holding.ticker).join(",")}`,

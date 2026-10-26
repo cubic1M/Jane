@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -193,11 +194,15 @@ async function MoneyContent({
     if (fix) details[itemId("books", b.id)] = <Go href={fix.href}>{fix.label}</Go>;
   }
 
-  for (const t of data.transfers) {
-    details[itemId("transfers", t.id)] = (
-      <Go href="/transfers">{t.status === "pending" ? "Undo it on Transfers" : "All transfers"}</Go>
-    );
-  }
+  // The Transfers page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  if (!isHiddenPage("/transfers"))
+    for (const t of data.transfers) {
+      details[itemId("transfers", t.id)] = (
+        <Go href="/transfers">
+          {t.status === "pending" ? "Undo it on Transfers" : "All transfers"}
+        </Go>
+      );
+    }
 
   details[itemId("have", "net-worth")] = <Go href="/net-worth">Net worth, month by month</Go>;
   if (data.missing.length > 0) {
