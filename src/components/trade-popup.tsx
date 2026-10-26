@@ -345,7 +345,7 @@ function EventUpdateCard({
               on your paper account, on top of its strategy. Simulated money only: nothing real is
               bought or sold.
             </p>
-            <Link href="/investments#events" className="font-semibold underline underline-offset-2">
+            <Link href="/investments" className="font-semibold underline underline-offset-2">
               See the Events box
             </Link>
           </div>
