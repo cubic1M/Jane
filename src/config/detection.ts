@@ -161,6 +161,8 @@ export const PRICE_INCREASE_MIN_PRIOR_CHARGES = 2;
 // The earlier charges must all sit within this share of their average: a fixed price, not
 // a bill that moves with what you buy.
 export const PRICE_INCREASE_MAX_PRIOR_SPREAD = 0.03;
+// A rise is still news for this many charges at the new price; after that it's just the price.
+export const PRICE_INCREASE_MAX_CHARGES_SINCE = 3;
 // With at least this many earlier charges the increase is rated high confidence.
 export const PRICE_INCREASE_HIGH_CONFIDENCE_PRIOR_CHARGES = 3;
 // Spending that varies with what you buy, bills that move with usage, and payments a
@@ -189,6 +191,9 @@ export const PRICE_INCREASE_EXCLUDED_CATEGORIES: readonly PfcDetailed[] = [
 // --- Bank fees and card interest ---------------------------------------------------
 
 // Fees a bank or card issuer charged. Interest is its own finding (card interest).
+// A fee the bank gave back within this many days (same amount, same category) was never paid
+// (messy-bank QA: an overdraft fee reversed two days later still counted).
+export const FEE_REVERSAL_DAYS = 30;
 export const BANK_FEE_CATEGORIES: readonly PfcDetailed[] = [
   "BANK_FEES_ATM_FEES",
   "BANK_FEES_CASH_ADVANCE",
@@ -580,3 +585,12 @@ export const ONE_OFF_NEVER_DETAILED: readonly string[] = [
 ];
 // Another charge from the same merchant of at least this share of the amount makes it recur.
 export const ONE_OFF_REPEAT_SHARE = 0.5;
+
+// --- Thin data -----------------------------------------------------------------------
+
+// With fewer months of history than this, a confidence percentage is capped at
+// THIN_DATA_MAX_PERCENT plus THIN_DATA_MAX_PER_MONTH a month (53% with one month, 59% with
+// three, 65% with five): a short history can't make Jane very sure, however many matches.
+export const THIN_DATA_MONTHS = 6;
+export const THIN_DATA_MAX_PERCENT = 50;
+export const THIN_DATA_MAX_PER_MONTH = 3;

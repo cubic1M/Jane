@@ -1,3 +1,8 @@
+import {
+  THIN_DATA_MAX_PERCENT,
+  THIN_DATA_MAX_PER_MONTH,
+  THIN_DATA_MONTHS,
+} from "@/config/detection";
 import { CONFIDENCE, UNSURE_BELOW } from "@/config/profile";
 
 export type Source = "seen" | "told" | "guessed";
@@ -14,7 +19,13 @@ export function confidenceOf(
     c.base +
     Math.max(0, evidence.months) * c.perMonth +
     Math.min(Math.max(0, evidence.matches), c.matchCap) * c.perMatch;
-  return Math.min(c.max, Math.round(raw));
+  // Thin data: a few months of history can't make Jane very sure, however many matches it has
+  // (messy-bank QA: three months read as 62% sure).
+  const thin =
+    evidence.months < THIN_DATA_MONTHS
+      ? THIN_DATA_MAX_PERCENT + Math.max(0, evidence.months) * THIN_DATA_MAX_PER_MONTH
+      : Infinity;
+  return Math.min(c.max, thin, Math.round(raw));
 }
 
 // How a percentage is said: "I'm 85% sure" or, below UNSURE_BELOW, "I'm not sure (45%)".
