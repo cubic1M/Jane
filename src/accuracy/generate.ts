@@ -594,7 +594,8 @@ function person(index: number): History {
       });
       for (const row of [out, back]) if (row.id) b.labels.transfers.push(row.id);
     });
-    b.bill(payOut);
+    // "Coming up" calls any card payment "Credit card payment".
+    b.bill("Credit card payment");
     if (debt) {
       b.monthly(r.int(10, 18), (date) =>
         b.add({

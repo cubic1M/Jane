@@ -1,6 +1,5 @@
 import {
   CARD_PAYMENT_NAME,
-  CARD_PAYMENT_THANKS,
   FORECAST_SUBTYPES,
   NOT_BILL_CATEGORIES,
   OWN_ACCOUNT_TRANSFERS,
@@ -114,10 +113,11 @@ export function expectedIncome(input: DetectionInput, until: string): Expected[]
 // Books QA: card interest isn't a bill (the card's own payment covers it), and a card payment
 // the bank names "... thank you" reads as what it is. Shared with the recurring charges.
 export const isBillStream = (s: Stream) => !NOT_BILL_CATEGORIES.includes(s.pfcDetailed ?? "");
+// A card payment from checking reads as one whatever the card company calls it ("CHASE CREDIT
+// CRD AUTOPAY", "AMEX EPAYMENT"), now that usage bills and card payments are found by their
+// timing (accuracy bench).
 export const billName = (s: Stream) =>
-  s.pfcDetailed === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" && CARD_PAYMENT_THANKS.test(s.merchant)
-    ? CARD_PAYMENT_NAME
-    : s.merchant;
+  s.pfcDetailed === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" ? CARD_PAYMENT_NAME : s.merchant;
 
 // Money the person moves to their own savings or investments on a schedule: never a bill
 // (messy-bank QA: "Online Transfer To Sav" was listed as a $500 bill), though the forecast
