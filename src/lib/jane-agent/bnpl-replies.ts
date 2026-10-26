@@ -1,4 +1,3 @@
-import { BNPL_EARLY_PAYOFF_SOURCE } from "@/config/bnpl";
 import { LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import type { Bnpl } from "@/lib/bnpl";
 import { dayLabel } from "@/lib/day-label";
@@ -89,5 +88,3 @@ export function bnplNewPlanReply(data: Bnpl, totalCents: number): Reply {
     refs: { advice: true },
   };
 }
-
-export const EARLY_PAYOFF_SOURCE = BNPL_EARLY_PAYOFF_SOURCE;

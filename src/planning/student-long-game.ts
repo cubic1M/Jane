@@ -4,7 +4,6 @@ import {
   LONG_GAME,
   PSLF_PAYMENTS,
 } from "@/config/student-loans";
-import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 
 // Student loans, the long game (spec step 225). Pure: Public Service Loan Forgiveness counted
@@ -134,6 +133,3 @@ export function refiGuide(input: {
     text: `Refinancing this federal loan with a private lender is permanent and gives up ${lost.join("; ")}.${offer && drop >= LONG_GAME.refiMinDropBps ? ` ${offer.lender}'s ${(offer.aprBps / 100).toFixed(2)}% would save about ${formatCents(offer.savingCents)}; weigh that against what you'd lose.` : ""}`,
   };
 }
-
-export const datedLine = (label: string, day: string) =>
-  `${label}: ${dayLabel(day, { year: true })}`;

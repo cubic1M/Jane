@@ -149,5 +149,3 @@ export function reminderText(input: {
       : "";
   return `Hi ${first}, hope you're well! A gentle reminder about the ${formatCents(input.principalCents)} from ${dayLabel(input.openedOn)}.${partly} No rush, and let me know if a different schedule would help${input.app ? `. You can send it on ${input.app}` : ""}.`;
 }
-
-export const candidateMinLabel = formatCents(CANDIDATE_MIN_CENTS);

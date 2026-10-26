@@ -7,12 +7,11 @@
 export const LONG_VIEW_HORIZONS = [10, 20, 30] as const;
 // Yearly growth of cash after inflation: savings accounts roughly keep up with prices.
 export const CASH_REAL_GROWTH = 0;
-export const CASH_REAL_GROWTH_SOURCE = "Savings roughly keep pace with inflation";
+// Source: Savings roughly keep pace with inflation
 // Yearly growth of a home's value after inflation (long-run US house prices have risen a
 // little faster than prices).
 export const HOME_REAL_GROWTH = 0.01;
-export const HOME_REAL_GROWTH_SOURCE =
-  "Long-run US house prices have risen about 1% a year faster than prices";
+// Source: Long-run US house prices have risen about 1% a year faster than prices
 // What was paid on a debt goes to investing once it is paid off.
 export const ROLL_FREED_PAYMENTS = true;
 // Things owned that grow like a home (the rest, like a car, are held at today's value).

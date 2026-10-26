@@ -49,8 +49,7 @@ export const WITHDRAWAL_SOURCE = "The 4% rule of thumb (Bengen 1994; Trinity stu
 // lane's brackets and the person's filing status (src/config/tax-rates.ts) when it lands.
 export const ROTH_BELOW_PAY_CENTS = 6_500_000;
 export const TRADITIONAL_ABOVE_PAY_CENTS = 21_500_000;
-export const ROTH_SOURCE =
-  "Federal brackets for a single filer: 12% and below favours Roth, 32% and above traditional";
+// Source: Federal brackets for a single filer: 12% and below favours Roth, 32% and above traditional
 
 // Contributions from the employer, by the investment transaction's name (Plaid gives one
 // "contribution" subtype for both).
