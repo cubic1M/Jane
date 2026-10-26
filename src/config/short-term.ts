@@ -95,7 +95,6 @@ export const PRODUCTS: readonly Product[] = [
 // An I bond redeemed before this many months loses this many months of interest.
 export const IBOND_PENALTY_BEFORE_MONTHS = 60;
 export const IBOND_PENALTY_MONTHS = 3;
-export const IBOND_YEARLY_LIMIT_CENTS = 1_000_000;
 
 // Bill terms a ladder can buy, in months, longest first.
 export const BILL_TERMS = [12, 6, 3] as const;

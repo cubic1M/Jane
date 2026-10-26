@@ -7,7 +7,7 @@
 export const PLAN_WITHIN_YEARS = 15;
 // How long the money has to last: to this age.
 export const PLAN_TO_AGE = 95;
-export const PLAN_HORIZON_SOURCE = "Planners plan to 95 so the money outlasts a long life";
+// Source: Planners plan to 95 so the money outlasts a long life
 
 // Social Security: the share of the full-retirement-age benefit at each claiming age, for
 // people born in 1960 or later (full retirement age 67). Social Security Administration.

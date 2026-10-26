@@ -374,5 +374,3 @@ export function InteractiveTree({
     </div>
   );
 }
-
-export { Badge as TreeBadge };

@@ -2,7 +2,6 @@ import {
   ALERT_EMAILS_PER_DAY,
   ALERT_LABELS,
   ALERT_TYPES,
-  ALERTS_PAGE_LIMIT,
   DEFAULT_ALERT_DELIVERY,
   URGENT_ALERT_TYPES,
   type AlertDelivery,
@@ -193,19 +192,6 @@ async function shownTypes(userId: string, client: PrismaClient): Promise<AlertTy
   });
   const prefs = alertPrefs(user?.alertPrefs);
   return ALERT_TYPES.filter((t) => prefs[t] !== "off");
-}
-
-// The newest alerts for /alerts.
-export async function listAlerts(
-  userId: string,
-  { client = defaultClient }: Pick<Options, "client"> = {},
-) {
-  return scopedFor(userId, client).alerts.findMany({
-    where: { type: { in: await shownTypes(userId, client) } },
-    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-    take: ALERTS_PAGE_LIMIT,
-    select: { id: true, type: true, title: true, body: true, createdAt: true, readAt: true },
-  });
 }
 
 // The newest unread alerts, for the Jane hub (spec step 80). Showing them there doesn't

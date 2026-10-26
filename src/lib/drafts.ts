@@ -4,13 +4,6 @@ import { anthropic, finishedText, llmEnabled, llmModel } from "@/lib/anthropic";
 import { prepareExplainInput } from "./explain-input";
 import { checkGuardrails } from "./guardrails";
 
-// A message the concierge team can send (or read on a call) to the merchant, drafted by
-// Claude from only what the merchant needs: their own name, the charges in question, and
-// the request. Never the person's name, email, account names or numbers, transaction
-// descriptions, or our savings estimate. The team fills in the placeholders.
-
-export const DRAFT_PROMPT_VERSION = "draft-v1";
-
 export const PLACEHOLDERS = {
   name: "[account holder name]",
   email: "[account email]",

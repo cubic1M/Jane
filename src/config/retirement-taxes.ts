@@ -19,9 +19,6 @@ export const SS_BASE = {
 } as const;
 export const SS_SHARES = { first: 0.5, second: 0.85 } as const;
 
-// The voluntary withholding rates Social Security offers (Form W-4V).
-export const W4V_RATES = [0.07, 0.1, 0.12, 0.22] as const;
-
 // Medicare's income-related surcharges (IRMAA), by the year the premiums are paid. Each tier
 // starts above `over` (modified adjusted gross income from two years before); the surcharge is
 // monthly, per person on Medicare, for Part B and for Part D.

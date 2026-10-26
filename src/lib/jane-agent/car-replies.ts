@@ -1,4 +1,3 @@
-import { CAR_COST_SOURCE } from "@/config/car";
 import type { Car } from "@/lib/car";
 import { formatCents } from "@/lib/money";
 import { formatRate } from "@/insights/loans";
@@ -84,5 +83,3 @@ export function carDealerReply(car: Car): Reply {
     refs: { advice: true },
   };
 }
-
-export const CAR_SOURCE = CAR_COST_SOURCE;
