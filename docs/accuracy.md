@@ -1,10 +1,11 @@
 # Accuracy
 
-Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had been tuned on the eight sample people. The bench holds Jane to 100 synthetic bank histories that look like real exports, with the truth for every detector, and a CI gate keeps the scores from slipping.
+Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had been tuned on the eight sample people. The bench holds Jane to 140 synthetic bank histories that look like real exports, with the truth for every detector, and a CI gate keeps the scores from slipping.
 
 - **Data:** `src/accuracy/generate.ts`, fixed seeds, in two sets.
   - **Tuning set** (`SEED`, `src/accuracy/__fixtures__/histories.json`): 60 people, about 16,300 transactions. The first 40 are #766's people, row for row. The other 20 carry each known cause of a miss or a false alarm (below), so a fix is tried on more than the one or two people who showed it. Rules are fixed by looking at this set's mistakes (`ACCURACY_MISTAKES=1`).
   - **Held-out set** (`HELD_OUT_SEED`, `src/accuracy/__fixtures__/held-out.json`): 40 people, about 10,000 transactions, from another seed, with the same causes under names the tuning set never uses: other card companies, ticket sellers, utilities, yearly plans, shops and app stores. Nobody looks at its mistakes while fixing rules; it is only scored. A gain that shows up here is real, not a rule that memorised the tuning set.
+  - **Second held-out set** (`HELD_OUT_2_SEED`, `src/accuracy/__fixtures__/held-out-2.json`): 40 more people, with names neither of the others uses. Once the first held-out set's mistakes have been read to explain them, it is no longer a clean check; any fix those mistakes suggest is checked here instead.
   - 2 to 14 months of history each; a quarter of the new people have only two months.
   - Six kinds of person: salaried, hourly, freelancer, retiree, struggling and saver.
   - The messy-bank lessons are built in:
@@ -37,7 +38,7 @@ Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had be
   - **Recall:** of what's true, how much Jane said.
   - **False-alarm rate:** the share of people who got at least one wrong item from that detector.
 - **Run it:** `npm run accuracy` prints the scoreboard and calibration for each set. `ACCURACY_WRITE=1 npm run accuracy` also rewrites the fixtures, `src/accuracy/baseline.json` and the tables below. `ACCURACY_MISTAKES=1` lists the tuning set's mistakes only.
-- **Gate:** `src/accuracy/accuracy.test.ts`, run with the unit tests, on both sets. It fails when:
+- **Gate:** `src/accuracy/accuracy.test.ts`, run with the unit tests, on all three sets. It fails when:
   - any detector's precision or recall drops more than 3 points below the baseline;
   - a fixture no longer matches the generator;
   - any suggestion says 0%;
@@ -61,7 +62,7 @@ Before: the detectors as on main (with #759's messy-bank fixes), on the same 40 
 | income | 100.0% | 87.3% | 0.0% | 890 | 0 | 130 |
 | transfers | 100.0% | 95.4% | 0.0% | 1152 | 0 | 56 |
 
-Now (the baseline the gate holds to, both sets):
+Now (the baseline the gate holds to, every set):
 
 <!-- scoreboard:start -->
 Tuning set (60 people, 16326 transactions):
@@ -113,6 +114,31 @@ Calibration, held-out set:
 | 70–79% | 10 | 75% | 100% |
 | 80–89% | 15 | 85% | 100% |
 | 90–100% | 12 | 95% | 100% |
+
+Second held-out set (40 people, 10748 transactions):
+
+| Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| subscriptions | 100.0% | 38.4% | 0.0% | 48 | 0 | 77 |
+| price_rises | 100.0% | 100.0% | 0.0% | 4 | 0 | 0 |
+| fees | 100.0% | 100.0% | 0.0% | 21 | 0 | 0 |
+| double_charges | 42.6% | 100.0% | 47.5% | 20 | 27 | 0 |
+| idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 0.0% | 12 | 0 | 0 |
+| bills | 99.4% | 54.7% | 2.5% | 156 | 1 | 129 |
+| income | 100.0% | 100.0% | 0.0% | 780 | 0 | 0 |
+| transfers | 100.0% | 82.4% | 0.0% | 733 | 0 | 157 |
+
+Calibration, second held-out set:
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 32 | 56% | 84% |
+| 60–69% | 27 | 64% | 70% |
+| 70–79% | 8 | 75% | 100% |
+| 80–89% | 19 | 86% | 100% |
+| 90–100% | 18 | 95% | 100% |
 <!-- scoreboard:end -->
 
 ### What changed

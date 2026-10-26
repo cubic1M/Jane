@@ -11,7 +11,9 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 // #766's 40 people, unchanged, and 20 more who carry each known cause of a miss or a false
 // alarm. The held-out set is 40 people from another seed, with the same causes under names the
 // tuning set never uses (other card companies, ticket sellers, utilities, yearly plans), and
-// is only scored, never tuned on, so a gain that holds there is real.
+// is only scored, never tuned on, so a gain that holds there is real. A second held-out set,
+// with names neither of the others uses, is kept for checking fixes the first one's mistakes
+// suggested: once a set's mistakes have been read, it is no longer a clean check.
 
 export const SEED = 20261026;
 export const PEOPLE_COUNT = 60;
@@ -19,9 +21,10 @@ export const PEOPLE_COUNT = 60;
 export const ORIGINAL_COUNT = 40;
 export const HELD_OUT_SEED = 77_031_337;
 export const HELD_OUT_COUNT = 40;
+export const HELD_OUT_2_SEED = 90_210_455;
 export const AS_OF = "2026-10-21";
 
-export type BenchSet = "tuning" | "held-out";
+export type BenchSet = "tuning" | "held-out" | "held-out-2";
 
 export type RawRow = {
   id: string;
@@ -228,6 +231,36 @@ const CAUSES: Record<
       { description: "COSTCO WHSE #0123", category: "Shopping", lo: 40, hi: 250 },
     ],
   },
+  "held-out-2": {
+    unknownIssuers: ["MERRICK BANK PYMT 2201", "PENFED CARD PAYMENT", "FIRST PREMIER BANKCARD PMT"],
+    perSeat: [
+      { description: "VIVID SEATS 866-848-8499", category: "Entertainment" },
+      { description: "HARKINS THEATRES 0412", category: "Entertainment" },
+      { description: "SOUTHWEST AIR 5262123456789", category: "Travel" },
+    ],
+    utilities: [
+      "ENTERGY ARKANSAS PPD ID: 7710",
+      "ALABAMA POWER BILL PAY",
+      "FPL DIRECT DEBIT",
+      "PUGET SOUND ENERGY",
+    ],
+    yearly: [
+      { description: "MICROSOFT*MICROSOFT 365 P", cents: 9_999 },
+      { description: "AMAZON PRIME*8H2LK1QZ0", cents: 13_900 },
+      { description: "DROPBOX*K2L9QX", cents: 11_988 },
+    ],
+    platforms: ["APPLE.COM/BILL 866-712-7753 CA", "ITUNES.COM/BILL"],
+    oneOffs: [
+      { description: "AUDIBLE*7KL2QX", category: "Entertainment", lo: 8, hi: 30 },
+      { description: "APPLE.COM/BILL 866-712-7753 CA", category: "Shopping", lo: 1, hi: 60 },
+      { description: "PELOTON* APPAREL", category: "Shopping", lo: 60, hi: 120 },
+    ],
+    shops: [
+      { description: "KOHLS #0912", category: "Shopping", lo: 20, hi: 150 },
+      { description: "WALMART.COM 8009256278", category: "Shopping", lo: 15, hi: 200 },
+      { description: "PETSMART #1123", category: "Shopping", lo: 15, hi: 120 },
+    ],
+  },
 };
 
 class Builder {
@@ -283,16 +316,17 @@ class Builder {
 }
 
 function person(index: number, set: BenchSet = "tuning"): History {
-  const seed = (set === "tuning" ? SEED : HELD_OUT_SEED) + index * 7919;
+  const seed =
+    { tuning: SEED, "held-out": HELD_OUT_SEED, "held-out-2": HELD_OUT_2_SEED }[set] + index * 7919;
   const r: Rng = rng(seed);
   // The causes draw from their own stream, so #766's people stay row for row.
   const x: Rng = rng(seed ^ 0x5eed);
-  const causes = set === "held-out" || index >= ORIGINAL_COUNT ? CAUSES[set] : null;
+  const causes = set !== "tuning" || index >= ORIGINAL_COUNT ? CAUSES[set] : null;
   const archetype = ARCHETYPES[index % ARCHETYPES.length];
   const drawnMonths = r.pick([2, 3, 4, 6, 8, 12, 12, 14]);
   // Short histories: two charges of everything.
   const months = causes && x.chance(0.25) ? 2 : drawnMonths;
-  const id = `${set === "tuning" ? "p" : "h"}${String(index + 1).padStart(2, "0")}`;
+  const id = `${{ tuning: "p", "held-out": "h", "held-out-2": "k" }[set]}${String(index + 1).padStart(2, "0")}`;
   const start = addMonths(AS_OF, -months);
   const b = new Builder(id, start, AS_OF);
   const chk = `${id}-chk`;
@@ -985,8 +1019,8 @@ export function generateHistories(count = PEOPLE_COUNT): History[] {
   return Array.from({ length: count }, (_, i) => person(i));
 }
 
-export function generateHeldOut(count = HELD_OUT_COUNT): History[] {
-  return Array.from({ length: count }, (_, i) => person(i, "held-out"));
+export function generateHeldOut(count = HELD_OUT_COUNT, set: BenchSet = "held-out"): History[] {
+  return Array.from({ length: count }, (_, i) => person(i, set));
 }
 
 // The checked-in form (src/accuracy/__fixtures__/histories.json): each row as a tuple, which

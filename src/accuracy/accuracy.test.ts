@@ -11,8 +11,8 @@ import {
 } from "./generate";
 import { DETECTOR_NAMES, calibration, judgedSuggestions, scoreboard } from "./score";
 
-// The accuracy gate (docs/accuracy.md): every detector, on the tuning set and on the held-out
-// set, must keep its precision and recall within ALLOWED_DROP of the recorded baseline
+// The accuracy gate (docs/accuracy.md): every detector, on the tuning set and on both held-out
+// sets, must keep its precision and recall within ALLOWED_DROP of the recorded baseline
 // (src/accuracy/baseline.json, written by `ACCURACY_WRITE=1 npm run accuracy`). A change that
 // makes a detector better passes; record the new baseline with it so the gain is kept.
 
@@ -33,7 +33,13 @@ const SETS = [
   {
     set: "held-out",
     path: "src/accuracy/__fixtures__/held-out.json",
-    generate: generateHeldOut,
+    generate: () => generateHeldOut(),
+    count: HELD_OUT_COUNT,
+  },
+  {
+    set: "held-out-2",
+    path: "src/accuracy/__fixtures__/held-out-2.json",
+    generate: () => generateHeldOut(HELD_OUT_COUNT, "held-out-2"),
     count: HELD_OUT_COUNT,
   },
 ] as const;

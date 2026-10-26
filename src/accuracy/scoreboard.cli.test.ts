@@ -23,11 +23,12 @@ import {
 // for the tuning set and, separately, the held-out set. ACCURACY_WRITE=1 also rewrites the
 // fixtures, the baseline the CI gate holds to (./baseline.json) and the scoreboard in
 // docs/accuracy.md. ACCURACY_MISTAKES=1 lists the tuning set's mistakes, the ones to fix rules
-// on; the held-out set's are left out on purpose. Skipped in a normal test run.
+// on; the held-out sets' are left out on purpose. Skipped in a normal test run.
 
 export const FIXTURES: Record<BenchSet, string> = {
   tuning: "src/accuracy/__fixtures__/histories.json",
   "held-out": "src/accuracy/__fixtures__/held-out.json",
+  "held-out-2": "src/accuracy/__fixtures__/held-out-2.json",
 };
 const BASELINE = "src/accuracy/baseline.json";
 const DOC = "docs/accuracy.md";
@@ -56,18 +57,25 @@ export function calibrationTable(buckets: Bucket[]): string {
   ].join("\n");
 }
 
-const SET_NAMES: Record<BenchSet, string> = { tuning: "Tuning set", "held-out": "Held-out set" };
+const SET_NAMES: Record<BenchSet, string> = {
+  tuning: "Tuning set",
+  "held-out": "Held-out set",
+  "held-out-2": "Second held-out set",
+};
 
 describe.runIf(process.env.ACCURACY === "1")("the accuracy scoreboard", () => {
   it("scores every detector on the labelled histories", () => {
     const write = process.env.ACCURACY_WRITE === "1";
     if (write) {
       writeFileSync(FIXTURES.tuning, `${JSON.stringify(toFixture(generateHistories()))}\n`);
-      writeFileSync(FIXTURES["held-out"], `${JSON.stringify(toFixture(generateHeldOut()))}\n`);
+      for (const set of ["held-out", "held-out-2"] as const) {
+        const people = generateHeldOut(undefined, set);
+        writeFileSync(FIXTURES[set], `${JSON.stringify(toFixture(people))}\n`);
+      }
     }
     const baseline: Record<string, Record<string, { precision: number; recall: number }>> = {};
     const doc: string[] = [];
-    for (const set of ["tuning", "held-out"] as const) {
+    for (const set of ["tuning", "held-out", "held-out-2"] as const) {
       const histories = fromFixture(JSON.parse(readFileSync(FIXTURES[set], "utf8")));
       const { scores, mistakes } = scoreboard(histories);
       const buckets = calibration(judgedSuggestions(histories));
