@@ -52,6 +52,9 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
   const bills = events.filter((e) => e.kind === "bill").length;
   const pays = events.filter((e) => e.kind === "pay").length;
   const at = (day: number) => `${(day / view.days) * 100}%`;
+  // A mark is centred on its day, so one on day 0 or the last day would stick out of the strip
+  // by half its width (a phone then scrolls sideways); keep its centre half a widest mark in.
+  const markAt = (day: number) => `clamp(1.25rem, ${at(day)}, calc(100% - 1.25rem))`;
   const open = shown === null ? null : groups[shown];
 
   const move = (to: number) => {
@@ -131,7 +134,7 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
                 onClick={() => setShown(shown === i ? null : i)}
                 data-kind={e.kind}
                 className="hub-pop absolute flex -translate-x-1/2 items-center justify-center p-1 outline-offset-2"
-                style={{ left: at(e.day), ...pos, animationDelay: `${Math.min(i, 20) * 20}ms` }}
+                style={{ left: markAt(e.day), ...pos, animationDelay: `${Math.min(i, 20) * 20}ms` }}
               >
                 <svg
                   aria-hidden

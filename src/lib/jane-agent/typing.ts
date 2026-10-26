@@ -16,7 +16,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { hit } from "@/lib/rate-limit";
 import { claudeLimit, refundClaudeUse } from "./claude-limits";
-import { overDailyCap } from "./spend";
+import { overDailyCap, recordLimitHit } from "./spend";
 import { answerByRules } from "./answer";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
@@ -135,7 +135,7 @@ export async function recentTurns(
   const turns = rows.reverse();
   const unanswered = (m: { kind: string; body: string }) =>
     m.kind === "reply" &&
-    /^(?:I couldn't look into that|I couldn't write a full answer|Sorry, I couldn't finish|I've reached today's limit|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
+    /^(?:I couldn't look into that|I couldn't write a full answer|Sorry, I couldn't finish|I've reached today's limit|I've hit today's limit|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
       m.body,
     );
   return turns
@@ -161,7 +161,9 @@ const UNSAFE_REQUEST =
   /\b(?:hide (?:money|income|assets|cash)|forg(?:e|ing|ery)|launder\w*|evad(?:e|ing) (?:tax|taxes|the irs)|tax evasion|cheat|bypass|hack|steal|fake (?:a |an |my )?(?:id|document|signature|receipt|paystub|pay stub)|lie to|fraud\w*)\b/i;
 const UNSAFE_TEXT =
   "I can't help with that. I'm glad to help with your spending, bills, savings or taxes the honest way.";
-const DAILY_LIMIT_LEAD = "I've reached today's limit for answering in detail";
+// The person's daily allowance of written answers is used up (founder, 2026-10-26): short and
+// honest, then whatever the data answers for free.
+export const DAILY_LIMIT_NOTE = "I've hit today's limit for written answers, back tomorrow.";
 
 export type AnswerSource =
   "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback" | "capped";
@@ -202,31 +204,37 @@ async function answer(
   };
   // The backup for when Claude can't answer: the rules' answer from the same data, or, for
   // anything they can't place, where the person stands (never a bare "unavailable").
-  const backup = async (
-    lead = "I couldn't write a full answer to that just now",
-  ): Promise<Reply> => {
+  const backup = async ({ limited = false } = {}): Promise<Reply> => {
     const byRules = await rules();
     if (byRules)
-      return lead === DAILY_LIMIT_LEAD ? { ...byRules, body: `${lead}. ${byRules.body}` } : byRules;
+      return limited ? { ...byRules, body: `${DAILY_LIMIT_NOTE} ${byRules.body}` } : byRules;
     // Where the person stands answers "how am I doing / what should I do"; for a specific
     // question it would be an unrelated status, so say plainly that it wasn't finished.
     if (UNSAFE_REQUEST.test(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
     if (!STATUS_QUESTION.test(text)) {
-      return {
-        body: lead === DAILY_LIMIT_LEAD ? `${lead}. Please ask again tomorrow.` : UNFINISHED_TEXT,
-        actions: [],
-        refs: {},
-      };
+      return { body: limited ? DAILY_LIMIT_NOTE : UNFINISHED_TEXT, actions: [], refs: {} };
     }
     const picture = await answerByRules(
       userId,
       { kind: "whole_picture", focus: "now" },
       { client, now, topic: null },
     );
-    return picture
-      ? { ...picture, body: `${lead}, so here is where you stand. ${picture.body}` }
-      : unknownReply(text, asOf);
+    if (!picture)
+      return limited ? { body: DAILY_LIMIT_NOTE, actions: [], refs: {} } : unknownReply(text, asOf);
+    return {
+      ...picture,
+      body: limited
+        ? `${DAILY_LIMIT_NOTE} Here is where you stand. ${picture.body}`
+        : `I couldn't write a full answer to that just now, so here is where you stand. ${picture.body}`,
+    };
   };
+  // Today's allowance of written answers for this person is used up: say so, then what the data
+  // gives, with its buttons. Before the no-Claude check, so the note is the same wherever it runs.
+  if (await overDailyCap(userId, { client, now })) {
+    console.info("chat_timing", { outcome: "capped", reason: "daily_cap", costCents: 0 });
+    await recordLimitHit(userId, { client, now }).catch(() => {});
+    return { reply: await backup({ limited: true }), intent: intent.kind, source: "capped" };
+  }
   // No Claude (no key: dev, tests): the rules answer, as before.
   if (!llmEnabled()) {
     const byRules = await rules();
@@ -235,15 +243,6 @@ async function answer(
   }
   // Chat architecture (docs/spec.md): every typed message is answered by Claude, writing from
   // Jane's tools and numbers. A button, a card or a rules answer never stands in for it.
-  // Today's spend on this person is used up: say so, then what the data gives.
-  if (await overDailyCap(userId, { client, now })) {
-    console.info("chat_timing", { outcome: "capped", reason: "daily_cap", costCents: 0 });
-    return {
-      reply: await backup(DAILY_LIMIT_LEAD),
-      intent: intent.kind,
-      source: "claude_unavailable",
-    };
-  }
   const limit = await claudeLimit(userId, { client, now });
   if (limit === "budget") {
     return { reply: await backup(), intent: intent.kind, source: "claude_unavailable" };
