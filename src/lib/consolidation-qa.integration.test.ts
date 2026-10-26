@@ -59,7 +59,8 @@ describe.runIf(url)("the merges, on the eight sample people", { timeout: 240_000
     vi.unstubAllEnvs();
   });
 
-  it.each(PEOPLE.map((p) => p.id))("%s", async (id) => {
+  // Each sample person is their own: they run side by side (one at a time took ten minutes).
+  it.concurrent.each(PEOPLE.map((p) => p.id))("%s", async (id) => {
     const found: string[] = [];
     const trial = await startTrial({ client, now: LINKED, defer: true, person: id });
     made.set(id, trial.userId);

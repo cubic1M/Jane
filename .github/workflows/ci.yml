@@ -84,6 +84,13 @@ jobs:
         run: npm ci
       - if: steps.modules.outputs.cache-hit == 'true'
         run: npx prisma generate
+      # Vitest starts the files that took longest last time first, from its results file, so a
+      # shard doesn't end on one slow file running alone. Kept between runs, per shard.
+      - uses: actions/cache@v6
+        with:
+          path: node_modules/.vite/vitest
+          key: vitest-results-${{ matrix.shard }}-${{ github.run_id }}
+          restore-keys: vitest-results-${{ matrix.shard }}-
       - name: No waiting on commits (a throwaway database)
         run: node scripts/fast-test-postgres.mjs "$TEST_DATABASE_URL"
       - name: Apply migrations to an empty database

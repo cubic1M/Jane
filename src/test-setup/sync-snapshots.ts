@@ -25,6 +25,8 @@ type Snapshot = {
   tables: Record<string, Row[]>;
   item: Row;
   user: Row;
+  // The user columns the sync changed: only those are copied, the rest stay the person's own.
+  userColumns: string[];
   result: Awaited<ReturnType<typeof SyncItem>>;
 };
 
@@ -198,7 +200,7 @@ export function fingerprint(tables: Record<string, Row[]>, user: Row, item: Row)
         rows.map((r) => JSON.stringify(strip(r))).sort(),
       ]),
     ),
-    user: strip({ ...user, email: null, name: null, image: null }),
+    user: strip({ ...user, email: null }),
     item: strip({
       ...item,
       access_token_encrypted: null,
@@ -287,8 +289,7 @@ async function restore(
           JSON.stringify(rewrite(s.item)),
           itemId,
         );
-      const keepUser = new Set(["id", "email", "created_at"]);
-      const userCols = Object.keys(s.user).filter((k) => !keepUser.has(k));
+      const userCols = s.userColumns.filter((c) => !["id", "email", "created_at"].includes(c));
       if (userCols.length > 0)
         await tx.$executeRawUnsafe(
           `UPDATE users SET (${userCols.map((c) => `"${c}"`).join(", ")}) =
@@ -365,13 +366,17 @@ vi.mock("@/lib/plaid/sync", async (importOriginal) => {
     tally.people.push(
       `${rest.join(":") || "demo"}@${options.now?.toISOString().slice(0, 16) ?? "now"}`,
     );
+    const after = (await rowOf(client, "users", userId))!;
     await save(key, {
       userId,
       itemId,
       seed,
       tables: await rowsOf(client, userId),
       item: (await rowOf(client, "plaid_items", itemId))!,
-      user: (await rowOf(client, "users", userId))!,
+      user: after,
+      userColumns: Object.keys(after).filter(
+        (c) => JSON.stringify(after[c]) !== JSON.stringify(user[c]),
+      ),
       result,
     });
     return result;
