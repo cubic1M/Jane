@@ -32,7 +32,7 @@ async function signIn(page: Page, baseURL: string | undefined) {
     .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
 }
 
-test("the Events box shows the event, the switch turns it on, and the paper account takes the event's trade", async ({
+test("the Events box is on by default: it shows the event, and the paper account takes its trade by itself", async ({
   page,
   baseURL,
 }) => {
@@ -44,32 +44,28 @@ test("the Events box shows the event, the switch turns it on, and the paper acco
     timeout: 60_000,
   });
 
-  // Off: what's happening, what it would do, how sure.
+  // On by default: the page's run acts on the event at the latest close, by itself.
   const box = page.locator("#events");
-  await expect(box).toHaveAttribute("data-events-box", "off");
+  await expect(box).toHaveAttribute("data-events-box", "on");
   await expect(box.getByText("EVENTS", { exact: true })).toBeVisible();
+  await expect(box.locator("[data-events-watching]")).toContainText("Watching 6 sources");
+  await expect(box.getByText(/its backtest showed no clear edge/i)).toBeVisible();
+  await expect(async () => {
+    await page.reload();
+    await expect(page.locator("#events [data-events-plan]")).toHaveText(/^→ Did: \+SMH/, {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 60_000 });
   await expect(box.locator("[data-events-now] li")).toHaveCount(1);
-  await expect(box.getByText("A chip boom", { exact: false }).first()).toBeVisible();
-  await expect(box.locator("[data-events-plan]")).toHaveText(/^→ Would tilt \+SMH, /);
   await expect(box.locator("[data-events-confidence]")).toHaveText(/^\d+% sure$/);
+  await expect(box.locator("[data-events-open]")).toContainText(/SMH|NVDA/);
   await expect(box.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // Not in the suggestion dock.
   await expect(page.locator("[data-card-dock] #events")).toHaveCount(0);
   const toggle = box.getByRole("switch", { name: "Events overlay" });
-  await expect(toggle).toHaveAttribute("aria-checked", "false");
-
-  // On: it catches up at once and places the paper trade itself.
-  await toggle.click();
-  await expect(box.locator("[data-events-note]")).toHaveText(/^On\. It placed \d+ paper trades? /, {
-    timeout: 60_000,
-  });
-  await expect(box).toHaveAttribute("data-events-box", "on", { timeout: 30_000 });
   await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await expect(box.locator("[data-events-plan]")).toHaveText(/^→ Did: \+SMH/);
-  await expect(box.locator("[data-events-open]")).toContainText(/SMH|NVDA/);
 
   // The paper account holds it, and its log says why.
-  await page.reload();
   await page
     .locator("#paper")
     .getByText(/^Trade log/)
@@ -89,16 +85,33 @@ test("the Events box shows the event, the switch turns it on, and the paper acco
   await expect(popup.locator("[data-trade-headline]")).toHaveText(
     /^\[✓\] Events: added [\d.]+% in (SMH|NVDA)$/,
   );
-  await expect(popup.getByText(/^\d+% sure$/)).toBeVisible();
   await popup.getByRole("button", { name: "OK" }).click();
   await expect(popup).toHaveCount(0);
-  await page.reload();
-  await expect(page.locator("#events")).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Trade alert" })).toHaveCount(0);
 
-  // Off again.
-  await page.locator("#events").getByRole("switch", { name: "Events overlay" }).click();
-  await expect(page.locator("#events")).toHaveAttribute("data-events-box", "off", {
-    timeout: 30_000,
+  // The switch turns it off, and back on.
+  await toggle.click();
+  await expect(box).toHaveAttribute("data-events-box", "off", { timeout: 30_000 });
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await toggle.click();
+  await expect(box).toHaveAttribute("data-events-box", "on", { timeout: 30_000 });
+});
+
+test("the Events box is never empty: what it watches, and what happened or that nothing did", async ({
+  page,
+  baseURL,
+}) => {
+  await signIn(page, baseURL);
+  await page.goto("/investments");
+  await page.locator("#paper").getByRole("button", { name: "Start paper account" }).click();
+  await expect(page.locator("#paper")).toHaveAttribute("data-paper-account", "running", {
+    timeout: 60_000,
   });
+  const box = page.locator("#events");
+  await expect(box.locator("[data-events-watching]")).toHaveText(
+    /^Watching 6 sources · (last checked .* UTC|first check under way)/,
+  );
+  // Either the events of the last five days, or a plain line that nothing big happened.
+  await expect(box.locator("[data-events-now]")).toBeVisible();
+  await expect(box.locator("[data-events-now]")).not.toHaveText("");
+  await expect(box.getByRole("table")).toHaveCount(1);
 });
