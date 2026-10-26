@@ -7,6 +7,7 @@ import type { SavedKind } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
 import { CalcLines, CalcPopup } from "./calc-popup";
 import { Meter, StackBar } from "./charts";
+import { MarchingPath } from "@/components/marching-path";
 
 // The home hub's Safe to spend and Saved tiles (founder: "When you click safe to spend till… it
 // should expand first having a summary on why that number is what it is. On the bottom, that box
@@ -352,13 +353,7 @@ function ChatLine({
       data-chat-line=""
       className={`pointer-events-none fixed inset-0 z-[60] h-full w-full overflow-visible transition-opacity duration-500 motion-reduce:transition-none ${fading ? "opacity-0" : "opacity-100"}`}
     >
-      <path
-        d={d}
-        fill="none"
-        strokeWidth={2}
-        strokeDasharray="3 6"
-        className="ask-line stroke-current"
-      />
+      <MarchingPath d={d} />
     </svg>
   );
 }

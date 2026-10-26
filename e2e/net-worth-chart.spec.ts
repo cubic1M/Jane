@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { expectMarchingLine } from "./marching";
 
 // The home hub's net worth chart (founder request: "a graph similar to Robinhood that displays
 // your total net worth from beginning of using Jane to present"). A big number with the
@@ -153,6 +154,7 @@ test("the significant days open where the money went, inside the chart", async (
     await expectSheet(page, details);
   } else {
     await expect(chart.locator("[data-net-worth-connector]")).toBeAttached();
+    await expectMarchingLine(chart.locator("[data-net-worth-connector]"));
     // Both stay inside the chart: nothing outside it is covered.
     for (const box of [await card.boundingBox(), await details.boundingBox()]) {
       expect(box!.x).toBeGreaterThanOrEqual(area.x - 1);

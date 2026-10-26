@@ -7,13 +7,14 @@ import type { Route } from "next";
 import type { CalcLine } from "@/lib/hub/view";
 import { formatCents } from "@/lib/money";
 import { placePopup, popupLine, type Box } from "./place-popup";
+import { MarchingPath } from "@/components/marching-path";
 
 // A tile's worked-out sum, in a pop-up beside the tile instead of another page (founder: "How
 // it's worked out should also not teleport you to another page, but show a pop up page (linked
 // by dashed animated line) right next to it showing the calculations"). It goes on the first
 // side with room, never over the tile, the net worth chart or the chat (./place-popup.ts), and
 // closes on Esc or a click outside. It arrives with the hub's motion (.nw-box-in, a marching
-// .ask-line; neither with reduced motion), and has the full page as a link inside.
+// <MarchingPath>; neither with reduced motion), and has the full page as a link inside.
 
 const dollars = (cents: number) =>
   cents < 0
@@ -159,13 +160,7 @@ export function CalcPopup({
         data-popup-line=""
         className="pointer-events-none absolute top-0 left-0 z-[35] overflow-visible text-zinc-900 dark:text-zinc-100"
       >
-        <path
-          ref={path}
-          fill="none"
-          strokeWidth={1.5}
-          strokeDasharray="5 4"
-          className="ask-line stroke-current"
-        />
+        <MarchingPath ref={path} />
       </svg>
       <div
         ref={box}

@@ -285,6 +285,11 @@ info isn't all gone"):
 - **On a phone:** in the chat's sheet, over its message box; and on Home, folded into one line at
   the very bottom, "[JANE] 3 for you ▲", left of the Jane button, so the net worth is the first
   thing seen (QA round 6); a tap opens the card (`foldOnPhone`).
+- **Open stays open:** once the person opens a card's details, every card after it comes in
+  open too (after an answer or a step), until they shut one; then cards come in shut again. One
+  flag for the stack, so the next card is drawn open from the start, with no shut moment.
+- **No first-run hello:** "Hi, I'm Jane. ..." is never written and, if posted before, shows
+  nowhere (`HELLO_START`; founder, 2026-10-26).
 - **Stays put:** the card showing is followed by its id, not its place in the line, so a reload
   that brings a new card in ahead of it (the dock reloads every minute, on focus, after an
   answer) never swaps it or shuts its details; and the dock keeps it until the person answers
@@ -333,6 +338,15 @@ Scrolling past either end of the chat never scrolls the page (founder: "Never le
 scroll affect the whole screen scroll"): `overscroll-behavior: contain` on the framed chat and
 the panel, and `containScroll` (`src/lib/contain-scroll.ts`) for what the browser would still
 hand on, such as a chat too short to scroll. Wheel, trackpad and touch.
+
+## Marching dotted lines
+
+Every line that marches (the Ask Jane line to the chat, the net worth's More details, the
+calculation pop-ups beside Safe to spend and Your plan, the investments panel) is
+`<MarchingPath>` (`src/components/marching-path.tsx`): one colour, width, dash and speed
+(`MARCHING_LINE` in `src/config/motion.ts`, `.marching-line` and `--line-march*` in globals.css),
+a mid grey that reads on white, near-black and the inverted cards (founder: "some are grey and
+some are white"). Still under reduced motion.
 
 ## Motion
 

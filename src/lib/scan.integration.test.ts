@@ -160,20 +160,19 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
       select: { body: true, kind: true, createdAt: true, refs: true },
     });
     expect(messages.map((m) => m.body)).not.toContain(SCANNING_HELLO);
-    // Jane's welcome first, then the agenda that leads with the scan's suggestions (on the
-    // cards, each with its percentage).
+    // No first-run hello any more (founder, 2026-10-26): the agenda that leads with the scan's
+    // suggestions (on the cards, each with its percentage) comes first.
     const at = (test: (body: string) => boolean) => messages.findIndex((m) => test(m.body));
-    const welcome = at((b) => /^Hi, I'm Jane\. I look at your money/.test(b));
+    expect(at((b) => /^Hi, I'm Jane\./.test(b))).toBe(-1);
     const agenda = at((b) => ON_THE_CARDS.test(b));
-    expect(welcome, messages.map((m) => m.body.slice(0, 30)).join(" | ")).toBe(0);
-    expect(agenda).toBeGreaterThan(welcome);
+    expect(agenda, messages.map((m) => m.body.slice(0, 30)).join(" | ")).toBe(0);
     const suggestions = messages.filter((m) => (m.refs as { suggestion?: string }).suggestion);
     expect(suggestions.length).toBeGreaterThan(0);
     for (const m of suggestions) expect(m.body).toMatch(/% sure|not sure/);
     const chat = (await openChat(trial.userId, { client, now: NOW }))!;
     expect(chat.scanning).toBe(false);
     expect(chat.messages.map((m) => m.body)).not.toContain(SCANNING_HELLO);
-    expect(chat.messages[0].body).toMatch(/^Hi, I'm Jane\. I look at your money/);
+    expect(chat.messages.some((m) => /^Hi, I'm Jane\./.test(m.body))).toBe(false);
   });
 
   it("says the same safe to spend in the first brief as the hub, for someone with goals", async () => {

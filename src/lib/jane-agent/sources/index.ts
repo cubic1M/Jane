@@ -17,7 +17,6 @@ import { lifeSource } from "./life";
 import { upkeepSource } from "./upkeep";
 import { foundPoliciesSource } from "./found-policies";
 import { savedSource } from "./saved";
-import { welcomeSource } from "./welcome";
 import { checkedSource } from "./checked";
 import { paycheckSource } from "./paycheck";
 import { billPaySource } from "./billpay";
@@ -68,7 +67,6 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   // Spec step 139.
   savedSource,
   // Spec step 140.
-  welcomeSource,
   // Spec step 142.
   checkedSource,
   // Spec step 144.

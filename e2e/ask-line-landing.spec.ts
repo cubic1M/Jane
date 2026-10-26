@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { expectMarchingLine } from "./marching";
 
 // Founder bugs on live /home (2026-10-25): the "Ask Jane" box at the end of the tree always draws
 // its dotted line to the chat, and asked already it still works (finding the earlier answer);
@@ -36,6 +37,8 @@ test("Ask Jane always draws its line, and asked again finds the earlier answer",
   // First ask: the line to the question as it lands.
   await ask.click();
   await expect(line).toBeVisible({ timeout: 30_000 });
+  // The one marching line, like every other (MARCHING_LINE).
+  await expectMarchingLine(line);
   await expect(ask).toContainText("ASKED ✓ · TAP TO SEE", { timeout: 60_000 });
   const count = await messages.count();
   if (isMobile) await page.getByRole("button", { name: "Close chat" }).click();

@@ -6,6 +6,7 @@ import type { AreaMap } from "@/lib/feature-map";
 import { giantAreas, type AreaTrees, type GiantArea, type GiantFeature } from "@/lib/giant-tree";
 import { STATUS, type TreeStatus } from "@/components/tree/interactive-tree";
 import { askedBefore, rememberAsked } from "@/lib/ask-jane";
+import { MarchingPath } from "@/components/marching-path";
 
 // The "What Jane does" tree on Home (src/lib/giant-tree.ts). The six areas are fixed tiles, a
 // row of six on a computer and two by three on a phone: nothing to drag, pan or zoom, and no
@@ -356,12 +357,8 @@ function AskLine({
       data-ask-line=""
       className={`pointer-events-none fixed inset-0 z-[60] h-full w-full overflow-visible transition-opacity duration-500 motion-reduce:transition-none ${fading ? "opacity-0" : "opacity-100"}`}
     >
-      <path
+      <MarchingPath
         d={`M${from.x},${from.y} C${from.x + dx},${from.y} ${to.x - dx},${to.y} ${to.x},${to.y}`}
-        fill="none"
-        strokeWidth={2}
-        strokeDasharray="3 6"
-        className="ask-line stroke-current"
       />
     </svg>
   );

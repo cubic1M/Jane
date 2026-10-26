@@ -184,12 +184,9 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(remembers).toContainText("Nothing yet.");
   await page.goto(CHAT);
 
-  // Spec step 96: search the chat, and pin a message to the top.
-  await page.getByRole("searchbox", { name: "Search the chat" }).first().fill("safe to spend");
-  await page.getByRole("button", { name: "Search" }).first().click();
-  await expect(page).toHaveURL(/\/chat\/search\?q=safe/);
-  await expect(page.getByRole("status")).toContainText('found for "safe to spend"');
-  await page.goto(CHAT);
+  // No search box in the chat any more (founder, 2026-10-26); pin a message to the top.
+  await expect(page.getByRole("searchbox", { name: "Search the chat" })).toHaveCount(0);
+  await expect(page.getByRole("search")).toHaveCount(0);
   // An answer in the list (Jane's own messages are pop-ups).
   const pinIt = messages.filter({ hasText: /You have \$[\d,]+\.\d\d safe to spend/ }).last();
   await pinIt.getByRole("button", { name: "Pin" }).click();

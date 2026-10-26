@@ -38,7 +38,6 @@
   "src/app/chat/page.tsx": 4,
   "src/app/chat/reply/page.tsx": 2,
   "src/app/chat/reply/reply-form.tsx": 5,
-  "src/app/chat/search/page.tsx": 3,
   "src/app/connect/link-button.tsx": 2,
   "src/app/connect/page.tsx": 5,
   "src/app/deadlines/deadline-form.tsx": 4,

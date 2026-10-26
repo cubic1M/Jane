@@ -3,15 +3,14 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { HELP_GROUPS, HELP_MORE_LINKS } from "@/config/help";
 import { checkGuardrails, dollarFigures } from "@/lib/guardrails";
-import { gather, plan, type BrainSettings } from "./brain";
+import { plan, type BrainSettings } from "./brain";
 import { parseIntent } from "./intents";
 import { TOUR_LINKS, groupedHelpReply } from "./replies-help";
 import type { Snapshot } from "./snapshot";
-import { welcomeTour } from "./actions/welcome";
-import type { ChatMessage, MessageAction } from "./types";
+import type { MessageAction } from "./types";
 
 // Spec step 140: help inside the chat. "help" comes in groups, each example something the
-// rules understand; every link opens a real page; the first-run hello shows once, first.
+// rules understand; every link opens a real page; the first-run hello is gone for good.
 
 const APP = join(process.cwd(), "src", "app");
 // A link's page exists: /settings#autopilot is src/app/settings/page.tsx.
@@ -84,37 +83,14 @@ describe("the first-run conversation", () => {
       firstChat,
     }) as Snapshot;
 
-  it("says hello first, outside the daily limit, only before Jane has said anything", () => {
-    const first = plan(snapshot(true), { recent: [], seenKeys: [] }, NOW, {
-      ...SYNC,
-      dailyLimit: 0,
-    });
-    expect(first[0]).toMatchObject({
-      source: "welcome",
-      dedupeKey: "welcome:hello",
-      kind: "brief",
-    });
-    expect(first[0].actions.map((a) => a.id)).toEqual(["welcome.tour", "open"]);
-    for (const resolved of hrefs(first[0].actions)) expect(resolves(resolved)).toBe(true);
-    // Once: never again, even if the person somehow had no messages again.
-    const again = plan(snapshot(true), { recent: [], seenKeys: ["welcome:hello"] }, NOW, SYNC);
-    expect(again.some((m) => m.source === "welcome")).toBe(false);
-    for (const later of [false, undefined]) {
-      expect(gather(snapshot(later), NOW, SYNC).some((m) => m.source === "welcome")).toBe(false);
+  it('never says the first-run hello (founder: delete the "Hi, I\'m Jane" card)', () => {
+    for (const first of [true, false, undefined]) {
+      const planned = plan(snapshot(first), { recent: [], seenKeys: [] }, NOW, {
+        ...SYNC,
+        dailyLimit: 0,
+      });
+      expect(planned.some((m) => m.source === "welcome")).toBe(false);
+      expect(planned.some((m) => m.body.startsWith("Hi, I'm Jane."))).toBe(false);
     }
-  });
-
-  it("shows the tour in place on Show me around, keeping its links", async () => {
-    const [hello] = gather(snapshot(true), NOW, SYNC).filter((m) => m.source === "welcome");
-    const message = { ...hello, id: "m1", status: "open", refs: {} } as unknown as ChatMessage;
-    const outcome = await welcomeTour.run({
-      userId: "u1",
-      message,
-      action: hello.actions[0],
-      client: {} as never,
-      now: NOW,
-    });
-    expect(outcome.note).toMatch(/^Three things to know\./);
-    expect(hrefs(outcome.actions ?? [])).toEqual(["/home", "/plan", "/settings#autopilot"]);
   });
 });

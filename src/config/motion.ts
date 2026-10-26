@@ -10,3 +10,15 @@ export const MOTION = {
   // Everything else.
   standard: "cubic-bezier(0.2, 0.8, 0.2, 1)",
 } as const;
+
+// Every marching dotted line (founder, 2026-10-26: "some are grey and some are white"): one
+// colour, width, dash and speed, drawn by <MarchingPath> (src/components/marching-path.tsx) and
+// .marching-line in src/app/globals.css (--line-march, --line-march-period).
+export const MARCHING_LINE = {
+  // A mid grey that reads on white, near-black and Jane's inverted cards alike.
+  color: "#8a8a8a",
+  width: 2,
+  dash: "3 6",
+  // One dash and gap travel by in this long; the line never marches under reduced motion.
+  periodMs: 600,
+} as const;

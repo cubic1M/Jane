@@ -127,7 +127,7 @@ describe("one stack of cards, never repeated", () => {
           body: "Drop your mortgage insurance, save $1,562/yr\nFrom insurance.",
         }),
         message({ id: "d2" }),
-        message({ id: "b1", kind: "brief", body: "Hi, I'm Jane." }),
+        message({ id: "b1", kind: "brief", body: "Here's your week." }),
         // The morning greeting is off for now (MORNING_BRIEF): never a card.
         message({ id: "g1", kind: "brief", body: "Good morning! Three things today." }),
       ],
@@ -162,7 +162,11 @@ describe("the morning greeting, off for now", () => {
     const greeting = message({ kind: "brief", body: "Good afternoon! $2,710 safe to spend." });
     expect(hiddenBrief(greeting)).toBe(true);
     expect(hiddenBrief(greeting, true)).toBe(false);
-    expect(hiddenBrief(message({ kind: "brief", body: "Hi, I'm Jane." }))).toBe(false);
+    expect(hiddenBrief(message({ kind: "brief", body: "Here's your week." }))).toBe(false);
+    // The first-run hello is gone for good, whatever the flag.
+    const hello = message({ kind: "brief", body: "Hi, I'm Jane. I look at your money every day." });
+    expect(hiddenBrief(hello)).toBe(true);
+    expect(hiddenBrief(hello, true)).toBe(true);
     expect(hiddenBrief(message({ kind: "decision", body: "Good morning! Not a brief." }))).toBe(
       false,
     );

@@ -99,12 +99,12 @@ describe.runIf(url)("Jane's chat against a real database", () => {
     // plan, each still posted (hidden behind it) with its own buttons.
     it("posts the day's agenda after the first sync, with the findings and the plan behind it", async () => {
       const messages = await messagesOf(userId);
-      // Spec step 140: the first-run hello comes first, once; then the agenda.
-      expect(messages[0]).toMatchObject({ kind: "brief", dedupeKey: "welcome:hello" });
-      expect(messages[1]).toMatchObject({ kind: "brief", dedupeKey: "brief:2026-10-18" });
-      expect(messages[1].body).toMatch(/^Good morning! You have \$[\d,]+\.\d\d safe to spend/);
-      expect(messages[1].body).toContain("need your yes:");
-      expect(buttonIds(messages[1])).toEqual(
+      // No first-run hello any more (founder, 2026-10-26): the agenda comes first.
+      expect(messages.some((m) => m.dedupeKey === "welcome:hello")).toBe(false);
+      expect(messages[0]).toMatchObject({ kind: "brief", dedupeKey: "brief:2026-10-18" });
+      expect(messages[0].body).toMatch(/^Good morning! You have \$[\d,]+\.\d\d safe to spend/);
+      expect(messages[0].body).toContain("need your yes:");
+      expect(buttonIds(messages[0])).toEqual(
         expect.arrayContaining(["bundle.1", "plan.approve_safe", "open"]),
       );
       const plan = messages.find((m) => m.dedupeKey.startsWith("plan:"));
@@ -116,7 +116,7 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         expect(buttonIds(f)).toEqual(expect.arrayContaining(["finding.yes", "finding.no", "open"]));
         expect(f.snoozedUntil).toEqual(BUNDLED_UNTIL);
       }
-      // What shows: the hello, the agenda, the autopilot question (spec step 83), an unusual
+      // What shows: the agenda, the autopilot question (spec step 83), an unusual
       // charge (step 208, uncapped; the demo bank's Apple Store charge is one) and
       // anything urgent; all open.
       expect(visible(messages).length).toBeLessThanOrEqual(CHAT_DAILY_LIMIT + 4);
@@ -140,8 +140,6 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       expect(visible(after)).toHaveLength(visible(before).length + posted);
       expect(new Set(after.map((m) => m.dedupeKey)).size).toBe(after.length);
       expect(after.filter((m) => m.kind === "brief").map((m) => m.dedupeKey)).toEqual([
-        // Spec step 140: the first-run hello, once.
-        "welcome:hello",
         "brief:2026-10-18",
         "brief:2026-10-19",
       ]);
@@ -299,10 +297,10 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         posted: 0,
       });
       const chat = await openChat(userId, { client, now: night });
-      // The first-run hello (spec step 140), the day's agenda (spec step 184, with the plan
-      // and the finding on it) and the autopilot question (spec step 83).
-      expect(chat?.messages.map((m) => m.kind)).toEqual(["brief", "brief", "decision"]);
-      expect(chat?.messages[1].body).toMatch(/needs your yes:/);
+      // The day's agenda (spec step 184, with the plan and the finding on it) and the autopilot
+      // question (spec step 83); no first-run hello any more.
+      expect(chat?.messages.map((m) => m.kind)).toEqual(["brief", "decision"]);
+      expect(chat?.messages[0].body).toMatch(/needs your yes:/);
     });
 
     it("refuses a Yes once the finding changed since the message", async () => {

@@ -233,7 +233,9 @@ export function FloatingCards({
   const [held, setHeld] = useState<{ card: FloatingCardData; chosen: string | null } | null>(null);
   // Cards that just left, kept for the length of their exit slide, and which way they went.
   const [leaving, setLeaving] = useState<(FloatingCardData & { way: "yes" | "no" })[]>([]);
-  const [detailsOpen, setDetailsOpen] = useState<string | null>(null);
+  // Expanded or not, for every card alike (founder: once a card is open, the next ones open too,
+  // until the person shuts one): only the chevron changes it, never an answer or a step.
+  const [expanded, setExpanded] = useState(false);
   // Which way the last step went, for the next card's slide (none when one is answered).
   const [slide, setSlide] = useState<"next" | "prev" | null>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -241,7 +243,7 @@ export function FloatingCards({
   const [unfolded, setUnfolded] = useState(false);
   const current = held?.card ?? currentCard(cards, state);
   const left = waiting(cards, state);
-  const open = current !== null && detailsOpen === current.id;
+  const open = current !== null && expanded;
   // Cards waiting behind the one showing, drawn as edges under it.
   const behind = Math.max(0, left.length - 1);
   const folded = foldOnPhone && phone && !unfolded && current !== null;
@@ -254,7 +256,6 @@ export function FloatingCards({
         : card.yesLabel;
       setHeld({ card, chosen: label });
       setState((s) => answer(cards, s, mode, card.id));
-      setDetailsOpen(null);
       onAnswer(card.id, how, choice);
       return;
     }
@@ -267,7 +268,6 @@ export function FloatingCards({
       ...departing.filter((d) => !now.some((n) => n.id === d.id)).map((d) => ({ ...d, way })),
     ]);
     setState((s) => answer(cards, s, mode, card.id));
-    setDetailsOpen(null);
     setSlide(null);
     onAnswer(card.id, how, choice);
     window.setTimeout(
@@ -277,6 +277,18 @@ export function FloatingCards({
   }
 
   const showingId = current?.id ?? null;
+  // Each card seen with its details open is told once (the verified savings record), whether it
+  // was opened or came in open.
+  const detailsTold = useRef(new Set<string>());
+  const onDetailsRef = useRef(onDetails);
+  useEffect(() => {
+    onDetailsRef.current = onDetails;
+  });
+  useEffect(() => {
+    if (!expanded || !showingId || detailsTold.current.has(showingId)) return;
+    detailsTold.current.add(showingId);
+    onDetailsRef.current?.(showingId);
+  }, [expanded, showingId]);
   useEffect(() => {
     onShowing?.(showingId);
   }, [onShowing, showingId]);
@@ -304,11 +316,8 @@ export function FloatingCards({
   // (founder: switching never "collapses" the card), the height following it.
   function step(by: 1 | -1) {
     setHeld(null);
-    const next = move(cards, state, by);
-    const to = currentCard(cards, next);
-    setState(next);
+    setState(move(cards, state, by));
     setSlide(by > 0 ? "next" : "prev");
-    if (open && to) setDetailsOpen(to.id);
   }
 
   // Arrow keys move between cards unless someone is typing or is on one of the card's own
@@ -461,10 +470,7 @@ export function FloatingCards({
                 aria-label="More details"
                 aria-expanded={open}
                 aria-controls={`details-${current.id}`}
-                onClick={() => {
-                  if (detailsOpen !== current.id) onDetails?.(current.id);
-                  setDetailsOpen((o) => (o === current.id ? null : current.id));
-                }}
+                onClick={() => setExpanded((e) => !e)}
                 className="-mt-2 inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
               >
                 <svg
