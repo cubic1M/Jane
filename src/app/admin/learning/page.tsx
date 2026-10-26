@@ -6,13 +6,13 @@ import { kindReport } from "@/lib/learning";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
+import { formatPercent as pct } from "@/lib/percent";
 
 // The learning loop, kind by kind: how often each kind of suggestion is acted on when shown,
 // how often what was acted on showed up in the transactions, and what that does to its rank.
 // Everyone but trial people, counts only.
 
 const MUTED = "text-zinc-600 dark:text-zinc-400";
-const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 
 async function Learning() {
   const admin = await requireAdmin();

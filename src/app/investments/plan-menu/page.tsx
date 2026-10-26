@@ -11,6 +11,7 @@ import { confirm, sendChange, useSample } from "./actions";
 import { ReadForm } from "./read-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatPercent as pct } from "@/lib/percent";
 
 // The workplace plan's menu, used well (spec step 232, demo advice): the funds the plan
 // offers, read from a disclosure and confirmed, and the cheapest mix of them for the
@@ -28,7 +29,6 @@ const KINDS: Record<string, string> = {
   target_date: "Target date",
   other: "Other",
 };
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 const bps = (n: number) => `${(n / 100).toFixed(2)}%`;
 
 function Table({ funds }: { funds: MenuFund[] }) {

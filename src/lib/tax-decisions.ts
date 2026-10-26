@@ -26,6 +26,7 @@ import { checkFrom } from "@/lib/tax-withholding";
 import { formatCents } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
 import { roundDollars } from "@/planning/tax-estimate-copy";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Direct answers to tax questions (taxes in the chat): three sentences or fewer, from the
 // person's own numbers, as a decision (what to do) or a fact (what it is). Every answer is
@@ -46,8 +47,6 @@ export type Decision = {
   // The figures in the answer, in cents, so a test (or Claude) can check them.
   figures: number[];
 };
-
-const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 
 export async function decideTax(
   userId: string,

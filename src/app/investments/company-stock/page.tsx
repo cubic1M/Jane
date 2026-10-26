@@ -17,6 +17,7 @@ import { linkStockPlan, sellNow } from "./actions";
 import { GrantForm } from "./grant-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Company stock (spec step 160, demo advice): how much of what's invested is in the
 // employer's stock, what's still to vest, and a plan to sell down in parts with the tax
@@ -29,7 +30,6 @@ const DONE: Record<string, string> = {
   linked: "Demo stock plan linked.",
   sold: "Sold the first part and bought broad index funds with it.",
 };
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 const day = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "short",
