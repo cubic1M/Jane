@@ -3,7 +3,7 @@
 // limits.
 
 // A person's ideas are refreshed this often; the run costs from the same daily cap as the
-// chat (CHAT_CLAUDE_DAILY_CAP_CENTS).
+// chat (CHAT_PERSON_DAILY_CAP_CENTS).
 export const STRATEGIST_EVERY_DAYS = 7;
 // Claude's rounds of lookups in one run, and what it may keep.
 export const STRATEGIST_MAX_TURNS = 6;
