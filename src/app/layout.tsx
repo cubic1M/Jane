@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import { SideChat } from "@/components/side-chat/side-chat";
+import { TradePopup } from "@/components/trade-popup";
 import { NavPending } from "@/components/nav-pending";
 import "./globals.css";
 
@@ -43,6 +44,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             address, so it waits in its own boundary (cache components). */}
         <Suspense>
           <SideChat />
+        </Suspense>
+        {/* The paper account's trade alerts: their own pop-up, apart from the suggestion dock. */}
+        <Suspense>
+          <TradePopup />
         </Suspense>
         {/* Every link tap shows at once that the next page is on its way. */}
         <Suspense>

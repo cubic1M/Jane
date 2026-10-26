@@ -40,7 +40,7 @@ for (const size of [
     await page.goto("/investments");
 
     // The hero: the strategy the practice portfolio runs, against the level's mix (dashed).
-    const hero = page.getByRole("region", { name: "Your practice portfolio" });
+    const hero = page.getByRole("region", { name: "Your strategy", exact: true });
     await expect(hero).toBeVisible();
     await expect(hero.locator("[data-hero-line]")).toHaveAttribute("data-hero-line", "default");
     await expect(hero.locator('path[data-graph-line="mix"]')).toHaveAttribute(

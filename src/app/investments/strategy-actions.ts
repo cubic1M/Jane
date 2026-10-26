@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { runPaperDay } from "@/lib/paper/account";
 import { CATALOG_EVIDENCE } from "@/config/catalog-evidence";
 import { CRYPTO_SLEEVE_BY_LEVEL } from "@/config/crypto-strategies";
 import { CATALOG, type CatalogId } from "@/config/strategy-catalog";
@@ -94,6 +96,13 @@ async function savePick(patch: Partial<StrategyPick>): Promise<ChooseResult> {
   const saved = await savePreferences(user.id, patch, "page");
   if (!saved.ok) return { ok: false, error: "That didn't go through. Try again." };
   revalidatePath("/investments");
+  // The paper account follows the new strategy: its trades wait in the pop-up straight away.
+  after(() =>
+    runPaperDay(user.id).then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
   const b = saved.before;
   return {
     ok: true,

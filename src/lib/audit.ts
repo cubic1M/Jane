@@ -247,6 +247,11 @@ export type AuditEvent =
   | "family_file_exported"
   // Spec step 290 (Phase AW): the practice portfolio started, and each practice trade.
   | "practice_started"
+  // The paper account (src/lib/paper/): started, a trade from the pop-up, reverted, skipped.
+  | "paper_account_started"
+  | "paper_trade_taken"
+  | "paper_trade_reverted"
+  | "paper_signal_skipped"
   | "practice_trade"
   // The person's practice-portfolio preferences changed, from the page or the chat (which fields,
   // never the amounts).

@@ -17,7 +17,8 @@ import { PAGES, itemId } from "@/lib/area-pages/investing";
 import { explainer } from "@/config/learn";
 import { RETURNS_NOTE } from "@/config/returns";
 import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
-import { loadPractice } from "@/lib/practice/portfolio";
+import { loadPaperView, runPaperIfStale, strategyLabel, strategyOf } from "@/lib/paper/account";
+import { PaperAccount } from "@/components/paper-account";
 import { formatReturn } from "@/insights/returns";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
@@ -103,19 +104,16 @@ async function LevelStrategies({ userId }: { userId: string }) {
 // The page's top, like Home: the practice portfolio's hero graph, three tiles and the strategy
 // tree, from the stored research (src/lib/investments/strategy-tree.ts).
 async function Strategies({ userId, ideas }: { userId: string; ideas: number }) {
-  const [{ tiles, board }, practice] = await Promise.all([
+  const [{ tiles, board }, paper, chosen] = await Promise.all([
     strategyTreeFor(userId),
-    loadPractice(userId),
+    loadPaperView(userId),
+    strategyOf(userId),
   ]);
   return (
-    <StrategyTree
-      tiles={tiles}
-      board={board}
-      ideas={ideas}
-      practice={
-        practice ? { totalCents: practice.totalCents, startingCents: practice.startingCents } : null
-      }
-    />
+    <>
+      <PaperAccount view={paper} strategy={strategyLabel(chosen.key, chosen.level)} />
+      <StrategyTree tiles={tiles} board={board} ideas={ideas} />
+    </>
   );
 }
 
@@ -137,6 +135,8 @@ async function InvestmentsContent({
   const focus = typeof params.focus === "string" ? params.focus : undefined;
   // Constant search (Phase AW): a cheap practice scan, after the page is sent.
   after(() => scanOnOpenQuietly(user.id));
+  // The paper account valued at the latest closes, when its last run is stale.
+  after(() => runPaperIfStale(user.id));
   const {
     data,
     simulated,

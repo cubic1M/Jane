@@ -422,3 +422,27 @@ export async function addSavedChange(
     await client.end();
   }
 }
+
+// A trade waiting in the trade pop-up (the paper account): the strategy's rule asking to sell
+// $1,000 of VTI at $250.00, as the daily run leaves one (a new account holds VTI at every level).
+export async function addPaperSignal(userId: string): Promise<string> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT id FROM paper_accounts WHERE user_id = $1`, [
+      userId,
+    ]);
+    const id = `e2e-signal-${userId}`;
+    await client.query(
+      `INSERT INTO paper_signals
+        (id, account_id, user_id, created_at, key, source, ticker, side, amount_cents, price_cents,
+         reason, confidence, status)
+       VALUES ($1, $2, $3, now(), 'rule:e2e:VTI:sell', 'rule', 'VTI', 'sell', 100000, 25000,
+         'Your strategy''s rule at the month-end close: VTI down to 30% of the account.', 70, 'open')`,
+      [id, rows[0].id, userId],
+    );
+    return id;
+  } finally {
+    await client.end();
+  }
+}

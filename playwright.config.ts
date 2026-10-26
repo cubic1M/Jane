@@ -44,6 +44,8 @@ export default defineConfig({
           // A fixed test-only key for encrypting secrets (admin two-factor, Plaid tokens).
           TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
           ANTHROPIC_API_KEY: "",
+          // The paper account's prices: the sample market, never a price service, in tests.
+          PAPER_SAMPLE_PRICES: "1",
           RESEND_API_KEY: "",
           // What a production build turns off unless asked: the demo bank, Try Jane, demo advice
           // and the simulated calls and company mail the tests drive; and the site's own

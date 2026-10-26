@@ -254,6 +254,12 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     practiceOpportunities: scoped.practiceOpportunity,
     // What the person wants from the practice portfolio (Phase AW).
     practicePreferences: scoped.practicePreferences,
+    // The paper account, run by the person's chosen strategy (src/lib/paper/).
+    paperAccounts: scoped.paperAccount,
+    paperPositions: scoped.paperPosition,
+    paperTrades: scoped.paperTrade,
+    paperValues: scoped.paperValue,
+    paperSignals: scoped.paperSignal,
     giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,
