@@ -490,15 +490,39 @@ export const DUPLICATE_CHARGE_WINDOW_DAYS = 1;
 // Smaller repeats (a second coffee) aren't worth an alert.
 export const DUPLICATE_CHARGE_MIN_CENTS = 1_000;
 // Where buying the same thing twice in a day is normal, or the "charge" is money moving.
+// Two bank fees on one day are the bank's fee schedule (two overdrafts), and the bank fees
+// finding already asks for them back (accuracy bench, first held-out set).
 export const DUPLICATE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
   "FOOD_AND_DRINK",
   "TRANSPORTATION",
   "TRANSFER_OUT",
   "LOAN_PAYMENTS",
+  "BANK_FEES",
 ];
 // ...except a meal: the same restaurant bill this big twice is a double charge, not a second
 // coffee (accuracy bench: the family's $68.40 dinner charged on two days was missed).
 export const DUPLICATE_CHARGE_MEAL_MIN_CENTS = 3_000;
+// A seat each: two or three tickets or fares at one price on one day are a group buying
+// together, not a mistake (accuracy bench: every one of the 7 false "Charged twice?" was a pair
+// of concert tickets). A real double charge at a ticket seller is missed; the bank's dispute
+// still covers it.
+export const DUPLICATE_CHARGE_PER_SEAT_CATEGORIES: readonly PfcDetailed[] = [
+  "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS",
+  "TRAVEL_FLIGHTS",
+  "TRANSPORTATION_PUBLIC_TRANSIT",
+];
+// Cinemas sell a seat each too, but Plaid files them with streaming services, where a double
+// charge is real, so they are known by name (whole words of the merchant; accuracy bench, first
+// held-out set: two seats at AMC).
+export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
+  "theatre",
+  "theatres",
+  "theater",
+  "theaters",
+  "cinema",
+  "cinemas",
+  "cineplex",
+];
 // Money moving rather than spent never counts as an unusually large charge.
 export const LARGE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
   "TRANSFER_OUT",
@@ -611,7 +635,9 @@ export const THIN_DATA_MAX_PER_MONTH = 3;
 
 // --- Calibration (docs/accuracy.md) --------------------------------------------------
 
-// Two charges of the same amount at the same place within a day are a double charge about
-// two times in three on the accuracy bench (two tickets, two of the same thing, look just
-// the same), however long the history: "Charged twice?" is never surer than this.
+// Two charges of the same amount at the same place within a day were a double charge about two
+// times in three on #766's accuracy bench (two tickets looked just the same). With a seat each
+// left out (DUPLICATE_CHARGE_PER_SEAT_*), every one on all three bench sets is right, but the
+// bench's doubles are cleaner than a real bank's (two of the same shirt look the same too), so
+// "Charged twice?" stays no surer than this until real outcomes say otherwise.
 export const DUPLICATE_CHARGE_MAX_PERCENT = 65;

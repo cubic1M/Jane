@@ -78,6 +78,13 @@ describe("categorizeByRules", () => {
     expect(out("PENSION SERVICES LLC")).toBeNull();
   });
 
+  it("files ticket sellers as events, even under the card's own category", () => {
+    const events = "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS";
+    expect(out("TICKETMASTER 800-653-8000", { bankCategory: "Entertainment" })).toBe(events);
+    expect(out("STUBHUB 866-788-2482")).toBe(events);
+    expect(out("CITY PARKING TICKETS")).toBeNull();
+  });
+
   it("counts a payout for one's own work as income, not a refund", () => {
     expect(into("STRIPE TRANSFER ST-K3J9Q2 PPD ID: 4270465600")).toBe("INCOME_CONTRACTOR");
     expect(out("STRIPE TRANSFER ST-K3J9Q2")).toBeNull();
