@@ -90,17 +90,20 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
-      # Trial and retention cleanup delete every expired sample person in the database, so they
-      # run on their own after shard 1's tests, never alongside tests that create sample people.
+      # Trial and retention cleanup delete every expired sample person in the database, and the
+      # learning loop rebuilds its stats from every person in it (which ranking reads), so they
+      # run on their own after shard 1's tests, never alongside tests that make people.
       - run: >-
           npx vitest run --shard=${{ matrix.shard }}/4 --maxWorkers=6
           --exclude src/lib/trial.integration.test.ts
           --exclude src/lib/retention.integration.test.ts
+          --exclude src/lib/learning.integration.test.ts
       - if: matrix.shard == 1
-        name: Trial and retention cleanup tests, alone
+        name: Trial, retention and learning-loop tests, alone
         run: >-
           npx vitest run --no-file-parallelism
           src/lib/trial.integration.test.ts src/lib/retention.integration.test.ts
+          src/lib/learning.integration.test.ts
 
   checks:
     name: Lint, typecheck and unit tests
