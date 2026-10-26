@@ -17,6 +17,16 @@ const BUTTON =
   "inline-flex min-h-10 items-center justify-center border-2 border-zinc-950 px-3 text-xs font-semibold tracking-wide uppercase disabled:opacity-60 dark:border-zinc-50";
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
+// "Oct 26, 3:05 PM UTC": the same on the server and in the browser.
+const checkedAt = (iso: string) =>
+  `${new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  })} UTC`;
+
 const KIND_WORDS: Record<string, string> = {
   enter: "[+] IN",
   exit: "[-] OUT",
@@ -68,9 +78,21 @@ export function EventsBox({ view }: { view: EventsView }) {
         </button>
       </div>
       <p className="text-xs text-zinc-600 dark:text-zinc-400">
-        On top of your paper account&apos;s strategy: when the news moves a theme, Jane tilts a
-        small slice for a few weeks, then undoes it. Simulated money only.
+        On by default, on top of your paper account&apos;s strategy: when the news moves a theme,
+        Jane tilts a small slice for a few weeks, then undoes it. Simulated money only. Its backtest
+        showed no clear edge, so treat it as an experiment.
         {!view.hasAccount && " Start a paper account first."}
+      </p>
+      <p className="text-[11px] tabular-nums" data-events-watching="">
+        Watching {view.watching.sources.length} sources ·{" "}
+        {view.watching.lastChecked
+          ? `last checked ${checkedAt(view.watching.lastChecked)}`
+          : "first check under way"}
+        {view.watching.sources.some((s) => !s.ok) &&
+          ` · no answer from ${view.watching.sources
+            .filter((s) => !s.ok)
+            .map((s) => s.label)
+            .join(", ")}`}
       </p>
       {view.agent && (
         <p className="text-xs font-semibold" data-events-agent="">
@@ -86,9 +108,25 @@ export function EventsBox({ view }: { view: EventsView }) {
       <div>
         <h3 className="text-[11px] font-semibold tracking-wider text-zinc-500">HAPPENING NOW</h3>
         {view.now.length === 0 ? (
-          <p className="text-sm" data-events-now="none">
-            No events in the last few days.
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm" data-events-now="none">
+              Nothing big in the last 5 days, so nothing to act on.
+            </p>
+            {view.earlier.length > 0 && (
+              <ul className="flex flex-col gap-1 text-xs" data-events-earlier="">
+                {view.earlier.map((e) => (
+                  <li key={e.key}>
+                    <span className="font-semibold">· {e.label}</span>{" "}
+                    <span className="text-zinc-600 dark:text-zinc-400">
+                      {e.date} · {e.title}
+                    </span>
+                    <br />
+                    <span>→ {e.why}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : (
           <ul className="flex flex-col gap-2 text-sm" data-events-now="">
             {view.now.map((e) => (

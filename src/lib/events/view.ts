@@ -6,6 +6,8 @@ import {
 } from "@/config/event-evidence";
 import {
   EVENT_FRESH_DAYS,
+  EVENT_SOURCE_LABELS,
+  EVENT_STORE_DAYS,
   EVENT_HOLD_DAYS,
   EVENT_MIN_CONFIDENCE,
   EVENT_TILT_BY_LEVEL,
@@ -20,6 +22,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { checkGuardrails } from "@/lib/guardrails";
 import { confidenceFor, type ClosedSlice, type EventSlice } from "@/planning/event-overlay";
+import { lastRefresh } from "./refresh";
 
 // The Events box on the investments page (founder, 2026-10-26): what's happening now, what the
 // overlay would do or did, how sure it is, its track record, and its switch. From what is stored:
@@ -30,6 +33,10 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type EventsView = {
   on: boolean;
+  // What it watches and when it last looked (never a blank box).
+  watching: { sources: { label: string; ok: boolean }[]; lastChecked: string | null };
+  // Nothing fresh: the box says so, and shows the most recent events from before (`earlier`).
+  quiet: boolean;
   // The 24-hour agent runs the paper account: it takes the overlay's slices as its own signals.
   agent: boolean;
   hasAccount: boolean;
@@ -48,6 +55,8 @@ export type EventsView = {
     plan: string;
     acting: boolean;
   }[];
+  // The most recent events from before the fresh window, when it is quiet: shown, not acted on.
+  earlier: { key: string; date: string; label: string; title: string; why: string }[];
   open: { ticker: string; side: string; tilt: number; enteredOn: string; reason: string }[];
   recent: {
     id: string;
@@ -86,19 +95,24 @@ export async function loadEventsView(
     client.marketEvent.findMany({
       where: {
         knownAt: { lte: now },
-        date: { gte: new Date(now.getTime() - EVENT_FRESH_DAYS * DAY_MS) },
+        date: { gte: new Date(now.getTime() - EVENT_STORE_DAYS * DAY_MS) },
       },
       orderBy: { knownAt: "desc" },
-      take: 8,
+      take: 12,
     }),
   ]);
+  const freshFrom = dayOf(new Date(now.getTime() - EVENT_FRESH_DAYS * DAY_MS));
+  const fresh = events.filter((e) => dayOf(e.date) >= freshFrom).slice(0, 8);
+  const older = events.filter((e) => dayOf(e.date) < freshFrom);
+  const checked = await lastRefresh({ client });
   const level = (account?.level ?? null) as RiskLevel | null;
   const state = (overlay?.state ?? {}) as { open?: EventSlice[]; closed?: ClosedSlice[] };
   const closed = state.closed ?? [];
-  const on = Boolean(overlay?.on && account && overlay.accountId === account.id);
+  // On by default: only switched off (or another account's row) is off.
+  const on = Boolean(account && (overlay ? overlay.on && overlay.accountId === account.id : true));
   const acted = new Map(logs.map((l) => [l.eventKey, l]));
 
-  const nowRows = events.flatMap((e) => {
+  const nowRows = fresh.flatMap((e) => {
     const type = EVENT_TYPES[e.type as EventTypeId];
     if (!type) return [];
     const confidence = confidenceFor(e.type as EventTypeId, closed, EVENT_EVIDENCE);
@@ -145,8 +159,33 @@ export async function loadEventsView(
     };
   });
 
+  // Calendar days between the event's day and today's.
+  const daysAgo = (d: Date) =>
+    Math.round((Date.parse(`${dayOf(now)}T00:00:00Z`) - d.getTime()) / DAY_MS);
+  const earlier = older.slice(0, 3).flatMap((e) => {
+    const type = EVENT_TYPES[e.type as EventTypeId];
+    if (!type) return [];
+    const row = {
+      key: e.key,
+      date: dayOf(e.date),
+      label: type.label,
+      title: e.title,
+      why: `${daysAgo(e.date)} days ago: older than ${EVENT_FRESH_DAYS} days, so not acted on`,
+    };
+    return safe(`${row.title}. ${row.why}`) ? [row] : [];
+  });
+
   return {
     on,
+    watching: {
+      sources: Object.entries(EVENT_SOURCE_LABELS).map(([key, label]) => ({
+        label,
+        ok: checked?.sources[key] !== "failed",
+      })),
+      lastChecked: checked?.checkedAt ?? null,
+    },
+    quiet: nowRows.length === 0,
+    earlier,
     agent: Boolean(account?.agentPolicy),
     hasAccount: Boolean(account),
     level,

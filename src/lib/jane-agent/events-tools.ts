@@ -33,6 +33,9 @@ export async function runEventsTool(
     content: JSON.stringify({
       label: view.label,
       on: view.on,
+      watching: view.watching,
+      nothingFreshInFiveDays: view.quiet,
+      earlier: view.earlier,
       hasPaperAccount: view.hasAccount,
       happeningNow: view.now.map((e) => ({
         date: e.date,

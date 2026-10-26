@@ -23,6 +23,7 @@ import { TradingAgent } from "@/components/trading-agent";
 import { AGENT_INTERVAL_IDS, AGENT_MARKET_IDS } from "@/config/trading-agent";
 import { agentChoices, loadAgentView } from "@/lib/trading-agent/agent";
 import { EventsBox } from "@/components/events-box";
+import { refreshEventsIfStale } from "@/lib/events/refresh";
 import { runEventsIfStale } from "@/lib/events/run";
 import { loadEventsView } from "@/lib/events/view";
 import { formatReturn } from "@/insights/returns";
@@ -161,8 +162,12 @@ async function InvestmentsContent({
   after(() => scanOnOpenQuietly(user.id));
   // The paper account valued at the latest closes, when its last run is stale.
   after(() => runPaperIfStale(user.id));
-  // The events overlay on top of it, when its daily run was missed.
-  after(() => runEventsIfStale(user.id));
+  // The events: read again when the last check is over an hour old (one shared refresh, locked),
+  // then the overlay on top of the paper account, when its run was missed or there's news.
+  after(async () => {
+    const refreshed = await refreshEventsIfStale();
+    await runEventsIfStale(user.id, { news: Boolean(refreshed?.ran && refreshed.report.stored) });
+  });
   const {
     data,
     simulated,

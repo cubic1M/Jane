@@ -117,16 +117,23 @@ describe.runIf(url)("the events overlay on the paper account", () => {
     return id;
   };
 
-  it("does nothing until it is switched on", async () => {
-    const id = await startedOn();
-    await event({
-      key: uniqueKey("gdelt:chip_boom:2026-10-19"),
-      type: "chip_boom",
-      date: "2026-10-19",
-      knownAt: "2026-10-20T00:15:00Z",
-    });
-    expect((await runEventOverlay(id, { client, now: NOW, prices: fakePrices() })).ran).toBe(false);
-    expect(await client.paperEventLog.count({ where: { userId: id } })).toBe(0);
+  it("is on by default, and does nothing once switched off", async () => {
+    const key = uniqueKey("gdelt:chip_boom:2026-10-19");
+    await event({ key, type: "chip_boom", date: "2026-10-19", knownAt: "2026-10-20T00:15:00Z" });
+    // Never touched: on, so it acts on the event at the latest close.
+    const on = await startedOn();
+    expect((await runEventOverlay(on, { client, now: NOW, prices: fakePrices() })).ran).toBe(true);
+    expect(
+      await client.paperEventOverlay.findFirstOrThrow({ where: { userId: on } }),
+    ).toMatchObject({ on: true });
+    expect(await client.paperEventLog.count({ where: { userId: on, kind: "enter" } })).toBe(1);
+    // Switched off: nothing.
+    const off = await startedOn();
+    await setEventsOverlay(off, false, { client, now: new Date("2026-10-19T15:00:00Z") });
+    expect((await runEventOverlay(off, { client, now: NOW, prices: fakePrices() })).ran).toBe(
+      false,
+    );
+    expect(await client.paperEventLog.count({ where: { userId: off } })).toBe(0);
   });
 
   it("switched on, tilts the account with paper trades on the first close after the event, logged with it", async () => {
@@ -319,8 +326,9 @@ describe.runIf(url)("the events overlay on the paper account", () => {
     const spike = stored.find((e) => e.type === "me_conflict")!;
     expect(spike.date.toISOString().slice(0, 10)).toBe("2026-10-15");
     expect(spike.knownAt.toISOString()).toBe("2026-10-16T00:15:00.000Z");
-    // The September FOMC statement is older than the fresh window: not stored now.
-    expect(stored.some((e) => e.source === "fed")).toBe(false);
+    // The September FOMC statement is a month old: kept for the box (EVENT_STORE_DAYS), but older
+    // than the fresh window, so no overlay acts on it.
+    expect(stored.map((e) => e.key)).toContain("fed:fed_hike:2026-09-16");
     // Again: nothing new.
     expect(
       (await collectEvents({ client, now, fetcher, prices: fakePrices(), spacingMs: 0 })).stored,
