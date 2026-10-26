@@ -16,6 +16,24 @@
   --landing-hi: #0a0a0a;
 }
 
+/* The inverted landing (founder, 2026-10-26): the same page as a negative, black paper and light
+   ink, the column included. It follows the system until the top-right switch is flipped
+   (src/app/landing-mode-switch.tsx); before that runs, the system setting alone decides. */
+@media (prefers-color-scheme: dark) {
+  html:not([data-landing-mode="light"]) {
+    --landing-bg: #000000;
+    --landing-dot: #949494;
+    --landing-mid: #d1d1d1;
+    --landing-hi: #f5f5f5;
+  }
+}
+html[data-landing-mode="dark"] {
+  --landing-bg: #000000;
+  --landing-dot: #949494;
+  --landing-mid: #d1d1d1;
+  --landing-hi: #f5f5f5;
+}
+
 /* On a phone the pillar sits behind the words, faint, and each block of words gets the page's
    own white behind it so the characters never cross the text. */
 .pillar-dock {
@@ -31,4 +49,11 @@
   .landing-panel {
     background: transparent;
   }
+}
+
+/* Highlighted text (founder, 2026-10-26): the highlighter is the ink and the words turn to
+   paper, so black on white highlights black with white words, and the dark page the reverse. */
+.landing ::selection {
+  background-color: var(--landing-hi);
+  color: var(--landing-bg);
 }

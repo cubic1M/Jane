@@ -6,6 +6,7 @@ import { ViewTracker } from "@/components/view-tracker";
 import { trialEnabled } from "@/lib/trial";
 import { displayFont } from "./fonts";
 import "./landing.css";
+import { LandingModeSwitch } from "./landing-mode-switch";
 import { LandingTheme } from "./landing-theme";
 
 const POINTS = [
@@ -95,6 +96,7 @@ export default function Home() {
       className={`${displayFont.variable} landing relative isolate flex w-full flex-1 flex-col`}
     >
       <LandingTheme />
+      <LandingModeSwitch />
       <ViewTracker event="landing_viewed" />
       <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* The column (founder, 2026-10-25): fixed to the screen while the story scrolls, panning
