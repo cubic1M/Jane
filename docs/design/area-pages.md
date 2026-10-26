@@ -116,17 +116,19 @@ on (`StrategyTree` in `src/components/strategy-tree.tsx`):
 - **Hero:** the practice portfolio's value, and a graph of the strategy in view (what it runs,
   or the picked leaf) against the level's plain mix (dashed), from $100: walk-forward since 2020
   after costs, with return a year, worst drop and Sortino. Range chips: Since 2020, Since 2022,
-  Past year. On a computer it stays in view (sticky) while the tree scrolls.
+  Past year. It scrolls with the page (founder: "I don't want that when u scroll it shows the
+  entire graph always on the top, blocks the rest").
 - **Tiles:** risk level, the current strategy (opens its leaf), practice ideas.
 - **The tree:** the five levels as fixed tiles, the person's own open (another level loads from
   `/api/investments/strategies?level=`). A level's families are its branches: Steady mixes, Trend
   & momentum, Factor tilts, Timing rules, and at Very high only Day trading & crypto. Each leaf has
   a glyph and tag (■ `[DEFAULT]`, ● `[RECOMMENDED]`, ◐ `[WORTH WATCHING]`, ○ `[NOT RECOMMENDED]`,
   ▼ `[LOST MONEY]`) and its return a year.
-- **Picking a leaf:** the hero shows it at once; a panel beside the graph (a bottom sheet on a
-  phone, with its own small graph) holds its idea, numbers, "Use this strategy" and, behind More,
-  the evidence and past regimes, joined to the leaf by a marching dotted line. Use is instant,
-  saved behind (`choosePracticeStrategy`), with Revert (`restorePracticeStrategy`), as #732. Any
+- **Picking a leaf:** it opens its own box right under the leaf, on the tree's dotted line
+  (founder: "a separate box, not like covering up the whole screen"), on a computer and a phone
+  alike: its small graph against the mix, idea, numbers, "Use this strategy" and, behind More, the
+  evidence and past regimes; [×] or a second tap shuts it. Use is instant, saved behind
+  (`choosePracticeStrategy`), with Revert (`restorePracticeStrategy`), as #732. Any
   tested strategy that runs on its own can be used; one that lost money asks first. Day trading
   stays not offered (every rule lost money after costs); another level's leaves say to change
   the level first.
