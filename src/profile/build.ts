@@ -8,7 +8,6 @@ import {
   EARNER_ACTIVE_DAYS,
   CAR_WORDS,
   PENSION_PATTERN,
-  PET_PURCHASES_MIN,
   PROFILE_MONTHS,
   SALARY_DEPOSITS_MIN,
   STARTING_MAX_INCOME_CENTS,
@@ -27,6 +26,22 @@ import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 import { addDays } from "@/lib/dates";
+import { lifeEventGuesses } from "@/insights/life-signals";
+import type { DetectionInput } from "@/detection/types";
+import { CAR_SIGNAL, KIDS_SIGNALS, NEW_BABY_RECENT_DAYS } from "@/config/life-facts";
+import {
+  commuteReading,
+  eatingReading,
+  fitnessReading,
+  healthCostReading,
+  hitsOf,
+  kidsReading,
+  ownerBills,
+  petReading,
+  sideGigReading,
+  studentReading,
+  travelReading,
+} from "./life-facts";
 
 // The picture of you (spec step 253): one profile per person, built from their
 // transactions, accounts, loans and answers. Pure: the loader (src/lib/profile.ts) gathers
@@ -248,6 +263,72 @@ const TROUBLE_PAYMENT_DAYS = 90;
 const yearsUntil = (today: string, day: string) =>
   (Date.parse(day) - Date.parse(today)) / (365.25 * 86_400_000);
 
+// The payments as the life-event guesses (spec step 100) read them, so a recent move or a new baby
+// is worked out by the one code the "life events" suggestion uses too.
+function detectionInputOf(input: ProfileInput, txs: readonly ProfileTx[]): DetectionInput {
+  return {
+    asOf: input.today,
+    accounts: input.accounts.map((a) => ({
+      id: a.id,
+      name: a.id,
+      type: a.type,
+      subtype: a.subtype,
+      currentBalanceCents: a.balanceCents,
+    })),
+    transactions: txs.map((t, i) => ({
+      id: `${i}`,
+      accountId: t.accountId,
+      plaidTransactionId: null,
+      date: t.date,
+      amountCents: t.amountCents,
+      description: t.description,
+      merchantName: null,
+      pfcPrimary: null,
+      pfcDetailed: t.pfc,
+      categorySource: null,
+    })),
+    recurringStreams: [],
+  };
+}
+
+// A new baby: the life-event guess (baby merchants plus a hospital bill, spec step 100), or baby
+// goods bought lately and nothing for children before them.
+function babyReading(input: ProfileInput, txs: readonly ProfileTx[], today: string) {
+  const guess = lifeEventGuesses(detectionInputOf(input, txs)).find((g) => g.kind === "new_baby");
+  if (guess) {
+    return {
+      value: true,
+      source: "seen" as const,
+      what: "baby-goods and hospital payments",
+      matches: guess.signals.length,
+    };
+  }
+  const goods = hitsOf(txs, KIDS_SIGNALS.babyGoods);
+  const recent = goods.txs.filter((t) => t.date > addDays(today, -NEW_BABY_RECENT_DAYS));
+  const earlier = txs.filter((t) => t.date <= addDays(today, -NEW_BABY_RECENT_DAYS));
+  const older = Object.values(KIDS_SIGNALS).some((signal) => hitsOf(earlier, signal).matches > 0)
+    ? [1]
+    : [];
+  if (
+    recent.length >= KIDS_SIGNALS.babyGoods.minMatches &&
+    recent.length === goods.matches &&
+    older.length === 0
+  ) {
+    return {
+      value: true,
+      source: "guessed" as const,
+      what: "baby-goods payments",
+      matches: recent.length,
+    };
+  }
+  return {
+    value: false,
+    source: "guessed" as const,
+    what: "baby-goods payments",
+    matches: recent.length,
+  };
+}
+
 export function buildProfile(input: ProfileInput): Profile {
   const { today, accounts, liabilities, told } = input;
   const txs = inYear(input.transactions, today);
@@ -346,17 +427,16 @@ export function buildProfile(input: ProfileInput): Profile {
   else unknown("monthly_income");
 
   // --- Household and home -----------------------------------------------------------
-  const childcare = count((t) => t.pfc === "GENERAL_SERVICES_CHILDCARE");
-  if (childcare > 0) set("has_children", true, "seen", "childcare payments", childcare);
-  else set("has_children", false, "guessed", "childcare payments", 0);
+  const kids = kidsReading(txs);
+  set("has_children", kids.value, kids.source, kids.what, kids.matches);
   const hasChildren = facts.has_children.value === true;
   const household = hasChildren ? "family" : earners >= 2 ? "couple" : "single";
   set(
     "household",
     household,
     "guessed",
-    hasChildren ? "childcare payments" : "payroll names",
-    hasChildren ? childcare : earners,
+    hasChildren ? kids.what : "payroll names",
+    hasChildren ? kids.matches : earners,
   );
 
   const mortgageAccounts = accounts.filter((a) => a.subtype === "mortgage");
@@ -377,11 +457,29 @@ export function buildProfile(input: ProfileInput): Profile {
       "mortgage payments",
       Math.max(mortgagePayments, mortgageAccounts.length),
     );
+  } else if (ownerBills(txs).seen && rent + homeRent === 0) {
+    // Dues and property tax with no rent: the bills of someone who owns.
+    set(
+      "housing",
+      "own",
+      "seen",
+      "homeowner dues and property tax payments",
+      ownerBills(txs).matches,
+    );
   } else if (rent + homeRent > 0) {
     set("housing", "rent", "seen", "rent payments", rent + homeRent);
   } else if (accounts.length > 0 && income.some((t) => PENSION_PATTERN.test(t.description))) {
     // No rent, no mortgage, a pension: owns outright, a guess.
     set("housing", "own", "guessed", "rent or mortgage payments", 0);
+  } else if (ownerBills(txs).met) {
+    // A little property tax or dues and nothing else to go on: a guess.
+    set(
+      "housing",
+      "own",
+      "guessed",
+      "homeowner dues and property tax payments",
+      ownerBills(txs).matches,
+    );
   } else unknown("housing");
   if (mortgageLiab?.aprBps != null)
     set("mortgage_rate_bps", mortgageLiab.aprBps, "seen", "mortgage records", 1);
@@ -395,13 +493,49 @@ export function buildProfile(input: ProfileInput): Profile {
       (t) =>
         t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT" ||
         t.pfc === "TRANSPORTATION_GAS" ||
-        CAR_WORDS.test(t.description),
+        CAR_WORDS.test(t.description) ||
+        // Parking, tolls, cover and upkeep (src/config/life-facts.ts).
+        hitsOf([t], CAR_SIGNAL).matches > 0,
     ) + accounts.filter((a) => a.subtype === "auto").length;
-  set("has_car", carSigns > 0, "guessed", "car payments, gas or auto cover", carSigns);
-  const petSigns = count(
-    (t) => t.pfc === "GENERAL_MERCHANDISE_PET_SUPPLIES" || t.pfc === "MEDICAL_VETERINARY_SERVICES",
+  // Still a guess however many signs: gas can be a borrowed or rented car, and the cover
+  // suggestions read this as "probably" (the insurance lane's tests rest on it).
+  set("has_car", carSigns > 0, "guessed", "car payments, gas, tolls or auto cover", carSigns);
+  const pet = petReading(txs);
+  set("has_pet", pet.value, pet.source, pet.what, pet.matches);
+  // --- The rest of the picture of their life, from their payments ---------------------
+  const baby = txs.length > 0 ? babyReading(input, txs, today) : null;
+  set(
+    "new_baby",
+    baby?.value ?? false,
+    baby?.source ?? "guessed",
+    baby?.what ?? "baby-goods payments",
+    baby?.matches ?? 0,
   );
-  set("has_pet", petSigns >= PET_PURCHASES_MIN, "guessed", "pet purchases", petSigns);
+  const student = studentReading(txs);
+  set("is_student", student.value, student.source, student.what, student.matches);
+  const salaried = facts.income_pattern.value === "salary";
+  const work = commuteReading(txs, months, salaried);
+  if (work) set("work_style", work.value, work.source, work.what, work.matches);
+  else unknown("work_style");
+  const trips = travelReading(txs);
+  set("travels_often", trips.value, trips.source, trips.what, trips.matches);
+  const gym = fitnessReading(txs);
+  set("goes_to_gym", gym.value, gym.source, gym.what, gym.matches);
+  const eating = eatingReading(txs);
+  if (eating) set("eating_style", eating.value, eating.source, eating.what, eating.matches);
+  else unknown("eating_style");
+  const gig = sideGigReading(txs, salaried);
+  set("side_gig", gig.value, gig.source, gig.what, gig.matches);
+  const health = healthCostReading(txs, months);
+  set("health_costs", health.value, health.source, health.what, health.matches);
+  const moved = lifeEventGuesses(detectionInputOf(input, txs)).find((g) => g.kind === "moving");
+  set(
+    "moved_recently",
+    moved !== undefined,
+    moved ? "seen" : "guessed",
+    "moving signs",
+    moved?.signals.length ?? 0,
+  );
 
   // --- Debts ------------------------------------------------------------------------
   const cardIds = new Set(accounts.filter((a) => a.type === "credit").map((a) => a.id));
