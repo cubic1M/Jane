@@ -4,6 +4,8 @@ import { PlaidRequestError } from "@/lib/plaid/client";
 import { plaidAccount, plaidApiError, plaidTransaction, syncPage } from "./__fixtures__/plaid";
 import { PlaidDataSource, normalizeAccount, normalizeTransaction } from "./plaid-source";
 
+const noWait = async () => {};
+
 function apiWith(transactionsSync: ReturnType<typeof vi.fn>) {
   return { transactionsSync } as unknown as PlaidApi;
 }
@@ -20,8 +22,16 @@ describe("normalizeTransaction", () => {
       categoryDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
       pending: false,
       externalId: "txn_1",
+      pendingExternalId: null,
       hints: {},
     });
+  });
+
+  it("keeps the pending transaction a posted one replaces", () => {
+    expect(
+      normalizeTransaction(plaidTransaction({ pending_transaction_id: "txn_pending" } as never))
+        .pendingExternalId,
+    ).toBe("txn_pending");
   });
 });
 
@@ -85,6 +95,29 @@ describe("PlaidDataSource", () => {
     expect(batch.removedTransactionIds).toEqual(["gone"]);
   });
 
+  // Messy-bank QA: EUR 35.00 isn't $35.00.
+  it("leaves out transactions that aren't in US dollars", async () => {
+    const sync = vi.fn().mockResolvedValueOnce(
+      syncPage({
+        added: [
+          plaidTransaction({ iso_currency_code: "USD" }),
+          plaidTransaction({ transaction_id: "eur", iso_currency_code: "EUR", amount: 35 }),
+          plaidTransaction({
+            transaction_id: "btc",
+            iso_currency_code: null,
+            unofficial_currency_code: "BTC",
+          }),
+          plaidTransaction({ transaction_id: "no_code", iso_currency_code: null }),
+        ],
+        next_cursor: "c1",
+      }),
+    );
+
+    const batch = await new PlaidDataSource(apiWith(sync), "access-sandbox-x", null).load();
+
+    expect(batch.transactions.map((t) => t.externalId)).toEqual(["txn_1", "no_code"]);
+  });
+
   it("keeps loan accounts for their balance, but not their transactions", async () => {
     const loan = plaidAccount({ account_id: "acc_loan", type: "loan", subtype: "auto" } as never);
     const sync = vi.fn().mockResolvedValueOnce(
@@ -136,10 +169,36 @@ describe("PlaidDataSource", () => {
     expect(broken).toHaveBeenCalledTimes(1);
   });
 
+  it("waits and tries the whole run again after an outage or a rate limit", async () => {
+    const sync = vi
+      .fn()
+      .mockResolvedValueOnce(syncPage({ next_cursor: "c1", has_more: true }))
+      .mockRejectedValueOnce(plaidApiError("INSTITUTION_DOWN", 400))
+      .mockRejectedValueOnce(plaidApiError("RATE_LIMIT", 429))
+      .mockResolvedValueOnce(syncPage({ added: [plaidTransaction()], next_cursor: "c9" }));
+    const waits: number[] = [];
+    const batch = await new PlaidDataSource(apiWith(sync), "access-sandbox-x", "c0", async (ms) => {
+      waits.push(ms);
+    }).load();
+    // Each try starts again from the first page's cursor (Plaid's rule for a failed page).
+    expect(sync.mock.calls.map((c) => c[0].cursor)).toEqual(["c0", "c1", "c0", "c0"]);
+    expect(batch.nextCursor).toBe("c9");
+    expect(waits).toHaveLength(2);
+    expect(waits[1]).toBeGreaterThan(waits[0]);
+  });
+
+  it("gives up on a rate limit that doesn't pass, without saving a cursor", async () => {
+    const limited = vi.fn().mockRejectedValue(plaidApiError("RATE_LIMIT", 429));
+    await expect(
+      new PlaidDataSource(apiWith(limited), "access-sandbox-x", "c0", noWait).load(),
+    ).rejects.toMatchObject({ code: "RATE_LIMIT" });
+    expect(limited).toHaveBeenCalledTimes(3);
+  });
+
   it("never carries the request (access token, secret) in its errors", async () => {
     const broken = vi.fn().mockRejectedValue(plaidApiError("INTERNAL_SERVER_ERROR", 500));
 
-    const error = await new PlaidDataSource(apiWith(broken), "access-sandbox-secret", null)
+    const error = await new PlaidDataSource(apiWith(broken), "access-sandbox-secret", null, noWait)
       .load()
       .catch((e: unknown) => e);
 

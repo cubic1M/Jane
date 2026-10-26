@@ -1,7 +1,7 @@
 import { BENEFIT_LABELS, PAY_PERIODS } from "@/config/benefits";
-import type { Benefit, BenefitAnswer, BenefitQuestion } from "@/lib/insurance/benefits";
+import type { Benefit, BenefitQuestion } from "@/lib/insurance/benefits";
 import { formatCents } from "@/lib/money";
-import type { ActionId, MessageAction } from "../types";
+import type { MessageAction } from "../types";
 
 // Benefits through work in Jane's chat (spec step 150): what it found on the pay stub, and
 // the short guided questions for cover no pay stub shows. Pure.
@@ -52,14 +52,4 @@ export const BENEFITS_LINK: MessageAction = {
   label: "Your benefits",
   kind: "link",
   href: "/insurance/benefits",
-};
-
-// Each answer button's answer, for the page's forms.
-export const ANSWER_OF: Partial<Record<ActionId | "open", BenefitAnswer>> = {
-  "benefits.life_1x": "1x",
-  "benefits.life_2x": "2x",
-  "benefits.life_none": "none",
-  "benefits.disability_yes": "yes",
-  "benefits.disability_none": "none",
-  "benefits.unsure": "unsure",
 };

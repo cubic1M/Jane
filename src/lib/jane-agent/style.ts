@@ -12,8 +12,6 @@ export type Length = "short" | "normal" | "detailed";
 export type Voice = "plain" | "numbers";
 export type Style = { length: Length; voice: Voice };
 
-export const DEFAULT_STYLE: Style = { length: "normal", voice: "plain" };
-
 export function styleOf(prefs: readonly Preference[]): Style {
   const find = (key: string) => prefs.find((p) => p.kind === "style" && p.key === key)?.value;
   const length = find("length")?.length;

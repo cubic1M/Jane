@@ -1,4 +1,3 @@
-import { HOME_GOAL_NAME } from "@/config/home-buying";
 import { formatRate } from "@/insights/loans";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeBuying } from "@/lib/home-buying";
@@ -28,8 +27,6 @@ const noIncome: Reply = {
   actions: [],
   refs: {},
 };
-
-const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 
 // `mortgageCents`: what "what could I borrow?" shows for a mortgage, so the two sizes are said
 // together (src/planning/home-vs-borrow.ts).
@@ -67,5 +64,3 @@ export function homeReply(
     },
   };
 }
-
-export const HOME_GOAL = HOME_GOAL_NAME;

@@ -5,7 +5,7 @@ import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { demoBankEnabled } from "@/lib/plaid/demo";
-import { ITEM_STATUS } from "@/lib/plaid/sync";
+import { bankNotices, updatedAgo } from "@/lib/plaid/bank-status";
 import { requireUser } from "@/lib/session";
 import { linkDemo } from "./demo-actions";
 import { LinkButton } from "./link-button";
@@ -33,12 +33,19 @@ async function ConnectContent() {
         institutionName: true,
         status: true,
         lastSyncedAt: true,
+        newAccountsAvailable: true,
+        lastErrorCode: true,
         accounts: { select: { id: true, name: true, mask: true }, orderBy: { name: "asc" } },
       },
       orderBy: { createdAt: "asc" },
     }),
     canImportCsv(user, db),
   ]);
+  const now = new Date();
+  const notices = bankNotices(
+    items.map((i) => ({ ...i, name: i.institutionName })),
+    now,
+  );
 
   return (
     <>
@@ -73,7 +80,7 @@ async function ConnectContent() {
                   <p className="font-semibold">{item.institutionName ?? "Your bank"}</p>
                   <p className="text-xs text-zinc-500">
                     {item.lastSyncedAt
-                      ? `Updated ${item.lastSyncedAt.toISOString().slice(0, 10)}`
+                      ? `Updated ${updatedAgo(item.lastSyncedAt, now)}`
                       : "Reading your transactions…"}
                   </p>
                 </div>
@@ -84,14 +91,25 @@ async function ConnectContent() {
                       .join(", ")}
                   </p>
                 )}
-                {item.status === ITEM_STATUS.loginRequired && (
-                  <div className="flex flex-col gap-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-950">
-                    <p className="text-sm">
-                      Your bank needs you to sign in again before we can read new transactions.
-                    </p>
-                    <LinkButton itemId={item.id} label="Reconnect" className={SECONDARY_BUTTON} />
-                  </div>
-                )}
+                {notices
+                  .filter((n) => n.itemId === item.id)
+                  .map((n) => (
+                    <div
+                      key={n.kind}
+                      data-bank-notice={n.kind}
+                      className="flex flex-col gap-2 rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700"
+                    >
+                      <strong>{n.title}</strong>
+                      <p className="text-zinc-600 dark:text-zinc-400">{n.words}</p>
+                      {n.action && (
+                        <LinkButton
+                          itemId={item.id}
+                          label={n.action}
+                          className={SECONDARY_BUTTON}
+                        />
+                      )}
+                    </div>
+                  ))}
               </li>
             ))}
           </ul>

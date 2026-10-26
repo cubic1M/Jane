@@ -31,7 +31,7 @@ export function candidateLine(c: Candidate): string {
   return `${c.name} (${formatCents(c.amountCents)}, needed by ${day(c.endsOn)}): after tax, ${top}. Only places that can't lock your money past that date are on the list.${ladder}`;
 }
 
-export const ladderButton = (c: Candidate): MessageAction => ({
+export const ladderButton = (_c: Candidate): MessageAction => ({
   id: "ladder.build",
   label: "Build the ladder",
   kind: "primary",

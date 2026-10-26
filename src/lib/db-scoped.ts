@@ -260,6 +260,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     paperTrades: scoped.paperTrade,
     paperValues: scoped.paperValue,
     paperSignals: scoped.paperSignal,
+    // The events overlay on it (src/lib/events/run.ts) and its log.
+    paperEventOverlays: scoped.paperEventOverlay,
+    paperEventLogs: scoped.paperEventLog,
     giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,
@@ -387,5 +390,3 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
           }),
   });
 }
-
-export type SharedView = Awaited<ReturnType<typeof sharedReadFor>>;

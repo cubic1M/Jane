@@ -1,7 +1,8 @@
 import type { AccountBase, PlaidApi, Transaction } from "plaid";
 import { PersonalFinanceCategoryVersion } from "plaid";
-import { SYNC_MAX_RESTARTS, SYNC_PAGE_SIZE } from "@/config/plaid";
+import { SYNC_MAX_RESTARTS, SYNC_PAGE_SIZE, SYNC_RETRY_ATTEMPTS } from "@/config/plaid";
 import { plaidCall, plaidErrorCode } from "@/lib/plaid/client";
+import { backoffMs, retryablePlaidError } from "@/lib/plaid/retry";
 import {
   keepsTransactions,
   syncedKindOf,
@@ -58,9 +59,18 @@ export function normalizeTransaction(t: Transaction): NormalizedTransaction {
     categoryDetailed: t.personal_finance_category?.detailed ?? null,
     pending: t.pending,
     externalId: t.transaction_id,
+    pendingExternalId: t.pending_transaction_id ?? null,
     hints: {},
   };
 }
+
+// Money in the app is US dollars. A transaction in another currency (an account held abroad,
+// or a crypto wallet's unofficial code) can't be added to dollars, so it's left out rather
+// than counted as if it were dollars (messy-bank QA: EUR 35.00 read as $35.00). A card's
+// foreign purchases are already converted by the card company and come in USD.
+export const inDollars = (
+  t: Pick<Transaction, "iso_currency_code" | "unofficial_currency_code">,
+) => (t.iso_currency_code ? t.iso_currency_code === "USD" : !t.unofficial_currency_code);
 
 export class PlaidDataSource implements DataSource {
   readonly kind = "plaid" as const;
@@ -69,19 +79,28 @@ export class PlaidDataSource implements DataSource {
     private readonly api: PlaidApi,
     private readonly accessToken: string,
     private readonly cursor: string | null,
+    // Waits between retries; the tests pass one that doesn't.
+    private readonly sleep: (ms: number) => Promise<void> = (ms) =>
+      new Promise((resolve) => setTimeout(resolve, ms)),
   ) {}
 
-  // Reads every page since the cursor. If Plaid's data changes mid-way, the whole run
-  // restarts from the original cursor, as Plaid requires.
+  // Reads every page since the cursor. A failed page restarts the whole run from the original
+  // cursor, as Plaid requires: at once if Plaid's data changed mid-way, after a growing wait
+  // for a failure that passes (a rate limit, an outage). Nothing is saved until it all reads.
   async load(): Promise<PlaidSync> {
-    for (let attempt = 0; ; attempt += 1) {
+    let restarts = 0;
+    let retries = 0;
+    for (;;) {
       try {
         return await this.readAllPages();
       } catch (error) {
-        const restart =
-          plaidErrorCode(error) === "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION" &&
-          attempt < SYNC_MAX_RESTARTS;
-        if (!restart) throw error;
+        if (plaidErrorCode(error) === "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION") {
+          if (restarts >= SYNC_MAX_RESTARTS) throw error;
+          restarts += 1;
+        } else if (retryablePlaidError(error) && retries + 1 < SYNC_RETRY_ATTEMPTS) {
+          await this.sleep(backoffMs(retries));
+          retries += 1;
+        } else throw error;
       }
     }
   }
@@ -123,7 +142,7 @@ export class PlaidDataSource implements DataSource {
     return {
       accounts: kept,
       transactions: [...changed.values()]
-        .filter((t) => keptRefs.has(t.account_id))
+        .filter((t) => keptRefs.has(t.account_id) && inDollars(t))
         .map(normalizeTransaction),
       skipped: [],
       removedTransactionIds: [...removed],

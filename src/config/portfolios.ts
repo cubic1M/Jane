@@ -45,8 +45,7 @@ export const STABILITY_PENALTY: Readonly<Record<"steady" | "variable", number>> 
   steady: 0,
   variable: 1,
 };
-export const STABILITY_SOURCE =
-  "Income that moves around raises the chance of needing the money early (FINRA suitability: financial situation and needs); FOR REVIEW";
+// Source: Income that moves around raises the chance of needing the money early (FINRA suitability: financial situation and needs); FOR REVIEW
 
 // What a practice portfolio may hold: the model ETFs, and the large companies the sample market
 // watches (for opportunities at High and Very high only, step 292). No options, no leverage, no

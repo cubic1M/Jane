@@ -33,6 +33,7 @@ import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import type { DemoOrder } from "@/data-sources/demo/demo-holdings";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
+import { SIGN_IN_PLAID_CODES } from "@/config/plaid";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
@@ -65,6 +66,24 @@ export const ITEM_STATUS = {
   // The bank needs the person to sign in again (Link update mode).
   loginRequired: "login_required",
 } as const;
+
+// Why a sync failed, kept on the item so the person is told plainly: a sign-in needed marks it
+// for Link's update mode; anything else (an outage, a rate limit that didn't pass) is recorded
+// beside how old the data is. Never throws: the sync's own error is what the caller sees.
+async function noteSyncFailure(db: ScopedDb, itemId: string, error: unknown, now: Date) {
+  const code = plaidErrorCode(error);
+  try {
+    await db.plaidItems.updateMany({
+      where: { id: itemId },
+      data:
+        code && SIGN_IN_PLAID_CODES.includes(code)
+          ? { status: ITEM_STATUS.loginRequired }
+          : { lastErrorCode: code ?? "UNKNOWN", lastErrorAt: now },
+    });
+  } catch (saveError) {
+    console.error("Saving why a Plaid sync failed failed", { itemId, error: String(saveError) });
+  }
+}
 
 export type SyncResult = {
   accounts: number;
@@ -145,6 +164,40 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
       },
     ];
   });
+
+  // A posted transaction replaces its pending one (Plaid's pending_transaction_id), whether or
+  // not Plaid has listed the pending one as removed yet: never both, so nothing counts twice.
+  // A category the person set on the pending one carries over.
+  const pendingOf = new Map(
+    categorized.flatMap((t) =>
+      t.pendingExternalId && !t.pending ? [[t.pendingExternalId, t.externalId] as const] : [],
+    ),
+  );
+  const replaced =
+    pendingOf.size === 0
+      ? []
+      : await db.transactions.findMany({
+          where: { plaidTransactionId: { in: [...pendingOf.keys()] }, pending: true },
+          select: {
+            plaidTransactionId: true,
+            pfcPrimary: true,
+            pfcDetailed: true,
+            categorySource: true,
+          },
+        });
+  for (const p of replaced.filter((p) => p.categorySource === "user")) {
+    const row = rows.find((r) => r.plaidTransactionId === pendingOf.get(p.plaidTransactionId!));
+    if (row)
+      Object.assign(row, {
+        pfcPrimary: p.pfcPrimary,
+        pfcDetailed: p.pfcDetailed,
+        categorySource: "user",
+      });
+  }
+  if (replaced.length > 0)
+    await db.transactions.deleteMany({
+      where: { plaidTransactionId: { in: replaced.map((p) => p.plaidTransactionId!) } },
+    });
 
   const saved = await db.transactions.findMany({
     where: { plaidTransactionId: { in: rows.map((r) => r.plaidTransactionId) } },
@@ -649,7 +702,14 @@ async function syncItemWork(
     api = demoPlaidApi(accessToken, now, demo[0], demo[1], demo[2], demoExtrasOf(item.demoExtras));
   }
   timing.mark("demo_setup");
-  const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
+  let sync: PlaidSync;
+  try {
+    sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
+  } catch (error) {
+    // The cursor stays where it was, so the next sync (a webhook, the daily job) resumes from it.
+    await noteSyncFailure(db, item.id, error, now);
+    throw error;
+  }
   timing.mark("load");
   const accountIds = await saveAccounts(db, item.id, sync);
   timing.mark("save_accounts");
@@ -704,7 +764,13 @@ async function syncItemWork(
 
   await db.plaidItems.updateMany({
     where: { id: item.id },
-    data: { transactionsCursor: sync.nextCursor, lastSyncedAt: now, status: ITEM_STATUS.active },
+    data: {
+      transactionsCursor: sync.nextCursor,
+      lastSyncedAt: now,
+      status: ITEM_STATUS.active,
+      lastErrorCode: null,
+      lastErrorAt: null,
+    },
   });
 
   const result: SyncResult = {

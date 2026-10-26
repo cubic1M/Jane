@@ -32,16 +32,14 @@ export const ELIGIBLE_BENEFICIARIES = [
 // in the last year.
 export const SPREAD_MIN_SAVING_CENTS = 50_000;
 
-// The annual gift tax exclusion per person (src/config/family.ts GIFT_ANNUAL_EXCLUSION_CENTS
-// holds the same 2026 figure for the family tools); a couple can split a gift to double it,
-// which takes a Form 709.
-export const GIFT_RETURN_DUE = "04-15";
+// A couple can split a gift to double the annual exclusion (src/config/family.ts
+// GIFT_ANNUAL_EXCLUSION_CENTS), which takes a Form 709.
 export const GIFT_SPLIT_FACTOR = 2;
 
 // The federal estate tax basic exclusion amount, per person, 2026 (made permanent at this
 // level by the 2025 law). ESTIMATE TO VERIFY with the IRS.
 export const ESTATE_EXCLUSION_CENTS = 1_500_000_000;
-export const ESTATE_SOURCE = "IRS: Estate tax, the basic exclusion amount for 2026";
+// Source: IRS: Estate tax, the basic exclusion amount for 2026
 
 // The estate facts Jane says, word for word (planning/inheritance.ts estateFacts). The federal
 // line names the estate tax, which the legal guardrail blocks as advice in any other sentence,

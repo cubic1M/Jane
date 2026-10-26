@@ -3,6 +3,7 @@ import {
   CARD_PAYMENT_THANKS,
   FORECAST_SUBTYPES,
   NOT_BILL_CATEGORIES,
+  OWN_ACCOUNT_TRANSFERS,
 } from "@/config/detection";
 import { expectedPaydays, isPaycheck } from "./paydays";
 import { buildStreams, detectRecurring, fromPlaidStream, type Stream } from "./streams";
@@ -118,6 +119,15 @@ export const billName = (s: Stream) =>
     ? CARD_PAYMENT_NAME
     : s.merchant;
 
+// Money the person moves to their own savings or investments on a schedule: never a bill
+// (messy-bank QA: "Online Transfer To Sav" was listed as a $500 bill), though the forecast
+// still takes it out of checking.
+const isOwnTransfer = (s: Stream) => OWN_ACCOUNT_TRANSFERS.includes(s.pfcDetailed ?? "");
+
+export function scheduledTransfers(input: DetectionInput, days: number): Expected[] {
+  return expand(buildStreams(input).filter(isOwnTransfer), input.asOf, addDays(input.asOf, days));
+}
+
 // `remindedElsewhere`: payment categories whose due date the bank reports, left out.
 export function upcomingBills(
   input: DetectionInput,
@@ -126,6 +136,7 @@ export function upcomingBills(
 ): Expected[] {
   const bills = buildStreams(input)
     .filter(isBillStream)
+    .filter((s) => !isOwnTransfer(s))
     .filter((s) => !remindedElsewhere.has(s.pfcDetailed ?? ""))
     .map((s) => ({ ...s, merchant: billName(s) }));
   return expand(bills, input.asOf, addDays(input.asOf, days));
@@ -134,6 +145,7 @@ export function upcomingBills(
 export function forecastAccounts(input: DetectionInput, days: number): AccountForecast[] {
   const until = addDays(input.asOf, days);
   const bills = upcomingBills(input, days);
+  const transfers = scheduledTransfers(input, days);
   const income = expectedIncome(input, until);
 
   return input.accounts
@@ -147,12 +159,14 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
       const mine = (rows: Expected[]) => rows.filter((r) => r.accountId === account.id);
       const accountBills = mine(bills);
       const accountIncome = mine(income);
+      const accountTransfers = mine(transfers);
       let balance = account.currentBalanceCents!;
       const series: { date: string; balanceCents: number }[] = [];
       for (let i = 0; i <= days; i += 1) {
         const date = addDays(input.asOf, i);
         for (const r of accountIncome) if (r.date === date) balance += r.amountCents;
         for (const r of accountBills) if (r.date === date) balance -= r.amountCents;
+        for (const r of accountTransfers) if (r.date === date) balance -= r.amountCents;
         series.push({ date, balanceCents: balance });
       }
       const lowest = series.reduce((low, day) => (day.balanceCents < low.balanceCents ? day : low));

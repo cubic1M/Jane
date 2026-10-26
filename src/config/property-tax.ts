@@ -18,8 +18,6 @@ export const DEMO_HOME = { loanToValue: 0.6, overAssessedBy: 1.14, squareFeet: 1
 
 // How many comparable sales go in a drafted appeal.
 export const COMPARABLES_WANTED = 3;
-// Comparable sales older than this many days aren't used.
-export const COMPARABLE_MAX_AGE_DAYS = 365;
 
 export type AppealWindow = {
   // The board that hears it.

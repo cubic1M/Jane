@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { HubGroup, HubTileData } from "@/lib/hubs/tile";
+import type { HubTileData } from "@/lib/hubs/tile";
 
 // The number never breaks inside itself ("-$226,294.8" then "3" on a phone): it wraps only
 // between words, and a long one is a size smaller to fit two tiles across a phone.
@@ -43,14 +43,4 @@ export function HubTiles({ tiles }: { tiles: HubTileData[] }) {
       ))}
     </ul>
   );
-}
-
-// Each group under its own heading.
-export function HubGroups({ groups }: { groups: HubGroup[] }) {
-  return groups.map((group) => (
-    <section key={group.title} className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold">{group.title}</h2>
-      <HubTiles tiles={group.tiles} />
-    </section>
-  ));
 }

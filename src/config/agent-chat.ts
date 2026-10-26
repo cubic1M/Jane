@@ -360,8 +360,6 @@ export const CHAT_CONTEXT_MINUTES = 30;
 export const CARD_TOPIC_LOOKBACK = 4;
 // A clarifying question offers at most this many meanings, one button each.
 export const CHAT_CLARIFY_CHOICES = 3;
-// The subscriptions list names at most this many, the most expensive first.
-export const CHAT_SUBSCRIPTIONS_LISTED = 8;
 
 // Spec step 90: a purchase that doesn't fit before payday gets "Start a goal for it",
 // reached this many months from now.
@@ -400,45 +398,18 @@ export const CHAT_CLAUDE_RETRY_MS = 400;
 // this, Claude starts without them (it has the tools) and the lookup finishes for next time.
 // The clock for Claude starts after this, so a slow lookup never uses up its time.
 export const CHAT_PRIMER_BUDGET_MS = 1_500;
-
-// Spec step 191: Claude reads every free-text message. These kinds of message keep the
-// instant rules path, because they are exact commands, tapped-for answers or fixed content:
-// approving, undoing and pausing, changing an autopilot level, a plan of several steps,
-// guided flows, what the person tells Jane to remember, searching the chat, the glossary,
-// help and hellos. Everything else is a question for Claude with all the tools.
-export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
-  "greeting",
-  "help",
-  "approve_all",
-  "undo",
-  "pause_autopilot",
-  "autopilot_sector",
-  "autopilot_overview",
-  "act",
-  "multi",
-  "move_to_goal",
-  "flow",
-  "remember",
-  "search",
-  "learn",
-  // A decision is answered from their numbers, the same every time; Claude never looks up the thing.
-  "decision",
-  // The ranked list of what matters most, and why: the same every time, so instant.
-  "priorities",
-  // Exact figures the rules give in a second, whatever was talked about before.
-  "net_worth",
-  "balance_forecast",
-  "credit_score",
-  // A typed yes or no, and "remind me": answered at once, pointing at the button.
-  "ack",
-  "remind",
-];
-// The most Claude may spend answering one person's messages in a day, in cents, at the model's
-// listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, an honest "today's
-// limit" note and the answer from the data. Sized so a sample person's whole allowance of
-// CHAT_TRIAL_MESSAGES typical answers (CHAT_TYPICAL_ANSWER_CENTS, from the nightly checks) fits
-// with room for the strategist, so the trial cap is the limit people meet.
-export const CHAT_CLAUDE_DAILY_CAP_CENTS = 60;
+// The most Claude may spend on one person's written answers in a day (the chat and the
+// strategist), in cents, at the model's listed price (MODEL_PRICES_CENTS in
+// src/config/answer-checks.ts), counted from midnight UTC. Past it, an honest "today's limit"
+// note and the answer from the data. Founder (2026-10-26): one person can't use up the month,
+// so a whole month of one person at CHAT_PERSON_DAILY_CAP_CENTS stays under
+// CHAT_MONTHLY_CAP_CENTS_DEFAULT (about ten typical answers a day). A sample person's is
+// CHAT_TRIAL_DAILY_CAP_CENTS, sized so their whole allowance of CHAT_TRIAL_MESSAGES typical
+// answers (CHAT_TYPICAL_ANSWER_CENTS, from the nightly checks) fits with room for the
+// strategist, so the trial cap is the limit they meet. Admins (ADMIN_EMAILS) have no daily
+// limit; the monthly cap applies to everyone on top.
+export const CHAT_PERSON_DAILY_CAP_CENTS = 20;
+export const CHAT_TRIAL_DAILY_CAP_CENTS = 60;
 export const CHAT_TYPICAL_ANSWER_CENTS = 2;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;

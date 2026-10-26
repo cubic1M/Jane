@@ -30,15 +30,6 @@ export const PASSIVE_LOSS = {
   phaseOutToCents: 15_000_000,
 } as const;
 
-// Rent in from these payers' deposits (INCOME_RENTAL) less tagged rental expenses and
-// depreciation is the rental's net.
-export const HOBBY_FACTORS = [
-  "You carry it on like a business: records, a separate account, a plan to make money.",
-  "You spend regular time on it, and change how you work to improve profit.",
-  "It made a profit in at least 3 of the last 5 years (2 of 7 for horses).",
-  "You depend on the income, or its losses aren't from personal pleasure.",
-] as const;
-
 // A 1099-K/NEC platform's payouts within this much of its form are "matched" (the form's
 // own tolerance is TAX_DOCUMENTS in src/config/tax.ts).
 export const SIDE_INCOME_MIN_CENTS = 10_000;

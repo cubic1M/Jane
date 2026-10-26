@@ -8,14 +8,6 @@ export const LEAN_WAITABLE_PRIMARIES: readonly string[] = [
   "GENERAL_SERVICES",
   "GENERAL_MERCHANDISE",
 ];
-// Never listed as able to wait.
-export const LEAN_ESSENTIAL_PRIMARIES: readonly string[] = [
-  "RENT_AND_UTILITIES",
-  "LOAN_PAYMENTS",
-  "MEDICAL",
-  "TRANSPORTATION",
-  "FOOD_AND_DRINK",
-];
 // Recurring charges looked at, next this many days.
 export const LEAN_BILL_DAYS = 30;
 // At most this many bills named in the message.
