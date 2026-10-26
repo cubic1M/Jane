@@ -110,6 +110,8 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
     "works out a home the person asks about; nothing in their data says they're buying",
   loan_applications:
     "tracks an application the person started; the refinance and transfer detectors suggest them",
+  events_overlay:
+    "reads the paper account's events overlay when asked; its own trades come up by themselves in the trade pop-up",
   market_news:
     "reads the practice portfolio's stored news summaries and filings when asked; the daily scan (spec step 292) brings news-driven ideas up by itself",
   practice_settings:

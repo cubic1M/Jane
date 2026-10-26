@@ -446,3 +446,33 @@ export async function addPaperSignal(userId: string): Promise<string> {
     await client.end();
   }
 }
+
+// An event the events overlay can act on (src/lib/events/run.ts): a chip boom in GDELT's coverage
+// three days ago, public two days ago. On the sample prices its fund (SMH) has no price, so the
+// overlay uses its stand-in, NVDA. Returns its key, for deleteMarketEvent.
+export async function addMarketEvent(): Promise<string> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+  const key = `gdelt:chip_boom:e2e-${crypto.randomUUID()}`;
+  try {
+    await client.query(
+      `INSERT INTO market_events (id, key, type, source, date, known_at, title, url, strength)
+       VALUES ($1, $1, 'chip_boom', 'gdelt', $2, $3, $4, NULL, 3.1)`,
+      [key, day(3), `${day(2)}T00:15:00Z`, "A chip boom: news coverage 3.1 times its usual level"],
+    );
+    return key;
+  } finally {
+    await client.end();
+  }
+}
+
+export async function deleteMarketEvent(key: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(`DELETE FROM market_events WHERE key = $1`, [key]);
+  } finally {
+    await client.end();
+  }
+}
