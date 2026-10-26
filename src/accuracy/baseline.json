@@ -13,7 +13,7 @@
       "recall": 1
     },
     "double_charges": {
-      "precision": 0.5581,
+      "precision": 1,
       "recall": 1
     },
     "idle_cash": {
@@ -51,7 +51,7 @@
       "recall": 1
     },
     "double_charges": {
-      "precision": 0.4493,
+      "precision": 1,
       "recall": 1
     },
     "idle_cash": {
@@ -89,7 +89,7 @@
       "recall": 1
     },
     "double_charges": {
-      "precision": 0.4255,
+      "precision": 1,
       "recall": 1
     },
     "idle_cash": {

@@ -2,11 +2,13 @@ import {
   DUPLICATE_CHARGE_EXCLUDED_PRIMARIES,
   DUPLICATE_CHARGE_MEAL_MIN_CENTS,
   DUPLICATE_CHARGE_MIN_CENTS,
+  DUPLICATE_CHARGE_PER_SEAT_CATEGORIES,
+  DUPLICATE_CHARGE_PER_SEAT_WORDS,
   DUPLICATE_CHARGE_WINDOW_DAYS,
   REFUND_MAX_AGE_DAYS,
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
-import { byDate, evidenceOf, inList, inLookback } from "../helpers";
+import { byDate, evidenceOf, inList, inLookback, merchantMatches } from "../helpers";
 import { merchantOf } from "../streams";
 import type { Candidate, DetectionInput, DetectionTransaction } from "../types";
 import { daysBetween } from "../units";
@@ -18,8 +20,8 @@ const merchantName = (t: DetectionTransaction) =>
   t.merchantName ?? merchantOf(t)?.name ?? t.description;
 
 // Two charges for the same amount at the same merchant on the same account, within
-// DUPLICATE_CHARGE_WINDOW_DAYS, that weren't refunded afterwards. Shared with the
-// double-charge alert.
+// DUPLICATE_CHARGE_WINDOW_DAYS, that weren't refunded afterwards, and not a seat each (tickets,
+// fares). Shared with the double-charge alert.
 export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
   const groups = new Map<string, DetectionTransaction[]>();
   for (const t of inLookback(input)) {
@@ -28,8 +30,9 @@ export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
       t.pfcPrimary === "FOOD_AND_DRINK" &&
       Math.abs(t.amountCents) >= DUPLICATE_CHARGE_MEAL_MIN_CENTS;
     if (inList(t.pfcPrimary, DUPLICATE_CHARGE_EXCLUDED_PRIMARIES) && !meal) continue;
+    if (inList(t.pfcDetailed, DUPLICATE_CHARGE_PER_SEAT_CATEGORIES)) continue;
     const merchant = merchantOf(t)?.key;
-    if (!merchant) continue;
+    if (!merchant || merchantMatches(merchant, DUPLICATE_CHARGE_PER_SEAT_WORDS)) continue;
     const key = `${t.accountId}\u0000${merchant}\u0000${Math.abs(t.amountCents)}`;
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }

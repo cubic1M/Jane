@@ -228,6 +228,21 @@ const RULES: readonly Rule[] = [
     keywords: ["PLANET FITNESS", "EQUINOX", "ORANGETHEORY", "24 HOUR FITNESS"],
   },
   { category: "TRAVEL_LODGING", keywords: ["AIRBNB", "MARRIOTT", "HILTON", "HYATT"] },
+  // Ticket sellers: a seat each, so two at one price aren't a double charge (accuracy bench).
+  {
+    category: "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS",
+    keywords: [
+      "TICKETMASTER",
+      "LIVE NATION",
+      "STUBHUB",
+      "SEATGEEK",
+      "VIVID SEATS",
+      "EVENTBRITE",
+      "AXS",
+      "TICKETWEB",
+    ],
+    direction: "out",
+  },
   {
     category: "TRAVEL_FLIGHTS",
     keywords: ["DELTA AIR", "UNITED AIRLINES", "AMERICAN AIRLINES", "SOUTHWEST AIR", "JETBLUE"],

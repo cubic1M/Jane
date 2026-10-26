@@ -72,7 +72,7 @@ Tuning set (60 people, 16326 transactions):
 | subscriptions | 100.0% | 63.8% | 0.0% | 95 | 0 | 54 |
 | price_rises | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
 | fees | 100.0% | 100.0% | 0.0% | 31 | 0 | 0 |
-| double_charges | 55.8% | 100.0% | 23.3% | 24 | 19 | 0 |
+| double_charges | 100.0% | 100.0% | 0.0% | 24 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 14 | 0 | 0 |
 | bills | 99.7% | 73.3% | 1.7% | 297 | 1 | 108 |
@@ -84,8 +84,8 @@ Calibration, tuning set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 47 | 56% | 87% |
-| 60–69% | 23 | 65% | 78% |
+| 50–59% | 41 | 56% | 100% |
+| 60–69% | 18 | 65% | 100% |
 | 70–79% | 7 | 74% | 100% |
 | 80–89% | 29 | 86% | 100% |
 | 90–100% | 28 | 95% | 100% |
@@ -97,7 +97,7 @@ Held-out set (40 people, 10008 transactions):
 | subscriptions | 100.0% | 41.9% | 0.0% | 52 | 0 | 72 |
 | price_rises | 100.0% | 100.0% | 0.0% | 8 | 0 | 0 |
 | fees | 100.0% | 100.0% | 0.0% | 20 | 0 | 0 |
-| double_charges | 44.9% | 100.0% | 55.0% | 31 | 38 | 0 |
+| double_charges | 100.0% | 100.0% | 0.0% | 31 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
 | bills | 98.2% | 55.5% | 7.5% | 161 | 3 | 129 |
@@ -109,8 +109,8 @@ Calibration, held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 31 | 56% | 84% |
-| 60–69% | 33 | 65% | 91% |
+| 50–59% | 26 | 56% | 100% |
+| 60–69% | 30 | 65% | 100% |
 | 70–79% | 10 | 75% | 100% |
 | 80–89% | 15 | 85% | 100% |
 | 90–100% | 12 | 95% | 100% |
@@ -122,7 +122,7 @@ Second held-out set (40 people, 10748 transactions):
 | subscriptions | 100.0% | 38.4% | 0.0% | 48 | 0 | 77 |
 | price_rises | 100.0% | 100.0% | 0.0% | 4 | 0 | 0 |
 | fees | 100.0% | 100.0% | 0.0% | 21 | 0 | 0 |
-| double_charges | 42.6% | 100.0% | 47.5% | 20 | 27 | 0 |
+| double_charges | 100.0% | 100.0% | 0.0% | 20 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 12 | 0 | 0 |
 | bills | 99.4% | 54.7% | 2.5% | 156 | 1 | 129 |
@@ -134,24 +134,30 @@ Calibration, second held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 32 | 56% | 84% |
-| 60–69% | 27 | 64% | 70% |
+| 50–59% | 28 | 57% | 100% |
+| 60–69% | 18 | 64% | 100% |
 | 70–79% | 8 | 75% | 100% |
 | 80–89% | 19 | 86% | 100% |
 | 90–100% | 18 | 95% | 100% |
 <!-- scoreboard:end -->
 
-### What changed
+### What changed in #766
 
 - **Bills (the worst detector, recall 60.6% → 83.0%).** A recurring run was only the charges within 10% of the typical amount. So the power bill and the card's monthly payment, whose amounts move every month, were never bills: "Coming up" and the cash forecast missed every one. Now charges in `VARIABLE_BILL_CATEGORIES` form a run on their regular timing alone (`src/detection/streams.ts`).
 - **Income (recall 87.3% → 100%).** Social Security ("SSA TREAS") and pensions were uncategorized, so a retiree's whole income was missing. Because of that, "how you're paid" was unknown and the emergency fund suggestion said "I'm not sure (0%)". They are now `INCOME_RETIREMENT_PENSION`, and a pay pattern that isn't known yet no longer pulls a suggestion's confidence to 0%.
 - **Double charges.** The suggestion and the finding disagreed. The suggestion called a refunded double, or two lunches, a double charge: right 14 times in 28 before the ticket pairs were added. Now the suggestion uses the finding's own definition (`duplicatePairs`). Both treat an identical restaurant bill of $30 or more (`DUPLICATE_CHARGE_MEAL_MIN_CENTS`) on the next day as a double charge, and a $12.50 lunch twice as normal. Two identical tickets bought together still look exactly like a double charge in the data. That is why precision is 61% and the card asks "Charged twice?" rather than saying so.
 
-### Known misses (left for later)
+### Known misses after #766
 
 - **Subscriptions billed through Apple at mixed amounts** ("APPLE.COM/BILL", 11 people). One merchant, several prices: neither a steady subscription nor Apple Store shopping can be told apart from the amounts alone.
 - **Yearly subscriptions seen once** (Amazon Prime, 9) and **two-month histories** (under three charges of anything).
 - **Card companies the rules don't know** (Barclaycard, 6 bills and 56 transfers). Matching a checking payment to the card's "thank you" on the same day would find any issuer.
+
+## Round 2: the weak detectors (2026-10-26)
+
+Each fix was made by reading the tuning set's mistakes only. The held-out sets were scored, not read, until the tuning-set rules were final; where a held-out mistake then suggested a fix, it says so, and the second held-out set is the clean check for it.
+
+- **Double charges (precision 55.8% → 100% on the tuning set, 44.9% → 100% and 42.6% → 100% held out; recall stays 100%).** Every false "Charged twice?" was a group buying a seat each: two or three tickets or fares at one price on one day. Those are left out now: Plaid's event and flight categories (`DUPLICATE_CHARGE_PER_SEAT_CATEGORIES`), ticket sellers filed as events by the keyword rules (Ticketmaster, Live Nation, StubHub, SeatGeek and others), and cinemas by name (`DUPLICATE_CHARGE_PER_SEAT_WORDS`; Plaid files cinemas with streaming, where a double charge is real). Two bank fees on one day aren't a double charge either: the bank fees finding asks for those back. The cinema and bank-fee rules came from reading the first held-out set's mistakes (seats at AMC, two overdraft fees in a day); the second held-out set, with a cinema and ticket seller of its own, confirms them. A real double charge at a ticket seller is now missed; the card's dispute process still covers it.
 
 ## Calibration
 
