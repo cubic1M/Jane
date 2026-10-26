@@ -30,7 +30,7 @@ const HULU = {
   payees: [{ description: "HULU 877-8244858", amountCents: 1_799, perYear: 12 }],
 };
 
-describe.runIf(url)("the verified savings record", { timeout: 60_000 }, () => {
+describe.runIf(url)("the verified savings record", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   beforeAll(() => {

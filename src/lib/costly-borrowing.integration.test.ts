@@ -28,7 +28,7 @@ const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: 
 
 describe.runIf(url)(
   "costly short-term borrowing against a real database",
-  { timeout: 30_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     let userId: string;

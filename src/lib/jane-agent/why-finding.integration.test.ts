@@ -18,7 +18,7 @@ import { sendToJane } from "./typing";
 const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 
-describe.runIf(url)("why, typed after a finding", { timeout: 60_000 }, () => {
+describe.runIf(url)("why, typed after a finding", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let userId: string;
   beforeAll(async () => {

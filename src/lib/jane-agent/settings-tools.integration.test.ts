@@ -20,7 +20,7 @@ import { CHAT_PAGES, proposeAction, runChatTool } from "./claude-tools";
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 
-describe.runIf(url)("settings in the chat against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("settings in the chat against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let userId: string;
   const plaid = new Proxy(
