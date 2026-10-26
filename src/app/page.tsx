@@ -65,17 +65,17 @@ const BEATS = [
   },
   {
     tag: "the find",
-    title: "She brings it to you, unasked",
-    body: "Price rises, double charges, idle cash, a plan that costs more than one just as good. Each one a card with what it's worth and how sure she is.",
+    title: "Jane brings it to you, unasked",
+    body: "Price rises, double charges, idle cash, a plan that costs more than one just as good. Each one a card with what it's worth and how sure Jane is.",
   },
   {
     tag: "the fix",
-    title: "You decide. She does the legwork",
-    body: "Say yes and Jane hands you the steps, the email and the phone script, ready to go. After, she checks the saving really happened.",
+    title: "You decide. Jane does the legwork",
+    body: "Say yes and Jane hands you the steps, the email and the phone script, ready to go. After, it checks the saving really happened.",
   },
   {
     tag: "ask",
-    title: "Ask her anything",
+    title: "Ask Jane anything",
     body: "Type or talk. Jane answers from your own numbers, not a script.",
   },
   {
@@ -111,7 +111,7 @@ export default function Home() {
                 <span aria-hidden="true">[ </span>your financial controller
                 <span aria-hidden="true"> ]</span>
               </p>
-              <h1 className="font-display max-w-2xl text-6xl leading-[0.98] font-light text-balance text-[var(--landing-hi)] sm:text-8xl">
+              <h1 className="font-display max-w-2xl text-5xl leading-[1.04] font-normal text-balance text-[var(--landing-hi)] sm:text-7xl">
                 See how much money you&apos;re losing
                 <span aria-hidden="true" className="ascii-cursor font-mono">
                   _
@@ -180,7 +180,7 @@ export default function Home() {
                   {beat.tag}
                   <span aria-hidden="true"> ]</span>
                 </p>
-                <h2 className="font-display text-5xl leading-none font-light text-[var(--landing-hi)] sm:text-6xl">
+                <h2 className="font-display text-5xl leading-tight font-normal text-[var(--landing-hi)] sm:text-6xl">
                   {beat.title}
                 </h2>
                 <p className="text-lg text-[var(--landing-mid)]">{beat.body}</p>
@@ -208,7 +208,7 @@ export default function Home() {
                 <span aria-hidden="true">[ </span>rebuilt
                 <span aria-hidden="true"> ]</span>
               </p>
-              <h2 className="font-display text-5xl leading-none font-light text-[var(--landing-hi)] sm:text-7xl">
+              <h2 className="font-display text-5xl leading-tight font-normal text-[var(--landing-hi)] sm:text-7xl">
                 Put your money back together
               </h2>
               <p className="text-lg text-[var(--landing-mid)]">

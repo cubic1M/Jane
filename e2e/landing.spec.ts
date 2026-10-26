@@ -60,7 +60,7 @@ test("the column pans from capital to base as the page scrolls", async ({ page }
   // The headline face, and the white page.
   const heading = page.getByRole("heading", { level: 1, name: "See how much money you're losing" });
   expect(await heading.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(
-    /Rules Gothic Condensed.*Oswald/,
+    /Orange Avenue.*Playfair Display/,
   );
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
     "rgb(255, 255, 255)",

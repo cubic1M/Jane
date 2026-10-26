@@ -295,9 +295,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   /* The landing page's headline (src/app/fonts.ts). */
-  --font-display:
-    "Rules Gothic Condensed", "NMY Rules Gothic Condensed", var(--font-display-face),
-    "Arial Narrow", sans-serif;
+  --font-display: "Orange Avenue", "Orange Avenue DEMO", var(--font-display-face), Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {
