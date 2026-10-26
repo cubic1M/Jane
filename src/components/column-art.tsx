@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { panOffset, toLines } from "@/lib/column-art";
+import { COLUMN_IMAGE, linesFromRgba, panOffset, visibleRows } from "@/lib/column-art";
 
 // The landing page's column (founder, 2026-10-25): the founder's drawing of a weathered column,
 // its capital broken and its shaft cracked, mending down to a perfect base
-// (public/landing/column.png), drawn in very fine ASCII as wide as its panel. It's several
+// (public/landing/column.webp), drawn in very fine ASCII as wide as its panel. It's several
 // screens tall; as the page scrolls it pans from the capital at the top down to the base.
 
 const FONT = "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace";
-const SOURCE = "/landing/column.png";
+const SOURCE = COLUMN_IMAGE;
 
-type Drawing = { font: number; text: string; height: number };
+type Drawing = { font: number; lines: string[]; height: number };
 
 function load(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -45,13 +45,7 @@ async function draw(width: number): Promise<Drawing | null> {
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(img, 0, 0, cols, rows);
   const pixels = ctx.getImageData(0, 0, cols, rows).data;
-  const lum = new Float32Array(cols * rows);
-  // Deepen the mid-tones: the drawing is pale marble, and at this size light glyphs vanish.
-  for (let i = 0; i < lum.length; i++) {
-    const v = pixels[i * 4] / 255;
-    lum[i] = v > 0.95 ? v : Math.pow(v, 2.4);
-  }
-  return { font, text: toLines(lum, cols, rows).join("\n"), height: rows * font };
+  return { font, lines: linesFromRgba(pixels, cols, rows), height: rows * font };
 }
 
 // How far down the page, 0 at the top and 1 at the bottom.
@@ -63,6 +57,7 @@ function progress(): number {
 export function ColumnArt() {
   const panel = useRef<HTMLDivElement>(null);
   const art = useRef<HTMLPreElement>(null);
+  const band = useRef<HTMLSpanElement>(null);
   const [drawing, setDrawing] = useState<Drawing | null>(null);
 
   // Draw for the panel's width, and again if it changes.
@@ -99,13 +94,29 @@ export function ColumnArt() {
   useEffect(() => {
     const el = panel.current;
     const pre = art.current;
-    if (!el || !pre || !drawing) return;
+    const rowsEl = band.current;
+    if (!el || !pre || !rowsEl || !drawing) return;
     let queued = 0;
+    let shown = "";
     const place = () => {
       queued = 0;
-      const offset = panOffset(progress(), drawing.height, el.clientHeight);
+      const done = progress();
+      const offset = panOffset(done, drawing.height, el.clientHeight);
       pre.style.transform = `translate3d(0, ${offset.toFixed(1)}px, 0)`;
-      el.dataset.progress = progress().toFixed(2);
+      el.dataset.progress = done.toFixed(2);
+      // Only the rows near the screen are in the page; the rest of the drawing is empty height.
+      const { start, end } = visibleRows(
+        offset,
+        drawing.font,
+        el.clientHeight,
+        drawing.lines.length,
+      );
+      const key = `${start}-${end}`;
+      if (key !== shown) {
+        shown = key;
+        rowsEl.textContent = drawing.lines.slice(start, end).join("\n");
+        rowsEl.style.transform = `translate3d(0, ${start * drawing.font}px, 0)`;
+      }
     };
     const onScroll = () => {
       if (!queued) queued = requestAnimationFrame(place);
@@ -135,9 +146,12 @@ export function ColumnArt() {
           fontFamily: FONT,
           fontSize: `${drawing?.font ?? 3}px`,
           lineHeight: `${drawing?.font ?? 3}px`,
+          // The drawing's full height, so the panning and the page's scroll length are the same
+          // as when every row was in the page.
+          height: drawing ? `${drawing.height}px` : undefined,
         }}
       >
-        {drawing?.text ?? ""}
+        <span ref={band} className="block" />
       </pre>
     </div>
   );
