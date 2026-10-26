@@ -1,7 +1,6 @@
 import {
   ESTATE_LAWYER_POINTER,
   FEDERAL_ESTATE_FACT,
-  ELIGIBLE_BENEFICIARIES,
   GIFT_SPLIT_FACTOR,
   INHERITED_IRA_YEARS,
   SPREAD_MIN_SAVING_CENTS,
@@ -101,5 +100,3 @@ export function estateFacts(state: string | null): string[] {
   out.push(ESTATE_LAWYER_POINTER);
   return out;
 }
-
-export const beneficiaryExceptions = () => [...ELIGIBLE_BENEFICIARIES];

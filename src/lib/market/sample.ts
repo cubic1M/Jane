@@ -81,7 +81,7 @@ export const SAMPLE_PROFILES: Readonly<Record<string, Profile>> = {
   TLT: { base: 120, drift: 0.01, vol: 0.009, beta: 0.1, hit: 0 },
   SMH: { base: 60, drift: 0.2, vol: 0.02, beta: 1.4, hit: 1.4 },
 };
-export const SAMPLE_TICKERS = Object.keys(SAMPLE_PROFILES);
+
 export const PRACTICE_TICKERS = Object.values(PRACTICE_ETFS).map((e) => e.ticker);
 
 // Planted events as a tent in log price: it falls by `drop` linearly from `from` to `low`, and

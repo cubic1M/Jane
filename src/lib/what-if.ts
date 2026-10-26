@@ -161,15 +161,3 @@ export async function adoptedPlans(
       : [],
   );
 }
-
-export async function finishPlan(
-  userId: string,
-  id: string,
-  { client = defaultClient }: Options = {},
-): Promise<void> {
-  const { count } = await scopedFor(userId, client).whatIfPlans.updateMany({
-    where: { id, status: "adopted" },
-    data: { status: "done" },
-  });
-  if (count === 0) throw new WhatIfError("That plan was already finished.");
-}

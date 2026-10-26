@@ -269,17 +269,6 @@ export const ENERGY_CREDITS_2025 = {
 // 2025, and the clean vehicle credits for vehicles acquired after Sep 30, 2025 (OBBBA).
 export const ENERGY_CREDITS_END = { home: "2025-12-31", vehicle: "2025-09-30" } as const;
 
-// Estimated tax: no penalty when withholding and estimated payments cover 90% of this
-// year's tax, or 100% of last year's (110% when last year's AGI was over $150,000), or
-// when what's owed is under $1,000.
-export const ESTIMATED_TAX_SAFE_HARBOR = {
-  thisYearShare: 0.9,
-  lastYearShare: 1.0,
-  lastYearShareHighIncome: 1.1,
-  highIncomeAgi: $(150_000),
-  smallBalance: $(1_000),
-} as const;
-
 // Standard mileage rate for business driving in 2026: 72.5 cents (IRS Notice 2026-10).
 // Some later sources report a mid-year rise to 76 cents from July 1, 2026: ESTIMATE TO
 // VERIFY; Jane uses 72.5.

@@ -1,10 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { Bar } from "@/lib/market/types";
 
-// The real-closes research fixture (./README.md) as bars by ticker, for tests and tuning only:
-// the app never imports this. Closes are rounded to cents, as stored history is.
-export const REAL_FIXTURE_SOURCE =
-  "Yahoo Finance adjusted daily closes, 2016-01-04 to 2026-10-21, downloaded 2026-10-22";
+// Source: Yahoo Finance adjusted daily closes, 2016-01-04 to 2026-10-21, downloaded 2026-10-22
 
 let cached: Record<string, Bar[]> | null = null;
 

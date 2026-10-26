@@ -47,6 +47,10 @@ investment advice in this MVP.
 - The paper account (src/lib/paper/) is simulated money only: no real order, broker or account,
   ever. Its prices are real and free (Alpaca, else Yahoo); advice mode only for now. Its trade
   alerts live in their own pop-up (src/components/trade-popup.tsx), never in the suggestion dock
+- The events overlay (src/lib/events/, src/config/events.ts) sits on top of the paper account's
+  strategy: it tilts a small slice on an event and undoes it, never replaces the strategy, trades
+  simulated money only, runs in advice mode only, uses rules (no Claude call), and acts on an
+  event only at a close after it became public (no lookahead; docs/backtests/events.md)
 - Write tests for every rule and every API route you add
 - Prefer small, readable modules over clever abstractions
 - When unsure about a Plaid field or category name, check the Plaid docs instead

@@ -23,22 +23,6 @@ export const RETENTION: Readonly<
   },
 };
 
-// Which kind of record each audit-pack item is.
-export const ITEM_RETENTION: Readonly<Record<string, RetentionKey>> = {
-  charity: "return",
-  medical: "return",
-  childcare: "return",
-  education: "return",
-  business: "return",
-  rental: "property",
-  property_tax: "return",
-  mortgage_interest: "property",
-  student_loan_interest: "return",
-  energy: "property",
-  home_office: "return",
-  mileage: "return",
-};
-
 // A receipt in the vault counts for a transaction when its date is within this many days
 // and its amount is the same.
 export const RECEIPT_MATCH_DAYS = 3;

@@ -8,5 +8,3 @@ export const WORKED_MIN_SAMPLE = 3;
 // Spec step 147 reads step 207: a kind whose finished actions never showed a saving is asked
 // about at most this many at a time (the rest wait for the next run).
 export const WORKED_QUIET_PER_RUN = 1;
-// How a down-ranked or proven kind moves the ranking's confidence.
-export const WORKED_PROVEN_BOOST = true;

@@ -63,6 +63,19 @@ describe("rankPriorities", () => {
     expect(only.why).toBe("First because it gets the most back ($64.20) and takes one tap.");
   });
 
+  it("says 'it takes one tap' when the time is the only reason", () => {
+    const ranked = rankPriorities(
+      [
+        item({ title: "Cancel Hulu", valueCents: 21_588 }),
+        item({ title: "Check the Geico renewal" }),
+      ],
+      AS_OF,
+    );
+    expect(ranked.find((r) => r.title === "Check the Geico renewal")!.why).toBe(
+      "Because it takes one tap.",
+    );
+  });
+
   it("lets a deadline in the next few days beat a bigger saving", () => {
     const ranked = rankPriorities(
       [

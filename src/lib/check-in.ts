@@ -67,10 +67,6 @@ export async function loadCheckIn(
   };
 }
 
-// Nothing happened worth a check-in.
-export const isEmpty = (c: CheckIn) =>
-  c.spendingCents === 0 && c.incomeCents === 0 && c.found.findings === 0 && c.savedCents === 0;
-
 const monthName = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
     month: "long",

@@ -2,7 +2,6 @@ import {
   BUREAU_INVESTIGATION_DAYS,
   CREDIT_RULES,
   MEDICAL_COLLECTION_FLOOR_CENTS,
-  MEDICAL_COLLECTION_NOTE,
   VALIDATION_WINDOW_DAYS,
 } from "@/config/credit-report-fixes";
 import type { ReportItem } from "@/lib/credit/partner";
@@ -89,5 +88,3 @@ export function fixItems(item: ReportItem, name: string): FixItem[] {
   });
   return out;
 }
-
-export const medicalNote = (item: ReportItem) => (item.medical ? MEDICAL_COLLECTION_NOTE : null);

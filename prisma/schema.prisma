@@ -499,6 +499,16 @@ model PlaidItem {
   // "hsa" for a demo HSA.
   demoExtras           String[]  @default([]) @map("demo_extras")
   lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  // Plaid's NEW_ACCOUNTS_AVAILABLE: the bank has accounts the person hasn't shared yet (Link
+  // update mode with account selection shares them).
+  newAccountsAvailable Boolean   @default(false) @map("new_accounts_available")
+  // The last failed sync or ITEM ERROR webhook that isn't a sign-in (an outage, a rate limit),
+  // so the person is told plainly why the data is old. Cleared by the next good sync.
+  lastErrorCode        String?   @map("last_error_code")
+  lastErrorAt          DateTime? @map("last_error_at") @db.Timestamptz(3)
+  // A sync started from a webhook holds this while it runs, so a burst of webhooks (or Plaid
+  // retrying one) runs one sync, not several at once.
+  syncingSince         DateTime? @map("syncing_since") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -507,6 +517,21 @@ model PlaidItem {
 
   @@index([userId])
   @@map("plaid_items")
+}
+
+// Plaid webhooks already handled, by a hash of their body, so a delivery Plaid repeats is
+// acknowledged without being acted on twice. A system table: webhooks come before any
+// session, keyed by Plaid's item id (the item's owner is found from it).
+model PlaidWebhookEvent {
+  id          String   @id @default(cuid())
+  bodyHash    String   @unique @map("body_hash")
+  plaidItemId String?  @map("plaid_item_id")
+  webhookType String   @map("webhook_type")
+  webhookCode String   @map("webhook_code")
+  receivedAt  DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  @@index([receivedAt])
+  @@map("plaid_webhook_events")
 }
 
 model Account {
@@ -4435,6 +4460,39 @@ model MarketPrice {
   @@map("market_prices")
 }
 
+// The 24-hour agent's bar cache (src/lib/trading-agent/bar-store.ts): intraday bars by source,
+// ticker and interval ("15m", "1h"), prices in cents, so a catch-up asks the source only for bars
+// it hasn't kept. Market data, not anyone's: no user_id.
+model MarketBar {
+  id       String   @id @default(cuid())
+  source   String
+  ticker   String
+  interval String
+  t        DateTime @db.Timestamptz(3)
+  o        Int
+  h        Int
+  l        Int
+  c        Int
+  v        Float
+
+  @@unique([source, ticker, interval, t])
+  @@map("market_bars")
+}
+
+// The range of bars kept for a source, ticker and interval (asked for, even where there were none:
+// a weekend has no fund bars).
+model MarketBarRange {
+  id       String   @id @default(cuid())
+  source   String
+  ticker   String
+  interval String
+  fromAt   DateTime @map("from_at") @db.Timestamptz(3)
+  toAt     DateTime @map("to_at") @db.Timestamptz(3)
+
+  @@unique([source, ticker, interval])
+  @@map("market_bar_ranges")
+}
+
 // What was loaded for a ticker, from where and for which dates.
 model MarketHistoryLoad {
   id       String   @id @default(cuid())
@@ -4566,12 +4624,26 @@ model PaperAccount {
   pricesDate    DateTime? @map("prices_date") @db.Date
   startedAt     DateTime  @map("started_at") @db.Timestamptz(3)
   lastRunAt     DateTime? @map("last_run_at") @db.Timestamptz(3)
+  // The 24-hour agent (src/lib/trading-agent/), when it runs the account: its strategy's key,
+  // setting, bar interval ("15m", "1h") and market ("crypto", "stocks"), its state between ticks
+  // (src/planning/trading-agent/types.ts AgentState, with just holding's units), when it started,
+  // and the last bar it acted on (so two ticks at once can't both write).
+  agentPolicy    String?   @map("agent_policy")
+  agentParam     Float?    @map("agent_param")
+  agentInterval  String?   @map("agent_interval")
+  agentMarket    String?   @map("agent_market")
+  agentState     Json?     @map("agent_state")
+  agentStartedAt DateTime? @map("agent_started_at") @db.Timestamptz(3)
+  agentLastBarAt DateTime? @map("agent_last_bar_at") @db.Timestamptz(3)
 
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  positions PaperPosition[]
-  trades    PaperTrade[]
-  values    PaperValue[]
-  signals   PaperSignal[]
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions    PaperPosition[]
+  trades       PaperTrade[]
+  values       PaperValue[]
+  signals      PaperSignal[]
+  // The events overlay on it (src/lib/events/run.ts) and what it did.
+  eventOverlay PaperEventOverlay?
+  eventLogs    PaperEventLog[]
 
   @@map("paper_accounts")
 }
@@ -4606,6 +4678,10 @@ model PaperTrade {
   source      String
   signalId    String?   @map("signal_id")
   revertedAt  DateTime? @map("reverted_at") @db.Timestamptz(3)
+  // The 24-hour agent's trades (source "agent", or its signal's source): the broker's fee on top
+  // of the amount, and what the spread and slippage cost (already in the price). 0 for the rest.
+  feeCents    Int       @default(0) @map("fee_cents")
+  spreadCents Int       @default(0) @map("spread_cents")
 
   account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
@@ -4653,4 +4729,72 @@ model PaperSignal {
   @@unique([accountId, key])
   @@index([userId, status])
   @@map("paper_signals")
+}
+
+// The events overlay (src/config/events.ts): an event in the world that the overlay may act on,
+// from GDELT's coverage, the Fed's, BLS's or EIA's feeds, a sharp price move, or a stored
+// headline. Not a person's: no user_id. knownAt is when it became public; nothing acts on it
+// before a close after that time.
+model MarketEvent {
+  id        String   @id @default(cuid())
+  // `${source}:${type}:${date}`
+  key       String   @unique
+  type      String
+  source    String
+  date      DateTime @db.Date
+  knownAt   DateTime @map("known_at") @db.Timestamptz(3)
+  title     String
+  url       String?
+  strength  Float
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([knownAt])
+  @@map("market_events")
+}
+
+// The events overlay on one paper account: on or off (off until the person switches it on), the
+// slices open and closed (src/planning/event-overlay.ts OverlayState) and the last close it ran
+// at, so a missed day is caught up.
+model PaperEventOverlay {
+  id         String    @id @default(cuid())
+  accountId  String    @unique @map("account_id")
+  userId     String    @unique @map("user_id")
+  on         Boolean   @default(false)
+  switchedAt DateTime  @map("switched_at") @db.Timestamptz(3)
+  lastDate   DateTime? @map("last_date") @db.Date
+  state      Json      @default("{}")
+
+  account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("paper_event_overlays")
+}
+
+// Everything the overlay did or decided not to do, with the event that set it off. kind: "enter",
+// "exit", "stop" or "skip". tradeIds: the paper trades it placed. seenAt: when the trade pop-up
+// showed it.
+model PaperEventLog {
+  id          String    @id @default(cuid())
+  accountId   String    @map("account_id")
+  userId      String    @map("user_id")
+  at          DateTime  @db.Timestamptz(3)
+  // The close it acted at.
+  date        DateTime  @db.Date
+  kind        String
+  eventKey    String    @map("event_key")
+  eventType   String    @map("event_type")
+  eventTitle  String    @map("event_title")
+  ticker      String?
+  side        String?
+  tilt        Float?
+  amountCents Int?      @map("amount_cents")
+  confidence  Int
+  reason      String
+  tradeIds    String[]  @map("trade_ids")
+  seenAt      DateTime? @map("seen_at") @db.Timestamptz(3)
+
+  account PaperAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, eventKey, kind, ticker])
+  @@index([userId, at])
+  @@map("paper_event_logs")
 }
