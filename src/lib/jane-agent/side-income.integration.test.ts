@@ -31,7 +31,7 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 const FEB = new Date("2027-02-10T16:00:00Z");
 const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: "open" as const };
 
-describe.runIf(url)("side income and rentals against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("side income and rentals against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

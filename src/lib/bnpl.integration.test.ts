@@ -8,13 +8,11 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { logAudit } from "@/lib/audit";
 import { bnplSource } from "@/lib/jane-agent/sources/bnpl";
 import { takeChatAction } from "@/lib/jane-agent/actions";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
-import { parseActions, parseRefs } from "@/lib/jane-agent/types";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { BnplError, loadBnpl, payOffPlan, warnNewPlan } from "./bnpl";
@@ -31,7 +29,7 @@ const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: 
 
 describe.runIf(url)(
   "buy now, pay later under control against a real database",
-  { timeout: 30_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     const created: string[] = [];

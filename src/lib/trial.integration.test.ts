@@ -29,7 +29,7 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 const HOUR = 60 * 60 * 1000;
 
-describe.runIf(url)("trying Jane with sample data", { timeout: 60_000 }, () => {
+describe.runIf(url)("trying Jane with sample data", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
 

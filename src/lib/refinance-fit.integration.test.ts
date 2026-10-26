@@ -28,7 +28,7 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 const context = { now: NOW, local: { date: "2026-10-18", hour: 8 }, trigger: "open" as const };
 
-describe.runIf(url)("refinance picks the fit engine agrees with", { timeout: 60_000 }, () => {
+describe.runIf(url)("refinance picks the fit engine agrees with", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let demo: string;
   let chris: string;

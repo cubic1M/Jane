@@ -29,29 +29,65 @@ function Section({
   links,
   children,
   id,
+  summary,
+  open = false,
 }: {
   title: string;
   links: { href: string; label: string }[];
   children: ReactNode;
   id?: string;
+  // Folded (founder: "show what matters, hide the rest"): closed, its heading and this one line
+  // showing, the rest on a tap.
+  summary?: string;
+  // Folded, but open to begin with.
+  open?: boolean;
 }) {
+  const title2 = (
+    <span className="flex flex-wrap items-baseline gap-x-2">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      {summary && <span className={`text-sm ${MUTED}`}>{summary}</span>}
+    </span>
+  );
+  // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
+  const shown = links.filter((l) => !isHiddenPage(l.href));
+  const linkRow = shown.length > 0 && (
+    <span className="flex flex-wrap gap-x-4 text-sm">
+      {shown.map((l) => (
+        <Link key={l.href} href={l.href} className={LINK}>
+          {l.label}
+        </Link>
+      ))}
+    </span>
+  );
+  const head = (
+    <span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      {title2}
+      {linkRow}
+    </span>
+  );
+  if (summary === undefined) {
+    return (
+      <section id={id} className="flex scroll-mt-20 flex-col gap-3">
+        {head}
+        {children}
+      </section>
+    );
+  }
   return (
-    <section id={id} className="flex scroll-mt-20 flex-col gap-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <span className="flex flex-wrap gap-x-4 text-sm">
-          {/* A page the read-only beta hides (src/config/hidden-pages.ts) gets no link. */}
-          {links
-            .filter((l) => !isHiddenPage(l.href))
-            .map((l) => (
-              <Link key={l.href} href={l.href} className={LINK}>
-                {l.label}
-              </Link>
-            ))}
-        </span>
+    <details
+      id={id}
+      open={open}
+      data-jane-section={title}
+      className="scroll-mt-20 border-t border-zinc-200 pt-3 dark:border-zinc-800"
+    >
+      {/* Only the heading and its line in the summary: links inside it would be a control
+          inside a control. They open with the rest. */}
+      <summary className="cursor-pointer">{title2}</summary>
+      <div className="mt-3 flex flex-col gap-3">
+        {linkRow}
+        {children}
       </div>
-      {children}
-    </section>
+    </details>
   );
 }
 
@@ -83,7 +119,9 @@ async function JaneContent() {
       </div>
 
       {top.length > 0 && (
-        <Section title="The next best things" links={[]}>
+        // Spec step 143: open, the one to three things that matter most; everything below is
+        // folded, a line each (docs/design/area-pages.md).
+        <Section title="What matters now" links={[]}>
           <ol className="flex flex-col gap-2">
             {top.map((r) => (
               <li key={r.key} className={ROW}>
@@ -99,7 +137,12 @@ async function JaneContent() {
 
       {snapshot?.health && (
         // Spec step 146: the money health score, every part explained.
-        <Section title="Money health" links={[]} id="health">
+        <Section
+          title="Money health"
+          links={[]}
+          id="health"
+          summary={`${snapshot.health.score} of 100`}
+        >
           <p>
             {scoreLine(snapshot.health)} {changeLine(snapshot.health)}{" "}
             <Link href="/figures/health_score" className={LINK}>
@@ -133,8 +176,12 @@ async function JaneContent() {
       )}
 
       {/* Spec step 187: everything Jane did, with why and the money involved. */}
-      <section id="activity" className="flex scroll-mt-8 flex-col gap-3">
-        <h2 className="text-xl font-semibold">Everything Jane did</h2>
+      <Section
+        title="Everything Jane did"
+        links={[]}
+        id="activity"
+        summary={timeline.length === 0 ? "nothing yet" : `the last ${timeline.length}`}
+      >
         {timeline.length === 0 ? (
           <p className={MUTED}>
             Nothing yet. Whatever Jane does on its own, or for you with a tap, is listed here with
@@ -169,10 +216,19 @@ async function JaneContent() {
             ))}
           </ol>
         )}
-      </section>
+      </Section>
 
       <Section
         title="To decide"
+        summary={
+          decide.total === 0
+            ? "nothing right now"
+            : `${decide.total} ${decide.total === 1 ? "thing" : "things"} to look at${
+                decide.totalSavingsCents > 0
+                  ? `, worth up to about ${formatCents(decide.totalSavingsCents)} a year`
+                  : ""
+              }`
+        }
         links={[
           { href: "/plan", label: "See the full plan" },
           { href: "/report", label: "All findings" },
@@ -194,13 +250,7 @@ async function JaneContent() {
           </p>
         ) : (
           <>
-            <p className={MUTED}>
-              {decide.total} {decide.total === 1 ? "thing" : "things"} to look at
-              {decide.totalSavingsCents > 0
-                ? `, worth up to about ${formatCents(decide.totalSavingsCents)} a year`
-                : ""}
-              . Nothing changes until you say yes.
-            </p>
+            <p className={MUTED}>Nothing changes until you say yes.</p>
             <ul className="flex flex-col gap-3">
               {decide.items.map((item) => (
                 <li key={item.findingId}>
@@ -224,7 +274,14 @@ async function JaneContent() {
         )}
       </Section>
 
-      <Section title="In progress" links={[{ href: "/actions", label: "See all" }]}>
+      <Section
+        title="In progress"
+        links={[{ href: "/actions", label: "See all" }]}
+        summary={inProgress.total === 0 ? "nothing underway" : `${inProgress.total} underway`}
+        // While /actions is hidden this is where a yes is followed (src/config/hidden-pages.ts),
+        // so what's underway shows open.
+        open={inProgress.total > 0 && isHiddenPage("/actions")}
+      >
         {inProgress.items.length === 0 ? (
           <p className={MUTED}>
             {snapshot?.concierge === false
@@ -265,6 +322,13 @@ async function JaneContent() {
 
       <Section
         title="Done"
+        summary={
+          done.savedToDateCents > 0
+            ? `about ${formatCents(done.savedToDateCents)} a year saved`
+            : done.items.length === 0
+              ? "nothing yet"
+              : `${done.items.length} finished`
+        }
         links={[
           { href: "/actions", label: "See all" },
           { href: "/saved", label: "What Jane saved you" },
@@ -293,7 +357,11 @@ async function JaneContent() {
       </Section>
 
       {/* Spec step 142: the nightly controller run, one line per sector. */}
-      <Section title="What I checked last night" links={[]}>
+      <Section
+        title="What I checked last night"
+        links={[]}
+        summary={lastRun ? `${lastRun.steps.length} checks` : "the first run is tonight"}
+      >
         {lastRun ? (
           <ul className="flex flex-col gap-1 text-sm">
             {lastRun.steps.map((s) => (
@@ -308,7 +376,12 @@ async function JaneContent() {
         )}
       </Section>
 
-      <Section id="alerts" title="Alerts" links={[]}>
+      <Section
+        id="alerts"
+        title="Alerts"
+        links={[]}
+        summary={alerts.unread === 0 ? "none new" : `${alerts.unread} new`}
+      >
         {alerts.items.length === 0 ? (
           <p className={MUTED}>No new alerts. Jane tells you here when something needs a look.</p>
         ) : (

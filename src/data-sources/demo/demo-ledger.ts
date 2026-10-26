@@ -88,7 +88,10 @@ function months(from: string, through: string): string[] {
   const [ty, tm] = through.split("-").map(Number);
   while (y < ty || (y === ty && m <= tm)) {
     out.push(`${y}-${String(m).padStart(2, "0")}`);
-    m === 12 ? ((m = 1), (y += 1)) : (m += 1);
+    if (m === 12) {
+      m = 1;
+      y += 1;
+    } else m += 1;
   }
   return out;
 }

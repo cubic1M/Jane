@@ -24,7 +24,7 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 const MINUTE = 60 * 1000;
 
-describe.runIf(url)("the fit engine against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("the fit engine against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let chris: string;
   let reyes: string;

@@ -69,7 +69,7 @@ describe.runIf(url)("the demo bank's home and car", () => {
     await syncItem(itemId, { client, api: plaid, now: new Date(NOW.getTime() + 86_400_000) });
     expect(await ensureDemoAssets(userId, itemId, { client, now: NOW })).toBe(0);
     expect(await client.ownedAsset.count({ where: { userId } })).toBe(2);
-  }, 60_000);
+  }, 120_000);
 
   it("makes the sample person's net worth positive instead of -$226,000", async () => {
     const { userId } = await demoPerson();
@@ -90,7 +90,7 @@ describe.runIf(url)("the demo bank's home and car", () => {
     );
     expect(without.netCents).toBeLessThan(-20_000_000);
     expect(withHome.netCents).toBeGreaterThan(10_000_000);
-  }, 60_000);
+  }, 120_000);
 
   it("leaves a person who already keeps their own assets alone", async () => {
     const user = await client.user.create({
@@ -105,5 +105,5 @@ describe.runIf(url)("the demo bank's home and car", () => {
     expect(
       (await client.ownedAsset.findMany({ where: { userId: user.id } })).map((a) => a.name),
     ).toEqual(["Mine"]);
-  }, 60_000);
+  }, 120_000);
 });

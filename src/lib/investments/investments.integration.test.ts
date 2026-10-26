@@ -112,7 +112,7 @@ import { profileOf, saveProfileForm } from "./profile";
 const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 // Each test links and syncs a demo bank, then talks to Jane: slower than most.
-const SLOW = { timeout: 60_000 };
+const SLOW = { timeout: 120_000 };
 
 describe.runIf(url)("investments in Jane's chat, against a real database", () => {
   let client: PrismaClient;

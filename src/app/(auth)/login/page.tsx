@@ -6,7 +6,7 @@ import { AuthError } from "@/components/auth-error";
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-20">
+    <div className="flex flex-col gap-6">
       <Suspense>
         <RedirectIfSignedIn />
       </Suspense>
@@ -30,6 +30,6 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
           Create an account
         </Link>
       </p>
-    </main>
+    </div>
   );
 }

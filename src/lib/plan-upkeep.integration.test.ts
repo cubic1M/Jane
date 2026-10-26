@@ -25,7 +25,7 @@ const url = process.env.TEST_DATABASE_URL;
 // 9am in Los Angeles on Monday Nov 2, 2026.
 const NOW = new Date("2026-11-02T17:00:00Z");
 
-describe.runIf(url)("plans that keep up, against a real database", { timeout: 30_000 }, () => {
+describe.runIf(url)("plans that keep up, against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
 

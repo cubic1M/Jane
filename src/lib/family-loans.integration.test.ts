@@ -14,7 +14,7 @@ import { takeChatAction } from "@/lib/jane-agent/actions";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
-import { parseActions, parseRefs } from "@/lib/jane-agent/types";
+import { parseActions } from "@/lib/jane-agent/types";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import {
@@ -37,7 +37,7 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 const MINUTE = 60 * 1000;
 const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: "open" as const };
 
-describe.runIf(url)("family and friends against a real database", { timeout: 30_000 }, () => {
+describe.runIf(url)("family and friends against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

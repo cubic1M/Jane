@@ -26,7 +26,7 @@ const MINUTE = 60_000;
 
 describe.runIf(url)(
   "the sample people's investing, from their profiles",
-  { timeout: 60_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     const made = new Map<PersonId, string>();

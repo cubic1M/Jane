@@ -23,7 +23,6 @@ import {
   cancellationLetter,
   rateChange,
   refundFor,
-  type AddonCandidate,
   type RateChange,
   type Refund,
 } from "@/planning/car-loan";

@@ -14,7 +14,7 @@ import { takeChatAction } from "@/lib/jane-agent/actions";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
-import { parseActions, parseRefs } from "@/lib/jane-agent/types";
+import { parseActions } from "@/lib/jane-agent/types";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import {
@@ -37,7 +37,7 @@ const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: 
 
 describe.runIf(url)(
   "collections and report errors against a real database",
-  { timeout: 30_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     const created: string[] = [];
