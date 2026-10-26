@@ -42,8 +42,9 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
     page.getByText(/things to look at, worth up to about \$[\d,]+\.\d{2} a year/),
   ).toBeVisible();
   // What matters now is open; every other section is folded to its heading and one line
-  // (docs/design/area-pages.md), opened with a tap.
-  for (const name of ["To decide", "In progress", "Done", "Alerts"]) {
+  // (docs/design/area-pages.md), opened with a tap. (In progress opens when something is
+  // underway while /actions is hidden: e2e/decisions.spec.ts.)
+  for (const name of ["To decide", "Done", "Alerts"]) {
     await expect(page.locator(`[data-jane-section="${name}"]`)).not.toHaveAttribute("open", "");
   }
   await expect(page.getByText(/^Jane's pick: /).first()).toBeHidden();

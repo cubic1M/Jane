@@ -30,6 +30,7 @@ function Section({
   children,
   id,
   summary,
+  open = false,
 }: {
   title: string;
   links: { href: string; label: string }[];
@@ -38,6 +39,8 @@ function Section({
   // Folded (founder: "show what matters, hide the rest"): closed, its heading and this one line
   // showing, the rest on a tap.
   summary?: string;
+  // Folded, but open to begin with.
+  open?: boolean;
 }) {
   const title2 = (
     <span className="flex flex-wrap items-baseline gap-x-2">
@@ -73,6 +76,7 @@ function Section({
   return (
     <details
       id={id}
+      open={open}
       data-jane-section={title}
       className="scroll-mt-20 border-t border-zinc-200 pt-3 dark:border-zinc-800"
     >
@@ -274,6 +278,9 @@ async function JaneContent() {
         title="In progress"
         links={[{ href: "/actions", label: "See all" }]}
         summary={inProgress.total === 0 ? "nothing underway" : `${inProgress.total} underway`}
+        // While /actions is hidden this is where a yes is followed (src/config/hidden-pages.ts),
+        // so what's underway shows open.
+        open={inProgress.total > 0 && isHiddenPage("/actions")}
       >
         {inProgress.items.length === 0 ? (
           <p className={MUTED}>
