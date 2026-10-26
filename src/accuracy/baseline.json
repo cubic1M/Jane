@@ -1,0 +1,38 @@
+{
+  "subscriptions": {
+    "precision": 1,
+    "recall": 0.7172
+  },
+  "price_rises": {
+    "precision": 1,
+    "recall": 1
+  },
+  "fees": {
+    "precision": 1,
+    "recall": 1
+  },
+  "double_charges": {
+    "precision": 0.6111,
+    "recall": 1
+  },
+  "idle_cash": {
+    "precision": 1,
+    "recall": 1
+  },
+  "card_interest": {
+    "precision": 1,
+    "recall": 1
+  },
+  "bills": {
+    "precision": 0.9865,
+    "recall": 0.8295
+  },
+  "income": {
+    "precision": 1,
+    "recall": 1
+  },
+  "transfers": {
+    "precision": 1,
+    "recall": 0.9536
+  }
+}

@@ -308,7 +308,9 @@ const emergencyFund: Detector = {
       worthKind: "risk",
       confidence: weakest([
         evidence("seen", profile.months, data.accounts.length, "accounts"),
-        factEvidence(pattern),
+        // Unknown on a short history: the cushion is then the usual size, so it isn't evidence
+        // against it (accuracy bench: "I'm not sure (0%)" with two months of data).
+        ...(pattern.value !== null ? [factEvidence(pattern)] : []),
         ...(starter ? [factEvidence(trouble)] : []),
         ...(gap ? [factEvidence(incomeFact)] : []),
       ]),

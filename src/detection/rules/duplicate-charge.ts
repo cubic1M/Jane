@@ -1,5 +1,6 @@
 import {
   DUPLICATE_CHARGE_EXCLUDED_PRIMARIES,
+  DUPLICATE_CHARGE_MEAL_MIN_CENTS,
   DUPLICATE_CHARGE_MIN_CENTS,
   DUPLICATE_CHARGE_WINDOW_DAYS,
   REFUND_MAX_AGE_DAYS,
@@ -23,7 +24,10 @@ export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
   const groups = new Map<string, DetectionTransaction[]>();
   for (const t of inLookback(input)) {
     if (Math.abs(t.amountCents) < DUPLICATE_CHARGE_MIN_CENTS) continue;
-    if (inList(t.pfcPrimary, DUPLICATE_CHARGE_EXCLUDED_PRIMARIES)) continue;
+    const meal =
+      t.pfcPrimary === "FOOD_AND_DRINK" &&
+      Math.abs(t.amountCents) >= DUPLICATE_CHARGE_MEAL_MIN_CENTS;
+    if (inList(t.pfcPrimary, DUPLICATE_CHARGE_EXCLUDED_PRIMARIES) && !meal) continue;
     const merchant = merchantOf(t)?.key;
     if (!merchant) continue;
     const key = `${t.accountId}\u0000${merchant}\u0000${Math.abs(t.amountCents)}`;

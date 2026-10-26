@@ -1,9 +1,17 @@
 import { SPENDING_DETECTOR_RATES as S } from "@/config/detectors-spending";
 import { categoryOf } from "@/categorize/taxonomy";
-import { LARGE_CHARGE_MEDIAN_MULTIPLE, LARGE_CHARGE_MIN_CENTS } from "@/config/detection";
+import {
+  DUPLICATE_CHARGE_MAX_PERCENT,
+  DUPLICATE_CHARGE_WINDOW_DAYS,
+  LARGE_CHARGE_MEDIAN_MULTIPLE,
+  LARGE_CHARGE_MIN_CENTS,
+  REFUND_MAX_AGE_DAYS,
+} from "@/config/detection";
+import { duplicatePairs } from "@/detection/rules/duplicate-charge";
+import type { DetectionInput } from "@/detection/types";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
-import { type Detector, suggestionId } from "./contract";
+import { type Confidence, type Detector, suggestionId } from "./contract";
 import {
   evidence,
   liquidCents,
@@ -212,27 +220,50 @@ const billNegotiation: Detector = {
 
 const DAY_MS = 86_400_000;
 
+// A confidence no surer than what the accuracy bench shows this kind of suggestion earns.
+const capped = (c: Confidence, max: number): Confidence => ({
+  ...c,
+  percent: Math.min(c.percent, max),
+});
+
+// The person's transactions as the finding rules read them; a row's id is its index.
+function asDetectionInput(data: ProfileInput): DetectionInput {
+  return {
+    asOf: data.today,
+    accounts: [],
+    recurringStreams: [],
+    transactions: data.transactions.map((t, i) => ({
+      id: String(i),
+      accountId: t.accountId,
+      plaidTransactionId: null,
+      date: t.date,
+      amountCents: t.amountCents,
+      description: t.description,
+      merchantName: null,
+      pfcPrimary: t.pfc ? (categoryOf(t.pfc)?.primary ?? null) : null,
+      pfcDetailed: t.pfc,
+      categorySource: null,
+    })),
+  };
+}
+
 const duplicateCharge: Detector = {
   capability: "cost",
   topic: "duplicate_charge",
   covers: [],
   needs: [],
   detect({ profile, data }) {
-    const out = tx(data, (t) => t.amountCents >= S.duplicateChargeMinCents).sort((a, b) =>
-      a.date.localeCompare(b.date),
-    );
-    const doubles: ProfileTx[] = [];
-    const seen = new Map<string, ProfileTx>();
-    for (const t of out) {
-      const key = `${t.description}|${t.amountCents}|${t.accountId}`;
-      const prev = seen.get(key);
-      if (prev && (Date.parse(t.date) - Date.parse(prev.date)) / DAY_MS <= S.duplicateChargeDays) {
-        // A bill paid on a schedule isn't a double charge: the days between must be short, and
-        // the same pair not part of a month-to-month series.
-        doubles.push(t);
-      }
-      seen.set(key, t);
-    }
+    // The double-charge finding's own definition (src/detection/rules/duplicate-charge.ts): the
+    // same amount at the same merchant on one account within a day, not where repeats are
+    // normal (food, transport, money moving), not already refunded, and recent enough to
+    // dispute. Its own looser rule called a refunded double, or two lunches, a double charge
+    // (accuracy bench: right 14 times in 28).
+    const doubles = duplicatePairs(asDetectionInput(data))
+      .filter(
+        ({ second }) =>
+          (Date.parse(data.today) - Date.parse(second.date)) / DAY_MS <= REFUND_MAX_AGE_DAYS,
+      )
+      .map(({ second }) => data.transactions[Number(second.id)]);
     if (doubles.length === 0) return null;
     const total = outCents(doubles);
     return {
@@ -246,9 +277,12 @@ const duplicateCharge: Detector = {
       ),
       worthCents: total,
       worthKind: "earns",
-      confidence: evidence("seen", profile.months, doubles.length, "identical charges within days"),
+      confidence: capped(
+        evidence("seen", profile.months, doubles.length, "identical charges within a day"),
+        DUPLICATE_CHARGE_MAX_PERCENT,
+      ),
       urgency: "now",
-      why: `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${S.duplicateChargeDays} days.`,
+      why: `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${DUPLICATE_CHARGE_WINDOW_DAYS === 1 ? "a day" : `${DUPLICATE_CHARGE_WINDOW_DAYS} days`}.`,
       action: { label: "See the charges", href: "/jane#alerts" },
       watch: {
         kind: "refund",

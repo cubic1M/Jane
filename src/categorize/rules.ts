@@ -87,6 +87,13 @@ const RULES: readonly Rule[] = [
     keywords: ["PAYROLL", "DIRECT DEP", "DIR DEP", "SALARY"],
     direction: "in",
   },
+  // Social Security and pensions: income, not a refund (accuracy bench: a retiree's whole
+  // income went uncategorised, so Jane couldn't tell how they're paid).
+  {
+    category: "INCOME_RETIREMENT_PENSION",
+    keywords: ["SSA TREAS", "SOC SEC", "SOCIAL SECURITY", "PENSION", "RETIREMENT SYS"],
+    direction: "in",
+  },
   {
     category: "INCOME_INTEREST_EARNED",
     keywords: ["INTEREST PAYMENT", "INTEREST EARNED", "INTEREST PAID"],
