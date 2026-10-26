@@ -12,7 +12,8 @@ import { toEvent } from "./rows";
 // agent.ts): for a paper account the agent runs, with the overlay on (the default), the overlay's
 // slices for the bars the agent is catching up on (src/planning/event-agent-signals.ts). Only
 // events public by the end of that range are read, so nothing is traded on before it was known.
-// The overlay's funds are US funds: the agent on crypto gets none. Advice mode only. Registered
+// The agent on US funds gets the stock-fund events; the agent on bitcoin and ether, the crypto
+// ones, around the clock. Advice mode only. Registered
 // once when this module loads (src/lib/paper/account.ts imports it).
 
 const DAY_MS = 86_400_000;
@@ -21,7 +22,6 @@ export const eventsAgentSource: AgentSignalSource = async (
   userId,
   { client, from, to, market },
 ) => {
-  if (market !== "stocks") return [];
   const db = scopedFor(userId, client);
   // On by default: only an overlay switched off gives nothing.
   const overlay = await db.paperEventOverlays.findFirst({});
@@ -42,6 +42,7 @@ export const eventsAgentSource: AgentSignalSource = async (
   const closed = ((overlay?.state ?? {}) as { closed?: ClosedSlice[] }).closed ?? [];
   return eventAgentSignals(rows.map(toEvent), {
     level: account.level as RiskLevel,
+    market,
     seed: EVENT_EVIDENCE,
     closed,
   }).filter((s) => s.at <= to && (s.until ?? "9999") > from);

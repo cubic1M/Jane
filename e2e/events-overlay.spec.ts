@@ -114,3 +114,24 @@ test("the Events box is on by default, takes the event's trade by itself, and th
   await expect(bought).toHaveCount(1);
   await expect(page.getByRole("complementary", { name: "Trade alert" })).toHaveCount(0);
 });
+
+test("the Events box is never empty: what it watches, and what happened or that nothing did", async ({
+  page,
+  baseURL,
+}) => {
+  await signIn(page, baseURL);
+  await page.goto("/investments");
+  await page.locator("#paper").getByRole("button", { name: "Start paper account" }).click();
+  await expect(page.locator("#paper")).toHaveAttribute("data-paper-account", "running", {
+    timeout: 60_000,
+  });
+  const box = page.locator("#events");
+  await expect(box.locator("[data-events-watching]")).toHaveText(
+    /^Watching 6 sources · (last checked .* UTC|first check under way)/,
+  );
+  // Either the events of the last five days, or a plain line that nothing big happened.
+  await expect(box.locator("[data-events-now]")).toBeVisible();
+  await expect(box.locator("[data-events-now]")).not.toHaveText("");
+  // The track record is a tap away.
+  await expect(box.locator("[data-events-record]")).toHaveCount(1);
+});

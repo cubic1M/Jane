@@ -8,7 +8,9 @@ Data only: the app never reads these files. The events overlay's backtest
   free and keyless), one request per event type for its query in `EVENT_TYPES` (`src/config/events.ts`),
   2017-01-01 to 2026-10-25 at daily resolution, recorded 2026-10-26. Columns: `date` (the UTC day),
   `total` (all articles GDELT monitored that day: the same in every type's answer), then each
-  type's article count. A type's query changed in the config needs this file refetched.
+  type's article count, the nine stock-fund types then the five crypto types (those recorded
+  2026-10-26 too, with the same range). A type's query changed in the config needs this file
+  refetched.
 - `gdelt-me-conflict-2017.json`: the first 45 days of one recorded GDELT answer as it came, for
   the parser's contract test.
 - `fed-monetary.xml`: the Federal Reserve's monetary policy press releases RSS

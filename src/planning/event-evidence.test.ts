@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   EVENT_EVIDENCE,
   EVENT_EVIDENCE_RANGE,
+  EVENT_EVIDENCE_CRYPTO,
   EVENT_EVIDENCE_SUMMARY,
 } from "@/config/event-evidence";
 import { eventsDoc, evidenceValues, runAll } from "@/lib/events/__fixtures__/events-doc";
@@ -16,8 +17,11 @@ describe("the events backtest's numbers", () => {
     expect(readFileSync("docs/backtests/events.md", "utf8")).toBe(eventsDoc(runs));
   });
   it("match src/config/event-evidence.ts", () => {
-    expect({ EVENT_EVIDENCE, EVENT_EVIDENCE_RANGE, EVENT_EVIDENCE_SUMMARY }).toEqual(
-      evidenceValues(runs),
-    );
+    expect({
+      EVENT_EVIDENCE,
+      EVENT_EVIDENCE_RANGE,
+      EVENT_EVIDENCE_SUMMARY,
+      EVENT_EVIDENCE_CRYPTO,
+    }).toEqual(evidenceValues(runs));
   });
 });

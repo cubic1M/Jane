@@ -4,6 +4,7 @@ import {
   EVENTS_LOCK_SECONDS,
   EVENTS_REFRESH_MINUTES,
   EVENTS_VIEW_GDELT_TYPES,
+  PRICE_SHOCKS,
   type EventTypeId,
 } from "@/config/events";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -89,7 +90,11 @@ export async function refreshEvents(options: RefreshOptions = {}): Promise<Refre
       bls_cpi: failed.has("bls_cpi") ? "failed" : "ok",
       eia: failed.has("eia") ? "failed" : "ok",
       headlines: "ok",
-      prices: [...failed].some((f) => f.startsWith("prices:")) ? "failed" : "ok",
+      // Failed only when no price check answered (the sample prices have no bitcoin, say).
+      prices:
+        [...failed].filter((f) => f.startsWith("prices:")).length >= PRICE_SHOCKS.length
+          ? "failed"
+          : "ok",
     };
     const gdeltAt = { ...before };
     for (const t of collected?.gdelt ?? [])
@@ -115,7 +120,11 @@ export async function refreshEvents(options: RefreshOptions = {}): Promise<Refre
 
 // Opening the investments page: a refresh when the last one is older than EVENTS_REFRESH_MINUTES
 // (or there never was one, so the box isn't blank until the cron), and never an error for the page.
-export async function refreshEventsIfStale(options: Options = {}): Promise<RefreshResult | null> {
+export async function refreshEventsIfStale(
+  options: Options & { env?: Record<string, string | undefined> } = {},
+): Promise<RefreshResult | null> {
+  // The end-to-end tests read seeded events only: no live source is asked from a page there.
+  if ((options.env ?? process.env).EVENTS_REFRESH === "off") return null;
   try {
     return await refreshEvents(options);
   } catch (error) {
