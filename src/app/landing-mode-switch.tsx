@@ -60,7 +60,7 @@ export function LandingModeSwitch() {
       type="button"
       onClick={flip}
       aria-pressed={dark}
-      aria-label="Dark mode"
+      aria-label="light / dark mode"
       data-testid="landing-mode-switch"
       className="fixed top-4 right-4 z-20 flex items-center gap-1 border border-dashed border-[var(--landing-dot)] bg-[var(--landing-bg)] px-3 py-1.5 font-mono text-xs text-[var(--landing-mid)] hover:text-[var(--landing-hi)] sm:top-6 sm:right-6"
     >
