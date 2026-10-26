@@ -176,7 +176,10 @@ should also be there, and not like '...'".
 
 - **Tiles:** the six areas are fixed tiles: a row of six on a wide screen, three by two on a
   tablet, two by three on a phone. No "Jane" box above them; nothing to drag, pan or zoom. Each
-  tile has its status, its full name (wrapping, never "…"), its line and `[+]`.
+  tile has its status, its full name (wrapping, never "…"), its figure and caption ("$3,092 ·
+  Spent this month"), its line and `[+]`. These are Home's only area tiles: the "Your areas"
+  cards that repeated them are gone (audit round 2); `[MAP ›]` beside the heading opens
+  `/home/map`.
 - **Opening an area:** a tile opens its tree below the row (`[−]` shuts it; another tile swaps
   it), straight into its branches: no node repeating the area's name, which the tile already
   says (founder: "the tree should immediately begin going down, and not have an extra 1st
