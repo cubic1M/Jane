@@ -12,6 +12,7 @@ import {
   type FrameMessage,
 } from "@/lib/side-chat";
 import { JaneAvatar } from "./avatar";
+import { PixelIcon } from "@/components/pixel-icon";
 import { CardDock } from "./card-dock";
 import { LoadingBar } from "@/components/loading-bar";
 import { sideChatStore } from "./store";
@@ -55,26 +56,6 @@ export function SideChatUser({ userId }: { userId: string }) {
 
 const ICON_BUTTON =
   "inline-flex size-11 shrink-0 items-center justify-center text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50";
-
-function Icon({ path }: { path: string }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="square"
-      className="size-5"
-    >
-      <path d={path} />
-    </svg>
-  );
-}
-const EXPAND = "M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7";
-const DOCK = "M4 10h6V4M20 14h-6v6M10 10 3 3M14 14l7 7";
-const COLLAPSE = "M9 5l7 7-7 7";
-const CLOSE = "M6 6l12 12M18 6 6 18";
 
 function UnreadDot({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -410,7 +391,7 @@ export function SideChat() {
                   onClick={() => sideChatStore.setPanel("open")}
                   className={ICON_BUTTON}
                 >
-                  <Icon path={DOCK} />
+                  <PixelIcon name="dock" />
                 </button>
               ) : (
                 <button
@@ -419,7 +400,7 @@ export function SideChat() {
                   onClick={() => sideChatStore.setPanel("full")}
                   className={ICON_BUTTON}
                 >
-                  <Icon path={EXPAND} />
+                  <PixelIcon name="expand" />
                 </button>
               )}
               <button
@@ -428,7 +409,7 @@ export function SideChat() {
                 onClick={() => sideChatStore.setPanel("rail")}
                 className={ICON_BUTTON}
               >
-                <Icon path={COLLAPSE} />
+                <PixelIcon name="collapse" />
               </button>
             </div>
           </>
@@ -538,7 +519,7 @@ export function SideChat() {
               onClick={() => sideChatStore.setSheet(sheet === "full" ? "half" : "full")}
               className={ICON_BUTTON}
             >
-              <Icon path={sheet === "full" ? DOCK : EXPAND} />
+              <PixelIcon name={sheet === "full" ? "dock" : "expand"} />
             </button>
             <button
               ref={sheetClose}
@@ -548,7 +529,7 @@ export function SideChat() {
               onClick={() => sideChatStore.setSheet("closed")}
               className={ICON_BUTTON}
             >
-              <Icon path={CLOSE} />
+              <PixelIcon name="close" />
             </button>
           </div>
         </div>

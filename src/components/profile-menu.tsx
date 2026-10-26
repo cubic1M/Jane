@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PixelIcon } from "@/components/pixel-icon";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { PROFILE_TABS, tabFor } from "@/config/navigation";
@@ -48,18 +49,7 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
             : "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
         }`}
       >
-        <svg
-          aria-hidden
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.8}
-          strokeLinecap="round"
-          className="size-5"
-        >
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21a8 8 0 0 1 16 0" />
-        </svg>
+        <PixelIcon name="person" />
       </button>
       <div
         id={menuId}
