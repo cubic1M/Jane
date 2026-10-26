@@ -8,13 +8,13 @@ import { loadReview } from "@/lib/investments/review";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Does it fit? (spec step 131). The mix of investments against the target for the
 // person's risk level, single companies that are too big a part of it, cash above the target mix, and what
 // to change and why. Recommendations only in demo advice mode; real accounts see their mix.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 
 async function ReviewContent() {
   const user = await requireUser();

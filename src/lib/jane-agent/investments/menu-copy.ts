@@ -1,6 +1,7 @@
 import type { PlanMenuView } from "@/lib/investments/plan-menu";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
+import { formatPercent as pct } from "@/lib/percent";
 
 // The workplace plan's menu in the chat (spec step 232): shared words and buttons.
 
@@ -12,7 +13,6 @@ export const MENU_LINK: MessageAction = {
 };
 
 const bps = (n: number) => `${(n / 100).toFixed(2)}%`;
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 export const proposedLine = (m: NonNullable<PlanMenuView["proposed"]>) =>
   `I read ${m.funds.length} funds from your plan's list: ${m.funds.map((f) => `${f.ticker} (${bps(f.expenseBps)})`).join(", ")}. Is that right? I'll only suggest funds from this list.`;

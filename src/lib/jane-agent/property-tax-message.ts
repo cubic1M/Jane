@@ -2,6 +2,7 @@ import type { PropertyTaxView } from "@/lib/property-tax";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import type { MessageAction, MessageRefs } from "./types";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Property tax in the chat (spec step 221): an assessment worth appealing (demo advice), the
 // drafted appeal and who files it, an exemption not yet claimed, and the answer to "is my
@@ -10,8 +11,6 @@ import type { MessageAction, MessageRefs } from "./types";
 export const PROPERTY_HREF = "/taxes/property";
 
 type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
-
-const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 
 export function appealSuggestedMessage(v: PropertyTaxView): Message {
   const g = v.gap!;

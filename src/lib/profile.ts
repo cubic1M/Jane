@@ -10,6 +10,8 @@ import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 import { isoDay as dayOf } from "@/lib/dates";
+import { cachedCopy } from "@/lib/read-cache";
+import { formatWholeDollars as dollars } from "@/lib/money";
 
 // The picture of you (spec step 253), loaded for one person: what the bank shows, what they
 // told Jane here and what they answered elsewhere (their tax, insurance and investor
@@ -44,11 +46,20 @@ export function profileHolding(h: HoldingRow) {
 const PREF_PREFIX = "profile:";
 // The key prefix of a profile answer, for code that seeds one (the demo bank's sample people).
 export const PROFILE_FACT_PREFIX = PREF_PREFIX;
-const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
 // The raw rows a profile is built from, with what the person told Jane. Detectors (spec step
 // 254) get these beside the profile, for the figures that are theirs ("you pay $1,240").
 export async function loadProfileInput(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<ProfileInput> {
+  // Asked by many detectors and Jane's brief in one sync: read once there (src/lib/read-cache.ts).
+  return cachedCopy(`profileInput:${userId}:${now.toISOString()}`, client, () =>
+    loadProfileInputFrom(userId, { client, now }),
+  );
+}
+
+async function loadProfileInputFrom(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ProfileInput> {

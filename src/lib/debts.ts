@@ -13,6 +13,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseApr } from "@/planning/debt";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { cachedCopy } from "@/lib/read-cache";
 
 // Every debt in one place (spec step 109), loaded for one person with the same code the
 // loans page, Jane's chat and Claude's tools use: loans and cards with their bank details,
@@ -21,6 +22,16 @@ import { DAY_MS, isoDay } from "@/lib/dates";
 type Options = { client?: PrismaClient; now?: Date };
 
 export async function loadDebts(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<DebtBook> {
+  // Read once per sync (src/lib/read-cache.ts): every debt feature asks.
+  return cachedCopy(`debts:${userId}:${now.toISOString()}`, client, () =>
+    loadDebtsFrom(userId, { client, now }),
+  );
+}
+
+async function loadDebtsFrom(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<DebtBook> {

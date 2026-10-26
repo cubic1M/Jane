@@ -18,6 +18,7 @@ import {
   type Tagged,
 } from "@/planning/tax-tags";
 import { isoDay as iso } from "@/lib/dates";
+import { cachedCopy } from "@/lib/read-cache";
 
 // The tax organizer (spec step 119): the year's tax tags and the forms to expect, loaded
 // from the person's own transactions and loans; their own tags and "I have it" saved here.
@@ -36,7 +37,9 @@ export async function loadOverrides(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<TagOverrides> {
-  return client === defaultClient ? overridesOnce(userId) : overridesFrom(userId, client);
+  return client === defaultClient
+    ? overridesOnce(userId)
+    : cachedCopy(`taxOverrides:${userId}`, client, () => overridesFrom(userId, client));
 }
 
 // Read once per server render (React's cache): /taxes's sections each ask (31 times).
@@ -83,6 +86,18 @@ export async function loadTaxTags(
   userId: string,
   year: number,
   { client = defaultClient }: Options = {},
+): Promise<TaxTagsView> {
+  // Read once per piece of work (src/lib/read-cache.ts): the tax estimate, the self-employed
+  // view and the audit records each ask.
+  return cachedCopy(`taxTags:${userId}:${year}`, client, () =>
+    loadTaxTagsFrom(userId, year, client),
+  );
+}
+
+async function loadTaxTagsFrom(
+  userId: string,
+  year: number,
+  client: PrismaClient,
 ): Promise<TaxTagsView> {
   const db = scopedFor(userId, client);
   const [transactions, overrides] = await Promise.all([
@@ -225,6 +240,17 @@ export async function loadTaxForms(
   userId: string,
   year: number,
   { client = defaultClient, now = new Date() }: Options = {},
+): Promise<TaxFormsView> {
+  // Read once per piece of work (src/lib/read-cache.ts): Jane's snapshot asks 5 times.
+  return cachedCopy(`taxForms:${userId}:${year}:${now.toISOString()}`, client, () =>
+    loadTaxFormsFrom(userId, year, { client, now }),
+  );
+}
+
+async function loadTaxFormsFrom(
+  userId: string,
+  year: number,
+  { client, now }: { client: PrismaClient; now: Date },
 ): Promise<TaxFormsView> {
   const db = scopedFor(userId, client);
   const incomeCategories = Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]);

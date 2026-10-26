@@ -26,6 +26,7 @@ import { track } from "@/lib/analytics";
 import { decrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
+import { withReadCache } from "@/lib/read-cache";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import { plaid, plaidCall, plaidErrorCode } from "./client";
 import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
@@ -637,7 +638,16 @@ export async function syncDemoInvestments(
   await saveInvestments(db, api, accessToken, item.id, now);
 }
 
-export async function syncItem(
+// A sync and everything it sets off read the same person's facts again and again (the detectors,
+// Jane's brief, the practice replay, the numbers for Claude): with a read cache for the sync,
+// each is read once until something changes (src/lib/read-cache.ts).
+export async function syncItem(itemId: string, options: Options = {}): Promise<SyncResult> {
+  return withReadCache(options.client ?? defaultClient, (client) =>
+    syncItemWork(itemId, { ...options, client }),
+  );
+}
+
+async function syncItemWork(
   itemId: string,
   {
     client = defaultClient,

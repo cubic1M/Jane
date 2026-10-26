@@ -7,6 +7,7 @@ import {
   type RiskLevel,
 } from "@/config/investing";
 import { DAY_MS } from "@/lib/dates";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Every goal invested for its timeline (spec step 157, demo advice). Pure. Each goal gets a
 // bucket whose mix follows the glide path for the years left (src/config/investing.ts):
@@ -57,7 +58,6 @@ export function glideMix(years: number, riskLevel: RiskLevel): Mix {
   };
 }
 
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 const yearsWords = (y: number) =>
   y < 1
     ? "less than a year away"

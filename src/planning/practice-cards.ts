@@ -4,6 +4,7 @@ import { AUTOPILOT_CONFIDENCE, PRACTICE_NOTE } from "@/config/practice-cards";
 import { AUTOPILOT_LIMITS } from "@/config/portfolios";
 import { SCAN_KINDS, SCAN_LABELS, type ScanKind } from "@/config/practice-scan";
 import type { FloatingCardData } from "@/lib/floating-cards";
+import { formatPercent as pct } from "@/lib/percent";
 
 // The practice portfolio's cards in the chat (spec step 296, Phase AW, Stage A), in the chat
 // lane's floating-card shape (src/lib/floating-cards.ts). Pure. Each card is short (what, how
@@ -41,7 +42,6 @@ const dollars = (cents: number) =>
   `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const exact = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 type Stored = {
   figures: { label: string; value: string }[];
