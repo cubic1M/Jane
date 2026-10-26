@@ -145,6 +145,9 @@ jobs:
           DEMO_BANK: "1"
           DEMO_ADVICE: "1"
           SIMULATED_AGENT: "1"
+      # Each main page's first-load JavaScript against src/config/perf-budget.json.
+      - name: Check the first-load JavaScript budget
+        run: npm run check:perf-budget
       - name: Pack the build (without its cache)
         run: tar --exclude=.next/cache -cf next-build.tar .next
       - uses: actions/upload-artifact@v7
