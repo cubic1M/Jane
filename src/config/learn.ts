@@ -146,11 +146,5 @@ export const EXPLAINERS: readonly Explainer[] = [
 
 export const explainer = (slug: string) => EXPLAINERS.find((e) => e.slug === slug) ?? null;
 
-// Which explainer goes with each finding card (src/app/report/[findingId]) and chat topic.
-export const FINDING_EXPLAINERS: Readonly<Record<string, string>> = {
-  insurance_reshop: "deductibles",
-  card_interest: "refinancing",
-};
-
 export const REVIEW_NOTE =
   "A plain-language explainer from Jane's team, waiting for review by counsel. It explains how things work; it isn't advice for you.";

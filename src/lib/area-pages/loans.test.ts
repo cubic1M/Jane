@@ -96,7 +96,11 @@ describe("the Loans & credit tree", () => {
 
   it("puts what's costing money first, and the reference branches last", () => {
     const { tree } = loansTree(input());
-    expect(tree.branches.map((b) => b.id)).toEqual(Object.keys(LOANS_BRANCHES));
+    // The debt review's page is hidden in the read-only beta (src/config/hidden-pages.ts), so
+    // Reviews has nothing in it for now.
+    expect(tree.branches.map((b) => b.id)).toEqual(
+      Object.keys(LOANS_BRANCHES).filter((b) => b !== "reviews"),
+    );
     const branch = (id: string) => tree.branches.find((b) => b.id === id)!;
     expect(branch("costs").items.map((i) => [i.label, i.status, i.figure])).toEqual([
       ["Card interest you can cut", "look", "$670/yr"],
@@ -111,14 +115,14 @@ describe("the Loans & credit tree", () => {
     expect(branch("credit").items.map((i) => [i.label, i.status, i.figure])).toEqual([
       ["Your credit score", "good", "720"],
       ["Card use", "look", "39%"],
-      ["A score for a goal", undefined, undefined],
     ]);
+    // Only what isn't a way to a hidden page: the best card stays.
+    expect(branch("borrow").items.map((i) => i.label)).toEqual(["Best card for your spending"]);
     expect(branch("family").items[0]).toMatchObject({
       label: "Your rent went up",
       figure: "$1.6k",
     });
-    expect(branch("reviews").items[0]).toMatchObject({ status: "look", figure: "2 need you" });
-    expect(tree.sub).toBe("2 urgent · 5 to look at");
+    expect(tree.sub).toBe("2 urgent · 4 to look at");
   });
 
   it("lifts the urgent items to the top, biggest dollars first", () => {

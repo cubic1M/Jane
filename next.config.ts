@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { hiddenRedirects } from "./src/config/hidden-pages";
 import { DOCUMENT_FILE_CSP, chatFrameHeaders, securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
@@ -15,6 +16,10 @@ const nextConfig: NextConfig = {
     // CSV uploads go through server actions; the 1 MB default is too small for a
     // year of transactions. Matches MAX_FILE_BYTES in src/lib/import/import-csv.ts.
     serverActions: { bodySizeLimit: "5mb" },
+  },
+  // Pages the read-only beta can't use go to their area page (src/config/hidden-pages.ts).
+  async redirects() {
+    return hiddenRedirects();
   },
   async headers() {
     return [

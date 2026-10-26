@@ -158,17 +158,6 @@ test("Home: hide the checklist at once, trees start at their branches, no greeti
   const area = tree.locator('[data-giant-area="taxes"]');
   await expect(area.locator("[data-giant-branch]").first()).toBeVisible();
   await expect(area.getByText("Taxes", { exact: true })).toHaveCount(0);
-  // The map too.
-  await page.goto("/home/map");
-  const map = page.getByRole("tree", { name: /^What Jane does: / });
-  await expect(map).toBeVisible({ timeout: 60_000 });
-  await expect(map.locator('[role="treeitem"][aria-level="1"]').first()).toBeVisible();
-  const chip = await page
-    .getByRole("group", { name: "Areas" })
-    .getByRole("button", { pressed: true })
-    .textContent();
-  const areaName = (chip ?? "").split("·")[0].trim();
-  await expect(map.getByRole("treeitem", { name: new RegExp(`^${areaName}`) })).toHaveCount(0);
 
   // No "Good morning" and no "Hi, I'm Jane" anywhere: not among the cards, not in the chat.
   const cards = await page.evaluate(async () =>

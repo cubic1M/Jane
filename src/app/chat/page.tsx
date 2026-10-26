@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
-import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages } from "@/lib/jane-agent/messages";
 import { chatList } from "@/lib/jane-agent/popups";
 import { loadPopupStack } from "@/lib/jane-agent/popup-stack";
@@ -51,9 +50,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   // No chat page of its own: Home, with the side chat open (src/lib/side-chat.ts).
   if (!embed) redirect(chatRedirect(params));
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
-  const [chat, askHistory, pinned, stacked, practice] = await Promise.all([
+  const [chat, pinned, stacked, practice] = await Promise.all([
     openChat(user.id, { pages }),
-    scopedFor(user.id).askConversations.count(),
     pinnedMessages(user.id),
     // Jane's cards: the day's suggestions, then whatever else waits on the person.
     loadPopupStack(user.id),
@@ -74,7 +72,6 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   // dock above this chat; in the phone's sheet, over its message box): the list has no card
   // of its own, and no gap where one was.
   const listed = chatList(chat.messages, stacked);
-  const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
 
   return (
@@ -132,14 +129,6 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </p>
       )}
 
-      {hasAskHistory && (
-        <Link
-          href="/ask"
-          className="inline-flex min-h-11 items-center self-start text-sm text-zinc-600 hover:underline dark:text-zinc-400"
-        >
-          Your earlier Ask Jane conversations ›
-        </Link>
-      )}
       {/* Room for the cards floating over the end of the chat (as tall as they are: none when
           the dock above the panel has them), so the last message scrolls clear of them. */}
       <div

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { isHiddenPage } from "../src/config/hidden-pages";
 import { areaTree, pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { landInChat } from "./chat-page";
@@ -32,6 +33,8 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/taxes/profile"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -161,6 +164,8 @@ test("state taxes: a mid-year move splits the estimate, each state with its sour
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/taxes/profile"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -237,6 +242,8 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/taxes/profile"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -274,6 +281,8 @@ test("a sample draft return to check, for someone with no draft of their own", a
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/taxes/draft"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -297,6 +306,13 @@ test("retirement income, inherited money and disasters each have a page from /ta
   page,
   baseURL,
 }) => {
+  // Their pages are hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(
+    isHiddenPage("/taxes/retirement") ||
+      isHiddenPage("/taxes/inherited") ||
+      isHiddenPage("/taxes/disasters"),
+    "hidden in the read-only beta",
+  );
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -303,10 +304,16 @@ async function TaxPackContent({
       </section>
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        {COPY.incomplete} {COPY.lifeEventsPrompt}{" "}
-        <Link href="/life-events" className={LINK}>
-          {COPY.lifeEventsLink}
-        </Link>
+        {COPY.incomplete}
+        {!isHiddenPage("/life-events") && (
+          <>
+            {" "}
+            {COPY.lifeEventsPrompt}{" "}
+            <Link href="/life-events" className={LINK}>
+              {COPY.lifeEventsLink}
+            </Link>
+          </>
+        )}
       </p>
     </>
   );

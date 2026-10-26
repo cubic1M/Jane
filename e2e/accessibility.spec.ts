@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { isHiddenPage } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
 // Every page, signed out and in, light and dark: no serious or critical WCAG 2.1 A/AA
@@ -30,13 +31,11 @@ const SIGNED_OUT = [
   "/security",
   "/offline",
   // The confirm page for a button in Jane's email (spec step 85).
-  "/chat/reply",
 ];
 const SIGNED_IN = [
   // The chat as the side panel shows it (it has no page of its own).
   "/chat?embed=1",
   "/home",
-  "/home/map",
   "/plan",
   "/report",
   "/actions",
@@ -74,12 +73,8 @@ const SIGNED_IN = [
   "/investments/sudden-money",
   "/investments/values",
   "/investments/family-file",
-  "/learn",
-  "/learn/index-funds",
   "/loans",
   "/bills",
-  "/alerts",
-  "/ask",
   "/settings",
   "/household",
   "/debt",
@@ -159,7 +154,10 @@ for (const colorScheme of ["light", "dark"] as const) {
         const card = await page.getByRole("link", { name: /Netflix went up/ }).getAttribute("href");
 
         const found: string[] = [];
-        for (const path of [...SIGNED_IN, card ?? "/report", ...ADMIN]) {
+        // Pages the read-only beta hides (src/config/hidden-pages.ts) redirect: not scanned.
+        for (const path of [...SIGNED_IN, card ?? "/report", ...ADMIN].filter(
+          (p) => !isHiddenPage(p),
+        )) {
           found.push(...(await violations(page, path)));
         }
         expect(found).toEqual([]);

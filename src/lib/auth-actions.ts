@@ -3,7 +3,7 @@
 import { AuthError } from "next-auth";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth, signIn, signOut } from "@/auth";
+import { auth, googleEnabled, signIn, signOut } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
 import { INVITE_COOKIE } from "@/lib/auth-gate";
 import { track } from "@/lib/analytics";
@@ -90,6 +90,9 @@ export async function signInWithEmail(formData: FormData): Promise<void> {
 }
 
 export async function signInWithGoogle(formData?: FormData): Promise<void> {
+  // Not set up (no AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET): the button doesn't show, and a stray
+  // post goes back to sign in by email rather than to an unknown provider.
+  if (!googleEnabled) redirect("/login");
   await limitSignIn();
   // From /signup: Google tells us the email only afterwards, so keep the checked code in a
   // short-lived cookie for the signIn callback to redeem.

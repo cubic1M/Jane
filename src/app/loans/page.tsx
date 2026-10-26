@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -283,7 +284,8 @@ const TOPIC_PAGE: Record<string, string> = {
 
 function PageLink({ href }: { href: string }) {
   const page = PAGE[href];
-  if (!page) return null;
+  // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
+  if (!page || isHiddenPage(href)) return null;
   return (
     <Link href={href} className={`self-start text-sm ${LINK}`}>
       {page.label} ›
@@ -440,12 +442,6 @@ async function LoansContent({
           <Link prefetch={false} href="/loans/refinance" className={LINK}>
             Refinance
           </Link>
-          <Link prefetch={false} href="/loans/credit" className={LINK}>
-            Credit score
-          </Link>
-          <Link prefetch={false} href="/loans/borrow" className={LINK}>
-            What you could borrow
-          </Link>
         </nav>
       </div>
 
@@ -510,7 +506,7 @@ async function LoansContent({
         <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
           <summary className={`cursor-pointer text-sm ${LINK}`}>All loans and credit pages</summary>
           <ul aria-label="All loans and credit pages" className="mt-2 flex flex-col gap-1 text-sm">
-            {PAGES.map((p) => (
+            {PAGES.filter((p) => !isHiddenPage(p.href)).map((p) => (
               <li key={p.href}>
                 {p.what}:{" "}
                 <Link href={p.href} className={LINK}>

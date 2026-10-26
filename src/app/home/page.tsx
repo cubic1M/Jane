@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { redirect } from "next/navigation";
 import { after, connection } from "next/server";
 import { Suspense } from "react";
@@ -54,14 +55,14 @@ function NeedsYou({
         {waiting.map((a) => (
           <li key={a.id}>
             <strong>{a.title}:</strong> {a.todo ?? "see your actions."}{" "}
-            <Link href="/actions" className="font-medium text-emerald-800 hover:underline">
+            <ShownLink href="/actions" className="font-medium text-emerald-800 hover:underline">
               Open
-            </Link>
+            </ShownLink>
           </li>
         ))}
         {unreadAlerts > 0 && (
           <li>
-            <Link href="/alerts" className="font-medium text-emerald-800 hover:underline">
+            <Link href="/jane" className="font-medium text-emerald-800 hover:underline">
               {unreadAlerts === 1 ? "1 new alert" : `${unreadAlerts} new alerts`}
             </Link>
           </li>
