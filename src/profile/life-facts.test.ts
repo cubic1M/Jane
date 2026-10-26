@@ -248,6 +248,14 @@ describe("in the profile", () => {
     for (const id of PERSON_IDS.filter((p) => p !== "family")) {
       expect(buildProfile(inputFor(id)).facts.has_children.value, id).toBe(false);
     }
+    // The family's dog: Chewy every month and the vet a few times.
+    expect(buildProfile(inputFor("family")).facts.has_pet).toMatchObject({
+      value: true,
+      source: "seen",
+    });
+    for (const id of PERSON_IDS.filter((p) => p !== "family")) {
+      expect(buildProfile(inputFor(id)).facts.has_pet.value, id).toBe(false);
+    }
     expect(buildProfile(inputFor("equity")).facts.travels_often.value).toBe(true);
     expect(buildProfile(inputFor("retiree")).facts.health_costs.value).toBe(true);
   });

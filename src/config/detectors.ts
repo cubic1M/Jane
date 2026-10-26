@@ -118,6 +118,8 @@ export const DETECTOR_RATES = {
   // something Jane can't see (the card's real benefits, the employer's real plan). Without a
   // ceiling a clean run of charges would make a guess look certain.
   insuranceCaps: {
+    // A pet's cover: a typical vet bill, not a quote.
+    pet: 70,
     shopping: 70,
     health: 70,
     medigap: 70,
