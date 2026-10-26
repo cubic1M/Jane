@@ -141,7 +141,7 @@ const priceIncrease: Detector = {
       ),
       urgency: "soon",
       why: `${nice(top.s.description)} went from ${formatCents(top.before)} to ${formatCents(top.now)} a month${rises.length > 1 ? `, and ${rises.length - 1} more went up` : ""}: ${formatCents(worth)} more a year.`,
-      action: { label: "See what changed", href: "/alerts" },
+      action: { label: "See what changed", href: "/jane#alerts" },
       // The charge comes in below its new price again (the old price back, or a cheaper plan).
       watch: {
         kind: "bill_drops",
@@ -248,7 +248,7 @@ const duplicateCharge: Detector = {
       confidence: evidence("seen", profile.months, doubles.length, "identical charges within days"),
       urgency: "now",
       why: `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${S.duplicateChargeDays} days.`,
-      action: { label: "See the charges", href: "/alerts" },
+      action: { label: "See the charges", href: "/jane#alerts" },
       watch: {
         kind: "refund",
         payees: doubles.map((d) => ({ description: d.description, amountCents: d.amountCents })),

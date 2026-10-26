@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { InvestmentTaxesView } from "@/lib/investment-taxes";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
@@ -74,12 +74,12 @@ export function InvestmentsSection({
             <p key={`loc${h.securityId}`}>
               {h.name}: its payouts are taxed every year here; it&apos;s better held in a 401(k) or
               IRA.{" "}
-              <Link
+              <ShownLink
                 href="/investments/accounts"
                 className="font-medium underline underline-offset-2 hover:no-underline"
               >
                 Where to hold what
-              </Link>
+              </ShownLink>
             </p>
           ))}
           <DemoAdviceLabel />

@@ -1901,7 +1901,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "inv-10",
     text: "what is an index fund",
     needs: "rules",
-    expect: { intent: "learn", link: "/learn/index-funds" },
+    expect: { intent: "learn", mentions: /index fund/i },
   },
   {
     id: "inv-11",

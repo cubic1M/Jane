@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { redirect } from "next/navigation";
 import { after, connection } from "next/server";
 import { Suspense } from "react";
@@ -6,7 +7,7 @@ import { AppHeader } from "@/components/app-header";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { BooksNotice } from "@/components/books-notice";
 import { CashFlowStrip } from "@/components/hub/cash-flow";
-import { AreaTiles, AreaTilesLoading, HeroRow } from "@/components/hub/hub";
+import { HeroRow } from "@/components/hub/hub";
 import { GiantTree } from "@/components/hub/giant-tree";
 import { loadAreaTrees } from "@/lib/hub/area-trees";
 import { withAreaStatus } from "@/lib/hub/area-status";
@@ -54,14 +55,14 @@ function NeedsYou({
         {waiting.map((a) => (
           <li key={a.id}>
             <strong>{a.title}:</strong> {a.todo ?? "see your actions."}{" "}
-            <Link href="/actions" className="font-medium text-emerald-800 hover:underline">
+            <ShownLink href="/actions" className="font-medium text-emerald-800 hover:underline">
               Open
-            </Link>
+            </ShownLink>
           </li>
         ))}
         {unreadAlerts > 0 && (
           <li>
-            <Link href="/alerts" className="font-medium text-emerald-800 hover:underline">
+            <Link href="/jane" className="font-medium text-emerald-800 hover:underline">
               {unreadAlerts === 1 ? "1 new alert" : `${unreadAlerts} new alerts`}
             </Link>
           </li>
@@ -82,8 +83,9 @@ const loadTreeData = (userId: string) =>
   ]);
 type TreeData = Awaited<ReturnType<typeof loadTreeData>>;
 
-// The tiles take each area's status from its tree, as the tree below does: one status per area.
-async function Tiles({
+// "What Jane does" (src/components/hub/giant-tree.tsx): Home's one set of area tiles, each with
+// its status (from its own tree) and its figure, opening into its branches and features.
+async function AreasTree({
   userId,
   home,
   treeData,
@@ -92,26 +94,25 @@ async function Tiles({
   home: HomeSummary;
   treeData: Promise<TreeData>;
 }) {
-  const [areas, [, , trees]] = await Promise.all([
+  const [[reached, advice, areaTrees], areas] = await Promise.all([
+    treeData,
     loadHubAreas(userId, {
       budgetsOver: home.budgetsOver.length,
       safeShort: (home.safeToSpend?.safeCents ?? 0) < 0,
     }),
-    treeData,
   ]);
-  return <AreaTiles tiles={withAreaStatus(tilesView(areas), trees)} />;
-}
-
-// The giant "What Jane does" tree (src/components/hub/giant-tree.tsx): Jane, the six areas,
-// their branches and features, all at once, from the same map as /home/map.
-async function AreasTree({ treeData }: { treeData: Promise<TreeData> }) {
-  const [reached, advice, areaTrees] = await treeData;
   const maps = buildFeatureMap({
     examples: sampleExamples(),
     reached: new Set(reached.map((r) => r.key)),
     advice,
   });
-  return <GiantTree maps={maps} areaTrees={areaTrees} />;
+  return (
+    <GiantTree
+      maps={maps}
+      areaTrees={areaTrees}
+      tiles={withAreaStatus(tilesView(areas), areaTrees)}
+    />
+  );
 }
 
 // The net worth chart: every day since the first day with Jane, ending at the hub's own figure,
@@ -186,17 +187,13 @@ async function HubContent() {
 
       {/* Under the hero, before anything else: everything Jane does, as one tree. */}
       <Suspense fallback={<LoadingBar label="Loading what Jane does" />}>
-        <AreasTree treeData={treeData} />
+        <AreasTree userId={user.id} home={home} treeData={treeData} />
       </Suspense>
 
       <CashFlowStrip
         view={cashFlowView(top.cashFlow)}
         endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
       />
-
-      <Suspense fallback={<AreaTilesLoading />}>
-        <Tiles userId={user.id} home={home} treeData={treeData} />
-      </Suspense>
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
       {autopilot === null && <AutopilotChooser compact />}

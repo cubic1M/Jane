@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { LoanApplicationError, prepareApplication } from "@/lib/loan-applications";
 import { TransferError, endTransfer, startTransfer } from "@/lib/balance-transfers";
 import { checkRates } from "@/lib/refinance";
@@ -32,7 +33,8 @@ export async function applyAction(formData: FormData): Promise<void> {
     }
     throw error;
   }
-  redirect(`/loans/apply/${id}`);
+  // While the application page is hidden (src/config/hidden-pages.ts), back to the offers.
+  redirect(isHiddenPage("/loans/apply/x") ? "/loans/refinance" : `/loans/apply/${id}`);
 }
 
 // Spec step 113: the person moved a card's balance to a 0% card, or paid that off.

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import type { AreaMap } from "@/lib/feature-map";
 import { giantAreas, type AreaTrees, type GiantArea, type GiantFeature } from "@/lib/giant-tree";
+import type { AreaTile } from "@/lib/hub/view";
 import { STATUS, type TreeStatus } from "@/components/tree/interactive-tree";
 import { askedBefore, rememberAsked } from "@/lib/ask-jane";
 import { MarchingPath } from "@/components/marching-path";
@@ -31,8 +32,22 @@ const BOX = "border border-zinc-400 bg-white dark:border-zinc-600 dark:bg-zinc-9
 // The tree's lines: dotted, as the rest of the app draws them.
 const LINE = "border-dashed border-zinc-400 dark:border-zinc-600";
 
-export function GiantTree({ maps, areaTrees = {} }: { maps: AreaMap[]; areaTrees?: AreaTrees }) {
-  const areas = giantAreas(maps, areaTrees);
+export function GiantTree({
+  maps,
+  areaTrees = {},
+  tiles = [],
+}: {
+  maps: AreaMap[];
+  areaTrees?: AreaTrees;
+  // Each area's figure on its tile ("$3,092", "Spent this month"), and its reading where it has
+  // no tree of its own: Home has one set of area tiles, these (audit round 2).
+  tiles?: AreaTile[];
+}) {
+  const areas = giantAreas(maps, areaTrees).map((a) => {
+    const tile = tiles.find((t) => t.key === a.key);
+    if (!tile || areaTrees[a.key]) return { ...a, tile };
+    return { ...a, tile, status: tile.health ?? a.status, line: tile.healthWhy };
+  });
   const [openArea, setOpenArea] = useState<string | null>(null);
   const [openFeature, setOpenFeature] = useState<string | null>(null);
   const panelId = useId();
@@ -58,7 +73,9 @@ export function GiantTree({ maps, areaTrees = {} }: { maps: AreaMap[]; areaTrees
         <h2 id="giant-tree-heading" className="text-base font-semibold">
           What Jane does
         </h2>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400">Pick an area to open its tree</p>
+        <p className="flex flex-wrap items-baseline gap-x-3 text-xs text-zinc-600 dark:text-zinc-400">
+          Pick an area to open its tree
+        </p>
       </div>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
         {areas.map((a) => {
@@ -89,6 +106,12 @@ export function GiantTree({ maps, areaTrees = {} }: { maps: AreaMap[]; areaTrees
                     [{isOpen ? "−" : "+"}]
                   </span>
                 </span>
+                {a.tile?.value != null && (
+                  <span className="text-lg leading-tight font-semibold tabular-nums">
+                    {a.tile.value}
+                  </span>
+                )}
+                {a.tile && <span className="text-xs opacity-80">{a.tile.caption}</span>}
                 <span className="text-xs [overflow-wrap:anywhere] opacity-80">{a.line}</span>
                 {a.forYou && <span className="sr-only">, for you</span>}
               </button>

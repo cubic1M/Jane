@@ -1,4 +1,5 @@
 import { SAVED_SO_FAR_LABEL } from "@/lib/saved-amount";
+import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
@@ -44,9 +45,11 @@ function Section({
       {summary && <span className={`text-sm ${MUTED}`}>{summary}</span>}
     </span>
   );
-  const linkRow = links.length > 0 && (
+  // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
+  const shown = links.filter((l) => !isHiddenPage(l.href));
+  const linkRow = shown.length > 0 && (
     <span className="flex flex-wrap gap-x-4 text-sm">
-      {links.map((l) => (
+      {shown.map((l) => (
         <Link key={l.href} href={l.href} className={LINK}>
           {l.label}
         </Link>
@@ -299,7 +302,7 @@ async function JaneContent() {
             ))}
           </ul>
         )}
-        {inProgress.total > inProgress.items.length && (
+        {inProgress.total > inProgress.items.length && !isHiddenPage("/actions") && (
           <p className={`text-sm ${MUTED}`}>
             And {inProgress.total - inProgress.items.length} more on{" "}
             <Link href="/actions" className={LINK}>
@@ -367,8 +370,9 @@ async function JaneContent() {
       </Section>
 
       <Section
+        id="alerts"
         title="Alerts"
-        links={[{ href: "/alerts", label: "See all" }]}
+        links={[]}
         summary={alerts.unread === 0 ? "none new" : `${alerts.unread} new`}
       >
         {alerts.items.length === 0 ? (

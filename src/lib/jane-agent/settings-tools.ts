@@ -44,7 +44,7 @@ export const SETTINGS_CHAT_PAGES: Readonly<Record<string, { label: string; href:
   notification_settings: { label: "What Jane sends you", href: "/settings#jane-messages" },
   email_settings: { label: "Email settings", href: "/settings#email" },
   alert_settings: { label: "Alert settings", href: "/settings#alerts" },
-  alerts: { label: "See alerts", href: "/alerts" },
+  alerts: { label: "See alerts", href: "/jane#alerts" },
   monthly_report: { label: "See the monthly report", href: "/monthly" },
   two_factor: { label: "Two-factor sign-in", href: "/settings/two-factor" },
   sessions: { label: "Where you're signed in", href: "/settings#sessions" },

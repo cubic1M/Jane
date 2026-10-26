@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { formatCents } from "@/lib/money";
@@ -145,14 +146,17 @@ async function SavedContent() {
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Share it</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          A link to a page with your confirmed total and nothing else: no name, no accounts, no
-          details.
-        </p>
-        <ShareForm />
-      </section>
+      {/* Shared links (/s/...) are hidden in the read-only beta (src/config/hidden-pages.ts). */}
+      {!isHiddenPage("/s/link") && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">Share it</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            A link to a page with your confirmed total and nothing else: no name, no accounts, no
+            details.
+          </p>
+          <ShareForm />
+        </section>
+      )}
     </>
   );
 }

@@ -1405,7 +1405,6 @@ export async function runInvestmentTool(
         text: e.paragraphs,
         sources: e.sources,
         review: REVIEW_NOTE,
-        page: `/learn/${e.slug}`,
       });
     }
     default:

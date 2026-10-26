@@ -2,14 +2,16 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Resend from "next-auth/providers/resend";
 import { createAuthAdapter } from "@/lib/auth-adapter";
+import { googleConfigured } from "@/lib/auth-providers";
 import { allowSignIn } from "@/lib/auth-gate";
 import { recordSignIn } from "@/lib/auth-events";
 import { sessionPayload } from "@/lib/auth-session";
 import { db } from "@/lib/db";
 import { sendMagicLink } from "@/lib/email";
 
-// Google is optional until its OAuth client is set up; the button hides without it.
-export const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+// Google is optional until its OAuth client is set up (docs/setup/google-sign-in.md): without
+// both keys the provider isn't registered and the button hides.
+export const googleEnabled = googleConfigured();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: createAuthAdapter(db),
