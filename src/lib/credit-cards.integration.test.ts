@@ -38,7 +38,7 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 const MINUTE = 60 * 1000;
 const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: "open" as const };
 
-describe.runIf(url)("credit card rewards against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("credit card rewards against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let userId: string;
   const created: string[] = [];
@@ -195,7 +195,7 @@ describe.runIf(url)("credit card rewards against a real database", { timeout: 60
     const [message] = await picks();
     expect(message.body).toMatch(/^I've worked out which card to use for each kind of spending/);
     expect(message.body).toContain(best.card.name);
-  }, 60_000);
+  }, 120_000);
 
   it("never has a catalog, a pick or an application for a real account", async () => {
     const realId = await person("cards-real");

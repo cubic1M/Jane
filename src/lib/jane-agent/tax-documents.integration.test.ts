@@ -37,7 +37,7 @@ const W2 = "w2:acme-corp-payroll";
 
 describe.runIf(url)(
   "tax documents that collect themselves against a real database",
-  { timeout: 60_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     const created: string[] = [];

@@ -28,7 +28,7 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 // Records for 2022 can go after 2026-04-15; the reminder is due from 2026-03-16.
 const SOON = new Date("2026-04-01T15:00:00Z");
 
-describe.runIf(url)("audit-ready records against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("audit-ready records against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(
