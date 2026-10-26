@@ -101,7 +101,7 @@ jobs:
       # learning loop rebuilds its stats from every person in it (which ranking reads), so they
       # run on their own after shard 1's tests, never alongside tests that make people.
       - run: >-
-          npx vitest run --shard=${{ matrix.shard }}/4 --maxWorkers=4
+          npx vitest run --shard=${{ matrix.shard }}/4
           --exclude src/lib/trial.integration.test.ts
           --exclude src/lib/retention.integration.test.ts
           --exclude src/lib/learning.integration.test.ts
