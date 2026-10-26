@@ -1,9 +1,12 @@
 # Accuracy
 
-Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had been tuned on the eight sample people. The bench holds Jane to 40 synthetic bank histories that look like real exports, with the truth for every detector, and a CI gate keeps the scores from slipping.
+Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had been tuned on the eight sample people. The bench holds Jane to 140 synthetic bank histories that look like real exports, with the truth for every detector, and a CI gate keeps the scores from slipping.
 
-- **Data:** `src/accuracy/generate.ts`, a fixed seed (`SEED`), written to `src/accuracy/__fixtures__/histories.json`.
-  - 40 people, about 11,500 transactions, with 2 to 14 months of history each.
+- **Data:** `src/accuracy/generate.ts`, fixed seeds, in two sets.
+  - **Tuning set** (`SEED`, `src/accuracy/__fixtures__/histories.json`): 60 people, about 16,300 transactions. The first 40 are #766's people, row for row. The other 20 carry each known cause of a miss or a false alarm (below), so a fix is tried on more than the one or two people who showed it. Rules are fixed by looking at this set's mistakes (`ACCURACY_MISTAKES=1`).
+  - **Held-out set** (`HELD_OUT_SEED`, `src/accuracy/__fixtures__/held-out.json`): 40 people, about 10,000 transactions, from another seed, with the same causes under names the tuning set never uses: other card companies, ticket sellers, utilities, yearly plans, shops and app stores. Nobody looks at its mistakes while fixing rules; it is only scored. A gain that shows up here is real, not a rule that memorised the tuning set.
+  - **Second held-out set** (`HELD_OUT_2_SEED`, `src/accuracy/__fixtures__/held-out-2.json`): 40 more people, with names neither of the others uses. Once the first held-out set's mistakes have been read to explain them, it is no longer a clean check; any fix those mistakes suggest is checked here instead.
+  - 2 to 14 months of history each; a quarter of the new people have only two months.
   - Six kinds of person: salaried, hourly, freelancer, retiree, struggling and saver.
   - The messy-bank lessons are built in:
     - card payments written by the card company, including one no rule knows (Barclaycard);
@@ -15,21 +18,29 @@ Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had be
     - subscriptions that rose, were cancelled, renew yearly, or are billed together through Apple;
     - real double charges, refunded ones, and two identical tickets bought together;
     - returns, a trip abroad, big one-off purchases, and savers with idle cash.
+  - The causes the new people add (the tuning and held-out names differ):
+    - card companies no rule knows, with the card's "thank you" a day or two after checking pays;
+    - several subscriptions billed through one app store, each at its own price and day;
+    - yearly plans paid once in the last year, and one-off purchases where subscriptions are sold (a book, a rental, an app);
+    - two or three tickets or fares at one price on one day;
+    - real double charges and refunded ones at more shops;
+    - seasonal utility bills from utilities not named in the keyword rules;
+    - two-month histories, with two purchases at one shop a month apart at nearly the same price.
 - **Truth:** every row the generator writes says what it is, so each detector is scored item by item:
   - subscriptions and price rises, by merchant;
   - fee and card-interest accounts;
   - double charges, by the second charge;
   - idle cash, by person;
-  - upcoming bills, by merchant;
+  - upcoming bills, by merchant. A bank's monthly service fee is a bill (it comes every month, so the forecast has to take it out), and a yearly plan is one only when it renews within the month. Before the two sets, both were missing from the truth; and a yearly plan paid before the person's history starts was labelled though no charge of it is in the data, so no detector could find it (2 of #766's 28 missed subscriptions). 5 of #766's labels were corrected, rows unchanged;
   - income and own-account transfers, by transaction.
 - **Scoring:** `src/accuracy/score.ts` runs the real pipeline: the categorizer's rules, then the finding rules (`detect`), recurring charges, upcoming bills, the spending classification and the suggestion detectors. It's pure and needs no database, and makes no Claude calls.
   - **Precision:** of what Jane said, how much is true.
   - **Recall:** of what's true, how much Jane said.
   - **False-alarm rate:** the share of people who got at least one wrong item from that detector.
-- **Run it:** `npm run accuracy` prints the scoreboard and calibration. `ACCURACY_WRITE=1 npm run accuracy` also rewrites the fixtures, `src/accuracy/baseline.json` and the tables below.
-- **Gate:** `src/accuracy/accuracy.test.ts`, run with the unit tests. It fails when:
+- **Run it:** `npm run accuracy` prints the scoreboard and calibration for each set. `ACCURACY_WRITE=1 npm run accuracy` also rewrites the fixtures, `src/accuracy/baseline.json` and the tables below. `ACCURACY_MISTAKES=1` lists the tuning set's mistakes only.
+- **Gate:** `src/accuracy/accuracy.test.ts`, run with the unit tests, on all three sets. It fails when:
   - any detector's precision or recall drops more than 3 points below the baseline;
-  - the fixture no longer matches the generator;
+  - a fixture no longer matches the generator;
   - any suggestion says 0%;
   - a calibration bucket of 10 or more is over 10 points surer than it turns out to be.
 
@@ -51,31 +62,83 @@ Before: the detectors as on main (with #759's messy-bank fixes), on the same 40 
 | income | 100.0% | 87.3% | 0.0% | 890 | 0 | 130 |
 | transfers | 100.0% | 95.4% | 0.0% | 1152 | 0 | 56 |
 
-After this PR (the baseline the gate holds to):
+Now (the baseline the gate holds to, every set):
 
 <!-- scoreboard:start -->
+Tuning set (60 people, 16326 transactions):
+
 | Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| subscriptions | 100.0% | 71.7% | 0.0% | 71 | 0 | 28 |
-| price_rises | 100.0% | 100.0% | 0.0% | 9 | 0 | 0 |
-| fees | 100.0% | 100.0% | 0.0% | 17 | 0 | 0 |
-| double_charges | 61.1% | 100.0% | 17.5% | 11 | 7 | 0 |
-| idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
-| card_interest | 100.0% | 100.0% | 0.0% | 8 | 0 | 0 |
-| bills | 98.6% | 83.0% | 7.5% | 219 | 3 | 45 |
-| income | 100.0% | 100.0% | 0.0% | 1020 | 0 | 0 |
-| transfers | 100.0% | 95.4% | 0.0% | 1152 | 0 | 56 |
+| subscriptions | 100.0% | 63.8% | 0.0% | 95 | 0 | 54 |
+| price_rises | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
+| fees | 100.0% | 100.0% | 0.0% | 31 | 0 | 0 |
+| double_charges | 55.8% | 100.0% | 23.3% | 24 | 19 | 0 |
+| idle_cash | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 0.0% | 14 | 0 | 0 |
+| bills | 99.7% | 73.3% | 1.7% | 297 | 1 | 108 |
+| income | 100.0% | 100.0% | 0.0% | 1391 | 0 | 0 |
+| transfers | 100.0% | 92.6% | 0.0% | 1493 | 0 | 120 |
 
-Calibration now:
+Calibration, tuning set:
 
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 26 | 57% | 85% |
-| 60–69% | 11 | 65% | 82% |
-| 70–79% | 4 | 74% | 100% |
-| 80–89% | 22 | 86% | 100% |
-| 90–100% | 22 | 95% | 100% |
+| 50–59% | 47 | 56% | 87% |
+| 60–69% | 23 | 65% | 78% |
+| 70–79% | 7 | 74% | 100% |
+| 80–89% | 29 | 86% | 100% |
+| 90–100% | 28 | 95% | 100% |
+
+Held-out set (40 people, 10008 transactions):
+
+| Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| subscriptions | 100.0% | 41.9% | 0.0% | 52 | 0 | 72 |
+| price_rises | 100.0% | 100.0% | 0.0% | 8 | 0 | 0 |
+| fees | 100.0% | 100.0% | 0.0% | 20 | 0 | 0 |
+| double_charges | 44.9% | 100.0% | 55.0% | 31 | 38 | 0 |
+| idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
+| bills | 98.2% | 55.5% | 7.5% | 161 | 3 | 129 |
+| income | 100.0% | 100.0% | 0.0% | 774 | 0 | 0 |
+| transfers | 100.0% | 87.7% | 0.0% | 733 | 0 | 103 |
+
+Calibration, held-out set:
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 31 | 56% | 84% |
+| 60–69% | 33 | 65% | 91% |
+| 70–79% | 10 | 75% | 100% |
+| 80–89% | 15 | 85% | 100% |
+| 90–100% | 12 | 95% | 100% |
+
+Second held-out set (40 people, 10748 transactions):
+
+| Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| subscriptions | 100.0% | 38.4% | 0.0% | 48 | 0 | 77 |
+| price_rises | 100.0% | 100.0% | 0.0% | 4 | 0 | 0 |
+| fees | 100.0% | 100.0% | 0.0% | 21 | 0 | 0 |
+| double_charges | 42.6% | 100.0% | 47.5% | 20 | 27 | 0 |
+| idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 0.0% | 12 | 0 | 0 |
+| bills | 99.4% | 54.7% | 2.5% | 156 | 1 | 129 |
+| income | 100.0% | 100.0% | 0.0% | 780 | 0 | 0 |
+| transfers | 100.0% | 82.4% | 0.0% | 733 | 0 | 157 |
+
+Calibration, second held-out set:
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 32 | 56% | 84% |
+| 60–69% | 27 | 64% | 70% |
+| 70–79% | 8 | 75% | 100% |
+| 80–89% | 19 | 86% | 100% |
+| 90–100% | 18 | 95% | 100% |
 <!-- scoreboard:end -->
 
 ### What changed
