@@ -11,6 +11,7 @@ import { lifeNeed, type LifeNeedInput, type NeedLine } from "./life-need";
 import { nextLifeQuestion, type LifeAnswers, type LifeDecision } from "./life-underwriting";
 import { partnerFor, type InsurancePartner, type QuoteCarrier } from "./partner";
 import { listPolicies } from "./policies";
+import { DAY_MS as DAY, isoDay as day } from "@/lib/dates";
 
 // Life insurance, sized and bought (spec step 153). Demo advice only. Jane works out how
 // much cover the person needs and for how long, from their own accounts, shows the method,
@@ -92,9 +93,6 @@ async function profileFacts(userId: string, options: Options) {
     yearlyPayCents: typeof income === "number" && income > 0 ? income * 12 : null,
   };
 }
-
-const DAY = 86_400_000;
-const day = (date: Date) => date.toISOString().slice(0, 10);
 
 // What the calculation needs, from the person's accounts and insurance.
 export async function lifeInput(

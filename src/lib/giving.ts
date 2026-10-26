@@ -11,6 +11,7 @@ import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { givingOptions, needsReceipt, type GivingOption } from "@/planning/giving";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Giving, done smart (spec step 168): the gifts Jane found (tagged as donations, step
 // 119), which need the charity's receipt, and in demo advice mode the options that do more
@@ -20,9 +21,6 @@ import { givingOptions, needsReceipt, type GivingOption } from "@/planning/givin
 type Options = { client?: PrismaClient; now?: Date };
 
 export class GivingError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-const DAY_MS = 86_400_000;
 
 export type Gift = {
   transactionId: string;

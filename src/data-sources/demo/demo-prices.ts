@@ -1,4 +1,5 @@
 import { addDays } from "./demo-bank";
+import { DAY_MS } from "@/lib/dates";
 
 // The stand-in daily price feed (spec step 156) for the demo bank's funds: made-up prices
 // that move a little every day, together like a real market, so returns, drift and drops
@@ -60,7 +61,6 @@ function unit(key: string): number {
 const normal = (key: string) =>
   (unit(`${key}:a`) + unit(`${key}:b`) + unit(`${key}:c`) + unit(`${key}:d`) - 2) * Math.sqrt(3);
 
-const DAY_MS = 86_400_000;
 const dayIndex = (day: string) =>
   Math.round(
     (Date.parse(`${day}T00:00:00Z`) - Date.parse(`${PRICE_HISTORY_START}T00:00:00Z`)) / DAY_MS,

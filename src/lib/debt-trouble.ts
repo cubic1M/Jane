@@ -15,6 +15,7 @@ import {
   type DmpSketch,
   type TroubleReason,
 } from "@/planning/debt-trouble";
+import { isoDay } from "@/lib/dates";
 
 // When debt is too much (spec step 229), for one person: what their debt payments are as a
 // share of their income, what to ask each lender, a sketch of a debt management plan from
@@ -22,8 +23,6 @@ import {
 // Facts and doors to knock on, never advice and never legal advice; nothing here is sent.
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook; input?: DetectionInput };
-
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 export type DebtTrouble = {
   // Has at least one debt with a balance.

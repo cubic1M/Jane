@@ -9,6 +9,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { saveTaxAnswers } from "@/lib/tax-profile";
 import { localitiesIn, spotMove, type Move, type Residency } from "@/planning/tax-states";
+import { isoDay as iso } from "@/lib/dates";
 
 // Where the person lived and worked in a tax year (spec step 165): moves, an out-of-state
 // employer and a city or county income tax. Loaded from what they told Jane, and a move
@@ -17,8 +18,6 @@ import { localitiesIn, spotMove, type Move, type Residency } from "@/planning/ta
 type Options = { client?: PrismaClient; now?: Date };
 
 export class ResidencyError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type ResidencyView = {
   year: number;

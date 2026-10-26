@@ -19,6 +19,7 @@ import {
   type Gap,
   type Window,
 } from "@/planning/property-tax";
+import { isoDay as iso } from "@/lib/dates";
 
 // Property tax that's too high (spec step 221), for its page, the chat and Claude: the
 // home's assessed value against its market value (the person's own figures, or the property
@@ -30,8 +31,6 @@ import {
 type Options = { client?: PrismaClient; now?: Date };
 
 export class PropertyTaxError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type PropertyAppealView = {
   id: string;

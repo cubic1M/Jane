@@ -20,6 +20,7 @@ import { currentAge } from "@/planning/investor-profile";
 import { hsaPlan, type HsaPlan } from "@/planning/hsa";
 import { loadInvestments } from "./holdings";
 import { profileOf } from "./profile";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // The HSA as an investment (spec step 159), for its page, Jane's answers, its buttons and
 // the nightly run. Advice (what to invest) in demo advice mode only; the receipts vault is
@@ -28,9 +29,6 @@ import { profileOf } from "./profile";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class HsaError extends Error {}
-
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // Medical charges in the person's transactions become saved receipts, once each. Jane does
 // this on its own at every level: it only keeps a record.

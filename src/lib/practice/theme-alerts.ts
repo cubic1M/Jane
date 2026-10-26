@@ -11,6 +11,7 @@ import { queueChatNotificationsSafely } from "@/lib/jane-agent/notify";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { practiceCardDetails } from "@/lib/practice/ideas";
 import { isTrialUser } from "@/lib/trial-ids";
+import { DAY_MS } from "@/lib/dates";
 
 // A news theme's idea as an alert (Phase AW, Stage A): when the practice scan finds one, Jane
 // posts it in the chat as a suggestion, so it comes up as a floating card to decide (why now, the past record and how sure Jane is, the
@@ -21,7 +22,6 @@ import { isTrialUser } from "@/lib/trial-ids";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 86_400_000;
 export const THEME_ALERT_SOURCE = "themes";
 
 type StoredDetails = {

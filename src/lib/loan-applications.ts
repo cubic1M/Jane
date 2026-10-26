@@ -14,6 +14,7 @@ import {
   type ApplicationStatus,
   type LoanApplicationView,
 } from "./loan-application-status";
+import { isoDay } from "@/lib/dates";
 
 export { statusLine, type ApplicationStatus, type LoanApplicationView };
 
@@ -66,8 +67,6 @@ const toView = (row: Row): LoanApplicationView => ({
   product: row.product as LoanProduct,
   applicant: row.applicant as unknown as Applicant,
 });
-
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export async function listApplications(
   userId: string,

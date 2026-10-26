@@ -12,15 +12,13 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseApr } from "@/planning/debt";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Every debt in one place (spec step 109), loaded for one person with the same code the
 // loans page, Jane's chat and Claude's tools use: loans and cards with their bank details,
 // buy now, pay later plans from their payments, and the terms the person typed.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export async function loadDebts(
   userId: string,

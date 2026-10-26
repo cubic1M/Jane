@@ -25,6 +25,7 @@ import {
 } from "./health-year-rules";
 import { partnerFor } from "./partner";
 import { listPolicies } from "./policies";
+import { isoDay as asOfOf } from "@/lib/dates";
 
 // Health cover all year (spec step 200): the person's health plan's year so far, from the
 // plan's terms and their medical spending; the FSA and HSA money, the plan's network for the
@@ -44,8 +45,6 @@ export type HealthYear = {
   hsa: { name: string; balanceCents: number } | null;
   disputes: (Dispute & { network: Network })[];
 };
-
-const asOfOf = (now: Date) => now.toISOString().slice(0, 10);
 
 export async function loadHealthYear(
   userId: string,

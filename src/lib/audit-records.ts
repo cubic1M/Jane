@@ -21,6 +21,7 @@ import {
   type Retention,
 } from "@/planning/audit-records";
 import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
+import { isoDay as iso } from "@/lib/dates";
 
 // Audit-ready records (spec step 171), loaded from the person's own accounts: every
 // deduction and credit Jane counts, tied to its transactions, the receipts in their
@@ -31,8 +32,6 @@ import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed"
 type Options = { client?: PrismaClient; now?: Date };
 
 export class AuditRecordsError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type AuditRecordsView = AuditPack & {
   retention: Retention[];

@@ -26,6 +26,7 @@ import {
   type Exit,
 } from "@/planning/costly-products";
 import { loadFees } from "./fees";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // What costly products really cost (spec step 215, demo advice), for its page, Jane's
 // answers and its tool. Variable annuities and whole life are found from the person's
@@ -37,9 +38,6 @@ import { loadFees } from "./fees";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class CostlyProductError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-const DAY_MS = 86_400_000;
 
 export type ProductView = {
   id: string;

@@ -14,6 +14,7 @@ import {
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { CoverageError, parseCoverage } from "./coverage";
 import type { PolicyInput } from "./policies";
+import { DAY_MS as DAY } from "@/lib/dates";
 
 // A policy read from a document (spec step 151), before the person confirms it: the fields
 // from each place Jane found them, best first, checked by rules. A field that fails a rule
@@ -95,8 +96,6 @@ export function mergeLayers(layers: Layer[]): {
   }
   return { fields, sources };
 }
-
-const DAY = 86_400_000;
 
 export type Checked = {
   fields: Fields;

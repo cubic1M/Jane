@@ -16,6 +16,7 @@ import { changesFor } from "./cover-change-rules";
 import { sizeLife } from "./life";
 import { partnerFor, type InsurancePartner } from "./partner";
 import { listPolicies, type Policy } from "./policies";
+import { DAY_MS as DAY } from "@/lib/dates";
 
 // Cover changes with life events (spec step 154). When the person buys a car, moves, has a
 // baby, marries or starts a new job (from step 100's life events, their accounts, or what
@@ -64,8 +65,6 @@ function toChange(row: Prisma.CoverChangeGetPayload<{ select: typeof SELECT }>):
     status: row.status as CoverChange["status"],
   };
 }
-
-const DAY = 86_400_000;
 
 export type CoverEventFound = {
   event: CoverEvent;

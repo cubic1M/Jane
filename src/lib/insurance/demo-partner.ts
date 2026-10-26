@@ -20,14 +20,13 @@ import {
 import type { Coverage } from "./coverage";
 import { standInDecision } from "./life-underwriting";
 import type { InsurancePartner, PartnerQuote, QuoteCarrier, QuoteRequest } from "./partner";
+import { DAY_MS } from "@/lib/dates";
 
 // The stand-in insurance partner (spec step 103): quotes from the made-up carrier catalog,
 // priced by DEMO_PRICING's fixed rules from the person's profile. Binding issues a demo
 // policy number and declarations page, the first payment counts as paid on the start day,
 // and cancelling is confirmed at once. Deterministic: the same request gives the same
 // quotes. Every quote says demo: true.
-
-const DAY_MS = 86_400_000;
 
 // Kinds quoted without a deductible.
 const NO_DEDUCTIBLE: readonly PolicyKind[] = [

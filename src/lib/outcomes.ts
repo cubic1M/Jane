@@ -6,6 +6,7 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { asWatch, verifyWatch, watchOfFinding, type OutcomeTx } from "@/planning/outcomes";
+import { DAY_MS, isoDay as isoDate } from "@/lib/dates";
 
 // The verified savings record: what happened to each suggestion that reached the person (shown,
 // opened, answered, marked done) and what their later transactions showed. A saving counts as
@@ -15,8 +16,6 @@ import { asWatch, verifyWatch, watchOfFinding, type OutcomeTx } from "@/planning
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 86_400_000;
-const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const jsonOf = (watch: Watch | null | undefined) =>
   watch ? (watch as unknown as Prisma.InputJsonObject) : Prisma.DbNull;
 

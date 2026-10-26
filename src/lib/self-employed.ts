@@ -27,6 +27,7 @@ import { loadTaxTags } from "@/lib/tax-organizer";
 import { estimateTaxes } from "@/planning/tax-estimate";
 import { estimatedTaxDates } from "@/planning/tax-pack";
 import { payeeOf } from "@/planning/tax-tags";
+import { isoDay as iso } from "@/lib/dates";
 
 // Freelancers' taxes (spec step 123), from the same estimate as /taxes: business expenses
 // (tagged), the home office and mileage helpers, what to set aside from each payment and the
@@ -59,7 +60,6 @@ export type SelfEmployedView = {
   setAsideGoal: boolean;
 };
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const total = (e: ReturnType<typeof estimateTaxes>) => e.totalTaxCents + (e.state?.taxCents ?? 0);
 
 export async function loadSelfEmployed(

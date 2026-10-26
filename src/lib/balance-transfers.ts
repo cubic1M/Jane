@@ -12,6 +12,7 @@ import {
   scoreTransfer,
   type TransferComparison,
 } from "@/planning/balance-transfer";
+import { isoDay } from "@/lib/dates";
 
 // Balance transfers (spec step 113). Jane finds 0% transfer cards for each card with its
 // monthly rate check (src/lib/refinance.ts checkRates) and compares them, fee counted. Opening
@@ -19,8 +20,6 @@ import {
 // Jane keeps the promo's end in view: a deadline on /deadlines and reminders before it.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export class TransferError extends Error {}
 

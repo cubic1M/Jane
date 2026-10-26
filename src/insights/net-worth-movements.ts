@@ -1,4 +1,5 @@
 import type { EventKind, NetWorthEvent } from "./net-worth-events";
+import { DAY_MS } from "@/lib/dates";
 
 // Every movement on the expanded net worth chart (founder: "the expansion of the networth graph
 // should have a dot for EVERY single little movement in cash, so you can zoom in on each to know
@@ -29,7 +30,6 @@ const KINDS: readonly EventKind[] = [
   "transfer",
 ];
 
-const DAY_MS = 86_400_000;
 const dayNumber = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / DAY_MS);
 const isoOf = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
 

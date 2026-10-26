@@ -29,6 +29,7 @@ import {
   type PromoPlan,
   type RateAsk,
 } from "@/planning/card-interest";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Less interest on every card (spec step 224). For each card Jane shows what a year of its
 // interest costs, what paying earlier saves, when its next statement closes, how any 0%
@@ -38,8 +39,6 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 const monthOf = (now: Date) => isoDay(now).slice(0, 7);
 
 export class CardInterestError extends Error {}

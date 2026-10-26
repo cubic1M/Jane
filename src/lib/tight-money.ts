@@ -27,6 +27,7 @@ import {
   type TightDebt,
   type TightItem,
 } from "@/planning/tight-money";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // When money is tight (spec step 177). When the checking forecast dips under its cushion,
 // Jane prepares one plan: which bills to pay first (housing, utilities and insurance
@@ -35,9 +36,6 @@ import {
 // people only; a real account gets nothing sent anywhere.
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput; book?: DebtBook };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export class TightMoneyError extends Error {}
 

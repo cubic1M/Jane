@@ -21,6 +21,7 @@ import {
   type Installment,
   type PlanSchedule,
 } from "@/planning/bnpl";
+import { isoDay } from "@/lib/dates";
 
 // Buy now, pay later under control (spec step 176). Every plan with its next installments
 // from the plan's own schedule, the ones the checking forecast doesn't count yet, a
@@ -30,7 +31,6 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput; book?: DebtBook };
 
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 export const payoffKey = (planKey: string) => `${planKey}:payoff`;
 
 export class BnplError extends Error {}

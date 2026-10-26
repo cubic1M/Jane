@@ -22,6 +22,7 @@ import {
   type MedicalBillInput,
   type MedicalItem,
 } from "@/planning/medical-bills";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Medical bills (spec step 180). Bills found from the person's payments to medical
 // providers, plus ones they type in; each checked against their health insurance and
@@ -30,9 +31,6 @@ import {
 // through a provider stand-in that answers after a couple of days. Demo-bank people only.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export class MedicalBillError extends Error {}
 

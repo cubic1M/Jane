@@ -1,5 +1,6 @@
 import { LONG_TERM_DAYS, WASH_SALE_DAYS } from "@/config/tax-rates";
 import { HARVEST_MIN_LOSS_CENTS, TAX_HEAVY_HOLDING } from "@/config/tax";
+import { DAY_MS } from "@/lib/dates";
 
 // Investment taxes (spec step 124). Pure. From a taxable account's holdings (with the cost
 // basis the institution reports) and its buys and sells:
@@ -38,7 +39,6 @@ export type InvTransaction = {
 
 export type Lot = { date: string | null; quantity: number };
 
-const DAY_MS = 86_400_000;
 const daysBetween = (a: string, b: string) =>
   (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS;
 const isLong = (bought: string | null, sold: string) =>

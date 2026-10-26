@@ -18,6 +18,7 @@ import {
   type RefiGuide,
   type TaxOnForgiven,
 } from "@/planning/student-long-game";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Student loans, the long game (spec step 225), on top of the plans (src/lib/student-loans.ts):
 // PSLF counted month by month with the employer certification date, the income-driven
@@ -26,9 +27,6 @@ import {
 // sense. A federal loan is never suggested for refinancing without saying what's lost.
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export class StudentDatesError extends Error {}
 

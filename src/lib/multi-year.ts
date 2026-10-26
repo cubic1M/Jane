@@ -25,6 +25,7 @@ import {
   type Plan,
   type YearTax,
 } from "@/planning/multi-year";
+import { isoDay as iso } from "@/lib/dates";
 
 // Tax moves over several years (spec step 220), loaded from the person's own plan: the
 // year's estimate (step 120), the pay and the retirement accounts Jane sees, what they told
@@ -36,8 +37,6 @@ import {
 type Options = { client?: PrismaClient; now?: Date };
 
 export class MultiYearError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // Plaid subtypes of accounts taxed when money comes out (employer plans and traditional
 // IRAs); Roth accounts aren't in it.

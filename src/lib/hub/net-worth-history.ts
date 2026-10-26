@@ -3,13 +3,12 @@ import { dailyNetWorth, type SeriesPoint } from "@/insights/net-worth-series";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { isoDay as day } from "@/lib/dates";
 
 // The home hub's net worth chart (docs/design/home-hub.md): net worth every day from the
 // person's first day with Jane (their first account link, or their first balance if that's
 // earlier, as a sample person's year of demo-bank balances is) to today. It ends at the hub's
 // own headline figure, which the caller passes in, so the two never disagree.
-
-const day = (d: Date) => d.toISOString().slice(0, 10);
 
 export async function netWorthHistory(
   userId: string,

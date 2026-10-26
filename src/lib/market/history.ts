@@ -2,6 +2,7 @@ import { PRACTICE_ETFS, PRACTICE_UNIVERSE, strategyTickers } from "@/config/port
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import type { Bar, MarketData } from "./types";
+import { isoDay as day } from "@/lib/dates";
 
 // The one-time history load (spec step 289, Phase AW): daily closes for every practice ticker
 // pulled from the market data and stored with their source and date range, so backtests run on
@@ -14,7 +15,6 @@ type Options = { client?: PrismaClient; now?: Date };
 // About ten years of daily history: enough for the 2020 shock, the 2022 slide and the recovery.
 export const HISTORY_START = "2016-01-04";
 
-const day = (d: Date) => d.toISOString().slice(0, 10);
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const nextDay = (iso: string) => day(new Date(dateOf(iso).getTime() + 86_400_000));
 

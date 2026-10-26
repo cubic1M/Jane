@@ -14,6 +14,7 @@ import {
 } from "@/config/price-rises";
 import { SUBSCRIPTION_CATEGORIES, SUBSCRIPTION_MERCHANTS } from "@/config/detection";
 import { confidenceOf } from "@/profile/confidence";
+import { DAY_MS } from "@/lib/dates";
 
 // Price rises seen before they land (spec step 243). Pure: the person's charges in, the
 // introductory prices about to end and the yearly plans about to renew out, each with its date,
@@ -45,7 +46,6 @@ export type PriceRise = {
   confidence: { percent: number; reason: string };
 };
 
-const DAY_MS = 86_400_000;
 const dayOf = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
 const days = (from: string, to: string) => Math.round((dayOf(to) - dayOf(from)) / DAY_MS);
 const plusMonths = (date: string, months: number) => {

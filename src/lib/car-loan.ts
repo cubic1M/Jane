@@ -26,6 +26,7 @@ import {
   type RateChange,
   type Refund,
 } from "@/planning/car-loan";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // The car loan you already have (spec step 245). Dealer add-ons financed into the loan (GAP, an
 // extended warranty, a service contract) are found in the payments and asked about once; for
@@ -37,8 +38,6 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook; refinance?: Refinance };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const BAND_ORDER = ["excellent", "good", "fair"] as const;
 
 export class CarLoanError extends Error {}

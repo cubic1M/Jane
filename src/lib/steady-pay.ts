@@ -12,6 +12,7 @@ import { scheduleTransfer, TransferError } from "@/lib/money-movement/transfers"
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { steadyPlan, type SteadyPlan } from "@/planning/steady-pay";
+import { isoDay as iso } from "@/lib/dates";
 
 // A steady paycheck from uneven income (spec step 240). For freelancers and commission
 // earners (contracting or gig deposits, or the person saying so): each deposit has its tax
@@ -27,7 +28,6 @@ type Options = {
   input?: DetectionInput;
 };
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const monthOf = (d: Date | string) => (typeof d === "string" ? d : iso(d)).slice(0, 7);
 
 export type SteadyView = {

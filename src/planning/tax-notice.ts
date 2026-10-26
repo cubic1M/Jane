@@ -6,6 +6,7 @@ import {
   type NoticeKind,
 } from "@/config/tax-notices";
 import { parseMoneyToCents } from "@/lib/money";
+import { addDays } from "@/lib/dates";
 
 // A tax notice from the IRS or the state (spec step 217). Pure.
 // - The reading rules: what Jane read off a notice, checked before the person sees it.
@@ -27,8 +28,6 @@ export type CheckedNotice = {
 };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const addDays = (date: string, days: number) =>
-  new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 export function checkNotice(
   given: Fields,

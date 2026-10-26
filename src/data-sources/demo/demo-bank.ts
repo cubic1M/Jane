@@ -2,6 +2,7 @@ import type { AccountBase, LiabilitiesObject, Transaction } from "plaid";
 import { isPersonSeed, personAccounts, personLiabilities, personTransactions } from "./demo-people";
 import { monthsAfter, monthsToPayOff, mortgagePiDollars } from "./demo-loans";
 import { PFC_TAXONOMY, type PfcDetailed, type PfcPrimary } from "@/categorize/taxonomy";
+import { DAY_MS } from "@/lib/dates";
 
 // A fake bank (spec step 75) that stands in for Plaid until there are keys. It produces
 // Plaid-shaped accounts, transactions and liabilities, so everything after the sync runs
@@ -27,7 +28,6 @@ export type DemoSeed = {
   login?: string;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 export const addDays = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 

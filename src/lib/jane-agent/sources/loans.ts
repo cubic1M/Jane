@@ -4,6 +4,7 @@ import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import type { Candidate, MessageAction } from "../types";
 import type { MessageSource } from "./source";
+import { DAY_MS } from "@/lib/dates";
 
 // Loan applications (spec step 112): Jane follows each one on its own
 // (src/lib/loan-applications.ts refreshLoanApplications) and says how it's going: an
@@ -11,7 +12,6 @@ import type { MessageSource } from "./source";
 // funding it, the old loan reaching zero, and an old loan that still shows a balance well
 // after funding. Each once.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const open = (id: string): MessageAction => ({
   id: "open",
   label: "See the application",

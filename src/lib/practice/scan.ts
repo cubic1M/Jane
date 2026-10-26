@@ -26,6 +26,7 @@ import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { scanPreferences } from "./opportunity-prefs";
 import { practiceProfileOf } from "./preferences";
+import { DAY_MS } from "@/lib/dates";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
 // Cron (/api/cron/practice-scan). For each portfolio that isn't paused: the monthly practice
@@ -60,7 +61,6 @@ export type ScanOutcome = {
 export type ScanResult =
   { scanned: false; why: "no_portfolio" | "paused" } | { scanned: true; flags: ScanOutcome[] };
 
-const DAY_MS = 86_400_000;
 const daysBefore = (iso: string, days: number) =>
   new Date(Date.parse(`${iso}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
 

@@ -24,6 +24,7 @@ import { payoffOrder } from "@/planning/debt";
 import { paycheckPlan, type PlannedMove } from "@/planning/paycheck-plan";
 import { moneyPartnerFor, type MoneyMovementPartner } from "./partner";
 import { cancelTransfer, scheduleTransfer, TransferError } from "./transfers";
+import { isoDay as iso } from "@/lib/dates";
 
 // Money that moves itself (spec step 144). When a paycheck lands, Jane works out its plan
 // (src/planning/paycheck-plan.ts) and, through the money-movement partner, moves each part
@@ -49,7 +50,6 @@ export type PaycheckPlanView = {
   kept: { billsCents: number; bufferCents: number; investingCents: number } | null;
 };
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const movesOf = (value: Prisma.JsonValue): PlanMove[] =>
   Array.isArray(value) ? (value as unknown as PlanMove[]) : [];
 

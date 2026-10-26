@@ -29,6 +29,7 @@ import {
 } from "@/planning/home-buying";
 import { compareCarOffers, type ScoredCarOffer } from "@/planning/car";
 import { formatCents } from "@/lib/money";
+import { isoDay } from "@/lib/dates";
 
 // Buying a home (spec step 179), from saving to closing. From the person's own income,
 // debt payments, savings and monthly cash flow: the most they can afford under the usual
@@ -39,7 +40,6 @@ import { formatCents } from "@/lib/money";
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput; book?: DebtBook };
 
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 const MONTHS = 3;
 
 export class HomeBuyingError extends Error {}

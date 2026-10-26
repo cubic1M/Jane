@@ -23,6 +23,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { readPeople, type Person } from "./family-rules";
 import { CoverageError, fieldText, parseCoverage, readCoverage, type Coverage } from "./coverage";
+import { isoDay as day } from "@/lib/dates";
 
 // The policies on the person's insurance profile (spec step 102): typed on /insurance,
 // confirmed from their policy documents (spec steps 68 and 151), and from step 99 found from payments.
@@ -72,7 +73,6 @@ export const POLICY_SELECT = {
   covered: true,
 } as const;
 
-const day = (date: Date) => date.toISOString().slice(0, 10);
 const oneOf = <T extends string>(list: readonly T[], value: string, fallback: T): T =>
   (list as readonly string[]).includes(value) ? (value as T) : fallback;
 

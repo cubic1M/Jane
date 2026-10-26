@@ -15,6 +15,7 @@ import {
   stepsFor,
   type CaseView,
 } from "@/planning/tax-identity";
+import { isoDay as iso } from "@/lib/dates";
 
 // A protected tax identity (spec step 218): the January IP PIN reminder, and, on a sign of
 // tax identity theft, a case with its steps in order, tracked to done. Jane never contacts
@@ -23,8 +24,6 @@ import {
 type Options = { client?: PrismaClient; now?: Date };
 
 export class IdentityError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type IdentityView = {
   year: number;

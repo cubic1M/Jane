@@ -5,6 +5,7 @@ import type { BnplPlan } from "./bnpl";
 import { monthlyInterest } from "@/planning/debt";
 import { mortgagePi, mortgageTermYears } from "@/planning/home-equity";
 import { netWorth } from "./net-worth";
+import { DAY_MS } from "@/lib/dates";
 
 // Every debt in one place (spec step 109): loans and cards from the bank (Plaid
 // Liabilities, or the demo bank's Plaid-shaped details), buy now, pay later plans found
@@ -108,7 +109,6 @@ export type DebtBook = {
   missingRate: Debt[];
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const iso = (date: Date | null | undefined) => date?.toISOString().slice(0, 10) ?? null;
 
 const KIND_OF: Record<string, DebtKind> = {

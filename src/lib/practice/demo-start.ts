@@ -20,6 +20,7 @@ import { startPractice } from "./portfolio";
 import { questionnaireLevel, savePreferences } from "./preferences";
 import { runPracticeDay } from "./scan";
 import { postThemeAlertsSafely } from "./theme-alerts";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // A sample person's practice portfolio, started by Jane at their first scan (Phase AW, Stage A).
 // For a Try Jane visitor the bot, its strategy and its ideas are there from the first screen,
@@ -35,8 +36,6 @@ import { postThemeAlertsSafely } from "./theme-alerts";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 // The practice runs' time of day: after the US close, as the daily cron.
 const closeOf = (day: string) => new Date(`${day}T21:30:00Z`);
 

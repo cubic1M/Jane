@@ -12,6 +12,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import type { Watch } from "@/detectors/contract";
 import { addDays } from "@/detection/units";
 import { formatCents } from "@/lib/money";
+import { DAY_MS } from "@/lib/dates";
 
 // Whether a suggestion the person acted on shows in their later transactions (the verified
 // savings record). Pure: the watch the detector left, the day the person acted, today, what
@@ -37,7 +38,6 @@ export type Verified = {
 export type Check =
   { status: "waiting" } | Verified | { status: "not_seen"; evidence: string[]; proof: string };
 
-const DAY_MS = 86_400_000;
 const daysBetween = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / DAY_MS;
 const keyOf = (description: string) =>
   normalizeMerchant(description)?.key ?? description.trim().toLowerCase();

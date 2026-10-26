@@ -26,6 +26,7 @@ import {
   type Step,
 } from "@/planning/rollover";
 import { profileOf } from "./profile";
+import { isoDay as iso } from "@/lib/dates";
 
 // Old accounts brought home (spec step 211), for its page, Jane's questions and its
 // buttons. Past employers come from payroll history and the person's own answers (a
@@ -36,8 +37,6 @@ import { profileOf } from "./profile";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class OldAccountsError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // Past employers from payroll history: a stand-in for the original demo bank's person. The sample
 // people's written lives (src/config/people.ts) have no past employer to ask about; their old

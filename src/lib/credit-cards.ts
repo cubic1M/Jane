@@ -22,6 +22,7 @@ import {
   type Wallet,
   type YearSpend,
 } from "@/planning/credit-cards";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // The right card for each purchase (spec step 174). Jane works out, from the person's own
 // year of spending, what each of their cards earns with its fee taken off, which card to
@@ -31,9 +32,6 @@ import {
 // advice; nothing is applied for without a tap.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export class CreditCardError extends Error {}
 

@@ -17,6 +17,7 @@ import { textPdf } from "./pdf";
 import { POLICY_SELECT, toPolicy, yearlyPremium, type Policy } from "./policies";
 import { startDateFor } from "./quotes";
 import { shopById } from "./shop";
+import { isoDay as day } from "@/lib/dates";
 
 // One-tap switch (spec step 105), on step 77's machinery: after the person's Yes (spec step
 // 104), Jane's agent does the rest by itself.
@@ -37,7 +38,6 @@ type Options = {
 };
 type Step = Required<Pick<Options, "client" | "now" | "notify">>;
 
-const day = (date: Date) => date.toISOString().slice(0, 10);
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const dateWords = (iso: string) =>
   dateOf(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });

@@ -8,12 +8,12 @@ import {
 } from "@/config/credit-building";
 import { UTILISATION_GOOD, UTILISATION_HIGH } from "@/config/debt";
 import type { CreditChange, CreditRequest } from "@/lib/credit/partner";
+import { DAY_MS } from "@/lib/dates";
 
 // Building credit (spec step 175). Pure: when a card's next statement closes and what to
 // pay before it, the on-time streak, whether a file is thin, and the changes the score
 // simulator tries.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const dayNumber = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / DAY_MS;
 const iso = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
 export const addDays = (day: string, days: number) => iso(dayNumber(day) + days);

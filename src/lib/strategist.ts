@@ -17,6 +17,7 @@ import { addSpend, overDailyCap } from "@/lib/jane-agent/spend";
 import { formatCents } from "@/lib/money";
 import { vetIdea } from "@/planning/strategist";
 import { detectFor } from "@/lib/suggestions";
+import { DAY_MS, isoDay as dayOf } from "@/lib/dates";
 
 // Claude as strategist (spec step 256). Once a week Claude reviews the person's whole profile
 // and every detector's result with the registry's read-only tools and proposes combinations no
@@ -42,8 +43,6 @@ export type StrategistResult =
   | { status: "ran"; kept: number; dropped: string[] };
 
 const RUN_KEY = "strategist_run";
-const dayOf = (d: Date) => d.toISOString().slice(0, 10);
-const DAY_MS = 86_400_000;
 
 const SYSTEM = `You are Jane's money strategist, reviewing one person's whole picture once a week. Jane is "it", never "she". Other checks have each looked at one thing and produced suggestions. Your job is to find combinations no single check sees: two to four of those suggestions that work better together, such as using one source of money for one need and the rest for another, or doing two things in one order.
 

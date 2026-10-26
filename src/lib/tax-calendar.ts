@@ -27,6 +27,7 @@ import {
   MONTH_NAMES,
   type CalendarPlan,
 } from "@/planning/tax-calendar";
+import { isoDay as iso } from "@/lib/dates";
 
 // The tax year that runs itself (spec step 223). A calendar of what Jane does each month for
 // taxes, on its own within the "taxes" sector's level and caps, or by asking for a tap:
@@ -38,8 +39,6 @@ import {
 type Options = { client?: PrismaClient; now?: Date };
 
 export class TaxCalendarError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type ItemStatus = "done" | "tap" | "waiting" | "nothing";
 

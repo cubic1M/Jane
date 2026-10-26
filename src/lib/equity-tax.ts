@@ -17,6 +17,7 @@ import { totals } from "@/planning/crypto-tax";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { assumedRsuGap, rsuVest, worthSettingAside, type RsuResult } from "@/planning/equity-tax";
 import { estimateTaxes } from "@/planning/tax-estimate";
+import { isoDay as iso } from "@/lib/dates";
 
 // Crypto and equity pay, taxed right (spec step 219), for its page, the chat and Claude: the
 // crypto gains by lot, ESPP sales that lost their special treatment, ISO exercises with the
@@ -26,8 +27,6 @@ import { estimateTaxes } from "@/planning/tax-estimate";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class EquityTaxError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type EquityTaxView = {
   year: number;

@@ -20,6 +20,7 @@ import {
 } from "@/planning/tax-document-check";
 import type { ExpectedForm } from "@/planning/tax-documents";
 import { DIVIDENDS } from "@/planning/tax-income";
+import { addDays, isoDay as iso } from "@/lib/dates";
 
 // Tax forms that collect themselves (spec step 166). From late January Jane asks the
 // document partner (the demo stand-in for now) once a day for each expected form past its
@@ -31,11 +32,6 @@ import { DIVIDENDS } from "@/planning/tax-income";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class TaxDocumentError extends Error {}
-
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-const addDays = (date: string, days: number) =>
-  iso(new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS));
 
 export type Decision = "right" | "ask";
 

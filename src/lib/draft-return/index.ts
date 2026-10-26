@@ -22,6 +22,7 @@ import {
   type Known,
 } from "@/planning/draft-return";
 import { readDraft } from "./read";
+import { isoDay as iso } from "@/lib/dates";
 
 // The return, checked before you file (spec step 272). A draft (a PDF from tax software or an
 // accountant) uploaded to Documents as "Draft tax return" is read (by Claude with a key; for
@@ -82,8 +83,6 @@ function toView(row: {
     findings: Array.isArray(row.findings) ? (row.findings as DraftFinding[]) : [],
   };
 }
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // What Jane knows for a tax year: its estimate, the forms it collected (only usable ones), and
 // the tags for tuition and childcare.

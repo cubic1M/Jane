@@ -12,11 +12,11 @@ import { logAudit } from "@/lib/audit";
 import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
+import { DAY_MS } from "@/lib/dates";
 
 // The spec's success metrics, for /admin/metrics. computeMetrics is pure (rows in,
 // numbers out) so each definition is tested; loadMetrics reads the rows.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 // 30-day retention: did a linked user come back in days 23 to 30 after linking?
 const RETENTION_FROM_DAY = 23;
 const RETENTION_TO_DAY = 30;

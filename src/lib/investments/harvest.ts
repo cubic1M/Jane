@@ -6,6 +6,7 @@ import { brokeragePartner } from "@/lib/brokerage/partner";
 import { db as defaultClient } from "@/lib/db";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { formatCents } from "@/lib/money";
+import { isoDay as iso } from "@/lib/dates";
 
 // Tax-loss harvesting (spec step 124's chances, put to use by steps 164 and 216): sell a
 // holding that is down and buy a similar fund that isn't the same one, so the loss counts
@@ -14,8 +15,6 @@ import { formatCents } from "@/lib/money";
 // their own tap (the yearly review, step 216).
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type HarvestCandidate = {
   accountId: string;

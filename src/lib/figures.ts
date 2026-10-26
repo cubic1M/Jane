@@ -33,6 +33,7 @@ import { healthFor, healthInput } from "@/lib/health-score";
 import { homeSummary } from "@/lib/home";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import { formatCents } from "@/lib/money";
+import { isoDay as iso } from "@/lib/dates";
 
 // Every figure explained (spec step 239): "how did you get that?" for a headline figure, from
 // the same loaders as the pages that show it: the rows it adds up, the transactions behind it,
@@ -62,7 +63,6 @@ export type Working = {
   corrections: readonly ("category" | "income")[];
 };
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const monthName = (m: string) =>
   new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-US", {
     month: "long",

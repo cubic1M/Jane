@@ -13,11 +13,10 @@ import {
 import { accountLabels } from "@/lib/account-labels";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { isoDay as day } from "@/lib/dates";
 
 // The net worth chart's events (src/insights/net-worth-events.ts), from the person's own
 // transactions, balances and what Jane did, since `from` (the chart's first day).
-
-const day = (d: Date) => d.toISOString().slice(0, 10);
 
 export async function netWorthEvents(
   userId: string,

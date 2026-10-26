@@ -12,6 +12,7 @@ import { listLifeEvents } from "@/lib/life-events";
 import { formatCents } from "@/lib/money";
 import { taxYearFrom } from "@/planning/tax-pack";
 import { plural, type HubGroup, type HubTileData } from "./tile";
+import { DAY_MS } from "@/lib/dates";
 
 // The Ahead hub (spec step 80): the planning pages, each tile with a live line where
 // there's data.
@@ -30,7 +31,6 @@ export type AheadData = {
   dates?: Pick<Deadline, "key" | "title" | "date" | "amountCents" | "href" | "detail">[];
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const monthName = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
     month: "long",

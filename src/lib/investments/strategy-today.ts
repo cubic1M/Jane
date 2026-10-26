@@ -13,6 +13,7 @@ import { alignUniverse } from "@/planning/strategies/engine";
 import { followToday, type FollowToday } from "@/planning/strategies/follow";
 import { keyOf } from "@/planning/strategies/select";
 import { latestStrategies, type ChosenStrategy } from "./strategy-eval";
+import { DAY_MS } from "@/lib/dates";
 
 // The strategy a level's practice portfolio follows today (Phase AW, Stage A): the daily
 // evaluation's choice for the level (./strategy-eval.ts), or before its first run the committed
@@ -27,7 +28,6 @@ export type StrategyToday = {
   source: "evaluation" | "research" | "person";
 } & FollowToday;
 
-const DAY_MS = 86_400_000;
 const kept = new Map<string, StrategyToday>();
 
 // `pick`: a strategy the person chose in their settings (STRATEGY_CHOICES) instead of the

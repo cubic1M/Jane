@@ -6,6 +6,7 @@ import {
   RISK_SIGNALS,
   type RiskKind,
 } from "@/config/insurance";
+import { DAY_MS as DAY } from "@/lib/dates";
 
 // Risks seen in how the person lives (spec step 197): signals in their transactions, each
 // a rule. Plaid's sign: money in is negative. Pure.
@@ -28,7 +29,6 @@ export type Signal = {
   transactionId: string;
 };
 
-const DAY = 86_400_000;
 const daysBefore = (asOf: string, days: number) =>
   new Date(Date.parse(`${asOf}T00:00:00Z`) - days * DAY).toISOString().slice(0, 10);
 

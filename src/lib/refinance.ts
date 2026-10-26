@@ -21,6 +21,7 @@ import type {
   TransferOffer,
 } from "@/lib/lenders/partner";
 import { compareRefinance, refinanceable, type RefinanceComparison } from "@/planning/refinance";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Refinance offers (spec step 111). Once a month Jane asks the lender partner, by
 // itself, what the person prequalifies for on each loan and card (a soft check), and
@@ -29,9 +30,6 @@ import { compareRefinance, refinanceable, type RefinanceComparison } from "@/pla
 // labelled as demo advice; nothing is ever applied for without a tap (spec step 112).
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export type TransferQuote = { debtKey: string; amountCents: number; offers: TransferOffer[] };
 

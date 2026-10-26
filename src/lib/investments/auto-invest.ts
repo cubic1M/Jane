@@ -26,6 +26,7 @@ import { profileSummary } from "@/planning/investor-profile";
 import { splitNewMoney } from "@/planning/goal-buckets";
 import { loadGoalBuckets } from "./goal-buckets";
 import { profileOf } from "./profile";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 const dollars = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -42,8 +43,6 @@ export class AutoInvestError extends Error {}
 
 // Plaid's detailed categories for a paycheck.
 const SALARY = ["INCOME_SALARY", "INCOME_WAGES"];
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const isEmployerPlan = (subtype: string | null) =>
   EMPLOYER_PLAN_SUBTYPES.includes((subtype ?? "").toLowerCase());
 

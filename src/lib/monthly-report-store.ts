@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import type { MonthlyReport } from "@/planning/monthly-report";
+import { DAY_MS } from "@/lib/dates";
 
 // The monthly money reports kept (spec step 148), read by the chat, the page and Claude.
 // Made by src/lib/monthly-report.ts.
@@ -27,8 +28,6 @@ export async function storedReport(
     row && { id: row.id, month: row.month, report: reportOf(row.figures), createdAt: row.createdAt }
   );
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The newest report, while it's new (made in the last MONTHLY_REPORT_DAYS): for the chat.
 export async function recentReport(

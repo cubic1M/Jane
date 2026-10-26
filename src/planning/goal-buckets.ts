@@ -6,6 +6,7 @@ import {
   TARGET_MIXES,
   type RiskLevel,
 } from "@/config/investing";
+import { DAY_MS } from "@/lib/dates";
 
 // Every goal invested for its timeline (spec step 157, demo advice). Pure. Each goal gets a
 // bucket whose mix follows the glide path for the years left (src/config/investing.ts):
@@ -33,7 +34,6 @@ export type Bucket = {
   why: string;
 };
 
-const DAY_MS = 86_400_000;
 export const yearsUntil = (asOf: string, date: string) =>
   Math.max(
     0,

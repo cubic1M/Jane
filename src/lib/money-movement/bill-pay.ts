@@ -17,6 +17,7 @@ import {
 } from "@/planning/bill-pay";
 import { moneyPartnerFor, type MoneyMovementPartner } from "./partner";
 import { scheduleTransfer, TransferError } from "./transfers";
+import { isoDay as day } from "@/lib/dates";
 
 // Bills paid on time (spec step 145), through the money-movement partner (the stand-in for
 // demo-bank people; nobody else yet). For each card or loan due in the next few weeks that
@@ -53,7 +54,6 @@ export type BillPayView = {
   items: BillPayItem[];
 };
 
-const day = (now: Date) => now.toISOString().slice(0, 10);
 export const billKey = (b: Pick<DueBill, "accountId" | "dueOn">) =>
   `bill:${b.accountId}:${b.dueOn}`;
 

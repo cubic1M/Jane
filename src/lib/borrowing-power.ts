@@ -36,6 +36,7 @@ import {
 } from "@/planning/borrowing-power";
 import type { FitPerson } from "@/planning/fit";
 import { fitPersonFrom } from "@/planning/fit-person";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // What you could borrow (spec step 250), for one person: a mortgage, a car loan, a personal
 // loan and a card, each with the likely amount and rate from the lender partner's soft quotes
@@ -46,8 +47,6 @@ import { fitPersonFrom } from "@/planning/fit-person";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 86_400_000;
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const KINDS: readonly LoanKind[] = ["mortgage", "auto", "personal"];
 
 export type Figure = LoanFigure | CardFigure;

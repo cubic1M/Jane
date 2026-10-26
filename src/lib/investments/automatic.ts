@@ -24,6 +24,7 @@ import { formatCents } from "@/lib/money";
 import { loadInvestments } from "./holdings";
 import { profileOf } from "./profile";
 import { loadRebalance, placeRebalance } from "./rebalance";
+import { isoDay as iso } from "@/lib/dates";
 
 // Fully automatic investing (spec step 164), run nightly. Within the person's caps at the
 // investing sector's "Everything allowed", Jane rebalances, invests new cash and harvests
@@ -33,7 +34,6 @@ import { loadRebalance, placeRebalance } from "./rebalance";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const money = formatCents;
 
 export type AutomaticResult = { did: string[]; asked: string[] };

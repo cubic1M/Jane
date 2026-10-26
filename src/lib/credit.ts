@@ -11,6 +11,7 @@ import type { DebtBook } from "@/insights/debts";
 import { formatCents } from "@/lib/money";
 import { creditBandOf, creditFactors, utilisation, type Utilisation } from "@/planning/credit";
 import { dayLabel } from "@/lib/day-label";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // The credit score (spec step 116). Once a month Jane asks the credit partner for the
 // person's score with a soft pull (it never affects the score), and explains what's
@@ -19,9 +20,6 @@ import { dayLabel } from "@/lib/day-label";
 // nothing is pulled for a real account.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export async function creditPartnerFor(
   userId: string,

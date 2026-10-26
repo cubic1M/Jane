@@ -9,6 +9,7 @@ import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxProfile } from "@/lib/tax-profile";
+import { isoDay as iso } from "@/lib/dates";
 
 // Filing (spec step 126): Jane hands the year over to the filing partner, the person reviews
 // it and signs, and Jane tracks it. Nothing is submitted without the person's review and
@@ -31,8 +32,6 @@ export type ReturnView = {
   submittedAt: Date | null;
   acceptedAt: Date | null;
 };
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // Filing season for a tax year: from late January to the October extension deadline.
 export function inFilingSeason(year: number, today: string): boolean {

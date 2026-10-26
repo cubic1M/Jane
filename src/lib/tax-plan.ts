@@ -12,6 +12,7 @@ import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxSavings, type TaxSavingsView } from "@/lib/tax-savings";
 import { taxPlan, type PlanMove } from "@/planning/tax-plan";
+import { isoDay as iso } from "@/lib/dates";
 
 // The year-round tax plan (spec step 167), loaded from what Jane knows about the tax year.
 // Each move that's open now is brought up once: at the levels that let Jane act it puts its
@@ -22,8 +23,6 @@ import { taxPlan, type PlanMove } from "@/planning/tax-plan";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class TaxPlanError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type PlanMoveView = PlanMove & { handled: "added" | "no" | null };
 

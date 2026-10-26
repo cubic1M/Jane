@@ -44,6 +44,7 @@ import {
   type Prices,
 } from "./practice-autopilot";
 import { apply, LedgerError, type LedgerState } from "./practice-ledger";
+import { DAY_MS } from "@/lib/dates";
 
 // The daily scan of a practice portfolio (spec step 292, Phase AW, Stage A). Pure: from what the
 // ledger holds, the market data and the trades so far, four kinds of flag, each with what Jane
@@ -149,7 +150,6 @@ const capsOf = (input: ScanInput, kind: ScanKind) => (input.caps ?? SCAN_CAPS)[k
 export const bandOf = (input: Pick<ScanInput, "limits">) =>
   (input.limits ?? AUTOPILOT_LIMITS).rebalanceBand;
 
-const DAY_MS = 86_400_000;
 // The date this many days before (YYYY-MM-DD), remembered: the rule replay asks for the same
 // few dates thousands of times.
 const before = new Map<string, string>();

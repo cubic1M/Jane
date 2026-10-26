@@ -9,11 +9,10 @@ import { SNAPSHOT_RETENTION_DAYS } from "@/config/net-worth";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { DAY_MS as DAY } from "@/lib/dates";
 
 // The daily cleanup, and the privacy policy's retention section, both from the periods
 // in src/config/retention.ts.
-
-const DAY = 24 * 60 * 60 * 1000;
 
 // Deletes everything past its period. Returns how many of each were removed.
 export async function runRetention({

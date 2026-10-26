@@ -5,6 +5,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { alwaysSaid, labelOf, learnAttention, type Attention } from "./attention";
 import { BUNDLED_UNTIL } from "./messages";
+import { DAY_MS } from "@/lib/dates";
 
 // Asking less (spec step 147): what Jane learned, from its own messages of the last couple
 // of months, and bringing a stopped kind back (from Settings or the chat), kept in
@@ -12,7 +13,6 @@ import { BUNDLED_UNTIL } from "./messages";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const RESUME = "resume:";
 
 export async function loadAttention(

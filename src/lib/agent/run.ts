@@ -41,6 +41,7 @@ import { confirmSwitches, startSwitch, switchOf } from "./switch";
 import { insuranceSwitchOf } from "@/lib/insurance/accept";
 import { confirmInsuranceSwitches, startInsuranceSwitch } from "@/lib/insurance/switch";
 import { isCallAction, startCall } from "@/lib/voice/calls";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
 // worked by the agent instead of the team: it emails the company from Jane's address,
@@ -55,7 +56,6 @@ type Options = {
   notify?: typeof sendStatusEmail;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 // Statuses the agent may work in: approved and not finished.
 const WORKABLE: readonly ActionStatus[] = ["queued", "in_progress", "waiting_on_user"];
 
@@ -803,8 +803,6 @@ export async function runQueuedFor(
     for (const job of queued) await runJob(job.id, { client });
   }
 }
-
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 // When a missed charge confirms a cancellation: the next charge's due date (from the last
 // charge and how often it charged) plus a few days' grace.

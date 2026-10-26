@@ -1,4 +1,5 @@
 import { ITEM_RETENTION, RETENTION, RETENTION_REMIND_DAYS } from "@/config/records";
+import { addDays } from "@/lib/dates";
 
 // Audit-ready records (spec step 171). Pure. Every deduction and credit Jane counts is an
 // item with the transactions, receipts, forms and answers that support it. An item with no
@@ -80,9 +81,6 @@ export type Retention = {
   remindOn: string;
   status: "keep" | "soon" | "can_go";
 };
-
-const addDays = (date: string, days: number) =>
-  new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 // When a tax year's records can go: April 15 of the year after, plus the years.
 export function retentionFor(year: number, key: keyof typeof RETENTION, today: string): Retention {

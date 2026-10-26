@@ -14,6 +14,7 @@ import {
   reconcile,
   type Tx,
 } from "@/planning/books";
+import { addDays, isoDay as iso } from "@/lib/dates";
 
 // Books that balance (spec step 238): every day Jane checks that balances agree with their
 // transactions, finds the same account linked twice (and merges it, only when both copies are
@@ -23,9 +24,6 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-const addDays = (date: string, days: number) =>
-  new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 const asTx = (t: {
   id: string;
   accountId: string;

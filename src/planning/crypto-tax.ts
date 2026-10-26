@@ -1,4 +1,5 @@
 import { CRYPTO_TAX } from "@/config/equity-tax";
+import { DAY_MS } from "@/lib/dates";
 
 // Crypto gains and losses (spec step 219). Pure. Crypto is property: a sale is a gain or loss
 // on the lots sold, first in, first out (a lot is one buy: when, how many coins, what it
@@ -28,7 +29,6 @@ export type Sale = {
   longTermCents: number;
 };
 
-const DAY_MS = 86_400_000;
 const days = (a: string, b: string) =>
   (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS;
 const isLong = (bought: string | null, sold: string) =>

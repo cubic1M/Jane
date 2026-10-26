@@ -1,4 +1,5 @@
 import { ASSUMED, COSTLY_CYCLE_DAYS, type CostlyKind } from "@/config/costly-borrowing";
+import { addDays as addDaysIso } from "@/lib/dates";
 
 // Out of costly short-term borrowing (spec step 247). Pure: which payments are a payday loan, a
 // card cash advance, an overdraft or a pay advance app, what each kind cost over the year in
@@ -138,9 +139,6 @@ export function assumedLoans(repaid: readonly Tx[]): Loan[] {
     };
   });
 }
-
-const addDaysIso = (iso: string, days: number) =>
-  new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 export type KindSummary = {
   kind: CostlyKind;

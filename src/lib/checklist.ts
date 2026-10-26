@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { DAY_MS } from "@/lib/dates";
 
 // The checklist on Home for someone's first weeks. Each item ticks itself from what the
 // person has actually done (never from clicks on the checklist), and each fires a funnel
@@ -28,8 +29,6 @@ export type Checklist = {
 };
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const progressOf = (value: unknown): Record<string, string> =>
   value && typeof value === "object" && !Array.isArray(value)

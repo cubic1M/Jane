@@ -10,6 +10,7 @@ import { expectedSpend, expectedYearlyCost } from "./health";
 import { compareCover } from "./like-for-like";
 import { isQuotable, partnerFor, type InsurancePartner } from "./partner";
 import { POLICY_SELECT, nextRenewal, toPolicy, yearlyPremium, type Policy } from "./policies";
+import { isoDay as day } from "@/lib/dates";
 
 // Quotes for one of the person's policies (spec step 103): asked of the insurance partner
 // with the policy's own cover and deductible, compared like for like, and kept until the
@@ -123,8 +124,6 @@ export function toStoredQuote(r: QuoteRow): StoredQuote {
     expectedCostCents: r.expectedCostCents,
   };
 }
-
-const day = (date: Date) => date.toISOString().slice(0, 10);
 
 // When a new policy would start: the current one's next renewal, so there's no gap and no
 // cancellation fee; tomorrow when there's no date.

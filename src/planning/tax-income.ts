@@ -8,6 +8,7 @@ import {
 } from "@/config/tax";
 import type { PayStub } from "@/lib/payroll/types";
 import type { EstimateIncome } from "./tax-estimate";
+import { DAY_MS } from "@/lib/dates";
 
 // The year's income for the tax estimate (spec step 120): so far, from the person's
 // transactions and pay stubs, and projected to the end of the year at the same pace. Pure;
@@ -48,7 +49,6 @@ export type PayPicture = {
   asOf: string | null;
 };
 
-const DAY_MS = 86_400_000;
 const daysInYear = (year: number) => (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / DAY_MS;
 
 // How much of the year has gone, by today: 1 for a year that's over.

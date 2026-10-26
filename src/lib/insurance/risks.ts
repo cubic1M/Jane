@@ -11,6 +11,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadHousehold } from "./household";
 import { partnerFor, type InsurancePartner } from "./partner";
 import { detectSignals } from "./risk-signals";
+import { isoDay as day } from "@/lib/dates";
 
 // Risks seen in how they live (spec step 197). Rules read the transactions (risk-signals.ts);
 // each kind of signal becomes ONE question in the chat, asked once: "Are you driving for
@@ -38,8 +39,6 @@ const SELECT = {
   amountCents: true,
   seenOn: true,
 } as const;
-
-const day = (date: Date) => date.toISOString().slice(0, 10);
 
 function toRisk(row: Prisma.InsuranceRiskGetPayload<{ select: typeof SELECT }>): Risk {
   return {

@@ -1,6 +1,7 @@
 import { CHAT_SNAPSHOT_STORED_MINUTES } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Snapshot } from "./snapshot";
+import { isoDay as day } from "@/lib/dates";
 
 // Jane's snapshot of a person (everything the agenda, the whole-picture and priorities answers
 // and the chat's tools read), kept in the database (depth first): building it looks up every
@@ -74,7 +75,6 @@ export async function refreshSnapshot(userId: string, options: Options): Promise
 }
 
 const refreshing = new Set<string>();
-const day = (d: Date) => d.toISOString().slice(0, 10);
 
 // The saved snapshot, in one query. A copy from today that is old is still returned at once and
 // refreshed behind; with none saved, or one from another day, it is built here, once.

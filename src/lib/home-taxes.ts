@@ -12,6 +12,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { homeTaxes, type HomeTaxes } from "@/planning/home-taxes";
+import { isoDay as iso } from "@/lib/dates";
 
 // Homeowner taxes (spec step 170), loaded from the person's own accounts: the mortgage
 // (its 1098 when Jane collected one that checks out, step 166; else what the bank reports),
@@ -22,7 +23,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class HomeTaxesError extends Error {}
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const payeeOf = (t: { merchantName: string | null; description: string }) =>
   (t.merchantName ?? t.description).trim();
 const UNCAPPED = /\b(?:SOLAR|SUNRUN|SUNPOWER|SUNNOVA|TESLA ENERGY|POWERWALL|GEOTHERMAL)\b/i;

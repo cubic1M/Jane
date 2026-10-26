@@ -1,3 +1,4 @@
+import { DAY_MS } from "@/lib/dates";
 // How investments have done (spec step 156), counting money paid in and taken out properly.
 // Pure. Facts about the past only: these say what happened, never what will.
 //
@@ -13,7 +14,6 @@ export type DayValue = { day: string; valueCents: number };
 // next stretch on.
 export type Flow = { day: string; amountCents: number };
 
-const DAY_MS = 86_400_000;
 const years = (from: string, to: string) =>
   (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS / 365;
 

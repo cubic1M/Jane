@@ -11,6 +11,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { handOff, loadAction, merchantOf, note, setStatus, type LoadedAction } from "./run";
+import { isoDay } from "@/lib/dates";
 
 // Switching to the option the person picked (spec steps 76–77). Jane never signs anyone
 // up or moves money: the person signs up with the link, and Jane watches the account to
@@ -102,7 +103,6 @@ export async function startSwitch(
   return "waiting";
 }
 
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const keyOf = (text: string | null) => (text ? (normalizeMerchant(text)?.key ?? null) : null);
 const matches = (got: string | null, want: string | null) =>
   Boolean(want && got && (got === want || got.startsWith(`${want} `)));

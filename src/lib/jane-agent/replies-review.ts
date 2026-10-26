@@ -4,11 +4,11 @@ import { formatCents } from "@/lib/money";
 import type { TuneUpChange } from "@/planning/tune-up";
 import type { Snapshot } from "./snapshot";
 import type { Reply } from "./replies";
+import { DAY_MS } from "@/lib/dates";
 
 // The weekly review (spec step 101). Pure: the snapshot in, the words and buttons out. Also
 // the words for budget tune-ups and transfers counted toward goals.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const things = (n: number) => `${n} ${n === 1 ? "thing" : "things"}`;
 
 export function tuneUpLines(changes: readonly TuneUpChange[]): string {

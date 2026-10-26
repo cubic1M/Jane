@@ -2,12 +2,12 @@ import { formatCents } from "@/lib/money";
 import type { TimelineEntry } from "@/lib/timeline";
 import type { Reply } from "./replies";
 import { dateAndDays } from "./sources/source";
+import { DAY_MS } from "@/lib/dates";
 
 // "Why did you do that?" and "show me everything you did" (spec step 187), from the same
 // record as /jane: what Jane did, when, why, and the money involved.
 
 const SHOWN = 5;
-const DAY_MS = 86_400_000;
 
 function when(entry: TimelineEntry, asOf: string): string {
   const day = entry.at.toISOString().slice(0, 10);

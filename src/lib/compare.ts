@@ -15,6 +15,7 @@ import {
   type Comparison,
   type Current,
 } from "@/planning/compare";
+import { DAY_MS } from "@/lib/dates";
 
 // Loads the options Jane may compare and works out the comparison for a finding (spec
 // step 76). Only options the team reviewed are compared; the demo examples only for people
@@ -22,8 +23,6 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date };
 type CompareFor = Options & { userId: string };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function demoOptionsAllowed(): boolean {
   return process.env.DEMO_BANK === "1" || process.env.NODE_ENV !== "production";

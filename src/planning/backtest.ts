@@ -1,6 +1,7 @@
 import { FULL_YEAR_SLACK_DAYS, TRADING_DAYS_PER_YEAR } from "@/config/backtest";
 import type { PracticeClass } from "@/config/portfolios";
 import type { Bar } from "@/lib/market/types";
+import { DAY_MS } from "@/lib/dates";
 
 // A backtest of one model portfolio (spec step 295): buy the targets on the first day, take each
 // fund's yearly cost out a little every trading day, and go back to the targets on any day a
@@ -63,7 +64,6 @@ export type BacktestResult = {
 };
 
 const CLASSES: readonly PracticeClass[] = ["us_stocks", "intl_stocks", "bonds", "cash"];
-const DAY_MS = 86_400_000;
 const dayNumber = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / DAY_MS);
 
 // The days every fund has a close, with each fund's close that day.

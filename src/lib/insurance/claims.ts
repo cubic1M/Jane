@@ -12,6 +12,7 @@ import {
   type Claim,
   type ClaimStepState,
 } from "./claim-rules";
+import { addDays, isoDay as day } from "@/lib/dates";
 
 export * from "./claim-rules";
 
@@ -44,10 +45,6 @@ const SELECT = {
   carrierStatus: true,
   payoutCents: true,
 } as const;
-
-const day = (date: Date) => date.toISOString().slice(0, 10);
-const addDays = (iso: string, days: number) =>
-  day(new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86_400_000));
 
 function toClaim(row: Prisma.InsuranceClaimGetPayload<{ select: typeof SELECT }>): Claim {
   return {

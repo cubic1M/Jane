@@ -39,6 +39,7 @@ import {
 import { loadCash } from "./cash";
 import { loadRetirementAccounts, contributeToIra } from "./retirement-accounts";
 import { profileOf } from "./profile";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Sudden money (spec step 235, demo advice), for its page, Jane's question and its buttons.
 // A large deposit that isn't pay is asked about once; then a staged plan across every
@@ -49,9 +50,6 @@ import { profileOf } from "./profile";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class SuddenMoneyError extends Error {}
-
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type SuddenView = {
   id: string;

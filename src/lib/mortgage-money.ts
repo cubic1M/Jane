@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/money";
 import { loadFit, type FitView } from "@/lib/fit";
 import { compareMortgageMoney, type MortgageMoney } from "@/planning/mortgage-money";
 import { remainingMonths } from "@/planning/refinance";
+import { isoDay } from "@/lib/dates";
 
 // Recast, refinance or pay extra (spec step 246), for one person's mortgage: a lump sum or extra
 // monthly money used three ways (extra principal, a recast, a refinance) and invested instead,
@@ -21,8 +22,6 @@ import { remainingMonths } from "@/planning/refinance";
 // name the same lender and rate. Demo advice only.
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook; fit?: FitView };
-
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 export class MortgageMoneyError extends Error {}
 

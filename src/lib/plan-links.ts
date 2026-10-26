@@ -10,6 +10,7 @@ import { DecisionError, recordDecision } from "@/lib/decisions";
 import { appBase } from "@/lib/digest/links";
 import { planFor, type PlanItem } from "@/lib/plan";
 import { undoApproval } from "@/lib/standing-rules";
+import { DAY_MS } from "@/lib/dates";
 
 // One-tap approval links (spec step 60) for the weekly email and notifications. A link
 // opens a small page with one button, so email scanners that open links can't approve
@@ -18,7 +19,6 @@ import { undoApproval } from "@/lib/standing-rules";
 // for a short while.
 
 export const PLAN_LINK_DAYS = 7;
-const DAY_MS = 24 * 60 * 60 * 1000;
 const LINK_UNDO_HOURS = AGENT_HOLD_HOURS.link ?? 1;
 
 type Options = { client?: PrismaClient; now?: Date };

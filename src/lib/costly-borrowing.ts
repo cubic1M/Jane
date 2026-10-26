@@ -12,6 +12,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loanCost, summarize, type Costly } from "@/planning/costly-borrowing";
+import { DAY_MS } from "@/lib/dates";
 
 // Out of costly short-term borrowing (spec step 247), for one person: payday loans, card cash
 // advances, repeated overdrafts and pay advance apps found in the last year of payments, what
@@ -19,8 +20,6 @@ import { loanCost, summarize, type Costly } from "@/planning/costly-borrowing";
 // what they cost are facts from the payments; the way out is demo advice.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 86_400_000;
 
 export type CostlyBorrowing = Costly & {
   // Something found that costs enough to bring up.

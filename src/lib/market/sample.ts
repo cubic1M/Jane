@@ -1,5 +1,6 @@
 import { PRACTICE_ETFS } from "@/config/portfolios";
 import type { Bar, Filing, Headline, MarketData } from "./types";
+import { DAY_MS } from "@/lib/dates";
 
 // The sample market (spec step 289): synthetic daily prices and recorded headlines, the same
 // for the same date, with planted events (a 2022-style crash and recovery, a dip this autumn and
@@ -129,7 +130,6 @@ function unit(key: string): number {
 export const normal = (key: string) =>
   (unit(`${key}:a`) + unit(`${key}:b`) + unit(`${key}:c`) + unit(`${key}:d`) - 2) * Math.sqrt(3);
 
-const DAY_MS = 86_400_000;
 const dayNumber = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / DAY_MS);
 const isoOf = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
 const isWeekday = (n: number) => {

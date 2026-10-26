@@ -62,6 +62,7 @@ import {
   type ScanInput,
   type ScanTrade,
 } from "./practice-scan";
+import { DAY_MS } from "@/lib/dates";
 
 // More kinds of opportunity for the practice portfolio's daily scan (Phase AW, Stage A, after
 // step 292). Pure. The step 292 scan runs first; then, from the same ledger, prices and the
@@ -132,7 +133,6 @@ export const ADVICE_ONLY_KINDS: readonly OpportunityKind[] = [
   "max_drop_near",
 ];
 
-const DAY_MS = 86_400_000;
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 const LABEL: Record<PracticeClass, string> = {
   us_stocks: "US stocks",

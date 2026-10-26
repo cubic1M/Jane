@@ -2,13 +2,12 @@ import { PRACTICE_IDEA_DAYS, PRACTICE_TOPIC } from "@/config/practice-suggestion
 import { SCAN_LABELS, type ScanKind } from "@/config/practice-scan";
 import type { PracticeIdea } from "@/profile/build";
 import type { ScanFlag } from "./practice-scan";
+import { DAY_MS } from "@/lib/dates";
 
 // The practice ideas a replay leaves waiting (Phase AW, Stage A), as openPracticeIdeas
 // (src/lib/practice/ideas.ts) reads the live scan's back: the suggestions the replay kept (it
 // skips as the live scan does, notAskedYet), from the last PRACTICE_IDEA_DAYS days, newest
 // first. Pure: the detector harness gives them to the sample people.
-
-const DAY_MS = 86_400_000;
 
 export function ideasFrom(
   suggestions: readonly { date: string; flag: ScanFlag }[],
