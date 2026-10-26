@@ -25,7 +25,6 @@ import { loadAttention } from "./attention-load";
 import { chatNotifyPrefs, notifiesKind, type ChatNotifyPrefs } from "./notify-prefs";
 import { inQuietHours } from "./quiet-hours";
 import type { Trigger } from "./sources";
-import { createReplyLink } from "./reply-links";
 import { parseActions, parseRefs, type MessageAction } from "./types";
 
 // Jane's chat messages as notifications (spec step 85). When Jane's brain posts, the
@@ -312,17 +311,12 @@ export async function deliverChatNotifications(
   try {
     const messages: EmailMessage[] = [];
     for (const m of claimed) {
-      const buttons = [];
-      for (const a of notificationButtons(m, now)) {
-        buttons.push({
-          label: a.label,
-          url: await createReplyLink(userId, m.id, a.id, { client, now }),
-        });
-      }
+      // No one-tap answer buttons: their page (/chat/reply) was removed on 2026-10-26. The
+      // message opens in the chat, where its buttons are.
       messages.push({
         kind: m.kind,
         body: m.body,
-        buttons,
+        buttons: [],
         chatUrl: `${appBase()}/chat#${m.id}`,
       });
     }

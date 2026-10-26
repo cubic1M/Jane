@@ -97,7 +97,7 @@ describe("the taxes tree", () => {
       "life",
       "profile",
       "filing",
-      "topics",
+      // Every topic's page is hidden in the read-only beta (src/config/hidden-pages.ts).
     ]);
     // Without demo advice there are no savings to show.
     expect(taxesTree(input({ savings: null })).tree.branches.map((b) => b.id)).not.toContain(

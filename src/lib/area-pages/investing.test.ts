@@ -73,9 +73,8 @@ describe("the investing tree", () => {
       "practice",
       "strategies",
       "news",
-      "plan",
-      "kinds",
-      "costs",
+      // The plan, the kinds of accounts and costs and care open pages the read-only beta hides
+      // (src/config/hidden-pages.ts), so they aren't in the tree for now.
     ]);
     // Without demo advice there's no practice research: no strategies or news alerts.
     const real = investingTree(input({ practice: null })).tree.branches.map((b) => b.id);
@@ -108,8 +107,9 @@ describe("the investing tree", () => {
       ["Demo Brokerage ····0006", "$12k"],
       ["By type", undefined],
     ]);
-    expect(branch("plan").items[0]).toMatchObject({ status: "look", figure: "4 questions" });
-    expect(tree.sub).toBe("5 to look at");
+    // The investor profile's page is hidden in the read-only beta, so it isn't counted.
+    expect(branch("plan")).toBeUndefined();
+    expect(tree.sub).toBe("4 to look at");
   });
 
   it("puts a news theme's idea under the news alerts", () => {
@@ -165,7 +165,8 @@ describe("the investing tree", () => {
       { id: "ideas:b", label: "Old 401(k)", figure: "$900/yr" },
       { id: "ideas:a", label: "Idle cash", figure: "$100/yr" },
     ]);
-    expect(tree.sub).toBe("2 urgent · 4 to look at");
+    // The investor profile (its page hidden in the read-only beta) isn't one to look at.
+    expect(tree.sub).toBe("2 urgent · 3 to look at");
   });
 
   it("shows the money invested when nothing needs a look", () => {

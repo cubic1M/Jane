@@ -78,7 +78,7 @@ test("every kind of tap shows its change within 150 ms", async ({ context, page,
   const times: Record<string, number> = {};
 
   // A link to another page: the bar shows before the page arrives.
-  await ready(page, "/what-if");
+  await ready(page, "/tax-pack");
   const tabs = page.getByRole("navigation", { name: "Main" });
   times["link to another page"] = await tapTime(
     page,
@@ -87,19 +87,20 @@ test("every kind of tap shows its change within 150 ms", async ({ context, page,
   );
   await expect(page).toHaveURL("/insurance");
 
-  // A link to the same page with other search params (the audit's slowest links).
-  await ready(page, "/what-if");
+  // A link to the same page with other search params (the audit's slowest links): another
+  // year of the tax-time pack.
+  await ready(page, "/tax-pack");
   times["link to the same page"] = await tapTime(
     page,
-    page.locator('main a[href^="/what-if?s="]').first(),
+    page.locator('main a[href^="/tax-pack?year="]:not([aria-current])').first(),
     "[data-nav-pending]",
   );
-  await expect(page).toHaveURL(/\/what-if\?s=/);
+  await expect(page).toHaveURL(/\/tax-pack\?year=/);
 
-  // A tree branch (the feature map; every area page uses the same tree).
-  await ready(page, "/home/map");
-  // The map starts at the branches (no node for the area's own name).
-  const branch = page.locator('[role="treeitem"][aria-level="1"][aria-expanded="false"]').first();
+  // A tree branch (Settings' tree; every area page uses the same one).
+  await ready(page, "/settings");
+  // A closed branch (an area page's branches sit under its root).
+  const branch = page.locator('[role="treeitem"][aria-expanded="false"]').first();
   const id = await branch.getAttribute("data-node");
   times["tree branch"] = await tapTime(
     page,

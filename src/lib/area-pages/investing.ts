@@ -1,4 +1,5 @@
 import type { Route } from "next";
+import { isHiddenPage } from "@/config/hidden-pages";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, type AreaItem, type AreaTree } from "./tree";
@@ -24,6 +25,9 @@ export type InvestingBranch = keyof typeof INVESTING_BRANCHES;
 export const itemId = (branch: InvestingBranch, key: string) => `${branch}:${key}`;
 
 type Page = { key: string; label: string; what: string; href: Route };
+
+// The investor profile's own page (the "plan:profile" item).
+export const PROFILE_HREF = "/investments/profile";
 
 // The sub-pages, each an item that says what's there and opens it.
 export const PAGES: Record<"plan" | "kinds" | "costs", readonly Page[]> = {
@@ -390,21 +394,27 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
       ]
     : [];
 
+  // Pages the read-only beta hides (src/config/hidden-pages.ts) aren't in the tree.
+  const shown = (b: keyof typeof PAGES) => PAGES[b].filter((pg) => !isHiddenPage(pg.href));
   const plan = [
-    item("plan", "profile", {
-      label: "Your investor profile",
-      status: input.profile.complete ? "good" : "look",
-      figure: input.profile.complete ? undefined : "4 questions",
-      summary: input.profile.complete
-        ? `${input.profile.label}.`
-        : "Tell Jane what this money is for: four quick questions.",
-    }),
-    ...PAGES.plan.map((pg) => item("plan", pg.key, { label: pg.label, summary: pg.what })),
+    ...(isHiddenPage(PROFILE_HREF)
+      ? []
+      : [
+          item("plan", "profile", {
+            label: "Your investor profile",
+            status: input.profile.complete ? "good" : "look",
+            figure: input.profile.complete ? undefined : "4 questions",
+            summary: input.profile.complete
+              ? `${input.profile.label}.`
+              : "Tell Jane what this money is for: four quick questions.",
+          }),
+        ]),
+    ...shown("plan").map((pg) => item("plan", pg.key, { label: pg.label, summary: pg.what })),
   ];
-  const kinds = PAGES.kinds.map((pg) =>
+  const kinds = shown("kinds").map((pg) =>
     item("kinds", pg.key, { label: pg.label, summary: pg.what }),
   );
-  const costs = PAGES.costs.map((pg) =>
+  const costs = shown("costs").map((pg) =>
     item("costs", pg.key, { label: pg.label, summary: pg.what }),
   );
 

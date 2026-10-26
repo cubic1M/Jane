@@ -223,7 +223,7 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
         user.id,
         expect.objectContaining({
           title: "Unusually large charge: $1,200.00 at Best Electronics",
-          url: "/alerts",
+          url: "/jane#alerts",
         }),
         { client },
       );

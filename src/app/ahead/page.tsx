@@ -1,4 +1,5 @@
 import type { Route } from "next";
+import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
@@ -15,11 +16,13 @@ import { LoadingBar } from "@/components/loading-bar";
 
 const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 
-const go = (href: Route, label: string) => (
-  <Link href={href} className={`${LINK} text-sm`}>
-    {label}
-  </Link>
-);
+// A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
+const go = (href: Route, label: string) =>
+  isHiddenPage(href) ? null : (
+    <Link href={href} className={`${LINK} text-sm`}>
+      {label}
+    </Link>
+  );
 
 const DECISION_LINKS: Record<string, string> = {
   afford: "Check a purchase",

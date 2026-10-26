@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
-import { FINDING_EXPLAINERS, explainer } from "@/config/learn";
 import { ViewTracker } from "@/components/view-tracker";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { partnerForUser } from "@/lib/referrals";
@@ -158,16 +158,6 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
           </Link>
         )}
 
-        {/* Spec step 136: the plain explainer for the words on this card. */}
-        {FINDING_EXPLAINERS[card.findingType] && (
-          <Link
-            href={`/learn/${FINDING_EXPLAINERS[card.findingType]}`}
-            className="text-sm font-medium text-emerald-700 hover:underline"
-          >
-            Learn: {explainer(FINDING_EXPLAINERS[card.findingType])?.title.toLowerCase()}
-          </Link>
-        )}
-
         <section className="flex flex-col gap-1">
           <h2 className="font-semibold">What you give up</h2>
           <p className="text-zinc-700 dark:text-zinc-300">{card.giveUp}</p>
@@ -228,9 +218,9 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
             {answer
               ? `You chose: ${CHOICE_WORDS[answer.choice]}${answer.source === "chat" ? ", in the chat" : ""}.`
               : "You've already answered this one."}{" "}
-            <Link href="/actions" className="font-medium text-emerald-700 hover:underline">
+            <ShownLink href="/actions" className="font-medium text-emerald-700 hover:underline">
               See your actions
-            </Link>
+            </ShownLink>
           </p>
         )}
       </article>

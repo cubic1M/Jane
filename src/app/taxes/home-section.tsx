@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeTaxesView } from "@/lib/home-taxes";
 import { formatCents } from "@/lib/money";
@@ -32,9 +33,9 @@ function SourceLink({ s }: { s: Source }) {
       );
     case "answer":
       return (
-        <Link href="/taxes/profile#home" className={LINK}>
+        <ShownLink href="/taxes/profile#home" className={LINK}>
           {s.label}
-        </Link>
+        </ShownLink>
       );
   }
 }

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { isHiddenPage } from "../src/config/hidden-pages";
 import { pickItem } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 import { landInChat } from "./chat-page";
@@ -173,6 +174,8 @@ test("a person starts a claim tracker and ticks off a step (step 107)", async ({
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/insurance/claims"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -240,6 +243,8 @@ test("a demo-bank person sizes, applies for and buys life cover, a tap at a time
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/insurance/life"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -274,6 +279,8 @@ test("a move gets its insurance changes ready, made on one tap (step 154)", asyn
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/life-events"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -311,6 +318,8 @@ test("Jane files a small claim only after the person checks it (step 155)", asyn
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/insurance/claims"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([

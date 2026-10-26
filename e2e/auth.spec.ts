@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { isHiddenPage } from "../src/config/hidden-pages";
 
 test("sign-up page offers a magic link and links to sign in", async ({ page }) => {
   await page.goto("/signup");
@@ -21,7 +22,10 @@ test("login page explains an expired magic link", async ({ page }) => {
   ).toBeVisible();
 });
 
-for (const path of ["/home", "/connect", "/import", "/scanning", "/report", "/actions"]) {
+// Pages the read-only beta hides (src/config/hidden-pages.ts) redirect first: not checked here.
+for (const path of ["/home", "/connect", "/import", "/scanning", "/report", "/actions"].filter(
+  (p) => !isHiddenPage(p),
+)) {
   test(`signed-out visitors are sent from ${path} to /login`, async ({ page }) => {
     await page.goto(path);
 
