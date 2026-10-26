@@ -87,6 +87,13 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   insurance_claim_filed: own,
   insurance_saving_applied: own,
   user_signed_in: own,
+  user_signed_out: own,
+  // The access log (src/config/access-log.ts): a failed sign-in has no known person, and the
+  // team's page views and actions by path are covered, per person, by the named events below
+  // (admin_viewed_queue, admin_viewed_action, action_status_changed).
+  sign_in_failed: notOnePerson,
+  admin_page_viewed: notOnePerson,
+  admin_action: notOnePerson,
   import_completed: own,
   explanations_generated: automatic,
   decision_made: own,

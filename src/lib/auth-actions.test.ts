@@ -12,6 +12,8 @@ vi.mock("@/lib/rate-limit", () => ({
   hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
   ipKey: vi.fn(() => "ip"),
 }));
+vi.mock("@/lib/auth-events", () => ({ recordFailedSignIn: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("next/headers", () => ({
   headers: vi.fn(async () => new Headers()),
   cookies: vi.fn(async () => ({ set: cookieSet })),
@@ -43,6 +45,8 @@ vi.mock("next/navigation", () => ({
 
 import { auth, signIn, signOut } from "@/auth";
 import { track } from "@/lib/analytics";
+import { logAudit } from "@/lib/audit";
+import { recordFailedSignIn } from "@/lib/auth-events";
 import { checkCode, joinWaitlist, redeemInvite } from "@/lib/invites";
 import { hit } from "@/lib/rate-limit";
 import { TERMS_VERSION } from "@/config/legal";
@@ -112,6 +116,19 @@ describe("auth actions", () => {
     expect(signOut).toHaveBeenCalledWith({ redirectTo: "/" });
   });
 
+  it("puts a sign-out on the access log first, while it knows whose session it was", async () => {
+    vi.mocked(auth).mockResolvedValueOnce({ user: { id: "user_1" } } as never);
+    vi.mocked(logAudit).mockClear();
+    await signOutToHome();
+    expect(logAudit).toHaveBeenCalledWith({ type: "user", id: "user_1" }, "user_signed_out", {
+      type: "user",
+      id: "user_1",
+    });
+    expect(vi.mocked(logAudit).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(signOut).mock.invocationCallOrder.at(-1)!,
+    );
+  });
+
   it("stops sign-in emails past the limit, per IP and per address", async () => {
     vi.mocked(hit).mockResolvedValueOnce({ ok: true, remaining: 0, retryAfterSeconds: 60 });
     vi.mocked(hit).mockResolvedValueOnce({ ok: false, remaining: 0, retryAfterSeconds: 60 });
@@ -121,6 +138,7 @@ describe("auth actions", () => {
     );
     expect(vi.mocked(hit).mock.calls.map((c) => c[1])).toEqual(["ip", "email:a@example.com"]);
     expect(signIn).not.toHaveBeenCalled();
+    expect(recordFailedSignIn).toHaveBeenCalledWith("rate_limited");
   });
 
   it("redeems a sign-up invite before sending the link, and stops on a bad code", async () => {
@@ -136,6 +154,7 @@ describe("auth actions", () => {
     vi.mocked(redeemInvite).mockResolvedValueOnce("used_up");
     await expect(signInWithEmail(form)).rejects.toThrow("redirect:/signup?error=InviteUsedUp");
     expect(signIn).not.toHaveBeenCalled();
+    expect(recordFailedSignIn).toHaveBeenCalledWith("invite_used_up");
   });
 
   it("refuses sign-up without agreeing to the Terms, and remembers consent until the account exists", async () => {

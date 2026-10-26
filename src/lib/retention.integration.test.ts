@@ -56,6 +56,23 @@ describe.runIf(url)("data retention against a real database", () => {
     ] as const) {
       await client.rateLimit.create({ data: { key, windowStart: at, count: 1 } });
     }
+    // Access-log entries go after their period; other audit entries (consents, decisions) stay.
+    for (const [event, targetId, at] of [
+      ["user_signed_in", `old-${tag}`, old(p.accessLog.days)],
+      ["user_signed_in", `young-${tag}`, young(p.accessLog.days)],
+      ["terms_accepted", `kept-${tag}`, old(p.accessLog.days)],
+    ] as const) {
+      await client.auditLog.create({
+        data: {
+          actorType: "user",
+          actorId: userId,
+          event,
+          targetType: "test",
+          targetId,
+          createdAt: at,
+        },
+      });
+    }
     for (const [sessionToken, at] of [
       [`old-${tag}`, old(p.expiredSessions.days)],
       [`young-${tag}`, young(p.expiredSessions.days)],
@@ -70,6 +87,7 @@ describe.runIf(url)("data retention against a real database", () => {
     await client.job.deleteMany({ where: { kind: { endsWith: tag } } });
     await client.cronRun.deleteMany({ where: { name: { endsWith: tag } } });
     await client.rateLimit.deleteMany({ where: { key: { endsWith: tag } } });
+    await client.auditLog.deleteMany({ where: { targetId: { endsWith: tag } } });
     await client.$disconnect();
   });
 
@@ -98,5 +116,10 @@ describe.runIf(url)("data retention against a real database", () => {
     expect(
       (await client.session.findMany({ where: { userId } })).map((r) => r.sessionToken),
     ).toEqual([`young-${tag}`]);
+    expect(
+      (await client.auditLog.findMany({ where: { targetId: { endsWith: tag } } }))
+        .map((r) => r.targetId)
+        .sort(),
+    ).toEqual([`kept-${tag}`, `young-${tag}`]);
   });
 });

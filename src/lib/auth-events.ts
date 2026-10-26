@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { track } from "@/lib/analytics";
 import { ANONYMOUS_ID_COOKIE } from "@/lib/analytics-events";
-import { logAudit } from "@/lib/audit";
+import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
 import { TERMS_COOKIE, acceptTerms } from "@/lib/terms";
@@ -46,4 +47,43 @@ export async function recordSignIn({ user, account, isNewUser }: SignInEvent): P
   }
   // Counts as activity, so linked banks aren't removed for inactivity (step 11).
   await track(user.id, "signed_in", { method });
+}
+
+// Why a sign-in didn't work, for the access log: Auth.js's error types for a bad or used link,
+// a refused or broken return from Google, and a forged request. Never the address tried.
+const FAILED_SIGN_IN_TYPES = new Set([
+  "AccessDenied",
+  "Verification",
+  "OAuthCallbackError",
+  "OAuthSignInError",
+  "OAuthAccountNotLinked",
+  "OAuthProfileParseError",
+  "CallbackRouteError",
+  "EmailSignInError",
+  "InvalidCheck",
+  "MissingCSRF",
+]);
+
+// A sign-in that didn't work: on the access log with the request's IP and browser.
+export async function recordFailedSignIn(reason: string): Promise<void> {
+  await logAudit(SYSTEM_ACTOR, "sign_in_failed", null, { reason: reason.slice(0, 40) });
+}
+
+// Auth.js's logger.error: the kind of error on the server log (not its details, which can
+// hold the address tried), and a failed sign-in on the access log, after the response.
+export function logAuthError(error: Error): void {
+  const type = (error as { type?: string }).type ?? error.name;
+  console.error("[auth][error]", type);
+  if (!FAILED_SIGN_IN_TYPES.has(type)) return;
+  const write = () =>
+    recordFailedSignIn(type).catch((e) =>
+      console.error("Couldn't log a failed sign-in", {
+        error: e instanceof Error ? e.name : "unknown",
+      }),
+    );
+  try {
+    after(write);
+  } catch {
+    void write();
+  }
 }

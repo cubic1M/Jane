@@ -4,7 +4,7 @@ import Resend from "next-auth/providers/resend";
 import { createAuthAdapter } from "@/lib/auth-adapter";
 import { googleConfigured } from "@/lib/auth-providers";
 import { allowSignIn } from "@/lib/auth-gate";
-import { recordSignIn } from "@/lib/auth-events";
+import { logAuthError, recordSignIn } from "@/lib/auth-events";
 import { sessionPayload } from "@/lib/auth-session";
 import { db } from "@/lib/db";
 import { sendMagicLink } from "@/lib/email";
@@ -41,4 +41,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     signIn: recordSignIn,
   },
+  // Failed sign-ins go to the access log (src/config/access-log.ts).
+  logger: { error: logAuthError },
 });

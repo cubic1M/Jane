@@ -96,6 +96,11 @@ src/lib/jane-agent/snapshot.ts  (the person's numbers, in one place)
   month (`src/config/agent-chat.ts`, `src/lib/jane-agent/spend.ts`); `/admin/chat` shows
   today's spend and the limit hits.
 - **Config, not constants.** Thresholds and rates live in `src/config`, with their source.
+- **Security at the edge.** Every page has a nonce-based Content-Security-Policy and the other
+  security headers, every API route and server action is rate limited per IP and per session,
+  and sign-ins, failed sign-ins, two-factor, bank-link, export, deletion and admin access go to
+  the access log with time, IP, browser and outcome:
+  [docs/security/edge.md](security/edge.md).
 
 ## Scheduled jobs
 

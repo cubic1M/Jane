@@ -4,7 +4,7 @@ const { cookieGet, updateMany } = vi.hoisted(() => ({ cookieGet: vi.fn(), update
 
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: cookieGet }) }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
-vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 vi.mock("@/lib/db", () => ({ db: { user: { updateMany } } }));
 vi.mock("@/lib/terms", () => ({ TERMS_COOKIE: "fc_terms", acceptTerms: vi.fn() }));
 
@@ -12,7 +12,7 @@ import { track } from "@/lib/analytics";
 import { TERMS_VERSION } from "@/config/legal";
 import { logAudit } from "@/lib/audit";
 import { acceptTerms } from "@/lib/terms";
-import { recordSignIn, signInMethod } from "./auth-events";
+import { logAuthError, recordSignIn, signInMethod } from "./auth-events";
 
 const USER = { type: "user", id: "user_1" };
 
@@ -115,5 +115,30 @@ describe("signInMethod", () => {
     expect(signInMethod("resend")).toBe("email");
     expect(signInMethod("google")).toBe("google");
     expect(signInMethod(undefined)).toBe("unknown");
+  });
+});
+
+describe("logAuthError", () => {
+  beforeEach(() => {
+    vi.mocked(logAudit).mockReset().mockResolvedValue(undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  it("puts a failed sign-in on the access log with why, never the error's details", async () => {
+    const error = Object.assign(new Error("Token for ada@example.com expired"), {
+      type: "Verification",
+    });
+    logAuthError(error);
+    await vi.waitFor(() =>
+      expect(logAudit).toHaveBeenCalledWith({ type: "system", id: null }, "sign_in_failed", null, {
+        reason: "Verification",
+      }),
+    );
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("ada@");
+  });
+
+  it("leaves errors that aren't a failed sign-in off the access log", () => {
+    logAuthError(Object.assign(new Error("x"), { type: "SessionTokenError" }));
+    expect(logAudit).not.toHaveBeenCalled();
   });
 });

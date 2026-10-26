@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { cookieGet } = vi.hoisted(() => ({ cookieGet: vi.fn() }));
 
 vi.mock("next/headers", () => ({ cookies: vi.fn(async () => ({ get: cookieGet })) }));
+vi.mock("@/lib/auth-events", () => ({ recordFailedSignIn: vi.fn() }));
 vi.mock("@/lib/invites", () => ({
   mayCreateAccount: vi.fn(),
   redeemInvite: vi.fn(),
   isAdminEmail: vi.fn(),
 }));
 
+import { recordFailedSignIn } from "@/lib/auth-events";
 import { mayCreateAccount, redeemInvite } from "@/lib/invites";
 import { allowSignIn } from "./auth-gate";
 
@@ -29,6 +31,8 @@ describe("allowSignIn", () => {
     expect(await allowSignIn({ user: { email: "new@example.com" } })).toBe(
       "/signup?error=InviteRequired",
     );
+    // On the access log as a failed sign-in, without the address.
+    expect(recordFailedSignIn).toHaveBeenCalledWith("no_invite");
     expect(await allowSignIn({ user: { email: null } })).toBe(false);
   });
 
