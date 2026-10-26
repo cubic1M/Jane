@@ -66,7 +66,7 @@ test("the Events box shows the event, the switch turns it on, and the paper acco
   await expect(box).toHaveAttribute("data-events-box", "on", { timeout: 30_000 });
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await expect(box.locator("[data-events-plan]")).toHaveText(/^→ Did: \+SMH/);
-  await expect(box.locator("[data-events-open]")).toContainText("NVDA");
+  await expect(box.locator("[data-events-open]")).toContainText(/SMH|NVDA/);
 
   // The paper account holds it, and its log says why.
   await page.reload();
@@ -78,7 +78,7 @@ test("the Events box shows the event, the switch turns it on, and the paper acco
     page
       .locator("[data-paper-trades] li")
       .filter({ hasText: "Bought" })
-      .filter({ hasText: "NVDA" }),
+      .filter({ hasText: /SMH|NVDA/ }),
   ).toHaveCount(1);
   await expect(page.locator("[data-paper-trades]")).toContainText("A chip boom");
 
@@ -87,7 +87,7 @@ test("the Events box shows the event, the switch turns it on, and the paper acco
   await expect(popup).toBeVisible();
   await expect(popup.getByText("[TRADE] EVENTS · DONE FOR YOU")).toBeVisible();
   await expect(popup.locator("[data-trade-headline]")).toHaveText(
-    /^\[✓\] Events: added [\d.]+% in NVDA$/,
+    /^\[✓\] Events: added [\d.]+% in (SMH|NVDA)$/,
   );
   await expect(popup.getByText(/^\d+% sure$/)).toBeVisible();
   await popup.getByRole("button", { name: "OK" }).click();

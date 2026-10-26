@@ -448,8 +448,8 @@ export async function addPaperSignal(userId: string): Promise<string> {
 }
 
 // An event the events overlay can act on (src/lib/events/run.ts): a chip boom in GDELT's coverage
-// three days ago, public two days ago. On the sample prices its fund (SMH) has no price, so the
-// overlay uses its stand-in, NVDA. Returns its key, for deleteMarketEvent.
+// three days ago, public two days ago. Its fund is SMH (or its stand-in, NVDA, where the prices
+// lack SMH). Returns its key, for deleteMarketEvent.
 export async function addMarketEvent(): Promise<string> {
   const client = new Client({ connectionString: E2E_DATABASE_URL });
   await client.connect();
