@@ -1,4 +1,5 @@
 import { SAVED_SO_FAR_LABEL } from "@/lib/saved-amount";
+import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
@@ -39,11 +40,14 @@ function Section({
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-xl font-semibold">{title}</h2>
         <span className="flex flex-wrap gap-x-4 text-sm">
-          {links.map((l) => (
-            <Link key={l.href} href={l.href} className={LINK}>
-              {l.label}
-            </Link>
-          ))}
+          {/* A page the read-only beta hides (src/config/hidden-pages.ts) gets no link. */}
+          {links
+            .filter((l) => !isHiddenPage(l.href))
+            .map((l) => (
+              <Link key={l.href} href={l.href} className={LINK}>
+                {l.label}
+              </Link>
+            ))}
         </span>
       </div>
       {children}
@@ -248,7 +252,7 @@ async function JaneContent() {
             ))}
           </ul>
         )}
-        {inProgress.total > inProgress.items.length && (
+        {inProgress.total > inProgress.items.length && !isHiddenPage("/actions") && (
           <p className={`text-sm ${MUTED}`}>
             And {inProgress.total - inProgress.items.length} more on{" "}
             <Link href="/actions" className={LINK}>
@@ -304,7 +308,7 @@ async function JaneContent() {
         )}
       </Section>
 
-      <Section title="Alerts" links={[{ href: "/alerts", label: "See all" }]}>
+      <Section id="alerts" title="Alerts" links={[]}>
         {alerts.items.length === 0 ? (
           <p className={MUTED}>No new alerts. Jane tells you here when something needs a look.</p>
         ) : (

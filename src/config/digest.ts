@@ -20,9 +20,9 @@ export const TIMEZONES: readonly { id: string; label: string }[] = [
 export const DIGEST_LINK_PATHS = [
   "/plan",
   "/report",
-  "/monthly",
-  "/actions",
-  "/alerts",
+  // What Jane did: its actions and alerts (/actions is hidden in the read-only beta and
+  // /alerts was removed, 2026-10-26).
+  "/jane",
   "/budgets",
   "/goals",
   "/net-worth",

@@ -9,31 +9,25 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import {
-  CHAT_EMAILS_PER_DAY,
-  CHAT_LINK_HOURS,
-  CHAT_NOTIFY_DAILY_LIMIT,
-} from "@/config/chat-notify";
+import { CHAT_EMAILS_PER_DAY, CHAT_NOTIFY_DAILY_LIMIT } from "@/config/chat-notify";
 import { logAudit } from "@/lib/audit";
 import { findingOfType } from "@/lib/__fixtures__/findings";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import type { sendEmail } from "@/lib/email";
 import type { sendPush } from "@/lib/push";
-import { ChatActionError } from "./actions";
 import { gather } from "./brain";
 import { markChatRead, postMessages } from "./messages";
 import { loadSnapshot } from "./snapshot";
 import { headsUpsSource } from "./sources/heads-ups";
 import { AS_THEY_COME } from "./preferences";
 import { deliverChatNotifications, queueChatNotifications } from "./notify";
-import { createReplyLink, redeemReplyLink, ReplyLinkError, viewReplyLink } from "./reply-links";
 import { runJaneAgent } from "./run";
 
 // Spec step 85 against a real, migrated Postgres (see
 // src/lib/jane-agent/agent.integration.test.ts): Jane's brain posts, a notification job is
-// queued and sent with fake push and email senders, and a one-tap link from the email
-// answers the message once, through the chat's own checks.
+// queued and sent with fake push and email senders. The email opens each message in the chat
+// (its one-tap answer links went with /chat/reply on 2026-10-26).
 
 const url = process.env.TEST_DATABASE_URL;
 // 8am in Los Angeles (the default timezone): after quiet hours.
@@ -123,8 +117,7 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
     send: vi.fn<(email: Email) => Promise<void>>(async () => {}),
   });
 
-  const tokenOf = (link: string) => new URL(link).searchParams.get("token") ?? "";
-  // "[ Yes ] https://…/chat/reply?token=…" in the email's text.
+  // "[ Label ] https://…" lines in the email's text: none since the one-tap links went.
   const linksIn = (email: Email) =>
     [...email.text.matchAll(/^\[ (.+) \] (\S+)$/gm)].map((m) => ({ label: m[1], url: m[2] }));
 
@@ -215,48 +208,10 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
         { channel: "email", kind: emailed[0].kind },
       );
 
-      // A finding's Yes, as a one-tap link: opening it changes nothing.
-      const links = linksIn(email);
-      const yesAt = links.findIndex((l) => l.label === "Yes");
-      const yes = links[yesAt];
-      // The same message's No comes after its Yes (and Jane's pick, if any).
-      const no = links.slice(yesAt).find((l) => l.label === "No")!;
-      expect(yes.url).toMatch(/\/chat\/reply\?token=/);
-      // Only the hash is stored.
-      expect(await client.chatReplyLink.count({ where: { tokenHash: tokenOf(yes.url) } })).toBe(0);
-      expect(await viewReplyLink(tokenOf(yes.url), { client, now })).toMatchObject({
-        state: "ready",
-        label: "Yes",
-      });
-      expect(await viewReplyLink(tokenOf(yes.url), { client, now })).toMatchObject({
-        state: "ready",
-      });
-
-      // The confirm button: the same answer as the chat's, once.
-      const { message } = await redeemReplyLink(tokenOf(yes.url), { client, now });
-      expect(message).toMatchObject({ kind: "decision", status: "answered", answeredWith: "Yes" });
-      const { findingId } = message.refs;
-      expect(
-        await client.decision.findFirstOrThrow({ where: { userId, findingId } }),
-      ).toMatchObject({ choice: "yes", source: "chat" });
-      await expect(redeemReplyLink(tokenOf(yes.url), { client, now })).rejects.toBeInstanceOf(
-        ReplyLinkError,
-      );
-      // Reopened (or reloaded straight after the tap): what the answer did.
-      expect(await viewReplyLink(tokenOf(yes.url), { client, now })).toMatchObject({
-        state: "used",
-        messageId: message.id,
-        answeredWith: "Yes",
-      });
-      // The same message's No no longer works: it's answered.
-      expect(await viewReplyLink(tokenOf(no.url), { client, now })).toMatchObject({
-        state: "answered",
-        messageId: message.id,
-      });
-      await expect(redeemReplyLink(tokenOf(no.url), { client, now })).rejects.toMatchObject({
-        code: "not_open",
-      });
-      expect(await client.decision.count({ where: { userId, findingId } })).toBe(1);
+      // No one-tap answer links: each message opens in the chat, where its buttons are.
+      expect(linksIn(email)).toEqual([]);
+      expect(email.text).toMatch(/\/chat#/);
+      expect(await client.chatReplyLink.count({ where: { userId } })).toBe(0);
 
       // The next run sends nothing twice.
       await queueChatNotifications(userId, {
@@ -417,9 +372,7 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       expect(result).toEqual({ pushed: 0, emailed: decisions.length });
       expect(send).toHaveBeenCalledTimes(1);
       expect(push).not.toHaveBeenCalled();
-      const buttons = linksIn(send.mock.calls[0][0]);
-      expect(buttons.length).toBeGreaterThan(0);
-      expect(await client.chatReplyLink.count({ where: { userId } })).toBe(buttons.length);
+      expect(linksIn(send.mock.calls[0][0])).toEqual([]);
 
       // Past the email cap, nothing more today.
       await client.janeMessage.createMany({
@@ -507,66 +460,6 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       expect(
         (await deliverChatNotifications(userId, { client, now: at(2 * HOUR), push, send })).emailed,
       ).toBeGreaterThan(0);
-    });
-  });
-
-  describe("one-tap links", () => {
-    async function linkFor(prefix: string) {
-      const userId = await withMessages(prefix);
-      const message = (await messagesOf(userId)).find(
-        (m) => m.kind === "decision" && m.dedupeKey.startsWith("findings:"),
-      )!;
-      const link = await createReplyLink(userId, message.id, "finding.no", { client, now: LINKED });
-      return { userId, message, token: tokenOf(link) };
-    }
-
-    it("expires", async () => {
-      const { token } = await linkFor("link-expired");
-      const late = at((CHAT_LINK_HOURS + 1) * HOUR);
-      expect(await viewReplyLink(token, { client, now: late })).toEqual({ state: "expired" });
-      await expect(redeemReplyLink(token, { client, now: late })).rejects.toThrow(
-        "This link has expired.",
-      );
-    });
-
-    it("refuses someone else signed in, and leaves the link unused", async () => {
-      const { token, message } = await linkFor("link-owner");
-      const stranger = await person("link-stranger");
-      expect(await viewReplyLink(token, { client, now: LINKED, signedInAs: stranger })).toEqual({
-        state: "wrong_user",
-      });
-      await expect(
-        redeemReplyLink(token, { client, now: LINKED, signedInAs: stranger }),
-      ).rejects.toThrow("This link is for a different account.");
-      expect(
-        (await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } })).status,
-      ).toBe("open");
-      expect(await viewReplyLink(token, { client, now: LINKED })).toMatchObject({ state: "ready" });
-    });
-
-    it("never answers another person's message, whatever the link row says", async () => {
-      const { message } = await linkFor("link-victim");
-      const stranger = await person("link-forger");
-      const forged = await createReplyLink(stranger, message.id, "finding.no", {
-        client,
-        now: LINKED,
-      });
-      expect(await viewReplyLink(tokenOf(forged), { client, now: LINKED })).toEqual({
-        state: "invalid",
-      });
-      await expect(
-        redeemReplyLink(tokenOf(forged), { client, now: LINKED }),
-      ).rejects.toBeInstanceOf(ChatActionError);
-      expect(
-        (await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } })).status,
-      ).toBe("open");
-    });
-
-    it("refuses a token that isn't one", async () => {
-      expect(await viewReplyLink("nope", { client })).toEqual({ state: "invalid" });
-      await expect(redeemReplyLink("x".repeat(43), { client })).rejects.toThrow(
-        "This link doesn't work.",
-      );
     });
   });
 });

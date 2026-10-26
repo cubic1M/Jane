@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -110,9 +111,12 @@ async function NetWorthContent() {
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Includes {formatCents(today.cryptoCents)} in crypto, as your exchange or wallet last
           reported it (read-only).{" "}
-          <Link href="/investments/crypto" className="font-medium text-emerald-700 hover:underline">
+          <ShownLink
+            href="/investments/crypto"
+            className="font-medium text-emerald-700 hover:underline"
+          >
             See your crypto
-          </Link>
+          </ShownLink>
         </p>
       )}
 

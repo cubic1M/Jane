@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
+import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -71,11 +73,16 @@ async function MortgageContent() {
             {m.hasPmi === null && <p>Your bank doesn&apos;t say whether this loan has PMI.</p>}
             {m.hasPmi === true && !m.pmi && (
               <p>
-                Your loan has PMI.{" "}
-                <Link href="/loans/equity" className={LINK}>
-                  Tell Jane the home&apos;s value when the loan began
-                </Link>{" "}
-                and it works out when it can come off.
+                Your loan has PMI.
+                {!isHiddenPage("/loans/equity") && (
+                  <>
+                    {" "}
+                    <Link href="/loans/equity" className={LINK}>
+                      Tell Jane the home&apos;s value when the loan began
+                    </Link>{" "}
+                    and it works out when it can come off.
+                  </>
+                )}
               </p>
             )}
             {m.pmi && (
@@ -84,9 +91,9 @@ async function MortgageContent() {
                   <p key={l}>{l}</p>
                 ))}
                 {m.pmi.canAskNow && !m.pmi.endsNow && (
-                  <Link href="/loans/equity" className={LINK}>
+                  <ShownLink href="/loans/equity" className={LINK}>
                     The request Jane drafted for your servicer
-                  </Link>
+                  </ShownLink>
                 )}
               </>
             )}

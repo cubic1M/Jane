@@ -1,4 +1,5 @@
 import type { Route } from "next";
+import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { after, connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
@@ -14,7 +15,6 @@ import { RuleReplaySection } from "@/components/rule-replay";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { PAGES, itemId } from "@/lib/area-pages/investing";
-import { explainer } from "@/config/learn";
 import { RETURNS_NOTE } from "@/config/returns";
 import { strategyTreeFor } from "@/lib/investments/strategy-board-load";
 import { loadPaperView, runPaperIfStale, strategyLabel, strategyOf } from "@/lib/paper/account";
@@ -35,6 +35,13 @@ import { LoadingBar } from "@/components/loading-bar";
 // (docs/design/area-pages.md): Jane's ideas, what's owned, how it's done, the practice
 // portfolio with its strategies and news alerts, then the sub-pages; each section is the
 // detail of its item.
+
+// The investing pages linked under the heading, besides the practice portfolio.
+const NAV: readonly { href: Route; label: string }[] = [
+  { href: "/investments/review", label: "Portfolio review" },
+  { href: "/investments/fees", label: "Fees" },
+  { href: "/investments/profile", label: "Investor profile" },
+];
 
 const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const CARD = "flex flex-col gap-1 border border-zinc-200 p-4 dark:border-zinc-800";
@@ -155,11 +162,13 @@ async function InvestmentsContent({
 
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
-  const go = (href: Route, label: string) => (
-    <Link href={href} className={`${LINK} text-sm`}>
-      {label}
-    </Link>
-  );
+  // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
+  const go = (href: Route, label: string) =>
+    isHiddenPage(href) ? null : (
+      <Link href={href} className={`${LINK} text-sm`}>
+        {label}
+      </Link>
+    );
 
   for (const s of mine) {
     const id = itemId("ideas", s.key);
@@ -368,15 +377,11 @@ async function InvestmentsContent({
           <Link prefetch={false} href="/investments/practice" className={LINK}>
             Practice portfolio
           </Link>
-          <Link prefetch={false} href="/investments/review" className={LINK}>
-            Portfolio review
-          </Link>
-          <Link prefetch={false} href="/investments/fees" className={LINK}>
-            Fees
-          </Link>
-          <Link prefetch={false} href="/investments/profile" className={LINK}>
-            Investor profile
-          </Link>
+          {NAV.filter((n) => !isHiddenPage(n.href)).map((n) => (
+            <Link key={n.href} prefetch={false} href={n.href} className={LINK}>
+              {n.label}
+            </Link>
+          ))}
         </nav>
       </div>
 
@@ -423,20 +428,6 @@ async function InvestmentsContent({
               Change your autopilot
             </Link>
           </section>
-        </details>
-        <details className="border-t border-zinc-200 pt-2 dark:border-zinc-800">
-          <summary className={`cursor-pointer text-sm ${LINK}`}>Learn the basics</summary>
-          <ul className="mt-2 flex flex-col gap-1 text-sm">
-            {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
-              (slug) => (
-                <li key={slug}>
-                  <Link href={`/learn/${slug}`} className={LINK}>
-                    {explainer(slug)?.title.toLowerCase()}
-                  </Link>
-                </li>
-              ),
-            )}
-          </ul>
         </details>
       </div>
     </>

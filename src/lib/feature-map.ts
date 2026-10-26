@@ -1,4 +1,5 @@
 import { AREA_KEYS, areaOfCapability, type AreaKey } from "@/config/areas";
+import { landing } from "@/lib/area-pages/landing";
 import {
   FAMILY_NAMES,
   FAMILY_NAMES_IN_AREA,
@@ -146,7 +147,8 @@ export function buildFeatureMap({
                   ? `Like: ${cardHeadline(example.headline)}`
                   : "Comes up when Jane spots it",
               forYou: reached.has(id),
-              href: example?.href.startsWith("/") ? example.href : AREA_TAB[area].href,
+              // Where Jane's own link for it lands (a hidden page lands on its area page).
+              href: example?.href.startsWith("/") ? landing(example.href) : AREA_TAB[area].href,
               // Reads right whatever the name ("subscriptions", "a second look"): hub QA found "What is
               // subscriptions".
               ask: `Tell me about ${name.toLowerCase()}: does it apply to me?`,

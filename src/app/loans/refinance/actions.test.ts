@@ -36,9 +36,10 @@ describe("apply with a lender", () => {
     data.set("lender", "Harbor Auto Refi");
     return data;
   };
-  it("prepares the application and opens it for review", async () => {
+  it("prepares the application, back to the offers while its page is hidden", async () => {
     vi.mocked(prepareApplication).mockResolvedValueOnce({ id: "a1" } as never);
-    await expect(applyAction(form())).rejects.toThrow("REDIRECT /loans/apply/a1");
+    // /loans/apply/[id] is hidden in the read-only beta (src/config/hidden-pages.ts).
+    await expect(applyAction(form())).rejects.toThrow("REDIRECT /loans/refinance");
     expect(prepareApplication).toHaveBeenCalledWith("u1", {
       debtKey: "account:car",
       lender: "Harbor Auto Refi",

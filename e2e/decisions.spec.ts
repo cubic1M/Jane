@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { isHiddenPage, shownHref } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { openFinding } from "./report-page";
@@ -85,8 +86,10 @@ test.describe("a real account", () => {
       ).toBeVisible({ timeout: 5_000 });
     }).toPass({ timeout: 45_000 });
 
-    await page.goto("/actions");
-    await expect(page.getByRole("link", { name: /Netflix went up/ })).toContainText("Done");
+    // Your actions, or What Jane did while /actions is hidden (src/config/hidden-pages.ts).
+    await page.goto(shownHref("/actions"));
+    if (!isHiddenPage("/actions"))
+      await expect(page.getByRole("link", { name: /Netflix went up/ })).toContainText("Done");
     // Nothing went to the team's queue.
     await expect(page.getByText("Queued")).toHaveCount(0);
   });
@@ -136,19 +139,22 @@ test.describe("the demo bank", () => {
     // The demo's Netflix has Jane's pick to switch to: one yes, and the team or the agent acts.
     await expect(page.getByRole("button", { name: /I'll do it myself/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Show me how/ })).toHaveCount(0);
-    // Yes is marked at once, with Revert, and the action is on /actions.
+    // Yes is marked at once, with Revert, and the action is on your actions (or what Jane is
+    // doing, while /actions is hidden).
     await page.getByRole("button", { name: /^Yes, switch to / }).click();
     await expect(page.getByRole("button", { name: /^Yes, switch to .*chosen$/ })).toBeVisible({
       timeout: 150,
     });
     await expect(page.getByRole("button", { name: "No thanks" })).toBeDisabled();
     await expect(page.getByRole("button", { name: /^Revert/ })).toBeVisible();
-    await page.getByRole("link", { name: /Follow it on your actions/ }).click();
-    await expect(page).toHaveURL("/actions", { timeout: 10_000 });
-    const action = page.getByRole("listitem").filter({ hasText: "Netflix went up" });
+    await page.getByRole("link", { name: /^Follow it on / }).click();
+    await expect(page).toHaveURL(shownHref("/actions"), { timeout: 10_000 });
+    const action = page.getByRole("listitem").filter({ hasText: "Netflix went up" }).first();
     // The agent starts right away on a card's yes, and the simulated company answers in
-    // seconds, so a fast run may already show it working, or even done.
-    await expect(action).toContainText(/Queued|In progress|Waiting on you|Done/);
+    // seconds, so a fast run may already show it working, or even done (What Jane did lists
+    // it under In progress or Done while /actions is hidden).
+    if (isHiddenPage("/actions")) await expect(action).toBeVisible();
+    else await expect(action).toContainText(/Queued|In progress|Waiting on you|Done/);
     await expectNoSidewaysScroll(page);
   });
 });

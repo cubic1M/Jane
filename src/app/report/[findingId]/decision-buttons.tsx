@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isHiddenPage, shownHref } from "@/config/hidden-pages";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -206,18 +207,20 @@ export function DecisionButtons({
           {chosen === "yes" ? (
             <>
               Approved. Jane is on it.{" "}
+              {/* Your actions, or what Jane is doing while /actions is hidden
+                  (src/config/hidden-pages.ts). */}
               <Link
-                href="/actions"
+                href={shownHref("/actions")}
                 // After the yes is saved, so the action is there when the page opens.
                 onClick={(e) => {
                   const sent = sending.current;
                   if (!sent) return;
                   e.preventDefault();
-                  void sent.then(() => router.push("/actions"));
+                  void sent.then(() => router.push(shownHref("/actions")));
                 }}
                 className="font-medium underline"
               >
-                Follow it on your actions ›
+                Follow it on {isHiddenPage("/actions") ? "what Jane is doing" : "your actions"} ›
               </Link>
             </>
           ) : (
