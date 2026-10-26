@@ -21,6 +21,7 @@ import type { PracticeIdea } from "@/profile/build";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { practiceProfileOf } from "./preferences";
 import { tradesHeldBy } from "./limits";
+import { DAY_MS } from "@/lib/dates";
 
 // The practice scan's ideas as suggestions (Phase AW, Stage A). The scan keeps a flag as
 // "suggested" when the person is in suggest-only mode or the kind only suggests; here those
@@ -39,7 +40,6 @@ type StoredDetails = {
   trades?: { ticker: string; side: "buy" | "sell"; amountCents: number }[];
 };
 
-const DAY_MS = 86_400_000;
 const dollars = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 

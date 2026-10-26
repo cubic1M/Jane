@@ -21,6 +21,7 @@ import {
   planMonths,
   type GoalPlan,
 } from "@/planning/credit-goal";
+import { isoDay } from "@/lib/dates";
 
 // A credit score for a goal (spec step 227). A target score and date for a mortgage, a car or
 // another loan, and a monthly plan from the credit partner's score simulator (step 175): what
@@ -29,8 +30,6 @@ import {
 // nothing here changes a real account.
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
-
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export class CreditGoalError extends Error {}
 

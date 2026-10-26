@@ -6,6 +6,7 @@ import {
   RENT_NAME_NOT,
   depositRule,
 } from "@/config/renting";
+import { DAY_MS, addDays } from "@/lib/dates";
 
 // Renting, counted (spec step 248), pure: rent found in payments, a rise set beside what is
 // usual, and when a security deposit is due back.
@@ -64,10 +65,6 @@ export type DepositView = {
   status: DepositStatus;
   rule: ReturnType<typeof depositRule>;
 };
-
-const DAY_MS = 86_400_000;
-const addDays = (iso: string, days: number) =>
-  new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
 export function depositView(
   d: { state: string; movedOutOn: string | null; returnedOn: string | null },

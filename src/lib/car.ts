@@ -33,6 +33,7 @@ import {
   type DealerCheck,
   type ScoredCarOffer,
 } from "@/planning/car";
+import { isoDay } from "@/lib/dates";
 
 // Buying a car (spec step 178), before the dealer. From the person's own income, current
 // auto insurance and gas spending, what they can afford with insurance and running costs
@@ -41,8 +42,6 @@ import {
 // applied for here.
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput };
-
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export type CarQuestion = {
   priceCents?: number;

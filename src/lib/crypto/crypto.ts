@@ -22,6 +22,7 @@ import {
   demoCryptoSource,
   type CryptoSource,
 } from "./source";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Crypto, read-only (spec step 161), for its page, net worth, Jane's answers and tools.
 // Balances come from each connection's crypto source and are stored with when they were
@@ -30,9 +31,6 @@ import {
 type Options = { client?: PrismaClient; now?: Date };
 
 export class CryptoError extends Error {}
-
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // The source behind a connection, or null when its partner isn't connected (only the demo
 // source exists until a crypto data partner is).

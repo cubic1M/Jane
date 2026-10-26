@@ -26,6 +26,7 @@ import {
   summaryOk,
   type Summarizer,
 } from "./summarize";
+import { DAY_MS, isoDay as day } from "@/lib/dates";
 
 // The news job (spec step 293): once a day it reads the watchlist's headlines and filings from
 // the market data, summarises the headlines it hasn't stored yet (Claude in a few batched calls
@@ -40,8 +41,6 @@ type Options = {
   env?: Record<string, string | undefined>;
 };
 
-const DAY_MS = 86_400_000;
-const day = (d: Date) => d.toISOString().slice(0, 10);
 const daysBefore = (now: Date, days: number) => day(new Date(now.getTime() - days * DAY_MS));
 const dayStart = (now: Date) => new Date(Math.floor(now.getTime() / DAY_MS) * DAY_MS);
 const monthStart = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));

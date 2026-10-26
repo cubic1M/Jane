@@ -12,13 +12,13 @@ import type {
   TransferOffer,
   TransferRequest,
 } from "./partner";
+import { DAY_MS } from "@/lib/dates";
 
 // The stand-in lender partner (spec step 111): offers from the demo catalog, priced by
 // the credit band and moving a little from month to month, like real rates; applications
 // approve at once on the offer's terms and fund a few days after acceptance (spec step
 // 112). Never used for a real account.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const BAND_BPS = { excellent: -50, good: 0, fair: 150 } as const;
 // The month's move for each lender, in basis points.
 const MOVES = [-25, -15, -5, 0, 5, 15, 25];

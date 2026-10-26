@@ -2,6 +2,7 @@ import type { FilingStatus } from "@/config/tax";
 import { STANDARD_DEDUCTION, STATE_TAX, type StateTax } from "@/config/tax-rates";
 import { CONVENIENCE_RULE_STATES, LOCAL_TAXES, STATE_SOURCES } from "@/config/tax-states";
 import { bracketTax } from "@/planning/tax-brackets";
+import { DAY_MS } from "@/lib/dates";
 
 // State and local income taxes (spec step 165). Pure. One state all year is the simple
 // case; a move splits the year, and remote work for an employer in another state can mean
@@ -62,7 +63,6 @@ export type LocalPart = {
   url: string;
 };
 
-const DAY_MS = 86_400_000;
 const dayNumber = (date: string) => Date.parse(`${date}T00:00:00Z`) / DAY_MS;
 const isoOf = (day: number) => new Date(day * DAY_MS).toISOString().slice(0, 10);
 const clamp0 = (n: number) => Math.max(0, n);

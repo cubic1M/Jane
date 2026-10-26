@@ -7,6 +7,7 @@ import {
   type PlanMoveKey,
 } from "@/config/tax-plan";
 import type { SavingKey } from "@/planning/tax-savings";
+import { addDays } from "@/lib/dates";
 
 // The year-round tax plan (spec step 167). Pure. From what Jane knows about the tax year
 // (ways to pay less from step 122, estimated payments from step 123, a loss worth
@@ -46,10 +47,7 @@ export type PlanMove = {
   task: { title: string; dueOn: string; note: string };
 };
 
-const DAY_MS = 86_400_000;
 const dateOf = (year: number, d: PlanDate) => `${year + (d.nextYear ? 1 : 0)}-${d.md}`;
-const addDays = (date: string, days: number) =>
-  new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 const dollars = (cents: number) =>
   `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const shortDay = (date: string) =>

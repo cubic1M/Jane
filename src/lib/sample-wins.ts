@@ -7,6 +7,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { recordDecision } from "@/lib/decisions";
 import { partnerForUser } from "@/lib/referrals";
+import { DAY_MS } from "@/lib/dates";
 
 // What Jane already did for a sample person (spec step 139, gap audit): each of their past wins
 // (src/data-sources/demo/people-extras/wins.ts) goes through the real path, as it would have
@@ -21,7 +22,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export const SAMPLE_WIN_KEY = "sample-win:";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const dayOf = (now: Date, offset: number) =>
   new Date(Date.parse(`${now.toISOString().slice(0, 10)}T00:00:00Z`) + offset * DAY_MS);
 const cents = (dollars: number) => Math.round(dollars * 100);

@@ -10,6 +10,7 @@ import { db as defaultClient } from "@/lib/db";
 import { WATCH_CIKS, marketData, type MarketData } from "@/lib/market";
 import { NEWS_WATCHLIST, newsKey } from "./store";
 import { rulesSummary } from "./summarize";
+import { DAY_MS, isoDay as day } from "@/lib/dates";
 
 // What the chat and pages show of the news (spec step 293): the stored summaries and filings
 // for the market data in use, newest first. Nothing here calls Claude or a live feed. On the
@@ -41,8 +42,6 @@ export type NewsView = {
   filings: NewsFiling[];
 };
 
-const DAY_MS = 86_400_000;
-const day = (d: Date) => d.toISOString().slice(0, 10);
 const since = (now: Date, days: number) => new Date(Date.parse(day(now)) - days * DAY_MS);
 const newestFirst = <T extends { date: string }>(a: T, b: T) => b.date.localeCompare(a.date);
 

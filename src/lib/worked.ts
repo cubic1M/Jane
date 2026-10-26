@@ -7,6 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { provenSavings } from "@/lib/savings-proof";
+import { isoDay as isoDate } from "@/lib/dates";
 
 // What worked (spec step 207): every finished action is checked against the person's later
 // transactions (src/lib/savings-proof.ts does the matching). One whose saving hasn't shown
@@ -15,8 +16,6 @@ import { provenSavings } from "@/lib/savings-proof";
 // of the actions that followed really worked. Ranking (step 143) reads it.
 
 type Options = { client?: PrismaClient; now?: Date; input?: DetectionInput };
-
-const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 // Marks and unmarks. Returns how many were newly marked.
 export async function checkResults(

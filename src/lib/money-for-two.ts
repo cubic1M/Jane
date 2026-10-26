@@ -15,6 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { sharedBills } from "@/lib/shared-bills";
 import { partnerShareBps } from "@/planning/money-for-two";
+import { DAY_MS, isoDay as today } from "@/lib/dates";
 
 // Money for two (spec step 242): a couple in a household (step 25) runs money together and
 // still keeps their own. Shared bills split evenly or by income as they choose; goals can be
@@ -26,9 +27,6 @@ import { partnerShareBps } from "@/planning/money-for-two";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class MoneyForTwoError extends Error {}
-
-const DAY_MS = 86_400_000;
-const today = (now: Date) => now.toISOString().slice(0, 10);
 
 async function couple(userId: string, client: PrismaClient) {
   const membership = await client.householdMember.findUnique({

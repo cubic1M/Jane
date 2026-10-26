@@ -8,6 +8,7 @@ import { listWhy } from "./priorities";
 import type { Snapshot } from "./snapshot";
 import { dateAndDays, inDays, things } from "./sources/source";
 import { shortName } from "./sources/findings";
+import { DAY_MS } from "@/lib/dates";
 
 // "Am I OK?" and "what should I do this month?" answered whole (spec step 183), from every
 // sector at once: safe to spend (with the payday, step 182), what's due, budgets and goals,
@@ -37,7 +38,6 @@ export type WholePicture = {
   health: { score: number; band: string; next: string | null } | null;
 };
 
-const DAY_MS = 86_400_000;
 const daysToMonthEnd = (asOf: string) => {
   const d = new Date(`${asOf}T00:00:00Z`);
   const end = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0);

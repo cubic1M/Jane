@@ -45,6 +45,7 @@ import {
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { dayLabel } from "@/lib/day-label";
 import { guessFilingStatus, stateName, type ProfileField } from "@/planning/tax-profile";
+import { isoDay as iso } from "@/lib/dates";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
 // tax profile: what they'll owe or get back for the year, federal and state. Worked out
@@ -85,8 +86,6 @@ export type TaxEstimateView = {
   keepRefundYear: number | null;
   lastYearRefundCents: number | null;
 };
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export async function loadTaxEstimate(
   userId: string,

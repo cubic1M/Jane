@@ -10,6 +10,7 @@ import type { DebtBook } from "@/insights/debts";
 import { autopilotFor, mayAct, recordAct } from "@/lib/sector-autopilot";
 import { dueMoves, paydaysOf, type DueMove } from "@/planning/due-dates";
 import { rateChanges, type RateChange } from "@/planning/rate-watch";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 export { rateChanges, type RateChange };
 
@@ -21,8 +22,6 @@ export { rateChanges, type RateChange };
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 // The latest rate changes kept.
 const CHANGES_KEPT = 10;
 

@@ -12,6 +12,7 @@ import {
   type ExtraScenario,
 } from "@/planning/mortgage";
 import { pmiTimeline, type PmiTimeline } from "@/planning/home-equity";
+import { DAY_MS } from "@/lib/dates";
 
 // The mortgage, watched (spec step 115), for one person: the loan from the bank (with its
 // PMI and escrow as Plaid reports them), the home's value they gave (spec step 67), PMI by
@@ -21,7 +22,6 @@ import { pmiTimeline, type PmiTimeline } from "@/planning/home-equity";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 // Payments looked at to spot an escrow change.
 const PAYMENTS_LOOKED_AT_DAYS = 200;
 

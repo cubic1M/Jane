@@ -5,6 +5,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
 import { isTrialUser } from "@/lib/trial-ids";
+import { DAY_MS } from "@/lib/dates";
 
 // What Claude has cost for one person today (spec step 191): a daily cap, kept in the
 // rate_limits table (one counter per person per UTC day, in hundredths of a cent), so it holds
@@ -19,7 +20,6 @@ export type Usage = {
   cacheWriteTokens?: number;
 };
 
-const DAY_MS = 86_400_000;
 const SPEND_PREFIX = "chatspend:";
 const HIT_PREFIX = "chatcaphit:";
 const keyOf = (userId: string) => `${SPEND_PREFIX}${userId}`;

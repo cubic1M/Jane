@@ -2,6 +2,7 @@ import { ENERGY_CREDITS_2025, ENERGY_CREDITS_END, ITEMIZED } from "@/config/tax-
 import { HOME_OFFICE_SIMPLIFIED } from "@/config/tax-rates";
 import { HOME_SALE_EXCLUSION, MORTGAGE_DEBT_LIMIT } from "@/config/home-taxes";
 import type { FilingStatus } from "@/config/tax";
+import { DAY_MS } from "@/lib/dates";
 
 // Homeowner taxes (spec step 170). Pure. What a home changes at tax time, each figure with
 // the transactions, loan, documents or answers it comes from: mortgage interest (on up to
@@ -73,7 +74,6 @@ export type HomeTaxes = {
   } | null;
 };
 
-const DAY_MS = 86_400_000;
 const days = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / DAY_MS;
 
 // The cap on state and local taxes (the same as the estimate's), shrinking above the

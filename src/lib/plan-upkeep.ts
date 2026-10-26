@@ -16,6 +16,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { listGoals } from "@/lib/goals";
 import { tuneUpChanges, type TuneUpChange } from "@/planning/tune-up";
+import { isoDay } from "@/lib/dates";
 
 // Plans that keep up (spec step 101): a budget tune-up in the first days of each month and
 // transfers to savings counted toward a goal tracked by hand. At "Handle the safe stuff"
@@ -23,8 +24,6 @@ import { tuneUpChanges, type TuneUpChange } from "@/planning/tune-up";
 // Undo on the tune-up; below that nothing changes without a tap (Accept all, Count it).
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const isoDay = (now: Date) => now.toISOString().slice(0, 10);
 
 export type TuneUpView = { month: string; changes: TuneUpChange[]; status: string };
 

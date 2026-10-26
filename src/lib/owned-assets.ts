@@ -10,6 +10,7 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { parseMoneyToCents } from "@/lib/money";
+import { isoDay as todayOf } from "@/lib/dates";
 
 // Things the person owns (spec step 67): a value they give, with the day, counted in net
 // worth. Paired with the mortgage or car loan against it, it shows their equity. Jane
@@ -75,8 +76,6 @@ async function checkLoan(userId: string, loanAccountId: string | null, client: P
   if (!loan) throw new AssetError("That loan isn't one of your accounts.");
   return loan.id;
 }
-
-const todayOf = (now: Date) => now.toISOString().slice(0, 10);
 
 export async function addAsset(
   userId: string,

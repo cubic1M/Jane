@@ -26,6 +26,7 @@ import {
   type TaxProfileView,
   type WorkingProfile,
 } from "@/planning/tax-profile";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 import { cachedCopy } from "@/lib/read-cache";
 
 // The tax profile (spec step 118): loads what Jane found in the person's own accounts and
@@ -34,9 +35,6 @@ import { cachedCopy } from "@/lib/read-cache";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class TaxProfileError extends Error {}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const iso = (date: Date) => date.toISOString().slice(0, 10);
 
 const PROFILE_SELECT = {
   filingStatus: true,

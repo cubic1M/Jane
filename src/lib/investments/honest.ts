@@ -10,6 +10,7 @@ import { loadLocation } from "./location";
 import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
 import { loadReturns } from "./returns";
+import { DAY_MS } from "@/lib/dates";
 
 // Honest performance (spec step 233), for the investments page, Jane's answers and its
 // tool: how the money really did over 1, 3 and 5 years, after fees and taxes, against a
@@ -34,8 +35,6 @@ export type HonestView = {
   taxDragBps: number;
   simulatedPrices: boolean;
 };
-
-const DAY_MS = 86_400_000;
 
 export async function loadHonest(
   userId: string,

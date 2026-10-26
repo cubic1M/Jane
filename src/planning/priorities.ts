@@ -5,6 +5,7 @@ import {
   URGENT_WITHIN_DAYS,
 } from "@/config/priorities";
 import { formatCents } from "@/lib/money";
+import { DAY_MS } from "@/lib/dates";
 
 // The next best thing to do (spec step 143). Pure: candidates in, ranked with their scores
 // and the reason each sits where it does. Weights in src/config/priorities.ts.
@@ -37,7 +38,6 @@ export type PriorityItem = {
 
 export type Ranked = PriorityItem & { score: number; urgencyScore: number; why: string };
 
-const DAY_MS = 86_400_000;
 const daysUntil = (date: string, asOf: string) =>
   Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / DAY_MS);
 

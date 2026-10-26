@@ -10,6 +10,7 @@ import {
   describeHarvest,
   type HarvestCandidate,
 } from "./harvest";
+import { DAY_MS } from "@/lib/dates";
 
 // The yearly investing review's extra facts (spec step 216): the tax-loss harvesting
 // candidates, what the goals still need, and whether a raise or a new job just happened.
@@ -17,8 +18,6 @@ import {
 // (src/lib/jane-agent/investments/snapshot.ts).
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 86_400_000;
 
 export type ReviewExtras = {
   harvest: HarvestCandidate[];

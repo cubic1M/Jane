@@ -10,6 +10,7 @@ import {
 } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "./tax-estimate";
+import { addDays } from "@/lib/dates";
 
 // The tax savings finder (spec step 122): every way Jane can see for the person to pay less,
 // each with an estimate, why, and the one thing to do about it (a goal to start, a reminder
@@ -67,9 +68,6 @@ export type SavingsInput = {
 
 const total = (e: TaxEstimate) => e.totalTaxCents + (e.state?.taxCents ?? 0);
 const dollars = (cents: number) => formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
-
-const addDays = (day: string, days: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 // The next time a MM-DD comes round, today or later.
 const nextDate = (today: string, monthDay: string) => {

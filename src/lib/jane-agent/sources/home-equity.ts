@@ -4,13 +4,12 @@ import { formatCents } from "@/lib/money";
 import { EQUITY_PAGE, escrowLines, pmiLines, sentButton } from "../home-equity-replies";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
+import { DAY_MS } from "@/lib/dates";
 
 // A home's equity (spec step 228): PMI that can be cancelled against the home's original
 // value, with the request drafted; a payment that should have dropped it; a request that has
 // gone unanswered; and an escrow account holding more than the bills need, with the refund
 // request drafted. Jane never sends either request; "I sent it" only records that the person did.
-
-const DAY_MS = 86_400_000;
 
 export const homeEquitySource: MessageSource = {
   key: "home_equity",

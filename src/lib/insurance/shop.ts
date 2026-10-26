@@ -20,6 +20,7 @@ import { loadHousehold } from "./household";
 import { pickQuote } from "./pick";
 import { POLICY_SELECT, nextRenewal, toPolicy, yearlyPremium, type Policy } from "./policies";
 import { requestQuotes, type StoredQuote } from "./quotes";
+import { isoDay as day } from "@/lib/dates";
 
 // Shopped for you (spec step 104). Jane reshops each policy on its own, at every autopilot
 // level: RESHOP_DAYS_BEFORE_RENEWAL days before it renews, and whenever its price goes up
@@ -159,8 +160,6 @@ export async function shopPolicy(
   });
   return toShop(row);
 }
-
-const day = (date: Date) => date.toISOString().slice(0, 10);
 
 // The newest charge from the policy's insurer above its price, in the last
 // PRICE_UP_LOOKBACK_DAYS: the price went up. Null when there's none.

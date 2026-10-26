@@ -12,6 +12,7 @@ import { ideasFrom } from "@/planning/practice-ideas-from";
 import { DEFAULT_PREFERENCES, type PracticePreferences } from "@/planning/practice-preferences";
 import { replayRules } from "@/planning/rule-replay";
 import type { PracticeIdea, ProfileInput } from "./build";
+import { DAY_MS } from "@/lib/dates";
 
 // A sample person's practice ideas for the detector harness (Phase AW, Stage A): their practice
 // portfolio as the first scan starts it (src/lib/practice/demo-start.ts), DEMO_PRACTICE_REPLAY_DAYS
@@ -19,7 +20,6 @@ import type { PracticeIdea, ProfileInput } from "./build";
 // replayed on the sample market through the live scan's own rules (replayRules with "live"), and
 // the ideas left waiting as the practice page reads them. Pure.
 
-const DAY_MS = 86_400_000;
 const daysBefore = (iso: string, days: number) =>
   new Date(Date.parse(`${iso}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
 

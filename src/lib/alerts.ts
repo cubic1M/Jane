@@ -16,12 +16,11 @@ import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { sendEmail } from "@/lib/email";
 import { pushEnabled, sendPush } from "@/lib/push";
+import { DAY_MS } from "@/lib/dates";
 
 // Saving alerts and emailing the urgent ones. Which alerts exist is decided in
 // src/detection/alerts.ts; this module applies the person's preferences, makes sure each
 // event is stored once, and keeps alert emails under the daily cap.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type AlertPrefs = Record<AlertType, AlertDelivery>;
 

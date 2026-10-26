@@ -28,6 +28,7 @@ import { listTaxNotices, type NoticeView } from "@/lib/tax-notices";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { complexity, linkState, type LinkState, type Question } from "@/planning/accountant";
 import type { TaxPack } from "@/planning/tax-pack";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Working with an accountant (spec step 222): a read-only link with the tax pack, the
 // documents Jane collected, the questions it has and a place to answer them; the answers
@@ -39,9 +40,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class AccountantError extends Error {}
 
-const DAY_MS = 86_400_000;
 const hashOf = (token: string) => createHash("sha256").update(token).digest("hex");
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type LinkView = {
   id: string;

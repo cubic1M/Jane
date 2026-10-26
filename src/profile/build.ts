@@ -26,6 +26,7 @@ import type { NeedPolicy } from "@/lib/insurance/need/types";
 import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
+import { addDays } from "@/lib/dates";
 
 // The picture of you (spec step 253): one profile per person, built from their
 // transactions, accounts, loans and answers. Pure: the loader (src/lib/profile.ts) gathers
@@ -215,8 +216,6 @@ export type Profile = {
 };
 
 const monthOf = (day: string) => day.slice(0, 7);
-const addDaysTo = (day: string, days: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 // How many calendar months the data covers, up to a year.
 export function monthsOfData(txs: readonly ProfileTx[], today: string): number {
@@ -245,8 +244,6 @@ const inYear = (txs: readonly ProfileTx[], today: string) => {
 
 // Debt payments are averaged over this many days before today.
 const TROUBLE_PAYMENT_DAYS = 90;
-const addDaysIso = (day: string, days: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 const yearsUntil = (today: string, day: string) =>
   (Date.parse(day) - Date.parse(today)) / (365.25 * 86_400_000);
@@ -324,7 +321,7 @@ export function buildProfile(input: ProfileInput): Profile {
 
   // Employers still paying: an old one that stopped is a job change, not another earner.
   const employers = new Map<string, number>();
-  const activeSince = addDaysTo(today, -EARNER_ACTIVE_DAYS);
+  const activeSince = addDays(today, -EARNER_ACTIVE_DAYS);
   const lastPaid = new Map<string, string>();
   for (const t of salary) {
     const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
@@ -426,7 +423,7 @@ export function buildProfile(input: ProfileInput): Profile {
   // Debt payments against income, by step 229's rule (src/config/debt-trouble.ts): every loan
   // payment seen in the last three months (a card's is its minimum, not a statement paid in
   // full) at or above TROUBLE_PAYMENT_SHARE of take-home.
-  const since = addDaysIso(today, -TROUBLE_PAYMENT_DAYS);
+  const since = addDays(today, -TROUBLE_PAYMENT_DAYS);
   const loanPaid = txs
     .filter(
       (t) =>

@@ -38,9 +38,9 @@ type Options = { client?: PrismaClient; now?: Date; api?: PlaidApi };
 export type { LastRun, StepLog, StepResult } from "./controller-log";
 import type { StepLog, StepResult } from "./controller-log";
 import { logsOf } from "./controller-log";
+import { isoDay as day } from "@/lib/dates";
 
 const HOUR_MS = 60 * 60 * 1000;
-const day = (now: Date) => now.toISOString().slice(0, 10);
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // Each step, through its sector's own code. Every one says what it did in a line.

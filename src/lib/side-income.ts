@@ -17,6 +17,7 @@ import {
   type PlatformMatch,
   type RentalNet,
 } from "@/planning/side-income";
+import { isoDay as iso } from "@/lib/dates";
 
 // Side income and rentals (spec step 173), from the person's own accounts: rent in less the
 // expenses they tagged and the depreciation on the property; gig platforms' payouts matched
@@ -28,7 +29,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class SideIncomeError extends Error {}
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const payerOf = (t: { merchantName: string | null; description: string }) =>
   (t.merchantName ?? t.description).trim();
 

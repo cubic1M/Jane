@@ -7,12 +7,11 @@ import { buildTaxPack, packStates, type TaxPack } from "@/planning/tax-pack";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import { loadSideIncome } from "@/lib/side-income";
 import { loadResidency } from "@/lib/tax-states";
+import { isoDay as iso } from "@/lib/dates";
 
 // Loads one person's tax-time pack for a year (spec step 72). Only their own accounts, never
 // a household partner's, and only posted transactions. Spec step 119: grouped by their tax
 // tags (src/lib/tax-organizer.ts), with the forms to expect.
-
-const iso = (date: Date) => date.toISOString().slice(0, 10);
 
 export async function loadTaxPack(
   userId: string,

@@ -21,6 +21,7 @@ import {
   type DecisionId,
   type DecisionInput,
 } from "@/planning/debt-decisions";
+import { DAY_MS } from "@/lib/dates";
 
 // The numbers behind the straight answers to debt and credit decisions (the chat's "should I
 // pay off my card or invest?", "should I consolidate?" ...): the person's debts, cash and
@@ -28,8 +29,6 @@ import {
 // only). Answers are in src/planning/debt-decisions.ts.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 86_400_000;
 
 export async function loadDecisionInput(
   userId: string,

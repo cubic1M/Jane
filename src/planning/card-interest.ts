@@ -6,12 +6,12 @@ import {
 } from "@/config/card-interest";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
+import { DAY_MS } from "@/lib/dates";
 
 // Less interest on every card (spec step 224). Pure: what paying earlier saves, whether a
 // 0% promotion is on pace to clear before its end (and what deferred interest would cost if
 // not), and the request for a lower rate with what it saves a year.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const dayNumber = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / DAY_MS;
 export const daysBetween = (from: string, to: string) =>
   Math.round(dayNumber(to) - dayNumber(from));

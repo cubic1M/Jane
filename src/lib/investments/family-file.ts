@@ -21,6 +21,7 @@ import {
   type ContactRow,
   type LifeEventRow,
 } from "@/planning/family-file";
+import { isoDay as iso } from "@/lib/dates";
 
 // The family looked after (spec step 237): who is named on each account, what a marriage,
 // divorce or birth makes out of date, and a file of what the family would need that the person
@@ -32,7 +33,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class FamilyFileError extends Error {}
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const isSection = (k: string): k is FileSection => Object.hasOwn(FILE_SECTIONS, k);
 const isEvent = (k: string): k is BeneficiaryEvent => Object.hasOwn(BENEFICIARY_EVENTS, k);
 

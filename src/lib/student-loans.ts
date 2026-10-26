@@ -18,6 +18,7 @@ import {
   type StudentComparison,
   type StudentInput,
 } from "@/planning/student-loans";
+import { DAY_MS } from "@/lib/dates";
 
 // Student loans (spec step 114), for one person: their student loan from the bank, the
 // plans compared at their income, forgiveness tracking (qualifying payments counted from
@@ -25,8 +26,6 @@ import {
 // are in studentaid.gov's steps. The pick is demo advice only.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type StudentProfile = {
   agiCents: number | null;

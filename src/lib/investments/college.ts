@@ -15,6 +15,7 @@ import {
   type PlanComparison,
   type Range,
 } from "@/planning/college";
+import { isoDay as iso } from "@/lib/dates";
 
 // College savings (spec step 158), for its page, Jane's answers and its buttons. The state
 // tax break uses the tax profile's state and filing status. Setting it up saves a college
@@ -33,8 +34,6 @@ export type CollegeEstimate = {
   plans: PlanComparison[];
   state: string | null;
 };
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export async function estimateCollege(
   userId: string,

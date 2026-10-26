@@ -15,6 +15,7 @@ import {
   type Realised,
   type Unrealised,
 } from "@/planning/investment-taxes";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Investment taxes (spec step 124), from what's in the person's taxable investment accounts
 // (step 128's holdings and investment transactions). Retirement and health accounts aren't
@@ -37,9 +38,6 @@ export type InvestmentTaxesView = {
   // Sales of positions no longer held: their cost basis is unknown.
   soldOutSales: number;
 };
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-const DAY_MS = 86_400_000;
 
 type HoldingRow = {
   accountId: string;

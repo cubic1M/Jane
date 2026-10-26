@@ -12,6 +12,7 @@ import {
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 import { kindOf, type InsightTransaction } from "@/insights/spending";
 import type { CardProduct } from "@/lib/credit-cards/partner";
+import { DAY_MS } from "@/lib/dates";
 
 // The right card for each purchase (spec step 174). Pure: the person's own spending and
 // the cards' terms in; what each card earns on that spending, its fee always taken off,
@@ -19,7 +20,6 @@ import type { CardProduct } from "@/lib/credit-cards/partner";
 
 export type Spend = Record<RewardCategory, number>;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const zero = (): Spend => Object.fromEntries(REWARD_CATEGORIES.map((c) => [c, 0])) as Spend;
 const dayNumber = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / DAY_MS;
 

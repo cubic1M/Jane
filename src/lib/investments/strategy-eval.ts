@@ -8,6 +8,7 @@ import type { Bar } from "@/lib/market/types";
 import { alignUniverse, type Metrics } from "@/planning/strategies/engine";
 import { selectForLevel, type LevelSelection } from "@/planning/strategies/select";
 import type { Params } from "@/planning/strategies/types";
+import { isoDay as day } from "@/lib/dates";
 
 // The daily strategy evaluation (Phase AW, Stage A), run by Vercel Cron after the 09:00 history load
 // (/api/cron/strategy-eval): every strategy in the library replayed for every level over the
@@ -34,7 +35,6 @@ export type EvaluationRun =
   | { ran: true; id: string; from: string; to: string; chosen: ChosenStrategy[] };
 
 const LEVELS = [1, 2, 3, 4, 5] as const satisfies readonly RiskLevel[];
-const day = (d: Date) => d.toISOString().slice(0, 10);
 
 export function chosenOf(s: LevelSelection): ChosenStrategy {
   return {

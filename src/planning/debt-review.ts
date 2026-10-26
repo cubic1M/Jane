@@ -4,10 +4,10 @@ import {
   REVIEW_RAISE_SHARE,
   type ReviewReason,
 } from "@/config/debt-review";
+import { DAY_MS } from "@/lib/dates";
 
 // The yearly debt review (spec step 230): when one is due. Pure.
 
-const DAY_MS = 86_400_000;
 const daysBetween = (a: string, b: string) => Math.floor((Date.parse(b) - Date.parse(a)) / DAY_MS);
 
 export type ReviewInput = {

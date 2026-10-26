@@ -23,6 +23,7 @@ import {
   type Candidate,
   type Transfer,
 } from "@/planning/family-loans";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Money between family and friends (spec step 226). Jane spots payment-app transfers (Venmo,
 // Zelle, Cash App) that might be a loan and asks once; a transfer is a loan only after the
@@ -32,9 +33,6 @@ import {
 // show each person's share.
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export class FamilyLoanError extends Error {}
 

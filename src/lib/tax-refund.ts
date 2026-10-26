@@ -20,6 +20,7 @@ import {
   type RefundMatch,
   type RefundPlanItem,
 } from "@/planning/tax-refund";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Tax refunds (spec step 125): spotted when they land, matched to the estimate for their
 // year, and (demo advice) a plan for where they could go. "Set it up" adds the goals and
@@ -37,8 +38,6 @@ export type RefundView = {
   plan: { items: RefundPlanItem[]; leftCents: number } | null;
 };
 
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const EMERGENCY_GOAL = "Emergency fund";
 
 async function planInputs(userId: string, client: PrismaClient, now: Date) {

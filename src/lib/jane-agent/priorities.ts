@@ -10,6 +10,7 @@ import { WORKED_MIN_SAMPLE } from "@/config/worked";
 import { isRefund } from "@/lib/savings-text";
 import { rankPriorities, type PriorityItem, type Ranked } from "@/planning/priorities";
 import type { Snapshot } from "./snapshot";
+import { DAY_MS } from "@/lib/dates";
 
 // The next best thing to do (spec step 143), from what Jane's brain already looks at: the
 // plan's findings, Jane's insurance picks and refinance offers, the steps only the person
@@ -21,7 +22,6 @@ import type { Snapshot } from "./snapshot";
 // /jane, the monthly report, the chat and Claude's numbers all read it, so the person is told
 // the same first thing everywhere.
 
-const DAY_MS = 86_400_000;
 const within = (date: string, asOf: string) =>
   Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`) <=
   URGENCY_HORIZON_DAYS * DAY_MS;

@@ -3,13 +3,13 @@ import { liquidCents, monthlySpendCents } from "@/detectors/helpers";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { cashCushionCents } from "./emergency-fund";
 import type { FitPerson } from "./fit";
+import { DAY_MS } from "@/lib/dates";
 
 // The person the fit engine (./fit.ts) works for, read from what the profile already holds:
 // take-home pay, the debt payments seen in the last three months (and loans they co-signed),
 // cash, and whether they are in debt trouble. The score is a pulled one when the caller has it. Pure.
 
 const MONTHS = 3;
-const DAY_MS = 86_400_000;
 
 export function fitPersonFrom(input: ProfileInput, creditScore: number | null = null): FitPerson {
   const profile = buildProfile(input);

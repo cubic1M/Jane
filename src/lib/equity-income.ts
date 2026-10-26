@@ -19,6 +19,7 @@ import {
   type Event,
   type IsoResult,
 } from "@/planning/equity-tax";
+import { isoDay as iso } from "@/lib/dates";
 
 // Crypto and equity pay as income for a tax year (spec step 219): crypto sales by lot, ESPP
 // sales, ISO exercises. Kept apart from the estimate's own loader so the estimate can use
@@ -26,7 +27,6 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date; source?: CryptoSource | null };
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 // How far back the exchange's trades are read to build lots.
 const HISTORY_YEARS = 5;
 

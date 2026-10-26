@@ -24,6 +24,7 @@ import {
   rankSuggestions,
   type TopicHistory,
 } from "@/planning/suggestion-rank";
+import { DAY_MS, isoDay as dayOf } from "@/lib/dates";
 import { withReadCache } from "@/lib/read-cache";
 
 // The nightly scan (spec step 255): every detector for one person, ranked by dollars x
@@ -33,9 +34,6 @@ import { withReadCache } from "@/lib/read-cache";
 // that reads the person, runs them and keeps the result.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const dayOf = (d: Date) => d.toISOString().slice(0, 10);
-const DAY_MS = 86_400_000;
 
 export type OfferedSuggestion = {
   id: string;

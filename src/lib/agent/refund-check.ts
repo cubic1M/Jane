@@ -9,6 +9,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { note } from "./run";
+import { isoDay as dayOf } from "@/lib/dates";
 
 // Confirms refunds from the person's own transactions: after each scan, every open or
 // finished refund action looks for the money coming back. A refund seen closes the action
@@ -33,8 +34,6 @@ type RefundAction = {
 
 const FEE_REFUND =
   /\b(fee|overdraft|od)\b.*\b(refund|reversal|reversed|credit)\b|\b(refund|reversal|courtesy credit)\b.*\bfee\b/i;
-
-const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 
 // Pure: whether a credit is this action's refund coming back.
 export function isRefundFor(action: RefundAction, credit: Credit): boolean {

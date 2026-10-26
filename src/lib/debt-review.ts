@@ -17,6 +17,7 @@ import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
 import { rateStep } from "@/planning/card-interest";
 import { reviewReason } from "@/planning/debt-review";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Debt on autopilot, round two (spec step 230): the yearly debt review. Once a year, and early
 // after a raise, a new loan or a missed payment, Jane goes over everything about debts and
@@ -37,9 +38,6 @@ type Options = {
   book?: DebtBook;
   parts?: Parts;
 };
-
-const DAY_MS = 86_400_000;
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 // What a button on an item does; the chat message and the page turn this into a button.
 export type ReviewTap =

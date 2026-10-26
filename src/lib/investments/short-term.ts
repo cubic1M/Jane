@@ -24,6 +24,7 @@ import {
   type Rung,
 } from "@/planning/short-term";
 import { loadCash } from "./cash";
+import { isoDay as iso } from "@/lib/dates";
 
 // Short-term money, placed safely (spec step 234, demo advice), for its page, Jane's answers
 // and its buttons. Money needed within three years is compared after tax in the person's own
@@ -35,8 +36,6 @@ import { loadCash } from "./cash";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class ShortTermError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type Candidate = {
   key: string;

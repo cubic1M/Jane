@@ -10,6 +10,7 @@ import {
   TRANSFER_TO_LINKED,
   UNMATCHED_TRANSFER_MIN_CENTS,
 } from "@/config/books";
+import { addDays } from "@/lib/dates";
 
 // Books that balance (spec step 238). Pure: a person's balances, transactions, accounts and
 // bank links in, what doesn't add up out. Nothing here changes data; merging two copies of
@@ -40,8 +41,6 @@ export type Link = {
   createdAt: string;
 };
 
-const addDays = (date: string, days: number) =>
-  new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 const daysBetween = (a: string, b: string) =>
   Math.abs(Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000));
 

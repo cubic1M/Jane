@@ -5,11 +5,11 @@ import {
   TAX_CALENDAR,
   type CalendarKey,
 } from "@/config/tax-calendar";
+import { DAY_MS } from "@/lib/dates";
 
 // The tax year that runs itself (spec step 223). Pure: the calendar for a month, and which
 // estimated payment is in its pay window.
 
-const DAY_MS = 86_400_000;
 const days = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
 

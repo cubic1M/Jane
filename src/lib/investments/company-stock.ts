@@ -33,6 +33,7 @@ import { profileSummary } from "@/planning/investor-profile";
 import { marginalRateOf } from "@/planning/tax-estimate";
 import { loadInvestments } from "./holdings";
 import { profileOf } from "./profile";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Company stock (spec step 160), for its page, Jane's answers, its buttons and tools. The
 // employer is spotted from who pays the person; vested shares are holdings; what's still
@@ -43,8 +44,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class CompanyStockError extends Error {}
 
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const addMonths = (day: string, months: number) => {
   const d = new Date(`${day}T00:00:00Z`);
   d.setUTCMonth(d.getUTCMonth() + months);

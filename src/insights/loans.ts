@@ -1,5 +1,6 @@
 import { LOAN_DUE_SOON_DAYS } from "@/config/loans";
 import { SYNCED_KINDS, syncedKindOf } from "@/data-sources/types";
+import { DAY_MS } from "@/lib/dates";
 
 // What the person owes, card by card and loan by loan, from balances and the details the
 // bank reports through Plaid Liabilities (spec step 65). Only what the bank says: nothing
@@ -52,7 +53,6 @@ export type DebtSummary = {
   missingMonthly: number;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const iso = (date: Date | null | undefined) => date?.toISOString().slice(0, 10) ?? null;
 
 export function debtSummary(accounts: DebtAccount[], asOf: string): DebtSummary {

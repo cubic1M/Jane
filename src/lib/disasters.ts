@@ -20,6 +20,7 @@ import {
   type CasualtyLoss,
   type Move,
 } from "@/planning/disasters";
+import { isoDay as iso } from "@/lib/dates";
 
 // Disasters and losses (spec step 270). A disaster declared for the person's county (from the
 // disaster feed: the stand-in for demo-bank people, nobody else until a real feed) postpones
@@ -31,8 +32,6 @@ import {
 type Options = { client?: PrismaClient; now?: Date };
 
 export class DisasterError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type ReliefView = {
   relief: Relief;

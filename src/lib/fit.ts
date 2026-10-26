@@ -12,6 +12,7 @@ import { lenderPartnerFor } from "@/lib/refinance";
 import { fit, type FitBaseline, type FitResult } from "@/planning/fit";
 import { refinanceable } from "@/planning/refinance";
 import { fitPersonFrom } from "@/planning/fit-person";
+import { isoDay } from "@/lib/dates";
 
 // The perfect fit for borrowing (spec step 281), for one person: the need, what they have now,
 // the lender's offers at each usual term, and the fit engine's options (src/planning/fit.ts).
@@ -19,8 +20,6 @@ import { fitPersonFrom } from "@/planning/fit-person";
 // lender is the stand-in, for demo advice people only; a real account has no offers yet.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 export type FitNeedInput = {
   need: FitNeed;

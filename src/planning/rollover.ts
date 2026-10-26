@@ -1,4 +1,5 @@
 import { ROLLOVER_DAYS, ROLLOVER_STEPS } from "@/config/old-accounts";
+import { addDays } from "@/lib/dates";
 
 // Old accounts brought home (spec step 211). Pure: the fees before and after a rollover,
 // and the tracked steps. A rollover is never a withdrawal.
@@ -34,9 +35,6 @@ export function olderPlans(plans: readonly LinkedPlan[], gapBps: number) {
 }
 
 export const newSteps = (): Step[] => ROLLOVER_STEPS.map((s) => ({ ...s, doneOn: null }));
-
-const addDays = (day: string, n: number) =>
-  new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 // The steps as they stand on `today`, given when the rollover was requested: the first two
 // are done at once, the money arrives ROLLOVER_DAYS later, and is invested the same day.

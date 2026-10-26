@@ -1,9 +1,8 @@
 import { DEFAULT_PRICE_CENTS, OFFER_SNOOZE_DAYS } from "@/config/membership";
+import { DAY_MS } from "@/lib/dates";
 
 // Who sees the membership offer. It appears once a person's first action is done, never
 // blocks anything, and after "not now" stays hidden for OFFER_SNOOZE_DAYS.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type OfferState = {
   hasFinishedAction: boolean;

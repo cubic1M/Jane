@@ -7,6 +7,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { runAutopilot } from "@/lib/practice/autopilot";
 import { startPractice } from "@/lib/practice/portfolio";
 import { runPracticeDay } from "@/lib/practice/scan";
+import { DAY_MS } from "@/lib/dates";
 
 // The person Jane's answer checks talk to (spec step 87): a new account with the demo bank
 // linked and synced, so every run asks over the same kind of data. Never a real person;
@@ -50,8 +51,6 @@ export async function createCheckPerson({
     await seedPractice(user.id, client, now);
   return user.id;
 }
-
-const DAY_MS = 86_400_000;
 
 async function seedPractice(userId: string, client: PrismaClient, now: Date) {
   const start = new Date(now.getTime() - 45 * DAY_MS);

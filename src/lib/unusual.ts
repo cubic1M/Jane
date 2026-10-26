@@ -9,6 +9,7 @@ import { UNUSUAL_EXPECTED_FOR_BUSINESS } from "@/config/detection";
 import { loadProfile } from "@/lib/profile";
 import { keyOf, parseKey, type UnusualAlert } from "@/detection/unusual";
 import { addDays } from "@/detection/units";
+import { isoDay as isoDate } from "@/lib/dates";
 
 // Unusual activity (spec step 208): what the person has said is theirs (so Jane stays
 // quiet about that merchant), the refunds that never arrived, and the two answers on an
@@ -42,8 +43,6 @@ export async function expectedFor(
     ? new Set(UNUSUAL_EXPECTED_FOR_BUSINESS)
     : new Set();
 }
-
-const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 // A refund the team asked for, done long enough ago that it should have come, and still not
 // in the transactions.

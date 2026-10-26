@@ -5,13 +5,12 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { DAY_MS } from "@/lib/dates";
 
 // Inviting a partner, joining, leaving, and choosing which accounts to share. What a
 // partner can then read is in sharedReadFor (src/lib/db-scoped.ts).
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export class HouseholdError extends Error {}
 

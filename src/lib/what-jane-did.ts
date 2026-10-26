@@ -2,6 +2,7 @@ import { actionWorthCents } from "@/lib/saved-amount";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { DAY_MS } from "@/lib/dates";
 
 // What the action agent did for the person (spec step 56): what it finished, the money it
 // confirmed (a refund seen in their transactions, a lower price confirmed on a call: never
@@ -23,7 +24,6 @@ export type JaneDid = {
 };
 
 const WEEK_DAYS = 7;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const titleOf = (snapshot: unknown) => {
   const title = (snapshot as { title?: unknown } | null)?.title;

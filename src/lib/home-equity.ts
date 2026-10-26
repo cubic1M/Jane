@@ -16,6 +16,7 @@ import {
   type PmiTimeline,
   type ProjectOption,
 } from "@/planning/home-equity";
+import { isoDay } from "@/lib/dates";
 
 // A home's equity, used well (spec step 228), for one person: PMI against the home's original
 // value (the request letter at 80%, the automatic end at 78%), the escrow in the payment
@@ -25,8 +26,6 @@ import {
 // bills are what the person tells Jane.
 
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook; mortgage?: Mortgage | null };
-
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 export class HomeEquityError extends Error {}
 

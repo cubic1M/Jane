@@ -19,6 +19,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { lastClose, marketDataFor, type MarketDataPartner } from "@/lib/market-data/partner";
 import { loadInvestments, type Investments } from "./holdings";
+import { isoDay as iso } from "@/lib/dates";
 
 // How the investments have done (spec step 156), for the investments page, Jane's answers
 // and its tools. Daily values come from the daily balance snapshots; before the first one,
@@ -47,8 +48,6 @@ export type Returns = {
   // Whether the prices behind it are the stand-in feed's (made up).
   simulatedPrices: boolean;
 };
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // What's held today, by ticker, with the cash beside it.
 function backcaster(investments: Investments, market: MarketDataPartner | null) {

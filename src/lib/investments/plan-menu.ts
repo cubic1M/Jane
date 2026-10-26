@@ -22,6 +22,7 @@ import {
 } from "@/planning/plan-menu";
 import { loadInvestments, type Investments } from "./holdings";
 import { profileOf } from "./profile";
+import { isoDay as iso } from "@/lib/dates";
 
 // The workplace plan's menu, used well (spec step 232, demo advice), for its page, Jane's
 // answers and its buttons. The menu is read from a fee disclosure the person pastes, shown
@@ -32,8 +33,6 @@ import { profileOf } from "./profile";
 type Options = { client?: PrismaClient; now?: Date; investments?: Investments };
 
 export class PlanMenuError extends Error {}
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 // A sample disclosure for demo-bank people, made from the demo fund facts.
 export function sampleDisclosure(): string {

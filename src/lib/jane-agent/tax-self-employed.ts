@@ -4,6 +4,7 @@ import type { SelfEmployedView } from "@/lib/self-employed";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { stateName } from "@/planning/tax-profile";
 import type { MessageAction, MessageRefs } from "./types";
+import { DAY_MS } from "@/lib/dates";
 
 // Freelancers in the chat (spec step 123): the next estimated tax payment, before it's due,
 // with the amount; what to set aside from each payment. Demo advice, labelled.
@@ -22,7 +23,6 @@ const day = (iso: string) =>
     day: "numeric",
     timeZone: "UTC",
   });
-const DAY_MS = 86_400_000;
 
 // The next payment within QUARTERLY.remindDays of today, if any.
 export function nextQuarter(view: SelfEmployedView, today: string) {

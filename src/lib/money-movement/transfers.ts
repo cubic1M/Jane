@@ -8,6 +8,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { bigMoveCheck } from "@/lib/money-for-two";
 import { moneyPartnerFor, type MoneyMovementPartner } from "./partner";
+import { isoDay as today } from "@/lib/dates";
 
 // Transfers and payments through the money-movement partner (spec steps 144–145). Every one
 // is kept and shown on /transfers, and can be undone while it's pending (before its day).
@@ -29,8 +30,6 @@ export type NewTransfer = {
 };
 
 export class TransferError extends Error {}
-
-const today = (now: Date) => now.toISOString().slice(0, 10);
 
 export async function scheduleTransfer(
   userId: string,

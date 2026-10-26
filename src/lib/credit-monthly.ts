@@ -25,6 +25,7 @@ import { loadRenting, type Renting } from "@/lib/renting";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
 import { rateStep } from "@/planning/card-interest";
+import { isoDay } from "@/lib/dates";
 
 // Credit on autopilot, round three (spec step 251): every month, after its soft checks, Jane
 // goes over borrowing in one pass: a cheaper rate on each loan (the fit engine's pick, the same
@@ -42,8 +43,6 @@ type Parts = {
   cardInterest?: CardInterest;
 };
 type Options = { client?: PrismaClient; now?: Date; book?: DebtBook; parts?: Parts };
-
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 export type MonthlyItem = {
   key: MonthlyItemKey;

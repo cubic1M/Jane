@@ -25,6 +25,7 @@ import {
   type StatementPlan,
   type Streak,
 } from "@/planning/credit-building";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Building credit (spec step 175). Before a card's statement closes Jane works out what to
 // pay so a lower balance is reported: from "Handle the safe stuff" it schedules it by
@@ -36,8 +37,6 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 export const statementKey = (accountId: string, closesOn: string) =>
   `statement:${accountId}:${closesOn}`;
 

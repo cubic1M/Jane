@@ -9,11 +9,10 @@ import {
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
+import { isoDay as day } from "@/lib/dates";
 
 // What the person's documents mean for the rest of Jane (spec step 68): the dates for the
 // deadlines list (spec step 71) and the policy behind an insurance card.
-
-const day = (date: Date) => date.toISOString().slice(0, 10);
 
 type Named = { kind: string; provider: string | null; policyType: string | null; fileName: string };
 

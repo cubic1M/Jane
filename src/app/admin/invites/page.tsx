@@ -7,6 +7,7 @@ import { revokeInvite } from "./actions";
 import { CopyButton } from "./copy-button";
 import { InviteForm } from "./invite-form";
 import { LoadingBar } from "@/components/loading-bar";
+import { isoDay as day } from "@/lib/dates";
 
 const STATUS: Record<InviteStatus, string> = {
   active: "Active",
@@ -14,8 +15,6 @@ const STATUS: Record<InviteStatus, string> = {
   expired: "Expired",
   used_up: "Used up",
 };
-
-const day = (d: Date) => d.toISOString().slice(0, 10);
 
 async function Invites() {
   const admin = await requireAdmin();

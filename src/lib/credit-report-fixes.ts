@@ -14,6 +14,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline, markDeadlineDone } from "@/lib/deadlines";
 import { dayLabel } from "@/lib/day-label";
 import { fixItems, type FixItem } from "@/planning/credit-report-fixes";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Collections and credit report errors (spec step 181). Jane asks the credit partner (the
 // stand-in, for the demo bank) what is on the report that may need fixing, drafts the right
@@ -22,9 +23,6 @@ import { fixItems, type FixItem } from "@/planning/credit-report-fixes";
 // up in the chat. A letter is sent only on the person's tap.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export class CreditFixError extends Error {}
 

@@ -20,6 +20,7 @@ import {
   type RentPayment,
   type RentRise,
 } from "@/planning/renting";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // Renting, counted (spec step 248), for one person. Rent found in their payments; reporting it
 // to the credit bureaus through the reporting partner stand-in only after they opt in; a rent
@@ -27,9 +28,6 @@ import {
 // Facts and the person's own choices: nothing is reported, sent or filed by Jane.
 
 type Options = { client?: PrismaClient; now?: Date };
-
-const DAY_MS = 86_400_000;
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 export class RentingError extends Error {}
 

@@ -15,6 +15,7 @@ import {
   type Paydown,
   type RentalFigures,
 } from "@/planning/property";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // Property as an investment (spec step 214, demo advice), for its page, Jane's answers and
 // its tool: home equity, each rental's figures from its own transactions (rent in, the
@@ -25,8 +26,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class PropertyError extends Error {}
 
-const DAY_MS = 86_400_000;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const words = (s: string) =>
   s
     .split(",")

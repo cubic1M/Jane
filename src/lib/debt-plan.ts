@@ -19,6 +19,7 @@ import {
   planDebts,
   type PayoffSummary,
 } from "@/planning/payoff";
+import { DAY_MS, isoDay } from "@/lib/dates";
 
 // The payoff plan (spec step 110): what the person started, and Jane keeping it current.
 // The plan is always worked out from today's balances (so it updates itself); once a
@@ -27,9 +28,7 @@ import {
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const AVERAGE_MONTH_DAYS = 30.44;
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 
 export const isStrategy = (v: unknown): v is Strategy => v === "avalanche" || v === "snowball";
 

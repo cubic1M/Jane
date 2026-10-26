@@ -17,6 +17,7 @@ import {
   type TagTotals,
   type Tagged,
 } from "@/planning/tax-tags";
+import { isoDay as iso } from "@/lib/dates";
 import { cachedCopy } from "@/lib/read-cache";
 
 // The tax organizer (spec step 119): the year's tax tags and the forms to expect, loaded
@@ -27,7 +28,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class TaxOrganizerError extends Error {}
 
-const iso = (date: Date) => date.toISOString().slice(0, 10);
 const yearRange = (year: number) => ({
   gte: new Date(Date.UTC(year, 0, 1)),
   lt: new Date(Date.UTC(year + 1, 0, 1)),
