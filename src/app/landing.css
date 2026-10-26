@@ -1,5 +1,14 @@
 /* The landing page's colours (founder, 2026-10-25): the pillar drawings' paper and ink, so a
    white page with near-black ASCII. Greys only, like the rest of Jane. */
+/* The headline face (founder, 2026-10-26): Juliette by Minimalist Art Studio. Its free licence
+   forbids sharing the file, so it isn't in git (.gitignore): it's put at public/fonts/juliette.ttf
+   by hand. Where it's missing the headlines fall back to Playfair Display (src/app/fonts.ts). */
+@font-face {
+  font-family: "Juliette";
+  src: url("/fonts/juliette.ttf") format("truetype");
+  font-display: swap;
+}
+
 :root {
   --landing-bg: #ffffff;
   --landing-dot: #6b6b6b;
