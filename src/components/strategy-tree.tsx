@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   choosePracticeStrategy,
   restorePracticeStrategy,
@@ -31,9 +31,10 @@ import { formatCents } from "@/lib/money";
 // value, and the strategy in view against the level's plain mix (dashed). Three compact tiles.
 // The strategy tree: the five risk levels as fixed tiles, the person's own open; a level's
 // families as branches; each strategy a leaf with its glyph, tag and return a year. Picking a
-// leaf shows it in the hero at once, and a panel beside it (a bottom sheet on a phone), joined by
-// a marching dotted line, holds its idea, its evidence behind More and "Use this strategy":
-// instant, with Revert. Practice money and demo advice only.
+// leaf opens its own box right under it, on the tree's dotted line (founder: "a separate box, not
+// covering up the whole screen"): its graph against the mix, its idea, "Use this strategy"
+// (instant, with Revert) and its evidence behind More. The hero scrolls with the page. Practice
+// money and demo advice only.
 
 const BOX = "border border-zinc-400 bg-white dark:border-zinc-600 dark:bg-zinc-950";
 const LINE = "border-dashed border-zinc-400 dark:border-zinc-600";
@@ -186,60 +187,6 @@ function Graph({
   );
 }
 
-// The marching dotted line from the picked leaf to its panel (computer only).
-function PanelLine({
-  from,
-  to,
-}: {
-  from: RefObject<HTMLElement | null>;
-  to: RefObject<HTMLElement | null>;
-}) {
-  const [ends, setEnds] = useState<{ a: DOMRect; b: DOMRect } | null>(null);
-  useEffect(() => {
-    let frame = 0;
-    const place = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const a = from.current?.getBoundingClientRect();
-        const b = to.current?.getBoundingClientRect();
-        setEnds(a && b && b.width > 0 && a.width > 0 ? { a, b } : null);
-      });
-    };
-    place();
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    };
-  }, [from, to]);
-  if (!ends) return null;
-  // From the top of the leaf straight up to the bottom of the panel.
-  const sx = ends.a.left + Math.min(ends.a.width / 2, 120);
-  const sy = ends.a.top;
-  const ex = ends.b.left + ends.b.width / 2;
-  const ey = ends.b.bottom;
-  // Only while both ends are on screen and the leaf is below the panel.
-  if (sy < ey || sy > window.innerHeight) return null;
-  const dy = Math.max(20, (sy - ey) / 2);
-  return (
-    <svg
-      aria-hidden="true"
-      data-panel-line=""
-      className="pointer-events-none fixed inset-0 z-30 hidden h-full w-full overflow-visible lg:block"
-    >
-      <path
-        d={`M${sx},${sy} C${sx},${sy - dy} ${ex},${ey + dy} ${ex},${ey}`}
-        fill="none"
-        strokeWidth={2}
-        strokeDasharray="3 6"
-        className="ask-line stroke-zinc-500"
-      />
-    </svg>
-  );
-}
-
 export function StrategyTree({
   tiles,
   board: own,
@@ -268,8 +215,6 @@ export function StrategyTree({
   const [undo, setUndo] = useState<Undo | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const pending = useRef<Promise<ChooseResult> | null>(null);
-  const leafRef = useRef<HTMLButtonElement | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
 
   const isCurrent = (level: RiskLevel, key: string) =>
     level === yourLevel && (current.main === key || current.crypto === key);
@@ -299,8 +244,6 @@ export function StrategyTree({
     heroBoard.rows.find(
       (r) => r.key === (picked && boards[picked.level] ? picked.key : current.main),
     ) ?? own.rows[0];
-  const pickedBoard = picked ? boards[picked.level] : undefined;
-  const pickedRow = pickedBoard?.rows.find((r) => r.key === picked?.key) ?? null;
 
   const use = (row: BoardRow) => {
     const before = current;
@@ -351,7 +294,6 @@ export function StrategyTree({
     const mine = isCurrent(level, row.key);
     return (
       <div className="flex flex-col gap-2 text-sm">
-        <Tag row={row} yours={mine} />
         <p className="text-base font-semibold [overflow-wrap:anywhere]">{row.label}</p>
         <p className="text-zinc-700 dark:text-zinc-300">{row.line}</p>
         <p className="text-xs text-zinc-600 dark:text-zinc-400">
@@ -426,69 +368,50 @@ export function StrategyTree({
 
   return (
     <div className="flex flex-col gap-4" data-strategy-tree="">
-      {/* The hero: on a computer it stays in view while the tree scrolls under it. */}
-      <section
-        aria-label="Your practice portfolio"
-        className="z-20 flex flex-col gap-2 bg-white pb-2 lg:sticky lg:top-14 dark:bg-zinc-950"
-      >
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]">
-          <div className="flex min-w-0 flex-col gap-1">
-            <p className="text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400">
-              PRACTICE PORTFOLIO
-            </p>
-            {practice ? (
-              <p className="flex flex-wrap items-baseline gap-x-3">
-                <span className="text-3xl font-semibold tabular-nums">
-                  {formatCents(practice.totalCents)}
-                </span>
-                <span className="text-sm tabular-nums">
-                  {signedCents(practice.totalCents - practice.startingCents)} since you started
-                </span>
-              </p>
-            ) : (
-              <p className="text-sm">Starts with your first scan.</p>
-            )}
-            <p className="text-sm" data-hero-line={heroRow.key} aria-live="polite">
-              <span className="font-semibold">{heroRow.label}</span>
-              <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                {" "}
-                · replay, <Stats row={heroRow} />
+      {/* The hero scrolls with the page (founder: it shouldn't stay on top and block the rest). */}
+      <section aria-label="Your practice portfolio" className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400">
+            PRACTICE PORTFOLIO
+          </p>
+          {practice ? (
+            <p className="flex flex-wrap items-baseline gap-x-3">
+              <span className="text-3xl font-semibold tabular-nums">
+                {formatCents(practice.totalCents)}
+              </span>
+              <span className="text-sm tabular-nums">
+                {signedCents(practice.totalCents - practice.startingCents)} since you started
               </span>
             </p>
-            <Graph board={heroBoard} row={heroRow} range={range} height={180} />
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                <span aria-hidden="true">━ </span>this strategy <span aria-hidden="true">╌ </span>
-                {heroBoard.mix.label}
-              </p>
-              <div role="group" aria-label="Range" className="flex">
-                {BOARD_RANGES.map((r) => (
-                  <button
-                    key={r.key}
-                    type="button"
-                    aria-pressed={r.key === range}
-                    onClick={() => setRange(r.key)}
-                    className={`inline-flex min-h-11 items-center px-2 text-xs font-semibold ${r.key === range ? CHIP_ON : CHIP_OFF}`}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
+          ) : (
+            <p className="text-sm">Starts with your first scan.</p>
+          )}
+          <p className="text-sm" data-hero-line={heroRow.key} aria-live="polite">
+            <span className="font-semibold">{heroRow.label}</span>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400">
+              {" "}
+              · replay, <Stats row={heroRow} />
+            </span>
+          </p>
+          <Graph board={heroBoard} row={heroRow} range={range} height={180} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              <span aria-hidden="true">━ </span>this strategy <span aria-hidden="true">╌ </span>
+              {heroBoard.mix.label}
+            </p>
+            <div role="group" aria-label="Range" className="flex">
+              {BOARD_RANGES.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  aria-pressed={r.key === range}
+                  onClick={() => setRange(r.key)}
+                  className={`inline-flex min-h-11 items-center px-2 text-xs font-semibold ${r.key === range ? CHIP_ON : CHIP_OFF}`}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
-          </div>
-          {/* The panel beside the graph (a bottom sheet on a phone, below). */}
-          <div
-            ref={panelRef}
-            data-strategy-panel=""
-            className={`hidden flex-col gap-2 border-2 border-dashed p-3 lg:flex ${pickedRow ? "border-zinc-950 dark:border-zinc-50" : "border-zinc-400 dark:border-zinc-600"}`}
-          >
-            {pickedRow && picked && pickedBoard ? (
-              panel(pickedRow, picked.level, pickedBoard)
-            ) : (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Pick a strategy in the tree to see it here and use it.
-              </p>
-            )}
           </div>
         </div>
         <p role="status" className="min-h-5 text-sm font-semibold">
@@ -577,7 +500,28 @@ export function StrategyTree({
             picked={picked}
             isCurrent={isCurrent}
             onPick={pick}
-            leafRef={leafRef}
+            box={(row, board) => (
+              <div
+                role="region"
+                aria-label={row.label}
+                data-strategy-box={row.key}
+                className="nw-box-in flex flex-col gap-2 border-2 border-zinc-950 bg-white p-3 dark:border-zinc-50 dark:bg-zinc-950"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <Tag row={row} yours={isCurrent(board.level, row.key)} />
+                  <button
+                    type="button"
+                    onClick={() => setPicked(null)}
+                    className="-mt-1 -mr-1 inline-flex min-h-9 min-w-9 items-center justify-center text-sm font-semibold"
+                    aria-label="Close"
+                  >
+                    [×]
+                  </button>
+                </div>
+                <Graph board={board} row={row} range={range} height={130} />
+                {panel(row, board.level, board)}
+              </div>
+            )}
           />
         )}
         <details className="text-xs text-zinc-600 dark:text-zinc-400">
@@ -598,31 +542,6 @@ export function StrategyTree({
         </details>
         <DemoAdviceLabel />
       </section>
-
-      {pickedRow && (
-        <PanelLine from={leafRef} to={panelRef} key={`${picked?.level}-${picked?.key}`} />
-      )}
-
-      {/* On a phone the panel is a bottom sheet with its own small graph. */}
-      {pickedRow && picked && pickedBoard && (
-        <div
-          role="dialog"
-          aria-label={pickedRow.label}
-          data-strategy-sheet=""
-          className="nw-sheet-in fixed inset-x-0 bottom-0 z-[70] flex max-h-[75vh] flex-col gap-2 overflow-y-auto border-t-2 border-zinc-950 bg-white p-4 shadow-2xl lg:hidden dark:border-zinc-50 dark:bg-zinc-950"
-        >
-          <button
-            type="button"
-            onClick={() => setPicked(null)}
-            className="self-end text-sm font-semibold"
-            aria-label="Close"
-          >
-            [×]
-          </button>
-          <Graph board={pickedBoard} row={pickedRow} range={range} height={140} />
-          {panel(pickedRow, picked.level, pickedBoard)}
-        </div>
-      )}
     </div>
   );
 }
@@ -632,13 +551,14 @@ function LevelTree({
   picked,
   isCurrent,
   onPick,
-  leafRef,
+  box,
 }: {
   board: Board;
   picked: Picked | null;
   isCurrent: (level: RiskLevel, key: string) => boolean;
   onPick: (level: RiskLevel, key: string) => void;
-  leafRef: RefObject<HTMLButtonElement | null>;
+  // The picked strategy's own box, opened under its leaf.
+  box: (row: BoardRow, board: Board) => ReactNode;
 }) {
   return (
     <div
@@ -660,35 +580,43 @@ function LevelTree({
                 const on = picked?.level === board.level && picked.key === r.key;
                 const mine = isCurrent(board.level, r.key);
                 return (
-                  <li key={r.key} className="flex items-start pt-2">
-                    <span aria-hidden="true" className={`mt-5 w-3 shrink-0 border-t-2 ${LINE}`} />
-                    <button
-                      type="button"
-                      ref={on ? leafRef : undefined}
-                      data-strategy-leaf={r.key}
-                      data-status={r.status}
-                      aria-pressed={on}
-                      onClick={() => onPick(board.level, r.key)}
-                      className={`flex min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-2 py-1.5 text-left text-sm ${
-                        on
-                          ? "border-2 border-zinc-950 bg-zinc-100 dark:border-zinc-50 dark:bg-zinc-900"
-                          : `${BOX} hover:border-zinc-950 dark:hover:border-zinc-50`
-                      }`}
-                    >
-                      <span className="flex w-full items-start gap-2">
-                        <span className="min-w-0 flex-1 font-medium [overflow-wrap:anywhere]">
-                          {r.label}
+                  <li key={r.key} className="flex flex-col pt-2">
+                    <div className="flex items-start">
+                      <span aria-hidden="true" className={`mt-5 w-3 shrink-0 border-t-2 ${LINE}`} />
+                      <button
+                        type="button"
+                        data-strategy-leaf={r.key}
+                        data-status={r.status}
+                        aria-pressed={on}
+                        onClick={() => onPick(board.level, r.key)}
+                        className={`flex min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-2 py-1.5 text-left text-sm ${
+                          on
+                            ? "border-2 border-zinc-950 bg-zinc-100 dark:border-zinc-50 dark:bg-zinc-900"
+                            : `${BOX} hover:border-zinc-950 dark:hover:border-zinc-50`
+                        }`}
+                      >
+                        <span className="flex w-full items-start gap-2">
+                          <span className="min-w-0 flex-1 font-medium [overflow-wrap:anywhere]">
+                            {r.label}
+                          </span>
+                          <span className="shrink-0 font-semibold tabular-nums">
+                            {leafFigure(r)}
+                          </span>
                         </span>
-                        <span className="shrink-0 font-semibold tabular-nums">{leafFigure(r)}</span>
-                      </span>
-                      <span className="text-[11px] font-semibold tracking-wide text-zinc-600 dark:text-zinc-400">
-                        <span aria-hidden="true">{LEAF_GLYPHS[r.status]} </span>[
-                        {LEAF_TAGS[r.status]}]
-                        {mine && (
-                          <span className="ml-1 text-zinc-950 dark:text-zinc-50">■ YOURS</span>
-                        )}
-                      </span>
-                    </button>
+                        <span className="text-[11px] font-semibold tracking-wide text-zinc-600 dark:text-zinc-400">
+                          <span aria-hidden="true">{LEAF_GLYPHS[r.status]} </span>[
+                          {LEAF_TAGS[r.status]}]
+                          {mine && (
+                            <span className="ml-1 text-zinc-950 dark:text-zinc-50">■ YOURS</span>
+                          )}
+                        </span>
+                      </button>
+                    </div>
+                    {on && (
+                      <div className={`ml-6 flex flex-col border-l-2 pt-2 pl-3 ${LINE}`}>
+                        {box(r, board)}
+                      </div>
+                    )}
                   </li>
                 );
               })}
