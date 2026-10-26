@@ -30,6 +30,8 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type EventsView = {
   on: boolean;
+  // The 24-hour agent runs the paper account: it takes the overlay's slices as its own signals.
+  agent: boolean;
   hasAccount: boolean;
   level: RiskLevel | null;
   label: string;
@@ -78,7 +80,7 @@ export async function loadEventsView(
   if (!(await adviceMode(userId, { client }))) return null;
   const db = scopedFor(userId, client);
   const [account, overlay, logs, events] = await Promise.all([
-    db.paperAccounts.findFirst({ select: { id: true, level: true } }),
+    db.paperAccounts.findFirst({ select: { id: true, level: true, agentPolicy: true } }),
     db.paperEventOverlays.findFirst({}),
     db.paperEventLogs.findMany({ orderBy: { at: "desc" }, take: 12 }),
     client.marketEvent.findMany({
@@ -145,6 +147,7 @@ export async function loadEventsView(
 
   return {
     on,
+    agent: Boolean(account?.agentPolicy),
     hasAccount: Boolean(account),
     level,
     label: DEMO_ADVICE_LABEL,

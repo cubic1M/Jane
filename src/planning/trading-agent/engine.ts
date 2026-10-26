@@ -54,8 +54,10 @@ const copy = (s: AgentState): AgentState => ({
         weights: { ...s.pending.weights },
         reasons: { ...s.pending.reasons },
         source: s.pending.source,
+        ...(s.pending.signals ? { signals: { ...s.pending.signals } } : {}),
       }
     : null,
+  ...(s.stops ? { stops: { ...s.stops } } : {}),
 });
 
 const pct = (w: number) => `${Math.round(w * 1000) / 10}%`;
@@ -76,6 +78,14 @@ export function overlay(base: Weights, signals: readonly AgentSignal[]): Record<
   for (const [t, w] of rest) if (restSum > 0 && room > 0) out[t] = (w / restSum) * room;
   for (const [t, w] of Object.entries(fixed)) if (w > 0) out[t] = w * shrink;
   return out;
+}
+
+// A stopped signal's first fill: the price its stop is measured from.
+function noteFill(s: AgentState, ticker: string, side: "buy" | "sell", price: number) {
+  const id = s.pending?.signals?.[ticker];
+  if (!id) return;
+  s.stops ??= {};
+  if (s.stops[id] === undefined) s.stops[id] = { side, price };
 }
 
 function valueAt(s: AgentState, price: (t: string) => number): number {
@@ -121,6 +131,7 @@ function fillAt(
       s.cash += gross - brokerFee;
       s.units[t] -= qty;
       if (w === 0 || s.units[t] <= 1e-12) delete s.units[t];
+      noteFill(s, t, "sell", px);
       trades.push({
         at,
         ticker: t,
@@ -146,6 +157,7 @@ function fillAt(
     const brokerFee = gross * fee;
     s.cash -= gross + brokerFee;
     s.units[b.t] = (s.units[b.t] ?? 0) + qty;
+    noteFill(s, b.t, "buy", px);
     trades.push({
       at,
       ticker: b.t,
@@ -192,10 +204,26 @@ export function runOnTimeline(
     const ctx = { value: s.value, held: s.held, memo: s.memo };
     const target = config.policy.decide(tl, i, config.param, ctx);
     s.memo = ctx.memo;
+    // A signal whose ticker closed past its stop ends here; its trade is undone at the next open.
+    const stopped: Record<string, string> = {};
+    for (const g of signals) {
+      const entry = s.stops?.[g.id];
+      if (!g.stopPct || !entry || entry === "hit" || !s.activeSignals.includes(g.id)) continue;
+      const c = close(g.ticker);
+      const moved = entry.side === "buy" ? 1 - c / entry.price : c / entry.price - 1;
+      if (c > 0 && moved >= g.stopPct) {
+        s.stops![g.id] = "hit";
+        stopped[g.ticker] =
+          `Stopped: ${g.ticker} closed ${pct(moved)} ${entry.side === "buy" ? "below" : "above"} the signal's fill (its stop is ${pct(g.stopPct)}).`;
+      }
+    }
     // The signals in force when this bar closes.
     const closesAt = Date.parse(tl.times[i]) + span;
     const active = signals.filter(
-      (g) => Date.parse(g.at) <= closesAt && (!g.until || closesAt < Date.parse(g.until)),
+      (g) =>
+        Date.parse(g.at) <= closesAt &&
+        (!g.until || closesAt < Date.parse(g.until)) &&
+        s.stops?.[g.id] !== "hit",
     );
     const ids = active.map((g) => g.id).sort();
     const changed = ids.join("|") !== s.activeSignals.join("|");
@@ -205,14 +233,20 @@ export function runOnTimeline(
     }
     if (target !== null || changed) {
       const weights = overlay(s.base ?? {}, active);
-      const reasons: Record<string, string> = {};
-      for (const g of active) reasons[g.ticker] = g.reason;
+      const reasons: Record<string, string> = { ...stopped };
+      const bySignal: Record<string, string> = {};
+      for (const g of active) {
+        reasons[g.ticker] = g.reason;
+        if (g.stopPct) bySignal[g.ticker] = g.id;
+      }
+      const ended = signals.find((g) => g.ticker in stopped);
       const current = s.pending?.weights;
       if (target !== null || !current || !sameWeights(current, weights))
         s.pending = {
           weights,
           reasons,
-          source: target !== null ? "rule" : (active[0]?.source ?? "signal"),
+          source: target !== null ? "rule" : (active[0]?.source ?? ended?.source ?? "signal"),
+          ...(Object.keys(bySignal).length > 0 ? { signals: bySignal } : {}),
         };
     }
     s.activeSignals = ids;

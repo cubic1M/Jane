@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { evidenceRefs, onSharedAccountsOnly } from "@/lib/finding-accounts";
+import { forgetReads, memoKey, memoRead, READ_OPERATIONS } from "@/lib/read-memo";
 import { requireUser } from "@/lib/session";
 
 // Every query on a user-owned table goes through here. scopeArgs ANDs the user's id onto
@@ -66,8 +67,21 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
   const scoped = client.$extends({
     query: {
       $allModels: {
-        $allOperations({ operation, args, query }) {
-          return query(scopeArgs(operation, args as Args, userId) as typeof args);
+        async $allOperations({ model, operation, args, query }) {
+          const scopedArgs = scopeArgs(operation, args as Args, userId) as typeof args;
+          // A write changes what the page's reads would see: forget the render's shared answers
+          // before and after it. A read asking exactly what an earlier one asked shares its answer.
+          if (!READ_OPERATIONS.has(operation)) {
+            forgetReads();
+            try {
+              return await query(scopedArgs);
+            } finally {
+              forgetReads();
+            }
+          }
+          return memoRead(memoKey(userId, model, operation, scopedArgs), () =>
+            Promise.resolve(query(scopedArgs)),
+          );
         },
       },
     },
@@ -83,9 +97,12 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         actions: typeof scoped.action;
       }) => Promise<T>,
     ) =>
-      scoped.$transaction((tx) =>
-        run({ findings: tx.finding, decisions: tx.decision, actions: tx.action }),
-      ),
+      scoped
+        .$transaction((tx) =>
+          run({ findings: tx.finding, decisions: tx.decision, actions: tx.action }),
+        )
+        // Reads made inside it may have seen rows that were rolled back.
+        .finally(() => forgetReads()),
     userId,
     plaidItems: scoped.plaidItem,
     accounts: scoped.account,

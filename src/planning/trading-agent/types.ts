@@ -60,6 +60,10 @@ export type AgentSignal = {
   weight: number;
   reason: string;
   source: string;
+  // A stop: once the signal's trade has filled, if the ticker closes this share against the fill
+  // (down for a buy, up for a sell), the signal ends early and its trade is undone at the next
+  // bar's open. Absent: only `until` ends it.
+  stopPct?: number | null;
 };
 
 // The agent's state between ticks. Cash and units are kept exact (not rounded to cents) so a
@@ -79,7 +83,11 @@ export type AgentState = {
     weights: Record<string, number>;
     reasons: Record<string, string>;
     source: string;
+    // The signal behind each ticker's trade, for its stop (signals with a stop only).
+    signals?: Record<string, string>;
   } | null;
+  // Each stopped signal's fill (its side and price), or "hit" once its stop has ended it.
+  stops?: Record<string, { side: "buy" | "sell"; price: number } | "hit">;
   // The value it started with (cents), for the index.
   startValue: number;
   // The last bar it has acted on, and its count on the agent's axis (./clock.ts).

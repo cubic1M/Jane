@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EVENT_MAX_EXPOSURE_BY_LEVEL,
+  EVENT_STOP,
   EVENT_TILT_BY_LEVEL,
   type EventTypeId,
 } from "@/config/events";
@@ -37,6 +38,7 @@ describe("events as agent signals", () => {
       ticker: "SMH",
       weight: EVENT_TILT_BY_LEVEL[3],
       source: "events",
+      stopPct: EVENT_STOP,
     });
     // 20 weekdays after Tuesday the 13th: Tuesday, February 10th, to its end.
     expect(s.until).toBe(untilFor(s.at));
@@ -118,5 +120,46 @@ describe("events as agent signals", () => {
     expect(smh[0]).toMatchObject({ side: "buy", source: "events" });
     expect(smh[0].reason).toContain("Record chip demand");
     expect(smh[0].amountCents / 1_000_000).toBeCloseTo(EVENT_TILT_BY_LEVEL[3], 2);
+  });
+  it("run through the agent's engine, gets out at the overlay's stop when the fund falls", () => {
+    const NO_COSTS = { feeBps: 0, halfSpreadBps: 0, slippageBps: 0 };
+    const hours = (day: string) =>
+      ["14:30", "15:30", "16:30", "17:30", "18:30", "19:30"].map((h) => `${day}T${h}:00Z`);
+    const times = [...hours("2026-01-13"), ...hours("2026-01-14")];
+    // SMH falls 10% from the second day's open: past the 7% stop.
+    const bars = (price: number, drop = 1): AgentBar[] =>
+      times.map((t) => {
+        const p = t >= "2026-01-14" ? Math.round(price * drop) : price;
+        return { t, o: p, h: p, l: p, c: p, v: 1 };
+      });
+    const policy: Policy = {
+      key: "test:spy",
+      label: "All SPY",
+      tickers: ["SPY", "SMH"],
+      grid: [0],
+      decide: (_tl, t) => (t === 0 ? { SPY: 1 } : null),
+    };
+    const signals = eventAgentSignals([event("chip_boom", "2026-01-13T00:15:00.000Z")], {
+      level: 3,
+    });
+    const run = runAgent(
+      startState(1_000_000),
+      { SPY: bars(50_000), SMH: bars(25_000, 0.9), BIL: bars(9_150) },
+      signals,
+      {
+        policy,
+        param: 0,
+        costs: NO_COSTS,
+        cash: "BIL",
+        master: "SPY",
+        session: "nyse",
+        minutes: 60,
+      },
+    );
+    const smh = run.trades.filter((t) => t.ticker === "SMH");
+    expect(smh.map((t) => t.side)).toEqual(["buy", "sell"]);
+    expect(smh[1].reason).toMatch(/^Stopped: SMH closed 10% below the signal's fill/);
+    // Long before its 20 trading days were up.
+    expect(smh[1].at < signals[0].until!).toBe(true);
   });
 });

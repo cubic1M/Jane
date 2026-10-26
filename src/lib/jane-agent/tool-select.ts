@@ -86,6 +86,7 @@ const SECTORS = {
       "market_news",
       "events_overlay",
       "backtest_by_level",
+      "trading_agent",
       "practice_portfolio",
       "news_themes",
       "strategy_menu",
