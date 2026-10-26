@@ -158,6 +158,8 @@ export const EATING_OUT_CATEGORIES = [
   "FOOD_AND_DRINK_RESTAURANT",
   "FOOD_AND_DRINK_FAST_FOOD",
   "FOOD_AND_DRINK_COFFEE",
+  // A card's own "Food & Drink" label on a place no rule knows by name.
+  "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
 ] as const;
 export const DELIVERY_WORDS = /DOORDASH|UBER ?EATS|GRUBHUB|SEAMLESS|POSTMATES|CAVIAR/;
 // At least this many food payments before saying; eating out is this share of food spending or

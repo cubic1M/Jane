@@ -62,8 +62,8 @@ After this PR (the baseline the gate holds to):
 | double_charges | 61.1% | 100.0% | 17.5% | 11 | 7 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 8 | 0 | 0 |
-| bills | 98.6% | 83.0% | 7.5% | 219 | 3 | 45 |
-| income | 100.0% | 100.0% | 0.0% | 1020 | 0 | 0 |
+| bills | 98.7% | 83.1% | 7.5% | 226 | 3 | 46 |
+| income | 100.0% | 100.0% | 0.0% | 1066 | 0 | 0 |
 | transfers | 100.0% | 95.4% | 0.0% | 1152 | 0 | 56 |
 
 Calibration now:
@@ -71,9 +71,9 @@ Calibration now:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 26 | 57% | 85% |
+| 50–59% | 27 | 57% | 85% |
 | 60–69% | 11 | 65% | 82% |
-| 70–79% | 4 | 74% | 100% |
+| 70–79% | 5 | 74% | 100% |
 | 80–89% | 22 | 86% | 100% |
 | 90–100% | 22 | 95% | 100% |
 <!-- scoreboard:end -->
@@ -89,6 +89,48 @@ Calibration now:
 - **Subscriptions billed through Apple at mixed amounts** ("APPLE.COM/BILL", 11 people). One merchant, several prices: neither a steady subscription nor Apple Store shopping can be told apart from the amounts alone.
 - **Yearly subscriptions seen once** (Amazon Prime, 9) and **two-month histories** (under three charges of anything).
 - **Card companies the rules don't know** (Barclaycard, 6 bills and 56 transfers). Matching a checking payment to the card's "thank you" on the same day would find any issuer.
+
+## Life facts
+
+Jane paints a rough picture of the person from their payments (founder, 2026-10-26; `docs/life-facts.md`): kids, a new baby, a pet, school, own or rent, a car, the commute, travel, the gym, how they eat, a side gig, health costs and a recent move. The bench has the truth for each, so they are scored like the detectors: one item per person the fact is true of.
+
+- **Truth:** `src/accuracy/life.ts` decides each person's life from its own dice (a separate stream, so the other detectors' people did not change), writes the rows a bank export would show, and keeps the decoys that must not count: a toy bought as a gift, one pet-shop trip, an online course, a single yoga class, a truck rented for a friend's move, one dental visit, one or two trips. How someone eats is decided from the food rows the generator wrote (eating out is 60% or more of food spending, cooking 35% or less), not from a category.
+- **What is scored:** the fact's value from `buildProfile` (a guess counts, since Jane says "probably"), against that truth. `life_remote` is the weakest by design: it is a guess from an absence (a salary, no commute payments, few fill-ups).
+- **Calibration:** the same bucket check as the suggestions, on each life fact's own percentage; the gate fails when a bucket of 10 or more is over 10 points surer than it turns out to be.
+- **Honest limits.** The bench is synthetic, and the thresholds were tuned while reading it, so the 100% rows are not a promise for real data. Thin spots: `life_new_baby` (1 person), `life_student` (2) and `life_moved` (2) have too few examples to say much, and a history under three or four months cannot show a commute or a side gig.
+- **Found by running it:** a daycare called "Little Sprouts" was filed as groceries (the Sprouts rule), which made someone who eats out look like a cook; restaurants without a card category were uncategorized; a marketplace deposit (Etsy, eBay) was filed as a purchase, not income; furniture and moving were not recognised, so the step-100 "moved" guess never fired. The categorizer rules now know these (`src/categorize/rules.ts`).
+
+<!-- life:start -->
+| Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| life_kids | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
+| life_new_baby | 100.0% | 100.0% | 0.0% | 1 | 0 | 0 |
+| life_pet | 100.0% | 100.0% | 0.0% | 15 | 0 | 0 |
+| life_student | 100.0% | 100.0% | 0.0% | 2 | 0 | 0 |
+| life_owner | 100.0% | 100.0% | 0.0% | 5 | 0 | 0 |
+| life_renter | 100.0% | 100.0% | 0.0% | 35 | 0 | 0 |
+| life_car | 100.0% | 100.0% | 0.0% | 27 | 0 | 0 |
+| life_commuter | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
+| life_remote | 75.0% | 85.7% | 5.0% | 6 | 2 | 1 |
+| life_travels | 100.0% | 100.0% | 0.0% | 9 | 0 | 0 |
+| life_gym | 100.0% | 100.0% | 0.0% | 15 | 0 | 0 |
+| life_cooks | 100.0% | 100.0% | 0.0% | 18 | 0 | 0 |
+| life_eats_out | 100.0% | 100.0% | 0.0% | 18 | 0 | 0 |
+| life_side_gig | 100.0% | 83.3% | 0.0% | 5 | 0 | 1 |
+| life_health_costs | 100.0% | 100.0% | 0.0% | 3 | 0 | 0 |
+| life_moved | 100.0% | 100.0% | 0.0% | 2 | 0 | 0 |
+
+Life facts' calibration now:
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 41 | 43% | 95% |
+| 50–59% | 35 | 58% | 100% |
+| 60–69% | 6 | 62% | 100% |
+| 70–79% | 6 | 74% | 100% |
+| 80–89% | 28 | 87% | 100% |
+| 90–100% | 63 | 95% | 100% |
+<!-- life:end -->
 
 ## Calibration
 

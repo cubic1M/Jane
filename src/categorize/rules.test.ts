@@ -87,11 +87,35 @@ describe("categorizeByRules", () => {
     const shop = { bankCategory: "Shopping" };
     expect(out("BEST BUY 00012345", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
     expect(into("BEST BUY 00012345", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
-    expect(out("TST* SHAKE SHACK 1234", { bankCategory: "Food & Drink" })).toBe(
+    expect(out("TST* CORNER STORE 77", { bankCategory: "Food & Drink" })).toBe(
       "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
     );
     // A keyword still wins over the card's broad label.
     expect(out("NETFLIX.COM", { bankCategory: "Shopping" })).toBe("ENTERTAINMENT_TV_AND_MOVIES");
+  });
+
+  // A person's life (founder, 2026-10-26): the merchants that say children, a pet, a clinic, a
+  // commute, so the profile can read them from a CSV as well as from Plaid.
+  it.each([
+    ["TST* SHAKE SHACK 1234", "FOOD_AND_DRINK_RESTAURANT"],
+    ["CHIPOTLE 2210", "FOOD_AND_DRINK_RESTAURANT"],
+    ["CHEWY.COM 800-672-4399 FL", "GENERAL_MERCHANDISE_PET_SUPPLIES"],
+    ["RIVERSIDE ANIMAL HOSPITAL", "MEDICAL_VETERINARY_SERVICES"],
+    ["BRIGHT HORIZONS 4455 CHILD CARE", "GENERAL_SERVICES_CHILDCARE"],
+    ["SUNNYSIDE PEDIATRICS COPAY", "MEDICAL_PRIMARY_CARE"],
+    ["BRIGHT SMILE DENTAL", "MEDICAL_DENTAL_CARE"],
+    ["STATE UNIVERSITY BURSAR PAYMENT", "GENERAL_SERVICES_EDUCATION"],
+    ["IKEA 0042 FURNITURE", "HOME_IMPROVEMENT_FURNITURE"],
+    ["MTA*NYCT PAYGO", "TRANSPORTATION_PUBLIC_TRANSIT"],
+    ["SP PLUS PARKING 5521", "TRANSPORTATION_PARKING"],
+    ["E-ZPASS NY CSC", "TRANSPORTATION_TOLLS"],
+  ])("places %s as %s", (description, expected) => {
+    expect(out(description)).toBe(expected);
+  });
+
+  it("reads a marketplace's deposit as a seller's income, and its charge as a purchase", () => {
+    expect(into("ETSY INC DEPOSIT")).toBe("INCOME_GIG_ECONOMY");
+    expect(out("ETSY.COM PURCHASE")).toBe("GENERAL_MERCHANDISE_ONLINE_MARKETPLACES");
   });
 
   it("leaves unknown merchants for the LLM", () => {

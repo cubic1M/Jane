@@ -23,6 +23,24 @@ export const DETECTOR_NAMES = [
   "bills",
   "income",
   "transfers",
+  // The profile's life facts (founder, 2026-10-26; src/profile/life-facts.ts): one item per
+  // person the fact is true of.
+  "life_kids",
+  "life_new_baby",
+  "life_pet",
+  "life_student",
+  "life_owner",
+  "life_renter",
+  "life_car",
+  "life_commuter",
+  "life_remote",
+  "life_travels",
+  "life_gym",
+  "life_cooks",
+  "life_eats_out",
+  "life_side_gig",
+  "life_health_costs",
+  "life_moved",
 ] as const;
 export type DetectorName = (typeof DETECTOR_NAMES)[number];
 
@@ -139,7 +157,33 @@ export function predict(h: History): { predicted: Predicted; findings: Candidate
       ],
       income: input.transactions.filter((t) => kindOf(insight(t)) === "income").map((t) => t.id),
       transfers: moving.map((t) => t.id),
+      ...lifePredicted(h),
     },
+  };
+}
+
+// What Jane's profile says about the person's life, as the people it says it about (a guess
+// counts: Jane says "probably").
+function lifePredicted(h: History) {
+  const facts = buildProfile(profileInputOf(h)).facts;
+  const who = (yes: boolean) => (yes ? [h.id] : []);
+  return {
+    life_kids: who(facts.has_children.value === true),
+    life_new_baby: who(facts.new_baby.value === true),
+    life_pet: who(facts.has_pet.value === true),
+    life_student: who(facts.is_student.value === true),
+    life_owner: who(facts.housing.value === "own"),
+    life_renter: who(facts.housing.value === "rent"),
+    life_car: who(facts.has_car.value === true),
+    life_commuter: who(facts.work_style.value === "commuter"),
+    life_remote: who(facts.work_style.value === "remote"),
+    life_travels: who(facts.travels_often.value === true),
+    life_gym: who(facts.goes_to_gym.value === true),
+    life_cooks: who(facts.eating_style.value === "cooks"),
+    life_eats_out: who(facts.eating_style.value === "eats_out"),
+    life_side_gig: who(facts.side_gig.value === true),
+    life_health_costs: who(facts.health_costs.value === true),
+    life_moved: who(facts.moved_recently.value === true),
   };
 }
 
@@ -155,6 +199,30 @@ export function truth(h: History): Record<DetectorName, string[]> {
     bills: l.bills,
     income: l.income,
     transfers: l.transfers,
+    ...lifeTruth(h),
+  };
+}
+
+function lifeTruth(h: History) {
+  const l = h.labels.life;
+  const who = (yes: boolean) => (yes ? [h.id] : []);
+  return {
+    life_kids: who(l.kids),
+    life_new_baby: who(l.newBaby),
+    life_pet: who(l.pet),
+    life_student: who(l.student),
+    life_owner: who(l.housing === "own"),
+    life_renter: who(l.housing === "rent"),
+    life_car: who(l.car),
+    life_commuter: who(l.work === "commuter"),
+    life_remote: who(l.work === "remote"),
+    life_travels: who(l.travels),
+    life_gym: who(l.gym),
+    life_cooks: who(l.eating === "cooks"),
+    life_eats_out: who(l.eating === "eats_out"),
+    life_side_gig: who(l.sideGig),
+    life_health_costs: who(l.healthCosts),
+    life_moved: who(l.moved),
   };
 }
 
@@ -238,6 +306,39 @@ export function judgedSuggestions(histories: readonly History[]): Judged[] {
         ? [{ person: h.id, topic: s.topic, percent: s.confidence.percent, right: isTrue(h) }]
         : [];
     });
+  });
+}
+
+// The life facts' own confidence, judged the same way: when the profile says a person has kids
+// (or eats out, or commutes) at 80% sure, how often is that so? One judgement per fact it says.
+export function judgedLifeFacts(histories: readonly History[]): Judged[] {
+  return histories.flatMap((h) => {
+    const facts = buildProfile(profileInputOf(h)).facts;
+    const l = h.labels.life;
+    const say = (
+      topic: string,
+      fact: { value: unknown; confidence: number },
+      said: unknown,
+      right: boolean,
+    ) => (fact.value === said ? [{ person: h.id, topic, percent: fact.confidence, right }] : []);
+    return [
+      ...say("has_children", facts.has_children, true, l.kids),
+      ...say("has_pet", facts.has_pet, true, l.pet),
+      ...say("is_student", facts.is_student, true, l.student),
+      ...say("new_baby", facts.new_baby, true, l.newBaby),
+      ...say("housing_own", facts.housing, "own", l.housing === "own"),
+      ...say("housing_rent", facts.housing, "rent", l.housing === "rent"),
+      ...say("has_car", facts.has_car, true, l.car),
+      ...say("commuter", facts.work_style, "commuter", l.work === "commuter"),
+      ...say("remote", facts.work_style, "remote", l.work === "remote"),
+      ...say("travels_often", facts.travels_often, true, l.travels),
+      ...say("goes_to_gym", facts.goes_to_gym, true, l.gym),
+      ...say("cooks", facts.eating_style, "cooks", l.eating === "cooks"),
+      ...say("eats_out", facts.eating_style, "eats_out", l.eating === "eats_out"),
+      ...say("side_gig", facts.side_gig, true, l.sideGig),
+      ...say("health_costs", facts.health_costs, true, l.healthCosts),
+      ...say("moved_recently", facts.moved_recently, true, l.moved),
+    ];
   });
 }
 

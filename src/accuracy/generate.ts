@@ -1,4 +1,5 @@
 import { normalizeMerchant } from "@/data-sources/merchant";
+import { addLife, type LifeLabels } from "./life";
 
 // The accuracy bench's people (founder, 2026-10-26: "build Jane's accuracy test bench"): 40
 // synthetic bank histories, made the way real exports look (the messy-bank person's lessons:
@@ -42,6 +43,8 @@ export type Labels = {
   bills: string[];
   income: string[];
   transfers: string[];
+  // What their life is like (./life.ts): the truth for the profile's life facts.
+  life: LifeLabels;
 };
 
 export type History = {
@@ -124,6 +127,13 @@ const CARD_PAYMENT_OUT = [
   // A card company the keyword rules don't know: real exports have them.
   "BARCLAYCARD US PAYMENT 0041",
 ];
+// Where the everyday spending eats out (also read by ./life.ts for how someone eats).
+const RESTAURANTS = [
+  "TST* SHAKE SHACK 1234",
+  "SQ *TACO STAND 88",
+  "CHIPOTLE 2210",
+  "DOORDASH*DASHPASS ORDER",
+] as const;
 const SHOPS = [
   { description: "BEST BUY 00012345", category: "Shopping", lo: 40, hi: 300 },
   { description: "TARGET 00023456", category: "Shopping", lo: 15, hi: 120 },
@@ -144,6 +154,7 @@ class Builder {
     bills: [],
     income: [],
     transfers: [],
+    life: undefined as unknown as LifeLabels,
   };
   private n = 0;
   constructor(
@@ -281,7 +292,9 @@ function person(index: number): History {
   }
 
   // --- Housing and bills --------------------------------------------------------------
+  let hasLandlord = false;
   if (archetype !== "retiree" || r.chance(0.4)) {
+    hasLandlord = true;
     const landlord = r.pick(LANDLORDS);
     const rent = r.cents(900, 2600);
     b.monthly(1, (date) =>
@@ -447,12 +460,7 @@ function person(index: number): History {
         accountId: spendOn,
         date,
         amountCents: r.cents(14, 85),
-        description: r.pick([
-          "TST* SHAKE SHACK 1234",
-          "SQ *TACO STAND 88",
-          "CHIPOTLE 2210",
-          "DOORDASH*DASHPASS ORDER",
-        ]),
+        description: r.pick(RESTAURANTS),
         ...onCard("Food & Drink"),
       });
     }
@@ -709,6 +717,28 @@ function person(index: number): History {
       if (row.id) b.labels.transfers.push(row.id);
     });
   }
+
+  // --- Their life: kids, a pet, school, the commute, travel, the gym, how they eat ---------
+  // A separate dice stream, so none of the other detectors' people change.
+  b.labels.life = addLife(rng(SEED + index * 104729 + 17), {
+    add: (row) => b.add(row),
+    bill: (description) => b.bill(description),
+    subscription: (description) => {
+      const key = keyOf(description);
+      if (!b.labels.subscriptions.includes(key)) b.labels.subscriptions.push(key);
+    },
+    income: (rowId) => b.labels.income.push(rowId),
+    start,
+    asOf: AS_OF,
+    months,
+    archetype,
+    account: chk,
+    hasCar,
+    hasLandlord,
+    hasGymSubscription: b.rows.some((row) => /PLANET FITNESS|PELOTON/i.test(row.description)),
+    food: { grocer, coffee, restaurants: RESTAURANTS },
+    rows: () => b.rows,
+  });
 
   // --- Balances: idle cash for savers, a thin cushion for others -------------------------
   const months_ = monthlySpendCents;

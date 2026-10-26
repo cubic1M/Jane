@@ -146,6 +146,54 @@ const RULES: readonly Rule[] = [
     category: "FOOD_AND_DRINK_COFFEE",
     keywords: ["STARBUCKS", "DUNKIN", "PEET'S", "PEETS", "BLUE BOTTLE", "COFFEE", "CAFE"],
   },
+  // A person's life (founder, 2026-10-26: Jane paints a picture of someone from their payments):
+  // the places that say whether they have children, a pet, a hospital bill, a commute. Vets
+  // before the general medical words ("ANIMAL HOSPITAL" is not a hospital bill).
+  {
+    category: "MEDICAL_VETERINARY_SERVICES",
+    keywords: ["ANIMAL HOSPITAL", "ANIMAL CLINIC", "VETERINARY", "VETERINARIAN", "VET CLINIC"],
+  },
+  {
+    category: "GENERAL_MERCHANDISE_PET_SUPPLIES",
+    keywords: ["CHEWY", "PETCO", "PETSMART", "PET SUPPLIES", "BARKBOX"],
+  },
+  {
+    category: "GENERAL_SERVICES_CHILDCARE",
+    keywords: ["DAYCARE", "DAY CARE", "CHILD CARE", "CHILDCARE", "KINDERCARE", "BRIGHT HORIZONS"],
+  },
+  { category: "MEDICAL_DENTAL_CARE", keywords: ["DENTAL", "DENTIST", "ORTHODONTICS"] },
+  {
+    category: "MEDICAL_PRIMARY_CARE",
+    keywords: [
+      "FAMILY MEDICINE",
+      "PEDIATRICS",
+      "PEDIATRIC",
+      "PHYSICAL THERAPY",
+      "URGENT CARE",
+      "DERMATOLOGY",
+      "ORTHOPEDIC",
+      "QUEST DIAGNOSTICS",
+      "LABCORP",
+    ],
+  },
+  {
+    category: "GENERAL_SERVICES_EDUCATION",
+    keywords: ["BURSAR", "TUITION", "UNIV BOOKSTORE", "UNIVERSITY BOOKSTORE", "MEAL PLAN"],
+  },
+  {
+    category: "HOME_IMPROVEMENT_FURNITURE",
+    keywords: ["IKEA", "WAYFAIR", "FURNITURE", "ASHLEY HOMESTORE", "WEST ELM", "CRATE & BARREL"],
+  },
+  {
+    category: "TRANSPORTATION_PUBLIC_TRANSIT",
+    keywords: ["MTA", "BART", "SEPTA", "MBTA", "WMATA", "CLIPPER", "METROCARD", "ORCA"],
+  },
+  { category: "TRANSPORTATION_PARKING", keywords: ["PARKING", "SP PLUS"] },
+  { category: "TRANSPORTATION_TOLLS", keywords: ["EZPASS", "E-ZPASS", "FASTRAK", "SUNPASS"] },
+  {
+    category: "TRAVEL_RENTAL_CARS",
+    keywords: ["HERTZ", "AVIS RENT", "ENTERPRISE RENT-A-CAR", "BUDGET RENT A CAR"],
+  },
   {
     category: "FOOD_AND_DRINK_FAST_FOOD",
     keywords: ["MCDONALD'S", "MCDONALDS", "BURGER KING", "TACO BELL", "WENDY'S", "CHICK-FIL-A"],
@@ -173,6 +221,12 @@ const RULES: readonly Rule[] = [
   {
     category: "TRANSPORTATION_GAS",
     keywords: ["SHELL OIL", "CHEVRON", "EXXON", "EXXONMOBIL", "MOBIL", "ARCO", "SUNOCO"],
+  },
+  // Money in from a marketplace is a seller's payout, not a purchase.
+  {
+    category: "INCOME_GIG_ECONOMY",
+    keywords: ["ETSY", "EBAY PAYOUT", "EBAY"],
+    direction: "in",
   },
   {
     category: "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES",
@@ -231,6 +285,25 @@ const RULES: readonly Rule[] = [
   {
     category: "TRAVEL_FLIGHTS",
     keywords: ["DELTA AIR", "UNITED AIRLINES", "AMERICAN AIRLINES", "SOUTHWEST AIR", "JETBLUE"],
+  },
+
+  {
+    category: "FOOD_AND_DRINK_RESTAURANT",
+    keywords: [
+      "RESTAURANT",
+      "CHIPOTLE",
+      "SHAKE SHACK",
+      "PANERA",
+      "TACO",
+      "PIZZA",
+      "DOMINOS",
+      "DOMINO'S",
+      "SUSHI",
+      "BURGER",
+      "GRILL",
+      "DINER",
+      "BISTRO",
+    ],
   },
 
   // The bank's own labels, when no keyword matched

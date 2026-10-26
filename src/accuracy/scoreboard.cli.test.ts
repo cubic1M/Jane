@@ -4,6 +4,7 @@ import { fromFixture, generateHistories, toFixture } from "./generate";
 import {
   DETECTOR_NAMES,
   calibration,
+  judgedLifeFacts,
   judgedSuggestions,
   levels,
   scoreboard,
@@ -22,8 +23,13 @@ const BASELINE = "src/accuracy/baseline.json";
 const DOC = "docs/accuracy.md";
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
-export function scoreTable(scores: Record<DetectorName, Score>): string {
-  const rows = DETECTOR_NAMES.map((d) => {
+const isLife = (d: DetectorName) => d.startsWith("life_");
+
+export function scoreTable(
+  scores: Record<DetectorName, Score>,
+  names: readonly DetectorName[] = DETECTOR_NAMES.filter((d) => !isLife(d)),
+): string {
+  const rows = names.map((d) => {
     const s = scores[d];
     return `| ${d} | ${pct(s.precision)} | ${pct(s.recall)} | ${pct(s.falseAlarmRate)} | ${s.tp} | ${s.fp} | ${s.fn} |`;
   });
@@ -52,6 +58,8 @@ describe.runIf(process.env.ACCURACY === "1")("the accuracy scoreboard", () => {
     const histories = fromFixture(JSON.parse(readFileSync(FIXTURES, "utf8")));
     const { scores, mistakes } = scoreboard(histories);
     const buckets = calibration(judgedSuggestions(histories));
+    const lifeBuckets = calibration(judgedLifeFacts(histories));
+    const lifeNames = DETECTOR_NAMES.filter(isLife);
     const byLevel = levels(histories);
     const out = [
       `${histories.length} people, ${histories.reduce((n, h) => n + h.rows.length, 0)} transactions`,
@@ -59,6 +67,12 @@ describe.runIf(process.env.ACCURACY === "1")("the accuracy scoreboard", () => {
       "",
       "Calibration (suggestions' confidence %):",
       calibrationTable(buckets),
+      "",
+      "Life facts (the profile's picture of the person's life):",
+      scoreTable(scores, lifeNames),
+      "",
+      "Life facts' calibration:",
+      calibrationTable(lifeBuckets),
       "",
       "Finding levels:",
       ...Object.entries(byLevel).map(
@@ -84,7 +98,13 @@ describe.runIf(process.env.ACCURACY === "1")("the accuracy scoreboard", () => {
       const start = "<!-- scoreboard:start -->";
       const end = "<!-- scoreboard:end -->";
       const table = `${start}\n${scoreTable(scores)}\n\nCalibration now:\n\n${calibrationTable(buckets)}\n${end}`;
-      writeFileSync(DOC, doc.replace(new RegExp(`${start}[\\s\\S]*${end}`), table));
+      const life = `<!-- life:start -->\n${scoreTable(scores, lifeNames)}\n\nLife facts' calibration now:\n\n${calibrationTable(lifeBuckets)}\n<!-- life:end -->`;
+      writeFileSync(
+        DOC,
+        doc
+          .replace(new RegExp(`${start}[\\s\\S]*${end}`), table)
+          .replace(/<!-- life:start -->[\s\S]*<!-- life:end -->/, life),
+      );
     }
   });
 });

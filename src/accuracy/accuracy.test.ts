@@ -2,7 +2,13 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import baseline from "./baseline.json";
 import { fromFixture, generateHistories, toFixture } from "./generate";
-import { DETECTOR_NAMES, calibration, judgedSuggestions, scoreboard } from "./score";
+import {
+  DETECTOR_NAMES,
+  calibration,
+  judgedLifeFacts,
+  judgedSuggestions,
+  scoreboard,
+} from "./score";
 
 // The accuracy gate (docs/accuracy.md): every detector on the 40 labelled histories must keep
 // its precision and recall within ALLOWED_DROP of the recorded baseline (src/accuracy/
@@ -44,6 +50,20 @@ describe("the accuracy bench", () => {
     for (const b of calibration(judged)) {
       if (b.count < BUCKET_MIN) continue;
       expect(b.saidPercent, `${b.from}–${b.to}%`).toBeLessThanOrEqual(
+        b.rightPercent + OVERCONFIDENT_BY,
+      );
+    }
+  });
+
+  // The life facts (founder, 2026-10-26): "I'm 85% sure you have a dog" must be right about that
+  // often, the same bar as the suggestions.
+  const lifeJudged = judgedLifeFacts(histories);
+  it("never says a life fact at 0%, and is never much surer of one than it turns out to be", () => {
+    expect(lifeJudged.length).toBeGreaterThan(0);
+    expect(lifeJudged.filter((j) => j.percent <= 0)).toEqual([]);
+    for (const b of calibration(lifeJudged)) {
+      if (b.count < BUCKET_MIN) continue;
+      expect(b.saidPercent, `life facts ${b.from}–${b.to}%`).toBeLessThanOrEqual(
         b.rightPercent + OVERCONFIDENT_BY,
       );
     }

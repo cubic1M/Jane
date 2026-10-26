@@ -24,8 +24,8 @@
     "recall": 1
   },
   "bills": {
-    "precision": 0.9865,
-    "recall": 0.8295
+    "precision": 0.9869,
+    "recall": 0.8309
   },
   "income": {
     "precision": 1,
@@ -34,5 +34,69 @@
   "transfers": {
     "precision": 1,
     "recall": 0.9536
+  },
+  "life_kids": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_new_baby": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_pet": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_student": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_owner": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_renter": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_car": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_commuter": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_remote": {
+    "precision": 0.75,
+    "recall": 0.8571
+  },
+  "life_travels": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_gym": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_cooks": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_eats_out": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_side_gig": {
+    "precision": 1,
+    "recall": 0.8333
+  },
+  "life_health_costs": {
+    "precision": 1,
+    "recall": 1
+  },
+  "life_moved": {
+    "precision": 1,
+    "recall": 1
   }
 }
