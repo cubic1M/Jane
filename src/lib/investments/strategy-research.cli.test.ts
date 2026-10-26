@@ -22,7 +22,7 @@ import {
 } from "@/config/crypto-strategies";
 import { alignCrypto, cryptoResult } from "@/planning/crypto-strategies";
 import { alignCatalog, runCatalog } from "@/planning/catalog/engine";
-import { regimeReport, regimesEvidenceModule, regimesMarkdown } from "@/planning/catalog/regimes";
+import { regimeReport, regimesMarkdown } from "@/planning/catalog/regimes";
 import { sensitivity, sensitivityMarkdown } from "@/planning/catalog/sensitivity";
 import { fetchYahooDaily, yahooBars } from "@/lib/market/yahoo";
 import { evidenceModule, resultsMarkdown } from "@/planning/catalog/report";

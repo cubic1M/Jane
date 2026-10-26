@@ -66,7 +66,7 @@ export async function jobHealth({
   const staleBefore = new Date(now.getTime() - JOB_STALE_HOURS * HOUR);
   return Promise.all(
     DAILY_JOBS.map(async (name) => {
-      const [last, lastSuccess] = await Promise.all([
+      const [last, lastSuccess, first] = await Promise.all([
         client.cronRun.findFirst({
           where: { name },
           orderBy: { startedAt: "desc" },
@@ -77,6 +77,11 @@ export async function jobHealth({
           orderBy: { finishedAt: "desc" },
           select: { finishedAt: true },
         }),
+        client.cronRun.findFirst({
+          where: { name },
+          orderBy: { startedAt: "asc" },
+          select: { startedAt: true },
+        }),
       ]);
       const lastSuccessAt = lastSuccess?.finishedAt ?? null;
       return {
@@ -84,14 +89,18 @@ export async function jobHealth({
         lastRunAt: last?.startedAt ?? null,
         lastOk: last?.ok ?? null,
         lastSuccessAt,
-        // A job that has never run isn't "missed" yet: it may just be new.
-        missed: lastSuccessAt !== null && lastSuccessAt < staleBefore,
+        // A job that has never run isn't "missed" yet: it may just be new. One that has run
+        // for longer than that without ever succeeding is.
+        missed:
+          lastSuccessAt !== null
+            ? lastSuccessAt < staleBefore
+            : first !== null && first.startedAt < staleBefore,
       };
     }),
   );
 }
 
-const teamEmails = () =>
+export const teamEmails = () =>
   (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim())
@@ -117,7 +126,9 @@ export async function reportMissedJobs({
     if (to.length > 0) {
       try {
         const message = {
-          subject: `Daily job "${job.name}" hasn't run since ${job.lastSuccessAt?.toISOString().slice(0, 16)} UTC`,
+          subject: job.lastSuccessAt
+            ? `Daily job "${job.name}" hasn't run since ${job.lastSuccessAt.toISOString().slice(0, 16)} UTC`
+            : `Daily job "${job.name}" has never run successfully`,
           text: `The "${job.name}" job hasn't finished successfully for over ${JOB_STALE_HOURS} hours. Check /admin/health and the Vercel cron logs. You'll get one email per outage.`,
           html: `<p>The "${job.name}" job hasn't finished successfully for over ${JOB_STALE_HOURS} hours. Check <a href="${process.env.APP_URL ?? ""}/admin/health">/admin/health</a> and the Vercel cron logs.</p><p>You'll get one email per outage.</p>`,
         };

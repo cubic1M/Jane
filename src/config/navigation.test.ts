@@ -8,7 +8,10 @@ import { AREA_TABS, PROFILE_TABS, SETTINGS_TAB, TABS, tabFor, tabsClaiming } fro
 
 const APP = join(process.cwd(), "src", "app");
 
-// Every page.tsx under src/app, as its URL ("/report/[findingId]").
+// Each page's file, by its URL ("/report/[findingId]"); a route group ("(auth)") isn't in it.
+const FILES = new Map<string, string>();
+
+// Every page.tsx under src/app, as its URL.
 function pages(dir = APP): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
@@ -18,11 +21,12 @@ function pages(dir = APP): string[] {
       .split(sep)
       .filter((segment) => segment && !segment.startsWith("("))
       .join("/");
+    FILES.set(`/${route}`, path);
     return [`/${route}`];
   });
 }
 
-const fileOf = (route: string) => join(APP, ...route.split("/"), "page.tsx");
+const fileOf = (route: string) => FILES.get(route) ?? join(APP, ...route.split("/"), "page.tsx");
 
 // Pages outside the menu: signed out, mid sign-in, after deleting, and the team's own.
 const OUTSIDE = [

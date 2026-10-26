@@ -44,7 +44,6 @@ import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { billsReply } from "../replies-billpay";
 import { savedReply } from "../replies-saved";
 import { weeklyReview } from "../replies-review";
-import { loadSnapshot } from "../snapshot";
 import { CATEGORY_LIST } from "./shared";
 import { type CapabilityContext, spendingIn } from "./shared";
 

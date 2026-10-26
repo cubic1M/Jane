@@ -158,7 +158,6 @@ async function InvestmentsContent({
   const {
     data,
     simulated,
-    investing,
     returns,
     crypto,
     backtests,
