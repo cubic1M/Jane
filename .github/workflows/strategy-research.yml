@@ -11,10 +11,10 @@ on:
   workflow_dispatch:
     inputs:
       kind:
-        description: "daily (the strategy library on daily bars), intraday (the Very high day-trading rules on 5-minute bars) catalog (every catalog strategy, walk-forward with the haircut) crypto (the crypto rules on Alpaca's crypto bars) or regimes (every catalog strategy through 2008, 2020 and 2022 on Yahoo's longer history); alpaca only for intraday, catalog and crypto"
+        description: "daily (the strategy library on daily bars), intraday (the Very high day-trading rules on 5-minute bars) catalog (every catalog strategy, walk-forward with the haircut) crypto (the crypto rules on Alpaca's crypto bars) regimes (every catalog strategy through 2008, 2020 and 2022 on Yahoo's longer history) or agent (the 24-hour agent: every strategy at 15 minutes and 1 hour on crypto and US funds); alpaca only for intraday, catalog, crypto and agent"
         default: daily
         type: choice
-        options: [daily, intraday, catalog, crypto, regimes]
+        options: [daily, intraday, catalog, crypto, regimes, agent]
       source:
         description: "alpaca (the repo's Alpaca secrets) or fixture (the committed keyless closes)"
         default: alpaca
@@ -261,4 +261,41 @@ jobs:
             research/regimes.md
             research/regimes.json
             research/catalog-regimes.ts
+          retention-days: 30
+
+  agent:
+    name: The 24-hour agent at 15 minutes and 1 hour
+    if: inputs.kind == 'agent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Every strategy bar by bar on crypto and US funds, walk-forward with the haircut
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          ALPACA_DATA_FEED: ${{ inputs.feed }}
+          INTRADAY_AGENT: all
+          INTRADAY_STOCKS_FROM: ${{ inputs.from }}T00:00:00.000Z
+          RESEARCH_DIR: research
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          if [ -z "$ALPACA_API_KEY_ID" ] || [ -z "$ALPACA_API_SECRET_KEY" ]; then
+            echo "::error::Alpaca secrets not set (ALPACA_API_KEY_ID, ALPACA_API_SECRET_KEY)."
+            exit 1
+          fi
+          npx vitest run src/lib/trading-agent/intraday-research.cli.test.ts --silent=false
+          cat research/intraday.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: agent-research
+          path: |
+            research/intraday.md
+            research/intraday-agent-evidence.ts
+            research/intraday-agent.json
           retention-days: 30
