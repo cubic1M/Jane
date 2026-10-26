@@ -32,6 +32,8 @@ export type BacktestInput = {
   to: string;
   // The fund whose return is the risk-free rate in the Sharpe ratio.
   cashTicker?: string;
+  // Trading days a year: 252 for funds, 365 for crypto (it trades every day).
+  periodsPerYear?: number;
 };
 
 export type Metrics = {
@@ -113,7 +115,11 @@ function rebalance(book: Book, targets: Weights, prices: Record<string, number>)
   return out;
 }
 
-export function metrics(values: readonly number[], cash: readonly number[]): Metrics {
+export function metrics(
+  values: readonly number[],
+  cash: readonly number[],
+  periodsPerYear = 252,
+): Metrics {
   const r = values.slice(1).map((v, i) => v / values[i] - 1);
   const rf = cash.slice(1).map((v, i) => (cash[i] > 0 ? v / cash[i] - 1 : 0));
   const excess = r.map((x, i) => x - (rf[i] ?? 0));
@@ -129,14 +135,14 @@ export function metrics(values: readonly number[], cash: readonly number[]): Met
     peak = Math.max(peak, v);
     worst = Math.min(worst, v / peak - 1);
   }
-  const years = r.length / 252;
+  const years = r.length / periodsPerYear;
   const total = values[values.length - 1] / values[0] - 1;
   return {
     totalReturn: total,
     yearly: years > 0 ? (1 + total) ** (1 / years) - 1 : 0,
     maxDrawdown: worst,
-    sharpe: sd > 0 ? (mean / sd) * Math.sqrt(252) : 0,
-    volatility: rSd * Math.sqrt(252),
+    sharpe: sd > 0 ? (mean / sd) * Math.sqrt(periodsPerYear) : 0,
+    volatility: rSd * Math.sqrt(periodsPerYear),
   };
 }
 
@@ -216,10 +222,12 @@ export function runEventBacktest(input: BacktestInput): BacktestResult {
     base: metrics(
       values.map((v) => v.base),
       cashValues,
+      input.periodsPerYear,
     ),
     overlay: metrics(
       values.map((v) => v.overlay),
       cashValues,
+      input.periodsPerYear,
     ),
     types,
     actions,

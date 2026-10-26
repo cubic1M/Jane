@@ -476,3 +476,79 @@ export async function deleteMarketEvent(key: string): Promise<void> {
     await client.end();
   }
 }
+
+// Two crypto events for the 24-hour agent on bitcoin and ether (src/lib/events/agent-source.ts),
+// public three and two hours ago: a liquidation cascade (a bitcoin slice in) and a stablecoin losing
+// its peg (slices of bitcoin and ether out to cash). With seedCryptoRecord, whichever the strategy
+// holds then, one of them trades. Returns their keys, for deleteMarketEvent.
+export async function addCryptoEvents(): Promise<string[]> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  const ago = (hours: number) => new Date(Date.now() - hours * 3_600_000);
+  const rows = [
+    [
+      "crypto_liquidation",
+      ago(3),
+      "A crypto liquidation cascade: news coverage 4.0 times its usual level in the hour",
+    ],
+    [
+      "stablecoin_depeg",
+      ago(2),
+      "A stablecoin loses its peg: news coverage 4.0 times its usual level in the hour",
+    ],
+  ] as const;
+  const keys: string[] = [];
+  try {
+    for (const [type, knownAt, title] of rows) {
+      const key = `gdelt:${type}:e2e-${crypto.randomUUID()}`;
+      await client.query(
+        `INSERT INTO market_events (id, key, type, source, date, known_at, title, url, strength)
+         VALUES ($1, $1, $2, 'gdelt', $3, $4, $5, NULL, 4.0)`,
+        [key, type, knownAt.toISOString().slice(0, 10), knownAt.toISOString(), title],
+      );
+      keys.push(key);
+    }
+    return keys;
+  } finally {
+    await client.end();
+  }
+}
+
+// The person's own events record: their last 20 liquidation-cascade slices helped, which lifts that
+// type over the bar (the backtest's record alone leaves it under), on an overlay switched on a day
+// ago. Call it once the paper account has started.
+export async function seedCryptoRecord(userId: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  const closed = Array.from({ length: 20 }, (_, i) => ({
+    eventKey: `past-${i}`,
+    type: "crypto_liquidation",
+    ticker: "BTC/USD",
+    side: "buy",
+    tilt: 0.02,
+    enteredOn: "2026-09-01",
+    entryCents: 100,
+    confidence: 50,
+    reason: "",
+    exitedOn: "2026-09-29",
+    exitCents: 110,
+    stopped: false,
+    fundReturn: 0.1,
+    baseReturn: 0,
+    hit: true,
+  }));
+  const state = JSON.stringify({ open: [], watching: [], closed, seen: [] });
+  try {
+    const { rows } = await client.query(`SELECT id FROM paper_accounts WHERE user_id = $1`, [
+      userId,
+    ]);
+    await client.query(
+      `INSERT INTO paper_event_overlays (id, account_id, user_id, "on", switched_at, state)
+       VALUES ($1, $2, $3, true, now() - interval '1 day', $4::jsonb)
+       ON CONFLICT (user_id) DO UPDATE SET state = $4::jsonb, "on" = true`,
+      [`e2e-overlay-${userId}`, rows[0].id, userId, state],
+    );
+  } finally {
+    await client.end();
+  }
+}

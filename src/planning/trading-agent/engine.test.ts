@@ -226,6 +226,28 @@ describe("catch-up", () => {
 });
 
 describe("signals", () => {
+  it("lays a tilt on top of the strategy's own weight, never below nothing or above the account", () => {
+    const tilt = (ticker: string, weight: number) => ({
+      id: ticker,
+      at: "",
+      ticker,
+      weight,
+      reason: "",
+      source: "events",
+      tilt: true,
+    });
+    // A slice in bitcoin on a strategy already all in bitcoin changes nothing.
+    expect(overlay({ "BTC/USD": 1 }, [tilt("BTC/USD", 0.04)])).toEqual({ "BTC/USD": 1 });
+    // A trim takes that share to cash.
+    expect(overlay({ "BTC/USD": 1 }, [tilt("BTC/USD", -0.04)])).toEqual({ "BTC/USD": 0.96 });
+    // A slice in another fund comes from the rest.
+    const spy = overlay({ SPY: 1 }, [tilt("SMH", 0.02)]);
+    expect(spy.SMH).toBeCloseTo(0.02);
+    expect(spy.SPY).toBeCloseTo(0.98);
+    // Never below nothing.
+    expect(overlay({ SPY: 1 }, [tilt("BND", -0.05)])).toEqual({ SPY: 1 });
+  });
+
   it("lays a signal's weight over the strategy's, and takes it off when it ends", () => {
     expect(overlay({ "BTC/USD": 1 }, [])).toEqual({ "BTC/USD": 1 });
     expect(

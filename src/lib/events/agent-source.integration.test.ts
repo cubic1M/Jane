@@ -12,7 +12,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import type { Bar } from "@/lib/market/types";
 import { startPaperAccount } from "@/lib/paper/account";
 import type { PaperPrices } from "@/lib/paper/prices";
-import { startTradingAgent } from "@/lib/trading-agent/agent";
+import { startTradingAgent, tickTradingAgent } from "@/lib/trading-agent/agent";
 import { sampleFeed } from "@/lib/trading-agent/bar-store";
 import { policiesFor } from "@/planning/trading-agent/policies";
 import { eventsAgentSource } from "./agent-source";
@@ -28,6 +28,7 @@ const url = process.env.TEST_DATABASE_URL;
 // Tuesday 2028-10-17, 10pm UTC: after the US close.
 const NOW = new Date("2028-10-17T22:00:00Z");
 const STOCKS = policiesFor("stocks")[0].key;
+const CRYPTO = policiesFor("crypto")[0].key;
 
 const dailyPrices: PaperPrices = {
   name: "sample",
@@ -120,7 +121,7 @@ describe.runIf(url)("the events overlay with the 24-hour agent", () => {
     expect(
       await eventsAgentSource(id, { ...ctx, to: "2028-10-17T14:45:00.000Z", market: "stocks" }),
     ).toEqual([]);
-    // Crypto: the overlay's funds aren't there.
+    // The agent on crypto gets the crypto events, not this stock-fund one.
     expect(await eventsAgentSource(id, { ...ctx, market: "crypto" })).toEqual([]);
     // Off: nothing.
     await setEventsOverlay(id, false, { client, now: NOW });
@@ -147,6 +148,81 @@ describe.runIf(url)("the events overlay with the 24-hour agent", () => {
     const before = await client.paperTrade.count({ where: { userId: id } });
     expect((await runEventOverlay(id, { client, now: NOW, prices: dailyPrices })).ran).toBe(false);
     expect(await client.paperTrade.count({ where: { userId: id } })).toBe(before);
+  });
+
+  it("a crypto day-trading account takes the crypto event's trade on catch-up, only after it was public", async () => {
+    const id = await withOverlay();
+    // Started on bitcoin and ether at 15 minutes, a day before the events.
+    await startTradingAgent(
+      id,
+      { policy: CRYPTO, interval: "15m" },
+      { client, now: new Date("2028-10-16T22:00:00Z"), feed: sampleFeed },
+    );
+    // Two crypto events in the night: a liquidation cascade (a bitcoin slice in) and a stablecoin
+    // losing its peg (slices of bitcoin and ether out to cash).
+    const cryptoEvent = async (type: string, knownAt: string) =>
+      client.marketEvent.create({
+        data: {
+          key: `gdelt:${type}:agent-${crypto.randomUUID()}`,
+          type,
+          source: "gdelt",
+          date: new Date("2028-10-17T00:00:00Z"),
+          knownAt: new Date(knownAt),
+          title: `${type}: news coverage 4.0 times its usual level in the hour`,
+          url: null,
+          strength: 4,
+        },
+      });
+    await cryptoEvent("crypto_liquidation", "2028-10-17T01:15:00Z");
+    await cryptoEvent("stablecoin_depeg", "2028-10-17T02:15:00Z");
+    // This account's own record: its last 20 liquidation slices helped, which lifts the type over
+    // the bar (the backtest's record alone leaves it under). Whatever the strategy holds then (cash
+    // or crypto), the bitcoin slice in or the trim out has something to trade.
+    const won = Array.from({ length: 20 }, (_, i) => ({
+      eventKey: `past-${i}`,
+      type: "crypto_liquidation",
+      ticker: "BTC/USD",
+      side: "buy",
+      tilt: 0.02,
+      enteredOn: "2028-09-01",
+      entryCents: 100,
+      confidence: 50,
+      reason: "",
+      exitedOn: "2028-09-29",
+      exitCents: 110,
+      stopped: false,
+      fundReturn: 0.1,
+      baseReturn: 0,
+      hit: true,
+    }));
+    await client.paperEventOverlay.update({
+      where: { userId: id },
+      data: { state: { open: [], watching: [], closed: won, seen: [] } },
+    });
+    // A stock-fund event: the crypto agent never gets it.
+    await chipBoom();
+    // The next tick, hours later, catches up the bars since, in order.
+    await tickTradingAgent(id, { client, now: new Date("2028-10-17T09:00:00Z"), feed: sampleFeed });
+    const trades = await client.paperTrade.findMany({
+      where: { userId: id, source: "events" },
+      orderBy: { placedAt: "asc" },
+    });
+    expect(trades.length).toBeGreaterThan(0);
+    expect(trades.every((t) => ["BTC/USD", "ETH/USD"].includes(t.ticker))).toBe(true);
+    // Each trade at the next bar after its own event became public (the 15-minute bar closing then
+    // is the first it may act on, filled at the next bar's open), never earlier, and within the hour.
+    const publicAt = (reason: string) =>
+      reason.startsWith("crypto_liquidation")
+        ? "2028-10-17T01:15:00.000Z"
+        : "2028-10-17T02:15:00.000Z";
+    for (const t of trades.filter((t) => !t.reason.startsWith("Stopped"))) {
+      const at = publicAt(t.reason);
+      expect(t.placedAt.toISOString() >= at, t.reason).toBe(true);
+    }
+    const first = trades.find((t) => t.reason.startsWith("crypto_liquidation")) ?? trades[0];
+    expect(
+      Date.parse(first.placedAt.toISOString()) - Date.parse(publicAt(first.reason)),
+    ).toBeLessThan(3_600_000);
   });
 
   it("gives a real account nothing", async () => {
