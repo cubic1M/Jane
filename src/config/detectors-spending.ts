@@ -25,9 +25,6 @@ export const SPENDING_DETECTOR_RATES = {
   internetBillMinCents: 7_000,
   phoneBillMinCents: 8_000,
   negotiationShare: 0.12,
-  // The same charge twice within this many days.
-  duplicateChargeDays: 3,
-  duplicateChargeMinCents: 500,
   // A free trial: a charge this small or smaller, then a bigger one from the same merchant.
   trialMaxCents: 200,
   trialConvertedMinCents: 500,

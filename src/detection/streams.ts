@@ -4,6 +4,7 @@ import {
   FALLBACK_AMOUNT_TOLERANCE,
   FALLBACK_INTERVAL_DAYS,
   FALLBACK_MIN_CHARGES,
+  VARIABLE_BILL_CATEGORIES,
   HIGH_CONFIDENCE_MIN_CHARGES,
   type ConfidenceLevel,
   type Frequency,
@@ -121,7 +122,12 @@ function withinTolerance(amount: number, reference: number): boolean {
 // other), are kept as the run's newest charges so price increases show up.
 function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null {
   const typical = median(charges.map((c) => c.amountCents));
-  const core = charges.filter((c) => withinTolerance(c.amountCents, typical));
+  // A usage bill or a card payment: every charge counts, whatever its amount, and the regular
+  // gap is what makes it a bill.
+  const variable = (VARIABLE_BILL_CATEGORIES as readonly string[]).includes(
+    mostCommon(charges.map((c) => c.pfcDetailed)) ?? "",
+  );
+  const core = variable ? charges : charges.filter((c) => withinTolerance(c.amountCents, typical));
   if (core.length < FALLBACK_MIN_CHARGES) return null;
 
   const gaps = core.slice(1).map((c, i) => daysBetween(core[i].date, c.date));
@@ -139,7 +145,7 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
     if (
       gap >= min &&
       gap <= max &&
-      (firstNewPrice || withinTolerance(charge.amountCents, last.amountCents))
+      (variable || firstNewPrice || withinTolerance(charge.amountCents, last.amountCents))
     ) {
       run.push(charge);
     }

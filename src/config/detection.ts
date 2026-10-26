@@ -42,6 +42,17 @@ export type Frequency = keyof typeof CHARGES_PER_YEAR;
 // merchant, amounts within 10% of each other, every gap inside one of these day ranges.
 export const FALLBACK_MIN_CHARGES = 3;
 export const FALLBACK_AMOUNT_TOLERANCE = 0.1;
+// Bills that move with use or with what was bought: the gas and power bill, water, and the
+// card's monthly payment. Their amount changes every month, so a run of them is found from the
+// regular timing alone (accuracy bench: bills' recall was 61%, every utility and card payment
+// missed from "Coming up").
+export const VARIABLE_BILL_CATEGORIES: readonly PfcDetailed[] = [
+  "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
+  "RENT_AND_UTILITIES_WATER",
+  "RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT",
+  "RENT_AND_UTILITIES_OTHER_UTILITIES",
+  "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+];
 export const FALLBACK_INTERVAL_DAYS: Readonly<
   Partial<Record<Frequency, readonly [min: number, max: number]>>
 > = {
@@ -485,6 +496,9 @@ export const DUPLICATE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
   "TRANSFER_OUT",
   "LOAN_PAYMENTS",
 ];
+// ...except a meal: the same restaurant bill this big twice is a double charge, not a second
+// coffee (accuracy bench: the family's $68.40 dinner charged on two days was missed).
+export const DUPLICATE_CHARGE_MEAL_MIN_CENTS = 3_000;
 // Money moving rather than spent never counts as an unusually large charge.
 export const LARGE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
   "TRANSFER_OUT",
@@ -594,3 +608,10 @@ export const ONE_OFF_REPEAT_SHARE = 0.5;
 export const THIN_DATA_MONTHS = 6;
 export const THIN_DATA_MAX_PERCENT = 50;
 export const THIN_DATA_MAX_PER_MONTH = 3;
+
+// --- Calibration (docs/accuracy.md) --------------------------------------------------
+
+// Two charges of the same amount at the same place within a day are a double charge about
+// two times in three on the accuracy bench (two tickets, two of the same thing, look just
+// the same), however long the history: "Charged twice?" is never surer than this.
+export const DUPLICATE_CHARGE_MAX_PERCENT = 65;

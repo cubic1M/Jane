@@ -32,6 +32,11 @@ describe("duplicate_charge", () => {
     expect(finding.evidence.charges).toHaveLength(2);
   });
 
+  it("finds a big restaurant bill charged twice", () => {
+    const dinner = { pfcPrimary: "FOOD_AND_DRINK", amountCents: 6_840 };
+    expect(run(input({ transactions: [charge(10, dinner), charge(9, dinner)] }))).toHaveLength(1);
+  });
+
   it("ignores look-alikes", () => {
     const none = (transactions: DetectionTransaction[]) =>
       expect(run(input({ transactions }))).toEqual([]);
@@ -40,10 +45,11 @@ describe("duplicate_charge", () => {
     none([charge(10), charge(6)]);
     // Two accounts.
     none([charge(10), charge(10, { accountId: CHECKING.id })]);
-    // Lunch twice, or a small repeat.
+    // Lunch twice, or a small repeat. (A dinner bill of DUPLICATE_CHARGE_MEAL_MIN_CENTS or more
+    // twice is a double charge: below.)
     none([
-      charge(10, { pfcPrimary: "FOOD_AND_DRINK" }),
-      charge(10, { pfcPrimary: "FOOD_AND_DRINK" }),
+      charge(10, { pfcPrimary: "FOOD_AND_DRINK", amountCents: 1_250 }),
+      charge(10, { pfcPrimary: "FOOD_AND_DRINK", amountCents: 1_250 }),
     ]);
     none([charge(10, { amountCents: 500 }), charge(10, { amountCents: 500 })]);
     // Already refunded by the merchant.

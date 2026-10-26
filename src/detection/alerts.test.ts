@@ -137,8 +137,8 @@ describe("duplicate_charge", () => {
     none([charge(addDays(AS_OF, -5)), charge(addDays(AS_OF, -1))]);
     none([charge(addDays(AS_OF, -1), { amountCents: 450 }), charge(AS_OF, { amountCents: 450 })]);
     none([
-      charge(addDays(AS_OF, -1), { pfcPrimary: "FOOD_AND_DRINK" }),
-      charge(AS_OF, { pfcPrimary: "FOOD_AND_DRINK" }),
+      charge(addDays(AS_OF, -1), { pfcPrimary: "FOOD_AND_DRINK", amountCents: 1_250 }),
+      charge(AS_OF, { pfcPrimary: "FOOD_AND_DRINK", amountCents: 1_250 }),
     ]);
     // Two weeks ago is too old to alert on now.
     none([charge(addDays(AS_OF, -15)), charge(addDays(AS_OF, -14))]);

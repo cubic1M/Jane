@@ -72,6 +72,12 @@ describe("categorizeByRules", () => {
     expect(out("ENTERPRISE RENT-A-CAR 1234")).not.toBe("RENT_AND_UTILITIES_RENT");
   });
 
+  it("counts Social Security and a pension as income", () => {
+    expect(into("SSA TREAS 310 XXSOC SEC")).toBe("INCOME_RETIREMENT_PENSION");
+    expect(into("STATE TEACHERS RETIREMENT SYS PENSION")).toBe("INCOME_RETIREMENT_PENSION");
+    expect(out("PENSION SERVICES LLC")).toBeNull();
+  });
+
   it("counts a payout for one's own work as income, not a refund", () => {
     expect(into("STRIPE TRANSFER ST-K3J9Q2 PPD ID: 4270465600")).toBe("INCOME_CONTRACTOR");
     expect(out("STRIPE TRANSFER ST-K3J9Q2")).toBeNull();
