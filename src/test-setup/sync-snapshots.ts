@@ -61,9 +61,9 @@ async function save(key: string, s: Snapshot) {
 }
 
 // Environment that differs between files without changing what a sync writes: the file's own
-// encryption key, vitest's worker numbers, these snapshots' own switches. A variable set to ""
+// encryption keys, vitest's worker numbers, these snapshots' own switches. A variable set to ""
 // counts as unset (some files stub PLAID_SECRET to "", others leave it out).
-const PER_FILE_ENV = /^(TOKEN_ENCRYPTION_KEY|VITEST_POOL_ID|VITEST_WORKER_ID|SYNC_SNAPSHOT.*)$/;
+const PER_FILE_ENV = /^(TOKEN_ENCRYPTION_KEY.*|VITEST_POOL_ID|VITEST_WORKER_ID|SYNC_SNAPSHOT.*)$/;
 
 // Files that start together all want the same first syncs: the first to ask syncs for real and
 // holds a lock; the others wait for its snapshot (up to LOCK_WAIT_MS, then sync for real).
