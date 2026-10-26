@@ -69,18 +69,18 @@ describe("GET /api/digest/click", () => {
     findUnique.mockResolvedValue({ id: "d1", userId: "u1" });
 
     const response = await click(
-      new Request("https://app.example.com/api/digest/click?d=d1&to=/actions"),
+      new Request("https://app.example.com/api/digest/click?d=d1&to=/jane"),
     );
 
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe(
-      "https://app.example.com/actions?utm_source=digest&utm_medium=email&utm_campaign=weekly",
+      "https://app.example.com/jane?utm_source=digest&utm_medium=email&utm_campaign=weekly",
     );
     expect(digestsUpdateMany).toHaveBeenCalledWith({
       where: { id: "d1", openedAt: null },
       data: { openedAt: expect.any(Date) },
     });
-    expect(track).toHaveBeenCalledWith("u1", "digest_clicked", { to: "/actions" });
+    expect(track).toHaveBeenCalledWith("u1", "digest_clicked", { to: "/jane" });
   });
 
   it("never redirects off the site, and ignores unknown digests", async () => {

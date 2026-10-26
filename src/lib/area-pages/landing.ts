@@ -1,6 +1,7 @@
+import { hiddenPage } from "@/config/hidden-pages";
 import { INVESTING_ANCHORS } from "./investing";
 import { loansTopicNode } from "./loans";
-import { TAXES_ANCHORS } from "./taxes";
+import { HIDDEN_TAX_ITEMS, TAXES_ANCHORS } from "./taxes";
 
 // Where a link Jane gives lands (docs/design/area-pages.md): every area page is a tree, so a
 // link to an area opens the node it's about. Messages already sent and suggestions already
@@ -49,8 +50,10 @@ export function topicNode(root: AreaRoot, s: Suggested): string | null {
       return `ideas:${s.key}`;
     case "/insurance":
       return INSURANCE_TOPIC_BRANCH[s.topic] ?? null;
-    case "/taxes":
-      return TAXES_TOPIC_NODE[s.topic] ?? null;
+    case "/taxes": {
+      const node = TAXES_TOPIC_NODE[s.topic] ?? null;
+      return node && HIDDEN_TAX_ITEMS.has(node) ? null : node;
+    }
     case "/ahead":
       return null;
   }
@@ -63,9 +66,14 @@ const focusHref = (path: string, node: string, rest: URLSearchParams) => {
 };
 
 // The same link, pointed at its node when it was an old anchor or a suggestion's bare area
-// link. Anything else (another page, a full URL, a link with its own focus) is unchanged.
-export function landing(href: string, suggestion?: Suggested): string {
-  if (!href.startsWith("/") || href.startsWith("//")) return href;
+// link, or at its area page when the page is hidden. Anything else (another page, a full URL,
+// a link with its own focus) is unchanged.
+export function landing(link: string, suggestion?: Suggested): string {
+  if (!link.startsWith("/") || link.startsWith("//")) return link;
+  // A page the read-only beta hides (src/config/hidden-pages.ts) lands on its area page, on the
+  // suggestion's own node there when it has one.
+  const hidden = hiddenPage(link);
+  const href = hidden ? hidden.to : link;
   const [beforeHash, hash = ""] = href.split("#", 2);
   const [path, query = ""] = beforeHash.split("?", 2);
   if (!isAreaRoot(path)) return href;

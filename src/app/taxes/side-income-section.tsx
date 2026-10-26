@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
@@ -75,9 +76,9 @@ export function SideIncomeSection({ view, advice }: { view: SideIncomeView; advi
               {p.payer}, {dayLabel(p.date, { year: true })}, {formatCents(p.cents)}
             </Link>
           ))}
-          <Link href="/taxes/profile#side-income" className={LINK}>
+          <ShownLink href="/taxes/profile#side-income" className={LINK}>
             {r.priceCents ? "Change the property" : "Add the property for depreciation"}
-          </Link>
+          </ShownLink>
         </div>
       )}
       {view.platforms.length > 0 && (

@@ -154,7 +154,7 @@ export async function emailUrgentAlerts(
       const label = ALERT_LABELS[alert.type].label;
       const pushed = await push(
         userId,
-        { title: `${label}: ${alert.title}`, body: alert.body, url: "/alerts" },
+        { title: `${label}: ${alert.title}`, body: alert.body, url: "/jane#alerts" },
         { client },
       );
       if (pushed > 0) {

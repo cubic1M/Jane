@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { isHiddenPage } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
@@ -12,6 +13,8 @@ test.afterEach(async () => {
 // The monthly check-in is part of the month's one report (docs/feature-audit.md, cluster 2):
 // an old check-in link lands on the same month's report, which has the check-in's figures.
 test("an old check-in link opens the month's report", async ({ context, page, baseURL }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/check-in"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([

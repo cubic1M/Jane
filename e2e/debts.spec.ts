@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { isHiddenPage } from "../src/config/hidden-pages";
 import { pickItem } from "./area-tree";
 import {
   E2E_DATABASE_URL,
@@ -170,6 +171,8 @@ test("apply prepares the application, and it's sent only once the terms are revi
   page,
   baseURL,
 }) => {
+  // The application page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/apply/:id"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -284,8 +287,11 @@ test("the mortgage page shows PMI, the escrow change and extra principal", async
   await openLoansPage(page, "See PMI, escrow and extra payments");
   await expect(page.getByRole("heading", { level: 1, name: "Your mortgage" })).toBeVisible();
   const pmi = page.getByRole("region", { name: "Private mortgage insurance (PMI)" });
-  // One PMI rule, as /loans/equity: the home's value when the loan began, not today's.
-  await expect(pmi).toContainText("Tell Jane the home's value when the loan began");
+  // One PMI rule, as /loans/equity: the home's value when the loan began, not today's (asked
+  // there, so not while that page is hidden in the read-only beta).
+  if (!isHiddenPage("/loans/equity"))
+    await expect(pmi).toContainText("Tell Jane the home's value when the loan began");
+  else await expect(pmi).toContainText("Your loan has PMI.");
   await expect(pmi.getByRole("link", { name: "the CFPB" })).toHaveAttribute(
     "href",
     /consumerfinance\.gov/,
@@ -303,6 +309,8 @@ test("the credit score is a labelled stand-in, with its factors and card use", a
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/credit"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -362,6 +370,8 @@ test("building credit shows the simulator as an estimate and the statement payme
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/credit"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -410,6 +420,8 @@ test("a tight month shows the plan, and a request is sent only on the tap", asyn
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/tight"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -444,6 +456,8 @@ test("buying a car shows the all-in cost, preapprovals and a dealer check", asyn
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/car"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -475,6 +489,8 @@ test("buying a home shows the plan, its assumptions, and starts the goal on the 
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/home"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -511,6 +527,8 @@ test("medical bills are found, letters are written, and a request is sent only o
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/medical"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -549,6 +567,8 @@ test("report fixes show the letters with their rules, and a letter is sent only 
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/report"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -675,6 +695,8 @@ test("a payment-app transfer is a loan only after the tap, and the reminder is o
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/family"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -717,6 +739,11 @@ test("a credit score goal is previewed, started on the tap, and ticked off month
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(
+    isHiddenPage("/loans/credit") || isHiddenPage("/loans/goal"),
+    "hidden in the read-only beta",
+  );
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -760,6 +787,8 @@ test("a home loan's PMI, escrow and project are worked out from what the person 
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/equity"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -819,6 +848,8 @@ test("the options when debt is too much are laid out as facts, with the pointer 
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/help"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -858,6 +889,8 @@ test("the debt review lists every item, and the chat message keeps each button u
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/review"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -912,6 +945,8 @@ test("a dealer add-on is confirmed, with its refund and a cancellation the team 
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/auto"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -953,6 +988,8 @@ test("a lump sum is compared on the mortgage: extra principal, recast, refinance
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/recast"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -989,6 +1026,8 @@ test("costly short-term borrowing is found, costed, and the way out is laid out"
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/costly"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -1022,6 +1061,8 @@ test("a deposit is followed to its due date and marked returned", async ({
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/renting"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -1061,6 +1102,8 @@ test("a co-signed loan is counted in full and a missed payment lands on the pers
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/helping"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([
@@ -1102,6 +1145,8 @@ test("what you could borrow is shown with the day it was checked", async ({
   page,
   baseURL,
 }) => {
+  // Its page is hidden in the read-only beta (src/config/hidden-pages.ts).
+  test.skip(isHiddenPage("/loans/borrow"), "hidden in the read-only beta");
   const user = await signedInUser("user");
   userId = user.userId;
   await context.addCookies([

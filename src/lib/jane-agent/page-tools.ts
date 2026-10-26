@@ -9,8 +9,6 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   actions: ["list_actions", "open_findings"],
   afford: ["safe_to_spend"],
   ahead: ["coming_up", "tax_plan"],
-  alerts: ["alerts", "recent_changes"],
-  ask: ["explainer"],
   bills: ["coming_up", "balance_forecast", "subscriptions"],
   budgets: ["budgets"],
   "check-in": ["plan_upkeep"],
@@ -29,7 +27,6 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   insurance: ["insurance_policies", "insurance_quotes", "insurance_checkup", "insurance_claims"],
   investments: ["investments_overview", "holdings", "hsa", "crypto", "retirement_plan"],
   jane: ["nightly_log", "whole_picture"],
-  learn: ["explainer"],
   "long-view": ["long_view"],
   "life-events": ["life_events"],
   loans: [

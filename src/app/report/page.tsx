@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { Suspense } from "react";
 import { AccountList } from "@/components/account-list";
 import { AppHeader } from "@/components/app-header";
@@ -69,9 +70,9 @@ async function ReportContent() {
               <li key={check}>{check}</li>
             ))}
           </ul>
-          <Link href="/actions" className="font-medium text-emerald-700 hover:underline">
+          <ShownLink href="/actions" className="font-medium text-emerald-700 hover:underline">
             See what we&apos;re working on
-          </Link>
+          </ShownLink>
         </section>
       ) : (
         <section className="flex flex-col gap-4">

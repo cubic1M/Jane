@@ -51,6 +51,3 @@ export const CHAT_NOTIFY_MAX_AGE_HOURS = 24;
 export const CHAT_PUSH_BODY_LENGTH = 180;
 // And at most this many of the message's buttons as notification buttons.
 export const CHAT_PUSH_BUTTONS = 2;
-
-// An email's one-tap links work for this many hours, once each.
-export const CHAT_LINK_HOURS = 72;

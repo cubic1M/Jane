@@ -415,7 +415,7 @@ describe("deadlines and alerts", () => {
     expect(alert.actions).toEqual([
       { id: "alert.got_it", label: "Got it", kind: "primary" },
       { id: "snooze", label: "Not now", kind: "secondary" },
-      { id: "open", label: "See alerts", kind: "link", href: "/alerts" },
+      { id: "open", label: "See alerts", kind: "link", href: "/jane#alerts" },
     ]);
   });
 });

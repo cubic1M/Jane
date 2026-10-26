@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { shownHref } from "@/config/hidden-pages";
 import { after } from "next/server";
 import { runAgentNow } from "@/lib/agent/run";
 import { AcceptShopError, acceptShop } from "@/lib/insurance/accept";
@@ -33,7 +34,7 @@ export async function switchToPick(formData: FormData): Promise<void> {
     }
     throw error;
   }
-  redirect("/actions");
+  redirect(shownHref("/actions"));
 }
 
 // Not now: keeps the current policy this time.
