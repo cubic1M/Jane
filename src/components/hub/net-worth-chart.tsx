@@ -30,6 +30,7 @@ import {
   type ViewWindow,
 } from "@/insights/net-worth-movements";
 import { formatCents } from "@/lib/money";
+import { MarchingPath } from "@/components/marching-path";
 
 // The home hub's net worth chart (founder request; docs/design/home-hub.md): the person's net
 // worth from their first day with Jane to today, as one clean line. A big number with the
@@ -1211,13 +1212,7 @@ function Connector({ from, to, stacked }: { from: Rect; to: Rect; stacked: boole
       data-net-worth-connector=""
       className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible"
     >
-      <path
-        d={d}
-        fill="none"
-        strokeWidth={2}
-        strokeDasharray="3 6"
-        className="ask-line stroke-current"
-      />
+      <MarchingPath d={d} />
     </svg>
   );
 }

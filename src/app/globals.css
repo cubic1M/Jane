@@ -354,6 +354,9 @@ body {
   --motion-fast: 150ms;
   --motion-base: 200ms;
   --motion-slow: 250ms;
+  /* MARCHING_LINE in src/config/motion.ts. */
+  --line-march: #8a8a8a;
+  --line-march-period: 600ms;
 }
 
 @media (min-width: 1024px) {
@@ -546,16 +549,21 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
 .giant-open {
   animation: page-in var(--motion-slow) var(--ease-out-soft) backwards;
 }
-.ask-line {
-  animation: ask-line-march 0.6s linear infinite;
+/* Every marching dotted line (src/components/marching-path.tsx): one colour, width, dash and
+   speed, as MARCHING_LINE in src/config/motion.ts says (the founder: "some are grey and some are
+   white"). Still under reduced motion. */
+.marching-line {
+  stroke: var(--line-march);
+  animation: marching-line var(--line-march-period) linear infinite;
 }
 /* An earlier answer found from an "Ask Jane" box: marked for a moment (src/app/chat/embed-bridge.tsx). */
 .ask-found {
   outline: 2px dashed currentColor;
   outline-offset: 4px;
 }
-@keyframes ask-line-march {
+@keyframes marching-line {
   to {
+    /* One dash and its gap (MARCHING_LINE.dash "3 6"). */
     stroke-dashoffset: -9;
   }
 }
@@ -564,7 +572,7 @@ html[data-giant-picked] .floating-cards[data-floating-cards="queue"] {
     transition: none;
   }
   .giant-open,
-  .ask-line {
+  .marching-line {
     animation: none;
   }
 }

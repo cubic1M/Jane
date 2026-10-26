@@ -29,7 +29,7 @@ describe("the panel's state", () => {
     for (const path of ["/home", "/money", "/loans/cards", "/settings", "/report/abc"]) {
       expect(panelShowsOn(path), path).toBe(true);
     }
-    for (const path of ["/chat", "/chat/search", "/ask", "/", "/login", "/admin/queue"]) {
+    for (const path of ["/chat", "/chat/reply", "/ask", "/", "/login", "/admin/queue"]) {
       expect(panelShowsOn(path), path).toBe(false);
     }
   });
@@ -62,7 +62,7 @@ describe("links inside the framed chat", () => {
 
   it("keep the chat's own pages, other sites, new tabs and downloads where they are", () => {
     expect(leavesFrame("/chat#m1", ORIGIN)).toBeNull();
-    expect(leavesFrame("/chat/search?q=hulu", ORIGIN)).toBeNull();
+    expect(leavesFrame("/chat?pages=2", ORIGIN)).toBeNull();
     expect(leavesFrame("https://other.example/x", ORIGIN)).toBeNull();
     expect(leavesFrame("/report/abc", ORIGIN, { target: "_blank" })).toBeNull();
     expect(leavesFrame("/api/export", ORIGIN, { download: true })).toBeNull();

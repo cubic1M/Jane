@@ -24,6 +24,7 @@ import {
   type LevelTile,
 } from "@/lib/investments/strategy-tree";
 import { formatCents } from "@/lib/money";
+import { MarchingPath } from "@/components/marching-path";
 
 // The investments page, laid out like Home (founder: "similar to the homepage … interactive, and
 // you can click through the tree graphs showcasing the different strategies and choose which one
@@ -229,13 +230,7 @@ function PanelLine({
       data-panel-line=""
       className="pointer-events-none fixed inset-0 z-30 hidden h-full w-full overflow-visible lg:block"
     >
-      <path
-        d={`M${sx},${sy} C${sx},${sy - dy} ${ex},${ey + dy} ${ex},${ey}`}
-        fill="none"
-        strokeWidth={2}
-        strokeDasharray="3 6"
-        className="ask-line stroke-zinc-500"
-      />
+      <MarchingPath d={`M${sx},${sy} C${sx},${sy - dy} ${ex},${ey + dy} ${ex},${ey}`} />
     </svg>
   );
 }

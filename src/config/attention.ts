@@ -22,7 +22,6 @@ export const ATTENTION_ALWAYS: readonly string[] = [
   "billpay",
   "paycheck",
   "brief",
-  "welcome",
   "autopilot",
   "attention",
   // Spec step 204: income stopped; never held or stopped.

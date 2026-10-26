@@ -66,10 +66,10 @@ describe.runIf(url)("history and search against a real database", () => {
     expect(await searchChat(userId, "Oct 17 netflix", { client, now: at(5) })).toEqual([]);
   });
 
-  it("answers a typed search with the newest few and a link to all", async () => {
+  it("answers a typed search with the newest few (no search page any more)", async () => {
     const { reply } = await sendToJane(userId, "search for netflix", { client, now: at(6) });
     expect(reply.body).toMatch(/^I found \d+ messages? with "netflix", the newest first\./);
-    expect(reply.actions[0]).toMatchObject({ href: "/chat/search?q=netflix" });
+    expect(reply.actions.filter((a) => a.kind === "link")).toEqual([]);
   });
 
   it("pins only the person's own messages", async () => {

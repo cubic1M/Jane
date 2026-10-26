@@ -1,8 +1,8 @@
 import type { Reply } from "./replies";
 import type { SearchResult } from "./search";
 
-// Spec step 96: "search for Netflix" in the chat: how many messages, the newest few, and
-// a link to them all on the search page. Pure.
+// Spec step 96: "search for Netflix" in the chat: how many messages and the newest few. (The
+// chat's own search box and page are gone, founder 2026-10-26.) Pure.
 
 const SHOWN = 3;
 const day = (d: Date, timezone: string | null) =>
@@ -17,12 +17,6 @@ export function searchReply(
   results: readonly SearchResult[],
   timezone: string | null,
 ): Reply {
-  const all = {
-    id: "open" as const,
-    label: "See them all",
-    kind: "link" as const,
-    href: `/chat/search?q=${encodeURIComponent(query)}`,
-  };
   if (results.length === 0) {
     return { body: `I didn't find "${query}" anywhere in our chat.`, actions: [], refs: {} };
   }
@@ -33,7 +27,7 @@ export function searchReply(
         .slice(0, SHOWN)
         .map((r) => `- ${day(r.createdAt, timezone)}: ${r.body.split("\n")[0].slice(0, 80)}`),
     ].join("\n"),
-    actions: [all],
+    actions: [],
     refs: {},
   };
 }

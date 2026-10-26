@@ -87,23 +87,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       {/* Every message counts here, the floating ones too: the pulse counts them all. */}
       {chat.scanning && <ScanRefresher shown={chat.hasEarlier ? -1 : chat.messages.length} />}
 
-      {/* Spec step 96: search everything said here, and what the person pinned. */}
-      <form action="/chat/search" role="search" className="flex gap-2">
-        <input
-          name="q"
-          type="search"
-          aria-label="Search the chat"
-          placeholder="Search the chat: words, $17.99, Oct 20"
-          maxLength={100}
-          className="min-h-11 min-w-0 flex-1 border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700"
-        />
-        <button
-          type="submit"
-          className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-semibold text-emerald-700 hover:underline"
-        >
-          <span aria-hidden="true">[</span>Search<span aria-hidden="true">]</span>
-        </button>
-      </form>
+      {/* What the person pinned (spec step 96). */}
       {pinned.length > 0 && (
         <section aria-labelledby="pinned-heading" className="flex flex-col gap-2">
           <h2 id="pinned-heading" className="text-sm font-semibold">

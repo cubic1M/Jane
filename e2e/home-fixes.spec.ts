@@ -79,6 +79,49 @@ test("an opened card stays put through a reload and while stepping", async ({
   await expect(more).toHaveAttribute("aria-expanded", "true");
 });
 
+test("an opened card keeps the next ones open, until one is shut", async ({
+  context,
+  page,
+  baseURL,
+  isMobile,
+}) => {
+  test.skip(isMobile, "the dock is on a computer");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  userId = await demoPerson(context, page, baseURL);
+  await page.goto("/home");
+  const dock = page.locator("[data-card-dock]");
+  const header = dock.locator("[data-dock-header]");
+  await expect(header).toHaveText(/of (\d+) suggestions/, { timeout: 60_000 });
+  const total = Number(/of (\d+)/.exec((await header.textContent()) ?? "")![1]);
+  test.skip(total < 4, "needs a few cards");
+  const showing = dock.locator('[data-card-state="showing"]');
+  const headline = showing.getByRole("heading", { level: 3 });
+  const more = showing.getByRole("button", { name: "More details" });
+  const answer = () => showing.locator("[data-card-actions] button").last();
+
+  // Opened, then answered: the next card is already open, with no shut moment in between.
+  await more.click();
+  await expect(more).toHaveAttribute("aria-expanded", "true");
+  for (let i = 0; i < 2; i += 1) {
+    const was = (await headline.textContent()) ?? "";
+    await answer().click();
+    await expect(headline).not.toHaveText(was);
+    expect(
+      await showing.evaluate((card) =>
+        card.querySelector('[aria-label="More details"]')?.getAttribute("aria-expanded"),
+      ),
+    ).toBe("true");
+    await expect(showing.locator('[id^="details-"]')).toBeVisible();
+  }
+  // Shut by the person: the next ones come shut again.
+  await more.click();
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  const was = (await headline.textContent()) ?? "";
+  await answer().click();
+  await expect(headline).not.toHaveText(was);
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+});
+
 test("Home: hide the checklist at once, trees start at their branches, no greeting", async ({
   context,
   page,
@@ -127,16 +170,20 @@ test("Home: hide the checklist at once, trees start at their branches, no greeti
   const areaName = (chip ?? "").split("·")[0].trim();
   await expect(map.getByRole("treeitem", { name: new RegExp(`^${areaName}`) })).toHaveCount(0);
 
-  // No "Good morning" anywhere: not among the cards, not in the chat.
+  // No "Good morning" and no "Hi, I'm Jane" anywhere: not among the cards, not in the chat.
   const cards = await page.evaluate(async () =>
     ((await (await fetch("/api/chat/cards")).json()).cards as { body: string }[]).map(
       (c) => c.body,
     ),
   );
   expect(cards.filter((b) => /^Good (morning|afternoon|evening)!/.test(b))).toEqual([]);
+  expect(cards.filter((b) => /^Hi, I'm Jane\./.test(b))).toEqual([]);
   await page.goto("/chat?embed=1");
   await expect(page.getByRole("textbox", { name: "Message Jane" })).toBeVisible({
     timeout: 60_000,
   });
   await expect(page.getByText(/^Good (morning|afternoon|evening)!/)).toHaveCount(0);
+  await expect(page.getByText(/^Hi, I'm Jane\./)).toHaveCount(0);
+  // And no search box in the chat (founder, 2026-10-26).
+  await expect(page.getByRole("searchbox", { name: "Search the chat" })).toHaveCount(0);
 });

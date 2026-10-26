@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, addSavedChange, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
+import { expectMarchingLine } from "./marching";
 
 // Home's Safe to spend and Saved tiles open in place (founder: "When you click safe to spend
 // till… it should expand first having a summary on why that number is what it is. On the
@@ -81,6 +82,7 @@ test("safe to spend says why it's that number, and hands what to spend to the ch
   await expect(page).toHaveURL(/\/home$/);
   await expect(how).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator("[data-popup-line] path")).toHaveAttribute("d", /^M/);
+  await expectMarchingLine(page.locator("[data-popup-line]"));
   const steps = await popup.locator("[data-calc-lines] dd").allTextContents();
   await expect(popup.locator("[data-calc-lines] dt").first()).toContainText("In checking today");
   const stepsHeld = steps.slice(1, -1).reduce((sum, v) => sum + money(v), 0);
@@ -124,6 +126,7 @@ test("safe to spend says why it's that number, and hands what to spend to the ch
   await expect(box).toHaveValue("I'm aiming to spend $", { timeout: 30_000 });
   await expect(box).toBeFocused();
   await expect(page.locator("[data-chat-line]")).toBeAttached();
+  await expectMarchingLine(page.locator("[data-chat-line]"));
   // A greyed clue after the cursor, not part of what's typed.
   const hint = chat.locator("[data-composer-hint]");
   // After the text, or on its own line under the box when the box is too narrow for both.
@@ -186,6 +189,7 @@ test("saved so far opens on where the savings came from", async ({
   await expect(lines.last()).toContainText("Expected, plus your plan if you say yes");
   await expect(popup.locator("[data-plan-goal]")).toBeVisible();
   await expect(page.locator("[data-popup-line] path")).toHaveAttribute("d", /^M/);
+  await expectMarchingLine(page.locator("[data-popup-line]"));
   await clearOf(page, popup, tile);
   await expect(popup.getByRole("link", { name: /See the whole plan/ })).toHaveAttribute(
     "href",

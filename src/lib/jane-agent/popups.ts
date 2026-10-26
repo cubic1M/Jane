@@ -1,5 +1,5 @@
 import type { FloatingCardData } from "@/lib/floating-cards";
-import { GREETING_START, MORNING_BRIEF } from "@/config/agent-chat";
+import { GREETING_START, HELLO_START, MORNING_BRIEF } from "@/config/agent-chat";
 import { isChoice } from "./choices";
 import type { MessageView } from "./view";
 
@@ -35,9 +35,12 @@ export function popupOrder(popups: readonly MessageView[]): MessageView[] {
   return [...popups.filter((m) => m.kind === "brief"), ...popups.filter((m) => m.kind !== "brief")];
 }
 
-// The morning brief is off for now (MORNING_BRIEF): a greeting already posted shows nowhere.
+// Briefs that show nowhere: the morning greeting while it's off (MORNING_BRIEF), and the
+// first-run hello, gone for good (HELLO_START).
 export function hiddenBrief(m: Pick<MessageView, "kind" | "body">, on = MORNING_BRIEF): boolean {
-  return !on && m.kind === "brief" && GREETING_START.test(m.body.trim());
+  if (m.kind !== "brief") return false;
+  const body = m.body.trim();
+  return HELLO_START.test(body) || (!on && GREETING_START.test(body));
 }
 
 // One stack of cards (founder: "don't let the suggestion cards repeat"): the day's suggestions,

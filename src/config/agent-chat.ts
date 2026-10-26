@@ -85,6 +85,9 @@ export const BRIEF_FROM_HOUR = 7;
 export const MORNING_BRIEF = false;
 // The greeting a brief starts with, to leave out the ones already posted while it's off.
 export const GREETING_START = /^Good (morning|afternoon|evening)!/;
+// The first-run hello ("Hi, I'm Jane. ..."): gone for good (founder, 2026-10-26: "Delete the
+// 'Hi, I'm Jane' suggestion card"); it is never written, and one already posted shows nowhere.
+export const HELLO_START = /^Hi, I'm Jane\./;
 export const BRIEF_BILL_DAYS = 2;
 
 // Heads-ups about deadlines this many days ahead or fewer.
@@ -286,7 +289,6 @@ export const CHAT_SOURCE_MONTHLY_LIMITS: Readonly<
 
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
   "autopilot",
-  "welcome",
   // Spec step 208: a charge that may not be theirs shouldn't wait for a quiet day; the source
   // itself brings up at most UNUSUAL_CHAT_MAX at a time.
   "unusual",

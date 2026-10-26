@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
+import { expectMarchingLine } from "./marching";
 
 // The investments page laid out like Home (founder: "you can click through the tree graphs
 // showcasing the different strategies and choose which one you like"): the hero graph, the
@@ -82,7 +83,10 @@ for (const size of [
       ? page.getByRole("dialog", { name: label })
       : hero.locator("[data-strategy-panel]");
     await expect(panel.getByText(label, { exact: true })).toBeVisible();
-    if (!size.phone) await expect(page.locator("[data-panel-line]")).toHaveCount(1);
+    if (!size.phone) {
+      await expect(page.locator("[data-panel-line]")).toHaveCount(1);
+      await expectMarchingLine(page.locator("[data-panel-line]"));
+    }
     await panel.getByText("More", { exact: true }).click();
     await expect(panel.getByText(/^Past regimes: /)).toBeVisible();
 
