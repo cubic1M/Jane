@@ -86,6 +86,25 @@ describe.runIf(url)("health checks against a real database", () => {
     );
   });
 
+  it("calls a job missed that has failed for longer than that without ever succeeding", async () => {
+    const fail = async () => {
+      throw new Error("Alpaca refused");
+    };
+    await expect(recordRun("paper-run", fail, { client, now: () => at(0) })).rejects.toThrow();
+    await expect(recordRun("paper-run", fail, { client, now: () => at(20) })).rejects.toThrow();
+    // Not yet a day of trying: not missed.
+    expect(
+      (await jobHealth({ client, now: at(10) })).find((j) => j.name === "paper-run"),
+    ).toMatchObject({ missed: false, lastSuccessAt: null });
+    const later = at(JOB_STALE_HOURS + 1);
+    expect(
+      (await jobHealth({ client, now: later })).find((j) => j.name === "paper-run"),
+    ).toMatchObject({ missed: true, lastOk: false });
+    expect(await reportMissedJobs({ client, now: later, send })).toContain("paper-run");
+    const subjects = send.mock.calls.map(([m]) => m.subject);
+    expect(subjects).toContain('Daily job "paper-run" has never run successfully');
+  });
+
   it("doesn't call a job that has never run missed", async () => {
     const jobs = await jobHealth({ client, now: at(1000) });
     expect(jobs.every((j) => !j.missed)).toBe(true);
@@ -93,7 +112,14 @@ describe.runIf(url)("health checks against a real database", () => {
 
   it("audit-logs every view of the health page", async () => {
     const report = await healthReport({ id: "admin_1" }, { client, now: at(0) });
-    expect(report.jobs.map((j) => j.name)).toEqual(["plaid-sync", "digest", "practice-scan"]);
+    // Every daily job the founder named (2026-10-26).
+    expect(report.jobs.map((j) => j.name)).toEqual([
+      "plaid-sync",
+      "digest",
+      "market-history",
+      "paper-run",
+      "practice-scan",
+    ]);
     expect(logAudit).toHaveBeenCalledWith(
       { type: "admin", id: "admin_1" },
       "admin_viewed_health",
