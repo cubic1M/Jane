@@ -85,7 +85,9 @@ describe("GET /api/cron/plaid-sync", () => {
     expect(findMany).not.toHaveBeenCalled();
   });
 
-  it("syncs active items not synced in the last day, and keeps going past failures", async () => {
+  // The backstop for a missed webhook (webhooks sync as soon as Plaid has news): items not synced
+  // in 20 hours, so one synced a little after yesterday's run isn't skipped for two days.
+  it("syncs active items not synced in 20 hours, and keeps going past failures", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(syncItem).mockRejectedValueOnce(new Error("bank down"));
 
@@ -118,6 +120,9 @@ describe("GET /api/cron/plaid-sync", () => {
     const where = findMany.mock.calls[0][0].where;
     expect(where.status).toBe("active");
     expect(where.OR[0]).toEqual({ lastSyncedAt: null });
+    const cutoff = where.OR[1].lastSyncedAt.lt as Date;
+    expect(Date.now() - cutoff.getTime()).toBeGreaterThanOrEqual(20 * 60 * 60 * 1000);
+    expect(Date.now() - cutoff.getTime()).toBeLessThan(20 * 60 * 60 * 1000 + 60_000);
   });
 
   it("still snapshots balances when Plaid isn't set up", async () => {

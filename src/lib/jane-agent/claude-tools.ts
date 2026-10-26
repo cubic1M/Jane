@@ -75,6 +75,7 @@ import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { NEWS_TOOLS, isNewsTool, runNewsTool } from "./news-tools";
+import { EVENTS_TOOLS, isEventsTool, runEventsTool } from "./events-tools";
 import { PRACTICE_TOOLS, isPracticeTool, runPracticeTool } from "./practice-tools";
 import {
   SETTINGS_CHAT_PAGES,
@@ -512,6 +513,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...INVESTMENT_TOOLS,
   // Spec step 293: the practice portfolio's news.
   ...NEWS_TOOLS,
+  // The events overlay on the paper account.
+  ...EVENTS_TOOLS,
   // Phase AW: the practice portfolio's settings, read and changed with a confirmation card.
   ...PRACTICE_TOOLS,
   // Connected banks and what Jane sends the person (./settings-tools.ts).
@@ -533,6 +536,7 @@ export async function runChatTool(
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   if (isNewsTool(name)) return runNewsTool(userId, name, input, { client, now });
+  if (isEventsTool(name)) return runEventsTool(userId, name, input, { client, now });
   if (isPracticeTool(name)) return runPracticeTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   if (isSettingsTool(name)) return runSettingsTool(userId, name, input, { client, now });
