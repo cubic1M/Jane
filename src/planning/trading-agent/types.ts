@@ -40,6 +40,9 @@ export type Policy = {
   tickers: readonly string[];
   // The settings it is tried with.
   grid: readonly number[];
+  // What just holding means for this rule: the asset it is pointed at (QQQ, ether), else the
+  // market's own (SPY, bitcoin).
+  hold?: string;
   // The weights to hold after bar t's close, from bars up to and including t, or null to keep
   // what it holds. Must never read bar t+1 or later.
   decide(tl: Timeline, t: number, param: number, ctx: PolicyContext): Weights | null;

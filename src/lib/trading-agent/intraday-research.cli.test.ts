@@ -110,7 +110,7 @@ async function barsFor(market: AgentMarketId, interval: AgentInterval) {
 const SOURCE_WORDS: Readonly<Record<string, string>> = {
   "alpaca-crypto": "Alpaca's crypto bars (no key needed)",
   alpaca:
-    "Alpaca's stock bars (SIP feed, split- and dividend-adjusted), 15-minute bars joined into hours from the 9:30 open",
+    "Alpaca's stock bars (SIP feed, split- and dividend-adjusted, regular hours; hourly bars are the 15-minute ones joined from the 9:30 open)",
   yahoo:
     "Yahoo Finance's keyless intraday chart (not adjusted for dividends; about two years of hourly bars and sixty days of 15-minute bars)",
 };
