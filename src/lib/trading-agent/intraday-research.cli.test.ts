@@ -10,7 +10,12 @@ import {
   type AgentMarketId,
 } from "@/config/trading-agent";
 import { cachedBars } from "@/lib/trading-agent/bar-cache";
-import { fetchAgentBars, sourceFor, YAHOO_INTRADAY_DAYS } from "@/lib/trading-agent/bars";
+import {
+  fetchAgentBars,
+  sessionBars,
+  sourceFor,
+  YAHOO_INTRADAY_DAYS,
+} from "@/lib/trading-agent/bars";
 import { timelineOf } from "@/planning/trading-agent/clock";
 import { runGroup, type GroupResult } from "@/planning/trading-agent/harness";
 import { policiesFor } from "@/planning/trading-agent/policies";
@@ -61,12 +66,24 @@ function fromFor(market: AgentMarketId, interval: AgentInterval, source: string)
   return new Date(NOW.getTime() - YAHOO_INTRADAY_DAYS[interval] * 86_400_000).toISOString();
 }
 
+// Alpaca's fund bars are fetched at 15 minutes and joined into hours (./bars.ts), so the hourly run
+// reads the 15-minute ones already kept instead of asking again.
+const kept15 = new Map<string, AgentBar[]>();
+
 async function barsFor(market: AgentMarketId, interval: AgentInterval) {
   const out: Record<string, AgentBar[]> = {};
   let source = "";
   for (const ticker of tickersOf(market)) {
     const src = sourceFor(ticker);
     source = src;
+    const quarter = kept15.get(ticker);
+    if (src === "alpaca" && interval === "1h" && quarter) {
+      out[ticker] = sessionBars(quarter, 60);
+      console.log(
+        `${market} ${interval} ${ticker}: ${out[ticker].length} bars (from 15-minute bars)`,
+      );
+      continue;
+    }
     const from = fromFor(market, interval, src);
     try {
       const { bars, fetched } = await cachedBars(
@@ -79,6 +96,7 @@ async function barsFor(market: AgentMarketId, interval: AgentInterval) {
         async (a, b) => (await fetchAgentBars(ticker, a, b, interval)).bars,
       );
       out[ticker] = bars;
+      if (src === "alpaca" && interval === "15m") kept15.set(ticker, bars);
       console.log(
         `${market} ${interval} ${ticker}: ${bars.length} bars (${fetched} fetched, ${src})`,
       );

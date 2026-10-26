@@ -29,8 +29,8 @@ type AlpacaCryptoBars = {
 };
 
 // A rate limit (429) or a brief outage (5xx) is asked again after a pause that doubles: 1, 2, 4,
-// 8 and 16 seconds. Anything else is answered at once.
-const RETRIES = 5;
+// 8, 16 and 32 seconds (Alpaca's limit is per minute). Anything else is answered at once.
+const RETRIES = 6;
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function patiently(
   fetcher: Fetcher,
@@ -223,16 +223,22 @@ export async function fetchAgentBars(
   {
     env = process.env,
     fetcher = fetch as unknown as Fetcher,
-  }: { env?: Record<string, string | undefined>; fetcher?: Fetcher } = {},
+    wait,
+  }: {
+    env?: Record<string, string | undefined>;
+    fetcher?: Fetcher;
+    wait?: (ms: number) => Promise<unknown>;
+  } = {},
 ): Promise<{ source: BarSource; bars: AgentBar[] }> {
   const source = sourceFor(ticker, env);
   if (source === "alpaca-crypto")
-    return { source, bars: await fetchCryptoBars(ticker, from, to, interval, fetcher) };
+    return { source, bars: await fetchCryptoBars(ticker, from, to, interval, fetcher, wait) };
   if (source === "alpaca") {
+    const retrying: Fetcher = (url, init) => patiently(fetcher, url, init, wait);
     const bars = await fetchIntraday(alpacaKeys(env), ticker, from, to, {
       timeframe: AGENT_INTERVALS["15m"].alpaca,
       feed: env.ALPACA_DATA_FEED || "iex",
-      fetcher: fetcher as never,
+      fetcher: retrying as never,
     });
     return { source, bars: sessionBars(bars, AGENT_INTERVALS[interval].minutes) };
   }

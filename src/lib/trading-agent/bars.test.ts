@@ -74,6 +74,23 @@ describe("rate limits", () => {
   });
 });
 
+describe("Alpaca's fund bars", () => {
+  it("are asked again after a rate limit too", async () => {
+    const answers = [
+      { ok: false, status: 429, json: async () => ({ message: "too many requests." }) },
+      ok({ bars: { SPY: [] }, next_page_token: null }),
+    ];
+    const waits: number[] = [];
+    const out = await fetchAgentBars("SPY", "2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z", "1h", {
+      env: { ALPACA_API_KEY_ID: "test-id", ALPACA_API_SECRET_KEY: "test-secret" },
+      fetcher: async () => answers.shift()!,
+      wait: async (ms) => waits.push(ms),
+    });
+    expect(out.bars).toEqual([]);
+    expect(waits).toEqual([1_000]);
+  });
+});
+
 describe("Yahoo's intraday chart", () => {
   it("parses a recorded answer and skips empty bars", () => {
     const bars = parseYahooIntraday({
