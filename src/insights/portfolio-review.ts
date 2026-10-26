@@ -10,6 +10,7 @@ import {
   type RiskLevel,
 } from "@/config/investing";
 import type { HoldingView, InvestmentAccountView } from "./investments";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Does it fit? (spec step 131, demo advice). The person's mix of investments against the
 // target for their risk level (src/config/investing.ts), any one company's shares that are
@@ -59,7 +60,6 @@ export type PortfolioReview = {
   leftOut: string[];
 };
 
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 // "US stocks" stays capitalised; "Bonds" becomes "bonds".
 export const classWords = (label: string) =>
   label.startsWith("US") ? label : label.charAt(0).toLowerCase() + label.slice(1);

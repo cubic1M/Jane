@@ -19,6 +19,7 @@ import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
 import { payoffPlan } from "./debt";
 import { levelPaymentCents, totalPaidCents } from "./refinance";
+import { formatPercent as pct } from "@/lib/percent";
 
 // The fit engine (spec step 281), pure: for one need, the person's credit, income, debts and
 // cash, and the lender's offers, it works out each option's eligibility, its total cost over
@@ -138,7 +139,6 @@ export type FitResult = {
   terms: FitTerms | null;
 };
 
-const pct = (share: number) => `${Math.round(share * 100)}%`;
 const years = (months: number) => {
   const y = months / 12;
   return `${Number.isInteger(y) ? y : y.toFixed(1)} yr${y === 1 ? "" : "s"}`;

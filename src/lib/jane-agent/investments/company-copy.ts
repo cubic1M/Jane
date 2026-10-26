@@ -3,6 +3,7 @@ import type { CompanyStockView } from "@/lib/investments/company-stock";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 import { SIMULATED_WORDS } from "./rebalance-copy";
+import { formatPercent as pct } from "@/lib/percent";
 
 // Company stock in the chat (spec step 160): the words Jane's message, reply and tool share.
 
@@ -15,7 +16,6 @@ export const COMPANY_LINK: MessageAction = {
   href: "/investments/company-stock",
 };
 
-const pct = (n: number) => `${Math.round(n * 100)}%`;
 const day = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "short",

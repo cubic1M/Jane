@@ -10,6 +10,7 @@ import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 import { cachedCopy } from "@/lib/read-cache";
+import { formatWholeDollars as dollars } from "@/lib/money";
 
 // The picture of you (spec step 253), loaded for one person: what the bank shows, what they
 // told Jane here and what they answered elsewhere (their tax, insurance and investor
@@ -45,7 +46,6 @@ const PREF_PREFIX = "profile:";
 // The key prefix of a profile answer, for code that seeds one (the demo bank's sample people).
 export const PROFILE_FACT_PREFIX = PREF_PREFIX;
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
-const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
 // The raw rows a profile is built from, with what the person told Jane. Detectors (spec step
 // 254) get these beside the profile, for the figures that are theirs ("you pay $1,240").
