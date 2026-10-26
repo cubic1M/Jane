@@ -120,6 +120,9 @@ export type NormalizedTransaction = {
   pending: boolean;
   // The source's own transaction id (Plaid), or a dedupe key for sources without one (CSV).
   externalId: string;
+  // A posted transaction's pending one (Plaid's pending_transaction_id): the pending row is
+  // replaced by this one, never counted beside it.
+  pendingExternalId?: string | null;
   // Extra hints from the source (e.g. the bank's own category) for our categorizer.
   hints: { bankCategory?: string; bankType?: string };
 };
