@@ -57,7 +57,6 @@ const verdictOf = (r: BacktestResult): "helped" | "hurt" | "no clear difference"
   if (d < -SHARPE_MARGIN) return "hurt";
   return "no clear difference";
 };
-const helped = (r: BacktestResult) => verdictOf(r) === "helped";
 
 const range = (xs: number[], f: (x: number) => string) => {
   const lo = Math.min(...xs);
