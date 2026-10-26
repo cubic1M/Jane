@@ -97,6 +97,9 @@ test.describe("a real account", () => {
     await importSampleCard(page);
     await page.goto("/plan");
     await expect(page.getByText(/you could do/)).toBeVisible();
+    // Worded for doing the steps yourself: there is no "yes" to say on a real account.
+    await expect(page.getByText(/you could do/)).toContainText("if you do them all");
+    await expect(page.getByText(/say yes to all/)).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "This week, Jane will" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Autopilot settings" })).toHaveCount(0);
     // The plan opens with the three that matter most; the rest are behind "more".
