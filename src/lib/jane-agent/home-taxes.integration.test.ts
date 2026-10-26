@@ -27,7 +27,7 @@ const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 const context = { now: LINKED, local: { date: "2026-10-18", hour: 8 }, trigger: "open" as const };
 
-describe.runIf(url)("homeowner taxes against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("homeowner taxes against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

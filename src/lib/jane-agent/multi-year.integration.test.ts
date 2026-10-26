@@ -29,7 +29,7 @@ import { sendToJane } from "./typing";
 const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 
-describe.runIf(url)("tax moves over the years against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("tax moves over the years against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

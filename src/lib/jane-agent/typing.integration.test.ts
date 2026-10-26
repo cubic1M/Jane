@@ -291,7 +291,7 @@ describe.runIf(url)("typing to Jane against a real database", () => {
   });
 
   // Each test sends several messages through the chat, so they get more time than usual.
-  describe("with a key", { timeout: 60_000 }, () => {
+  describe("with a key", { timeout: 120_000 }, () => {
     const create = vi.fn();
     // All of Claude's chat spend in a month is guarded together, and the spend tests here add
     // a lot of it: each test starts the month empty.

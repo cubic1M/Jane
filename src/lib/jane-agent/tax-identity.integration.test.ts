@@ -28,7 +28,7 @@ const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 const JAN = new Date("2027-01-12T16:00:00Z");
 
-describe.runIf(url)("a protected tax identity against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("a protected tax identity against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

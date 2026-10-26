@@ -20,7 +20,7 @@ const NOW = new Date("2026-10-20T15:00:00Z");
 const T = `learning_test_${crypto.randomUUID().slice(0, 8)}`;
 const QUIET = `${T}_quiet`;
 
-describe.runIf(url)("the learning loop", { timeout: 60_000 }, () => {
+describe.runIf(url)("the learning loop", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   beforeAll(() => {

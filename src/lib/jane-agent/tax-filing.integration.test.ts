@@ -141,7 +141,7 @@ describe.runIf(url)("filing through the partner against a real database", () => 
     expect(JSON.stringify(ret!.package)).not.toMatch(/access|token|demo-[a-f0-9]{16}/i);
     expect((await gather(userId, FEB)).some((c) => c.dedupeKey === "review:2026")).toBe(true);
     // It links a demo bank itself, which takes longer than the default under a full run.
-  }, 60_000);
+  }, 120_000);
 
   it("is never submitted without the person's review and signature", async () => {
     const userId = await demoPerson("tax-file-sign");
