@@ -13,7 +13,6 @@ import {
   PRICE_SHOCKS,
 } from "@/config/events";
 import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
-import { REAL_FIXTURE_SOURCE } from "@/lib/market/__fixtures__/real";
 import type { BacktestResult, Metrics } from "@/planning/event-backtest";
 import {
   BACKTEST_FROM,
@@ -24,6 +23,10 @@ import {
   historicalEvents,
 } from "./backtests";
 import { GDELT_FIXTURE_SOURCE } from "./index";
+
+// Where the replay's prices come from (src/lib/market/__fixtures__/real/README.md).
+const REAL_FIXTURE_SOURCE =
+  "Yahoo Finance adjusted daily closes, 2016-01-04 to 2026-10-21, downloaded 2026-10-22";
 
 // Writes docs/backtests/events.md and src/config/event-evidence.ts from the backtests, so the
 // numbers in both always come from a run (src/planning/event-backtest.research.test.ts writes
