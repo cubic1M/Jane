@@ -31,6 +31,7 @@ import { logAudit } from "@/lib/audit";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { cachedRead } from "@/lib/read-cache";
 import { plaidEnabled } from "./client";
 
 // The demo bank (spec step 75): a stand-in for Plaid's API while there are no keys. A demo
@@ -348,10 +349,19 @@ export async function hasDemoBank(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<boolean> {
-  const count = await scopedFor(userId, client).plaidItems.count({
-    where: MAIN_DEMO_ITEM,
+  return (await mainDemoToken(userId, client)) !== null;
+}
+
+// The main demo bank's encrypted token, or null without one: read once per piece of work
+// (src/lib/read-cache.ts), since the tax, investing and insurance views each ask.
+function mainDemoToken(userId: string, client: PrismaClient): Promise<string | null> {
+  return cachedRead(`demoToken:${userId}`, client, async () => {
+    const item = await scopedFor(userId, client).plaidItems.findFirst({
+      where: MAIN_DEMO_ITEM,
+      select: { accessTokenEncrypted: true },
+    });
+    return item?.accessTokenEncrypted ?? null;
   });
-  return count > 0;
 }
 
 // The day a person's demo bank was linked (spec step 156: the price feed starts there), or
@@ -360,13 +370,10 @@ export async function demoAnchorFor(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<string | null> {
-  const item = await scopedFor(userId, client).plaidItems.findFirst({
-    where: MAIN_DEMO_ITEM,
-    select: { accessTokenEncrypted: true },
-  });
-  if (!item) return null;
+  const token = await mainDemoToken(userId, client);
+  if (!token) return null;
   try {
-    return seedOf(decrypt(item.accessTokenEncrypted)).anchor;
+    return seedOf(decrypt(token)).anchor;
   } catch {
     return null;
   }
@@ -378,13 +385,10 @@ export async function demoPersonFor(
   userId: string,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<PersonId | null> {
-  const item = await scopedFor(userId, client).plaidItems.findFirst({
-    where: MAIN_DEMO_ITEM,
-    select: { accessTokenEncrypted: true },
-  });
-  if (!item) return null;
+  const token = await mainDemoToken(userId, client);
+  if (!token) return null;
   try {
-    const person = seedOf(decrypt(item.accessTokenEncrypted)).person;
+    const person = seedOf(decrypt(token)).person;
     return person && isPersonId(person) ? person : null;
   } catch {
     return null;

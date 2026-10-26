@@ -4,6 +4,10 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { scopedFor } from "@/lib/db-scoped";
+import { loadHousehold } from "@/lib/insurance/household";
+import { demoAnchorFor, demoPersonFor, hasDemoBank } from "@/lib/plaid/demo";
+import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { cachedCopy, cachedRead, inReadCache, withReadCache } from "./read-cache";
 
 // The read cache for one sync (src/lib/read-cache.ts), against a real, migrated Postgres: a
@@ -97,6 +101,38 @@ describe.runIf(url)("the read cache", () => {
       a.list.push(3);
       expect(b.list).toEqual([1, 2]);
     });
+  });
+
+  it("reads each slow loader once in a scope, each caller getting its own copy", async () => {
+    let queries = 0;
+    const counted = client.$extends({
+      query: {
+        $allOperations({ args, query }) {
+          queries += 1;
+          return query(args);
+        },
+      },
+    }) as unknown as PrismaClient;
+    const now = new Date("2026-10-20T15:00:00Z");
+    const all = (c: PrismaClient) =>
+      Promise.all([
+        loadTaxEstimate(userId, { client: c, now }),
+        loadTaxForms(userId, 2026, { client: c, now }),
+        loadTaxTags(userId, 2026, { client: c }),
+        loadHousehold(userId, { client: c, now }),
+        hasDemoBank(userId, { client: c }),
+        demoAnchorFor(userId, { client: c }),
+        demoPersonFor(userId, { client: c }),
+      ]);
+    const once = await withReadCache(counted, all);
+    const single = queries;
+    queries = 0;
+    const [first, second] = await withReadCache(counted, (c) => Promise.all([all(c), all(c)]));
+    expect(queries).toBe(single);
+    expect(second).toEqual(first);
+    expect(first).toEqual(once);
+    expect(second[0]).not.toBe(first[0]);
+    expect(second[3]).not.toBe(first[3]);
   });
 
   it("doesn't keep a failed read, and shares one scope when nested", async () => {

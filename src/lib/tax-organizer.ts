@@ -87,6 +87,18 @@ export async function loadTaxTags(
   year: number,
   { client = defaultClient }: Options = {},
 ): Promise<TaxTagsView> {
+  // Read once per piece of work (src/lib/read-cache.ts): the tax estimate, the self-employed
+  // view and the audit records each ask.
+  return cachedCopy(`taxTags:${userId}:${year}`, client, () =>
+    loadTaxTagsFrom(userId, year, client),
+  );
+}
+
+async function loadTaxTagsFrom(
+  userId: string,
+  year: number,
+  client: PrismaClient,
+): Promise<TaxTagsView> {
   const db = scopedFor(userId, client);
   const [transactions, overrides] = await Promise.all([
     db.transactions.findMany({
@@ -228,6 +240,17 @@ export async function loadTaxForms(
   userId: string,
   year: number,
   { client = defaultClient, now = new Date() }: Options = {},
+): Promise<TaxFormsView> {
+  // Read once per piece of work (src/lib/read-cache.ts): Jane's snapshot asks 5 times.
+  return cachedCopy(`taxForms:${userId}:${year}:${now.toISOString()}`, client, () =>
+    loadTaxFormsFrom(userId, year, { client, now }),
+  );
+}
+
+async function loadTaxFormsFrom(
+  userId: string,
+  year: number,
+  { client, now }: { client: PrismaClient; now: Date },
 ): Promise<TaxFormsView> {
   const db = scopedFor(userId, client);
   const incomeCategories = Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]);

@@ -16,6 +16,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { demoPayroll } from "@/lib/payroll/demo";
 import { hasDemoBank } from "@/lib/plaid/demo";
+import { cachedCopy } from "@/lib/read-cache";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
@@ -97,6 +98,16 @@ export async function loadTaxEstimate(
     // Spec step 125: a past year, to match a refund to; the usual tax year otherwise.
     year?: number;
   } = {},
+): Promise<TaxEstimateView> {
+  // Worked out once per piece of work (src/lib/read-cache.ts): Jane's snapshot asks 11 times.
+  return cachedCopy(`taxEstimate:${userId}:${now.toISOString()}:${asked ?? ""}`, client, () =>
+    loadTaxEstimateFrom(userId, { client, now, year: asked }),
+  );
+}
+
+async function loadTaxEstimateFrom(
+  userId: string,
+  { client, now, year: asked }: { client: PrismaClient; now: Date; year?: number },
 ): Promise<TaxEstimateView> {
   const today = iso(now);
   const year = asked ?? defaultTaxYear(today);
