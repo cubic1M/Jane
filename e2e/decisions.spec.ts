@@ -97,9 +97,14 @@ test.describe("a real account", () => {
     await expect(page.getByText(/you could do/)).toBeVisible();
     await expect(page.getByRole("heading", { name: "This week, Jane will" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Autopilot settings" })).toHaveCount(0);
+    // The plan opens with the three that matter most; the rest are behind "more".
+    const more = page.locator("[data-plan-more] summary");
+    if (await more.count()) await more.click();
     const item = page.getByRole("listitem").filter({ hasText: /Netflix went up/ });
     await expect(item).toContainText("You ask the company");
     await expect(item).not.toContainText("We contact");
+    // Read-only: Show me how, and no Yes or No.
+    await expect(item.getByRole("button", { name: /^(Yes|No)/ })).toHaveCount(0);
     await item.getByRole("link", { name: /^Show me how/ }).click();
     await expect(page).toHaveURL(/\/report\//);
     await expect(page.getByRole("button", { name: "Show me how", exact: true })).toBeVisible();

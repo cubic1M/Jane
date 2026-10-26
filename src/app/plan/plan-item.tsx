@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useRef, useState } from "react";
 import type { PlanOption } from "@/config/plan";
-import { answerItem, undoItem, type ItemState } from "./actions";
-import { SubmitButton } from "@/components/submit-button";
+import { answerItem, revertItem, type ItemState } from "./actions";
 
 const PRIMARY =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
 const SECONDARY =
   "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-5 font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
+const CHOSEN =
+  "inline-flex h-11 items-center justify-center gap-1 rounded-full border-2 border-zinc-950 bg-zinc-950 px-5 font-semibold text-white dark:border-white dark:bg-white dark:text-zinc-950";
+const GREYED =
+  "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-5 font-semibold opacity-40 dark:border-zinc-700";
 const FIELD =
   "h-11 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
 
@@ -24,50 +27,91 @@ export type PlanItemView = {
   options: readonly PlanOption[];
 };
 
-function Done({ state }: { state: Exclude<ItemState, null> }) {
-  const [undoState, undo, undoing] = useActionState<ItemState, FormData>(undoItem, null);
-  if (undoState?.kind === "undone") {
-    return <p role="status">Taken back. It&apos;s on your plan again.</p>;
-  }
-  if (state.kind === "approved") {
-    return (
-      <p role="status" className="text-emerald-700">
-        Approved{state.changed ? " with your changes" : ""}. Jane is on it; follow along on{" "}
-        <Link href="/actions" className="font-medium underline">
-          your actions
-        </Link>
-        .
-      </p>
-    );
-  }
-  if (state.kind === "declined") {
-    return (
-      <form action={undo} className="flex flex-wrap items-center gap-3">
-        <p role="status">Skipped.</p>
-        <input type="hidden" name="decisionId" value={state.decisionId} />
-        <SubmitButton disabled={undoing} className="text-sm font-medium underline">
-          Undo
-        </SubmitButton>
-        {undoState?.kind === "error" && (
-          <span role="alert" className="text-sm text-red-700 dark:text-red-400">
-            {undoState.message}
-          </span>
-        )}
-      </form>
-    );
-  }
-  return null;
-}
+type Choice = "yes" | "no";
 
-// Read-only mode (a real account): "Show me how" opens the item's page, with Jane's steps,
-// drafts and Mark done, instead of a yes for Jane to act on.
+// One item on the plan. A tap is answered on screen at once (founder, 2026-10-25: "it should be
+// instant ... not just remove the options, just grey them out, and there should be a revert
+// button"): the choice is marked, the other greyed, and Revert offered, while the answer is saved
+// behind; only an error puts it back, with one line. Read-only mode (a real account): "Show me
+// how" opens the item's page, with Jane's steps, drafts and Mark done, and nothing else.
 export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readOnly?: boolean }) {
-  const [state, action, pending] = useActionState<ItemState, FormData>(answerItem, null);
+  const [chosen, setChosen] = useState<{ choice: Choice; changed: boolean } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
-  const answered = state && state.kind !== "error";
+  // The answer on its way to the server, so Revert follows it.
+  const sending = useRef<Promise<ItemState> | null>(null);
+
+  function answer(choice: Choice, form: HTMLFormElement) {
+    const data = new FormData(form);
+    data.set("choice", choice);
+    setChosen({ choice, changed: choice === "yes" && changing });
+    setChanging(false);
+    setError(null);
+    const sent = answerItem(null, data).catch((): ItemState => ({
+      kind: "error",
+      message: "That didn't go through. Try again.",
+    }));
+    sending.current = sent;
+    void sent.then((state) => {
+      if (sending.current !== sent || state?.kind !== "error") return;
+      setChosen(null);
+      setError(state.message);
+    });
+  }
+
+  function revert() {
+    const was = chosen;
+    const sent = sending.current;
+    if (!was || !sent) return;
+    setChosen(null);
+    setError(null);
+    sending.current = null;
+    void sent
+      .then((state) =>
+        state && (state.kind === "approved" || state.kind === "declined")
+          ? revertItem(state.decisionId, was.choice)
+          : null,
+      )
+      .catch((): ItemState => ({ kind: "error", message: "That didn't go through. Try again." }))
+      .then((state) => {
+        if (state?.kind !== "error") return;
+        setChosen(was);
+        sending.current = sent;
+        setError(state.message);
+      });
+  }
+
+  const choiceButton = (choice: Choice, label: string, style: string) =>
+    chosen ? (
+      <button
+        type="button"
+        disabled
+        aria-pressed={chosen.choice === choice}
+        className={chosen.choice === choice ? CHOSEN : GREYED}
+      >
+        {label}
+        {chosen.choice === choice && <span aria-hidden="true"> [✓ chosen]</span>}
+        <span className="sr-only">
+          : {item.title}
+          {chosen.choice === choice ? ", chosen" : ""}
+        </span>
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={(e) => answer(choice, e.currentTarget.form!)}
+        className={style}
+      >
+        {label}
+        <span className="sr-only">: {item.title}</span>
+      </button>
+    );
 
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+    <li
+      data-plan-item={item.findingId}
+      className="flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+    >
       <div className="flex flex-col gap-1">
         {item.urgent && (
           <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950">
@@ -84,15 +128,19 @@ export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readO
           Why Jane suggests this<span className="sr-only">: {item.title}</span>
         </Link>
       </div>
-      {answered ? (
-        <Done state={state} />
+      {readOnly ? (
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/report/${item.findingId}`} className={PRIMARY}>
+            Show me how<span className="sr-only">: {item.title}</span>
+          </Link>
+        </div>
       ) : (
-        <form action={action} className="flex flex-col gap-3">
+        <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-3">
           <input type="hidden" name="findingId" value={item.findingId} />
           <input type="hidden" name="cardHash" value={item.cardHash} />
           <input type="hidden" name="actionType" value={item.actionType} />
           <input type="hidden" name="changed" value={String(changing)} />
-          {changing && (
+          {changing && !chosen && (
             <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
               <legend className="sr-only">Change what Jane does</legend>
               {item.options.map((option) =>
@@ -125,41 +173,47 @@ export function PlanItem({ item, readOnly = false }: { item: PlanItemView; readO
               )}
             </fieldset>
           )}
-          <div className="flex flex-wrap gap-2">
-            {readOnly ? (
-              <Link href={`/report/${item.findingId}`} className={PRIMARY}>
-                Show me how<span className="sr-only">: {item.title}</span>
-              </Link>
+          <div className="flex flex-wrap gap-2" data-plan-choices="">
+            {choiceButton("yes", changing ? "Yes, with these changes" : "Yes", PRIMARY)}
+            {choiceButton("no", "No", SECONDARY)}
+            {chosen ? (
+              <button type="button" onClick={revert} className={SECONDARY}>
+                <span aria-hidden="true">↶ </span>Revert
+                <span className="sr-only">: {item.title}</span>
+              </button>
             ) : (
-              <button
-                type="submit"
-                name="choice"
-                value="yes"
-                disabled={pending}
-                className={PRIMARY}
-              >
-                {changing ? "Yes, with these changes" : "Yes"}
-                <span className="sr-only">: {item.title}</span>
-              </button>
-            )}
-            <button type="submit" name="choice" value="no" disabled={pending} className={SECONDARY}>
-              No<span className="sr-only">: {item.title}</span>
-            </button>
-            {item.options.length > 0 && !readOnly && (
-              <button
-                type="button"
-                onClick={() => setChanging(!changing)}
-                aria-expanded={changing}
-                className={SECONDARY}
-              >
-                {changing ? "Keep Jane's version" : "Change"}
-                <span className="sr-only">: {item.title}</span>
-              </button>
+              item.options.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setChanging(!changing)}
+                  aria-expanded={changing}
+                  className={SECONDARY}
+                >
+                  {changing ? "Keep Jane's version" : "Change"}
+                  <span className="sr-only">: {item.title}</span>
+                </button>
+              )
             )}
           </div>
-          {state?.kind === "error" && (
+          {chosen && (
+            <p role="status" className="text-sm">
+              {chosen.choice === "yes" ? (
+                <>
+                  Approved{chosen.changed ? " with your changes" : ""}. Jane is on it; follow along
+                  on{" "}
+                  <Link href="/actions" className="font-medium underline">
+                    your actions
+                  </Link>
+                  .
+                </>
+              ) : (
+                "Skipped."
+              )}
+            </p>
+          )}
+          {error && (
             <p role="alert" className="text-sm text-red-700 dark:text-red-400">
-              {state.message}
+              {error}
             </p>
           )}
         </form>

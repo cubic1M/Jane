@@ -60,6 +60,7 @@ describe("plan actions", () => {
     expect(await answerItem(null, form({ ...base, choice: "yes", changed: "false" }))).toEqual({
       kind: "approved",
       changed: false,
+      decisionId: "d1",
     });
     expect(answerPlanItem).toHaveBeenLastCalledWith("u1", {
       findingId: "f1",

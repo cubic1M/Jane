@@ -7,12 +7,13 @@ import { PLAN_OPTIONS } from "@/config/plan";
 import { DecisionError, undoDecision } from "@/lib/decisions";
 import { answerPlanItem, yesToAll } from "@/lib/plan";
 import { ProposalError, acceptAllProposals, answerProposal } from "@/lib/proposals";
-import { undoRuleApproval } from "@/lib/standing-rules";
+import { undoApproval, undoRuleApproval } from "@/lib/standing-rules";
+import { PICK_UNDO_HOURS } from "@/config/rules";
 import { requireUser } from "@/lib/session";
 import type { ActionType } from "@/generated/prisma/client";
 
 export type ItemState =
-  | { kind: "approved"; changed: boolean }
+  | { kind: "approved"; changed: boolean; decisionId: string }
   | { kind: "declined"; decisionId: string }
   | { kind: "undone" }
   | { kind: "error"; message: string }
@@ -43,8 +44,26 @@ export async function answerItem(_previous: ItemState, formData: FormData): Prom
   if (result.ok) after(() => runAgentNow([result.agentJobId]));
   if (!result.ok) return { kind: "error", message: result.message };
   return choice === "yes"
-    ? { kind: "approved", changed: options !== undefined }
+    ? { kind: "approved", changed: options !== undefined, decisionId: result.decisionId }
     : { kind: "declined", decisionId: result.decisionId };
+}
+
+// Revert on a plan item (founder, 2026-10-25: "there should be a revert button"): a No is taken
+// back within its undo window, a Yes while the work hasn't started (within PICK_UNDO_HOURS);
+// either way the item is on the plan again.
+export async function revertItem(decisionId: string, choice: "yes" | "no"): Promise<ItemState> {
+  const user = await requireUser();
+  if (!ID.test(decisionId) || (choice !== "yes" && choice !== "no")) {
+    return { kind: "error", message: "Something went wrong. Reload the page and try again." };
+  }
+  try {
+    if (choice === "no") await undoDecision(user.id, decisionId);
+    else await undoApproval(user.id, decisionId, "plan", PICK_UNDO_HOURS);
+  } catch (error) {
+    if (!(error instanceof DecisionError)) throw error;
+    return { kind: "error", message: error.message };
+  }
+  return { kind: "undone" };
 }
 
 // Takes back a No within the undo window.
