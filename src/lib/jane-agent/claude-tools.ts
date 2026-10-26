@@ -34,6 +34,7 @@ import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import type { TradeOrder } from "@/planning/goal-tradeoffs";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
+import { withReadCache } from "@/lib/read-cache";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
@@ -523,8 +524,19 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
-// A read-only tool. Ask's own tools run through runAskTool unchanged.
+// A read-only tool. Ask's own tools run through runAskTool unchanged. With a read cache
+// (src/lib/read-cache.ts): a tool's parts load the same facts (Jane's snapshot asks for the tax
+// estimate 11 times); inside a chat message or a sync, the message's or sync's own.
 export async function runChatTool(
+  userId: string,
+  name: string,
+  input: unknown,
+  { client, now }: Options,
+): Promise<ToolOutput> {
+  return withReadCache(client, (client) => runChatToolWork(userId, name, input, { client, now }));
+}
+
+async function runChatToolWork(
   userId: string,
   name: string,
   input: unknown,

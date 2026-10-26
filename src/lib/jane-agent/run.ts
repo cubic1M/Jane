@@ -34,6 +34,7 @@ import { scanSuggestions } from "@/lib/suggestions";
 import { loadSnapshot } from "./snapshot";
 import { saveSnapshot } from "./snapshot-store";
 import type { Trigger } from "./sources";
+import { withReadCache } from "@/lib/read-cache";
 
 // Runs Jane's brain for one person (spec step 82): loads what it looks at with the
 // existing loaders, reads what Jane already said, asks the brain what to say and posts it.
@@ -45,7 +46,18 @@ type Options = { client?: PrismaClient; now?: Date; trigger?: Trigger; early?: b
 
 const HOUR_MS = 60 * 60 * 1000;
 
+// Jane's run reads the person's facts from many sectors, several of them more than once: with a
+// read cache for the run, each once until something changes (src/lib/read-cache.ts).
 export async function runJaneAgent(
+  userId: string,
+  options: Options = {},
+): Promise<{ posted: number }> {
+  return withReadCache(options.client ?? defaultClient, (client) =>
+    runJaneAgentWork(userId, { ...options, client }),
+  );
+}
+
+async function runJaneAgentWork(
   userId: string,
   { client = defaultClient, now = new Date(), trigger = "sync", early = false }: Options = {},
 ): Promise<{ posted: number }> {

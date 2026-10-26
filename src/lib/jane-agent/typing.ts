@@ -34,6 +34,7 @@ import { storeReply } from "./messages";
 import { localTime } from "./quiet-hours";
 import { unknownReply, type Reply } from "./replies";
 import { MESSAGE_SELECT, parseRefs, toChatMessage, type ChatMessage } from "./types";
+import { withReadCache } from "@/lib/read-cache";
 
 // Typing to Jane (spec step 84). What the person types is stored as a "user" message and
 // Jane's answer as a "reply", right after it. Rules answer first (./intents, ./answer);
@@ -284,17 +285,31 @@ async function answer(
   };
 }
 
-export async function sendToJane(
-  userId: string,
-  raw: string,
-  { client = defaultClient, now = new Date(), claude, onEvent, primerMs }: Options = {},
-): Promise<{
+type Sent = {
   sent: ChatMessage;
   reply: ChatMessage;
   source: AnswerSource;
   intent: string;
   issues?: string[];
-}> {
+};
+
+// Answering reads the person's facts from many places, some more than once: one read each until
+// something changes (src/lib/read-cache.ts).
+export async function sendToJane(
+  userId: string,
+  raw: string,
+  options: Options = {},
+): Promise<Sent> {
+  return withReadCache(options.client ?? defaultClient, (client) =>
+    sendToJaneWork(userId, raw, { ...options, client }),
+  );
+}
+
+async function sendToJaneWork(
+  userId: string,
+  raw: string,
+  { client = defaultClient, now = new Date(), claude, onEvent, primerMs }: Options = {},
+): Promise<Sent> {
   const text = raw.trim();
   if (!text) throw new ChatInputError("empty", "Type a message first.");
   if (text.length > CHAT_MAX_MESSAGE) {
