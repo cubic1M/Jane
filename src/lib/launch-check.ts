@@ -109,6 +109,18 @@ export function launchChecks(env: Env): Check[] {
       "POSTHOG_KEY is set (events still save to the database)",
       false,
     ),
+    check(
+      "Google sign-in",
+      isSet(env.AUTH_GOOGLE_ID) && isSet(env.AUTH_GOOGLE_SECRET),
+      "AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET are set (email sign-in only otherwise)",
+      false,
+    ),
+    check(
+      "Phone alerts",
+      isSet(env.VAPID_PUBLIC_KEY) && isSet(env.VAPID_PRIVATE_KEY) && isSet(env.VAPID_SUBJECT),
+      "VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT are set (alerts go by email otherwise)",
+      false,
+    ),
   ];
 }
 

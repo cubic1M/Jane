@@ -24,7 +24,16 @@ vi.mock("@/lib/invites", async (importOriginal) => ({
 }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("next-auth", () => ({ AuthError }));
-vi.mock("@/auth", () => ({ auth: vi.fn(async () => null), signIn: vi.fn(), signOut: vi.fn() }));
+// Google set up or not (AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET), switched per test.
+const google = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/auth", () => ({
+  auth: vi.fn(async () => null),
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  get googleEnabled() {
+    return google.enabled;
+  },
+}));
 vi.mock("@/lib/session", () => ({ HOME_PATH: "/import" }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => {
@@ -73,6 +82,16 @@ describe("auth actions", () => {
     await signInWithGoogle();
 
     expect(signIn).toHaveBeenCalledWith("google", { redirectTo: "/import" });
+  });
+
+  it("sends a Google sign-in back to email when Google isn't set up", async () => {
+    google.enabled = false;
+    try {
+      await expect(signInWithGoogle()).rejects.toThrow("redirect:/login");
+      expect(signIn).not.toHaveBeenCalled();
+    } finally {
+      google.enabled = true;
+    }
   });
 
   it("shows Auth.js errors on the login page", async () => {
