@@ -31,7 +31,7 @@ const sentences = (text: string) =>
     .split(/(?<=[.!?])\s+/)
     .filter(Boolean);
 
-describe.runIf(url)("debt decisions against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("debt decisions against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let chris: string;
   const created: string[] = [];

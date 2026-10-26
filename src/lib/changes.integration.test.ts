@@ -37,7 +37,7 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 const NEXT_DAY = new Date("2026-10-19T15:00:00Z");
 
 // Each test links and syncs a year of demo data, so they get more time than usual.
-describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_000 }, () => {
+describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

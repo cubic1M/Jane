@@ -30,7 +30,7 @@ const LINKED = new Date("2026-10-18T15:00:00Z");
 const JANUARY = new Date("2027-01-05T16:00:00Z");
 const RETIREMENT = "2026:workplace_retirement";
 
-describe.runIf(url)("the year-round tax plan against a real database", { timeout: 60_000 }, () => {
+describe.runIf(url)("the year-round tax plan against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

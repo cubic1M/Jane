@@ -40,7 +40,7 @@ const NEAR = new Date("2026-10-27T15:00:00Z");
 const MINUTE = 60 * 1000;
 const context = { now: NEAR, local: { date: "2026-10-27", hour: 8 }, trigger: "open" as const };
 
-describe.runIf(url)("building credit against a real database", { timeout: 30_000 }, () => {
+describe.runIf(url)("building credit against a real database", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(

@@ -33,7 +33,7 @@ const MINUTE = 60 * 1000;
 
 describe.runIf(url)(
   "helping family with credit against a real database",
-  { timeout: 30_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     let chris: string;

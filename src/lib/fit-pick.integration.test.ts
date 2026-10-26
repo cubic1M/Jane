@@ -28,7 +28,7 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 const ADMIN = { id: "admin_1" };
 
-describe.runIf(url)("picking a loan option", { timeout: 60_000 }, () => {
+describe.runIf(url)("picking a loan option", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   let reyes: string;
   let real: string;

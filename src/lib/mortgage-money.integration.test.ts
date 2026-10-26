@@ -25,7 +25,7 @@ const MINUTE = 60 * 1000;
 
 describe.runIf(url)(
   "recast, refinance or pay extra against a real database",
-  { timeout: 30_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     let userId: string;

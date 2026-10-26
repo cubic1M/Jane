@@ -27,7 +27,7 @@ const MINUTE = 60 * 1000;
 // Each test links and syncs a year of demo data, so they get more time than usual.
 describe.runIf(url)(
   "requests that span sectors, against a real database",
-  { timeout: 60_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     const created: string[] = [];

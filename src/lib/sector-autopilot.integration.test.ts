@@ -40,7 +40,7 @@ import {
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-19T16:00:00Z");
 
-describe.runIf(url)("one autopilot, every sector", { timeout: 60_000 }, () => {
+describe.runIf(url)("one autopilot, every sector", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
 

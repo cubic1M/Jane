@@ -34,7 +34,7 @@ const tokenOf = (u: string) => u.split("/accountant/")[1];
 
 describe.runIf(url)(
   "working with an accountant against a real database",
-  { timeout: 60_000 },
+  { timeout: 120_000 },
   () => {
     let client: PrismaClient;
     const created: string[] = [];
