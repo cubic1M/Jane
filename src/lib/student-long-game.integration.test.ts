@@ -8,9 +8,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { logAudit } from "@/lib/audit";
 import { studentLongGameSource } from "@/lib/jane-agent/sources/student-long-game";
-import { takeChatAction } from "@/lib/jane-agent/actions";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";

@@ -311,7 +311,7 @@ export function decide(
   return reply(out, advice);
 }
 
-function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
+function build(kind: DecisionKind, ins: InsuranceSnapshot, _asOf: string): Out {
   const { household } = ins;
   const car = active(ins, "auto");
   const carYearly = yearly(car as never);

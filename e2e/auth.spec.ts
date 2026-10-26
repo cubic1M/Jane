@@ -22,6 +22,26 @@ test("login page explains an expired magic link", async ({ page }) => {
   ).toBeVisible();
 });
 
+// QA (2026-10-26): the page after asking for a sign-in link had two main landmarks.
+// The sign-in form's redirect is a client-side move, and the page left behind stays mounted,
+// hidden: so arrive the same way, from /login.
+test("the check-your-email page has one main landmark", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.getByRole("heading", { level: 1, name: "Sign in" })).toBeVisible();
+  await expect(async () => {
+    await page.evaluate(() =>
+      (
+        window as unknown as { next: { router: { push: (href: string) => void } } }
+      ).next.router.push("/login/check-email"),
+    );
+    await expect(page.getByRole("heading", { level: 1, name: "Check your email" })).toBeVisible({
+      timeout: 5_000,
+    });
+  }).toPass({ timeout: 30_000 });
+  await expect(page.getByRole("main")).toHaveCount(1);
+  await expect(page.locator("main")).toHaveCount(1);
+});
+
 // Pages the read-only beta hides (src/config/hidden-pages.ts) redirect first: not checked here.
 for (const path of ["/home", "/connect", "/import", "/scanning", "/report", "/actions"].filter(
   (p) => !isHiddenPage(p),

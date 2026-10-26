@@ -19,8 +19,6 @@ export type MenuFund = {
   mix: MenuMix | null;
 };
 
-const ZERO: MenuMix = { us_stocks: 0, intl_stocks: 0, bonds: 0, cash: 0 };
-
 export function classOf(text: string): MenuClass {
   for (const [kind, re] of CLASS_WORDS) if (re.test(text)) return kind;
   return "other";
