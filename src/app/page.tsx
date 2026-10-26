@@ -11,15 +11,15 @@ import { LandingTheme } from "./landing-theme";
 const POINTS = [
   {
     title: "Read-only access",
-    body: "We can see your transactions, never move your money.",
+    body: "Jane sees your transactions and can never move your money.",
   },
   {
-    title: "You approve everything",
-    body: "Nothing happens until you say yes to it.",
+    title: "You stay in charge",
+    body: "Nothing happens until you say yes.",
   },
   {
     title: "Delete anytime",
-    body: "Disconnect your accounts and erase your data in one step.",
+    body: "Disconnect and erase everything in one step.",
   },
 ];
 
@@ -27,48 +27,61 @@ const POINTS = [
 // product, not results or promises.
 const MOMENTS = [
   {
-    label: "Refund back",
-    detail: "Charged twice at Target",
-    amount: "+$64.20",
+    label: "Card interest cut",
+    detail: "A $14,000 balance at 27%, and a cheaper way to pay it down",
+    amount: "$2,310/yr",
   },
   {
-    label: "Price rise caught",
-    detail: "Netflix went from $15.49 to $17.99",
-    amount: "$30/yr",
+    label: "Idle cash put to work",
+    detail: "$40,000 sitting in checking, earning nothing",
+    amount: "$1,840/yr",
   },
   {
-    label: "Jane's pick",
-    detail: "A cheaper phone plan, same service",
-    amount: "$1,320/yr",
+    label: "Car insurance compared",
+    detail: "The same cover from another insurer",
+    amount: "$612/yr",
+  },
+  {
+    label: "Forgotten subscriptions",
+    detail: "Four services nobody had opened in months",
+    amount: "$486/yr",
   },
 ];
+
+// The sum of the examples above, shown as the log's last line.
+const MOMENTS_TOTAL = "$5,248/yr";
 
 // The story the pillar is rebuilt along, one beat per screen (founder, 2026-10-25).
 const BEATS = [
   {
     tag: "the leak",
     title: "Money leaks quietly",
-    body: "Subscriptions you forgot, fees you never agreed to, cash earning nothing, interest that compounds against you.",
+    body: "Subscriptions you forgot, fees you never agreed to, cash earning nothing, interest working against you.",
   },
   {
     tag: "the read",
     title: "Jane reads all of it",
-    body: "Every account, every transaction, every bill and policy, every day.",
+    body: "Every account and transaction, linked read-only. Your net worth drawn day by day, with a dot for every dollar that moved.",
   },
   {
     tag: "the find",
-    title: "She finds what you'd miss",
-    body: "A price that crept up, a charge made twice, a plan that costs more than one just as good.",
+    title: "She brings it to you, unasked",
+    body: "Price rises, double charges, idle cash, a plan that costs more than one just as good. Each one a card with what it's worth and how sure she is.",
   },
   {
     tag: "the fix",
-    title: "One card, one decision",
-    body: "What it's worth, how sure she is, and the fix, ready for your yes.",
+    title: "You decide. She does the legwork",
+    body: "Say yes and Jane hands you the steps, the email and the phone script, ready to go. After, she checks the saving really happened.",
+  },
+  {
+    tag: "ask",
+    title: "Ask her anything",
+    body: "Type or talk. Jane answers from your own numbers, not a script.",
   },
   {
     tag: "the whole picture",
     title: "Every part of your money",
-    body: "Spending and bills, insurance, loans, taxes, investing and your goals, in one place.",
+    body: "Spending and bills, insurance and loans compared side by side, taxes, and investing strategies tested on decades of history, in one place.",
   },
 ];
 
@@ -95,18 +108,18 @@ export default function Home() {
           <section id="start" className="flex min-h-dvh flex-col justify-center py-16">
             <div className="landing-panel flex flex-col gap-7">
               <p className="w-fit text-sm text-[var(--landing-dot)]">
-                <span aria-hidden="true">[ </span>your money, looked after
+                <span aria-hidden="true">[ </span>your financial controller
                 <span aria-hidden="true"> ]</span>
               </p>
-              <h1 className="font-display max-w-2xl text-5xl leading-[1.04] font-semibold tracking-tight text-balance text-[var(--landing-hi)] sm:text-7xl">
+              <h1 className="font-display max-w-2xl text-6xl leading-[0.98] font-light text-balance text-[var(--landing-hi)] sm:text-8xl">
                 See how much money you&apos;re losing
                 <span aria-hidden="true" className="ascii-cursor font-mono">
                   _
                 </span>
               </h1>
               <p className="max-w-xl text-lg text-[var(--landing-mid)]">
-                We find the subscriptions, fees, idle cash and interest quietly costing you, and
-                help you fix them.
+                Jane reads every account, finds what&apos;s costing you, and hands you the fix, from
+                a forgotten subscription to a cheaper loan.
               </p>
               <div className="flex flex-wrap items-center gap-6">
                 <GetStartedButton tone="landing" />
@@ -118,6 +131,7 @@ export default function Home() {
                   Sign in
                 </Link>
               </div>
+              <p className="-mb-5 text-xs text-[var(--landing-dot)]">an example scan</p>
               <ul
                 aria-label="Examples of what Jane does"
                 className="flex max-w-md flex-col gap-1 text-sm text-[var(--landing-mid)]"
@@ -138,6 +152,19 @@ export default function Home() {
                     <span className="sr-only">: {moment.detail}</span>
                   </li>
                 ))}
+                <li className="mt-1 flex items-baseline gap-2 border-t border-dashed border-[var(--landing-dot)] pt-2">
+                  <span aria-hidden="true">=</span>
+                  <span className="shrink-0">found, a year</span>
+                  <span
+                    aria-hidden="true"
+                    className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-[var(--landing-dot)]"
+                  >
+                    ................................................
+                  </span>
+                  <span className="shrink-0 text-base font-semibold text-[var(--landing-hi)] tabular-nums">
+                    {MOMENTS_TOTAL}
+                  </span>
+                </li>
               </ul>
               <p aria-hidden="true" className="text-sm text-[var(--landing-dot)]">
                 scroll ↓
@@ -153,7 +180,7 @@ export default function Home() {
                   {beat.tag}
                   <span aria-hidden="true"> ]</span>
                 </p>
-                <h2 className="font-display text-4xl leading-tight font-semibold text-[var(--landing-hi)] sm:text-5xl">
+                <h2 className="font-display text-5xl leading-none font-light text-[var(--landing-hi)] sm:text-6xl">
                   {beat.title}
                 </h2>
                 <p className="text-lg text-[var(--landing-mid)]">{beat.body}</p>
@@ -181,11 +208,12 @@ export default function Home() {
                 <span aria-hidden="true">[ </span>rebuilt
                 <span aria-hidden="true"> ]</span>
               </p>
-              <h2 className="font-display text-4xl leading-tight font-semibold text-[var(--landing-hi)] sm:text-6xl">
+              <h2 className="font-display text-5xl leading-none font-light text-[var(--landing-hi)] sm:text-7xl">
                 Put your money back together
               </h2>
               <p className="text-lg text-[var(--landing-mid)]">
-                Link a bank, or try Jane with a sample person in a few seconds.
+                Jane is in an invite-only beta. Link a bank with your invite, or try Jane with a
+                sample person in seconds.
               </p>
               <a
                 href="#start"
