@@ -77,6 +77,10 @@ test("a new person starts with uploading, and lands on the report", async ({ pag
   await page.getByRole("button", { name: "Import 4 transactions" }).click();
   await expect(page.locator("[data-import-saved]")).toContainText("Saved 4 transactions");
   await expect(page.locator("[data-import-chip]")).toBeVisible();
+  // Only on the page: never again inside the docked chat's frame (QA: it covered the chat).
+  await expect(
+    page.frameLocator('iframe[title="Chat with Jane"]').locator("[data-import-chip]"),
+  ).toHaveCount(0);
   await waitForImport(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     /We found|Nothing to fix right now/,

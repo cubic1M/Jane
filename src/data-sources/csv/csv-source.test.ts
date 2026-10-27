@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CsvDataSource, CsvFormatError, readCsvFile } from "./csv-source";
+import { CsvDataSource, CsvFormatError, accountNameFromFile, readCsvFile } from "./csv-source";
 
 // Fixtures are made-up transactions in Chase's export layouts, not real data.
 function fixture(name: string) {
@@ -187,5 +187,16 @@ describe("OFX and QFX uploads", () => {
     const result = readCsvFile({ name: "card.qfx", text });
     expect(result).toMatchObject({ ok: true, format: { id: "ofx" } });
     expect(result.ok && result.transactions).toHaveLength(2);
+  });
+});
+
+describe("accountNameFromFile", () => {
+  it.each([
+    ["golden1-export.csv", "Golden1"],
+    ["Navy_Federal_Statement_2026-10.csv", "Navy Federal"],
+    ["transactions.csv", "Uploaded account"],
+    ["my credit union.CSV", "My Credit Union"],
+  ])("names %j %j", (file, name) => {
+    expect(accountNameFromFile(file)).toBe(name);
   });
 });

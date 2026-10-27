@@ -39,6 +39,21 @@ describe("closingBalances", () => {
     ]);
   });
 
+  it("finds a day's closing row whatever order the day's rows are in", () => {
+    // Newest first by day, but oldest first within 10-13: $50 out then $20 out, from $1,000.
+    const rows = [
+      { ...row("2026-10-14", 92000), amountCents: 1000 },
+      { ...row("2026-10-13", 95000), amountCents: 5000 },
+      { ...row("2026-10-13", 93000), amountCents: 2000 },
+      { ...row("2026-10-12", 100000), amountCents: 0 },
+    ];
+    expect(closingBalances(rows)).toEqual([
+      { date: "2026-10-12", balanceCents: 100000 },
+      { date: "2026-10-13", balanceCents: 93000 },
+      { date: "2026-10-14", balanceCents: 92000 },
+    ]);
+  });
+
   it("is empty for a layout with no balance column", () => {
     expect(closingBalances([row("2026-09-02"), row("2026-09-03")])).toEqual([]);
   });
