@@ -21,6 +21,7 @@ export async function adminSessionState(
     where: { sessionToken: token },
     select: { expires: true, mfaVerifiedAt: true, user: { select: { role: true } } },
   });
-  if (!session || session.expires <= now || session.user.role !== "admin") return "none";
+  // user can come back empty when the account is deleted between Prisma's two reads.
+  if (!session || session.expires <= now || session.user?.role !== "admin") return "none";
   return session.mfaVerifiedAt ? "verified" : "needs_mfa";
 }

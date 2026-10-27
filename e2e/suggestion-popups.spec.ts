@@ -43,8 +43,11 @@ test("suggestions pop up small at the bottom of the hub and open in place", asyn
     const fold = overlay.locator('[data-card-state="folded"]');
     await expect(fold).toHaveText(/^\[JANE\]\d+ for you▲$/);
     await expect(showing).toHaveCount(0);
+    // The net worth streams in after the page (every page renders per request): wait for it.
+    const netWorth = page.locator('[data-hub-number="net-worth"]');
+    await expect(netWorth).toBeVisible();
     const box = (await fold.boundingBox())!;
-    const figure = (await page.locator('[data-hub-number="net-worth"]').boundingBox())!;
+    const figure = (await netWorth.boundingBox())!;
     expect(box.y).toBeGreaterThanOrEqual(figure.y + figure.height);
     const jane = (await page.getByRole("button", { name: /^Chat with Jane/ }).boundingBox())!;
     expect(box.x + box.width).toBeLessThanOrEqual(jane.x + 1);
