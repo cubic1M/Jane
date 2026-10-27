@@ -187,11 +187,20 @@ describe("categorizeByRules", () => {
     const shop = { bankCategory: "Shopping" };
     expect(out("CRATE & BARREL 0412", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
     expect(into("CRATE & BARREL 0412", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
-    expect(out("TST* LITTLE STAR PIZZA", { bankCategory: "Food & Drink" })).toBe(
+    expect(out("SQ *LITTLE STAR PIZZA", { bankCategory: "Food & Drink" })).toBe(
       "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
     );
     // A keyword still wins over the card's broad label.
     expect(out("NETFLIX.COM", { bankCategory: "Shopping" })).toBe("ENTERTAINMENT_TV_AND_MOVIES");
+  });
+
+  it("calls anything paid through Toast a restaurant, unless a name says more", () => {
+    expect(out("TST* PHO HOA NOODLE")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(out("PURCHASE AUTHORIZED ON 10/02 TST*CORNER BISTRO S386 CARD 1234")).toBe(
+      "FOOD_AND_DRINK_RESTAURANT",
+    );
+    expect(out("TST* BLUE BOTTLE COFFEE")).toBe("FOOD_AND_DRINK_COFFEE");
+    expect(out("SQ *CORNER BISTRO")).toBeNull();
   });
 
   it("leaves unknown merchants for the LLM", () => {

@@ -507,6 +507,11 @@ const RULES: readonly Rule[] = [
     ],
   },
 
+  // Toast ("TST*") is a till for restaurants only: whatever the place is called, it's a meal.
+  // After the merchant names, so "TST* BLUE BOTTLE" is still coffee. (Square's "SQ *" serves
+  // every kind of shop, so it says nothing.)
+  { category: "FOOD_AND_DRINK_RESTAURANT", pattern: /(?:^|\s)TST\s*\*/ },
+
   // The bank's own labels, when no keyword matched
   { category: "BANK_FEES_OTHER_BANK_FEES", bankType: ["FEE_TRANSACTION", "Fee"] },
   { category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", bankType: ["Payment"] },
