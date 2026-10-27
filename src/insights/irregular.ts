@@ -22,6 +22,7 @@ import { buildStreams, merchantOf } from "@/detection/streams";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { DAYS_PER_MONTH, addDays, daysBetween, median } from "@/detection/units";
 import { monthsEnding } from "./spending";
+import { addMonths } from "@/lib/dates";
 
 // Saving for irregular costs (spec step 70): bills that come less often than monthly
 // (quarterly, twice a year, yearly) and seasonal spending spikes (holiday gifts), each as
@@ -57,14 +58,6 @@ const TIMES_A_YEAR: Record<IrregularFrequency, number> = {
   SEMIANNUALLY: 2,
   ANNUALLY: 1,
 };
-
-function addMonths(date: string, months: number): string {
-  const [y, m, d] = date.split("-").map(Number);
-  const out = new Date(Date.UTC(y, m - 1 + months, 1));
-  const last = new Date(Date.UTC(out.getUTCFullYear(), out.getUTCMonth() + 1, 0)).getUTCDate();
-  out.setUTCDate(Math.min(d, last));
-  return out.toISOString().slice(0, 10);
-}
 
 export function monthlySetAside(yearlyCents: number): number {
   return Math.ceil(yearlyCents / 12 / SET_ASIDE_ROUNDING_CENTS) * SET_ASIDE_ROUNDING_CENTS;

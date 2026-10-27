@@ -4,6 +4,7 @@ import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, type AreaItem, type AreaTree } from "./tree";
+import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 
 // The Plans & goals page (/ahead) as a tree (docs/design/area-pages.md): Plans & goals → its
@@ -60,8 +61,6 @@ const monthLabel = (day: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
-const days = (from: string, to: string) =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const sixWords = (text: string) => text.split(/\s+/).slice(0, 6).join(" ");
 
@@ -95,9 +94,9 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     ...rest,
   });
 
-  const near = input.deadlines.filter((d) => days(input.asOf, d.date) <= AHEAD_DATES_DAYS);
+  const near = input.deadlines.filter((d) => daysBetween(input.asOf, d.date) <= AHEAD_DATES_DAYS);
   const coming = near.map((d) => {
-    const left = days(input.asOf, d.date);
+    const left = daysBetween(input.asOf, d.date);
     return item("coming", d.key, {
       label: sixWords(d.title),
       status: left <= AHEAD_URGENT_DAYS ? "act" : "look",

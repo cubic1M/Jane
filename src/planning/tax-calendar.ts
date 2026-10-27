@@ -5,13 +5,10 @@ import {
   TAX_CALENDAR,
   type CalendarKey,
 } from "@/config/tax-calendar";
-import { DAY_MS } from "@/lib/dates";
+import { daysBetween } from "@/lib/dates";
 
 // The tax year that runs itself (spec step 223). Pure: the calendar for a month, and which
 // estimated payment is in its pay window.
-
-const days = (from: string, to: string) =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
 
 export const MONTH_NAMES = [
   "January",
@@ -51,7 +48,7 @@ export function inPayWindow<T extends { date: string }>(
 ): T[] {
   return payments
     .filter((p) => {
-      const until = days(today, p.date);
+      const until = daysBetween(today, p.date);
       return until <= ESTIMATE_PAY_LEAD_DAYS && until >= -ESTIMATE_PAY_GRACE_DAYS;
     })
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -64,7 +61,7 @@ export function nextAhead<T extends { date: string }>(
 ): T | null {
   return (
     payments
-      .filter((p) => days(today, p.date) > ESTIMATE_PAY_LEAD_DAYS)
+      .filter((p) => daysBetween(today, p.date) > ESTIMATE_PAY_LEAD_DAYS)
       .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
   );
 }

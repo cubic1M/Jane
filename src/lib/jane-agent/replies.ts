@@ -37,13 +37,14 @@ import {
   type AffordResult,
 } from "@/planning/afford";
 import { CHAT_CLARIFY_CHOICES } from "@/config/agent-chat";
-import { addMonths, matchCategory, type ActVerb, type Intent } from "./intents";
+import { matchCategory, type ActVerb, type Intent } from "./intents";
 import { nameMatches } from "./names";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { dateAndDays, inDays, shortDate, snoozeButton, things } from "./sources/source";
 import type { PreferenceDraft } from "./preferences";
 import type { MessageAction, MessageRefs } from "./types";
+import { shiftMonth } from "@/lib/dates";
 
 // Jane's answers to what the person typed (spec step 84), from the same loaders as the
 // pages. Pure: each takes the numbers and returns fixed wording in Jane's voice, with the
@@ -368,7 +369,7 @@ export function affordReply(
   // payday, a goal to save for it; otherwise a budget for the category when there's none.
   const short = !later && result.safe !== null && result.safe.afterCents < 0;
   if (later || short) {
-    const goalMonth = later ? month : addMonths(current, AFFORD_GOAL_MONTHS);
+    const goalMonth = later ? month : shiftMonth(current, AFFORD_GOAL_MONTHS);
     const name = intent.what
       ? intent.what.replace(/^(?:a|an|the|my|our|some) /, "")
       : `Purchase in ${monthLabel(goalMonth)}`;
