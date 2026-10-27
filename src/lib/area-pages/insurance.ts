@@ -4,6 +4,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { formatCents } from "@/lib/money";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { daysBetween } from "@/lib/dates";
 
 // The Insurance page as a tree (docs/design/area-pages.md): Insurance → its branches (cover
 // needs, policies, missing cover, savings, renewals, life events, documents, card cover,
@@ -102,8 +103,6 @@ const dateLabel = (day: string) =>
     day: "numeric",
     timeZone: "UTC",
   });
-const days = (from: string, to: string) =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 
 export type InsuranceTreeInput = {
   asOf: string;
@@ -173,7 +172,7 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
 
   const gapPolicies = new Set(input.gaps.map((g) => g.policyId).filter(Boolean));
   const policies = input.policies.map((p) => {
-    const soon = p.renewsOn !== null && days(input.asOf, p.renewsOn) <= RENEWAL_SOON_DAYS;
+    const soon = p.renewsOn !== null && daysBetween(input.asOf, p.renewsOn) <= RENEWAL_SOON_DAYS;
     const status: TreeStatus = gapPolicies.has(p.id)
       ? "act"
       : p.status !== "active" || soon

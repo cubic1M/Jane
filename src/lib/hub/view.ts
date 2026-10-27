@@ -14,6 +14,7 @@ import {
 import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
 import { formatCents } from "@/lib/money";
+import { daysBetween } from "@/lib/dates";
 
 // The home hub's view model (docs/design/home-hub.md): the numbers the hub's loader gathered
 // from the pages that already show them, shaped for the charts. Pure, and no new math: it only
@@ -241,9 +242,6 @@ export function shortMoney(cents: number): string {
 const wholeDollars = (cents: number) =>
   formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
 
-const dayIndex = (asOf: string, date: string) =>
-  Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / 86_400_000);
-
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // --- The hero row ---
@@ -433,7 +431,7 @@ function savedHero(
 
 export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashFlowView {
   const inWindow = (date: string) => {
-    const d = dayIndex(input.asOf, date);
+    const d = daysBetween(input.asOf, date);
     return d >= 0 && d <= days;
   };
   const bills = input.bills.filter((b) => inWindow(b.date));
@@ -444,7 +442,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
     ...bills.map((b, i) => ({
       key: `bill-${i}-${b.date}`,
       kind: "bill" as const,
-      day: dayIndex(input.asOf, b.date),
+      day: daysBetween(input.asOf, b.date),
       date: b.date,
       label: b.merchant,
       amountCents: b.amountCents,
@@ -454,7 +452,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
     ...pays.map((p, i) => ({
       key: `pay-${i}-${p.date}`,
       kind: "pay" as const,
-      day: dayIndex(input.asOf, p.date),
+      day: daysBetween(input.asOf, p.date),
       date: p.date,
       label: p.merchant,
       amountCents: p.amountCents,
@@ -473,7 +471,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
       .map((d) => ({
         key: `deadline-${d.key}`,
         kind: "deadline" as const,
-        day: dayIndex(input.asOf, d.date),
+        day: daysBetween(input.asOf, d.date),
         date: d.date,
         label: d.title,
         amountCents: null,

@@ -11,6 +11,7 @@ import {
 } from "@/config/irregular";
 import { UNCATEGORIZED } from "@/insights/labels";
 import { emergencyTarget, fundBasis } from "./emergency-fund";
+import { addMonths } from "@/lib/dates";
 
 // What Jane proposes to set up, from the person's own numbers. Pure.
 
@@ -67,14 +68,6 @@ export type ProposalInput = {
     directoryCategory: string | null;
   }[];
 };
-
-function addMonths(asOf: string, months: number): string {
-  const [y, m, d] = asOf.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1 + months, 1));
-  const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(d, last));
-  return date.toISOString().slice(0, 10);
-}
 
 export function proposals(input: ProposalInput): Proposal[] {
   const out: Proposal[] = [];

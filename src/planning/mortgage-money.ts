@@ -4,8 +4,8 @@ import {
   RECAST_MIN_LUMP_CENTS,
 } from "@/config/mortgage-money";
 import { RETURN_HIGH, RETURN_LOW } from "@/config/market-assumptions";
-import { addMonths } from "./home-equity";
 import { levelPaymentCents } from "./refinance";
+import { addMonths } from "@/lib/dates";
 
 // Recast, refinance or pay extra (spec step 246). Pure: a mortgage, a lump sum and/or extra
 // monthly money, and what each way of using it does over the loan's life, with its fees and

@@ -12,12 +12,13 @@ import { addGoal } from "@/lib/goals";
 import { formatCents } from "@/lib/money";
 import { findingPick, findingYes } from "../actions/finding";
 import type { ActionContext } from "../actions/handler";
-import { addMonths } from "../intents";
+
 import { monthLabel } from "../replies";
 import { loadSnapshot, type SnapshotFinding } from "../snapshot";
 import { shortName } from "../sources/findings";
 import type { ChatMessage, MessageAction, MessageRefs } from "../types";
 import type { FlowContext, FlowDef, FlowId } from "./engine";
+import { shiftMonth } from "@/lib/dates";
 
 // The guided flows (spec step 95). Each asks a few questions, then ends in the feature's own
 // code: Budgets' setBudget, Goals' addGoal, and a finding's own Yes (a switch to the option
@@ -127,7 +128,7 @@ const goal: FlowDef<null> = {
     },
   ],
   async finish(answers, _, { userId, client, now }) {
-    const month = addMonths(now.toISOString().slice(0, 7), Number(answers.months));
+    const month = shiftMonth(now.toISOString().slice(0, 7), Number(answers.months));
     const name = answers.name.charAt(0).toUpperCase() + answers.name.slice(1);
     const cents = Number(answers.amount);
     await addGoal(

@@ -17,6 +17,7 @@ import { parseLongView, type LongViewIntent } from "./long-view-intents";
 import { parseProfile, type ProfileIntent } from "./profile-intents";
 import { parseWhatIf, type WhatIfIntent } from "./what-if-intents";
 import { parseLearnIntent, type LearnIntent } from "./learn";
+import { shiftMonth } from "@/lib/dates";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
 // today's date in, one intent out. Works with no Claude key at all; anything it can't
@@ -169,12 +170,6 @@ const NAMED_MONTH = new RegExp(
   `\\b(?:in|by|for|during|this|next|last|until|of)\\s+${MONTH_NAME}\\b(?:\\s+(\\d{4}))?`,
 );
 
-// The month `by` months from `month` (YYYY-MM).
-export function addMonths(month: string, by: number): string {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1 + by, 1)).toISOString().slice(0, 7);
-}
-
 // "in March", "next month", "last month", "in 3 months". A month name without a year is
 // the next one coming (future) or the last one gone (past), counting this month as both.
 export function parseMonth(
@@ -184,10 +179,10 @@ export function parseMonth(
 ): string | null {
   const current = asOf.slice(0, 7);
   if (/\bthis month\b/.test(text)) return current;
-  if (/\bnext month\b/.test(text)) return addMonths(current, 1);
-  if (/\blast month\b/.test(text)) return addMonths(current, -1);
+  if (/\bnext month\b/.test(text)) return shiftMonth(current, 1);
+  if (/\blast month\b/.test(text)) return shiftMonth(current, -1);
   const ahead = /\bin (\d{1,2}) months?\b/.exec(text);
-  if (ahead && direction === "future") return addMonths(current, Number(ahead[1]));
+  if (ahead && direction === "future") return shiftMonth(current, Number(ahead[1]));
   const named = NAMED_MONTH.exec(text);
   if (!named) return null;
   const index = MONTHS.indexOf(named[1].slice(0, 3) as (typeof MONTHS)[number]);

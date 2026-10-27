@@ -8,19 +8,13 @@ import {
 import { UTILISATION_GOOD } from "@/config/debt";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
+import { addMonths } from "@/lib/dates";
 
 // A credit score for a goal (spec step 227). Pure: how many months a plan has, the paydown
 // that brings card use under 10% spread over those months, and the checklist for each month
 // (what to pay and when, accounts to keep open, no new applications, a rapid rescore before a
 // mortgage application). The score each month comes from the simulator, passed in.
 
-const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-export const addMonths = (day: string, months: number) => {
-  const [y, m, d] = day.split("-").map(Number);
-  const first = new Date(Date.UTC(y, m - 1 + months, 1));
-  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
-  return iso(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(d, last)));
-};
 export const monthOf = (day: string) => day.slice(0, 7);
 
 // Whole months from today to the date, within what a plan can look at.
