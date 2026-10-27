@@ -110,3 +110,25 @@ test("a card without a balance is asked for, and net worth says it isn't counted
       .first(),
   ).toContainText("$350.00");
 });
+
+test("with no balance known at all, /net-worth says so instead of $0.00", async ({
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await page
+    .context()
+    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await page.goto("/import");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "card.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(cardFile()),
+  });
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: /^Import \d+ transactions$/ }).click();
+  await waitForImport(page, { open: "/net-worth" });
+  await expect(page.locator("[data-net-worth-unknown]")).toContainText("Not known yet");
+  await expect(page.getByText("$0.00")).toHaveCount(0);
+});

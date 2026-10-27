@@ -23,7 +23,7 @@ import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import type { HomeSummary } from "@/lib/home";
 import { loadHubAreas, loadHubTop } from "@/lib/hub/load";
 import { netWorthEvents } from "@/lib/hub/net-worth-events";
-import { formatCents } from "@/lib/money";
+import { formatWholeDollars } from "@/lib/money";
 import { netWorthHistory } from "@/lib/hub/net-worth-history";
 import { NetWorthChart } from "@/components/hub/net-worth-chart";
 import { cashFlowView, heroView, tilesView } from "@/lib/hub/view";
@@ -163,7 +163,7 @@ function NetWorthLoading({ todayCents }: { todayCents: number }) {
     >
       <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Net worth</p>
       <p className="text-5xl font-semibold tracking-tight tabular-nums sm:text-6xl">
-        {formatCents(todayCents).replace(/\.\d\d$/, "")}
+        {formatWholeDollars(todayCents)}
       </p>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">Drawing your line…</p>
       <div aria-hidden="true" className="h-[190px] sm:h-[260px]" />
