@@ -441,7 +441,24 @@ const RULES: readonly Rule[] = [
     category: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
     keywords: ["COMCAST", "XFINITY", "SPECTRUM"],
   },
-  { category: "RENT_AND_UTILITIES_TELEPHONE", keywords: ["VERIZON", "AT&T", "T-MOBILE"] },
+  // Prepaid carriers too: a phone plan is a bill, not a subscription to cancel (QA round 12:
+  // "MINT MOBILE $30" came up as "Review your Mint Mobile subscription").
+  {
+    category: "RENT_AND_UTILITIES_TELEPHONE",
+    keywords: [
+      "VERIZON",
+      "AT&T",
+      "T-MOBILE",
+      "MINT MOBILE",
+      "BOOST MOBILE",
+      "US MOBILE",
+      "GOOGLE FI",
+      "GOOGLE *FI",
+      "TRACFONE",
+      "STRAIGHT TALK",
+      "CRICKET",
+    ],
+  },
   // Rent that names no "RENT" (a bare "RENT" is caught above, after car rentals).
   {
     category: "RENT_AND_UTILITIES_RENT",
