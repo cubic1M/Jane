@@ -5,7 +5,7 @@ import { AUTOPILOT_LIMITS } from "@/config/portfolios";
 import { SCAN_KINDS, SCAN_LABELS, type ScanKind } from "@/config/practice-scan";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import { formatPercent as pct } from "@/lib/percent";
-import { formatWholeDollars } from "@/lib/money";
+import { formatWholeDollars, formatCents } from "@/lib/money";
 
 // The practice portfolio's cards in the chat (spec step 296, Phase AW, Stage A), in the chat
 // lane's floating-card shape (src/lib/floating-cards.ts). Pure. Each card is short (what, how
@@ -38,9 +38,6 @@ export const WHAT_YES_DOES =
   "Opens the pause switch for your practice portfolio. Nothing is bought or sold.";
 const YES = "Pause switch";
 const NOT_NOW = "Got it";
-
-const exact = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 type Stored = {
   figures: { label: string; value: string }[];
@@ -130,7 +127,7 @@ export function tradesCard(day: string, level: RiskLevel, trades: TradeRow[]): F
         { label: "Rule", value: first ? "Buy the model" : "Rebalance past the band" },
         ...placed.map((t) => ({
           label: `${t.side === "buy" ? "Bought" : "Sold"} ${t.ticker}`,
-          value: exact(t.amountCents),
+          value: formatCents(t.amountCents),
         })),
       ],
       confidence: AUTOPILOT_CONFIDENCE,

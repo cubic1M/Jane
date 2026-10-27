@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GRADER_MODEL } from "@/config/answer-checks";
 import { finishedText } from "@/lib/anthropic";
 import type { Facts } from "./facts";
+import { formatCents } from "@/lib/money";
 
 // Claude's grade for one of Jane's answers (spec step 87), against a written rubric for what
 // the fixed checks can't see: is it useful, and does it sound like Jane. Only with an
@@ -61,9 +62,6 @@ export type GradeInput = {
   rules?: { mustDo?: string[]; mustNot?: string[] };
 };
 
-const dollars = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 // Null when Claude couldn't grade it (an error, a refusal, bad output).
 export async function gradeWithClaude(
   input: GradeInput,
@@ -86,10 +84,11 @@ export async function gradeWithClaude(
       // What the person pays on a schedule, and every dollar figure Jane's own lookups gave
       // for this person: a figure in the answer that is in this list is not invented.
       recurring: input.facts.recurring.map(
-        (r) => `${r.merchant}: ${dollars(r.lastCents)} last charge, ${dollars(r.yearCents)} a year`,
+        (r) =>
+          `${r.merchant}: ${formatCents(r.lastCents)} last charge, ${formatCents(r.yearCents)} a year`,
       ),
       figuresFromTheirData: [
-        ...new Set(input.facts.allowedCents.map((c) => dollars(Math.abs(c)))),
+        ...new Set(input.facts.allowedCents.map((c) => formatCents(Math.abs(c)))),
       ].slice(0, 400),
     },
   });
