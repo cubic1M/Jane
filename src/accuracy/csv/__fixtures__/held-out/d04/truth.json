@@ -75,36 +75,44 @@
     {
       "type": "duplicate_charge",
       "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "KINGS HEAD PUB, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ROOT INSURANCE CO, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 1028.14
+      "dollars": 948.14
     },
     {
       "date": "2026-05-31",
-      "dollars": 1672.45
+      "dollars": 1512.45
     },
     {
       "date": "2026-06-30",
-      "dollars": 1033.97
+      "dollars": 793.97
     },
     {
       "date": "2026-07-31",
-      "dollars": 1176.13
+      "dollars": 856.13
     },
     {
       "date": "2026-08-31",
-      "dollars": 907.49
+      "dollars": 507.49
     },
     {
       "date": "2026-09-30",
-      "dollars": 703.88
+      "dollars": 223.88
     },
     {
       "date": "2026-10-24",
-      "dollars": 600.59
+      "dollars": 82.59
     }
   ]
 }

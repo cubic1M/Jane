@@ -15,6 +15,7 @@ import {
   type Tx,
 } from "@/planning/books";
 import { addDays, isoDay as iso } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // Books that balance (spec step 238): every day Jane checks that balances agree with their
 // transactions, finds the same account linked twice (and merges it, only when both copies are
@@ -215,8 +216,8 @@ export async function runBooksCheck(
       detail: { ...mismatch },
       words:
         mismatch.kind === "gap"
-          ? `${account.name}'s balance changed by ${formatCents(Math.abs(mismatch.balanceChangeCents))} between ${mismatch.from} and ${mismatch.to}, but the bank sent no transactions for it.`
-          : `${account.name}'s balance doesn't match its transactions between ${mismatch.from} and ${mismatch.to}: it's off by ${formatCents(Math.abs(mismatch.offByCents))}.`,
+          ? `${account.name}'s balance changed by ${formatCents(Math.abs(mismatch.balanceChangeCents))} between ${dayLabel(mismatch.from)} and ${dayLabel(mismatch.to, { year: true })}, but the bank sent no transactions for it.`
+          : `${account.name}'s balance doesn't match its transactions between ${dayLabel(mismatch.from)} and ${dayLabel(mismatch.to, { year: true })}: it's off by ${formatCents(Math.abs(mismatch.offByCents))}.`,
     });
   }
 
@@ -269,7 +270,9 @@ export async function runBooksCheck(
       key: `import:${a.id}`,
       accountId: a.id,
       detail: { lastDate: a.lastDate },
-      words: `${a.name}'s data ends on ${a.lastDate}, the last day in the file you imported, so I can't see anything after it. Import a newer file and I'll pick up from there.`,
+      // Readable dates and fewer words (round-2 pass: "(3)'s data ends on 2026-10-12, the last
+      // day in the file you imported, so I can't see anything after it…").
+      words: `${a.name}'s file ends on ${a.lastDate ? dayLabel(a.lastDate, { year: true }) : "an earlier day"}. Import a newer one and I'll pick up from there.`,
     });
   }
   const unmatched = unmatchedToSay(matchTransfers(txns.map(asTx)).unmatchedOut, accounts).slice(-3);

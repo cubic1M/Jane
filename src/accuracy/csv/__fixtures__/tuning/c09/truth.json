@@ -51,24 +51,32 @@
     {
       "type": "duplicate_charge",
       "about": "3 AMC 0517 ONLINE seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 6326.94
+      "dollars": 6294.64
     },
     {
       "date": "2026-08-31",
-      "dollars": 4580.56
+      "dollars": 4515.96
     },
     {
       "date": "2026-09-30",
-      "dollars": 4063.47
+      "dollars": 3966.57
     },
     {
       "date": "2026-10-24",
-      "dollars": 2607.85
+      "dollars": 2478.65
     }
   ]
 }

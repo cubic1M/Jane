@@ -119,17 +119,9 @@ export async function closeAnsweredElsewhere(
       })
     : [];
   const stillAskedRisks = new Set(askedRisks.map((r) => r.id));
-  // Suggestions still waiting or offered today; any other status (gone, yes, no) settles them.
-  const liveSuggestions = suggestionKeys.length
-    ? new Set(
-        (
-          await db.suggestions.findMany({
-            where: { key: { in: suggestionKeys }, status: { in: ["waiting", "selected"] } },
-            select: { key: true },
-          })
-        ).map((x) => x.key),
-      )
-    : new Set<string>();
+  // A suggestion that has settled (gone, yes, no); one with no row (a news theme's alert,
+  // posted straight from the scan) doesn't settle its message this way.
+  const settledSuggestions = await settledSuggestionKeys(db, suggestionKeys);
   const offeredIds = new Set(offers.map((o) => o.id));
   const sameOffered = offers.some((o) => o.kind !== "higher_deductible");
   const openProposalKeys = new Set(proposals.map((p) => p.key));
@@ -167,7 +159,7 @@ export async function closeAnsweredElsewhere(
       (savingId !== undefined && !offeredIds.has(savingId)) ||
       (savingGroup !== undefined && !sameOffered) ||
       (riskId !== undefined && !stillAskedRisks.has(riskId)) ||
-      (suggestion !== undefined && !liveSuggestions.has(suggestion))
+      (suggestion !== undefined && settledSuggestions.has(suggestion))
     );
   };
 
@@ -185,3 +177,19 @@ export async function closeAnsweredElsewhere(
   }
   return closed;
 }
+
+// The suggestion keys whose suggestion has settled (gone, yes, no): any status but waiting or
+// selected. A key with no suggestion row isn't settled; its message settles some other way.
+export async function settledSuggestionKeys(
+  db: ReturnType<typeof scopedFor>,
+  keys: readonly string[],
+): Promise<Set<string>> {
+  if (keys.length === 0) return new Set();
+  const rows = await db.suggestions.findMany({
+    where: { key: { in: [...keys] }, status: { notIn: [...LIVE_SUGGESTION_STATUSES] } },
+    select: { key: true },
+  });
+  return new Set(rows.map((x) => x.key));
+}
+
+const LIVE_SUGGESTION_STATUSES = ["waiting", "selected"] as const;

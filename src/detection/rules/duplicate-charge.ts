@@ -1,9 +1,11 @@
 import {
   DUPLICATE_CHARGE_EXCLUDED_PRIMARIES,
+  DUPLICATE_CHARGE_GROUP_MIN,
   DUPLICATE_CHARGE_MEAL_MIN_CENTS,
   DUPLICATE_CHARGE_MIN_CENTS,
   DUPLICATE_CHARGE_PER_SEAT_CATEGORIES,
   DUPLICATE_CHARGE_PER_SEAT_WORDS,
+  DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES,
   DUPLICATE_CHARGE_WINDOW_DAYS,
   REFUND_MAX_AGE_DAYS,
 } from "@/config/detection";
@@ -24,6 +26,12 @@ const merchantName = (t: DetectionTransaction) =>
 // fares). Shared with the double-charge alert.
 export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
   const groups = new Map<string, DetectionTransaction[]>();
+  // The days each merchant was paid on: a streaming plan comes back, a cinema visit doesn't.
+  const days = new Map<string, Set<string>>();
+  for (const t of inLookback(input)) {
+    const key = merchantOf(t)?.key;
+    if (key) days.set(key, (days.get(key) ?? new Set()).add(t.date));
+  }
   for (const t of inLookback(input)) {
     if (Math.abs(t.amountCents) < DUPLICATE_CHARGE_MIN_CENTS) continue;
     const meal =
@@ -33,6 +41,12 @@ export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
     if (inList(t.pfcDetailed, DUPLICATE_CHARGE_PER_SEAT_CATEGORIES)) continue;
     const merchant = merchantOf(t)?.key;
     if (!merchant || merchantMatches(merchant, DUPLICATE_CHARGE_PER_SEAT_WORDS)) continue;
+    if (
+      inList(t.pfcDetailed, DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES) &&
+      (days.get(merchant)?.size ?? 0) === 1
+    ) {
+      continue;
+    }
     const key = `${t.accountId}\u0000${merchant}\u0000${Math.abs(t.amountCents)}`;
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }
@@ -42,8 +56,12 @@ export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
     rows.sort(byDate);
     const charges = rows.filter((t) => t.amountCents > 0);
     const refunds = rows.filter((t) => t.amountCents < 0);
+    const sameDay = (date: string) => charges.filter((c) => c.date === date).length;
     for (let i = 1; i < charges.length; i += 1) {
       const [first, second] = [charges[i - 1], charges[i]];
+      // Three or more on one day: a group's seats.
+      if (sameDay(first.date) >= DUPLICATE_CHARGE_GROUP_MIN) continue;
+      if (sameDay(second.date) >= DUPLICATE_CHARGE_GROUP_MIN) continue;
       if (daysBetween(first.date, second.date) > DUPLICATE_CHARGE_WINDOW_DAYS) continue;
       // The merchant already gave the money back.
       if (refunds.some((r) => r.date >= first.date)) continue;

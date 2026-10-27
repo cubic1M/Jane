@@ -39,7 +39,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1440535, excess 935556",
+      "about": "cash 1364535, excess 820122",
       "perYear": null
     }
   ],
@@ -67,32 +67,40 @@
     {
       "type": "duplicate_charge",
       "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANYON CU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "KINGS HEAD PUB, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 3691.07
+      "dollars": 3558.07
     },
     {
       "date": "2026-06-30",
-      "dollars": 5081.56
+      "dollars": 4815.56
     },
     {
       "date": "2026-07-31",
-      "dollars": 6598.39
+      "dollars": 6199.39
     },
     {
       "date": "2026-08-31",
-      "dollars": 8438.58
+      "dollars": 7906.58
     },
     {
       "date": "2026-09-30",
-      "dollars": 10476.86
+      "dollars": 9811.86
     },
     {
       "date": "2026-10-24",
-      "dollars": 12693.39
+      "dollars": 11933.39
     }
   ]
 }

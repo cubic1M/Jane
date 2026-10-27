@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4323368, excess 3178948",
+      "about": "cash 4309018, excess 3155561",
       "perYear": null
     }
   ],
@@ -71,28 +71,36 @@
     {
       "type": "subscription_review",
       "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 21523.1
+      "dollars": 21490.8
     },
     {
       "date": "2026-07-31",
-      "dollars": 27854.57
+      "dollars": 27789.97
     },
     {
       "date": "2026-08-31",
-      "dollars": 31551.33
+      "dollars": 31454.43
     },
     {
       "date": "2026-09-30",
-      "dollars": 34909.34
+      "dollars": 34780.14
     },
     {
       "date": "2026-10-24",
-      "dollars": 38813.78
+      "dollars": 38670.28
     }
   ]
 }

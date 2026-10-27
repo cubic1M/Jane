@@ -10,7 +10,9 @@ import {
 } from "./actions";
 import { BalanceAskForm } from "./balance-ask";
 import { IMPORT_STARTED_EVENT } from "@/config/import";
+import { dayLabel } from "@/lib/day-label";
 import type { BalanceAsk } from "@/lib/import/balance-question";
+import { formatCents } from "@/lib/money";
 import type { EarlierRows, UploadView } from "@/lib/import/remove";
 
 // What's been uploaded, and taking it back (src/lib/import/remove.ts): one upload's rows, an
@@ -18,11 +20,25 @@ import type { EarlierRows, UploadView } from "@/lib/import/remove";
 // first, saying what goes. The numbers are worked out again in the background, followed by the
 // chip at the top of the page.
 
-type Account = { id: string; name: string; rows: number };
+type Account = {
+  id: string;
+  name: string;
+  rows: number;
+  kindLabel: string;
+  credit: boolean;
+  balanceCents: number | null;
+  firstDate: string | null;
+  lastDate: string | null;
+};
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+// "Jul 28 to Oct 20, 2026", as the rest of the page writes dates.
 const range = (from: string | null, to: string | null) =>
-  from && to ? (from === to ? from : `${from} to ${to}`) : "no dates";
+  from && to
+    ? from === to
+      ? dayLabel(from, { year: true })
+      : `${dayLabel(from)} to ${dayLabel(to, { year: true })}`
+    : "no dates";
 
 const BUTTON =
   "inline-flex h-9 items-center rounded-full border border-zinc-300 px-4 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
@@ -143,7 +159,14 @@ export function UploadHistory({
         ))}
       </ul>
 
-      <h3 className="font-semibold">Uploaded accounts</h3>
+      <h3 className="font-semibold">Your accounts</h3>
+      {asks.length > 0 && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          {asks.length === 1
+            ? "One statement doesn't say today's balance. Add it below and net worth counts it."
+            : `${asks.length} statements don't say today's balance. Add them below and net worth counts them.`}
+        </p>
+      )}
       <ul className="flex flex-col gap-3">
         {accounts.map((a) => (
           <li
@@ -151,15 +174,23 @@ export function UploadHistory({
             data-uploaded-account={a.id}
             className="flex flex-wrap items-center justify-between gap-2"
           >
-            <span>
-              {a.name}{" "}
-              <span className="text-sm text-zinc-500">· {plural(a.rows, "transaction")}</span>
+            <span className="flex flex-col">
+              <span className="font-medium" data-private>
+                {a.name}
+              </span>
+              <span className="text-sm text-zinc-500">
+                {a.kindLabel} · {plural(a.rows, "transaction")}
+                {a.firstDate && a.lastDate && ` · ${range(a.firstDate, a.lastDate)}`}
+                {a.balanceCents !== null &&
+                  ` · ${a.credit ? "Owed" : "Balance"} ${formatCents(a.balanceCents)}`}
+              </span>
             </span>
             {asks.some((ask) => ask.accountId === a.id) && (
               <div className="w-full">
                 <BalanceAskForm
                   ask={asks.find((ask) => ask.accountId === a.id)!}
                   skippable={false}
+                  explain={false}
                 />
               </div>
             )}
@@ -179,7 +210,7 @@ export function UploadHistory({
       >
         <Confirm
           label="Start over"
-          question={`This deletes your ${plural(totals.accounts, "uploaded account")} and their ${plural(totals.rows, "transaction")}. Linked banks and your settings stay. Then you can upload again from scratch.`}
+          question={`This deletes your ${plural(totals.accounts, "uploaded account")} and ${totals.accounts === 1 ? "its" : "their"} ${plural(totals.rows, "transaction")}. Linked banks and your settings stay. Then you can upload again from scratch.`}
           yes="Yes, delete my uploads"
           run={() => startOverAction()}
         />

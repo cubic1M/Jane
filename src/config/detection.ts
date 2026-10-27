@@ -211,6 +211,43 @@ export const LLM_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "medium";
 export const FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES = 3;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CENTS = 10_000;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "low";
+// ...but never a payment on a debt, insurance, a gift or food and drink, by category or by the
+// words of the description (QA round 28: a credit union loan payment, Lemonade Insurance, a
+// church, a bakery and a tavern, each at one price every month, were called subscriptions).
+export const FIXED_PRICE_SUBSCRIPTION_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
+  "LOAN_PAYMENTS",
+  "FOOD_AND_DRINK",
+  "GOVERNMENT_AND_NON_PROFIT",
+  "TRANSFER_OUT",
+  "RENT_AND_UTILITIES",
+];
+export const FIXED_PRICE_SUBSCRIPTION_EXCLUDED_CATEGORIES: readonly PfcDetailed[] = [
+  "GENERAL_SERVICES_INSURANCE",
+];
+// Matched as whole words of the description, upper case.
+export const FIXED_PRICE_SUBSCRIPTION_NOT_WORDS: readonly string[] = [
+  "PMT",
+  "PYMT",
+  "PAYMENT",
+  "LOAN",
+  "LENDING",
+  "CREDIT UNION",
+  "MORTGAGE",
+  "INSURANCE",
+  "ASSURANCE",
+  "CHURCH",
+  "MINISTRIES",
+  "PARISH",
+  "TITHE",
+  "DONATION",
+  "CHARITY",
+  "BAKERY",
+  "TAVERN",
+  "PUB",
+  "BAR",
+  "RESTAURANT",
+  "CAFE",
+];
 
 // Groups of interchangeable services. Two or more active subscriptions in one group is a
 // duplicate. A stream joins a group by category or by merchant name.
@@ -620,9 +657,19 @@ export const DUPLICATE_CHARGE_PER_SEAT_CATEGORIES: readonly PfcDetailed[] = [
   "TRAVEL_FLIGHTS",
   "TRANSPORTATION_PUBLIC_TRANSIT",
 ];
-// Cinemas sell a seat each too, but Plaid files them with streaming services, where a double
-// charge is real, so they are known by name (whole words of the merchant; accuracy bench, first
+// Cinemas sell a seat each too, but Plaid (and Claude) file them with streaming services. A
+// streaming service's double charge is on a plan paid on other days too; a cinema visit is one
+// day. So in these categories, two at one price on the only day a merchant was ever paid are
+// seats (CSV bench: two seats at a cinema whose name says nothing).
+export const DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES: readonly PfcDetailed[] = [
+  "ENTERTAINMENT_TV_AND_MOVIES",
+];
+// Cinemas are also known by name (whole words of the merchant; accuracy bench, first
 // held-out set: two seats at AMC).
+// This many identical charges at one place on one day are a group's seats (or rounds), not a
+// card run twice: a shop doesn't run a card three times (CSV bench: tickets at a cinema whose
+// name says nothing).
+export const DUPLICATE_CHARGE_GROUP_MIN = 3;
 export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
   "theatre",
   "theatres",

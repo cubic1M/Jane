@@ -94,32 +94,40 @@
     {
       "type": "duplicate_charge",
       "about": "2 ALAMO DRAFTHOUSE 042 seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE MINISTRIES TITHE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -1992.01
+      "dollars": -2079.51
     },
     {
       "date": "2026-06-30",
-      "dollars": -2784.11
+      "dollars": -2959.11
     },
     {
       "date": "2026-07-31",
-      "dollars": -332.56
+      "dollars": -595.06
     },
     {
       "date": "2026-08-31",
-      "dollars": 199
+      "dollars": -151
     },
     {
       "date": "2026-09-30",
-      "dollars": 110.21
+      "dollars": -327.29
     },
     {
       "date": "2026-10-24",
-      "dollars": 896.24
+      "dollars": 371.24
     }
   ]
 }

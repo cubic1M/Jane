@@ -366,6 +366,9 @@ type Pool = {
   abroad: Merchant[];
   // Bills that come when they come: the dentist, a car repair.
   irregular: Merchant[];
+  // One price every month and no name a rule knows, but not a subscription: a loan payment,
+  // insurance, a church, a bakery, a bar (QA round 28).
+  notPlans: Merchant[];
 };
 
 const TUNING: Pool = {
@@ -392,6 +395,28 @@ const TUNING: Pool = {
     cents: 13_900,
     alsoOk: DIGITAL,
   },
+  notPlans: [
+    {
+      descriptor: "HARBOR CREDIT UNION PMT",
+      category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+      lo: 85,
+      hi: 85,
+    },
+    { descriptor: "LEMONADE INSURANCE", category: "GENERAL_SERVICES_INSURANCE", lo: 18, hi: 18 },
+    {
+      descriptor: "PARKSIDE COMMUNITY CHURCH",
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      lo: 50,
+      hi: 50,
+    },
+    {
+      descriptor: "BLUE HERON BAKERY",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 14.3,
+      hi: 14.3,
+    },
+    { descriptor: "HOLLOW OAK TAVERN", category: "FOOD_AND_DRINK_RESTAURANT", lo: 46.1, hi: 46.1 },
+  ],
   irregular: [
     { descriptor: "SMILE DENTAL GROUP", category: "MEDICAL_DENTAL_CARE", lo: 90, hi: 420 },
     { descriptor: "JIFFY LUBE #1234", category: "GENERAL_SERVICES_AUTOMOTIVE", lo: 60, hi: 380 },
@@ -585,6 +610,23 @@ const HELD_OUT: Pool = {
     cents: 6_500,
     alsoOk: DIGITAL,
   },
+  notPlans: [
+    { descriptor: "CANYON CU LOAN PMT", category: "LOAN_PAYMENTS_OTHER_PAYMENT", lo: 95, hi: 95 },
+    { descriptor: "ROOT INSURANCE CO", category: "GENERAL_SERVICES_INSURANCE", lo: 42, hi: 42 },
+    {
+      descriptor: "GRACE MINISTRIES TITHE",
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      lo: 75,
+      hi: 75,
+    },
+    {
+      descriptor: "SUNRISE BAKERY",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 12.5,
+      hi: 12.5,
+    },
+    { descriptor: "KINGS HEAD PUB", category: "FOOD_AND_DRINK_RESTAURANT", lo: 38, hi: 38 },
+  ],
   irregular: [
     { descriptor: "BRIGHT NOW DENTAL", category: "MEDICAL_DENTAL_CARE", lo: 90, hi: 420 },
     { descriptor: "MIDAS #221", category: "GENERAL_SERVICES_AUTOMOTIVE", lo: 60, hi: 380 },
@@ -1557,6 +1599,26 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
         });
       }
     }
+  }
+
+  // Two fixed monthly amounts that aren't subscriptions, from their own dice so no other row
+  // changes: on checking, the same price on the same day every month.
+  const q = rng((set === "tuning" ? CSV_SEED : CSV_HELD_OUT_SEED) + index * 104_729 + 28);
+  for (const m of [...P.notPlans].sort(() => q.next() - 0.5).slice(0, 2)) {
+    const rows: string[] = [];
+    const day = q.int(3, 26);
+    L.monthly(day, (date) => {
+      const row = L.add({
+        ...spend(chk, date, Math.round(m.lo * 100), m),
+        alsoOk: m.category.startsWith("FOOD") ? ["FOOD_AND_DRINK"] : undefined,
+      });
+      if (row) rows.push(row.id);
+    });
+    L.traps.push({ type: "subscription_review", rows, note: `${m.descriptor}, not a plan` });
+    // A loan payment and insurance are bills; a gift or a meal may be listed or not.
+    if (m.category.startsWith("LOAN") || m.category.endsWith("INSURANCE"))
+      L.bill(rows, m.descriptor);
+    else L.neutralBills.push(rows);
   }
 
   // Idle cash: a saver keeps months of spending in checking.

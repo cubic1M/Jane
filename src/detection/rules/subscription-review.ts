@@ -1,9 +1,12 @@
 import {
   AMBIGUOUS_SUBSCRIPTION_CATEGORIES,
   BILLING_PLATFORM_MERCHANTS,
+  FIXED_PRICE_SUBSCRIPTION_EXCLUDED_CATEGORIES,
+  FIXED_PRICE_SUBSCRIPTION_EXCLUDED_PRIMARIES,
   FIXED_PRICE_SUBSCRIPTION_MAX_CENTS,
   FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE,
   FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES,
+  FIXED_PRICE_SUBSCRIPTION_NOT_WORDS,
   INSURANCE_CATEGORIES,
   LLM_SUBSCRIPTION_MAX_CONFIDENCE,
   NOT_SUBSCRIPTION_PRIMARIES,
@@ -22,10 +25,18 @@ function isRecurringCost(stream: Stream): boolean {
   );
 }
 
-// A charge whose category can't say, at one price every month (FIXED_PRICE_SUBSCRIPTION_*).
+const NOT_A_PLAN = new RegExp(
+  `(?<![A-Z0-9])(?:${FIXED_PRICE_SUBSCRIPTION_NOT_WORDS.join("|")})(?![A-Z0-9])`,
+);
+
+// A charge whose category can't say, at one price every month (FIXED_PRICE_SUBSCRIPTION_*), that
+// isn't a payment on a debt, insurance, a gift or food and drink by its category or its words.
 export function isFixedPricePlan(stream: Stream): boolean {
   const prices = new Set(stream.charges.map((c) => c.amountCents));
   return (
+    !inList(stream.pfcPrimary, FIXED_PRICE_SUBSCRIPTION_EXCLUDED_PRIMARIES) &&
+    !inList(stream.pfcDetailed, FIXED_PRICE_SUBSCRIPTION_EXCLUDED_CATEGORIES) &&
+    !stream.charges.some((c) => NOT_A_PLAN.test(c.description.toUpperCase())) &&
     stream.frequency === "MONTHLY" &&
     (stream.pfcDetailed === null ||
       inList(stream.pfcDetailed, AMBIGUOUS_SUBSCRIPTION_CATEGORIES)) &&

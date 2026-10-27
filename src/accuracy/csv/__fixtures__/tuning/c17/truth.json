@@ -56,24 +56,32 @@
     {
       "type": "duplicate_charge",
       "about": "BEST BUY 00012345 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -1894.12
+      "dollars": -1926.42
     },
     {
       "date": "2026-08-31",
-      "dollars": -2951.07
+      "dollars": -3015.67
     },
     {
       "date": "2026-09-30",
-      "dollars": -3588.26
+      "dollars": -3685.16
     },
     {
       "date": "2026-10-24",
-      "dollars": -4238.71
+      "dollars": -4367.91
     }
   ]
 }

@@ -66,7 +66,12 @@ async function ImportContent() {
         <h2 className="text-xl font-semibold">Upload statement files</h2>
         {/* A first upload makes its account from the file, so nothing comes before it. */}
         <ImportForm
-          accounts={accounts.map(({ id, name, kindLabel }) => ({ id, name, kindLabel }))}
+          accounts={accounts.map(({ id, name, kindLabel, kind }) => ({
+            id,
+            name,
+            kindLabel,
+            kind,
+          }))}
         />
         <p className="text-xs text-zinc-500">
           Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi,
@@ -79,16 +84,26 @@ async function ImportContent() {
         earlier={history.earlier}
         accounts={accounts
           .filter((a) => uploadedIds.has(a.id))
-          .map((a) => ({ id: a.id, name: a.name, rows: a.transactionCount }))}
+          .map((a) => ({
+            id: a.id,
+            name: a.name,
+            rows: a.transactionCount,
+            kindLabel: a.kindLabel,
+            credit: a.kind === "credit_card",
+            balanceCents: a.currentBalanceCents,
+            firstDate: a.firstDate,
+            lastDate: a.lastDate,
+          }))}
         totals={totals}
         asks={asks}
       />
 
       <section className="flex flex-col gap-4">
-        {accounts.length > 0 && (
+        {/* Uploaded accounts are listed with their uploads above; linked banks here. */}
+        {accounts.some((a) => !uploadedIds.has(a.id)) && (
           <>
-            <h2 className="text-xl font-semibold">Your accounts</h2>
-            <AccountList accounts={accounts} />
+            <h2 className="text-xl font-semibold">Linked accounts</h2>
+            <AccountList accounts={accounts.filter((a) => !uploadedIds.has(a.id))} />
           </>
         )}
         <details data-add-account="">

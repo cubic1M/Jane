@@ -20,6 +20,8 @@ export type FilePreview =
       ok: true;
       format: string;
       formatId: string;
+      // The bank whose export it is, when the layout is one Jane knows.
+      bank?: string;
       // The account a first upload of this file makes: its suggested name and type.
       account: { name: string; kind: AccountKind };
       rowCount: number;
@@ -52,6 +54,7 @@ export function previewCsvFiles(files: CsvFile[]): FilePreview[] {
       ok: true,
       format: result.format.label,
       formatId: result.format.id,
+      ...(result.format.bank ? { bank: result.format.bank } : {}),
       account: result.account,
       rowCount: result.transactions.length,
       from: dates[0] ?? "",
