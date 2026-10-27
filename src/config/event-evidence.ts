@@ -43,6 +43,26 @@ export const EVENT_EVIDENCE: Readonly<Record<EventTypeId, { events: number; hits
     events: 61,
     hits: 35,
   },
+  crypto_exchange_failure: {
+    events: 14,
+    hits: 6.5,
+  },
+  crypto_etf: {
+    events: 1,
+    hits: 0,
+  },
+  crypto_regulation: {
+    events: 33,
+    hits: 14.5,
+  },
+  stablecoin_depeg: {
+    events: 0,
+    hits: 0,
+  },
+  crypto_liquidation: {
+    events: 30,
+    hits: 11,
+  },
 };
 
 export const EVENT_EVIDENCE_RANGE = {
@@ -61,5 +81,22 @@ export const EVENT_EVIDENCE_SUMMARY = {
     yearly: 0.0855,
     maxDrawdown: -0.2237,
     sharpe: 0.58,
+  },
+} as const;
+
+// The crypto events on the 24-hour agent's crypto strategies (docs/backtests/events.md, Crypto).
+export const EVENT_EVIDENCE_CRYPTO = {
+  from: "2018-03-01",
+  to: "2026-10-21",
+  base: "Bitcoin 50%, ether 30%, cash 20%",
+  alone: {
+    yearly: 0.2536,
+    maxDrawdown: -0.7025,
+    sharpe: 0.65,
+  },
+  withEvents: {
+    yearly: 0.2536,
+    maxDrawdown: -0.6963,
+    sharpe: 0.65,
   },
 } as const;

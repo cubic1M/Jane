@@ -203,12 +203,33 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
-    keywords: ["PG&E", "CON ED", "CONEDISON", "DUKE ENERGY", "SCE", "COMED", "NATIONAL GRID"],
+    keywords: [
+      "PG&E",
+      "CON ED",
+      "CONEDISON",
+      "DUKE ENERGY",
+      "SCE",
+      "COMED",
+      "NATIONAL GRID",
+      // Utilities named for what they sell (accuracy bench: "XCEL ENERGY", "SOUTHERN
+      // CALIFORNIA EDISON" were never bills).
+      "ENERGY",
+      "ELECTRIC",
+      "EDISON",
+      "GAS & ELECTRIC",
+      "GAS CO",
+      "GAS COMPANY",
+    ],
     direction: "out",
   },
   {
     category: "RENT_AND_UTILITIES_WATER",
     keywords: ["WATER UTIL", "WATER DEPT"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_OTHER_UTILITIES",
+    keywords: ["UTILITIES", "UTILITY"],
     direction: "out",
   },
   {
@@ -228,6 +249,21 @@ const RULES: readonly Rule[] = [
     keywords: ["PLANET FITNESS", "EQUINOX", "ORANGETHEORY", "24 HOUR FITNESS"],
   },
   { category: "TRAVEL_LODGING", keywords: ["AIRBNB", "MARRIOTT", "HILTON", "HYATT"] },
+  // Ticket sellers: a seat each, so two at one price aren't a double charge (accuracy bench).
+  {
+    category: "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS",
+    keywords: [
+      "TICKETMASTER",
+      "LIVE NATION",
+      "STUBHUB",
+      "SEATGEEK",
+      "VIVID SEATS",
+      "EVENTBRITE",
+      "AXS",
+      "TICKETWEB",
+    ],
+    direction: "out",
+  },
   {
     category: "TRAVEL_FLIGHTS",
     keywords: ["DELTA AIR", "UNITED AIRLINES", "AMERICAN AIRLINES", "SOUTHWEST AIR", "JETBLUE"],

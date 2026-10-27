@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { evidenceRefs, onSharedAccountsOnly } from "@/lib/finding-accounts";
 import { inReadCache } from "@/lib/read-cache";
 import { forgetReads, memoKey, memoRead, READ_OPERATIONS } from "@/lib/read-memo";
+import { asUser, asUserTransaction, SCOPED_QUERY_TRANSACTION, withRls } from "@/lib/rls";
 import { requireUser } from "@/lib/session";
 
 // Every query on a user-owned table goes through here. scopeArgs ANDs the user's id onto
@@ -64,47 +65,76 @@ export function scopeArgs(operation: string, args: Args | undefined, userId: str
   return scoped;
 }
 
-export function scopedFor(userId: string, client: PrismaClient = db) {
-  const scoped = client.$extends({
+// Each query: the user's id ANDed on (scopeArgs), shared reads within a render, and `run`, which
+// sends it to the database.
+function scopedQueries(
+  client: PrismaClient,
+  userId: string,
+  run: (query: () => Prisma.PrismaPromise<unknown>, operation: string) => Promise<unknown>,
+) {
+  return client.$extends({
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
           const scopedArgs = scopeArgs(operation, args as Args, userId) as typeof args;
+          const send = () =>
+            run(() => query(scopedArgs) as Prisma.PrismaPromise<unknown>, operation);
           // A write changes what the page's reads would see: forget the render's shared answers
           // before and after it. A read asking exactly what an earlier one asked shares its answer.
           if (!READ_OPERATIONS.has(operation)) {
             forgetReads();
             try {
-              return await query(scopedArgs);
+              return await send();
             } finally {
               forgetReads();
             }
           }
           // Inside a read cache (src/lib/read-cache.ts) every read must reach it, which notes the
           // tables each cached value came from; it shares repeated reads itself.
-          if (inReadCache()) return query(scopedArgs);
-          return memoRead(memoKey(userId, model, operation, scopedArgs), () =>
-            Promise.resolve(query(scopedArgs)),
-          );
+          if (inReadCache()) return send();
+          return memoRead(memoKey(userId, model, operation, scopedArgs), send);
         },
       },
     },
   });
+}
+
+export function scopedFor(userId: string, client: PrismaClient = db) {
+  if (!userId) throw new Error("scopedFor needs a user id");
+  // Every query is also its own short transaction as the user, so the database's row-level
+  // security (src/lib/rls.ts) checks it too: a query that scopeArgs somehow let through still
+  // can't see or change another person's rows.
+  const scoped = scopedQueries(client, userId, (query, operation) =>
+    withRls((rls) =>
+      rls
+        ? client
+            .$transaction(
+              [
+                asUser(client, userId, READ_OPERATIONS.has(operation) ? "reads" : "writes"),
+                query(),
+              ],
+              SCOPED_QUERY_TRANSACTION,
+            )
+            .then(([, result]) => result)
+        : query(),
+    ),
+  );
+  // Inside an interactive transaction the transaction itself is switched to the user once.
+  const inTransaction = scopedQueries(client, userId, (query) => query());
 
   // Only user-owned tables are exposed; users, audit_log and analytics have their own helpers.
   return {
     // An interactive transaction over the same scoped tables.
     transaction: <T>(
       run: (tx: {
-        findings: typeof scoped.finding;
-        decisions: typeof scoped.decision;
-        actions: typeof scoped.action;
+        findings: typeof inTransaction.finding;
+        decisions: typeof inTransaction.decision;
+        actions: typeof inTransaction.action;
       }) => Promise<T>,
     ) =>
-      scoped
-        .$transaction((tx) =>
-          run({ findings: tx.finding, decisions: tx.decision, actions: tx.action }),
-        )
+      asUserTransaction(inTransaction, userId, (tx) =>
+        run({ findings: tx.finding, decisions: tx.decision, actions: tx.action }),
+      )
         // Reads made inside it may have seen rows that were rolled back.
         .finally(() => forgetReads()),
     userId,

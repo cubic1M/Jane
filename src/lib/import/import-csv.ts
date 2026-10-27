@@ -1,3 +1,4 @@
+import { matchCardPayments } from "@/categorize/card-payments";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { CsvDataSource, readCsvFile, type CsvFile } from "@/data-sources/csv/csv-source";
 import { accountKindOf, type SkippedRow } from "@/data-sources/types";
@@ -97,6 +98,9 @@ export async function importCsvFiles(
     // Rows already imported (same account and dedupe key) are skipped by the database.
     skipDuplicates: true,
   });
+  // A card payment whose company no rule knows is found from the card's side, whichever of the
+  // two accounts was imported first.
+  await matchCardPayments(db);
 
   return {
     parsed: categorized.length,

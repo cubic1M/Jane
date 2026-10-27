@@ -121,6 +121,8 @@ describe.runIf(url)("health checks against a real database", () => {
       "practice-scan",
       "events",
     ]);
+    // And row-level security, whole on a protected database (src/lib/rls-coverage.ts).
+    expect(report.rls).toMatchObject({ role: true, missing: [], ok: true, switchWorks: true });
     expect(logAudit).toHaveBeenCalledWith(
       { type: "admin", id: "admin_1" },
       "admin_viewed_health",

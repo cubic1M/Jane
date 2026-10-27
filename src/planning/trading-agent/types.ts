@@ -64,6 +64,11 @@ export type AgentSignal = {
   // (down for a buy, up for a sell), the signal ends early and its trade is undone at the next
   // bar's open. Absent: only `until` ends it.
   stopPct?: number | null;
+  // A tilt: `weight` is a change to the strategy's own weight of the ticker (+ adds that share of
+  // the account, − takes it to cash), not a level to hold. The events layer's slices are tilts:
+  // a 3% slice in bitcoin on a strategy already holding all bitcoin changes nothing, instead of
+  // cutting bitcoin to 3%. The result stays between 0 and the whole account.
+  tilt?: boolean;
 };
 
 // The agent's state between ticks. Cash and units are kept exact (not rounded to cents) so a
