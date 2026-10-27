@@ -39,7 +39,7 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "BANK_FEES_INTEREST_CHARGE",
-    keywords: ["INTEREST CHARGE", "PURCHASE INTEREST"],
+    keywords: ["INTEREST CHARGE", "INTEREST CHARGED", "PURCHASE INTEREST"],
     direction: "out",
   },
   { category: "BANK_FEES_LATE_FEES", keywords: ["LATE FEE", "LATE PAYMENT FEE"] },
@@ -62,6 +62,15 @@ const RULES: readonly Rule[] = [
     keywords: [
       "PAYMENT TO CHASE CARD",
       "PAYMENT THANK YOU",
+      // How the cards of the banks whose CSVs Jane reads write it (upload QA: Bank of America,
+      // Citi, Discover and Amex say "PAYMENT - THANK YOU" or "PAYMENT, THANK YOU"; Capital One's
+      // checking says "to Capital One card ending 1234", its card "AUTOPAY PYMT"; Bank of
+      // America's checking "CREDIT CARD Bill Payment").
+      "PAYMENT - THANK YOU",
+      "PAYMENT, THANK YOU",
+      "CAPITAL ONE AUTOPAY",
+      "CAPITAL ONE CARD ENDING",
+      "CREDIT CARD BILL PAYMENT",
       "CREDIT CARD PAYMENT",
       "CREDIT CRD AUTOPAY",
       "CREDIT CRD EPAY",
