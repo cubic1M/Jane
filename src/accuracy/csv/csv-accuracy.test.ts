@@ -14,6 +14,7 @@ const ALLOWED_DROP = 0.03;
 const COUNTS = new Set(["extraRows", "falseDoubleCharges"]);
 // Counts and errors, where lower is better.
 const LOWER_IS_BETTER = new Set([
+  "lineErrorWhereKnown",
   "extraRows",
   "falseDoubleCharges",
   "dollarError",

@@ -4,7 +4,7 @@ import { categoryOf } from "@/categorize/taxonomy";
 import { LOOKBACK_MONTHS } from "@/config/detection";
 import { MERCHANT_SEED } from "@/config/merchant-seed";
 import { mappingChoices, type ColumnMapping } from "@/data-sources/csv/column-mapping";
-import { readCsvFile } from "@/data-sources/csv/csv-source";
+import { readCsvFile, type DayBalance } from "@/data-sources/csv/csv-source";
 import { parseCsv } from "@/data-sources/csv/parse-csv";
 import { normalizeDescription } from "@/data-sources/merchant";
 import { ACCOUNT_KINDS } from "@/data-sources/types";
@@ -18,6 +18,7 @@ import { monthsBefore } from "@/detection/units";
 import { dailyNetWorth } from "@/insights/net-worth-series";
 import { kindOf } from "@/insights/spending";
 import type { ScopedDb } from "@/lib/db-scoped";
+import { derivedBalances } from "@/lib/import/balances";
 import { renderPerson, type BenchFile } from "./layouts";
 import { balanceOn, monthEnds, netWorthOn, type CsvPerson, type TrueFinding } from "./people";
 
@@ -94,6 +95,8 @@ export type Upload = {
   rows: Row[];
   input: DetectionInput;
   findings: Candidate[];
+  // Balances kept for the net worth line: the statements' own, then month ends worked back.
+  snapshots: (DayBalance & { accountId: string })[];
 };
 
 const clean = (s: string) => normalizeDescription(s);
@@ -114,6 +117,9 @@ export async function runUpload(person: CsvPerson): Promise<Upload> {
   }
   const used = new Set<string>();
   let extra = 0;
+  // Each account's closing balance by day, from the files' running-balance columns (later files
+  // win, as an upload's batch keeps them).
+  const fileBalances = new Map<string, Map<string, number>>();
   for (const account of person.accounts) {
     const own = files.filter((f) => f.account === account.id);
     const seen = new Set<string>();
@@ -128,6 +134,9 @@ export async function runUpload(person: CsvPerson): Promise<Upload> {
         failedFiles.push(f.name);
         return [];
       }
+      const days = fileBalances.get(account.id) ?? new Map<string, number>();
+      for (const b of read.balances ?? []) days.set(b.date, b.balanceCents);
+      fileBalances.set(account.id, days);
       return read.transactions;
     });
     const unique = parsed.filter((t) => {
@@ -160,13 +169,38 @@ export async function runUpload(person: CsvPerson): Promise<Upload> {
       });
     }
   }
+  // The balance the person typed, else the statement's latest (keepFileBalances).
+  const latestInFile = (id: string) => {
+    const days = [...(fileBalances.get(id) ?? new Map<string, number>())].sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
+    return days.length > 0 ? days[days.length - 1][1] : null;
+  };
   const accounts = person.accounts.map((a) => ({
     id: a.id,
     type: ACCOUNT_KINDS[a.kind].type,
     subtype: ACCOUNT_KINDS[a.kind].subtype,
     name: a.name,
-    currentBalanceCents: a.typesBalance ? balanceOn(person, a, person.asOf) : null,
+    currentBalanceCents: a.typesBalance ? balanceOn(person, a, person.asOf) : latestInFile(a.id),
   }));
+  // The net worth line's balances (rebuildUploadedBalances): the statements' own days, and month
+  // ends worked back from today's balance where the statement gave none.
+  const snapshots = accounts.flatMap((a) => {
+    const file = [...(fileBalances.get(a.id) ?? new Map<string, number>())].map(
+      ([date, balanceCents]) => ({ accountId: a.id, date, balanceCents }),
+    );
+    if (a.currentBalanceCents === null) return file;
+    const fileDays = new Set(file.map((b) => b.date));
+    const derived = derivedBalances(
+      a.type,
+      a.currentBalanceCents,
+      rows.filter((r) => r.accountId === a.id),
+      person.asOf,
+    )
+      .filter((b) => !fileDays.has(b.date))
+      .map((b) => ({ ...b, accountId: a.id }));
+    return [...file, ...derived];
+  });
   const paid = new Set(cardPaymentOutflows(rows, accounts));
   for (const r of rows) {
     if (paid.has(r.id)) {
@@ -187,7 +221,7 @@ export async function runUpload(person: CsvPerson): Promise<Upload> {
     },
     MERCHANT_SEED,
   );
-  return { person, files, failedFiles, rows, input, findings: detect(input) };
+  return { person, files, failedFiles, rows, input, findings: detect(input), snapshots };
 }
 
 // --- Scores -----------------------------------------------------------------------------------
@@ -223,6 +257,8 @@ export type PersonScore = {
   income: { truth: number; absError: number };
   netWorth: { truth: number; jane: number };
   line: { points: number; shown: number; absError: number; scale: number };
+  // Whether Jane knew every account's balance today (typed, or from the statement).
+  balancesKnown: boolean;
   mistakes: Mistake[];
 };
 
@@ -428,10 +464,11 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
       type: a.type,
       currentBalanceCents: a.currentBalanceCents,
     })),
-    snapshots: [],
+    snapshots: up.snapshots,
     owned: [],
-    // Upload-only accounts start the day they're made: today.
-    firstDay: person.asOf,
+    // The person's first day with Jane: the account made today, or its first balance if
+    // earlier, as the home hub's line starts (src/lib/hub/net-worth-history.ts).
+    firstDay: up.snapshots.reduce((first, s) => (s.date < first ? s.date : first), person.asOf),
     asOf: person.asOf,
     todayCents,
   });
@@ -469,6 +506,7 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
     income,
     netWorth: { truth: truthNet, jane: todayCents },
     line,
+    balancesKnown: up.input.accounts.every((a) => a.currentBalanceCents !== null),
     mistakes,
   };
 }
@@ -493,7 +531,7 @@ export type CsvScoreboard = {
   spendingError: number;
   incomeError: number;
   netWorth: { right: number; absError: number };
-  line: { coverage: number; error: number };
+  line: { coverage: number; error: number; errorWhereKnown: number; peopleKnown: number };
 };
 
 export function summarize(scores: readonly PersonScore[]): CsvScoreboard {
@@ -550,6 +588,13 @@ export function summarize(scores: readonly PersonScore[]): CsvScoreboard {
       absError: sum((s) => Math.abs(s.netWorth.jane - s.netWorth.truth)),
     },
     line: {
+      errorWhereKnown:
+        sum((s) => (s.balancesKnown ? s.line.absError : 0)) /
+        Math.max(
+          1,
+          sum((s) => (s.balancesKnown ? s.line.scale : 0)),
+        ),
+      peopleKnown: scores.filter((s) => s.balancesKnown).length,
       coverage: ratio(
         lineShown,
         sum((s) => s.line.points),
