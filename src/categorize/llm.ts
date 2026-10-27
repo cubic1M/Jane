@@ -71,20 +71,29 @@ export async function classifyMerchants(merchants: string[]): Promise<Map<string
   const results = new Map<string, PfcDetailed>();
   if (!process.env.ANTHROPIC_API_KEY || merchants.length === 0) return results;
 
+  // The batches at once rather than one after another: the same calls, less waiting.
+  const batches = [];
   for (let i = 0; i < merchants.length; i += BATCH_SIZE) {
-    const batch = merchants.slice(i, i + BATCH_SIZE);
-    try {
-      for (const [merchant, category] of await classifyBatch(batch))
-        results.set(merchant, category);
-    } catch (error) {
-      if (error instanceof Anthropic.APIError) {
-        console.error("Merchant categorization failed", { status: error.status });
-      } else if (error instanceof SyntaxError) {
-        console.error("Merchant categorization returned invalid JSON");
-      } else {
-        throw error;
+    batches.push(merchants.slice(i, i + BATCH_SIZE));
+  }
+  const answers = await Promise.all(
+    batches.map(async (batch) => {
+      try {
+        return await classifyBatch(batch);
+      } catch (error) {
+        if (error instanceof Anthropic.APIError) {
+          console.error("Merchant categorization failed", { status: error.status });
+        } else if (error instanceof SyntaxError) {
+          console.error("Merchant categorization returned invalid JSON");
+        } else {
+          throw error;
+        }
+        return new Map<string, PfcDetailed>();
       }
-    }
+    }),
+  );
+  for (const batch of answers) {
+    for (const [merchant, category] of batch) results.set(merchant, category);
   }
   return results;
 }

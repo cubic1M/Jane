@@ -9,6 +9,10 @@ export const UPLOAD_REASSURANCE =
 // The account choice on /import for "a new account from these files".
 export const NEW_ACCOUNT_ID = "new";
 
+// The header the /import page's script sends with an upload (src/app/api/import/route.ts):
+// a form on another site can't set it.
+export const IMPORT_HEADER = "x-jane-import";
+
 // Monthly charges and bills need a few months to show a pattern.
 export const SUGGESTED_UPLOAD_MONTHS = 3;
 // Files covering fewer days than this get the "add more months" hint.

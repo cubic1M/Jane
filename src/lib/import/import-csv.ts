@@ -82,10 +82,16 @@ export type ImportCounts = {
 // Each file's format and transaction count, for the upload_succeeded event.
 export type ImportedFile = { format: string; rows: number };
 
+// The steps of an upload after the files are read, for the progress bar on /import.
+export type ImportStage = { stage: "sorting"; rows: number } | { stage: "saving" };
+
+// Reads, sorts and saves an upload. Claude isn't asked about merchants no rule knows: that
+// happens after the response (categorizeLeftovers), so the upload is quick.
 export async function importCsvFiles(
   db: ScopedDb,
   accountId: string,
   files: CsvFile[],
+  { onStage }: { onStage?: (stage: ImportStage) => void } = {},
 ): Promise<ImportCounts & { files: ImportedFile[] }> {
   const account = await db.accounts.findUnique({ where: { id: accountId } });
   const kind = account && accountKindOf(account.type, account.subtype);
@@ -108,8 +114,10 @@ export async function importCsvFiles(
     seen.add(t.externalId);
     return true;
   });
-  const categorized = await categorizeTransactions(unique, db);
+  onStage?.({ stage: "sorting", rows: unique.length });
+  const categorized = await categorizeTransactions(unique, db, { askClaude: false });
 
+  onStage?.({ stage: "saving" });
   const { count } = await db.transactions.createMany({
     data: categorized.map((t) => ({
       userId: db.userId,

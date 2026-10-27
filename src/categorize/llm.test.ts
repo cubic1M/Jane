@@ -93,4 +93,25 @@ describe("classifyMerchants", () => {
 
     expect(create).toHaveBeenCalledTimes(3);
   });
+
+  it("sends the batches at once, not one after another, and keeps the others if one fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    create
+      .mockImplementationOnce(async () => {
+        await gate;
+        return reply([{ merchant: "m0", category: "FOOD_AND_DRINK_GROCERIES" }]);
+      })
+      .mockImplementationOnce(async () => {
+        throw new APIError("overloaded");
+      });
+    const merchants = Array.from({ length: 60 }, (_, i) => `m${i}`);
+
+    const answer = classifyMerchants(merchants);
+    // Both started while the first is still waiting.
+    await vi.waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    release();
+    expect(await answer).toEqual(new Map([["m0", "FOOD_AND_DRINK_GROCERIES"]]));
+  });
 });

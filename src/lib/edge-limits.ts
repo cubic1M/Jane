@@ -30,6 +30,9 @@ export type EdgeKind = "api" | "action" | "authCallback";
 export function edgeKind({ method, pathname, headers }: EdgeRequest): EdgeKind | null {
   if (pathname.startsWith("/api/cron/")) return null;
   if (pathname.startsWith("/api/auth/callback/")) return "authCallback";
+  // The upload form's post (src/app/api/import/route.ts) is counted with the server actions it
+  // replaced: a page's background calls (the activity log, scan polling) mustn't use it up.
+  if (pathname === "/api/import") return "action";
   if (pathname.startsWith("/api/")) return "api";
   if (method === "POST" && headers.has("next-action")) return "action";
   return null;

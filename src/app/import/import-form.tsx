@@ -1,9 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Fragment, useRef, useState, useTransition } from "react";
-import { confirmImport, previewImport, type PreviewResult } from "./actions";
+import { previewImport, type PreviewResult } from "./actions";
 import { ColumnPicker } from "./column-picker";
-import { NEW_ACCOUNT_ID, SUGGESTED_UPLOAD_DAYS, SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
+import { ImportProgress } from "./import-progress";
+import { readEvents, type ImportStep } from "./progress";
+import {
+  IMPORT_HEADER,
+  NEW_ACCOUNT_ID,
+  SUGGESTED_UPLOAD_DAYS,
+  SUGGESTED_UPLOAD_MONTHS,
+} from "@/config/import";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import { formatCents } from "@/lib/money";
@@ -24,6 +32,9 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   const [pickers, setPickers] = useState<Record<number, MappingChoices>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  // The import's progress, as /api/import reports each step (null: not importing).
+  const [importing, setImporting] = useState<{ step: ImportStep | null; rows: number | null }>();
   // A first upload makes its account from the file: its name and type come from the preview
   // until the person changes them.
   const [account, setAccount] = useState(accounts[0]?.id ?? NEW_ACCOUNT_ID);
@@ -60,12 +71,56 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
     });
   }
 
-  function onConfirm() {
+  // Posts the upload and follows its steps as the server streams them, then opens the report.
+  async function onConfirm() {
     setError(null);
-    startTransition(async () => {
-      const result = await confirmImport(formData());
-      if (!result.ok) setError(result.error);
-    });
+    setImporting({ step: null, rows: null });
+    const failed = (text: string) => {
+      setImporting(undefined);
+      setError(text);
+    };
+    try {
+      const response = await fetch("/api/import", {
+        method: "POST",
+        headers: { [IMPORT_HEADER]: "1" },
+        body: formData(),
+      });
+      if (!response.ok || !response.body) {
+        // JSON from the route, or plain text from the rate limit in front of it.
+        const text = await response.text().catch(() => "");
+        let message = text.trim();
+        try {
+          message = (JSON.parse(text) as { error?: string }).error ?? "";
+        } catch {
+          // Plain text: shown as it is.
+        }
+        return failed(message || "The upload didn't go through. Try again.");
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const read = readEvents(buffer + decoder.decode(value, { stream: true }));
+        buffer = read.rest;
+        for (const event of read.events) {
+          if ("stage" in event) {
+            setImporting((now) => ({
+              step: event.stage,
+              rows: event.stage === "sorting" ? event.rows : (now?.rows ?? null),
+            }));
+          } else if (event.type === "error") {
+            return failed(event.text);
+          } else {
+            return router.push(event.next);
+          }
+        }
+      }
+      failed("The upload stopped before it finished. Try again.");
+    } catch {
+      failed("The upload didn't go through. Check your connection and try again.");
+    }
   }
 
   const files = preview?.ok ? preview.files : [];
@@ -150,15 +205,21 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
       </label>
 
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={pending} className={SECONDARY_BUTTON}>
+        <button type="submit" disabled={pending || !!importing} className={SECONDARY_BUTTON}>
           {pending && !preview ? "Reading…" : preview ? "Preview again" : "Preview"}
         </button>
         {ready && (
-          <button type="button" onClick={onConfirm} disabled={pending} className={PRIMARY_BUTTON}>
-            {pending ? "Importing…" : `Import ${plural(total, "transaction")}`}
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending || !!importing}
+            className={PRIMARY_BUTTON}
+          >
+            {importing ? "Importing…" : `Import ${plural(total, "transaction")}`}
           </button>
         )}
       </div>
+      {importing && <ImportProgress step={importing.step} rows={importing.rows} />}
 
       {preview && !preview.ok && <Alert>{preview.error}</Alert>}
       {error && <Alert>{error}</Alert>}
