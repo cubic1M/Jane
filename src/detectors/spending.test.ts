@@ -91,6 +91,19 @@ describe("on the eight sample people", () => {
     expect(fire("debt").find((s) => s.topic === "low_balance")!.worthKind).toBe("risk");
   });
 
+  it("says nothing about low cash when a deposit account's balance is unknown", () => {
+    // An upload without a balance is not $0 in the bank.
+    const unknown = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      accounts: d.accounts.map((a) =>
+        a.type === "depository" ? { ...a, balanceCents: 0, balanceKnown: false } : a,
+      ),
+    });
+    expect(topics("renter")).toContain("low_balance");
+    expect(topics("renter", unknown)).not.toContain("low_balance");
+    expect(topics("renter", unknown)).not.toContain("emergency_fund");
+  });
+
   it("doesn't tell the well-off that their cash is low", () => {
     for (const id of ["equity", "preretire", "retiree", "family", "owner"]) {
       expect(topics(id), id).not.toContain("low_balance");

@@ -49,6 +49,11 @@ export function monthlySpendCents(data: ProfileInput, months: number): number {
   return months > 0 ? Math.round(spent / months) : 0;
 }
 
+// Whether every deposit account has a balance: an upload may not give one, and then cash is
+// unknown, not $0 (QA round 23: "You hold $0.00 against ...").
+export const cashKnown = (data: ProfileInput) =>
+  data.accounts.filter((a) => a.type === "depository").every((a) => a.balanceKnown !== false);
+
 export const liquidCents = (data: ProfileInput) =>
   data.accounts.filter((a) => a.type === "depository").reduce((s, a) => s + a.balanceCents, 0);
 
