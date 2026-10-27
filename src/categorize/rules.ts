@@ -134,7 +134,35 @@ const RULES: readonly Rule[] = [
   // Income
   {
     category: "INCOME_SALARY",
-    keywords: ["PAYROLL", "DIRECT DEP", "DIR DEP", "SALARY"],
+    keywords: [
+      "PAYROLL",
+      "DIRECT DEP",
+      "DIR DEP",
+      "SALARY",
+      // How banks and payroll companies write pay (overnight upload QA: "DIRECT DEPOSIT" and
+      // Gusto, ADP and Rippling deposits were left for Claude, so pay was missing until then).
+      "DIRECT DEPOSIT",
+      "DIR DEPOSIT",
+      "GUSTO",
+      "PAYCHEX",
+      "ADP WAGE",
+      "WAGE PAY",
+      "RIPPLING",
+    ],
+    direction: "in",
+  },
+  // Cash and cheques paid in at an ATM, a branch or by phone: money in, not income Jane can name.
+  {
+    category: "TRANSFER_IN_DEPOSIT",
+    keywords: [
+      "MOBILE DEPOSIT",
+      "REMOTE DEPOSIT",
+      "ATM CASH DEPOSIT",
+      "ATM DEPOSIT",
+      "CASH DEPOSIT",
+      "CHECK DEPOSIT",
+      "BRANCH DEPOSIT",
+    ],
     direction: "in",
   },
   // Social Security and pensions: income, not a refund (accuracy bench: a retiree's whole
