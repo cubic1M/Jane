@@ -1,6 +1,7 @@
 import type { PlanMoveView, TaxPlanView } from "@/lib/tax-plan";
-import { shortDate } from "./sources/source";
+
 import type { MessageAction, MessageRefs } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // The year-round tax plan in the chat (spec step 167): a move that's open now, with its
 // deadline and what Jane prepared (at the levels that let it act, already on the
@@ -18,13 +19,13 @@ const refsOf = (m: PlanMoveView): MessageRefs => ({
 export function planMoveMessage(m: PlanMoveView): Message {
   if (m.handled === "added") {
     return {
-      body: `Tax move: ${m.title}, by ${shortDate(m.deadline)}. ${m.detail} I've put it on your deadlines.`,
+      body: `Tax move: ${m.title}, by ${dayLabel(m.deadline)}. ${m.detail} I've put it on your deadlines.`,
       refs: refsOf(m),
       actions: [{ id: "open", label: "See your tax plan", kind: "link", href: PLAN_HREF }],
     };
   }
   return {
-    body: `Tax move: ${m.title}, by ${shortDate(m.deadline)}. ${m.detail} Want it on your deadlines?`,
+    body: `Tax move: ${m.title}, by ${dayLabel(m.deadline)}. ${m.detail} Want it on your deadlines?`,
     refs: refsOf(m),
     actions: [
       { id: "tax.plan_add", label: "Add to my deadlines", kind: "primary" },
@@ -40,7 +41,7 @@ const status = (m: PlanMoveView, today: string) =>
     : m.handled === "no"
       ? "not for you"
       : m.opensOn > today
-        ? `I'll bring it up ${shortDate(m.opensOn)}`
+        ? `I'll bring it up ${dayLabel(m.opensOn)}`
         : "open now";
 
 export function planReply(plan: TaxPlanView, today: string): Message {
@@ -52,7 +53,7 @@ export function planReply(plan: TaxPlanView, today: string): Message {
     };
   }
   const lines = plan.moves.map(
-    (m) => `- By ${shortDate(m.deadline)}: ${m.title} (${status(m, today)})`,
+    (m) => `- By ${dayLabel(m.deadline)}: ${m.title} (${status(m, today)})`,
   );
   return {
     body: `You have ${plan.moves.length} tax ${plan.moves.length === 1 ? "move" : "moves"} left for ${plan.year}, by deadline.\n${lines.join("\n")}`,

@@ -111,6 +111,7 @@ export async function loadMoneyArea(
         short: true,
         title: true,
         worthCents: true,
+        worthKind: true,
         urgency: true,
         why: true,
         actionLabel: true,
@@ -152,6 +153,7 @@ export async function loadMoneyArea(
       topic: s.topic,
       summary: s.short || s.headline || s.title,
       worthCents: s.worthCents,
+      worthKind: s.worthKind,
       urgency: s.urgency,
     })),
     lows: forecastAccounts(input, FORECAST_DAYS).map((f) => ({
@@ -216,7 +218,11 @@ export async function loadMoneyArea(
         total: goals.length,
         onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,
       },
-      debt: { accounts: debt.lines.length, owedCents: debt.totalOwedCents },
+      debt: {
+        accounts: debt.lines.length,
+        owedCents: debt.totalOwedCents,
+        known: debt.lines.filter((l) => l.balanceCents !== null).length,
+      },
     },
     rules: rules.length,
     actions: Object.fromEntries(

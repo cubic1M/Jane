@@ -41,10 +41,11 @@ import { matchCategory, type ActVerb, type Intent } from "./intents";
 import { nameMatches } from "./names";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
-import { dateAndDays, inDays, shortDate, snoozeButton, things } from "./sources/source";
+import { dateAndDays, inDays, snoozeButton, things } from "./sources/source";
 import type { PreferenceDraft } from "./preferences";
 import type { MessageAction, MessageRefs } from "./types";
 import { shiftMonth } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // Jane's answers to what the person typed (spec step 84), from the same loaders as the
 // pages. Pure: each takes the numbers and returns fixed wording in Jane's voice, with the
@@ -255,12 +256,12 @@ function effectLines(result: AffordResult, verdictSaidSafe = false): string[] {
     // Already in the first sentence.
   } else if (result.safe.beforeCents === result.safe.afterCents) {
     lines.push(
-      `Safe to spend stays ${fmt(result.safe.beforeCents)}${result.safe.payday ? ` until ${shortDate(result.safe.payday)}` : ""}, since this comes after your next payday.`,
+      `Safe to spend stays ${fmt(result.safe.beforeCents)}${result.safe.payday ? ` until ${dayLabel(result.safe.payday)}` : ""}, since this comes after your next payday.`,
     );
   } else {
     lines.push(
       safeLine(
-        result.safe.payday ? shortDate(result.safe.payday) : null,
+        result.safe.payday ? dayLabel(result.safe.payday) : null,
         fmt(result.safe.beforeCents),
         fmt(result.safe.afterCents),
       ),
@@ -555,7 +556,7 @@ export function comingUpReply(
   const total = shown.reduce((sum, r) => sum + (r.amountCents ?? 0), 0);
   const lines = shown.map(
     (r) =>
-      `- ${shortDate(r.date)} (${inDays(r.daysLeft)}): ${r.label}${r.amountCents !== null ? `, ${fmt(r.amountCents)}` : ""}`,
+      `- ${dayLabel(r.date)} (${inDays(r.daysLeft)}): ${r.label}${r.amountCents !== null ? `, ${fmt(r.amountCents)}` : ""}`,
   );
   return reply(
     `${things(shown.length)} ${shown.length === 1 ? "is" : "are"} ${span}${total > 0 ? `, ${fmt(total)} in all` : ""}.\n${lines.join("\n")}`,
@@ -572,7 +573,7 @@ export function greetingReply(
 ): Reply {
   if (thanks) return reply("You're welcome! I'm here whenever you need me.");
   const money = safe
-    ? ` You have ${fmt(safe.safeCents)} safe to spend${safe.payday ? ` until ${asOf ? dateAndDays(safe.payday, asOf) : shortDate(safe.payday)}` : ""}.`
+    ? ` You have ${fmt(safe.safeCents)} safe to spend${safe.payday ? ` until ${asOf ? dateAndDays(safe.payday, asOf) : dayLabel(safe.payday)}` : ""}.`
     : "";
   return reply(
     `Hi!${money} Ask me anything about your money, like "${EXAMPLES[0]}".`,
@@ -587,7 +588,7 @@ export function safeReply(
   if (!safe) {
     return reply(AFFORD_COPY.noChecking, [link("Add your accounts", "/connect")]);
   }
-  const payday = safe.payday && (asOf ? dateAndDays(safe.payday, asOf) : shortDate(safe.payday));
+  const payday = safe.payday && (asOf ? dateAndDays(safe.payday, asOf) : dayLabel(safe.payday));
   return reply(
     `You have ${fmt(safe.safeCents)} safe to spend${payday ? ` until your next payday, ${payday}` : ""}. That's after upcoming bills, what's left in your budgets and what goes to your goals.`,
     [link("See today", "/home")],

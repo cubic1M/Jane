@@ -1,8 +1,9 @@
 import type { AuditRecordsView } from "@/lib/audit-records";
 import { formatCents } from "@/lib/money";
 import type { Retention } from "@/planning/audit-records";
-import { shortDate } from "./sources/source";
+
 import type { MessageAction, MessageRefs } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // Audit-ready records in the chat (spec step 171): a year's records that can go soon, the
 // audit pack and what it still needs, and "how long should I keep my tax records".
@@ -15,8 +16,8 @@ export function retentionMessage(r: Retention): Message {
   const can = r.status === "can_go";
   return {
     body: can
-      ? `Your ${r.year} tax records (${r.rule.toLowerCase()}) passed their keep-until date of ${shortDate(r.keepUntil)}. Check nothing's needed for a later year, then you can throw them away. I never delete anything. Want a reminder on your deadlines?`
-      : `Your ${r.year} tax records can be thrown away after ${shortDate(r.keepUntil)} (${r.rule.toLowerCase()}). I never delete anything; want a reminder on your deadlines?`,
+      ? `Your ${r.year} tax records (${r.rule.toLowerCase()}) passed their keep-until date of ${dayLabel(r.keepUntil)}. Check nothing's needed for a later year, then you can throw them away. I never delete anything. Want a reminder on your deadlines?`
+      : `Your ${r.year} tax records can be thrown away after ${dayLabel(r.keepUntil)} (${r.rule.toLowerCase()}). I never delete anything; want a reminder on your deadlines?`,
     refs: { taxYear: r.year },
     actions: [
       { id: "tax.records_remind", label: "Remind me", kind: "primary" },
@@ -44,7 +45,7 @@ export function recordsReply(view: AuditRecordsView): Message {
         ? [`Counted but not in the pack for lack of a source:\n${gaps.join("\n")}`]
         : []),
       keep
-        ? `Keep these records until ${shortDate(keep.keepUntil)} (${keep.rule.toLowerCase()}).`
+        ? `Keep these records until ${dayLabel(keep.keepUntil)} (${keep.rule.toLowerCase()}).`
         : "",
     ]
       .filter(Boolean)

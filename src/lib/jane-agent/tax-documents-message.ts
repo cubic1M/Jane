@@ -3,8 +3,9 @@ import type { CollectedForm, TaxDocumentsView } from "@/lib/tax-documents";
 import { formatCents } from "@/lib/money";
 import { COMPARED } from "@/planning/tax-document-check";
 import { listOf } from "@/planning/tax-profile";
-import { shortDate } from "./sources/source";
+
 import type { MessageAction, MessageRefs } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // Tax forms that collect themselves, in the chat (spec step 166): a form that doesn't match
 // the accounts (flagged, not used), the forms collected (ticked off by Jane at the levels
@@ -65,7 +66,7 @@ export function collectedMessage(view: TaxDocumentsView, acts: boolean): Message
 
 export function missingMessage(f: CollectedForm, year: number): Message {
   return {
-    body: `Your ${formName(f)} for ${year} hasn't come through yet: it was due by ${shortDate(f.by)}. I'll keep looking every day. Want a reminder to ask them?`,
+    body: `Your ${formName(f)} for ${year} hasn't come through yet: it was due by ${dayLabel(f.by)}. I'll keep looking every day. Want a reminder to ask them?`,
     refs: { taxForm: f.key, taxYear: year },
     actions: [
       { id: "tax.doc_chase", label: "Remind me", kind: "primary" },
@@ -96,7 +97,7 @@ export function documentsReply(view: TaxDocumentsView): Message {
     }
     if (f.received) return `- ${formName(f)}: you have it`;
     if (f.mayNotSend) return `- ${formName(f)}: may not send one (below the reporting threshold)`;
-    return `- ${formName(f)}: usually ready by ${shortDate(f.by)}${view.collecting ? ", I'll collect it" : ""}`;
+    return `- ${formName(f)}: usually ready by ${dayLabel(f.by)}${view.collecting ? ", I'll collect it" : ""}`;
   };
   return {
     body: `You have ${view.forms.length} tax ${view.forms.length === 1 ? "form" : "forms"} to expect for ${view.year}.\n${view.forms.map(line).join("\n")}`,

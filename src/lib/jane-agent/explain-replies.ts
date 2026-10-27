@@ -3,8 +3,9 @@ import { formatCents } from "@/lib/money";
 import { optionLabel, type Comparison } from "@/planning/compare";
 import { optionsBlock } from "./block-data";
 import type { Reply } from "./replies";
-import { sentence, shortDate } from "./sources/source";
+import { sentence } from "./sources/source";
 import type { MessageAction } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // "Why?" and "Show options" (spec step 90): the quick replies on a finding, answered with
 // the card's own fixed wording (the same as finding_details and the card page), so they
@@ -12,7 +13,7 @@ import type { MessageAction } from "./types";
 // can decide right there.
 
 // "Aug 14", Jane's way, when it's a plain date.
-const dayOf = (date: string) => (/^\d{4}-\d{2}-\d{2}$/.test(date) ? shortDate(date) : date);
+const dayOf = (date: string) => (/^\d{4}-\d{2}-\d{2}$/.test(date) ? dayLabel(date) : date);
 
 // What's left of a finding's buttons for the answer: the decision, not the quick replies.
 const decisionButtons = (actions: readonly MessageAction[]) =>

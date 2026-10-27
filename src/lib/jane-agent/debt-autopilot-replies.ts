@@ -4,9 +4,10 @@ import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { formatCents } from "@/lib/money";
 import { dueMoveLine } from "@/planning/due-dates";
 import type { Reply } from "./replies";
-import { shortDate } from "./sources/source";
+
 import type { MessageAction } from "./types";
 import { formatRate } from "@/lib/percent";
+import { dayLabel } from "@/lib/day-label";
 
 // Jane's answers about debts on autopilot (spec step 117). Pure.
 
@@ -27,7 +28,7 @@ export function debtAutopilotReply(data: DebtAutopilot): Reply {
     "Applying for credit, moving money and signing always wait for your tap.",
   ];
   if (data.planStartedOn)
-    lines.push(`I started your payoff plan on ${shortDate(data.planStartedOn)}.`);
+    lines.push(`I started your payoff plan on ${dayLabel(data.planStartedOn)}.`);
   return { body: lines.join("\n"), actions: [SETTINGS, LOANS], refs: {} };
 }
 
@@ -44,10 +45,10 @@ export function debtDueReply(data: DebtAutopilot): Reply {
   const lines = [
     first.overdue
       ? `Your ${first.name} is overdue: pay it first.`
-      : `Your next debt payment is ${first.paymentCents === null ? "on" : `${formatCents(first.paymentCents)} on`} ${shortDate(first.due)}, for your ${first.name}.`,
+      : `Your next debt payment is ${first.paymentCents === null ? "on" : `${formatCents(first.paymentCents)} on`} ${dayLabel(first.due)}, for your ${first.name}.`,
     ...data.upcoming.map(
       (d) =>
-        `- ${d.overdue ? "Overdue" : shortDate(d.due)}: ${d.name}${d.paymentCents === null ? "" : `, ${formatCents(d.paymentCents)}`}`,
+        `- ${d.overdue ? "Overdue" : dayLabel(d.due)}: ${d.name}${d.paymentCents === null ? "" : `, ${formatCents(d.paymentCents)}`}`,
     ),
     ...data.dueMoves.map(dueMoveLine),
   ];

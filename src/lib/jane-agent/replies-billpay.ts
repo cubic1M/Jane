@@ -3,8 +3,9 @@ import { formatCents } from "@/lib/money";
 import type { BillPayItem, BillPayView } from "@/lib/money-movement/bill-pay";
 import type { Reply } from "./replies";
 import { STAND_IN_NOTE } from "./replies-paycheck";
-import { dateAndDays, shortDate } from "./sources/source";
+import { dateAndDays } from "./sources/source";
 import type { MessageAction } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // Bills paid on time in the chat (spec step 145): what Jane scheduled on its own, what it'd
 // like to pay (one tap), and a due date worth moving when it lands before payday.
@@ -29,7 +30,7 @@ export function billPayReply(item: BillPayItem, asOf: string, payday: string | n
   if (item.status === "scheduled") {
     const who = item.by === "autopilot" ? "by myself (autopilot)" : "as you said";
     return {
-      body: `${due} I scheduled ${formatCents(item.amountCents)} from checking for ${shortDate(item.runOn)}, ${who}, so it lands on time. You can undo it on Transfers until then. ${STAND_IN_NOTE}`,
+      body: `${due} I scheduled ${formatCents(item.amountCents)} from checking for ${dayLabel(item.runOn)}, ${who}, so it lands on time. You can undo it on Transfers until then. ${STAND_IN_NOTE}`,
       actions: [SEE_TRANSFERS],
       refs: { billKey: item.planKey },
     };
@@ -37,7 +38,7 @@ export function billPayReply(item: BillPayItem, asOf: string, payday: string | n
   if (item.status === "ask") {
     const what = amountWords({ amountCents: item.amountCents, full: item.full }, bill.minimumCents);
     return {
-      body: `${due} Nothing is set to pay it yet. Checking can cover ${what} on ${shortDate(item.runOn)} and still keep ${formatCents(PAYCHECK_CUSHION_CENTS)} every day of the forecast. Want me to schedule it? ${STAND_IN_NOTE}`,
+      body: `${due} Nothing is set to pay it yet. Checking can cover ${what} on ${dayLabel(item.runOn)} and still keep ${formatCents(PAYCHECK_CUSHION_CENTS)} every day of the forecast. Want me to schedule it? ${STAND_IN_NOTE}`,
       actions: [
         { id: "bill.pay", label: "Pay it", kind: "primary" },
         { id: "bill.skip", label: "I'll pay it myself", kind: "secondary" },
@@ -49,7 +50,7 @@ export function billPayReply(item: BillPayItem, asOf: string, payday: string | n
   const short = `${due} Paying even the ${formatCents(bill.minimumCents)} minimum would take checking below ${formatCents(PAYCHECK_CUSHION_CENTS)} before your next paycheck, so I haven't scheduled it.`;
   return {
     body: item.moveTo
-      ? `${short} It lands before payday${payday ? ` (${shortDate(payday)})` : ""}: ask the lender to move your due date to ${shortDate(item.moveTo)} or later. Most let you pick it, and then it's paid from the paycheck.`
+      ? `${short} It lands before payday${payday ? ` (${dayLabel(payday)})` : ""}: ask the lender to move your due date to ${dayLabel(item.moveTo)} or later. Most let you pick it, and then it's paid from the paycheck.`
       : `${short} Pay what you can by then to avoid a late fee.`,
     actions: [],
     refs: { billKey: item.planKey },
@@ -73,16 +74,16 @@ export function billsReply(view: BillPayView | null, asOf: string): Reply {
     };
   }
   const lines = view.items.map((item) => {
-    const name = `${item.bill.name}, due ${shortDate(item.bill.dueOn)}`;
+    const name = `${item.bill.name}, due ${dayLabel(item.bill.dueOn)}`;
     switch (item.status) {
       case "autopay":
         return `${name}: your own autopay covers it.`;
       case "scheduled":
-        return `${name}: ${formatCents(item.amountCents)} scheduled for ${shortDate(item.runOn)}.`;
+        return `${name}: ${formatCents(item.amountCents)} scheduled for ${dayLabel(item.runOn)}.`;
       case "ask":
-        return `${name}: not set to be paid yet; I can pay ${formatCents(item.amountCents)} on ${shortDate(item.runOn)}.`;
+        return `${name}: not set to be paid yet; I can pay ${formatCents(item.amountCents)} on ${dayLabel(item.runOn)}.`;
       default:
-        return `${name}: checking would run short${item.moveTo ? `, so moving the due date to ${shortDate(item.moveTo)} would help` : ""}.`;
+        return `${name}: checking would run short${item.moveTo ? `, so moving the due date to ${dayLabel(item.moveTo)} would help` : ""}.`;
     }
   });
   const open = view.items.find((i) => i.status === "ask");

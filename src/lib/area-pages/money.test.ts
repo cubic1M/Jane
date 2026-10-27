@@ -200,6 +200,30 @@ describe("moneyTree", () => {
       expect(words(label), label).toBeLessThanOrEqual(LABEL_MAX_WORDS);
   });
 
+  // Overnight upload QA: card statements carry no balance; a cushion is an amount, not a year.
+  it("says a card balance isn't known, and shows a cushion as an amount", () => {
+    const unknown = {
+      ...FULL,
+      have: { ...FULL.have, debt: { accounts: 1, owedCents: 0, known: 0 } },
+    };
+    const loans = allItems(unknown).find((i) => i.id === "have:loans")!;
+    expect(loans.figure).toBe("Not known");
+    const cushion = {
+      ...FULL,
+      suggestions: [
+        {
+          id: "s1",
+          topic: "emergency_fund",
+          summary: "A cushion for emergencies.",
+          worthCents: 200_000,
+          urgency: "soon",
+          worthKind: "risk",
+        },
+      ],
+    };
+    expect(allItems(cushion).find((i) => i.id === "coming:emergency_fund")!.figure).toBe("$2k");
+  });
+
   it("names a branch and a label for every detector in the area", () => {
     const topics = DETECTORS.filter((d) => areaOfCapability(d.capability) === "money").map(
       (d) => d.topic,

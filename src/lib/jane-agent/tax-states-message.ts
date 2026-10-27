@@ -9,8 +9,9 @@ import {
   type Move,
   type StatePart,
 } from "@/planning/tax-states";
-import { shortDate, snoozeButton } from "./sources/source";
+import { snoozeButton } from "./sources/source";
 import type { MessageAction, MessageRefs } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // State and local taxes in the chat (spec step 165): a move Jane spotted (at the levels
 // that let it act, already counted), a move on the life-events checklist, the city income
@@ -23,8 +24,7 @@ type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 const name = (code: string) => stateName(code) ?? code;
 
-export const moveLine = (m: Move) =>
-  `from ${name(m.from)} to ${name(m.to)} on ${shortDate(m.date)}`;
+export const moveLine = (m: Move) => `from ${name(m.from)} to ${name(m.to)} on ${dayLabel(m.date)}`;
 
 export function spottedMoveMessage(residency: ResidencyView): Message | null {
   const m = residency.spotted;
@@ -48,7 +48,7 @@ export function spottedMoveMessage(residency: ResidencyView): Message | null {
 export function movingEventMessage(residency: ResidencyView, state: string | null): Message {
   const here = state ? ` from ${name(state)}` : "";
   return {
-    body: `You started a move on ${shortDate(residency.movingEvent!)}. Did you move${here} to another state? A move splits your ${residency.year} state taxes, so I'd like the date and the new state.`,
+    body: `You started a move on ${dayLabel(residency.movingEvent!)}. Did you move${here} to another state? A move splits your ${residency.year} state taxes, so I'd like the date and the new state.`,
     refs: { taxYear: residency.year },
     actions: [
       { id: "open", label: "Tell me where", kind: "link", href: STATES_HREF },
@@ -84,7 +84,7 @@ function partLine(p: StatePart, year: number): string {
     p.residence === "nonresident"
       ? `as a nonresident, on wages from your employer there`
       : p.residence === "part_year"
-        ? `lived there ${shortDate(p.from!)} to ${shortDate(p.to!)}`
+        ? `lived there ${dayLabel(p.from!)} to ${dayLabel(p.to!)}`
         : `all of ${year}`;
   if (p.kind === "none") return `${name(p.code)} (${where}): no income tax.`;
   const credit =

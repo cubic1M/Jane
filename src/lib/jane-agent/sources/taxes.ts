@@ -49,8 +49,8 @@ import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
 import type { Candidate } from "../types";
-import { shortDate, snoozeButton, type MessageSource } from "./source";
-import { monthLabel } from "@/lib/day-label";
+import { snoozeButton, type MessageSource } from "./source";
+import { dayLabel, monthLabel } from "@/lib/day-label";
 
 // Taxes (spec steps 118–127), what Jane brings up on its own:
 // - Step 118: the tax profile, asked one question at a time in one message
@@ -807,7 +807,7 @@ export const taxesSource: MessageSource = {
     for (const form of docs?.collecting ? [] : (tax.formsDue?.forms ?? [])) {
       out.push({
         kind: "heads_up",
-        body: `Your ${form.form} from ${form.from} for ${tax.formsDue!.year} is usually sent by ${shortDate(form.by)}. Have you got it?`,
+        body: `Your ${form.form} from ${form.from} for ${tax.formsDue!.year} is usually sent by ${dayLabel(form.by)}. Have you got it?`,
         refs: { taxForm: form.key, taxYear: tax.formsDue!.year },
         actions: [
           { id: "tax.form_got", label: "I have it", kind: "primary" },

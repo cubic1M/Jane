@@ -26,7 +26,8 @@ export type AheadData = {
   asOf: string;
   yearly: { monthlyCents: number; bills: number };
   deadlines: { next: Pick<Deadline, "title" | "date"> | null; soon: number };
-  debt: { accounts: number; owedCents: number };
+  // known: how many of the accounts have a balance (uploaded card statements carry none).
+  debt: { accounts: number; owedCents: number; known?: number };
   // The newest open checklist, and how many are open.
   lifeEvents: { open: number; newest: { title: string; done: number; total: number } | null };
   // Every date in the next HUB_DEADLINE_DAYS, soonest first, for the Plans & goals tree.
@@ -95,7 +96,7 @@ export function aheadTiles(d: AheadData): HubGroup[] {
     {
       label: "Paying off debt",
       href: "/debt",
-      value: d.debt.accounts > 0 ? formatCents(d.debt.owedCents) : null,
+      value: d.debt.accounts > 0 && d.debt.known !== 0 ? formatCents(d.debt.owedCents) : null,
       status:
         d.debt.accounts > 0
           ? `On ${plural(d.debt.accounts, "card or loan", "cards and loans")}`
@@ -194,6 +195,7 @@ export async function loadAheadHub(
     debt: {
       accounts: debts.length,
       owedCents: debts.reduce((sum, a) => sum + Math.max(0, a.currentBalanceCents ?? 0), 0),
+      known: debts.filter((a) => a.currentBalanceCents !== null).length,
     },
     lifeEvents: {
       open: open.length,

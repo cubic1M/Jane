@@ -5,7 +5,7 @@ import type { PayoffPlan, Strategy } from "@/planning/debt";
 import { monthAfter, type LeftOut } from "@/planning/payoff";
 import type { DebtIntent } from "./debt-intents";
 import type { Reply } from "./replies";
-import { shortDate } from "./sources/source";
+
 import type { MessageAction } from "./types";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
@@ -117,7 +117,7 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
   );
   const payment = paymentWords(debt);
   if (payment) {
-    lines.push(`You pay ${payment}${debt.nextDue ? `, next on ${shortDate(debt.nextDue)}` : ""}.`);
+    lines.push(`You pay ${payment}${debt.nextDue ? `, next on ${dayLabel(debt.nextDue)}` : ""}.`);
   }
   if (debt.payoffDate) {
     lines.push(

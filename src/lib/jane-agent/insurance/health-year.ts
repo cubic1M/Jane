@@ -3,7 +3,7 @@ import { loadHealthYear, openDisputeCards, type HealthYear } from "@/lib/insuran
 import { monthWords } from "@/lib/insurance/health-year-rules";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
-import { shortDate } from "../sources/source";
+import { dayLabel } from "@/lib/day-label";
 
 // "How much of my deductible have I met?" (spec step 200): where the person is in their
 // health plan's year: the deductible, the out-of-pocket maximum and the month at this pace,
@@ -38,7 +38,7 @@ export function healthYearLines(year: HealthYear): string[] {
   if (year.fsa) {
     lines.push(
       year.fsa.leftCents > 0
-        ? `${formatCents(year.fsa.leftCents)} is left in your FSA and it's lost after ${shortDate(year.fsa.deadline)} (${year.fsa.daysLeft} days), unless your employer allows a carryover.`
+        ? `${formatCents(year.fsa.leftCents)} is left in your FSA and it's lost after ${dayLabel(year.fsa.deadline)} (${year.fsa.daysLeft} days), unless your employer allows a carryover.`
         : "You've used all of your FSA this year.",
     );
   }
@@ -55,7 +55,7 @@ export function healthYearLines(year: HealthYear): string[] {
   }
   for (const d of year.disputes) {
     lines.push(
-      `${d.bill.provider} billed ${formatCents(d.paidCents)} on ${shortDate(d.bill.date)}, but your plan's share looks like about ${formatCents(d.shouldPayCents)}. I've opened a card so the team can dispute the ${formatCents(d.overCents)} difference.`,
+      `${d.bill.provider} billed ${formatCents(d.paidCents)} on ${dayLabel(d.bill.date)}, but your plan's share looks like about ${formatCents(d.shouldPayCents)}. I've opened a card so the team can dispute the ${formatCents(d.overCents)} difference.`,
     );
   }
   if (year.sample) lines.push("This is the demo bank's sample plan.");
