@@ -73,6 +73,32 @@ describe("upcomingBills, as the person reads them (books QA)", () => {
   });
 });
 
+describe("upcomingBills, for cash (overnight upload QA)", () => {
+  it("leaves out regular ATM withdrawals and their fees", () => {
+    const bills = upcomingBills(
+      input({
+        transactions: [
+          ...monthly(4, 1549, NETFLIX),
+          ...monthly(4, 4000, {
+            description: "ATM WITHDRAWAL",
+            merchantName: "Atm Withdrawal",
+            pfcPrimary: "TRANSFER_OUT",
+            pfcDetailed: "TRANSFER_OUT_WITHDRAWAL",
+          }),
+          ...monthly(4, 300, {
+            description: "NON-CHASE ATM FEE-WITH",
+            merchantName: "Non-Chase Atm Fee-With",
+            pfcPrimary: "BANK_FEES",
+            pfcDetailed: "BANK_FEES_ATM_FEES",
+          }),
+        ],
+      }),
+      31,
+    );
+    expect(bills.map((b) => b.merchant)).toEqual(["Netflix"]);
+  });
+});
+
 describe("incomeStreams", () => {
   it("finds recurring pay, even when the amount varies a little", () => {
     const [pay] = incomeStreams(

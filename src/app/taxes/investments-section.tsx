@@ -5,18 +5,11 @@ import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { harvestSaving } from "@/lib/jane-agent/tax-investments";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
+import { dayLabel } from "@/lib/day-label";
 
 // Investment taxes on /taxes (spec step 124): gains and losses from the cost basis the
 // broker reports, wash sales, and (demo advice) losses worth harvesting and where to hold
 // what.
-
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 export function InvestmentsSection({
   view,
@@ -57,8 +50,9 @@ export function InvestmentsSection({
       </p>
       {view.washSales.map((w) => (
         <p key={`${w.securityId}${w.date}`} className="text-sm font-medium">
-          Wash sale: {w.ticker ?? w.name} sold at a loss on {day(w.date)} and bought again within 30
-          days, so {formatCents(w.washDisallowedCents)} of the loss doesn&apos;t count this year.
+          Wash sale: {w.ticker ?? w.name} sold at a loss on {dayLabel(w.date, { year: true })} and
+          bought again within 30 days, so {formatCents(w.washDisallowedCents)} of the loss
+          doesn&apos;t count this year.
         </p>
       ))}
       {advice && (view.harvest.length > 0 || view.location.length > 0) && (

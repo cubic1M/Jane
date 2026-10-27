@@ -11,6 +11,7 @@ import {
   projectOther,
   taxPaymentsFor,
   propertyTaxFor,
+  yearCovered,
   yearElapsed,
   type IncomeTransaction,
 } from "./tax-income";
@@ -272,5 +273,22 @@ describe("a shop's card sales (taxes QA)", () => {
         2026,
       ),
     ).toBe(0);
+  });
+});
+
+// Overnight upload QA: 3 months of statements from Jul 28 counted as ten months' pay.
+describe("yearCovered", () => {
+  it("counts from the first day seen when the data starts this year", () => {
+    // Jul 28 to Oct 27: 91 days of 365.
+    expect(yearCovered(2026, "2026-10-27", "2026-07-28")).toBeCloseTo(91 / 365, 5);
+  });
+
+  it("is the year gone when the data starts before this year", () => {
+    expect(yearCovered(2026, "2026-10-27", "2025-06-01")).toBe(yearElapsed(2026, "2026-10-27"));
+    expect(yearCovered(2026, "2026-10-27", null)).toBe(yearElapsed(2026, "2026-10-27"));
+  });
+
+  it("is 1 for a year that's over, whatever the first day", () => {
+    expect(yearCovered(2025, "2026-10-27", "2025-07-28")).toBe(1);
   });
 });

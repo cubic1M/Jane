@@ -22,6 +22,7 @@ import { priceIncrease } from "./rules/price-increase";
 import { buildStreams, merchantOf, type Stream } from "./streams";
 import type { DetectionInput, DetectionTransaction } from "./types";
 import { addDays, daysBetween, median } from "./units";
+import { dayLabel } from "@/lib/day-label";
 
 // Spotting the unusual (spec step 208). Pure: charges that don't look right, across every
 // account, each as one alert with "this was me" and "not me". Thresholds are in
@@ -40,13 +41,6 @@ export type UnusualAlert = {
 // What the person told Jane was them: merchant key -> the largest amount they said was
 // theirs. Later charges up to UNUSUAL_TAUGHT_MULTIPLE times it stay quiet.
 export type Taught = ReadonlyMap<string, number>;
-
-const shortDate = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 const recent = (date: string, asOf: string) =>
   date > addDays(asOf, -ALERT_RECENT_DAYS) && date <= asOf;
@@ -109,7 +103,7 @@ export function unusualAlerts(
             type: "unusual_activity",
             key: keyOf("spike", merchantKey, t.id),
             title: `${formatCents(t.amountCents)} at ${name(t)}, far above usual`,
-            body: `On ${shortDate(t.date)}. You usually pay about ${formatCents(typical)} there.`,
+            body: `On ${dayLabel(t.date)}. You usually pay about ${formatCents(typical)} there.`,
           });
           return;
         }
@@ -124,7 +118,7 @@ export function unusualAlerts(
           type: "unusual_activity",
           key: keyOf("new_merchant", merchantKey, t.id),
           title: `${formatCents(t.amountCents)} at ${name(t)}, a first charge`,
-          body: `On ${shortDate(t.date)}. You haven't paid ${name(t)} before.`,
+          body: `On ${dayLabel(t.date)}. You haven't paid ${name(t)} before.`,
         });
       }
     });
@@ -155,7 +149,7 @@ export function unusualAlerts(
         type: "unusual_activity",
         key: keyOf("bill_rise", merchantKey, last.id),
         title: `${s.merchant} bill is ${formatCents(rise)} higher than usual`,
-        body: `${formatCents(last.amountCents)} on ${shortDate(last.date)}, where it's usually about ${formatCents(s.priorAverageCents)}.`,
+        body: `${formatCents(last.amountCents)} on ${dayLabel(last.date)}, where it's usually about ${formatCents(s.priorAverageCents)}.`,
       });
     }
   }
@@ -184,7 +178,7 @@ export function unusualAlerts(
         type: "unusual_activity",
         key: keyOf("double", merchantKey, b.id),
         title: `${name(b)} charged twice this month`,
-        body: `${formatCents(a.amountCents)} on ${shortDate(a.date)} and ${formatCents(b.amountCents)} on ${shortDate(b.date)}, though it's a monthly charge.`,
+        body: `${formatCents(a.amountCents)} on ${dayLabel(a.date)} and ${formatCents(b.amountCents)} on ${dayLabel(b.date)}, though it's a monthly charge.`,
       });
     }
   }

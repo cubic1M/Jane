@@ -52,6 +52,11 @@ export function monthlySpendCents(data: ProfileInput, months: number): number {
 export const liquidCents = (data: ProfileInput) =>
   data.accounts.filter((a) => a.type === "depository").reduce((s, a) => s + a.balanceCents, 0);
 
+// Whether any checking or savings balance is known. Uploaded files often carry none, and an
+// unknown balance is not an empty account: "your cash is low" needs a real figure.
+export const cashKnown = (data: ProfileInput) =>
+  data.accounts.some((a) => a.type === "depository" && a.balanceKnown !== false);
+
 // One piece of evidence as a percentage and its reason: `matches` of `what` seen over
 // `months` months of data, known how (seen, told or guessed).
 export function evidence(

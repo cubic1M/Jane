@@ -11,6 +11,7 @@ import { answer, demoProducts } from "./actions";
 import { ProductForm } from "./product-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // What costly products really cost (spec step 215, demo advice): annuities, whole life and
 // advisory fees in dollars, with the surrender charge by year, what the same money would do
@@ -21,13 +22,6 @@ const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON = "h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
 const SECONDARY =
   "h-11 rounded-lg border border-zinc-300 px-5 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 function Product({ p, advice }: { p: ProductView; advice: boolean }) {
   return (
@@ -44,7 +38,8 @@ function Product({ p, advice }: { p: ProductView; advice: boolean }) {
         <div className="text-sm">
           <p>
             If you left now, the surrender charge would be {p.surrender.pctNow}% (
-            {formatCents(p.surrender.cents)}). It reaches zero on {day(p.surrender.endsOn)}.
+            {formatCents(p.surrender.cents)}). It reaches zero on{" "}
+            {dayLabel(p.surrender.endsOn, { year: true })}.
           </p>
           <table className="mt-1 w-full text-sm">
             <thead>

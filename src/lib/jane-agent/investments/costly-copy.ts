@@ -1,6 +1,7 @@
 import type { AdvisoryView, ProductView } from "@/lib/investments/costly-products";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
+import { dayLabel } from "@/lib/day-label";
 
 // Costly products in the chat (spec step 215): shared words. Rule: any sentence about
 // leaving carries the surrender charge and when it ends. Nothing says "cancel".
@@ -12,21 +13,13 @@ export const COSTLY_LINK: MessageAction = {
   href: "/investments/costly-products",
 };
 
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 export function productLine(p: ProductView): string {
   const cost =
     p.kind === "annuity"
       ? `Your ${p.name} costs about ${formatCents(p.yearlyCostCents ?? 0)} a year (${(p.feeBps ?? 0) / 100}% of ${formatCents(p.valueCents)}).`
       : `Your ${p.name} takes ${formatCents(p.premiumYearlyCents)} a year in premiums, and its cash value is ${formatCents(p.valueCents)}.`;
   const sur = p.surrender
-    ? ` Leaving now would carry a ${p.surrender.pctNow}% surrender charge (${formatCents(p.surrender.cents)}), which reaches zero on ${day(p.surrender.endsOn)}.`
+    ? ` Leaving now would carry a ${p.surrender.pctNow}% surrender charge (${formatCents(p.surrender.cents)}), which reaches zero on ${dayLabel(p.surrender.endsOn, { year: true })}.`
     : "";
   const gap = p.gap
     ? ` The same money in a low-cost fund could be worth ${formatCents(p.gap.lowCents)} to ${formatCents(p.gap.highCents)} more after ${p.gap.years} years (a cost difference, not a forecast).`

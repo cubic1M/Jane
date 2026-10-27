@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { disasterAction, type DisasterState } from "./actions";
+import { FormStatus } from "@/components/form-status";
 
 const BUTTON =
   "inline-flex h-11 items-center justify-center self-start rounded-full bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60";
@@ -31,14 +32,7 @@ export function ReliefButtons({
           Keep the loss with my claim
         </button>
       )}
-      <p
-        role="status"
-        className={
-          state ? (state.ok ? "text-sm text-emerald-800" : "text-sm text-red-700") : "sr-only"
-        }
-      >
-        {state?.message ?? ""}
-      </p>
+      <FormStatus state={state} />
     </form>
   );
 }
