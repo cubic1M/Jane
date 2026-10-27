@@ -65,6 +65,9 @@ export type AreasInput = {
   // Suggestions waiting for the person (the day's and the rest), by capability.
   suggestions: { capability: string; urgency: string }[];
   safeShort: boolean;
+  // False when the practice portfolio is closed to this person: it runs in demo advice mode only
+  // (CLAUDE.md), so real accounts aren't invited to start one. Absent: open.
+  practiceOpen?: boolean;
   money: {
     months: { month: string; spendingCents: number }[];
     budgetsOver: number;
@@ -651,7 +654,9 @@ export function tilesView(input: AreasInput): AreaTile[] {
           ? p.totalCents >= p.paidInCents
             ? "Practice money, up"
             : "Practice money, down"
-          : "Start with practice money",
+          : input.practiceOpen === false
+            ? "Demo only for now"
+            : "Start with practice money",
         chart:
           p && total > 0
             ? {
