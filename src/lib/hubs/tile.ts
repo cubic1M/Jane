@@ -13,6 +13,3 @@ export type HubTileData = {
 };
 
 export type HubGroup = { title: string; tiles: HubTileData[] };
-
-// "1 bill", "3 bills".
-export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

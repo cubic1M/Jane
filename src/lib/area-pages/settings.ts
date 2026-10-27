@@ -1,5 +1,6 @@
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 import { isHiddenPage } from "@/config/hidden-pages";
+import { plural } from "@/lib/plural";
 
 // Settings as a tree (docs/design/area-pages.md): Settings → its branches (banks and files,
 // how much Jane does, how Jane reaches you, what Jane knows, home and household, sign-in and
@@ -69,7 +70,6 @@ export type SettingsTreeInput = {
   calendar: boolean;
 };
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const asLabel = (name: string) => name.trim().split(/\s+/).slice(0, 6).join(" ");
 
 // #banks and #your-accounts open the first bank or file, when there is one.

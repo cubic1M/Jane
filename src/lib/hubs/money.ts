@@ -14,8 +14,9 @@ import { formatCents } from "@/lib/money";
 import { assetPrompts, promptHref, type AssetPrompt } from "@/lib/owned-assets";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { cryptoTotal } from "@/lib/crypto/crypto";
-import { plural, type HubGroup, type HubTileData } from "./tile";
+import { type HubGroup, type HubTileData } from "./tile";
 import { monthLabel } from "@/lib/day-label";
+import { plural } from "@/lib/plural";
 
 // The Money hub (spec step 80): the picture of the person's money, one tile per page, each
 // with one live number from the same code as that page. Everything loads in parallel.
