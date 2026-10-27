@@ -1,6 +1,7 @@
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import {
   EVENT_EVIDENCE,
+  EVENT_EVIDENCE_CRYPTO,
   EVENT_EVIDENCE_RANGE,
   EVENT_EVIDENCE_SUMMARY,
 } from "@/config/event-evidence";
@@ -12,7 +13,8 @@ import {
   EVENT_MIN_CONFIDENCE,
   EVENT_TILT_BY_LEVEL,
   EVENT_TYPES,
-  EVENT_TYPE_IDS,
+  eventTypesFor,
+  type EventMarket,
   type EventTypeId,
 } from "@/config/events";
 import type { RiskLevel } from "@/config/investing";
@@ -68,6 +70,8 @@ export type EventsView = {
     confidence: number;
   }[];
   record: { type: EventTypeId; label: string; events: number; hits: number; confidence: number }[];
+  // The market whose events it shows: crypto for the 24-hour agent on crypto, else stock funds.
+  market: EventMarket;
   backtest: {
     from: string;
     to: string;
@@ -88,14 +92,22 @@ export async function loadEventsView(
 ): Promise<EventsView | null> {
   if (!(await adviceMode(userId, { client }))) return null;
   const db = scopedFor(userId, client);
+  // The 24-hour agent on crypto trades the crypto events; every other strategy, the stock-fund ones.
+  const agentMarket = (
+    await db.paperAccounts.findFirst({ select: { agentPolicy: true, agentMarket: true } })
+  )?.agentMarket;
+  const market: EventMarket = agentMarket === "crypto" ? "crypto" : "stocks";
   const [account, overlay, logs, events] = await Promise.all([
-    db.paperAccounts.findFirst({ select: { id: true, level: true, agentPolicy: true } }),
+    db.paperAccounts.findFirst({
+      select: { id: true, level: true, agentPolicy: true, agentMarket: true },
+    }),
     db.paperEventOverlays.findFirst({}),
     db.paperEventLogs.findMany({ orderBy: { at: "desc" }, take: 12 }),
     client.marketEvent.findMany({
       where: {
         knownAt: { lte: now },
         date: { gte: new Date(now.getTime() - EVENT_STORE_DAYS * DAY_MS) },
+        type: { in: eventTypesFor(market) },
       },
       orderBy: { knownAt: "desc" },
       take: 12,
@@ -142,7 +154,7 @@ export async function loadEventsView(
     return safe(`${row.title}. ${row.plan}`) ? [row] : [];
   });
 
-  const record = EVENT_TYPE_IDS.map((type) => {
+  const record = eventTypesFor(market).map((type) => {
     const live = new Map<string, boolean[]>();
     for (const c of closed)
       if (c.type === type) live.set(c.eventKey, [...(live.get(c.eventKey) ?? []), c.hit]);
@@ -210,6 +222,16 @@ export async function loadEventsView(
         confidence: l.confidence,
       })),
     record,
-    backtest: { ...EVENT_EVIDENCE_RANGE, ...EVENT_EVIDENCE_SUMMARY },
+    market,
+    backtest:
+      market === "crypto"
+        ? {
+            from: EVENT_EVIDENCE_CRYPTO.from,
+            to: EVENT_EVIDENCE_CRYPTO.to,
+            level: EVENT_EVIDENCE_RANGE.level,
+            alone: EVENT_EVIDENCE_CRYPTO.alone,
+            withEvents: EVENT_EVIDENCE_CRYPTO.withEvents,
+          }
+        : { ...EVENT_EVIDENCE_RANGE, ...EVENT_EVIDENCE_SUMMARY },
   };
 }

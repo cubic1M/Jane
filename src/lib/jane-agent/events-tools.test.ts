@@ -20,6 +20,7 @@ const VIEW: EventsView = {
   watching: { sources: [{ label: "GDELT news coverage", ok: true }], lastChecked: null },
   quiet: false,
   earlier: [],
+  market: "stocks",
   agent: false,
   hasAccount: true,
   level: 3,

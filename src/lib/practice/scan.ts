@@ -352,12 +352,14 @@ export async function runPracticeDay(userId: string, options: Options = {}) {
 }
 
 // Every practice portfolio that isn't paused. One person's problem never stops the rest.
+// `userIds` keeps the run to those people (a test's own, never everyone's in a shared database).
 export async function runPracticeDayForAll({
   client = defaultClient,
   now = new Date(),
-}: Options = {}) {
+  userIds,
+}: Options & { userIds?: readonly string[] } = {}) {
   const rows = await client.practicePortfolio.findMany({
-    where: { paused: false },
+    where: { paused: false, ...(userIds ? { userId: { in: [...userIds] } } : {}) },
     select: { userId: true },
   });
   let flags = 0;

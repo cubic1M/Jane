@@ -62,6 +62,49 @@ export const FALLBACK_INTERVAL_DAYS: Readonly<
   QUARTERLY: [84, 98],
 };
 
+// Two charges a month apart are enough where a repeat can only be a bill or a subscription: these
+// categories and SUBSCRIPTION_MERCHANTS (accuracy bench: a two-month history had none of its rent,
+// phone, power or subscriptions found). Such a run is low confidence.
+export const SHORT_RUN_MIN_CHARGES = 2;
+export const SHORT_RUN_CATEGORIES: readonly PfcDetailed[] = [
+  "RENT_AND_UTILITIES_RENT",
+  "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
+  "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
+  "RENT_AND_UTILITIES_TELEPHONE",
+  "RENT_AND_UTILITIES_WATER",
+  "RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT",
+  "RENT_AND_UTILITIES_OTHER_UTILITIES",
+  "GENERAL_SERVICES_INSURANCE",
+  "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+  "LOAN_PAYMENTS_CAR_PAYMENT",
+  "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+  "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+  "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
+  "BANK_FEES_OTHER_BANK_FEES",
+  "ENTERTAINMENT_TV_AND_MOVIES",
+  "ENTERTAINMENT_MUSIC_AND_AUDIO",
+  "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
+];
+// A run among a merchant's other charges must be at least this share of them; less, and prices
+// that only look alike happened to land a month apart (a grocer's bills; accuracy bench).
+export const RUN_MIN_SHARE_OF_CHARGES = 0.5;
+// A yearly plan is seen once in a year of history: one charge at a SUBSCRIPTION_MERCHANTS
+// merchant in this range (in cents) is its yearly renewal (accuracy bench: every Amazon Prime
+// was missed). Smaller is a one-off (a book, a rental); larger is equipment. Low confidence.
+export const YEARLY_PLAN_MIN_CENTS = 5_000;
+export const YEARLY_PLAN_MAX_CENTS = 50_000;
+// ...and the merchant is the plan itself: a SUBSCRIPTION_MERCHANTS name, alone or with one of
+// these words ("DUOLINGO PLUS"). A longer name is something else the company sells ("ADOBE
+// STOCK", "AMAZON PRIME VIDEO"; accuracy bench, first held-out set).
+export const YEARLY_PLAN_WORDS: readonly string[] = [
+  "plus",
+  "premium",
+  "membership",
+  "annual",
+  "yearly",
+  "subscription",
+];
+
 // A detected stream is still active if its last charge is within this many of its usual
 // gaps from today (1.5 monthly gaps = about 45 days).
 export const ACTIVE_WITHIN_INTERVALS = 1.5;
@@ -102,6 +145,21 @@ export const SUBSCRIPTION_MERCHANTS: readonly string[] = [
   "peloton",
   "wsj",
   "youtube premium",
+];
+
+// App stores bill other companies' subscriptions under their own name, each at its own price
+// and day ("APPLE.COM/BILL"): a regular charge at one price there is a subscription (accuracy
+// bench: 11 people's Apple subscriptions were missed). Not a yearly plan when seen once: an app
+// store sells one-off purchases at any price.
+export const BILLING_PLATFORM_MERCHANTS: readonly string[] = ["apple", "itunes", "google play"];
+// Money paid on a debt or moved between accounts is never a subscription, even under a
+// subscription merchant's name ("APPLE CARD PAYMENT").
+export const NOT_SUBSCRIPTION_PRIMARIES: readonly PfcPrimary[] = [
+  "LOAN_PAYMENTS",
+  "TRANSFER_OUT",
+  "TRANSFER_IN",
+  "BANK_FEES",
+  "INCOME",
 ];
 
 // Categories too broad to say whether a recurring charge is a subscription (a software
@@ -471,6 +529,11 @@ export const PAYMENT_CATEGORY_BY_ACCOUNT: Readonly<Record<string, string>> = {
   "home equity": "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
   personal: "LOAN_PAYMENTS_PERSONAL_LOAN_PAYMENT",
 };
+// A card payment from checking is found by its other side when the card company's name isn't in
+// the keyword rules (accuracy bench: "BARCLAYCARD US PAYMENT" was counted as spending and missed
+// from "Coming up"): the same amount, out of a bank account, within this many days of the card's
+// "payment, thank you".
+export const CARD_PAYMENT_MATCH_DAYS = 3;
 // Money moved between the person's own accounts (chat QA): saving, investing or into an HSA.
 // Never a recurring charge. Payment-app transfers and wires stay: they can be rent to a person.
 export const OWN_ACCOUNT_TRANSFERS: readonly string[] = [
@@ -490,15 +553,39 @@ export const DUPLICATE_CHARGE_WINDOW_DAYS = 1;
 // Smaller repeats (a second coffee) aren't worth an alert.
 export const DUPLICATE_CHARGE_MIN_CENTS = 1_000;
 // Where buying the same thing twice in a day is normal, or the "charge" is money moving.
+// Two bank fees on one day are the bank's fee schedule (two overdrafts), and the bank fees
+// finding already asks for them back (accuracy bench, first held-out set).
 export const DUPLICATE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
   "FOOD_AND_DRINK",
   "TRANSPORTATION",
   "TRANSFER_OUT",
   "LOAN_PAYMENTS",
+  "BANK_FEES",
 ];
 // ...except a meal: the same restaurant bill this big twice is a double charge, not a second
 // coffee (accuracy bench: the family's $68.40 dinner charged on two days was missed).
 export const DUPLICATE_CHARGE_MEAL_MIN_CENTS = 3_000;
+// A seat each: two or three tickets or fares at one price on one day are a group buying
+// together, not a mistake (accuracy bench: every one of the 7 false "Charged twice?" was a pair
+// of concert tickets). A real double charge at a ticket seller is missed; the bank's dispute
+// still covers it.
+export const DUPLICATE_CHARGE_PER_SEAT_CATEGORIES: readonly PfcDetailed[] = [
+  "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS",
+  "TRAVEL_FLIGHTS",
+  "TRANSPORTATION_PUBLIC_TRANSIT",
+];
+// Cinemas sell a seat each too, but Plaid files them with streaming services, where a double
+// charge is real, so they are known by name (whole words of the merchant; accuracy bench, first
+// held-out set: two seats at AMC).
+export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
+  "theatre",
+  "theatres",
+  "theater",
+  "theaters",
+  "cinema",
+  "cinemas",
+  "cineplex",
+];
 // Money moving rather than spent never counts as an unusually large charge.
 export const LARGE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
   "TRANSFER_OUT",
@@ -611,7 +698,9 @@ export const THIN_DATA_MAX_PER_MONTH = 3;
 
 // --- Calibration (docs/accuracy.md) --------------------------------------------------
 
-// Two charges of the same amount at the same place within a day are a double charge about
-// two times in three on the accuracy bench (two tickets, two of the same thing, look just
-// the same), however long the history: "Charged twice?" is never surer than this.
+// Two charges of the same amount at the same place within a day were a double charge about two
+// times in three on #766's accuracy bench (two tickets looked just the same). With a seat each
+// left out (DUPLICATE_CHARGE_PER_SEAT_*), every one on all three bench sets is right, but the
+// bench's doubles are cleaner than a real bank's (two of the same shirt look the same too), so
+// "Charged twice?" stays no surer than this until real outcomes say otherwise.
 export const DUPLICATE_CHARGE_MAX_PERCENT = 65;

@@ -4,6 +4,7 @@ import {
   EVENT_TYPE_IDS,
   GDELT_BASELINE_DAYS,
   GDELT_MIN_ARTICLES,
+  GDELT_MIN_HOURLY_ARTICLES,
   GDELT_SPIKE_RATIO,
   PRICE_SHOCKS,
   type EventTypeId,
@@ -78,6 +79,57 @@ export function coverageSpikes(type: EventTypeId, coverage: readonly Coverage[])
       date: day.date,
       knownAt: `${nextDay(day.date)}T00:15:00.000Z`,
       title: `${EVENT_TYPES[type].label}: news coverage ${ratio.toFixed(1)} times its usual level`,
+      url: null,
+      strength: Math.round(ratio * 10) / 10,
+    });
+  }
+  return out;
+}
+
+// Within-the-day spikes (the crypto types, around the clock): GDELT's 15-minute buckets summed
+// into UTC hours. An hour is an event when its share of all coverage is GDELT_SPIKE_RATIO times the
+// median daily share of the GDELT_BASELINE_DAYS before its day (from the daily coverage), with at
+// least GDELT_MIN_HOURLY_ARTICLES articles. Only hours that have ended by `now` are judged, and an
+// hour is known 15 minutes after it ends (GDELT's update). One event per type a day: the key is
+// the day's, the same as the daily spike's, so the daily one later adds nothing.
+export function hourlySpikes(
+  type: EventTypeId,
+  buckets: readonly { at: string; count: number; total: number }[],
+  daily: readonly Coverage[],
+  now: string,
+): MarketEvent[] {
+  const hours = new Map<string, { count: number; total: number }>();
+  for (const b of buckets) {
+    const hour = `${b.at.slice(0, 13)}:00:00.000Z`;
+    const h = hours.get(hour) ?? { count: 0, total: 0 };
+    hours.set(hour, { count: h.count + b.count, total: h.total + b.total });
+  }
+  const days = [...daily].filter((c) => c.total > 0).sort((a, b) => a.date.localeCompare(b.date));
+  const out: MarketEvent[] = [];
+  const seenDays = new Set<string>();
+  for (const [hour, h] of [...hours.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const end = new Date(Date.parse(hour) + 3_600_000);
+    const knownAt = new Date(end.getTime() + 15 * 60_000).toISOString();
+    if (end.toISOString() > now || h.total <= 0) continue;
+    const day = hour.slice(0, 10);
+    if (seenDays.has(day)) continue;
+    const before = days
+      .filter((c) => c.date < day)
+      .slice(-GDELT_BASELINE_DAYS)
+      .map((c) => c.count / c.total);
+    if (before.length < GDELT_BASELINE_DAYS / 2 || h.count < GDELT_MIN_HOURLY_ARTICLES) continue;
+    const base = median(before);
+    if (base <= 0) continue;
+    const ratio = h.count / h.total / base;
+    if (ratio < GDELT_SPIKE_RATIO) continue;
+    seenDays.add(day);
+    out.push({
+      key: `gdelt:${type}:${day}`,
+      type,
+      source: "gdelt",
+      date: day,
+      knownAt,
+      title: `${EVENT_TYPES[type].label}: news coverage ${ratio.toFixed(1)} times its usual level in the hour to ${end.toISOString().slice(11, 16)} UTC`,
       url: null,
       strength: Math.round(ratio * 10) / 10,
     });

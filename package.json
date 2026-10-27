@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "if [ \"$VERCEL_ENV\" = production ]; then prisma migrate deploy; fi && next build",
+    "vercel-build": "if [ \"$VERCEL_ENV\" = production ]; then prisma migrate deploy && node scripts/rls-protect.mjs; fi && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
