@@ -678,6 +678,11 @@ export const DUPLICATE_CHARGE_GROUP_MIN = 3;
 // "Charged twice?" (upload QA: Spotify $11.99 twice every month showed as two double charges and
 // was missing from /subscriptions).
 export const TWIN_PLAN_MIN_MONTHS = 2;
+// Plans from one company at different prices (Spotify $11.99 and $16.99, each every month): this
+// many prices, each a run, that together hold RUN_MIN_SHARE_OF_CHARGES of its charges (QA round 30).
+export const PRICE_PLANS_MIN = 2;
+// ...each billed like a plan: monthly. Two prices alternating every week are shopping.
+export const PRICE_PLANS_FREQUENCIES: readonly Frequency[] = ["MONTHLY"];
 export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
   "theatre",
   "theatres",

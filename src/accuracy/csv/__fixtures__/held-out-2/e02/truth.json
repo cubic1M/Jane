@@ -64,8 +64,18 @@
       "perYear": 1034.9
     },
     {
+      "type": "subscription_review",
+      "about": "SCRIBD plan 1",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SCRIBD plan 2",
+      "perYear": 203.88
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 1724430, excess 1056424",
+      "about": "cash 1724430, excess 1048054",
       "perYear": null
     }
   ],
@@ -102,23 +112,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 9251.1
+      "dollars": 9222.12
     },
     {
       "date": "2026-07-31",
-      "dollars": 11032.93
+      "dollars": 10974.97
     },
     {
       "date": "2026-08-31",
-      "dollars": 11155.37
+      "dollars": 11068.43
     },
     {
       "date": "2026-09-30",
-      "dollars": 11481.61
+      "dollars": 11365.69
     },
     {
       "date": "2026-10-24",
-      "dollars": 11719.9
+      "dollars": 11586.99
     }
   ]
 }

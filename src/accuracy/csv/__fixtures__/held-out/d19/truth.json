@@ -48,8 +48,18 @@
       "perYear": 143.88
     },
     {
+      "type": "subscription_review",
+      "about": "MEDIUM.COM plan 1",
+      "perYear": 60
+    },
+    {
+      "type": "subscription_review",
+      "about": "MEDIUM.COM plan 2",
+      "perYear": 180
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 1364535, excess 812657",
+      "about": "cash 1364535, excess 806430",
       "perYear": null
     }
   ],
@@ -94,27 +104,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 3534.09
+      "dollars": 3514.09
     },
     {
       "date": "2026-06-30",
-      "dollars": 4767.6
+      "dollars": 4727.6
     },
     {
       "date": "2026-07-31",
-      "dollars": 6127.45
+      "dollars": 6067.45
     },
     {
       "date": "2026-08-31",
-      "dollars": 7810.66
+      "dollars": 7730.66
     },
     {
       "date": "2026-09-30",
-      "dollars": 9691.96
+      "dollars": 9591.96
     },
     {
       "date": "2026-10-24",
-      "dollars": 11789.51
+      "dollars": 11669.51
     }
   ]
 }

@@ -372,6 +372,13 @@ type Pool = {
   notPlans: Merchant[];
   // A plan billed twice on the same day every month (two accounts, or one for a family member).
   twin: Sub;
+  // Two plans from one service at two prices, each on its own day every month (QA round 30).
+  pricePlans: {
+    descriptor: string;
+    category: PfcDetailed;
+    cents: [number, number];
+    alsoOk?: PfcPrimary[];
+  };
 };
 
 const TUNING: Pool = {
@@ -399,6 +406,12 @@ const TUNING: Pool = {
     alsoOk: DIGITAL,
   },
   twin: { descriptor: "TIDAL.COM", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1099 },
+  pricePlans: {
+    descriptor: "BLINKIST",
+    category: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+    cents: [1499, 2499],
+    alsoOk: DIGITAL,
+  },
   notPlans: [
     {
       descriptor: "HARBOR CREDIT UNION PMT",
@@ -615,6 +628,12 @@ const HELD_OUT: Pool = {
     alsoOk: DIGITAL,
   },
   twin: { descriptor: "DEEZER", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1199 },
+  pricePlans: {
+    descriptor: "MEDIUM.COM",
+    category: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+    cents: [500, 1500],
+    alsoOk: DIGITAL,
+  },
   notPlans: [
     { descriptor: "CANYON CU LOAN PMT", category: "LOAN_PAYMENTS_OTHER_PAYMENT", lo: 95, hi: 95 },
     { descriptor: "ROOT INSURANCE CO", category: "GENERAL_SERVICES_INSURANCE", lo: 42, hi: 42 },
@@ -908,6 +927,12 @@ const HELD_OUT_2: Pool = {
     alsoOk: DIGITAL,
   },
   twin: { descriptor: "PANDORA", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1099 },
+  pricePlans: {
+    descriptor: "SCRIBD",
+    category: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+    cents: [1199, 1699],
+    alsoOk: DIGITAL,
+  },
   notPlans: [
     {
       descriptor: "SUMMIT FCU LOAN PMT",
@@ -1866,6 +1891,27 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       type: "duplicate_charge",
       rows: [...a, ...b],
       note: `${P.twin.descriptor}, two plans`,
+    });
+  }
+
+  // Two plans from one service at two prices, each on its own day every month: two
+  // subscriptions and two bills (QA round 30), from their own dice.
+  const t3 = rng(base + index * 104_729 + 30);
+  if (t3.chance(0.35)) {
+    const pp = P.pricePlans;
+    pp.cents.forEach((cents, k) => {
+      const rows: string[] = [];
+      L.monthly(t3.int(2, 27), (date) => {
+        const row = L.add(spend(card.id, date, cents, pp));
+        if (row) rows.push(row.id);
+      });
+      L.findings.push({
+        type: "subscription_review",
+        rows,
+        annualCents: cents * 12,
+        note: `${pp.descriptor} plan ${k + 1}`,
+      });
+      L.bill(rows, `${pp.descriptor} plan ${k + 1}`);
     });
   }
 

@@ -32,6 +32,16 @@
       "type": "bank_fees",
       "about": "card fees",
       "perYear": 4.82
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLINKIST plan 1",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLINKIST plan 2",
+      "perYear": 299.88
     }
   ],
   "notFindings": [
@@ -59,27 +69,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 5271.5
+      "dollars": 5231.52
     },
     {
       "date": "2026-06-30",
-      "dollars": 2842.03
+      "dollars": 2762.07
     },
     {
       "date": "2026-07-31",
-      "dollars": 1667.23
+      "dollars": 1547.29
     },
     {
       "date": "2026-08-31",
-      "dollars": -510.25
+      "dollars": -670.17
     },
     {
       "date": "2026-09-30",
-      "dollars": -2808.39
+      "dollars": -3008.29
     },
     {
       "date": "2026-10-24",
-      "dollars": -4528.64
+      "dollars": -4768.52
     }
   ]
 }
