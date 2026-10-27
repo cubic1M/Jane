@@ -14,7 +14,12 @@ const interest = (amountCents: number, date: string, accountId = CARD.id) =>
 
 describe("card_interest", () => {
   it("totals interest on credit accounts over the last 12 months", () => {
-    const transactions = [interest(2310, "2026-08-25"), interest(2655, "2026-09-25")];
+    // A card with a year of history.
+    const transactions = [
+      tx({ accountId: CARD.id, date: "2025-11-02", amountCents: 1200, description: "TARGET" }),
+      interest(2310, "2026-08-25"),
+      interest(2655, "2026-09-25"),
+    ];
 
     const [finding] = cardInterest(input({ transactions }), []);
 
@@ -25,6 +30,35 @@ describe("card_interest", () => {
       annualSavingsCents: 4965,
       confidence: "high",
     });
+  });
+
+  // Overnight upload QA: 3 months of statements said "$66.77 … in the last 12 months" and
+  // "save about $66.77 a year".
+  it("says the months a short history covers, and counts interest at its yearly pace", () => {
+    const transactions = [
+      tx({ accountId: CARD.id, date: "2026-07-17", amountCents: 1200, description: "TARGET" }),
+      interest(2310, "2026-08-25"),
+      interest(2655, "2026-09-25"),
+    ];
+
+    const [finding] = cardInterest(input({ transactions }), []);
+
+    expect(finding.title).toBe("$49.65 in interest on Example Rewards Card in the last 3 months");
+    expect(finding.amountCents).toBe(4965);
+    // 90 days of history: $49.65 × 365 / 90.
+    expect(finding.annualSavingsCents).toBe(20136);
+  });
+
+  it("doesn't count a single month's interest at a yearly pace", () => {
+    const transactions = [
+      tx({ accountId: CARD.id, date: "2026-07-17", amountCents: 1200, description: "TARGET" }),
+      interest(2310, "2026-09-25"),
+    ];
+
+    const [finding] = cardInterest(input({ transactions }), []);
+
+    expect(finding.title).toBe("$23.10 in interest on Example Rewards Card in the last 3 months");
+    expect(finding.annualSavingsCents).toBe(2310);
   });
 
   it("ignores interest-like rows on non-credit accounts", () => {

@@ -31,6 +31,20 @@ describe("bank_fees", () => {
     expect((findings[1].evidence.transactions as unknown[]).length).toBe(3);
   });
 
+  it("says the months a short history covers (3 months of uploaded statements)", () => {
+    const transactions = [
+      fee("BANK_FEES_OTHER_BANK_FEES", 1200, "2026-07-17"),
+      fee("BANK_FEES_OTHER_BANK_FEES", 1200, "2026-08-17"),
+      fee("BANK_FEES_OTHER_BANK_FEES", 1200, "2026-09-17"),
+    ];
+
+    const [finding] = bankFees(input({ transactions }), []);
+
+    expect(finding.title).toBe("$36.00 in fees on Everyday Checking in the last 3 months");
+    // Fees aren't counted at a yearly pace: some are one-offs.
+    expect(finding.annualSavingsCents).toBe(3600);
+  });
+
   it("leaves interest to the card interest finding", () => {
     const transactions = [fee("BANK_FEES_INTEREST_CHARGE", 2500, "2026-09-01", CARD.id)];
 

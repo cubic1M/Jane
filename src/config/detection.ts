@@ -14,6 +14,11 @@ export type ConfidenceLevel = "low" | "medium" | "high";
 // How far back rules look at transactions.
 export const LOOKBACK_MONTHS = 12;
 
+// An account with less history than this (often 3 months of uploaded statements) has its fee
+// and interest findings say the months the data covers, not "the last 12 months", and card
+// interest seen in at least two months counts at its yearly pace (overnight upload QA).
+export const SHORT_HISTORY_DAYS = 200;
+
 // The "money found" total counts only findings at or above this confidence.
 export const MONEY_FOUND_MIN_CONFIDENCE: ConfidenceLevel = "medium";
 

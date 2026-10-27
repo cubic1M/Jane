@@ -14,6 +14,7 @@ import { type Detector, suggestionId } from "./contract";
 import {
   evidence,
   factEvidence,
+  cashKnown,
   liquidCents,
   monthlySpendCents,
   outCents,
@@ -280,7 +281,7 @@ const emergencyFund: Detector = {
       pattern: typeof pattern.value === "string" ? pattern.value : null,
       debtTrouble: trouble.value === true,
     });
-    if (!target) return null;
+    if (!target || !cashKnown(data)) return null;
     const short = target.targetCents - liquidCents(data);
     if (short <= 0) return null;
     const starter = target.kind === "starter";
