@@ -7,6 +7,7 @@ import {
   SHOWN_EVENTS,
   TEAM,
   TEAM_ACCESS_RULES,
+  PERSON_WHY,
   UNDONE_WHY,
   teamAccessEntries,
   type ActionInfo,
@@ -70,6 +71,7 @@ describe("the mapping covers every audit event", () => {
       [
         "admin_viewed_queue",
         "admin_viewed_action",
+        "admin_viewed_activity",
         "action_status_changed",
         "action_assigned",
         "admin_drafted_message",
@@ -204,6 +206,37 @@ describe("what each shown event says", () => {
       ["Saw your request in the team's list", "Get your bank fees back", "act_2"],
       ["Saw your request in the team's list", "Cancel Netflix", "act_1"],
     ]);
+  });
+});
+
+describe("a look at how the person used Jane (the beta's activity log)", () => {
+  it("shows a view of their own timeline, about no one request", () => {
+    const entry = one(
+      row("admin_viewed_activity", {
+        targetType: "user",
+        targetId: ME,
+        metadata: { view: "timeline" },
+      }),
+    );
+    expect(entry).toMatchObject({
+      who: TEAM,
+      what: "Looked at how you used Jane (pages and buttons, not what you typed)",
+      why: PERSON_WHY,
+      actionId: null,
+    });
+  });
+
+  it("leaves out the list of everyone and someone else's timeline", () => {
+    expect(
+      entriesFor([
+        row("admin_viewed_activity", {
+          targetType: null,
+          targetId: null,
+          metadata: { view: "list" },
+        }),
+        row("admin_viewed_activity", { targetType: "user", targetId: OTHER }),
+      ]),
+    ).toEqual([]);
   });
 });
 

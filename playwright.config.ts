@@ -46,6 +46,8 @@ export default defineConfig({
           ANTHROPIC_API_KEY: "",
           // The paper account's prices: the sample market, never a price service, in tests.
           PAPER_SAMPLE_PRICES: "1",
+          // The events box reads seeded events; a page view never asks GDELT or the feeds.
+          EVENTS_REFRESH: "off",
           RESEND_API_KEY: "",
           // What a production build turns off unless asked: the demo bank, Try Jane, demo advice
           // and the simulated calls and company mail the tests drive; and the site's own

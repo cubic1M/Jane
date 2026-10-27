@@ -13,6 +13,7 @@ import {
   EVENTS_REFRESH_MINUTES,
   EVENTS_VIEW_GDELT_TYPES,
   EVENT_TYPE_IDS,
+  eventTypesFor,
 } from "@/config/events";
 import { PrismaClient } from "@/generated/prisma/client";
 import type { Bar } from "@/lib/market/types";
@@ -122,7 +123,8 @@ describe.runIf(url)("the shared events refresh", () => {
     expect(stalestTypes(second, 1)[0]).not.toBe(stalestTypes(asked, 1)[0]);
     const cron = fakeFetcher();
     await run(minutes(EVENTS_REFRESH_MINUTES * 2 + 2), cron, { force: true });
-    expect(cron.gdelt).toHaveLength(EVENT_TYPE_IDS.length);
+    // Every type's daily count, and the crypto types' hour-by-hour counts too.
+    expect(cron.gdelt).toHaveLength(EVENT_TYPE_IDS.length + eventTypesFor("crypto").length);
   });
 
   it("asks GDELT one request at a time, spaced as it asks", async () => {
@@ -131,6 +133,21 @@ describe.runIf(url)("the shared events refresh", () => {
     const gaps = f.gdelt.slice(1).map((c, i) => c.at - f.gdelt[i].at);
     expect(gaps.length).toBe(EVENTS_VIEW_GDELT_TYPES - 1);
     expect(gaps.every((g) => g >= 55)).toBe(true);
+  });
+
+  it("skips a page's refresh when switched off for the end-to-end tests, but not the cron's", async () => {
+    const f = fakeFetcher();
+    expect(
+      await refreshEventsIfStale({
+        client,
+        now: NOW,
+        fetcher: f.fetcher,
+        env: { EVENTS_REFRESH: "off" },
+      }),
+    ).toBeNull();
+    expect(f.gdelt).toHaveLength(0);
+    expect(await lastRefresh({ client })).toBeNull();
+    expect((await run(NOW, f, { force: true })).ran).toBe(true);
   });
 
   it("never fails the page: an error comes back as nothing", async () => {

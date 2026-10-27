@@ -18,6 +18,8 @@ export const RATE_LIMITS = {
   membership: { limit: 20, windowSeconds: 10 * 60 },
   // Analytics events from the browser, per IP.
   events: { limit: 120, windowSeconds: 60 },
+  // Batches from the beta's activity log (one every few seconds per tab), per IP.
+  activity: { limit: 120, windowSeconds: 60 },
   // Unsubscribe links, per IP.
   unsubscribe: { limit: 20, windowSeconds: 10 * 60 },
   // "Download my data", per user.
@@ -41,6 +43,8 @@ export const RATE_LIMITS = {
   trial: { limit: 20, windowSeconds: 60 * 60 },
   // Questions Claude answers for one sample (Try Jane) person, in all: one very long window.
   claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
+  // Reports of something the Content-Security-Policy blocked, per IP (each is stored).
+  cspReport: { limit: 20, windowSeconds: 10 * 60 },
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;

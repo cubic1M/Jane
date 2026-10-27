@@ -37,6 +37,7 @@ describe("events as agent signals", () => {
       at: "2026-01-13T00:15:00.000Z",
       ticker: "SMH",
       weight: EVENT_TILT_BY_LEVEL[3],
+      tilt: true,
       source: "events",
       stopPct: EVENT_STOP,
     });
@@ -59,17 +60,28 @@ describe("events as agent signals", () => {
       (
         ["me_conflict", "war", "chip_boom", "market_panic", "oil_shock", "inflation_hot"] as const
       ).map((t, i) => event(t, `2026-01-1${i + 2}T00:15:00.000Z`)),
-      { level: 2, base: { VTI: 0.3, VXUS: 0.15, BND: 0.5, BIL: 0.05 } },
+      { level: 2 },
     );
-    const bought = many.filter((s) => s.ticker !== "BND").reduce((a, s) => a + s.weight, 0);
-    expect(bought).toBeLessThanOrEqual(EVENT_MAX_EXPOSURE_BY_LEVEL[2] + 1e-9);
+    const moved = many.reduce((a, s) => a + Math.abs(s.weight), 0);
+    expect(moved).toBeLessThanOrEqual(EVENT_MAX_EXPOSURE_BY_LEVEL[2] + 1e-9);
   });
 
-  it("holds a trimmed fund at the strategy's weight less the slice, and leaves trims out without it", () => {
+  it("trims as a tilt to cash, and gives each market its own events", () => {
     const hike = event("fed_hike", "2026-01-13T00:15:00.000Z");
-    const withBase = eventAgentSignals([hike], { level: 3, base: { BND: 0.35 } });
-    expect(withBase.find((s) => s.ticker === "BND")?.weight).toBeCloseTo(0.35 - 0.01);
-    expect(eventAgentSignals([hike], { level: 3 }).map((s) => s.ticker)).toEqual(["XLF"]);
+    const stocks = eventAgentSignals([hike], { level: 3 });
+    expect(stocks.map((s) => [s.ticker, s.weight])).toEqual([
+      ["XLF", 0.01],
+      ["BND", -0.01],
+    ]);
+    // A crypto exchange failing: the agent on crypto takes a slice of bitcoin and ether to cash;
+    // the agent on funds gets nothing from it, nor the crypto agent from a rate hike.
+    const failure = event("crypto_exchange_failure", "2026-01-13T03:15:00.000Z");
+    const crypto = eventAgentSignals([failure, hike], { level: 5, market: "crypto" });
+    expect(crypto.map((s) => [s.ticker, s.weight])).toEqual([
+      ["BTC/USD", -0.02],
+      ["ETH/USD", -0.02],
+    ]);
+    expect(eventAgentSignals([failure], { level: 5 })).toEqual([]);
   });
 
   it("acts only while the type's record is at least a coin flip", () => {

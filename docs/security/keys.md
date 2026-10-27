@@ -58,7 +58,7 @@ Environment variables only reach a new deployment. (The next merge to main does 
 
 Sign in to Jane as an admin and open **/admin/keys** (the **Keys** link in the team menu).
 
-- No red **Fix in Vercel** box. If there is one, it names the problem (for example "Key "k2"
+- No **Fix in Vercel** box. If there is one, it names the problem (for example "Key "k2"
   must be 32 bytes"); fix that variable in Vercel and redeploy. While the current key isn't
   working, new banks can't be linked and new files can't be uploaded, but everything already
   saved still reads.
@@ -70,7 +70,7 @@ press as often as you like, and safe if it's interrupted: it only changes values
 and each value is saved on its own. Every press is written to the audit log
 (`encryption_keys_rotated`, with counts only).
 
-If it says some values "couldn't be moved", the page lists which key they need (shown in red
+If it says some values "couldn't be moved", the page lists which key they need (marked
 as missing). Usually that's a key you've already removed from Vercel: add it back, redeploy,
 and press again.
 
@@ -82,7 +82,7 @@ When the page shows the original key as **0 values · not used: safe to remove f
    Jane key", until your database's backup window has passed. A backup restored from before
    the rotation still has values locked with it.
 2. Delete `TOKEN_ENCRYPTION_KEY` in Vercel and redeploy.
-3. Open /admin/keys again: no red box, and everything is on `k2`.
+3. Open /admin/keys again: no **Fix in Vercel** box, and everything is on `k2`.
 
 ## Next time (k2 → k3)
 
@@ -100,7 +100,7 @@ When the page shows the original key as **0 values · not used: safe to remove f
 
 ## If something goes wrong
 
-- **A red box after a change:** fix or undo that one variable in Vercel and redeploy. Values
+- **A Fix in Vercel box after a change:** fix or undo that one variable in Vercel and redeploy. Values
   are never deleted or overwritten with something unreadable; the worst case is that some
   can't be read until their key is back.
 - **To go back to the original key:** clear `TOKEN_ENCRYPTION_KEY_CURRENT` (keep both keys),

@@ -65,3 +65,55 @@ export async function fetchCoverage(
   }
   return { coverage, failed };
 }
+
+// One 15-minute bucket of GDELT coverage: when it starts, its articles and all articles then.
+export type CoverageAt = { at: string; count: number; total: number };
+
+// A window to the minute ("20261026T071500Z"): GDELT answers a window of a few days in 15-minute
+// buckets.
+const stampAt = (iso: string) => iso.slice(0, 19).replaceAll(/[-:T]/g, "");
+export const gdeltUrlAt = (query: string, fromIso: string, toIso: string) =>
+  `${GDELT_DOC_URL}?query=${encodeURIComponent(query)}&mode=timelinevolraw&format=json&startdatetime=${stampAt(fromIso)}&enddatetime=${stampAt(toIso)}`;
+
+export function parseTimelineAt(json: Timeline): CoverageAt[] {
+  const data = json.timeline?.[0]?.data ?? [];
+  return data.flatMap((d) => {
+    const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(d.date);
+    if (!m || typeof d.value !== "number" || !d.norm) return [];
+    return [
+      { at: `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}.000Z`, count: d.value, total: d.norm },
+    ];
+  });
+}
+
+// The last hours of coverage for each type, in 15-minute buckets (for the crypto types, so an
+// event around the clock is known within the hour, not the next day). One request per type,
+// spaced like the daily ones; `leadMs` waits first, after other requests.
+export async function fetchIntraday(
+  types: readonly EventTypeId[],
+  fromIso: string,
+  toIso: string,
+  {
+    fetcher = fetch as unknown as Fetcher,
+    spacingMs = GDELT_SPACING_MS,
+    leadMs = 0,
+  }: { fetcher?: Fetcher; spacingMs?: number; leadMs?: number } = {},
+): Promise<{ coverage: Partial<Record<EventTypeId, CoverageAt[]>>; failed: EventTypeId[] }> {
+  const coverage: Partial<Record<EventTypeId, CoverageAt[]>> = {};
+  const failed: EventTypeId[] = [];
+  for (const [i, type] of types.entries()) {
+    const pause = i === 0 ? leadMs : spacingMs;
+    if (pause > 0) await wait(pause);
+    try {
+      const res = await fetcher(gdeltUrlAt(EVENT_TYPES[type].gdelt, fromIso, toIso), {
+        headers: { "User-Agent": EVENTS_USER_AGENT },
+      });
+      const text = await res.text();
+      if (!res.ok || !text.trim().startsWith("{")) throw new Error(`GDELT ${res.status}`);
+      coverage[type] = parseTimelineAt(JSON.parse(text) as Timeline);
+    } catch {
+      failed.push(type);
+    }
+  }
+  return { coverage, failed };
+}

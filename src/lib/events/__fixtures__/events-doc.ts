@@ -8,6 +8,8 @@ import {
   EVENT_TILT_BY_LEVEL,
   EVENT_TYPES,
   GDELT_BASELINE_DAYS,
+  GDELT_INTRADAY_HOURS,
+  GDELT_MIN_HOURLY_ARTICLES,
   GDELT_MIN_ARTICLES,
   GDELT_SPIKE_RATIO,
   PRICE_SHOCKS,
@@ -18,8 +20,13 @@ import {
   BACKTEST_FROM,
   BACKTEST_LEVELS,
   BACKTEST_TO,
+  CRYPTO_BASES,
+  CRYPTO_EVIDENCE_BASE,
+  CRYPTO_FROM,
+  CRYPTO_LEVEL,
   EVIDENCE_LEVEL,
   backtest,
+  cryptoBacktest,
   historicalEvents,
 } from "./backtests";
 import { GDELT_FIXTURE_SOURCE } from "./index";
@@ -39,7 +46,13 @@ const bps = (x: number) => `${x >= 0 ? "+" : ""}${Math.round(x * 10_000)}`;
 const row = (m: Metrics) =>
   `${pct(m.yearly)} | ${pct(m.totalReturn, 0)} | ${pct(m.maxDrawdown)} | ${m.sharpe.toFixed(2)}`;
 
-export type DocRuns = { full: Record<number, BacktestResult>; halves: BacktestResult[][] };
+export type DocRuns = {
+  full: Record<number, BacktestResult>;
+  halves: BacktestResult[][];
+  // Crypto: one run per base strategy (CRYPTO_BASES), and each in two halves.
+  crypto: BacktestResult[];
+  cryptoHalves: BacktestResult[][];
+};
 
 export function runAll(): DocRuns {
   const full: Record<number, BacktestResult> = {};
@@ -48,7 +61,12 @@ export function runAll(): DocRuns {
     backtest(level, { to: "2021-12-31" }),
     backtest(level, { from: "2022-01-03" }),
   ]);
-  return { full, halves };
+  const crypto = CRYPTO_BASES.map((b) => cryptoBacktest(b.weights));
+  const cryptoHalves = CRYPTO_BASES.map((b) => [
+    cryptoBacktest(b.weights, { to: "2021-12-31" }),
+    cryptoBacktest(b.weights, { from: "2022-01-01" }),
+  ]);
+  return { full, halves, crypto, cryptoHalves };
 }
 
 // Whether the overlay helped at a level: a Sharpe ratio higher by more than rounding, and no
@@ -101,11 +119,24 @@ function verdict(runs: DocRuns): string {
       : kinds.some((k) => k === "helped")
         ? `With these rules the overlay **helped at ${kinds.filter((k) => k === "helped").length} of ${kinds.length} levels** and not at the others.`
         : `With these rules the overlay **made no clear difference**: no level's Sharpe ratio moved by more than ${SHARPE_MARGIN} with no deeper drawdown.`;
-  return `${head} ${facts}${split} It stays off by default, and each type trades only while its own record so far is at least a coin flip.`;
+  return `${head} ${facts}${split} It's on by default with a switch to turn it off, and each type trades only while its own record so far is at least a coin flip.`;
+}
+
+function cryptoVerdict(runs: DocRuns): string {
+  const kinds = runs.crypto.map(verdictOf);
+  const each = CRYPTO_BASES.map((b, i) => `${b.name.toLowerCase()}: ${kinds[i]}`).join("; ");
+  return kinds.every((k) => k === "helped")
+    ? `With these rules the crypto events **helped** for both strategies (${each}). See the caveats.`
+    : kinds.every((k) => k === "hurt")
+      ? `With these rules the crypto events **hurt** (${each}).`
+      : kinds.some((k) => k === "helped")
+        ? `With these rules the crypto events helped for one strategy and not the other (${each}). Treat it as unproven.`
+        : `With these rules the crypto events **made no clear difference** (${each}).`;
 }
 
 export function eventsDoc(runs: DocRuns = runAll()): string {
-  const events = historicalEvents();
+  const events = historicalEvents("stocks");
+  const cryptoEvents = historicalEvents("crypto");
   const levelName = (l: RiskLevel) => `${RISK_LEVELS[l].label} (${l})`;
   const lines: string[] = [];
   lines.push(
@@ -149,13 +180,55 @@ export function eventsDoc(runs: DocRuns = runAll()): string {
     "",
     "| Event | Funds | Traded | Followed | Hit rate (all) | Help per traded event (bps) |",
     "| --- | --- | --- | --- | --- | --- |",
-    ...runs.full[EVIDENCE_LEVEL].types.map((t) => {
-      const type = EVENT_TYPES[t.type];
-      const funds = type.legs.map((l) => `${l.side} ${l.tickers[0]}`).join(", ");
-      return `| ${type.label} | ${funds} | ${t.events} | ${t.watched} | ${t.hitRate === null ? "–" : pct(t.hitRate, 0)} | ${t.averageHelp === null ? "–" : bps(t.averageHelp)} |`;
-    }),
+    ...runs.full[EVIDENCE_LEVEL].types
+      .filter((t) => EVENT_TYPES[t.type].market === "stocks")
+      .map((t) => {
+        const type = EVENT_TYPES[t.type];
+        const funds = type.legs.map((l) => `${l.side} ${l.tickers[0]}`).join(", ");
+        return `| ${type.label} | ${funds} | ${t.events} | ${t.watched} | ${t.hitRate === null ? "–" : pct(t.hitRate, 0)} | ${t.averageHelp === null ? "–" : bps(t.averageHelp)} |`;
+      }),
     "",
     `Events found in ${BACKTEST_FROM} to ${BACKTEST_TO}: ${events.length} (${events.filter((e) => e.source === "gdelt").length} news-coverage spikes, ${events.filter((e) => e.source === "price").length} price shocks), one per type per ${EVENT_COOL_OFF_DAYS} days.`,
+    "",
+    "## Crypto (the 24-hour agent on bitcoin and ether)",
+    "",
+    cryptoVerdict(runs),
+    "",
+    `${CRYPTO_FROM} to ${BACKTEST_TO}, every day (crypto trades every day; yearly figures and the Sharpe ratio use 365 days), at ${levelName(CRYPTO_LEVEL)}: a slice of ${pct(EVENT_TILT_BY_LEVEL[CRYPTO_LEVEL], 1)} of the account per event, at most ${pct(EVENT_MAX_EXPOSURE_BY_LEVEL[CRYPTO_LEVEL], 0)} in all. Two strategies to lay the events over: just holding bitcoin (where a bitcoin slice can add nothing, and only trims to cash change anything), and a mix with ether and cash.`,
+    "",
+    "| Strategy | Alone: yearly | total | max drawdown | Sharpe | With events: yearly | total | max drawdown | Sharpe | Verdict |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ...CRYPTO_BASES.map(
+      (b, i) =>
+        `| ${b.name} | ${row(runs.crypto[i].base)} | ${row(runs.crypto[i].overlay)} | ${verdictOf(runs.crypto[i])} |`,
+    ),
+    "",
+    "The same, in two halves:",
+    "",
+    "| Strategy | Period | Alone: yearly | Sharpe | With events: yearly | Sharpe |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...CRYPTO_BASES.flatMap((b, i) =>
+      runs.cryptoHalves[i].map(
+        (r) =>
+          `| ${b.name} | ${r.from} to ${r.to} | ${pct(r.base.yearly)} | ${r.base.sharpe.toFixed(2)} | ${pct(r.overlay.yearly)} | ${r.overlay.sharpe.toFixed(2)} |`,
+      ),
+    ),
+    "",
+    `By event type (${CRYPTO_BASES[CRYPTO_EVIDENCE_BASE].name}):`,
+    "",
+    "| Event | Funds | Traded | Followed | Hit rate (all) | Help per traded event (bps) |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...runs.crypto[CRYPTO_EVIDENCE_BASE].types
+      .filter((t) => EVENT_TYPES[t.type].market === "crypto")
+      .map((t) => {
+        const type = EVENT_TYPES[t.type];
+        const funds = type.legs.map((l) => `${l.side} ${l.tickers[0]}`).join(", ");
+        return `| ${type.label} | ${funds} | ${t.events} | ${t.watched} | ${t.hitRate === null ? "–" : pct(t.hitRate, 0)} | ${t.averageHelp === null ? "–" : bps(t.averageHelp)} |`;
+      }),
+    "",
+    `Crypto events found in ${CRYPTO_FROM} to ${BACKTEST_TO}: ${cryptoEvents.length} (${cryptoEvents.filter((e) => e.source === "gdelt").length} news-coverage spikes, ${cryptoEvents.filter((e) => e.source === "price").length} price shocks).`,
+    "",
+    `Live, the crypto types are also read hour by hour (GDELT's 15-minute counts over the last ${GDELT_INTRADAY_HOURS} hours: an hour is an event at ${GDELT_SPIKE_RATIO} times its usual daily share, with at least ${GDELT_MIN_HOURLY_ARTICLES} articles, known 15 minutes after the hour ends), so the agent acts at its next bar within the hour. That hourly rule isn't in this replay, which has daily counts only.`,
     "",
     "## How it was tested",
     "",
@@ -170,6 +243,7 @@ export function eventsDoc(runs: DocRuns = runAll()): string {
     "- Few events per type: a hit rate over a dozen events moves a lot with one more.",
     "- GDELT's coverage is a count of articles, not of what happened: a busy news week can look like an event, and a real event that the press under-covers can be missed.",
     "- Live, the paper account also reads the Fed's, BLS's and EIA's feeds and the stored headlines, which this replay doesn't (their archives aren't point-in-time).",
+    "- Crypto: eight years of history, through two crashes and two booms; GDELT's coverage of words like 'stablecoin' and 'ETF' was thin before 2020, and the first spot bitcoin funds came only in 2024, so some types have very few events.",
     "",
   );
   return lines.join("\n");
@@ -178,14 +252,19 @@ export function eventsDoc(runs: DocRuns = runAll()): string {
 // The record that seeds the paper account's confidence: the evidence level's full run.
 export function evidenceValues(runs: DocRuns = runAll()) {
   const r = runs.full[EVIDENCE_LEVEL];
+  const c = runs.crypto[CRYPTO_EVIDENCE_BASE];
   const summary = (m: Metrics) => ({
     yearly: Number(m.yearly.toFixed(4)),
     maxDrawdown: Number(m.maxDrawdown.toFixed(4)),
     sharpe: Number(m.sharpe.toFixed(2)),
   });
   return {
+    // Stock-fund types from the stock run, crypto types from the crypto run.
     EVENT_EVIDENCE: Object.fromEntries(
-      r.types.map((t) => [
+      [
+        ...r.types.filter((t) => EVENT_TYPES[t.type].market === "stocks"),
+        ...c.types.filter((t) => EVENT_TYPES[t.type].market === "crypto"),
+      ].map((t) => [
         t.type,
         {
           events: t.events + t.watched,
@@ -195,6 +274,13 @@ export function evidenceValues(runs: DocRuns = runAll()) {
     ),
     EVENT_EVIDENCE_RANGE: { from: r.from, to: r.to, level: EVIDENCE_LEVEL },
     EVENT_EVIDENCE_SUMMARY: { alone: summary(r.base), withEvents: summary(r.overlay) },
+    EVENT_EVIDENCE_CRYPTO: {
+      from: c.from,
+      to: c.to,
+      base: CRYPTO_BASES[CRYPTO_EVIDENCE_BASE].name,
+      alone: summary(c.base),
+      withEvents: summary(c.overlay),
+    },
   };
 }
 
@@ -214,5 +300,8 @@ export const EVENT_EVIDENCE: Readonly<Record<EventTypeId, { events: number; hits
 export const EVENT_EVIDENCE_RANGE = ${json(v.EVENT_EVIDENCE_RANGE)} as const;
 
 export const EVENT_EVIDENCE_SUMMARY = ${json(v.EVENT_EVIDENCE_SUMMARY)} as const;
+
+// The crypto events on the 24-hour agent's crypto strategies (docs/backtests/events.md, Crypto).
+export const EVENT_EVIDENCE_CRYPTO = ${json(v.EVENT_EVIDENCE_CRYPTO)} as const;
 `;
 }

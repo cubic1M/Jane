@@ -5,6 +5,9 @@ import {
   EVENT_STORE_DAYS,
   EVENT_TYPES,
   EVENT_TYPE_IDS,
+  GDELT_INTRADAY_HOURS,
+  GDELT_SPACING_MS,
+  eventTypesFor,
   GDELT_BASELINE_DAYS,
   PRICE_SHOCKS,
   type EventTypeId,
@@ -21,7 +24,7 @@ import type { Bar } from "@/lib/market/types";
 import { strategyOf, takeSignal } from "@/lib/paper/account";
 import { daysBefore, paperPrices, type PaperPrices } from "@/lib/paper/prices";
 import { strategyTargets } from "@/lib/paper/targets";
-import { coverageSpikes, priceShocks, withCoolOff } from "@/planning/event-detect";
+import { coverageSpikes, hourlySpikes, priceShocks, withCoolOff } from "@/planning/event-detect";
 import { closeOrders, openOrders } from "@/planning/event-orders";
 import {
   emptyOverlay,
@@ -32,7 +35,7 @@ import {
 } from "@/planning/event-overlay";
 import { mixWeights, type PaperOrder } from "@/planning/paper";
 import { feedEvents, headlineEvents } from "./feeds";
-import { fetchCoverage, type Fetcher } from "./gdelt";
+import { fetchCoverage, fetchIntraday, type Fetcher } from "./gdelt";
 import { toEvent } from "./rows";
 
 // The events overlay, live (founder, 2026-10-26). Once a day after the close (Vercel Cron), the
@@ -89,6 +92,26 @@ export async function collectEvents({
   );
   failed.push(...gdelt.failed.map((t) => `gdelt:${t}`));
   const spikes = types.flatMap((t) => coverageSpikes(t, gdelt.coverage[t] ?? []));
+  // Crypto trades around the clock: its types are also read hour by hour, so an event is known
+  // within the hour, not the next day.
+  const cryptoTypes = types.filter((t) => EVENT_TYPES[t].market === "crypto");
+  if (cryptoTypes.length > 0) {
+    const intraday = await fetchIntraday(
+      cryptoTypes,
+      new Date(now.getTime() - GDELT_INTRADAY_HOURS * 3_600_000).toISOString(),
+      now.toISOString(),
+      {
+        fetcher,
+        ...(spacingMs === undefined ? {} : { spacingMs }),
+        leadMs: spacingMs ?? GDELT_SPACING_MS,
+      },
+    );
+    failed.push(...intraday.failed.map((t) => `gdelt:${t}`));
+    for (const t of cryptoTypes)
+      spikes.push(
+        ...hourlySpikes(t, intraday.coverage[t] ?? [], gdelt.coverage[t] ?? [], now.toISOString()),
+      );
+  }
 
   const feeds = await feedEvents({ fetcher });
   failed.push(...feeds.failed);
@@ -103,7 +126,7 @@ export async function collectEvents({
   const bars: Record<string, Bar[]> = {};
   for (const s of PRICE_SHOCKS) {
     try {
-      bars[s.ticker] = await source.closes(s.ticker, daysBefore(today, 10), today);
+      bars[s.ticker] = await source.closes(s.fetchAs ?? s.ticker, daysBefore(today, 10), today);
     } catch {
       failed.push(`prices:${s.ticker}`);
     }
@@ -223,11 +246,14 @@ export async function runEventOverlay(
     ) as Record<string, number>;
 
   // Events from just before the overlay was switched on: it doesn't trade on last month's news.
+  // The paper account's own strategies hold stock funds: its overlay reads the stock-fund events
+  // (crypto events go to the 24-hour agent on crypto, ./agent-source.ts).
   const events = (
     await client.marketEvent.findMany({
       where: {
         knownAt: { lte: now },
         date: { gte: dateOf(daysBefore(dayOf(overlay.switchedAt), EVENT_FRESH_DAYS)) },
+        type: { in: eventTypesFor("stocks") },
       },
       orderBy: { knownAt: "asc" },
     })

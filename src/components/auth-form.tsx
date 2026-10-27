@@ -38,6 +38,7 @@ export function AuthForm({
             <input
               id="invite"
               name="invite"
+              data-private
               required
               defaultValue={code}
               autoComplete="off"
@@ -53,6 +54,7 @@ export function AuthForm({
         <input
           id="email"
           name="email"
+          data-private
           type="email"
           required
           autoComplete="email"

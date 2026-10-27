@@ -20,7 +20,7 @@ const keyName = (id: string) =>
 function LastRun({ search }: { search: Search }) {
   if (search.error) {
     return (
-      <p className="rounded-xl border border-red-300 p-3 text-sm text-red-700">
+      <p className="rounded-xl border-2 border-zinc-900 p-3 text-sm font-semibold dark:border-zinc-100">
         Nothing was changed: the current key isn&apos;t working. Fix the problems listed below,
         redeploy, then press the button again.
       </p>
@@ -55,7 +55,7 @@ async function Keys({ search }: { search: Promise<Search> }) {
       </div>
 
       {report.problems.length > 0 && (
-        <section className="flex flex-col gap-1 rounded-xl border border-red-300 p-4 text-sm text-red-700">
+        <section className="flex flex-col gap-1 rounded-xl border-2 border-zinc-900 p-4 text-sm dark:border-zinc-100">
           <h2 className="font-semibold">Fix in Vercel</h2>
           <ul className="list-disc pl-5">
             {report.problems.map((p) => (
@@ -74,14 +74,14 @@ async function Keys({ search }: { search: Promise<Search> }) {
                 {keyName(k.id)}
                 {k.current && " · current"}
               </span>
-              <span className={k.retirable ? "font-semibold text-green-700" : ""}>
+              <span className={k.retirable ? "font-semibold" : ""}>
                 {k.values} values
                 {k.retirable && " · not used: safe to remove from Vercel"}
               </span>
             </li>
           ))}
           {report.missing.map((m) => (
-            <li key={m.id} className="flex flex-wrap justify-between gap-2 px-4 py-3 text-red-700">
+            <li key={m.id} className="flex flex-wrap justify-between gap-2 px-4 py-3 font-semibold">
               <span className="font-medium">
                 {m.id === UNREADABLE ? "Unreadable values" : `${keyName(m.id)} · missing`}
               </span>

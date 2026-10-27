@@ -322,6 +322,7 @@ model User {
   digests                Digest[]
   membershipIntents      MembershipIntent[]
   analyticsEvents        AnalyticsEvent[]
+  activityEvents         ActivityEvent[]
   merchantCategories     MerchantCategory[]
   subscriptionChecks     SubscriptionCheck[]
   alerts                 Alert[]
@@ -2031,6 +2032,32 @@ model AnalyticsEvent {
   @@index([userId])
   @@index([name, createdAt])
   @@map("analytics_events")
+}
+
+// The beta's activity log (src/lib/activity/): what a real beta user did in the browser (pages,
+// buttons, forms, fields, errors), never what they typed. /admin/activity reads it.
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  // Null only for anonymous views of the landing page.
+  userId    String?  @map("user_id")
+  // One browser tab's visit, a random id made in the tab.
+  visitId   String   @map("visit_id")
+  // page_view, page_time, click, rage_click, submit, focus, blur or error.
+  kind      String
+  // Path without the query string.
+  path      String
+  // The element's role (button, link...), and its label or a form or field name, redacted.
+  role      String?
+  label     String?
+  // Counts and flags only (typed, length, ms, fields filled), never a typed value.
+  data      Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("activity_events")
 }
 
 // Two-factor backup codes: each works once, in place of an authenticator code. Only a
