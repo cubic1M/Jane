@@ -536,7 +536,12 @@ export const RENEWAL_FREQUENCIES: readonly Frequency[] = ["QUARTERLY", "ANNUALLY
 export const BILL_REMINDER_DAYS = 3;
 // Recurring charges that aren't bills to pay (books QA): card interest is added to the card's
 // balance, which its own payment covers.
-export const NOT_BILL_CATEGORIES: readonly string[] = ["BANK_FEES_INTEREST_CHARGE"];
+// The same for an ATM's fee (overnight upload QA: a student's "Non-Chase Atm Fee" was a $3
+// bill every two weeks): it follows taking cash out, it isn't a bill to pay.
+export const NOT_BILL_CATEGORIES: readonly string[] = [
+  "BANK_FEES_INTEREST_CHARGE",
+  "BANK_FEES_ATM_FEES",
+];
 export const CARD_PAYMENT_NAME = "Credit card payment";
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the
@@ -557,10 +562,13 @@ export const PAYMENT_CATEGORY_BY_ACCOUNT: Readonly<Record<string, string>> = {
 export const CARD_PAYMENT_MATCH_DAYS = 3;
 // Money moved between the person's own accounts (chat QA): saving, investing or into an HSA.
 // Never a recurring charge. Payment-app transfers and wires stay: they can be rent to a person.
+// Cash taken out at an ATM is the person's own money too (overnight upload QA: "Atm
+// Withdrawal, $40 every two weeks" was a bill); the forecast still takes it out of checking.
 export const OWN_ACCOUNT_TRANSFERS: readonly string[] = [
   "TRANSFER_OUT_ACCOUNT_TRANSFER",
   "TRANSFER_OUT_SAVINGS",
   "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+  "TRANSFER_OUT_WITHDRAWAL",
 ];
 // A charge is unusually large when it is at least this much (in cents)...
 export const LARGE_CHARGE_MIN_CENTS = 50_000;
