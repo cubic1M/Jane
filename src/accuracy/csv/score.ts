@@ -19,6 +19,9 @@ import { dailyNetWorth } from "@/insights/net-worth-series";
 import { kindOf } from "@/insights/spending";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { derivedBalances } from "@/lib/import/balances";
+import { runDetectors } from "@/detectors";
+import { buildProfile, type ProfileInput } from "@/profile/build";
+import { calibration, type Bucket, type Judged } from "../score";
 import { renderPerson, type BenchFile } from "./layouts";
 import { balanceOn, monthEnds, netWorthOn, type CsvPerson, type TrueFinding } from "./people";
 
@@ -224,6 +227,65 @@ export async function runUpload(person: CsvPerson): Promise<Upload> {
   return { person, files, failedFiles, rows, input, findings: detect(input), snapshots };
 }
 
+// --- Suggestions' confidence ------------------------------------------------------------------
+
+// The profile the suggestions are made from, as an uploaded person's would be: the upload's rows
+// and categories, and a balance only where one was typed or read from the statement.
+export function profileInputOfUpload(up: Upload): ProfileInput {
+  return {
+    today: up.person.asOf,
+    transactions: up.input.transactions.map((t) => ({
+      date: t.date,
+      amountCents: t.amountCents,
+      description: t.description,
+      pfc: t.pfcDetailed,
+      accountId: t.accountId,
+    })),
+    accounts: up.input.accounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      subtype: a.subtype,
+      balanceCents: a.currentBalanceCents ?? 0,
+      ...(a.currentBalanceCents === null ? { balanceKnown: false } : {}),
+    })),
+    liabilities: [],
+    told: {},
+  };
+}
+
+// Whether a suggestion's topic is true of the person, for the topics the truth can answer (the
+// sample bench's list, src/accuracy/score.ts).
+const has = (p: CsvPerson, type: TrueFinding["type"]) =>
+  p.truth.findings.some((f) => f.type === type);
+const TOPIC_TRUTH: Record<string, (p: CsvPerson) => boolean> = {
+  subscriptions: (p) => has(p, "subscription_review"),
+  price_increase: (p) => has(p, "price_increase"),
+  bank_fees: (p) => has(p, "bank_fees"),
+  duplicate_charge: (p) => has(p, "duplicate_charge"),
+  card_interest: (p) => has(p, "card_interest"),
+  idle_cash: (p) => has(p, "idle_cash"),
+  emergency_fund: (p) => !has(p, "idle_cash"),
+};
+
+// Every suggestion Jane would show this person on a topic the truth can judge, with its "% sure".
+export function judgedOfUpload(up: Upload): Judged[] {
+  const data = profileInputOfUpload(up);
+  return runDetectors({ profile: buildProfile(data), data }).flatMap((s) => {
+    const isTrue = TOPIC_TRUTH[s.topic];
+    return isTrue
+      ? [
+          {
+            person: up.person.id,
+            topic: s.topic,
+            percent: s.confidence.percent,
+            right: isTrue(up.person),
+          },
+        ]
+      : [];
+  });
+}
+
 // --- Scores -----------------------------------------------------------------------------------
 
 export type Tally = { tp: number; fp: number; fn: number };
@@ -259,6 +321,8 @@ export type PersonScore = {
   line: { points: number; shown: number; absError: number; scale: number };
   // Whether Jane knew every account's balance today (typed, or from the statement).
   balancesKnown: boolean;
+  // The suggestions it would show, with how sure each says it is and whether it's right.
+  judged: Judged[];
   mistakes: Mistake[];
 };
 
@@ -507,6 +571,7 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
     netWorth: { truth: truthNet, jane: todayCents },
     line,
     balancesKnown: up.input.accounts.every((a) => a.currentBalanceCents !== null),
+    judged: judgedOfUpload(up),
     mistakes,
   };
 }
@@ -532,6 +597,9 @@ export type CsvScoreboard = {
   incomeError: number;
   netWorth: { right: number; absError: number };
   line: { coverage: number; error: number; errorWhereKnown: number; peopleKnown: number };
+  // Is "80% sure" right 80% of the time, on uploaded statements?
+  calibration: Bucket[];
+  zeroPercent: number;
 };
 
 export function summarize(scores: readonly PersonScore[]): CsvScoreboard {
@@ -587,6 +655,8 @@ export function summarize(scores: readonly PersonScore[]): CsvScoreboard {
       right: scores.filter((s) => s.netWorth.jane === s.netWorth.truth).length,
       absError: sum((s) => Math.abs(s.netWorth.jane - s.netWorth.truth)),
     },
+    calibration: calibration(scores.flatMap((s) => s.judged)),
+    zeroPercent: scores.flatMap((s) => s.judged).filter((j) => j.percent <= 0).length,
     line: {
       errorWhereKnown:
         sum((s) => (s.balancesKnown ? s.line.absError : 0)) /

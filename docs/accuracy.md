@@ -241,6 +241,7 @@ Beta users start by uploading statements, so the sample people above (already-cl
 - **Two sets.** The tuning set (`CSV_SEED`) is what rules were fixed on. The held-out set (`CSV_HELD_OUT_SEED`) has the same kinds of people and mess under names the tuning set never uses (other grocers, restaurants, landlords, utilities, employers, subscriptions, airlines and cinemas) and different banks per person. It was written before any fix and is only scored.
 - **Scoring:** `src/accuracy/csv/score.ts` runs what `/import` runs, without a database: `readCsvFile` on every file, one copy of rows two files share, `categorizeTransactions` with Claude off and no cached merchants, card payments matched from the card's side, the merchant directory's seed, `detect()`, the spending chart's monthly totals and the home hub's net worth line. Claude is stubbed (`vi.mock`), so nothing is spent and the categories and subscriptions are the rules' alone: a lower bound. On a live upload Claude places what the rules leave, and is asked about recurring charges whose category can't say; the tables count both.
 - **Run it:** `npm run accuracy` prints both benches. `ACCURACY_WRITE=1` also rewrites the files, `src/accuracy/csv/baseline.json` and the tables below. `ACCURACY_MISTAKES=1` lists the tuning set's mistakes.
+- **Calibration:** the suggestions an uploaded person would see, made from the upload's rows and only the balances Jane knows. They are bucketed by their "% sure" and judged on the same topics as the sample bench. Like the sample bench, they are under-confident on purpose ("58% sure" is right 94% of the time on the tuning set, 87% held out). The only wrong ones are two "build an emergency fund" suggestions for people near the idle-cash line. The gate holds the same bar: no 0%, no bucket of 10 or more over 10 points surer than right.
 - **Gate:** `src/accuracy/csv/csv-accuracy.test.ts`, with the unit tests: the files must match the generator, every share in the baseline may drop at most 3 points, and extra rows and false "Charged twice?" may not rise at all.
 
 <!-- csv-scoreboard:start -->
@@ -272,6 +273,17 @@ Tuning set (20 people, 165 files, 5137 transactions):
 
 Missed subscriptions Claude would be asked about on a live upload: 3 of 3.
 
+Suggestions' confidence (is "80% sure" right 80% of the time?):
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 18 | 58% | 94% |
+| 60–69% | 32 | 64% | 97% |
+| 70–79% | 5 | 76% | 100% |
+| 80–89% | 2 | 83% | 100% |
+| 90–100% | 0 | – | – |
+
 Held-out set (20 people, 129 files, 5013 transactions):
 
 | Step | Score |
@@ -299,6 +311,17 @@ Held-out set (20 people, 129 files, 5013 transactions):
 | bills coming up (31 days) | 98.8% | 93.6% | 162 | 2 | 11 |
 
 Missed subscriptions Claude would be asked about on a live upload: 44 of 59.
+
+Suggestions' confidence (is "80% sure" right 80% of the time?):
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 15 | 59% | 87% |
+| 60–69% | 32 | 64% | 97% |
+| 70–79% | 6 | 76% | 100% |
+| 80–89% | 4 | 83% | 100% |
+| 90–100% | 0 | – | – |
 <!-- csv-scoreboard:end -->
 
 ### CSV bench, round by round
