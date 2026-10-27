@@ -15,6 +15,7 @@ import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
 import { formatCents } from "@/lib/money";
 import { daysBetween } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // The home hub's view model (docs/design/home-hub.md): the numbers the hub's loader gathered
 // from the pages that already show them, shaped for the charts. Pure, and no new math: it only
@@ -221,13 +222,6 @@ export type AreaTile = {
 
 // --- Formatting ---
 
-const shortDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-
 // "$48.2k", "$1.3M", "$640": a tile's number in a glance.
 export function shortMoney(cents: number): string {
   const dollars = Math.round(cents / 100);
@@ -321,7 +315,7 @@ function safeHero(safe: SafeInput): SafeHero {
   const total = raw.reduce((sum, p) => sum + p.cents, 0);
   const held = [
     {
-      label: `Bills before ${safe.payday ? shortDate(safe.payday) : "payday"}`,
+      label: `Bills before ${safe.payday ? dayLabel(safe.payday) : "payday"}`,
       cents: safe.billsCents,
     },
     { label: "Left in your budgets", cents: safe.budgetsLeftCents },
@@ -329,7 +323,7 @@ function safeHero(safe: SafeInput): SafeHero {
     { label: "Set aside for yearly bills", cents: safe.setAsideCents },
   ].filter((l) => l.cents > 0);
   return {
-    label: safe.payday ? `Safe to spend until ${shortDate(safe.payday)}` : "Safe to spend",
+    label: safe.payday ? `Safe to spend until ${dayLabel(safe.payday)}` : "Safe to spend",
     cents: short ? -safe.safeCents : safe.safeCents,
     short,
     parts: raw.map((p) => ({ ...p, share: total > 0 ? p.cents / total : 0 })),
@@ -351,7 +345,7 @@ function safeSteps(safe: SafeInput, short: boolean): CalcLine[] {
         : []
       : bills.slice(0, SAFE_BILLS_SHOWN).map((b) => ({
           label: b.merchant,
-          note: shortDate(b.date),
+          note: dayLabel(b.date),
           sign: "−" as const,
           cents: b.amountCents,
         }));

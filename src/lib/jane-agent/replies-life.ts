@@ -4,16 +4,10 @@ import type { LifeGuess } from "@/insights/life-signals";
 import type { ChecklistRun } from "@/lib/life-guesses";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
+import { dayLabel } from "@/lib/day-label";
 
 // Life events in the chat (spec step 100): what Jane offers to do, what it did, and the
 // answer to "I'm moving".
-
-const shortDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 const and = (items: readonly string[]) =>
   items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
@@ -42,7 +36,7 @@ export function checklistNote(kind: LifeEventKind, run: ChecklistRun): string {
       : []),
     ...(run.reminders.length > 0
       ? [
-          `On your deadlines: ${and(run.reminders.map((r) => `"${r.title}" by ${shortDate(r.dueOn)}`))}.`,
+          `On your deadlines: ${and(run.reminders.map((r) => `"${r.title}" by ${dayLabel(r.dueOn)}`))}.`,
         ]
       : []),
   ];

@@ -3,6 +3,7 @@
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const DAYS_PER_MONTH = 365.25 / 12;
+export const DAYS_PER_YEAR = 365.25;
 export const BASIS_POINTS = 10_000;
 
 // Dates are YYYY-MM-DD strings, read as UTC, so time zones never shift a day.
@@ -81,4 +82,9 @@ export function firstOfMonth(date: string): string {
 
 export function dayOfMonth(date: string): number {
   return new Date(toUtc(date)).getUTCDate();
+}
+
+// "2026-10" from "2026-10-17".
+export function monthOf(date: string): string {
+  return date.slice(0, "YYYY-MM".length);
 }

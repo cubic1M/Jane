@@ -5,19 +5,13 @@ import { postMessages } from "../messages";
 import type { MultiResult, MultiStep } from "../types";
 import { ChatActionError, linksOf, type ActionContext, type ActionHandler } from "./handler";
 import { takeChatAction } from "./index";
+import { dayLabel } from "@/lib/day-label";
 
 // Spec step 185: a plan of several steps (../multi.ts), confirmed once. The steps run in
 // order, each through its feature's own code: a feature's Yes on its own (hidden) message,
 // through takeChatAction, so every check and effect is the same as tapping it there; a
 // transfer through the money-movement partner. The first that fails stops the rest and
 // says why. Transfers can be undone while they're pending.
-
-const shortDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 async function runStep(
   { userId, message, client, now }: ActionContext,
@@ -42,7 +36,7 @@ async function runStep(
     );
     return {
       status: "done",
-      note: `${formatCents(step.amountCents)} goes to ${step.goalName} on ${shortDate(runOn)}; you can undo it until then.`,
+      note: `${formatCents(step.amountCents)} goes to ${step.goalName} on ${dayLabel(runOn)}; you can undo it until then.`,
       transferId: id,
     };
   }

@@ -30,6 +30,7 @@ import { addDays, average, dayOfMonth, daysBetween, median } from "@/detection/u
 import { formatCents } from "@/lib/money";
 import { categoryLabel } from "./labels";
 import { kindOf, monthsEnding } from "./spending";
+import { dayLabel } from "@/lib/day-label";
 
 // Jane notices changes (spec step 97): what changed in someone's money lately, before they
 // notice. Pure: the detection input and its streams in, the changes out, newest first.
@@ -78,13 +79,6 @@ const base = {
   up: null,
   accountId: null,
 } satisfies Partial<Change>;
-
-const shortDate = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 const recent = (date: string, asOf: string) =>
   date > addDays(asOf, -CHANGE_RECENT_DAYS) && date <= asOf;
@@ -145,7 +139,7 @@ export function newSubscriptions(input: DetectionInput, streams: Stream[]): Chan
         kind: "new_subscription",
         key: `new:${stream.key}`,
         date: start.date,
-        title: `${stream.merchant} is a new regular charge: ${formatCents(last.amountCents)}, since ${shortDate(start.date)}.`,
+        title: `${stream.merchant} is a new regular charge: ${formatCents(last.amountCents)}, since ${dayLabel(start.date)}.`,
         amountCents: last.amountCents,
         merchant: stream.merchant,
         streamKey: stream.key,
@@ -180,7 +174,7 @@ export function paycheckChanges(input: DetectionInput): Change[] {
         kind: "new_employer",
         key: `employer:${employer.key}`,
         date: last.date,
-        title: `A paycheck from a new employer: ${formatCents(-last.amountCents)} from ${name} on ${shortDate(last.date)}.`,
+        title: `A paycheck from a new employer: ${formatCents(-last.amountCents)} from ${name} on ${dayLabel(last.date)}.`,
         amountCents: -last.amountCents,
         merchant: name,
       });
@@ -203,7 +197,7 @@ export function paycheckChanges(input: DetectionInput): Change[] {
         kind: "paycheck_late",
         key: `late:${employer.key}:${due}`,
         date: due,
-        title: `Your paycheck from ${name} hasn't come in. It usually arrives around ${shortDate(due)}; the last one was on ${shortDate(last.date)}.`,
+        title: `Your paycheck from ${name} hasn't come in. It usually arrives around ${dayLabel(due)}; the last one was on ${dayLabel(last.date)}.`,
         amountCents: -last.amountCents,
         merchant: name,
       });
@@ -222,7 +216,7 @@ export function paycheckChanges(input: DetectionInput): Change[] {
         kind: "paycheck_smaller",
         key: `smaller:${employer.key}:${last.date}`,
         date: last.date,
-        title: `Your paycheck from ${name} was smaller than usual: ${formatCents(amount)} on ${shortDate(last.date)}, where it's usually ${formatCents(usual)}.`,
+        title: `Your paycheck from ${name} was smaller than usual: ${formatCents(amount)} on ${dayLabel(last.date)}, where it's usually ${formatCents(usual)}.`,
         amountCents: amount,
         usualCents: usual,
         merchant: name,
@@ -317,7 +311,7 @@ export function newFees(input: DetectionInput): Change[] {
         kind: "new_fee",
         key: `fee:${fee.id}`,
         date: fee.date,
-        title: `${what} of ${formatCents(fee.amountCents)} on ${account}, on ${shortDate(fee.date)}.`,
+        title: `${what} of ${formatCents(fee.amountCents)} on ${account}, on ${dayLabel(fee.date)}.`,
         amountCents: fee.amountCents,
         accountId: fee.accountId,
       },

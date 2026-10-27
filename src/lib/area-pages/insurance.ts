@@ -5,6 +5,7 @@ import { shortMoney } from "@/lib/hub/view";
 import { formatCents } from "@/lib/money";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 import { daysBetween } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // The Insurance page as a tree (docs/design/area-pages.md): Insurance → its branches (cover
 // needs, policies, missing cover, savings, renewals, life events, documents, card cover,
@@ -97,12 +98,6 @@ const EVENT_LABELS: Record<CoverEvent, string> = {
 };
 
 const perYear = (cents: number) => `${shortMoney(cents)}/yr`;
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 export type InsuranceTreeInput = {
   asOf: string;
@@ -186,7 +181,7 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
         p.status !== "active"
           ? "Found from your payments; confirm it to count it."
           : p.renewsOn
-            ? `Renews ${dateLabel(p.renewsOn)}.`
+            ? `Renews ${dayLabel(p.renewsOn)}.`
             : "Active.",
     });
   });

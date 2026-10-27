@@ -10,6 +10,7 @@ import { taxYearFrom } from "@/planning/tax-pack";
 import type { TagSource } from "@/planning/tax-tags";
 import { CheckButtons, TagForm } from "./tag-form";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Tax tags (spec step 119): what Jane tagged for the year, the ones it's unsure about,
 // and a search to tag anything else (a work expense). Tags never change spending.
@@ -21,13 +22,6 @@ const SOURCE: Readonly<Record<TagSource, string>> = {
   jane: "Tagged by Jane",
   check: "Tagged by Jane: check it",
 };
-
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 async function TagsContent({
   searchParams,
@@ -112,7 +106,7 @@ async function TagsContent({
                 >
                   <div className="flex flex-wrap justify-between gap-x-3">
                     <span className="[overflow-wrap:anywhere]">
-                      {day(t.date)} · {t.payee}
+                      {dayLabel(t.date)} · {t.payee}
                     </span>
                     <span className="whitespace-nowrap">{formatCents(t.amountCents)}</span>
                   </div>
@@ -120,7 +114,7 @@ async function TagsContent({
                   <TagForm
                     target={{ transactionId: t.id }}
                     current={t.tag}
-                    label={`Tax tag for ${t.payee}, ${day(t.date)}`}
+                    label={`Tax tag for ${t.payee}, ${dayLabel(t.date)}`}
                   />
                 </li>
               ))}
@@ -161,14 +155,14 @@ async function TagsContent({
             <li key={t.id} className="flex flex-col gap-1">
               <div className="flex flex-wrap justify-between gap-x-3">
                 <span className="[overflow-wrap:anywhere]">
-                  {day(t.date)} · {t.payee}
+                  {dayLabel(t.date)} · {t.payee}
                 </span>
                 <span className="whitespace-nowrap">{formatCents(t.amountCents)}</span>
               </div>
               <TagForm
                 target={{ transactionId: t.id }}
                 current={t.tag}
-                label={`Tax tag for ${t.payee}, ${day(t.date)}`}
+                label={`Tax tag for ${t.payee}, ${dayLabel(t.date)}`}
               />
             </li>
           ))}

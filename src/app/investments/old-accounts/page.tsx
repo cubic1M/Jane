@@ -12,6 +12,7 @@ import { requireUser } from "@/lib/session";
 import { addEmployer, answer, rollOver } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Old accounts brought home (spec step 211, demo advice): past employers, each asked about
 // once; found plans with fees compared; a direct rollover tracked step by step.
@@ -25,13 +26,6 @@ const DONE: Record<string, string> = {
   started: "Rollover requested. The old plan sends it directly; you'll see each step below.",
   changed: "That changed since you last looked. Here's where it stands.",
 };
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function Content({
   searchParams,
@@ -147,9 +141,9 @@ async function Content({
                 <li key={s.key}>
                   {s.doneOn ? "Done" : "To do"}: {s.label}
                   {s.doneOn
-                    ? ` (${day(s.doneOn)})`
+                    ? ` (${dayLabel(s.doneOn, { year: true })})`
                     : p.arrivesOn && s.key === "arrives"
-                      ? ` (due ${day(p.arrivesOn)})`
+                      ? ` (due ${dayLabel(p.arrivesOn, { year: true })})`
                       : ""}
                 </li>
               ))}

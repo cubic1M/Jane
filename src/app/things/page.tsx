@@ -12,6 +12,7 @@ import { deleteAsset } from "./actions";
 import { AssetForm } from "./asset-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Things you own (spec step 67): a home, a car, anything else of value, at the value the
 // person gives. Counted in net worth; with the loan against it, shown as equity.
@@ -26,14 +27,6 @@ const SAVED: Record<string, string> = {
 
 // What a prefilled form names the thing, from "Add your home's value" on /loans.
 const DEFAULT_NAME: Record<string, string> = { home: "Home", vehicle: "Car" };
-
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 function EquityLine({ asset }: { asset: AssetLine }) {
   if (!asset.loan) return null;
@@ -135,7 +128,7 @@ async function ThingsContent({
                   <span className="text-xl font-semibold">{formatCents(a.valueCents)}</span>
                 </div>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Your value from {dateLabel(a.valuedOn)}.
+                  Your value from {dayLabel(a.valuedOn, { year: true })}.
                   {a.stale && (
                     <>
                       {" "}
