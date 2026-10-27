@@ -8,6 +8,29 @@ const into = (description: string, hints = {}) =>
   categorizeByRules({ description, amountCents: -1000, hints })?.detailed ?? null;
 
 describe("categorizeByRules", () => {
+  // The wordings in the bank CSVs Jane reads (src/data-sources/csv/__fixtures__): a card payment
+  // is never spending, from either side, and the card's interest line is interest.
+  it.each([
+    ["PAYMENT - THANK YOU"],
+    ["ONLINE PAYMENT, THANK YOU"],
+    ["INTERNET PAYMENT - THANK YOU"],
+    ["AUTOPAY PAYMENT - THANK YOU"],
+    ["CAPITAL ONE AUTOPAY PYMT"],
+    ["Withdrawal to Capital One card ending 1234"],
+    ["BANK OF AMERICA CREDIT CARD Bill Payment"],
+  ])("calls %s a card payment", (description) => {
+    expect(out(description)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+    expect(into(description)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
+  it("reads the Bank of America card's interest line as interest", () => {
+    expect(out("INTEREST CHARGED ON PURCHASES")).toBe("BANK_FEES_INTEREST_CHARGE");
+  });
+
+  it("leaves other bill payments alone", () => {
+    expect(out("COMCAST BILL PAYMENT")).not.toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
   it.each([
     ["NETFLIX.COM NETFLIX.COM CA 10/14", "ENTERTAINMENT_TV_AND_MOVIES"],
     ["Spotify USA", "ENTERTAINMENT_MUSIC_AND_AUDIO"],
