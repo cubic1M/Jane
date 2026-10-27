@@ -16,17 +16,9 @@ import { VALUES_EXCLUSIONS, type Exclusion } from "@/config/values";
 import type { InvestmentAccountView } from "@/insights/investments";
 import { valuesPlan } from "@/planning/values";
 import type { DetectorContext } from "./contract";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import {
-  clip,
-  dollars,
-  evidence,
-  headlineOf,
-  liquidCents,
-  monthlySpendCents,
-  weakest,
-} from "./helpers";
+import { clip, evidence, headlineOf, liquidCents, monthlySpendCents, weakest } from "./helpers";
 
 // Detectors for the second batch of investing tools (spec steps 232, 234 and 235): the
 // workplace plan's own menu, cash that could work harder for a short time, and a big deposit
@@ -151,7 +143,7 @@ const suddenMoney: Detector = {
       capability: "investing",
       topic: "sudden_money",
       title: "Plan your big deposit: tax first, then the rest in order",
-      headline: `Set aside ${dollars(hold)} tax from your deposit`,
+      headline: `Set aside ${formatWholeDollars(hold)} tax from your deposit`,
       short: clip(
         `${formatCents(amount)} arrived on ${biggest.date}; keep about ${formatCents(hold)} aside for tax.`,
       ),
@@ -268,7 +260,7 @@ const valuesFunds: Detector = {
       capability: "investing",
       topic: "values_funds",
       title: "Move your funds in line with the list you gave me",
-      headline: `Move ${dollars(total)} to funds that match your values`,
+      headline: `Move ${formatWholeDollars(total)} to funds that match your values`,
       short: clip(
         `${formatCents(total)} sits in ${offending.length} ${offending.length === 1 ? "fund" : "funds"} that may hold what you asked me to leave out.`,
       ),

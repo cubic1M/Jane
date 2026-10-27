@@ -5,9 +5,9 @@ import {
   PRACTICE_TOPIC,
 } from "@/config/practice-cards";
 import { PRACTICE_START_CENTS } from "@/config/portfolios";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { dollars, evidence, factEvidence, liquidCents, weakest } from "./helpers";
+import { evidence, factEvidence, liquidCents, weakest } from "./helpers";
 
 // "Start a practice portfolio" (spec step 296, Phase AW, Stage A): practice money on the sample
 // market for someone still building up, not in debt trouble, with no taxable investment account
@@ -39,7 +39,7 @@ const practicePortfolio: Detector = {
       title: "Start a practice portfolio before putting real money in",
       // The worth is a fall met on practice money; the headline says so rather than promising to
       // "avoid" a loss of real money.
-      headline: `Try practice money: a ${dollars(fall)} dip costs nothing`,
+      headline: `Try practice money: a ${formatWholeDollars(fall)} dip costs nothing`,
       short: `You keep ${formatCents(cash)} in cash and no brokerage account yet.`,
       worthCents: fall,
       worthKind: "risk",

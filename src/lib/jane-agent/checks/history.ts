@@ -1,4 +1,5 @@
 import type { CheckRun } from "./run";
+import { formatCents } from "@/lib/money";
 
 // The nightly scores over time (spec step 195): kept in docs/chat-quality-history.json, one
 // entry a night, so /admin and docs/chat-quality.md can show them and a drop can be seen.
@@ -137,7 +138,7 @@ export function nightlyTable(history: readonly NightEntry[]): string {
     "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :-: |",
     ...rows.map(
       (r) =>
-        `| ${r.date} | ${r.mode === "full" ? "with Claude" : "rules only"} | ${pct(r.metrics?.understoodPct)} | ${pct(r.metrics?.figuresPct)} | ${pct(r.metrics?.followUpsPct)} | ${secs(r.metrics?.firstWordsMs ?? r.firstWordsMs)} | ${secs(r.metrics?.fullAnswerMs)} | ${r.score ?? "–"} | ${r.graded} | ${r.failed.length} | ${(r.costCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })} | ${meetsBar(r.metrics) ? "yes" : "no"} |`,
+        `| ${r.date} | ${r.mode === "full" ? "with Claude" : "rules only"} | ${pct(r.metrics?.understoodPct)} | ${pct(r.metrics?.figuresPct)} | ${pct(r.metrics?.followUpsPct)} | ${secs(r.metrics?.firstWordsMs ?? r.firstWordsMs)} | ${secs(r.metrics?.fullAnswerMs)} | ${r.score ?? "–"} | ${r.graded} | ${r.failed.length} | ${formatCents(r.costCents)} | ${meetsBar(r.metrics) ? "yes" : "no"} |`,
     ),
   ].join("\n");
 }

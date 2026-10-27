@@ -4,6 +4,7 @@ import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { confidenceOf, counted, type Source } from "@/profile/confidence";
 import type { Fact, ProfileInput, ProfileTx } from "@/profile/build";
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
+import { formatWholeDollars } from "@/lib/money";
 
 // What detectors share. Pure.
 
@@ -97,9 +98,6 @@ export function listOf(names: readonly string[]): string {
   return n.length <= 1 ? (n[0] ?? "") : `${n.slice(0, -1).join(", ")} and ${n.at(-1)}`;
 }
 
-// Whole dollars for a headline: "$216".
-export const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
-
 // A headline: the verb phrase, then what it is worth ("Cancel Hulu, save $216 a year").
 // `once` is for a one-off amount rather than a yearly one. Without a value, the phrase alone.
 export function headlineOf(
@@ -109,7 +107,7 @@ export function headlineOf(
   once = false,
 ): string {
   if (worthCents <= 0) return phrase;
-  const d = dollars(worthCents);
+  const d = formatWholeDollars(worthCents);
   const worth =
     kind === "risk"
       ? `avoid up to ${d}`
