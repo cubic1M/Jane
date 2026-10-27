@@ -384,24 +384,29 @@ const debtPlan: Detector = {
     if (trouble.value !== true) return null;
     const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
     const interest = outCents(charges);
+    // With no card linked the card debt isn't known (src/profile/build.ts), so the plan speaks of
+    // the interest alone and doesn't rest on the unknown balance (QA: "Your cards hold $0.00").
+    const card = profile.facts.card_debt_cents;
+    const cards = typeof card.value === "number" ? card.value : null;
+    const held = cards === null ? "Your debts" : `Your cards hold ${formatCents(cards)} and`;
     return {
       id: suggestionId("debt", "debt_plan"),
       capability: "debt",
       topic: "debt_plan",
       title: "Make a plan to pay your debts off, biggest interest first",
       headline: headlineOf("Pay off debt, highest interest first", interest, "saves"),
-      short: `Your cards hold ${formatCents(profile.facts.card_debt_cents.value as number)} and cost you ${formatCents(interest)} a year.`,
+      short: `${held} cost you ${formatCents(interest)} a year.`,
       worthCents: interest,
       worthKind: "saves",
       // The plan rests on the debts themselves: the card balances and the interest they charge
       // (loans QA: it cited the overdraft fees that made it trouble, which say nothing of them).
       confidence: weakest([
-        factEvidence(profile.facts.card_debt_cents),
+        ...(cards === null ? [] : [factEvidence(card)]),
         evidence("seen", profile.months, charges.length, "interest charges"),
       ]),
       urgency: "now",
       rankCents: Math.round(interest * D.troublePlanRank),
-      why: `Your cards hold ${formatCents(profile.facts.card_debt_cents.value as number)} and cost you ${formatCents(interest)} in interest a year.`,
+      why: `${held} cost you ${formatCents(interest)} in interest a year.`,
       action: { label: "Plan the payoff", href: "/debt" },
     };
   },
