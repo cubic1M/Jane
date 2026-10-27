@@ -104,12 +104,20 @@ async function workOut(userId: string, options: Options, stage: (s: ImportStage)
   await refreshAfterUpload(userId, options);
 }
 
-// The import_finish job.
+// The import_finish job. Its parts read the same person's facts again and again (the detectors,
+// the suggestions, Jane's numbers), so it runs with a read cache, as a bank sync does
+// (src/lib/read-cache.ts).
 export async function finishImport(
   userId: string,
   runId: string,
   options: Options = {},
 ): Promise<void> {
+  return withReadCache(options.client ?? defaultClient, (client) =>
+    finishImportWork(userId, runId, { ...options, client }),
+  );
+}
+
+async function finishImportWork(userId: string, runId: string, options: Options): Promise<void> {
   const db = scopedFor(userId, options.client);
   const stage = async (s: ImportStage, foundCents?: number) => {
     await db.importRuns.updateMany({
