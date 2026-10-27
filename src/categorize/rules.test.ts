@@ -62,11 +62,11 @@ describe("categorizeByRules", () => {
   });
 
   it("reads Capital One's, Discover's and American Express's card categories", () => {
-    expect(out("SQ *CORNER BISTRO", { bankCategory: "Dining" })).toBe("FOOD_AND_DRINK_RESTAURANT");
-    expect(out("SQ *CORNER BISTRO", { bankCategory: "Restaurants" })).toBe(
+    expect(out("SQ *CORNER STUDIO", { bankCategory: "Dining" })).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(out("SQ *CORNER STUDIO", { bankCategory: "Restaurants" })).toBe(
       "FOOD_AND_DRINK_RESTAURANT",
     );
-    expect(out("SQ *CORNER BISTRO", { bankCategory: "Restaurant-Bar & Café" })).toBe(
+    expect(out("SQ *CORNER STUDIO", { bankCategory: "Restaurant-Bar & Café" })).toBe(
       "FOOD_AND_DRINK_RESTAURANT",
     );
     expect(out("CORNER MARKET", { bankCategory: "Supermarkets" })).toBe("FOOD_AND_DRINK_GROCERIES");
@@ -187,7 +187,7 @@ describe("categorizeByRules", () => {
     const shop = { bankCategory: "Shopping" };
     expect(out("CRATE & BARREL 0412", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
     expect(into("CRATE & BARREL 0412", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
-    expect(out("SQ *LITTLE STAR PIZZA", { bankCategory: "Food & Drink" })).toBe(
+    expect(out("SQ *LITTLE STAR", { bankCategory: "Food & Drink" })).toBe(
       "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
     );
     // A keyword still wins over the card's broad label.
@@ -200,7 +200,16 @@ describe("categorizeByRules", () => {
       "FOOD_AND_DRINK_RESTAURANT",
     );
     expect(out("TST* BLUE BOTTLE COFFEE")).toBe("FOOD_AND_DRINK_COFFEE");
-    expect(out("SQ *CORNER BISTRO")).toBeNull();
+    expect(out("SQ *CORNER STUDIO")).toBeNull();
+  });
+
+  it("reads what kind of place it is from the words in its name", () => {
+    expect(out("PHO HOA NOODLE 22")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(out("BRIGHT NOW DENTAL")).toBe("MEDICAL_DENTAL_CARE");
+    expect(out("MIDAS MUFFLER #221")).toBe("GENERAL_SERVICES_AUTOMOTIVE");
+    expect(out("LUXE NAILS SALON")).toBe("PERSONAL_CARE_HAIR_AND_BEAUTY");
+    // A name still wins: Taco Bell is fast food.
+    expect(out("TACO BELL #1234")).toBe("FOOD_AND_DRINK_FAST_FOOD");
   });
 
   it("leaves unknown merchants for the LLM", () => {

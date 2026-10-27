@@ -2,7 +2,7 @@
   "tuning": {
     "rowsReadExactly": 1,
     "extraRows": 0,
-    "categoryRight": 0.9606774381934982,
+    "categoryRight": 0.9764453961456103,
     "subscription_review.precision": 1,
     "subscription_review.recall": 1,
     "price_increase.precision": 1,
@@ -30,7 +30,7 @@
   "held-out": {
     "rowsReadExactly": 1,
     "extraRows": 0,
-    "categoryRight": 0.5717135447835627,
+    "categoryRight": 0.609016556951925,
     "subscription_review.precision": 1,
     "subscription_review.recall": 0.6622,
     "price_increase.precision": 0.8824,
