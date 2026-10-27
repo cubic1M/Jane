@@ -37,14 +37,6 @@ const SAVED: Record<string, string> = {
   cleared: "Cleared what you typed.",
 };
 
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 // What can be typed for a debt: anything the bank (or the payments) leave out.
 const typeable = (d: Debt) => ({
   apr: d.aprFrom === null || d.aprFrom === "typed",
@@ -185,7 +177,7 @@ function DebtCard({ debt, open, error }: { debt: Debt; open: boolean; error: str
         <div>
           <dt className="text-zinc-500">Next due</dt>
           <dd>
-            {debt.nextDue === null ? "Not known yet" : dateLabel(debt.nextDue)}
+            {debt.nextDue === null ? "Not known yet" : dayLabel(debt.nextDue, { year: true })}
             {debt.dueSoon && (
               <span className="ml-1 border border-zinc-400 px-1.5 text-xs">soon</span>
             )}
@@ -194,7 +186,7 @@ function DebtCard({ debt, open, error }: { debt: Debt; open: boolean; error: str
         {debt.payoffDate && (
           <div>
             <dt className="text-zinc-500">Paid off by</dt>
-            <dd>{dateLabel(debt.payoffDate)}</dd>
+            <dd>{dayLabel(debt.payoffDate, { year: true })}</dd>
             <dd className="text-xs text-zinc-500">{sourceLabel(debt.payoffFrom, debt.typedOn)}</dd>
           </div>
         )}
@@ -457,9 +449,10 @@ async function LoansContent({
         <p className="text-zinc-600 dark:text-zinc-400">
           When you{" "}
           <Link href="/connect" className={LINK}>
-            link a bank
+            add your accounts
           </Link>{" "}
-          that reports them, they show here with their rates and due dates.
+          (a card statement, or a bank that reports loans), they show here with their rates and due
+          dates.
         </p>
       ) : (
         <AreaPage

@@ -30,6 +30,7 @@ import type { Reply } from "./replies";
 
 import { FILING_BUTTONS, KIDS_BUTTONS, PROFILE_HREF, TAGS_HREF, nextQuestion } from "./tax-flow";
 import type { MessageAction } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // Jane's answers about taxes (spec steps 118–127), in fixed wording from the profile's own
 // numbers. Each answer that would change something offers a button, checked again when
@@ -207,14 +208,6 @@ export function tagReply(
   };
 }
 
-const usualDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 export function formsReply(view: TaxFormsView): Reply {
   if (view.forms.length === 0) {
     return {
@@ -230,7 +223,7 @@ export function formsReply(view: TaxFormsView): Reply {
           ? "you have it"
           : f.mayNotSend
             ? "may not send one (below the reporting threshold)"
-            : `usually sent by ${usualDate(f.by)}`
+            : `usually sent by ${dayLabel(f.by, { year: true })}`
       }`,
   );
   return {

@@ -173,7 +173,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return snapshot
         ? weeklyReview(snapshot, now)
         : {
-            body: "Link a bank or import a CSV, and I'll review your weeks here.",
+            body: "Upload your bank statements or link a bank, and I'll review your weeks here.",
             actions: [],
             refs: {},
           };

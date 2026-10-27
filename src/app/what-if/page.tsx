@@ -44,7 +44,7 @@ async function WhatIfContent({
           ))}
         </ul>
       </div>
-      {scenario && !run && <p className={MUTED}>Link an account first, then I can run this.</p>}
+      {scenario && !run && <p className={MUTED}>Add your accounts first, then I can run this.</p>}
       {run && (
         <>
           <section className="flex flex-col gap-2">

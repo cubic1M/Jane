@@ -11,19 +11,13 @@ import { requireUser } from "@/lib/session";
 import { investHsa, linkHsa, reimburse } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // The HSA as an investment (spec step 159): cash and invested, the cash cushion, room under
 // the limit, and the receipts vault of medical charges to pay back tax-free later.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON = "h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function HsaContent({
   searchParams,
@@ -115,7 +109,7 @@ async function HsaContent({
             {hsa.receipts.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span>
-                  {day(r.date)} · {r.merchant} ·{" "}
+                  {dayLabel(r.date, { year: true })} · {r.merchant} ·{" "}
                   <Link href={`/transactions?q=${encodeURIComponent(r.merchant)}`} className={LINK}>
                     the charge
                   </Link>

@@ -5,6 +5,7 @@ import { roundDollars } from "@/planning/tax-estimate-copy";
 import { stateName } from "@/planning/tax-profile";
 import type { MessageAction, MessageRefs } from "./types";
 import { DAY_MS } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // Freelancers in the chat (spec step 123): the next estimated tax payment, before it's due,
 // with the amount; what to set aside from each payment. Demo advice, labelled.
@@ -17,12 +18,6 @@ const link = (label: string, href: string): MessageAction => ({
   kind: "link",
   href,
 });
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 // The next payment within QUARTERLY.remindDays of today, if any.
 export function nextQuarter(view: SelfEmployedView, today: string) {
@@ -45,7 +40,7 @@ export function quarterMessage(
       ? `, and about ${roundDollars(q.stateCents)} to ${stateName(state.code)}`
       : "";
   return {
-    body: `Estimated tax is due ${day(q.date)}: about ${roundDollars(q.cents)} federal${statePart} for ${view.year}, by my estimate from your freelance income. It adds up to what I estimate you'll still owe. Pay it with IRS Direct Pay and tell me when it's done.`,
+    body: `Estimated tax is due ${dayLabel(q.date)}: about ${roundDollars(q.cents)} federal${statePart} for ${view.year}, by my estimate from your freelance income. It adds up to what I estimate you'll still owe. Pay it with IRS Direct Pay and tell me when it's done.`,
     actions: [
       { id: "tax.quarter_paid", label: "I've paid it", kind: "primary" },
       link("IRS Direct Pay", IRS_DIRECT_PAY_URL),

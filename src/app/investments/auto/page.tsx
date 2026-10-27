@@ -12,18 +12,12 @@ import { toggleAutoInvest } from "./actions";
 import { AutoInvestForm } from "./auto-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Automatic investing (spec step 134): set it up once, see every payday's contribution
 // (or why it was paused), pause and resume. Through the simulated brokerage, and said so.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function AutoContent({
   searchParams,
@@ -120,7 +114,7 @@ async function AutoContent({
             {data.runs.map((r) => (
               <li key={r.id} className="flex flex-wrap justify-between gap-2">
                 <span>
-                  {day(r.paydayOn)} ·{" "}
+                  {dayLabel(r.paydayOn, { year: true })} ·{" "}
                   {r.status === "invested" ? "Invested (simulated)" : `Paused: ${r.reason ?? ""}`}
                 </span>
                 <span>{r.status === "invested" ? formatCents(r.amountCents) : "–"}</span>

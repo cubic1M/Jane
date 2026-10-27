@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 import { SIMULATED_WORDS } from "./rebalance-copy";
 import { formatPercent as pct } from "@/lib/percent";
+import { dayLabel } from "@/lib/day-label";
 
 // Company stock in the chat (spec step 160): the words Jane's message, reply and tool share.
 
@@ -15,14 +16,6 @@ export const COMPANY_LINK: MessageAction = {
   kind: "link",
   href: "/investments/company-stock",
 };
-
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 // "Acme Corp is 28% of what you've invested (36% with what's still to vest)."
 export function concentrationLine(view: View): string {
@@ -40,7 +33,7 @@ export function planLine(view: View, today: string): string | null {
   const first = plan?.parts[0];
   if (!plan || !first) return null;
   const when = plan.parts.length > 1 ? `, then ${plan.parts.length - 1} more every 3 months` : "";
-  return `A common rule is to keep it under ${pct(EMPLOYER_STOCK_LIMIT)}, because a bad year for the company would hit your job and your savings at once. Selling about ${formatCents(plan.sellCents)} in ${plan.parts.length} ${plan.parts.length === 1 ? "part" : "parts"} brings it to ${pct(plan.shareAfter)}: the ${first.on > today ? `next part, on ${day(first.on)}` : "first part, now"}, is ${formatCents(first.proceedsCents)} with about ${formatCents(first.taxCents)} in estimated tax on the gain${when}. A ${pct(COMPANY_DROP)} drop in the stock would then cost about ${formatCents(plan.dropAfterCents)} instead of ${formatCents(plan.dropBeforeCents)}.`;
+  return `A common rule is to keep it under ${pct(EMPLOYER_STOCK_LIMIT)}, because a bad year for the company would hit your job and your savings at once. Selling about ${formatCents(plan.sellCents)} in ${plan.parts.length} ${plan.parts.length === 1 ? "part" : "parts"} brings it to ${pct(plan.shareAfter)}: the ${first.on > today ? `next part, on ${dayLabel(first.on, { year: true })}` : "first part, now"}, is ${formatCents(first.proceedsCents)} with about ${formatCents(first.taxCents)} in estimated tax on the gain${when}. A ${pct(COMPANY_DROP)} drop in the stock would then cost about ${formatCents(plan.dropAfterCents)} instead of ${formatCents(plan.dropBeforeCents)}.`;
 }
 
 export const sellDue = (view: View, today: string) =>

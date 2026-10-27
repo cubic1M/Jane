@@ -15,6 +15,7 @@ import { shortMonth } from "@/planning/balance-transfer";
 import { applyAction, checkNow, endTransferAction, startTransferAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 
 // Refinance offers (spec step 111): for each loan and card, the offers Jane checked, each over
@@ -23,14 +24,6 @@ import { formatRate } from "@/lib/percent";
 // stand-in lender catalog, for demo-bank people only.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
-
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 function Comparison({ c }: { c: RefinanceComparison }) {
   return (
@@ -325,7 +318,7 @@ async function RefinanceContent({
           <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400">
             <span>
               {refi.checkedOn
-                ? `Last checked ${dateLabel(refi.checkedOn)}.`
+                ? `Last checked ${dayLabel(refi.checkedOn, { year: true })}.`
                 : "Jane hasn't checked yet."}
             </span>
             <form action={checkNow}>

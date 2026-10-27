@@ -6,6 +6,7 @@ import {
 } from "@/config/intraday-strategies";
 import { DAY_TRADE_TICKER } from "@/config/portfolios";
 import { tradeOf, type Session, type Trade } from "./intraday";
+import { formatCents } from "@/lib/money";
 
 // The day-trading sleeve in the practice portfolio (Phase AW, Stage A, Very high only): after the
 // close, the rule the person chose is run on the day's own 5-minute bars, exactly as the menu's
@@ -25,8 +26,6 @@ export type DayFill = {
   rule: "day_trade";
 };
 
-const USD = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const dollars = (cents: number) => `$${USD.format(cents / 100)}`;
 const OUT: Readonly<Record<Trade["reason"], string>> = {
   stop: "at its stop",
   target: "at its target",
@@ -63,7 +62,7 @@ export function dayTradeFills(input: {
       amountCents: amount,
       priceCents: buyPrice,
       rule: "day_trade",
-      reason: `Day trade (${label}): bought ${dollars(amount)} of ${DAY_TRADE_TICKER} at ${dollars(buyPrice)}, as the rule said on today's 5-minute bars.`,
+      reason: `Day trade (${label}): bought ${formatCents(amount)} of ${DAY_TRADE_TICKER} at ${formatCents(buyPrice)}, as the rule said on today's 5-minute bars.`,
     },
     {
       ticker: DAY_TRADE_TICKER,
@@ -71,7 +70,7 @@ export function dayTradeFills(input: {
       amountCents: back,
       priceCents: sellPrice,
       rule: "day_trade",
-      reason: `Day trade (${label}): sold at ${dollars(sellPrice)} ${OUT[t.reason]}, ${change >= 0 ? "up" : "down"} ${dollars(Math.abs(change))} after slippage. ${INTRADAY_WARNING}`,
+      reason: `Day trade (${label}): sold at ${formatCents(sellPrice)} ${OUT[t.reason]}, ${change >= 0 ? "up" : "down"} ${formatCents(Math.abs(change))} after slippage. ${INTRADAY_WARNING}`,
     },
   ];
 }

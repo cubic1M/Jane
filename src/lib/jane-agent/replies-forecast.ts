@@ -18,8 +18,8 @@ export function forecastReply(forecasts: AccountForecast[]): Reply {
   const worst = [...forecasts].sort((a, b) => a.lowest.balanceCents - b.lowest.balanceCents)[0];
   if (!worst) {
     return {
-      body: "I can't forecast your balance yet: link a checking account and I'll show where it's heading.",
-      actions: [{ id: "open", label: "Link a bank", kind: "link", href: "/connect" }],
+      body: "I can't forecast your balance yet: add your checking account and I'll show where it's heading.",
+      actions: [{ id: "open", label: "Add your accounts", kind: "link", href: "/connect" }],
       refs: {},
     };
   }

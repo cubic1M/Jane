@@ -62,6 +62,9 @@ export type ProfileAccount = {
   type: string;
   subtype: string | null;
   balanceCents: number;
+  // False when the bank (or the uploaded file) gave no balance, so balanceCents is a stand-in 0
+  // (overnight upload QA: card CSVs and some checking exports carry none). Absent: known.
+  balanceKnown?: boolean;
   // A card's limit, when the bank says (spec step 260); undefined or null when unknown.
   limitCents?: number | null;
 };

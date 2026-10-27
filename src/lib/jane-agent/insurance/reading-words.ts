@@ -5,6 +5,7 @@ import { SOURCE_WORDS, flatten, type Fields } from "@/lib/insurance/reading-rule
 import type { Reading } from "@/lib/insurance/readings";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import type { MessageAction } from "../types";
+import { dayLabel } from "@/lib/day-label";
 
 // A policy read from a document in Jane's chat (spec step 151): what it read, each field
 // with where it came from, and what the rules left out, for one Confirm tap. Pure.
@@ -18,14 +19,6 @@ export const READING_LABELS: Record<string, string> = {
   renewalDate: "Renews on",
   covers: "What it covers",
 };
-
-const dateWords = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 // The kind as said in a sentence: "car", or "" for other.
 export function kindWords(kind: string): string {
@@ -68,7 +61,7 @@ export function readingLines(reading: Pick<Reading, "input" | "sources">): strin
     }
   }
   if (fields.renewalDate) {
-    lines.push(`Renews on: ${dateWords(fields.renewalDate)}${from("renewalDate")}`);
+    lines.push(`Renews on: ${dayLabel(fields.renewalDate, { year: true })}${from("renewalDate")}`);
   }
   return lines;
 }
