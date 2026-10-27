@@ -1,34 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { importCsvFiles, runDetection, enqueueJob, runJob, categorizeLeftovers, matchCardPayments } =
-  vi.hoisted(() => ({
-    importCsvFiles: vi.fn(),
-    runDetection: vi.fn(),
-    enqueueJob: vi.fn(),
-    runJob: vi.fn(),
-    categorizeLeftovers: vi.fn(),
-    matchCardPayments: vi.fn(),
-  }));
+const { importCsvFiles, enqueueJob, keepFileBalances } = vi.hoisted(() => ({
+  importCsvFiles: vi.fn(),
+  enqueueJob: vi.fn(),
+  keepFileBalances: vi.fn(),
+}));
 
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
-vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn(() => ({ userId: "user_1" })) }));
-vi.mock("@/detection/engine", () => ({ runDetection }));
-vi.mock("@/lib/jobs", () => ({ enqueueJob, runJob }));
-vi.mock("@/lib/jane-agent/run", () => ({ runJaneAgentSafely: vi.fn() }));
-vi.mock("@/categorize/categorize", () => ({ categorizeLeftovers }));
-vi.mock("@/categorize/card-payments", () => ({ matchCardPayments }));
+vi.mock("@/lib/jobs", () => ({ enqueueJob }));
+vi.mock("@/lib/import/balances", () => ({ keepFileBalances }));
 vi.mock("@/lib/import/import-csv", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/import/import-csv")>()),
   importCsvFiles,
 }));
 
-import { detectAfterUpload, finishUpload, saveUpload } from "./upload";
+import { saveUpload } from "./upload";
 import { CsvFormatError } from "@/data-sources/csv/csv-source";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import type { ScopedDb } from "@/lib/db-scoped";
-import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 
 const CHASE_CARD =
   "Transaction Date,Post Date,Description,Category,Type,Amount,Memo\n" +
@@ -48,10 +39,13 @@ const counts = { parsed: 1, inserted: 1, duplicates: 0, skipped: 0 };
 
 const accountsCreate = vi.fn();
 const accountsDelete = vi.fn();
+const importRunsCreate = vi.fn();
 const db = {
   userId: "user_1",
   accounts: { create: accountsCreate, delete: accountsDelete },
+  importRuns: { create: importRunsCreate },
 } as unknown as ScopedDb;
+const BALANCES = [{ date: "2026-10-13", balanceCents: 248451 }];
 
 beforeEach(() => {
   accountsCreate.mockReset().mockResolvedValue({ id: "acct_new" });
@@ -59,24 +53,34 @@ beforeEach(() => {
   importCsvFiles.mockReset().mockResolvedValue({
     ...counts,
     files: [{ format: "chase_credit_card", rows: 1 }],
+    balances: BALANCES,
   });
-  runDetection.mockReset().mockResolvedValue({});
   enqueueJob.mockReset().mockResolvedValue("job_1");
-  runJob.mockReset().mockResolvedValue("done");
-  categorizeLeftovers.mockReset().mockResolvedValue(0);
-  matchCardPayments.mockReset().mockResolvedValue(0);
+  keepFileBalances.mockReset().mockResolvedValue(1);
+  importRunsCreate.mockReset().mockResolvedValue({ id: "run_1" });
   vi.mocked(track).mockReset();
   vi.mocked(logAudit).mockReset();
 });
 
 describe("saveUpload", () => {
-  it("saves into the chosen account, audit-logs the counts and records the upload", async () => {
+  it("saves into the chosen account with the file's balances, records it and queues the rest", async () => {
     const stages: unknown[] = [];
     const result = await saveUpload(db, form({ accountId: "acct_1", files: [csv("card.csv")] }), {
       onStage: (stage) => stages.push(stage),
     });
 
-    expect(result).toEqual({ ok: true, accountId: "acct_1", counts, jobId: "job_1" });
+    expect(result).toEqual({
+      ok: true,
+      accountId: "acct_1",
+      counts,
+      runId: "run_1",
+      jobId: "job_1",
+    });
+    expect(keepFileBalances).toHaveBeenCalledWith(db, "acct_1", BALANCES);
+    expect(importRunsCreate).toHaveBeenCalledWith({
+      data: { userId: "user_1", rows: 1 },
+      select: { id: true },
+    });
     expect(stages[0]).toEqual({ stage: "reading" });
     expect(importCsvFiles).toHaveBeenCalledWith(
       db,
@@ -96,10 +100,11 @@ describe("saveUpload", () => {
       format: "chase_credit_card",
       rows: 1,
     });
-    // Card text is a job for after the response.
-    expect(enqueueJob).toHaveBeenCalledWith("explain_findings", { userId: "user_1" });
-    expect(runJob).not.toHaveBeenCalled();
-    expect(runDetection).not.toHaveBeenCalled();
+    // Everything else is a job for after the response.
+    expect(enqueueJob).toHaveBeenCalledWith("import_finish", {
+      userId: "user_1",
+      importRunId: "run_1",
+    });
   });
 
   it("returns a readable error and tracks the failure for an unknown format", async () => {
@@ -183,40 +188,5 @@ describe("saveUpload into a new account", () => {
       ),
     ).toEqual({ ok: false, error: "Give the account a name (up to 60 characters)." });
     expect(accountsCreate).not.toHaveBeenCalled();
-  });
-});
-
-describe("after an upload", () => {
-  it("looks for savings, and says so without failing when detection fails", async () => {
-    expect(await detectAfterUpload("user_1")).toBe(true);
-    runDetection.mockRejectedValue(new Error("database hiccup"));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(await detectAfterUpload("user_1")).toBe(false);
-  });
-
-  it("sorts the rest with Claude, then writes the card text and Jane's message", async () => {
-    await finishUpload("user_1", "job_1");
-    expect(categorizeLeftovers).toHaveBeenCalled();
-    // Nothing moved: no second look.
-    expect(runDetection).not.toHaveBeenCalled();
-    expect(categorizeLeftovers.mock.invocationCallOrder[0]).toBeLessThan(
-      runJob.mock.invocationCallOrder[0],
-    );
-    expect(runJob).toHaveBeenCalledWith("job_1");
-    expect(runJaneAgentSafely).toHaveBeenCalledWith("user_1", { trigger: "import" });
-  });
-
-  it("matches card payments and looks again when Claude sorted something", async () => {
-    categorizeLeftovers.mockResolvedValue(3);
-    await finishUpload("user_1", "job_1");
-    expect(matchCardPayments).toHaveBeenCalled();
-    expect(runDetection).toHaveBeenCalledWith("user_1");
-  });
-
-  it("still writes the card text when sorting the rest fails", async () => {
-    categorizeLeftovers.mockRejectedValue(new Error("Claude is down"));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    await finishUpload("user_1", "job_1");
-    expect(runJob).toHaveBeenCalledWith("job_1");
   });
 });

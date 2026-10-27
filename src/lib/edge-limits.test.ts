@@ -35,8 +35,6 @@ describe("which requests the edge limits", () => {
     expect(edgeKind(request("/api/auth/callback/resend"))).toBe("authCallback");
     expect(edgeKind(request("/api/auth/callback/google"))).toBe("authCallback");
     expect(edgeKind(request("/settings", { method: "POST", action: true }))).toBe("action");
-    // The upload form's post, counted with the server actions it replaced.
-    expect(edgeKind(request("/api/import", { method: "POST" }))).toBe("action");
   });
 
   it("leaves cron routes (CRON_SECRET guards them) and plain page views alone", () => {

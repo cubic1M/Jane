@@ -12,6 +12,8 @@ export type ParsedRow = {
   amountCents: number;
   description: string;
   hints: { bankCategory?: string; bankType?: string };
+  // The account's balance after this row, where the export has a running-balance column.
+  balanceCents?: number;
 };
 
 // `silent`: not a transaction at all (Bank of America's "Beginning balance" line), so it's left
@@ -76,6 +78,12 @@ function optional(value: string): string | undefined {
   return value.trim() || undefined;
 }
 
+// A running-balance column's value, or nothing when it's empty or unreadable.
+function balanceOf(text: string): { balanceCents?: number } {
+  const cents = text.trim() ? parseMoneyToCents(text) : null;
+  return cents === null ? {} : { balanceCents: cents };
+}
+
 // Chase checking and savings: "Details,Posting Date,Description,Amount,Type,Balance,
 // Check or Slip #". Amounts are negative for money leaving the account.
 export const chaseChecking: CsvFormat = {
@@ -93,6 +101,7 @@ export const chaseChecking: CsvFormat = {
         amountCents: -common.cents,
         description: common.description,
         hints: { bankType: optional(get("type")) },
+        ...balanceOf(get("balance")),
       },
     };
   },
@@ -172,6 +181,7 @@ export const bankOfAmericaChecking: CsvFormat = {
         amountCents: -common.cents,
         description: common.description,
         hints: {},
+        ...balanceOf(get("running bal.")),
       },
     };
   },
@@ -285,6 +295,7 @@ export const capitalOne360: CsvFormat = {
         amountCents: /^debit$/i.test(type) ? cents : -cents || 0,
         description: common.description,
         hints: { bankType: type },
+        ...balanceOf(get("balance")),
       },
     };
   },
@@ -299,6 +310,11 @@ export const citiCreditCard: CsvFormat = {
   account: { name: "Citi card", kind: "credit_card" },
   requiredHeaders: ["status", "date", "description", "debit", "credit"],
   parseRow(get) {
+    // A pending charge comes again as Cleared in the next export, often a day later or with the
+    // tip added, so keeping both counted it twice (accuracy bench). Left out until it clears.
+    if (/^pending$/i.test(get("status").trim())) {
+      return { ok: false, reason: "Still pending", silent: true };
+    }
     return debitCreditRow(
       get("date"),
       get("description"),

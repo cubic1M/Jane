@@ -430,6 +430,7 @@ model User {
   practicePortfolio    PracticePortfolio?
   practicePreferences  PracticePreferences?
   paperAccount         PaperAccount?
+  importRuns           ImportRun[]
 
   @@map("users")
 }
@@ -1787,6 +1788,10 @@ model BalanceSnapshot {
   accountId    String   @map("account_id")
   date         DateTime @db.Date
   balanceCents Int      @map("balance_cents")
+  // Where an uploaded account's balance came from (src/lib/import/balances.ts): "file" (the
+  // statement's running balance) or "derived" (worked back from today's balance), so they can
+  // be rebuilt. Null for the daily snapshot and Plaid's.
+  source       String?
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1795,6 +1800,27 @@ model BalanceSnapshot {
   @@unique([accountId, date])
   @@index([userId, date])
   @@map("balance_snapshots")
+}
+
+// An upload being finished in the background (src/lib/import/background.ts): its rows are
+// saved at once and the rest (card payments, balances, findings, every sector's numbers) runs
+// as a job. The progress chip on every page reads it. stage: queued, matching, balances,
+// looking, refreshing, done or failed.
+model ImportRun {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  rows       Int
+  stage      String    @default("queued")
+  foundCents Int?      @map("found_cents")
+  // When the person closed the chip saying it's done.
+  seenAt     DateTime? @map("seen_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("import_runs")
 }
 
 // Slow work done outside the request (writing explanations), retried with backoff when it

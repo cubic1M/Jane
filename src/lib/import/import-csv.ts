@@ -1,4 +1,3 @@
-import { matchCardPayments } from "@/categorize/card-payments";
 import { categorizeTransactions } from "@/categorize/categorize";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import {
@@ -6,6 +5,7 @@ import {
   readCsvFile,
   type CsvFailure,
   type CsvFile,
+  type DayBalance,
 } from "@/data-sources/csv/csv-source";
 import { accountKindOf, type AccountKind, type SkippedRow } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
@@ -85,14 +85,15 @@ export type ImportedFile = { format: string; rows: number };
 // The steps of an upload after the files are read, for the progress bar on /import.
 export type ImportStage = { stage: "sorting"; rows: number } | { stage: "saving" };
 
-// Reads, sorts and saves an upload. Claude isn't asked about merchants no rule knows: that
-// happens after the response (categorizeLeftovers), so the upload is quick.
+// Reads, sorts by the rules and saves an upload, and nothing more, so the tap answers at once:
+// Claude's sorting of merchants no rule knows, card payments and everything worked out from the
+// rows run afterwards, in the background (src/lib/import/background.ts).
 export async function importCsvFiles(
   db: ScopedDb,
   accountId: string,
   files: CsvFile[],
   { onStage }: { onStage?: (stage: ImportStage) => void } = {},
-): Promise<ImportCounts & { files: ImportedFile[] }> {
+): Promise<ImportCounts & { files: ImportedFile[]; balances: DayBalance[] }> {
   const account = await db.accounts.findUnique({ where: { id: accountId } });
   const kind = account && accountKindOf(account.type, account.subtype);
   if (!account || account.source !== "csv" || !kind) throw new AccountNotFoundError();
@@ -136,15 +137,12 @@ export async function importCsvFiles(
     // Rows already imported (same account and dedupe key) are skipped by the database.
     skipDuplicates: true,
   });
-  // A card payment whose company no rule knows is found from the card's side, whichever of the
-  // two accounts was imported first.
-  await matchCardPayments(db);
-
   return {
     parsed: categorized.length,
     inserted: count,
     duplicates: categorized.length - count,
     skipped: batch.skipped.length,
     files: batch.files,
+    balances: batch.balances,
   };
 }

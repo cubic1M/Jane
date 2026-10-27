@@ -111,6 +111,20 @@ describe("Citi credit card", () => {
   });
 });
 
+describe("Citi pending rows", () => {
+  it("are left out until they clear, so they're never counted twice", () => {
+    const result = readCsvFile({
+      name: "citi.csv",
+      text:
+        "Status,Date,Description,Debit,Credit\n" +
+        "Pending,09/28/2026,UBER EATS,18.40,\n" +
+        "Cleared,09/27/2026,DISNEY PLUS,13.99,\n",
+    });
+    expect(result.ok && result.transactions.map((t) => t.description)).toEqual(["DISNEY PLUS"]);
+    expect(result.ok && result.skipped).toEqual([]);
+  });
+});
+
 describe("American Express (with additional details)", () => {
   const result = read("amex.csv");
 

@@ -67,6 +67,8 @@ describe("importCsvFiles", () => {
       skipped: 1,
       // For upload_succeeded: each file's format and transaction count.
       files: [{ format: "chase_checking", rows: 9 }],
+      // Each day's closing balance from the running-balance column, for net worth over time.
+      balances: expect.arrayContaining([{ date: "2026-10-14", balanceCents: 248451 }]),
     });
     const { data, skipDuplicates } = createMany.mock.calls[0][0];
     expect(skipDuplicates).toBe(true);
@@ -108,6 +110,7 @@ describe("importCsvFiles", () => {
       duplicates: 9,
       skipped: 1,
       files: [{ format: "chase_checking", rows: 9 }],
+      balances: expect.any(Array),
     });
   });
 

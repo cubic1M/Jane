@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { Client } from "pg";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { expectFinding } from "./report-page";
+import { waitForImport } from "./import-wait";
 
 // A messy real bank (founder, 2026-10-26), through the CSV import: Chase checking and savings
 // exports and two card exports that overlap by a month (e2e/fixtures/messy). Card payments,
@@ -51,7 +52,7 @@ async function importInto(page: Page, account: string, files: string[]) {
     .setInputFiles(files.map((f) => `e2e/fixtures/messy/${f}`));
   await page.getByRole("button", { name: "Preview" }).click();
   await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
-  await expect(page).toHaveURL("/report", { timeout: 90_000 });
+  await waitForImport(page);
 }
 
 test("a messy bank's exports: nothing counted twice, no false subscriptions, no transfer bills", async ({

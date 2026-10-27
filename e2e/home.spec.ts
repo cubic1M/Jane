@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { areaTree } from "./area-tree";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { waitForImport } from "./import-wait";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -39,7 +40,7 @@ test("new people land on Connect; once data is in, the hub matches the report", 
   await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample-card.csv");
   await page.getByRole("button", { name: "Preview" }).click();
   await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
-  await expect(page).toHaveURL("/report", { timeout: 30_000 });
+  await waitForImport(page);
   const headline = await page.getByRole("heading", { level: 1 }).textContent();
 
   await page.goto("/home");

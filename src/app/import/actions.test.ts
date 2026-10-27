@@ -40,12 +40,19 @@ vi.mock("@/lib/jane-agent/run", () => ({ runJaneAgentSafely: vi.fn() }));
 vi.mock("next/server", () => ({
   after: vi.fn((callback: () => Promise<void>) => afterCallbacks.push(callback)),
 }));
+vi.mock("@/lib/import/upload", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/import/upload")>()),
+  saveUpload: vi.fn(),
+}));
+vi.mock("@/lib/import/background", () => ({ dismissImportRun: vi.fn() }));
 vi.mock("@/lib/import/import-csv", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/import/import-csv")>()),
   importCsvFiles,
 }));
 
-import { createCsvAccount, previewImport } from "./actions";
+import { createCsvAccount, dismissImport, previewImport, startImport } from "./actions";
+import { dismissImportRun } from "@/lib/import/background";
+import { saveUpload } from "@/lib/import/upload";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { canImportCsv } from "@/lib/csv-access";
@@ -224,5 +231,51 @@ describe("previewImport", () => {
     );
     expect(result).toEqual({ ok: false, error: "bank.csv: Pick the description column." });
     expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "bad_columns" });
+  });
+});
+
+describe("startImport", () => {
+  it("saves the rows, starts the rest after the response and returns at once", async () => {
+    vi.mocked(saveUpload).mockResolvedValue({
+      ok: true,
+      accountId: "acct_1",
+      counts: { parsed: 172, inserted: 172, duplicates: 0, skipped: 0 },
+      runId: "run_1",
+      jobId: "job_1",
+    });
+    expect(await startImport(form({ accountId: "acct_1", files: [csv("card.csv")] }))).toEqual({
+      ok: true,
+      runId: "run_1",
+      rows: 172,
+    });
+    // Nothing ran yet: the job starts once the response is sent.
+    expect(runJob).not.toHaveBeenCalled();
+    for (const callback of afterCallbacks) await callback();
+    expect(runJob).toHaveBeenCalledWith("job_1");
+  });
+
+  it("passes on what's wrong with the upload, and starts nothing", async () => {
+    vi.mocked(saveUpload).mockResolvedValue({ ok: false, error: "card.csv: The file is empty." });
+    expect(await startImport(form({ files: [csv("card.csv")] }))).toEqual({
+      ok: false,
+      error: "card.csv: The file is empty.",
+    });
+    expect(afterCallbacks).toHaveLength(0);
+  });
+
+  it("refuses trial people", async () => {
+    vi.mocked(canImportCsv).mockReturnValue(false);
+    expect(await startImport(form({ files: [csv("card.csv")] }))).toEqual({
+      ok: false,
+      error: expect.stringContaining("Sign up to upload yours"),
+    });
+    expect(saveUpload).not.toHaveBeenCalled();
+  });
+});
+
+describe("dismissImport", () => {
+  it("closes the chip for the signed-in person's own upload", async () => {
+    await dismissImport("run_1");
+    expect(dismissImportRun).toHaveBeenCalledWith("user_1", "run_1");
   });
 });

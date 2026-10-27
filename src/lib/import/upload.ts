@@ -1,13 +1,11 @@
-import { matchCardPayments } from "@/categorize/card-payments";
-import { categorizeLeftovers } from "@/categorize/categorize";
 import { NEW_ACCOUNT_ID } from "@/config/import";
 import { mappingFromForm } from "@/data-sources/csv/column-mapping";
 import { CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
 import { ACCOUNT_KINDS, isAccountKind, type AccountKind } from "@/data-sources/types";
-import { runDetection } from "@/detection/engine";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
-import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
+import type { ScopedDb } from "@/lib/db-scoped";
+import { keepFileBalances } from "@/lib/import/balances";
 import {
   AccountNotFoundError,
   MAX_FILE_BYTES,
@@ -17,14 +15,12 @@ import {
   type ImportCounts,
   type ImportStage,
 } from "@/lib/import/import-csv";
-import { runJaneAgentSafely } from "@/lib/jane-agent/run";
-import { enqueueJob, runJob } from "@/lib/jobs";
+import { enqueueJob } from "@/lib/jobs";
 import { parseMoneyToCents } from "@/lib/money";
 
 // Uploading statements on /import: reading the files from the form, the account a first
-// upload makes, saving, and what runs once it's saved. Shared by the server actions
-// (src/app/import/actions.ts) and the upload route that streams its progress
-// (src/app/api/import/route.ts). Files are read into memory and never stored.
+// upload makes, and saving. Used by the server actions (src/app/import/actions.ts); what runs
+// once it's saved is src/lib/import/background.ts. Files are read into memory and never stored.
 
 export const NOT_ALLOWED =
   "Uploading statements is for your own account. Sign up to upload yours; sample data can't.";
@@ -106,12 +102,13 @@ export const createCsvAccountRow = (db: ScopedDb, { name, kind, balance }: Accou
 export type UploadStage = { stage: "reading" } | ImportStage;
 
 export type UploadResult =
-  | { ok: true; accountId: string; counts: ImportCounts; jobId: string }
+  | { ok: true; accountId: string; counts: ImportCounts; runId: string; jobId: string }
   | { ok: false; error: string };
 
-// Saves an upload from the /import form: reads the files, makes the account for a first
-// upload (once every file reads, so a failed upload leaves no empty account), sorts and saves
-// the rows, and records it. `onStage` hears each step as it starts.
+// Saves an upload from the /import form and queues the rest: reads the files, makes the account
+// for a first upload (once every file reads, so a failed upload leaves no empty account), sorts
+// the rows by the rules and saves them with the statement's balances, records it, and queues
+// the import_finish job that does everything else. `onStage` hears each step as it starts.
 export async function saveUpload(
   db: ScopedDb,
   formData: FormData,
@@ -158,10 +155,16 @@ export async function saveUpload(
     throw error;
   }
 
-  const { files: imported, ...counts } = result;
+  const { files: imported, balances, ...counts } = result;
   const metadata = { ...counts, files: files.length };
+  // The statement's own closing balances, kept now: the files themselves are never stored.
+  await keepFileBalances(db, accountId, balances);
+  const run = await db.importRuns.create({
+    data: { userId: db.userId, rows: counts.inserted },
+    select: { id: true },
+  });
   // Independent writes, so at once: each is a round trip to the database (and PostHog).
-  const [, , job] = await Promise.all([
+  const [, , jobId] = await Promise.all([
     logAudit(
       { type: "user", id: db.userId },
       "import_completed",
@@ -175,38 +178,8 @@ export async function saveUpload(
         track(db.userId, "upload_succeeded", { format: file.format, rows: file.rows }),
       ),
     ]),
-    // Card text from Claude takes a few seconds per finding, so it's written after the
-    // response, as a job that's retried if it fails. Until then the report shows templates.
-    enqueueJob("explain_findings", { userId: db.userId }),
+    // The rest runs in the background (src/lib/import/background.ts), retried if it fails.
+    enqueueJob("import_finish", { userId: db.userId, importRunId: run.id }),
   ]);
-  return { ok: true, accountId, counts, jobId: job };
-}
-
-// Looking for savings in what was just saved. The import itself worked, so a failure here
-// doesn't fail it: the report shows what's there.
-export async function detectAfterUpload(userId: string): Promise<boolean> {
-  try {
-    await runDetection(userId);
-    return true;
-  } catch (error) {
-    console.error("Detection failed after import", { error });
-    return false;
-  }
-}
-
-// What runs once the person has their findings: Claude sorts the merchants no rule knew (and
-// if that moved anything, the card payments and the findings are worked out again), writes the
-// card text, and Jane says what's new in the chat (spec step 82).
-export async function finishUpload(userId: string, jobId: string): Promise<void> {
-  const db = scopedFor(userId);
-  try {
-    if ((await categorizeLeftovers(db)) > 0) {
-      await matchCardPayments(db);
-      await detectAfterUpload(userId);
-    }
-  } catch (error) {
-    console.error("Sorting the rest of an upload failed", { error });
-  }
-  await runJob(jobId);
-  await runJaneAgentSafely(userId, { trigger: "import" });
+  return { ok: true, accountId, counts, runId: run.id, jobId };
 }
