@@ -92,9 +92,11 @@ describe.runIf(url)("asking for an uploaded card's balance, against a real datab
     expect(await balancesToAsk(db)).toEqual([
       { accountId: cardUpload.accountId, name: "Chase card", kind: "credit_card" },
     ]);
-    expect(await accountsWithoutBalance(userId, { client })).toEqual(["Chase card"]);
+    expect(await accountsWithoutBalance(userId, { client })).toEqual([
+      { name: "Chase card", card: true },
+    ]);
     expect(notCounting(await accountsWithoutBalance(userId, { client }))?.sentence).toBe(
-      "Not counting Chase card: there's no balance yet.",
+      "Not counting your Chase card balance: the file doesn't say it yet.",
     );
 
     const set = await setUploadedBalance(db, cardUpload.accountId, 35000);
