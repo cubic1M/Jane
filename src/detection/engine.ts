@@ -375,7 +375,11 @@ export async function runDetection(
     if (view?.available) {
       for (const c of candidates) {
         const card = view.cards.find((x) => `account:${x.accountId}` === c.key);
-        if (c.type === "card_interest" && card) c.annualSavingsCents = card.interestYearCents;
+        if (c.type === "card_interest" && card) {
+          c.annualSavingsCents = card.interestYearCents;
+          // So its line can say "at today's balance": only this figure is from the balance.
+          c.evidence = { ...c.evidence, interestFrom: "balance" };
+        }
       }
     }
   }

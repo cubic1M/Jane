@@ -85,7 +85,7 @@ async function ReportContent() {
           <span className="flex flex-col gap-1">
             <span className="font-semibold">{text.title}</span>
             <span className="text-sm text-zinc-600 dark:text-zinc-400">
-              {savingsLine(finding.type, finding.annualSavingsCents)}
+              {savingsLine(finding.type, finding.annualSavingsCents, finding.evidence)}
             </span>
           </span>
           <span aria-hidden className="text-zinc-400">
