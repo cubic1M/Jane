@@ -69,7 +69,7 @@ test("an upload can be removed, and its findings go with it", async ({ page, bas
   await page.goto("/import");
   const upload = page.locator("[data-upload]").first();
   await expect(upload).toContainText("fees.csv");
-  await expect(upload).toContainText("rows added");
+  await expect(upload).toContainText("transactions added");
 
   // It asks first, then removes.
   await upload.getByRole("button", { name: "Remove this upload" }).click();

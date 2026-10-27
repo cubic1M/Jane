@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AddAccountForm } from "./add-account-form";
 import { ImportForm } from "./import-form";
+import { accountKindOf } from "@/data-sources/types";
 import { UploadHistory } from "./upload-history";
 import { AppHeader } from "@/components/app-header";
 import { AccountList } from "@/components/account-list";
@@ -18,13 +19,31 @@ async function ImportContent() {
   const user = await requireUser();
   if (!canImportCsv(user)) redirect("/connect");
   const db = await scopedDb();
-  const [accounts, history, totals, uploaded, asks] = await Promise.all([
+  const [accounts, history, totals, uploaded, asks, linkedRows] = await Promise.all([
     listAccountSummaries(db),
     listUploads(db),
     uploadedTotals(db),
     db.accounts.findMany({ where: { source: "csv" }, select: { id: true } }),
     balancesToAsk(db),
+    // A linked bank's accounts, by institution and last four: a file from one of them would
+    // count it twice.
+    db.accounts.findMany({
+      where: { source: "plaid" },
+      select: {
+        name: true,
+        mask: true,
+        type: true,
+        subtype: true,
+        item: { select: { institutionName: true } },
+      },
+    }),
   ]);
+  const linked = linkedRows.map((a) => ({
+    name: a.name,
+    institution: a.item?.institutionName ?? null,
+    mask: a.mask,
+    kind: accountKindOf(a.type, a.subtype),
+  }));
   const uploadedIds = new Set(uploaded.map((a) => a.id));
 
   return (
@@ -39,7 +58,7 @@ async function ImportContent() {
         </p>
         <p data-reupload-safe="" className="text-zinc-600 dark:text-zinc-400">
           Uploading the same file again, or one that overlaps, is safe: Jane skips the rows it
-          already has, so there&apos;s no need to remove anything first.
+          already has.
         </p>
       </div>
 
@@ -72,6 +91,7 @@ async function ImportContent() {
             kindLabel,
             kind,
           }))}
+          linked={linked}
         />
         <p className="text-xs text-zinc-500">
           Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi,

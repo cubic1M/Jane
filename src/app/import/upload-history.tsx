@@ -129,7 +129,7 @@ export function UploadHistory({
           >
             <p className="font-medium">{u.fileNames.join(", ") || "Statement"}</p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {u.accountName} · {range(u.from, u.to)} · {plural(u.rows, "row")} added ·{" "}
+              {u.accountName} · {range(u.from, u.to)} · {plural(u.rows, "transaction")} added ·{" "}
               {new Date(u.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </p>
             <Confirm
@@ -163,8 +163,8 @@ export function UploadHistory({
       {asks.length > 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {asks.length === 1
-            ? "One statement doesn't say today's balance. Add it below and net worth counts it."
-            : `${asks.length} statements don't say today's balance. Add them below and net worth counts them.`}
+            ? "One account has no balance yet. Add it below and net worth counts it."
+            : `${asks.length} accounts have no balance yet. Add them below and net worth counts them.`}
         </p>
       )}
       <ul className="flex flex-col gap-3">

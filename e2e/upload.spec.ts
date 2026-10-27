@@ -131,7 +131,7 @@ test("the picker reads day-first dates, guesses positive spending, and asks when
   await uploadFile(page, "day-first.csv");
   await expect(picker.locator('[name="map.0.dates"]')).toHaveValue("dmy");
   await page.getByRole("button", { name: "Preview again" }).click();
-  await expect(page.getByRole("cell", { name: "2026-09-05" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Sep 5, 2026" })).toBeVisible();
 
   // Spending shown as positive: Jane says so, from a grocery row.
   await uploadFile(page, "spending-positive.csv");
@@ -144,7 +144,7 @@ test("the picker reads day-first dates, guesses positive spending, and asks when
   await expect(picker.getByText("Jane can't tell from the dates in this file.")).toBeVisible();
   await picker.locator('[name="map.0.dates"]').selectOption("dmy");
   await page.getByRole("button", { name: "Preview again" }).click();
-  await expect(page.getByRole("cell", { name: "2026-09-06" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Sep 6, 2026" })).toBeVisible();
 });
 
 test("a web page saved as .csv is refused before the picker", async ({ page, baseURL }) => {

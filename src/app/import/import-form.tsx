@@ -15,8 +15,15 @@ import {
 } from "@/config/import";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
+import { dayLabel } from "@/lib/day-label";
 import type { BalanceAsk } from "@/lib/import/balance-question";
-import { existingAccountNote, mixedFilesNote, wrongAccountNote } from "@/lib/import/wrong-account";
+import {
+  existingAccountNote,
+  linkedAccountNote,
+  mixedFilesNote,
+  wrongAccountNote,
+  type LinkedAccount,
+} from "@/lib/import/wrong-account";
 import { formatCents } from "@/lib/money";
 
 type AccountOption = { id: string; name: string; kindLabel: string; kind: AccountKind | null };
@@ -28,7 +35,14 @@ const FIELD =
 const SECONDARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
-export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
+export function ImportForm({
+  accounts,
+  linked = [],
+}: {
+  accounts: AccountOption[];
+  // A linked bank's accounts: a file from one of them would count it twice.
+  linked?: LinkedAccount[];
+}) {
   const formRef = useRef<HTMLFormElement>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   // Column pickers by file position, kept once shown: the import sends the picked columns too.
@@ -131,14 +145,33 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   // What each file says about its account; a layout the person mapped has no kind to go by.
   const facts = files.flatMap((f) =>
     f.ok
-      ? [{ file: f.file, bank: f.bank, kind: f.formatId === "custom" ? undefined : f.account.kind }]
+      ? [
+          {
+            file: f.file,
+            bank: f.bank,
+            kind: f.formatId === "custom" ? undefined : f.account.kind,
+            mask: f.mask,
+          },
+        ]
       : [],
   );
   // Two accounts' files at once wait (they'd land in one account); else one line when the files
   // don't fit the chosen account, or are from one Jane already has.
   const mixed = mixedFilesNote(facts);
-  const wrongAccount =
-    mixed ?? (chosen ? wrongAccountNote(chosen, facts) : existingAccountNote(accounts, facts));
+  // A file from a linked bank's account: the import waits when it's sure (same bank, same last
+  // four), with a way to skip the file either way.
+  const fromLinked = mixed ? null : linkedAccountNote(linked, facts);
+  const wrongAccount = fromLinked
+    ? null
+    : (mixed ?? (chosen ? wrongAccountNote(chosen, facts) : existingAccountNote(accounts, facts)));
+
+  // Skipping a file: the form as it was before it was chosen.
+  function skipFiles() {
+    formRef.current?.reset();
+    setPreview(null);
+    setPickers({});
+    setError(null);
+  }
   const ready = files.length > 0 && files.every((f) => f.ok) && files.some((f) => f.rowCount > 0);
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
   const suggested = files.find((f) => f.ok)?.account;
@@ -227,7 +260,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
           <button
             type="button"
             onClick={onConfirm}
-            disabled={pending || mixed !== null}
+            disabled={pending || mixed !== null || !!fromLinked?.sure}
             className={PRIMARY_BUTTON}
           >
             {pending ? "Saving…" : `Import ${plural(total, "transaction")}`}
@@ -271,6 +304,20 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
         </p>
       )}
 
+      {ready && fromLinked && (
+        <div
+          data-linked-account=""
+          className="flex flex-col gap-2 rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+        >
+          <p>{fromLinked.text}</p>
+          <p>
+            <button type="button" onClick={skipFiles} className={SECONDARY_BUTTON}>
+              Skip this file
+            </button>
+          </p>
+        </div>
+      )}
+
       {ready && wrongAccount && (
         <p
           data-wrong-account=""
@@ -312,7 +359,9 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
                   <tbody>
                     {file.sample.map((row, i) => (
                       <tr key={i} className="border-t border-zinc-100 dark:border-zinc-900">
-                        <td className="py-1 pr-3 whitespace-nowrap">{row.date}</td>
+                        <td className="py-1 pr-3 whitespace-nowrap">
+                          {dayLabel(row.date, { year: true })}
+                        </td>
                         <td className="py-1 pr-3">{row.description}</td>
                         <td className="py-1 text-right whitespace-nowrap">
                           {/* Positive amounts are money out; show them as negative like a bank does. */}
