@@ -150,6 +150,16 @@ export async function scanSuggestions(userId: string, options: Options = {}): Pr
   );
 }
 
+// Today's picks split into those that still fire and those that stopped (ideas are checked
+// by the full scan, so they stay).
+export function stillChosen<T extends { key: string }>(
+  chosen: readonly T[],
+  firing: ReadonlySet<string>,
+): { keep: T[]; outdated: T[] } {
+  const outdated = chosen.filter((c) => !isIdea(c.key) && !firing.has(c.key));
+  return { keep: chosen.filter((c) => !outdated.includes(c)), outdated };
+}
+
 async function scanSuggestionsWork(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -171,11 +181,22 @@ async function scanSuggestionsWork(
   const existing = advice ? stored : stored.filter((e) => !isAdviceRow(e.topic));
   const byKey = new Map(existing.map((e) => [e.key, e]));
 
-  // Already chosen for today: the scan is safe to run twice.
+  // Already chosen for today: the scan is safe to run twice. But a pick that no longer fires
+  // goes, even the same day: a second upload can show the car is insured after all (import QA:
+  // "Check your car is insured" stayed on top after the insurance payments came in).
   const chosen = existing.filter(
     (e) => e.selectedOn && dayOf(e.selectedOn) === today && e.status === "selected",
   );
-  if (chosen.length > 0) return { fired: found.length, selected: chosen.map((c) => c.key) };
+  if (chosen.length > 0) {
+    const { keep, outdated } = stillChosen(chosen, new Set(found.map((f) => f.id)));
+    if (outdated.length > 0) {
+      await db.suggestions.updateMany({
+        where: { id: { in: outdated.map((e) => e.id) } },
+        data: { status: "gone" },
+      });
+    }
+    return { fired: found.length, selected: keep.map((c) => c.key) };
+  }
 
   const history: Record<string, { yes: number; no: number }> = {};
   for (const e of existing) {
