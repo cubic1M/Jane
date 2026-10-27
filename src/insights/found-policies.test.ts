@@ -6,6 +6,7 @@ import {
   annualFeeDeadlines,
   estimatedRenewal,
   insurerKind,
+  insurerName,
   policiesFromStreams,
 } from "./found-policies";
 
@@ -23,7 +24,7 @@ describe("policiesFromStreams", () => {
     expect(found(monthly(6, 14_200, GEICO))).toEqual([
       {
         merchantKey: "geico",
-        carrier: "Geico",
+        carrier: "GEICO",
         kind: "auto",
         premiumCents: 14_200,
         premiumFrequency: "monthly",
@@ -31,6 +32,19 @@ describe("policiesFromStreams", () => {
         termMonths: 12,
       },
     ]);
+  });
+
+  // Overnight upload QA: "Geico Auto Payment car", "State Farm Ro 27 car".
+  it("names a known insurer by its own name, not the statement's words", () => {
+    const statement = {
+      ...GEICO,
+      description: "STATE FARM RO 27 DES:CPC-CLIENT",
+      merchantName: "State Farm Ro 27",
+    };
+    expect(found(monthly(4, 11_840, statement))).toMatchObject([{ carrier: "State Farm" }]);
+    expect(insurerName("geico auto payment")).toBe("GEICO");
+    expect(insurerName("progressive ins prem")).toBe("Progressive");
+    expect(insurerName("maple mutual")).toBeNull();
   });
 
   it("takes anything regular in the insurance category, as 'other' when the insurer is unknown", () => {

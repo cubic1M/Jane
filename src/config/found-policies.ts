@@ -11,6 +11,14 @@ export const INSURANCE_CATEGORIES: readonly string[] = ["GENERAL_SERVICES_INSURA
 
 // Insurers by the words in their (normalized) merchant name, and the cover they most
 // likely are. One not listed but in the insurance category is "other".
+// How an insurer's name is written when it isn't just capitalised (the policy found from
+// payments is named for the insurer, not the statement's "GEICO AUTO PAYMENT").
+export const INSURER_NAMES: Readonly<Record<string, string>> = {
+  geico: "GEICO",
+  usaa: "USAA",
+  metlife: "MetLife",
+};
+
 export const INSURER_KINDS: readonly { words: readonly string[]; kind: PolicyKind }[] = [
   {
     words: ["geico", "progressive", "esurance", "root insurance", "the general", "safeco"],
