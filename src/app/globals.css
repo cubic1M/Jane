@@ -305,6 +305,15 @@
   }
 }
 
+/* Never sideways on a phone: nothing may widen the page past the screen. The chat's sheet,
+   waiting off-screen with its one-line loading bar, made /import 841px wide on a 412px phone,
+   which zoomed the page out and sent taps to the wrong place (new-user pass, round 14). Clip,
+   not hidden, so sticky headers and the tab strip's own scrolling still work. */
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
