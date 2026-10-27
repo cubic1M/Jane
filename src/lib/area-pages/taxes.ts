@@ -6,6 +6,7 @@ import { shortMoney } from "@/lib/hub/view";
 import type { SavingKey } from "@/planning/tax-savings";
 import type { FieldStatus } from "@/planning/tax-profile";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { dayLabel } from "@/lib/day-label";
 
 // The Taxes page as a tree (docs/design/area-pages.md): Taxes → its branches (what's due soon,
 // ways to pay less, this year's estimate, records and forms, the person's situation, the tax
@@ -216,12 +217,6 @@ export const TAXES_ANCHORS: Record<string, string> = {
   ),
 };
 
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 const days = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -277,7 +272,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
     return item("soon", m.id, {
       label: PLAN_LABELS[m.key],
       status,
-      figure: `by ${dateLabel(m.deadline)}`,
+      figure: `by ${dayLabel(m.deadline)}`,
       cents: m.amountCents ?? 0,
       // Its state ("Open now", "On your deadlines") and its button are the detail.
       summary: m.detail,

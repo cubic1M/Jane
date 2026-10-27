@@ -108,9 +108,9 @@ async function AheadContent({
       </div>
       {accounts === 0 && (
         <p className="border border-zinc-300 p-4 dark:border-zinc-700">
-          Link a bank and these fill in from your own numbers.{" "}
+          Add your accounts and these fill in from your own numbers.{" "}
           <Link href="/connect" className={LINK}>
-            Link an account
+            Add your accounts
           </Link>
         </p>
       )}

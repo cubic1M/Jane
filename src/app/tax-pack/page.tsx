@@ -10,19 +10,12 @@ import { loadTaxPack } from "@/lib/tax-pack";
 import { selectableYears, taxYearFrom, type PackGroup } from "@/planning/tax-pack";
 import { QUARTER_LABELS, TAX_PACK_COPY as COPY } from "@/planning/tax-pack-copy";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // The tax-time pack (spec step 72): organizing only, no tax advice and no Claude text.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 function Rows({ group, empty, label }: { group: PackGroup; empty: string; label: string }) {
   if (group.rows.length === 0) {
@@ -47,7 +40,7 @@ function Rows({ group, empty, label }: { group: PackGroup; empty: string; label:
       <tbody>
         {group.rows.map((r) => (
           <tr key={r.id} className="border-t border-zinc-200 dark:border-zinc-800">
-            <td className="py-1 pr-2 whitespace-nowrap">{day(r.date)}</td>
+            <td className="py-1 pr-2 whitespace-nowrap">{dayLabel(r.date, { year: true })}</td>
             <td className="py-1 pr-2 [overflow-wrap:anywhere]">
               {r.payee}
               {r.source === "check" && (
@@ -164,7 +157,7 @@ async function TaxPackContent({
                     ? COPY.formReceived
                     : f.mayNotSend
                       ? COPY.formMayNotSend
-                      : `${COPY.formWaiting}, by about ${day(f.by)}`}
+                      : `${COPY.formWaiting}, by about ${dayLabel(f.by, { year: true })}`}
                 </span>
               </li>
             ))}
@@ -219,7 +212,7 @@ async function TaxPackContent({
                     : st.code.length > 2
                       ? COPY.statesLocal
                       : st.from
-                        ? `${day(st.from)} to ${day(st.to!)}`
+                        ? `${dayLabel(st.from, { year: true })} to ${dayLabel(st.to!, { year: true })}`
                         : COPY.statesAllYear}
                 </span>
               </li>
@@ -292,7 +285,7 @@ async function TaxPackContent({
         <h3 className="font-semibold">{COPY.remindersHeading}</h3>
         <ul className="flex flex-col gap-1 text-sm">
           {pack.reminders.map((date) => (
-            <li key={date}>{day(date)}</li>
+            <li key={date}>{dayLabel(date, { year: true })}</li>
           ))}
         </ul>
         <p className="text-xs text-zinc-500">

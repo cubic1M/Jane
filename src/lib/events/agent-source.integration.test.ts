@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { flatPrices } from "@/lib/paper/__fixtures__/prices";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -9,9 +10,7 @@ vi.mock("@/lib/audit", () => ({
 }));
 
 import { PrismaClient } from "@/generated/prisma/client";
-import type { Bar } from "@/lib/market/types";
 import { startPaperAccount } from "@/lib/paper/account";
-import type { PaperPrices } from "@/lib/paper/prices";
 import { startTradingAgent, tickTradingAgent } from "@/lib/trading-agent/agent";
 import { sampleFeed } from "@/lib/trading-agent/bar-store";
 import { policiesFor } from "@/planning/trading-agent/policies";
@@ -29,25 +28,6 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2028-10-17T22:00:00Z");
 const STOCKS = policiesFor("stocks")[0].key;
 const CRYPTO = policiesFor("crypto")[0].key;
-
-const dailyPrices: PaperPrices = {
-  name: "sample",
-  real: false,
-  closes: async (ticker: string, from: string, to: string) => {
-    const out: Bar[] = [];
-    const base = 5_000 + [...ticker].reduce((a, c) => a + c.charCodeAt(0), 0) * 20;
-    for (
-      let d = Date.parse(`${from}T00:00:00Z`);
-      d <= Date.parse(`${to}T00:00:00Z`);
-      d += 86_400_000
-    ) {
-      const day = new Date(d).getUTCDay();
-      if (day !== 0 && day !== 6)
-        out.push({ date: new Date(d).toISOString().slice(0, 10), closeCents: base });
-    }
-    return out;
-  },
-};
 
 // Market events are shared by every test file: this one keeps to 2028, and clears only those.
 const ownYear = () => ({
@@ -91,7 +71,7 @@ describe.runIf(url)("the events overlay with the 24-hour agent", () => {
     await startPaperAccount(id, 1_000_000, {
       client,
       now: new Date("2028-10-16T21:30:00Z"),
-      prices: dailyPrices,
+      prices: flatPrices,
     });
     await setEventsOverlay(id, true, { client, now: new Date("2028-10-16T22:00:00Z") });
     return id;
@@ -146,7 +126,7 @@ describe.runIf(url)("the events overlay with the 24-hour agent", () => {
     expect(smh[0].reason).toContain("Record chip demand");
     // The overlay's own runner leaves an agent-run account alone.
     const before = await client.paperTrade.count({ where: { userId: id } });
-    expect((await runEventOverlay(id, { client, now: NOW, prices: dailyPrices })).ran).toBe(false);
+    expect((await runEventOverlay(id, { client, now: NOW, prices: flatPrices })).ran).toBe(false);
     expect(await client.paperTrade.count({ where: { userId: id } })).toBe(before);
   });
 

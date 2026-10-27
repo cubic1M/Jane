@@ -13,6 +13,7 @@ import type { InsuranceIntent } from "./intents";
 import { decide } from "./decisions";
 import { needReply } from "./need";
 import type { InsuranceSnapshot } from "./snapshot";
+import { dayLabel } from "@/lib/day-label";
 
 // Jane's answers about insurance (spec Phase X). Pure: the profile in, fixed wording out.
 // Every figure comes from a policy record; when the record doesn't have it, Jane says so
@@ -31,14 +32,6 @@ const editLink = (p: Policy) => link("Add the details", `/insurance?edit=${p.id}
 const addLink = (kind: PolicyKind | null) =>
   link("Add a policy", kind ? `/insurance?add=${kind}#add` : "/insurance#add");
 
-const dateWords = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 // "your GEICO car insurance".
 export const policyName = (p: Pick<Policy, "carrier" | "kind">) =>
   `your ${p.carrier} ${kindWords(p.kind)}`;
@@ -56,7 +49,7 @@ function priceWords(p: Policy): string | null {
 function renewWords(p: Policy, asOf: string): string | null {
   if (!p.nextRenewal) return null;
   const days = daysBetween(asOf, p.nextRenewal);
-  return `${dateWords(p.nextRenewal)}${days === 0 ? ", today" : days === 1 ? ", tomorrow" : `, in ${days} days`}`;
+  return `${dayLabel(p.nextRenewal, { year: true })}${days === 0 ? ", today" : days === 1 ? ", tomorrow" : `, in ${days} days`}`;
 }
 
 function coverWords(p: Policy): string[] {
@@ -173,7 +166,7 @@ export function insuranceReply(
       body: switches
         .map((sw) => {
           const name = `${sw.carrier} ${kindWords(sw.kind as PolicyKind)}`;
-          const starts = sw.startsOn ? dateWords(sw.startsOn) : "soon";
+          const starts = sw.startsOn ? dayLabel(sw.startsOn, { year: true }) : "soon";
           return sw.status === "pending"
             ? `I bought your new ${name}, starting ${starts}. ${sw.replaces ?? "Your old policy"} stays in place until its first payment goes through; then I cancel it from that day.`
             : `Done: your ${name} is in place${sw.replaces ? ` and I cancelled ${sw.replaces} from ${starts}` : ""}. No gap in cover.`;

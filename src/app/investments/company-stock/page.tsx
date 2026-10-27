@@ -18,6 +18,7 @@ import { GrantForm } from "./grant-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatPercent as pct } from "@/lib/percent";
+import { dayLabel } from "@/lib/day-label";
 
 // Company stock (spec step 160, demo advice): how much of what's invested is in the
 // employer's stock, what's still to vest, and a plan to sell down in parts with the tax
@@ -30,13 +31,6 @@ const DONE: Record<string, string> = {
   linked: "Demo stock plan linked.",
   sold: "Sold the first part and bought broad index funds with it.",
 };
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function CompanyContent({
   searchParams,
@@ -98,7 +92,7 @@ async function CompanyContent({
                 {g.sharesPerVest && g.everyMonths
                   ? `, ${g.sharesPerVest} every ${g.everyMonths} months`
                   : ""}
-                {g.nextVestOn ? `, next on ${day(g.nextVestOn)}` : ""}
+                {g.nextVestOn ? `, next on ${dayLabel(g.nextVestOn, { year: true })}` : ""}
               </li>
             ))}
           </ul>
@@ -139,7 +133,7 @@ async function CompanyContent({
             <tbody>
               {view.plan.parts.map((p) => (
                 <tr key={p.index}>
-                  <td>{p.index === 0 ? "Now" : day(p.on)}</td>
+                  <td>{p.index === 0 ? "Now" : dayLabel(p.on, { year: true })}</td>
                   <td className="text-right">{formatCents(p.proceedsCents)}</td>
                   <td className="text-right">{formatCents(p.gainCents)}</td>
                   <td className="text-right">{formatCents(p.taxCents)}</td>

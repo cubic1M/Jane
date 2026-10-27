@@ -34,7 +34,7 @@ async function Figure({ params }: { params: PageProps<"/figures/[id]">["params"]
         </p>
       </div>
       {!working ? (
-        <p className={MUTED}>Link an account first, then I can show my working.</p>
+        <p className={MUTED}>Add your accounts first, then I can show my working.</p>
       ) : (
         <>
           <p>{working.summary}</p>

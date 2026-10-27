@@ -17,6 +17,7 @@ import {
   type Prices,
 } from "./practice-autopilot";
 import type { LedgerState } from "./practice-ledger";
+import { formatCents } from "@/lib/money";
 
 // The crypto sleeve in the practice portfolio (Phase AW, Stage A, Very high only): the same rule
 // the strategy menu replays (src/planning/crypto-strategies.ts), deciding on the same days (each
@@ -57,9 +58,6 @@ export function sleeveDecides(
     ? today.slice(0, 7) !== previous.slice(0, 7)
     : weekOf(today) !== weekOf(previous);
 }
-
-const USD = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const dollars = (cents: number) => `$${USD.format(cents / 100)}`;
 
 // Why the rule holds a coin this week, or doesn't, in a few words.
 function why(s: Sleeve, coin: CryptoAsset, w: Record<CryptoAsset, number>): string {
@@ -136,7 +134,7 @@ export function cryptoSleeveTrades(input: {
       side: "sell",
       amountCents: -m.gap,
       rule: "crypto_sleeve",
-      reason: `Sold ${dollars(-m.gap)} of ${CRYPTO_NAMES[m.c]} for the crypto sleeve (${label}): ${why(sleeve, m.c, w)}.`,
+      reason: `Sold ${formatCents(-m.gap)} of ${CRYPTO_NAMES[m.c]} for the crypto sleeve (${label}): ${why(sleeve, m.c, w)}.`,
     });
     cash += -m.gap;
   }
@@ -148,7 +146,7 @@ export function cryptoSleeveTrades(input: {
       side: "buy",
       amountCents: amount,
       rule: "crypto_sleeve",
-      reason: `Bought ${dollars(amount)} of ${CRYPTO_NAMES[m.c]} for the crypto sleeve (${label}): ${why(sleeve, m.c, w)}. Practice money; crypto can fall 70% or more.`,
+      reason: `Bought ${formatCents(amount)} of ${CRYPTO_NAMES[m.c]} for the crypto sleeve (${label}): ${why(sleeve, m.c, w)}. Practice money; crypto can fall 70% or more.`,
     });
     cash -= amount;
   }

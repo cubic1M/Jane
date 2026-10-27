@@ -8,6 +8,7 @@ import {
 } from "@/config/tax-plan";
 import type { SavingKey } from "@/planning/tax-savings";
 import { addDays } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 import { formatWholeDollars } from "@/lib/money";
 
 // The year-round tax plan (spec step 167). Pure. From what Jane knows about the tax year
@@ -49,12 +50,6 @@ export type PlanMove = {
 };
 
 const dateOf = (year: number, d: PlanDate) => `${year + (d.nextYear ? 1 : 0)}-${d.md}`;
-const shortDay = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 const EVENT_NAMES: Readonly<Record<string, string>> = {
   new_job: "your new job",
@@ -128,7 +123,7 @@ export function taxPlan(f: PlanFacts): PlanMove[] {
     if (payment) {
       add(
         key,
-        `About ${formatWholeDollars(payment.cents)} for ${f.year}, by ${shortDay(due)}.`,
+        `About ${formatWholeDollars(payment.cents)} for ${f.year}, by ${dayLabel(due)}.`,
         payment.cents,
       );
     }

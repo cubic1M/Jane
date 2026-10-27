@@ -2,19 +2,13 @@ import type { RiskKind } from "@/config/insurance";
 import type { GapQuote, Risk } from "@/lib/insurance/risks";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
+import { dayLabel } from "@/lib/day-label";
 
 // Risks seen in how the person lives, as one question each in Jane's chat (spec step 197),
 // and the prices shown for the gap a yes opens. Pure.
 
-const dateWords = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-
 const SEEN = (r: Risk, verb: string) =>
-  `I saw ${formatCents(r.amountCents)} ${verb} ${r.merchant} on ${dateWords(r.seenOn)}.`;
+  `I saw ${formatCents(r.amountCents)} ${verb} ${r.merchant} on ${dayLabel(r.seenOn)}.`;
 
 // Pure: the question, with what Jane saw and why it matters to the cover.
 export function riskQuestion(r: Risk): string {

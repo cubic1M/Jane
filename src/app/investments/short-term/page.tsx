@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/session";
 import { buildLadder } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 
 // Short-term money, placed safely (spec step 234, demo advice): money needed within three
@@ -19,13 +20,6 @@ import { formatRate } from "@/lib/percent";
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON = "h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function Content({
   searchParams,
@@ -48,8 +42,8 @@ async function Content({
           Money you need within three years, compared after tax at your {Math.round(v.fed * 100)}%
           federal and {Math.round(v.state * 100)}% state rate
           {v.fromProfile ? "" : " (assumed; fill in your tax profile for yours)"}. Treasury interest
-          is free of state tax. Rates are stand-ins as of {day(SHORT_TERM_RATES_AS_OF)}:{" "}
-          {SHORT_TERM_RATES_SOURCE}.
+          is free of state tax. Rates are stand-ins as of{" "}
+          {dayLabel(SHORT_TERM_RATES_AS_OF, { year: true })}: {SHORT_TERM_RATES_SOURCE}.
         </p>
       </div>
       {done && (
@@ -73,7 +67,7 @@ async function Content({
           className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
         >
           <h2 className="text-xl font-semibold">
-            {c.name}: {formatCents(c.amountCents)}, needed by {day(c.endsOn)}
+            {c.name}: {formatCents(c.amountCents)}, needed by {dayLabel(c.endsOn, { year: true })}
           </h2>
           <table className="w-full text-sm">
             <thead>
@@ -97,15 +91,17 @@ async function Content({
             </tbody>
           </table>
           <p className="text-xs text-zinc-500">
-            Only places that can&apos;t lock your money past {day(c.endsOn)} are listed.
+            Only places that can&apos;t lock your money past {dayLabel(c.endsOn, { year: true })}{" "}
+            are listed.
           </p>
           {v.advice && c.ladder && !c.hasLadder && (
             <form action={buildLadder} className="flex flex-col gap-2">
               <input type="hidden" name="key" value={c.key} />
               <p className="text-sm">
                 A ladder of {c.ladder.length} {c.ladder.length === 1 ? "rung" : "rungs"} of Treasury
-                bills, each maturing by {day(c.endsOn)} and rolling into the next bill until then:
-                about {formatCents(c.gainCents)} a year more than savings, after tax.
+                bills, each maturing by {dayLabel(c.endsOn, { year: true })} and rolling into the
+                next bill until then: about {formatCents(c.gainCents)} a year more than savings,
+                after tax.
               </p>
               <SimulatedBanner />
               <SubmitButton className={`${BUTTON} self-start`}>Build the ladder</SubmitButton>
@@ -125,7 +121,7 @@ async function Content({
           </h2>
           <p className="text-sm">
             {l.status === "active"
-              ? `Cash on ${day(l.endsOn)}.`
+              ? `Cash on ${dayLabel(l.endsOn, { year: true })}.`
               : "Matured: the money is cash again."}
           </p>
           <ul className="list-disc pl-5 text-sm">
@@ -136,7 +132,7 @@ async function Content({
                   ? "in savings"
                   : r.bills.map((b) => `${b.term}-month bill`).join(", then ")}
                 {l.status === "active" && l.now[i]?.term
-                  ? ` (now in a ${l.now[i].term}-month bill, matures ${day(l.now[i].maturesOn)})`
+                  ? ` (now in a ${l.now[i].term}-month bill, matures ${dayLabel(l.now[i].maturesOn, { year: true })})`
                   : ""}
               </li>
             ))}

@@ -14,6 +14,7 @@ import type { ProfileInput, ProfileTx } from "@/profile/build";
 import { type Confidence, type Detector, suggestionId } from "./contract";
 import {
   evidence,
+  cashKnown,
   liquidCents,
   listOf,
   nice,
@@ -352,7 +353,8 @@ const lowBalance: Detector = {
   covers: ["tight_money"],
   needs: [],
   detect({ profile, data }) {
-    // Cash in checking and savings: what could pay the month's bills.
+    // Cash in checking and savings: what could pay the month's bills. Unknown is not low.
+    if (!cashKnown(data)) return null;
     const checking = liquidCents(data);
     // A month's regular bills: the latest charge of each regular series.
     const bills = regular(data).filter(

@@ -4,17 +4,10 @@ import { latestCheckup } from "@/lib/insurance/checkups";
 import { openEnrollmentDates } from "@/lib/insurance/health";
 import type { Reply } from "../replies";
 import { BENEFITS_LINK, benefitLine } from "./benefit-words";
+import { dayLabel } from "@/lib/day-label";
 
 // "What benefits do I get through work?" (spec step 150): the benefits on file, the
 // employer's open enrollment, and Jane's recommendation when it's ready (demo advice).
-
-const dateWords = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 export async function benefitsAnswer(
   userId: string,
@@ -43,8 +36,8 @@ export async function benefitsAnswer(
   }
   lines.push(
     window
-      ? `Open enrollment at ${window.employer} runs ${dateWords(window.start)} to ${dateWords(window.end)}; marketplace plans close on ${dateWords(marketplace.date)}.`
-      : `Marketplace open enrollment closes on ${dateWords(marketplace.date)}.`,
+      ? `Open enrollment at ${window.employer} runs ${dayLabel(window.start, { year: true })} to ${dayLabel(window.end, { year: true })}; marketplace plans close on ${dayLabel(marketplace.date, { year: true })}.`
+      : `Marketplace open enrollment closes on ${dayLabel(marketplace.date, { year: true })}.`,
   );
   const ready = review?.reason === "enrollment" ? review : null;
   if (ready && ready.recommendations.length > 0) {

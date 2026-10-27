@@ -12,6 +12,7 @@ import { requireUser } from "@/lib/session";
 import { answer, compareNow, confirm, notThis } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Benefits through work (spec step 150): what Jane found on the pay stub (confirmed with a
 // tap), the cover the employer pays for (a few questions), the comparison with buying the
@@ -22,14 +23,6 @@ const SMALL =
   "inline-flex h-9 items-center justify-center rounded-full border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700";
 const PRIMARY =
   "inline-flex h-9 items-center justify-center rounded-full bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800";
-
-const dateLabel = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function BenefitsContent() {
   const user = await requireUser();
@@ -69,8 +62,8 @@ async function BenefitsContent() {
         )}
         {window && (
           <p className="text-sm">
-            Open enrollment at {window.employer}: {dateLabel(window.start)} to{" "}
-            {dateLabel(window.end)}.
+            Open enrollment at {window.employer}: {dayLabel(window.start, { year: true })} to{" "}
+            {dayLabel(window.end, { year: true })}.
           </p>
         )}
       </div>

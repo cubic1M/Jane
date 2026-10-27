@@ -11,6 +11,7 @@ import { TAX_PACK_COPY } from "@/planning/tax-pack-copy";
 import { LOCAL_TAXES, STATE_SOURCES } from "@/config/tax-states";
 import { residencePeriods, workStateTaxesRemoteWages, type Move } from "@/planning/tax-states";
 import { NO_OVERRIDES, tagAll, type TagOverrides, type TagSource } from "@/planning/tax-tags";
+import { centsToInput } from "@/lib/money";
 
 // The tax-time pack (spec step 72): a year's charity gifts, spending people often show their
 // tax preparer and contracting or gig income, grouped and totalled. Organizing only: it
@@ -252,8 +253,6 @@ export function csvCell(value: string): string {
   return /[",\r\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 }
 
-const dollars = (cents: number) => (cents / 100).toFixed(2);
-
 const NOTES: Readonly<Record<TagSource, string>> = {
   yours: "Tagged by you",
   jane: "Tagged by Jane",
@@ -278,7 +277,7 @@ export function taxPackCsv(pack: TaxPack): string {
         label,
         r.date,
         r.payee,
-        dollars(r.amountCents),
+        centsToInput(r.amountCents),
         r.source ? NOTES[r.source] : "",
       ]),
     ),
@@ -286,7 +285,7 @@ export function taxPackCsv(pack: TaxPack): string {
       TAX_PACK_COPY.summaryHeading,
       "",
       `${label}: ${TAX_PACK_COPY.totalLabel.toLowerCase()}`,
-      dollars(g.totalCents),
+      centsToInput(g.totalCents),
       "",
     ]),
     ...(pack.rental
@@ -297,7 +296,7 @@ export function taxPackCsv(pack: TaxPack): string {
             ["Depreciation", pack.rental.depreciationCents],
             ["Net", pack.rental.netCents],
           ] as const
-        ).map(([label, cents]) => [TAX_PACK_COPY.rentalHeading, "", label, dollars(cents), ""])
+        ).map(([label, cents]) => [TAX_PACK_COPY.rentalHeading, "", label, centsToInput(cents), ""])
       : []),
     ...pack.states.map((st) => [
       TAX_PACK_COPY.statesHeading,
