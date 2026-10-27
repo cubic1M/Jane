@@ -95,6 +95,31 @@ describe("derivedBalances", () => {
     ]);
   });
 
+  it("works from the statement's own balances, so a gap in the rows stays a gap", () => {
+    // Rows to Sep 10 only (the newer file was removed); today's balance came from that newer file.
+    const rows = [
+      { date: "2026-07-01", amountCents: -200000 },
+      { date: "2026-07-03", amountCents: 140000 },
+      { date: "2026-08-01", amountCents: -200000 },
+      { date: "2026-09-10", amountCents: 8500 },
+    ];
+    const fromFile = [
+      { date: "2026-07-01", balanceCents: 300000 },
+      { date: "2026-07-03", balanceCents: 160000 },
+      { date: "2026-08-01", balanceCents: 360000 },
+      { date: "2026-09-10", balanceCents: 351500 },
+    ];
+    expect(derivedBalances("depository", 1101200, rows, "2026-10-27", fromFile)).toEqual([
+      // Back from the next balance the file gave: before July 1's pay.
+      { date: "2026-06-30", balanceCents: 100000 },
+      { date: "2026-07-31", balanceCents: 160000 },
+      { date: "2026-08-31", balanceCents: 351500 + 8500 },
+      // Nothing the file says after Sep 10: forward from it, not back from today across the gap.
+      { date: "2026-09-30", balanceCents: 351500 },
+      { date: "2026-10-27", balanceCents: 1101200 },
+    ]);
+  });
+
   it("is just today's balance with no transactions", () => {
     expect(derivedBalances("depository", 5000, [], "2026-10-27")).toEqual([
       { date: "2026-10-27", balanceCents: 5000 },
