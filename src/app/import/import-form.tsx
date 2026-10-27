@@ -46,10 +46,15 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   // An account just added by hand is the one to upload into.
   const ids = accounts.map((a) => a.id);
   const [known, setKnown] = useState(ids);
+  // An upload into a new account adds one too, but the next file is often another bank's: the
+  // choice stays "a new account" then, so it never lands in the last one by mistake (QA: after a
+  // Wells Fargo upload the select said "Wells Fargo checking" for the BofA file).
+  const [uploadedNew, setUploadedNew] = useState(false);
   if (ids.join() !== known.join()) {
     setKnown(ids);
     const added = ids.find((id) => !known.includes(id));
-    if (added) setAccount(added);
+    if (added && !uploadedNew) setAccount(added);
+    if (uploadedNew) setUploadedNew(false);
   }
 
   // The form isn't submitted natively: that would clear the chosen files after preview.
@@ -82,6 +87,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
       const result = await startImport(formData());
       if (!result.ok) return setError(result.error);
       setSaved({ rows: result.rows, runId: result.runId, askBalance: result.askBalance });
+      if (account === NEW_ACCOUNT_ID) setUploadedNew(true);
       setPreview(null);
       setPickers({});
       formRef.current?.reset();
