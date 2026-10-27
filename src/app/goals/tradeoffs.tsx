@@ -1,7 +1,8 @@
 import type { TradeoffView } from "@/lib/goal-tradeoffs";
-import { monthLabel, type GoalDate, type TradeOrder } from "@/planning/goal-tradeoffs";
+import { type GoalDate, type TradeOrder } from "@/planning/goal-tradeoffs";
 import { pickGoalOrder } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { monthLabel } from "@/lib/day-label";
 
 // Goals that trade off openly (spec step 241): each order's dates from the year plan, Jane's
 // suggested order and why, and the person's pick. Nothing re-plans without the tap.
@@ -9,7 +10,7 @@ import { SubmitButton } from "@/components/submit-button";
 const when = (d: GoalDate) =>
   d.month === null
     ? "not within ten years"
-    : `${monthLabel(d.month)}${d.lateMonths !== null && d.lateMonths > 0 ? `, ${d.lateMonths} month${d.lateMonths === 1 ? "" : "s"} late` : ", on time"}`;
+    : `${monthLabel(d.month, { long: true })}${d.lateMonths !== null && d.lateMonths > 0 ? `, ${d.lateMonths} month${d.lateMonths === 1 ? "" : "s"} late` : ", on time"}`;
 
 const same = (a: readonly string[] | null, b: TradeOrder) =>
   a !== null && a.join() === b.order.join();

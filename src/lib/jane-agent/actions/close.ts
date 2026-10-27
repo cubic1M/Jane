@@ -1,6 +1,7 @@
 import { MonthCloseError, confirmClose } from "@/lib/month-close";
-import { monthName } from "@/planning/monthly-report";
+
 import { answeredElsewhere, type ActionHandler } from "./handler";
+import { monthLabel } from "@/lib/day-label";
 
 // "Looks right" on the monthly close (spec step 244): the charges Jane asked about stay as they
 // are and the month closes.
@@ -17,7 +18,7 @@ export const closeConfirm: ActionHandler = {
     }
     return {
       answeredWith: context.action.label,
-      note: `Thanks. ${monthName(month)} is closed; its figures stay as they are unless you correct something.`,
+      note: `Thanks. ${monthLabel(month, { long: true })} is closed; its figures stay as they are unless you correct something.`,
     };
   },
 };

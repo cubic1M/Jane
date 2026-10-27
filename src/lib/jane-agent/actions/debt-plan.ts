@@ -1,8 +1,9 @@
 import { DebtPlanError, startDebtPlan } from "@/lib/debt-plan";
 import { formatCents } from "@/lib/money";
-import { monthName } from "@/planning/payoff";
+
 import type { Strategy } from "@/planning/debt";
 import { ChatActionError, type ActionHandler } from "./handler";
+import { monthLabel } from "@/lib/day-label";
 
 // "Start this plan" on Jane's payoff plan (spec step 110): saves the order and the extra a
 // month through the plan's own code (src/lib/debt-plan.ts). Nothing is paid or moved: Jane
@@ -15,7 +16,9 @@ const start = (strategy: Strategy): ActionHandler => ({
     const extraCents = message.refs.debtPlanExtraCents ?? 0;
     try {
       const plan = await startDebtPlan(userId, { strategy, extraCents }, { client, now });
-      const when = plan.debtFreeMonth ? `, debt-free by ${monthName(plan.debtFreeMonth)}` : "";
+      const when = plan.debtFreeMonth
+        ? `, debt-free by ${monthLabel(plan.debtFreeMonth, { long: true })}`
+        : "";
       const extra = extraCents > 0 ? ` with ${formatCents(extraCents)} extra a month` : "";
       return {
         answeredWith: action.label,

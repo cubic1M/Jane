@@ -8,8 +8,9 @@ import { loadClose, type CloseView } from "@/lib/month-close";
 import { storedReport } from "@/lib/monthly-report-store";
 import { requireUser } from "@/lib/session";
 import { categoryWords } from "@/planning/month-close";
-import { monthName, reportLines } from "@/planning/monthly-report";
+import { reportLines } from "@/planning/monthly-report";
 import { LoadingBar } from "@/components/loading-bar";
+import { monthLabel } from "@/lib/day-label";
 
 // The month's one report (spec step 148), with the monthly check-in folded in (spec step 45;
 // docs/feature-audit.md, cluster 2). For any month: Jane's short summary, what was spent and
@@ -56,7 +57,9 @@ async function MonthlyContent({
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">{monthName(month)} money report</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {monthLabel(month, { long: true })} money report
+        </h1>
         <p className="text-lg">{summary}</p>
         <p className={MUTED}>
           {stored && report
@@ -67,11 +70,11 @@ async function MonthlyContent({
         </p>
         <nav aria-label="Months" className="flex gap-4">
           <Link href={`/monthly?m=${before}`} className={LINK}>
-            ‹ {monthName(before)}
+            ‹ {monthLabel(before, { long: true })}
           </Link>
           {after && (
             <Link href={`/monthly?m=${after}`} className={LINK}>
-              {monthName(after)} ›
+              {monthLabel(after, { long: true })} ›
             </Link>
           )}
         </nav>
@@ -150,7 +153,9 @@ async function MonthlyContent({
 
       {checkIn.changes.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-xl font-semibold">Biggest changes from {monthName(before)}</h2>
+          <h2 className="text-xl font-semibold">
+            Biggest changes from {monthLabel(before, { long: true })}
+          </h2>
           <ul className="flex flex-col gap-1 text-sm">
             {checkIn.changes.map((c) => (
               <li key={c.category} className="flex justify-between gap-2">
@@ -207,7 +212,7 @@ function MonthClose({ view }: { view: CloseView }) {
       className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
     >
       <h2 className="text-xl font-semibold">
-        {monthName(view.month)}: {view.status === "closed" ? "closed" : "closing"}
+        {monthLabel(view.month, { long: true })}: {view.status === "closed" ? "closed" : "closing"}
       </h2>
       {view.status === "waiting" ? (
         <p className="text-sm">

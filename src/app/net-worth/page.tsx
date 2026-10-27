@@ -15,13 +15,7 @@ import { requireUser } from "@/lib/session";
 import { BooksNotice } from "@/components/books-notice";
 import { openBooks } from "@/lib/books";
 import { LoadingBar } from "@/components/loading-bar";
-
-const monthLabel = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+import { monthLabel } from "@/lib/day-label";
 
 async function NetWorthContent() {
   const user = await requireUser();

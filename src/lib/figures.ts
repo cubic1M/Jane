@@ -34,6 +34,7 @@ import { homeSummary } from "@/lib/home";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import { formatCents } from "@/lib/money";
 import { isoDay as iso } from "@/lib/dates";
+import { monthLabel } from "@/lib/day-label";
 
 // Every figure explained (spec step 239): "how did you get that?" for a headline figure, from
 // the same loaders as the pages that show it: the rows it adds up, the transactions behind it,
@@ -62,13 +63,6 @@ export type Working = {
   rules: { label: string; value: string }[];
   corrections: readonly ("category" | "income")[];
 };
-
-const monthName = (m: string) =>
-  new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 export async function explainFigure(
   userId: string,
@@ -171,10 +165,10 @@ export async function explainFigure(
       value: value === null ? "unknown" : formatCents(value),
       summary:
         id === "monthly_spending"
-          ? `The average of your last full months' spending. ${oneOffNote(health.oneOffs ?? []) ? `${oneOffNote(health.oneOffs ?? [])} ` : ""}${monthName(month)}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
+          ? `The average of your last full months' spending. ${oneOffNote(health.oneOffs ?? []) ? `${oneOffNote(health.oneOffs ?? [])} ` : ""}${monthLabel(month, { long: true })}'s biggest items are below; money moved between your own accounts and card payments aren't spending.`
           : said !== null
             ? `You told me you earn ${formatCents(said)} a month, so I use that instead of the average of your deposits.`
-            : `The average of the paychecks and other deposits in your last full months. ${monthName(month)}'s biggest are below.`,
+            : `The average of the paychecks and other deposits in your last full months. ${monthLabel(month, { long: true })}'s biggest are below.`,
       rows: [
         {
           label: id === "monthly_spending" ? "Average monthly spending" : "Average monthly income",
@@ -187,7 +181,7 @@ export async function explainFigure(
             }))
           : []),
         {
-          label: `${monthName(month)}'s ${id === "monthly_spending" ? "spending" : "income"}, in the items below and the rest`,
+          label: `${monthLabel(month, { long: true })}'s ${id === "monthly_spending" ? "spending" : "income"}, in the items below and the rest`,
           value: formatCents(Math.abs(wanted.reduce((s, t) => s + t.amountCents, 0))),
         },
       ],
