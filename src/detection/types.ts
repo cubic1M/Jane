@@ -57,8 +57,6 @@ export type DetectionInput = {
   recurringStreams: DetectionRecurringStream[];
   // Merchant keys Claude said are subscriptions (see AMBIGUOUS_SUBSCRIPTION_CATEGORIES).
   subscriptionMerchantKeys?: string[];
-  // Merchant keys Claude said aren't subscriptions: one price every month doesn't make them one.
-  declinedSubscriptionMerchantKeys?: string[];
   // Merchants whose subscription our team cancelled, and the day it was done.
   cancelledMerchants?: { merchantKey: string; cancelledOn: string }[];
   // Spec step 152: card account id to the card-benefits catalog product it matches.

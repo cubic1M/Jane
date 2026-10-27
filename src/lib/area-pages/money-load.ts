@@ -94,7 +94,8 @@ export async function loadMoneyArea(
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
     loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
     db.subscriptionChecks.findMany({
-      select: { merchantKey: true, isSubscription: true },
+      where: { isSubscription: true },
+      select: { merchantKey: true },
     }),
     db.findings.findMany({
       where: { type: "subscription_review", status: { in: ["new", "shown"] } },
@@ -123,12 +124,7 @@ export async function loadMoneyArea(
     listMerchantRules(userId, { client }),
   ]);
 
-  input.subscriptionMerchantKeys = confirmed
-    .filter((c) => c.isSubscription)
-    .map((c) => c.merchantKey);
-  input.declinedSubscriptionMerchantKeys = confirmed
-    .filter((c) => !c.isSubscription)
-    .map((c) => c.merchantKey);
+  input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
   const card = new Map(findings.map((f) => [f.key, f.id]));
   const worth = netWorth(
     accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),

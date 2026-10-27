@@ -1,9 +1,6 @@
 import {
   AMBIGUOUS_SUBSCRIPTION_CATEGORIES,
   BILLING_PLATFORM_MERCHANTS,
-  FIXED_PRICE_SUBSCRIPTION_MAX_CENTS,
-  FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE,
-  FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES,
   INSURANCE_CATEGORIES,
   LLM_SUBSCRIPTION_MAX_CONFIDENCE,
   NOT_SUBSCRIPTION_PRIMARIES,
@@ -22,42 +19,11 @@ function isRecurringCost(stream: Stream): boolean {
   );
 }
 
-// A charge whose category can't say, at one price every month (FIXED_PRICE_SUBSCRIPTION_*).
-export function isFixedPricePlan(stream: Stream): boolean {
-  const prices = new Set(stream.charges.map((c) => c.amountCents));
-  return (
-    stream.frequency === "MONTHLY" &&
-    (stream.pfcDetailed === null ||
-      inList(stream.pfcDetailed, AMBIGUOUS_SUBSCRIPTION_CATEGORIES)) &&
-    stream.charges.length >= FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES &&
-    prices.size === 1 &&
-    stream.lastAmountCents <= FIXED_PRICE_SUBSCRIPTION_MAX_CENTS
-  );
-}
-
-// Known only from its one price every month: no name or category says so, and Claude didn't say no.
-const onlyByPrice = (stream: Stream, declined: ReadonlySet<string>) =>
-  !declined.has(stream.merchantKey) &&
-  !isKnownSubscription(stream) &&
-  !inList(stream.pfcPrimary, NOT_SUBSCRIPTION_PRIMARIES) &&
-  isFixedPricePlan(stream);
-
-// An active recurring charge from a subscription-like category or merchant, billed through an
-// app store, or at one price every month where the category can't say. Insurance has its own
-// finding.
+// An active recurring charge from a subscription-like category or merchant, or billed through
+// an app store. Insurance has its own finding.
 export function isSubscription(stream: Stream): boolean {
-  return isSubscriptionUnless(new Set())(stream);
-}
-
-// The same, leaving out the merchants Claude said aren't subscriptions.
-export const isSubscriptionUnless =
-  (declined: ReadonlySet<string>) =>
-  (stream: Stream): boolean =>
-    isRecurringCost(stream) && (isKnownSubscription(stream) || onlyByPrice(stream, declined));
-
-// Known by its category, its merchant or its app store.
-function isKnownSubscription(stream: Stream): boolean {
   return (
+    isRecurringCost(stream) &&
     !inList(stream.pfcPrimary, NOT_SUBSCRIPTION_PRIMARIES) &&
     (stream.namedPlan === true ||
       inList(stream.pfcDetailed, SUBSCRIPTION_CATEGORIES) ||
@@ -71,7 +37,7 @@ function isKnownSubscription(stream: Stream): boolean {
 export function isAmbiguousRecurring(stream: Stream): boolean {
   return (
     isRecurringCost(stream) &&
-    !isKnownSubscription(stream) &&
+    !isSubscription(stream) &&
     (stream.pfcDetailed === null || inList(stream.pfcDetailed, AMBIGUOUS_SUBSCRIPTION_CATEGORIES))
   );
 }
@@ -80,26 +46,17 @@ export function isAmbiguousRecurring(stream: Stream): boolean {
 // total only counts it once they say yes (COUNT_ONLY_WHEN_APPROVED).
 export const subscriptionReview: Rule = (input, streams) => {
   const confirmed = new Set(input.subscriptionMerchantKeys ?? []);
-  const declined = new Set(input.declinedSubscriptionMerchantKeys ?? []);
   return streams
-    .filter(
-      (s) =>
-        isSubscriptionUnless(declined)(s) ||
-        (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey)),
-    )
+    .filter((s) => isSubscription(s) || (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey)))
     .map((stream) => ({
       type: "subscription_review",
       key: stream.key,
       title: `Review your ${stream.merchant} subscription`,
       annualSavingsCents: stream.annualCostCents,
       amountCents: stream.annualCostCents,
-      // Known by name or category: its own confidence. Claude said yes: up to medium. Only its
-      // one price says so: low.
-      confidence: isKnownSubscription(stream)
+      confidence: isSubscription(stream)
         ? stream.confidence
-        : confirmed.has(stream.merchantKey)
-          ? lowest(stream.confidence, LLM_SUBSCRIPTION_MAX_CONFIDENCE)
-          : lowest(stream.confidence, FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE),
+        : lowest(stream.confidence, LLM_SUBSCRIPTION_MAX_CONFIDENCE),
       evidence: streamEvidence(stream),
     }));
 };

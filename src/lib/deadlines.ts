@@ -50,16 +50,11 @@ export type DeadlineSource = (userId: string, options: SourceOptions) => Promise
 export const transactionDeadlinesFrom =
   (loaded: DetectionInput): DeadlineSource =>
   async (userId, { client }) => {
-    const checks = await scopedFor(userId, client).subscriptionChecks.findMany({
-      select: { merchantKey: true, isSubscription: true },
+    const confirmed = await scopedFor(userId, client).subscriptionChecks.findMany({
+      where: { isSubscription: true },
+      select: { merchantKey: true },
     });
-    const input = {
-      ...loaded,
-      subscriptionMerchantKeys: checks.filter((c) => c.isSubscription).map((c) => c.merchantKey),
-      declinedSubscriptionMerchantKeys: checks
-        .filter((c) => !c.isSubscription)
-        .map((c) => c.merchantKey),
-    };
+    const input = { ...loaded, subscriptionMerchantKeys: confirmed.map((c) => c.merchantKey) };
     const streams = buildStreams(input);
     return [
       ...renewalDeadlines(input, streams),
