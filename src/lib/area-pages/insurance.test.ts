@@ -164,6 +164,26 @@ describe("the insurance tree", () => {
     expect(tree.sub).toBe("3 urgent · 5 to look at");
   });
 
+  // Overnight upload QA: every salaried person's tree led with "Health cover: Missing" and
+  // "Disability cover: Missing", both urgent, though a job usually covers both out of pay.
+  it("says cover a job usually gives is not on file, worth a look", () => {
+    const { tree } = insuranceTree(
+      input({
+        gaps: [
+          { key: "health", why: "There's no health plan on your profile.", policyId: null },
+          { key: "disability", why: "Nothing would replace your pay.", policyId: null },
+          ...input().gaps,
+        ],
+      }),
+    );
+    const missing = tree.branches.find((b) => b.id === "missing")!;
+    expect(missing.items.map((i) => [i.label, i.status, i.figure])).toEqual([
+      [expect.any(String), "look", "Not on file"],
+      [expect.any(String), "look", "Not on file"],
+      ["Home insurance", "act", "Missing"],
+    ]);
+  });
+
   it("lifts at most three urgent items to the top, biggest dollars first", () => {
     const { chips } = insuranceTree(input());
     expect(chips).toEqual([
