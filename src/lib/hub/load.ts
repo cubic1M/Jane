@@ -131,6 +131,7 @@ export async function loadHubAreas(
           paidCents: taxes.estimate.paidCents,
           refundCents: taxes.estimate.refundCents,
           withholdingKnown: taxes.withholdingKnown,
+          incomeCents: taxes.estimate.totalIncomeCents,
         }
       : null,
     investments: practice

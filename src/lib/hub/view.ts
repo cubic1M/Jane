@@ -79,6 +79,8 @@ export type AreasInput = {
     paidCents: number;
     refundCents: number;
     withholdingKnown: boolean;
+    // The year's income the estimate counted; absent in older callers.
+    incomeCents?: number;
   } | null;
   investments: {
     totalCents: number;
@@ -616,6 +618,17 @@ export function tilesView(input: AreasInput): AreaTile[] {
     })(),
     taxes: (() => {
       const t = input.taxes;
+      // Income under the standard deduction owes nothing: say so, not "not enough to estimate"
+      // (overnight upload QA: a student with a part-time job).
+      const noTax =
+        t !== null && t.totalTaxCents === 0 && (t.incomeCents ?? 0) > 0 && !t.withholdingKnown;
+      if (noTax) {
+        return tile("taxes", input, true, {
+          value: shortMoney(0),
+          caption: "No income tax expected",
+          chart: { kind: "none" },
+        });
+      }
       const known = t !== null && t.totalTaxCents > 0;
       const refund = t?.refundCents ?? 0;
       return tile("taxes", input, known, {
