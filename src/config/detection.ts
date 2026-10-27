@@ -211,6 +211,43 @@ export const LLM_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "medium";
 export const FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES = 3;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CENTS = 10_000;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "low";
+// ...but never a payment on a debt, insurance, a gift or food and drink, by category or by the
+// words of the description (QA round 28: a credit union loan payment, Lemonade Insurance, a
+// church, a bakery and a tavern, each at one price every month, were called subscriptions).
+export const FIXED_PRICE_SUBSCRIPTION_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
+  "LOAN_PAYMENTS",
+  "FOOD_AND_DRINK",
+  "GOVERNMENT_AND_NON_PROFIT",
+  "TRANSFER_OUT",
+  "RENT_AND_UTILITIES",
+];
+export const FIXED_PRICE_SUBSCRIPTION_EXCLUDED_CATEGORIES: readonly PfcDetailed[] = [
+  "GENERAL_SERVICES_INSURANCE",
+];
+// Matched as whole words of the description, upper case.
+export const FIXED_PRICE_SUBSCRIPTION_NOT_WORDS: readonly string[] = [
+  "PMT",
+  "PYMT",
+  "PAYMENT",
+  "LOAN",
+  "LENDING",
+  "CREDIT UNION",
+  "MORTGAGE",
+  "INSURANCE",
+  "ASSURANCE",
+  "CHURCH",
+  "MINISTRIES",
+  "PARISH",
+  "TITHE",
+  "DONATION",
+  "CHARITY",
+  "BAKERY",
+  "TAVERN",
+  "PUB",
+  "BAR",
+  "RESTAURANT",
+  "CAFE",
+];
 
 // Groups of interchangeable services. Two or more active subscriptions in one group is a
 // duplicate. A stream joins a group by category or by merchant name.

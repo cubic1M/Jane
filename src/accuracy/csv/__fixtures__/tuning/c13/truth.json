@@ -70,7 +70,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2015940, excess 1569262",
+      "about": "cash 1988740, excess 1520463",
       "perYear": null
     }
   ],
@@ -78,24 +78,32 @@
     {
       "type": "subscription_review",
       "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 13221.68
+      "dollars": 13153.68
     },
     {
       "date": "2026-08-31",
-      "dollars": 14771.72
+      "dollars": 14635.72
     },
     {
       "date": "2026-09-30",
-      "dollars": 16421.26
+      "dollars": 16217.26
     },
     {
       "date": "2026-10-24",
-      "dollars": 18475.95
+      "dollars": 18203.95
     }
   ]
 }

@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 5614603, excess 5148690",
+      "about": "cash 5553353, excess 5060288",
       "perYear": null
     }
   ],
@@ -79,36 +79,44 @@
     {
       "type": "duplicate_charge",
       "about": "3 VIVID SEATS 866-848-8499 seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE MINISTRIES TITHE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 23011.42
+      "dollars": 22923.92
     },
     {
       "date": "2026-05-31",
-      "dollars": 32581.59
+      "dollars": 32406.59
     },
     {
       "date": "2026-06-30",
-      "dollars": 36453.98
+      "dollars": 36191.48
     },
     {
       "date": "2026-07-31",
-      "dollars": 41241.32
+      "dollars": 40891.32
     },
     {
       "date": "2026-08-31",
-      "dollars": 45642.93
+      "dollars": 45205.43
     },
     {
       "date": "2026-09-30",
-      "dollars": 50118.34
+      "dollars": 49593.34
     },
     {
       "date": "2026-10-24",
-      "dollars": 55243.27
+      "dollars": 54630.77
     }
   ]
 }
