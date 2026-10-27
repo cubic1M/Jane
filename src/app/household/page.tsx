@@ -96,7 +96,7 @@ async function Household() {
           <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
             {accounts.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <span>{label(a)}</span>
+                <span data-private>{label(a)}</span>
                 <span className="flex items-center gap-3">
                   <span className="text-xs text-zinc-500">
                     {a.sharedWithHousehold ? "Shared" : "Not shared"}
@@ -106,7 +106,10 @@ async function Household() {
                     <input type="hidden" name="shared" value={String(!a.sharedWithHousehold)} />
                     <SubmitButton className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900">
                       {a.sharedWithHousehold ? "Stop sharing" : "Share"}
-                      <span className="sr-only"> {label(a)}</span>
+                      <span className="sr-only" data-private>
+                        {" "}
+                        {label(a)}
+                      </span>
                     </SubmitButton>
                   </form>
                 </span>
@@ -138,7 +141,7 @@ async function Household() {
           ) : (
             <ul className="flex flex-col divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
               {shared.accounts.map((a) => (
-                <li key={a.id} className="flex justify-between gap-2 py-2">
+                <li key={a.id} data-private className="flex justify-between gap-2 py-2">
                   <span>{label(a)}</span>
                   <span>
                     {a.currentBalanceCents === null

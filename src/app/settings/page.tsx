@@ -220,7 +220,7 @@ async function SettingsContent({
         {accounts
           .filter((a) => a.item?.institutionName === item.institutionName && a.source === "plaid")
           .map((a) => (
-            <li key={a.id} className="flex flex-wrap justify-between gap-2 py-1.5">
+            <li key={a.id} data-private className="flex flex-wrap justify-between gap-2 py-1.5">
               <span>{a.mask ? `${a.name} ····${a.mask}` : a.name}</span>
               <span className="font-medium">
                 {a.currentBalanceCents === null ? "No balance" : formatCents(a.currentBalanceCents)}
