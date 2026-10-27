@@ -133,7 +133,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
             {savingsLine(card.findingType, card.annualSavingsCents)}
           </p>
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
-            An estimate from your last 12 months, not a promise.
+            An estimate from your transactions so far, not a promise.
           </p>
         </section>
 
