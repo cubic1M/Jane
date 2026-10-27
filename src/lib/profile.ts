@@ -221,6 +221,7 @@ async function loadProfileInputFrom(
       type: a.type,
       subtype: a.subtype,
       balanceCents: a.currentBalanceCents ?? 0,
+      balanceKnown: a.currentBalanceCents != null,
       // A card's limit is what is owed plus what is still available.
       limitCents:
         a.type === "credit" && a.currentBalanceCents != null && a.availableBalanceCents != null
