@@ -82,6 +82,15 @@ export function table(set: CsvSet, b: CsvScoreboard): string {
     `| bills coming up (31 days) | ${pct(precision(b.bills))} | ${pct(recall(b.bills))} | ${b.bills.tp} | ${b.bills.fp} | ${b.bills.fn} |`,
     "",
     `Missed subscriptions Claude would be asked about on a live upload: ${b.subscriptionsForClaude} of ${b.findings.subscription_review.fn}.`,
+    "",
+    'Suggestions\' confidence (is "80% sure" right 80% of the time?):',
+    "",
+    "| Said | Suggestions | Average said | Actually right |",
+    "| --- | ---: | ---: | ---: |",
+    ...b.calibration.map(
+      (c) =>
+        `| ${c.from}–${c.to}% | ${c.count} | ${c.count ? `${c.saidPercent}%` : "–"} | ${c.count ? `${c.rightPercent}%` : "–"} |`,
+    ),
   ].join("\n");
 }
 

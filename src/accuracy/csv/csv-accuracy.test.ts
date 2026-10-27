@@ -10,6 +10,10 @@ import { CSV_SETS, fixtureFiles, headline, readFixtures, scoreSet } from "./repo
 vi.mock("@/categorize/llm", () => ({ classifyMerchants: async () => new Map() }));
 
 const ALLOWED_DROP = 0.03;
+// A confidence bucket with this many suggestions may not claim more than OVERCONFIDENT_BY points
+// above how often it's right.
+const BUCKET_MIN = 10;
+const OVERCONFIDENT_BY = 10;
 // Counts, which may not rise at all.
 const COUNTS = new Set(["extraRows", "falseDoubleCharges"]);
 // Counts and errors, where lower is better.
@@ -29,6 +33,18 @@ describe.each(CSV_SETS)("the CSV bench's %s set", (set) => {
     expect([...have.keys()].sort()).toEqual([...want.keys()].sort());
     for (const [path, text] of want) expect(have.get(path), path).toBe(text);
   });
+
+  // The same bar as the sample bench (src/accuracy/accuracy.test.ts), on uploaded statements.
+  it("never says 0% sure, and is never much surer than it turns out to be", async () => {
+    const { board } = await scoreSet(set);
+    expect(board.zeroPercent).toBe(0);
+    for (const b of board.calibration) {
+      if (b.count < BUCKET_MIN) continue;
+      expect(b.saidPercent, `${b.from}–${b.to}%`).toBeLessThanOrEqual(
+        b.rightPercent + OVERCONFIDENT_BY,
+      );
+    }
+  }, 120_000);
 
   it("keeps every step of the upload path at its baseline", async () => {
     const now = headline((await scoreSet(set)).board) as Record<string, number>;
