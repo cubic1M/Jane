@@ -125,7 +125,7 @@ test.describe("a real account", () => {
 
   test("a no can be undone and puts the card back", async ({ page }) => {
     await importSampleCard(page);
-    await openFinding(page, /Geico/);
+    await openFinding(page, /Geico/i);
     // No is marked at once, Yes greyed, and Revert puts both back.
     await page.getByRole("button", { name: "No thanks" }).click();
     await expect(page.getByRole("button", { name: /^No thanks.*chosen$/ })).toBeVisible({
