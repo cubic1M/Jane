@@ -19,23 +19,18 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "PELOTON* MEMBERSHIP",
-      "perYear": 528
-    },
-    {
-      "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "SPOTIFY USA",
-      "perYear": 143.88
-    },
-    {
-      "type": "subscription_review",
       "about": "HULU 877-8244858",
       "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
     },
     {
       "type": "trial_conversion",
@@ -43,24 +38,23 @@
       "perYear": 7.99
     },
     {
-      "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 3
-    },
-    {
       "type": "idle_cash",
-      "about": "cash 5328690, excess 4751463",
+      "about": "cash 5373421, excess 4805526",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "STARBUCKS STORE 05423 at one price"
+      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
     },
     {
-      "type": "duplicate_charge",
-      "about": "pending copy of a posted charge"
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -70,23 +64,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 29820.02
+      "dollars": 27947.47
     },
     {
       "date": "2026-07-31",
-      "dollars": 37598.74
+      "dollars": 38144.81
     },
     {
       "date": "2026-08-31",
-      "dollars": 41733.92
+      "dollars": 42350.43
     },
     {
       "date": "2026-09-30",
-      "dollars": 46290.49
+      "dollars": 45288.99
     },
     {
       "date": "2026-10-24",
-      "dollars": 51426.37
+      "dollars": 51527.74
     }
   ]
 }

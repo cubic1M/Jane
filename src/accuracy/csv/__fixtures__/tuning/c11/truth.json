@@ -19,52 +19,55 @@
   "findings": [
     {
       "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
       "about": "ADOBE *CREATIVE CLD",
       "perYear": 275.88
     },
     {
-      "type": "subscription_review",
-      "about": "PLANET FITNESS",
-      "perYear": 299.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "NYTIMES*NYTDIGITAL",
-      "perYear": 48
-    },
-    {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 102
+      "perYear": 142
     },
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 40
+      "perYear": 84.56
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 775.01
+      "perYear": 743.36
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
+      "about": "HULU 877-8244858, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PLANET FITNESS, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "3 AMC 0517 ONLINE seats"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "WAL-MART #2281 twice, refunded"
+      "about": "TJ MAXX #0811 twice, refunded"
     },
     {
       "type": "duplicate_charge",
@@ -74,27 +77,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2914.7
+      "dollars": -2837
     },
     {
       "date": "2026-06-30",
-      "dollars": -3980.05
+      "dollars": -3918.98
     },
     {
       "date": "2026-07-31",
-      "dollars": -3658.52
+      "dollars": -3581.42
     },
     {
       "date": "2026-08-31",
-      "dollars": -4397.08
+      "dollars": -4427.74
     },
     {
       "date": "2026-09-30",
-      "dollars": -5249.73
+      "dollars": -4982.64
     },
     {
       "date": "2026-10-24",
-      "dollars": -5717.98
+      "dollars": -5158.94
     }
   ]
 }

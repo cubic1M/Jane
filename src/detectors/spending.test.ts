@@ -180,6 +180,33 @@ describe("a category running over", () => {
     expect(s.title).toContain("food and drink");
     expect(s.action.href).toBe("/budgets");
   });
+  // Overnight upload QA: 3 months of statements from Jul 28.
+  it("counts only the months the data covers in full as usual", () => {
+    const only =
+      (...txs: ProfileInput["transactions"][number][]) =>
+      (d: ProfileInput): ProfileInput => ({ ...d, transactions: txs });
+    const food = (date: string, cents: number) =>
+      t(date, cents, "BIG EATS", "FOOD_AND_DRINK_RESTAURANT");
+    // Aug is the only full month before Sep: not enough to call Sep unusual.
+    expect(
+      topics(
+        "freelancer",
+        only(food("2026-07-28", 5_000), food("2026-08-12", 20_000), food("2026-09-12", 50_000)),
+      ),
+    ).not.toContain("budget_overrun");
+    // From Jun 28, Jul and Aug are full: the same September is over their average.
+    expect(
+      topics(
+        "freelancer",
+        only(
+          food("2026-06-28", 5_000),
+          food("2026-07-12", 20_000),
+          food("2026-08-12", 20_000),
+          food("2026-09-12", 50_000),
+        ),
+      ),
+    ).toContain("budget_overrun");
+  });
   // Messy-bank QA: one big purchase isn't a month running over.
   it("leaves a one-off big purchase out", () => {
     const meals = ["2026-06", "2026-07", "2026-08", "2026-09"].flatMap((m) =>

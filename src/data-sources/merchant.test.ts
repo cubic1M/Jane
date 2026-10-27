@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeMerchant } from "./merchant";
+import { normalizeMerchant, withoutCity } from "./merchant";
 
 describe("normalizeMerchant", () => {
   it.each([
@@ -12,6 +12,10 @@ describe("normalizeMerchant", () => {
     ["UBER   *TRIP HELP.UBER.COM CA", "Uber"],
     ["APPLE.COM/BILL 866-712-7753 CA", "Apple"],
     ["7-ELEVEN 34567 SAN JOSE CA", "7-Eleven San Jose"],
+    // CSV bench: Citi pads the merchant to a column before the city; Capital One 360's dash.
+    ["SPOTIFY USA              SAN FRANCISCO CA", "Spotify Usa"],
+    ["Debit Card Purchase - PAYPAL *HULU CHICAGO IL", "Hulu Chicago"],
+    ["Debit Card Purchase - HULU 877-8244858 CHICAGO IL", "Hulu Chicago"],
     ["76 - CHEVRON 0091", "76 Chevron"],
     ["ORIG CO NAME:ACME CORP PAYROLL", "Acme Corp Payroll"],
     ["POS PURCHASE TARGET T-1234", "Target"],
@@ -29,6 +33,15 @@ describe("normalizeMerchant", () => {
     const b = normalizeMerchant("NETFLIX.COM NETFLIX.COM CA 11/01");
     expect(a?.key).toBe("netflix");
     expect(b?.key).toBe("netflix");
+  });
+
+  it("offers the key without the city, only after a state", () => {
+    expect(withoutCity("SPOTIFY P1A2B3C4D5 CHICAGO IL")).toEqual(["spotify"]);
+    expect(
+      withoutCity("CHECKCARD 0821 SPOTIFY P1A2B3C4D5 CHICAGO IL 17419018686842282428012"),
+    ).toEqual(["spotify"]);
+    expect(withoutCity("HULU 877-8244858 SAN FRANCISCO CA")).toEqual(["hulu san", "hulu"]);
+    expect(withoutCity("APPLE STORE R123")).toEqual([]);
   });
 
   it("returns null when nothing merchant-like is left", () => {

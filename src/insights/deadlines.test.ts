@@ -182,6 +182,24 @@ describe("return windows", () => {
     expect(run(input({ transactions: [bought, refund] }))).toEqual([]);
   });
 
+  // Overnight upload QA: a weekly Costco run isn't a purchase to return.
+  it("leaves out routine shopping, and keeps a standout purchase at the same shop", () => {
+    const costco = (days: number, amountCents: number) =>
+      purchase({
+        description: "COSTCO WHSE #0123",
+        merchantName: "Costco",
+        pfcDetailed: "GENERAL_MERCHANDISE_SUPERSTORES",
+        amountCents,
+        date: addDays(AS_OF, -days),
+      });
+    const runs = [costco(2, 11_800), costco(6, 17_000), costco(10, 9_500), costco(14, 13_000)];
+    expect(run(input({ transactions: runs }))).toEqual([]);
+    const tv = costco(3, 89_900);
+    expect(run(input({ transactions: [...runs, tv] })).map((d) => d.key)).toEqual([
+      `return:${tv.id}`,
+    ]);
+  });
+
   it("leaves out recurring charges", () => {
     const monthly = [0, 1, 2, 3].map((i) =>
       purchase({

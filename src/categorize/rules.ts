@@ -234,7 +234,8 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "TRANSFER_OUT_WITHDRAWAL",
-    keywords: ["ATM WITHDRAWAL", "CASH WITHDRAWAL"],
+    // Bank of America writes "BKOFAMERICA ATM 10/03 #000001234 WITHDRWL" (CSV bench).
+    keywords: ["ATM WITHDRAWAL", "CASH WITHDRAWAL", "WITHDRWL"],
     direction: "out",
   },
 
