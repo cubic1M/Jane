@@ -40,17 +40,17 @@ test("a theme idea comes to the chat as a card to decide", async ({ context, pag
   const overlay = page.getByRole("region", { name: "Suggestions for you" });
   const showing = overlay.locator('[data-card-state="showing"]');
   const headline = showing.getByRole("heading", { level: 3 });
-  // Through Jane's pop-ups to the theme's card: Not now puts each suggestion off (so the day's
-  // later ones come up after a reload), and a decision without it is stepped past.
+  // Through Jane's pop-ups to the theme's card: each card's X puts it off, as Not now does (so
+  // the day's later ones come up after a reload). Not every card says "Not now": a reminder's
+  // own snooze takes that place ("Coming up today: Return window for …" on the day a demo
+  // return window ends), and the docked chat's arrow keys work only in its header, so the X.
   await expect(async () => {
     await page.goto(CHAT);
     await expect(overlay).toBeVisible({ timeout: 5_000 });
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     for (let i = 0; i < 16; i += 1) {
       if (theme.test(((await headline.textContent({ timeout: 2_000 })) ?? "").trim())) return;
-      const notNow = showing.getByRole("button", { name: "Not now", exact: true });
-      if ((await notNow.count()) > 0) await notNow.first().click();
-      else await page.keyboard.press("ArrowRight");
+      await showing.getByRole("button", { name: "Close card" }).click();
     }
     throw new Error("No news theme card yet");
   }).toPass({ timeout: 120_000 });
