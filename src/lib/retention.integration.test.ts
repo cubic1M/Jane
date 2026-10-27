@@ -29,6 +29,14 @@ describe.runIf(url)("data retention against a real database", () => {
     ] as const) {
       await client.analyticsEvent.create({ data: { name, createdAt: at } });
     }
+    for (const [visitId, at] of [
+      [`old${tag.replaceAll("-", "")}`, old(p.activityEvents.days)],
+      [`young${tag.replaceAll("-", "")}`, young(p.activityEvents.days)],
+    ] as const) {
+      await client.activityEvent.create({
+        data: { userId, visitId, kind: "page_view", path: "/home", createdAt: at },
+      });
+    }
     for (const [message, at] of [
       [`old-${tag}`, old(p.errorEvents.days)],
       [`young-${tag}`, young(p.errorEvents.days)],
@@ -99,6 +107,9 @@ describe.runIf(url)("data retention against a real database", () => {
         (r) => r.name,
       ),
     ).toEqual([`young-${tag}`]);
+    expect(
+      (await client.activityEvent.findMany({ where: { userId } })).map((r) => r.visitId),
+    ).toEqual([`young${tag.replaceAll("-", "")}`]);
     expect(
       (await client.errorEvent.findMany({ where: { message: { endsWith: tag } } })).map(
         (r) => r.message,

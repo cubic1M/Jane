@@ -61,9 +61,9 @@ async function save(key: string, s: Snapshot) {
 }
 
 // Environment that differs between files without changing what a sync writes: the file's own
-// encryption key, vitest's worker numbers, these snapshots' own switches. A variable set to ""
+// encryption keys, vitest's worker numbers, these snapshots' own switches. A variable set to ""
 // counts as unset (some files stub PLAID_SECRET to "", others leave it out).
-const PER_FILE_ENV = /^(TOKEN_ENCRYPTION_KEY|VITEST_POOL_ID|VITEST_WORKER_ID|SYNC_SNAPSHOT.*)$/;
+const PER_FILE_ENV = /^(TOKEN_ENCRYPTION_KEY.*|VITEST_POOL_ID|VITEST_WORKER_ID|SYNC_SNAPSHOT.*)$/;
 
 // Files that start together all want the same first syncs: the first to ask syncs for real and
 // holds a lock; the others wait for its snapshot (up to LOCK_WAIT_MS, then sync for real).
@@ -226,7 +226,9 @@ const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 function masked(v: unknown): unknown {
   if (typeof v === "string") {
     if (ISO.test(v) && Math.abs(Date.parse(v) - Date.now()) < 2 * 86_400_000) return "<now>";
-    return v.replace(/[0-9a-f]{16,64}/g, "<hex>").replace(/\bc[a-z0-9]{24}\b/g, "<id>");
+    // Ids first: a random cuid can hold 16 hex characters in a row, which would otherwise be
+    // masked as hex and leave the rest of the id showing ("cmvq<hex>g885q").
+    return v.replace(/\bc[a-z0-9]{24}\b/g, "<id>").replace(/[0-9a-f]{16,64}/g, "<hex>");
   }
   if (Array.isArray(v)) return v.map(masked);
   // An object keyed by ids ({ "account:<id>": 399, … }): its masked entries, in a fixed order

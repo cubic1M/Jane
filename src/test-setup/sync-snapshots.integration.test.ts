@@ -21,6 +21,18 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 const LATER = new Date("2026-10-25T15:00:00Z");
 
+it("masks an id whole, even one holding a long run of hex characters", () => {
+  const row = (id: string) => ({
+    key: `renewal:${id}:2026-10`,
+    hash: "3f9a0c4e1b7d2a6f8e5c0b9a1d3f7e2c",
+  });
+  const plain = fingerprint({ findings: [row("cmvq0b6p70000abcdxyz12345")] }, {}, {});
+  const hexy = fingerprint({ findings: [row("cmvq0123456789abcdef0g885")] }, {}, {});
+  expect(hexy).toBe(plain);
+  expect(plain).toContain("renewal:<id>:2026-10");
+  expect(plain).toContain("<hex>");
+});
+
 describe.runIf(url)("demo-sync snapshots", { timeout: 600_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
