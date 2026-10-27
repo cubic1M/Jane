@@ -9,6 +9,7 @@ import {
   type ProjectProduct,
 } from "@/config/home-equity";
 import { formatCents } from "@/lib/money";
+import { formatPercentTenths } from "@/lib/percent";
 import { addMonths } from "@/lib/dates";
 
 // A home's equity, used well (spec step 228). Pure: PMI against the original value, escrow
@@ -94,8 +95,6 @@ export function pmiTimeline(input: {
   };
 }
 
-const pct = (share: number) => `${Math.round(share * 1000) / 10}%`;
-
 // The request Jane drafts for the person to send their servicer, under the 80% rule.
 export function pmiOriginalLetter(input: {
   name: string;
@@ -107,7 +106,7 @@ export function pmiOriginalLetter(input: {
   return [
     "To my mortgage servicer:",
     "",
-    `I'm writing to ask you to cancel the private mortgage insurance on my loan (${input.loanName}). My principal balance is ${formatCents(input.balanceCents)}, which is ${pct(ltv)} of the home's original value of ${formatCents(input.originalValueCents)}, so it has reached the 80% mark.`,
+    `I'm writing to ask you to cancel the private mortgage insurance on my loan (${input.loanName}). My principal balance is ${formatCents(input.balanceCents)}, which is ${formatPercentTenths(ltv)} of the home's original value of ${formatCents(input.originalValueCents)}, so it has reached the 80% mark.`,
     ...PMI_ASK_CONDITIONS.map(
       (c) =>
         `- ${c
@@ -258,7 +257,7 @@ export function compareProject(input: ProjectInput): ProjectOption[] {
     available: hl === null || hl <= h.maxCombinedLtv,
     why:
       hl !== null && hl > h.maxCombinedLtv
-        ? `It would take your loans past ${pct(h.maxCombinedLtv)} of the home's value.`
+        ? `It would take your loans past ${formatPercentTenths(h.maxCombinedLtv)} of the home's value.`
         : null,
     aprBps: h.aprBps,
     years,
@@ -285,7 +284,7 @@ export function compareProject(input: ProjectInput): ProjectOption[] {
     available: (cl === null || cl <= c.maxCombinedLtv) && keepInterest !== null,
     why:
       cl !== null && cl > c.maxCombinedLtv
-        ? `It would take your loan past ${pct(c.maxCombinedLtv)} of the home's value.`
+        ? `It would take your loan past ${formatPercentTenths(c.maxCombinedLtv)} of the home's value.`
         : keepInterest === null
           ? "I can't see your mortgage's rate and payment to compare."
           : null,

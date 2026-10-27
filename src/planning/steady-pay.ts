@@ -6,6 +6,7 @@ import {
   MIN_STEADY_MONTHS,
   STEADY_SHARE,
 } from "@/config/steady-pay";
+import { formatWholeDollars } from "@/lib/money";
 
 // A steady paycheck from uneven income (spec step 240). Pure: the last months' deposits, the
 // share to set aside for tax, the buffer and the monthly spending in; the month's "paycheck"
@@ -31,9 +32,6 @@ export type SteadyPlan = {
   adjust: "raised" | "lowered" | "steady";
   reason: string;
 };
-
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 export function steadyPlan(input: SteadyInput): SteadyPlan {
   const targetCents = Math.round(input.monthlySpendingCents * BUFFER_TARGET_MONTHS);
@@ -62,14 +60,14 @@ export function steadyPlan(input: SteadyInput): SteadyPlan {
   const adjust = paycheckCents > usual ? "raised" : paycheckCents < usual ? "lowered" : "steady";
   const reason =
     room === 0
-      ? `Your buffer is at its floor (${dollars(floorCents)}), so no paycheck this month; the next deposit rebuilds it.`
+      ? `Your buffer is at its floor (${formatWholeDollars(floorCents)}), so no paycheck this month; the next deposit rebuilds it.`
       : paycheckCents < wanted
-        ? `The buffer only has ${dollars(room)} above its floor, so the paycheck is held to that.`
+        ? `The buffer only has ${formatWholeDollars(room)} above its floor, so the paycheck is held to that.`
         : adjust === "raised"
-          ? `Your buffer is above its ${dollars(targetCents)} target, so the paycheck is a little more.`
+          ? `Your buffer is above its ${formatWholeDollars(targetCents)} target, so the paycheck is a little more.`
           : adjust === "lowered"
-            ? `Your buffer is below its ${dollars(targetCents)} target, so the paycheck is a little less while it fills.`
-            : `Your buffer is on target, so the paycheck is the usual ${dollars(usual)}.`;
+            ? `Your buffer is below its ${formatWholeDollars(targetCents)} target, so the paycheck is a little less while it fills.`
+            : `Your buffer is on target, so the paycheck is the usual ${formatWholeDollars(usual)}.`;
   return {
     status: room === 0 ? "no_floor_room" : "ready",
     paycheckCents,

@@ -7,14 +7,12 @@ import {
   type Exemption,
   type StateProperty,
 } from "@/config/property-tax";
+import { formatWholeDollars } from "@/lib/money";
 
 // Property tax that's too high (spec step 221). Pure: the gap between the county's
 // assessment and the home's market value, whether an appeal is worth suggesting, the
 // county's window, exemptions the person may not have claimed, and the drafted appeal.
 // Every rate and date comes from src/config/property-tax.ts.
-
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 export const propertyOf = (state: string | null): StateProperty =>
   (state && STATE_PROPERTY[state]) || DEFAULT_PROPERTY;
@@ -196,19 +194,19 @@ export function draftAppeal(input: {
   const rows = input.comps
     .map(
       (c) =>
-        `  - ${c.address}: sold ${c.soldOn} for ${dollars(c.priceCents)} (${c.squareFeet.toLocaleString("en-US")} sq ft), ${dollars(c.adjustedCents)} for a home of the same size`,
+        `  - ${c.address}: sold ${c.soldOn} for ${formatWholeDollars(c.priceCents)} (${c.squareFeet.toLocaleString("en-US")} sq ft), ${formatWholeDollars(c.adjustedCents)} for a home of the same size`,
     )
     .join("\n");
   return [
     `To: ${input.board}`,
     `Re: Appeal of the ${input.year} assessment of ${input.address}`,
     "",
-    `I own the home at ${input.address}. The county assessed it at ${dollars(input.assessedCents)}. I believe its market value is lower, and I ask that the assessment be reduced to ${dollars(value)}.`,
+    `I own the home at ${input.address}. The county assessed it at ${formatWholeDollars(input.assessedCents)}. I believe its market value is lower, and I ask that the assessment be reduced to ${formatWholeDollars(value)}.`,
     "",
     `Recent sales of comparable homes nearby:`,
     rows,
     "",
-    `Brought to the size of my home, these sales indicate a value of ${dollars(value)} (the middle of the ${input.comps.length}). I would be glad to provide the sales records, and to appear at a hearing.`,
+    `Brought to the size of my home, these sales indicate a value of ${formatWholeDollars(value)} (the middle of the ${input.comps.length}). I would be glad to provide the sales records, and to appear at a hearing.`,
     "",
     "Sincerely,",
     "[Your name]",

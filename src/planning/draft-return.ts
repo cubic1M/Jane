@@ -7,7 +7,7 @@ import {
 } from "@/config/draft-return";
 import { DEDUCTION_KINDS } from "@/config/prior-return";
 import { FILING_STATUSES } from "@/config/tax";
-import { parseMoneyToCents, centsToInput } from "@/lib/money";
+import { parseMoneyToCents, centsToInput, formatWholeDollars } from "@/lib/money";
 import { reviewReturn, type Fields as PriorFields } from "@/planning/prior-return";
 import type { Child } from "@/planning/family-taxes";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
@@ -112,8 +112,6 @@ export type DraftFinding = {
 const differs = (a: number, b: number) =>
   Math.abs(a - b) > Math.max(DRAFT_TOLERANCE.cents, Math.abs(b) * DRAFT_TOLERANCE.share);
 const tax = (i: EstimateInput) => estimateTaxes(i).totalTaxCents;
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const lineOf = (key: DraftFieldKey) => DRAFT_FIELDS.find((f) => f.key === key)!.line;
 
 export function reviewDraft(fields: DraftFields, known: Known): DraftFinding[] {
@@ -138,7 +136,7 @@ export function reviewDraft(fields: DraftFields, known: Known): DraftFinding[] {
       knownCents,
       effect: "owes",
       dollarsCents: base - tax(change(input, on)),
-      why: `${known.from[key] ?? "Your accounts"} show${known.from[key] ? "s" : ""} ${dollars(knownCents)} of ${what.toLowerCase()} for ${known.year}; the draft has ${dollars(on)} on ${lineOf(key)}. The IRS gets the same form, so leaving it out brings a bill with interest later.`,
+      why: `${known.from[key] ?? "Your accounts"} show${known.from[key] ? "s" : ""} ${formatWholeDollars(knownCents)} of ${what.toLowerCase()} for ${known.year}; the draft has ${formatWholeDollars(on)} on ${lineOf(key)}. The IRS gets the same form, so leaving it out brings a bill with interest later.`,
     });
   };
   income("interest", known.interestCents, "Interest", (i, c) => ({
@@ -185,7 +183,7 @@ export function reviewDraft(fields: DraftFields, known: Known): DraftFinding[] {
         knownCents: known.w2WagesCents,
         effect: lower ? "owes" : "saves",
         dollarsCents: Math.abs(base - changed),
-        why: `${known.from.wages ?? "Your W-2"} says ${dollars(known.w2WagesCents)} in box 1; the draft has ${dollars(on)} on ${lineOf("wages")}.`,
+        why: `${known.from.wages ?? "Your W-2"} says ${formatWholeDollars(known.w2WagesCents)} in box 1; the draft has ${formatWholeDollars(on)} on ${lineOf("wages")}.`,
       });
     }
   }
@@ -204,7 +202,7 @@ export function reviewDraft(fields: DraftFields, known: Known): DraftFinding[] {
         knownCents: known.withheldCents,
         effect: lower ? "saves" : "owes",
         dollarsCents: Math.abs(known.withheldCents - on),
-        why: `${known.from.federalWithheld ?? "Your W-2 and 1099s"} show${known.from.federalWithheld ? "s" : ""} ${dollars(known.withheldCents)} withheld; the draft has ${dollars(on)} on ${lineOf("federalWithheld")}, so its ${lower ? "refund is too small" : "refund is too big and the IRS would take it back"} by ${dollars(Math.abs(known.withheldCents - on))}.`,
+        why: `${known.from.federalWithheld ?? "Your W-2 and 1099s"} show${known.from.federalWithheld ? "s" : ""} ${formatWholeDollars(known.withheldCents)} withheld; the draft has ${formatWholeDollars(on)} on ${lineOf("federalWithheld")}, so its ${lower ? "refund is too small" : "refund is too big and the IRS would take it back"} by ${formatWholeDollars(Math.abs(known.withheldCents - on))}.`,
       });
     }
   }
@@ -222,7 +220,7 @@ export function reviewDraft(fields: DraftFields, known: Known): DraftFinding[] {
         knownCents: known.estimatedPaidCents,
         effect: "saves",
         dollarsCents: known.estimatedPaidCents - on,
-        why: `You paid ${dollars(known.estimatedPaidCents)} of estimated tax for ${known.year}; the draft counts ${dollars(on)} on ${lineOf("estimatedPaid")}, so you'd pay it twice.`,
+        why: `You paid ${formatWholeDollars(known.estimatedPaidCents)} of estimated tax for ${known.year}; the draft counts ${formatWholeDollars(on)} on ${lineOf("estimatedPaid")}, so you'd pay it twice.`,
       });
     }
   }

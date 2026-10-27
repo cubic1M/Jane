@@ -6,6 +6,7 @@ import { formatCents } from "@/lib/money";
 import { cheapest, type PmiTimeline } from "@/planning/home-equity";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatPercentTenths } from "@/lib/percent";
 
 // Jane's answers about a home's equity (spec step 228), from src/lib/home-equity.ts. Pure.
 // PMI and escrow are rules it can state for anyone; comparing ways to borrow for a project
@@ -24,27 +25,25 @@ export const sentButton = (which: "pmi" | "escrow"): MessageAction => ({
   kind: "primary",
 });
 
-const pct = (share: number) => `${Math.round(share * 1000) / 10}%`;
-
 export const pmiLines = (data: HomeEquity): string[] =>
   data.pmi ? pmiTimelineLines(data.pmi) : [];
 
 // PMI by the one rule, the same lines on /loans/mortgage, /loans/equity and in the chat.
 export function pmiTimelineLines(p: PmiTimeline): string[] {
   const lines = [
-    `Your loan is ${formatCents(p.balanceCents)}, ${pct(p.ltv)} of the home's original value of ${formatCents(p.originalValueCents)}.`,
+    `Your loan is ${formatCents(p.balanceCents)}, ${formatPercentTenths(p.ltv)} of the home's original value of ${formatCents(p.originalValueCents)}.`,
   ];
   if (p.endsNow) {
     lines.push(
-      `That's under ${pct(PMI_AUTO_LTV)}, the point where PMI has to end by itself when your payments are current. If it's still on your statement, ask your servicer why.`,
+      `That's under ${formatPercentTenths(PMI_AUTO_LTV)}, the point where PMI has to end by itself when your payments are current. If it's still on your statement, ask your servicer why.`,
     );
   } else if (p.canAskNow) {
     lines.push(
-      `That's under ${pct(PMI_ASK_LTV)}, so you can ask your servicer in writing to cancel PMI. I drafted the request below. It ends by itself at ${pct(PMI_AUTO_LTV)} (${formatCents(p.autoBalanceCents)})${p.autoOn ? `, around ${dayLabel(p.autoOn, { year: true })} at your current payment` : ""}.`,
+      `That's under ${formatPercentTenths(PMI_ASK_LTV)}, so you can ask your servicer in writing to cancel PMI. I drafted the request below. It ends by itself at ${formatPercentTenths(PMI_AUTO_LTV)} (${formatCents(p.autoBalanceCents)})${p.autoOn ? `, around ${dayLabel(p.autoOn, { year: true })} at your current payment` : ""}.`,
     );
   } else {
     lines.push(
-      `You can ask your servicer to cancel PMI at ${pct(PMI_ASK_LTV)} (${formatCents(p.askBalanceCents)})${p.askOn ? `, around ${dayLabel(p.askOn, { year: true })} at your current payment` : ""}. It ends by itself at ${pct(PMI_AUTO_LTV)} (${formatCents(p.autoBalanceCents)})${p.autoOn ? `, around ${dayLabel(p.autoOn, { year: true })}` : ""}.`,
+      `You can ask your servicer to cancel PMI at ${formatPercentTenths(PMI_ASK_LTV)} (${formatCents(p.askBalanceCents)})${p.askOn ? `, around ${dayLabel(p.askOn, { year: true })} at your current payment` : ""}. It ends by itself at ${formatPercentTenths(PMI_AUTO_LTV)} (${formatCents(p.autoBalanceCents)})${p.autoOn ? `, around ${dayLabel(p.autoOn, { year: true })}` : ""}.`,
     );
   }
   return lines;
@@ -90,7 +89,7 @@ function projectLines(c: ProjectComparison): string[] {
   for (const o of c.options) {
     lines.push(
       o.available
-        ? `- ${o.label}: ${formatCents(o.totalCostCents)} total cost, ${formatCents(o.monthlyCents)} a month at ${pct(o.aprBps / 10_000)}${o.product === "cash_out" ? " (your whole new mortgage payment, 30 years)" : ""}, ${formatCents(o.upfrontCents)} up front.`
+        ? `- ${o.label}: ${formatCents(o.totalCostCents)} total cost, ${formatCents(o.monthlyCents)} a month at ${formatPercentTenths(o.aprBps / 10_000)}${o.product === "cash_out" ? " (your whole new mortgage payment, 30 years)" : ""}, ${formatCents(o.upfrontCents)} up front.`
         : `- ${o.label}: not an option here. ${o.why}`,
     );
   }
@@ -145,7 +144,7 @@ export function homeEquityReply(
     }
     if (!data.pmi) {
       return {
-        body: `PMI is measured against the home's value when the loan began: you can ask to cancel it at ${pct(PMI_ASK_LTV)} and it ends by itself at ${pct(PMI_AUTO_LTV)}. Tell me that value on your home loan page and I'll work out where you are. I don't guess it.`,
+        body: `PMI is measured against the home's value when the loan began: you can ask to cancel it at ${formatPercentTenths(PMI_ASK_LTV)} and it ends by itself at ${formatPercentTenths(PMI_AUTO_LTV)}. Tell me that value on your home loan page and I'll work out where you are. I don't guess it.`,
         actions: [EQUITY_PAGE],
         refs: {},
       };

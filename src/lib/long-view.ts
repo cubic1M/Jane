@@ -29,6 +29,7 @@ import {
   type Rates,
 } from "@/planning/long-view";
 import type { RetirementPlan } from "@/planning/retirement";
+import { formatPercentTenths } from "@/lib/percent";
 
 // The long view (spec step 209): net worth in 10, 20 and 30 years from the person's real
 // balances, debts and margin, as a range, in today's dollars. The investment and inflation
@@ -53,8 +54,6 @@ export type LongView = {
   levers: (Lever & { href: string; words: string })[];
   retirement: RetirementPlan | null;
 };
-
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 
 // Growth after inflation.
 const real = (nominal: number) => (1 + nominal) / (1 + INFLATION.value) - 1;
@@ -152,25 +151,25 @@ export async function loadLongView(
   const assumptions = [
     {
       label: "Low yearly return",
-      value: pct(lowNominal),
+      value: formatPercentTenths(lowNominal),
       source: RETURN_LOW.source,
       editable: "low",
     },
     {
       label: "High yearly return",
-      value: pct(highNominal),
+      value: formatPercentTenths(highNominal),
       source: RETURN_HIGH.source,
       editable: "high",
     },
-    { label: "Inflation", value: pct(INFLATION.value), source: INFLATION.source },
+    { label: "Inflation", value: formatPercentTenths(INFLATION.value), source: INFLATION.source },
     {
       label: "Home values (after inflation)",
-      value: pct(HOME_REAL_GROWTH),
+      value: formatPercentTenths(HOME_REAL_GROWTH),
       source: "Long-run US house prices have risen about 1% a year faster than prices",
     },
     {
       label: "Cash (after inflation)",
-      value: pct(CASH_REAL_GROWTH),
+      value: formatPercentTenths(CASH_REAL_GROWTH),
       source: "Savings roughly keep pace with inflation",
     },
     {

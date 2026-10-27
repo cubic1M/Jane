@@ -11,6 +11,7 @@ import type {
   Timeline,
   Weights,
 } from "./types";
+import { formatPercentTenths } from "@/lib/percent";
 
 // The 24-hour agent (src/planning/trading-agent/). One loop over bars, the same for a replay of
 // years and for a live catch-up of the bars since the last tick:
@@ -59,8 +60,6 @@ const copy = (s: AgentState): AgentState => ({
     : null,
   ...(s.stops ? { stops: { ...s.stops } } : {}),
 });
-
-const pct = (w: number) => `${Math.round(w * 1000) / 10}%`;
 
 // The signals' weights laid over the strategy's: each signal's ticker at its weight (a tilt: the
 // strategy's own weight plus the signal's), the strategy's other weights scaled into what is left.
@@ -118,7 +117,7 @@ function fillAt(
     .sort();
   const reason = (t: string, w: number) =>
     pending.reasons[t] ??
-    `${config.label ?? config.policy.label}: ${t} to ${pct(w)} of the account at the last bar's close.`;
+    `${config.label ?? config.policy.label}: ${t} to ${formatPercentTenths(w)} of the account at the last bar's close.`;
   const buys: { t: string; want: number; p: number }[] = [];
   for (const t of tickers) {
     const p = open(t);
@@ -217,7 +216,7 @@ export function runOnTimeline(
       if (c > 0 && moved >= g.stopPct) {
         s.stops![g.id] = "hit";
         stopped[g.ticker] =
-          `Stopped: ${g.ticker} closed ${pct(moved)} ${entry.side === "buy" ? "below" : "above"} the signal's fill (its stop is ${pct(g.stopPct)}).`;
+          `Stopped: ${g.ticker} closed ${formatPercentTenths(moved)} ${entry.side === "buy" ? "below" : "above"} the signal's fill (its stop is ${formatPercentTenths(g.stopPct)}).`;
       }
     }
     // The signals in force when this bar closes.

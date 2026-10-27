@@ -7,7 +7,7 @@ import {
   type PriorReturnFieldKey,
 } from "@/config/prior-return";
 import { FILING_STATUSES } from "@/config/tax";
-import { parseMoneyToCents } from "@/lib/money";
+import { parseMoneyToCents, formatWholeDollars } from "@/lib/money";
 import { careChoice, educationChoice, type Child } from "@/planning/family-taxes";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 
@@ -115,8 +115,6 @@ export type Review = {
   worthAmending: boolean;
 };
 
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const tax = (i: EstimateInput) => estimateTaxes(i).totalTaxCents;
 
 export const amendBy = (year: number) => `${year + AMEND_WITHIN_YEARS + 1}-04-15`;
@@ -143,7 +141,7 @@ export function reviewReturn(r: ReviewInput): Review {
       findings.push({
         key: "itemize",
         title: "Itemizing would have beaten the standard deduction",
-        why: `Your ${r.year} itemized deductions come to about ${dollars(e.deduction.itemizedCents)}, against the standard deduction of ${dollars(e.deduction.standardCents)}.`,
+        why: `Your ${r.year} itemized deductions come to about ${formatWholeDollars(e.deduction.itemizedCents)}, against the standard deduction of ${formatWholeDollars(e.deduction.standardCents)}.`,
         savesCents: standardOnly - e.totalTaxCents,
       });
     }
@@ -153,7 +151,7 @@ export function reviewReturn(r: ReviewInput): Review {
     findings.push({
       key: "student_loan_interest",
       title: "Student loan interest wasn't deducted",
-      why: `Your lender reported about ${dollars(r.studentLoanInterestCents)} of interest for ${r.year}; up to $2,500 comes off your income.`,
+      why: `Your lender reported about ${formatWholeDollars(r.studentLoanInterestCents)} of interest for ${r.year}; up to $2,500 comes off your income.`,
       savesCents:
         tax({ ...input, studentLoanInterestCents: 0 }) -
         tax({ ...input, studentLoanInterestCents: r.studentLoanInterestCents }),
@@ -167,7 +165,7 @@ export function reviewReturn(r: ReviewInput): Review {
     findings.push({
       key: "education_credit",
       title: "An education credit wasn't claimed",
-      why: `You paid about ${dollars(r.tuitionCents)} in tuition in ${r.year}. The better of the American Opportunity and Lifetime Learning credits would have lowered your tax.`,
+      why: `You paid about ${formatWholeDollars(r.tuitionCents)} in tuition in ${r.year}. The better of the American Opportunity and Lifetime Learning credits would have lowered your tax.`,
       savesCents: base - best,
     });
   }
@@ -183,7 +181,7 @@ export function reviewReturn(r: ReviewInput): Review {
       findings.push({
         key: "dependent_care_credit",
         title: "The child and dependent care credit wasn't claimed",
-        why: `You paid about ${dollars(r.careCents)} for childcare in ${r.year}, and the credit is a share of it.`,
+        why: `You paid about ${formatWholeDollars(r.careCents)} for childcare in ${r.year}, and the credit is a share of it.`,
         savesCents: base - c.sides[1].taxCents,
       });
     }

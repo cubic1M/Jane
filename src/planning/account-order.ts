@@ -20,6 +20,7 @@ import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
 import { CONTRIBUTION_LIMITS } from "@/config/tax-rates";
 import type { HoldingView, InvestmentAccountView } from "@/insights/investments";
 import { formatWholeDollars as dollars } from "@/lib/money";
+import { formatPercentTenths } from "@/lib/percent";
 
 // The right account for each dollar (spec step 135, demo advice). Pure.
 // - The order to fill accounts in, each step with how much room it has and why, changing
@@ -57,8 +58,6 @@ export type OrderInput = {
   hasHsa: boolean;
 };
 
-const pct = (rate: number) => `${Math.round(rate * 1000) / 10}%`;
-
 export function rothOrTraditionalByRate(
   rate: number | null,
 ): "roth" | "traditional" | "mix" | null {
@@ -81,11 +80,11 @@ export function accountOrder(input: OrderInput): AccountStep[] {
     steps.push({
       key: "match",
       short: "the 401(k) match",
-      title: `Your 401(k), up to the full match (${pct(input.match.fullMatchRate)} of pay)`,
+      title: `Your 401(k), up to the full match (${formatPercentTenths(input.match.fullMatchRate)} of pay)`,
       roomCents: null,
       why: input.match.captured
         ? "You already get all of it: keep it that way. It's an instant return no investment can match."
-        : `You put in ${pct(input.match.employeeRate)}; the rest of the match is about ${dollars(input.match.missedCents)} a year of free money.`,
+        : `You put in ${formatPercentTenths(input.match.employeeRate)}; the rest of the match is about ${dollars(input.match.missedCents)} a year of free money.`,
     });
   }
   if (soon) {
@@ -119,10 +118,10 @@ export function accountOrder(input: OrderInput): AccountStep[] {
       kind === null
         ? "More choice of funds than most workplace plans. Roth or traditional depends on your tax bracket."
         : kind === "traditional"
-          ? `Your top federal rate is about ${pct(input.marginalRate!)}, so the deduction now is worth more than tax-free withdrawals later.`
+          ? `Your top federal rate is about ${formatPercentTenths(input.marginalRate!)}, so the deduction now is worth more than tax-free withdrawals later.`
           : kind === "roth"
-            ? `Your top federal rate is about ${pct(input.marginalRate!)}, so paying the tax now and taking it out tax-free later usually comes out ahead.`
-            : `Your top federal rate is about ${pct(input.marginalRate!)}, in the middle: with your 401(k) taxed later, a Roth IRA taxed now gives you both kinds of money to draw on in retirement.`,
+            ? `Your top federal rate is about ${formatPercentTenths(input.marginalRate!)}, so paying the tax now and taking it out tax-free later usually comes out ahead.`
+            : `Your top federal rate is about ${formatPercentTenths(input.marginalRate!)}, in the middle: with your 401(k) taxed later, a Roth IRA taxed now gives you both kinds of money to draw on in retirement.`,
   });
   steps.push({
     key: "workplace",
