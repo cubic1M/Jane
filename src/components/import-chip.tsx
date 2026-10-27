@@ -102,15 +102,20 @@ export function ImportChip() {
         <>
           <span>
             Done:{" "}
-            {run.foundCents
-              ? `found ${formatWholeDollars(run.foundCents)}/yr`
-              : removal
-                ? "your numbers are up to date"
+            {/* An update finds nothing new, so not "found $497/yr" (new-user pass: it said so
+                after a card's balance was given). */}
+            {removal
+              ? "your numbers are up to date"
+              : run.foundCents
+                ? `found ${formatWholeDollars(run.foundCents)}/yr`
                 : `${rows} read`}
           </span>
-          <Link href="/report" className="font-medium underline" onClick={close}>
-            See findings
-          </Link>
+          {/* After "Start over" there's nothing to see. */}
+          {(!removal || (run.foundCents ?? 0) > 0) && (
+            <Link href="/report" className="font-medium underline" onClick={close}>
+              See findings
+            </Link>
+          )}
         </>
       ) : (
         <span>The import hit a problem. Jane will try again shortly.</span>

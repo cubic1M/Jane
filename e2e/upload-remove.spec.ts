@@ -79,6 +79,10 @@ test("an upload can be removed, and its findings go with it", async ({ page, bas
     timeout: 120_000,
   });
   await expect(page.locator("[data-upload]")).toHaveCount(0);
+  // Nothing left to see, so no "See findings".
+  await expect(
+    page.locator("[data-import-chip]").getByRole("link", { name: "See findings" }),
+  ).toHaveCount(0);
 
   // Its findings and the total are gone.
   await page.goto("/report");
