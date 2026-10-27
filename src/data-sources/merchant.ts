@@ -53,11 +53,17 @@ export function normalizeMerchant(description: string): Merchant | null {
   for (const pattern of BOILERPLATE) text = text.replace(pattern, "");
   for (const pattern of PROCESSOR_PREFIXES) text = text.replace(pattern, "");
 
+  // Bank of America's ACH lines: "NETFLIX.COM DES:NETFLIX.COM ID:… INDN:… CO ID:… WEB". The
+  // company comes before DES:; the rest is the entry's description and ids.
+  const des = text.indexOf(" DES:");
+  if (des > 0) text = text.slice(0, des);
+
   // "AMZN MKTP US*2K4L91" -> "AMZN MKTP US": the part after * is an order or store code.
   const star = text.indexOf("*");
   if (star > 2) text = text.slice(0, star);
 
   text = text
+    .replace(/\s+CARD\s+\d{4}$/, " ") // Wells Fargo's "… CARD 1234": the card's last digits
     .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, " ") // dates
     .replace(/#\s*\d+/g, " ") // store numbers like #1234
     .replace(/\b(?:STORE|STR|NO)\s*\d+\b/g, " ")

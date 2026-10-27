@@ -1,7 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { Fragment, useRef, useState, useTransition } from "react";
 import { confirmImport, previewImport, type PreviewResult } from "./actions";
+import { ColumnPicker } from "./column-picker";
+import { SUGGESTED_UPLOAD_DAYS, SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
+import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import { formatCents } from "@/lib/money";
 
 type AccountOption = { id: string; name: string; kindLabel: string };
@@ -14,6 +17,8 @@ const SECONDARY_BUTTON =
 export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
+  // Column pickers by file position, kept once shown: the import sends the picked columns too.
+  const [pickers, setPickers] = useState<Record<number, MappingChoices>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -25,7 +30,18 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   function onPreview(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    startTransition(async () => setPreview(await previewImport(formData())));
+    startTransition(async () => {
+      const result = await previewImport(formData());
+      setPreview(result);
+      if (!result.ok) return;
+      setPickers((shown) => {
+        const next = { ...shown };
+        result.files.forEach((f, i) => {
+          if (!f.ok && f.choices && !next[i]) next[i] = f.choices;
+        });
+        return next;
+      });
+    });
   }
 
   function onConfirm() {
@@ -39,6 +55,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   const files = preview?.ok ? preview.files : [];
   const ready = files.length > 0 && files.every((f) => f.ok);
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
+  const days = coveredDays(files);
 
   return (
     <form ref={formRef} onSubmit={onPreview} className="flex flex-col gap-4">
@@ -64,14 +81,17 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
           accept=".csv,.ofx,.qfx,text/csv,application/x-ofx"
           multiple
           required
-          onChange={() => setPreview(null)}
+          onChange={() => {
+            setPreview(null);
+            setPickers({});
+          }}
           className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-semibold dark:file:bg-zinc-800"
         />
       </label>
 
       <div className="flex flex-wrap gap-3">
         <button type="submit" disabled={pending} className={SECONDARY_BUTTON}>
-          {pending && !preview ? "Reading…" : "Preview"}
+          {pending && !preview ? "Reading…" : preview ? "Preview again" : "Preview"}
         </button>
         {ready && (
           <button type="button" onClick={onConfirm} disabled={pending} className={PRIMARY_BUTTON}>
@@ -82,67 +102,101 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
 
       {preview && !preview.ok && <Alert>{preview.error}</Alert>}
       {error && <Alert>{error}</Alert>}
-
-      {files.map((file) =>
-        file.ok ? (
-          <section key={file.file} className="flex flex-col gap-2">
-            <h3 className="font-semibold">
-              {file.file}{" "}
-              <span className="font-normal text-zinc-500">
-                · {file.format} · {file.rowCount} rows
-              </span>
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="text-zinc-500">
-                  <tr>
-                    <th className="py-1 pr-3 font-medium">Date</th>
-                    <th className="py-1 pr-3 font-medium">Description</th>
-                    <th className="py-1 text-right font-medium">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {file.sample.map((row, i) => (
-                    <tr key={i} className="border-t border-zinc-100 dark:border-zinc-900">
-                      <td className="py-1 pr-3 whitespace-nowrap">{row.date}</td>
-                      <td className="py-1 pr-3">{row.description}</td>
-                      <td className="py-1 text-right whitespace-nowrap">
-                        {/* Positive amounts are money out; show them as negative like a bank does. */}
-                        {formatCents(-row.amountCents || 0)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {file.rowCount > file.sample.length && (
-              <p className="text-xs text-zinc-500">
-                Showing {file.sample.length} of {file.rowCount} rows.
-              </p>
-            )}
-            {file.skipped.length > 0 && (
-              <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                <p className="font-medium">
-                  {file.skipped.length} row{file.skipped.length === 1 ? "" : "s"} will be skipped:
-                </p>
-                <ul className="mt-1 list-disc pl-5">
-                  {file.skipped.map((s) => (
-                    <li key={s.line}>
-                      Line {s.line}: {s.reason}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
-        ) : (
-          <Alert key={file.file}>
-            {file.file}: {file.error}
-          </Alert>
-        ),
+      {ready && days !== null && days < SUGGESTED_UPLOAD_DAYS && (
+        <p
+          data-upload-months=""
+          className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+        >
+          These files cover {days} {days === 1 ? "day" : "days"}. Jane spots monthly charges and
+          bills best with {SUGGESTED_UPLOAD_MONTHS} months, so add older statements if you can.
+        </p>
       )}
+
+      {files.map((file, index) => (
+        <Fragment key={`${index}:${file.file}`}>
+          {/* Always first, so it keeps what was picked when the file reads fine. */}
+          {pickers[index] && (
+            <ColumnPicker index={index} file={file.file} choices={pickers[index]}>
+              {!file.ok && (
+                <Alert>
+                  {file.file}: {file.error}
+                </Alert>
+              )}
+            </ColumnPicker>
+          )}
+          {file.ok ? (
+            <section className="flex flex-col gap-2">
+              <h3 className="font-semibold">
+                {file.file}{" "}
+                <span className="font-normal text-zinc-500">
+                  · {file.format} · {file.rowCount} rows
+                </span>
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-zinc-500">
+                    <tr>
+                      <th className="py-1 pr-3 font-medium">Date</th>
+                      <th className="py-1 pr-3 font-medium">Description</th>
+                      <th className="py-1 text-right font-medium">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {file.sample.map((row, i) => (
+                      <tr key={i} className="border-t border-zinc-100 dark:border-zinc-900">
+                        <td className="py-1 pr-3 whitespace-nowrap">{row.date}</td>
+                        <td className="py-1 pr-3">{row.description}</td>
+                        <td className="py-1 text-right whitespace-nowrap">
+                          {/* Positive amounts are money out; show them as negative like a bank does. */}
+                          {formatCents(-row.amountCents || 0)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {file.rowCount > file.sample.length && (
+                <p className="text-xs text-zinc-500">
+                  Showing {file.sample.length} of {file.rowCount} rows.
+                </p>
+              )}
+              {file.skipped.length > 0 && (
+                <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                  <p className="font-medium">
+                    {file.skipped.length} row{file.skipped.length === 1 ? "" : "s"} will be skipped:
+                  </p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {file.skipped.map((s) => (
+                      <li key={s.line}>
+                        Line {s.line}: {s.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
+          ) : (
+            !pickers[index] && (
+              <Alert>
+                {file.file}: {file.error}
+              </Alert>
+            )
+          )}
+        </Fragment>
+      ))}
     </form>
   );
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Days from the earliest to the latest transaction across the files, counting both ends.
+function coveredDays(files: Extract<PreviewResult, { ok: true }>["files"]): number | null {
+  const ok = files.flatMap((f) => (f.ok && f.from ? [f] : []));
+  if (ok.length === 0) return null;
+  const from = Math.min(...ok.map((f) => Date.parse(f.from)));
+  const to = Math.max(...ok.map((f) => Date.parse(f.to)));
+  return Math.round((to - from) / DAY_MS) + 1;
 }
 
 function Alert({ children }: { children: React.ReactNode }) {

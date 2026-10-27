@@ -59,7 +59,14 @@ describe("importCsvFiles", () => {
   it("stores categorized transactions with dedupe keys and skips duplicates", async () => {
     const counts = await importCsvFiles(db, "acct_1", [fixture("chase-checking.csv")]);
 
-    expect(counts).toEqual({ parsed: 9, inserted: 9, duplicates: 0, skipped: 1 });
+    expect(counts).toEqual({
+      parsed: 9,
+      inserted: 9,
+      duplicates: 0,
+      skipped: 1,
+      // For upload_succeeded: each file's format and transaction count.
+      files: [{ format: "chase_checking", rows: 9 }],
+    });
     const { data, skipDuplicates } = createMany.mock.calls[0][0];
     expect(skipDuplicates).toBe(true);
     expect(data[0]).toEqual({
@@ -86,6 +93,7 @@ describe("importCsvFiles", () => {
       inserted: 0,
       duplicates: 9,
       skipped: 1,
+      files: [{ format: "chase_checking", rows: 9 }],
     });
   });
 

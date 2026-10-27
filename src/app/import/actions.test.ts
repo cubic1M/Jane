@@ -65,19 +65,22 @@ beforeEach(() => {
   afterCallbacks.length = 0;
   vi.mocked(track).mockReset();
   vi.mocked(logAudit).mockReset();
-  vi.mocked(canImportCsv).mockReset().mockResolvedValue(true);
+  vi.mocked(canImportCsv).mockReset().mockReturnValue(true);
 });
 
 describe("CSV access", () => {
-  it("refuses people who link through Plaid instead", async () => {
-    vi.mocked(canImportCsv).mockResolvedValue(false);
+  it("refuses trial people (sample data)", async () => {
+    vi.mocked(canImportCsv).mockReturnValue(false);
 
     for (const result of [
       await createCsvAccount(null, form({ name: "Card", kind: "credit_card" })),
       await previewImport(form({ files: [csv("card.csv")] })),
       await confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
     ]) {
-      expect(result).toEqual({ ok: false, error: expect.stringContaining("only for founders") });
+      expect(result).toEqual({
+        ok: false,
+        error: expect.stringContaining("Sign up to upload yours"),
+      });
     }
     expect(accountsCreate).not.toHaveBeenCalled();
     expect(importCsvFiles).not.toHaveBeenCalled();
@@ -144,15 +147,63 @@ describe("previewImport", () => {
   it("asks for a file when none was chosen", async () => {
     expect(await previewImport(form({}))).toEqual({
       ok: false,
-      error: "Choose at least one CSV file.",
+      error: "Choose at least one statement file.",
     });
+    expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "no_file" });
+  });
+
+  it("tracks upload_started, and upload_failed with only the reason", async () => {
+    await previewImport(form({ files: [csv("other.csv", "Date,Payee\nx,Coffee\n")] }));
+
+    expect(track).toHaveBeenCalledWith("user_1", "upload_started");
+    expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "unknown_format" });
+  });
+
+  it("offers the column picker for an unknown layout, then reads it with the picked columns", async () => {
+    const text = "Booked,Narrative,Value\n2026-09-27,COFFEE PLACE,-4.50\n";
+    const first = await previewImport(form({ files: [csv("bank.csv", text)] }));
+    expect(first.ok && first.files[0]).toMatchObject({
+      ok: false,
+      reason: "unknown_format",
+      choices: { hasHeader: true, guess: { date: 0 } },
+    });
+
+    const picked = await previewImport(
+      form({
+        files: [csv("bank.csv", text)],
+        "map.0.date": "0",
+        "map.0.description": "1",
+        "map.0.amount": "2",
+        "map.0.out": "negative",
+        "map.0.header": "1",
+      }),
+    );
+    expect(picked.ok && picked.files[0]).toMatchObject({
+      ok: true,
+      formatId: "custom",
+      rowCount: 1,
+      from: "2026-09-27",
+      to: "2026-09-27",
+      sample: [{ date: "2026-09-27", description: "COFFEE PLACE", amountCents: 450 }],
+    });
+  });
+
+  it("says which column is missing in the picker", async () => {
+    const result = await previewImport(
+      form({ files: [csv("bank.csv", "a,b\n")], "map.0.date": "0" }),
+    );
+    expect(result).toEqual({ ok: false, error: "bank.csv: Pick the description column." });
+    expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "bad_columns" });
   });
 });
 
 describe("confirmImport", () => {
   it("imports, audit-logs the counts, tracks import_completed and moves to /scanning", async () => {
     const counts = { parsed: 1, inserted: 1, duplicates: 0, skipped: 0 };
-    importCsvFiles.mockResolvedValue(counts);
+    importCsvFiles.mockResolvedValue({
+      ...counts,
+      files: [{ format: "chase_credit_card", rows: 1 }],
+    });
 
     await expect(
       confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
@@ -170,6 +221,11 @@ describe("confirmImport", () => {
       { ...counts, files: 1 },
     );
     expect(track).toHaveBeenCalledWith("user_1", "import_completed", { ...counts, files: 1 });
+    // The format and row count only: nothing from the file itself.
+    expect(track).toHaveBeenCalledWith("user_1", "upload_succeeded", {
+      format: "chase_credit_card",
+      rows: 1,
+    });
     // Worked out after the response, so the tap answers at once (/scanning waits for it).
     expect(runDetection).not.toHaveBeenCalled();
     for (const callback of afterCallbacks) await callback();
@@ -177,7 +233,13 @@ describe("confirmImport", () => {
   });
 
   it("queues explanations as a job and runs it after responding, then Jane's chat", async () => {
-    importCsvFiles.mockResolvedValue({ parsed: 1, inserted: 1, duplicates: 0, skipped: 0 });
+    importCsvFiles.mockResolvedValue({
+      parsed: 1,
+      inserted: 1,
+      duplicates: 0,
+      skipped: 0,
+      files: [{ format: "chase_credit_card", rows: 1 }],
+    });
 
     await expect(
       confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
@@ -198,7 +260,13 @@ describe("confirmImport", () => {
   });
 
   it("still moves to /scanning when detection fails after a successful import", async () => {
-    importCsvFiles.mockResolvedValue({ parsed: 1, inserted: 1, duplicates: 0, skipped: 0 });
+    importCsvFiles.mockResolvedValue({
+      parsed: 1,
+      inserted: 1,
+      duplicates: 0,
+      skipped: 0,
+      files: [{ format: "chase_credit_card", rows: 1 }],
+    });
     runDetection.mockRejectedValue(new Error("database hiccup"));
     vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -220,6 +288,7 @@ describe("confirmImport", () => {
 
     expect(result).toEqual({ ok: false, error: "x.csv: Unknown format." });
     expect(track).toHaveBeenCalledWith("user_1", "import_failed", { reason: "unknown_format" });
+    expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "unknown_format" });
     expect(logAudit).not.toHaveBeenCalled();
     expect(runDetection).not.toHaveBeenCalled();
   });

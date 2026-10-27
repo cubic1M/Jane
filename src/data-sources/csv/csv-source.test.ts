@@ -83,14 +83,14 @@ describe("Chase credit card export", () => {
 });
 
 describe("readCsvFile", () => {
-  it("rejects an unknown format with a readable message instead of crashing", () => {
+  it("rejects an unknown format with a readable message and the column picker's choices", () => {
     const result = readCsvFile(fixture("unknown-bank.csv"));
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toContain("don't recognize this file's format");
-    expect(result.error).toContain("Chase checking or savings");
-    expect(result.error).toContain("Date, Payee, Debit, Credit");
+    expect(result.reason).toBe("unknown_format");
+    expect(result.error).toContain("Pick which column is which");
+    expect(result.choices?.columns).toHaveLength(4);
   });
 
   it("rejects an empty file", () => {
@@ -98,6 +98,7 @@ describe("readCsvFile", () => {
       ok: false,
       file: "empty.csv",
       error: "The file is empty.",
+      reason: "unreadable",
     });
   });
 

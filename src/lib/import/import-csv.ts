@@ -1,6 +1,12 @@
 import { matchCardPayments } from "@/categorize/card-payments";
 import { categorizeTransactions } from "@/categorize/categorize";
-import { CsvDataSource, readCsvFile, type CsvFile } from "@/data-sources/csv/csv-source";
+import type { MappingChoices } from "@/data-sources/csv/column-mapping";
+import {
+  CsvDataSource,
+  readCsvFile,
+  type CsvFailure,
+  type CsvFile,
+} from "@/data-sources/csv/csv-source";
 import { accountKindOf, type SkippedRow } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
 
@@ -13,22 +19,40 @@ export type FilePreview =
       file: string;
       ok: true;
       format: string;
+      formatId: string;
       rowCount: number;
+      // The first and last day it covers (YYYY-MM-DD).
+      from: string;
+      to: string;
       skipped: SkippedRow[];
       sample: { date: string; description: string; amountCents: number }[];
     }
-  | { file: string; ok: false; error: string };
+  | {
+      file: string;
+      ok: false;
+      error: string;
+      reason: CsvFailure;
+      // An unknown layout: the column picker's choices.
+      choices?: MappingChoices;
+    };
 
 // Parses in memory only; nothing is stored until the person confirms.
 export function previewCsvFiles(files: CsvFile[]): FilePreview[] {
   return files.map((file) => {
     const result = readCsvFile(file);
-    if (!result.ok) return { file: result.file, ok: false, error: result.error };
+    if (!result.ok) {
+      const { file, error, reason, choices } = result;
+      return { file, ok: false, error, reason, ...(choices ? { choices } : {}) };
+    }
+    const dates = result.transactions.map((t) => t.date).sort();
     return {
       file: result.file,
       ok: true,
       format: result.format.label,
+      formatId: result.format.id,
       rowCount: result.transactions.length,
+      from: dates[0] ?? "",
+      to: dates[dates.length - 1] ?? "",
       skipped: result.skipped,
       sample: result.transactions.slice(0, SAMPLE_ROWS).map((t) => ({
         date: t.date,
@@ -52,11 +76,14 @@ export type ImportCounts = {
   skipped: number;
 };
 
+// Each file's format and transaction count, for the upload_succeeded event.
+export type ImportedFile = { format: string; rows: number };
+
 export async function importCsvFiles(
   db: ScopedDb,
   accountId: string,
   files: CsvFile[],
-): Promise<ImportCounts> {
+): Promise<ImportCounts & { files: ImportedFile[] }> {
   const account = await db.accounts.findUnique({ where: { id: accountId } });
   const kind = account && accountKindOf(account.type, account.subtype);
   if (!account || account.source !== "csv" || !kind) throw new AccountNotFoundError();
@@ -107,5 +134,6 @@ export async function importCsvFiles(
     inserted: count,
     duplicates: categorized.length - count,
     skipped: batch.skipped.length,
+    files: batch.files,
   };
 }
