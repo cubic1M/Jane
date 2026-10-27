@@ -4,31 +4,40 @@ import { useEffect, useRef, useState, type ButtonHTMLAttributes } from "react";
 import { flushSync, useFormStatus } from "react-dom";
 
 // A form's submit button that answers the tap at once (the founder's "every button is an
-// instant response"): the press itself shows a spinner, in the same frame, and from then until
-// the server action returns the form can't be sent twice. The spinner is plain text, so it
-// needs no colour, and screen readers hear "busy" from aria-busy. Only the button that was
-// pressed spins, when a form has two. Drop-in for <button type="submit">: every other prop
-// passes through.
+// instant response"): the press itself shows a thin progress bar along the button's bottom
+// edge, in the same frame, and from then until the server action returns the form can't be
+// sent twice. The bar takes the button's own text colour, so it fits every style, and screen
+// readers hear "busy" from aria-busy. Only the button that was pressed shows it, when a form
+// has two. Drop-in for <button type="submit">: every other prop passes through.
 
-const FRAMES = ["|", "/", "-", "\\"];
-// A press that sends nothing (a required field left empty) stops spinning after this long.
+// A press that sends nothing (a required field left empty) stops showing busy after this long.
 const UNSENT_MS = 400;
 
-export function Spinner() {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => setFrame((f) => (f + 1) % FRAMES.length), 120);
-    return () => window.clearInterval(id);
-  }, []);
+// The calm busy mark (founder, 2026-10-27: no "| / - \\" text spinner): a 2px line that
+// slides under the label, still and faint under prefers-reduced-motion (globals.css,
+// .busy-bar). Its parent needs position: relative.
+export function BusyBar() {
   return (
-    <span aria-hidden className="inline-block w-[1ch] font-mono">
-      {FRAMES[frame]}
+    <span
+      aria-hidden
+      data-busy-bar
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden"
+    >
+      <span className="busy-bar block h-full w-2/5 bg-current" />
     </span>
   );
 }
 
+// Adds relative while busy, unless the button is already positioned (absolute, fixed, sticky
+// or relative), which already holds the bar.
+export function busyClassName(className: string | undefined): string {
+  if (/(^|\s)(absolute|fixed|sticky|relative)(\s|$)/.test(className ?? "")) return className ?? "";
+  return `${className ?? ""} relative`.trim();
+}
+
 export function SubmitButton({
   children,
+  className,
   disabled,
   onClick,
   ...props
@@ -57,6 +66,8 @@ export function SubmitButton({
     <button
       type="submit"
       {...props}
+      // relative only while busy, so the bar sits on the button's edge and nothing else changes.
+      className={pressed ? busyClassName(className) : className}
       // Only once the form is on its way: disabling the button during the press would cancel it.
       disabled={disabled || pending}
       aria-busy={pressed || undefined}
@@ -67,12 +78,7 @@ export function SubmitButton({
       }}
     >
       {children}
-      {pressed && (
-        <>
-          {" "}
-          <Spinner />
-        </>
-      )}
+      {pressed && <BusyBar />}
     </button>
   );
 }
