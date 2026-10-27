@@ -50,6 +50,8 @@ export type BooksView = {
     words: string;
     accountId: string | null;
     itemId: string | null;
+    // The account came from uploaded files (or was added by hand): no bank link to check.
+    uploaded: boolean;
   }[];
   // Accounts whose figures are marked until the problem is fixed.
   markedAccountIds: string[];
@@ -339,6 +341,7 @@ export async function openBooks(
       words: String((r.detail as { words?: unknown } | null)?.words ?? ""),
       accountId: r.accountId,
       itemId: r.itemId,
+      uploaded: r.accountId !== null && accounts.find((a) => a.id === r.accountId)?.itemId === null,
     })),
     markedAccountIds: [...marked],
     merged: 0,

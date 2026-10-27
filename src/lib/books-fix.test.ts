@@ -39,3 +39,18 @@ describe("booksFix", () => {
     }
   });
 });
+
+describe("booksFix for uploaded accounts", () => {
+  it("sends a balance that doesn't add up to the uploads, not to linked banks", () => {
+    for (const kind of ["off", "gap", "duplicate"]) {
+      expect(booksFix({ ...issue(kind, "acc", null), uploaded: true })).toEqual({
+        label: "Check my uploads",
+        href: "/import",
+      });
+    }
+    // An ended file still asks for a newer one.
+    expect(booksFix({ ...issue("stale", "acc", null), uploaded: true }).label).toBe(
+      "Import a newer file",
+    );
+  });
+});
