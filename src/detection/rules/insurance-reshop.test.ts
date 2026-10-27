@@ -13,7 +13,7 @@ describe("insurance_reshop", () => {
     expect(finding).toMatchObject({
       type: "insurance_reshop",
       key: "merchant:geico",
-      title: "Your Geico insurance could cost less",
+      title: "Your GEICO insurance could cost less",
       annualSavingsCents: null,
       amountCents: 9800 * 12,
     });
@@ -29,6 +29,18 @@ describe("insurance_reshop", () => {
     ];
 
     expect(run(input({ recurringStreams })).map((f) => f.key)).toEqual(["merchant:example mutual"]);
+  });
+
+  it("names a known insurer, not the bank's line for it", () => {
+    const stateFarm = {
+      description: "STATE FARM RO 27 DES:CPC-CLIENT",
+      merchantName: null,
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+    };
+    const [finding] = run(input({ transactions: monthly(4, 11840, stateFarm) }));
+
+    expect(finding?.title).toBe("Your State Farm insurance could cost less");
   });
 
   it("finds nothing without insurance payments", () => {
