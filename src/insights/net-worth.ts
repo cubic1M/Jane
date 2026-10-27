@@ -169,6 +169,13 @@ export function netWorthLine(
   return months.map((m, i) => (i === months.length - 1 ? { ...m, netCents: todayCents } : m));
 }
 
+// The months to list, from the first one with a figure: three months of statements show three
+// rows, not nine dashes before them. A month missing in between still shows as a gap.
+export function fromFirstKnown<T extends { netCents: number | null }>(months: T[]): T[] {
+  const first = months.findIndex((m) => m.netCents !== null);
+  return first === -1 ? [] : months.slice(first);
+}
+
 // What a net worth leaves out for want of a balance (an uploaded card or bank file without one,
 // src/lib/import/account-balance.ts), said beside the figure, never left out silently (CSV
 // bench: card debt missing from most upload-only people's net worth). Null when it's complete.

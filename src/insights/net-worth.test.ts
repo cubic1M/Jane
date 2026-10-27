@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { monthlyNetWorth, netWorth, netWorthLine, netWorthOn, notCounting } from "./net-worth";
+import {
+  fromFirstKnown,
+  monthlyNetWorth,
+  netWorth,
+  netWorthLine,
+  netWorthOn,
+  notCounting,
+} from "./net-worth";
 
 const accounts = [
   { id: "chk", name: "Checking", type: "depository", balanceCents: 250_000 },
@@ -208,5 +215,22 @@ describe("notCounting", () => {
     ]);
     expect(worth.unbalanced).toEqual([{ name: "Chase card", card: true }]);
     expect(worth.missing).toEqual(["Chase card"]);
+  });
+});
+
+describe("fromFirstKnown", () => {
+  it("starts the list at the first month with a figure, keeping gaps after it", () => {
+    const months = [
+      { month: "2026-01", netCents: null },
+      { month: "2026-02", netCents: null },
+      { month: "2026-03", netCents: 100 },
+      { month: "2026-04", netCents: null },
+      { month: "2026-05", netCents: 300 },
+    ];
+    expect(fromFirstKnown(months).map((m) => m.month)).toEqual(["2026-03", "2026-04", "2026-05"]);
+  });
+
+  it("lists nothing when no month has a figure", () => {
+    expect(fromFirstKnown([{ month: "2026-01", netCents: null }])).toEqual([]);
   });
 });

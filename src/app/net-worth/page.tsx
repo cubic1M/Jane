@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/app-header";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { NET_WORTH_MONTHS } from "@/config/net-worth";
 import { monthsEnding } from "@/insights/spending";
-import { netWorth, netWorthLine, notCounting } from "@/insights/net-worth";
+import { fromFirstKnown, netWorth, netWorthLine, notCounting } from "@/insights/net-worth";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
@@ -54,6 +54,7 @@ async function NetWorthContent() {
     NET_WORTH_MONTHS,
     today.netCents,
   );
+  const listed = fromFirstKnown(months);
   const left = notCounting(today.unbalanced);
   const prompts = assetPrompts(
     accounts,
@@ -182,13 +183,13 @@ async function NetWorthContent() {
           <p className="text-zinc-600 dark:text-zinc-400">
             This fills in once Jane knows a balance.
           </p>
-        ) : months.every((m) => m.netCents === null) ? (
+        ) : listed.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">
             We take a snapshot of your balances each day; this fills in from today.
           </p>
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
-            {months.map((m) => (
+            {listed.map((m) => (
               <li key={m.month} className="grid grid-cols-[5.5rem_1fr_7rem] items-center gap-2">
                 <span className="text-zinc-500">{monthLabel(m.month)}</span>
                 <span
