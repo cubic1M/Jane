@@ -6,6 +6,15 @@
 export const UPLOAD_REASSURANCE =
   "Files are read once and never stored, and Jane never sees your bank login.";
 
+// What one upload's files may add up to. The server takes 5 MB per request
+// (next.config.ts, serverActions.bodySizeLimit); past it the page crashed (round 4: two 3 MB files
+// gave "This page couldn't load"), so /import says so before sending.
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+export function uploadTooBig(bytes: number): string {
+  return `These files add up to ${(bytes / 1024 / 1024).toFixed(1)} MB. Upload at most ${MAX_UPLOAD_BYTES / 1024 / 1024} MB at a time: fewer files, or fewer months in each.`;
+}
+
 // The account choice on /import for "a new account from these files".
 export const NEW_ACCOUNT_ID = "new";
 

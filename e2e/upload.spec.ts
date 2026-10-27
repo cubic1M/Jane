@@ -133,7 +133,7 @@ test("the picker reads day-first dates, guesses positive spending, and asks when
   await uploadFile(page, "day-first.csv");
   await expect(picker.locator('[name="map.0.dates"]')).toHaveValue("dmy");
   await page.getByRole("button", { name: "Preview again" }).click();
-  await expect(page.getByRole("cell", { name: "2026-09-05" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Sep 5, 2026" })).toBeVisible();
 
   // Spending shown as positive: Jane says so, from a grocery row.
   await uploadFile(page, "spending-positive.csv");
@@ -146,7 +146,7 @@ test("the picker reads day-first dates, guesses positive spending, and asks when
   await expect(picker.getByText("Jane can't tell from the dates in this file.")).toBeVisible();
   await picker.locator('[name="map.0.dates"]').selectOption("dmy");
   await page.getByRole("button", { name: "Preview again" }).click();
-  await expect(page.getByRole("cell", { name: "2026-09-06" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Sep 6, 2026" })).toBeVisible();
 });
 
 test("a web page saved as .csv is refused before the picker", async ({ page, baseURL }) => {
@@ -274,4 +274,55 @@ test('the same file again says nothing was new, not "Saved 0 transactions"', asy
   await expect(page.locator("[data-import-saved]")).toContainText(
     /^Nothing new: Jane already had all \d+ of these transactions\./,
   );
+});
+
+test("empty, header-only, Latin-1 and too-big uploads say what's wrong, and never crash the page", async ({
+  page,
+  baseURL,
+}) => {
+  await signIn(page, baseURL);
+  await page.goto("/import");
+  const input = page.locator('input[type="file"]');
+  const preview = () => page.getByRole("button", { name: /Preview/ }).click();
+  const header = "Transaction Date,Post Date,Description,Category,Type,Amount,Memo";
+
+  await input.setInputFiles({ name: "empty.csv", mimeType: "text/csv", buffer: Buffer.from("") });
+  await preview();
+  await expect(
+    page.getByText("empty.csv is empty. Download it again from your bank."),
+  ).toBeVisible();
+
+  await input.setInputFiles({
+    name: "header-only.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(`${header}\n`),
+  });
+  await preview();
+  await expect(page.getByText(/There are no transactions in it/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Import \d+ transactions?$/ })).toHaveCount(0);
+
+  // Windows-1252, as Excel saves it: read, accents and all.
+  await input.setInputFiles({
+    name: "caixa.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      `${header}\n10/20/2026,10/20/2026,CAF\xc9 M\xdcNCHEN,Food,Sale,-4.50,\n`,
+      "latin1",
+    ),
+  });
+  await preview();
+  await expect(page.getByText("CAFÉ MÜNCHEN")).toBeVisible();
+
+  // Two files past what one request takes: said in the page, which keeps working.
+  const big = (name: string) => ({
+    name,
+    mimeType: "text/csv",
+    buffer: Buffer.from(`${header}\n${"x".repeat(3 * 1024 * 1024)}`),
+  });
+  await input.setInputFiles([big("big1.csv"), big("big2.csv")]);
+  await preview();
+  await expect(
+    page.getByText(/^These files add up to 6\.0 MB\. Upload at most 4 MB/),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Upload your statements" })).toBeVisible();
 });

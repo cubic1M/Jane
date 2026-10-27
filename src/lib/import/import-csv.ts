@@ -1,5 +1,6 @@
 import { categorizeTransactions } from "@/categorize/categorize";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
+import { statementMask } from "@/data-sources/csv/mask";
 import {
   CsvDataSource,
   readCsvFile,
@@ -24,6 +25,8 @@ export type FilePreview =
       formatId: string;
       // The bank whose export it is, when the layout is one Jane knows.
       bank?: string;
+      // The last four of its account, when the file says (src/data-sources/csv/mask.ts).
+      mask: string | null;
       // The account a first upload of this file makes: its suggested name and type.
       account: { name: string; kind: AccountKind };
       rowCount: number;
@@ -57,6 +60,7 @@ export function previewCsvFiles(files: CsvFile[]): FilePreview[] {
       format: result.format.label,
       formatId: result.format.id,
       ...(result.format.bank ? { bank: result.format.bank } : {}),
+      mask: statementMask(file.name, file.text),
       account: result.account,
       rowCount: result.transactions.length,
       from: dates[0] ?? "",

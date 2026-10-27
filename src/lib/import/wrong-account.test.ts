@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { existingAccountNote, mixedFilesNote, wrongAccountNote } from "./wrong-account";
+import {
+  existingAccountNote,
+  linkedAccountNote,
+  mixedFilesNote,
+  wrongAccountNote,
+} from "./wrong-account";
 
 describe("wrongAccountNote", () => {
   it("says so when another bank's file is going into an account", () => {
@@ -7,6 +12,16 @@ describe("wrongAccountNote", () => {
       wrongAccountNote({ name: "Chase card" }, [{ file: "wf.csv", bank: "Wells Fargo" }]),
     ).toBe(
       "wf.csv looks like a Wells Fargo file, but it's going into Chase card. If that's wrong, pick its account above.",
+    );
+  });
+
+  it("says a card's file from another bank is a card's, going into a bank account", () => {
+    expect(
+      wrongAccountNote({ name: "Wells Fargo checking", kind: "checking" }, [
+        { file: "citi.csv", bank: "Citi", kind: "credit_card" },
+      ]),
+    ).toBe(
+      "citi.csv looks like a Citi card file, but it's going into Wells Fargo checking. If that's wrong, pick its account above.",
     );
   });
 
@@ -115,5 +130,53 @@ describe("existingAccountNote", () => {
       existingAccountNote(accounts, [{ file: "d.csv", bank: "Discover", kind: "credit_card" }]),
     ).toBeNull();
     expect(existingAccountNote(accounts, [{ file: "e.csv" }])).toBeNull();
+  });
+});
+
+describe("linkedAccountNote", () => {
+  const linked = [
+    { name: "Total Checking", institution: "Chase", mask: "4321", kind: "checking" },
+    { name: "Freedom", institution: "Chase", mask: "9876", kind: "credit_card" },
+    { name: "Card", institution: "Citibank Online", mask: null, kind: "credit_card" },
+  ];
+
+  it("is sure when the bank and the last four agree", () => {
+    expect(
+      linkedAccountNote(linked, [
+        { file: "Chase4321_Activity.CSV", bank: "Chase", kind: "checking", mask: "4321" },
+      ]),
+    ).toEqual({
+      sure: true,
+      text: "You already link Total Checking ····4321 through Chase, so its transactions come in by themselves. Importing Chase4321_Activity.CSV would count them twice.",
+    });
+  });
+
+  it("warns without the last four when the bank and kind agree", () => {
+    expect(
+      linkedAccountNote(linked, [
+        { file: "citi.csv", bank: "Citi", kind: "credit_card", mask: null },
+      ]),
+    ).toEqual({
+      sure: false,
+      text: "If citi.csv is your linked Card, skip it: its transactions already come in from Citibank Online, and importing it would count them twice.",
+    });
+  });
+
+  it("says nothing for another last four, another bank, another kind, or no bank", () => {
+    expect(
+      linkedAccountNote(linked, [{ file: "c.csv", bank: "Chase", kind: "checking", mask: "1111" }]),
+    ).toBeNull();
+    expect(
+      linkedAccountNote(linked, [
+        { file: "w.csv", bank: "Wells Fargo", kind: "checking", mask: null },
+      ]),
+    ).toBeNull();
+    expect(
+      linkedAccountNote(
+        [linked[2]],
+        [{ file: "c.csv", bank: "Citi", kind: "checking", mask: null }],
+      ),
+    ).toBeNull();
+    expect(linkedAccountNote(linked, [{ file: "x.csv", mask: "4321" }])).toBeNull();
   });
 });

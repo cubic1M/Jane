@@ -245,3 +245,16 @@ describe("accountNameFromFile", () => {
     expect(accountNameFromFile(file)).toBe(name);
   });
 });
+
+describe("a file with column names and nothing under them", () => {
+  it("says there are no transactions in it, instead of offering to import 0", () => {
+    const result = readCsvFile({
+      name: "header-only.csv",
+      text: "Transaction Date,Post Date,Description,Category,Type,Amount,Memo\n",
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: "There are no transactions in it. Check the dates you picked when you downloaded it.",
+    });
+  });
+});

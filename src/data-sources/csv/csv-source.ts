@@ -26,6 +26,9 @@ export type CsvFile = { name: string; text: string; mapping?: ColumnMapping };
 // readable as CSV, or not a statement at all (a web page, a PDF, a spreadsheet).
 export type CsvFailure = "unknown_format" | "unreadable" | "not_csv";
 
+export const NO_TRANSACTIONS =
+  "There are no transactions in it. Check the dates you picked when you downloaded it.";
+
 export const NOT_A_STATEMENT =
   "This isn't a CSV statement. Download the CSV from your bank's website.";
 
@@ -224,6 +227,15 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     externalId: keys[i],
     hints: row.hints,
   }));
+  // Column names and nothing under them (round 4: "Import 0 transactions").
+  if (transactions.length === 0 && skipped.length === 0 && format.id !== CUSTOM_FORMAT.id) {
+    return {
+      ok: false,
+      file: file.name,
+      error: NO_TRANSACTIONS,
+      reason: "unreadable",
+    };
+  }
   if (format.id === CUSTOM_FORMAT.id && transactions.length === 0) {
     return {
       ok: false,

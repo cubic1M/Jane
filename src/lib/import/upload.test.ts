@@ -147,6 +147,27 @@ describe("saveUpload", () => {
     });
     expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "no_file" });
   });
+
+  it("says a chosen file is empty, not that none was chosen", async () => {
+    const empty = new File([], "empty.csv", { type: "text/csv" });
+    expect(await saveUpload(db, form({ accountId: "acct_1", files: [empty] }))).toEqual({
+      ok: false,
+      error: "empty.csv is empty. Download it again from your bank.",
+    });
+  });
+
+  it("says when the files together are past what one upload takes", async () => {
+    const big = (name: string) =>
+      new File(["x".repeat(2.5 * 1024 * 1024)], name, { type: "text/csv" });
+    expect(
+      await saveUpload(db, form({ accountId: "acct_1", files: [big("a.csv"), big("b.csv")] })),
+    ).toEqual({
+      ok: false,
+      error:
+        "These files add up to 5.0 MB. Upload at most 4 MB at a time: fewer files, or fewer months in each.",
+    });
+    expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "too_big" });
+  });
 });
 
 describe("saveUpload into a new account", () => {
