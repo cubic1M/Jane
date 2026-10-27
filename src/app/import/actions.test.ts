@@ -45,12 +45,33 @@ vi.mock("@/lib/import/upload", async (importOriginal) => ({
   saveUpload: vi.fn(),
 }));
 vi.mock("@/lib/import/background", () => ({ dismissImportRun: vi.fn() }));
+vi.mock("@/lib/import/remove", () => ({
+  removeUpload: vi.fn(),
+  removeEarlierRows: vi.fn(),
+  removeUploadedAccount: vi.fn(),
+  startOver: vi.fn(),
+}));
 vi.mock("@/lib/import/import-csv", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/import/import-csv")>()),
   importCsvFiles,
 }));
 
-import { createCsvAccount, dismissImport, previewImport, startImport } from "./actions";
+import {
+  createCsvAccount,
+  dismissImport,
+  previewImport,
+  removeAccountAction,
+  removeEarlierRowsAction,
+  removeUploadAction,
+  startImport,
+  startOverAction,
+} from "./actions";
+import {
+  removeEarlierRows,
+  removeUpload,
+  removeUploadedAccount,
+  startOver,
+} from "@/lib/import/remove";
 import { dismissImportRun } from "@/lib/import/background";
 import { saveUpload } from "@/lib/import/upload";
 import { track } from "@/lib/analytics";
@@ -277,5 +298,46 @@ describe("dismissImport", () => {
   it("closes the chip for the signed-in person's own upload", async () => {
     await dismissImport("run_1");
     expect(dismissImportRun).toHaveBeenCalledWith("user_1", "run_1");
+  });
+});
+
+describe("taking uploads back", () => {
+  const removed = { rows: 40, accounts: 0, jobId: "job_r" };
+  const cases = [
+    ["removeUploadAction", () => removeUploadAction("run_1"), removeUpload, "run_1"],
+    [
+      "removeEarlierRowsAction",
+      () => removeEarlierRowsAction("acct_1"),
+      removeEarlierRows,
+      "acct_1",
+    ],
+    ["removeAccountAction", () => removeAccountAction("acct_1"), removeUploadedAccount, "acct_1"],
+    ["startOverAction", () => startOverAction(), startOver, undefined],
+  ] as const;
+
+  it.each(cases)(
+    "%s removes it, then works the numbers out after the response",
+    async (_, act, fn, arg) => {
+      vi.mocked(fn).mockResolvedValue(removed);
+      expect(await act()).toEqual({ ok: true });
+      const args = vi.mocked(fn).mock.calls[0];
+      expect(args[0]).toMatchObject({ userId: "user_1" });
+      if (arg) expect(args[1]).toBe(arg);
+      expect(runJob).not.toHaveBeenCalled();
+      for (const callback of afterCallbacks) await callback();
+      expect(runJob).toHaveBeenCalledWith("job_r");
+    },
+  );
+
+  it.each(cases)("%s says so when there was nothing to remove", async (_, act, fn) => {
+    vi.mocked(fn).mockResolvedValue(null);
+    expect(await act()).toEqual({ ok: false, error: "That upload isn't here any more." });
+    expect(afterCallbacks).toHaveLength(0);
+  });
+
+  it.each(cases)("%s refuses trial people", async (_, act, fn) => {
+    vi.mocked(canImportCsv).mockReturnValue(false);
+    expect(await act()).toEqual({ ok: false, error: expect.stringContaining("Sign up") });
+    expect(fn).not.toHaveBeenCalled();
   });
 });

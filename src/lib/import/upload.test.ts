@@ -40,10 +40,16 @@ const counts = { parsed: 1, inserted: 1, duplicates: 0, skipped: 0 };
 const accountsCreate = vi.fn();
 const accountsDelete = vi.fn();
 const importRunsCreate = vi.fn();
+const importRunsUpdate = vi.fn();
+const importRunsDelete = vi.fn();
 const db = {
   userId: "user_1",
   accounts: { create: accountsCreate, delete: accountsDelete },
-  importRuns: { create: importRunsCreate },
+  importRuns: {
+    create: importRunsCreate,
+    updateMany: importRunsUpdate,
+    deleteMany: importRunsDelete,
+  },
 } as unknown as ScopedDb;
 const BALANCES = [{ date: "2026-10-13", balanceCents: 248451 }];
 
@@ -54,10 +60,14 @@ beforeEach(() => {
     ...counts,
     files: [{ format: "chase_credit_card", rows: 1 }],
     balances: BALANCES,
+    from: "2026-10-13",
+    to: "2026-10-13",
   });
   enqueueJob.mockReset().mockResolvedValue("job_1");
   keepFileBalances.mockReset().mockResolvedValue(1);
   importRunsCreate.mockReset().mockResolvedValue({ id: "run_1" });
+  importRunsUpdate.mockReset().mockResolvedValue({ count: 1 });
+  importRunsDelete.mockReset().mockResolvedValue({ count: 1 });
   vi.mocked(track).mockReset();
   vi.mocked(logAudit).mockReset();
 });
@@ -77,16 +87,26 @@ describe("saveUpload", () => {
       jobId: "job_1",
     });
     expect(keepFileBalances).toHaveBeenCalledWith(db, "acct_1", BALANCES);
+    // The upload's record, made first so each row it adds carries it, then filled in.
     expect(importRunsCreate).toHaveBeenCalledWith({
-      data: { userId: "user_1", rows: 1 },
+      data: { userId: "user_1", rows: 0, fileNames: ["card.csv"] },
       select: { id: true },
+    });
+    expect(importRunsUpdate).toHaveBeenCalledWith({
+      where: { id: "run_1" },
+      data: {
+        accountId: "acct_1",
+        rows: 1,
+        fromDate: new Date("2026-10-13T00:00:00Z"),
+        toDate: new Date("2026-10-13T00:00:00Z"),
+      },
     });
     expect(stages[0]).toEqual({ stage: "reading" });
     expect(importCsvFiles).toHaveBeenCalledWith(
       db,
       "acct_1",
       [{ name: "card.csv", text: CHASE_CARD }],
-      expect.objectContaining({ onStage: expect.any(Function) }),
+      expect.objectContaining({ onStage: expect.any(Function), importRunId: "run_1" }),
     );
     expect(logAudit).toHaveBeenCalledWith(
       { type: "user", id: "user_1" },
@@ -150,6 +170,7 @@ describe("saveUpload into a new account", () => {
     });
     expect(importCsvFiles).toHaveBeenCalledWith(db, "acct_new", expect.any(Array), {
       onStage: undefined,
+      importRunId: "run_1",
     });
   });
 
@@ -173,6 +194,8 @@ describe("saveUpload into a new account", () => {
     const result = await saveUpload(db, form({ ...fields, files: [csv("card.csv")] }));
     expect(result).toEqual({ ok: false, error: "x.csv: Unknown." });
     expect(accountsDelete).toHaveBeenCalledWith({ where: { id: "acct_new" } });
+    // No record of an upload that didn't happen.
+    expect(importRunsDelete).toHaveBeenCalledWith({ where: { id: "run_1" } });
   });
 
   it("asks for a name and type", async () => {

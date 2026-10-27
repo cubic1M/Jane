@@ -135,11 +135,18 @@ export async function saveUpload(
     created = true;
   }
 
+  // The upload's record first, so each row it adds carries it (the upload history on /import).
+  // Its account is set once the import has checked it's the person's own.
+  const run = await db.importRuns.create({
+    data: { userId: db.userId, rows: 0, fileNames: files.map((f) => f.name) },
+    select: { id: true },
+  });
   let result;
   try {
-    result = await importCsvFiles(db, accountId, files, { onStage });
+    result = await importCsvFiles(db, accountId, files, { onStage, importRunId: run.id });
   } catch (error) {
     if (created) await db.accounts.delete({ where: { id: accountId } });
+    await db.importRuns.deleteMany({ where: { id: run.id } });
     if (error instanceof CsvFormatError || error instanceof AccountNotFoundError) {
       const reason = error instanceof CsvFormatError ? "unknown_format" : "account_not_found";
       await Promise.all([
@@ -155,14 +162,17 @@ export async function saveUpload(
     throw error;
   }
 
-  const { files: imported, balances, ...counts } = result;
+  const { files: imported, balances, from, to, ...counts } = result;
   const metadata = { ...counts, files: files.length };
-  // The statement's own closing balances, kept now: the files themselves are never stored.
-  await keepFileBalances(db, accountId, balances);
-  const run = await db.importRuns.create({
-    data: { userId: db.userId, rows: counts.inserted },
-    select: { id: true },
-  });
+  const day = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`) : null);
+  await Promise.all([
+    // The statement's own closing balances, kept now: the files themselves are never stored.
+    keepFileBalances(db, accountId, balances),
+    db.importRuns.updateMany({
+      where: { id: run.id },
+      data: { accountId, rows: counts.inserted, fromDate: day(from), toDate: day(to) },
+    }),
+  ]);
   // Independent writes, so at once: each is a round trip to the database (and PostHog).
   const [, , jobId] = await Promise.all([
     logAudit(

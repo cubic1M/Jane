@@ -6,6 +6,13 @@ import { track } from "@/lib/analytics";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb, type ScopedDb } from "@/lib/db-scoped";
 import { dismissImportRun } from "@/lib/import/background";
+import {
+  removeEarlierRows,
+  removeUpload,
+  removeUploadedAccount,
+  startOver,
+  type Removed,
+} from "@/lib/import/remove";
 import { runJob } from "@/lib/jobs";
 import { previewCsvFiles, type FilePreview } from "@/lib/import/import-csv";
 import {
@@ -82,4 +89,38 @@ export async function startImport(formData: FormData): Promise<StartResult> {
 export async function dismissImport(runId: string): Promise<void> {
   const user = await requireUser();
   await dismissImportRun(user.id, runId);
+}
+
+// Taking uploads back (src/lib/import/remove.ts). Each is the signed-in person's own, and the
+// numbers are worked out again after the response, followed by the chip.
+async function afterRemoval(removed: Removed): Promise<ActionResult> {
+  if (!removed) return { ok: false, error: "That upload isn't here any more." };
+  const { jobId } = removed;
+  after(() => runJob(jobId).then(() => undefined));
+  revalidatePath("/import");
+  return { ok: true };
+}
+
+export async function removeUploadAction(runId: string): Promise<ActionResult> {
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
+  return afterRemoval(await removeUpload(db, runId));
+}
+
+export async function removeEarlierRowsAction(accountId: string): Promise<ActionResult> {
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
+  return afterRemoval(await removeEarlierRows(db, accountId));
+}
+
+export async function removeAccountAction(accountId: string): Promise<ActionResult> {
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
+  return afterRemoval(await removeUploadedAccount(db, accountId));
+}
+
+export async function startOverAction(): Promise<ActionResult> {
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
+  return afterRemoval(await startOver(db));
 }

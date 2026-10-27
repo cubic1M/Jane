@@ -96,7 +96,11 @@ export function ImportChip() {
         <>
           <span>
             Done:{" "}
-            {run.foundCents ? `found ${formatWholeDollars(run.foundCents)}/yr` : `${rows} read`}
+            {run.foundCents
+              ? `found ${formatWholeDollars(run.foundCents)}/yr`
+              : removal
+                ? "your numbers are up to date"
+                : `${rows} read`}
           </span>
           <Link href="/report" className="font-medium underline" onClick={close}>
             See findings

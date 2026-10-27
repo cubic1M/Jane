@@ -150,6 +150,8 @@ async function finishImportWork(userId: string, runId: string, options: Options)
 
 export type ImportRunView = {
   id: string;
+  // "upload", or "removal": the numbers worked out again after something was removed.
+  kind: string;
   rows: number;
   stage: ImportStage;
   percent: number;
@@ -168,7 +170,7 @@ export async function currentImportRun(
       createdAt: { gte: new Date(now.getTime() - IMPORT_RUN_SHOWN_HOURS * 60 * 60 * 1000) },
     },
     orderBy: { createdAt: "desc" },
-    select: { id: true, rows: true, stage: true, foundCents: true },
+    select: { id: true, kind: true, rows: true, stage: true, foundCents: true },
   });
   if (!run) return null;
   const stage = (run.stage in STAGE_PERCENT ? run.stage : "queued") as ImportStage;

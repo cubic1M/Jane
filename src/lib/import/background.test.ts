@@ -121,10 +121,17 @@ describe("finishImport", () => {
 
 describe("the chip's view", () => {
   it("shows the latest upload not closed in the last day, with its share of the bar", async () => {
-    findFirst.mockResolvedValue({ id: "r1", rows: 172, stage: "looking", foundCents: null });
+    findFirst.mockResolvedValue({
+      id: "r1",
+      kind: "upload",
+      rows: 172,
+      stage: "looking",
+      foundCents: null,
+    });
     const now = new Date("2026-10-27T12:00:00Z");
     expect(await currentImportRun("u1", { now })).toEqual({
       id: "r1",
+      kind: "upload",
       rows: 172,
       stage: "looking",
       percent: 40,

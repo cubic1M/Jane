@@ -92,8 +92,23 @@ export async function importCsvFiles(
   db: ScopedDb,
   accountId: string,
   files: CsvFile[],
-  { onStage }: { onStage?: (stage: ImportStage) => void } = {},
-): Promise<ImportCounts & { files: ImportedFile[]; balances: DayBalance[] }> {
+  {
+    onStage,
+    importRunId,
+  }: {
+    onStage?: (stage: ImportStage) => void;
+    // The upload's record (import_runs), kept on each row it adds so removing it removes them.
+    importRunId?: string;
+  } = {},
+): Promise<
+  ImportCounts & {
+    files: ImportedFile[];
+    balances: DayBalance[];
+    // The first and last day the upload's rows cover (YYYY-MM-DD), or null with no rows.
+    from: string | null;
+    to: string | null;
+  }
+> {
   const account = await db.accounts.findUnique({ where: { id: accountId } });
   const kind = account && accountKindOf(account.type, account.subtype);
   if (!account || account.source !== "csv" || !kind) throw new AccountNotFoundError();
@@ -133,6 +148,7 @@ export async function importCsvFiles(
       pfcDetailed: t.category?.detailed ?? null,
       categorySource: t.categorySource,
       pending: t.pending,
+      importRunId: importRunId ?? null,
     })),
     // Rows already imported (same account and dedupe key) are skipped by the database.
     skipDuplicates: true,
@@ -144,5 +160,10 @@ export async function importCsvFiles(
     skipped: batch.skipped.length,
     files: batch.files,
     balances: batch.balances,
+    from: categorized.reduce<string | null>(
+      (a, t) => (a === null || t.date < a ? t.date : a),
+      null,
+    ),
+    to: categorized.reduce<string | null>((a, t) => (a === null || t.date > a ? t.date : a), null),
   };
 }

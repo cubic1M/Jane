@@ -16,7 +16,14 @@ describe("GET /api/import/status", () => {
   });
 
   it("says how the person's own latest upload is getting on, never cached", async () => {
-    const run = { id: "r1", rows: 172, stage: "looking", percent: 40, foundCents: null } as const;
+    const run = {
+      id: "r1",
+      kind: "upload",
+      rows: 172,
+      stage: "looking",
+      percent: 40,
+      foundCents: null,
+    } as const;
     vi.mocked(currentImportRun).mockResolvedValue(run);
     const response = await GET();
     expect(await response.json()).toEqual({ run });
