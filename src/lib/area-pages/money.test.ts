@@ -208,6 +208,31 @@ describe("moneyTree", () => {
     expect(allItems(cushion).find((i) => i.id === "coming:emergency_fund")!.figure).toBe("$2k");
   });
 
+  // Overnight upload QA: "Uncategorized is up +$3" asked for a look.
+  it("says a category is up only when it rose by enough", () => {
+    const small = {
+      ...FULL,
+      spending: {
+        ...FULL.spending!,
+        changes: [
+          { category: "Uncategorized", beforeCents: 20_000, afterCents: 20_300, changeCents: 300 },
+          { category: "Shopping", beforeCents: 90_000, afterCents: 93_000, changeCents: 3_000 },
+          {
+            category: "Food and drink",
+            beforeCents: 26_000,
+            afterCents: 44_000,
+            changeCents: 18_000,
+          },
+        ],
+      },
+    };
+    expect(
+      allItems(small)
+        .filter((i) => i.id.startsWith("spending:up-"))
+        .map((i) => i.id),
+    ).toEqual(["spending:up-Food and drink"]);
+  });
+
   it("names a branch and a label for every detector in the area", () => {
     const topics = DETECTORS.filter((d) => areaOfCapability(d.capability) === "money").map(
       (d) => d.topic,
