@@ -25,55 +25,57 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "OPENAI *CHATGPT SUBSCR",
-      "perYear": 240
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
     },
     {
-      "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 191.88
-    },
-    {
-      "type": "price_increase",
-      "about": "DISNEY PLUS 1399→1599",
-      "perYear": 24
-    },
-    {
-      "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 1.74
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
+      "about": "APPLE.COM/BILL, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
       "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 AMC 0517 ONLINE seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 5126.12
+      "dollars": 5278.83
     },
     {
       "date": "2026-06-30",
-      "dollars": 2876.41
+      "dollars": 3007.28
     },
     {
       "date": "2026-07-31",
-      "dollars": 1626.11
+      "dollars": 1931.44
     },
     {
       "date": "2026-08-31",
-      "dollars": 135.86
+      "dollars": -252.17
     },
     {
       "date": "2026-09-30",
-      "dollars": -2210.11
+      "dollars": -2283.53
     },
     {
       "date": "2026-10-24",
-      "dollars": -3807.14
+      "dollars": -3800.29
     }
   ]
 }

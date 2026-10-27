@@ -64,6 +64,14 @@ type Ctx = {
 
 const digits = (r: Ctx["r"], n: number) => Array.from({ length: n }, () => r.int(0, 9)).join("");
 
+// The same choice every time for the same payee: a biller's ACH entry says the same thing every
+// month, and an autopay is worded the same on every statement.
+function stable<T>(key: string, options: readonly T[]): T {
+  let h = 0;
+  for (const ch of key) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
+  return options[Math.abs(h) % options.length];
+}
+
 // The other end of a card payment or a transfer.
 const cardOf = (c: Ctx, row: TrueRow) => {
   if (row.flow === "card_payment_out") {
@@ -104,7 +112,7 @@ function cardPaymentFromChecking(c: Ctx, row: TrueRow): string {
   if (c.account.layout === "capital_one_360" && issuer === "capital_one_credit_card") {
     return `Withdrawal to CAPITAL ONE CARD ENDING IN ${card.mask}`;
   }
-  const name = c.r.pick(words[issuer]);
+  const name = stable(`${c.account.id}>${card.id}`, words[issuer]);
   return ach(c, row, name, "PMT", id);
 }
 
@@ -125,14 +133,14 @@ function cardPaymentOnCard(c: Ctx): string {
     ],
     discover_credit_card: ["INTERNET PAYMENT - THANK YOU", "DIRECTPAY FULL BALANCE"],
   };
-  return c.r.pick(options[c.account.layout]);
+  return stable(c.account.id, options[c.account.layout]);
 }
 
 // An ACH entry, as each bank writes one.
 function ach(c: Ctx, row: TrueRow, company: string, entry: string, id = digits(c.r, 10)): string {
   switch (c.account.layout) {
     case "chase_checking":
-      return c.r.chance(0.75)
+      return stable(company, [true, true, true, false])
         ? `${company} ${entry} PPD ID: ${id}`
         : `ORIG CO NAME:${company} ORIG ID:${id} DESC DATE:${yymmdd(row.date)} CO ENTRY DESCR:${entry} SEC:PPD TRACE#:${digits(c.r, 15)} EED:${yymmdd(row.date)} IND ID:${digits(c.r, 8)} IND NAME:${c.who}`;
     case "bofa_checking":
@@ -199,7 +207,7 @@ function describe(c: Ctx, row: TrueRow): string {
         c,
         row,
         row.descriptor,
-        c.r.pick(["WEB PMT", "BILL PAY", "ONLINE PMT", "AUTOPAY"]),
+        stable(row.descriptor, ["WEB PMT", "BILL PAY", "ONLINE PMT", "AUTOPAY"]),
       );
     case "card_payment_out":
       return cardPaymentFromChecking(c, row);
@@ -262,6 +270,25 @@ function describe(c: Ctx, row: TrueRow): string {
           discover_credit_card: "INTEREST CHARGE ON PURCHASES",
         } as Record<string, string>
       )[L];
+    case "check": {
+      const n = row.descriptor.replace("CHECK ", "");
+      if (L === "chase_checking") return `CHECK ${n}`;
+      if (L === "bofa_checking") return `Check ${n}`;
+      if (L === "wells_fargo") return `CHECK # ${n}`;
+      if (L === "capital_one_360") return `Check #${n}`;
+      return `CHEQUE ${n}`;
+    }
+    case "reward":
+      return (
+        {
+          chase_credit_card: "REDEMPTION CREDIT",
+          bofa_credit_card: "CASH REWARDS STATEMENT CREDIT",
+          capital_one_credit_card: "CREDIT-CASH BACK REWARD",
+          citi_credit_card: "THANKYOU POINTS REDEMPTION",
+          amex: "AMEX REWARDS CREDIT",
+          discover_credit_card: "CASHBACK BONUS REDEMPTION PYMT/STMT CRDT",
+        } as Record<string, string>
+      )[L];
     case "interest_earned":
       return L === "capital_one_360"
         ? "Monthly Interest Paid"
@@ -301,13 +328,14 @@ function feeText(c: Ctx, row: TrueRow): string {
     return "ATM FEE";
   }
   if (d === "LATE FEE" && L === "bofa_credit_card") return "LATE FEE FOR PAYMENT DUE";
+  if (d === "FOREIGN TRANSACTION FEE" && L === "bofa_credit_card") return "INTL TRANSACTION FEE";
   return d;
 }
 
 // --- Each bank's own columns ------------------------------------------------------------------
 
 function chaseCategory(row: TrueRow): string {
-  if (row.flow === "card_payment_in") return "";
+  if (row.flow === "card_payment_in" || row.flow === "reward") return "";
   const c = row.category;
   if (c.startsWith("BANK_FEES")) return "Fees & Adjustments";
   if (c === "FOOD_AND_DRINK_GROCERIES") return "Groceries";
@@ -325,7 +353,8 @@ function chaseCategory(row: TrueRow): string {
 
 function capitalOneCategory(row: TrueRow): string {
   const c = row.category;
-  if (row.flow === "card_payment_in" || row.flow === "refund") return "Payment/Credit";
+  if (row.flow === "card_payment_in" || row.flow === "refund" || row.flow === "reward")
+    return "Payment/Credit";
   if (c.startsWith("BANK_FEES")) return "Fee/Interest Charge";
   if (c === "FOOD_AND_DRINK_GROCERIES") return "Grocery";
   if (c.startsWith("FOOD_AND_DRINK")) return "Dining";
@@ -342,7 +371,7 @@ function capitalOneCategory(row: TrueRow): string {
 
 function amexCategory(row: TrueRow): string {
   const c = row.category;
-  if (row.flow === "card_payment_in") return "";
+  if (row.flow === "card_payment_in" || row.flow === "reward") return "";
   if (c.startsWith("BANK_FEES")) return "Fees & Adjustments-Fees & Adjustments";
   if (c === "FOOD_AND_DRINK_GROCERIES") return "Merchandise & Supplies-Groceries";
   if (c.startsWith("FOOD_AND_DRINK")) return "Restaurant-Restaurant";
@@ -361,6 +390,7 @@ function amexCategory(row: TrueRow): string {
 function discoverCategory(row: TrueRow): string {
   const c = row.category;
   if (row.flow === "card_payment_in" || row.flow === "refund") return "Payments and Credits";
+  if (row.flow === "reward") return "Awards and Rebate Credits";
   if (row.flow === "interest_charge") return "Interest";
   if (c.startsWith("BANK_FEES")) return "Fees";
   if (c === "FOOD_AND_DRINK_GROCERIES") return "Supermarkets";
@@ -383,6 +413,7 @@ function chaseType(row: TrueRow, account: CsvAccount): string {
   if (account.kind === "credit_card") {
     if (row.flow === "card_payment_in") return "Payment";
     if (row.flow === "refund") return "Return";
+    if (row.flow === "reward") return "Adjustment";
     if (row.flow === "fee" || row.flow === "interest_charge") return "Fee";
     return "Sale";
   }
@@ -404,6 +435,7 @@ function chaseType(row: TrueRow, account: CsvAccount): string {
         atm: "ATM",
         fee: "FEE_TRANSACTION",
         fee_refund: "REFUND_TRANSACTION",
+        check: "CHECK_PAID",
         interest_earned: "MISC_CREDIT",
       } as Record<string, string>
     )[row.flow] ?? "MISC_DEBIT"
@@ -531,13 +563,13 @@ function renderLines(
         "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #",
         ...newest.map((l) =>
           [
-            l.amountCents < 0 ? "CREDIT" : "DEBIT",
+            l.amountCents < 0 ? "CREDIT" : l.row.flow === "check" ? "CHECK" : "DEBIT",
             us(l.date),
             quote(l.description),
             money(-out(l)),
             chaseType(l.row, a),
             money(after.get(l) ?? 0),
-            "",
+            l.row.flow === "check" ? l.description.replace("CHECK ", "") : "",
             "",
           ].join(","),
         ),

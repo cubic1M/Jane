@@ -19,8 +19,13 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "HEADSPACE",
-      "perYear": 155.88
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SLING TV",
+      "perYear": 480
     },
     {
       "type": "subscription_review",
@@ -34,74 +39,87 @@
     },
     {
       "type": "subscription_review",
-      "about": "LA FITNESS",
-      "perYear": 419.88
-    },
-    {
-      "type": "subscription_review",
       "about": "AMAZON MUSIC*AB12C",
       "perYear": 131.88
     },
     {
       "type": "subscription_review",
-      "about": "GRAMMARLY",
-      "perYear": 144
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "price_increase",
+      "about": "CRUNCHYROLL*MEMBERSHIP 799→999",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 143.88
+    },
+    {
+      "type": "price_increase",
+      "about": "ESPN PLUS 1099→1199",
+      "perYear": 12
+    },
+    {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
     },
     {
       "type": "duplicate_charge",
-      "about": "WALGREENS #1234 twice",
-      "perYear": 66.31
-    },
-    {
-      "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 3
-    },
-    {
-      "type": "bank_fees",
-      "about": "card fees",
-      "perYear": 695
+      "about": "ULTA BEAUTY #331 twice",
+      "perYear": 81.21
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 1118.25
+      "perYear": 1071.43
     }
   ],
   "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #221, irregular"
+    },
     {
       "type": "subscription_review",
       "about": "TIM HORTONS #8812 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "3 VIVID SEATS 866-848-8499 seats"
+      "about": "2 ALAMO DRAFTHOUSE 042 seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2174.32
+      "dollars": -1992.01
     },
     {
       "date": "2026-06-30",
-      "dollars": -2005.99
+      "dollars": -2784.11
     },
     {
       "date": "2026-07-31",
-      "dollars": -505.7
+      "dollars": -332.56
     },
     {
       "date": "2026-08-31",
-      "dollars": -663.79
+      "dollars": 199
     },
     {
       "date": "2026-09-30",
-      "dollars": -1595.93
+      "dollars": 110.21
     },
     {
       "date": "2026-10-24",
-      "dollars": -1087.22
+      "dollars": 896.24
     }
   ]
 }

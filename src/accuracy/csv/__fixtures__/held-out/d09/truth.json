@@ -25,46 +25,81 @@
   "findings": [
     {
       "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
+    },
+    {
+      "type": "price_increase",
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
+    },
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
       "about": "CALM.COM",
       "perYear": 179.88
     },
     {
       "type": "subscription_review",
-      "about": "AMAZON MUSIC*AB12C",
-      "perYear": 131.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "STRAVA",
-      "perYear": 143.88
+      "about": "CANVA* 04321",
+      "perYear": 179.88
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PEETS COFFEE 00121 at one price"
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #221, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "3 VIVID SEATS 866-848-8499 seats"
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 UNITED 0162345678901 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 1385.76
+      "dollars": 917.41
     },
     {
       "date": "2026-08-31",
-      "dollars": -232.34
+      "dollars": -595.62
     },
     {
       "date": "2026-09-30",
-      "dollars": -1386.11
+      "dollars": -2132.45
     },
     {
       "date": "2026-10-24",
-      "dollars": -3756.25
+      "dollars": -4291.43
     }
   ]
 }

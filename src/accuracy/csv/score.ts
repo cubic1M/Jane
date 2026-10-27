@@ -9,6 +9,7 @@ import { parseCsv } from "@/data-sources/csv/parse-csv";
 import { normalizeDescription } from "@/data-sources/merchant";
 import { ACCOUNT_KINDS } from "@/data-sources/types";
 import { detect } from "@/detection/detect";
+import { addDays, expectedDates, isComingUp } from "@/detection/forecast";
 import { withDirectory } from "@/detection/merchants";
 import { isAmbiguousRecurring } from "@/detection/rules/subscription-review";
 import { buildStreams, merchantOf } from "@/detection/streams";
@@ -211,6 +212,8 @@ export type PersonScore = {
   categoryRight: number;
   categoryOf: number;
   findings: Record<TrueFinding["type"], Tally>;
+  // "Coming up": bills due in the next 31 days, by their charges so far.
+  bills: Tally;
   // Missed subscriptions found as recurring charges whose category can't say: on a live upload
   // Claude is asked about these (the bench runs without it).
   subscriptionsForClaude: number;
@@ -351,6 +354,36 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
     miss(t.type, "missed", `${t.note} ${t.account ?? ""}`);
   }
 
+  // "Coming up" in the next 31 days: the streams upcomingBills lists, by their charges.
+  const bills = { tp: 0, fp: 0, fn: 0 };
+  const until = addDays(person.asOf, 31);
+  const coming = buildStreams(up.input).filter(
+    (s) => s.active && isComingUp(s) && expectedDates(s, person.asOf, until).length > 0,
+  );
+  const neutralBills = person.truth.neutralBills.flat();
+  const billed = new Set<number>();
+  for (const s of coming) {
+    const ids = s.charges.map((c) => c.id);
+    const i = person.truth.bills.findIndex(
+      (b, j) => !billed.has(j) && b.rows.some((id) => ids.includes(id)),
+    );
+    if (i >= 0) {
+      billed.add(i);
+      bills.tp += 1;
+    } else if (
+      !ids.some((id) => neutralBills.includes(id)) &&
+      !person.truth.bills.some((b) => b.rows.some((id) => ids.includes(id)))
+    ) {
+      bills.fp += 1;
+      miss("bills", "false alarm", `${s.merchant} ${s.lastAmountCents} ${s.frequency}`);
+    }
+  }
+  person.truth.bills.forEach((b, i) => {
+    if (billed.has(i)) return;
+    bills.fn += 1;
+    miss("bills", "missed", b.note);
+  });
+
   // The spending chart's monthly totals, against the truth's.
   const months = monthEnds(person).map((d) => d.slice(0, 7));
   const either = new Set(person.rows.filter((r) => r.kind === "either").map((r) => r.id));
@@ -428,6 +461,7 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
     categoryRight,
     categoryOf: readRight.length,
     findings: tallies,
+    bills,
     subscriptionsForClaude,
     dollars,
     falseDoubleCharges: tallies.duplicate_charge.fp,
@@ -452,6 +486,7 @@ export type CsvScoreboard = {
   };
   category: { right: number; of: number; uncategorized: number };
   findings: Record<TrueFinding["type"], Tally>;
+  bills: Tally;
   subscriptionsForClaude: number;
   dollars: { truth: number; jane: number; absError: number };
   falseDoubleCharges: { count: number; people: number };
@@ -491,6 +526,7 @@ export function summarize(scores: readonly PersonScore[]): CsvScoreboard {
       uncategorized: sum((s) => s.categoryOf - s.categorized),
     },
     findings,
+    bills: { tp: sum((s) => s.bills.tp), fp: sum((s) => s.bills.fp), fn: sum((s) => s.bills.fn) },
     subscriptionsForClaude: sum((s) => s.subscriptionsForClaude),
     dollars: {
       truth: sum((s) => s.dollars.truth),

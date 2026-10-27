@@ -25,23 +25,23 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "GOOGLE *YouTubePremium",
-      "perYear": 167.88
-    },
-    {
-      "type": "subscription_review",
       "about": "OPENAI *CHATGPT SUBSCR",
       "perYear": 240
     },
     {
       "type": "subscription_review",
-      "about": "AUDIBLE*2K94LM",
-      "perYear": 179.4
+      "about": "GOOGLE *YouTubePremium",
+      "perYear": 167.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 445.46
+      "perYear": 457.14
     }
   ],
   "notFindings": [
@@ -51,45 +51,41 @@
     },
     {
       "type": "duplicate_charge",
-      "about": "3 SOUTHWES 5262123456789 seats"
+      "about": "2 SOUTHWES 5262123456789 seats"
     },
     {
       "type": "duplicate_charge",
-      "about": "HOME DEPOT #6612 twice, refunded"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "pending copy of a posted charge"
+      "about": "TARGET 00023456 twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -3575.07
+      "dollars": -1917.91
     },
     {
       "date": "2026-05-31",
-      "dollars": 755.56
+      "dollars": 613.65
     },
     {
       "date": "2026-06-30",
-      "dollars": 1822.49
+      "dollars": 1531.54
     },
     {
       "date": "2026-07-31",
-      "dollars": 2258.54
+      "dollars": 2474.99
     },
     {
       "date": "2026-08-31",
-      "dollars": 3127.81
+      "dollars": 3465.33
     },
     {
       "date": "2026-09-30",
-      "dollars": 3479.55
+      "dollars": 3960.32
     },
     {
       "date": "2026-10-24",
-      "dollars": 4430.94
+      "dollars": 5085.22
     }
   ]
 }

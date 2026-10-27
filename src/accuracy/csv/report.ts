@@ -43,6 +43,8 @@ export function headline(b: CsvScoreboard) {
         [`${t}.recall`, Number(recall(b.findings[t]).toFixed(4))],
       ]),
     ),
+    "bills.precision": Number(precision(b.bills).toFixed(4)),
+    "bills.recall": Number(recall(b.bills).toFixed(4)),
     falseDoubleCharges: b.falseDoubleCharges.count,
     dollarError: b.dollars.truth ? b.dollars.absError / b.dollars.truth : 0,
     spendingError: b.spendingError,
@@ -75,6 +77,7 @@ export function table(set: CsvSet, b: CsvScoreboard): string {
     "| Finding | Precision | Recall | Right | False alarms | Missed |",
     "| --- | ---: | ---: | ---: | ---: | ---: |",
     ...FINDING_TYPES.map(f),
+    `| bills coming up (31 days) | ${pct(precision(b.bills))} | ${pct(recall(b.bills))} | ${b.bills.tp} | ${b.bills.fp} | ${b.bills.fn} |`,
     "",
     `Missed subscriptions Claude would be asked about on a live upload: ${b.subscriptionsForClaude} of ${b.findings.subscription_review.fn}.`,
   ].join("\n");
