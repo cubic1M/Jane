@@ -4,6 +4,7 @@ import {
   FOUND_TERM_MONTHS,
   INSURANCE_CATEGORIES,
   INSURER_KINDS,
+  INSURER_NAMES,
   PREMIUM_FREQUENCY_OF,
 } from "@/config/found-policies";
 import type { PremiumFrequency } from "@/config/documents";
@@ -36,6 +37,14 @@ export function insurerKind(merchantKey: string): PolicyKind | null {
   return INSURER_KINDS.find((i) => merchantMatches(merchantKey, i.words))?.kind ?? null;
 }
 
+// A known insurer's own name ("GEICO", "State Farm"), not the statement's words around it
+// (overnight upload QA: "Geico Auto Payment car", "State Farm Ro 27 car"). Null: not known.
+export function insurerName(merchantKey: string): string | null {
+  const word = INSURER_KINDS.flatMap((i) => i.words).find((w) => merchantMatches(merchantKey, [w]));
+  if (!word) return null;
+  return INSURER_NAMES[word] ?? word.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
 // The first anniversary of `from`, a term at a time, on or after asOf.
 export function estimatedRenewal(from: string, asOf: string, termMonths: number): string {
   let next = addMonths(from, termMonths);
@@ -55,7 +64,7 @@ export function policiesFromStreams(input: DetectionInput, streams: Stream[]): F
     return [
       {
         merchantKey: s.merchantKey,
-        carrier: s.merchant,
+        carrier: insurerName(s.merchantKey) ?? s.merchant,
         kind: kind ?? "other",
         premiumCents: s.lastAmountCents,
         premiumFrequency: frequency,
