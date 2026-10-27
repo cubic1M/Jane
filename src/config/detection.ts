@@ -623,6 +623,10 @@ export const DUPLICATE_CHARGE_PER_SEAT_CATEGORIES: readonly PfcDetailed[] = [
 // Cinemas sell a seat each too, but Plaid files them with streaming services, where a double
 // charge is real, so they are known by name (whole words of the merchant; accuracy bench, first
 // held-out set: two seats at AMC).
+// This many identical charges at one place on one day are a group's seats (or rounds), not a
+// card run twice: a shop doesn't run a card three times (CSV bench: tickets at a cinema whose
+// name says nothing).
+export const DUPLICATE_CHARGE_GROUP_MIN = 3;
 export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
   "theatre",
   "theatres",
