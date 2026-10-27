@@ -93,6 +93,11 @@ export const SHORT_RUN_CATEGORIES: readonly PfcDetailed[] = [
 // A run among a merchant's other charges must be at least this share of them; less, and prices
 // that only look alike happened to land a month apart (a grocer's bills; accuracy bench).
 export const RUN_MIN_SHARE_OF_CHARGES = 0.5;
+// A usage bill no rule knows by name ("METRO WATER SERVICES", a power company): no category, one
+// charge in each month, on days at most USAGE_BILL_DAY_SPREAD apart, at least USAGE_BILL_MIN_CHARGES
+// times, is a bill whose amount moves, like VARIABLE_BILL_CATEGORIES (CSV bench, round 11).
+export const USAGE_BILL_MIN_CHARGES = 3;
+export const USAGE_BILL_DAY_SPREAD = 5;
 // A yearly plan is seen once in a year of history: one charge at a SUBSCRIPTION_MERCHANTS
 // merchant in this range (in cents) is its yearly renewal (accuracy bench: every Amazon Prime
 // was missed). Smaller is a one-off (a book, a rental); larger is equipment. Low confidence.
