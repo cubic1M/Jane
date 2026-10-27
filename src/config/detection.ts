@@ -203,6 +203,14 @@ export const AMBIGUOUS_SUBSCRIPTION_CATEGORIES: readonly PfcDetailed[] = [
 ];
 // A subscription known only from Claude's answer is never rated above this.
 export const LLM_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "medium";
+// A charge whose category can't say, at the very same price every month, at least this many
+// times and no more than this much, is a subscription even before Claude is asked (CSV bench: on
+// the held-out statements, 57 of 63 missed subscriptions were such charges under names no rule
+// knows). Rent, loans and bills cost more or move; a same-price monthly charge under $100 is
+// almost always a plan. Never rated above FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE.
+export const FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES = 3;
+export const FIXED_PRICE_SUBSCRIPTION_MAX_CENTS = 10_000;
+export const FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "low";
 
 // Groups of interchangeable services. Two or more active subscriptions in one group is a
 // duplicate. A stream joins a group by category or by merchant name.

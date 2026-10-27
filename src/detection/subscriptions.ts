@@ -1,6 +1,6 @@
 import { NEXT_CHARGE_WINDOW_DAYS, OWN_ACCOUNT_TRANSFERS, type Frequency } from "@/config/detection";
 import { billName, expectedDates, isBillStream } from "./forecast";
-import { isAmbiguousRecurring, isSubscription } from "./rules/subscription-review";
+import { isAmbiguousRecurring, isSubscriptionUnless } from "./rules/subscription-review";
 import { buildStreams } from "./streams";
 import type { DetectionInput } from "./types";
 import { addDays } from "./units";
@@ -28,6 +28,7 @@ export type RecurringCharge = {
 
 export function recurringCharges(input: DetectionInput): RecurringCharge[] {
   const confirmed = new Set(input.subscriptionMerchantKeys ?? []);
+  const declined = new Set(input.declinedSubscriptionMerchantKeys ?? []);
   return buildStreams(input)
     .filter((s) => s.active && s.frequency !== null && s.annualCostCents !== null)
     .filter((s) => isBillStream(s) && !OWN_ACCOUNT_TRANSFERS.includes(s.pfcDetailed ?? ""))
@@ -41,7 +42,9 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
       nextDate:
         expectedDates(s, input.asOf, addDays(input.asOf, NEXT_CHARGE_WINDOW_DAYS))[0] ?? null,
       annualCostCents: s.annualCostCents as number,
-      subscription: isSubscription(s) || (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey)),
+      subscription:
+        isSubscriptionUnless(declined)(s) ||
+        (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey)),
     }))
     .sort((a, b) => b.annualCostCents - a.annualCostCents || a.merchant.localeCompare(b.merchant));
 }
