@@ -97,6 +97,12 @@ describe("the plans and goals tree", () => {
     expect(tree.sub).toBe("1 urgent · 3 to look at");
   });
 
+  it("says a card balance isn't known", () => {
+    const { tree } = plansTree(input({ debt: { accounts: 1, owedCents: 0, known: 0 } }));
+    const debt = tree.branches.flatMap((b) => b.items).find((i) => i.id === "money:debt")!;
+    expect(debt.figure).toBe("Not known");
+  });
+
   it("lifts only urgent dates to the chips, at most three, biggest first", () => {
     const deadlines = [10_000, 30_000, 20_000, 40_000].map((amountCents, n) => ({
       key: `d${n}`,

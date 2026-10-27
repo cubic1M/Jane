@@ -74,6 +74,8 @@ export type MoneyTreeInput = {
     summary: string;
     worthCents: number;
     urgency: string;
+    // "risk": what's protected (a cushion, cover), an amount, not a yearly saving.
+    worthKind?: string;
   }[];
   // Each checking or savings account's lowest point over the forecast.
   lows: { accountId: string; name: string; startCents: number; lowCents: number; date: string }[];
@@ -128,7 +130,8 @@ export type MoneyTreeInput = {
     // A home or car loan with nothing linked to it, if any.
     assetPrompt: "home" | "vehicle" | null;
     goals: { total: number; onTrack: number };
-    debt: { accounts: number; owedCents: number };
+    // known: how many have a balance (uploaded card statements carry none).
+    debt: { accounts: number; owedCents: number; known?: number };
   };
   rules: number;
 };
@@ -176,7 +179,12 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       item(node.branch, s.topic, {
         label: node.label,
         status,
-        figure: s.worthCents > 0 ? perYear(s.worthCents) : undefined,
+        figure:
+          s.worthCents > 0
+            ? s.worthKind === "risk"
+              ? shortMoney(s.worthCents)
+              : perYear(s.worthCents)
+            : undefined,
         summary: s.summary,
         cents: s.worthCents,
       }),
@@ -389,8 +397,11 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
     items.have.push(
       item("have", "loans", {
         label: "Loans and cards",
-        figure: shortMoney(h.debt.owedCents),
-        summary: `Owed across ${plural(h.debt.accounts, "account")}.`,
+        figure: h.debt.known === 0 ? "Not known" : shortMoney(h.debt.owedCents),
+        summary:
+          h.debt.known === 0
+            ? "Your files don't say what you owe yet. Add a balance on the import page."
+            : `Owed across ${plural(h.debt.accounts, "account")}.`,
       }),
     );
   }
