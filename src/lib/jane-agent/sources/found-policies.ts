@@ -3,7 +3,8 @@ import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { POLICY_KINDS } from "@/config/insurance";
 import { formatCents } from "@/lib/money";
 import type { Candidate } from "../types";
-import { shortDate, type MessageSource } from "./source";
+import { type MessageSource } from "./source";
+import { dayLabel } from "@/lib/day-label";
 
 // Insurance found from payments (spec step 99): "I found your car insurance from your
 // payments", once per policy, with Confirm (it becomes cover on the profile) and Not
@@ -23,7 +24,7 @@ export const foundPoliciesSource: MessageSource = {
             ? `, ${formatCents(p.premiumCents)} ${PREMIUM_FREQUENCIES[p.premiumFrequency].label}`
             : "";
         const renews = p.nextRenewal
-          ? ` It looks like it renews around ${shortDate(p.nextRenewal)} (an estimate from when the payments started).`
+          ? ` It looks like it renews around ${dayLabel(p.nextRenewal)} (an estimate from when the payments started).`
           : "";
         return {
           kind: "decision",

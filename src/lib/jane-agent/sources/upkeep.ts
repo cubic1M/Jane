@@ -2,8 +2,8 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import { tuneUpLines } from "../replies-review";
 import type { Candidate } from "../types";
-import { shortDate, type MessageSource } from "./source";
-import { monthLabel } from "@/lib/day-label";
+import { type MessageSource } from "./source";
+import { dayLabel, monthLabel } from "@/lib/day-label";
 
 // Plans that keep up (spec step 101): this month's budget tune-up (Accept all, Change,
 // Keep) or, when autopilot applied it, what Jane changed (with Undo); and transfers to
@@ -48,7 +48,7 @@ export const upkeepSource: MessageSource = {
     for (const t of upkeep.transfers) {
       out.push({
         kind: "decision",
-        body: `You moved ${formatCents(t.amountCents)} to savings on ${shortDate(t.date)}. Count it toward your goal "${t.goal.name}"?`,
+        body: `You moved ${formatCents(t.amountCents)} to savings on ${dayLabel(t.date)}. Count it toward your goal "${t.goal.name}"?`,
         refs: { transactionId: t.transactionId, goalId: t.goal.id },
         actions: [
           { id: "transfer.count", label: "Count it", kind: "primary" },

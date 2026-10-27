@@ -1,8 +1,9 @@
 import type { Gift, GivingView } from "@/lib/giving";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
-import { shortDate } from "./sources/source";
+
 import type { MessageAction, MessageRefs } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // Giving in the chat (spec step 168): a gift's missing receipt, the giving options before
 // the year ends (each as the tax with and without it; demo advice), and "how should I give".
@@ -13,7 +14,7 @@ type Message = { body: string; refs: MessageRefs; actions: MessageAction[] };
 
 export function receiptMessage(g: Gift): Message {
   return {
-    body: `Your ${formatCents(g.cents)} gift to ${g.payee} on ${shortDate(g.date)} needs a written receipt from them to count on your taxes. Have you got it?`,
+    body: `Your ${formatCents(g.cents)} gift to ${g.payee} on ${dayLabel(g.date)} needs a written receipt from them to count on your taxes. Have you got it?`,
     refs: { taxGift: g.transactionId },
     actions: [
       { id: "tax.receipt_got", label: "I have it", kind: "primary" },

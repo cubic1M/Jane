@@ -1,6 +1,7 @@
 import type { Candidate, MessageAction } from "../types";
 import type { LocalTime } from "../quiet-hours";
 import type { Snapshot } from "../snapshot";
+import { dayLabel } from "@/lib/day-label";
 
 // A message source (spec step 82): one kind of thing Jane can bring up. Each looks at the
 // snapshot and returns what it would say; Jane's brain (../brain.ts) picks what to post.
@@ -30,14 +31,6 @@ export const things = (n: number) => `${n} ${n === 1 ? "thing" : "things"}`;
 export const sentence = (text: string) =>
   /[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`;
 
-// "Oct 31".
-export const shortDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-
 // "today", "tomorrow", "in 2 days".
 export const inDays = (days: number) =>
   days <= 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
@@ -45,7 +38,7 @@ export const inDays = (days: number) =>
 // Spec step 89: a date the way Jane always says it, "Oct 28 (in 3 days)", counted from
 // asOf (YYYY-MM-DD).
 export const dateAndDays = (date: string, asOf: string) =>
-  `${shortDate(date)} (${inDays(
+  `${dayLabel(date)} (${inDays(
     Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / 86_400_000),
   )})`;
 

@@ -3,7 +3,7 @@ import { formatCents } from "@/lib/money";
 import type { LocalTime } from "../quiet-hours";
 import { weekDone } from "../replies-review";
 import type { Snapshot } from "../snapshot";
-import { shortDate } from "./source";
+import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
 
 // How last week went, as one line of the morning brief on the first day of the person's week.
@@ -30,6 +30,6 @@ export function lastWeekLine(snapshot: Snapshot, local: LocalTime, now: Date): s
     covered.length > 0 ? `we covered ${covered.join(" and ")}` : null,
   ].filter(Boolean);
   if (parts.length === 0) return null;
-  const since = week ? `The week of ${shortDate(week.start)}` : "Last week";
+  const since = week ? `The week of ${dayLabel(week.start)}` : "Last week";
   return `${since}: ${parts.join("; ")}.`;
 }

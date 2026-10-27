@@ -2,8 +2,9 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { sourceLabel } from "@/insights/debts";
 import { formatCents } from "@/lib/money";
 import { SEE_DEBTS } from "../debt-replies";
-import { shortDate, snoozeButton, type MessageSource } from "./source";
+import { snoozeButton, type MessageSource } from "./source";
 import { formatRate } from "@/lib/percent";
+import { dayLabel } from "@/lib/day-label";
 
 // Debts (spec step 109): Jane keeps every debt up to date on its own and says so when
 // something new turns up. A buy now, pay later plan found from payments gets one message
@@ -21,7 +22,7 @@ export const debtsSource: MessageSource = {
         const left =
           d.balanceCents === null
             ? `${formatCents(d.paymentCents ?? 0)} ${d.paymentEvery === "month" ? "a month" : "every two weeks"}, with what's left not in the payments`
-            : `${formatCents(d.balanceCents)} left${d.payoffDate ? `, the last payment on ${shortDate(d.payoffDate)}` : ""}`;
+            : `${formatCents(d.balanceCents)} left${d.payoffDate ? `, the last payment on ${dayLabel(d.payoffDate)}` : ""}`;
         const rate =
           d.aprBps === null
             ? "If you know its rate and what's left, add them and I'll count it properly."

@@ -5,13 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { DEADLINE_HORIZON_DAYS } from "@/config/deadlines";
 import { isoDate } from "@/detection/units";
-import {
-  DEADLINE_KIND_LABELS,
-  dueIn,
-  groupDeadlines,
-  shortDate,
-  type Deadline,
-} from "@/insights/deadlines";
+import { DEADLINE_KIND_LABELS, dueIn, groupDeadlines, type Deadline } from "@/insights/deadlines";
 import { listDeadlines } from "@/lib/deadlines";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -19,6 +13,7 @@ import { finishDeadline, removeDeadline } from "./actions";
 import { DeadlineForm } from "./deadline-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Deadlines (spec step 71): return windows, trials, renewals, payments and the person's
 // own dates, soonest first.
@@ -36,7 +31,7 @@ function Row({ deadline, today }: { deadline: Deadline; today: string }) {
           <span className="font-semibold">{deadline.title}</span>
         </div>
         <span className="text-sm">
-          <span className="font-medium">{shortDate(deadline.date)}</span>
+          <span className="font-medium">{dayLabel(deadline.date)}</span>
           <span className="text-zinc-500"> · {dueIn(deadline.date, today)}</span>
         </span>
       </div>

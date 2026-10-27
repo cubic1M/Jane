@@ -1,6 +1,6 @@
 import { formatCents } from "@/lib/money";
 import { BillPayError, payBill } from "@/lib/money-movement/bill-pay";
-import { shortDate } from "../sources/source";
+
 import {
   ChatActionError,
   answeredElsewhere,
@@ -8,6 +8,7 @@ import {
   type ActionContext,
   type ActionHandler,
 } from "./handler";
+import { dayLabel } from "@/lib/day-label";
 
 // Buttons on a bill to pay (spec step 145): Pay it (the person's one tap, checked again
 // against checking's forecast at that moment) and I'll pay it myself, which only answers it
@@ -28,7 +29,7 @@ export const billPay: ActionHandler = {
       const paid = await payBill(userId, keyOf(context), "person", { client, now });
       return {
         answeredWith: context.action.label,
-        note: `Done. ${formatCents(paid.amountCents)} goes to ${paid.name} on ${shortDate(paid.runOn)}; you can undo it on Transfers until then.`,
+        note: `Done. ${formatCents(paid.amountCents)} goes to ${paid.name} on ${dayLabel(paid.runOn)}; you can undo it on Transfers until then.`,
         actions: linksOf(message.actions),
       };
     } catch (error) {
