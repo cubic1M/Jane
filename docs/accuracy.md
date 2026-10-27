@@ -139,6 +139,31 @@ Calibration, second held-out set:
 | 70–79% | 8 | 75% | 100% |
 | 80–89% | 18 | 86% | 100% |
 | 90–100% | 18 | 95% | 100% |
+
+Third held-out set (40 people, 9384 transactions):
+
+| Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| subscriptions | 87.6% | 96.6% | 32.5% | 113 | 16 | 4 |
+| price_rises | 100.0% | 100.0% | 0.0% | 5 | 0 | 0 |
+| fees | 100.0% | 91.7% | 0.0% | 11 | 0 | 1 |
+| double_charges | 100.0% | 100.0% | 0.0% | 33 | 0 | 0 |
+| idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 0.0% | 5 | 0 | 0 |
+| bills | 98.2% | 99.6% | 12.5% | 273 | 5 | 1 |
+| income | 100.0% | 100.0% | 0.0% | 680 | 0 | 0 |
+| transfers | 100.0% | 99.7% | 0.0% | 768 | 0 | 2 |
+
+Calibration, third held-out set:
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 41 | 55% | 100% |
+| 60–69% | 16 | 66% | 100% |
+| 70–79% | 8 | 73% | 100% |
+| 80–89% | 12 | 85% | 100% |
+| 90–100% | 6 | 95% | 100% |
 <!-- scoreboard:end -->
 
 ### What changed in #766

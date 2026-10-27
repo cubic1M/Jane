@@ -112,5 +112,43 @@
       "precision": 1,
       "recall": 0.9978
     }
+  },
+  "held-out-3": {
+    "subscriptions": {
+      "precision": 0.876,
+      "recall": 0.9658
+    },
+    "price_rises": {
+      "precision": 1,
+      "recall": 1
+    },
+    "fees": {
+      "precision": 1,
+      "recall": 0.9167
+    },
+    "double_charges": {
+      "precision": 1,
+      "recall": 1
+    },
+    "idle_cash": {
+      "precision": 1,
+      "recall": 1
+    },
+    "card_interest": {
+      "precision": 1,
+      "recall": 1
+    },
+    "bills": {
+      "precision": 0.982,
+      "recall": 0.9964
+    },
+    "income": {
+      "precision": 1,
+      "recall": 1
+    },
+    "transfers": {
+      "precision": 1,
+      "recall": 0.9974
+    }
   }
 }
