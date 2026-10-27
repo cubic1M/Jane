@@ -42,4 +42,23 @@ describe("rules for statement uploads", () => {
     expect(out("NAVIENT DES:PAYMENT")).toBe("LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
     expect(out("TOYOTA FINANCIAL SVCS")).toBe("LOAN_PAYMENTS_CAR_PAYMENT");
   });
+
+  it("knows pay however the bank or payroll company writes it", () => {
+    for (const d of [
+      "DIRECT DEPOSIT ACME CORP",
+      "ACME CORP DIRECT DEPOSIT",
+      "GUSTO PAY 123456 ACME INC",
+      "PAYCHEX TPS DEPOSIT",
+      "ADP WAGE PAY",
+      "RIPPLING PAY",
+    ])
+      expect(into(d), d).toBe("INCOME_SALARY");
+    // Paying a payroll company isn't pay.
+    expect(out("GUSTO PAYROLL FEE")).not.toBe("INCOME_SALARY");
+  });
+
+  it("calls cash and cheques paid in a deposit", () => {
+    expect(into("MOBILE DEPOSIT")).toBe("TRANSFER_IN_DEPOSIT");
+    expect(into("ATM CASH DEPOSIT 1234 MAIN ST")).toBe("TRANSFER_IN_DEPOSIT");
+  });
 });
