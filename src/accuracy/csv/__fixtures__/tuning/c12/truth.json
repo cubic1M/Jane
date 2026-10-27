@@ -19,63 +19,72 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
+      "about": "NYTIMES*NYTDIGITAL",
+      "perYear": 75
+    },
+    {
+      "type": "price_increase",
+      "about": "NYTIMES*NYTDIGITAL 400→625",
+      "perYear": 27
     },
     {
       "type": "subscription_review",
-      "about": "ADOBE *CREATIVE CLD",
-      "perYear": 275.88
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
     },
     {
       "type": "subscription_review",
-      "about": "OPENAI *CHATGPT SUBSCR",
-      "perYear": 240
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
     },
     {
       "type": "idle_cash",
-      "about": "cash 6859910, excess 5958060",
+      "about": "cash 7045664, excess 6184651",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+      "about": "NETFLIX.COM, cancelled"
     },
     {
-      "type": "duplicate_charge",
-      "about": "2 SOUTHWES 5262123456789 seats"
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 32023.16
+      "dollars": 32438.02
     },
     {
       "date": "2026-05-31",
-      "dollars": 37461.81
+      "dollars": 37189.18
     },
     {
       "date": "2026-06-30",
-      "dollars": 42983.62
+      "dollars": 43048.86
     },
     {
       "date": "2026-07-31",
-      "dollars": 52747.68
+      "dollars": 53062.6
     },
     {
       "date": "2026-08-31",
-      "dollars": 57479.7
+      "dollars": 57948
     },
     {
       "date": "2026-09-30",
-      "dollars": 61790.42
+      "dollars": 63507.38
     },
     {
       "date": "2026-10-24",
-      "dollars": 67259.24
+      "dollars": 69210.45
     }
   ]
 }

@@ -25,77 +25,77 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 215.88
-    },
-    {
-      "type": "price_increase",
-      "about": "NETFLIX.COM 1549→1799",
-      "perYear": 30
+      "about": "LA FITNESS",
+      "perYear": 419.88
     },
     {
       "type": "subscription_review",
-      "about": "SPOTIFY USA",
-      "perYear": 143.88
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
     },
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 250
+      "perYear": 95
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 458.78
+      "perYear": 448.08
     },
     {
       "type": "idle_cash",
-      "about": "cash 1989721, excess 994287",
+      "about": "cash 2129461, excess 1178527",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PEETS COFFEE 00121 at one price"
+      "about": "MICROSOFT*XBOX, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "2 ALAMO DRAFTHOUSE 042 seats"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "PETCO 1234 twice, refunded"
+      "about": "ULTA BEAUTY #331 twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 615.01
+      "dollars": 1066.53
     },
     {
       "date": "2026-05-31",
-      "dollars": 3209.36
+      "dollars": 2929.6
     },
     {
       "date": "2026-06-30",
-      "dollars": 5980.32
+      "dollars": 5593.58
     },
     {
       "date": "2026-07-31",
-      "dollars": 10581.94
+      "dollars": 10874.69
     },
     {
       "date": "2026-08-31",
-      "dollars": 12559.73
+      "dollars": 13239.73
     },
     {
       "date": "2026-09-30",
-      "dollars": 14354.2
+      "dollars": 15299.89
     },
     {
       "date": "2026-10-24",
-      "dollars": 15546.9
+      "dollars": 17814.54
     }
   ]
 }

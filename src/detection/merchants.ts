@@ -1,6 +1,6 @@
 import { categoryOf } from "@/categorize/taxonomy";
 import { findInDirectory, type DirectoryMerchant } from "@/data-sources/merchant-directory";
-import { normalizeMerchant } from "@/data-sources/merchant";
+import { normalizeMerchant, withoutCity } from "@/data-sources/merchant";
 import type { DetectionInput } from "./types";
 
 // Gives every transaction and recurring stream from a company in the merchant directory
@@ -13,7 +13,15 @@ export function withDirectory(
   if (directory.length === 0) return input;
   const lookup = (text: string | null) => {
     const key = text ? normalizeMerchant(text)?.key : undefined;
-    return key ? findInDirectory(key, directory) : null;
+    if (!key) return null;
+    // The city a card wrote after the company, when the company is one the directory knows.
+    return (
+      findInDirectory(key, directory) ??
+      withoutCity(text!)
+        .map((shorter) => findInDirectory(shorter, directory))
+        .find((match) => match !== null) ??
+      null
+    );
   };
 
   return {

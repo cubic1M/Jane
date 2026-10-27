@@ -25,33 +25,28 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "HEADSPACE",
-      "perYear": 155.88
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
     },
     {
       "type": "subscription_review",
-      "about": "GRAMMARLY",
-      "perYear": 144
-    },
-    {
-      "type": "subscription_review",
-      "about": "SPOTIFY USA",
-      "perYear": 155.88
+      "about": "ESPN PLUS",
+      "perYear": 143.88
     },
     {
       "type": "price_increase",
-      "about": "SPOTIFY USA 1199→1299",
+      "about": "ESPN PLUS 1099→1199",
       "perYear": 12
     },
     {
       "type": "subscription_review",
-      "about": "CANVA* 04321",
-      "perYear": 179.88
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
     },
     {
       "type": "subscription_review",
-      "about": "STRAVA",
-      "perYear": 143.88
+      "about": "HEADSPACE",
+      "perYear": 155.88
     },
     {
       "type": "trial_conversion",
@@ -59,37 +54,50 @@
       "perYear": 8.99
     },
     {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 5058320, excess 4619194",
+      "about": "cash 4880440, excess 4354355",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "DUTCH BROS #221 at one price"
+      "about": "MICROSOFT*XBOX, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 34515.2
+      "dollars": 33852.24
     },
     {
       "date": "2026-07-31",
-      "dollars": 38460.33
+      "dollars": 37215.11
     },
     {
       "date": "2026-08-31",
-      "dollars": 41528.54
+      "dollars": 40305.68
     },
     {
       "date": "2026-09-30",
-      "dollars": 45333.89
+      "dollars": 44002.99
     },
     {
       "date": "2026-10-24",
-      "dollars": 49511.85
+      "dollars": 48137.07
     }
   ]
 }

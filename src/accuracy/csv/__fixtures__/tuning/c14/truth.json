@@ -29,11 +29,6 @@
     },
     {
       "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
-    },
-    {
-      "type": "subscription_review",
       "about": "HULU 877-8244858",
       "perYear": 215.88
     },
@@ -48,46 +43,63 @@
       "perYear": 7.2
     },
     {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 228
+    },
+    {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 877.06
+      "perYear": 948.22
     },
     {
       "type": "idle_cash",
-      "about": "cash 1285825, excess 272199",
+      "about": "cash 1269109, excess 788403",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+      "about": "APPLE.COM/BILL, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "CVS/PHARMACY #04321 twice, refunded"
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TARGET 00023456 twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 2199.67
+      "dollars": 2013.39
     },
     {
       "date": "2026-07-31",
-      "dollars": 5268.48
+      "dollars": 5029.25
     },
     {
       "date": "2026-08-31",
-      "dollars": 6489.19
+      "dollars": 5780.45
     },
     {
       "date": "2026-09-30",
-      "dollars": 8068.52
+      "dollars": 6686.61
     },
     {
       "date": "2026-10-24",
-      "dollars": 9162.76
+      "dollars": 8412.64
     }
   ]
 }

@@ -19,80 +19,88 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 167.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "GOOGLE *YouTubePremium",
-      "perYear": 167.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "PELOTON* MEMBERSHIP",
-      "perYear": 528
-    },
-    {
-      "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 215.88
-    },
-    {
-      "type": "price_increase",
-      "about": "NETFLIX.COM 1549→1799",
-      "perYear": 30
-    },
-    {
-      "type": "subscription_review",
       "about": "MAX.COM",
       "perYear": 203.88
     },
     {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "AUDIBLE*2K94LM",
+      "perYear": 179.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "ADOBE *CREATIVE CLD",
+      "perYear": 275.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    },
+    {
       "type": "duplicate_charge",
-      "about": "HOME DEPOT #6612 twice",
-      "perYear": 70.63
+      "about": "CVS/PHARMACY #04321 twice",
+      "perYear": 105.25
     },
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 120
+      "perYear": 6
     },
     {
       "type": "idle_cash",
-      "about": "cash 2095056, excess 1162898",
+      "about": "cash 1810283, excess 1208019",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 3582.48
+      "dollars": 2520.45
     },
     {
       "date": "2026-06-30",
-      "dollars": 6594.97
+      "dollars": 4082.55
     },
     {
       "date": "2026-07-31",
-      "dollars": 11810.77
+      "dollars": 9387.3
     },
     {
       "date": "2026-08-31",
-      "dollars": 14429.33
+      "dollars": 11492.6
     },
     {
       "date": "2026-09-30",
-      "dollars": 16578.2
+      "dollars": 13910.78
     },
     {
       "date": "2026-10-24",
-      "dollars": 19103.47
+      "dollars": 16817.01
     }
   ]
 }

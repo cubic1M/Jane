@@ -25,32 +25,41 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "ADOBE *CREATIVE CLD",
-      "perYear": 275.88
-    },
-    {
-      "type": "subscription_review",
       "about": "PARAMOUNT+",
       "perYear": 143.88
     },
     {
+      "type": "duplicate_charge",
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 47.04
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 75
+    },
+    {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 434.22
+      "perYear": 420.43
     }
   ],
   "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "ADOBE *CREATIVE CLD, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
     {
       "type": "subscription_review",
       "about": "STARBUCKS STORE 05423 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "TARGET 00023456 twice, refunded"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "pending copy of a posted charge"
+      "about": "TJ MAXX #0811 twice, refunded"
     },
     {
       "type": "duplicate_charge",
@@ -60,31 +69,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -2005.55
+      "dollars": -1615
     },
     {
       "date": "2026-05-31",
-      "dollars": -3631.18
+      "dollars": -1726.38
     },
     {
       "date": "2026-06-30",
-      "dollars": -2328.8
+      "dollars": -2577.46
     },
     {
       "date": "2026-07-31",
-      "dollars": -651.24
+      "dollars": -1189.55
     },
     {
       "date": "2026-08-31",
-      "dollars": -1717.85
+      "dollars": -1079.97
     },
     {
       "date": "2026-09-30",
-      "dollars": -707.75
+      "dollars": -1022.36
     },
     {
       "date": "2026-10-24",
-      "dollars": -566.15
+      "dollars": -596.52
     }
   ]
 }

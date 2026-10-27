@@ -25,43 +25,13 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "SPOTIFY USA",
-      "perYear": 155.88
-    },
-    {
-      "type": "price_increase",
-      "about": "SPOTIFY USA 1199→1299",
-      "perYear": 12
-    },
-    {
-      "type": "subscription_review",
-      "about": "MICROSOFT*XBOX",
-      "perYear": 203.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "GRAMMARLY",
-      "perYear": 144
-    },
-    {
-      "type": "subscription_review",
-      "about": "SLING TV",
-      "perYear": 480
-    },
-    {
-      "type": "subscription_review",
       "about": "NETFLIX.COM",
       "perYear": 185.88
     },
     {
-      "type": "subscription_review",
-      "about": "ESPN PLUS",
-      "perYear": 143.88
-    },
-    {
-      "type": "price_increase",
-      "about": "ESPN PLUS 1099→1199",
-      "perYear": 12
+      "type": "duplicate_charge",
+      "about": "SQ *CORNER BISTRO dinner twice",
+      "perYear": 80.01
     },
     {
       "type": "bank_fees",
@@ -71,47 +41,60 @@
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 538.47
+      "perYear": 545.97
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1495068, excess 1017262",
+      "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "TIM HORTONS #8812 at one price"
+      "about": "GRAMMARLY, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #221, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "PETCO 1234 twice, refunded"
+      "about": "WALGREENS #1234 twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 4817.5
+      "dollars": 5172.34
     },
     {
       "date": "2026-05-31",
-      "dollars": 7198.35
+      "dollars": 7290.4
     },
     {
       "date": "2026-06-30",
-      "dollars": 7619.65
+      "dollars": 7912.08
     },
     {
       "date": "2026-07-31",
-      "dollars": 8261.16
+      "dollars": 8163.6
     },
     {
       "date": "2026-08-31",
-      "dollars": 8569.77
+      "dollars": 9205.8
     },
     {
       "date": "2026-09-30",
-      "dollars": 8749.88
+      "dollars": 10536.22
     },
     {
       "date": "2026-10-24",
-      "dollars": 9571.66
+      "dollars": 11112.38
     }
   ]
 }

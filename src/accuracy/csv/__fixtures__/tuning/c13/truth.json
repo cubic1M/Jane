@@ -25,57 +25,90 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "NYTIMES*NYTDIGITAL",
-      "perYear": 48
-    },
-    {
-      "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 167.88
-    },
-    {
-      "type": "subscription_review",
       "about": "AUDIBLE*2K94LM",
       "perYear": 179.4
     },
     {
       "type": "subscription_review",
-      "about": "OPENAI *CHATGPT SUBSCR",
-      "perYear": 240
+      "about": "PLANET FITNESS",
+      "perYear": 299.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 155.88
+    },
+    {
+      "type": "price_increase",
+      "about": "SPOTIFY USA 1199→1299",
+      "perYear": 12
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
     },
     {
       "type": "duplicate_charge",
-      "about": "CVS/PHARMACY #04321 twice",
-      "perYear": 94.83
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 68.35
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WAL-MART #2281 twice",
+      "perYear": 59.35
     },
     {
       "type": "idle_cash",
-      "about": "cash 1845881, excess 1347379",
+      "about": "cash 1945213, excess 1405166",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
       "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 TICKETMASTER seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 12539.1
+      "dollars": 12510.48
     },
     {
       "date": "2026-08-31",
-      "dollars": 14077.53
+      "dollars": 14031.19
     },
     {
       "date": "2026-09-30",
-      "dollars": 16009.11
+      "dollars": 14863.92
     },
     {
       "date": "2026-10-24",
-      "dollars": 16713.66
+      "dollars": 17423.15
     }
   ]
 }

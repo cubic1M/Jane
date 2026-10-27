@@ -2,6 +2,8 @@ import {
   CARD_PAYMENT_NAME,
   FORECAST_SUBTYPES,
   NOT_BILL_CATEGORIES,
+  NOT_BILL_HABIT_FREQUENCIES,
+  NOT_BILL_HABIT_PRIMARIES,
   OWN_ACCOUNT_TRANSFERS,
 } from "@/config/detection";
 import { expectedPaydays, isPaycheck } from "./paydays";
@@ -128,6 +130,14 @@ export function scheduledTransfers(input: DetectionInput, days: number): Expecte
   return expand(buildStreams(input).filter(isOwnTransfer), input.asOf, addDays(input.asOf, days));
 }
 
+const isHabit = (s: Stream) =>
+  NOT_BILL_HABIT_PRIMARIES.includes(s.pfcPrimary ?? "") &&
+  s.frequency !== null &&
+  NOT_BILL_HABIT_FREQUENCIES.includes(s.frequency);
+
+// What "Coming up" lists: bills, not moves to one's own accounts or a weekly habit.
+export const isComingUp = (s: Stream) => isBillStream(s) && !isOwnTransfer(s) && !isHabit(s);
+
 // `remindedElsewhere`: payment categories whose due date the bank reports, left out.
 export function upcomingBills(
   input: DetectionInput,
@@ -135,8 +145,7 @@ export function upcomingBills(
   remindedElsewhere: ReadonlySet<string> = new Set(),
 ): Expected[] {
   const bills = buildStreams(input)
-    .filter(isBillStream)
-    .filter((s) => !isOwnTransfer(s))
+    .filter(isComingUp)
     .filter((s) => !remindedElsewhere.has(s.pfcDetailed ?? ""))
     .map((s) => ({ ...s, merchant: billName(s) }));
   return expand(bills, input.asOf, addDays(input.asOf, days));

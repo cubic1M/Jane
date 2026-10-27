@@ -19,16 +19,6 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "PLANET FITNESS",
-      "perYear": 299.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "AUDIBLE*2K94LM",
-      "perYear": 179.4
-    },
-    {
-      "type": "subscription_review",
       "about": "DISNEY PLUS",
       "perYear": 191.88
     },
@@ -39,8 +29,8 @@
     },
     {
       "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
+      "about": "MAX.COM",
+      "perYear": 203.88
     },
     {
       "type": "subscription_review",
@@ -48,50 +38,68 @@
       "perYear": 215.88
     },
     {
-      "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 126
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 65.93
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 949.58
+      "perYear": 926.28
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+      "about": "GOOGLE *YouTubePremium, cancelled"
     },
     {
-      "type": "duplicate_charge",
-      "about": "3 SOUTHWES 5262123456789 seats"
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2499
+      "dollars": -2917.22
     },
     {
       "date": "2026-06-30",
-      "dollars": -4329.2
+      "dollars": -3123.54
     },
     {
       "date": "2026-07-31",
-      "dollars": -4949.03
+      "dollars": -4046.77
     },
     {
       "date": "2026-08-31",
-      "dollars": -6630.29
+      "dollars": -5691.89
     },
     {
       "date": "2026-09-30",
-      "dollars": -8474.36
+      "dollars": -7461.73
     },
     {
       "date": "2026-10-24",
-      "dollars": -10355.96
+      "dollars": -9348.42
     }
   ]
 }
