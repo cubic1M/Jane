@@ -55,7 +55,7 @@
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 250
+      "perYear": 600
     },
     {
       "type": "idle_cash",
