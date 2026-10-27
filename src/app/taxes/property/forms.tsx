@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { propertyAction, type PropertyState } from "./actions";
+import { FormStatus } from "@/components/form-status";
 
 const INPUT =
   "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
@@ -9,19 +10,6 @@ const BUTTON =
   "inline-flex h-11 items-center justify-center self-start rounded-full bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60";
 const SECONDARY =
   "inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-medium hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-900";
-
-function Status({ state }: { state: PropertyState }) {
-  return (
-    <p
-      role="status"
-      className={
-        state ? (state.ok ? "text-sm text-emerald-800" : "text-sm text-red-700") : "sr-only"
-      }
-    >
-      {state?.message ?? ""}
-    </p>
-  );
-}
 
 type Facts = {
   market: string;
@@ -93,7 +81,7 @@ export function AnswersForm({ facts }: { facts: Facts }) {
       <button type="submit" disabled={pending} className={BUTTON}>
         Save
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -124,7 +112,7 @@ export function IntentButton({
       >
         {label}
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
