@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Comparison, Scored } from "@/planning/compare";
 import { DecisionButtons } from "./decision-buttons";
+import { dayLabel } from "@/lib/day-label";
 
 // The best option for this person, picked by Jane and already selected, with the runners
 // up and the choice not to switch (spec step 76). One yes switches to whichever is picked.
@@ -12,14 +13,6 @@ const money = (cents: number) =>
     style: "currency",
     currency: "USD",
     minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
-  });
-
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
   });
 
 function priceOf(s: Scored): string {
@@ -85,7 +78,7 @@ function OptionRow({
           </span>
         )}
         <span className="text-xs text-zinc-500">
-          Price checked {dateLabel(option.checkedAt)} ·{" "}
+          Price checked {dayLabel(option.checkedAt, { year: true })} ·{" "}
           <a
             href={option.sourceUrl}
             target="_blank"

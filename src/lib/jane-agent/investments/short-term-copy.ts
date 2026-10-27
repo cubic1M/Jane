@@ -1,6 +1,7 @@
 import type { Candidate } from "@/lib/investments/short-term";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
+import { dayLabel } from "@/lib/day-label";
 
 // Short-term money in the chat (spec step 234): shared words and buttons.
 
@@ -12,13 +13,6 @@ export const SHORT_LINK: MessageAction = {
 };
 
 const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 export function candidateLine(c: Candidate): string {
   const top = c.options
@@ -26,9 +20,9 @@ export function candidateLine(c: Candidate): string {
     .map((o) => `${o.product.name} ${pct(o.afterTaxBps)}`)
     .join(", ");
   const ladder = c.ladder
-    ? ` A ladder of ${c.ladder.length} ${c.ladder.length === 1 ? "rung" : "rungs"} of Treasury bills, each maturing by ${day(c.endsOn)} and rolling over until then, would earn about ${formatCents(c.gainCents)} a year more than savings, after tax.`
+    ? ` A ladder of ${c.ladder.length} ${c.ladder.length === 1 ? "rung" : "rungs"} of Treasury bills, each maturing by ${dayLabel(c.endsOn, { year: true })} and rolling over until then, would earn about ${formatCents(c.gainCents)} a year more than savings, after tax.`
     : "";
-  return `${c.name} (${formatCents(c.amountCents)}, needed by ${day(c.endsOn)}): after tax, ${top}. Only places that can't lock your money past that date are on the list.${ladder}`;
+  return `${c.name} (${formatCents(c.amountCents)}, needed by ${dayLabel(c.endsOn, { year: true })}): after tax, ${top}. Only places that can't lock your money past that date are on the list.${ladder}`;
 }
 
 export const ladderButton = (_c: Candidate): MessageAction => ({

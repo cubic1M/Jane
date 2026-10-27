@@ -15,20 +15,13 @@ import { BudgetForm } from "./budget-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
 import { ProgressBar } from "@/components/progress-bar";
+import { dayLabel } from "@/lib/day-label";
 
 const HOW_OFTEN: Record<IrregularItem["frequency"], string> = {
   QUARTERLY: "Every 3 months",
   SEMIANNUALLY: "Twice a year",
   ANNUALLY: "Once a year",
 };
-
-const longDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function Budgets() {
   await connection();
@@ -118,7 +111,8 @@ async function Budgets() {
                   {item.kind === "seasonal"
                     ? `Each year, above your usual month: ${formatCents(item.yearlyCents)}.`
                     : `${HOW_OFTEN[item.frequency]}, ${formatCents(item.yearlyCents)} a year.`}{" "}
-                  Next about {longDate(item.nextDate)}, around {formatCents(item.nextAmountCents)}.
+                  Next about {dayLabel(item.nextDate, { year: true })}, around{" "}
+                  {formatCents(item.nextAmountCents)}.
                 </p>
                 <p className="text-sm">
                   By now: {formatCents(item.byNowCents)} of {formatCents(item.nextAmountCents)} set

@@ -7,6 +7,7 @@ import {
 } from "@/config/funds";
 import { RETIREMENT_SUBTYPES } from "@/data-sources/types";
 import { monthsEnding } from "./spending";
+import { dayLabel } from "@/lib/day-label";
 
 // What the person owns in their investment and retirement accounts (spec step 128), from
 // the holdings Plaid (or the demo bank) reports. Pure: rows in, the summary out. The total
@@ -112,21 +113,13 @@ const SUBTYPE_LABELS: Readonly<Record<string, string>> = {
 export const subtypeLabel = (subtype: string | null) =>
   (subtype && SUBTYPE_LABELS[subtype.toLowerCase()]) ?? (subtype ? subtype : "Investment account");
 
-const shortDay = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 // "Demo Bank (fake data), Demo 401(k), price as of Oct 18, 2026".
 export function sourceLine(
   account: { name: string; institution: string | null },
   asOf: string | null,
 ) {
   const from = account.institution ?? "Your bank";
-  return `${from}, ${account.name}${asOf ? `, price as of ${shortDay(asOf)}` : ""}`;
+  return `${from}, ${account.name}${asOf ? `, price as of ${dayLabel(asOf, { year: true })}` : ""}`;
 }
 
 export function holdingView(

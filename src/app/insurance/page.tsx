@@ -63,6 +63,7 @@ import {
 import { HouseholdForm, PolicyForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Insurance (spec step 102): every policy in one place, the household facts that matter
 // and the gaps, in plain words. Every figure comes from a policy record. Laid out as the area
@@ -88,14 +89,6 @@ const SAVED: Record<string, string> = {
   saving: "Done. Your policy is updated and your insurer confirmed it.",
   risk: "Thanks. Jane has noted it.",
 };
-
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 function PolicyCard({ policy, asOf, editing }: { policy: Policy; asOf: string; editing: boolean }) {
   const renews = nextRenewal(policy, asOf);
@@ -136,7 +129,7 @@ function PolicyCard({ policy, asOf, editing }: { policy: Policy; asOf: string; e
         )}
         {renews && (
           <li>
-            Renews on {dateLabel(renews)}
+            Renews on {dayLabel(renews, { year: true })}
             {days !== null && days <= RENEWAL_SOON_DAYS && ` (in ${days} days)`}
           </li>
         )}

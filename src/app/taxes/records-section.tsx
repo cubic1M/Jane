@@ -3,6 +3,7 @@ import type { AuditRecordsView } from "@/lib/audit-records";
 import { formatCents } from "@/lib/money";
 import type { Evidence } from "@/planning/audit-records";
 import { RecordsButton } from "./records-button";
+import { dayLabel } from "@/lib/day-label";
 
 // Audit-ready records on /taxes (spec step 171): every deduction and credit with its
 // sources, what's still needed, and how long to keep each year's records.
@@ -10,20 +11,12 @@ import { RecordsButton } from "./records-button";
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "underline underline-offset-2";
 
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 function EvidenceLine({ e }: { e: Evidence }) {
   switch (e.kind) {
     case "transaction":
       return (
         <Link href={`/transactions?q=${encodeURIComponent(e.payee)}`} className={LINK}>
-          {e.payee}, {day(e.date)}, {formatCents(e.cents)}
+          {e.payee}, {dayLabel(e.date, { year: true })}, {formatCents(e.cents)}
           {e.receipt ? " (receipt on file)" : ""}
         </Link>
       );
@@ -108,7 +101,7 @@ export function RecordsSection({ view }: { view: AuditRecordsView }) {
           {view.retention.map((r) => (
             <li key={r.year} className="flex flex-col gap-1">
               <span>
-                {r.year}: keep until {day(r.keepUntil)}{" "}
+                {r.year}: keep until {dayLabel(r.keepUntil, { year: true })}{" "}
                 {r.status === "can_go"
                   ? "(can be thrown away)"
                   : r.status === "soon"

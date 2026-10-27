@@ -18,6 +18,7 @@ import { canHoldEmergency } from "@/planning/cash";
 import { moveNow } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Cash done right (spec step 162, demo advice): where each dollar of cash sits and what it
 // earns, the plan for it, and its moves, each a tap. The emergency fund stays in reach.
@@ -29,13 +30,6 @@ const DONE: Record<string, string> = {
   changed: "Your cash changed since that plan. Here's the new one.",
 };
 const rate = (bps: number) => `${(bps / 100).toFixed(2)}%`;
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function CashContent({
   searchParams,
@@ -97,7 +91,8 @@ async function CashContent({
             </tbody>
           </table>
           <p className="text-xs text-zinc-500">
-            Rates are stand-ins as of {day(CASH_RATES_AS_OF)}: {CURRENT_CASH_RATE_SOURCE}.
+            Rates are stand-ins as of {dayLabel(CASH_RATES_AS_OF, { year: true })}:{" "}
+            {CURRENT_CASH_RATE_SOURCE}.
           </p>
         </section>
       )}
@@ -188,7 +183,7 @@ async function CashContent({
           </p>
         )}
         <p className="text-xs text-zinc-500">
-          Stand-in rates as of {day(CASH_RATES_AS_OF)}: {CASH_HOMES_SOURCE}.
+          Stand-in rates as of {dayLabel(CASH_RATES_AS_OF, { year: true })}: {CASH_HOMES_SOURCE}.
         </p>
       </section>
     </>
