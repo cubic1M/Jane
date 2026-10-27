@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
 import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import { listGoals } from "@/lib/goals";
-import { formatCents } from "@/lib/money";
+import { formatCents, centsToInput } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { GOALS_COPY, monthlyLine } from "@/planning/goals-copy";
 import { removeGoal } from "./actions";
@@ -15,7 +15,6 @@ import { LoadingBar } from "@/components/loading-bar";
 import { ProgressBar } from "@/components/progress-bar";
 
 const EMPTY = { goalId: "", name: "", target: "", targetDate: "", accountId: "", saved: "" };
-const dollars = (cents: number | null) => (cents === null ? "" : (cents / 100).toFixed(2));
 const day = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "long",
@@ -87,10 +86,10 @@ async function Goals() {
                     values={{
                       goalId: g.id,
                       name: g.name,
-                      target: dollars(g.targetCents),
+                      target: centsToInput(g.targetCents),
                       targetDate: g.targetDate,
                       accountId: g.accountName ? (g.accountId ?? "") : "",
-                      saved: dollars(g.manualSavedCents),
+                      saved: centsToInput(g.manualSavedCents),
                     }}
                   />
                 </div>

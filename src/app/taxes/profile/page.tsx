@@ -22,6 +22,7 @@ import { loadResidency } from "@/lib/tax-states";
 import { localitiesIn } from "@/planning/tax-states";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { LoadingBar } from "@/components/loading-bar";
+import { centsToInput } from "@/lib/money";
 
 // The tax profile (spec step 118): every answer, and what Jane found, can be changed here.
 
@@ -64,8 +65,6 @@ async function ProfileContent() {
     loadResidency(user.id, year),
   ]);
   const move = residency.told?.[0] ?? residency.spotted;
-  const dollars = (cents: number | null | undefined) =>
-    cents === null || cents === undefined ? "" : (cents / 100).toFixed(2);
   const seen = new Map(
     view.incomeKinds.found.map((f) => [f.kind, f.from.join(" and ") || "your accounts"]),
   );
@@ -135,7 +134,7 @@ async function ProfileContent() {
               ? { age: String(c.ageAtYearEnd), ssn: c.hasSsn, months: String(c.monthsLivedWithYou) }
               : { age: "", ssn: true, months: "12" };
           }),
-          spouseWages: dollars(pay?.spouseWagesCents),
+          spouseWages: centsToInput(pay?.spouseWagesCents),
           paysOverHalfHome: pay?.paysOverHalfHome ?? false,
           studentYears:
             pay?.studentYearsBefore === null || pay?.studentYearsBefore === undefined
@@ -147,14 +146,14 @@ async function ProfileContent() {
       <HomeForm
         values={{
           year,
-          points: pay?.pointsYear === year ? dollars(pay.pointsCents) : "",
+          points: pay?.pointsYear === year ? centsToInput(pay.pointsCents) : "",
           pointsPurchase: pay?.pointsPurchase ?? true,
           pointsLoanYears: pay?.pointsLoanYears ? String(pay.pointsLoanYears) : "30",
           boughtOn: pay?.homeBoughtOn ? pay.homeBoughtOn.toISOString().slice(0, 10) : "",
-          price: dollars(pay?.homePriceCents),
+          price: centsToInput(pay?.homePriceCents),
           soldOn: pay?.homeSoldOn ? pay.homeSoldOn.toISOString().slice(0, 10) : "",
-          sale: dollars(pay?.homeSaleCents),
-          costs: dollars(pay?.homeSaleCostsCents),
+          sale: centsToInput(pay?.homeSaleCents),
+          costs: centsToInput(pay?.homeSaleCostsCents),
           daysLivedIn:
             pay?.homeDaysLivedIn === null || pay?.homeDaysLivedIn === undefined
               ? ""
@@ -163,7 +162,7 @@ async function ProfileContent() {
       />
       <SideIncomeForm
         values={{
-          price: dollars(pay?.rentalPriceCents),
+          price: centsToInput(pay?.rentalPriceCents),
           placedOn: pay?.rentalPlacedOn ? pay.rentalPlacedOn.toISOString().slice(0, 10) : "",
           kind: pay?.sideIncomeKind ?? "",
         }}
@@ -172,11 +171,11 @@ async function ProfileContent() {
         demo={demo}
         values={{
           asOf: pay?.payAsOf ? pay.payAsOf.toISOString().slice(0, 10) : "",
-          gross: dollars(pay?.payGrossYtdCents),
-          federal: dollars(pay?.payFederalYtdCents),
-          state: dollars(pay?.payStateYtdCents),
-          retirement: dollars(pay?.payRetirementYtdCents),
-          pretax: dollars(pay?.payPretaxYtdCents),
+          gross: centsToInput(pay?.payGrossYtdCents),
+          federal: centsToInput(pay?.payFederalYtdCents),
+          state: centsToInput(pay?.payStateYtdCents),
+          retirement: centsToInput(pay?.payRetirementYtdCents),
+          pretax: centsToInput(pay?.payPretaxYtdCents),
         }}
       />
       <Link href="/taxes" className="font-medium text-emerald-700 hover:underline">

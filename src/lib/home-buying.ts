@@ -30,6 +30,7 @@ import {
 import { compareCarOffers, type ScoredCarOffer } from "@/planning/car";
 import { formatCents } from "@/lib/money";
 import { isoDay } from "@/lib/dates";
+import { formatRate } from "@/lib/percent";
 
 // Buying a home (spec step 179), from saving to closing. From the person's own income,
 // debt payments, savings and monthly cash flow: the most they can afford under the usual
@@ -187,7 +188,7 @@ export async function loadHomeBuying(
     assumptions: [
       `Income: ${formatCents(monthlyIncomeCents)} a month take-home, your average over the last ${months.length} full ${months.length === 1 ? "month" : "months"}, about ${formatCents(afford.grossMonthlyCents)} before tax (take-home divided by 0.78).`,
       `Lenders' usual rules: housing at most 28% of gross (${formatCents(afford.housingLimitCents)}) and all debt payments at most 36% (${formatCents(afford.debtLimitCents)}); your other debt payments are ${formatCents(debtPaymentsCents)} a month.`,
-      `A ${Math.round(downShare * 100)}% down payment, a 30-year fixed loan at ${(aprBps / 100).toFixed(2)}%, ${rateIsOffer ? "the cheapest mortgage offer for your credit" : "a typical rate, not an offer"}.`,
+      `A ${Math.round(downShare * 100)}% down payment, a 30-year fixed loan at ${formatRate(aprBps)}, ${rateIsOffer ? "the cheapest mortgage offer for your credit" : "a typical rate, not an offer"}.`,
       `Property tax 1.1% and insurance 0.35% of the price a year${downShare < 0.2 ? ", and mortgage insurance 0.7% of the loan while you put down under 20%" : ""}; closing costs 3% of the price.`,
       `Saving: you keep about ${formatCents(monthlySavingCents)} a month (income less spending, last ${months.length} full months) and have ${formatCents(savedCents)} in savings.`,
     ],

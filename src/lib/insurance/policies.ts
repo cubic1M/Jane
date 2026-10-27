@@ -20,7 +20,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { formatCents, parseMoneyToCents } from "@/lib/money";
+import { formatCents, parseMoneyToCents, centsToInput } from "@/lib/money";
 import { readPeople, type Person } from "./family-rules";
 import { CoverageError, fieldText, parseCoverage, readCoverage, type Coverage } from "./coverage";
 import { isoDay as day } from "@/lib/dates";
@@ -332,13 +332,12 @@ export function policyFormValues(policy: Policy): PolicyInput {
   for (const field of COVERAGE_FIELDS[policy.kind]) {
     coverage[field.key] = fieldText(field, policy.coverage[field.key]);
   }
-  const dollars = (cents: number | null) => (cents === null ? "" : (cents / 100).toFixed(2));
   return {
     kind: policy.kind,
     carrier: policy.carrier,
-    premium: dollars(policy.premiumCents),
+    premium: centsToInput(policy.premiumCents),
     premiumFrequency: policy.premiumFrequency ?? "",
-    deductible: dollars(policy.deductibleCents),
+    deductible: centsToInput(policy.deductibleCents),
     renewalDate: policy.renewalDate ?? "",
     termMonths: String(policy.termMonths),
     covers: policy.covers ?? "",
