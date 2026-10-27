@@ -238,7 +238,19 @@ test("a file that plainly isn't the chosen account's gets one line saying so", a
   await expect(note).toContainText(
     "wells-fargo.csv looks like a Wells Fargo file, but it's going into Chase checking",
   );
-  // A new account: nothing to say.
+  // A new account for a Wells Fargo file: nothing to say.
   await page.locator('select[name="accountId"]').selectOption("new");
   await expect(note).toHaveCount(0);
+  // A new account for a Chase checking file: Jane already has that account.
+  await uploadFile(page, "chase-checking.csv");
+  await expect(note).toContainText("You already have Chase checking.");
+  // Two accounts' files at once: they'd land in one account, so the import waits.
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles([`${FIXTURES}/wells-fargo.csv`, `${FIXTURES}/amex.csv`]);
+  await page.getByRole("button", { name: /Preview/ }).click();
+  await expect(note).toContainText(
+    "wells-fargo.csv and amex.csv look like two different accounts. Upload them one at a time",
+  );
+  await expect(page.getByRole("button", { name: /^Import \d+ transactions$/ })).toBeDisabled();
 });

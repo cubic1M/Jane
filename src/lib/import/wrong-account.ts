@@ -1,7 +1,8 @@
-// Before importing into an existing account: a file that's plainly another bank's export (a Wells
-// Fargo file going into "Chase card") gets one line saying so, since its rows would join that
-// account's. New-user pass: /import opens on the first account, so a second bank's file went
-// there unless the person changed it. Client-safe: no server imports.
+// Before importing, /import says when files plainly don't fit where they're going: another bank's
+// file into an existing account (a Wells Fargo file into "Chase card"; the page opens on the first
+// account), two accounts' files in one upload (they'd land in one account), or a new account for a
+// card Jane already has (two "Citi card"s). From the new-user passes. Client-safe: no server
+// imports.
 
 // Short names people give accounts, beside the bank's own.
 const SHORT_NAMES: Record<string, readonly string[]> = {
@@ -19,12 +20,51 @@ function namesBank(accountName: string, bank: string): boolean {
 
 const isCard = (kind: string) => kind === "credit_card";
 
+// What a previewed file says about its account: its bank (a layout Jane knows) and its kind.
+export type FileFacts = { file: string; bank?: string; kind?: string };
+
+// Two files that can't be one account: different banks, or a card's and a bank account's.
+function twoAccounts(a: FileFacts, b: FileFacts): boolean {
+  if (a.bank && b.bank && a.bank !== b.bank) return true;
+  return !!a.kind && !!b.kind && isCard(a.kind) !== isCard(b.kind);
+}
+
+// Files from plainly different accounts in one upload: all their rows would land in one account
+// (round 2: a Capital One 360 checking file and an Amex card's became one checking account). The
+// upload waits until they go one at a time.
+export function mixedFilesNote(files: readonly FileFacts[]): string | null {
+  for (const [i, a] of files.entries()) {
+    const b = files.slice(i + 1).find((other) => twoAccounts(a, other));
+    if (b)
+      return `${a.file} and ${b.file} look like two different accounts. Upload them one at a time, so each gets its own.`;
+  }
+  return null;
+}
+
+// A new account for files from an account Jane already has, by its bank and kind (round 2: a
+// second Citi export made a second "Citi card").
+export function existingAccountNote(
+  accounts: readonly { name: string; kind?: string | null }[],
+  files: readonly FileFacts[],
+): string | null {
+  for (const f of files) {
+    if (!f.bank) continue;
+    const same = accounts.find(
+      (a) =>
+        namesBank(a.name, f.bank!) && (!a.kind || !f.kind || isCard(a.kind) === isCard(f.kind)),
+    );
+    if (same)
+      return `You already have ${same.name}. If ${f.file} is from it, pick it above, so its rows join the ones there.`;
+  }
+  return null;
+}
+
 // The line to show, or null when every file fits the account: its bank (when the layout says one)
 // is in the account's name, and a card statement goes into a card, a bank account's into a bank
 // account (when both kinds are known).
 export function wrongAccountNote(
   account: { name: string; kind?: string | null },
-  files: readonly { file: string; bank?: string; kind?: string }[],
+  files: readonly FileFacts[],
 ): string | null {
   const bank = files.find((f) => f.bank && !namesBank(account.name, f.bank));
   if (bank?.bank)

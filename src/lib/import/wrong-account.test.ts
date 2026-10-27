@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { wrongAccountNote } from "./wrong-account";
+import { existingAccountNote, mixedFilesNote, wrongAccountNote } from "./wrong-account";
 
 describe("wrongAccountNote", () => {
   it("says so when another bank's file is going into an account", () => {
@@ -59,5 +59,61 @@ describe("wrongAccountNote", () => {
     expect(
       wrongAccountNote({ name: "Swft card" }, [{ file: "w.csv", bank: "Wells Fargo" }]),
     ).not.toBeNull();
+  });
+});
+
+describe("mixedFilesNote", () => {
+  it("says two accounts' files in one upload should go one at a time", () => {
+    expect(
+      mixedFilesNote([
+        { file: "capital-one-360.csv", bank: "Capital One", kind: "checking" },
+        { file: "amex.csv", bank: "American Express", kind: "credit_card" },
+      ]),
+    ).toBe(
+      "capital-one-360.csv and amex.csv look like two different accounts. Upload them one at a time, so each gets its own.",
+    );
+    // Same bank, a card and a checking account.
+    expect(
+      mixedFilesNote([
+        { file: "a.csv", bank: "Chase", kind: "checking" },
+        { file: "b.csv", bank: "Chase", kind: "credit_card" },
+      ]),
+    ).not.toBeNull();
+  });
+
+  it("is quiet for months of one account, or when the files don't say", () => {
+    expect(
+      mixedFilesNote([
+        { file: "jul.csv", bank: "Chase", kind: "checking" },
+        { file: "aug.csv", bank: "Chase", kind: "savings" },
+      ]),
+    ).toBeNull();
+    expect(mixedFilesNote([{ file: "x.csv" }, { file: "y.csv", bank: "Citi" }])).toBeNull();
+    expect(mixedFilesNote([{ file: "one.csv", bank: "Citi" }])).toBeNull();
+  });
+});
+
+describe("existingAccountNote", () => {
+  const accounts = [
+    { name: "Citi card", kind: "credit_card" },
+    { name: "Chase checking", kind: "checking" },
+  ];
+
+  it("points at the account Jane already has for a new account's file", () => {
+    expect(
+      existingAccountNote(accounts, [{ file: "citi (1).csv", bank: "Citi", kind: "credit_card" }]),
+    ).toBe(
+      "You already have Citi card. If citi (1).csv is from it, pick it above, so its rows join the ones there.",
+    );
+  });
+
+  it("is quiet for a different kind at the same bank, another bank, or no bank", () => {
+    expect(
+      existingAccountNote(accounts, [{ file: "c.csv", bank: "Chase", kind: "credit_card" }]),
+    ).toBeNull();
+    expect(
+      existingAccountNote(accounts, [{ file: "d.csv", bank: "Discover", kind: "credit_card" }]),
+    ).toBeNull();
+    expect(existingAccountNote(accounts, [{ file: "e.csv" }])).toBeNull();
   });
 });

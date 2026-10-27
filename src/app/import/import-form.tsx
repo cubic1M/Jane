@@ -14,7 +14,7 @@ import {
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import type { BalanceAsk } from "@/lib/import/balance-question";
-import { wrongAccountNote } from "@/lib/import/wrong-account";
+import { existingAccountNote, mixedFilesNote, wrongAccountNote } from "@/lib/import/wrong-account";
 import { formatCents } from "@/lib/money";
 
 type AccountOption = { id: string; name: string; kindLabel: string; kind: AccountKind | null };
@@ -93,23 +93,17 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
 
   const files = preview?.ok ? preview.files : [];
   const chosen = accounts.find((a) => a.id === account);
-  const wrongAccount = chosen
-    ? wrongAccountNote(
-        chosen,
-        // A layout the person mapped has no kind of its own to go by.
-        files.flatMap((f) =>
-          f.ok
-            ? [
-                {
-                  file: f.file,
-                  bank: f.bank,
-                  kind: f.formatId === "custom" ? undefined : f.account.kind,
-                },
-              ]
-            : [],
-        ),
-      )
-    : null;
+  // What each file says about its account; a layout the person mapped has no kind to go by.
+  const facts = files.flatMap((f) =>
+    f.ok
+      ? [{ file: f.file, bank: f.bank, kind: f.formatId === "custom" ? undefined : f.account.kind }]
+      : [],
+  );
+  // Two accounts' files at once wait (they'd land in one account); else one line when the files
+  // don't fit the chosen account, or are from one Jane already has.
+  const mixed = mixedFilesNote(facts);
+  const wrongAccount =
+    mixed ?? (chosen ? wrongAccountNote(chosen, facts) : existingAccountNote(accounts, facts));
   const ready = files.length > 0 && files.every((f) => f.ok);
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
   const suggested = files.find((f) => f.ok)?.account;
@@ -195,7 +189,12 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
           {pending && !preview ? "Reading…" : preview ? "Preview again" : "Preview"}
         </button>
         {ready && (
-          <button type="button" onClick={onConfirm} disabled={pending} className={PRIMARY_BUTTON}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending || mixed !== null}
+            className={PRIMARY_BUTTON}
+          >
             {pending ? "Saving…" : `Import ${plural(total, "transaction")}`}
           </button>
         )}
