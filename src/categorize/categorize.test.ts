@@ -85,20 +85,20 @@ describe("categorizeTransactions", () => {
       { merchantKey: "corner market", pfcDetailed: "FOOD_AND_DRINK_GROCERIES", source: "llm" },
     ];
     vi.mocked(classifyMerchants).mockResolvedValue(
-      new Map([["fancy salon", "PERSONAL_CARE_HAIR_AND_BEAUTY"]]),
+      new Map([["fancy studio", "PERSONAL_CARE_HAIR_AND_BEAUTY"]]),
     );
 
     const results = await categorizeTransactions(
-      [txn("CORNER MARKET 0042"), txn("FANCY SALON"), txn("CORNER MARKET 0042 #2")],
+      [txn("CORNER MARKET 0042"), txn("FANCY STUDIO"), txn("CORNER MARKET 0042 #2")],
       db,
     );
 
-    expect(classifyMerchants).toHaveBeenCalledWith(["fancy salon"]);
+    expect(classifyMerchants).toHaveBeenCalledWith(["fancy studio"]);
     expect(createMany).toHaveBeenCalledWith({
       data: [
         {
           userId: "user_1",
-          merchantKey: "fancy salon",
+          merchantKey: "fancy studio",
           pfcPrimary: "PERSONAL_CARE",
           pfcDetailed: "PERSONAL_CARE_HAIR_AND_BEAUTY",
           source: "llm",
@@ -134,7 +134,7 @@ describe("an upload's categories, quickly", () => {
       { merchantKey: "corner market", pfcDetailed: "FOOD_AND_DRINK_GROCERIES", source: "llm" },
     ];
     const results = await categorizeTransactions(
-      [txn("CORNER MARKET 0042"), txn("FANCY SALON")],
+      [txn("CORNER MARKET 0042"), txn("FANCY STUDIO")],
       db,
       { askClaude: false },
     );
@@ -148,11 +148,11 @@ describe("an upload's categories, quickly", () => {
   it("sorts what's left after the upload, one update per category", async () => {
     vi.mocked(classifyMerchants).mockResolvedValue(
       new Map([
-        ["fancy salon", "PERSONAL_CARE_HAIR_AND_BEAUTY"],
-        ["blue noodle", "FOOD_AND_DRINK_RESTAURANT"],
+        ["fancy studio", "PERSONAL_CARE_HAIR_AND_BEAUTY"],
+        ["blue lantern", "FOOD_AND_DRINK_RESTAURANT"],
       ]),
     );
-    const rows = ["FANCY SALON", "BLUE NOODLE 101", "BLUE NOODLE 101", "MYSTERY SHOP"].map(
+    const rows = ["FANCY STUDIO", "BLUE LANTERN 101", "BLUE LANTERN 101", "MYSTERY SHOP"].map(
       (description, i) => ({
         id: `t${i}`,
         accountId: "acct_1",

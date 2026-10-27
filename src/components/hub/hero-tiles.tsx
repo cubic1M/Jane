@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlanHero, SafeHero, SavedHero } from "@/lib/hub/view";
 import type { SavedKind } from "@/lib/membership/service";
-import { formatCents } from "@/lib/money";
+import { formatWholeDollars } from "@/lib/money";
 import { CalcLines, CalcPopup } from "./calc-popup";
 import { Meter, StackBar } from "./charts";
 import { MarchingPath } from "@/components/marching-path";
@@ -23,7 +23,8 @@ const LABEL =
   "text-sm font-medium text-zinc-600 group-hover:text-zinc-950 dark:text-zinc-400 dark:group-hover:text-zinc-50";
 const LINK = "self-start text-sm font-medium underline-offset-2 hover:underline";
 
-const dollars = (cents: number) => formatCents(cents).replace(/\.\d\d$/, "");
+// Whole dollars, rounded (it said $376/yr where the import chip said $377/yr for $376.80).
+const dollars = formatWholeDollars;
 
 // What goes in the chat's message box: the person types the amount and sends it themselves. The
 // hint shows greyed after the cursor until they type, and is never sent (founder: "there should be

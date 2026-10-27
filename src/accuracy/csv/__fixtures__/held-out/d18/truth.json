@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 5292995, excess 4715183",
+      "about": "cash 5239245, excess 4627582",
       "perYear": null
     }
   ],
@@ -67,28 +67,36 @@
     {
       "type": "subscription_review",
       "about": "DUTCH BROS #221 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANYON CU LOAN PMT, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 31184.16
+      "dollars": 31076.66
     },
     {
       "date": "2026-07-31",
-      "dollars": 39298.82
+      "dollars": 39083.82
     },
     {
       "date": "2026-08-31",
-      "dollars": 42926.99
+      "dollars": 42604.49
     },
     {
       "date": "2026-09-30",
-      "dollars": 46764.8
+      "dollars": 46334.8
     },
     {
       "date": "2026-10-24",
-      "dollars": 51535.78
+      "dollars": 50998.28
     }
   ]
 }

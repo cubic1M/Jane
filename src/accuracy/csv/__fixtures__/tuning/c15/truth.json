@@ -46,32 +46,40 @@
     {
       "type": "duplicate_charge",
       "about": "2 AMC 0517 ONLINE seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 5374.5
+      "dollars": 5271.5
     },
     {
       "date": "2026-06-30",
-      "dollars": 3048.03
+      "dollars": 2842.03
     },
     {
       "date": "2026-07-31",
-      "dollars": 1976.23
+      "dollars": 1667.23
     },
     {
       "date": "2026-08-31",
-      "dollars": -98.25
+      "dollars": -510.25
     },
     {
       "date": "2026-09-30",
-      "dollars": -2293.39
+      "dollars": -2808.39
     },
     {
       "date": "2026-10-24",
-      "dollars": -3910.64
+      "dollars": -4528.64
     }
   ]
 }

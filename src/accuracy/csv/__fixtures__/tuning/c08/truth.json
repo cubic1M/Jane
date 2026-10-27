@@ -69,36 +69,44 @@
     {
       "type": "duplicate_charge",
       "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -1807.45
+      "dollars": -1875.45
     },
     {
       "date": "2026-05-31",
-      "dollars": -1864.04
+      "dollars": -2000.04
     },
     {
       "date": "2026-06-30",
-      "dollars": -2022.9
+      "dollars": -2226.9
     },
     {
       "date": "2026-07-31",
-      "dollars": -313.97
+      "dollars": -585.97
     },
     {
       "date": "2026-08-31",
-      "dollars": -88.41
+      "dollars": -428.41
     },
     {
       "date": "2026-09-30",
-      "dollars": -228.5
+      "dollars": -636.5
     },
     {
       "date": "2026-10-24",
-      "dollars": 137.28
+      "dollars": -338.72
     }
   ]
 }

@@ -70,24 +70,32 @@
     {
       "type": "duplicate_charge",
       "about": "HOME DEPOT #6612 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -4357.81
+      "dollars": -4460.81
     },
     {
       "date": "2026-08-31",
-      "dollars": -6107.96
+      "dollars": -6313.96
     },
     {
       "date": "2026-09-30",
-      "dollars": -8150.85
+      "dollars": -8459.85
     },
     {
       "date": "2026-10-24",
-      "dollars": -9487
+      "dollars": -9899
     }
   ]
 }

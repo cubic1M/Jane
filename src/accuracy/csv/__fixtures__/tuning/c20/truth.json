@@ -69,36 +69,44 @@
     {
       "type": "duplicate_charge",
       "about": "TARGET 00023456 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -1049.42
+      "dollars": -1152.42
     },
     {
       "date": "2026-05-31",
-      "dollars": 1754.85
+      "dollars": 1548.85
     },
     {
       "date": "2026-06-30",
-      "dollars": 2303.44
+      "dollars": 1994.44
     },
     {
       "date": "2026-07-31",
-      "dollars": 3244.19
+      "dollars": 2832.19
     },
     {
       "date": "2026-08-31",
-      "dollars": 3924.88
+      "dollars": 3409.88
     },
     {
       "date": "2026-09-30",
-      "dollars": 4344.51
+      "dollars": 3726.51
     },
     {
       "date": "2026-10-24",
-      "dollars": 5439.29
+      "dollars": 4803.29
     }
   ]
 }

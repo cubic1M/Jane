@@ -50,7 +50,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2129461, excess 1178527",
+      "about": "cash 2050361, excess 1064362",
       "perYear": null
     }
   ],
@@ -66,36 +66,44 @@
     {
       "type": "duplicate_charge",
       "about": "ULTA BEAUTY #331 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE MINISTRIES TITHE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "KINGS HEAD PUB, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 1066.53
+      "dollars": 953.53
     },
     {
       "date": "2026-05-31",
-      "dollars": 2929.6
+      "dollars": 2703.6
     },
     {
       "date": "2026-06-30",
-      "dollars": 5593.58
+      "dollars": 5254.58
     },
     {
       "date": "2026-07-31",
-      "dollars": 10874.69
+      "dollars": 10422.69
     },
     {
       "date": "2026-08-31",
-      "dollars": 13239.73
+      "dollars": 12674.73
     },
     {
       "date": "2026-09-30",
-      "dollars": 15299.89
+      "dollars": 14621.89
     },
     {
       "date": "2026-10-24",
-      "dollars": 17814.54
+      "dollars": 17023.54
     }
   ]
 }

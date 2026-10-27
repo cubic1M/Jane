@@ -535,6 +535,109 @@ const RULES: readonly Rule[] = [
     ],
   },
 
+  // What kind of place it is, in the words its name uses ("PHO HOA NOODLE", "BRIGHT NOW DENTAL",
+  // "MIDAS MUFFLER"), for the places no name above knows. After the names, so "TACO BELL" is fast
+  // food and "BLUE BOTTLE COFFEE" coffee; before the cards' broad labels, which these narrow
+  // (CSV bench: a third of held-out rows had no category without Claude).
+  {
+    category: "FOOD_AND_DRINK_RESTAURANT",
+    keywords: [
+      "RESTAURANT",
+      "PIZZA",
+      "PIZZERIA",
+      "GRILL",
+      "TACO",
+      "TAQUERIA",
+      "SUSHI",
+      "BURGER",
+      "BURGERS",
+      "KITCHEN",
+      "BISTRO",
+      "DINER",
+      "NOODLE",
+      "NOODLES",
+      "RAMEN",
+      "PHO",
+      "THAI",
+      "BBQ",
+      "BARBECUE",
+      "STEAKHOUSE",
+      "CANTINA",
+      "TRATTORIA",
+      "BRASSERIE",
+      "EATERY",
+      "WINGS",
+      "DELI",
+    ],
+  },
+  {
+    category: "FOOD_AND_DRINK_GROCERIES",
+    keywords: ["GROCERY", "GROCERIES", "SUPERMARKET", "FOOD MARKET"],
+  },
+  { category: "FOOD_AND_DRINK_BEER_WINE_AND_LIQUOR", keywords: ["LIQUOR", "WINE SHOP", "BREWERY"] },
+  { category: "MEDICAL_DENTAL_CARE", keywords: ["DENTAL", "DENTIST", "ORTHODONTICS"] },
+  { category: "MEDICAL_EYE_CARE", keywords: ["OPTOMETRY", "EYECARE", "OPTICAL"] },
+  {
+    category: "MEDICAL_VETERINARY_SERVICES",
+    keywords: ["VETERINARY", "ANIMAL HOSPITAL", "VET CLINIC"],
+  },
+  { category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", keywords: ["PHARMACY", "DRUG STORE"] },
+  {
+    category: "MEDICAL_PRIMARY_CARE",
+    keywords: ["URGENT CARE", "MEDICAL CENTER", "CLINIC", "PEDIATRICS", "PHYSICIANS"],
+    direction: "out",
+  },
+  {
+    category: "GENERAL_SERVICES_AUTOMOTIVE",
+    keywords: [
+      "AUTO REPAIR",
+      "AUTO SERVICE",
+      "LUBE",
+      "TIRE",
+      "TIRES",
+      "CAR WASH",
+      "COLLISION",
+      "MUFFLER",
+      "BRAKE",
+    ],
+  },
+  { category: "TRANSPORTATION_GAS", keywords: ["FUEL", "GAS STATION", "PETRO", "PETROLEUM"] },
+  { category: "HOME_IMPROVEMENT_HARDWARE", keywords: ["HARDWARE"] },
+  { category: "HOME_IMPROVEMENT_FURNITURE", keywords: ["FURNITURE", "MATTRESS"] },
+  {
+    category: "PERSONAL_CARE_HAIR_AND_BEAUTY",
+    keywords: ["SALON", "BARBER", "BARBERSHOP", "BEAUTY", "NAILS"],
+  },
+  {
+    category: "GENERAL_MERCHANDISE_PET_SUPPLIES",
+    keywords: ["PET SUPPLY", "PET SUPPLIES", "PETS"],
+  },
+  {
+    category: "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES",
+    keywords: ["APPAREL", "CLOTHING", "SHOES"],
+  },
+  { category: "TRAVEL_LODGING", keywords: ["HOTEL", "MOTEL", "INN", "RESORT"] },
+
+  // A bar or a bakery by its kind (QA round 28: "HOLLOW OAK TAVERN", "BLUE HERON BAKERY").
+  { category: "FOOD_AND_DRINK_RESTAURANT", keywords: ["TAVERN", "PUB", "SALOON", "BAR & GRILL"] },
+  { category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK", keywords: ["BAKERY", "BAKE SHOP", "DONUTS"] },
+  // A gift to a church or a charity, and insurance and loans by their own words (QA round 28:
+  // "PARKSIDE COMMUNITY CHURCH", "LEMONADE INSURANCE", "HARBOR CREDIT UNION PMT").
+  {
+    category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+    keywords: ["CHURCH", "MINISTRIES", "PARISH", "TITHE", "TITHES", "DONATION", "CHARITY"],
+    direction: "out",
+  },
+  {
+    category: "GENERAL_SERVICES_INSURANCE",
+    keywords: ["INSURANCE", "ASSURANCE"],
+    direction: "out",
+  },
+  {
+    category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+    keywords: ["LOAN PMT", "LOAN PAYMENT", "CREDIT UNION PMT", "CU LOAN"],
+    direction: "out",
+  },
   // Toast ("TST*") is a till for restaurants only: whatever the place is called, it's a meal.
   // After the merchant names, so "TST* BLUE BOTTLE" is still coffee. (Square's "SQ *" serves
   // every kind of shop, so it says nothing.)

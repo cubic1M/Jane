@@ -6,13 +6,14 @@ import { startPaperAction } from "@/app/investments/paper-actions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { PAPER_DEFAULT_START_CENTS } from "@/config/paper";
 import type { PaperView } from "@/lib/paper/account";
-import { formatCents } from "@/lib/money";
+import { formatWholeDollars } from "@/lib/money";
 
 // The paper account on the investments page, Home's way: one big number, a graph of the account
 // against just holding the level's mix (dashed) with a dot for every trade, and the positions and
 // the trade log a tap away. Before it starts: the starting balance and Start. Simulated only.
 
-const dollars = (cents: number) => formatCents(cents).replace(/\.\d\d$/, "");
+// Whole dollars, rounded (it said $376/yr where the import chip said $377/yr for $376.80).
+const dollars = formatWholeDollars;
 const signed = (cents: number) => `${cents >= 0 ? "+" : "−"}${dollars(Math.abs(cents))}`;
 const share = (n: number) => `${n >= 0 ? "+" : "−"}${(Math.abs(n) * 100).toFixed(1)}%`;
 const BOX = "border border-zinc-400 bg-white dark:border-zinc-600 dark:bg-zinc-950";
