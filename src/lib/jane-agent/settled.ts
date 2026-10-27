@@ -9,8 +9,11 @@ import { parseActions, parseRefs, type MessageAction, type MessageRefs } from ".
 // Messages answered somewhere else lose their buttons (spec step 83, like findings in step
 // 81): the autopilot question once a level is picked in Settings, a set-up suggestion
 // answered on the plan, a step on an action that's no longer waiting on it (answered on
-// Actions), a deadline marked done on Deadlines, an alert read on Alerts and a policy
-// reading confirmed on Insurance (spec step 151). Their links stay.
+// Actions), a deadline marked done on Deadlines, an alert read on Alerts, a policy
+// reading confirmed on Insurance (spec step 151), and a suggestion that stopped applying or was
+// answered on its page (overnight upload QA: after a second upload showed the car insurance
+// payments, "Check your car is insured" stayed in the dock though the scan had dropped it).
+// Their links stay.
 
 type Open = { id: string; refs: MessageRefs; actions: MessageAction[] };
 
@@ -43,6 +46,7 @@ export async function closeAnsweredElsewhere(
   const negotiationIds = ids((m) => m.refs.negotiationId);
   const anySaving = open.some((m) => m.refs.savingGroup || m.refs.savingId);
   const riskIds = ids((m) => m.refs.riskId);
+  const suggestionKeys = ids((m) => m.refs.suggestion);
   const anyAutopilot = open.some(asksAutopilot);
   const anyProposal = open.some((m) => m.refs.proposalKey);
   if (
@@ -55,7 +59,8 @@ export async function closeAnsweredElsewhere(
     !coverRefs.length &&
     !negotiationIds.length &&
     !anySaving &&
-    !riskIds.length
+    !riskIds.length &&
+    !suggestionKeys.length
   )
     return 0;
 
@@ -114,6 +119,17 @@ export async function closeAnsweredElsewhere(
       })
     : [];
   const stillAskedRisks = new Set(askedRisks.map((r) => r.id));
+  // Suggestions still waiting or offered today; any other status (gone, yes, no) settles them.
+  const liveSuggestions = suggestionKeys.length
+    ? new Set(
+        (
+          await db.suggestions.findMany({
+            where: { key: { in: suggestionKeys }, status: { in: ["waiting", "selected"] } },
+            select: { key: true },
+          })
+        ).map((x) => x.key),
+      )
+    : new Set<string>();
   const offeredIds = new Set(offers.map((o) => o.id));
   const sameOffered = offers.some((o) => o.kind !== "higher_deductible");
   const openProposalKeys = new Set(proposals.map((p) => p.key));
@@ -137,6 +153,7 @@ export async function closeAnsweredElsewhere(
       savingGroup,
       savingId,
       riskId,
+      suggestion,
     } = m.refs;
     return (
       (asksAutopilot(m) && autopilot !== null) ||
@@ -149,7 +166,8 @@ export async function closeAnsweredElsewhere(
       (negotiationId !== undefined && !stillAsked.has(negotiationId)) ||
       (savingId !== undefined && !offeredIds.has(savingId)) ||
       (savingGroup !== undefined && !sameOffered) ||
-      (riskId !== undefined && !stillAskedRisks.has(riskId))
+      (riskId !== undefined && !stillAskedRisks.has(riskId)) ||
+      (suggestion !== undefined && !liveSuggestions.has(suggestion))
     );
   };
 
