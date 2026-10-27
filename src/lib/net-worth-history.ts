@@ -50,7 +50,7 @@ export async function loadNetWorthHistory(
   );
   return {
     todayCents: today.netCents,
-    known: today.missing.length < accounts.length || owned.length > 0 || crypto > 0,
+    known: today.known,
     months: netWorthLine(
       accounts,
       snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),

@@ -51,8 +51,12 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
     {
       label: "Net worth",
       href: "/net-worth",
-      value: d.hasAccounts ? formatCents(d.netWorth.netCents) : null,
-      status: d.hasAccounts ? "What you have minus what you owe" : NO_BANK,
+      value: d.hasAccounts && d.netWorth.known !== false ? formatCents(d.netWorth.netCents) : null,
+      status: d.hasAccounts
+        ? d.netWorth.known === false
+          ? "No balance in your files yet"
+          : "What you have minus what you owe"
+        : NO_BANK,
     },
   ];
   if (d.hasInvestmentAccounts) {

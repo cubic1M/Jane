@@ -122,6 +122,8 @@ export type MoneyTreeInput = {
   transfers: { id: string; toName: string; amountCents: number; status: string; runOn: string }[];
   have: {
     netCents: number;
+    // False when no balance is known yet (insights/net-worth.ts).
+    netKnown?: boolean;
     assetsCents: number;
     debtsCents: number;
     investmentsCents: number;
@@ -348,8 +350,11 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       item("have", "net-worth", {
         label: "Net worth",
         status: "good",
-        figure: shortMoney(h.netCents),
-        summary: `You have ${formatCents(h.assetsCents)} and owe ${formatCents(h.debtsCents)}.`,
+        figure: h.netKnown === false ? "Not known" : shortMoney(h.netCents),
+        summary:
+          h.netKnown === false
+            ? "Your files don't include a balance yet. Add one on the import page."
+            : `You have ${formatCents(h.assetsCents)} and owe ${formatCents(h.debtsCents)}.`,
       }),
     );
   }
