@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CopyButton } from "@/components/copy-button";
 import type { Kit } from "@/lib/diy";
+import { dayLabel } from "@/lib/day-label";
 
 // The do-it-yourself kit on a card the person chose to handle themselves (and, in read-only
 // mode, every yes from a real account): the company's link, the steps, the email or script
@@ -108,7 +109,7 @@ export function DiyKit({
       )}
       {doneOn ? (
         <p role="status" className="rounded-lg bg-emerald-50 p-3 dark:bg-emerald-950">
-          You marked this done on {doneOn}. Nice work.
+          You marked this done on {dayLabel(doneOn, { year: true })}. Nice work.
         </p>
       ) : (
         <>
