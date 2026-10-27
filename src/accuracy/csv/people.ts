@@ -187,7 +187,7 @@ const RESTAURANTS: Merchant[] = [
 const COFFEE: Merchant[] = [
   { descriptor: "STARBUCKS STORE 05423", category: "FOOD_AND_DRINK_COFFEE", lo: 5.45, hi: 5.45 },
   { descriptor: "SQ *BLUE BOTTLE COFFEE", category: "FOOD_AND_DRINK_COFFEE", lo: 6.5, hi: 6.5 },
-  { descriptor: "DUNKIN #348812", category: "FOOD_AND_DRINK_COFFEE", lo: 3.89, hi: 3.89 },
+  { descriptor: "DUNKIN 348812", category: "FOOD_AND_DRINK_COFFEE", lo: 3.89, hi: 3.89 },
 ];
 const SHOPS: Merchant[] = [
   {
