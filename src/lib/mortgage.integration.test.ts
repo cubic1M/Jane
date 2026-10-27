@@ -25,6 +25,9 @@ import { loadMortgage } from "./mortgage";
 // that doesn't pay at today's rates.
 
 const url = process.env.TEST_DATABASE_URL;
+// A PMI notice's key ("homeeq:pmi:…", "homeeq:pmi_ended:…"), not any key with "pmi" in it: an
+// account id is random and once held "…5gpmik…" (the escrow notice failed this file on CI).
+const isPmiKey = (key: string) => /:pmi[_:]/.test(key);
 const LINKED = new Date("2026-10-18T15:00:00Z");
 
 describe.runIf(url)("the mortgage, watched, against a real database", () => {
@@ -97,7 +100,7 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
       data: { valueCents: 45_000_000 },
     });
     expect((await loadMortgage(userId, opts()))!.pmi).toBeNull();
-    expect((await fromSource()).filter((x) => x.dedupeKey.includes("pmi"))).toEqual([]);
+    expect((await fromSource()).filter((x) => isPmiKey(x.dedupeKey))).toEqual([]);
     const ask = await sendToJane(userId, "can I get rid of PMI?", opts());
     expect(ask.reply.body).toContain(
       "Your loan has PMI. Tell me the home's value when the loan began and I'll tell you when it can come off.",
@@ -134,7 +137,7 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
     const snapshot = await loadSnapshot(userId, opts());
     // The mortgage and the home loan sources both see this loan; only the home loan's raises it.
     const raised = gather(snapshot!, LINKED, { trigger: "sync" }).filter(
-      (x) => (x.source === "mortgage" || x.source === "home_equity") && x.dedupeKey.includes("pmi"),
+      (x) => (x.source === "mortgage" || x.source === "home_equity") && isPmiKey(x.dedupeKey),
     );
     expect(raised.map((x) => x.source)).toEqual(["home_equity"]);
   });
