@@ -19,6 +19,15 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const usDate = (d: Date) =>
   `${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())}/${d.getUTCFullYear()}`;
 
+// Checking with its running balance ($2,000.00 today), so net worth is known but for the card.
+function checkingFile(): string {
+  const d = usDate(new Date(Date.now() - 3 * 86_400_000));
+  return [
+    "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #",
+    `CREDIT,${d},"ACME CORP PAYROLL PPD",2000.00,ACH_CREDIT,2000.00,,`,
+  ].join("\n");
+}
+
 function cardFile(): string {
   const lines = ["Transaction Date,Post Date,Description,Category,Type,Amount,Memo"];
   for (let n = 60; n >= 1; n -= 5) {
@@ -38,7 +47,20 @@ test("a card without a balance is asked for, and net worth says it isn't counted
     .context()
     .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
 
+  // First a checking account, whose file says its balance: nothing is asked.
   await page.goto("/import");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "checking.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(checkingFile()),
+  });
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
+  await expect(page.locator("[data-import-saved]")).toBeVisible();
+  await expect(page.locator("[data-balance-ask]")).toHaveCount(0);
+  await waitForImport(page, { open: "/import" });
+
+  await page.locator('select[name="accountId"]').selectOption("new");
   await page.locator('input[type="file"]').setInputFiles({
     name: "card.csv",
     mimeType: "text/csv",
