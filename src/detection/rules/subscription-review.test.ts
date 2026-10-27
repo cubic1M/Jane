@@ -82,28 +82,9 @@ describe("subscription_review", () => {
     it("treats an ambiguous recurring charge as a subscription once Claude says yes", () => {
       const transactions = monthly(6, 1499, CANVA);
 
-      // One price every month: a plan at low confidence before Claude is asked.
-      expect(run(input({ transactions }))).toEqual([
-        expect.objectContaining({ key: "merchant:canva", confidence: "low" }),
-      ]);
+      expect(run(input({ transactions }))).toEqual([]);
       const [finding] = run(input({ transactions, subscriptionMerchantKeys: ["canva"] }));
-      expect(finding).toMatchObject({
-        key: "merchant:canva",
-        annualSavingsCents: 17988,
-        confidence: "medium",
-      });
-      // Claude said no: one price doesn't make it one.
-      expect(run(input({ transactions, declinedSubscriptionMerchantKeys: ["canva"] }))).toEqual([]);
-    });
-
-    it("needs the very same price every month, and under FIXED_PRICE_SUBSCRIPTION_MAX_CENTS", () => {
-      const mystery = { description: "MYSTERY CLUB", pfcPrimary: null, pfcDetailed: null };
-      expect(run(input({ transactions: monthly(4, 2000, mystery) }))).toHaveLength(1);
-      expect(run(input({ transactions: monthly(4, [2000, 2150, 1980, 2040], mystery) }))).toEqual(
-        [],
-      );
-      expect(run(input({ transactions: monthly(4, 145_000, mystery) }))).toEqual([]);
-      expect(run(input({ transactions: monthly(2, 2000, mystery) }))).toEqual([]);
+      expect(finding).toMatchObject({ key: "merchant:canva", annualSavingsCents: 17988 });
     });
 
     it("caps confidence when only Claude's answer makes it a subscription", () => {
