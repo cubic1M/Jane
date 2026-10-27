@@ -18,6 +18,8 @@ export const LOOKBACK_MONTHS = 12;
 // and interest findings say the months the data covers, not "the last 12 months", and card
 // interest seen in at least two months counts at its yearly pace (overnight upload QA).
 export const SHORT_HISTORY_DAYS = 200;
+// Card interest counts at its yearly pace only when it was charged in this many months or more.
+export const YEARLY_PACE_MIN_MONTHS = 2;
 
 // The "money found" total counts only findings at or above this confidence.
 export const MONEY_FOUND_MIN_CONFIDENCE: ConfidenceLevel = "medium";

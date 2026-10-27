@@ -45,8 +45,8 @@ describe("card_interest", () => {
 
     expect(finding.title).toBe("$49.65 in interest on Example Rewards Card in the last 3 months");
     expect(finding.amountCents).toBe(4965);
-    // 90 days of history: $49.65 × 365 / 90.
-    expect(finding.annualSavingsCents).toBe(20136);
+    // 90 days of history: $49.65 × 365.25 / 90.
+    expect(finding.annualSavingsCents).toBe(20150);
   });
 
   it("doesn't count a single month's interest at a yearly pace", () => {

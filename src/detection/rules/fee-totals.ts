@@ -1,16 +1,14 @@
-import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
+import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS, YEARLY_PACE_MIN_MONTHS } from "@/config/detection";
 import { byDate, evidenceOf, sumCents } from "../helpers";
 import type { Candidate, DetectionAccount, DetectionInput, DetectionTransaction } from "../types";
-
-const DAY_MS = 86_400_000;
-const DAYS_PER_MONTH = 365 / 12;
+import { DAYS_PER_MONTH, DAYS_PER_YEAR, daysBetween, monthOf } from "../units";
 
 // Days of history for an account: from its first transaction the rules see to asOf.
 function historyDays(input: DetectionInput, accountId: string): number {
   const first = input.transactions
     .filter((t) => t.accountId === accountId)
     .reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
-  return Math.round((Date.parse(input.asOf) - Date.parse(first)) / DAY_MS);
+  return daysBetween(first, input.asOf);
 }
 
 // "the last 3 months", or "the last month".
@@ -47,11 +45,11 @@ export function totalsByAccount(
       ? Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH)))
       : LOOKBACK_MONTHS;
     const chargedMonths = new Set(
-      charges.filter((c) => c.amountCents > 0).map((c) => c.date.slice(0, 7)),
+      charges.filter((c) => c.amountCents > 0).map((c) => monthOf(c.date)),
     );
     const annual =
-      yearly && short && chargedMonths.size >= 2
-        ? Math.round((total * 365) / Math.max(days, DAYS_PER_MONTH))
+      yearly && short && chargedMonths.size >= YEARLY_PACE_MIN_MONTHS
+        ? Math.round((total * DAYS_PER_YEAR) / Math.max(days, DAYS_PER_MONTH))
         : total;
     // Keyword rules and Plaid are reliable on fee lines; an LLM guess is less certain.
     const sure = charges.every((c) => c.categorySource === "rule" || c.categorySource === "plaid");
