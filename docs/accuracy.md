@@ -48,7 +48,7 @@ Jane's accuracy test bench (founder, 2026-10-26). Until now every finding had be
 
 ## Scoreboard
 
-Before: the detectors as on main (with #759's messy-bank fixes), on the same 40 people.
+Before #766: the detectors as on main then (with #759's messy-bank fixes), on its 40 people.
 
 | Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -69,13 +69,13 @@ Tuning set (60 people, 16326 transactions):
 
 | Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| subscriptions | 100.0% | 63.8% | 0.0% | 95 | 0 | 54 |
+| subscriptions | 100.0% | 100.0% | 0.0% | 149 | 0 | 0 |
 | price_rises | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
 | fees | 100.0% | 100.0% | 0.0% | 31 | 0 | 0 |
 | double_charges | 100.0% | 100.0% | 0.0% | 24 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 14 | 0 | 0 |
-| bills | 99.7% | 76.0% | 1.7% | 308 | 1 | 97 |
+| bills | 100.0% | 99.8% | 0.0% | 404 | 0 | 1 |
 | income | 100.0% | 100.0% | 0.0% | 1391 | 0 | 0 |
 | transfers | 100.0% | 100.0% | 0.0% | 1613 | 0 | 0 |
 
@@ -94,13 +94,13 @@ Held-out set (40 people, 10008 transactions):
 
 | Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| subscriptions | 100.0% | 41.9% | 0.0% | 52 | 0 | 72 |
+| subscriptions | 100.0% | 99.2% | 0.0% | 123 | 0 | 1 |
 | price_rises | 100.0% | 100.0% | 0.0% | 8 | 0 | 0 |
 | fees | 100.0% | 100.0% | 0.0% | 20 | 0 | 0 |
 | double_charges | 100.0% | 100.0% | 0.0% | 31 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
-| bills | 98.3% | 59.3% | 7.5% | 172 | 3 | 118 |
+| bills | 98.9% | 96.9% | 7.5% | 281 | 3 | 9 |
 | income | 100.0% | 100.0% | 0.0% | 774 | 0 | 0 |
 | transfers | 100.0% | 99.6% | 0.0% | 833 | 0 | 3 |
 
@@ -119,13 +119,13 @@ Second held-out set (40 people, 10748 transactions):
 
 | Detector | Precision | Recall | False-alarm rate | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| subscriptions | 100.0% | 38.4% | 0.0% | 48 | 0 | 77 |
+| subscriptions | 96.8% | 96.0% | 10.0% | 120 | 4 | 5 |
 | price_rises | 100.0% | 100.0% | 0.0% | 4 | 0 | 0 |
 | fees | 100.0% | 100.0% | 0.0% | 21 | 0 | 0 |
 | double_charges | 100.0% | 100.0% | 0.0% | 20 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 12 | 0 | 0 |
-| bills | 99.4% | 61.1% | 2.5% | 174 | 1 | 111 |
+| bills | 99.6% | 94.0% | 2.5% | 268 | 1 | 17 |
 | income | 100.0% | 100.0% | 0.0% | 780 | 0 | 0 |
 | transfers | 100.0% | 99.8% | 0.0% | 888 | 0 | 2 |
 
@@ -149,6 +149,8 @@ Calibration, second held-out set:
 
 ### Known misses after #766
 
+All three were fixed in round 2, below.
+
 - **Subscriptions billed through Apple at mixed amounts** ("APPLE.COM/BILL", 11 people). One merchant, several prices: neither a steady subscription nor Apple Store shopping can be told apart from the amounts alone.
 - **Yearly subscriptions seen once** (Amazon Prime, 9) and **two-month histories** (under three charges of anything).
 - **Card companies the rules don't know** (Barclaycard, 6 bills and 56 transfers). Matching a checking payment to the card's "thank you" on the same day would find any issuer.
@@ -159,6 +161,41 @@ Each fix was made by reading the tuning set's mistakes only. The held-out sets w
 
 - **Double charges (precision 55.8% → 100% on the tuning set, 44.9% → 100% and 42.6% → 100% held out; recall stays 100%).** Every false "Charged twice?" was a group buying a seat each: two or three tickets or fares at one price on one day. Those are left out now: Plaid's event and flight categories (`DUPLICATE_CHARGE_PER_SEAT_CATEGORIES`), ticket sellers filed as events by the keyword rules (Ticketmaster, Live Nation, StubHub, SeatGeek and others), and cinemas by name (`DUPLICATE_CHARGE_PER_SEAT_WORDS`; Plaid files cinemas with streaming, where a double charge is real). Two bank fees on one day aren't a double charge either: the bank fees finding asks for those back. The cinema and bank-fee rules came from reading the first held-out set's mistakes (seats at AMC, two overdraft fees in a day); the second held-out set, with a cinema and ticket seller of its own, confirms them. A real double charge at a ticket seller is now missed; the card's dispute process still covers it.
 - **Own-account transfers (recall 92.6% → 100% on the tuning set, 87.7% → 99.6% and 82.4% → 99.8% held out; precision stays 100%).** Every miss was a card payment from checking written by a card company no keyword rule knows ("BARCLAYCARD US PAYMENT"), so it counted as spending, and the card payment was missing from "Coming up". The card's own side always says what it is ("Payment Thank You", the bank's "Payment" type). Now an outflow from a bank account of the same amount within `CARD_PAYMENT_MATCH_DAYS` (3) of the card's payment is that payment, whichever company wrote it (`src/categorize/card-payments.ts`). It runs after every CSV import, over all the person's accounts, so it works whichever account was imported first; it only changes rows with no category or Claude's guess, never the person's own or Plaid's (Plaid names card payments itself). What's left: a payment made on the last day, before the card posted its side.
+- **Subscriptions (recall 63.8% → 100% on the tuning set at 100% precision).** By cause:
+  - *Several subscriptions billed through an app store* ("APPLE.COM/BILL" at $0.99 and $10.99, on different days). Apple, iTunes and Google Play (`BILLING_PLATFORM_MERCHANTS`) are split by exact price: each price that comes regularly is a subscription of its own, keyed `merchant:apple@1099` after the first so every card stays separate. One-off app purchases at other prices aren't.
+  - *Yearly plans seen once* (Amazon Prime). One charge in a year, between $50 and $500 (`YEARLY_PLAN_MIN_CENTS`, `YEARLY_PLAN_MAX_CENTS`), under the plan's own name (a `SUBSCRIPTION_MERCHANTS` name, alone or with "plus", "premium" and the like) is a yearly plan, at low confidence.
+  - *Two-month histories.* Two charges a month apart are enough where a repeat can only be a bill or a subscription (`SHORT_RUN_CATEGORIES`: rent, utilities, phone, insurance, loan and card payments, monthly bank fees, streaming, music, gyms; and subscription merchants), at low confidence. Two purchases at a shop a month apart still aren't.
+  - Payments on a debt or moves of money are never a subscription, whatever the name ("APPLE CARD PAYMENT").
+- **Bills (recall 73.3% → 99.8% on the tuning set, 55.5% → 96.9% and 54.7% → 94.0% held out).** Mostly the same causes (app stores, two-month histories, yearly plans renewing within the month), plus utilities named for what they sell ("XCEL ENERGY", "SOUTHERN CALIFORNIA EDISON", "... UTILITIES"), now filed as utilities so their seasonal amounts form a bill. A run that is only a few of a shop's many charges, at prices that just look alike, is no longer a bill (a grocer's bills that happened to land a month apart; `RUN_MIN_SHARE_OF_CHARGES`).
+- **Fixes the first held-out set's mistakes suggested.** With only the tuning-set fixes, the first held-out set showed 9 false subscriptions (subscriptions precision 93.2%) and the second 4 (96.8%). Reading the first set's: one-off "ADOBE STOCK" purchases over $50 read as a yearly Adobe plan, and app-store purchases and fixed-price coffee were split into "subscriptions" by price. So a yearly plan now needs the plan's own name, and splitting by price is for app stores only. The first held-out set went to 100% precision; it was read, so that number no longer proves anything. The second held-out set stayed at 96.8%: its 4 have a different cause (below).
+
+### Before and after
+
+Each cell is precision / recall.
+
+| Detector | Set | Before (main) | After | Target |
+| --- | --- | ---: | ---: | --- |
+| Subscriptions | Tuning (60) | 100% / 63.8% | **100% / 100%** | recall ≥ 90% at precision ≥ 98% ✅ |
+| | Held-out (40) | 100% / 41.9% | 100% / 99.2% (93.2% precision before the fixes it suggested) | ✅ (read) |
+| | Second held-out (40) | 100% / 38.4% | **96.8% / 96.0%** | ❌ precision, see below |
+| Double charges | Tuning | 55.8% / 100% | **100% / 100%** | precision ≥ 90%, recall ≥ 95% ✅ |
+| | Held-out | 44.9% / 100% | 100% / 100% | ✅ |
+| | Second held-out | 42.6% / 100% | **100% / 100%** | ✅ |
+| Bills | Tuning | 99.7% / 73.3% | **100% / 99.8%** | recall ≥ 90% ✅ |
+| | Held-out | 98.2% / 55.5% | 98.9% / 96.9% | ✅ |
+| | Second held-out | 99.4% / 54.7% | **99.6% / 94.0%** | ✅ |
+| Transfers | Tuning | 100% / 92.6% | **100% / 100%** | recall ≥ 98% ✅ |
+| | Held-out | 100% / 87.7% | 100% / 99.6% | ✅ |
+| | Second held-out | 100% / 82.4% | **100% / 99.8%** | ✅ |
+
+Income, fees, price rises, card interest and idle cash were 100% / 100% before and still are, on every set.
+
+### What's left, and why
+
+- **Subscriptions on the second held-out set (precision 96.8%, target 98%).** All 4 false alarms are a "PELOTON* APPAREL" purchase of $60–$120. The bank's description is cut at the `*`, so it reads "PELOTON", the same name as Peloton's membership: seen once, a $100 purchase and a yearly plan look exactly alike. Reaching 98% here means dropping the yearly-plan rule, which costs every yearly plan (all are seen once). One more charge from the merchant settles it either way, and meanwhile the card is low confidence and doesn't count toward money found. The 5 misses are Microsoft 365 (the bank writes "MICROSOFT", not on the subscription list because Microsoft also sells one-off software) and one Dropbox plan.
+- **Bills.** Utilities whose names don't say what they sell ("GEORGIA POWER", "PSE&G", "ENTERGY", "FPL", "ALABAMA POWER") aren't found by the keyword rules; a bare "POWER" would also catch "POWER YOGA". Claude categorizes them when it's on (the bench runs without it). Weekly fixed-price coffee shows as coming up (3 on the first held-out set, 1 on the second): regular, but not a bill. A two-month history with one card payment in it can't show a pattern yet.
+- **Transfers.** A card payment made on the last day of the data, before the card posted its side (5 across both held-out sets).
+- **Next time.** Both held-out sets have now been read. Fixes for the misses above need a third held-out set, made before they are written.
 
 ## Calibration
 
@@ -177,6 +214,8 @@ Before:
 
 At the top, Jane was surer than it was right. Almost all of the wrong ones were double charges: a generic months-and-matches percentage gave "Charged twice?" 83% or more on a long history. And nine suggestions said 0%.
 
-After: "Charged twice?" is never surer than `DUPLICATE_CHARGE_MAX_PERCENT` (65%), which is how often it's right on the bench. No suggestion says 0%. The table is under "Calibration now" in the scoreboard block above.
+After: "Charged twice?" is never surer than `DUPLICATE_CHARGE_MAX_PERCENT` (65%), which is how often it was right on #766's bench. No suggestion says 0%. The table is under "Calibration now" in the scoreboard block above.
 
 What's left is under-confidence: "86% sure" is right every time here. I didn't raise the percentages to match. The bench's people are cleaner than real bank data (every subscription is a subscription, every saver has idle cash), so raising them would be tuning to my own generator. The gate only checks the safe direction: never more than 10 points surer than right. Raise the percentages from real outcomes: the verified savings record (#729) tracks which suggestions were acted on and paid off.
+
+Round 2: no suggestion is surer than it turns out to be, on any set, but every bucket is now under-confident: suggestions saying 56% to 95% are right 100% of the time on all three sets. **The target of "within 10 points in every bucket" is not met, on purpose.** Meeting it would mean Jane saying 95–100% for everything, including on two months of history (the 50–59% bucket is all people with under six months, held down by `THIN_DATA_MAX_PERCENT`). The bench's people are made by rules I wrote, so the detectors tuned on them are right nearly every time; real bank data won't be that clean, and a Jane that says "99% sure" and is wrong is worse than one that says "60%" and is right. The gate keeps the safe direction (never more than 10 points surer than right, on every set). The percentages should be raised from real outcomes once real accounts link: the verified savings record (#729) tracks which suggestions held up.

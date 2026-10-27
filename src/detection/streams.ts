@@ -1,16 +1,24 @@
 import {
   ACTIVE_WITHIN_INTERVALS,
+  BILLING_PLATFORM_MERCHANTS,
   CHARGES_PER_YEAR,
   FALLBACK_AMOUNT_TOLERANCE,
   FALLBACK_INTERVAL_DAYS,
   FALLBACK_MIN_CHARGES,
+  RUN_MIN_SHARE_OF_CHARGES,
+  SHORT_RUN_CATEGORIES,
+  SHORT_RUN_MIN_CHARGES,
+  SUBSCRIPTION_MERCHANTS,
   VARIABLE_BILL_CATEGORIES,
   HIGH_CONFIDENCE_MIN_CHARGES,
+  YEARLY_PLAN_MAX_CENTS,
+  YEARLY_PLAN_MIN_CENTS,
+  YEARLY_PLAN_WORDS,
   type ConfidenceLevel,
   type Frequency,
 } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { byDate, inLookback } from "./helpers";
+import { byDate, inList, inLookback, merchantMatches } from "./helpers";
 import type { DetectionInput, DetectionRecurringStream, DetectionTransaction } from "./types";
 import { average, daysBetween, median } from "./units";
 
@@ -117,6 +125,19 @@ function withinTolerance(amount: number, reference: number): boolean {
   return Math.abs(amount - reference) <= reference * FALLBACK_AMOUNT_TOLERANCE;
 }
 
+const isVariable = (charges: DetectionTransaction[]) =>
+  inList(mostCommon(charges.map((c) => c.pfcDetailed)), VARIABLE_BILL_CATEGORIES);
+
+// Where two charges a month apart can only be a bill or a subscription.
+function shortRunAllowed(charges: DetectionTransaction[]): boolean {
+  const key = merchantOf(charges[charges.length - 1])?.key ?? "";
+  return (
+    inList(mostCommon(charges.map((c) => c.pfcDetailed)), SHORT_RUN_CATEGORIES) ||
+    merchantMatches(key, SUBSCRIPTION_MERCHANTS) ||
+    merchantMatches(key, BILLING_PLATFORM_MERCHANTS)
+  );
+}
+
 // Fallback: at one merchant, the charges near the typical amount must come at a regular
 // gap. Charges after that run, at the same gap but a new price (within tolerance of each
 // other), are kept as the run's newest charges so price increases show up.
@@ -124,16 +145,19 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
   const typical = median(charges.map((c) => c.amountCents));
   // A usage bill or a card payment: every charge counts, whatever its amount, and the regular
   // gap is what makes it a bill.
-  const variable = (VARIABLE_BILL_CATEGORIES as readonly string[]).includes(
-    mostCommon(charges.map((c) => c.pfcDetailed)) ?? "",
-  );
+  const variable = isVariable(charges);
   const core = variable ? charges : charges.filter((c) => withinTolerance(c.amountCents, typical));
-  if (core.length < FALLBACK_MIN_CHARGES) return null;
+  const short = core.length < FALLBACK_MIN_CHARGES;
+  if (core.length < (shortRunAllowed(charges) ? SHORT_RUN_MIN_CHARGES : FALLBACK_MIN_CHARGES)) {
+    return null;
+  }
 
   const gaps = core.slice(1).map((c, i) => daysBetween(core[i].date, c.date));
   const frequency = frequencyOf(gaps);
   const range = frequency && FALLBACK_INTERVAL_DAYS[frequency];
   if (!frequency || !range) return null;
+  // Two charges are only a run a month apart: a week apart is a second purchase.
+  if (short && frequency !== "MONTHLY") return null;
   const [min, max] = range;
 
   const run = [...core];
@@ -167,11 +191,82 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
     pfcPrimary: mostCommon(run.map((c) => c.pfcPrimary)),
     pfcDetailed: mostCommon(run.map((c) => c.pfcDetailed)),
     active: daysBetween(last.date, asOf) <= usualGap * ACTIVE_WITHIN_INTERVALS,
-    confidence: run.length >= HIGH_CONFIDENCE_MIN_CHARGES ? "high" : "medium",
+    confidence:
+      run.length >= HIGH_CONFIDENCE_MIN_CHARGES
+        ? "high"
+        : run.length < FALLBACK_MIN_CHARGES
+          ? "low"
+          : "medium",
     accountId: last.accountId,
     lastDate: last.date,
     predictedNextDate: null,
   };
+}
+
+// The merchant is a subscription by its own name ("dropbox", "duolingo plus"), not a longer one.
+const isPlanName = (key: string) =>
+  SUBSCRIPTION_MERCHANTS.some(
+    (name) =>
+      key === name ||
+      (key.startsWith(`${name} `) && YEARLY_PLAN_WORDS.includes(key.slice(name.length + 1))),
+  );
+
+// A yearly plan seen once: one charge, in YEARLY_PLAN_*_CENTS, under the plan's own name.
+function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
+  const plans = charges.filter(
+    (c) => c.amountCents >= YEARLY_PLAN_MIN_CENTS && c.amountCents <= YEARLY_PLAN_MAX_CENTS,
+  );
+  const merchant = plans.length === 1 ? merchantOf(plans[0]) : null;
+  if (!merchant || !isPlanName(merchant.key)) return null;
+  const [plan] = plans;
+  return {
+    key: `merchant:${merchant.key}`,
+    merchant: plan.merchantName ?? merchant.name,
+    merchantKey: merchant.key,
+    frequency: "ANNUALLY",
+    charges: [plan],
+    lastAmountCents: plan.amountCents,
+    ...priorStats([plan]),
+    annualCostCents: annualCost(plan.amountCents, "ANNUALLY"),
+    pfcPrimary: plan.pfcPrimary,
+    pfcDetailed: plan.pfcDetailed,
+    // Inside the lookback, so within a year: not due again yet.
+    active: true,
+    confidence: "low",
+    accountId: plan.accountId,
+    lastDate: plan.date,
+    predictedNextDate: null,
+  };
+}
+
+// Every run at one merchant: the run at its usual price, unless it's only a few of many
+// charges there at prices that just look alike (a grocer's bills that happened to land a month
+// apart). An app store is different: it bills several subscriptions, each at its own exact
+// price, among one-off purchases at any price, so there each exact price that comes regularly
+// is a run of its own. Every run after the first keeps the merchant's key with its price
+// ("merchant:apple@1099"), so every finding's key stays unique. With no run at all, a yearly
+// plan seen once.
+function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
+  const key = merchantOf(charges[charges.length - 1])?.key ?? "";
+  if (!merchantMatches(key, BILLING_PLATFORM_MERCHANTS)) {
+    const main = detectRun(charges, asOf);
+    if (
+      main &&
+      (isVariable(charges) || main.charges.length >= charges.length * RUN_MIN_SHARE_OF_CHARGES)
+    )
+      return [main];
+    const plan = yearlyPlan(charges);
+    return plan ? [plan] : [];
+  }
+  const runs: Stream[] = [];
+  const byPrice = new Map<number, DetectionTransaction[]>();
+  for (const c of charges) byPrice.set(c.amountCents, [...(byPrice.get(c.amountCents) ?? []), c]);
+  for (const [, same] of [...byPrice].sort(([a], [b]) => a - b)) {
+    const run = detectRun(same, asOf);
+    if (run)
+      runs.push(runs.length === 0 ? run : { ...run, key: `${run.key}@${run.lastAmountCents}` });
+  }
+  return runs;
 }
 
 export function detectRecurring(input: DetectionInput): Stream[] {
@@ -184,8 +279,7 @@ export function detectRecurring(input: DetectionInput): Stream[] {
   }
   return [...groups.keys()]
     .sort()
-    .map((key) => detectRun((groups.get(key) ?? []).sort(byDate), input.asOf))
-    .filter((s): s is Stream => s !== null);
+    .flatMap((key) => detectRuns((groups.get(key) ?? []).sort(byDate), input.asOf));
 }
 
 // Outflow streams only (Plaid gives outflows positive amounts, like transactions). Plaid's
