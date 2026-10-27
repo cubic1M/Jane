@@ -293,7 +293,7 @@ Held-out set (20 people, 135 files, 5324 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 65.7% (1748 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
-| Findings, $/yr | Jane $25,246, truth $28,337; error on the ones found 0.0% |
+| Findings, $/yr | Jane $27,381, truth $28,337; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 11 of 20 people (off by $21,478 in all) |
@@ -302,7 +302,7 @@ Held-out set (20 people, 135 files, 5324 transactions):
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 100.0% | 72.8% | 67 | 0 | 25 |
+| subscription_review | 100.0% | 83.7% | 77 | 0 | 15 |
 | price_increase | 93.8% | 100.0% | 15 | 1 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
@@ -311,7 +311,7 @@ Held-out set (20 people, 135 files, 5324 transactions):
 | idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
 | bills coming up (31 days) | 99.5% | 94.6% | 193 | 1 | 11 |
 
-Missed subscriptions Claude would be asked about on a live upload: 10 of 25.
+Missed subscriptions Claude would be asked about on a live upload: 0 of 15.
 
 Suggestions' confidence (is "80% sure" right 80% of the time?):
 
@@ -332,7 +332,7 @@ Second held-out set (20 people, 128 files, 5419 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 74.7% (1253 left for Claude) |
 | False "Charged twice?" | 2 (2 people) |
-| Findings, $/yr | Jane $28,368, truth $29,248; error on the ones found 0.0% |
+| Findings, $/yr | Jane $28,752, truth $29,248; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 10 of 20 people (off by $60,155 in all) |
@@ -341,7 +341,7 @@ Second held-out set (20 people, 128 files, 5419 transactions):
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 100.0% | 85.5% | 71 | 0 | 12 |
+| subscription_review | 100.0% | 88.0% | 73 | 0 | 10 |
 | price_increase | 100.0% | 100.0% | 7 | 0 | 0 |
 | trial_conversion | 100.0% | 80.0% | 4 | 0 | 1 |
 | bank_fees | 100.0% | 100.0% | 25 | 0 | 0 |
@@ -350,7 +350,7 @@ Second held-out set (20 people, 128 files, 5419 transactions):
 | idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
 | bills coming up (31 days) | 99.5% | 95.3% | 201 | 1 | 10 |
 
-Missed subscriptions Claude would be asked about on a live upload: 2 of 12.
+Missed subscriptions Claude would be asked about on a live upload: 0 of 10.
 
 Suggestions' confidence (is "80% sure" right 80% of the time?):
 
@@ -389,6 +389,7 @@ Rules only, Claude stubbed. Tuning / held-out.
 - **Round 4, more mess:** bills that come when they come (the dentist, a car repair, at uneven gaps), a roommate's share of the bills by Zelle each month, rent by paper check, and a gym's yearly fee beside its monthly one. Two misses on the tuning set, both fixed. Bank of America's ATM line ("BKOFAMERICA ATM … WITHDRWL") counted as spending. A subscription whose second way of writing it carried a code before the city ("SPOTIFY P1A2B3C4D5 CHICAGO IL") read as "Spotify Chicago". Now, when a description ends in a US state, the merchant directory also tries the name without its last one or two words, which matches only companies it already knows (`withoutCity`, `src/detection/merchants.ts`). Tuning set after: subscriptions, price rises and "Coming up" 100%, spending error 0.0%. On the held-out set round 4 brought 2 false price rises, which haven't been read.
 - **A plan at one price every month is a subscription, even under a name no rule knows** (held-out subscriptions recall 20.3% → 66.2%, precision stays 100%; tuning 94.7% → 100%). A recurring charge whose category can't say (none, or one of `AMBIGUOUS_SUBSCRIPTION_CATEGORIES`), monthly, at the very same price at least `FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES` (3) times and at most `FIXED_PRICE_SUBSCRIPTION_MAX_CENTS` ($100), is a subscription at low confidence (`FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE`), before Claude is asked (`isFixedPricePlan`). Claude is still asked about it. A yes raises it to medium, and a no (`declinedSubscriptionMerchantKeys`, from `subscription_checks`) takes it away. Rent, loans and usage bills cost more or move. The rest of the held-out misses are subscriptions whose price changed, or with too few charges at one price.
 - **...but not a loan payment, insurance, a gift or a meal** (QA round 28, on live data). A credit union loan payment, Lemonade Insurance, a church, a bakery and a tavern, each at one fixed monthly amount under $100, were called subscriptions. The price-only rule now leaves out loan, food-and-drink, non-profit, transfer and utility categories and insurance (`FIXED_PRICE_SUBSCRIPTION_EXCLUDED_*`), and any description with a payment, loan, insurance, church, donation or bar and food word (`FIXED_PRICE_SUBSCRIPTION_NOT_WORDS`). The categorizer also files these by their own words (TAVERN, BAKERY, CHURCH, TITHE, INSURANCE, LOAN PMT). Both CSV sets now carry two such charges per person as traps; without the fix they gave 40 false subscriptions per set (precision 58.8% / 55.1%). With it, subscriptions precision is 100% on both, and held-out recall is still 66.2%.
+- **One step up in price is still a plan's price** (round 10). A plan's price goes up once and stays (MUBI $14.99, then $15.99); a bill moves every month. The price-only rule now takes one price, or every charge at an old price then every one at a new price no more than `FIXED_PRICE_SUBSCRIPTION_MAX_STEP` (30%) higher. A step down, a second step or a bigger jump still isn't a plan. Subscriptions recall: first held-out set 72.8% → 83.7%, second 85.5% → 88.0%, precision still 100% on all three sets. The tuning set and the sample bench are unchanged.
 - **What kind of place it is, from the words in its name** ("PHO HOA NOODLE", "BRIGHT NOW DENTAL", "MIDAS MUFFLER", "LUXE NAILS"): restaurant, grocery, dental, eye care, vet, pharmacy, clinic, auto service, fuel, hardware, furniture, salon, pet shop, clothing and lodging words. They come after the merchant names and before the cards' broad labels. This is general vocabulary, not names read off a set. Category right with rules alone: tuning 96.1% → 97.6%, held-out 57.2% → 60.9%. The sample bench is unchanged.
 - **More kinds of place by their words** (round 8). New word groups:
 - **Tickets, films, roasters, warehouse stores and internet providers by their words** (round 9). These are words, not names: TICKETS, TIX, BOX OFFICE are events, and FILM, MOVIES are cinemas. Both are also per-seat, so a group's seats aren't "Charged twice?". Also ROASTERS (coffee), WHOLESALE (warehouse stores), INTERNET (money out to a provider), and PARKING first, so a parking ticket is parking. On the second CSV held-out set, the first check after it was made: category right 69.7% → 74.7%, false "Charged twice?" 6 → 2. The tuning set, the first held-out set and the sample bench are unchanged. Caveat: the same person wrote the set's ticket seller and cinema names and these words, so the words are generic but the check isn't blind.

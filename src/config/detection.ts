@@ -211,6 +211,9 @@ export const LLM_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "medium";
 export const FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES = 3;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CENTS = 10_000;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "low";
+// A plan's price goes up in one step (MUBI $14.99, then $15.99 from a month on); a bill moves
+// every month. One step up of at most this share still counts as one price.
+export const FIXED_PRICE_SUBSCRIPTION_MAX_STEP = 0.3;
 // ...but never a payment on a debt, insurance, a gift or food and drink, by category or by the
 // words of the description (QA round 28: a credit union loan payment, Lemonade Insurance, a
 // church, a bakery and a tavern, each at one price every month, were called subscriptions).
