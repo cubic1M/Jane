@@ -95,6 +95,9 @@ describe("duplicate_charge", () => {
       pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
     };
     none([charge(10, cinema2), charge(10, cinema2)]);
+    // A film house or a ticket seller, by its words.
+    const films = { description: "ROXY FILM CENTER", merchantName: null };
+    none([charge(10, films), charge(10, films)]);
     // Three at one price on one day, at a place whose name says nothing: a group's seats.
     const hall = { description: "GRAND HALL 042", merchantName: null };
     none([charge(10, hall), charge(10, hall), charge(10, hall)]);
