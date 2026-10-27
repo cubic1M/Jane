@@ -606,10 +606,11 @@ export function tilesView(input: AreasInput): AreaTile[] {
     })(),
     taxes: (() => {
       const t = input.taxes;
-      // Income under the standard deduction owes nothing: say so, not "not enough to estimate"
-      // (overnight upload QA: a student with a part-time job).
+      // Income under the standard deduction owes nothing, or less than nothing with a refundable
+      // credit: say so, not "not enough to estimate" (overnight upload QA: a student with a
+      // part-time job came out at -$528).
       const noTax =
-        t !== null && t.totalTaxCents === 0 && (t.incomeCents ?? 0) > 0 && !t.withholdingKnown;
+        t !== null && t.totalTaxCents <= 0 && (t.incomeCents ?? 0) > 0 && !t.withholdingKnown;
       if (noTax) {
         return tile("taxes", input, true, {
           value: shortMoney(0),
