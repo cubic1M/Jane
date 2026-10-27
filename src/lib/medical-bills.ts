@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   DEMO_ASSISTANCE_TENTHS,
   DEMO_GRANT_TENTHS,
@@ -23,6 +22,7 @@ import {
   type MedicalItem,
 } from "@/planning/medical-bills";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { rollOf } from "@/lib/hash";
 
 // Medical bills (spec step 180). Bills found from the person's payments to medical
 // providers, plus ones they type in; each checked against their health insurance and
@@ -225,7 +225,7 @@ export function standInAnswer(
   kind: string,
   amountCents: number,
 ): { granted: boolean; savedCents: number; text: string } {
-  const n = createHash("sha256").update(requestId).digest()[0] % 10;
+  const n = rollOf(requestId);
   const granted = n < DEMO_GRANT_TENTHS;
   if (kind === "itemized") {
     return {

@@ -5,6 +5,8 @@ import {
   DEADLINE_REMINDER_DAYS,
   DEADLINE_WEEK_DAYS,
   RETURN_MIN_CENTS,
+  RETURN_ROUTINE_MEDIAN_MULTIPLE,
+  RETURN_ROUTINE_MIN_PURCHASES,
   RETURN_REMINDER_DAYS,
   RETURN_WINDOW_DAYS,
   RETURN_WINDOW_OVERRIDES,
@@ -22,7 +24,7 @@ import { expectedDates } from "@/detection/forecast";
 import { byDate, inList, inLookback, isRenewable, merchantMatches } from "@/detection/helpers";
 import { merchantOf, type Stream } from "@/detection/streams";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";
-import { addDays, daysBetween } from "@/detection/units";
+import { addDays, daysBetween, median } from "@/detection/units";
 import { debtSummary, type DebtAccount } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 
@@ -169,12 +171,27 @@ export function returnWindowDays(merchantKey: string | undefined): number {
 export function returnDeadlines(input: DetectionInput, streams: Stream[]): Deadline[] {
   const recurring = new Set(streams.flatMap((s) => s.charges.map((c) => c.id)));
   const refunds = input.transactions.filter((t) => t.amountCents < 0);
+  // What the person usually spends at each shop, to tell a routine run from a one-off.
+  const paid = new Map<string, number[]>();
+  for (const t of inLookback(input)) {
+    const key = merchantOf(t)?.key;
+    if (!key || t.amountCents <= 0) continue;
+    paid.set(key, [...(paid.get(key) ?? []), t.amountCents]);
+  }
+  const routine = (t: DetectionTransaction) => {
+    const amounts = paid.get(merchantOf(t)?.key ?? "") ?? [];
+    return (
+      amounts.length >= RETURN_ROUTINE_MIN_PURCHASES &&
+      t.amountCents <= median(amounts) * RETURN_ROUTINE_MEDIAN_MULTIPLE
+    );
+  };
   return inLookback(input)
     .filter(
       (t) =>
         t.amountCents >= RETURN_MIN_CENTS &&
         !recurring.has(t.id) &&
-        inList(t.pfcDetailed, RETURNABLE_CATEGORIES),
+        inList(t.pfcDetailed, RETURNABLE_CATEGORIES) &&
+        !routine(t),
     )
     .sort(byDate)
     .flatMap((t): Deadline[] => {

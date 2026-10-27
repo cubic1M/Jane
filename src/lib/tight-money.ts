@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   DEMO_GRANT_TENTHS,
   LATE_FEE_LOOKBACK_DAYS,
@@ -28,6 +27,7 @@ import {
   type TightItem,
 } from "@/planning/tight-money";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { rollOf } from "@/lib/hash";
 
 // When money is tight (spec step 177). When the checking forecast dips under its cushion,
 // Jane prepares one plan: which bills to pay first (housing, utilities and insurance
@@ -201,7 +201,7 @@ export async function sendTightItem(
 
 // The lender stand-in's answer: the same each time for a request, mostly yes.
 export function standInAnswer(requestId: string, kind: string): { granted: boolean; text: string } {
-  const n = createHash("sha256").update(requestId).digest()[0] % 10;
+  const n = rollOf(requestId);
   const granted = n < DEMO_GRANT_TENTHS;
   const text = granted
     ? {

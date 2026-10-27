@@ -1,3 +1,4 @@
+import { formatCents } from "@/lib/money";
 // The yearly investing review (spec step 216, demo advice). Pure: one list of items, each
 // with where it stands, what Jane did on its own within the person's caps, or what waits
 // for a tap. The review itself never moves money: it only lists, and every tap is its own.
@@ -41,9 +42,6 @@ export type ReviewInput = {
   asked: string[];
 };
 
-const dollars = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 export function buildReview(i: ReviewInput): ReviewItem[] {
   const items: ReviewItem[] = [];
   if (i.did.length > 0) {
@@ -68,7 +66,7 @@ export function buildReview(i: ReviewInput): ReviewItem[] {
       line:
         open.length === 0
           ? "You've used your retirement account limits this year."
-          : `Room left this year: ${open.map((l) => `${l.label} ${dollars(l.roomCents)} of ${dollars(l.limitCents)}`).join("; ")}.`,
+          : `Room left this year: ${open.map((l) => `${l.label} ${formatCents(l.roomCents)} of ${formatCents(l.limitCents)}`).join("; ")}.`,
       ...(i.iraTap ? { action: "retire.ira" } : {}),
     });
   }
@@ -78,7 +76,7 @@ export function buildReview(i: ReviewInput): ReviewItem[] {
       status: i.match.missedCents > 0 ? (i.match.tapAvailable ? "tap" : "info") : "ok",
       line:
         i.match.missedCents > 0
-          ? `You're leaving about ${dollars(i.match.missedCents)} a year of employer match on the table.`
+          ? `You're leaving about ${formatCents(i.match.missedCents)} a year of employer match on the table.`
           : "You're getting the whole employer match.",
       ...(i.match.missedCents > 0 && i.match.tapAvailable ? { action: "retire.match" } : {}),
     });
@@ -87,7 +85,7 @@ export function buildReview(i: ReviewInput): ReviewItem[] {
     items.push({
       key: "rollover",
       status: "tap",
-      line: `${p.employer}'s old 401(k) could come home; moving it would cut fees by about ${dollars(p.savedCents)} a year.`,
+      line: `${p.employer}'s old 401(k) could come home; moving it would cut fees by about ${formatCents(p.savedCents)} a year.`,
       action: "oldplan.rollover",
     });
   }
@@ -105,7 +103,7 @@ export function buildReview(i: ReviewInput): ReviewItem[] {
     items.push({
       key: "harvest",
       status: "tap",
-      line: `${i.harvest.count === 1 ? "A holding is" : `${i.harvest.count} holdings are`} down by ${dollars(i.harvest.lossCents)} in all; selling into a similar fund would count the loss for taxes and keep you invested.`,
+      line: `${i.harvest.count === 1 ? "A holding is" : `${i.harvest.count} holdings are`} down by ${formatCents(i.harvest.lossCents)} in all; selling into a similar fund would count the loss for taxes and keep you invested.`,
       action: "review.harvest",
     });
   }
@@ -113,7 +111,7 @@ export function buildReview(i: ReviewInput): ReviewItem[] {
     items.push({
       key: "fees",
       status: "info",
-      line: `Investing costs you about ${dollars(i.fees.yearlyCents)} a year${i.fees.savingCents > 0 ? `; similar low-cost funds could save about ${dollars(i.fees.savingCents)} of it` : ""}.`,
+      line: `Investing costs you about ${formatCents(i.fees.yearlyCents)} a year${i.fees.savingCents > 0 ? `; similar low-cost funds could save about ${formatCents(i.fees.savingCents)} of it` : ""}.`,
     });
   }
   if (i.goals.length > 0) {
@@ -123,7 +121,7 @@ export function buildReview(i: ReviewInput): ReviewItem[] {
       line: `Your goals: ${i.goals
         .map(
           (g) =>
-            `${g.name} ${g.percent}% there${g.monthlyCents !== null && g.monthsLeft !== null ? `, ${dollars(g.monthlyCents)} a month for ${g.monthsLeft} months finishes it` : ""}`,
+            `${g.name} ${g.percent}% there${g.monthlyCents !== null && g.monthsLeft !== null ? `, ${formatCents(g.monthlyCents)} a month for ${g.monthsLeft} months finishes it` : ""}`,
         )
         .join("; ")}.`,
     });
