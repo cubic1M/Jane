@@ -10,6 +10,7 @@ const TODAY = "2026-10-18";
 
 const charge = (over: Partial<Charge>): Charge => ({
   key: over.merchant ?? "x",
+  merchantKey: (over.merchant ?? "netflix").toLowerCase(),
   merchant: "Netflix",
   frequency: "MONTHLY",
   lastAmountCents: 1_799,

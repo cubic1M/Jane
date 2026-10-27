@@ -33,6 +33,8 @@ export async function runEventsTool(
     content: JSON.stringify({
       label: view.label,
       on: view.on,
+      // Crypto events for the 24-hour agent on crypto; stock-fund events otherwise.
+      market: view.market,
       watching: view.watching,
       nothingFreshInFiveDays: view.quiet,
       earlier: view.earlier,

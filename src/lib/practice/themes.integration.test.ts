@@ -96,8 +96,21 @@ describe.runIf(url)("news themes in the practice portfolio", () => {
     await startPractice(user.id, 4, { client, now: at("2026-09-01") });
     await runAutopilot(user.id, { client, now: at("2026-09-01") });
 
+    // Someone else's portfolio, which the run kept to this person never touches: the database is
+    // shared with other test files running at the same time (it once spent the cash another
+    // file's portfolio had just been given).
+    const other = await client.user.create({
+      data: { email: `practice-theme-other-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(other.id);
+    await startPractice(other.id, 4, { client, now: at("2026-09-01") });
+    const othersTrades = () => client.practiceTrade.count({ where: { userId: other.id } });
+    const before = await othersTrades();
+
     // The daily run on the sample's October 16: the scan, then the alert.
-    await runPracticeDayForAll({ client, now: at("2026-10-16") });
+    const day = await runPracticeDayForAll({ client, now: at("2026-10-16"), userIds: [user.id] });
+    expect(day.portfolios).toBe(1);
+    expect(await othersTrades()).toBe(before);
     const alerts = await client.janeMessage.findMany({
       where: { userId: user.id, dedupeKey: { startsWith: "themes:" } },
     });

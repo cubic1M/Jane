@@ -71,7 +71,9 @@ src/lib/jane-agent/snapshot.ts  (the person's numbers, in one place)
 
 - **User scoping.** Every user-owned table has `user_id`, and is read and written through
   `scopedDb()` / `scopedFor(userId)` in `src/lib/db-scoped.ts`, which adds the user's id to
-  every query. Asking for someone else's row matches nothing.
+  every query. Asking for someone else's row matches nothing. Underneath, Postgres row-level
+  security checks it again: each scoped query runs as the `jane_rls` role with the person's id
+  set, so the database itself returns only their rows ([docs/security/rls.md](security/rls.md)).
 - **Audit and analytics.** Every sensitive event (sign-in, linking or removing a bank, admin
   changes, exports) goes through `logAudit` (`src/lib/audit.ts`, the `audit_log` table), with
   no secrets in its metadata. Funnel events go through `track` (`analytics_events`, and
@@ -142,6 +144,7 @@ claimed with `FOR UPDATE SKIP LOCKED`, retried with a growing wait, and shown on
   that passed CI (unit and e2e), within a daily cap. A manual `vercel deploy --prod` is for
   emergencies only.
 - The `vercel-build` script applies pending migrations (`prisma migrate deploy`, using
-  `DIRECT_URL`) before production builds only, so a preview never changes the database.
+  `DIRECT_URL`) before production builds only, so a preview never changes the database. Then
+  `scripts/rls-protect.mjs` gives any new user-owned table its row-level security policy.
 - Before inviting outside users, run `npm run check:launch` (or open `/admin/launch`) to see
   which production switches are on: see [docs/beta-checklist.md](beta-checklist.md).

@@ -62,11 +62,14 @@ const copy = (s: AgentState): AgentState => ({
 
 const pct = (w: number) => `${Math.round(w * 1000) / 10}%`;
 
-// The signals' weights laid over the strategy's: each signal's ticker at its weight, the
-// strategy's other weights scaled into what is left.
+// The signals' weights laid over the strategy's: each signal's ticker at its weight (a tilt: the
+// strategy's own weight plus the signal's), the strategy's other weights scaled into what is left.
 export function overlay(base: Weights, signals: readonly AgentSignal[]): Record<string, number> {
   const fixed: Record<string, number> = {};
-  for (const g of signals) fixed[g.ticker] = Math.max(0, Math.min(1, g.weight));
+  for (const g of signals) {
+    const w = g.tilt ? (fixed[g.ticker] ?? base[g.ticker] ?? 0) + g.weight : g.weight;
+    fixed[g.ticker] = Math.max(0, Math.min(1, w));
+  }
   const fixedSum = Object.values(fixed).reduce((a, b) => a + b, 0);
   // Signals asking for more than the whole account share it.
   const shrink = fixedSum > 1 ? 1 / fixedSum : 1;
