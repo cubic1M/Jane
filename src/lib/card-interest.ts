@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   CARD_RATE_PARTNER,
   DEMO_RATE_GRANT_TENTHS,
@@ -31,6 +30,7 @@ import {
 } from "@/planning/card-interest";
 import { DAY_MS, isoDay } from "@/lib/dates";
 import { formatRate } from "@/lib/percent";
+import { rollOf } from "@/lib/hash";
 
 // Less interest on every card (spec step 224). For each card Jane shows what a year of its
 // interest costs, what paying earlier saves, when its next statement closes, how any 0%
@@ -354,7 +354,7 @@ export function standInRateAnswer(
   oldAprBps: number,
   savingYearlyCents: number,
 ): { granted: boolean; newAprBps: number | null; text: string } {
-  const n = createHash("sha256").update(requestId).digest()[0] % 10;
+  const n = rollOf(requestId);
   if (n >= DEMO_RATE_GRANT_TENTHS) {
     return {
       granted: false,

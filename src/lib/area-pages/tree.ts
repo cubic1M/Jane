@@ -4,6 +4,7 @@ import type {
   TreeLeaf,
   TreeStatus,
 } from "@/components/tree/interactive-tree";
+import { plural } from "@/lib/plural";
 
 // The area page pattern's shared rules (docs/design/area-pages.md): the copy budget, how a
 // branch takes its status from its items, and the "what matters now" chips. Pure, so every
@@ -47,8 +48,6 @@ export function worst(statuses: (TreeStatus | undefined)[]): TreeStatus | undefi
     undefined,
   );
 }
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export function buildAreaTree({
   key,

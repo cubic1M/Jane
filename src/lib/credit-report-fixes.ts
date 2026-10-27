@@ -3,7 +3,6 @@ import {
   CREDIT_FIX_PARTNER,
   DEMO_REMOVE_TENTHS,
 } from "@/config/credit-report-fixes";
-import { createHash } from "node:crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -15,6 +14,7 @@ import { addDeadline, markDeadlineDone } from "@/lib/deadlines";
 import { dayLabel } from "@/lib/day-label";
 import { fixItems, type FixItem } from "@/planning/credit-report-fixes";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { rollOf } from "@/lib/hash";
 
 // Collections and credit report errors (spec step 181). Jane asks the credit partner (the
 // stand-in, for the demo bank) what is on the report that may need fixing, drafts the right
@@ -191,7 +191,7 @@ export function standInAnswer(
       text: "Corrected: the bureaus found the late payment was reported in error and removed it.",
     };
   }
-  const n = createHash("sha256").update(requestId).digest()[0] % 10;
+  const n = rollOf(requestId);
   const removed = n < DEMO_REMOVE_TENTHS;
   if (kind === "validation") {
     return removed

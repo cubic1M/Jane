@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 import { formatRate } from "@/lib/percent";
+import { plural } from "@/lib/plural";
 
 // Jane's answers about costly short-term borrowing (spec step 247), from
 // src/lib/costly-borrowing.ts. Pure. What was found and what it cost are facts from the
@@ -15,8 +16,6 @@ export const COSTLY_PAGE: MessageAction = {
   kind: "link",
   href: "/loans/costly",
 };
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function foundLines(d: CostlyBorrowing): string[] {
   return d.kinds.map(

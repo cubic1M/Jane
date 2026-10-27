@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { CALENDAR_DAYS } from "@/config/calendar";
 import { addDays } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -9,6 +9,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { buildCalendar, type CalendarEvent } from "./ics";
+import { sha256Hex } from "@/lib/hash";
 
 // The private money calendar: expected bills, deposits, deadlines and goal dates as an
 // iCalendar feed the person subscribes to in their own calendar app. The link's secret is
@@ -19,7 +20,6 @@ import { buildCalendar, type CalendarEvent } from "./ics";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 const slug = (text: string) =>
   text
     .toLowerCase()
@@ -35,7 +35,7 @@ export async function createCalendarToken(
   const token = randomBytes(32).toString("base64url");
   await client.user.update({
     where: { id: userId },
-    data: { calendarTokenHash: hash(token), calendarCreatedAt: now },
+    data: { calendarTokenHash: sha256Hex(token), calendarCreatedAt: now },
   });
   return token;
 }
@@ -54,7 +54,7 @@ export async function userForCalendarToken(
 ): Promise<string | null> {
   if (!token) return null;
   const user = await client.user.findUnique({
-    where: { calendarTokenHash: hash(token) },
+    where: { calendarTokenHash: sha256Hex(token) },
     select: { id: true, deletedAt: true },
   });
   return user && !user.deletedAt ? user.id : null;

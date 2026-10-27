@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { HOUSEHOLD_INVITE_DAYS, HOUSEHOLD_MAX_MEMBERS } from "@/config/household";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { DAY_MS } from "@/lib/dates";
+import { sha256Hex } from "@/lib/hash";
 
 // Inviting a partner, joining, leaving, and choosing which accounts to share. What a
 // partner can then read is in sharedReadFor (src/lib/db-scoped.ts).
@@ -14,7 +15,6 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class HouseholdError extends Error {}
 
-const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 export async function householdOf(userId: string, { client = defaultClient }: Options = {}) {
@@ -79,7 +79,7 @@ export async function invitePartner(
         householdId: membership.householdId,
         userId: user.id,
         email: invited,
-        tokenHash: hashToken(token),
+        tokenHash: sha256Hex(token),
         expiresAt: new Date(now.getTime() + HOUSEHOLD_INVITE_DAYS * DAY_MS),
       },
     });
@@ -98,7 +98,7 @@ export async function acceptInvite(
 ): Promise<void> {
   const householdId = await client.$transaction(async (tx) => {
     const invite = await tx.householdInvite.findUnique({
-      where: { tokenHash: hashToken(token) },
+      where: { tokenHash: sha256Hex(token) },
       select: { id: true, householdId: true, email: true, expiresAt: true, acceptedAt: true },
     });
     if (!invite || invite.acceptedAt || invite.expiresAt <= now) {

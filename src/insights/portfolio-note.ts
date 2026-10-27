@@ -1,6 +1,7 @@
 import type { PortfolioReview } from "./portfolio-review";
 import { classWords } from "./portfolio-review";
 import { monthLabel } from "@/lib/day-label";
+import { formatCents } from "@/lib/money";
 
 // The monthly portfolio note (spec step 137): how the investments stand at the start of the
 // month, what changed, what went in, what they cost, and at most one thing to decide. Pure.
@@ -19,25 +20,22 @@ export type NoteInput = {
   ordersReady: number;
 };
 
-const money = (cents: number) =>
-  `$${(Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 export function portfolioNote(input: NoteInput): { body: string; decision: "rebalance" | null } {
   const parts = [
-    `Your investments start ${monthLabel(input.month, { long: true, year: false })} at ${money(input.totalCents)}.`,
+    `Your investments start ${monthLabel(input.month, { long: true, year: false })} at ${formatCents(Math.abs(input.totalCents))}.`,
   ];
   if (input.previousCents !== null) {
     const change = input.totalCents - input.previousCents;
     parts.push(
       change === 0
         ? "That's the same as a month ago."
-        : `That's ${change > 0 ? "up" : "down"} ${money(change)} from a month ago, counting what went in.`,
+        : `That's ${change > 0 ? "up" : "down"} ${formatCents(Math.abs(change))} from a month ago, counting what went in.`,
     );
   }
   if (input.contributedCents > 0)
-    parts.push(`${money(input.contributedCents)} went in last month.`);
+    parts.push(`${formatCents(Math.abs(input.contributedCents))} went in last month.`);
   if (input.feesYearlyCents > 0)
-    parts.push(`Fees run about ${money(input.feesYearlyCents)} a year.`);
+    parts.push(`Fees run about ${formatCents(Math.abs(input.feesYearlyCents))} a year.`);
   let decision: "rebalance" | null = null;
   if (input.review) {
     if (input.review.offTarget) {

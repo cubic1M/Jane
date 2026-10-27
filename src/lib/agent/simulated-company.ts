@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import type { ActionType, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { replyAddress } from "./mail";
+import { rollOf } from "@/lib/hash";
 
 // A stand-in for a company's support inbox, used when real agent email isn't set up and
 // never in production (src/lib/agent/mail.ts). It answers like a support team would, so
@@ -28,7 +28,7 @@ export type SimulatedKind = "done" | "needs_info" | "refused" | "needs_person";
 export function simulatedKind(actionId: string, messagesSoFar: number): SimulatedKind {
   // After the person answers a question, the company goes ahead.
   if (messagesSoFar > 1) return "done";
-  const n = createHash("sha256").update(actionId).digest()[0] % 10;
+  const n = rollOf(actionId);
   return n < 6 ? "done" : n < 8 ? "needs_info" : n < 9 ? "refused" : "needs_person";
 }
 
