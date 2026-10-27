@@ -11,12 +11,17 @@ import { isoDay } from "@/lib/dates";
 
 export const FILE_SOURCE = "file";
 export const DERIVED_SOURCE = "derived";
+// A balance the person typed (a new account's, or the answer to "what's in it today?"), as of
+// the day they gave it.
+export const GIVEN_SOURCE = "given";
 
 const dayDate = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
 // The last day of each month from the first transaction's month before (the opening balance)
 // up to the month before today's, then today.
-function snapshotDays(first: string, today: string): string[] {
+// And every day money moved before today, so the line steps on each of them, not straight between
+// month ends (founder: "the graph doesn't show every single movement of the money").
+function snapshotDays(first: string, today: string, moved: readonly string[] = []): string[] {
   const days: string[] = [];
   const [year, month] = first.split("-").map(Number);
   // The end of the month before the first transaction: the balance before any of them.
@@ -26,7 +31,7 @@ function snapshotDays(first: string, today: string): string[] {
     end = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 2, 0));
   }
   days.push(today);
-  return days;
+  return [...new Set([...days, ...moved.filter((d) => d < today)])].sort();
 }
 
 // An account's balance at the end of each snapshot day, worked back from today's. With the
@@ -49,7 +54,8 @@ export function derivedBalances(
   const sign = type === "credit" ? -1 : 1;
   const between = (from: string, to: string) =>
     sorted.filter((t) => t.date > from && t.date <= to).reduce((sum, t) => sum + t.amountCents, 0);
-  return snapshotDays(sorted[0].date, today).map((date) => {
+  const moved = sorted.map((t) => t.date);
+  return snapshotDays(sorted[0].date, today, moved).map((date) => {
     if (date === today) return { date, balanceCents: currentCents };
     const next = marks.find((m) => m.date > date);
     if (next) return { date, balanceCents: next.balanceCents + sign * between(date, next.date) };
@@ -59,14 +65,21 @@ export function derivedBalances(
   });
 }
 
-// The statement's own closing balances, replacing whatever was kept for those days; an account
-// with no balance yet takes the latest one as today's.
+// The statement's own closing balances, replacing whatever was kept for those days. The latest
+// becomes the account's balance today unless a newer one is known: one a later statement gave,
+// or one the person typed since. (Founder: the headline stayed at the first file's balance when
+// months were uploaded oldest first, so Home was months stale and the line jumped at today.)
 export async function keepFileBalances(
   db: Pick<ScopedDb, "userId" | "balanceSnapshots" | "accounts">,
   accountId: string,
   balances: readonly DayBalance[],
 ): Promise<number> {
   if (balances.length === 0) return 0;
+  const known = await db.balanceSnapshots.findFirst({
+    where: { accountId, source: { in: [FILE_SOURCE, GIVEN_SOURCE] } },
+    orderBy: { date: "desc" },
+    select: { date: true, source: true },
+  });
   const dates = balances.map((b) => dayDate(b.date));
   await db.balanceSnapshots.deleteMany({ where: { accountId, date: { in: dates } } });
   const { count } = await db.balanceSnapshots.createMany({
@@ -80,11 +93,32 @@ export async function keepFileBalances(
     skipDuplicates: true,
   });
   const latest = balances.reduce((a, b) => (b.date > a.date ? b : a));
+  const knownDay = known ? isoDay(known.date) : null;
+  const newer =
+    knownDay === null ||
+    latest.date > knownDay ||
+    (latest.date === knownDay && known?.source === FILE_SOURCE);
   await db.accounts.updateMany({
-    where: { id: accountId, currentBalanceCents: null },
+    where: newer ? { id: accountId } : { id: accountId, currentBalanceCents: null },
     data: { currentBalanceCents: latest.balanceCents },
   });
   return count;
+}
+
+// A balance the person typed, kept as of the day they gave it: a later upload's balance replaces
+// it as today's only when the statement runs past that day.
+export async function keepGivenBalance(
+  db: Pick<ScopedDb, "userId" | "balanceSnapshots">,
+  accountId: string,
+  cents: number,
+  now: Date = new Date(),
+): Promise<void> {
+  const date = dayDate(isoDay(now));
+  await db.balanceSnapshots.upsert({
+    where: { accountId_date: { accountId, date } },
+    create: { userId: db.userId, accountId, date, balanceCents: cents, source: GIVEN_SOURCE },
+    update: { balanceCents: cents, source: GIVEN_SOURCE },
+  });
 }
 
 // Every uploaded account's worked-back balances, made again from what's stored now (after an
@@ -100,12 +134,18 @@ export async function rebuildUploadedBalances(
   });
   let saved = 0;
   for (const account of accounts) {
+    // Worked-back days are made again; the daily copies of today's balance (no source) say nothing
+    // the statements don't, and held a stale balance on the days since a newer statement came.
     await db.balanceSnapshots.deleteMany({
-      where: { accountId: account.id, source: DERIVED_SOURCE },
+      where: {
+        accountId: account.id,
+        OR: [{ source: DERIVED_SOURCE }, { source: null, date: { lt: dayDate(today) } }],
+      },
     });
     const [fromFile, rows] = await Promise.all([
       db.balanceSnapshots.findMany({
-        where: { accountId: account.id, source: FILE_SOURCE },
+        // The statement's own balances, and the person's: both are what the account held.
+        where: { accountId: account.id, source: { in: [FILE_SOURCE, GIVEN_SOURCE] } },
         select: { date: true, balanceCents: true },
       }),
       db.transactions.findMany({

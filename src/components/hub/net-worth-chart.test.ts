@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { NetWorthEvent } from "@/insights/net-worth-events";
-import { placeBoxes, summaryLine } from "./net-worth-chart";
+import { placeBoxes, summaryLine, transactionsHref } from "./net-worth-chart";
 
 // A net worth day's boxes (founder: "each dot should have an expandable box that shows exactly
 // where that money went … another box next to it connected by dotted animated line … all in the
@@ -76,5 +76,21 @@ describe("where a day's boxes go", () => {
     expect(p.detail!.top).toBeGreaterThan(p.summary.top + p.summary.height);
     expect(p.height).toBeGreaterThanOrEqual(p.detail!.top + p.detail!.height);
     expect(p.height).toBeGreaterThan(190);
+  });
+});
+
+describe("transactionsHref", () => {
+  const e = (date: string) => ({ date }) as NetWorthEvent;
+  it("leads to the day's transactions, or the days a dot holds", () => {
+    expect(transactionsHref({ date: "2026-10-05", cents: 0, events: [e("2026-10-05")] })).toBe(
+      "/transactions?day=2026-10-05",
+    );
+    expect(
+      transactionsHref({
+        date: "2026-10-03",
+        cents: 0,
+        events: [e("2026-10-03"), e("2026-10-05"), e("2026-10-04")],
+      }),
+    ).toBe("/transactions?from=2026-10-03&to=2026-10-05");
   });
 });

@@ -67,13 +67,17 @@ describe("derivedBalances", () => {
     { date: "2026-10-05", amountCents: 1500 },
   ];
 
-  it("works a bank account back from today: each month end undoes what came after", () => {
+  it("works a bank account back from today: each month end and each day money moved", () => {
     expect(derivedBalances("depository", 100000, txns, "2026-10-27")).toEqual([
       // Before any of them: +15.00 +25.00 out added back, the 500.00 in taken off, +10.00 back.
       { date: "2026-06-30", balanceCents: 100000 + 1500 + 2500 - 50000 + 1000 },
+      { date: "2026-07-03", balanceCents: 100000 + 1500 + 2500 - 50000 },
       { date: "2026-07-31", balanceCents: 100000 + 1500 + 2500 - 50000 },
+      { date: "2026-08-15", balanceCents: 100000 + 1500 + 2500 },
       { date: "2026-08-31", balanceCents: 100000 + 1500 + 2500 },
+      { date: "2026-09-10", balanceCents: 100000 + 1500 },
       { date: "2026-09-30", balanceCents: 100000 + 1500 },
+      { date: "2026-10-05", balanceCents: 100000 },
       { date: "2026-10-27", balanceCents: 100000 },
     ]);
   });
@@ -90,7 +94,9 @@ describe("derivedBalances", () => {
     );
     expect(card).toEqual([
       { date: "2026-08-31", balanceCents: 30000 - 2500 + 10000 },
+      { date: "2026-09-10", balanceCents: 30000 + 10000 },
       { date: "2026-09-30", balanceCents: 30000 + 10000 },
+      { date: "2026-10-05", balanceCents: 30000 },
       { date: "2026-10-27", balanceCents: 30000 },
     ]);
   });
@@ -112,8 +118,12 @@ describe("derivedBalances", () => {
     expect(derivedBalances("depository", 1101200, rows, "2026-10-27", fromFile)).toEqual([
       // Back from the next balance the file gave: before July 1's pay.
       { date: "2026-06-30", balanceCents: 100000 },
+      { date: "2026-07-01", balanceCents: 300000 },
+      { date: "2026-07-03", balanceCents: 160000 },
       { date: "2026-07-31", balanceCents: 160000 },
+      { date: "2026-08-01", balanceCents: 360000 },
       { date: "2026-08-31", balanceCents: 351500 + 8500 },
+      { date: "2026-09-10", balanceCents: 351500 },
       // Nothing the file says after Sep 10: forward from it, not back from today across the gap.
       { date: "2026-09-30", balanceCents: 351500 },
       { date: "2026-10-27", balanceCents: 1101200 },

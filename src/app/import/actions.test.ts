@@ -30,6 +30,7 @@ vi.mock("@/lib/db-scoped", () => ({
   scopedDb: vi.fn(async () => ({
     userId: "user_1",
     accounts: { create: accountsCreate, delete: accountsDelete },
+    balanceSnapshots: { upsert: vi.fn(), findFirst: vi.fn(async () => null) },
   })),
 }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "user_1" })) }));

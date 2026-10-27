@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { categoryLabel } from "@/insights/labels";
 import { categoryOptions, detailedLabel, listMerchantRules } from "@/lib/categories";
 import { scopedDb } from "@/lib/db-scoped";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { deleteRule } from "./actions";
@@ -20,12 +22,24 @@ async function Transactions({
 }) {
   const user = await requireUser();
   const db = await scopedDb();
-  const { q } = await searchParams;
+  const { q, day, from, to } = await searchParams;
   const search = typeof q === "string" ? q.trim() : "";
+  // A day, or days, from the net worth chart's dots: ?day=2026-10-05, or ?from=…&to=….
+  const isDay = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const first = isDay(day) ? day : isDay(from) ? from : null;
+  const last = isDay(day) ? day : isDay(to) ? to : first;
   const [rows, rules] = await Promise.all([
     db.transactions.findMany({
       where: {
         pending: false,
+        ...(first && last
+          ? {
+              date: {
+                gte: new Date(`${first}T00:00:00Z`),
+                lte: new Date(`${last}T00:00:00Z`),
+              },
+            }
+          : {}),
         ...(search
           ? {
               OR: [
@@ -81,6 +95,17 @@ async function Transactions({
           Search
         </button>
       </form>
+
+      {first && last && (
+        <p data-transactions-days="" className="text-sm text-zinc-600 dark:text-zinc-400">
+          {first === last
+            ? `On ${dayLabel(first, { year: true })}.`
+            : `From ${dayLabel(first)} to ${dayLabel(last, { year: true })}.`}{" "}
+          <Link href="/transactions" className="font-medium underline">
+            All transactions
+          </Link>
+        </p>
+      )}
 
       {rows.length === 0 ? (
         <p className="text-zinc-600 dark:text-zinc-400">No transactions found.</p>

@@ -224,6 +224,23 @@ export function NetWorthChart({
       .catch(() => setMovesState("failed"));
   };
 
+  // Every movement from the start, not only once expanded: each day money moved is a dot to tap
+  // (founder: "the graph doesn't show every single movement of the money, and can't click on them").
+  useEffect(() => {
+    if (!firstDay) return;
+    let live = true;
+    fetch(`/api/net-worth/movements?from=${firstDay}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((wire: MovementWire) => {
+        if (live) setMoves(decodeMovements(wire));
+      })
+      // The biggest days stay marked; expanding tries again.
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [firstDay]);
+
   // A box's height, measured once drawn (to place it), and shut by Esc or a click outside.
   useLayoutEffect(() => {
     const summary = summaryBox.current?.offsetHeight;
@@ -288,9 +305,9 @@ export function NetWorthChart({
   const x = (i: number) => (shown.length < 2 ? width : (i / (shown.length - 1)) * width);
   const y = (v: number) => PAD_Y + (1 - (v - lo) / (hi - lo)) * (H - PAD_Y * 2);
 
-  // Expanded: a dot for every movement in view, overlapping ones as one until zoomed apart.
+  // A dot for every movement in view, overlapping ones as one until zoomed apart.
   const layout = useMemo(() => {
-    if (!expanded || !moves || shown.length === 0) return null;
+    if (!moves || shown.length === 0) return null;
     const xs = (i: number) => (shown.length < 2 ? width : (i / (shown.length - 1)) * width);
     const ys = (v: number) => PAD_Y + (1 - (v - lo) / (hi - lo)) * (H - PAD_Y * 2);
     // A phone's narrow chart groups more: a dot and its ×N label need the room (QA round 9).
@@ -327,16 +344,21 @@ export function NetWorthChart({
 
   // The days to mark: the biggest in the range on screen, placed on the line (collapsed).
   const dayIndex = new Map(shown.map((p, i) => [p.date, i]));
-  const marks = !expanded
-    ? daysToMark(events, shown[0]?.date ?? "").flatMap((g) => {
-        const i = dayIndex.get(g.date);
-        return i === undefined ? [] : [{ group: g, i }];
-      })
-    : [];
+  // Until every movement is in (or if it couldn't load), the biggest days stand in.
+  const marks =
+    !expanded && !layout
+      ? daysToMark(events, shown[0]?.date ?? "").flatMap((g) => {
+          const i = dayIndex.get(g.date);
+          return i === undefined ? [] : [{ group: g, i }];
+        })
+      : [];
   const shut = () => {
     setOpened(null);
     setDetails(false);
   };
+  // Net worth at the end of a day (or the last of a dot's days), from the line.
+  const byDate = new Map(points.map((p) => [p.date, p.cents]));
+  const worthOn = (g: EventGroup) => byDate.get(lastDate(g));
   // What's open, where its dot is now.
   const open: { group: EventGroup; at: { x: number; y: number }; title: string } | null = (() => {
     if (!opened) return null;
@@ -612,7 +634,7 @@ export function NetWorthChart({
                   />
                 )}
               </svg>
-              {expanded && layout && (
+              {layout && (
                 <MovementDots
                   ref={dotsRef}
                   dots={layout.dots}
@@ -693,6 +715,7 @@ export function NetWorthChart({
                   <DaySummary
                     ref={summaryBox}
                     group={open.group}
+                    worth={worthOn(open.group)}
                     title={open.title}
                     at={place.summary}
                     details={details}
@@ -1023,9 +1046,19 @@ function Brush({
 
 // A day's summary: what moved the money, a line each (at most SUMMARY_LINES, then "+N more"),
 // More details and close. Inside the chart, where placeBoxes put it.
+// A dot's days: its last, and the link to its transactions (one day, or the days it holds).
+const lastDate = (g: EventGroup) =>
+  g.events.reduce((last, e) => (e.date > last ? e.date : last), g.date);
+export function transactionsHref(g: EventGroup): string {
+  const first = g.events.reduce((d, e) => (e.date < d ? e.date : d), g.date);
+  const last = lastDate(g);
+  return first === last ? `/transactions?day=${first}` : `/transactions?from=${first}&to=${last}`;
+}
+
 function DaySummary({
   ref,
   group,
+  worth,
   title,
   at,
   details,
@@ -1034,6 +1067,8 @@ function DaySummary({
 }: {
   ref: React.Ref<HTMLDivElement>;
   group: EventGroup;
+  // Net worth at the end of that day, from the line.
+  worth?: number;
   // The day ("Sep 24, 2026"), or the days a zoomed-out dot holds.
   title: string;
   at: Rect;
@@ -1070,6 +1105,20 @@ function DaySummary({
         ))}
       </ul>
       {extra > 0 && <p className="text-zinc-600 dark:text-zinc-400">+{extra} more</p>}
+      {worth !== undefined && (
+        <p data-net-worth-day-worth="" className="tabular-nums">
+          Net worth then: <span className="font-semibold">{dollars(worth)}</span>
+        </p>
+      )}
+      <Link
+        href={transactionsHref(group)}
+        data-net-worth-day-link=""
+        className="self-start font-semibold hover:underline"
+      >
+        {group.events.some((e) => e.date !== group.date)
+          ? "See these days' transactions"
+          : "See that day's transactions"}
+      </Link>
       <button
         type="button"
         aria-expanded={details}

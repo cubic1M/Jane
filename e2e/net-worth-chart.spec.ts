@@ -106,7 +106,7 @@ test("the net worth chart scrubs, changes range and returns to today", async ({
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("the significant days open where the money went, inside the chart", async ({
+test("every day money moved is a dot that opens where the money went, inside the chart", async ({
   context,
   page,
   baseURL,
@@ -118,25 +118,33 @@ test("the significant days open where the money went, inside the chart", async (
 
   const chart = page.locator("[data-net-worth-chart]");
   await expect(chart).toBeVisible();
-  // Collapsed, only the significant days have dots, so the hero stays clean: a sample person's
-  // year has paydays, bills and purchases, a handful of days, never a crowd.
-  const marks = chart.locator("[data-net-worth-event]");
-  await expect(marks.first()).toBeVisible();
-  const count = await marks.count();
-  expect(count).toBeGreaterThan(2);
-  expect(count).toBeLessThanOrEqual(12);
+  // Collapsed too, every movement has a dot (founder: "the graph doesn't show every single
+  // movement of the money, and can't click on them"): a sample person's year is far more than
+  // the handful of big days marked before, overlapping ones drawn as one.
+  const dots = chart.locator("[data-net-worth-dots]");
+  await expect(dots).toBeAttached({ timeout: 30_000 });
+  expect(Number(await dots.getAttribute("data-movements"))).toBeGreaterThan(50);
+  const count = Number(await dots.getAttribute("data-dots"));
+  await expect(chart.locator("[data-net-worth-event]")).toHaveCount(0);
 
-  // A click opens the day's summary inside the chart: the date, and a line each for what moved
-  // the money ("−$1,640 · card payment · Chase ····5003").
-  const first = marks.first();
-  await expect(first).toHaveAttribute("aria-label", /^[A-Z][a-z]{2} \d{1,2}, \d{4}: .+/);
-  await first.click();
-  await expect(first).toHaveAttribute("aria-expanded", "true");
+  // The last dot opens the day's summary inside the chart: the date, a line each for what moved
+  // the money ("−$1,640 · card payment · Chase ····5003"), net worth then, and that day's
+  // transactions.
+  await dots.focus();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
   const card = chart.locator("[data-net-worth-event-card]");
   await expect(card).toBeVisible();
   await expect(card).toContainText(/\d{4}/);
   await expect(card.getByRole("listitem").first()).toHaveText(
     /^([+−]\$[\d,]+|\$[\d,]+ moved) · .+/,
+  );
+  await expect(card.locator("[data-net-worth-day-worth]")).toHaveText(
+    /^Net worth then: −?\$[\d,]+$/,
+  );
+  await expect(card.locator("[data-net-worth-day-link]")).toHaveAttribute(
+    "href",
+    /^\/transactions\?(day=\d{4}-\d{2}-\d{2}|from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2})$/,
   );
 
   // More details: the full breakdown beside it, joined by a dotted line (on a phone a sheet from
@@ -148,7 +156,7 @@ test("the significant days open where the money went, inside the chart", async (
     "href",
     /^\/(transactions|loans|investments|actions)/,
   );
-  await expect(details).toContainText("That day");
+  await expect(details).toContainText(/That day|Together/);
   const area = (await chart.boundingBox())!;
   if (isMobile) {
     await expectSheet(page, details);
@@ -163,19 +171,19 @@ test("the significant days open where the money went, inside the chart", async (
       expect(box!.y + box!.height).toBeLessThanOrEqual(area.y + area.height + 1);
     }
   }
-  // Esc shuts both and returns to the dot; a click outside shuts them too.
+  // Esc shuts both and returns to the dots; a click outside shuts them too.
   await page.keyboard.press("Escape");
   await expect(card).toHaveCount(0);
   await expect(details).toHaveCount(0);
-  await expect(first).toBeFocused();
-  await first.click();
+  await expect(dots).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(card).toBeVisible();
   await page.getByRole("heading", { level: 1, name: "Home" }).click({ force: true });
   await expect(card).toHaveCount(0);
 
-  // A shorter range marks only its own days.
+  // A shorter range holds only its own days' dots.
   await chart.getByRole("group", { name: "Range" }).getByRole("button", { name: /^1M/ }).click();
-  expect(await marks.count()).toBeLessThanOrEqual(count);
+  expect(Number(await dots.getAttribute("data-dots"))).toBeLessThanOrEqual(count);
 });
 
 test("expanded, every movement has a dot, and zooming in gives each its own", async ({
