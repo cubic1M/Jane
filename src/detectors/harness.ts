@@ -12,6 +12,7 @@ import {
   type Detector,
   type Suggestion,
 } from "./contract";
+import { formatWholeDollars } from "@/lib/money";
 
 // The detector harness (spec step 254): runs every detector on the eight sample people and
 // compares what fired with each person's written list. Pure and database-free, so it runs
@@ -98,7 +99,7 @@ export function shortFormProblems(s: Suggestion): string[] {
   const numbers = s.headline.match(/\$[\d,.]+/g) ?? [];
   if (numbers.length > 1) problems.push(`headline has ${numbers.length} dollar figures, not one`);
   if (s.worthCents >= 50) {
-    const dollars = `$${Math.round(s.worthCents / 100).toLocaleString("en-US")}`;
+    const dollars = formatWholeDollars(s.worthCents);
     if (!s.headline.includes(dollars)) problems.push(`headline lacks the dollars (${dollars})`);
   }
   if (!s.short) problems.push("no short line");
