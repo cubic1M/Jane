@@ -111,6 +111,10 @@ describe.runIf(url)("deleting data against a real database", () => {
     });
     await client.membershipIntent.create({ data: { userId, kind: "reserve" } });
     await client.analyticsEvent.create({ data: { userId, name: "report_viewed" } });
+    // The beta's activity log.
+    await client.activityEvent.create({
+      data: { userId, visitId: "visit12345", kind: "click", path: "/home", label: "Cancel" },
+    });
     await client.merchantCategory.create({
       data: {
         userId,
@@ -290,6 +294,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       digests: await client.digest.count(where),
       membershipIntents: await client.membershipIntent.count(where),
       analyticsEvents: await client.analyticsEvent.count(where),
+      activityEvents: await client.activityEvent.count(where),
       merchantCategories: await client.merchantCategory.count(where),
       subscriptionChecks: await client.subscriptionCheck.count(where),
       alerts: await client.alert.count(where),

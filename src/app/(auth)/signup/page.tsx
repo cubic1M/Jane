@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { AuthError } from "@/components/auth-error";
+import { ACTIVITY_DISCLOSURE } from "@/config/activity";
 import { AuthForm } from "@/components/auth-form";
 import { RedirectIfSignedIn } from "@/components/redirect-if-signed-in";
 import { SubmitButton } from "@/components/submit-button";
@@ -52,6 +53,7 @@ async function SignupForm({ searchParams }: { searchParams: Params }) {
               <input
                 id="waitlist-email"
                 name="email"
+                data-private
                 type="email"
                 required
                 autoComplete="email"
@@ -97,6 +99,8 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
       <Suspense fallback={<AuthForm submitLabel="Email me a sign-up link" signUp />}>
         <SignupForm searchParams={searchParams} />
       </Suspense>
+
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">{ACTIVITY_DISCLOSURE}</p>
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Already have an account?{" "}

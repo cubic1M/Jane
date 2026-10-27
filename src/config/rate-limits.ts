@@ -18,6 +18,8 @@ export const RATE_LIMITS = {
   membership: { limit: 20, windowSeconds: 10 * 60 },
   // Analytics events from the browser, per IP.
   events: { limit: 120, windowSeconds: 60 },
+  // Batches from the beta's activity log (one every few seconds per tab), per IP.
+  activity: { limit: 120, windowSeconds: 60 },
   // Unsubscribe links, per IP.
   unsubscribe: { limit: 20, windowSeconds: 10 * 60 },
   // "Download my data", per user.
