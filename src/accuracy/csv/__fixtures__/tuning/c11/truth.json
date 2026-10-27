@@ -20,17 +20,12 @@
     {
       "type": "subscription_review",
       "about": "DISNEY PLUS",
-      "perYear": 191.88
-    },
-    {
-      "type": "price_increase",
-      "about": "DISNEY PLUS 1399→1599",
-      "perYear": 24
+      "perYear": 167.88
     },
     {
       "type": "subscription_review",
-      "about": "ADOBE *CREATIVE CLD",
-      "perYear": 275.88
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
     },
     {
       "type": "bank_fees",
@@ -40,22 +35,18 @@
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 84.56
+      "perYear": 80
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 743.36
+      "perYear": 741.08
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "HULU 877-8244858, cancelled"
-    },
-    {
-      "type": "subscription_review",
-      "about": "PLANET FITNESS, cancelled"
+      "about": "ADOBE *CREATIVE CLD, cancelled"
     },
     {
       "type": "subscription_review",
@@ -77,27 +68,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2837
+      "dollars": -2858.06
     },
     {
       "date": "2026-06-30",
-      "dollars": -3918.98
+      "dollars": -2736.9
     },
     {
       "date": "2026-07-31",
-      "dollars": -3581.42
+      "dollars": -2374.48
     },
     {
       "date": "2026-08-31",
-      "dollars": -4427.74
+      "dollars": -3137.24
     },
     {
       "date": "2026-09-30",
-      "dollars": -4982.64
+      "dollars": -3746.12
     },
     {
       "date": "2026-10-24",
-      "dollars": -5158.94
+      "dollars": -3972.11
     }
   ]
 }

@@ -19,33 +19,13 @@
   "findings": [
     {
       "type": "subscription_review",
+      "about": "GOOGLE *YouTubePremium",
+      "perYear": 167.88
+    },
+    {
+      "type": "subscription_review",
       "about": "DISNEY PLUS",
-      "perYear": 191.88
-    },
-    {
-      "type": "price_increase",
-      "about": "DISNEY PLUS 1399→1599",
-      "perYear": 24
-    },
-    {
-      "type": "subscription_review",
-      "about": "MAX.COM",
-      "perYear": 203.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "HULU 877-8244858",
-      "perYear": 215.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
-      "perYear": 139
+      "perYear": 167.88
     },
     {
       "type": "duplicate_charge",
@@ -55,51 +35,39 @@
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 926.28
+      "perYear": 929.04
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "GOOGLE *YouTubePremium, cancelled"
-    },
-    {
-      "type": "subscription_review",
-      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
-    },
-    {
-      "type": "subscription_review",
-      "about": "SMILE DENTAL GROUP, irregular"
-    },
-    {
-      "type": "subscription_review",
-      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+      "about": "DUNKIN 348812 at one price"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2917.22
+      "dollars": -2721.07
     },
     {
       "date": "2026-06-30",
-      "dollars": -3123.54
+      "dollars": -3090.52
     },
     {
       "date": "2026-07-31",
-      "dollars": -4046.77
+      "dollars": -3802.34
     },
     {
       "date": "2026-08-31",
-      "dollars": -5691.89
+      "dollars": -5531.01
     },
     {
       "date": "2026-09-30",
-      "dollars": -7461.73
+      "dollars": -7178.09
     },
     {
       "date": "2026-10-24",
-      "dollars": -9348.42
+      "dollars": -8966.83
     }
   ]
 }

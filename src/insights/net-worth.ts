@@ -31,6 +31,9 @@ export type NetWorth = {
   missing: string[];
   // The same, with whether each is a card (what's owed): for notCounting's words.
   unbalanced: Unbalanced[];
+  // Whether anything counted has a value: false when every balance is unknown (statements
+  // without a balance column) and nothing owned is entered, so netCents' 0 means "not known".
+  known: boolean;
 };
 
 export type Unbalanced = { name: string; card: boolean };
@@ -66,6 +69,7 @@ export function netWorth(
     netCents: assets - debts,
     missing: unbalanced.map((u) => u.name).sort(),
     unbalanced: unbalanced.sort((a, b) => a.name.localeCompare(b.name)),
+    known: accounts.length > unbalanced.length || owned.length > 0 || cryptoCents > 0,
   };
 }
 

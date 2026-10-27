@@ -18,7 +18,13 @@ export async function loadNetWorthHistory(
     now = new Date(),
     months = NET_WORTH_MONTHS,
   }: { client?: PrismaClient; now?: Date; months?: number } = {},
-): Promise<{ todayCents: number; months: { month: string; netCents: number | null }[] } | null> {
+): Promise<{
+  todayCents: number;
+  months: { month: string; netCents: number | null }[];
+  // False when nothing counted has a value: every account's balance is unknown (statements
+  // without a balance column) and nothing owned is entered, so "$0" would be wrong.
+  known: boolean;
+} | null> {
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
   const [first] = monthsEnding(asOf, months);
@@ -44,6 +50,7 @@ export async function loadNetWorthHistory(
   );
   return {
     todayCents: today.netCents,
+    known: today.known,
     months: netWorthLine(
       accounts,
       snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),

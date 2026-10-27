@@ -2,6 +2,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { notCounting, type Unbalanced } from "@/insights/net-worth";
 import { formatCents } from "@/lib/money";
+import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 
 // Spending & bills as a tree (docs/design/area-pages.md): Spending & bills → its branches
@@ -123,6 +124,8 @@ export type MoneyTreeInput = {
   transfers: { id: string; toName: string; amountCents: number; status: string; runOn: string }[];
   have: {
     netCents: number;
+    // False when no balance is known yet (insights/net-worth.ts).
+    netKnown?: boolean;
     assetsCents: number;
     debtsCents: number;
     investmentsCents: number;
@@ -308,7 +311,12 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         }),
       );
     }
-    for (const c of spend.changes.filter((c) => c.changeCents > 0).slice(0, 3)) {
+    const up = spend.changes.filter(
+      (c) =>
+        c.changeCents >= CATEGORY_UP_MIN_CENTS &&
+        c.changeCents >= c.beforeCents * CATEGORY_UP_MIN_SHARE,
+    );
+    for (const c of up.slice(0, 3)) {
       items.spending.push(
         item("spending", `up-${c.category}`, {
           label: `${c.category} is up`,
@@ -350,11 +358,15 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
   if (input.hasAccounts) {
     items.have.push(
       item("have", "net-worth", {
-        // Never a figure that silently leaves a debt out: it says what it isn't counting.
-        label: left ? `Net worth, ${left.short}` : "Net worth",
-        status: left ? "look" : "good",
-        figure: shortMoney(h.netCents),
-        summary: `You have ${formatCents(h.assetsCents)} and owe ${formatCents(h.debtsCents)}.${left ? ` ${left.sentence}` : ""}`,
+        // Never a figure that silently leaves a debt out: "Not known" with no balance at all,
+        // else it says what it isn't counting.
+        label: left && h.netKnown !== false ? `Net worth, ${left.short}` : "Net worth",
+        status: left && h.netKnown !== false ? "look" : "good",
+        figure: h.netKnown === false ? "Not known" : shortMoney(h.netCents),
+        summary:
+          h.netKnown === false
+            ? "Your files don't include a balance yet. Add one on the import page."
+            : `You have ${formatCents(h.assetsCents)} and owe ${formatCents(h.debtsCents)}.${left ? ` ${left.sentence}` : ""}`,
       }),
     );
   }

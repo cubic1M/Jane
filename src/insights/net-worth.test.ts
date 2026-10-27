@@ -10,6 +10,18 @@ const accounts = [
 ];
 
 describe("netWorth", () => {
+  // Overnight upload QA: statements without a balance column; "$0" would be wrong.
+  it("isn't known when no account has a balance and nothing owned is entered", () => {
+    const none = [
+      { id: "a", name: "Checking", type: "depository", subtype: "checking", balanceCents: null },
+      { id: "b", name: "Card", type: "credit", subtype: "credit card", balanceCents: null },
+    ];
+    expect(netWorth(none).known).toBe(false);
+    expect(netWorth(none, [{ id: "o", valueCents: 500_000, valuedOn: "2026-10-01" }]).known).toBe(
+      true,
+    );
+  });
+
   it("counts cards and loans as debts, and lists accounts without a balance", () => {
     expect(netWorth(accounts)).toEqual({
       assetsCents: 1_250_000,
@@ -20,6 +32,7 @@ describe("netWorth", () => {
       netCents: 330_000,
       missing: ["Old Card"],
       unbalanced: [{ name: "Old Card", card: true }],
+      known: true,
     });
   });
 

@@ -88,6 +88,7 @@ export function ColumnPicker({ index, file, choices, children }: Props) {
           </label>
         )}
         {select("description", "Description", guess.description)}
+        {select("balance", "Running balance (optional)", guess.balance, "None")}
         <label className="flex flex-col gap-1 text-sm font-medium">
           Amount
           <select

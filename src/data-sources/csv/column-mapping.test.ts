@@ -186,6 +186,35 @@ describe("semicolons, decimal commas and written-out dates", () => {
   });
 });
 
+describe("a running balance column", () => {
+  const text =
+    "Date,Description,Withdrawal,Deposit,Balance\n" +
+    "10/14/2026,COFFEE,4.50,,995.50\n" +
+    "10/13/2026,PAYCHECK,,500.00,1000.00\n";
+
+  it("is guessed from its name, and its balances kept with the rows", () => {
+    const first = readCsvFile({ name: "golden1-export.csv", text });
+    expect(!first.ok && first.choices?.guess).toMatchObject({ debit: 2, credit: 3, balance: 4 });
+    const read = readCsvFile({
+      name: "golden1-export.csv",
+      text,
+      mapping: {
+        hasHeader: true,
+        date: 0,
+        description: 1,
+        amount: { kind: "split", debit: 2, credit: 3 },
+        balance: 4,
+      },
+    });
+    expect(read.ok && read.balances).toEqual([
+      { date: "2026-10-13", balanceCents: 100000 },
+      { date: "2026-10-14", balanceCents: 99550 },
+    ]);
+    // A layout Jane doesn't know: the new account is named from the file.
+    expect(read.ok && read.account).toEqual({ name: "Golden1", kind: "checking" });
+  });
+});
+
 describe("mappingFromForm", () => {
   it("is null when the picker wasn't shown for that file", () => {
     expect(mappingFromForm(form({}), 0)).toBeNull();
@@ -211,6 +240,21 @@ describe("mappingFromForm", () => {
       description: 1,
       amount: { kind: "signed", column: 2, moneyOut: "positive" },
     });
+  });
+
+  it("reads an optional running balance column", () => {
+    expect(
+      mappingFromForm(
+        form({
+          "map.0.date": "0",
+          "map.0.description": "1",
+          "map.0.debit": "2",
+          "map.0.credit": "3",
+          "map.0.balance": "4",
+        }),
+        0,
+      ),
+    ).toMatchObject({ balance: 4 });
   });
 
   it("reads money out and money in columns when there's no amount column", () => {

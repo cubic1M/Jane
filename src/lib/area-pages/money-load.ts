@@ -207,6 +207,7 @@ export async function loadMoneyArea(
     })),
     have: {
       netCents: worth.netCents,
+      netKnown: worth.known,
       assetsCents: worth.assetsCents,
       debtsCents: worth.debtsCents,
       investmentsCents: worth.investmentsCents,

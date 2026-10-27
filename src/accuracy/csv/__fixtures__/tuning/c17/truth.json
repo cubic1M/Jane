@@ -29,8 +29,8 @@
     },
     {
       "type": "subscription_review",
-      "about": "PELOTON* MEMBERSHIP",
-      "perYear": 528
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
     },
     {
       "type": "bank_fees",
@@ -40,23 +40,15 @@
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 405
+      "perYear": 411.81
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 865.23
+      "perYear": 844.74
     }
   ],
   "notFindings": [
-    {
-      "type": "subscription_review",
-      "about": "SMILE DENTAL GROUP, irregular"
-    },
-    {
-      "type": "subscription_review",
-      "about": "JIFFY LUBE #1234, irregular"
-    },
     {
       "type": "subscription_review",
       "about": "SQ *BLUE BOTTLE COFFEE at one price"
@@ -69,19 +61,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -1982.89
+      "dollars": -1894.12
     },
     {
       "date": "2026-08-31",
-      "dollars": -3003.22
+      "dollars": -2951.07
     },
     {
       "date": "2026-09-30",
-      "dollars": -4256.89
+      "dollars": -3588.26
     },
     {
       "date": "2026-10-24",
-      "dollars": -5024.96
+      "dollars": -4238.71
     }
   ]
 }

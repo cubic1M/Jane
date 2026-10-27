@@ -24,7 +24,9 @@ export function AccountList({ accounts }: { accounts: AccountSummary[] }) {
                 ` · ${dayLabel(account.firstDate, { year: true })} to ${dayLabel(account.lastDate, { year: true })}`}
             </p>
           </div>
-          <p className="text-right">
+          {/* On a phone the balance wraps under the name: lined up on the left there, so a
+              card's "Balance owed" and a bank's "Current balance" start in the same place. */}
+          <p className="sm:text-right">
             <span className="block text-xs text-zinc-500">
               {account.kind === "credit_card" ? "Balance owed" : "Current balance"}
             </span>

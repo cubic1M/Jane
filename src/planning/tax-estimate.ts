@@ -75,6 +75,8 @@ export type EstimateInput = {
   filingStatus: FilingStatus;
   childrenUnder17: number;
   otherDependants: number;
+  // Age at the end of the year, when the person has told it; null or absent: unknown.
+  age?: number | null;
   // Two-letter state, or null when it isn't known: where the person lives at the year's end.
   state: string | null;
   // Spec step 165: moves in the year, remote work for an employer in another state, and a
@@ -237,8 +239,16 @@ export function earnedIncomeCredit(input: {
   earnedCents: number;
   agiCents: number;
   investmentIncomeCents: number;
+  // Age at the end of the year; without children the credit is only for 25 to 64, so an
+  // unknown age counts none.
+  age?: number | null;
 }): number {
   if (input.status === "married_separate") return 0;
+  if (
+    input.children === 0 &&
+    (input.age == null || input.age < EITC.childlessMinAge || input.age > EITC.childlessMaxAge)
+  )
+    return 0;
   if (input.investmentIncomeCents > EITC.investmentIncomeLimit) return 0;
   const n = Math.min(3, Math.max(0, input.children));
   const phaseIn = Math.min(EITC.maxCredit[n], input.earnedCents * EITC.phaseInRate[n]);
@@ -411,6 +421,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     earnedCents: earned,
     agiCents: agi,
     investmentIncomeCents: investmentIncome,
+    age: input.age,
   });
   const otherCredits = Math.min(
     input.otherCreditsCents ?? 0,

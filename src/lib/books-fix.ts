@@ -6,7 +6,9 @@ import type { BooksView } from "@/lib/books";
 // (a balance that doesn't add up, a link that stopped updating, an account linked twice) are
 // the bank's, with Refresh and Disconnect, in Settings.
 
-type Issue = Pick<BooksView["open"][number], "kind" | "accountId" | "itemId">;
+type Issue = Pick<BooksView["open"][number], "kind" | "accountId" | "itemId"> & {
+  uploaded?: boolean;
+};
 
 export type BooksFix = { label: string; href: string };
 
@@ -18,5 +20,8 @@ export function booksFix(issue: Issue): BooksFix {
   if (importEnded(issue)) return { label: "Import a newer file", href: "/import" };
   if (issue.kind === "broken") return { label: "Reconnect", href: "/connect" };
   if (issue.kind === "transfer") return { label: "Link that account", href: "/connect" };
+  // An uploaded account has no bank to check: its files are on the import page (overnight
+  // upload QA: a balance that didn't add up said "Check my linked banks").
+  if (issue.uploaded) return { label: "Check my uploads", href: "/import" };
   return { label: "Check my linked banks", href: "/settings#banks" };
 }

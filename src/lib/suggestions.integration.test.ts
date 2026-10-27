@@ -82,6 +82,39 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
     expect(next.map((o) => o.key).filter((k) => first.some((f) => f.key === k))).toEqual([]);
   });
 
+  // Overnight upload QA: a pick made from the first file kept its figures after a second upload
+  // changed them, in the chat message too ("$548/yr" against the report's "$473").
+  it("gives today's picks the new figures when the scan runs again the same day", async () => {
+    const userId = made.get("renter")!;
+    const [top] = await offeredToday(userId, { client, now: NOW });
+    const fresh = await client.suggestion.findFirstOrThrow({ where: { userId, key: top.key } });
+    await client.suggestion.updateMany({
+      where: { userId, key: top.key },
+      data: { worthCents: 1, headline: "Old headline, save $0/yr", why: "Old why." },
+    });
+    const message = await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: "Old headline, save $0/yr",
+        refs: { suggestion: top.key, suggestionWhy: "Old why." },
+        dedupeKey: `test-old-figures:${top.key}`,
+      },
+    });
+    await scanSuggestions(userId, { client, now: NOW });
+    const after = await client.suggestion.findFirstOrThrow({ where: { userId, key: top.key } });
+    expect([after.worthCents, after.headline, after.why, after.status]).toEqual([
+      fresh.worthCents,
+      fresh.headline,
+      fresh.why,
+      "selected",
+    ]);
+    const updated = await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } });
+    expect(updated.body).toContain(cardHeadline(fresh.headline));
+    expect((updated.refs as { suggestionWhy?: string }).suggestionWhy).toBe(fresh.why);
+    await client.janeMessage.delete({ where: { id: message.id } });
+  });
+
   it("shows the short card, and the whole explanation behind Why?", async () => {
     const userId = made.get("renter")!;
     const [top] = await offeredToday(userId, { client, now: NOW });

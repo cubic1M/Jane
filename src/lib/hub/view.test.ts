@@ -395,6 +395,9 @@ describe("the area tiles", () => {
       value: "$0",
       caption: "No income tax expected",
     });
+    // A refundable credit takes the estimate below zero: still no tax.
+    const credit = areas({ taxes: { ...student.taxes!, totalTaxCents: -52_792 } });
+    expect(tileOf(credit, "taxes").caption).toBe("No income tax expected");
     const none = areas({ taxes: { ...student.taxes!, incomeCents: 0 } });
     expect(tileOf(none, "taxes").caption).toBe("Not enough to estimate yet");
   });

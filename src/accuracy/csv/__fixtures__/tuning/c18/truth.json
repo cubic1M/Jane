@@ -39,18 +39,8 @@
     },
     {
       "type": "subscription_review",
-      "about": "MAX.COM",
-      "perYear": 203.88
-    },
-    {
-      "type": "subscription_review",
       "about": "OPENAI *CHATGPT SUBSCR",
       "perYear": 240
-    },
-    {
-      "type": "subscription_review",
-      "about": "HULU 877-8244858",
-      "perYear": 215.88
     },
     {
       "type": "trial_conversion",
@@ -58,60 +48,51 @@
       "perYear": 7.99
     },
     {
-      "type": "subscription_review",
-      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
-      "perYear": 139
-    },
-    {
       "type": "duplicate_charge",
       "about": "TST* THE COUNTER CAFE dinner twice",
-      "perYear": 91.8
+      "perYear": 65.71
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 1258.32
+      "perYear": 1071.24
     },
     {
       "type": "idle_cash",
-      "about": "cash 4130717, excess 2859396",
+      "about": "cash 4323368, excess 3178948",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "SMILE DENTAL GROUP, irregular"
+      "about": "MAX.COM, cancelled"
     },
     {
       "type": "subscription_review",
       "about": "SQ *BLUE BOTTLE COFFEE at one price"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "2 AMC 0517 ONLINE seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 20891.83
+      "dollars": 21523.1
     },
     {
       "date": "2026-07-31",
-      "dollars": 26758.68
+      "dollars": 27854.57
     },
     {
       "date": "2026-08-31",
-      "dollars": 29598.78
+      "dollars": 31551.33
     },
     {
       "date": "2026-09-30",
-      "dollars": 32643.92
+      "dollars": 34909.34
     },
     {
       "date": "2026-10-24",
-      "dollars": 36572.9
+      "dollars": 38813.78
     }
   ]
 }

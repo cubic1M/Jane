@@ -244,32 +244,33 @@ Beta users start by uploading statements, so the sample people above (already-cl
 - **Gate:** `src/accuracy/csv/csv-accuracy.test.ts`, with the unit tests: the files must match the generator, every share in the baseline may drop at most 3 points, and extra rows and false "Charged twice?" may not rise at all.
 
 <!-- csv-scoreboard:start -->
-Tuning set (20 people, 146 files, 5215 transactions):
+Tuning set (20 people, 165 files, 5137 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 146 of 146 (142 exactly) |
+| Files read | 165 of 165 (161 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 96.1% (196 left for Claude) |
+| Category right (rules only) | 96.1% (199 left for Claude) |
 | False "Charged twice?" | 0 (0 people) |
-| Findings, $/yr | Jane $27,542, truth $27,542; error on the ones found 0.0% |
+| Findings, $/yr | Jane $24,324, truth $27,204; error on the ones found 0.0% |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 5 of 20 people (off by $93,060 in all) |
-| Net worth line: month-ends drawn | 18.2% (error where drawn 7.7%) |
+| Net worth today right | 7 of 20 people (off by $51,533 in all) |
+| Net worth line: month-ends drawn | 97.3% (error where drawn 18.8%) |
+| Net worth line, people whose every balance Jane knows | 7 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 100.0% | 100.0% | 66 | 0 | 0 |
-| price_increase | 100.0% | 100.0% | 9 | 0 | 0 |
+| subscription_review | 100.0% | 94.7% | 54 | 0 | 3 |
+| price_increase | 100.0% | 100.0% | 8 | 0 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
-| bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
+| bank_fees | 100.0% | 100.0% | 17 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 100.0% | 100.0% | 11 | 0 | 0 |
-| idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
-| bills coming up (31 days) | 99.4% | 100.0% | 169 | 1 | 0 |
+| idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
+| bills coming up (31 days) | 99.4% | 100.0% | 161 | 1 | 0 |
 
-Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
+Missed subscriptions Claude would be asked about on a live upload: 3 of 3.
 
 Held-out set (20 people, 129 files, 5013 transactions):
 
@@ -277,26 +278,27 @@ Held-out set (20 people, 129 files, 5013 transactions):
 | --- | ---: |
 | Files read | 129 of 129 (126 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 56.0% (2038 left for Claude) |
-| False "Charged twice?" | 8 (6 people) |
-| Findings, $/yr | Jane $15,793, truth $25,747; error on the ones found 0.0% |
+| Category right (rules only) | 57.2% (1978 left for Claude) |
+| False "Charged twice?" | 5 (3 people) |
+| Findings, $/yr | Jane $15,971, truth $25,747; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 5 of 20 people (off by $74,281 in all) |
-| Net worth line: month-ends drawn | 18.2% (error where drawn 6.6%) |
+| Net worth today right | 11 of 20 people (off by $20,335 in all) |
+| Net worth line: month-ends drawn | 91.8% (error where drawn 9.0%) |
+| Net worth line, people whose every balance Jane knows | 11 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | subscription_review | 100.0% | 20.3% | 15 | 0 | 59 |
-| price_increase | 81.8% | 60.0% | 9 | 2 | 6 |
+| price_increase | 88.2% | 100.0% | 15 | 2 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
-| duplicate_charge | 57.9% | 100.0% | 11 | 8 | 0 |
-| idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
-| bills coming up (31 days) | 98.7% | 86.7% | 150 | 2 | 23 |
+| duplicate_charge | 68.8% | 100.0% | 11 | 5 | 0 |
+| idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
+| bills coming up (31 days) | 98.8% | 93.6% | 162 | 2 | 11 |
 
-Missed subscriptions Claude would be asked about on a live upload: 32 of 59.
+Missed subscriptions Claude would be asked about on a live upload: 44 of 59.
 <!-- csv-scoreboard:end -->
 
 ### CSV bench, round by round
@@ -322,6 +324,9 @@ Rules only, Claude stubbed. Tuning / held-out.
   
   A third CSV set would be needed to check any fix for these.
 - **Round 4, more mess:** bills that come when they come (the dentist, a car repair, at uneven gaps), a roommate's share of the bills by Zelle each month, rent by paper check, and a gym's yearly fee beside its monthly one. Two misses on the tuning set, both fixed. Bank of America's ATM line ("BKOFAMERICA ATM … WITHDRWL") counted as spending. A subscription whose second way of writing it carried a code before the city ("SPOTIFY P1A2B3C4D5 CHICAGO IL") read as "Spotify Chicago". Now, when a description ends in a US state, the merchant directory also tries the name without its last one or two words, which matches only companies it already knows (`withoutCity`, `src/detection/merchants.ts`). Tuning set after: subscriptions, price rises and "Coming up" 100%, spending error 0.0%. On the held-out set round 4 brought 2 false price rises, which haven't been read.
+- **One service written two ways, under a name no rule knows** ("DIRECTV STREAM" and "DIRECTV.COM", added to the tuning set). It counted as two merchants, so neither was a bill and no price rise showed. Now, on the same accounts, a merchant whose name another extends (words at the end, or one more inside after the first, as when a card wrote the city after it) is joined to it when every charge of one is at a price the other also charges. App stores are left out (`joinVariants`, `src/detection/streams.ts`). Bank of America's "CHECKCARD 0818 PAYPAL *HULU" also hid PayPal's prefix behind the date. Tuning set: "Coming up" 97.5% → 100%. Held-out set: price rises 81.8% / 60.0% → 88.2% / 100% (precision / recall), and "Coming up" recall 86.7% → 93.6%. The sample bench is unchanged. The service's subscription is still missed without Claude, since no rule knows the name.
+- **Net worth and its line, scored through the upload's own balances (#849).** The bench now keeps what an upload keeps: each day's closing balance from the statement's running-balance column (Chase checking, Bank of America, Capital One 360). An account with no balance typed takes the statement's latest. Month ends are worked back from today's balance where the statement gave none (`closingBalances`, `derivedBalances`). The line starts at the first balance, as the home hub's does. Before, a person who only uploaded had a one-point line (today), and net worth was right for 5 of 20 people in each set. Now it's right for 7 / 11 of 20, with 97% / 92% of month-ends drawn. For everyone whose balances Jane knows today, the line is exact (0.0% error). The rest is accounts nobody gave a balance for: card exports and Wells Fargo have no balance column, so the card's debt is missing until the person types it.
+- **Toast is restaurants.** "TST*" is Toast's till, which only restaurants use, so a charge through it is a meal whatever the place is called (after the merchant names, so "TST* BLUE BOTTLE" is still coffee). This is general knowledge, not read off the held-out set. Held-out set: category right 56.0% → 57.2%, false "Charged twice?" 8 → 5 (two lunches at one price, now known as meals under $30). Tuning set and sample bench unchanged.
 
 ## Calibration
 

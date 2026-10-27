@@ -136,6 +136,7 @@ describe("earned income credit", () => {
         earnedCents: $(earned),
         agiCents: $(earned),
         investmentIncomeCents: 0,
+        age: 30,
       });
     expect(at(0, 9_000)).toBe($(664));
     expect(at(1, 15_000)).toBe($(4_427));
@@ -144,6 +145,34 @@ describe("earned income credit", () => {
     // Gone at the published end of the phase-out.
     expect(at(1, 51_593)).toBeLessThanOrEqual(100);
     expect(at(1, 52_000)).toBe(0);
+  });
+
+  // Overnight upload QA: a 20-year-old student with part-time pay was counted the credit.
+  it("without children, is only for 25 to 64, and not when the age isn't known", () => {
+    const childless = (age: number | null | undefined) =>
+      earnedIncomeCredit({
+        status: "single",
+        children: 0,
+        earnedCents: $(9_000),
+        agiCents: $(9_000),
+        investmentIncomeCents: 0,
+        age,
+      });
+    expect(childless(30)).toBe($(664));
+    expect(childless(20)).toBe(0);
+    expect(childless(70)).toBe(0);
+    expect(childless(null)).toBe(0);
+    expect(childless(undefined)).toBe(0);
+    // With a child, age doesn't decide it.
+    expect(
+      earnedIncomeCredit({
+        status: "single",
+        children: 1,
+        earnedCents: $(15_000),
+        agiCents: $(15_000),
+        investmentIncomeCents: 0,
+      }),
+    ).toBe($(4_427));
   });
 
   it("isn't for married filing separately or with too much investment income", () => {

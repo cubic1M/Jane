@@ -19,11 +19,6 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "MAX.COM",
-      "perYear": 203.88
-    },
-    {
-      "type": "subscription_review",
       "about": "DISNEY PLUS",
       "perYear": 191.88
     },
@@ -38,32 +33,21 @@
       "perYear": 179.4
     },
     {
-      "type": "subscription_review",
-      "about": "ADOBE *CREATIVE CLD",
-      "perYear": 275.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "PARAMOUNT+",
-      "perYear": 143.88
-    },
-    {
       "type": "duplicate_charge",
-      "about": "CVS/PHARMACY #04321 twice",
-      "perYear": 105.25
-    },
-    {
-      "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 6
+      "about": "TARGET 00023456 twice",
+      "perYear": 72.12
     },
     {
       "type": "idle_cash",
-      "about": "cash 1810283, excess 1208019",
+      "about": "cash 1969837, excess 1445739",
       "perYear": null
     }
   ],
   "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM, cancelled"
+    },
     {
       "type": "subscription_review",
       "about": "SMILE DENTAL GROUP, irregular"
@@ -75,32 +59,36 @@
     {
       "type": "duplicate_charge",
       "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 TICKETMASTER seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 2520.45
+      "dollars": 3172.58
     },
     {
       "date": "2026-06-30",
-      "dollars": 4082.55
+      "dollars": 5371.13
     },
     {
       "date": "2026-07-31",
-      "dollars": 9387.3
+      "dollars": 9960.47
     },
     {
       "date": "2026-08-31",
-      "dollars": 11492.6
+      "dollars": 12742.61
     },
     {
       "date": "2026-09-30",
-      "dollars": 13910.78
+      "dollars": 14880.03
     },
     {
       "date": "2026-10-24",
-      "dollars": 16817.01
+      "dollars": 17651.94
     }
   ]
 }

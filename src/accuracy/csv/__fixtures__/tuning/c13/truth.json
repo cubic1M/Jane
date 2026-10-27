@@ -50,65 +50,52 @@
     },
     {
       "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "MAX.COM",
-      "perYear": 203.88
-    },
-    {
-      "type": "subscription_review",
       "about": "AMAZON PRIME*2K4AB7XY0 yearly",
       "perYear": 139
     },
     {
       "type": "duplicate_charge",
       "about": "TST* THE COUNTER CAFE dinner twice",
-      "perYear": 68.35
+      "perYear": 66.38
     },
     {
       "type": "duplicate_charge",
-      "about": "WAL-MART #2281 twice",
-      "perYear": 59.35
+      "about": "HOME DEPOT #6612 twice",
+      "perYear": 146.13
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 9
     },
     {
       "type": "idle_cash",
-      "about": "cash 1945213, excess 1405166",
+      "about": "cash 2015940, excess 1569262",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "JIFFY LUBE #1234, irregular"
-    },
-    {
-      "type": "subscription_review",
       "about": "DUNKIN 348812 at one price"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "2 TICKETMASTER seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 12510.48
+      "dollars": 13221.68
     },
     {
       "date": "2026-08-31",
-      "dollars": 14031.19
+      "dollars": 14771.72
     },
     {
       "date": "2026-09-30",
-      "dollars": 14863.92
+      "dollars": 16421.26
     },
     {
       "date": "2026-10-24",
-      "dollars": 17423.15
+      "dollars": 18475.95
     }
   ]
 }

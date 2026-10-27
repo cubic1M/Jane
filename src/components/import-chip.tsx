@@ -44,6 +44,9 @@ export function ImportChip() {
   }, [router]);
 
   useEffect(() => {
+    // The docked chat is the chat page in a frame, with this layout inside it too: only the
+    // page around it shows the chip (QA: it sat over the chat's first message).
+    if (window.self !== window.top) return;
     // Asked once the page has loaded, and again when /import saves an upload.
     const first = setTimeout(check, 0);
     const started = () => void check();
@@ -77,7 +80,9 @@ export function ImportChip() {
       aria-live="polite"
       data-import-chip={run.stage}
       data-import-run={run.id}
-      className="fixed top-2 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm shadow-sm dark:border-zinc-700 dark:bg-zinc-950"
+      // Top left, in the page's column: under the top bar on a computer (the docked chat is on
+      // the right), above the page on a phone (the Jane button is bottom right).
+      className="fixed top-2 left-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm shadow-sm lg:top-16 lg:max-w-[calc(100vw-380px-2rem)] dark:border-zinc-700 dark:bg-zinc-950"
     >
       {running ? (
         <>

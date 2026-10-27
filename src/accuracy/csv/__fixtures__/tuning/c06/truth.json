@@ -24,13 +24,13 @@
     },
     {
       "type": "subscription_review",
-      "about": "MAX.COM",
-      "perYear": 203.88
+      "about": "DIRECTV STREAM",
+      "perYear": 959.88
     },
     {
       "type": "subscription_review",
-      "about": "PARAMOUNT+",
-      "perYear": 143.88
+      "about": "MAX.COM",
+      "perYear": 203.88
     },
     {
       "type": "trial_conversion",
@@ -38,23 +38,20 @@
       "perYear": 7.99
     },
     {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 6.19
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 5373421, excess 4805526",
+      "about": "cash 5545311, excess 4998090",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
-    },
-    {
-      "type": "subscription_review",
-      "about": "JIFFY LUBE #1234, irregular"
-    },
-    {
-      "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
     },
     {
       "type": "duplicate_charge",
@@ -64,23 +61,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 27947.47
+      "dollars": 28333.4
     },
     {
       "date": "2026-07-31",
-      "dollars": 38144.81
+      "dollars": 39556.58
     },
     {
       "date": "2026-08-31",
-      "dollars": 42350.43
+      "dollars": 44040.12
     },
     {
       "date": "2026-09-30",
-      "dollars": 45288.99
+      "dollars": 46978.27
     },
     {
       "date": "2026-10-24",
-      "dollars": 51527.74
+      "dollars": 53142.75
     }
   ]
 }

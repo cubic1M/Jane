@@ -26,6 +26,7 @@ import { loadEquityIncome } from "@/lib/equity-income";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents } from "@/lib/money";
+import { EITC } from "@/config/tax-rates";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import {
@@ -45,7 +46,7 @@ import {
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { dayLabel } from "@/lib/day-label";
 import { guessFilingStatus, stateName, type ProfileField } from "@/planning/tax-profile";
-import { isoDay as iso } from "@/lib/dates";
+import { DAY_MS, isoDay as iso } from "@/lib/dates";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
 // tax profile: what they'll owe or get back for the year, federal and state. Worked out
@@ -441,11 +442,22 @@ async function loadTaxEstimateFrom(
     );
   }
 
+  // The age they told Jane (on the investor profile), at the year's end.
+  const told = await db.investorProfiles.findFirst({ select: { age: true, ageOn: true } });
+  const age =
+    told?.age != null
+      ? told.age +
+        Math.max(
+          0,
+          Math.floor((Date.UTC(year, 11, 31) - (told.ageOn ?? now).getTime()) / (365.25 * DAY_MS)),
+        )
+      : null;
   const input: EstimateInput = {
     year,
     filingStatus,
     childrenUnder17: profile.childrenUnder17,
     otherDependants: profile.otherDependants,
+    age,
     state,
     residency: residencyFor(
       residency,
@@ -472,6 +484,16 @@ async function loadTaxEstimateFrom(
     stateEstimatedPaidCents: payments.stateCents,
   };
   const base = estimateTaxes(input);
+  // The Earned Income Credit without children needs an age of 25 to 64: unknown, it's left out,
+  // and said when it would have counted.
+  if (age === null && input.childrenUnder17 === 0) {
+    const atEligibleAge = estimateTaxes({ ...input, age: EITC.childlessMinAge });
+    if (atEligibleAge.credits.earnedIncomeCreditCents > 0) {
+      assumptions.push(
+        `I haven't counted the Earned Income Credit (up to ${formatCents(atEligibleAge.credits.earnedIncomeCreditCents)}): without children it's for people 25 to 64. Tell me your age and I'll check it.`,
+      );
+    }
+  }
   // Spec step 219: crypto, ESPP and ISO income, said plainly.
   if (equity.ordinaryCents > 0) {
     assumptions.push(

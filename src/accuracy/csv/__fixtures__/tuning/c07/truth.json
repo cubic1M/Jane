@@ -25,91 +25,63 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "MAX.COM",
-      "perYear": 203.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "PELOTON* MEMBERSHIP",
-      "perYear": 528
-    },
-    {
-      "type": "subscription_review",
-      "about": "ADOBE *CREATIVE CLD",
-      "perYear": 275.88
+      "about": "PLANET FITNESS",
+      "perYear": 299.88
     },
     {
       "type": "duplicate_charge",
-      "about": "BEST BUY 00012345 twice",
-      "perYear": 48.75
-    },
-    {
-      "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 6
+      "about": "WAL-MART #2281 twice",
+      "perYear": 57.01
     },
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 4.56
-    },
-    {
-      "type": "bank_fees",
-      "about": "card fees",
-      "perYear": 500
+      "perYear": 1390
     },
     {
       "type": "idle_cash",
-      "about": "cash 1722064, excess 557152",
+      "about": "cash 1786176, excess 670930",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PLANET FITNESS, cancelled"
+      "about": "MAX.COM, cancelled"
     },
     {
       "type": "subscription_review",
-      "about": "DISNEY PLUS, cancelled"
-    },
-    {
-      "type": "subscription_review",
-      "about": "SMILE DENTAL GROUP, irregular"
+      "about": "PELOTON* MEMBERSHIP, cancelled"
     },
     {
       "type": "subscription_review",
       "about": "SQ *BLUE BOTTLE COFFEE at one price"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "2 TICKETMASTER seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 6706.35
+      "dollars": 7222.45
     },
     {
       "date": "2026-06-30",
-      "dollars": 8644.48
+      "dollars": 8596.43
     },
     {
       "date": "2026-07-31",
-      "dollars": 10090.69
+      "dollars": 10176.25
     },
     {
       "date": "2026-08-31",
-      "dollars": 12273.22
+      "dollars": 12115.77
     },
     {
       "date": "2026-09-30",
-      "dollars": 14063.02
+      "dollars": 14119.3
     },
     {
       "date": "2026-10-24",
-      "dollars": 15874.95
+      "dollars": 16183.41
     }
   ]
 }
