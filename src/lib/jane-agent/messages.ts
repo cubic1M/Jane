@@ -382,19 +382,21 @@ export async function stackedSuggestions(
   // its message (overnight upload QA: the dock still led with "Check your car is insured").
   const keyOf = (m: (typeof rows)[number]) => parseRefs(m.refs).suggestion;
   const keys = [...new Set(rows.flatMap((m) => keyOf(m) ?? []))];
-  const live = new Set(
+  // A card with no suggestion row behind it stays: a practice idea's alert (a news theme) has
+  // none until it's answered (theme-alert e2e: dropping those left no news theme card at all).
+  const settled = new Set(
     keys.length === 0
       ? []
       : (
           await db.suggestions.findMany({
-            where: { key: { in: keys }, status: { in: ["waiting", "selected"] } },
+            where: { key: { in: keys }, status: { notIn: ["waiting", "selected"] } },
             select: { key: true },
           })
         ).map((x) => x.key),
   );
   // In the order the day's best came in: the first card is the best.
   return rows
-    .filter((m) => live.has(keyOf(m) ?? ""))
+    .filter((m) => !settled.has(keyOf(m) ?? ""))
     .slice(0, SUGGESTIONS_PER_DAY)
     .reverse()
     .map(toChatMessage);

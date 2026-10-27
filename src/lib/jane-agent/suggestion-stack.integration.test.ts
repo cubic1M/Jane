@@ -64,6 +64,8 @@ describe.runIf(url)("the suggestions in the card stack", () => {
     await make("c:answered", 30, { status: "answered" });
     await make("d:old", 60 * 48);
     await make("e:three", 20);
+    // A practice idea's alert (a news theme) has no suggestion row until it's answered: a card.
+    await make("practice:theme_idea:x", 45);
     await client.janeMessage.create({
       data: {
         userId,
@@ -83,7 +85,12 @@ describe.runIf(url)("the suggestions in the card stack", () => {
 
   it("lists the waiting ones, best first, without answered, old, gone or other messages", async () => {
     const stacked = await stackedSuggestions(userId, { client, now: NOW });
-    expect(stacked.map((m) => m.refs.suggestion)).toEqual(["a:one", "b:two", "e:three"]);
+    // The day's three newest still waiting, oldest first (a:one, older, is past the three).
+    expect(stacked.map((m) => m.refs.suggestion)).toEqual([
+      "practice:theme_idea:x",
+      "b:two",
+      "e:three",
+    ]);
     expect(stacked.length).toBeLessThanOrEqual(SUGGESTIONS_PER_DAY);
   });
 });

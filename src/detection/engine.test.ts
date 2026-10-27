@@ -429,13 +429,13 @@ describe("runDetection asking Claude about unclear merchants", () => {
     expect(summary.counts.subscription_review).toBe(0);
   });
 
-  it("finds no subscription when Claude can't be asked", async () => {
+  it("when Claude can't be asked, still finds a plan at one price every month, at low confidence", async () => {
     const check = vi.fn().mockResolvedValue(new Map());
 
     const summary = await runDetection("user_1", { client, now, checkSubscriptions: check });
 
     expect(scoped.subscriptionChecks.createMany).not.toHaveBeenCalled();
-    expect(summary.counts.subscription_review).toBe(0);
+    expect(summary.counts.subscription_review).toBe(1);
   });
 });
 

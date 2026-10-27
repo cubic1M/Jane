@@ -38,7 +38,12 @@ describe("withDirectory", () => {
       ],
     });
 
-    expect(detect(data).filter((f) => f.type === "subscription_review")).toEqual([]);
+    // Without the directory: one merchant by its two names' shared price, a plan only by price.
+    expect(
+      detect(data)
+        .filter((f) => f.type === "subscription_review")
+        .map((f) => [f.key, f.confidence]),
+    ).toEqual([["merchant:spotify", "low"]]);
 
     const subscriptions = (findings: Candidate[]) =>
       findings.filter((f) => f.type === "subscription_review");

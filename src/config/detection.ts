@@ -203,6 +203,14 @@ export const AMBIGUOUS_SUBSCRIPTION_CATEGORIES: readonly PfcDetailed[] = [
 ];
 // A subscription known only from Claude's answer is never rated above this.
 export const LLM_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "medium";
+// A charge whose category can't say, at the very same price every month, at least this many
+// times and no more than this much, is a subscription even before Claude is asked (CSV bench: on
+// the held-out statements, 57 of 63 missed subscriptions were such charges under names no rule
+// knows). Rent, loans and bills cost more or move; a same-price monthly charge under $100 is
+// almost always a plan. Never rated above FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE.
+export const FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES = 3;
+export const FIXED_PRICE_SUBSCRIPTION_MAX_CENTS = 10_000;
+export const FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "low";
 
 // Groups of interchangeable services. Two or more active subscriptions in one group is a
 // duplicate. A stream joins a group by category or by merchant name.
@@ -615,6 +623,10 @@ export const DUPLICATE_CHARGE_PER_SEAT_CATEGORIES: readonly PfcDetailed[] = [
 // Cinemas sell a seat each too, but Plaid files them with streaming services, where a double
 // charge is real, so they are known by name (whole words of the merchant; accuracy bench, first
 // held-out set: two seats at AMC).
+// This many identical charges at one place on one day are a group's seats (or rounds), not a
+// card run twice: a shop doesn't run a card three times (CSV bench: tickets at a cinema whose
+// name says nothing).
+export const DUPLICATE_CHARGE_GROUP_MIN = 3;
 export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
   "theatre",
   "theatres",
