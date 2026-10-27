@@ -172,7 +172,9 @@ describe("categorizeByRules", () => {
     const events = "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS";
     expect(out("TICKETMASTER 800-653-8000", { bankCategory: "Entertainment" })).toBe(events);
     expect(out("STUBHUB 866-788-2482")).toBe(events);
-    expect(out("CITY PARKING TICKETS")).toBeNull();
+    expect(out("CITY PARKING TICKETS")).toBe("TRANSPORTATION_PARKING");
+    expect(out("GAMETIME*TICKETS")).toBe(events);
+    expect(out("ROXY FILM CENTER")).toBe("ENTERTAINMENT_TV_AND_MOVIES");
   });
 
   it("files utilities named for what they sell as utilities", () => {

@@ -688,6 +688,11 @@ export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
   "regal",
   "cinemark",
   "fandango",
+  // Films and box offices by their words (CSV bench, round 9).
+  "film",
+  "films",
+  "movies",
+  "tickets",
 ];
 // Money moving rather than spent never counts as an unusually large charge.
 export const LARGE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [

@@ -673,6 +673,28 @@ const RULES: readonly Rule[] = [
   { category: "TRANSFER_OUT_ACCOUNT_TRANSFER", keywords: ["TRANSFER"], direction: "out" },
   { category: "TRANSFER_IN_ACCOUNT_TRANSFER", keywords: ["TRANSFER"], direction: "in" },
 
+  // Parking, before tickets: a parking ticket is parking, never an event.
+  {
+    category: "TRANSPORTATION_PARKING",
+    keywords: ["PARKING", "PARKMOBILE", "SP PLUS"],
+    direction: "out",
+  },
+  // Tickets and films by their words (a seat each, so two at one price aren't a double charge),
+  // coffee roasters, warehouse stores and internet providers (CSV bench, round 9).
+  {
+    category: "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS",
+    keywords: ["TICKETS", "TIX", "BOX OFFICE"],
+    direction: "out",
+  },
+  {
+    category: "ENTERTAINMENT_TV_AND_MOVIES",
+    keywords: ["FILM", "FILMS", "MOVIES"],
+    direction: "out",
+  },
+  { category: "FOOD_AND_DRINK_COFFEE", keywords: ["ROASTERS", "ROASTERY", "ESPRESSO"] },
+  { category: "GENERAL_MERCHANDISE_SUPERSTORES", keywords: ["WHOLESALE"] },
+  { category: "RENT_AND_UTILITIES_INTERNET_AND_CABLE", keywords: ["INTERNET"], direction: "out" },
+
   // A bar or a bakery by its kind (QA round 28: "HOLLOW OAK TAVERN", "BLUE HERON BAKERY").
   { category: "FOOD_AND_DRINK_RESTAURANT", keywords: ["TAVERN", "PUB", "SALOON", "BAR & GRILL"] },
   { category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK", keywords: ["BAKERY", "BAKE SHOP", "DONUTS"] },

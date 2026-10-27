@@ -291,7 +291,7 @@ Held-out set (20 people, 135 files, 5324 transactions):
 | --- | ---: |
 | Files read | 135 of 135 (132 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 65.7% (1753 left for Claude) |
+| Category right (rules only) | 65.7% (1748 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
 | Findings, $/yr | Jane $25,246, truth $28,337; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
@@ -330,9 +330,9 @@ Second held-out set (20 people, 128 files, 5419 transactions):
 | --- | ---: |
 | Files read | 128 of 128 (126 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 69.7% (1518 left for Claude) |
-| False "Charged twice?" | 6 (6 people) |
-| Findings, $/yr | Jane $28,569, truth $29,248; error on the ones found 0.0% |
+| Category right (rules only) | 74.7% (1253 left for Claude) |
+| False "Charged twice?" | 2 (2 people) |
+| Findings, $/yr | Jane $28,368, truth $29,248; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 10 of 20 people (off by $60,155 in all) |
@@ -346,7 +346,7 @@ Second held-out set (20 people, 128 files, 5419 transactions):
 | trial_conversion | 100.0% | 80.0% | 4 | 0 | 1 |
 | bank_fees | 100.0% | 100.0% | 25 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
-| duplicate_charge | 64.7% | 100.0% | 11 | 6 | 0 |
+| duplicate_charge | 84.6% | 100.0% | 11 | 2 | 0 |
 | idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
 | bills coming up (31 days) | 99.5% | 95.3% | 201 | 1 | 10 |
 
@@ -358,9 +358,9 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 16 | 59% | 100% |
-| 60–69% | 39 | 64% | 92% |
+| 60–69% | 38 | 64% | 95% |
 | 70–79% | 6 | 76% | 100% |
-| 80–89% | 1 | 83% | 100% |
+| 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 <!-- csv-scoreboard:end -->
 
@@ -391,6 +391,7 @@ Rules only, Claude stubbed. Tuning / held-out.
 - **...but not a loan payment, insurance, a gift or a meal** (QA round 28, on live data). A credit union loan payment, Lemonade Insurance, a church, a bakery and a tavern, each at one fixed monthly amount under $100, were called subscriptions. The price-only rule now leaves out loan, food-and-drink, non-profit, transfer and utility categories and insurance (`FIXED_PRICE_SUBSCRIPTION_EXCLUDED_*`), and any description with a payment, loan, insurance, church, donation or bar and food word (`FIXED_PRICE_SUBSCRIPTION_NOT_WORDS`). The categorizer also files these by their own words (TAVERN, BAKERY, CHURCH, TITHE, INSURANCE, LOAN PMT). Both CSV sets now carry two such charges per person as traps; without the fix they gave 40 false subscriptions per set (precision 58.8% / 55.1%). With it, subscriptions precision is 100% on both, and held-out recall is still 66.2%.
 - **What kind of place it is, from the words in its name** ("PHO HOA NOODLE", "BRIGHT NOW DENTAL", "MIDAS MUFFLER", "LUXE NAILS"): restaurant, grocery, dental, eye care, vet, pharmacy, clinic, auto service, fuel, hardware, furniture, salon, pet shop, clothing and lodging words. They come after the merchant names and before the cards' broad labels. This is general vocabulary, not names read off a set. Category right with rules alone: tuning 96.1% → 97.6%, held-out 57.2% → 60.9%. The sample bench is unchanged.
 - **More kinds of place by their words** (round 8). New word groups:
+- **Tickets, films, roasters, warehouse stores and internet providers by their words** (round 9). These are words, not names: TICKETS, TIX, BOX OFFICE are events, and FILM, MOVIES are cinemas. Both are also per-seat, so a group's seats aren't "Charged twice?". Also ROASTERS (coffee), WHOLESALE (warehouse stores), INTERNET (money out to a provider), and PARKING first, so a parking ticket is parking. On the second CSV held-out set, the first check after it was made: category right 69.7% → 74.7%, false "Charged twice?" 6 → 2. The tuning set, the first held-out set and the sample bench are unchanged. Caveat: the same person wrote the set's ticket seller and cinema names and these words, so the words are generic but the check isn't blind.
   - landlords (PROPERTY, COMMUNITIES, LEASING, REALTY; a PROPERTY TAX stays a tax)
   - phone and internet companies (WIRELESS, COMMUNICATIONS, BROADBAND, FIBER, CABLE)
   - taxis, cinemas and satellite TV (DIRECTV, DISH)
