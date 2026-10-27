@@ -25,6 +25,8 @@ import { runTaxAutopilot } from "@/lib/tax-autopilot";
 import { runStrategist } from "@/lib/strategist";
 import { planQuestion } from "@/lib/questions";
 import { scanSuggestions } from "@/lib/suggestions";
+import { reapplyRules } from "@/categorize/reapply";
+import { runDetection } from "@/detection/engine";
 
 // The nightly controller run (spec step 142): one run per person each night that does every
 // sector's checks, in CONTROLLER_STEPS' order, through the sectors' own code: sync the
@@ -60,15 +62,23 @@ const STEPS: Record<
       },
       select: { id: true },
     });
-    if (items.length === 0) return { did: "Already up to date.", changed: 0 };
     let added = 0;
     for (const item of items) {
       const result = await syncItem(item.id, { client, now, ...(api ? { api } : {}) });
       added += result.added;
     }
+    // Rows saved before a keyword rule got better (uploads especially) are brought up to date,
+    // and findings found again from them.
+    const recategorized = await reapplyRules(userId, { client });
+    if (recategorized > 0) await runDetection(userId, { client, now });
+    const fixed =
+      recategorized > 0
+        ? ` Re-sorted ${plural(recategorized, "transaction")} by updated rules.`
+        : "";
+    if (items.length === 0) return { did: `Already up to date.${fixed}`, changed: recategorized };
     return {
-      did: `Synced ${plural(items.length, "bank")}: ${plural(added, "new transaction")}.`,
-      changed: added,
+      did: `Synced ${plural(items.length, "bank")}: ${plural(added, "new transaction")}.${fixed}`,
+      changed: added + recategorized,
     };
   },
   async changes(userId, { client, now }) {
