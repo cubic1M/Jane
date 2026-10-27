@@ -1,0 +1,129 @@
+{
+  "person": "e14",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "MUBI",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOTION LABS",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "SIRIUSXM",
+      "perYear": 155.88
+    },
+    {
+      "type": "price_increase",
+      "about": "SIRIUSXM 1099→1299",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "MASTERCLASS",
+      "perYear": 180
+    },
+    {
+      "type": "trial_conversion",
+      "about": "KINDLE UNLIMITED trial",
+      "perYear": 11.99
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 1668
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 851.64
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "1PASSWORD, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WAYFAIR*4K2L9 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": -2981.44
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -6.21
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -33.1
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 842.48
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 2291.21
+    }
+  ]
+}

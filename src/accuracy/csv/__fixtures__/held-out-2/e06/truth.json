@@ -1,0 +1,105 @@
+{
+  "person": "e06",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Credit union checking",
+      "layout": "custom",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "MUBI",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "MUBI 1499→1599",
+      "perYear": 12
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE TV+",
+      "perYear": 119.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "BUMBLE trial",
+      "perYear": 29.99
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 7.2
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 4373631, excess 3155049",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "NOTION LABS, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 28245.37
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 31315.93
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 35145.41
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 38536.51
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 42558.88
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "person": "e19",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NOOM INC",
+      "perYear": 708
+    },
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BURLINGTON STORES 712 twice",
+      "perYear": 118.71
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1541320, excess 652997",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *DIGNITY ROASTERS at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FIRST BAPTIST CHURCH, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 5127.89
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 6609.2
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 9993.15
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 11026.7
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 12213.5
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 13584.89
+    }
+  ]
+}

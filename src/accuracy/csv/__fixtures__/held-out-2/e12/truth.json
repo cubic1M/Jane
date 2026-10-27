@@ -1,0 +1,103 @@
+{
+  "person": "e12",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NOTION LABS",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "MASTERCLASS",
+      "perYear": 180
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE TV+",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 4511544, excess 3986055",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *DIGNITY ROASTERS at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 ANGELIKA FILM CENTER seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 22718.28
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 26110.63
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 29040.22
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 35384.95
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 37719.89
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 40430.98
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 43795.58
+    }
+  ]
+}

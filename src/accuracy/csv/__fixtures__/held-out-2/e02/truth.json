@@ -1,0 +1,124 @@
+{
+  "person": "e02",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America savings",
+      "layout": "bofa_checking",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "ORANGETHEORY FITNESS",
+      "perYear": 708
+    },
+    {
+      "type": "subscription_review",
+      "about": "BRITBOX",
+      "perYear": 107.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOTION LABS",
+      "perYear": 120
+    },
+    {
+      "type": "trial_conversion",
+      "about": "KINDLE UNLIMITED trial",
+      "perYear": 11.99
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 115.2
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 8.81
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 1034.9
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1724430, excess 1056424",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MASTERCLASS, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PATREON* MEMBERSHIP, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ASPEN DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "CHEWY.COM twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "RUSTY NAIL PUB, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SWEET CRUMB BAKERY, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 9251.1
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 11032.93
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 11155.37
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 11481.61
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 11719.9
+    }
+  ]
+}

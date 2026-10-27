@@ -1,0 +1,95 @@
+{
+  "person": "e03",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 155.88
+    },
+    {
+      "type": "price_increase",
+      "about": "SPOTIFY USA 1199→1299",
+      "perYear": 12
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "SQ *MAMAS KITCHEN dinner twice",
+      "perYear": 74.83
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 6
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "APPLE TV+, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ASPEN DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "RUSTY NAIL PUB, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SWEET CRUMB BAKERY, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 991.06
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -1990.94
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -3010.81
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -4959.21
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -7169.74
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -8703.57
+    }
+  ]
+}

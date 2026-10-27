@@ -1,0 +1,114 @@
+{
+  "person": "e16",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase savings",
+      "layout": "chase_checking",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NOOM INC",
+      "perYear": 708
+    },
+    {
+      "type": "subscription_review",
+      "about": "ORANGETHEORY FITNESS",
+      "perYear": 708
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOTION LABS",
+      "perYear": 120
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "CHEWY.COM twice",
+      "perYear": 129.92
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 75
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 453.51
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1742169, excess 854093",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "ASPEN DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *DIGNITY ROASTERS at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 FRONTIER AIRLINES 4222345678901 seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HIPPO INSURANCE, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 10417.21
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 11582.48
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 11768.72
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 12477.22
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 12881.76
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 13361.65
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 13557.33
+    }
+  ]
+}

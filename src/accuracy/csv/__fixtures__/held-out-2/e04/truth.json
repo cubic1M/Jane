@@ -1,0 +1,125 @@
+{
+  "person": "e04",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE TV+",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "1PASSWORD",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MUBI",
+      "perYear": 179.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "MENARDS 3301 twice",
+      "perYear": 140.38
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 250
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "ASPEN DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FIRESTONE COMPLETE AUTO, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 ANGELIKA FILM CENTER seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 2588.48
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 2276.87
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 2161.2
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 1414.54
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 1301.38
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 1156.67
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 949.08
+    }
+  ]
+}

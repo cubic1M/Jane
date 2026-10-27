@@ -1,0 +1,112 @@
+{
+  "person": "e08",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NOTION LABS",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "MASTERCLASS",
+      "perYear": 180
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "SQ *MAMAS KITCHEN dinner twice",
+      "perYear": 73.25
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 627.18
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1303841, excess 159777",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "FIRESTONE COMPLETE AUTO, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *DIGNITY ROASTERS at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 ANGELIKA FILM CENTER seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "RITE AID #05532 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SWEET CRUMB BAKERY, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": -1755.49
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": -66.48
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 791.65
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 4780
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 5268.11
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 6420.39
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 8185.57
+    }
+  ]
+}

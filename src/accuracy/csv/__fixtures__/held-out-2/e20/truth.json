@@ -1,0 +1,122 @@
+{
+  "person": "e20",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "1PASSWORD",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "ORANGETHEORY FITNESS",
+      "perYear": 708
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE TV+",
+      "perYear": 119.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 520.92
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 2394293, excess 1848560",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PATREON* MEMBERSHIP, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SIRIUSXM, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 FRONTIER AIRLINES 4222345678901 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BURLINGTON STORES 712 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "RUSTY NAIL PUB, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FIRST BAPTIST CHURCH, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 7110.98
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 10343.38
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 11899.39
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 15224.4
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 16934.68
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 18143.83
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 19564.52
+    }
+  ]
+}

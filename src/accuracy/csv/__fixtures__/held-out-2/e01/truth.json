@@ -1,0 +1,86 @@
+{
+  "person": "e01",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NOTION LABS",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "1PASSWORD",
+      "perYear": 35.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BURLINGTON STORES 712 twice",
+      "perYear": 80.93
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 108
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 2085
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "FIRESTONE COMPLETE AUTO, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *DIGNITY ROASTERS at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 GAMETIME*TICKETS seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "RUSTY NAIL PUB, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SWEET CRUMB BAKERY, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 4255.43
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 4533.72
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 4927.08
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 5118.31
+    }
+  ]
+}

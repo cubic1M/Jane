@@ -1,0 +1,109 @@
+{
+  "person": "e13",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SIRIUSXM",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "1PASSWORD",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "BRITBOX",
+      "perYear": 107.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "SQ *MAMAS KITCHEN dinner twice",
+      "perYear": 83.77
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BURLINGTON STORES 712 twice",
+      "perYear": 138.34
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 11.34
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA, one of two",
+      "perYear": 131.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "ASPEN DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FIRESTONE COMPLETE AUTO, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SWEET CRUMB BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FIRST BAPTIST CHURCH, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 4268.67
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 5293.64
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 4896.58
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 5487.52
+    }
+  ]
+}
