@@ -14,6 +14,11 @@ export const DEADLINE_MONTH_DAYS = 30;
 
 // A one-off purchase of at least this much gets a "return by" date.
 export const RETURN_MIN_CENTS = 10_000;
+// Routine shopping isn't a one-off (overnight upload QA: every $118–$170 Costco run got a
+// return reminder, one of them urgent): at a shop the person paid this many times or more, a
+// purchase up to this many times their usual (median) there gets none.
+export const RETURN_ROUTINE_MIN_PURCHASES = 3;
+export const RETURN_ROUTINE_MEDIAN_MULTIPLE = 2;
 // Days most shops allow for a return, when the merchant isn't listed below.
 export const RETURN_WINDOW_DAYS = 30;
 
