@@ -41,6 +41,16 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 1093.3
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
     }
   ],
   "notFindings": [
@@ -63,32 +73,36 @@
     {
       "type": "subscription_review",
       "about": "KINGS HEAD PUB, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "DEEZER, two plans"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -5383.31
+      "dollars": -5407.29
     },
     {
       "date": "2026-06-30",
-      "dollars": -6109.73
+      "dollars": -6157.69
     },
     {
       "date": "2026-07-31",
-      "dollars": -5768.9
+      "dollars": -5840.84
     },
     {
       "date": "2026-08-31",
-      "dollars": -6381.72
+      "dollars": -6477.64
     },
     {
       "date": "2026-09-30",
-      "dollars": -6765.49
+      "dollars": -6885.39
     },
     {
       "date": "2026-10-24",
-      "dollars": -7474.14
+      "dollars": -7594.04
     }
   ]
 }

@@ -47,6 +47,16 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 439.33
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIDAL.COM, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIDAL.COM, one of two",
+      "perYear": 131.88
     }
   ],
   "notFindings": [
@@ -77,36 +87,40 @@
     {
       "type": "subscription_review",
       "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TIDAL.COM, two plans"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -1152.42
+      "dollars": -1174.4
     },
     {
       "date": "2026-05-31",
-      "dollars": 1548.85
+      "dollars": 1504.89
     },
     {
       "date": "2026-06-30",
-      "dollars": 1994.44
+      "dollars": 1928.5
     },
     {
       "date": "2026-07-31",
-      "dollars": 2832.19
+      "dollars": 2744.27
     },
     {
       "date": "2026-08-31",
-      "dollars": 3409.88
+      "dollars": 3299.98
     },
     {
       "date": "2026-09-30",
-      "dollars": 3726.51
+      "dollars": 3594.63
     },
     {
       "date": "2026-10-24",
-      "dollars": 4803.29
+      "dollars": 4649.43
     }
   ]
 }

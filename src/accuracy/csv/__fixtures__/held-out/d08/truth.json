@@ -44,8 +44,18 @@
       "perYear": 545.97
     },
     {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 1459718, excess 966242",
+      "about": "cash 1459718, excess 959863",
       "perYear": null
     }
   ],
@@ -73,36 +83,40 @@
     {
       "type": "subscription_review",
       "about": "SUNRISE BAKERY, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "DEEZER, two plans"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 5121.84
+      "dollars": 5097.86
     },
     {
       "date": "2026-05-31",
-      "dollars": 7189.4
+      "dollars": 7141.44
     },
     {
       "date": "2026-06-30",
-      "dollars": 7760.58
+      "dollars": 7688.64
     },
     {
       "date": "2026-07-31",
-      "dollars": 7961.6
+      "dollars": 7865.68
     },
     {
       "date": "2026-08-31",
-      "dollars": 8953.3
+      "dollars": 8833.4
     },
     {
       "date": "2026-09-30",
-      "dollars": 10233.22
+      "dollars": 10089.34
     },
     {
       "date": "2026-10-24",
-      "dollars": 10758.88
+      "dollars": 10615
     }
   ]
 }

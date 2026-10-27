@@ -28,6 +28,17 @@ describe("duplicate_charge", () => {
     ]);
   });
 
+  it("never calls two plans billed together every month a double charge", () => {
+    const plan = monthly(4, 1549, NETFLIX);
+    const twins = plan.flatMap((t) => [t, { ...t, id: `${t.id}-b` }]);
+    expect(run(input({ transactions: twins }))).toEqual([]);
+    // Once, it is one.
+    const last = plan[plan.length - 1];
+    expect(run(input({ transactions: [...plan, { ...last, id: `${last.id}-b` }] }))).toHaveLength(
+      1,
+    );
+  });
+
   it("finds the second of two identical charges a day apart, as a refund", () => {
     const second = charge(9);
     const [finding] = run(input({ transactions: [charge(10), second] }));

@@ -56,6 +56,16 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 989.61
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIDAL.COM, one of two",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIDAL.COM, one of two",
+      "perYear": 131.88
     }
   ],
   "notFindings": [
@@ -78,24 +88,28 @@
     {
       "type": "subscription_review",
       "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TIDAL.COM, two plans"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -4460.81
+      "dollars": -4482.79
     },
     {
       "date": "2026-08-31",
-      "dollars": -6313.96
+      "dollars": -6357.92
     },
     {
       "date": "2026-09-30",
-      "dollars": -8459.85
+      "dollars": -8525.79
     },
     {
       "date": "2026-10-24",
-      "dollars": -9899
+      "dollars": -9986.92
     }
   ]
 }

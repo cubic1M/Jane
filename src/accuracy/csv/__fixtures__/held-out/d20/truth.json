@@ -49,8 +49,18 @@
       "perYear": 448.08
     },
     {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 2050361, excess 1064362",
+      "about": "cash 2050361, excess 1056920",
       "perYear": null
     }
   ],
@@ -74,36 +84,40 @@
     {
       "type": "subscription_review",
       "about": "KINGS HEAD PUB, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "DEEZER, two plans"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 953.53
+      "dollars": 929.55
     },
     {
       "date": "2026-05-31",
-      "dollars": 2703.6
+      "dollars": 2655.64
     },
     {
       "date": "2026-06-30",
-      "dollars": 5254.58
+      "dollars": 5182.64
     },
     {
       "date": "2026-07-31",
-      "dollars": 10422.69
+      "dollars": 10326.77
     },
     {
       "date": "2026-08-31",
-      "dollars": 12674.73
+      "dollars": 12554.83
     },
     {
       "date": "2026-09-30",
-      "dollars": 14621.89
+      "dollars": 14478.01
     },
     {
       "date": "2026-10-24",
-      "dollars": 17023.54
+      "dollars": 16855.68
     }
   ]
 }
