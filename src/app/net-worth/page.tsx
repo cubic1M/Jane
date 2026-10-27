@@ -54,7 +54,7 @@ async function NetWorthContent() {
     NET_WORTH_MONTHS,
     today.netCents,
   );
-  const left = notCounting(today.missing);
+  const left = notCounting(today.unbalanced);
   const prompts = assetPrompts(
     accounts,
     ownedRows.map((o) => o.loanAccountId),

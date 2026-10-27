@@ -210,7 +210,7 @@ export async function loadMoneyArea(
       investmentsCents: worth.investmentsCents,
       ownedCents: worth.ownedCents,
       owned: owned.length,
-      missing: worth.missing,
+      missing: worth.unbalanced,
       assetPrompt: prompt ? (prompt.kind === "vehicle" ? "vehicle" : "home") : null,
       goals: {
         total: goals.length,

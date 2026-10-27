@@ -19,6 +19,7 @@ describe("netWorth", () => {
       debtsCents: 920_000,
       netCents: 330_000,
       missing: ["Old Card"],
+      unbalanced: [{ name: "Old Card", card: true }],
     });
   });
 
@@ -167,13 +168,32 @@ describe("netWorthLine", () => {
 });
 
 describe("notCounting", () => {
-  it("names what net worth leaves out, never silently", () => {
+  const card = (name: string) => ({ name, card: true });
+  it("says what net worth leaves out, never silently, in one phrase", () => {
     expect(notCounting([])).toBeNull();
-    expect(notCounting(["Chase card"])).toEqual({
-      short: "not counting Chase card",
-      sentence: "Not counting Chase card: there's no balance yet.",
+    expect(notCounting([card("Chase card")])).toEqual({
+      short: "not counting card balance",
+      sentence: "Not counting your Chase card balance: the file doesn't say it yet.",
     });
-    expect(notCounting(["Amex", "Chase card"])?.short).toBe("not counting Amex or Chase card");
-    expect(notCounting(["A", "B", "C"])?.short).toBe("not counting 3 accounts");
+    expect(notCounting([card("Amex"), card("Chase card")])).toEqual({
+      short: "not counting card balances",
+      sentence: "Not counting your Amex or Chase card balances: the files don't say them yet.",
+    });
+    expect(notCounting([{ name: "Wells Fargo checking", card: false }])?.short).toBe(
+      "not counting a balance",
+    );
+    expect(notCounting([card("A"), card("B"), { name: "C", card: false }])).toEqual({
+      short: "not counting 3 balances",
+      sentence: "Not counting 3 balances: the files don't say them yet.",
+    });
+  });
+
+  it("lists the accounts without a balance with whether each is a card", () => {
+    const worth = netWorth([
+      { id: "a", name: "Chase card", type: "credit", balanceCents: null },
+      { id: "b", name: "Checking", type: "depository", balanceCents: 1000 },
+    ]);
+    expect(worth.unbalanced).toEqual([{ name: "Chase card", card: true }]);
+    expect(worth.missing).toEqual(["Chase card"]);
   });
 });

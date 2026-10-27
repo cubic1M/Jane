@@ -1,6 +1,6 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
-import { notCounting } from "@/insights/net-worth";
+import { notCounting, type Unbalanced } from "@/insights/net-worth";
 import { formatCents } from "@/lib/money";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 
@@ -131,7 +131,7 @@ export type MoneyTreeInput = {
     goals: { total: number; onTrack: number };
     debt: { accounts: number; owedCents: number };
     // Accounts net worth leaves out for having no balance (an uploaded card, say).
-    missing?: string[];
+    missing?: Unbalanced[];
   };
   rules: number;
 };
@@ -338,16 +338,12 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
   }
 
   const h = input.have;
-  const missing = h.missing ?? [];
-  const left = notCounting(missing);
+  const left = notCounting(h.missing ?? []);
   if (input.hasAccounts) {
     items.have.push(
       item("have", "net-worth", {
         // Never a figure that silently leaves a debt out: it says what it isn't counting.
-        // (The label's word budget fits a count; the summary names them.)
-        label: left
-          ? `Net worth, not counting ${missing.length === 1 ? "one account" : `${missing.length} accounts`}`
-          : "Net worth",
+        label: left ? `Net worth, ${left.short}` : "Net worth",
         status: left ? "look" : "good",
         figure: shortMoney(h.netCents),
         summary: `You have ${formatCents(h.assetsCents)} and owe ${formatCents(h.debtsCents)}.${left ? ` ${left.sentence}` : ""}`,

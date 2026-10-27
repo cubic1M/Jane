@@ -56,17 +56,17 @@ test("a card without a balance is asked for, and net worth says it isn't counted
 
   // Skipped: every net worth says what it isn't counting.
   await expect(page.locator("[data-net-worth-not-counting]")).toContainText(
-    "Not counting Chase card: there's no balance yet.",
+    "Not counting your Chase card balance: the file doesn't say it yet.",
   );
   await page.goto("/home");
   await expect(page.locator("[data-net-worth-chart] [data-net-worth-not-counting]")).toContainText(
-    "Not counting Chase card",
+    "Not counting your Chase card balance",
   );
   await page.goto("/money");
   // Its tree folds the items under their branches: opened, the net worth item says so too.
   await page.getByRole("treeitem", { name: /What you have/ }).click();
   await expect(
-    page.getByRole("treeitem", { name: /Net worth, not counting one account/ }),
+    page.getByRole("treeitem", { name: /Net worth, not counting card balance/ }),
   ).toBeVisible();
 
   // Given later on /import: the debt counts, and the note goes.

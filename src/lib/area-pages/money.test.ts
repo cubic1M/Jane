@@ -171,11 +171,14 @@ const allItems = (input: MoneyTreeInput) => moneyTree(input).tree.branches.flatM
 
 describe("moneyTree", () => {
   it("says when net worth leaves an account out for want of a balance, by name", () => {
-    const tree = moneyTree({ ...FULL, have: { ...FULL.have, missing: ["Chase card"] } });
+    const tree = moneyTree({
+      ...FULL,
+      have: { ...FULL.have, missing: [{ name: "Chase card", card: true }] },
+    });
     const item = tree.tree.branches.flatMap((b) => b.items).find((i) => i.id === "have:net-worth");
-    expect(item).toMatchObject({ label: "Net worth, not counting one account", status: "look" });
+    expect(item).toMatchObject({ label: "Net worth, not counting card balance", status: "look" });
     expect(tree.summaries["have:net-worth"]).toContain(
-      "Not counting Chase card: there's no balance yet.",
+      "Not counting your Chase card balance: the file doesn't say it yet.",
     );
     expect(words(item!.label)).toBeLessThanOrEqual(LABEL_MAX_WORDS);
     expect(sentences(tree.summaries["have:net-worth"])).toBeLessThanOrEqual(SUMMARY_MAX_SENTENCES);

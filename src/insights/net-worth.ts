@@ -29,7 +29,11 @@ export type NetWorth = {
   netCents: number;
   // Accounts we couldn't include, by name.
   missing: string[];
+  // The same, with whether each is a card (what's owed): for notCounting's words.
+  unbalanced: Unbalanced[];
 };
+
+export type Unbalanced = { name: string; card: boolean };
 
 const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
 
@@ -41,10 +45,10 @@ export function netWorth(
   let assets = 0;
   let investments = 0;
   let debts = 0;
-  const missing: string[] = [];
+  const unbalanced: Unbalanced[] = [];
   for (const a of accounts) {
     if (a.balanceCents === null) {
-      missing.push(a.name);
+      unbalanced.push({ name: a.name, card: isDebt(a.type) });
       continue;
     }
     if (isDebt(a.type)) debts += a.balanceCents;
@@ -60,7 +64,8 @@ export function netWorth(
     cryptoCents,
     debtsCents: debts,
     netCents: assets - debts,
-    missing: missing.sort(),
+    missing: unbalanced.map((u) => u.name).sort(),
+    unbalanced: unbalanced.sort((a, b) => a.name.localeCompare(b.name)),
   };
 }
 
@@ -163,19 +168,20 @@ export function netWorthLine(
 // What a net worth leaves out for want of a balance (an uploaded card or bank file without one,
 // src/lib/import/account-balance.ts), said beside the figure, never left out silently (CSV
 // bench: card debt missing from most upload-only people's net worth). Null when it's complete.
-// The short form sits by the number ("not counting Chase card"); the sentence says why.
+// One phrase everywhere: "not counting your card balance". The short form fits a tree label;
+// the sentence names the accounts.
 export function notCounting(
-  missing: readonly string[],
+  unbalanced: readonly Unbalanced[],
 ): { short: string; sentence: string } | null {
-  if (missing.length === 0) return null;
-  const who =
-    missing.length === 1
-      ? missing[0]
-      : missing.length === 2
-        ? `${missing[0]} or ${missing[1]}`
-        : `${missing.length} accounts`;
-  return {
-    short: `not counting ${who}`,
-    sentence: `Not counting ${who}: there's no balance yet.`,
-  };
+  if (unbalanced.length === 0) return null;
+  const one = unbalanced.length === 1;
+  const cards = unbalanced.every((u) => u.card);
+  const short = cards
+    ? `not counting card ${one ? "balance" : "balances"}`
+    : `not counting ${one ? "a balance" : `${unbalanced.length} balances`}`;
+  const names = unbalanced.length <= 2 ? unbalanced.map((u) => u.name).join(" or ") : null;
+  const sentence = names
+    ? `Not counting your ${names} ${one ? "balance" : "balances"}: ${one ? "the file doesn't" : "the files don't"} say ${one ? "it" : "them"} yet.`
+    : `Not counting ${unbalanced.length} balances: the files don't say them yet.`;
+  return { short, sentence };
 }
