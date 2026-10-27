@@ -18,7 +18,9 @@ const PROCESSOR_PREFIXES = [
 
 // Bank boilerplate around the merchant.
 const BOILERPLATE = [
-  /^(?:POS|DEBIT CARD|CHECKCARD|CHECK CARD|RECURRING)\s+(?:PURCHASE\s+)?/,
+  // Capital One 360 writes "Debit Card Purchase - PAYPAL *HULU": the dash goes too, or the
+  // processor prefix after it isn't seen (CSV bench: Hulu read as "Paypal").
+  /^(?:POS|DEBIT CARD|CHECKCARD|CHECK CARD|RECURRING)\s+(?:PURCHASE\s+)?(?:-\s+)?/,
   /^PURCHASE AUTHORIZED ON \d{1,2}\/\d{1,2}\s+/,
   /^ORIG CO NAME:\s*/,
 ];
@@ -48,8 +50,15 @@ export function normalizeDescription(description: string): string {
 
 export type Merchant = { name: string; key: string };
 
+// Citi pads the merchant to a column before the city and state ("SPOTIFY USA        SAN
+// FRANCISCO  CA"): the padding is where the merchant ends.
+function beforePadding(description: string): string {
+  const match = /^(.*?\S)\s{3,}[A-Za-z .'-]+?\s+([A-Za-z]{2})\s*$/.exec(description);
+  return match && US_STATES.has(match[2].toUpperCase()) ? match[1] : description;
+}
+
 export function normalizeMerchant(description: string): Merchant | null {
-  let text = normalizeDescription(description);
+  let text = normalizeDescription(beforePadding(description));
   for (const pattern of BOILERPLATE) text = text.replace(pattern, "");
   for (const pattern of PROCESSOR_PREFIXES) text = text.replace(pattern, "");
 
@@ -84,4 +93,19 @@ export function normalizeMerchant(description: string): Merchant | null {
 
   if (!text) return null;
   return { name: titleCase(text), key: text.toLowerCase() };
+}
+
+// When a description ends in a US state, the city before it may still be in the merchant's key
+// ("SPOTIFY P1A2B3C4D5 CHICAGO IL" is "spotify chicago"): the key with its last one or two words
+// dropped, for matching a known company (src/detection/merchants.ts). Nothing when there's no
+// state, so "apple store" is never "apple".
+export function withoutCity(description: string): string[] {
+  // The last word that isn't a reference number (Bank of America ends with one).
+  const last = normalizeDescription(description)
+    .split(" ")
+    .filter((word) => !isCode(word))
+    .at(-1);
+  if (!last || !US_STATES.has(last)) return [];
+  const words = normalizeMerchant(description)?.key.split(" ") ?? [];
+  return [1, 2].filter((n) => words.length > n).map((n) => words.slice(0, -n).join(" "));
 }

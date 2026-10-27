@@ -19,28 +19,18 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "NYTIMES*NYTDIGITAL",
-      "perYear": 48
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
     },
     {
       "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
+      "about": "PLANET FITNESS",
+      "perYear": 299.88
     },
     {
       "type": "subscription_review",
-      "about": "ADOBE *CREATIVE CLD",
-      "perYear": 275.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "AUDIBLE*2K94LM",
-      "perYear": 179.4
-    },
-    {
-      "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 167.88
+      "about": "PELOTON* MEMBERSHIP",
+      "perYear": 528
     },
     {
       "type": "bank_fees",
@@ -55,39 +45,43 @@
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 870.52
+      "perYear": 916.02
     }
   ],
   "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
     {
       "type": "subscription_review",
       "about": "SQ *BLUE BOTTLE COFFEE at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "3 SOUTHWES 5262123456789 seats"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "HOME DEPOT #6612 twice, refunded"
+      "about": "BEST BUY 00012345 twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -1480.84
+      "dollars": -1982.89
     },
     {
       "date": "2026-08-31",
-      "dollars": -2458.5
+      "dollars": -3003.22
     },
     {
       "date": "2026-09-30",
-      "dollars": -3673.61
+      "dollars": -4256.89
     },
     {
       "date": "2026-10-24",
-      "dollars": -4932.82
+      "dollars": -5024.96
     }
   ]
 }

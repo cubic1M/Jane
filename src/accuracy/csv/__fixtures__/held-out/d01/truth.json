@@ -25,69 +25,51 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "CALM.COM",
-      "perYear": 179.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "SLING TV",
-      "perYear": 480
-    },
-    {
-      "type": "subscription_review",
-      "about": "HEADSPACE",
-      "perYear": 155.88
-    },
-    {
-      "type": "subscription_review",
       "about": "MICROSOFT*XBOX",
       "perYear": 203.88
     },
     {
       "type": "subscription_review",
-      "about": "GRAMMARLY",
-      "perYear": 144
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
     },
     {
       "type": "duplicate_charge",
       "about": "WALGREENS #1234 twice",
-      "perYear": 116.15
+      "perYear": 150.26
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PEETS COFFEE 00121 at one price"
+      "about": "TIM HORTONS #8812 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "3 VIVID SEATS 866-848-8499 seats"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "pending copy of a posted charge"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "pending copy of a posted charge"
+      "about": "3 UNITED 0162345678901 seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 2563.14
+      "dollars": 3653.21
     },
     {
       "date": "2026-08-31",
-      "dollars": 3240.41
+      "dollars": 4233.83
     },
     {
       "date": "2026-09-30",
-      "dollars": 4283.63
+      "dollars": 5325.66
     },
     {
       "date": "2026-10-24",
-      "dollars": 5122.58
+      "dollars": 5885.12
     }
   ]
 }

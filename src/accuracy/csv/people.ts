@@ -87,6 +87,7 @@ export type Flow =
   | "fee_refund"
   | "interest_charge"
   | "interest_earned"
+  | "reward"
   | "check";
 
 // A finding Jane should make, by what it's about: the rows that show it.
@@ -123,6 +124,10 @@ export type CsvPerson = {
     // Recurring charges Jane may or may not call subscriptions without being wrong either way
     // (a trial with one full charge so far).
     neutral: string[][];
+    // What's coming up in the next 31 days ("Coming up" and the cash forecast), by the rows of
+    // each bill so far; and bills Jane may list or not (a trial's first full charge).
+    bills: { rows: string[]; note: string }[];
+    neutralBills: string[][];
   };
 };
 
@@ -238,6 +243,8 @@ const RIDES: Merchant[] = [
 
 type Sub = {
   descriptor: string;
+  // Other ways the same charge is written from month to month ("NETFLIX.COM 866-579-7172").
+  variants?: string[];
   category: PfcDetailed;
   cents: number;
   rise?: number;
@@ -246,9 +253,26 @@ type Sub = {
 };
 const DIGITAL: PfcPrimary[] = ["GENERAL_SERVICES", "GENERAL_MERCHANDISE", "ENTERTAINMENT"];
 const SUBSCRIPTIONS: Sub[] = [
-  { descriptor: "NETFLIX.COM", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1549, rise: 1799 },
-  { descriptor: "SPOTIFY USA", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1199, rise: 1299 },
-  { descriptor: "HULU 877-8244858", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1799 },
+  {
+    descriptor: "NETFLIX.COM",
+    variants: ["NETFLIX.COM 866-579-7172"],
+    category: "ENTERTAINMENT_TV_AND_MOVIES",
+    cents: 1549,
+    rise: 1799,
+  },
+  {
+    descriptor: "SPOTIFY USA",
+    variants: ["SPOTIFY P1A2B3C4D5"],
+    category: "ENTERTAINMENT_MUSIC_AND_AUDIO",
+    cents: 1199,
+    rise: 1299,
+  },
+  {
+    descriptor: "HULU 877-8244858",
+    variants: ["PAYPAL *HULU"],
+    category: "ENTERTAINMENT_TV_AND_MOVIES",
+    cents: 1799,
+  },
   { descriptor: "DISNEY PLUS", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1399, rise: 1599 },
   { descriptor: "PLANET FITNESS", category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS", cents: 2499 },
   {
@@ -330,6 +354,11 @@ type Pool = {
   insurers: string[];
   friends: string[];
   water: string;
+  // A plan paid once a year, and places abroad (a trip, with the card's foreign fee).
+  yearly: Sub;
+  abroad: Merchant[];
+  // Bills that come when they come: the dentist, a car repair.
+  irregular: Merchant[];
 };
 
 const TUNING: Pool = {
@@ -350,6 +379,36 @@ const TUNING: Pool = {
   insurers: INSURERS,
   friends: FRIENDS,
   water: "CITY OF SPRINGFIELD UTILITY BILLING",
+  yearly: {
+    descriptor: "AMAZON PRIME*2K4AB7XY0",
+    category: "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES",
+    cents: 13_900,
+    alsoOk: DIGITAL,
+  },
+  irregular: [
+    { descriptor: "SMILE DENTAL GROUP", category: "MEDICAL_DENTAL_CARE", lo: 90, hi: 420 },
+    { descriptor: "JIFFY LUBE #1234", category: "GENERAL_SERVICES_AUTOMOTIVE", lo: 60, hi: 380 },
+  ],
+  abroad: [
+    {
+      descriptor: "PRET A MANGER LONDON GBR",
+      category: "FOOD_AND_DRINK_RESTAURANT",
+      lo: 8,
+      hi: 18,
+    },
+    {
+      descriptor: "TFL TRAVEL CH LONDON",
+      category: "TRANSPORTATION_PUBLIC_TRANSIT",
+      lo: 3,
+      hi: 12,
+    },
+    {
+      descriptor: "UBER *TRIP LONDON",
+      category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES",
+      lo: 10,
+      hi: 35,
+    },
+  ],
 };
 
 // The held-out set (2026-10-27): the same kinds of people and mess, under names the tuning set
@@ -431,6 +490,7 @@ const HELD_OUT: Pool = {
     { descriptor: "NETFLIX.COM", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1549, rise: 1799 },
     {
       descriptor: "CRUNCHYROLL*MEMBERSHIP",
+      variants: ["CRUNCHYROLL 415-503-9235"],
       category: "ENTERTAINMENT_TV_AND_MOVIES",
       cents: 799,
       rise: 999,
@@ -462,7 +522,13 @@ const HELD_OUT: Pool = {
       alsoOk: DIGITAL,
     },
     { descriptor: "ESPN PLUS", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1099, rise: 1199 },
-    { descriptor: "SLING TV", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 4000, rise: 4500 },
+    {
+      descriptor: "SLING TV",
+      variants: ["SLING.COM"],
+      category: "ENTERTAINMENT_TV_AND_MOVIES",
+      cents: 4000,
+      rise: 4500,
+    },
     {
       descriptor: "SPOTIFY USA",
       category: "ENTERTAINMENT_MUSIC_AND_AUDIO",
@@ -506,6 +572,26 @@ const HELD_OUT: Pool = {
   insurers: ["ALLSTATE INS CO", "LIBERTY MUTUAL", "USAA P&C"],
   friends: ["RILEY ADAMS", "QUINN FOSTER", "AVERY CHEN", "DREW MARTIN", "SKYLER WOODS"],
   water: "RIVERSIDE PUBLIC WORKS",
+  yearly: {
+    descriptor: "COSTCO *ANNUAL RENEWAL",
+    category: "GENERAL_MERCHANDISE_SUPERSTORES",
+    cents: 6_500,
+    alsoOk: DIGITAL,
+  },
+  irregular: [
+    { descriptor: "BRIGHT NOW DENTAL", category: "MEDICAL_DENTAL_CARE", lo: 90, hi: 420 },
+    { descriptor: "MIDAS #221", category: "GENERAL_SERVICES_AUTOMOTIVE", lo: 60, hi: 380 },
+  ],
+  abroad: [
+    {
+      descriptor: "CAFE DE FLORE PARIS FRA",
+      category: "FOOD_AND_DRINK_RESTAURANT",
+      lo: 12,
+      hi: 40,
+    },
+    { descriptor: "SNCF INTERNET PARIS", category: "TRAVEL_OTHER_TRAVEL", lo: 25, hi: 90 },
+    { descriptor: "MONOPRIX PARIS 11", category: "FOOD_AND_DRINK_GROCERIES", lo: 10, hi: 45 },
+  ],
 };
 
 // --- The people -------------------------------------------------------------------------------
@@ -555,6 +641,12 @@ class Ledger {
   findings: TrueFinding[] = [];
   traps: CsvPerson["truth"]["traps"] = [];
   neutral: string[][] = [];
+  bills: { rows: string[]; note: string }[] = [];
+  neutralBills: string[][] = [];
+  // A recurring series is a bill once it has two charges.
+  bill(rows: string[], note: string) {
+    if (rows.length >= 2) this.bills.push({ rows, note });
+  }
   private n = 0;
   constructor(
     readonly id: string,
@@ -717,40 +809,61 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
   // Rent: by ACH, or by Zelle to the landlord.
   const rent = r.cents(1_100, 2_400);
   const zelleRent = r.chance(0.35);
+  // Or by paper check, numbered: nothing in the row says it's rent.
+  const checkRent = !zelleRent && r.chance(0.25);
+  let checkNo = r.int(1001, 1400);
   const landlord = r.pick(P.landlords);
-  L.monthly(1, (date) =>
-    L.add(
-      zelleRent
+  const rentRows: string[] = [];
+  L.monthly(1, (date) => {
+    const row = L.add(
+      checkRent
         ? {
             account: chk,
             date,
             amountCents: rent,
-            descriptor: "ZELLE TO MORGAN REYES",
+            descriptor: `CHECK ${(checkNo += 1)}`,
             category: "RENT_AND_UTILITIES_RENT",
-            alsoOk: ["TRANSFER_OUT"],
+            alsoOk: ["TRANSFER_OUT", "GENERAL_SERVICES", "OTHER"],
             kind: "either",
-            flow: "zelle_out",
+            flow: "check",
           }
-        : {
-            account: chk,
-            date,
-            amountCents: rent,
-            descriptor: landlord,
-            category: "RENT_AND_UTILITIES_RENT",
-            kind: "spending",
-            flow: "ach_out",
-          },
-    ),
-  );
+        : zelleRent
+          ? {
+              account: chk,
+              date,
+              amountCents: rent,
+              descriptor: "ZELLE TO MORGAN REYES",
+              category: "RENT_AND_UTILITIES_RENT",
+              alsoOk: ["TRANSFER_OUT"],
+              kind: "either",
+              flow: "zelle_out",
+            }
+          : {
+              account: chk,
+              date,
+              amountCents: rent,
+              descriptor: landlord,
+              category: "RENT_AND_UTILITIES_RENT",
+              kind: "spending",
+              flow: "ach_out",
+            },
+    );
+    if (row) rentRows.push(row.id);
+  });
+  // Rent by Zelle is a payment to a person: the cash forecast takes it out as a transfer, and
+  // "Coming up" may list it or not.
+  if (zelleRent || checkRent) L.neutralBills.push(rentRows);
+  else L.bill(rentRows, "rent");
 
   // Bills: power moves with the season, internet and phone are fixed, water every 3 months.
   const power = r.pick(P.power);
   const powerBase = r.cents(45, 120);
   const powerDay = r.int(8, 20);
+  const powerRows: string[] = [];
   L.monthly(powerDay, (date) => {
     const month = Number(date.slice(5, 7));
     const season = month >= 6 && month <= 9 ? 1.6 : 1;
-    L.add({
+    const row = L.add({
       account: chk,
       date,
       amountCents: Math.round(powerBase * season * (0.85 + r.next() * 0.3)),
@@ -759,7 +872,9 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       kind: "spending",
       flow: "ach_out",
     });
+    if (row) powerRows.push(row.id);
   });
+  L.bill(powerRows, power);
   const internet = {
     descriptor: r.pick(P.internet),
     category: "RENT_AND_UTILITIES_INTERNET_AND_CABLE" as const,
@@ -780,11 +895,16 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
   });
   // A bill, not a subscription to review; Jane isn't wrong either way.
   L.neutral.push(internetRows, phoneRows);
+  L.bill(internetRows, internet.descriptor);
+  L.bill(phoneRows, phone.descriptor);
   if (r.chance(0.5)) {
     const water = r.cents(60, 140);
     let date = addMonths(start, r.int(0, 2), 18);
+    const waterRows: string[] = [];
+    let last = date;
     for (; date <= asOf; date = addMonths(date, 3, 18)) {
-      L.add({
+      last = date;
+      const row = L.add({
         account: chk,
         date,
         amountCents: water + r.int(-1500, 1500),
@@ -793,7 +913,13 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
         kind: "spending",
         flow: "ach_out",
       });
+      if (row) waterRows.push(row.id);
     }
+    // Every three months: coming up only when the next one is within the month.
+    // Two bills three months apart are too few to call.
+    if (waterRows.length >= 3 && addMonths(last, 3, 18) <= addDays(asOf, 31))
+      L.bill(waterRows, "water");
+    else L.neutralBills.push(waterRows);
   }
   // Car insurance: monthly, or every six months.
   if (r.chance(0.6)) {
@@ -814,6 +940,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
         if (row) rows.push(row.id);
       });
       L.neutral.push(rows);
+      L.bill(rows, insurer);
     } else {
       L.add({
         account: chk,
@@ -834,16 +961,27 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     const day = r.int(1, 28);
     const rises = sub.rise !== undefined && r.chance(0.45);
     const riseAt = rises ? Math.max(2, months - r.int(1, 2)) : Infinity;
+    // Cancelled two months ago: no longer a subscription, nor a bill.
+    const stopAt = !rises && months >= 4 && r.chance(0.2) ? months - 2 : Infinity;
     const rows: string[] = [];
     const before: number[] = [];
     L.monthly(day, (date, i) => {
+      if (i >= stopAt) return;
       const cents = i >= riseAt ? sub.rise! : sub.cents;
-      const row = L.add(spend(onCard, date, cents, sub));
+      // Billed a day or two late now and then (weekends), and written one of its ways.
+      const on = r.chance(0.3) ? addDays(date, r.int(1, 2)) : date;
+      const descriptor = sub.variants && r.chance(0.35) ? r.pick(sub.variants) : sub.descriptor;
+      const row = L.add(spend(onCard, on, cents, { ...sub, descriptor }));
       if (row) {
         rows.push(row.id);
         if (i < riseAt) before.push(cents);
       }
     });
+    if (stopAt !== Infinity) {
+      L.traps.push({ type: "subscription_review", rows, note: `${sub.descriptor}, cancelled` });
+      continue;
+    }
+    L.bill(rows, sub.descriptor);
     if (rows.length >= 2) {
       const last = L.rows.find((x) => x.id === rows[rows.length - 1])!;
       L.findings.push({
@@ -878,7 +1016,118 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
         note: `${trial.descriptor} trial`,
       });
       L.neutral.push([a.id, b.id]);
+      L.neutralBills.push([a.id, b.id]);
     }
+  }
+
+  // Bills that come when they come: two or three at uneven gaps, never a subscription or a
+  // bill to expect.
+  for (const m of P.irregular) {
+    if (!r.chance(0.4)) continue;
+    const rows: string[] = [];
+    let date = addDays(start, r.int(5, 30));
+    for (let n = r.int(2, 3); n > 0 && date <= asOf; n -= 1, date = addDays(date, r.int(40, 75))) {
+      const row = L.add(spend(r.chance(0.7) ? card.id : chk, date, r.cents(m.lo, m.hi), m));
+      if (row) rows.push(row.id);
+    }
+    if (rows.length >= 2)
+      L.traps.push({ type: "subscription_review", rows, note: `${m.descriptor}, irregular` });
+  }
+
+  // A roommate's share of the bills, the same each month, by Zelle: money moved, not income.
+  if (r.chance(0.3)) {
+    const friend = r.pick(P.friends);
+    const share = r.cents(40, 120);
+    L.monthly(r.int(3, 8), (date) =>
+      L.add({
+        account: chk,
+        date,
+        amountCents: -share,
+        descriptor: `ZELLE FROM ${friend}`,
+        category: "TRANSFER_IN_ACCOUNT_TRANSFER",
+        alsoOk: ["TRANSFER_IN"],
+        kind: "moving",
+        flow: "zelle_in",
+      }),
+    );
+  }
+
+  // A gym's yearly fee, beside its monthly one: still one subscription.
+  const gym = subs.find((x) => x.descriptor === "PLANET FITNESS" || x.descriptor === "LA FITNESS");
+  if (gym) {
+    L.add(
+      spend(chk, addDays(start, r.int(20, 50)), 4900, {
+        ...gym,
+        descriptor: `${gym.descriptor} ANNUAL FEE`,
+      }),
+    );
+  }
+
+  // A yearly plan, paid once in the history.
+  if (r.chance(0.35)) {
+    const plan = P.yearly;
+    const row = L.add(
+      spend(card.id, addDays(start, r.int(10, months * 30 - 20)), plan.cents, plan),
+    );
+    if (row) {
+      L.findings.push({
+        type: "subscription_review",
+        rows: [row.id],
+        annualCents: plan.cents,
+        note: `${plan.descriptor} yearly`,
+      });
+    }
+  }
+
+  // A trip abroad on a card that charges a foreign transaction fee (3%), each fee its own line.
+  const feeCard = cards.find(
+    (c) => !["capital_one_credit_card", "discover_credit_card"].includes(c.layout),
+  );
+  const abroadFees: { id: string; cents: number; account: string }[] = [];
+  if (feeCard && r.chance(0.35)) {
+    const from = addDays(asOf, -r.int(20, 80));
+    for (let d = 0; d < 6; d += 1) {
+      const m = r.pick(P.abroad);
+      const date = addDays(from, d);
+      const cents = r.cents(m.lo, m.hi);
+      L.add(spend(feeCard.id, date, cents, m));
+      const fx = Math.round(cents * 0.03);
+      const row = L.add({
+        account: feeCard.id,
+        date,
+        amountCents: fx,
+        descriptor: "FOREIGN TRANSACTION FEE",
+        category: "BANK_FEES_FOREIGN_TRANSACTION_FEES",
+        kind: "spending",
+        flow: "fee",
+      });
+      if (row) abroadFees.push({ id: row.id, cents: fx, account: feeCard.id });
+    }
+  }
+
+  // A tax refund, and cash back taken as a statement credit.
+  if (r.chance(0.3)) {
+    L.add({
+      account: chk,
+      date: addDays(start, r.int(20, 60)),
+      amountCents: -r.cents(300, 1800),
+      descriptor: "IRS TREAS 310 TAX REF",
+      category: "INCOME_TAX_REFUND",
+      kind: "income",
+      flow: "deposit",
+    });
+  }
+  if (r.chance(0.5)) {
+    L.add({
+      account: card.id,
+      date: addDays(asOf, -r.int(5, 60)),
+      amountCents: -r.cents(15, 80),
+      descriptor: "cash back",
+      category: "INCOME_OTHER",
+      alsoOk: ["TRANSFER_IN", "LOAN_PAYMENTS"],
+      kind: "either",
+      flow: "reward",
+    });
   }
 
   // Everyday spending: groceries weekly, eating out, coffee at one price, gas, shops, rides.
@@ -925,6 +1174,45 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     const cents = r.cents(20, 90);
     L.add(spend(card.id, date, cents, m));
     L.add({ ...spend(card.id, addDays(date, r.int(5, 12)), -cents, m), flow: "refund" });
+  }
+
+  // Part of an order sent back.
+  if (r.chance(0.4)) {
+    const m = P.shops[1];
+    const date = addDays(asOf, -r.int(15, 90));
+    const cents = r.cents(60, 200);
+    L.add(spend(card.id, date, cents, m));
+    L.add({
+      ...spend(card.id, addDays(date, r.int(6, 15)), -Math.round(cents * 0.4), m),
+      flow: "refund",
+    });
+  }
+
+  // Dinner charged twice (a real double charge at a restaurant), or two lunches at one price
+  // on one day (not one).
+  if (index % 5 === 2) {
+    const m = P.restaurants[1];
+    const date = addDays(asOf, -r.int(5, 40));
+    const cents = r.cents(45, 95);
+    const first = L.add(spend(card.id, date, cents, m));
+    const second = L.add(spend(card.id, addDays(date, 1), cents, m));
+    if (first && second) {
+      L.findings.push({
+        type: "duplicate_charge",
+        rows: [first.id, second.id],
+        annualCents: cents,
+        note: `${m.descriptor} dinner twice`,
+      });
+    }
+  } else if (index % 5 === 3) {
+    const m = P.restaurants[0];
+    const date = addDays(asOf, -r.int(5, 40));
+    const cents = 1250;
+    const ids = [
+      L.add(spend(card.id, date, cents, m))?.id,
+      L.add(spend(card.id, date, cents, m))?.id,
+    ].filter((x): x is string => !!x);
+    L.traps.push({ type: "duplicate_charge", rows: ids, note: "two lunches" });
   }
 
   // A group's tickets bought together: not a double charge.
@@ -1085,9 +1373,13 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     return row;
   };
   if (r.chance(0.3) && archetype !== "saver") {
-    L.monthly(r.int(25, 28), (date) =>
-      fee(chk, date, 1200, "MONTHLY SERVICE FEE", "BANK_FEES_OTHER_BANK_FEES"),
-    );
+    const feeRows: string[] = [];
+    L.monthly(r.int(25, 28), (date) => {
+      const row = fee(chk, date, 1200, "MONTHLY SERVICE FEE", "BANK_FEES_OTHER_BANK_FEES");
+      if (row) feeRows.push(row.id);
+    });
+    // It comes every month, so the forecast has to take it out (docs/accuracy.md).
+    L.bill(feeRows, "monthly service fee");
   }
   if (archetype === "struggling") {
     const n = r.int(2, 4);
@@ -1111,7 +1403,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
   if (r.chance(0.35))
     fee(chk, addDays(start, r.int(10, 60)), 300, "NON-NETWORK ATM FEE", "BANK_FEES_ATM_FEES");
   // On a card: an annual fee, a late fee.
-  const cardFees: { id: string; cents: number; account: string }[] = [];
+  const cardFees: { id: string; cents: number; account: string }[] = [...abroadFees];
   for (const c of cards) {
     if (c.layout === "amex" && r.chance(0.7)) {
       const cents = r.pick([9500, 25_000, 69_500]);
@@ -1166,6 +1458,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
   // the card: the whole balance, or part of it for those carrying debt.
   for (const c of cards) {
     const interestRows: string[] = [];
+    const paidRows: string[] = [];
     let interest = 0;
     const statementDay = r.int(3, 24);
     const dueGap = r.int(18, 23);
@@ -1197,7 +1490,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       const due = addDays(statement, dueGap);
       // Checking pays the day before the card posts it, or the same day.
       const lag = r.int(0, 2);
-      L.add({
+      const out = L.add({
         account: chk,
         date: due,
         amountCents: paid,
@@ -1207,6 +1500,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
         kind: "moving",
         flow: "card_payment_out",
       });
+      if (out) paidRows.push(out.id);
       L.add({
         account: c.id,
         date: addDays(due, lag),
@@ -1218,6 +1512,8 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
         flow: "card_payment_in",
       });
     });
+    // The card's payment from checking is a bill: it comes every month (docs/accuracy.md).
+    L.bill(paidRows, `${c.name} payment`);
     if (interest > 0) {
       L.findings.push({
         type: "card_interest",
@@ -1299,7 +1595,13 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     start,
     accounts,
     rows: L.rows,
-    truth: { findings: L.findings, traps: L.traps, neutral: L.neutral },
+    truth: {
+      findings: L.findings,
+      traps: L.traps,
+      neutral: L.neutral,
+      bills: L.bills,
+      neutralBills: L.neutralBills,
+    },
   };
 }
 

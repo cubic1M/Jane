@@ -24,13 +24,13 @@
     },
     {
       "type": "subscription_review",
-      "about": "HEADSPACE",
-      "perYear": 155.88
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
     },
     {
       "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
     },
     {
       "type": "trial_conversion",
@@ -38,42 +38,59 @@
       "perYear": 79.99
     },
     {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
+    },
+    {
       "type": "duplicate_charge",
-      "about": "LOWE'S #1188 twice",
-      "perYear": 52.18
+      "about": "WALGREENS #1234 twice",
+      "perYear": 132.39
     },
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 95
+      "perYear": 703.56
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PEETS COFFEE 00121 at one price"
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #221, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 UNITED 0162345678901 seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 3264.64
+      "dollars": 2598.28
     },
     {
       "date": "2026-07-31",
-      "dollars": 2923.65
+      "dollars": 2061.16
     },
     {
       "date": "2026-08-31",
-      "dollars": 2001.54
+      "dollars": 338.87
     },
     {
       "date": "2026-09-30",
-      "dollars": 1208.98
+      "dollars": -1682.75
     },
     {
       "date": "2026-10-24",
-      "dollars": 979.77
+      "dollars": -2209.4
     }
   ]
 }

@@ -19,23 +19,38 @@
   "findings": [
     {
       "type": "subscription_review",
+      "about": "AUDIBLE*2K94LM",
+      "perYear": 179.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
       "about": "OPENAI *CHATGPT SUBSCR",
       "perYear": 240
     },
     {
       "type": "subscription_review",
-      "about": "NYTIMES*NYTDIGITAL",
-      "perYear": 48
-    },
-    {
-      "type": "subscription_review",
-      "about": "PLANET FITNESS",
-      "perYear": 299.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
     },
     {
       "type": "trial_conversion",
@@ -43,25 +58,34 @@
       "perYear": 7.99
     },
     {
-      "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 3
+      "type": "subscription_review",
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 91.8
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 1074.62
+      "perYear": 1329.87
     },
     {
       "type": "idle_cash",
-      "about": "cash 4380963, excess 3273826",
+      "about": "cash 4130717, excess 2859396",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
     },
     {
       "type": "duplicate_charge",
@@ -71,23 +95,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 22155.05
+      "dollars": 20891.83
     },
     {
       "date": "2026-07-31",
-      "dollars": 28311.63
+      "dollars": 26758.68
     },
     {
       "date": "2026-08-31",
-      "dollars": 32214.79
+      "dollars": 29598.78
     },
     {
       "date": "2026-09-30",
-      "dollars": 35660.02
+      "dollars": 32643.92
     },
     {
       "date": "2026-10-24",
-      "dollars": 39493.76
+      "dollars": 36572.9
     }
   ]
 }

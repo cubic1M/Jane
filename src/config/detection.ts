@@ -549,6 +549,10 @@ export const NOT_BILL_CATEGORIES: readonly string[] = [
   "BANK_FEES_INTEREST_CHARGE",
   "BANK_FEES_ATM_FEES",
 ];
+// A habit at one price every week or two (the same coffee) is regular but not a bill to pay, so
+// "Coming up" leaves it out (accuracy bench: weekly fixed-price coffee was listed as coming up).
+export const NOT_BILL_HABIT_PRIMARIES: readonly string[] = ["FOOD_AND_DRINK"];
+export const NOT_BILL_HABIT_FREQUENCIES: readonly Frequency[] = ["WEEKLY", "BIWEEKLY"];
 export const CARD_PAYMENT_NAME = "Credit card payment";
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the
