@@ -76,6 +76,8 @@ test("a new person starts with uploading, and lands on the report", async ({ pag
   // Saved at once, the rest in the background: the chip at the top follows it.
   await page.getByRole("button", { name: "Import 4 transactions" }).click();
   await expect(page.locator("[data-import-saved]")).toContainText("Saved 4 transactions");
+  // Said once: no second paragraph repeating where the progress shows.
+  await expect(page.locator("[data-import-saved]")).not.toContainText("Keep using Jane meanwhile");
   await expect(page.locator("[data-import-chip]")).toBeVisible();
   // Only on the page: never again inside the docked chat's frame (QA: it covered the chat).
   await expect(

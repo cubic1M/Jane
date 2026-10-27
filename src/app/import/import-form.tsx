@@ -187,14 +187,13 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
           data-import-saved={saved.runId}
           className="flex flex-col gap-2 rounded-lg bg-zinc-100 p-4 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
         >
+          {/* One line, not two (new-user pass: "Keep using Jane meanwhile: the bar at the top of
+              every page says how it's going and what it found" said the same again). */}
           <p className="font-medium">
-            Saved {plural(saved.rows, "transaction")}. Jane is finishing the rest in the background.
+            Saved {plural(saved.rows, "transaction")}. Jane finishes the rest in the background; the
+            bar at the top shows how it&apos;s going.
           </p>
           {saved.askBalance && <BalanceAskForm ask={saved.askBalance} />}
-          <p>
-            Keep using Jane meanwhile: the bar at the top of every page says how it&apos;s going and
-            what it found.
-          </p>
           <p className="flex flex-wrap gap-4">
             <Link href="/report" className="font-medium underline">
               See your report
