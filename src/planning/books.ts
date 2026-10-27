@@ -213,15 +213,27 @@ export function unmatchedToSay(unmatched: readonly Tx[], accounts: readonly Acct
 }
 
 // Imported (CSV) accounts whose data ends long enough ago to say so: their newest transaction is
-// BOOKS_IMPORT_STALE_DAYS old or more. One with no transactions isn't said (nothing was imported).
+// BOOKS_IMPORT_STALE_DAYS old or more, and nothing's been uploaded to them for as long. Right after
+// an upload it isn't said: a bank's export always ends a few days back, and the person just gave
+// what they had (round 15 of the new-user passes: the first thing after a first upload was "Some
+// figures here rely on data I'm still checking… Import a newer one"). One with no transactions
+// isn't said either (nothing was imported).
 export function importsEnded(
-  accounts: readonly { id: string; name: string; source: string; lastDate: string | null }[],
+  accounts: readonly {
+    id: string;
+    name: string;
+    source: string;
+    lastDate: string | null;
+    // The day of its latest upload, when known.
+    uploadedOn?: string | null;
+  }[],
   asOf: string,
 ): { id: string; name: string; lastDate: string }[] {
   return accounts.flatMap((a) =>
     a.source === "csv" &&
     a.lastDate !== null &&
-    daysBetween(a.lastDate, asOf) >= BOOKS_IMPORT_STALE_DAYS
+    daysBetween(a.lastDate, asOf) >= BOOKS_IMPORT_STALE_DAYS &&
+    (!a.uploadedOn || daysBetween(a.uploadedOn, asOf) >= BOOKS_IMPORT_STALE_DAYS)
       ? [{ id: a.id, name: a.name, lastDate: a.lastDate }]
       : [],
   );
