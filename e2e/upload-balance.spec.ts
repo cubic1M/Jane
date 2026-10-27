@@ -33,6 +33,9 @@ function cardFile(): string {
   for (let n = 60; n >= 1; n -= 5) {
     const d = usDate(new Date(Date.now() - n * 86_400_000));
     lines.push(`${d},${d},UBER   *TRIP,Travel,Sale,-18.00,`);
+    // Interest every month: money found, so the chip has a "found" to (not) say later.
+    if (n % 25 === 5)
+      lines.push(`${d},${d},PURCHASE INTEREST CHARGE,Fees & Adjustments,Fee,-31.40,`);
   }
   return lines.join("\n");
 }
@@ -78,6 +81,7 @@ test("a card without a balance is asked for, and net worth says it isn't counted
   await saved.getByRole("button", { name: "Skip for now" }).click();
   await expect(saved.getByText("What do you owe on Chase card today?")).toHaveCount(0);
   await waitForImport(page, { open: "/net-worth" });
+  await expect(page.locator('[data-import-chip="done"]')).toContainText("found $");
 
   // Skipped: every net worth says what it isn't counting.
   await expect(page.locator("[data-net-worth-not-counting]")).toContainText(
@@ -116,9 +120,11 @@ test("a card without a balance is asked for, and net worth says it isn't counted
   await ask.getByRole("button", { name: "Save" }).click();
   // Once saved, the page has no question left for it.
   await expect(page.locator("[data-balance-ask]")).toHaveCount(0);
+  // An update: its chip says the numbers are up to date, not "found $376/yr" again.
   await expect(page.locator('[data-import-chip="done"]')).toContainText("up to date", {
     timeout: 120_000,
   });
+  await expect(page.locator('[data-import-chip="done"]')).not.toContainText("found");
   // /loans says what's owed, and no "$0.00 due each month" for a card with no payment known.
   await page.goto("/loans");
   await expect(page.getByText(/^You owe \$350\.00\. Open a branch/)).toBeVisible();

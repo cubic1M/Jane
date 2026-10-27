@@ -113,6 +113,16 @@ test("an upload's numbers reach net worth, Home and the money page; a second fil
   await expect(page.locator('[data-import-chip="done"]')).toContainText("Done", {
     timeout: 120_000,
   });
+  // It never covers the top bar's Jane logo (on a phone it once sat right on it).
+  const chipBox = await page.locator("[data-import-chip]").boundingBox();
+  const logoBox = await page.locator("header [data-jane-logo]").first().boundingBox();
+  expect(chipBox && logoBox).toBeTruthy();
+  const apart =
+    chipBox!.y + chipBox!.height <= logoBox!.y ||
+    logoBox!.y + logoBox!.height <= chipBox!.y ||
+    chipBox!.x + chipBox!.width <= logoBox!.x ||
+    logoBox!.x + logoBox!.width <= chipBox!.x;
+  expect(apart).toBe(true);
 
   // Net worth today is the statement's last balance, and the months before differ.
   const first = await netWorthPage(page);
