@@ -14,6 +14,13 @@ export type ConfidenceLevel = "low" | "medium" | "high";
 // How far back rules look at transactions.
 export const LOOKBACK_MONTHS = 12;
 
+// An account with less history than this (often 3 months of uploaded statements) has its fee
+// and interest findings say the months the data covers, not "the last 12 months", and card
+// interest seen in at least two months counts at its yearly pace (overnight upload QA).
+export const SHORT_HISTORY_DAYS = 200;
+// Card interest counts at its yearly pace only when it was charged in this many months or more.
+export const YEARLY_PACE_MIN_MONTHS = 2;
+
 // The "money found" total counts only findings at or above this confidence.
 export const MONEY_FOUND_MIN_CONFIDENCE: ConfidenceLevel = "medium";
 
@@ -103,6 +110,29 @@ export const YEARLY_PLAN_WORDS: readonly string[] = [
   "annual",
   "yearly",
   "subscription",
+  // A plan's tier ("MICROSOFT 365 FAMILY").
+  "family",
+  "personal",
+  "individual",
+  "student",
+];
+// The company's shop, not its plan: a charge whose description has one of these words is goods
+// ("PELOTON* APPAREL", $60-$120, read as a yearly Peloton plan; accuracy bench, second held-out
+// set). Matched as whole words of the description, lower case.
+export const YEARLY_PLAN_GOODS_WORDS: readonly string[] = [
+  "apparel",
+  "clothing",
+  "store",
+  "shop",
+  "boutique",
+  "merch",
+  "merchandise",
+  "gear",
+  "accessories",
+  "equipment",
+  "gift",
+  "gifts",
+  "outlet",
 ];
 
 // A detected stream is still active if its last charge is within this many of its usual
@@ -514,8 +544,6 @@ export const BILL_REMINDER_DAYS = 3;
 // Recurring charges that aren't bills to pay (books QA): card interest is added to the card's
 // balance, which its own payment covers.
 export const NOT_BILL_CATEGORIES: readonly string[] = ["BANK_FEES_INTEREST_CHARGE"];
-// A card payment the bank names with the card company's "thank you" reads as what it is.
-export const CARD_PAYMENT_THANKS = /\bthank\s*you\b/i;
 export const CARD_PAYMENT_NAME = "Credit card payment";
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the

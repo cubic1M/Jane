@@ -7,6 +7,7 @@ import type { DebtIntent } from "./debt-intents";
 import type { Reply } from "./replies";
 import { shortDate } from "./sources/source";
 import type { MessageAction } from "./types";
+import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
 
@@ -20,15 +21,6 @@ const link = (label: string, href: string): MessageAction => ({
   href,
 });
 export const SEE_DEBTS = link("See every debt", "/loans");
-
-// "Oct 1, 2029".
-const longDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -55,7 +47,7 @@ function line(debt: Debt): string {
   const parts = [head];
   const payment = paymentWords(debt);
   if (payment) parts.push(payment);
-  if (debt.payoffDate) parts.push(`paid off by ${longDate(debt.payoffDate)}`);
+  if (debt.payoffDate) parts.push(`paid off by ${dayLabel(debt.payoffDate, { year: true })}`);
   return `- ${parts.join(", ")}${debt.overdue ? ". Your bank shows it as overdue" : ""}`;
 }
 
@@ -69,8 +61,8 @@ export function debtsReply(book: DebtBook): Reply {
   );
   if (book.debts.length === 0) {
     return {
-      body: "I don't see any loans, cards or buy now, pay later plans. When you link a bank that reports them, I'll keep track of every one.",
-      actions: [link("Link a bank", "/connect")],
+      body: "I don't see any loans, cards or buy now, pay later plans. When you upload a card or loan statement, or link a bank that reports them, I'll keep track of every one.",
+      actions: [link("Add your accounts", "/connect")],
       refs: {},
     };
   }
@@ -130,7 +122,7 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
   }
   if (debt.payoffDate) {
     lines.push(
-      `It's paid off by ${longDate(debt.payoffDate)} (${sourceLabel(debt.payoffFrom, debt.typedOn)}).`,
+      `It's paid off by ${dayLabel(debt.payoffDate, { year: true })} (${sourceLabel(debt.payoffFrom, debt.typedOn)}).`,
     );
   } else if (debt.kind === "card") {
     lines.push("A card has no end date: when it's paid off depends on what you pay each month.");

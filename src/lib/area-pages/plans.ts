@@ -4,6 +4,7 @@ import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, type AreaItem, type AreaTree } from "./tree";
+import { dayLabel } from "@/lib/day-label";
 
 // The Plans & goals page (/ahead) as a tree (docs/design/area-pages.md): Plans & goals → its
 // branches (dates coming up, goals, net worth, big decisions, life events, looking back, bills
@@ -53,12 +54,6 @@ export const DECISIONS: readonly { key: string; label: string; what: string; hre
   },
 ];
 
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 const monthLabel = (day: string) =>
   new Date(`${day.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString("en-US", {
     month: "short",
@@ -108,8 +103,8 @@ export function plansTree(input: PlansTreeInput): AreaTree {
       status: left <= AHEAD_URGENT_DAYS ? "act" : "look",
       figure:
         d.amountCents !== null
-          ? `${shortMoney(d.amountCents)} · ${dateLabel(d.date)}`
-          : dateLabel(d.date),
+          ? `${shortMoney(d.amountCents)} · ${dayLabel(d.date)}`
+          : dayLabel(d.date),
       cents: d.amountCents ?? 0,
       summary: left === 0 ? "Due today." : left === 1 ? "Due tomorrow." : `In ${left} days.`,
     });

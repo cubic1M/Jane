@@ -1,10 +1,10 @@
 import { BOOKS_URGENT_KINDS, BOOKS_WORRYING_KINDS } from "@/config/books";
 import { previousMonth } from "@/insights/check-in";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { uncertainOf } from "@/planning/month-close";
 
 import { type Detector, suggestionId } from "./contract";
-import { dollars, evidence, nice } from "./helpers";
+import { evidence, nice } from "./helpers";
 import { monthLabel } from "@/lib/day-label";
 
 // Detectors for Jane running the money (Phase AP, spec steps 238–244): the books, the
@@ -39,7 +39,7 @@ const books: Detector = {
           : `Fix the ${n} things in your accounts that don't add up`,
       headline:
         atStake > 0
-          ? `Check your accounts: ${dollars(atStake)} may be counted wrong`
+          ? `Check your accounts: ${formatWholeDollars(atStake)} may be counted wrong`
           : "Check your accounts: something doesn't add up",
       short:
         atStake > 0
@@ -89,7 +89,7 @@ const monthClose: Detector = {
       capability: "close",
       topic: "month_close",
       title: `Confirm ${unsure.length === 1 ? "one charge" : `${unsure.length} charges`} so ${monthLabel(month, { long: true })} can close`,
-      headline: `Confirm ${unsure.length} charge${unsure.length === 1 ? "" : "s"} to close ${monthLabel(month, { long: true }).split(" ")[0]}: ${dollars(total)}`,
+      headline: `Confirm ${unsure.length} charge${unsure.length === 1 ? "" : "s"} to close ${monthLabel(month, { long: true }).split(" ")[0]}: ${formatWholeDollars(total)}`,
       short:
         `${names.join(", ")}: I'm not sure what ${unsure.length === 1 ? "it was" : "they were"}.`.slice(
           0,

@@ -39,7 +39,7 @@ import {
   projectOther,
   taxPaymentsFor,
   propertyTaxFor,
-  yearElapsed,
+  yearCovered,
   type PayPicture,
 } from "@/planning/tax-income";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -241,7 +241,15 @@ async function loadTaxEstimateFrom(
     pay = NO_PAY();
   }
 
-  const elapsed = yearElapsed(year, today);
+  // The share of the year the data covers: income from 3 months of statements counts at its
+  // pace from the first day seen, not from Jan 1.
+  const first = await db.transactions.findFirst({
+    where: { pending: false },
+    orderBy: { date: "asc" },
+    select: { date: true },
+  });
+  const firstSeen = first ? iso(first.date) : null;
+  const elapsed = yearCovered(year, today, firstSeen);
   // With paychecks but no pay stub: take-home pay stands in for wages, and withholding is
   // unknown.
   const takeHome = paychecks.reduce((s, t) => s - t.amountCents, 0);
@@ -282,7 +290,7 @@ async function loadTaxEstimateFrom(
   // Spec step 219: crypto sold by lot, ESPP sales and ISO exercises.
   const equity = await loadEquityIncome(userId, year, { client, now });
   const paced = {
-    ...projectOther(otherSoFar, year, today),
+    ...projectOther(otherSoFar, year, today, elapsed),
     shortTermGainsCents: gains.shortTerm + equity.shortTermGainsCents,
     longTermGainsCents: gains.longTerm + equity.longTermGainsCents,
   };
@@ -426,7 +434,11 @@ async function loadTaxEstimateFrom(
     assumptions.push("You haven't told me about dependants, so I've counted none.");
   }
   if (elapsed > 0 && elapsed < 1) {
-    assumptions.push(`Income so far is projected to the end of ${year} at the same pace.`);
+    assumptions.push(
+      firstSeen && firstSeen > `${year}-01-01`
+        ? `Your accounts start on ${dayLabel(firstSeen, { year: true })}, so I've counted the whole of ${year} at the pace since then.`
+        : `Income so far is projected to the end of ${year} at the same pace.`,
+    );
   }
 
   const input: EstimateInput = {

@@ -15,6 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { snapshotTitle } from "@/lib/hubs/jane";
 import { formatCents } from "@/lib/money";
 import { savingsRecord, type SavingsRecord } from "@/lib/outcomes";
+import { dayLabel } from "@/lib/day-label";
 
 // What Jane saved you (spec step 139). Only what the person's own transactions show counts
 // as confirmed, each with its receipt: a refund that came back, a lower bill that arrived,
@@ -48,14 +49,6 @@ export type ProvenSavings = {
   // Spec step 207: finished long ago and the saving never showed up. Not counted.
   notShown: Estimate[];
 };
-
-const shortDate = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 type Evidence = {
   merchant?: unknown;
@@ -130,7 +123,7 @@ export async function provenSavings(
           cents: action.refundCents,
           yearly: false,
           seen: view(back),
-          proof: `${formatCents(action.refundCents)} came back on ${shortDate(back.date)}.`,
+          proof: `${formatCents(action.refundCents)} came back on ${dayLabel(back.date, { year: true })}.`,
         });
         continue;
       }
@@ -146,7 +139,7 @@ export async function provenSavings(
           cents: action.confirmedAnnualCents,
           yearly: true,
           seen: view(first),
-          proof: `${switched.name}'s first bill, ${formatCents(first.amountCents)}, came on ${shortDate(first.date)}.`,
+          proof: `${switched.name}'s first bill, ${formatCents(first.amountCents)}, came on ${dayLabel(first.date, { year: true })}.`,
         });
         continue;
       }
@@ -167,7 +160,7 @@ export async function provenSavings(
           cents: action.confirmedAnnualCents,
           yearly: true,
           seen: view(lower),
-          proof: `The bill came in at ${formatCents(lower.amountCents)} on ${shortDate(lower.date)}, down from ${formatCents(oldPrice)}.`,
+          proof: `The bill came in at ${formatCents(lower.amountCents)} on ${dayLabel(lower.date, { year: true })}, down from ${formatCents(oldPrice)}.`,
         });
         continue;
       }
@@ -189,7 +182,7 @@ export async function provenSavings(
           cents: yearly,
           yearly: true,
           seen: view(last),
-          proof: `Last charged ${formatCents(last.amountCents)} on ${shortDate(last.date)}; nothing since, though the next one was due ${shortDate(due)}.`,
+          proof: `Last charged ${formatCents(last.amountCents)} on ${dayLabel(last.date, { year: true })}; nothing since, though the next one was due ${dayLabel(due, { year: true })}.`,
         });
         continue;
       }

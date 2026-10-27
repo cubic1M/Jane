@@ -1,5 +1,6 @@
 import { RETENTION, RETENTION_REMIND_DAYS } from "@/config/records";
 import { addDays } from "@/lib/dates";
+import { centsToInput } from "@/lib/money";
 
 // Audit-ready records (spec step 171). Pure. Every deduction and credit Jane counts is an
 // item with the transactions, receipts, forms and answers that support it. An item with no
@@ -108,18 +109,17 @@ const csvCell = (value: string): string => {
   const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   return /[",\r\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
 };
-const dollars = (cents: number) => (cents / 100).toFixed(2);
 
 const evidenceText = (e: Evidence): [string, string, string, string] => {
   switch (e.kind) {
     case "transaction":
-      return ["Transaction", e.date, e.payee, dollars(e.cents)];
+      return ["Transaction", e.date, e.payee, centsToInput(e.cents)];
     case "receipt":
       return ["Receipt", "", e.fileName, ""];
     case "form":
-      return ["Form", "", `${e.form} from ${e.from}`, dollars(e.cents)];
+      return ["Form", "", `${e.form} from ${e.from}`, centsToInput(e.cents)];
     case "loan":
-      return ["Lender", "", e.name, dollars(e.cents)];
+      return ["Lender", "", e.name, centsToInput(e.cents)];
     case "answer":
       return ["Your answer", "", e.label, ""];
   }
@@ -130,12 +130,18 @@ const evidenceText = (e: Evidence): [string, string, string, string] => {
 export function auditPackCsv(pack: AuditPack): string {
   const rows: string[][] = [["Item", "Source", "Date", "Detail", "Amount"]];
   for (const item of pack.items) {
-    rows.push([item.label, "Claimed", "", "", dollars(item.claimedCents)]);
+    rows.push([item.label, "Claimed", "", "", centsToInput(item.claimedCents)]);
     for (const e of item.evidence) rows.push([item.label, ...evidenceText(e)]);
     for (const n of item.needs) rows.push([item.label, "Still needed", "", n, ""]);
   }
   for (const item of pack.gaps) {
-    rows.push([item.label, "No source yet", "", item.needs.join(" "), dollars(item.claimedCents)]);
+    rows.push([
+      item.label,
+      "No source yet",
+      "",
+      item.needs.join(" "),
+      centsToInput(item.claimedCents),
+    ]);
   }
   return `${rows.map((r) => r.map(csvCell).join(",")).join("\r\n")}\r\n`;
 }

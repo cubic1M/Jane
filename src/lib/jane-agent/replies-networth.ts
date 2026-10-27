@@ -12,8 +12,8 @@ export function netWorthReply(worth: ReturnType<typeof netWorth>): Reply {
   };
   if (worth.assetsCents === 0 && worth.debtsCents === 0) {
     return {
-      body: "I can't work out your net worth yet: link an account or add something you own, and I'll add it up.",
-      actions: [{ id: "open", label: "Link a bank", kind: "link", href: "/connect" }],
+      body: "I can't work out your net worth yet: add your accounts or something you own, and I'll add it up.",
+      actions: [{ id: "open", label: "Add your accounts", kind: "link", href: "/connect" }],
       refs: {},
     };
   }

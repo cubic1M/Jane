@@ -16,6 +16,7 @@ import { remindAppealWhenSuggested } from "@/lib/property-tax";
 import { runTaxCalendar } from "@/lib/tax-calendar";
 import { remindDueRecords } from "@/lib/audit-records";
 import { remindReceipts } from "@/lib/giving";
+import { centsToInput } from "@/lib/money";
 
 // What Jane does about taxes on its own before it talks (spec steps 123–127), at the
 // autopilot levels that let it act (src/config/tax.ts TAX_AUTOPILOT). Nothing here moves
@@ -114,7 +115,7 @@ async function startSetAsideGoal(userId: string, client: PrismaClient, now: Date
   const last = self.federal.payments.at(-1)?.date ?? `${self.year + 1}-01-15`;
   await addGoal(
     userId,
-    { name, target: (target / 100).toFixed(2), targetDate: last, accountId: "", saved: "" },
+    { name, target: centsToInput(target), targetDate: last, accountId: "", saved: "" },
     { client },
   );
   await track(userId, "tax_set_aside_goal_started", { by: "autopilot" });

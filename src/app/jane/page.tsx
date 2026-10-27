@@ -240,7 +240,7 @@ async function JaneContent() {
               <>
                 Nothing to decide yet.{" "}
                 <Link href="/connect" className={LINK}>
-                  Link a bank
+                  Upload your statements
                 </Link>{" "}
                 and Jane will look for money you&apos;re losing.
               </>

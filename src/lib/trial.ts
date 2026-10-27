@@ -24,7 +24,7 @@ type Options = { client?: PrismaClient; now?: Date };
 
 const HOUR_MS = 60 * 60 * 1000;
 
-export { isTrialEmail, isTrialUser } from "@/lib/trial-ids";
+export { isTrialUser } from "@/lib/trial-ids";
 
 // Offered wherever the demo bank is, and in production only with TRY_JANE=1.
 export function trialEnabled(): boolean {

@@ -16,6 +16,7 @@ import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { addDays, daysBetween, median } from "@/detection/units";
 import { formatCents } from "@/lib/money";
 import { employers } from "./changes";
+import { dayLabel } from "@/lib/day-label";
 
 // Life events spotted (spec step 100): signs in someone's money that they're moving,
 // started a new job or have a new baby. Pure: the detection input in, the guesses out. A
@@ -24,13 +25,6 @@ import { employers } from "./changes";
 
 export type LifeSignal = { key: string; text: string; date: string };
 export type LifeGuess = { kind: LifeEventKind; signals: LifeSignal[] };
-
-const shortDate = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 type Window = { from: string; asOf: string };
 const inWindow = (t: { date: string }, w: Window) => t.date > w.from && t.date <= w.asOf;
@@ -59,7 +53,7 @@ function movingSignals(input: DetectionInput, w: Window): LifeSignal[] {
   if (mover) {
     out.push({
       key: "moving_company",
-      text: `a ${nameOf(mover)} charge on ${shortDate(mover.date)}`,
+      text: `a ${nameOf(mover)} charge on ${dayLabel(mover.date)}`,
       date: mover.date,
     });
   }
@@ -115,7 +109,7 @@ function newJobSignals(input: DetectionInput, w: Window): LifeSignal[] {
     if (inWindow(first, w) && othersBefore && !out.some((s) => s.key === "new_employer")) {
       out.push({
         key: "new_employer",
-        text: `a first paycheck from ${name} on ${shortDate(first.date)}`,
+        text: `a first paycheck from ${name} on ${dayLabel(first.date)}`,
         date: first.date,
       });
     }
@@ -135,7 +129,7 @@ function newJobSignals(input: DetectionInput, w: Window): LifeSignal[] {
     ) {
       out.push({
         key: "paychecks_stopped",
-        text: `no paycheck from ${name} since ${shortDate(last.date)}`,
+        text: `no paycheck from ${name} since ${dayLabel(last.date)}`,
         date: due,
       });
     }

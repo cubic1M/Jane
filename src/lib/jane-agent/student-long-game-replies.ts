@@ -1,4 +1,4 @@
-import { PSLF_PAYMENTS, LONG_GAME_SOURCES } from "@/config/student-loans";
+import { PSLF_PAYMENTS } from "@/config/student-loans";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { LongGame } from "@/lib/student-long-game";
@@ -84,5 +84,3 @@ export function longGameReply(g: LongGame): Reply {
     refs: g.advice ? { advice: true } : {},
   };
 }
-
-export const SOURCES = LONG_GAME_SOURCES;

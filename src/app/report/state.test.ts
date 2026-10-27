@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reportState, shortUploadDays } from "./state";
+import { foundLine, reportState, shortUploadDays } from "./state";
 
 const base = { transactions: 240, findings: 0, firstDetectionDone: true, scanRunning: false };
 
@@ -32,5 +32,19 @@ describe("shortUploadDays", () => {
   it("is null with enough months, or nothing uploaded", () => {
     expect(shortUploadDays(day("2026-07-01"), day("2026-09-30"))).toBeNull();
     expect(shortUploadDays(null, null)).toBeNull();
+  });
+});
+
+describe("foundLine", () => {
+  it("says subscriptions count once you decide, when one is listed", () => {
+    expect(foundLine(162, ["subscription_review", "card_interest"])).toBe(
+      "Estimates from 162 transactions. The three that matter most are first; open one to decide. Subscriptions count toward the total once you decide to cancel them.",
+    );
+  });
+
+  it("says nothing of subscriptions without one", () => {
+    expect(foundLine(162, ["card_interest"])).toBe(
+      "Estimates from 162 transactions. The three that matter most are first; open one to decide.",
+    );
   });
 });

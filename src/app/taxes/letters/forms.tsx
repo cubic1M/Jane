@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { NOTICE_FIELDS, NOTICE_KINDS } from "@/config/tax-notices";
 import { SOURCE_WORDS, type Fields, type Source } from "@/planning/tax-notice";
 import { letterAction, type LetterState } from "./actions";
+import { FormStatus } from "@/components/form-status";
 
 const INPUT =
   "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
@@ -11,19 +12,6 @@ const BUTTON =
   "inline-flex h-11 items-center justify-center self-start rounded-full bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60";
 const SECOND =
   "inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-400 px-5 text-sm font-medium hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:hover:bg-zinc-900";
-
-function Status({ state }: { state: LetterState }) {
-  return (
-    <p
-      role="status"
-      className={
-        state ? (state.ok ? "text-sm text-emerald-800" : "text-sm text-red-700") : "sr-only"
-      }
-    >
-      {state?.message ?? ""}
-    </p>
-  );
-}
 
 export function ReadingForm({
   id,
@@ -84,7 +72,7 @@ export function ReadingForm({
           This isn&apos;t a tax notice
         </button>
       </div>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -119,7 +107,7 @@ export function ResponseButtons({
           {LABEL[r]}
         </button>
       ))}
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -135,7 +123,7 @@ export function SendButtons({ id }: { id: string }) {
       <button type="submit" name="intent" value="you" disabled={pending} className={SECOND}>
         I&apos;ll send it myself
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }

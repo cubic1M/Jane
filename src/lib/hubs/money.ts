@@ -4,7 +4,7 @@ import { recurringCharges } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { debtSummary } from "@/insights/loans";
+import { debtSummary, DEBT_ACCOUNT_SELECT } from "@/insights/loans";
 import { netWorth, type NetWorth } from "@/insights/net-worth";
 import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
@@ -41,7 +41,7 @@ export type MoneyData = {
   insurance: { policies: number; gaps: number };
 };
 
-const NO_BANK = "Link a bank to see it";
+const NO_BANK = "Add your accounts to see it";
 
 // Pure: the tiles, grouped, from the numbers.
 export function moneyTiles(d: MoneyData): HubGroup[] {
@@ -188,28 +188,7 @@ export async function loadMoneyHub(
     crypto,
   ] = await Promise.all([
     db.accounts.findMany({
-      select: {
-        id: true,
-        name: true,
-        mask: true,
-        type: true,
-        subtype: true,
-        currentBalanceCents: true,
-        liability: {
-          select: {
-            aprBps: true,
-            rateType: true,
-            minimumPaymentCents: true,
-            nextPaymentDueDate: true,
-            payoffDate: true,
-            isOverdue: true,
-            pastDueCents: true,
-            originationPrincipalCents: true,
-            ytdInterestPaidCents: true,
-            description: true,
-          },
-        },
-      },
+      select: DEBT_ACCOUNT_SELECT,
     }),
     db.ownedAssets.findMany({
       select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },

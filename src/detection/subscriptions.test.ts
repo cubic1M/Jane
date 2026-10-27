@@ -44,6 +44,22 @@ describe("recurringCharges", () => {
     );
     expect(rows.find((r) => r.merchant === "Geico")?.subscription).toBe(false);
   });
+
+  it('counts a yearly plan named after the bank\'s "*" as a subscription, whatever its category', () => {
+    const plan = recurringCharges(
+      input({
+        transactions: monthly(1, 9_999, {
+          description: "MICROSOFT*MICROSOFT 365 P",
+          merchantName: "Microsoft",
+          pfcPrimary: "ENTERTAINMENT",
+          pfcDetailed: "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+        }),
+      }),
+    );
+    expect(plan).toEqual([
+      expect.objectContaining({ merchantKey: "microsoft", subscription: true }),
+    ]);
+  });
 });
 
 // Chat QA: Claude reads these as what the person pays regularly (its subscriptions tool and

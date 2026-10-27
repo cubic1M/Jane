@@ -4,6 +4,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { formatCents } from "@/lib/money";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { dayLabel } from "@/lib/day-label";
 
 // The Insurance page as a tree (docs/design/area-pages.md): Insurance → its branches (cover
 // needs, policies, missing cover, savings, renewals, life events, documents, card cover,
@@ -28,7 +29,6 @@ export type InsuranceBranch = keyof typeof INSURANCE_BRANCHES;
 
 // "needs:life", "policies:<id>": an item's id names its branch, so a link can open both.
 export const itemId = (branch: InsuranceBranch, key: string) => `${branch}:${key}`;
-export const branchOf = (id: string) => id.split(":")[0];
 
 export const NEED_LABELS: Record<string, string> = {
   life: "Life cover",
@@ -42,6 +42,8 @@ export const NEED_LABELS: Record<string, string> = {
   professional_liability: "Professional liability",
   business_equipment: "Work equipment cover",
 };
+
+const WORK_COVER_GAPS: readonly GapKey[] = ["health", "disability"];
 
 const GAP_LABELS: Record<GapKey, string> = {
   renters: "Renters insurance",
@@ -95,12 +97,6 @@ const EVENT_LABELS: Record<CoverEvent, string> = {
 };
 
 const perYear = (cents: number) => `${shortMoney(cents)}/yr`;
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 const days = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 
@@ -186,19 +182,23 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
         p.status !== "active"
           ? "Found from your payments; confirm it to count it."
           : p.renewsOn
-            ? `Renews ${dateLabel(p.renewsOn)}.`
+            ? `Renews ${dayLabel(p.renewsOn)}.`
             : "Active.",
     });
   });
 
-  const missing = input.gaps.map((g) =>
-    item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
+  // Health and disability cover usually come with a job and are paid out of the paycheck
+  // before it reaches the bank, so bank data can't see them: "not on file", worth a look, not
+  // an urgent "missing" (overnight upload QA: every salaried person had 2 urgent gaps).
+  const missing = input.gaps.map((g) => {
+    const throughWork = WORK_COVER_GAPS.includes(g.key);
+    return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
       label: GAP_LABELS[g.key],
-      status: "act",
-      figure: "Missing",
+      status: throughWork ? "look" : "act",
+      figure: throughWork ? "Not on file" : "Missing",
       summary: g.why,
-    }),
-  );
+    });
+  });
 
   const savings = input.savings.map((s) =>
     item("savings", s.id, {

@@ -2,6 +2,7 @@ import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
 
@@ -124,12 +125,6 @@ export type LoansTreeInput = {
   review: { needYou: number; on: string | null } | null;
 };
 
-const dateLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 const cut = (text: string, n = 6) => text.split(/\s+/).slice(0, n).join(" ");
 
 export function loansTree(input: LoansTreeInput): AreaTree {
@@ -170,7 +165,7 @@ export function loansTree(input: LoansTreeInput): AreaTree {
     const status: TreeStatus = d.overdue ? "act" : "good";
     const parts = [
       d.paymentCents !== null ? `${shortMoney(d.paymentCents)} a month` : null,
-      d.nextDue ? `next due ${dateLabel(d.nextDue)}` : null,
+      d.nextDue ? `next due ${dayLabel(d.nextDue)}` : null,
     ].filter(Boolean);
     by.debts.push(
       item("debts", d.key, {
@@ -283,7 +278,7 @@ export function loansTree(input: LoansTreeInput): AreaTree {
         status: input.review.needYou > 0 ? "look" : "good",
         figure: input.review.needYou > 0 ? `${input.review.needYou} need you` : "All checked",
         summary: input.review.on
-          ? `Last done ${dateLabel(input.review.on)}: every debt and your credit, in one pass.`
+          ? `Last done ${dayLabel(input.review.on)}: every debt and your credit, in one pass.`
           : "Every debt and your credit, checked in one pass.",
       }),
     );

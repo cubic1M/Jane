@@ -1,6 +1,6 @@
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { Payoff } from "@/lib/debt-plan";
-import { formatCents } from "@/lib/money";
+import { formatCents, centsToInput } from "@/lib/money";
 import type { PayoffPlan, Strategy } from "@/planning/debt";
 import { monthAfter } from "@/planning/payoff";
 import { startPlan, stopPlan } from "./actions";
@@ -45,7 +45,7 @@ function StartButton({
   return (
     <form action={startPlan}>
       <input type="hidden" name="strategy" value={strategy} />
-      <input type="hidden" name="extra" value={(extraCents / 100).toFixed(2)} />
+      <input type="hidden" name="extra" value={centsToInput(extraCents)} />
       <SubmitButton className={primary ? BUTTON : SECONDARY}>{label}</SubmitButton>
     </form>
   );
@@ -177,7 +177,7 @@ export function YourPlan({
           <input
             name="extra"
             inputMode="decimal"
-            defaultValue={summary.extraCents ? (summary.extraCents / 100).toFixed(2) : ""}
+            defaultValue={summary.extraCents ? centsToInput(summary.extraCents) : ""}
             className="h-11 w-40 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700"
           />
         </label>

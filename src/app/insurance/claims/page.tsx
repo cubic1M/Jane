@@ -25,6 +25,7 @@ import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
 import { StartClaimForm } from "./start-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Claims (spec step 107): when something happens, what to do now, what to collect, who to
 // call, and a tracker of the claim's steps. Every step stays on the claim until it's closed.
@@ -34,14 +35,6 @@ const SMALL_BUTTON =
   "inline-flex h-9 items-center justify-center rounded-full border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700";
 const INPUT =
   "h-9 min-w-0 rounded-lg border border-zinc-300 bg-transparent px-3 text-sm dark:border-zinc-700";
-
-const dateLabel = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 // Spec step 155: filed by Jane, a draft to check and file, or the form to write one up.
 function Filing({ claim, filable }: { claim: Claim; filable: boolean }) {
@@ -109,7 +102,7 @@ function ClaimCard({ claim, filable = false }: { claim: Claim; filable?: boolean
     >
       <div className="flex flex-col">
         <h3 className="font-semibold">
-          {eventLabel(claim.kind, claim.event)}, {dateLabel(claim.happenedOn)}
+          {eventLabel(claim.kind, claim.event)}, {dayLabel(claim.happenedOn, { year: true })}
         </h3>
         <span className="text-sm text-zinc-500">
           {claim.carrier ? `${claim.carrier} ${kindWords(claim.kind)}` : kindWords(claim.kind)} ·{" "}
@@ -137,7 +130,9 @@ function ClaimCard({ claim, filable = false }: { claim: Claim; filable?: boolean
           <li key={step.key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span className={step.doneAt ? "text-zinc-500 line-through" : ""}>
               {step.label}
-              {!step.doneAt && <span className="text-zinc-500"> (by {dateLabel(step.dueOn)})</span>}
+              {!step.doneAt && (
+                <span className="text-zinc-500"> (by {dayLabel(step.dueOn, { year: true })})</span>
+              )}
             </span>
             {!step.doneAt && claim.status === "open" && (
               <form action={stepDone}>

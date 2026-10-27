@@ -28,6 +28,7 @@ import {
   type Layer,
   type ReadingSource,
 } from "./reading-rules";
+import { centsToInput } from "@/lib/money";
 
 // Policies read from documents (spec step 151). A declarations page or renewal notice
 // uploaded on Documents is read into a policy for the person to confirm: the insurer,
@@ -101,7 +102,6 @@ export function sameInsurer(a: string, b: string): boolean {
 }
 
 const day = (date: Date | null) => (date ? date.toISOString().slice(0, 10) : "");
-const dollars = (cents: number | null) => (cents === null ? "" : (cents / 100).toFixed(2));
 
 // The policy a document is about, when one is on file: the same insurer, and the same kind
 // when the document says one. Payments-found policies count (the document confirms them);
@@ -154,7 +154,7 @@ export async function readPolicyDocument(
   const facts: Fields = flatten({
     kind: kind ?? "",
     carrier: document.provider ?? "",
-    premium: dollars(document.premiumCents),
+    premium: centsToInput(document.premiumCents),
     premiumFrequency: document.premiumFrequency ?? "",
     renewalDate: day(document.renewalDate),
     covers:
@@ -200,7 +200,7 @@ export async function readPolicyDocument(
       fields: flatten({
         kind: paid.kind,
         carrier: paid.carrier,
-        premium: dollars(paid.premiumCents),
+        premium: centsToInput(paid.premiumCents),
         premiumFrequency: paid.premiumFrequency ?? "",
       }),
     });

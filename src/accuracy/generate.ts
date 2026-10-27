@@ -22,9 +22,10 @@ export const ORIGINAL_COUNT = 40;
 export const HELD_OUT_SEED = 77_031_337;
 export const HELD_OUT_COUNT = 40;
 export const HELD_OUT_2_SEED = 90_210_455;
+export const HELD_OUT_3_SEED = 31_415_927;
 export const AS_OF = "2026-10-21";
 
-export type BenchSet = "tuning" | "held-out" | "held-out-2";
+export type BenchSet = "tuning" | "held-out" | "held-out-2" | "held-out-3";
 
 export type RawRow = {
   id: string;
@@ -261,6 +262,38 @@ const CAUSES: Record<
       { description: "PETSMART #1123", category: "Shopping", lo: 15, hi: 120 },
     ],
   },
+  // Made (2026-10-27) before any fix for the second held-out set's misses was written, and
+  // scored only: the clean check for those fixes.
+  "held-out-3": {
+    unknownIssuers: ["SYNCHRONY BANK PAYMENT", "USAA CREDIT CARD PMT 4471", "BREAD FINANCIAL PYMT"],
+    perSeat: [
+      { description: "EVENTBRITE*SPRING GALA", category: "Entertainment" },
+      { description: "REGAL CINEMAS 0921", category: "Entertainment" },
+      { description: "JETBLUE 2792112345678", category: "Travel" },
+    ],
+    utilities: [
+      "DUKE ENERGY PAYMENT",
+      "AMEREN ILLINOIS UTILITY PMT",
+      "NATIONAL GRID ELECTRIC",
+      "EVERSOURCE ENERGY",
+    ],
+    yearly: [
+      { description: "MSFT * MICROSOFT 365 FAMILY", cents: 12_999 },
+      { description: "LINKEDIN PREMIUM", cents: 23_988 },
+      { description: "PATREON* MEMBERSHIP", cents: 6_000 },
+    ],
+    platforms: ["APPLE.COM/BILL 866-712-7753 CA", "GOOGLE *GOOGLE PLAY APPS"],
+    oneOffs: [
+      { description: "NYTIMES*STORE", category: "Shopping", lo: 50, hi: 150 },
+      { description: "DUOLINGO*MERCH SHOP", category: "Shopping", lo: 50, hi: 90 },
+      { description: "APPLE.COM/BILL 866-712-7753 CA", category: "Shopping", lo: 1, hi: 60 },
+    ],
+    shops: [
+      { description: "MARSHALLS #0441", category: "Shopping", lo: 20, hi: 150 },
+      { description: "ACE HARDWARE #1207", category: "Home", lo: 10, hi: 120 },
+      { description: "ULTA BEAUTY #331", category: "Health & Wellness", lo: 15, hi: 90 },
+    ],
+  },
 };
 
 class Builder {
@@ -317,7 +350,13 @@ class Builder {
 
 function person(index: number, set: BenchSet = "tuning"): History {
   const seed =
-    { tuning: SEED, "held-out": HELD_OUT_SEED, "held-out-2": HELD_OUT_2_SEED }[set] + index * 7919;
+    {
+      tuning: SEED,
+      "held-out": HELD_OUT_SEED,
+      "held-out-2": HELD_OUT_2_SEED,
+      "held-out-3": HELD_OUT_3_SEED,
+    }[set] +
+    index * 7919;
   const r: Rng = rng(seed);
   // The causes draw from their own stream, so #766's people stay row for row.
   const x: Rng = rng(seed ^ 0x5eed);
@@ -326,7 +365,7 @@ function person(index: number, set: BenchSet = "tuning"): History {
   const drawnMonths = r.pick([2, 3, 4, 6, 8, 12, 12, 14]);
   // Short histories: two charges of everything.
   const months = causes && x.chance(0.25) ? 2 : drawnMonths;
-  const id = `${{ tuning: "p", "held-out": "h", "held-out-2": "k" }[set]}${String(index + 1).padStart(2, "0")}`;
+  const id = `${{ tuning: "p", "held-out": "h", "held-out-2": "k", "held-out-3": "m" }[set]}${String(index + 1).padStart(2, "0")}`;
   const start = addMonths(AS_OF, -months);
   const b = new Builder(id, start, AS_OF);
   const chk = `${id}-chk`;

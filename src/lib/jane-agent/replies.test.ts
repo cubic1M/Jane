@@ -329,7 +329,7 @@ describe("safeReply", () => {
 
   it("asks for a checking account without one", () => {
     expect(safeReply(null).actions).toEqual([
-      { id: "open", label: "Link a bank", kind: "link", href: "/connect" },
+      { id: "open", label: "Add your accounts", kind: "link", href: "/connect" },
     ]);
   });
 });
