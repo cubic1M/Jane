@@ -275,16 +275,19 @@ describe.runIf(url)("deadlines against a real database", () => {
   it("runs for everyone with an open deadline in the daily job", async () => {
     const me = await person();
     await addDeadline(me, form(), { client, now: NOW });
-    const remind = vi.fn<typeof remindDeadlines>(async () => 1);
-    const result = await remindAllDeadlines({ client, now: NOW, remind });
-    expect(remind).toHaveBeenCalledWith(me, { client, now: NOW });
-    expect(result.raised).toBeGreaterThanOrEqual(1);
-
+    // An open deadline too, but left out of the run (as another test file's person would be).
+    const outsider = await person();
+    await addDeadline(outsider, form(), { client, now: NOW });
     const done = await person();
     await addDeadline(done, form(), { client, now: NOW });
     await client.deadline.updateMany({ where: { userId: done }, data: { doneAt: NOW } });
-    remind.mockClear();
-    await remindAllDeadlines({ client, now: NOW, remind });
-    expect(remind.mock.calls.map(([id]) => id)).not.toContain(done);
+    const userIds = [me, done];
+    const remind = vi.fn<typeof remindDeadlines>(async () => 1);
+    const result = await remindAllDeadlines({ client, now: NOW, remind, userIds });
+    expect(remind).toHaveBeenCalledWith(me, { client, now: NOW });
+    expect(result).toMatchObject({ users: 1, raised: 1 });
+    const reminded = remind.mock.calls.map(([id]) => id);
+    expect(reminded).not.toContain(done);
+    expect(reminded).not.toContain(outsider);
   });
 });

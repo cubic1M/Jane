@@ -110,9 +110,25 @@ describe.runIf(url)("the job queue against a real database", () => {
     await Promise.all([
       runJob(id, { client, now: at(0), handlers }),
       runJob(id, { client, now: at(0), handlers }),
-      runDueJobs({ client, now: at(0), handlers }),
+      runDueJobs({ client, now: at(0), handlers, userIds: ["u-jobs"] }),
     ]);
     expect(handler.mock.calls.filter(([p]) => p.userId === "u-jobs")).toHaveLength(1);
     expect((await job(id)).status).toBe("done");
+  });
+
+  it("keeps a run of due jobs to the people it's given", async () => {
+    // Year 2100: every job queued by any test file is due, so a run for all would take them.
+    const mine = await queue("u-jobs-mine");
+    const theirs = await queue("u-jobs-theirs");
+    const handler = vi.fn(async () => {});
+    await runDueJobs({
+      client,
+      now: at(0),
+      handlers: { explain_findings: handler },
+      userIds: ["u-jobs-mine"],
+    });
+    expect(await job(mine)).toMatchObject({ status: "done", attempts: 1 });
+    expect(await job(theirs)).toMatchObject({ status: "queued", attempts: 0 });
+    expect(handler.mock.calls).toEqual([[{ userId: "u-jobs-mine" }]]);
   });
 });

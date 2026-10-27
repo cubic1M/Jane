@@ -5,6 +5,7 @@ import { db as defaultClient } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { appBase } from "@/lib/digest/links";
 import { removePlaidItem } from "./remove";
+import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 
 // Daily: people who haven't used the app for INACTIVE_ITEM_DAYS lose their Plaid
 // connections, with an email REMOVAL_WARNING_DAYS before. Using the app at any point
@@ -50,15 +51,16 @@ export async function runInactiveCleanup({
   now = new Date(),
   send = sendEmail,
   remove = removePlaidItem,
+  userIds,
 }: {
   client?: PrismaClient;
   now?: Date;
   send?: typeof sendEmail;
   remove?: typeof removePlaidItem;
-} = {}): Promise<InactiveRun> {
+} & OnlyPeople = {}): Promise<InactiveRun> {
   // A system job across users: reads who has linked banks and when they were last active.
   const people = await client.user.findMany({
-    where: { plaidItems: { some: {} } },
+    where: { plaidItems: { some: {} }, ...peopleIn(userIds) },
     select: {
       id: true,
       email: true,

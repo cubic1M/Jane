@@ -42,6 +42,7 @@ import { insuranceSwitchOf } from "@/lib/insurance/accept";
 import { confirmInsuranceSwitches, startInsuranceSwitch } from "@/lib/insurance/switch";
 import { isCallAction, startCall } from "@/lib/voice/calls";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
 // worked by the agent instead of the team: it emails the company from Jane's address,
@@ -736,7 +737,8 @@ async function knownFacts(
 export async function runAgentFollowUps({
   client = defaultClient,
   now = new Date(),
-}: Options = {}): Promise<{
+  userIds,
+}: Options & OnlyPeople = {}): Promise<{
   checked: number;
   confirmed: number;
   charged: number;
@@ -745,7 +747,12 @@ export async function runAgentFollowUps({
 }> {
   // A system job across users: ids only, and agentStep scopes each one.
   const due = await client.action.findMany({
-    where: { agentState: "waiting_reply", status: "in_progress", agentNextAt: { lte: now } },
+    where: {
+      agentState: "waiting_reply",
+      status: "in_progress",
+      agentNextAt: { lte: now },
+      ...ownedBy(userIds),
+    },
     select: { id: true, userId: true },
     take: 200,
   });
@@ -756,10 +763,10 @@ export async function runAgentFollowUps({
       console.error("Agent follow-up failed", { actionId: action.id, error: String(error) });
     }
   }
-  const cancellations = await confirmCancellations({ client, now });
-  const switches = await confirmSwitches({ client, now });
+  const cancellations = await confirmCancellations({ client, now, userIds });
+  const switches = await confirmSwitches({ client, now, userIds });
   // Spec step 105: insurance switches whose first payment went through.
-  const insurance = await confirmInsuranceSwitches({ client, now });
+  const insurance = await confirmInsuranceSwitches({ client, now, userIds });
   return {
     checked: due.length,
     ...cancellations,
@@ -870,7 +877,8 @@ export async function confirmCancellations({
   client = defaultClient,
   now = new Date(),
   notify = sendStatusEmail,
-}: Options = {}): Promise<{ confirmed: number; charged: number; reminded: number }> {
+  userIds,
+}: Options & OnlyPeople = {}): Promise<{ confirmed: number; charged: number; reminded: number }> {
   // A system job across users: ids only, and everything after is scoped to the person.
   const due = await client.action.findMany({
     where: {
@@ -878,6 +886,7 @@ export async function confirmCancellations({
       agentState: "confirming",
       status: { in: ["in_progress", "waiting_on_user"] },
       confirmAfter: { lte: new Date(`${isoDay(now)}T00:00:00Z`) },
+      ...ownedBy(userIds),
     },
     select: { id: true, userId: true },
     take: 200,

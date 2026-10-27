@@ -509,7 +509,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       );
       const day = (n: number) => new Date(LINKED.getTime() + n * 86_400_000);
       // The daily job: snapshot, then invest the Oct 15 paycheck, then prices move.
-      await takeSnapshots({ client, now: day(0) });
+      await takeSnapshots({ client, now: day(0), userIds: [userId] });
       const brokerage = (await loadAutoInvest(userId, { client, now: day(0) })).accounts[0].id;
       await startAutoInvest(
         userId,
@@ -518,7 +518,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       );
       const item = await client.plaidItem.findFirstOrThrow({ where: { userId } });
       await syncDemoInvestments(item.id, { client, now: day(2) });
-      await takeSnapshots({ client, now: day(1) });
+      await takeSnapshots({ client, now: day(1), userIds: [userId] });
 
       const returns = await loadReturns(userId, { client, now: day(2) });
       expect(returns.simulatedPrices).toBe(true);
@@ -851,7 +851,10 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
 
       // The nightly run reads the balances again, a day later, at that day's prices.
       const tomorrow = new Date(LINKED.getTime() + 86_400_000);
-      expect((await syncAllCrypto({ client, now: tomorrow })).synced).toBeGreaterThan(0);
+      // Kept to this person: the crypto everyone else in the shared database linked is left alone.
+      const nightly = await syncAllCrypto({ client, now: tomorrow, userIds: [userId] });
+      expect(nightly.people).toBe(1);
+      expect(nightly.synced).toBeGreaterThan(0);
       const later = await loadCrypto(userId, { client, now: tomorrow });
       expect(later.connections[0].asOf).toEqual(tomorrow);
     },

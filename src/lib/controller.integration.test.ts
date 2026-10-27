@@ -132,22 +132,24 @@ describe.runIf(url)("the nightly controller run", { timeout: 120_000 }, () => {
     const ran = await demoPerson("controller-queue-ran");
     await runController(ran, { client, now: NIGHT, api });
     const waiting = await demoPerson("controller-queue-waiting");
+    // Due tonight too, but left out of the run (as another test file's person would be).
+    const outsider = await demoPerson("controller-queue-outsider");
+    const userIds = [ran, waiting];
     const drain = vi.fn(async () => ({ done: 0, retried: 0, failed: 0 }));
-    const { queued } = await queueNightlyRuns({ client, now: NIGHT, drain });
-    expect(queued).toBeGreaterThanOrEqual(1);
-    const jobs = await client.job.findMany({ where: { kind: "controller_run", status: "queued" } });
-    const users = jobs.map((j) => (j.payload as { userId: string }).userId);
-    expect(users).toContain(waiting);
-    expect(users).not.toContain(ran);
+    const { queued } = await queueNightlyRuns({ client, now: NIGHT, drain, userIds });
+    expect(queued).toBe(1);
+    // Only this test's own jobs: other files' queued runs are theirs.
+    const ownJobs = async () =>
+      (await client.job.findMany({ where: { kind: "controller_run", status: "queued" } })).filter(
+        (j) => [...userIds, outsider].includes((j.payload as { userId: string }).userId),
+      );
+    const users = (await ownJobs()).map((j) => (j.payload as { userId: string }).userId);
+    expect(users).toEqual([waiting]);
     // A second call queues nobody twice.
-    await queueNightlyRuns({ client, now: NIGHT, drain });
-    const again = await client.job.findMany({
-      where: { kind: "controller_run", status: "queued" },
-    });
-    expect(again.filter((j) => (j.payload as { userId: string }).userId === waiting)).toHaveLength(
-      1,
-    );
-    expect(drain).toHaveBeenCalled();
+    await queueNightlyRuns({ client, now: NIGHT, drain, userIds });
+    const again = await ownJobs();
+    expect(again.map((j) => (j.payload as { userId: string }).userId)).toEqual([waiting]);
+    expect(drain).toHaveBeenCalledWith(expect.objectContaining({ userIds }));
     await client.job.deleteMany({ where: { id: { in: again.map((j) => j.id) } } });
   });
 

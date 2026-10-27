@@ -81,11 +81,13 @@ describe.runIf(url)("runDigests against a real database", () => {
     vi.mocked(track).mockReset();
   });
 
+  // A run kept to this file's own people: everyone else in the shared database is another file's.
+  const own = () => Object.values(ids);
   const digestsOf = (name: string) => client.digest.findMany({ where: { userId: ids[name] } });
   const sentTo = () => send.mock.calls.map(([mail]) => mail.to as string);
 
   it("dry run renders digests for everyone due without sending or storing", async () => {
-    const run = await runDigests({ client, now: MONDAY, dryRun: true, send });
+    const run = await runDigests({ client, userIds: own(), now: MONDAY, dryRun: true, send });
 
     const preview = run.previews.find((p) => p.userId === ids.news);
     expect(preview?.text).toContain("New since last week");
@@ -95,7 +97,7 @@ describe.runIf(url)("runDigests against a real database", () => {
   });
 
   it("sends once per week, only to active people with something to say", async () => {
-    await runDigests({ client, now: MONDAY, send });
+    await runDigests({ client, userIds: own(), now: MONDAY, send });
 
     expect(sentTo().filter((to) => to.includes(suffix))).toEqual([`news-${suffix}@example.com`]);
     const mail = send.mock.calls.find(([m]) => m.to.includes("news-"))?.[0];
@@ -110,7 +112,7 @@ describe.runIf(url)("runDigests against a real database", () => {
     expect(track).toHaveBeenCalledWith(ids.news, "digest_sent", expect.any(Object));
 
     send.mockReset();
-    await runDigests({ client, now: new Date("2026-10-20T22:00:00Z"), send });
+    await runDigests({ client, userIds: own(), now: new Date("2026-10-20T22:00:00Z"), send });
     expect(sentTo().filter((to) => to.includes(suffix))).toEqual([]);
   });
 
@@ -123,7 +125,7 @@ describe.runIf(url)("runDigests against a real database", () => {
     });
     send.mockRejectedValue(new Error("Resend down"));
 
-    await runDigests({ client, now: nextMonday, send });
+    await runDigests({ client, userIds: own(), now: nextMonday, send });
 
     expect((await digestsOf("news")).map((d) => d.weekStart.toISOString().slice(0, 10))).toEqual([
       "2026-10-19",
@@ -143,7 +145,7 @@ describe.runIf(url)("runDigests against a real database", () => {
       });
     }
 
-    const run = await runDigests({ client, now: MONDAY, dryRun: true, send });
+    const run = await runDigests({ client, userIds: own(), now: MONDAY, dryRun: true, send });
 
     const preview = run.previews.find((p) => p.userId === ids.alerted);
     expect(preview?.text).toContain("Alerts\n- $35.00 fee on Checking");
@@ -187,7 +189,7 @@ describe.runIf(url)("runDigests against a real database", () => {
       },
     });
 
-    const run = await runDigests({ client, now: MONDAY, dryRun: true, send });
+    const run = await runDigests({ client, userIds: own(), now: MONDAY, dryRun: true, send });
     const preview = run.previews.find((p) => p.userId === userId);
 
     expect(preview?.text).toContain(
@@ -250,7 +252,7 @@ describe.runIf(url)("runDigests against a real database", () => {
       savingMissedAt: new Date("2026-09-15T00:00:00Z"),
     });
 
-    const run = await runDigests({ client, now: MONDAY, dryRun: true, send });
+    const run = await runDigests({ client, userIds: own(), now: MONDAY, dryRun: true, send });
     const preview = run.previews.find((p) => p.userId === userId);
     expect(await savedToDate(userId, { client })).toBe(5_000);
     expect(preview?.text).toContain("Saved so far (expected): about $50.00 a year");
@@ -265,14 +267,46 @@ describe.runIf(url)("runDigests against a real database", () => {
       where: { id: ids.newcomer },
       data: { createdAt: new Date("2026-10-22T16:00:00Z") },
     });
-    const first = await runDigests({ client, now: thursday, dryRun: true, send });
+    const first = await runDigests({ client, userIds: own(), now: thursday, dryRun: true, send });
     expect(first.previews.find((p) => p.userId === ids.newcomer)).toBeUndefined();
     const monday = await runDigests({
       client,
+      userIds: own(),
       now: new Date("2026-10-26T22:00:00Z"),
       dryRun: true,
       send,
     });
     expect(monday.previews.find((p) => p.userId === ids.newcomer)).toBeDefined();
+  });
+
+  it("keeps a run to the people it's given", async () => {
+    const outsider = await client.user.create({
+      data: { email: `outsider-${suffix}@example.com`, digestEnabled: true },
+    });
+    try {
+      await client.account.create({
+        data: { userId: outsider.id, source: "csv", name: "Card", type: "credit" },
+      });
+      const f = findingOfType("bank_fees");
+      await client.finding.create({
+        data: {
+          userId: outsider.id,
+          type: f.type,
+          key: f.key,
+          title: f.title,
+          annualSavingsCents: f.annualSavingsCents,
+          amountCents: f.amountCents,
+          confidence: f.confidence,
+          evidence: f.evidence as Prisma.InputJsonObject,
+          createdAt: new Date("2026-10-17T00:00:00Z"),
+        },
+      });
+      const run = await runDigests({ client, userIds: own(), now: MONDAY, send });
+      expect(run.users).toBe(own().length - 2);
+      expect(sentTo()).not.toContain(outsider.email);
+      expect(await client.digest.count({ where: { userId: outsider.id } })).toBe(0);
+    } finally {
+      await client.user.delete({ where: { id: outsider.id } });
+    }
   });
 });
