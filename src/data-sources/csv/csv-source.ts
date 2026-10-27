@@ -22,9 +22,32 @@ import type {
 // the columns the person picked, for a CSV in no bank's layout.
 export type CsvFile = { name: string; text: string; mapping?: ColumnMapping };
 
-// Why a file couldn't be read: in no layout we know (the person can pick its columns), or
-// not readable at all.
-export type CsvFailure = "unknown_format" | "unreadable";
+// Why a file couldn't be read: in no layout we know (the person can pick its columns), not
+// readable as CSV, or not a statement at all (a web page, a PDF, a spreadsheet).
+export type CsvFailure = "unknown_format" | "unreadable" | "not_csv";
+
+export const NOT_A_STATEMENT =
+  "This isn't a CSV statement. Download the CSV from your bank's website.";
+
+// Fewer columns than a date, a description and an amount: not a statement either.
+const MIN_COLUMNS = 3;
+const SNIFF_CHARS = 8192;
+// Characters that don't occur in text: NULs, other control characters, bytes that weren't
+// UTF-8. More than this share of them means a binary file.
+const MAX_BINARY_SHARE = 0.01;
+
+// Something saved or renamed as .csv that isn't one: a web page (a sign-in page saved by
+// mistake), a PDF, an Excel file, an image.
+export function notAStatement(text: string): boolean {
+  const head = text.slice(0, SNIFF_CHARS);
+  if (/^\s*(?:<!doctype html|<html|<head|<body)|<html[\s>]|<\/(?:div|table|script)>/i.test(head)) {
+    return true;
+  }
+  if (head.startsWith("%PDF") || head.startsWith("PK\u0003\u0004")) return true;
+  if (head.includes("\u0000")) return true;
+  const odd = head.match(/[\u0001-\u0008\u000e-\u001f\ufffd]/g)?.length ?? 0;
+  return head.length > 0 && odd / head.length > MAX_BINARY_SHARE;
+}
 
 export type CsvFileResult =
   | {
@@ -32,6 +55,8 @@ export type CsvFileResult =
       file: string;
       // The CSV format, or OFX/QFX (which has no columns to map).
       format: Pick<CsvFormat, "id" | "label">;
+      // The account a first upload of this file makes, before the person edits it.
+      account: CsvFormat["account"];
       transactions: Omit<NormalizedTransaction, "accountRef">[];
       skipped: SkippedRow[];
     }
@@ -46,11 +71,23 @@ export type CsvFileResult =
 
 export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
 
+// An OFX file says what kind of account it's from: a card statement, or a bank account's type.
+function ofxAccount(text: string): CsvFormat["account"] {
+  if (/<CCSTMTRS>/i.test(text)) return { name: "Credit card", kind: "credit_card" };
+  if (/<ACCTTYPE>\s*SAVINGS/i.test(text)) return { name: "Savings", kind: "savings" };
+  return { name: "Checking", kind: "checking" };
+}
+
 // Reads one uploaded statement: a CSV export, or an OFX/QFX file (src/data-sources/ofx).
 export function readCsvFile(file: CsvFile): CsvFileResult {
   if (looksLikeOfx(file.name, file.text)) {
     const result = readOfx(file);
-    return result.ok ? { ...result, format: OFX_FORMAT } : { ...result, reason: "unreadable" };
+    return result.ok
+      ? { ...result, format: OFX_FORMAT, account: ofxAccount(file.text) }
+      : { ...result, reason: "unreadable" };
+  }
+  if (notAStatement(file.text)) {
+    return { ok: false, file: file.name, error: NOT_A_STATEMENT, reason: "not_csv" };
   }
   let records;
   try {
@@ -62,12 +99,32 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     return { ok: false, file: file.name, error: "The file is empty.", reason: "unreadable" };
   }
 
-  const layout = detectLayout(records) ?? (file.mapping && mappedLayout(records, file.mapping));
-  if (!layout) {
+  const detected = detectLayout(records);
+  const mapped = !detected && file.mapping ? mappedLayout(records, file.mapping) : null;
+  if (typeof mapped === "string") {
     return {
       ok: false,
       file: file.name,
-      error: "We don't know this bank's layout yet. Pick which column is which below.",
+      error: mapped,
+      reason: "unknown_format",
+      choices: mappingChoices(records),
+    };
+  }
+  const layout = detected ?? mapped;
+  if (!layout) {
+    const width = Math.max(...records.slice(0, 20).map((r) => r.fields.length));
+    if (width < MIN_COLUMNS) {
+      return {
+        ok: false,
+        file: file.name,
+        error: `This file has ${width === 1 ? "one column" : `${width} columns`}, and a statement needs at least a date, a description and an amount. Download the CSV from your bank's website.`,
+        reason: "unreadable",
+      };
+    }
+    return {
+      ok: false,
+      file: file.name,
+      error: "Jane doesn't know this bank's layout yet. Pick which column is which below.",
       reason: "unknown_format",
       choices: mappingChoices(records),
     };
@@ -110,7 +167,7 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     return {
       ok: false,
       file: file.name,
-      error: "No rows could be read with those columns. Check the date and amount columns.",
+      error: noRowsRead(skipped),
       reason: "unknown_format",
       choices: mappingChoices(records),
     };
@@ -119,9 +176,18 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     ok: true,
     file: file.name,
     format: { id: format.id, label: format.label },
+    account: format.account,
     transactions,
     skipped,
   };
+}
+
+// What went wrong when the picked columns read nothing, in plain words: the first problem.
+function noRowsRead(skipped: SkippedRow[]): string {
+  const first = skipped[0];
+  return first
+    ? `None of the rows could be read with those columns. On line ${first.line}, ${first.reason}.`
+    : "None of the rows could be read with those columns.";
 }
 
 export class CsvFormatError extends Error {

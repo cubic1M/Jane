@@ -3,14 +3,17 @@
 import { Fragment, useRef, useState, useTransition } from "react";
 import { confirmImport, previewImport, type PreviewResult } from "./actions";
 import { ColumnPicker } from "./column-picker";
-import { SUGGESTED_UPLOAD_DAYS, SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
+import { NEW_ACCOUNT_ID, SUGGESTED_UPLOAD_DAYS, SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
+import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import { formatCents } from "@/lib/money";
 
 type AccountOption = { id: string; name: string; kindLabel: string };
 
 const PRIMARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
+const FIELD =
+  "h-11 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
 const SECONDARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
@@ -21,6 +24,19 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   const [pickers, setPickers] = useState<Record<number, MappingChoices>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // A first upload makes its account from the file: its name and type come from the preview
+  // until the person changes them.
+  const [account, setAccount] = useState(accounts[0]?.id ?? NEW_ACCOUNT_ID);
+  const [newName, setNewName] = useState<string | null>(null);
+  const [newKind, setNewKind] = useState<AccountKind | null>(null);
+  // An account just added by hand is the one to upload into.
+  const ids = accounts.map((a) => a.id);
+  const [known, setKnown] = useState(ids);
+  if (ids.join() !== known.join()) {
+    setKnown(ids);
+    const added = ids.find((id) => !known.includes(id));
+    if (added) setAccount(added);
+  }
 
   // The form isn't submitted natively: that would clear the chosen files after preview.
   function formData() {
@@ -55,6 +71,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   const files = preview?.ok ? preview.files : [];
   const ready = files.length > 0 && files.every((f) => f.ok);
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
+  const suggested = files.find((f) => f.ok)?.account;
   const days = coveredDays(files);
 
   return (
@@ -64,15 +81,58 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
         <select
           name="accountId"
           required
-          className="h-11 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700"
+          value={account}
+          onChange={(event) => setAccount(event.target.value)}
+          className={FIELD}
         >
-          {accounts.map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name} ({account.kindLabel})
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name} ({a.kindLabel})
             </option>
           ))}
+          <option value={NEW_ACCOUNT_ID}>A new account from these files</option>
         </select>
       </label>
+      {account === NEW_ACCOUNT_ID && (
+        <div data-new-account="" className="grid gap-3 sm:grid-cols-3">
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Account name
+            <input
+              name="new.name"
+              maxLength={60}
+              value={newName ?? suggested?.name ?? ""}
+              placeholder="Chase checking"
+              onChange={(event) => setNewName(event.target.value)}
+              className={FIELD}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Type
+            <select
+              name="new.kind"
+              required
+              value={newKind ?? suggested?.kind ?? "checking"}
+              onChange={(event) => setNewKind(event.target.value as AccountKind)}
+              className={FIELD}
+            >
+              {Object.entries(ACCOUNT_KINDS).map(([kind, { label }]) => (
+                <option key={kind} value={kind}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Current balance (optional)
+            <input
+              name="new.balance"
+              inputMode="decimal"
+              placeholder="2,500.00"
+              className={FIELD}
+            />
+          </label>
+        </div>
+      )}
       <label className="flex flex-col gap-1 text-sm font-medium">
         Statement files (CSV, OFX or QFX)
         <input
@@ -95,7 +155,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
         </button>
         {ready && (
           <button type="button" onClick={onConfirm} disabled={pending} className={PRIMARY_BUTTON}>
-            {pending ? "Importing…" : `Import ${total} transactions`}
+            {pending ? "Importing…" : `Import ${plural(total, "transaction")}`}
           </button>
         )}
       </div>
@@ -129,7 +189,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
               <h3 className="font-semibold">
                 {file.file}{" "}
                 <span className="font-normal text-zinc-500">
-                  · {file.format} · {file.rowCount} rows
+                  · {file.format} · {plural(file.rowCount, "row")}
                 </span>
               </h3>
               <div className="overflow-x-auto">
@@ -189,6 +249,8 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // Days from the earliest to the latest transaction across the files, counting both ends.
 function coveredDays(files: Extract<PreviewResult, { ok: true }>["files"]): number | null {

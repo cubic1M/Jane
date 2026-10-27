@@ -6,6 +6,9 @@
 export const UPLOAD_REASSURANCE =
   "Files are read once and never stored, and Jane never sees your bank login.";
 
+// The account choice on /import for "a new account from these files".
+export const NEW_ACCOUNT_ID = "new";
+
 // Monthly charges and bills need a few months to show a pattern.
 export const SUGGESTED_UPLOAD_MONTHS = 3;
 // Files covering fewer days than this get the "add more months" hint.

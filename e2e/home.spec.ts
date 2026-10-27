@@ -26,9 +26,16 @@ test("new people land on Connect; once data is in, the hub matches the report", 
   await expect(page).toHaveURL("/connect");
 
   await page.goto("/import");
-  await page.getByLabel("Name").fill("Test Card");
-  await page.getByLabel("Type").selectOption({ label: "Credit card" });
-  await page.getByRole("button", { name: "Add account" }).click();
+  // Adding an account by hand is folded away: a first upload can make its own.
+  const addAccount = page.locator("[data-add-account]");
+  if ((await addAccount.getAttribute("open")) === null) {
+    await addAccount.getByText("Add an account by hand").click();
+  }
+  await addAccount.getByLabel("Name").fill("Test Card");
+  await addAccount.getByLabel("Type").selectOption({ label: "Credit card" });
+  await addAccount.getByRole("button", { name: "Add account" }).click();
+  // The upload goes into it once it shows as chosen.
+  await expect(page.locator('select[name="accountId"] option:checked')).toHaveText(/^Test Card /);
   await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample-card.csv");
   await page.getByRole("button", { name: "Preview" }).click();
   await page.getByRole("button", { name: /Import \d+ transactions/ }).click();

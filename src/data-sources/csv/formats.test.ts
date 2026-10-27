@@ -3,7 +3,6 @@ import {
   chaseCreditCard,
   debitCreditCents,
   detectFormat,
-  parseAnyDate,
   parseIsoDate,
   parseShortUsDate,
   parseUsDate,
@@ -29,10 +28,6 @@ describe("other date layouts", () => {
     expect(parseShortUsDate("09/28/2026")).toBeNull();
     expect(parseIsoDate("2026-09-28")).toBe("2026-09-28");
     expect(parseIsoDate("2026-02-30")).toBeNull();
-    expect(parseAnyDate("9/28/2026")).toBe("2026-09-28");
-    expect(parseAnyDate("9/28/26")).toBe("2026-09-28");
-    expect(parseAnyDate("2026-09-28")).toBe("2026-09-28");
-    expect(parseAnyDate("Sep 28")).toBeNull();
   });
 });
 
