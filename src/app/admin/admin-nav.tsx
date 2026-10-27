@@ -53,6 +53,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/launch" className="hover:underline">
           Launch check
         </Link>
+        <Link href="/admin/keys" className="hover:underline">
+          Keys
+        </Link>
       </nav>
       <span className="min-w-0 break-all">{email}</span>
     </header>
