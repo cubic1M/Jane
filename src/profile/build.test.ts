@@ -177,3 +177,18 @@ describe("monthly income on a short history", () => {
     expect(buildProfile(inputFor("renter")).months).toBe(12);
   });
 });
+
+describe("credit card debt", () => {
+  it("is not known yet when no card is linked, rather than $0 (QA)", () => {
+    const input = inputFor("family");
+    const noCards = { ...input, accounts: input.accounts.filter((a) => a.type !== "credit") };
+    const fact = buildProfile(noCards).facts.card_debt_cents;
+    expect(fact).toMatchObject({ value: null, confidence: 0, evidence: "not known yet" });
+  });
+
+  it("is seen from the linked cards' balances", () => {
+    const input = inputFor("family");
+    expect(input.accounts.some((a) => a.type === "credit")).toBe(true);
+    expect(buildProfile(input).facts.card_debt_cents).toMatchObject({ source: "seen" });
+  });
+});
