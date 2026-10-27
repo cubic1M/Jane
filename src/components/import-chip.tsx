@@ -80,9 +80,10 @@ export function ImportChip() {
       aria-live="polite"
       data-import-chip={run.stage}
       data-import-run={run.id}
-      // Top left, in the page's column: under the top bar on a computer (the docked chat is on
-      // the right), above the page on a phone (the Jane button is bottom right).
-      className="fixed top-2 left-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm shadow-sm lg:top-16 lg:max-w-[calc(100vw-380px-2rem)] dark:border-zinc-700 dark:bg-zinc-950"
+      // A computer: top left, under the top bar (the docked chat is on the right). A phone: the
+      // first thing on the page, above the top bar, never over it (new-user pass: fixed at the
+      // top, it covered the Jane logo). The body is a column, so order-first puts it there.
+      className="z-40 order-first mx-4 mt-2 flex max-w-[calc(100vw-2rem)] items-center gap-3 self-start rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm shadow-sm lg:fixed lg:top-16 lg:left-4 lg:order-none lg:mx-0 lg:mt-0 lg:max-w-[calc(100vw-380px-2rem)] dark:border-zinc-700 dark:bg-zinc-950"
     >
       {running ? (
         <>
