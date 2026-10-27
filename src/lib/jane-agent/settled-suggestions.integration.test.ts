@@ -4,6 +4,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
+import { stackedSuggestions } from "./messages";
 import { closeAnsweredElsewhere } from "./settled";
 import { parseActions } from "./types";
 
@@ -71,5 +72,46 @@ describe.runIf(url)("a suggestion's message once the suggestion is gone", () => 
     const closed = await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } });
     expect(closed.status).toBe("answered");
     expect(parseActions(closed.actions).map((a) => a.id)).toEqual(["open"]);
+  });
+
+  it("leaves the dock at once when the suggestion is gone, before the message is settled", async () => {
+    const key = "spending:budget_overrun";
+    const now = new Date();
+    await client.suggestion.create({
+      data: {
+        userId,
+        key,
+        capability: "spending",
+        topic: "budget_overrun",
+        title: "Set a budget",
+        worthCents: 10_000,
+        worthKind: "saves",
+        confidencePercent: 60,
+        confidenceReason: "3 months of spending",
+        urgency: "soon",
+        why: "Food ran over.",
+        actionLabel: "Set a budget",
+        actionHref: "/budgets",
+        status: "selected",
+      },
+    });
+    await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: "Set a budget",
+        refs: { suggestion: key },
+        actions: [{ id: "suggestion.yes", label: "Set a budget", kind: "primary" }],
+        dedupeKey: `${key}:dock`,
+        createdAt: now,
+      },
+    });
+    const keys = async () =>
+      (await stackedSuggestions(userId, { client, now: new Date(now.getTime() + 1000) })).map(
+        (m) => m.refs.suggestion,
+      );
+    expect(await keys()).toContain(key);
+    await client.suggestion.updateMany({ where: { userId, key }, data: { status: "gone" } });
+    expect(await keys()).not.toContain(key);
   });
 });

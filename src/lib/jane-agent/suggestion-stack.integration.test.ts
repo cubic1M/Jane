@@ -34,6 +34,30 @@ describe.runIf(url)("the suggestions in the card stack", () => {
           ...over,
         },
       });
+    // The suggestions behind the messages: live ones, and one the scan has dropped.
+    const suggestion = (key: string, status: string) =>
+      client.suggestion.create({
+        data: {
+          userId,
+          key,
+          capability: key.split(":")[0],
+          topic: key.split(":")[1],
+          title: key,
+          worthCents: 1_000,
+          worthKind: "saves",
+          confidencePercent: 80,
+          confidenceReason: "y",
+          urgency: "soon",
+          why: "x",
+          actionLabel: "Do it",
+          actionHref: "/home",
+          status,
+        },
+      });
+    for (const key of ["a:one", "b:two", "c:answered", "d:old", "e:three"])
+      await suggestion(key, "selected");
+    await suggestion("f:gone", "gone");
+    await make("f:gone", 15);
     await make("a:one", 50);
     // Hidden behind the day's agenda: still a card.
     await make("b:two", 40, { snoozedUntil: BUNDLED_UNTIL });
@@ -57,7 +81,7 @@ describe.runIf(url)("the suggestions in the card stack", () => {
     await client.$disconnect();
   });
 
-  it("lists the waiting ones, best first, without answered, old or other messages", async () => {
+  it("lists the waiting ones, best first, without answered, old, gone or other messages", async () => {
     const stacked = await stackedSuggestions(userId, { client, now: NOW });
     expect(stacked.map((m) => m.refs.suggestion)).toEqual(["a:one", "b:two", "e:three"]);
     expect(stacked.length).toBeLessThanOrEqual(SUGGESTIONS_PER_DAY);
