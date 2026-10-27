@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  addMonths,
   cheapest,
   compareProject,
   escrowCheck,
@@ -10,6 +9,7 @@ import {
   pmiOriginalLetter,
   pmiTimeline,
 } from "./home-equity";
+import { addMonths } from "@/lib/dates";
 
 // Spec step 228: PMI against the original value, escrow against the real bills, and the
 // ways to borrow for a project.

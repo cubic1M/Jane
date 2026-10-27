@@ -8,7 +8,7 @@ import {
   BNPL_PROVIDERS,
   type BnplProviderKey,
 } from "@/config/debt";
-import { DAY_MS, addDays } from "@/lib/dates";
+import { addDays, daysBetween } from "@/lib/dates";
 
 // Buy now, pay later plans (spec step 109), found from the person's payments to Affirm,
 // Klarna and Afterpay. Only what the payments show: a Pay in 4 plan's last payments and end
@@ -43,9 +43,6 @@ export type BnplPlan = {
   balanceCents: number | null;
   payoffDate: string | null;
 };
-
-const daysBetween = (a: string, b: string) =>
-  Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS);
 
 // Which company a payment went to, or null.
 export function bnplProviderOf(payment: Pick<BnplPayment, "description" | "merchantName">) {

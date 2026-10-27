@@ -9,6 +9,7 @@ import {
   REFERENCE_HIGH_YIELD_RATE_BPS,
 } from "@/config/detection";
 import { monthsBefore } from "@/detection/units";
+import { daysBetween } from "@/lib/dates";
 
 // Idle cash, the one definition: checking and savings above IDLE_CASH_MONTHS_OF_SPENDING months
 // of spending (the Today card, the brief and Jane's answer all use this function). Not the
@@ -33,8 +34,6 @@ export type IdleCash = {
 };
 
 const DAYS_PER_MONTH = 30.4375;
-const days = (from: string, to: string) =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 
 export function idleCashOf(input: {
   asOf: string;
@@ -66,7 +65,7 @@ export function idleCashOf(input: {
   for (const accountId of [...new Set(spending.map((t) => t.accountId))].sort()) {
     const rows = spending.filter((t) => t.accountId === accountId);
     const earliest = rows.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
-    const months = Math.max(1, days(earliest, input.asOf) / DAYS_PER_MONTH);
+    const months = Math.max(1, daysBetween(earliest, input.asOf) / DAYS_PER_MONTH);
     monthly += rows.reduce((sum, t) => sum + t.amountCents, 0) / months;
     shortest = Math.min(shortest, months);
   }

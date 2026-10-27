@@ -5,6 +5,7 @@ import {
   type FixedSector,
   type FlexSector,
 } from "@/config/year-plan";
+import { shiftMonth } from "@/lib/dates";
 
 // The year's money plan (spec step 205). Pure: twelve months of targets, built from the
 // person's margin, what each sector wants each month and the dated amounts in the year,
@@ -39,11 +40,6 @@ export type YearInput = {
   actuals: Record<string, Record<FlexSector, number>>;
 };
 
-export const addMonths = (month: string, n: number) => {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7);
-};
-
 const zero = (): Sectors => ({
   saving: 0,
   debt: 0,
@@ -71,7 +67,9 @@ function fit(
 }
 
 export function yearPlan(input: YearInput): YearMonth[] {
-  const months = Array.from({ length: YEAR_PLAN_MONTHS }, (_, i) => addMonths(input.startMonth, i));
+  const months = Array.from({ length: YEAR_PLAN_MONTHS }, (_, i) =>
+    shiftMonth(input.startMonth, i),
+  );
   const keptByMonth = new Map(input.past.map((m) => [m.month, m]));
   const out: YearMonth[] = [];
   // What the months that passed fell short by, per flexible sector.
