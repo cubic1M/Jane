@@ -1,9 +1,9 @@
 import { COSTLY_LABELS, COSTLY_SOURCES, EMPLOYER_ADVANCE } from "@/config/costly-borrowing";
-import { formatRate } from "@/insights/loans";
 import type { CostlyBorrowing } from "@/lib/costly-borrowing";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about costly short-term borrowing (spec step 247), from
 // src/lib/costly-borrowing.ts. Pure. What was found and what it cost are facts from the

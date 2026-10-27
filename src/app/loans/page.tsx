@@ -7,7 +7,6 @@ import { AreaPage } from "@/components/area-page/area-page";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { ViewTracker } from "@/components/view-tracker";
 import { sourceLabel, type Debt } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import { ComparisonCards } from "@/components/comparison-cards";
 import { adviceMode } from "@/lib/advice-mode";
 import { COMPARE_TOPICS, compareWant, itemId, type LoansBranch } from "@/lib/area-pages/loans";
@@ -21,6 +20,7 @@ import { requireUser } from "@/lib/session";
 import { clearTerms, saveTerms } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Every debt in one place (spec step 109): loans and cards with what the bank reports,
 // buy now, pay later plans found from payments, and terms the person typed for what the

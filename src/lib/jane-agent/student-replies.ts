@@ -1,10 +1,10 @@
 import { STUDENT_STEPS } from "@/config/student-loans";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import type { StudentLoans } from "@/lib/student-loans";
 import { PLAN_NAMES } from "@/planning/student-loans";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about student loans (spec step 114). Pure. Plan payments are the federal
 // plans' rules (src/config/student-loans.ts); the pick is demo advice, labelled. Every

@@ -1,9 +1,9 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { sourceLabel } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { SEE_DEBTS } from "../debt-replies";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
+import { formatRate } from "@/lib/percent";
 
 // Debts (spec step 109): Jane keeps every debt up to date on its own and says so when
 // something new turns up. A buy now, pay later plan found from payments gets one message

@@ -1,6 +1,7 @@
 import type { Candidate } from "@/lib/investments/short-term";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
+import { formatRate } from "@/lib/percent";
 
 // Short-term money in the chat (spec step 234): shared words and buttons.
 
@@ -11,7 +12,6 @@ export const SHORT_LINK: MessageAction = {
   href: "/investments/short-term",
 };
 
-const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 const day = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "short",
@@ -23,7 +23,7 @@ const day = (iso: string) =>
 export function candidateLine(c: Candidate): string {
   const top = c.options
     .slice(0, 3)
-    .map((o) => `${o.product.name} ${pct(o.afterTaxBps)}`)
+    .map((o) => `${o.product.name} ${formatRate(o.afterTaxBps)}`)
     .join(", ");
   const ladder = c.ladder
     ? ` A ladder of ${c.ladder.length} ${c.ladder.length === 1 ? "rung" : "rungs"} of Treasury bills, each maturing by ${day(c.endsOn)} and rolling over until then, would earn about ${formatCents(c.gainCents)} a year more than savings, after tax.`

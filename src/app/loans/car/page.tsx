@@ -4,11 +4,11 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { CAR_COST_SOURCE, CAR_TERMS_MONTHS } from "@/config/car";
-import { formatRate } from "@/insights/loans";
 import { loadCar } from "@/lib/car";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Buying a car (spec step 178): what the person can afford with insurance and running
 // costs in, preapproval offers compared by what they cost in all, and a dealer's financing

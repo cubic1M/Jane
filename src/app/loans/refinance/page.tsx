@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { REFI_MIN_SAVING_CENTS } from "@/config/debt";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { ensureChecked, loadRefinance } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
@@ -16,6 +15,7 @@ import { shortMonth } from "@/planning/balance-transfer";
 import { applyAction, checkNow, endTransferAction, startTransferAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Refinance offers (spec step 111): for each loan and card, the offers Jane checked, each over
 // the debt's own remaining months, compared with keeping it (paying what you pay now until it's

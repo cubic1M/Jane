@@ -4,12 +4,12 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { COSTLY_LABELS, COSTLY_SOURCES, PAL } from "@/config/costly-borrowing";
-import { formatRate } from "@/insights/loans";
 import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { wayOutLines } from "@/lib/jane-agent/costly-borrowing-replies";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Out of costly short-term borrowing (spec step 247): what payday loans, cash advances,
 // overdrafts and pay advance apps cost over the last year, in dollars and as a yearly rate, and

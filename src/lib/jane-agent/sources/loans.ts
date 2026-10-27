@@ -1,10 +1,10 @@
 import { LOAN_APPROVED_REMIND_DAYS, LOAN_PAYOFF_WAIT_DAYS } from "@/config/debt";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import type { Candidate, MessageAction } from "../types";
 import type { MessageSource } from "./source";
 import { DAY_MS } from "@/lib/dates";
+import { formatRate } from "@/lib/percent";
 
 // Loan applications (spec step 112): Jane follows each one on its own
 // (src/lib/loan-applications.ts refreshLoanApplications) and says how it's going: an

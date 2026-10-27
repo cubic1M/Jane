@@ -1,10 +1,10 @@
 import { PMI_SOURCE } from "@/config/debt";
-import { formatRate } from "@/insights/loans";
 import type { Mortgage } from "@/lib/mortgage";
 import { formatCents } from "@/lib/money";
 import { EQUITY_PAGE, pmiTimelineLines } from "./home-equity-replies";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about the mortgage (spec step 115). Pure.
 

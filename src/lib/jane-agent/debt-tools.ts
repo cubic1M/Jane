@@ -7,7 +7,6 @@ import {
 } from "@/config/debt-trouble";
 import type Anthropic from "@anthropic-ai/sdk";
 import { sourceLabel, type DebtBook } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import { MAX_DEBT_EXTRA_CENTS } from "@/config/debt";
 import type { Payoff } from "@/lib/debt-plan";
 import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
@@ -59,6 +58,7 @@ import { PLAN_NAMES } from "@/planning/student-loans";
 import type { PayoffPlan } from "@/planning/debt";
 import type { ScoredOffer } from "@/planning/refinance";
 import { monthAfter } from "@/planning/payoff";
+import { formatRate } from "@/lib/percent";
 
 // Claude's tools about debts in Jane's chat (spec Phase Y): read-only, over the same debt
 // book as the loans page (src/lib/debts.ts). Every dollar figure goes through `money`, so

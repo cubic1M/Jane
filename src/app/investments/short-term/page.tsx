@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/session";
 import { buildLadder } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Short-term money, placed safely (spec step 234, demo advice): money needed within three
 // years, compared after tax in the person's own state, with a Treasury bill ladder that
@@ -18,7 +19,6 @@ import { LoadingBar } from "@/components/loading-bar";
 
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON = "h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
-const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 const day = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "short",
@@ -90,7 +90,7 @@ async function Content({
                     {o.product.name}
                     <span className="block text-xs text-zinc-500">{o.product.note}</span>
                   </td>
-                  <td className="text-right">{pct(o.afterTaxBps)}</td>
+                  <td className="text-right">{formatRate(o.afterTaxBps)}</td>
                   <td className="text-right">{formatCents(o.yearlyCents)}</td>
                 </tr>
               ))}

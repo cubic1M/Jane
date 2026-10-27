@@ -30,12 +30,13 @@ import { formatReturn } from "@/insights/returns";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
 import { practiceProfileOf } from "@/lib/practice/preferences";
-import { formatBps, type HoldingView } from "@/insights/investments";
+import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
 // it and where each number came from, and the balances month by month. The page is a tree
@@ -96,7 +97,7 @@ function HoldingRow({ h }: { h: HoldingView }) {
         )}
         <div>
           <dt className="text-zinc-500">Yearly fund cost</dt>
-          <dd>{h.expenseRatioBps === null ? "Not known" : formatBps(h.expenseRatioBps)}</dd>
+          <dd>{h.expenseRatioBps === null ? "Not known" : formatRate(h.expenseRatioBps)}</dd>
         </div>
       </dl>
       <p className="text-xs text-zinc-500">

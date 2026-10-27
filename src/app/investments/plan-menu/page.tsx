@@ -11,7 +11,7 @@ import { confirm, sendChange, useSample } from "./actions";
 import { ReadForm } from "./read-form";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
-import { formatPercent as pct } from "@/lib/percent";
+import { formatPercent as pct, formatRate } from "@/lib/percent";
 
 // The workplace plan's menu, used well (spec step 232, demo advice): the funds the plan
 // offers, read from a disclosure and confirmed, and the cheapest mix of them for the
@@ -29,7 +29,6 @@ const KINDS: Record<string, string> = {
   target_date: "Target date",
   other: "Other",
 };
-const bps = (n: number) => `${(n / 100).toFixed(2)}%`;
 
 function Table({ funds }: { funds: MenuFund[] }) {
   return (
@@ -48,7 +47,7 @@ function Table({ funds }: { funds: MenuFund[] }) {
               {f.ticker} {f.name}
             </td>
             <td>{KINDS[f.kind]}</td>
-            <td className="text-right">{bps(f.expenseBps)}</td>
+            <td className="text-right">{formatRate(f.expenseBps)}</td>
           </tr>
         ))}
       </tbody>
@@ -115,15 +114,15 @@ async function Content({
           <p className="text-sm">
             Your {v.plan.accountName} holds {formatCents(v.plan.balanceCents)} and costs about{" "}
             {formatCents(Math.round((v.plan.balanceCents * v.plan.currentBps) / 10_000))} a year (
-            {bps(v.plan.currentBps)}). The cheapest mix of your plan&apos;s funds for your risk
-            level costs about{" "}
+            {formatRate(v.plan.currentBps)}). The cheapest mix of your plan&apos;s funds for your
+            risk level costs about{" "}
             {formatCents(Math.round((v.plan.balanceCents * v.plan.suggestedBps) / 10_000))} (
-            {bps(v.plan.suggestedBps)}): {formatCents(v.plan.savingCents)} a year less.
+            {formatRate(v.plan.suggestedBps)}): {formatCents(v.plan.savingCents)} a year less.
           </p>
           <ul className="list-disc pl-5 text-sm">
             {v.plan.suggested.map((a) => (
               <li key={a.ticker}>
-                {pct(a.share)} {a.ticker} {a.name} ({bps(a.expenseBps)})
+                {pct(a.share)} {a.ticker} {a.name} ({formatRate(a.expenseBps)})
               </li>
             ))}
           </ul>
@@ -134,10 +133,10 @@ async function Content({
           )}
           {v.plan.targetDates.filter(Boolean).map((t) => (
             <p key={t!.ticker} className="text-sm">
-              {t!.ticker}, the plan&apos;s target-date fund, costs {bps(t!.fundBps)} (
+              {t!.ticker}, the plan&apos;s target-date fund, costs {formatRate(t!.fundBps)} (
               {formatCents(t!.fundCents)} a year on your balance). Building the same mix by hand
-              from the cheapest funds costs {bps(t!.handBps)}: {formatCents(t!.savingCents)} a year
-              less.
+              from the cheapest funds costs {formatRate(t!.handBps)}: {formatCents(t!.savingCents)}{" "}
+              a year less.
             </p>
           ))}
           {v.pending ? (
