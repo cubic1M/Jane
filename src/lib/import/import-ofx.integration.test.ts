@@ -50,6 +50,8 @@ describe.runIf(url)("importing OFX and QFX against a real database", () => {
       duplicates: 0,
       skipped: 1,
       files: [{ format: "ofx", rows: 3 }],
+      // The statement's <LEDGERBAL>, kept for net worth over time.
+      balances: [{ date: "2026-10-15", balanceCents: 123456 }],
     });
     expect(await importCsvFiles(db, card, [fixture("card-xml.qfx")])).toMatchObject({
       inserted: 2,
