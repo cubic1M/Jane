@@ -87,6 +87,8 @@ const NAME_CHARS = 60;
 export function accountNameFromFile(fileName: string): string {
   const words = fileName
     .replace(/\.[a-z0-9]+$/i, "")
+    // A browser's copy marker on a second download: "export (3).csv" (round 2 named one "(3)").
+    .replace(/\s*\(\d+\)\s*$/, "")
     .split(/[\s._-]+/)
     .filter((w) => w && !FILE_NOISE.test(w));
   const name = words
@@ -122,12 +124,21 @@ export function closingBalances(rows: readonly ParsedRow[]): DayBalance[] {
 
 export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
 
-// An OFX file says what kind of account it's from: a card statement, or a bank account's type.
+// An OFX file says what kind of account it's from: a card statement, or a bank account's type,
+// and its account number, whose last four tell two such accounts apart (round 3: a QFX file's
+// account was just "Checking").
 function ofxAccount(text: string): CsvFormat["account"] {
-  if (/<CCSTMTRS>/i.test(text)) return { name: "Credit card", kind: "credit_card" };
-  if (/<ACCTTYPE>\s*SAVINGS/i.test(text)) return { name: "Savings", kind: "savings" };
-  return { name: "Checking", kind: "checking" };
+  const digits = /<ACCTID>\s*([^<\s]+)/i.exec(text)?.[1]?.replace(/\D/g, "") ?? "";
+  const last4 = digits.length >= 4 ? ` ····${digits.slice(-4)}` : "";
+  if (/<CCSTMTRS>/i.test(text)) return { name: `Credit card${last4}`, kind: "credit_card" };
+  if (/<ACCTTYPE>\s*SAVINGS/i.test(text)) return { name: `Savings${last4}`, kind: "savings" };
+  return { name: `Checking${last4}`, kind: "checking" };
 }
+
+// An export's summary rows under (or over) the transactions: "Total", "Ending balance". Skipped
+// without a word (round 3: "2 rows will be skipped: Line 10: Unreadable date """).
+const SUMMARY_ROW =
+  /^(?:totals?|(?:beginning|ending|opening|closing|available|current|ledger) balance|summary)\b/i;
 
 // Reads one uploaded statement: a CSV export, or an OFX/QFX file (src/data-sources/ofx).
 export function readCsvFile(file: CsvFile): CsvFileResult {
@@ -185,6 +196,8 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
   const parsed: { line: number; row: ParsedRow }[] = [];
   const skipped: SkippedRow[] = [];
   for (const record of rows) {
+    if (SUMMARY_ROW.test(record.fields.find((value) => value.trim() !== "")?.trim() ?? ""))
+      continue;
     // Chase adds a trailing comma to some rows; extra empty fields are harmless.
     const extra = record.fields.slice(columns.length);
     if (record.fields.length < columns.length || extra.some((value) => value.trim() !== "")) {

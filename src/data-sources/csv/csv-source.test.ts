@@ -187,6 +187,49 @@ describe("OFX and QFX uploads", () => {
     const result = readCsvFile({ name: "card.qfx", text });
     expect(result).toMatchObject({ ok: true, format: { id: "ofx" } });
     expect(result.ok && result.transactions).toHaveLength(2);
+    // Its account: a card, named with the last four of its number.
+    expect(result.ok && result.account).toEqual({
+      name: "Credit card ····0000",
+      kind: "credit_card",
+    });
+  });
+
+  it("names a bank account by its type and last four, or its type alone without a number", () => {
+    const ofx = (from: string) =>
+      `OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS>${from}<BANKTRANLIST>` +
+      "<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261001<TRNAMT>-15.49<FITID>1<NAME>NETFLIX.COM</STMTTRN>" +
+      "</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>";
+    const account = (from: string) => {
+      const result = readCsvFile({ name: "Checking1234.qfx", text: ofx(from) });
+      return result.ok ? result.account : null;
+    };
+    expect(account("<BANKACCTFROM><ACCTID>000-004321<ACCTTYPE>CHECKING</BANKACCTFROM>")).toEqual({
+      name: "Checking ····4321",
+      kind: "checking",
+    });
+    expect(account("<BANKACCTFROM><ACCTID>98765<ACCTTYPE>SAVINGS</BANKACCTFROM>")).toEqual({
+      name: "Savings ····8765",
+      kind: "savings",
+    });
+    expect(account("<BANKACCTFROM><ACCTTYPE>CHECKING</BANKACCTFROM>")).toEqual({
+      name: "Checking",
+      kind: "checking",
+    });
+  });
+});
+
+describe("an export's summary rows", () => {
+  it("are skipped without a word: Total, Ending balance", () => {
+    const text = [
+      "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #",
+      'DEBIT,10/10/2026,"VERIZON WIRELESS PAYMENT",-85.00,ACH_DEBIT,4915.00,,',
+      "",
+      "Total,,,,,,",
+      "Ending balance,,,4915.00,,,",
+    ].join("\n");
+    const result = readCsvFile({ name: "Chase1234_Activity.CSV", text });
+    expect(result.ok && result.transactions).toHaveLength(1);
+    expect(result.ok && result.skipped).toEqual([]);
   });
 });
 
@@ -196,6 +239,8 @@ describe("accountNameFromFile", () => {
     ["Navy_Federal_Statement_2026-10.csv", "Navy Federal"],
     ["transactions.csv", "Uploaded account"],
     ["my credit union.CSV", "My Credit Union"],
+    ["export (3).csv", "Uploaded account"],
+    ["Golden1 Checking (1).csv", "Golden1 Checking"],
   ])("names %j %j", (file, name) => {
     expect(accountNameFromFile(file)).toBe(name);
   });

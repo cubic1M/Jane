@@ -10,6 +10,8 @@ import {
 } from "@/data-sources/csv/csv-source";
 import { accountKindOf, type AccountKind, type SkippedRow } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
+import { addDays, isoDay } from "@/lib/dates";
+import { crossFormatTwins } from "@/lib/import/cross-format";
 
 export const MAX_FILES = 10;
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;
@@ -137,8 +139,11 @@ export async function importCsvFiles(
     seen.add(t.externalId);
     return true;
   });
-  onStage?.({ stage: "sorting", rows: unique.length });
-  const categorized = await categorizeTransactions(unique, db, { askClaude: false });
+  // The same rows from the account's statement in the other format (a CSV, then its QFX) are
+  // already there under other keys: dropped too (src/lib/import/cross-format.ts).
+  const fresh = await withoutCrossFormatTwins(db, account.id, unique);
+  onStage?.({ stage: "sorting", rows: fresh.length });
+  const categorized = await categorizeTransactions(fresh, db, { askClaude: false });
 
   onStage?.({ stage: "saving" });
   const { count } = await db.transactions.createMany({
@@ -161,16 +166,52 @@ export async function importCsvFiles(
     skipDuplicates: true,
   });
   return {
-    parsed: categorized.length,
+    parsed: unique.length,
     inserted: count,
-    duplicates: categorized.length - count,
+    duplicates: unique.length - count,
     skipped: batch.skipped.length,
     files: batch.files,
     balances: batch.balances,
-    from: categorized.reduce<string | null>(
-      (a, t) => (a === null || t.date < a ? t.date : a),
-      null,
-    ),
-    to: categorized.reduce<string | null>((a, t) => (a === null || t.date > a ? t.date : a), null),
+    // What the files cover, twins or not.
+    from: unique.reduce<string | null>((a, t) => (a === null || t.date < a ? t.date : a), null),
+    to: unique.reduce<string | null>((a, t) => (a === null || t.date > a ? t.date : a), null),
   };
+}
+
+// The rows less those whose twin from the other format is in the account already, or earlier in
+// this upload. Rows the account has under the same key are left to the database to skip.
+async function withoutCrossFormatTwins<
+  T extends { externalId: string; date: string; amountCents: number; description: string },
+>(db: ScopedDb, accountId: string, rows: T[]): Promise<T[]> {
+  if (rows.length === 0) return rows;
+  const dates = rows.map((r) => r.date).sort();
+  const there = await db.transactions.findMany({
+    where: {
+      accountId,
+      date: {
+        gte: new Date(`${addDays(dates[0], -1)}T00:00:00Z`),
+        lte: new Date(`${addDays(dates[dates.length - 1], 1)}T00:00:00Z`),
+      },
+    },
+    select: { dedupeKey: true, date: true, amountCents: true, description: true },
+  });
+  const known = new Set(there.map((t) => t.dedupeKey));
+  const existing = there.map((t) => ({
+    key: t.dedupeKey ?? "",
+    date: isoDay(t.date),
+    amountCents: t.amountCents,
+    description: t.description,
+  }));
+  const newRows = rows.filter((r) => !known.has(r.externalId));
+  const drop = crossFormatTwins(
+    existing,
+    newRows.map((r) => ({
+      key: r.externalId,
+      date: r.date,
+      amountCents: r.amountCents,
+      description: r.description,
+    })),
+  );
+  const twins = new Set([...drop].map((i) => newRows[i]));
+  return rows.filter((r) => !twins.has(r));
 }
