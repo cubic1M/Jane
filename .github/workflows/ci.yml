@@ -97,6 +97,8 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
+      - name: Row-level security on every table, as each deploy does
+        run: node scripts/rls-protect.mjs "$TEST_DATABASE_URL"
       # Trial and retention cleanup delete every expired sample person in the database, and the
       # learning loop rebuilds its stats from every person in it (which ranking reads), so they
       # run on their own after shard 1's tests, never alongside tests that make people.
@@ -227,6 +229,8 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
+      - name: Row-level security on every table, as each deploy does
+        run: node scripts/rls-protect.mjs "$E2E_DATABASE_URL"
       - run: npm run test:e2e -- --shard=${{ matrix.shard }}/3
       # A flaky failure can't be read from the log alone: keep its error context and the retry's
       # trace (npx playwright show-trace) for a week.

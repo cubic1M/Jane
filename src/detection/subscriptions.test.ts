@@ -26,6 +26,7 @@ describe("recurringCharges", () => {
       const row = rows.find((r) => r.key === f.key);
       expect(row?.annualCostCents, f.key).toBe(f.annualSavingsCents);
       expect(row?.subscription).toBe(true);
+      expect(f.key).toBe(`merchant:${row?.merchantKey}`);
     }
   });
 

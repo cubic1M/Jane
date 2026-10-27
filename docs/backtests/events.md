@@ -8,7 +8,7 @@ A replay of the past on real prices, not a forecast. Simulated money only.
 
 ## Verdict
 
-With these rules the overlay **made no clear difference**: no level's Sharpe ratio moved by more than 0.02 with no deeper drawdown. Against the strategy alone, at the levels tested: yearly return +0.2 points, Sharpe ratio +0.01, worst drop -0.5 points to +0.4 points. It lagged in the first half (2017 to 2021) and led in the second (2022 to now), so the result isn't stable. It stays off by default, and each type trades only while its own record so far is at least a coin flip.
+With these rules the overlay **made no clear difference**: no level's Sharpe ratio moved by more than 0.02 with no deeper drawdown. Against the strategy alone, at the levels tested: yearly return +0.2 points, Sharpe ratio +0.01, worst drop -0.5 points to +0.4 points. It lagged in the first half (2017 to 2021) and led in the second (2022 to now), so the result isn't stable. It's on by default with a switch to turn it off, and each type trades only while its own record so far is at least a coin flip.
 
 ## Strategy alone vs strategy + events
 
@@ -49,9 +49,43 @@ Events traded, and events followed only (skipped because the type's record was u
 
 Events found in 2017-03-01 to 2026-10-21: 490 (466 news-coverage spikes, 24 price shocks), one per type per 15 days.
 
+## Crypto (the 24-hour agent on bitcoin and ether)
+
+With these rules the crypto events **made no clear difference** (hold bitcoin: no clear difference; bitcoin 50%, ether 30%, cash 20%: no clear difference).
+
+2018-03-01 to 2026-10-21, every day (crypto trades every day; yearly figures and the Sharpe ratio use 365 days), at Very high (5): a slice of 4.0% of the account per event, at most 12% in all. Two strategies to lay the events over: just holding bitcoin (where a bitcoin slice can add nothing, and only trims to cash change anything), and a mix with ether and cash.
+
+| Strategy | Alone: yearly | total | max drawdown | Sharpe | With events: yearly | total | max drawdown | Sharpe | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Hold bitcoin | 26.6% | 667% | -76.6% | 0.65 | 26.7% | 672% | -76.6% | 0.65 | no clear difference |
+| Bitcoin 50%, ether 30%, cash 20% | 25.4% | 606% | -70.3% | 0.65 | 25.4% | 606% | -69.6% | 0.65 | no clear difference |
+
+The same, in two halves:
+
+| Strategy | Period | Alone: yearly | Sharpe | With events: yearly | Sharpe |
+| --- | --- | --- | --- | --- | --- |
+| Hold bitcoin | 2018-03-01 to 2021-12-31 | 45.6% | 0.87 | 45.9% | 0.88 |
+| Hold bitcoin | 2022-01-01 to 2026-10-21 | 12.5% | 0.41 | 13.0% | 0.42 |
+| Bitcoin 50%, ether 30%, cash 20% | 2018-03-01 to 2021-12-31 | 49.6% | 0.95 | 49.4% | 0.95 |
+| Bitcoin 50%, ether 30%, cash 20% | 2022-01-01 to 2026-10-21 | 8.4% | 0.32 | 9.4% | 0.34 |
+
+By event type (Bitcoin 50%, ether 30%, cash 20%):
+
+| Event | Funds | Traded | Followed | Hit rate (all) | Help per traded event (bps) |
+| --- | --- | --- | --- | --- | --- |
+| A crypto exchange fails | trim BTC/USD, trim ETH/USD | 10 | 4 | 46% | +4 |
+| Crypto funds approved or flowing in | buy BTC/USD | 1 | 0 | 0% | -11 |
+| A crypto crackdown | trim BTC/USD, trim ETH/USD | 6 | 27 | 44% | +11 |
+| A stablecoin loses its peg | trim BTC/USD, trim ETH/USD | 0 | 0 | – | – |
+| A crypto liquidation cascade | buy BTC/USD | 2 | 28 | 37% | -4 |
+
+Crypto events found in 2018-03-01 to 2026-10-21: 78 (49 news-coverage spikes, 29 price shocks).
+
+Live, the crypto types are also read hour by hour (GDELT's 15-minute counts over the last 36 hours: an hour is an event at 2.5 times its usual daily share, with at least 25 articles, known 15 minutes after the hour ends), so the agent acts at its next bar within the hour. That hourly rule isn't in this replay, which has daily counts only.
+
 ## How it was tested
 
-- **Events.** GDELT's daily article count for each type's query (`src/config/events.ts`), as a share of all articles that day. A day is an event when its share is at least 2.5 times the median of the 30 days before it, with at least 200 articles. Plus price shocks: VTI -3.5% in a day, XLE +5.0% in a day, XLF -5.0% in a day. Source: GDELT DOC 2.0 daily article counts (timelinevolraw), 2017-01-01 to 2026-10-25, recorded 2026-10-26.
+- **Events.** GDELT's daily article count for each type's query (`src/config/events.ts`), as a share of all articles that day. A day is an event when its share is at least 2.5 times the median of the 30 days before it, with at least 200 articles. Plus price shocks: VTI -3.5% in a day, XLE +5.0% in a day, XLF -5.0% in a day, BTC/USD -8.0% in a day. Source: GDELT DOC 2.0 daily article counts (timelinevolraw), 2017-01-01 to 2026-10-25, recorded 2026-10-26.
 - **No lookahead.** Each event carries the time it became public: a GDELT day 15 minutes after it ends (UTC), a price shock after that close, a Fed statement at its release. The overlay acts only at a close after that time, using closes up to that day. Confidence uses each type's own closed events before that day. A test cuts the history off at a date, and doubles every later close, and checks that no decision before the date changes.
 - **Overlay.** Each event adds a slice of 1.5% (level 2), 2.0% (level 3), 3.0% (level 4) of the account, split across its funds, paid for by scaling the whole mix down; a trim moves that share of a held fund to cash. All slices at most 5% (level 2), 8% (level 3), 10% (level 4). Out after 20 trading days or at a 7% move against it. A type trades only while its record so far is at least 50% (a coin flip to start); its skipped events are still followed and scored.
 - **Costs.** 5 basis points on every trade, both portfolios. No taxes. Prices: Yahoo Finance adjusted daily closes, 2016-01-04 to 2026-10-21, downloaded 2026-10-22.
@@ -62,3 +96,4 @@ Events found in 2017-03-01 to 2026-10-21: 490 (466 news-coverage spikes, 24 pric
 - Few events per type: a hit rate over a dozen events moves a lot with one more.
 - GDELT's coverage is a count of articles, not of what happened: a busy news week can look like an event, and a real event that the press under-covers can be missed.
 - Live, the paper account also reads the Fed's, BLS's and EIA's feeds and the stored headlines, which this replay doesn't (their archives aren't point-in-time).
+- Crypto: eight years of history, through two crashes and two booms; GDELT's coverage of words like 'stablecoin' and 'ETF' was thin before 2020, and the first spot bitcoin funds came only in 2024, so some types have very few events.
