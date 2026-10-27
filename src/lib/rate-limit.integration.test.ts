@@ -16,7 +16,7 @@ vi.mock("@/lib/plaid/link", async (importOriginal) => ({
 
 import { RATE_LIMITS } from "@/config/rate-limits";
 import { getCurrentUser } from "@/lib/session";
-import { giveBack, hit, ipKey } from "./rate-limit";
+import { giveBack, hit, hitMany, ipKey } from "./rate-limit";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -90,6 +90,36 @@ describe.runIf(url)("rate limiting against a real database", () => {
     const refused = responses.find((r) => r.status === 429);
     expect(Number(refused?.headers.get("Retry-After"))).toBeGreaterThan(0);
     vi.unstubAllEnvs();
+  });
+
+  it("counts several limits in one round trip, refusing when any one is over", async () => {
+    const ip = `rl-test-${crypto.randomUUID()}`;
+    const session = `rl-test-${crypto.randomUUID()}`;
+    const now = new Date("2026-10-19T12:00:15Z");
+    const checks = [
+      { name: "actions" as const, subject: ip },
+      { name: "actionsSession" as const, subject: session },
+    ];
+    const results = [];
+    for (let i = 0; i < RATE_LIMITS.actionsSession.limit + 1; i += 1) {
+      results.push(await hitMany(checks, { client, now }));
+    }
+    // The session's limit (the lower) is the one that refuses; both counters went up.
+    expect(results.filter((r) => r.ok)).toHaveLength(RATE_LIMITS.actionsSession.limit);
+    expect(results.at(-1)).toMatchObject({ ok: false, remaining: 0, retryAfterSeconds: 45 });
+    expect((await hit("actions", ip, { client, now })).remaining).toBe(
+      RATE_LIMITS.actions.limit - RATE_LIMITS.actionsSession.limit - 2,
+    );
+    // The same counter twice in one call counts once.
+    const twice = await hitMany(
+      [
+        { name: "api", subject: `${ip}-x` },
+        { name: "api", subject: `${ip}-x` },
+      ],
+      { client, now },
+    );
+    expect(twice.remaining).toBe(RATE_LIMITS.api.limit - 1);
+    expect(await hitMany([], { client, now })).toMatchObject({ ok: true });
   });
 
   it("hashes IPs instead of storing them", () => {
