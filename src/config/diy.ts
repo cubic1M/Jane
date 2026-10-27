@@ -18,7 +18,7 @@ export const DIY_KITS: Partial<Record<ActionType, DiyKitConfig>> = {
   cancel_subscription: {
     link: "cancel",
     steps: [
-      "Open the company's account page (link below) and sign in.",
+      "Open the company's account page and sign in.",
       "Find the subscription or membership settings and choose cancel.",
       "Keep the confirmation email or number until the next billing date passes.",
     ],
@@ -28,7 +28,7 @@ export const DIY_KITS: Partial<Record<ActionType, DiyKitConfig>> = {
   fight_price_increase: {
     link: "support",
     steps: [
-      "Contact the company's support (link below), by chat or email.",
+      "Contact the company's support, by chat or email.",
       "Ask to keep your previous price, for a loyalty discount, or for a cheaper plan with the same service.",
       "If they offer something, check the new price and how long it lasts before you accept.",
     ],
@@ -39,7 +39,7 @@ export const DIY_KITS: Partial<Record<ActionType, DiyKitConfig>> = {
   request_refund: {
     link: "support",
     steps: [
-      "Contact the company's support (link below) and ask for a refund of the charges listed.",
+      "Contact the company's support and ask for a refund of the charges listed.",
       "If they say no or don't answer within a week, ask your card company to dispute the charge.",
     ],
     message: "email",
