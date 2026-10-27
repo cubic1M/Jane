@@ -31,6 +31,7 @@ import {
 } from "@/insights/net-worth-movements";
 import { formatCents } from "@/lib/money";
 import { MarchingPath } from "@/components/marching-path";
+import { dayLabel } from "@/lib/day-label";
 
 // The home hub's net worth chart (founder request; docs/design/home-hub.md): the person's net
 // worth from their first day with Jane to today, as one clean line. A big number with the
@@ -71,13 +72,6 @@ const dollars = (cents: number) => formatCents(cents).replace(/\.\d\d$/, "");
 const signed = (cents: number) => `${cents >= 0 ? "+" : "−"}${dollars(Math.abs(cents))}`;
 const percent = (share: number) =>
   `${share >= 0 ? "+" : "−"}${(Math.abs(share) * 100).toFixed(Math.abs(share) < 0.1 ? 2 : 1)}%`;
-const longDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 // What an event did, as its card says it: "+$3,000", or "$800 moved" for money moved between
 // the person's own accounts.
@@ -348,7 +342,7 @@ export function NetWorthChart({
         ? {
             group: m.group,
             at: { x: x(m.i), y: y(shown[m.i].cents) },
-            title: longDate(m.group.date),
+            title: dayLabel(m.group.date, { year: true }),
           }
         : null;
     }
@@ -397,7 +391,7 @@ export function NetWorthChart({
   const arrow = (cents: number) => (cents >= 0 ? "▲" : "▼");
   const zoomed = view !== null;
   const windowWords = zoomed
-    ? `${longDate(shown[0].date)} to ${longDate(shown[shown.length - 1].date)}`
+    ? `${dayLabel(shown[0].date, { year: true })} to ${dayLabel(shown[shown.length - 1].date, { year: true })}`
     : RANGE_WORDS[chip];
   const focused = focusDot !== null ? (layout?.dots[focusDot] ?? null) : null;
 
@@ -453,7 +447,7 @@ export function NetWorthChart({
             {move.share !== null && ` (${percent(move.share)})`}
           </span>{" "}
           <span className="text-zinc-600 dark:text-zinc-400">
-            {scrub === null ? windowWords : longDate(point.date)}
+            {scrub === null ? windowWords : dayLabel(point.date, { year: true })}
           </span>
         </p>
       )}
@@ -471,7 +465,7 @@ export function NetWorthChart({
               aria-valuemin={0}
               aria-valuemax={shown.length - 1}
               aria-valuenow={at}
-              aria-valuetext={`${at === shown.length - 1 ? "Today" : longDate(point.date)}: ${dollars(point.cents)}`}
+              aria-valuetext={`${at === shown.length - 1 ? "Today" : dayLabel(point.date, { year: true })}: ${dollars(point.cents)}`}
               className={`nw-box relative -mx-1 cursor-crosshair outline-offset-4 select-none ${expanded ? "touch-none" : "touch-pan-y"}`}
               style={{ height: H }}
               onPointerDown={(e) => {
@@ -647,7 +641,7 @@ export function NetWorthChart({
                   key={group.date}
                   type="button"
                   data-net-worth-event={group.date}
-                  aria-label={`${longDate(group.date)}: ${group.events
+                  aria-label={`${dayLabel(group.date, { year: true })}: ${group.events
                     .map((e) => `${e.label} ${effect(e)}`)
                     .join("; ")}`}
                   aria-expanded={opened?.key === group.date}
@@ -784,7 +778,9 @@ const groupOf = (d: Dot): EventGroup => ({
 const datesOf = (d: Dot) => {
   const first = d.events[0].date;
   const last = d.events[d.events.length - 1].date;
-  return first === last ? longDate(first) : `${longDate(first)} to ${longDate(last)}`;
+  return first === last
+    ? dayLabel(first, { year: true })
+    : `${dayLabel(first, { year: true })} to ${dayLabel(last, { year: true })}`;
 };
 
 // Every movement's dot, drawn on a canvas (thousands of them at once, kept smooth on a phone):
@@ -1178,7 +1174,9 @@ function DetailsBody({
               <span className="shrink-0 font-semibold tabular-nums">{effect(e)}</span>
             </span>
             <span className="text-zinc-600 dark:text-zinc-400">
-              {[EVENT_KIND_WORDS[e.kind], e.account, longDate(e.date)].filter(Boolean).join(" · ")}
+              {[EVENT_KIND_WORDS[e.kind], e.account, dayLabel(e.date, { year: true })]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
           </li>
         ))}

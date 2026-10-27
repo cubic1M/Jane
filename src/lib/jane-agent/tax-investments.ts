@@ -7,24 +7,19 @@ import { estimateTaxes } from "@/planning/tax-estimate";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { snoozeButton } from "./sources/source";
 import type { MessageAction, MessageRefs } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // Investment taxes in the chat (spec step 124): wash-sale warnings for everyone, and (demo
 // advice) losses worth harvesting and what's better held in a 401(k) or IRA.
 
 export type Said = { body: string; actions: MessageAction[]; refs: MessageRefs };
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 const label = (h: { ticker: string | null; name: string }) => h.ticker ?? h.name;
 
 export function washSaleMessage(r: Realised): Said {
   const loss = -(r.gainCents - r.washDisallowedCents);
   const shares = Number(r.quantity.toFixed(3));
   return {
-    body: `Your sale of ${shares} ${label(r)} on ${day(r.date)} was at a loss of ${formatCents(loss)}, but ${label(r)} was bought again within ${WASH_SALE_DAYS} days (${day(r.washReplacements[0].date)}), so ${formatCents(r.washDisallowedCents)} of the loss can't count this year: it's a wash sale. That part is added to the new shares' cost instead.`,
+    body: `Your sale of ${shares} ${label(r)} on ${dayLabel(r.date)} was at a loss of ${formatCents(loss)}, but ${label(r)} was bought again within ${WASH_SALE_DAYS} days (${dayLabel(r.washReplacements[0].date)}), so ${formatCents(r.washDisallowedCents)} of the loss can't count this year: it's a wash sale. That part is added to the new shares' cost instead.`,
     actions: [
       {
         id: "open",

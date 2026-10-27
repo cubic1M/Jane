@@ -7,6 +7,7 @@ import type { DebtIntent } from "./debt-intents";
 import type { Reply } from "./replies";
 import { shortDate } from "./sources/source";
 import type { MessageAction } from "./types";
+import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 
 // Jane's answers about debts (spec Phase Y), from the same debt book as the loans page
@@ -19,15 +20,6 @@ const link = (label: string, href: string): MessageAction => ({
   href,
 });
 export const SEE_DEBTS = link("See every debt", "/loans");
-
-// "Oct 1, 2029".
-const longDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -54,7 +46,7 @@ function line(debt: Debt): string {
   const parts = [head];
   const payment = paymentWords(debt);
   if (payment) parts.push(payment);
-  if (debt.payoffDate) parts.push(`paid off by ${longDate(debt.payoffDate)}`);
+  if (debt.payoffDate) parts.push(`paid off by ${dayLabel(debt.payoffDate, { year: true })}`);
   return `- ${parts.join(", ")}${debt.overdue ? ". Your bank shows it as overdue" : ""}`;
 }
 
@@ -129,7 +121,7 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
   }
   if (debt.payoffDate) {
     lines.push(
-      `It's paid off by ${longDate(debt.payoffDate)} (${sourceLabel(debt.payoffFrom, debt.typedOn)}).`,
+      `It's paid off by ${dayLabel(debt.payoffDate, { year: true })} (${sourceLabel(debt.payoffFrom, debt.typedOn)}).`,
     );
   } else if (debt.kind === "card") {
     lines.push("A card has no end date: when it's paid off depends on what you pay each month.");
