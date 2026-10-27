@@ -85,13 +85,24 @@ async function NetWorthContent() {
         >
           <span className="text-sm text-zinc-600 dark:text-zinc-400">Net worth</span>
           <span className="text-2xl font-semibold">Not known yet</span>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Your files don&apos;t include a balance.{" "}
-            <Link href="/import" className="font-medium underline">
-              Add one on the import page
-            </Link>{" "}
-            and your line starts there.
-          </p>
+          {/* No accounts at all (after "Start over"): there are no files to blame. */}
+          {accounts.length === 0 ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              No accounts yet.{" "}
+              <Link href="/import" className="font-medium underline">
+                Upload your statements
+              </Link>{" "}
+              and your line starts there.
+            </p>
+          ) : (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Your files don&apos;t include a balance.{" "}
+              <Link href="/import" className="font-medium underline">
+                Add one on the import page
+              </Link>{" "}
+              and your line starts there.
+            </p>
+          )}
         </section>
       ) : (
         <section className="grid gap-3 sm:grid-cols-3">

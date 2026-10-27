@@ -87,3 +87,40 @@ test("an upload can be removed, and its findings go with it", async ({ page, bas
     page.getByText("We haven't read any transactions yet.", { exact: false }),
   ).toBeVisible();
 });
+
+test("start over deletes every upload, and net worth says there's nothing yet", async ({
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await page
+    .context()
+    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+
+  await page.goto("/import");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "fees.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(feesFile()),
+  });
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: /^Import \d+ transactions$/ }).click();
+  await waitForImport(page, { open: "/import" });
+
+  const startOver = page.locator("[data-start-over]");
+  await startOver.getByRole("button", { name: "Start over" }).click();
+  await expect(startOver).toContainText("This deletes your 1 uploaded account");
+  await startOver.getByRole("button", { name: "Yes, delete my uploads" }).click();
+  await expect(page.locator("[data-import-chip]")).toContainText("up to date", {
+    timeout: 120_000,
+  });
+  await expect(page.locator("[data-upload]")).toHaveCount(0);
+
+  // No accounts at all: not "$0.00", and not "your files don't include a balance" either.
+  await page.goto("/net-worth");
+  await expect(page.locator("[data-net-worth-unknown]")).toContainText(
+    "No accounts yet. Upload your statements",
+  );
+  await expect(page.getByText("$0.00")).toHaveCount(0);
+});
