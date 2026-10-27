@@ -12,7 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import type { PlannedMessage } from "./brain";
 import { localTime } from "./quiet-hours";
-import { closeAnsweredElsewhere } from "./settled";
+import { closeAnsweredElsewhere, settledSuggestionKeys } from "./settled";
 import {
   MESSAGE_SELECT,
   parseActions,
@@ -377,24 +377,16 @@ export async function stackedSuggestions(
     select: MESSAGE_SELECT,
     take: SUGGESTIONS_PER_DAY * 2,
   });
-  // Only suggestions still waiting or offered: one that stopped applying (a second upload
-  // showed the car insurance) leaves the dock at once, before the chat next opens and settles
-  // its message (overnight upload QA: the dock still led with "Check your car is insured").
+  // Not a suggestion that has settled: one that stopped applying (a second upload showed the
+  // car insurance) leaves the dock at once, before the chat next opens and settles its message
+  // (overnight upload QA: the dock still led with "Check your car is insured"). A card with no
+  // suggestion row (a news theme's alert, posted straight from the scan) stays.
   const keyOf = (m: (typeof rows)[number]) => parseRefs(m.refs).suggestion;
   const keys = [...new Set(rows.flatMap((m) => keyOf(m) ?? []))];
-  const live = new Set(
-    keys.length === 0
-      ? []
-      : (
-          await db.suggestions.findMany({
-            where: { key: { in: keys }, status: { in: ["waiting", "selected"] } },
-            select: { key: true },
-          })
-        ).map((x) => x.key),
-  );
+  const settled = await settledSuggestionKeys(db, keys);
   // In the order the day's best came in: the first card is the best.
   return rows
-    .filter((m) => live.has(keyOf(m) ?? ""))
+    .filter((m) => !settled.has(keyOf(m) ?? ""))
     .slice(0, SUGGESTIONS_PER_DAY)
     .reverse()
     .map(toChatMessage);
