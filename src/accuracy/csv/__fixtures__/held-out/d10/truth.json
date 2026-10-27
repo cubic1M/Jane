@@ -69,28 +69,36 @@
     {
       "type": "duplicate_charge",
       "about": "3 UNITED 0162345678901 seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE MINISTRIES TITHE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 2598.28
+      "dollars": 2510.78
     },
     {
       "date": "2026-07-31",
-      "dollars": 2061.16
+      "dollars": 1886.16
     },
     {
       "date": "2026-08-31",
-      "dollars": 338.87
+      "dollars": 76.37
     },
     {
       "date": "2026-09-30",
-      "dollars": -1682.75
+      "dollars": -2032.75
     },
     {
       "date": "2026-10-24",
-      "dollars": -2209.4
+      "dollars": -2646.9
     }
   ]
 }

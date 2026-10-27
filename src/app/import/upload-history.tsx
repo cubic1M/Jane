@@ -179,7 +179,7 @@ export function UploadHistory({
       >
         <Confirm
           label="Start over"
-          question={`This deletes your ${plural(totals.accounts, "uploaded account")} and their ${plural(totals.rows, "transaction")}. Linked banks and your settings stay. Then you can upload again from scratch.`}
+          question={`This deletes your ${plural(totals.accounts, "uploaded account")} and ${totals.accounts === 1 ? "its" : "their"} ${plural(totals.rows, "transaction")}. Linked banks and your settings stay. Then you can upload again from scratch.`}
           yes="Yes, delete my uploads"
           run={() => startOverAction()}
         />

@@ -57,7 +57,12 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
     return new FormData(formRef.current ?? undefined);
   }
 
+  // Which button the running action came from: "Reading…" is the preview's, not the import's
+  // (QA: the Preview button said "Reading…" while an import saved).
+  const [busy, setBusy] = useState<"preview" | "import" | null>(null);
+
   function onPreview(event: React.FormEvent<HTMLFormElement>) {
+    setBusy("preview");
     event.preventDefault();
     setError(null);
     startTransition(async () => {
@@ -76,6 +81,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
 
   // Saves the rows and returns at once; the person keeps using Jane while the rest runs.
   function onConfirm() {
+    setBusy("import");
     setError(null);
     setSaved(null);
     startTransition(async () => {
@@ -173,7 +179,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
 
       <div className="flex flex-wrap gap-3">
         <button type="submit" disabled={pending} className={SECONDARY_BUTTON}>
-          {pending && !preview ? "Reading…" : preview ? "Preview again" : "Preview"}
+          {pending && busy === "preview" ? "Reading…" : preview ? "Preview again" : "Preview"}
         </button>
         {ready && (
           <button type="button" onClick={onConfirm} disabled={pending} className={PRIMARY_BUTTON}>

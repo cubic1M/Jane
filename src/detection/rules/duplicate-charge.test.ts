@@ -67,6 +67,9 @@ describe("duplicate_charge", () => {
     }
     const cinema = { description: "AMC THEATRES 2201", merchantName: null };
     none([charge(10, cinema), charge(10, cinema)]);
+    // Three at one price on one day, at a place whose name says nothing: a group's seats.
+    const hall = { description: "GRAND HALL 042", merchantName: null };
+    none([charge(10, hall), charge(10, hall), charge(10, hall)]);
     // A cinema chain whose descriptor is its name alone (CSV bench).
     const amc = { description: "AMC 0517 ONLINE", merchantName: null };
     none([charge(10, amc), charge(10, amc)]);

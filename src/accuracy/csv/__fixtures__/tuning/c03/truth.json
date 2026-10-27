@@ -42,32 +42,40 @@
     {
       "type": "subscription_review",
       "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2721.07
+      "dollars": -2852.17
     },
     {
       "date": "2026-06-30",
-      "dollars": -3090.52
+      "dollars": -3352.72
     },
     {
       "date": "2026-07-31",
-      "dollars": -3802.34
+      "dollars": -4195.64
     },
     {
       "date": "2026-08-31",
-      "dollars": -5531.01
+      "dollars": -6055.41
     },
     {
       "date": "2026-09-30",
-      "dollars": -7178.09
+      "dollars": -7833.59
     },
     {
       "date": "2026-10-24",
-      "dollars": -8966.83
+      "dollars": -9753.43
     }
   ]
 }

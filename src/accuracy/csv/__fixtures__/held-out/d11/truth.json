@@ -55,32 +55,40 @@
     {
       "type": "duplicate_charge",
       "about": "IKEA US 0123 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "KINGS HEAD PUB, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -5332.81
+      "dollars": -5383.31
     },
     {
       "date": "2026-06-30",
-      "dollars": -6008.73
+      "dollars": -6109.73
     },
     {
       "date": "2026-07-31",
-      "dollars": -5617.4
+      "dollars": -5768.9
     },
     {
       "date": "2026-08-31",
-      "dollars": -6179.72
+      "dollars": -6381.72
     },
     {
       "date": "2026-09-30",
-      "dollars": -6512.99
+      "dollars": -6765.49
     },
     {
       "date": "2026-10-24",
-      "dollars": -7221.64
+      "dollars": -7474.14
     }
   ]
 }

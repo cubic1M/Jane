@@ -114,4 +114,34 @@ describe.runIf(url)("a suggestion's message once the suggestion is gone", () => 
     await client.suggestion.updateMany({ where: { userId, key }, data: { status: "gone" } });
     expect(await keys()).not.toContain(key);
   });
+
+  // A news theme's alert is posted straight from the practice scan, with no suggestion row:
+  // the dock kept only cards whose suggestion was live, so the theme card never came up
+  // (e2e theme-alert, 10-27).
+  it("keeps a card that has no suggestion row: in the dock, and open when the chat opens", async () => {
+    const key = "investing:practice_theme_idea:theme_idea:conflict_defense:test";
+    const now = new Date();
+    const message = await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: "News theme: Try $400 of ITA in practice",
+        refs: { suggestion: key, advice: true },
+        actions: [
+          { id: "suggestion.yes", label: "Yes, in practice", kind: "primary" },
+          { id: "snooze", label: "Not now", kind: "secondary" },
+        ],
+        dedupeKey: `themes:${key}`,
+        createdAt: now,
+      },
+    });
+    const later = new Date(now.getTime() + 1000);
+    expect(
+      (await stackedSuggestions(userId, { client, now: later })).map((m) => m.refs.suggestion),
+    ).toContain(key);
+    await closeAnsweredElsewhere(userId, { client });
+    expect((await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } })).status).toBe(
+      "open",
+    );
+  });
 });

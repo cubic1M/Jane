@@ -81,28 +81,36 @@
     {
       "type": "duplicate_charge",
       "about": "3 TICKETMASTER seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 160.74
+      "dollars": 100.34
     },
     {
       "date": "2026-07-31",
-      "dollars": -1142.22
+      "dollars": -1263.02
     },
     {
       "date": "2026-08-31",
-      "dollars": -2571.32
+      "dollars": -2752.52
     },
     {
       "date": "2026-09-30",
-      "dollars": -4868.13
+      "dollars": -5109.73
     },
     {
       "date": "2026-10-24",
-      "dollars": -5733.97
+      "dollars": -6035.97
     }
   ]
 }

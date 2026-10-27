@@ -54,7 +54,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 990584, excess 434727",
+      "about": "cash 950584, excess 369535",
       "perYear": null
     }
   ],
@@ -70,28 +70,36 @@
     {
       "type": "duplicate_charge",
       "about": "OLD NAVY ON-LINE twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ROOT INSURANCE CO, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "KINGS HEAD PUB, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -1257.15
+      "dollars": -1337.15
     },
     {
       "date": "2026-07-31",
-      "dollars": -671.35
+      "dollars": -831.35
     },
     {
       "date": "2026-08-31",
-      "dollars": 1514.76
+      "dollars": 1274.76
     },
     {
       "date": "2026-09-30",
-      "dollars": 3644.44
+      "dollars": 3324.44
     },
     {
       "date": "2026-10-24",
-      "dollars": 5462.44
+      "dollars": 5062.44
     }
   ]
 }

@@ -44,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1313187, excess 724784",
+      "about": "cash 1282987, excess 675564",
       "perYear": null
     }
   ],
@@ -60,28 +60,36 @@
     {
       "type": "duplicate_charge",
       "about": "BEST BUY 00012345 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 1266.61
+      "dollars": 1206.21
     },
     {
       "date": "2026-07-31",
-      "dollars": 3287.53
+      "dollars": 3166.73
     },
     {
       "date": "2026-08-31",
-      "dollars": 4620.22
+      "dollars": 4439.02
     },
     {
       "date": "2026-09-30",
-      "dollars": 6143.61
+      "dollars": 5902.01
     },
     {
       "date": "2026-10-24",
-      "dollars": 7916.6
+      "dollars": 7614.6
     }
   ]
 }

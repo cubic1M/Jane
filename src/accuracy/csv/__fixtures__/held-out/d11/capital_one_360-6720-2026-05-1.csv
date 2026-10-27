@@ -1,7 +1,9 @@
 Account Number,Transaction Description,Transaction Date,Transaction Type,Transaction Amount,Balance
-6720,Withdrawal to MAA RENT 0012 BILL PAY,06/01/26,Debit,1492.58,-698.82
-6720,ATM Withdrawal - 123 MAIN ST SEATTLE,05/28/26,Debit,60.00,793.76
-6720,Debit Card Purchase - TIM HORTONS #8812 SEATTLE WA,05/27/26,Debit,3.49,853.76
+6720,Withdrawal to MAA RENT 0012 BILL PAY,06/01/26,Debit,1492.58,-749.32
+6720,ATM Withdrawal - 123 MAIN ST SEATTLE,05/28/26,Debit,60.00,743.26
+6720,Debit Card Purchase - TIM HORTONS #8812 SEATTLE WA,05/27/26,Debit,3.49,803.26
+6720,Debit Card Purchase - KINGS HEAD PUB SEATTLE WA,05/26/26,Debit,38.00,806.75
+6720,Debit Card Purchase - SUNRISE BAKERY SEATTLE WA,05/25/26,Debit,12.50,844.75
 6720,MONTHLY SERVICE FEE,05/25/26,Debit,12.00,857.25
 6720,Overdraft Fee,05/22/26,Debit,34.00,869.25
 6720,Deposit from INITECH LLC PAYROLL,05/22/26,Credit,1299.35,903.25

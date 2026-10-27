@@ -56,24 +56,32 @@
     {
       "type": "duplicate_charge",
       "about": "ULTA BEAUTY #331 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE MINISTRIES TITHE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -3942.24
+      "dollars": -4029.74
     },
     {
       "date": "2026-08-31",
-      "dollars": -4460.43
+      "dollars": -4635.43
     },
     {
       "date": "2026-09-30",
-      "dollars": -5048.39
+      "dollars": -5310.89
     },
     {
       "date": "2026-10-24",
-      "dollars": -5403.73
+      "dollars": -5753.73
     }
   ]
 }

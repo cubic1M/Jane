@@ -82,24 +82,32 @@
     {
       "type": "duplicate_charge",
       "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "KINGS HEAD PUB, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 917.41
+      "dollars": 866.91
     },
     {
       "date": "2026-08-31",
-      "dollars": -595.62
+      "dollars": -696.62
     },
     {
       "date": "2026-09-30",
-      "dollars": -2132.45
+      "dollars": -2283.95
     },
     {
       "date": "2026-10-24",
-      "dollars": -4291.43
+      "dollars": -4455.43
     }
   ]
 }
