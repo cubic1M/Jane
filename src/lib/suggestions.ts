@@ -26,6 +26,7 @@ import {
 } from "@/planning/suggestion-rank";
 import { DAY_MS, isoDay as dayOf } from "@/lib/dates";
 import { withReadCache } from "@/lib/read-cache";
+import { suggestionCard } from "@/lib/jane-agent/sources/suggestions";
 
 // The nightly scan (spec step 255): every detector for one person, ranked by dollars x
 // confidence x urgency and adjusted by what they have said yes and no to (step 207). Only the
@@ -160,6 +161,58 @@ export function stillChosen<T extends { key: string }>(
   return { keep: chosen.filter((c) => !outdated.includes(c)), outdated };
 }
 
+// Today's picks that still fire take the new figures, and so does the chat message each was
+// offered in (overnight upload QA: idle cash said "$548/yr" from the checking file alone and
+// kept saying it after the card's spending made it $473). Their place and status don't change.
+async function refreshFigures(
+  userId: string,
+  keep: readonly { id: string; key: string }[],
+  found: readonly Suggestion[],
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<void> {
+  const db = scopedFor(userId, client);
+  const byId = new Map(found.map((f) => [f.id, f]));
+  for (const pick of keep) {
+    const s = byId.get(pick.key);
+    if (!s || isIdea(pick.key)) continue;
+    await db.suggestions.updateMany({
+      where: { id: pick.id },
+      data: {
+        title: s.title,
+        headline: s.headline,
+        short: s.short,
+        worthCents: s.worthCents,
+        worthKind: s.worthKind,
+        confidencePercent: s.confidence.percent,
+        confidenceReason: s.confidence.reason,
+        urgency: s.urgency,
+        why: s.why,
+        lastSeenAt: now,
+      },
+    });
+    const body = suggestionCard({
+      headline: s.headline,
+      short: s.short,
+      confidencePercent: s.confidence.percent,
+      confidenceReason: s.confidence.reason,
+    } as OfferedSuggestion).join("\n");
+    const open = await db.janeMessages.findMany({
+      where: { status: "open", refs: { path: ["suggestion"], equals: pick.key } },
+      select: { id: true, body: true, refs: true },
+    });
+    for (const m of open) {
+      if (m.body === body) continue;
+      await db.janeMessages.updateMany({
+        where: { id: m.id, status: "open" },
+        data: {
+          body,
+          refs: { ...(m.refs as Prisma.JsonObject), suggestionWhy: s.why },
+        },
+      });
+    }
+  }
+}
+
 async function scanSuggestionsWork(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -195,6 +248,7 @@ async function scanSuggestionsWork(
         data: { status: "gone" },
       });
     }
+    await refreshFigures(userId, keep, found, { client, now });
     return { fired: found.length, selected: keep.map((c) => c.key) };
   }
 
