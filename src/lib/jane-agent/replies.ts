@@ -585,7 +585,7 @@ export function safeReply(
   asOf: string | null = null,
 ): Reply {
   if (!safe) {
-    return reply(AFFORD_COPY.noChecking, [link("Link a bank", "/connect")]);
+    return reply(AFFORD_COPY.noChecking, [link("Add your accounts", "/connect")]);
   }
   const payday = safe.payday && (asOf ? dateAndDays(safe.payday, asOf) : shortDate(safe.payday));
   return reply(

@@ -7,7 +7,7 @@ import {
 } from "@/config/draft-return";
 import { DEDUCTION_KINDS } from "@/config/prior-return";
 import { FILING_STATUSES } from "@/config/tax";
-import { parseMoneyToCents } from "@/lib/money";
+import { parseMoneyToCents, centsToInput } from "@/lib/money";
 import { reviewReturn, type Fields as PriorFields } from "@/planning/prior-return";
 import type { Child } from "@/planning/family-taxes";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
@@ -322,7 +322,6 @@ export function demoDraft(known: Known): { fields: DraftFields; planted: string[
     federalEstimatedPaidCents: estimated,
   };
   const e = estimateTaxes(asDrafted);
-  const money = (cents: number) => (cents / 100).toFixed(2);
   // The credits the software would claim on its own (not planted mistakes).
   const credits = reviewReturn({
     year: known.year,
@@ -339,28 +338,28 @@ export function demoDraft(known: Known): { fields: DraftFields; planted: string[
     careCents: known.careCents,
     children: known.children,
   }).findings;
-  const credit = (key: string) => money(credits.find((f) => f.key === key)?.savesCents ?? 0);
+  const credit = (key: string) => centsToInput(credits.find((f) => f.key === key)?.savesCents ?? 0);
   return {
     fields: {
       taxYear: String(known.year),
       filingStatus: i.filingStatus,
-      wages: money(known.w2WagesCents ?? i.income.wagesCents),
-      interest: money(interest),
-      dividends: money(dividends),
-      capitalGains: money(gains),
-      businessIncome: money(i.income.selfEmploymentCents),
-      agi: money(e.agiCents),
+      wages: centsToInput(known.w2WagesCents ?? i.income.wagesCents),
+      interest: centsToInput(interest),
+      dividends: centsToInput(dividends),
+      capitalGains: centsToInput(gains),
+      businessIncome: centsToInput(i.income.selfEmploymentCents),
+      agi: centsToInput(e.agiCents),
       deductionKind: e.deduction.kind,
-      deduction: money(
+      deduction: centsToInput(
         e.deduction.kind === "itemized" ? e.deduction.itemizedCents : e.deduction.standardCents,
       ),
-      studentLoanInterest: money(student),
+      studentLoanInterest: centsToInput(student),
       educationCredit: credit("education_credit"),
       dependentCareCredit: credit("dependent_care_credit"),
-      totalTax: money(e.totalTaxCents),
-      federalWithheld: money(withheld),
-      estimatedPaid: money(estimated),
-      refund: money(withheld + estimated - e.totalTaxCents),
+      totalTax: centsToInput(e.totalTaxCents),
+      federalWithheld: centsToInput(withheld),
+      estimatedPaid: centsToInput(estimated),
+      refund: centsToInput(withheld + estimated - e.totalTaxCents),
     },
     planted,
   };

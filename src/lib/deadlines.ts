@@ -33,6 +33,7 @@ import { listPolicies, nextRenewal } from "@/lib/insurance/policies";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { priceRiseDeadlines } from "@/lib/price-rises";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
+import { DEBT_ACCOUNT_SELECT } from "@/insights/loans";
 
 // Deadlines (spec step 71): loads each source's data, keeps the deadlines the person types
 // in, and raises the deadline_soon reminders (src/insights/deadlines.ts decides which).
@@ -72,28 +73,7 @@ export const transactionDeadlines: DeadlineSource = async (userId, options) =>
 export const loanDeadlines: DeadlineSource = async (userId, { client, now }) => {
   const accounts = await scopedFor(userId, client).accounts.findMany({
     where: { type: { in: ["credit", "loan"] } },
-    select: {
-      id: true,
-      name: true,
-      mask: true,
-      type: true,
-      subtype: true,
-      currentBalanceCents: true,
-      liability: {
-        select: {
-          aprBps: true,
-          rateType: true,
-          minimumPaymentCents: true,
-          nextPaymentDueDate: true,
-          payoffDate: true,
-          isOverdue: true,
-          pastDueCents: true,
-          originationPrincipalCents: true,
-          ytdInterestPaidCents: true,
-          description: true,
-        },
-      },
-    },
+    select: DEBT_ACCOUNT_SELECT,
   });
   return paymentDeadlines(accounts, isoDate(now));
 };

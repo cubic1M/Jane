@@ -1,8 +1,8 @@
 import { SHARED_BILL_PRIMARY, SPLIT_INCOME_DAYS, WAGE_CATEGORIES } from "@/config/money-for-two";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { HALF, incomeSplitMatters, partnerShareBps, twoEarners } from "@/planning/money-for-two";
 import { type Detector, suggestionId } from "./contract";
-import { dollars, evidence, tx } from "./helpers";
+import { evidence, tx } from "./helpers";
 
 // Money for two (spec step 242), brought to the person unasked: two people's pay lands in the
 // accounts Jane sees, it differs a lot, and they haven't chosen how shared bills split. Pure;
@@ -48,7 +48,7 @@ const billSplit: Detector = {
       capability: "two",
       topic: "bill_split",
       title: "Choose how you two split shared bills: half each, or by what each earns",
-      headline: `Set bills to ${first}/${100 - first} by income: ${dollars(moves)}/yr`,
+      headline: `Set bills to ${first}/${100 - first} by income: ${formatWholeDollars(moves)}/yr`,
       short: `${nice(earners.first.name)} pays ${first}% of what you two earn; bills now split half each.`,
       worthCents: moves,
       worthKind: "risk",

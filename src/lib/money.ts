@@ -24,6 +24,12 @@ export function parseMoneyToCents(input: string): number | null {
   return (negative || match[1] ? -total : total) || 0;
 }
 
+// Cents as a form field's value, the way parseMoneyToCents reads it back: 123456 is "1234.56";
+// nothing known is an empty field.
+export function centsToInput(cents: number | null | undefined): string {
+  return cents === null || cents === undefined ? "" : (cents / 100).toFixed(2);
+}
+
 export function formatCents(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }

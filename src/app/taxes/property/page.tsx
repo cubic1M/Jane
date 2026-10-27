@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
-import { formatCents } from "@/lib/money";
+import { formatCents, centsToInput } from "@/lib/money";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { requireUser } from "@/lib/session";
 import { AnswersForm, IntentButton } from "./forms";
@@ -15,8 +15,6 @@ import { LoadingBar } from "@/components/loading-bar";
 
 const LINK = "font-medium text-emerald-700 underline";
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-
-const dollars = (c: number | null | undefined) => (c == null ? "" : (c / 100).toFixed(2));
 
 async function Content() {
   const user = await requireUser();
@@ -160,8 +158,8 @@ async function Content() {
         </h2>
         <AnswersForm
           facts={{
-            market: v.figuresFrom === "you" ? dollars(v.marketCents) : "",
-            assessed: v.figuresFrom === "you" ? dollars(v.assessedCents) : "",
+            market: v.figuresFrom === "you" ? centsToInput(v.marketCents) : "",
+            assessed: v.figuresFrom === "you" ? centsToInput(v.assessedCents) : "",
             assessedYear: v.figuresFrom === "you" && v.assessedYear ? String(v.assessedYear) : "",
             noticeOn: "",
             age: v.facts.age == null ? "" : String(v.facts.age),

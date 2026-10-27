@@ -32,6 +32,6 @@ describe("net worth in the chat", () => {
       cryptoCents: 0,
       missing: [],
     } as never);
-    expect(reply.body).toMatch(/link an account/);
+    expect(reply.body).toMatch(/add your accounts/);
   });
 });

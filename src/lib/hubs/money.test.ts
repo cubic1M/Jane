@@ -149,7 +149,7 @@ describe("moneyTiles", () => {
   it("has a friendly empty state for every tile, and no investments tile without any", () => {
     const t = byLabel(EMPTY);
     expect(t["Investments"]).toBeUndefined();
-    expect(t["Net worth"]).toMatchObject({ value: null, status: "Link a bank to see it" });
+    expect(t["Net worth"]).toMatchObject({ value: null, status: "Add your accounts to see it" });
     expect(t["Things you own"]).toMatchObject({ value: null, href: "/things" });
     expect(t["Goals"]).toMatchObject({ value: null, status: "Set one to save toward" });
     expect(t["Spending"]).toMatchObject({ value: null });

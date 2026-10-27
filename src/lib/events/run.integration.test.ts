@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { climbingPrices } from "@/lib/paper/__fixtures__/prices";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -12,9 +13,7 @@ vi.mock("@/lib/audit", () => ({
 import { EVENT_HOLD_DAYS, EVENT_TILT_BY_LEVEL } from "@/config/events";
 import { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
-import type { Bar } from "@/lib/market/types";
 import { loadPaperView, startPaperAccount } from "@/lib/paper/account";
-import type { PaperPrices } from "@/lib/paper/prices";
 import type { Fetcher } from "./gdelt";
 import { EventsError, collectEvents, runEventOverlay, setEventsOverlay } from "./run";
 
@@ -28,29 +27,6 @@ import { EventsError, collectEvents, runEventOverlay, setEventsOverlay } from ".
 const url = process.env.TEST_DATABASE_URL;
 // Tuesday 2026-10-20, after the close.
 const NOW = new Date("2026-10-20T22:30:00Z");
-
-// Weekday closes for any ticker, the same for the same day whatever range is asked for: a steady
-// climb from a price set by its name, times `bump`.
-const fakePrices = (bump: (ticker: string, date: string) => number = () => 1): PaperPrices => ({
-  name: "sample",
-  real: false,
-  closes: async (ticker: string, from: string, to: string) => {
-    const out: Bar[] = [];
-    const base = 5_000 + [...ticker].reduce((a, c) => a + c.charCodeAt(0), 0) * 20;
-    for (
-      let d = Date.parse(`${from}T00:00:00Z`);
-      d <= Date.parse(`${to}T00:00:00Z`);
-      d += 86_400_000
-    ) {
-      const day = new Date(d).getUTCDay();
-      if (day === 0 || day === 6) continue;
-      const date = new Date(d).toISOString().slice(0, 10);
-      const n = Math.round(d / 86_400_000) - 20_000;
-      out.push({ date, closeCents: Math.round(base * 1.0004 ** n * bump(ticker, date)) });
-    }
-    return out;
-  },
-});
 
 // Market events are shared by every test file: this one keeps to 2026, and clears only those.
 const ownYear = () => ({
@@ -107,7 +83,7 @@ describe.runIf(url)("the events overlay on the paper account", () => {
     await client.$disconnect();
   });
 
-  const startedOn = async (prices = fakePrices()) => {
+  const startedOn = async (prices = climbingPrices()) => {
     const id = await person("demo");
     await startPaperAccount(id, 1_000_000, {
       client,
@@ -122,7 +98,9 @@ describe.runIf(url)("the events overlay on the paper account", () => {
     await event({ key, type: "chip_boom", date: "2026-10-19", knownAt: "2026-10-20T00:15:00Z" });
     // Never touched: on, so it acts on the event at the latest close.
     const on = await startedOn();
-    expect((await runEventOverlay(on, { client, now: NOW, prices: fakePrices() })).ran).toBe(true);
+    expect((await runEventOverlay(on, { client, now: NOW, prices: climbingPrices() })).ran).toBe(
+      true,
+    );
     expect(
       await client.paperEventOverlay.findFirstOrThrow({ where: { userId: on } }),
     ).toMatchObject({ on: true });
@@ -130,14 +108,14 @@ describe.runIf(url)("the events overlay on the paper account", () => {
     // Switched off: nothing.
     const off = await startedOn();
     await setEventsOverlay(off, false, { client, now: new Date("2026-10-19T15:00:00Z") });
-    expect((await runEventOverlay(off, { client, now: NOW, prices: fakePrices() })).ran).toBe(
+    expect((await runEventOverlay(off, { client, now: NOW, prices: climbingPrices() })).ran).toBe(
       false,
     );
     expect(await client.paperEventLog.count({ where: { userId: off } })).toBe(0);
   });
 
   it("switched on, tilts the account with paper trades on the first close after the event, logged with it", async () => {
-    const prices = fakePrices();
+    const prices = climbingPrices();
     const id = await startedOn(prices);
     await setEventsOverlay(id, true, { client, now: new Date("2026-10-19T15:00:00Z") });
     expect(logAudit).toHaveBeenCalledWith(
@@ -181,7 +159,7 @@ describe.runIf(url)("the events overlay on the paper account", () => {
   });
 
   it("never acts on an event before it was known", async () => {
-    const prices = fakePrices();
+    const prices = climbingPrices();
     const id = await startedOn(prices);
     await setEventsOverlay(id, true, { client, now: new Date("2026-10-19T15:00:00Z") });
     // Known only after this run.
@@ -196,7 +174,7 @@ describe.runIf(url)("the events overlay on the paper account", () => {
   });
 
   it("catches up missed closes, each at its own day's price, and undoes the tilt after its holding time", async () => {
-    const prices = fakePrices();
+    const prices = climbingPrices();
     const id = await startedOn(prices);
     await setEventsOverlay(id, true, { client, now: new Date("2026-10-13T15:00:00Z") });
     await event({
@@ -237,7 +215,7 @@ describe.runIf(url)("the events overlay on the paper account", () => {
   it("gets out at the stop when the fund falls", async () => {
     const drop = (ticker: string, date: string) =>
       ticker === "SMH" && date >= "2026-10-22" ? 0.85 : 1;
-    const id = await startedOn(fakePrices());
+    const id = await startedOn(climbingPrices());
     await setEventsOverlay(id, true, { client, now: new Date("2026-10-19T15:00:00Z") });
     await event({
       key: uniqueKey("gdelt:chip_boom:2026-10-19"),
@@ -245,11 +223,11 @@ describe.runIf(url)("the events overlay on the paper account", () => {
       date: "2026-10-19",
       knownAt: "2026-10-20T00:15:00Z",
     });
-    await runEventOverlay(id, { client, now: NOW, prices: fakePrices(drop) });
+    await runEventOverlay(id, { client, now: NOW, prices: climbingPrices(drop) });
     await runEventOverlay(id, {
       client,
       now: new Date("2026-10-22T22:30:00Z"),
-      prices: fakePrices(drop),
+      prices: climbingPrices(drop),
     });
     const stop = await client.paperEventLog.findFirstOrThrow({
       where: { userId: id, kind: "stop" },
@@ -258,7 +236,7 @@ describe.runIf(url)("the events overlay on the paper account", () => {
   });
 
   it("ignores news from before it was switched on", async () => {
-    const prices = fakePrices();
+    const prices = climbingPrices();
     const id = await startedOn(prices);
     await event({
       key: uniqueKey("gdelt:chip_boom:2026-10-05"),
@@ -274,7 +252,9 @@ describe.runIf(url)("the events overlay on the paper account", () => {
   it("never runs for a real account", async () => {
     const id = await person("real");
     await expect(setEventsOverlay(id, true, { client, now: NOW })).rejects.toThrow(EventsError);
-    expect((await runEventOverlay(id, { client, now: NOW, prices: fakePrices() })).ran).toBe(false);
+    expect((await runEventOverlay(id, { client, now: NOW, prices: climbingPrices() })).ran).toBe(
+      false,
+    );
   });
 
   it("stores the day's events from the feeds, once, with the time each became public", async () => {
@@ -315,7 +295,7 @@ describe.runIf(url)("the events overlay on the paper account", () => {
       client,
       now,
       fetcher,
-      prices: fakePrices(),
+      prices: climbingPrices(),
       spacingMs: 0,
     });
     expect(report.failed).toEqual([]);
@@ -331,7 +311,8 @@ describe.runIf(url)("the events overlay on the paper account", () => {
     expect(stored.map((e) => e.key)).toContain("fed:fed_hike:2026-09-16");
     // Again: nothing new.
     expect(
-      (await collectEvents({ client, now, fetcher, prices: fakePrices(), spacingMs: 0 })).stored,
+      (await collectEvents({ client, now, fetcher, prices: climbingPrices(), spacingMs: 0 }))
+        .stored,
     ).toBe(0);
   });
 });

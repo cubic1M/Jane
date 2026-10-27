@@ -146,8 +146,8 @@ export function wholePictureReply(
 ): Reply {
   if (!snapshot) {
     return {
-      body: "I can't see your money yet. Link a bank or import a CSV, and I'll tell you how you're doing across everything.",
-      actions: [{ id: "open", label: "Link a bank", kind: "link", href: "/connect" }],
+      body: "I can't see your money yet. Upload your bank statements or link a bank, and I'll tell you how you're doing across everything.",
+      actions: [{ id: "open", label: "Add your accounts", kind: "link", href: "/connect" }],
       refs: {},
     };
   }

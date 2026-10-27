@@ -6,6 +6,7 @@ import {
 } from "@/config/student-loans";
 import { formatCents } from "@/lib/money";
 import { addMonths } from "@/lib/dates";
+import { formatRate } from "@/lib/percent";
 
 // Student loans, the long game (spec step 225). Pure: Public Service Loan Forgiveness counted
 // month by month, the dates to certify an employer and recertify income, the tax on forgiven
@@ -102,7 +103,7 @@ export function refiGuide(input: {
       return {
         verdict: "consider",
         lost: [],
-        text: `This loan is private, so it has no federal protections to lose. ${offer.lender}'s ${(offer.aprBps / 100).toFixed(2)}% is ${(drop / 100).toFixed(2)} points lower and saves about ${formatCents(offer.savingCents)} over the same months: worth considering.`,
+        text: `This loan is private, so it has no federal protections to lose. ${offer.lender}'s ${formatRate(offer.aprBps)} is ${(drop / 100).toFixed(2)} points lower and saves about ${formatCents(offer.savingCents)} over the same months: worth considering.`,
       };
     }
     return {
@@ -124,6 +125,6 @@ export function refiGuide(input: {
   return {
     verdict: offer && drop >= LONG_GAME.refiMinDropBps ? "weigh" : "keep",
     lost,
-    text: `Refinancing this federal loan with a private lender is permanent and gives up ${lost.join("; ")}.${offer && drop >= LONG_GAME.refiMinDropBps ? ` ${offer.lender}'s ${(offer.aprBps / 100).toFixed(2)}% would save about ${formatCents(offer.savingCents)}; weigh that against what you'd lose.` : ""}`,
+    text: `Refinancing this federal loan with a private lender is permanent and gives up ${lost.join("; ")}.${offer && drop >= LONG_GAME.refiMinDropBps ? ` ${offer.lender}'s ${formatRate(offer.aprBps)} would save about ${formatCents(offer.savingCents)}; weigh that against what you'd lose.` : ""}`,
   };
 }

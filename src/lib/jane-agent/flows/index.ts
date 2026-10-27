@@ -9,7 +9,7 @@ import { comparisonFor } from "@/lib/compare";
 import { optionLabel } from "@/planning/compare";
 import { scopedFor } from "@/lib/db-scoped";
 import { addGoal } from "@/lib/goals";
-import { formatCents } from "@/lib/money";
+import { formatCents, centsToInput } from "@/lib/money";
 import { findingPick, findingYes } from "../actions/finding";
 import type { ActionContext } from "../actions/handler";
 
@@ -83,7 +83,7 @@ const budget: FlowDef<BudgetData> = {
   ],
   async finish(answers, _, { userId, client }) {
     const cents = Number(answers.amount);
-    await setBudget(userId, answers.category, (cents / 100).toFixed(2), { client });
+    await setBudget(userId, answers.category, centsToInput(cents), { client });
     return `Done. Your ${answers.category} budget is ${formatCents(cents)} a month, starting this month. I'll tell you here if you get close to it.`;
   },
 };
@@ -135,7 +135,7 @@ const goal: FlowDef<null> = {
       userId,
       {
         name,
-        target: (cents / 100).toFixed(2),
+        target: centsToInput(cents),
         targetDate: `${month}-01`,
         accountId: "",
         saved: "",

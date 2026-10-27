@@ -1,7 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { dollars, factEvidence } from "./helpers";
+import { factEvidence } from "./helpers";
 
 // Every figure explained, and correctable (spec step 239), brought to the person unasked: a
 // headline figure resting on something Jane can't know on its own. Pure; see ./contract.ts.
@@ -26,7 +26,7 @@ const businessIncome: Detector = {
       capability: "figures",
       topic: "figure_check",
       title: "Tell me what you pay yourself, so your income figure is right",
-      headline: `Check your pay: ${dollars(overstated)}/mo may not be pay`,
+      headline: `Check your pay: ${formatWholeDollars(overstated)}/mo may not be pay`,
       short: `I count ${formatCents(deposits)} a month of business deposits as your income.`,
       worthCents: overstated,
       worthKind: "risk",
