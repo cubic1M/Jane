@@ -1,6 +1,7 @@
 import { formatCents } from "@/lib/money";
 import type { RetirementAccountsView } from "@/lib/investments/retirement-accounts";
 import type { MessageAction } from "../types";
+import { formatPercentTenths } from "@/lib/percent";
 
 // Retirement accounts used fully in the chat (spec step 210): shared words and buttons.
 
@@ -11,7 +12,6 @@ export const RA_LINK: MessageAction = {
   href: "/investments/retirement-accounts",
 };
 
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 type View = Pick<
   RetirementAccountsView,
   "match" | "limits" | "roth" | "ira" | "iraAllowedCents" | "pending"
@@ -19,7 +19,7 @@ type View = Pick<
 
 export const raMatchLine = (v: View) =>
   v.match && v.match.missedCents > 0
-    ? `You're putting in about ${pct(v.match.employeeRate)} of pay and your employer matches up to ${pct(v.match.fullMatchRate)}: you're leaving about ${formatCents(v.match.missedCents)} a year of their money on the table. Raising to ${pct(v.match.fullMatchRate)} of pay (about ${formatCents(v.match.extraEmployeeCents)} more a year from you) gets all of it.`
+    ? `You're putting in about ${formatPercentTenths(v.match.employeeRate)} of pay and your employer matches up to ${formatPercentTenths(v.match.fullMatchRate)}: you're leaving about ${formatCents(v.match.missedCents)} a year of their money on the table. Raising to ${formatPercentTenths(v.match.fullMatchRate)} of pay (about ${formatCents(v.match.extraEmployeeCents)} more a year from you) gets all of it.`
     : null;
 
 export const limitsLine = (v: View) =>
@@ -42,14 +42,14 @@ export const rothLine = (v: View) => {
         : v.roth.choice === "mix"
           ? "A mix of Roth and traditional suits your bracket."
           : "";
-  return `${choice} ${a?.kind === "partial" ? `You're in the Roth IRA phase-out: about ${pct(a.allowedShare)} of the limit can go in directly.` : ""}`.trim();
+  return `${choice} ${a?.kind === "partial" ? `You're in the Roth IRA phase-out: about ${formatPercentTenths(a.allowedShare)} of the limit can go in directly.` : ""}`.trim();
 };
 
 export const matchButton = (v: View): MessageAction | null =>
   v.match && v.match.missedCents > 0 && !v.pending
     ? {
         id: "retire.match",
-        label: `Raise to ${pct(v.match.fullMatchRate)} of pay`,
+        label: `Raise to ${formatPercentTenths(v.match.fullMatchRate)} of pay`,
         kind: "primary",
       }
     : null;

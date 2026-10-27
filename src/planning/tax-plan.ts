@@ -8,6 +8,7 @@ import {
 } from "@/config/tax-plan";
 import type { SavingKey } from "@/planning/tax-savings";
 import { addDays } from "@/lib/dates";
+import { formatWholeDollars } from "@/lib/money";
 
 // The year-round tax plan (spec step 167). Pure. From what Jane knows about the tax year
 // (ways to pay less from step 122, estimated payments from step 123, a loss worth
@@ -48,8 +49,6 @@ export type PlanMove = {
 };
 
 const dateOf = (year: number, d: PlanDate) => `${year + (d.nextYear ? 1 : 0)}-${d.md}`;
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const shortDay = (date: string) =>
   new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "short",
@@ -91,7 +90,8 @@ export function taxPlan(f: PlanFacts): PlanMove[] {
     });
   };
   const saving = (key: SavingKey) => f.savings.find((s) => s.key === key);
-  const saves = (cents: number) => (cents > 0 ? ` It could save about ${dollars(cents)}.` : "");
+  const saves = (cents: number) =>
+    cents > 0 ? ` It could save about ${formatWholeDollars(cents)}.` : "";
 
   const retirement = saving("retirement");
   if (retirement) {
@@ -128,7 +128,7 @@ export function taxPlan(f: PlanFacts): PlanMove[] {
     if (payment) {
       add(
         key,
-        `About ${dollars(payment.cents)} for ${f.year}, by ${shortDay(due)}.`,
+        `About ${formatWholeDollars(payment.cents)} for ${f.year}, by ${shortDay(due)}.`,
         payment.cents,
       );
     }
@@ -137,14 +137,14 @@ export function taxPlan(f: PlanFacts): PlanMove[] {
   if (f.harvest) {
     add(
       "harvest",
-      `${f.harvest.name} is down about ${dollars(f.harvest.lossCents)}. A sale by December 31 counts for ${f.year}; buying it back within 30 days is a wash sale.`,
+      `${f.harvest.name} is down about ${formatWholeDollars(f.harvest.lossCents)}. A sale by December 31 counts for ${f.year}; buying it back within 30 days is a wash sale.`,
       f.harvest.lossCents,
     );
   }
   if (f.donationsCents > 0 || saving("bunch_gifts") || saving("itemize")) {
     add(
       "giving",
-      `Gifts count in the year they're made${f.donationsCents > 0 ? `: ${dollars(f.donationsCents)} so far in ${f.year}` : ""}. Keep the receipts.`,
+      `Gifts count in the year they're made${f.donationsCents > 0 ? `: ${formatWholeDollars(f.donationsCents)} so far in ${f.year}` : ""}. Keep the receipts.`,
       null,
     );
   }

@@ -22,6 +22,7 @@ import {
   type Prices,
 } from "./practice-autopilot";
 import type { LedgerState } from "./practice-ledger";
+import { formatPercentTenths } from "@/lib/percent";
 
 // Following a tested strategy in the practice portfolio (Phase AW, Stage A): the catalog's own
 // rule (src/planning/catalog/strategies.ts, the code the research replayed) decides at the
@@ -120,8 +121,6 @@ const outside = (x: string) =>
   CRYPTO_TICKERS.includes(x) ||
   x === DAY_TRADE_TICKER;
 
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
-
 // The trades that bring the portfolio to the targets: whatever of the mix's or the strategy's
 // funds isn't a target is sold; each target more than CATALOG_FOLLOW_BAND off is traded back,
 // sells first, buys from the cash they free; within the hard limits (one fund at most
@@ -176,7 +175,7 @@ export function planTargets(input: {
       rule: "catalog_follow",
       reason:
         g.ticker in targets
-          ? `Following ${input.label}: ${g.ticker} back down to ${pct(targets[g.ticker])} of the portfolio, as its rule said at the close on ${input.signalDate}.`
+          ? `Following ${input.label}: ${g.ticker} back down to ${formatPercentTenths(targets[g.ticker])} of the portfolio, as its rule said at the close on ${input.signalDate}.`
           : `Following ${input.label}: out of ${g.ticker}, which its rule doesn't hold this month (decided at the close on ${input.signalDate}).`,
     });
     cash += amount;
@@ -190,7 +189,7 @@ export function planTargets(input: {
       side: "buy",
       amountCents: amount,
       rule: "catalog_follow",
-      reason: `Following ${input.label}: ${g.ticker} up to ${pct(targets[g.ticker])} of the portfolio, as its rule said at the close on ${input.signalDate}.`,
+      reason: `Following ${input.label}: ${g.ticker} up to ${formatPercentTenths(targets[g.ticker])} of the portfolio, as its rule said at the close on ${input.signalDate}.`,
     });
     cash -= amount;
   }

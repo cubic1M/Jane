@@ -10,6 +10,7 @@ import type { FilingStatus } from "@/config/tax";
 import { NO_INCOME, estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare, phaseOut } from "@/planning/tax-savings";
 import { residentTax } from "@/planning/tax-states";
+import { formatWholeDollars } from "@/lib/money";
 
 // Family taxes (spec step 169). Pure. Each choice is shown as both sides' tax from the
 // estimate engine: claiming the children or not, a dependent care FSA or the credit, the
@@ -193,22 +194,22 @@ export function careChoice(input: {
 
   return choice("care", "Childcare: a dependent care FSA or the credit", [
     {
-      label: `Pay ${dollars(fsa)} of care from a dependent care FSA`,
+      label: `Pay ${formatWholeDollars(fsa)} of care from a dependent care FSA`,
       taxCents: withFsa,
       eligible,
       why: eligible
         ? [
-            `Up to ${dollars(fsaLimit)} a year skips income and payroll tax (the figure counts the payroll tax saved).`,
+            `Up to ${formatWholeDollars(fsaLimit)} a year skips income and payroll tax (the figure counts the payroll tax saved).`,
           ]
         : why,
     },
     {
-      label: `Claim the credit on ${dollars(Math.min(input.careCents, costLimit))} of care`,
+      label: `Claim the credit on ${formatWholeDollars(Math.min(input.careCents, costLimit))} of care`,
       taxCents: withCredit,
       eligible,
       why: eligible
         ? [
-            `${Math.round(careShare(agi, jointly) * 100)}% of up to ${dollars(costLimit)} of care at your income.`,
+            `${Math.round(careShare(agi, jointly) * 100)}% of up to ${formatWholeDollars(costLimit)} of care at your income.`,
           ]
         : why,
     },
@@ -255,7 +256,7 @@ export function educationChoice(input: {
   const llcWhy = llcRules(status);
   return choice("education", "Tuition: which education credit fits", [
     {
-      label: `American Opportunity Credit (${dollars(aotc)})`,
+      label: `American Opportunity Credit (${formatWholeDollars(aotc)})`,
       taxCents: withAotc,
       eligible: aotcWhy.length === 0,
       why:
@@ -264,7 +265,7 @@ export function educationChoice(input: {
           : ["100% of the first $2,000 of tuition and 25% of the next $2,000; 40% is refundable."],
     },
     {
-      label: `Lifetime Learning Credit (${dollars(llc)})`,
+      label: `Lifetime Learning Credit (${formatWholeDollars(llc)})`,
       taxCents: withLlc,
       eligible: llcWhy.length === 0,
       why: llcWhy.length > 0 ? llcWhy : ["20% of up to $10,000 of tuition, any year of study."],
@@ -299,15 +300,15 @@ export function plan529Choice(input: {
     : 0;
   const withIt = fed + Math.max(0, stateTax(agi - deduction) - credit);
   const without = fed + stateTax(agi);
-  return choice("plan529", `Saving ${dollars(input.contributionCents)} in a 529`, [
+  return choice("plan529", `Saving ${formatWholeDollars(input.contributionCents)} in a 529`, [
     {
       label: rule.anyPlan ? "In any state's 529 plan" : "In your state's own 529 plan",
       taxCents: withIt,
       eligible: true,
       why: [
         credit > 0
-          ? `Your state gives a credit of ${dollars(credit)}.`
-          : `Your state lets you deduct up to ${dollars(cap)}.`,
+          ? `Your state gives a credit of ${formatWholeDollars(credit)}.`
+          : `Your state lets you deduct up to ${formatWholeDollars(cap)}.`,
       ],
     },
     {
@@ -399,9 +400,6 @@ export function filingChoice(input: {
     },
   ]);
 }
-
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 // Choices worth bringing up in the chat: a better side, saving enough.
 export const worthSaying = (c: FamilyChoice) =>

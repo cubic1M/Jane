@@ -5,6 +5,7 @@ import { AUTOPILOT_LIMITS } from "@/config/portfolios";
 import { SCAN_KINDS, SCAN_LABELS, type ScanKind } from "@/config/practice-scan";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import { formatPercent as pct } from "@/lib/percent";
+import { formatWholeDollars } from "@/lib/money";
 
 // The practice portfolio's cards in the chat (spec step 296, Phase AW, Stage A), in the chat
 // lane's floating-card shape (src/lib/floating-cards.ts). Pure. Each card is short (what, how
@@ -38,8 +39,6 @@ export const WHAT_YES_DOES =
 const YES = "Pause switch";
 const NOT_NOW = "Got it";
 
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const exact = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -117,8 +116,8 @@ export function tradesCard(day: string, level: RiskLevel, trades: TradeRow[]): F
   const first = placed.some((t) => t.rule === "model_buy");
   const name = RISK_LEVELS[level].label;
   const headline = first
-    ? `Bought the ${name} model for ${dollars(bought)}`
-    : `Rebalanced ${dollars(Math.max(bought, sold))} back to your mix`;
+    ? `Bought the ${name} model for ${formatWholeDollars(bought)}`
+    : `Rebalanced ${formatWholeDollars(Math.max(bought, sold))} back to your mix`;
   const why = first
     ? `Jane bought the model portfolio for your level (${name}) with practice money, in ${placed.length} trades.`
     : `Your mix had drifted from the ${name} model, so Jane moved it back in ${placed.length} trades.`;

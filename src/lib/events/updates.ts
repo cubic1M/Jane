@@ -7,6 +7,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { checkGuardrails } from "@/lib/guardrails";
 import { revertTrade } from "@/lib/paper/account";
 import type { EventSlice } from "@/planning/event-overlay";
+import { formatPercentTenths } from "@/lib/percent";
 
 // The events overlay's updates in the trade pop-up (src/components/trade-popup.tsx): each trade it
 // placed by itself, shown once, with OK (seen) and Revert (its paper trades taken back, and the
@@ -26,8 +27,6 @@ export type EventUpdate = {
   at: string;
 };
 
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
-
 export function updateHeadline(l: {
   kind: string;
   ticker: string | null;
@@ -37,8 +36,8 @@ export function updateHeadline(l: {
   const ticker = l.ticker ?? "a fund";
   if (l.kind === "enter")
     return l.side === "trim"
-      ? `Events: moved ${pct(l.tilt ?? 0)} out of ${ticker} to cash`
-      : `Events: added ${pct(l.tilt ?? 0)} in ${ticker}`;
+      ? `Events: moved ${formatPercentTenths(l.tilt ?? 0)} out of ${ticker} to cash`
+      : `Events: added ${formatPercentTenths(l.tilt ?? 0)} in ${ticker}`;
   if (l.kind === "stop") return `Events: ${ticker} slice out at its stop`;
   return `Events: ${ticker} slice undone after its time`;
 }

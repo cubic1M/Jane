@@ -13,6 +13,7 @@ import {
   WITHDRAWAL_RATE,
 } from "@/config/retirement";
 import { formatWholeDollars as dollars } from "@/lib/money";
+import { formatPercentTenths } from "@/lib/percent";
 
 // On track for retirement? (spec step 132, demo advice). From the person's retirement
 // balances and what goes in each year, what they could have at 67 as a range in today's
@@ -98,8 +99,6 @@ export function rothOrTraditional(payCents: number | null): RetirementPlan["roth
   return "mix";
 }
 
-const pct = (rate: number) => `${Math.round(rate * 1000) / 10}%`;
-
 export function retirementPlan(input: RetirementInput): RetirementPlan {
   const years = Math.max(0, RETIREMENT_AGE - input.age);
   const yearly = input.employeeCents + input.employerCents;
@@ -137,8 +136,8 @@ export function retirementPlan(input: RetirementInput): RetirementPlan {
   if (match && !match.captured && plan) {
     const extra = Math.round((match.fullMatchRate - match.employeeRate) * plan.payCents);
     changes.push({
-      what: `Raise your 401(k) contribution from ${pct(match.employeeRate)} to ${pct(match.fullMatchRate)} of your pay.`,
-      why: `Your employer adds ${Math.round(plan.matchRate * 100)}% of what you put in, on up to ${pct(plan.matchUpTo)} of your pay. At ${pct(match.employeeRate)} you leave about ${dollars(match.missedCents)} a year of their money on the table.`,
+      what: `Raise your 401(k) contribution from ${formatPercentTenths(match.employeeRate)} to ${formatPercentTenths(match.fullMatchRate)} of your pay.`,
+      why: `Your employer adds ${Math.round(plan.matchRate * 100)}% of what you put in, on up to ${formatPercentTenths(plan.matchUpTo)} of your pay. At ${formatPercentTenths(match.employeeRate)} you leave about ${dollars(match.missedCents)} a year of their money on the table.`,
       extraYearlyCents: extra,
       figures: [match.missedCents, extra],
     });
@@ -157,7 +156,7 @@ export function retirementPlan(input: RetirementInput): RetirementPlan {
     const step = Math.min(needed, room, Math.round(plan.payCents * MAX_SUGGESTED_RAISE));
     if (step >= 100_00) {
       changes.push({
-        what: `Put in about ${dollars(step)} more a year (${pct(step / plan.payCents)} of your pay).`,
+        what: `Put in about ${dollars(step)} more a year (${formatPercentTenths(step / plan.payCents)} of your pay).`,
         why:
           step >= needed
             ? `That would get the low end of your range to the target of ${dollars(targetCents)} by ${RETIREMENT_AGE}.`
