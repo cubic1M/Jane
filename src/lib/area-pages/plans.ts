@@ -4,6 +4,7 @@ import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, type AreaItem, type AreaTree } from "./tree";
+import { plural } from "@/lib/plural";
 
 // The Plans & goals page (/ahead) as a tree (docs/design/area-pages.md): Plans & goals → its
 // branches (dates coming up, goals, net worth, big decisions, life events, looking back, bills
@@ -67,7 +68,6 @@ const monthLabel = (day: string) =>
   });
 const days = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const sixWords = (text: string) => text.split(/\s+/).slice(0, 6).join(" ");
 
 export type PlansTreeInput = {
@@ -139,7 +139,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
           : g.status === "date_passed"
             ? `Its date, ${monthLabel(g.targetDate)}, has passed.`
             : (g.lateMonths ?? 0) > 0
-              ? `${shortMoney(g.monthlyCents ?? 0)} a month would get there by ${monthLabel(g.targetDate)}; with your other goals it's ${count(g.lateMonths!, "month")} late.`
+              ? `${shortMoney(g.monthlyCents ?? 0)} a month would get there by ${monthLabel(g.targetDate)}; with your other goals it's ${plural(g.lateMonths!, "month")} late.`
               : `${shortMoney(g.monthlyCents ?? 0)} a month gets you there by ${monthLabel(g.targetDate)}.`,
     });
   });
@@ -191,7 +191,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
           figure: `${newest.done} of ${newest.total} done`,
           summary:
             input.lifeEvents.open > 1
-              ? `And ${count(input.lifeEvents.open - 1, "more checklist")}.`
+              ? `And ${plural(input.lifeEvents.open - 1, "more checklist")}.`
               : "Your checklist, step by step.",
         })
       : item("life", "start", {
@@ -225,7 +225,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
       figure: input.debt.accounts > 0 ? shortMoney(input.debt.owedCents) : undefined,
       summary:
         input.debt.accounts > 0
-          ? `On ${count(input.debt.accounts, "card or loan", "cards and loans")}, not the mortgage.`
+          ? `On ${plural(input.debt.accounts, "card or loan", "cards and loans")}, not the mortgage.`
           : "No cards or loans to pay off.",
     }),
   ];
@@ -252,7 +252,7 @@ export function plansTree(input: PlansTreeInput): AreaTree {
       urgent > 0
         ? `${urgent} urgent · ${look} to look at`
         : real.length > 0
-          ? `${real.filter((g) => g.status === "on_the_way" && !(g.lateMonths ?? 0)).length} of ${count(real.length, "goal")} on track`
+          ? `${real.filter((g) => g.status === "on_the_way" && !(g.lateMonths ?? 0)).length} of ${plural(real.length, "goal")} on track`
           : look > 0
             ? `${look} to look at`
             : "All good",

@@ -11,8 +11,9 @@ import { loadComingUp } from "@/lib/coming-up";
 import { listLifeEvents } from "@/lib/life-events";
 import { formatCents } from "@/lib/money";
 import { taxYearFrom } from "@/planning/tax-pack";
-import { plural, type HubGroup, type HubTileData } from "./tile";
+import { type HubGroup, type HubTileData } from "./tile";
 import { DAY_MS } from "@/lib/dates";
+import { plural } from "@/lib/plural";
 
 // The Ahead hub (spec step 80): the planning pages, each tile with a live line where
 // there's data.

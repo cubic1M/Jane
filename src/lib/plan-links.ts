@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { AGENT_HOLD_HOURS } from "@/config/agent";
 import { NEVER_BY_RULE } from "@/config/rules";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -11,6 +11,7 @@ import { appBase } from "@/lib/digest/links";
 import { planFor, type PlanItem } from "@/lib/plan";
 import { undoApproval } from "@/lib/standing-rules";
 import { DAY_MS } from "@/lib/dates";
+import { sha256Hex } from "@/lib/hash";
 
 // One-tap approval links (spec step 60) for the weekly email and notifications. A link
 // opens a small page with one button, so email scanners that open links can't approve
@@ -40,8 +41,6 @@ export async function noRiskItems(
     .map((i) => ({ findingId: i.card.findingId, cardHash: i.cardHash, title: i.card.title }));
 }
 
-const hashOf = (token: string) => createHash("sha256").update(token).digest("hex");
-
 // A link for this week's ticked, no-risk items, or null when there are none.
 export async function createPlanLink(
   userId: string,
@@ -53,7 +52,7 @@ export async function createPlanLink(
   await scopedFor(userId, client).planLinks.create({
     data: {
       userId,
-      tokenHash: hashOf(token),
+      tokenHash: sha256Hex(token),
       items,
       expiresAt: new Date(now.getTime() + PLAN_LINK_DAYS * DAY_MS),
     },
@@ -70,7 +69,7 @@ export type LinkView =
 // A system lookup by the token's hash: the token is the credential.
 async function findLink(token: string, client: PrismaClient) {
   if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) return null;
-  return client.planLink.findUnique({ where: { tokenHash: hashOf(token) } });
+  return client.planLink.findUnique({ where: { tokenHash: sha256Hex(token) } });
 }
 
 export async function viewPlanLink(

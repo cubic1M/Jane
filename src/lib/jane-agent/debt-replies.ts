@@ -8,6 +8,7 @@ import type { Reply } from "./replies";
 import { shortDate } from "./sources/source";
 import type { MessageAction } from "./types";
 import { formatRate } from "@/lib/percent";
+import { plural } from "@/lib/plural";
 
 // Jane's answers about debts (spec Phase Y), from the same debt book as the loans page
 // (src/lib/debts.ts). Pure: fixed wording, every rate with where it came from.
@@ -28,8 +29,6 @@ const longDate = (iso: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 // "at 6.90% fixed (from your bank)" or "with no rate yet".
 export function rateWords(debt: Debt): string {

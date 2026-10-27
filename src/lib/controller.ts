@@ -25,6 +25,7 @@ import { runTaxAutopilot } from "@/lib/tax-autopilot";
 import { runStrategist } from "@/lib/strategist";
 import { planQuestion } from "@/lib/questions";
 import { scanSuggestions } from "@/lib/suggestions";
+import { plural } from "@/lib/plural";
 
 // The nightly controller run (spec step 142): one run per person each night that does every
 // sector's checks, in CONTROLLER_STEPS' order, through the sectors' own code: sync the
@@ -42,7 +43,6 @@ import { isoDay as day } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 
 const HOUR_MS = 60 * 60 * 1000;
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // Each step, through its sector's own code. Every one says what it did in a line.
 const STEPS: Record<

@@ -14,6 +14,7 @@ import {
 import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
 import { formatCents } from "@/lib/money";
+import { plural } from "@/lib/plural";
 
 // The home hub's view model (docs/design/home-hub.md): the numbers the hub's loader gathered
 // from the pages that already show them, shaped for the charts. Pure, and no new math: it only
@@ -243,8 +244,6 @@ const wholeDollars = (cents: number) =>
 
 const dayIndex = (asOf: string, date: string) =>
   Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / 86_400_000);
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // --- The hero row ---
 

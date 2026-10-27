@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import {
   ANSWER_MAX,
   LABEL_MAX,
@@ -29,6 +29,7 @@ import { loadTaxPack } from "@/lib/tax-pack";
 import { complexity, linkState, type LinkState, type Question } from "@/planning/accountant";
 import type { TaxPack } from "@/planning/tax-pack";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
+import { sha256Hex } from "@/lib/hash";
 
 // Working with an accountant (spec step 222): a read-only link with the tax pack, the
 // documents Jane collected, the questions it has and a place to answer them; the answers
@@ -39,8 +40,6 @@ import { DAY_MS, isoDay as iso } from "@/lib/dates";
 type Options = { client?: PrismaClient; now?: Date };
 
 export class AccountantError extends Error {}
-
-const hashOf = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export type LinkView = {
   id: string;
@@ -224,7 +223,7 @@ export async function createAccountantLink(
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(now.getTime() + input.days * DAY_MS);
   const link = await db.accountantLinks.create({
-    data: { userId, tokenHash: hashOf(token), label, expiresAt },
+    data: { userId, tokenHash: sha256Hex(token), label, expiresAt },
   });
   await logAudit(
     { type: "user", id: userId },
@@ -270,7 +269,7 @@ const TOKEN = /^[A-Za-z0-9_-]{40,60}$/;
 
 async function findLink(token: string, client: PrismaClient, now: Date) {
   if (!TOKEN.test(token)) return null;
-  const link = await client.accountantLink.findUnique({ where: { tokenHash: hashOf(token) } });
+  const link = await client.accountantLink.findUnique({ where: { tokenHash: sha256Hex(token) } });
   if (!link || linkState(link, now) !== "active") return null;
   return link;
 }
