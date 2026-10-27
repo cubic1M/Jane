@@ -226,6 +226,8 @@ export async function runAutopilot(
   if (!profile.trades) return { ran: true, deposit, fills: [], suggested: plan };
   const broker = practiceBroker();
   const fills: Fill[] = [];
+  // DIAGNOSTIC (temporary): what the run planned, against what it has.
+  console.error("DIAG autopilot", JSON.stringify({ userId, asOf, cash: state.cashCents, positions: state.positions, buffer: profile.cashBufferCents, reserve, level: profile.level, weights: profile.weights, strategy: profile.strategy, catalog: profile.catalog, crypto: profile.crypto, dayTrade: profile.dayTrade, plan, prices, deposit }));
   for (const t of sellsFirst(plan)) {
     if (refusedByPreferences(profile, t)) continue;
     fills.push(
