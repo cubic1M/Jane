@@ -1,6 +1,7 @@
-import { NEW_ACCOUNT_ID } from "@/config/import";
+import { MAX_UPLOAD_BYTES, NEW_ACCOUNT_ID, uploadTooBig } from "@/config/import";
 import { mappingFromForm } from "@/data-sources/csv/column-mapping";
 import { CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
+import { decodeStatement } from "@/data-sources/csv/decode";
 import { ACCOUNT_KINDS, isAccountKind, type AccountKind } from "@/data-sources/types";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -45,10 +46,19 @@ type ReadFailure = { error: string; reason: UploadFailure };
 // Reads uploads into memory, with the columns the person picked for any file in a layout we
 // don't know. The raw files are never written anywhere.
 export async function readUploadFiles(formData: FormData): Promise<CsvFile[] | ReadFailure> {
-  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length === 0) {
+  const chosen = formData.getAll("files").filter((f): f is File => f instanceof File && !!f.name);
+  if (chosen.length === 0) {
     return { error: "Choose at least one statement file.", reason: "no_file" };
   }
+  // A file with nothing in it was chosen all the same (round 4 said "Choose at least one").
+  const empty = chosen.find((f) => f.size === 0);
+  if (empty) {
+    return {
+      error: `${empty.name} is empty. Download it again from your bank.`,
+      reason: "unreadable",
+    };
+  }
+  const files = chosen;
   if (files.length > MAX_FILES) {
     return { error: `Upload at most ${MAX_FILES} files at a time.`, reason: "too_many" };
   }
@@ -59,13 +69,16 @@ export async function readUploadFiles(formData: FormData): Promise<CsvFile[] | R
       reason: "too_big",
     };
   }
+  const bytes = files.reduce((sum, f) => sum + f.size, 0);
+  if (bytes > MAX_UPLOAD_BYTES) return { error: uploadTooBig(bytes), reason: "too_big" };
   const read: CsvFile[] = [];
   for (const [i, f] of files.entries()) {
     const mapping = mappingFromForm(formData, i);
     if (typeof mapping === "string") {
       return { error: `${f.name}: ${mapping}`, reason: "bad_columns" };
     }
-    read.push({ name: f.name, text: await f.text(), ...(mapping ? { mapping } : {}) });
+    const text = decodeStatement(await f.arrayBuffer());
+    read.push({ name: f.name, text, ...(mapping ? { mapping } : {}) });
   }
   return read;
 }

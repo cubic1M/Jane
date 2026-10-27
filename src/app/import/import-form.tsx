@@ -7,9 +7,11 @@ import { BalanceAskForm } from "./balance-ask";
 import { ColumnPicker } from "./column-picker";
 import {
   IMPORT_STARTED_EVENT,
+  MAX_UPLOAD_BYTES,
   NEW_ACCOUNT_ID,
   SUGGESTED_UPLOAD_DAYS,
   SUGGESTED_UPLOAD_MONTHS,
+  uploadTooBig,
 } from "@/config/import";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
@@ -61,12 +63,29 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   // (QA: the Preview button said "Reading…" while an import saved).
   const [busy, setBusy] = useState<"preview" | "import" | null>(null);
 
+  // Files past what one request takes never reach the server: said here instead. And a request
+  // that fails says so in the page, never "This page couldn't load" (round 4).
+  function tooMuch(data: FormData): string | null {
+    const bytes = data
+      .getAll("files")
+      .reduce((sum, f) => sum + (f instanceof File ? f.size : 0), 0);
+    return bytes > MAX_UPLOAD_BYTES ? uploadTooBig(bytes) : null;
+  }
+  const FAILED = "Jane couldn't read these files just now. Try again, or fewer at a time.";
+
   function onPreview(event: React.FormEvent<HTMLFormElement>) {
     setBusy("preview");
     event.preventDefault();
     setError(null);
+    const data = formData();
+    const over = tooMuch(data);
+    if (over) {
+      setPreview(null);
+      return setError(over);
+    }
     startTransition(async () => {
-      const result = await previewImport(formData());
+      const result = await previewImport(data).catch(() => null);
+      if (!result) return setError(FAILED);
       setPreview(result);
       if (!result.ok) return;
       setPickers((shown) => {
@@ -84,8 +103,12 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
     setBusy("import");
     setError(null);
     setSaved(null);
+    const data = formData();
+    const over = tooMuch(data);
+    if (over) return setError(over);
     startTransition(async () => {
-      const result = await startImport(formData());
+      const result = await startImport(data).catch(() => null);
+      if (!result) return setError(FAILED);
       if (!result.ok) return setError(result.error);
       setSaved({ rows: result.rows, runId: result.runId, askBalance: result.askBalance });
       setPreview(null);
@@ -97,7 +120,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   }
 
   const files = preview?.ok ? preview.files : [];
-  const ready = files.length > 0 && files.every((f) => f.ok);
+  const ready = files.length > 0 && files.every((f) => f.ok) && files.some((f) => f.rowCount > 0);
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
   const suggested = files.find((f) => f.ok)?.account;
   const days = coveredDays(files);
