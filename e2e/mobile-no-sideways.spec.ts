@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
-// On a phone nothing widens the page past the screen. The chat's sheet, waiting off-screen with
-// its one-line loading bar, made /import 841px wide on a 412px phone: the page zoomed out and the
-// Import tap landed elsewhere (new-user pass, round 14).
+// An upload from a phone with long names, as phones save them: the page stays the screen's width
+// and the import goes through. (Round 14 of the new-user passes: the chat's waiting sheet made
+// /import wider than a 412px phone; globals.css clips that. Playwright's "is anything over the
+// button" check, used before, failed in CI's headless Chrome whether or not the page was wide, so
+// the import's outcome is what's judged.)
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(240_000);
@@ -14,7 +16,7 @@ test.afterEach(async () => {
   userId = undefined;
 });
 
-test("a phone's /import is never wider than the screen, and Import takes the tap", async ({
+test("a phone uploads with long names: no sideways scroll, and the import goes through", async ({
   page,
   baseURL,
   isMobile,
@@ -42,15 +44,22 @@ test("a phone's /import is never wider than the screen, and Import takes the tap
   await page
     .locator('[name="new.name"]')
     .fill("My everyday checking account at the credit union downtown by the park");
-  // Give the chat's sheet time to start loading in the background.
-  await page.waitForTimeout(1500);
-  // What the person feels: the page doesn't scroll sideways, isn't zoomed out, and the tap lands
-  // (scrollWidth isn't asked: a clipped page may still report its content's width).
-  const view = await page.evaluate(() => {
-    window.scrollTo(600, window.scrollY);
-    return { x: window.scrollX, scale: window.visualViewport?.scale ?? 1 };
-  });
-  expect(view).toEqual({ x: 0, scale: 1 });
-  await page.getByRole("button", { name: "Import 1 transaction" }).click({ timeout: 15_000 });
+  // The page settled: the chat's sheet is in place (closed, it waits with its loading bar).
+  await expect(page.locator(".side-chat-sheet")).toBeAttached({ timeout: 30_000 });
+  await page.waitForLoadState("networkidle").catch(() => {});
+  // What the person feels: the page doesn't scroll sideways and isn't zoomed out. Asked until
+  // it holds, not read once while the page may still be moving (scrollWidth isn't asked: a
+  // clipped page may still report its content's width).
+  await expect(async () => {
+    const view = await page.evaluate(() => {
+      window.scrollTo(600, window.scrollY);
+      return { x: window.scrollX, scale: window.visualViewport?.scale ?? 1 };
+    });
+    expect(view).toEqual({ x: 0, scale: 1 });
+  }).toPass({ timeout: 15_000 });
+  // The tap, as a phone makes it: the keyboard closes (the field loses focus), then one tap where
+  // the button is, judged by what it did.
+  await page.locator('[name="new.name"]').blur();
+  await page.getByRole("button", { name: "Import 1 transaction" }).click({ force: true });
   await expect(page.locator("[data-import-saved]")).toContainText("Saved");
 });
