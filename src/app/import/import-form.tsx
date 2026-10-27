@@ -17,7 +17,7 @@ import type { BalanceAsk } from "@/lib/import/balance-question";
 import { wrongAccountNote } from "@/lib/import/wrong-account";
 import { formatCents } from "@/lib/money";
 
-type AccountOption = { id: string; name: string; kindLabel: string };
+type AccountOption = { id: string; name: string; kindLabel: string; kind: AccountKind | null };
 
 const PRIMARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
@@ -95,8 +95,19 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   const chosen = accounts.find((a) => a.id === account);
   const wrongAccount = chosen
     ? wrongAccountNote(
-        chosen.name,
-        files.flatMap((f) => (f.ok ? [{ file: f.file, bank: f.bank }] : [])),
+        chosen,
+        // A layout the person mapped has no kind of its own to go by.
+        files.flatMap((f) =>
+          f.ok
+            ? [
+                {
+                  file: f.file,
+                  bank: f.bank,
+                  kind: f.formatId === "custom" ? undefined : f.account.kind,
+                },
+              ]
+            : [],
+        ),
       )
     : null;
   const ready = files.length > 0 && files.every((f) => f.ok);

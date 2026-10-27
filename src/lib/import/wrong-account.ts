@@ -17,13 +17,21 @@ function namesBank(accountName: string, bank: string): boolean {
   return (SHORT_NAMES[bank] ?? []).some((short) => words.includes(short));
 }
 
-// The line to show, or null when every known file's bank is in the account's name (or no file
-// says its bank: a layout the person mapped, an OFX file).
+const isCard = (kind: string) => kind === "credit_card";
+
+// The line to show, or null when every file fits the account: its bank (when the layout says one)
+// is in the account's name, and a card statement goes into a card, a bank account's into a bank
+// account (when both kinds are known).
 export function wrongAccountNote(
-  accountName: string,
-  files: readonly { file: string; bank?: string }[],
+  account: { name: string; kind?: string | null },
+  files: readonly { file: string; bank?: string; kind?: string }[],
 ): string | null {
-  const other = files.find((f) => f.bank && !namesBank(accountName, f.bank));
-  if (!other?.bank) return null;
-  return `${other.file} looks like a ${other.bank} file, but it's going into ${accountName}. If that's wrong, pick its account above.`;
+  const bank = files.find((f) => f.bank && !namesBank(account.name, f.bank));
+  if (bank?.bank)
+    return `${bank.file} looks like a ${bank.bank} file, but it's going into ${account.name}. If that's wrong, pick its account above.`;
+  const kind = account.kind;
+  const other = kind ? files.find((f) => f.kind && isCard(f.kind) !== isCard(kind)) : undefined;
+  if (other?.kind)
+    return `${other.file} looks like a ${isCard(other.kind) ? "card" : "bank account"} statement, but it's going into ${account.name}. If that's wrong, pick its account above.`;
+  return null;
 }

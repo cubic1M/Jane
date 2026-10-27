@@ -66,7 +66,12 @@ async function ImportContent() {
         <h2 className="text-xl font-semibold">Upload statement files</h2>
         {/* A first upload makes its account from the file, so nothing comes before it. */}
         <ImportForm
-          accounts={accounts.map(({ id, name, kindLabel }) => ({ id, name, kindLabel }))}
+          accounts={accounts.map(({ id, name, kindLabel, kind }) => ({
+            id,
+            name,
+            kindLabel,
+            kind,
+          }))}
         />
         <p className="text-xs text-zinc-500">
           Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi,
