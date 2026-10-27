@@ -1,8 +1,8 @@
 import type { Car } from "@/lib/car";
 import { formatCents } from "@/lib/money";
-import { formatRate } from "@/insights/loans";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about buying a car (spec step 178), from src/lib/car.ts. Pure. Demo advice:
 // every answer carries the label and shows its assumptions on the page.

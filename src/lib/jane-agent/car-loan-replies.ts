@@ -1,10 +1,10 @@
 import { ADDON_SOURCES } from "@/config/car-loan";
 import { dayLabel } from "@/lib/day-label";
 import type { AddonView, CarLoan } from "@/lib/car-loan";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about the car loan you already have (spec step 245), from src/lib/car-loan.ts.
 // Pure. Refunds are estimates from a contract's usual terms; Jane sends nothing.

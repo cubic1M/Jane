@@ -1,6 +1,5 @@
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { FIT_NEEDS, FIT_NEED_LABELS, type FitNeed } from "@/config/fit";
-import { formatRate } from "@/insights/loans";
 import type { FitNeedInput, FitView } from "@/lib/fit";
 import { formatCents } from "@/lib/money";
 import {
@@ -12,6 +11,7 @@ import {
   type OptionCompare,
 } from "@/lib/option-card";
 import type { FitLabel, FitOption } from "@/planning/fit";
+import { formatRate } from "@/lib/percent";
 
 // The fit engine's options as the shared pick-one card (spec step 282, src/lib/option-card.ts),
 // kind "loan": a short headline with one dollar figure, the monthly payment, the facts (rate,

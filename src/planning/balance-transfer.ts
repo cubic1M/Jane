@@ -1,9 +1,9 @@
 import { BT_MIN_SAVING_CENTS } from "@/config/debt";
 import type { Debt } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import type { TransferOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
 import { payoffPlan } from "./debt";
+import { formatRate } from "@/lib/percent";
 
 // Balance transfers (spec step 113): moving a card's balance to a 0% card. For each offer,
 // the payment that clears the balance and the fee before the 0% ends, and what keeping the

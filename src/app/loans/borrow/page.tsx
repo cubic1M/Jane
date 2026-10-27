@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BORROW_LABELS, BORROW_SOURCES } from "@/config/borrowing-power";
-import { formatRate } from "@/insights/loans";
 import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
 import { loadHomeBuying } from "@/lib/home-buying";
 import { homeMeasureOf, homeVsBorrow, mortgageOf } from "@/planning/home-vs-borrow";
@@ -15,6 +14,7 @@ import { requireUser } from "@/lib/session";
 import { checkAgainAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // What you could borrow (spec step 250): a mortgage, a car loan, a personal loan and a card, each
 // with the likely amount and rate from soft checks, the day it was checked, and what would

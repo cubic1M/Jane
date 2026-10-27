@@ -1,4 +1,3 @@
-import { PRICE_RISE_LEAD_DAYS } from "@/config/price-rises";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Deadline } from "@/insights/deadlines";
 import { db as defaultClient } from "@/lib/db";
@@ -62,6 +61,3 @@ export async function priceRiseDeadlines(
     .filter((r) => r.daysLeft >= 0)
     .map(priceRiseDeadline);
 }
-
-// Whether a rise was raised in time: at least PRICE_RISE_LEAD_DAYS before it lands.
-export const inTime = (r: PriceRise) => r.daysLeft >= PRICE_RISE_LEAD_DAYS;

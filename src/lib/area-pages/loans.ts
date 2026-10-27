@@ -1,9 +1,9 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { isHiddenPage } from "@/config/hidden-pages";
-import { formatRate } from "@/insights/loans";
 import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 import { dayLabel } from "@/lib/day-label";
+import { formatRate } from "@/lib/percent";
 
 // The Loans & credit page as a tree (docs/design/area-pages.md): Loans & credit → what's
 // costing you now, your debts, cheaper loans, paying it off, your credit, before you borrow,

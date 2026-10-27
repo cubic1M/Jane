@@ -14,12 +14,11 @@ import {
   type FitNeed,
 } from "@/config/fit";
 import type { LoanProduct } from "@/config/debt";
-import { formatRate } from "@/insights/loans";
 import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
 import { payoffPlan } from "./debt";
 import { levelPaymentCents, totalPaidCents } from "./refinance";
-import { formatPercent as pct } from "@/lib/percent";
+import { formatPercent as pct, formatRate } from "@/lib/percent";
 
 // The fit engine (spec step 281), pure: for one need, the person's credit, income, debts and
 // cash, and the lender's offers, it works out each option's eligibility, its total cost over

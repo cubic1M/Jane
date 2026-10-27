@@ -110,7 +110,6 @@ const BASELINE_PARAMS: ScenarioParams = {
   oneTimeCents: 0,
 };
 
-const monthWord = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 const monthName = (ym: string) =>
   new Date(`${ym}-01T00:00:00Z`).toLocaleDateString("en-US", {
     month: "long",
@@ -204,9 +203,4 @@ export function runScenario(
     sectors: { forecast, goals, debt, taxes, insurance: SCENARIO_COVER[scenario], investing },
     plan,
   };
-}
-
-export function summaryLine(run: ScenarioRun): string {
-  const lasts = run.params.months > 0 ? ` for ${monthWord(run.params.months)}` : "";
-  return `${run.label}${lasts}: ${run.sectors.forecast}`;
 }

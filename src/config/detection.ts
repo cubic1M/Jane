@@ -103,6 +103,29 @@ export const YEARLY_PLAN_WORDS: readonly string[] = [
   "annual",
   "yearly",
   "subscription",
+  // A plan's tier ("MICROSOFT 365 FAMILY").
+  "family",
+  "personal",
+  "individual",
+  "student",
+];
+// The company's shop, not its plan: a charge whose description has one of these words is goods
+// ("PELOTON* APPAREL", $60-$120, read as a yearly Peloton plan; accuracy bench, second held-out
+// set). Matched as whole words of the description, lower case.
+export const YEARLY_PLAN_GOODS_WORDS: readonly string[] = [
+  "apparel",
+  "clothing",
+  "store",
+  "shop",
+  "boutique",
+  "merch",
+  "merchandise",
+  "gear",
+  "accessories",
+  "equipment",
+  "gift",
+  "gifts",
+  "outlet",
 ];
 
 // A detected stream is still active if its last charge is within this many of its usual
@@ -514,8 +537,6 @@ export const BILL_REMINDER_DAYS = 3;
 // Recurring charges that aren't bills to pay (books QA): card interest is added to the card's
 // balance, which its own payment covers.
 export const NOT_BILL_CATEGORIES: readonly string[] = ["BANK_FEES_INTEREST_CHARGE"];
-// A card payment the bank names with the card company's "thank you" reads as what it is.
-export const CARD_PAYMENT_THANKS = /\bthank\s*you\b/i;
 export const CARD_PAYMENT_NAME = "Credit card payment";
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the

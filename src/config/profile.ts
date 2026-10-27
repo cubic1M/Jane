@@ -59,6 +59,3 @@ export const AGE_BAND_FROM: Readonly<Record<string, number>> = {
   "66_to_72": 66,
   "73_plus": 73,
 };
-
-// Small recurring things seen in the year before Jane calls it a pet or a car.
-export const PET_PURCHASES_MIN = 3;

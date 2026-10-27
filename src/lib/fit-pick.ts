@@ -9,7 +9,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadFit } from "@/lib/fit";
 import { fitCard, parseFitTopic } from "@/lib/fit-card";
 import { formatCents } from "@/lib/money";
-import { formatRate } from "@/insights/loans";
+import { formatRate } from "@/lib/percent";
 
 // Picking a loan option (spec step 282): one tap queues it for the concierge team through the
 // usual path: a finding for the choice, a decision with the chosen option kept in its options,

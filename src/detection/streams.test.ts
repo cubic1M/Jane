@@ -119,6 +119,15 @@ describe("fallback recurring detection", () => {
     expect(once("ADOBE STOCK 408-536-6000", 7_999)).toEqual([]);
     expect(once(prime.description, 499)).toEqual([]);
     expect(once("PELOTON* BIKE", 144_500)).toEqual([]);
+    // Something from the company's shop, at a plan's price (accuracy bench, second held-out set).
+    expect(once("PELOTON* APPAREL", 10_001)).toEqual([]);
+    expect(once("NYTIMES*STORE", 8_500)).toEqual([]);
+    // The plan named after the "*", cut short by the bank, is the plan, and a subscription.
+    expect(once("MICROSOFT*MICROSOFT 365 P", 9_999)).toEqual([
+      expect.objectContaining({ key: "merchant:microsoft", namedPlan: true }),
+    ]);
+    expect(once("MSFT * MICROSOFT 365 FAMILY", 12_999)).toHaveLength(1);
+    expect(once("MICROSOFT*XBOX GAME 4K2", 6_999)).toEqual([]);
     // Two of them in a year aren't a yearly plan.
     const twice = [3, 8].map((m) => tx({ ...prime, date: monthsAgo(m), amountCents: 13_900 }));
     expect(detectRecurring(input({ transactions: twice }))).toEqual([]);

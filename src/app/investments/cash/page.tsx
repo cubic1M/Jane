@@ -19,6 +19,7 @@ import { moveNow } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
 import { dayLabel } from "@/lib/day-label";
+import { formatRate } from "@/lib/percent";
 
 // Cash done right (spec step 162, demo advice): where each dollar of cash sits and what it
 // earns, the plan for it, and its moves, each a tap. The emergency fund stays in reach.
@@ -29,7 +30,6 @@ const DONE: Record<string, string> = {
   moved: "Done. It's moving through the stand-in (no real money moves).",
   changed: "Your cash changed since that plan. Here's the new one.",
 };
-const rate = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
 async function CashContent({
   searchParams,
@@ -85,7 +85,7 @@ async function CashContent({
                 <tr key={`${p.id}-${p.kind}`}>
                   <td>{p.name}</td>
                   <td className="text-right">{formatCents(p.balanceCents)}</td>
-                  <td className="text-right">{rate(p.rateBps)}</td>
+                  <td className="text-right">{formatRate(p.rateBps)}</td>
                 </tr>
               ))}
             </tbody>
@@ -105,7 +105,7 @@ async function CashContent({
               <li key={b.key} className="flex justify-between gap-2">
                 <span>
                   {b.label}
-                  {b.home ? `: ${b.home.name}, about ${rate(b.rateBps)}` : ""}
+                  {b.home ? `: ${b.home.name}, about ${formatRate(b.rateBps)}` : ""}
                   {b.key === "emergency"
                     ? view.emergencyFromGoal
                       ? " (your emergency fund goal)"
@@ -160,7 +160,7 @@ async function CashContent({
                   {h.name}
                   <span className="block text-xs text-zinc-500">{h.note}</span>
                 </td>
-                <td className="text-right">{rate(h.rateBps)}</td>
+                <td className="text-right">{formatRate(h.rateBps)}</td>
                 <td className="text-right">
                   {h.reachDays <= EMERGENCY_MAX_REACH_DAYS
                     ? `${h.reachDays} ${h.reachDays === 1 ? "day" : "days"}`

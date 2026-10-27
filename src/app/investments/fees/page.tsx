@@ -4,13 +4,13 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { Assumptions } from "@/components/assumptions";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
-import { formatBps } from "@/insights/investments";
 import { equivalentsSaving, type Range } from "@/insights/investment-fees";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // What investing costs the person (spec step 130): each fund's yearly cost, advisory and
 // account fees, what it all costs over 30 years as a range, and, in demo advice mode, a
@@ -67,7 +67,7 @@ async function FeesContent() {
                   <span className="min-w-0 break-words">
                     {f.holding.name} <span className="text-zinc-500">({f.accountName})</span>
                     <span className="block text-xs text-zinc-500">
-                      {formatBps(f.expenseRatioBps)} a year on {formatCents(f.holding.valueCents)}
+                      {formatRate(f.expenseRatioBps)} a year on {formatCents(f.holding.valueCents)}
                     </span>
                   </span>
                   <span>{formatCents(f.yearlyCents)} a year</span>
@@ -104,9 +104,9 @@ async function FeesContent() {
                 {fees.equivalents.map((e) => (
                   <li key={e.holding.id} className="flex flex-col gap-1">
                     <span>
-                      <strong>{e.holding.name}</strong> ({formatBps(e.holding.expenseRatioBps!)}) in
-                      your {e.accountName} → <strong>{e.name}</strong> (
-                      {formatBps(e.expenseRatioBps)}), {e.category}
+                      <strong>{e.holding.name}</strong> ({formatRate(e.holding.expenseRatioBps!)})
+                      in your {e.accountName} → <strong>{e.name}</strong> (
+                      {formatRate(e.expenseRatioBps)}), {e.category}
                       {e.inPlanMenu ? ", offered in your plan" : ""}.
                     </span>
                     <span className="text-zinc-600 dark:text-zinc-400">
