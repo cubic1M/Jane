@@ -124,6 +124,27 @@ async function NetWorthHero({ userId, todayCents }: { userId: string; todayCents
   return <NetWorthChart points={line} events={events} />;
 }
 
+// No balance known yet (statements without a balance column, nothing owned entered): not "$0"
+// (overnight upload QA: "Net worth $0 · Your line starts today" for a Wells Fargo upload).
+function NetWorthUnknown() {
+  return (
+    <section
+      aria-label="Net worth"
+      className="flex flex-col gap-2 border border-zinc-300 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-950"
+    >
+      <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Net worth</p>
+      <p className="text-3xl font-semibold tracking-tight">Not known yet</p>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        Your files don&apos;t include a balance.{" "}
+        <Link href="/import" className="font-medium underline">
+          Add one on the import page
+        </Link>{" "}
+        and your line starts there.
+      </p>
+    </section>
+  );
+}
+
 // While the line loads: today's figure (already known) at the chart's size, so nothing moves.
 function NetWorthLoading({ todayCents }: { todayCents: number }) {
   return (
@@ -180,11 +201,15 @@ async function HubContent() {
         hero={heroView(top.hero)}
         planItems={home.plan.items}
         chart={
-          // Its own boundary: the history and what moved it are read after the top row's net
-          // worth, so the rest of the hub paints without waiting for them (speed pass).
-          <Suspense fallback={<NetWorthLoading todayCents={todayCents} />}>
-            <NetWorthHero userId={user.id} todayCents={todayCents} />
-          </Suspense>
+          top.hero.netWorth?.known === false ? (
+            <NetWorthUnknown />
+          ) : (
+            // Its own boundary: the history and what moved it are read after the top row's net
+            // worth, so the rest of the hub paints without waiting for them (speed pass).
+            <Suspense fallback={<NetWorthLoading todayCents={todayCents} />}>
+              <NetWorthHero userId={user.id} todayCents={todayCents} />
+            </Suspense>
+          )
         }
       />
 
