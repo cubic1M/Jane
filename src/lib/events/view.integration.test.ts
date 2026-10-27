@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { climbingPrices } from "@/lib/paper/__fixtures__/prices";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -9,9 +10,7 @@ vi.mock("@/lib/audit", () => ({
 }));
 
 import { PrismaClient } from "@/generated/prisma/client";
-import type { Bar } from "@/lib/market/types";
 import { loadPaperView, startPaperAccount } from "@/lib/paper/account";
-import type { PaperPrices } from "@/lib/paper/prices";
 import { runEventOverlay, setEventsOverlay } from "./run";
 import { eventUpdates, markEventSeen, revertEventAction } from "./updates";
 import { loadEventsView } from "./view";
@@ -23,29 +22,6 @@ import { loadEventsView } from "./view";
 const url = process.env.TEST_DATABASE_URL;
 // Tuesday 2027-10-19, after the close.
 const NOW = new Date("2027-10-19T22:30:00Z");
-
-// Weekday closes for any ticker, the same for the same day whatever range is asked for: a steady
-// climb from a price set by its name, times `bump`.
-const fakePrices = (bump: (ticker: string, date: string) => number = () => 1): PaperPrices => ({
-  name: "sample",
-  real: false,
-  closes: async (ticker: string, from: string, to: string) => {
-    const out: Bar[] = [];
-    const base = 5_000 + [...ticker].reduce((a, c) => a + c.charCodeAt(0), 0) * 20;
-    for (
-      let d = Date.parse(`${from}T00:00:00Z`);
-      d <= Date.parse(`${to}T00:00:00Z`);
-      d += 86_400_000
-    ) {
-      const day = new Date(d).getUTCDay();
-      if (day === 0 || day === 6) continue;
-      const date = new Date(d).toISOString().slice(0, 10);
-      const n = Math.round(d / 86_400_000) - 20_000;
-      out.push({ date, closeCents: Math.round(base * 1.0004 ** n * bump(ticker, date)) });
-    }
-    return out;
-  },
-});
 
 // Market events are shared by every test file: this one keeps to 2027, and clears only those.
 const ownYear = () => ({
@@ -102,7 +78,7 @@ describe.runIf(url)("the Events box and its updates", () => {
     await client.$disconnect();
   });
 
-  const startedOn = async (prices = fakePrices()) => {
+  const startedOn = async (prices = climbingPrices()) => {
     const id = await person("demo");
     await startPaperAccount(id, 1_000_000, {
       client,
@@ -113,7 +89,7 @@ describe.runIf(url)("the Events box and its updates", () => {
   };
 
   it("shows in the box what it would do, then what it did, and its update in the pop-up, with Revert", async () => {
-    const prices = fakePrices();
+    const prices = climbingPrices();
     const id = await startedOn(prices);
     const key = uniqueKey("gdelt:chip_boom:2027-10-18");
     await event({ key, type: "chip_boom", date: "2027-10-18", knownAt: "2027-10-19T00:15:00Z" });

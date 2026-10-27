@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { flatPrices } from "@/lib/paper/__fixtures__/prices";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
@@ -11,9 +12,7 @@ vi.mock("@/lib/audit", () => ({
 import { AGENT_INTERVALS, AGENT_LOOKBACK_BARS, AGENT_MARKETS } from "@/config/trading-agent";
 import { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
-import type { Bar } from "@/lib/market/types";
 import { revertTrade, runPaperDay, startPaperAccount, takeSignal } from "@/lib/paper/account";
-import type { PaperPrices } from "@/lib/paper/prices";
 import { runAgent, startState } from "@/planning/trading-agent/engine";
 import { policyByKey } from "@/planning/trading-agent/policies";
 import type { AgentSignal } from "@/planning/trading-agent/types";
@@ -38,25 +37,6 @@ const T0 = new Date("2026-10-20T12:00:00Z");
 const hours = (h: number) => new Date(T0.getTime() + h * 3_600_000);
 const POLICY = "catalog:vol_target@BTC/USD";
 
-const dailyPrices: PaperPrices = {
-  name: "sample",
-  real: false,
-  closes: async (ticker: string, from: string, to: string) => {
-    const out: Bar[] = [];
-    const base = 5_000 + [...ticker].reduce((a, c) => a + c.charCodeAt(0), 0) * 20;
-    for (
-      let d = Date.parse(`${from}T00:00:00Z`);
-      d <= Date.parse(`${to}T00:00:00Z`);
-      d += 86_400_000
-    ) {
-      const day = new Date(d).getUTCDay();
-      if (day !== 0 && day !== 6)
-        out.push({ date: new Date(d).toISOString().slice(0, 10), closeCents: base });
-    }
-    return out;
-  },
-};
-
 describe.runIf(url)("the 24-hour agent", () => {
   let client: PrismaClient;
   const created: string[] = [];
@@ -77,7 +57,7 @@ describe.runIf(url)("the 24-hour agent", () => {
   };
   const withAccount = async () => {
     const userId = await person("demo");
-    await startPaperAccount(userId, 1_000_000, { client, now: T0, prices: dailyPrices });
+    await startPaperAccount(userId, 1_000_000, { client, now: T0, prices: flatPrices });
     return userId;
   };
   const agentTrades = (userId: string) =>
@@ -253,7 +233,7 @@ describe.runIf(url)("the 24-hour agent", () => {
       { policy: POLICY, interval: "1h" },
       { client, now: T0, feed: sampleFeed },
     );
-    const run = await runPaperDay(userId, { client, now: hours(10), prices: dailyPrices });
+    const run = await runPaperDay(userId, { client, now: hours(10), prices: flatPrices });
     expect(run.signals).toBe(0);
     expect(await client.paperSignal.count({ where: { userId, status: "open" } })).toBe(0);
     // Nothing else trades the account while it runs (the events overlay sends it signals instead).
