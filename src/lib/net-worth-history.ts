@@ -54,3 +54,17 @@ export async function loadNetWorthHistory(
     ),
   };
 }
+
+// The accounts net worth can't count yet for want of a balance, by name (src/insights/net-worth.ts
+// notCounting says so beside the figure).
+export async function accountsWithoutBalance(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<string[]> {
+  const rows = await scopedFor(userId, client).accounts.findMany({
+    where: { currentBalanceCents: null },
+    select: { name: true },
+    orderBy: { name: "asc" },
+  });
+  return rows.map((r) => r.name);
+}

@@ -45,6 +45,10 @@ vi.mock("@/lib/import/upload", async (importOriginal) => ({
   saveUpload: vi.fn(),
 }));
 vi.mock("@/lib/import/background", () => ({ dismissImportRun: vi.fn() }));
+vi.mock("@/lib/import/account-balance", () => ({
+  balancesToAsk: vi.fn(async () => []),
+  setUploadedBalance: vi.fn(),
+}));
 vi.mock("@/lib/import/remove", () => ({
   removeUpload: vi.fn(),
   removeEarlierRows: vi.fn(),
@@ -63,6 +67,7 @@ import {
   removeAccountAction,
   removeEarlierRowsAction,
   removeUploadAction,
+  setBalanceAction,
   startImport,
   startOverAction,
 } from "./actions";
@@ -72,6 +77,7 @@ import {
   removeUploadedAccount,
   startOver,
 } from "@/lib/import/remove";
+import { balancesToAsk, setUploadedBalance } from "@/lib/import/account-balance";
 import { dismissImportRun } from "@/lib/import/background";
 import { saveUpload } from "@/lib/import/upload";
 import { track } from "@/lib/analytics";
@@ -268,11 +274,31 @@ describe("startImport", () => {
       ok: true,
       runId: "run_1",
       rows: 172,
+      askBalance: null,
     });
     // Nothing ran yet: the job starts once the response is sent.
     expect(runJob).not.toHaveBeenCalled();
     for (const callback of afterCallbacks) await callback();
     expect(runJob).toHaveBeenCalledWith("job_1");
+  });
+
+  it("asks for the account's balance when its file had none", async () => {
+    vi.mocked(saveUpload).mockResolvedValue({
+      ok: true,
+      accountId: "acct_card",
+      counts: { parsed: 2, inserted: 2, duplicates: 0, skipped: 0 },
+      runId: "run_1",
+      jobId: "job_1",
+    });
+    const ask = { accountId: "acct_card", name: "Chase card", kind: "credit_card" } as const;
+    vi.mocked(balancesToAsk).mockResolvedValue([
+      { accountId: "acct_other", name: "Other", kind: "checking" },
+      ask,
+    ]);
+    expect(await startImport(form({ files: [csv("card.csv")] }))).toMatchObject({
+      ok: true,
+      askBalance: ask,
+    });
   });
 
   it("passes on what's wrong with the upload, and starts nothing", async () => {
@@ -339,5 +365,33 @@ describe("taking uploads back", () => {
     vi.mocked(canImportCsv).mockReturnValue(false);
     expect(await act()).toEqual({ ok: false, error: expect.stringContaining("Sign up") });
     expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+describe("setBalanceAction", () => {
+  it("saves an uploaded account's balance, then works the numbers out after the response", async () => {
+    vi.mocked(setUploadedBalance).mockResolvedValue({ jobId: "job_b" });
+    expect(await setBalanceAction("acct_card", " 1,234.56 ")).toEqual({ ok: true });
+    expect(vi.mocked(setUploadedBalance).mock.calls[0].slice(1)).toEqual(["acct_card", 123456]);
+    for (const callback of afterCallbacks) await callback();
+    expect(runJob).toHaveBeenCalledWith("job_b");
+  });
+
+  it("asks for a number, and says when the account is gone", async () => {
+    expect(await setBalanceAction("acct_card", "lots")).toEqual({
+      ok: false,
+      error: "Enter the amount as a number, like 1,234.56.",
+    });
+    vi.mocked(setUploadedBalance).mockResolvedValue(null);
+    expect(await setBalanceAction("acct_x", "10")).toEqual({
+      ok: false,
+      error: "That account isn't here any more.",
+    });
+  });
+
+  it("refuses trial people", async () => {
+    vi.mocked(canImportCsv).mockReturnValue(false);
+    expect((await setBalanceAction("acct_card", "10")).ok).toBe(false);
+    expect(setUploadedBalance).not.toHaveBeenCalled();
   });
 });

@@ -159,3 +159,23 @@ export function netWorthLine(
   );
   return months.map((m, i) => (i === months.length - 1 ? { ...m, netCents: todayCents } : m));
 }
+
+// What a net worth leaves out for want of a balance (an uploaded card or bank file without one,
+// src/lib/import/account-balance.ts), said beside the figure, never left out silently (CSV
+// bench: card debt missing from most upload-only people's net worth). Null when it's complete.
+// The short form sits by the number ("not counting Chase card"); the sentence says why.
+export function notCounting(
+  missing: readonly string[],
+): { short: string; sentence: string } | null {
+  if (missing.length === 0) return null;
+  const who =
+    missing.length === 1
+      ? missing[0]
+      : missing.length === 2
+        ? `${missing[0]} or ${missing[1]}`
+        : `${missing.length} accounts`;
+  return {
+    short: `not counting ${who}`,
+    sentence: `Not counting ${who}: there's no balance yet.`,
+  };
+}

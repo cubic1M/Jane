@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyNetWorth, netWorth, netWorthLine, netWorthOn } from "./net-worth";
+import { monthlyNetWorth, netWorth, netWorthLine, netWorthOn, notCounting } from "./net-worth";
 
 const accounts = [
   { id: "chk", name: "Checking", type: "depository", balanceCents: 250_000 },
@@ -163,5 +163,17 @@ describe("netWorthLine", () => {
       { month: "2026-09", netCents: null },
       { month: "2026-10", netCents: 2_450_000 },
     ]);
+  });
+});
+
+describe("notCounting", () => {
+  it("names what net worth leaves out, never silently", () => {
+    expect(notCounting([])).toBeNull();
+    expect(notCounting(["Chase card"])).toEqual({
+      short: "not counting Chase card",
+      sentence: "Not counting Chase card: there's no balance yet.",
+    });
+    expect(notCounting(["Amex", "Chase card"])?.short).toBe("not counting Amex or Chase card");
+    expect(notCounting(["A", "B", "C"])?.short).toBe("not counting 3 accounts");
   });
 });
