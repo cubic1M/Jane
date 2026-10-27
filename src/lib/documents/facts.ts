@@ -8,7 +8,7 @@ import {
   type PolicyType,
   type PremiumFrequency,
 } from "@/config/documents";
-import { parseMoneyToCents } from "@/lib/money";
+import { parseMoneyToCents, centsToInput } from "@/lib/money";
 
 // The key facts of a document (spec step 68), from Claude or typed by the person. Both go
 // through the same parsers; Claude's answer is read leniently (a bad field is left blank),
@@ -200,16 +200,15 @@ export type StoredFacts = Omit<DocumentFacts, "policyType" | "premiumFrequency">
 // The facts as form text, for the correction form.
 export function rawFacts(facts: StoredFacts): Record<keyof DocumentFacts, string> {
   const day = (d: Date | null) => d?.toISOString().slice(0, 10) ?? "";
-  const money = (c: number | null) => (c === null ? "" : (c / 100).toFixed(2));
   return {
     provider: facts.provider ?? "",
     policyType: facts.policyType ?? "",
     coverageSummary: facts.coverageSummary ?? "",
-    premiumCents: money(facts.premiumCents),
+    premiumCents: centsToInput(facts.premiumCents),
     premiumFrequency: facts.premiumFrequency ?? "",
     renewalDate: day(facts.renewalDate),
     warrantyEndsOn: day(facts.warrantyEndsOn),
     purchaseDate: day(facts.purchaseDate),
-    purchaseAmountCents: money(facts.purchaseAmountCents),
+    purchaseAmountCents: centsToInput(facts.purchaseAmountCents),
   };
 }

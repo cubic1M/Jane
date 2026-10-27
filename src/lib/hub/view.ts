@@ -544,7 +544,7 @@ export function tilesView(input: AreasInput): AreaTile[] {
         m !== null,
         {
           value: m ? shortMoney(thisMonth) : null,
-          caption: m ? "Spent this month" : "Link a bank to see it",
+          caption: m ? "Spent this month" : "Add your accounts to see it",
           chart: m
             ? {
                 kind: "bars",

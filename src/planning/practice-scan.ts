@@ -45,6 +45,7 @@ import {
 } from "./practice-autopilot";
 import { apply, LedgerError, type LedgerState } from "./practice-ledger";
 import { DAY_MS } from "@/lib/dates";
+import { formatCents } from "@/lib/money";
 
 // The daily scan of a practice portfolio (spec step 292, Phase AW, Stage A). Pure: from what the
 // ledger holds, the market data and the trades so far, four kinds of flag, each with what Jane
@@ -164,8 +165,6 @@ export function daysBefore(iso: string, days: number): string {
   return out;
 }
 // One formatter, made once: the rule replay formats thousands of reasons.
-const USD = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const dollars = (cents: number) => `$${USD.format(cents / 100)}`;
 const pct = (n: number) => `${(Math.round(n * 1000) / 10).toString()}%`;
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 const LABEL: Record<PracticeClass, string> = {
@@ -253,7 +252,7 @@ function driftFlag(input: ScanInput): ScanFlag | null {
     kind: "drift_rebalance",
     ticker: PRACTICE_ETFS[d.worst].ticker,
     key: `drift_rebalance:${input.today}`,
-    headline: `Rebalance about ${dollars(moved)} back to your mix`,
+    headline: `Rebalance about ${formatCents(moved)} back to your mix`,
     reason: `Stocks are ${pct(d.stocks)} of the portfolio against ${pct(target)} for your level, and ${LABEL[d.worst]} ${pct(d.shares[d.worst])} against ${pct(weights[d.worst])}, so the autopilot moves it back.`,
     amountCents: moved,
     trades: [],
@@ -336,23 +335,23 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
     if (amount < AUTOPILOT_LIMITS.minTradeCents) continue;
     cash -= amount;
     const into = buy === x.ticker ? "it" : `${buy}, a similar fund (no wash sale)`;
-    const reason = `${x.ticker} is ${pct(x.drop)} below its high of the last ${DIP_LOOKBACK_DAYS} trading days and already in your plan, so ${dollars(amount)} of the cash waiting to be invested went into ${into}.`;
+    const reason = `${x.ticker} is ${pct(x.drop)} below its high of the last ${DIP_LOOKBACK_DAYS} trading days and already in your plan, so ${formatCents(amount)} of the cash waiting to be invested went into ${into}.`;
     flags.push({
       kind: "dip_buy",
       ticker: x.ticker,
       key: `dip_buy:${x.ticker}:${month}`,
       headline:
         buy === x.ticker
-          ? `Bought ${dollars(amount)} of ${x.ticker} on a ${pct(x.drop)} dip`
-          : `Bought ${dollars(amount)} of ${buy} on the ${x.ticker} dip`,
+          ? `Bought ${formatCents(amount)} of ${x.ticker} on a ${pct(x.drop)} dip`
+          : `Bought ${formatCents(amount)} of ${buy} on the ${x.ticker} dip`,
       reason,
       amountCents: amount,
       trades: [{ ticker: buy, side: "buy", amountCents: amount, rule: "dip_buy", reason }],
       figures: [
-        { label: `${x.ticker} today`, value: dollars(x.close) },
-        { label: `High of the last ${DIP_LOOKBACK_DAYS} trading days`, value: dollars(x.high) },
+        { label: `${x.ticker} today`, value: formatCents(x.close) },
+        { label: `High of the last ${DIP_LOOKBACK_DAYS} trading days`, value: formatCents(x.high) },
         { label: "Drop", value: pct(x.drop) },
-        { label: "Cash waiting before", value: dollars(cash + amount) },
+        { label: "Cash waiting before", value: formatCents(cash + amount) },
         { label: `${LABEL[x.c]} target`, value: pct(weights[x.c]) },
       ],
       caps: [
@@ -367,7 +366,7 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
           buy === x.ticker
             ? `Buy ${wholeDollars(amount)} ${x.ticker} in practice on its dip`
             : `Buy ${wholeDollars(amount)} ${buy} in practice on the dip`,
-        short: `${x.ticker} is ${pct(x.drop)} below its recent high, and ${dollars(cash + amount)} is waiting to be invested.`,
+        short: `${x.ticker} is ${pct(x.drop)} below its recent high, and ${formatCents(cash + amount)} is waiting to be invested.`,
         worthCents: amount,
         worthKind: "risk",
       },
@@ -415,12 +414,12 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
       left,
       input.today,
     );
-    const reason = `${ticker} is worth ${dollars(valueCents)} against ${dollars(position.costBasisCents)} paid, so ${dollars(amount)} of it was swapped into ${swap}, a similar fund of the same kind: the mix stays the same and the ${dollars(harvested)} loss counts.`;
+    const reason = `${ticker} is worth ${formatCents(valueCents)} against ${formatCents(position.costBasisCents)} paid, so ${formatCents(amount)} of it was swapped into ${swap}, a similar fund of the same kind: the mix stays the same and the ${formatCents(harvested)} loss counts.`;
     flags.push({
       kind: "tax_loss_harvest",
       ticker,
       key: `tax_loss_harvest:${ticker}:${input.today}`,
-      headline: `Harvested a ${dollars(harvested)} loss in ${ticker}`,
+      headline: `Harvested a ${formatCents(harvested)} loss in ${ticker}`,
       reason,
       amountCents: amount,
       trades: [
@@ -428,14 +427,14 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
         { ticker: swap, side: "buy", amountCents: amount, rule: "tax_loss_harvest", reason },
       ],
       figures: [
-        { label: "Worth now", value: dollars(valueCents) },
-        { label: "Paid", value: dollars(position.costBasisCents) },
-        { label: "Loss", value: dollars(loss) },
-        { label: "Short-term part", value: dollars(-(split?.shortTermCents ?? -loss)) },
+        { label: "Worth now", value: formatCents(valueCents) },
+        { label: "Paid", value: formatCents(position.costBasisCents) },
+        { label: "Loss", value: formatCents(loss) },
+        { label: "Short-term part", value: formatCents(-(split?.shortTermCents ?? -loss)) },
         { label: "Swapped into", value: swap },
       ],
       caps: [
-        `A loss of at least ${pct(HARVEST_MIN_LOSS_SHARE)} and ${dollars(HARVEST_MIN_LOSS_CENTS)}`,
+        `A loss of at least ${pct(HARVEST_MIN_LOSS_SHARE)} and ${formatCents(HARVEST_MIN_LOSS_CENTS)}`,
         `No buy of ${ticker} in the ${WASH_SALE_DAYS} days before, and ${ticker} isn't bought back for ${WASH_SALE_DAYS} days (no wash sale)`,
         `At most ${pct(caps.sizeShare)} of the portfolio`,
         `At most ${caps.perMonth} swaps a month`,
@@ -443,7 +442,7 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
       confidence: SCAN_CONFIDENCE.tax_loss_harvest,
       ask: {
         headline: `Harvest a ${wholeDollars(harvested)} loss in ${ticker}, in practice`,
-        short: `${ticker} is worth ${dollars(valueCents)} against ${dollars(position.costBasisCents)} paid; ${swap} keeps the same mix.`,
+        short: `${ticker} is worth ${formatCents(valueCents)} against ${formatCents(position.costBasisCents)} paid; ${swap} keeps the same mix.`,
         worthCents: harvested,
         worthKind: "risk",
       },
@@ -497,7 +496,7 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
     if (fund) fund.value -= fromFund;
     held += amount;
     const paid = fund ? ` paid from ${fund.ticker}` : " from cash waiting";
-    const reason = `News on ${h.date}: "${h.title}". A small practice position in ${h.ticker}, ${dollars(amount)}${paid}, kept to ${pct(caps.positionShare)} of the portfolio.`;
+    const reason = `News on ${h.date}: "${h.title}". A small practice position in ${h.ticker}, ${formatCents(amount)}${paid}, kept to ${pct(caps.positionShare)} of the portfolio.`;
     const trades: ScanTrade[] = [];
     if (fund) {
       const sale = { ticker: fund.ticker, side: "sell" as const, amountCents: fromFund };
@@ -508,7 +507,7 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
       kind: "news_idea",
       ticker: h.ticker,
       key,
-      headline: `A small ${dollars(amount)} position in ${h.ticker}`,
+      headline: `A small ${formatCents(amount)} position in ${h.ticker}`,
       reason,
       amountCents: amount,
       trades,
@@ -518,8 +517,8 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
           ? [{ label: h.summaryBy === "claude" ? "Summary" : "Summary (rules)", value: h.summary }]
           : []),
         { label: "Source", value: `${h.source}, ${h.date}` },
-        { label: "Position", value: dollars(own + amount) },
-        { label: "All opportunity stocks", value: dollars(held) },
+        { label: "Position", value: formatCents(own + amount) },
+        { label: "All opportunity stocks", value: formatCents(held) },
       ],
       caps: [
         `At most ${pct(caps.sizeShare)} of the portfolio at a time`,

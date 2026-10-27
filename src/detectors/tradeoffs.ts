@@ -1,7 +1,7 @@
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { tradeoffs } from "@/planning/goal-tradeoffs";
 import { type Detector, suggestionId } from "./contract";
-import { dollars, evidence, factEvidence, monthlySpendCents, weakest } from "./helpers";
+import { evidence, factEvidence, monthlySpendCents, weakest } from "./helpers";
 
 // Goals that trade off openly (spec step 241), brought to the person unasked: savings goals
 // that together need more each month than there is room for, so one has to wait. Pure; see
@@ -36,7 +36,7 @@ const goalTradeoffs: Detector = {
       capability: "tradeoffs",
       topic: "goal_tradeoffs",
       title: "Choose which goal comes first, with each one's date in front of you",
-      headline: `Plan your goals' order: ${dollars(short * 12)} a year short`,
+      headline: `Plan your goals' order: ${formatWholeDollars(short * 12)} a year short`,
       short: `Your goals need ${formatCents(needed)} a month; there's room for ${formatCents(room)}.`,
       worthCents: short * 12,
       worthKind: "risk",

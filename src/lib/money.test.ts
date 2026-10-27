@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCents, formatWholeDollars, parseMoneyToCents } from "./money";
+import { formatCents, formatWholeDollars, parseMoneyToCents, centsToInput } from "./money";
 
 describe("parseMoneyToCents", () => {
   it.each([
@@ -42,5 +42,18 @@ describe("formatWholeDollars", () => {
     expect(formatWholeDollars(123_449)).toBe("$1,234");
     expect(formatWholeDollars(0)).toBe("$0");
     expect(formatWholeDollars(100_000_000)).toBe("$1,000,000");
+  });
+});
+
+describe("centsToInput", () => {
+  it("writes cents the way a money field holds them, and back", () => {
+    expect(centsToInput(123456)).toBe("1234.56");
+    expect(centsToInput(-500)).toBe("-5.00");
+    expect(parseMoneyToCents(centsToInput(1999))).toBe(1999);
+  });
+
+  it("leaves a field empty when nothing is known", () => {
+    expect(centsToInput(null)).toBe("");
+    expect(centsToInput(undefined)).toBe("");
   });
 });

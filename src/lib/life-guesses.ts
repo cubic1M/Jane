@@ -14,6 +14,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { LifeEventError, startLifeEvent, toggleLifeEventItem } from "@/lib/life-events";
+import { centsToInput } from "@/lib/money";
 
 // Life events spotted (spec step 100): Jane's guesses (src/insights/life-signals.ts) for
 // one person, minus the kinds they answered, and what it does on its own on Yes: starts
@@ -93,7 +94,7 @@ export async function runLifeChecklist(
   for (const category of plan.budgets) {
     const cents = suggestions[category] ?? 0;
     if (has.has(category) || cents < BUDGET_SUGGESTION_ROUNDING_CENTS) continue;
-    await setBudget(userId, category, (cents / 100).toFixed(2), { client });
+    await setBudget(userId, category, centsToInput(cents), { client });
     budgets.push({ category, amountCents: cents });
   }
   if (budgets.length > 0 || plan.budgets.some((c) => has.has(c))) {

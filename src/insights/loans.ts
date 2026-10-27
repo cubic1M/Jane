@@ -26,6 +26,31 @@ export type DebtAccount = {
   } | null;
 };
 
+// What to load for each account so debtSummary has every detail (and a loan's starting
+// balance), as a Prisma select.
+export const DEBT_ACCOUNT_SELECT = {
+  id: true,
+  name: true,
+  mask: true,
+  type: true,
+  subtype: true,
+  currentBalanceCents: true,
+  liability: {
+    select: {
+      aprBps: true,
+      rateType: true,
+      minimumPaymentCents: true,
+      nextPaymentDueDate: true,
+      payoffDate: true,
+      isOverdue: true,
+      pastDueCents: true,
+      originationPrincipalCents: true,
+      ytdInterestPaidCents: true,
+      description: true,
+    },
+  },
+} as const;
+
 export type DebtLine = {
   id: string;
   name: string;

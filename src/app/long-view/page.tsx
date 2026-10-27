@@ -37,7 +37,7 @@ async function LongViewContent({
         </p>
       </div>
       {!view ? (
-        <p className={MUTED}>Link an account first, then I can look ahead.</p>
+        <p className={MUTED}>Add your accounts first, then I can look ahead.</p>
       ) : (
         <>
           <ul className="grid gap-3 sm:grid-cols-3">
