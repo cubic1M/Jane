@@ -18,6 +18,7 @@ import { POLICY_SELECT, toPolicy, yearlyPremium, type Policy } from "./policies"
 import { startDateFor } from "./quotes";
 import { shopById } from "./shop";
 import { isoDay as day } from "@/lib/dates";
+import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 
 // One-tap switch (spec step 105), on step 77's machinery: after the person's Yes (spec step
 // 104), Jane's agent does the rest by itself.
@@ -197,10 +198,14 @@ export async function confirmInsuranceSwitches({
   notify = sendStatusEmail,
   userId: only,
   partner,
-}: Options & { userId?: string } = {}): Promise<{ switched: number; handedOff: number }> {
+  userIds,
+}: Options & { userId?: string } & OnlyPeople = {}): Promise<{
+  switched: number;
+  handedOff: number;
+}> {
   // A system job across users: ids only; everything after is scoped to the person.
   const pending = await client.insurancePolicy.findMany({
-    where: { status: "pending", source: "switch", ...(only ? { userId: only } : {}) },
+    where: { status: "pending", source: "switch", ...(only ? { userId: only } : ownedBy(userIds)) },
     select: { id: true, userId: true, actionId: true },
     take: 200,
   });

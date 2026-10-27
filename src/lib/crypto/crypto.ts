@@ -23,6 +23,7 @@ import {
   type CryptoSource,
 } from "./source";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
+import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 
 // Crypto, read-only (spec step 161), for its page, net worth, Jane's answers and tools.
 // Balances come from each connection's crypto source and are stored with when they were
@@ -95,8 +96,13 @@ export async function syncCrypto(
 }
 
 // The nightly run (the plaid-sync cron): everyone with a crypto connection.
-export async function syncAllCrypto({ client = defaultClient, now = new Date() }: Options = {}) {
+export async function syncAllCrypto({
+  client = defaultClient,
+  now = new Date(),
+  userIds,
+}: Options & OnlyPeople = {}) {
   const people = await client.cryptoConnection.findMany({
+    where: ownedBy(userIds),
     select: { userId: true },
     distinct: ["userId"],
     take: 500,

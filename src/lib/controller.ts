@@ -39,6 +39,7 @@ export type { LastRun, StepLog, StepResult } from "./controller-log";
 import type { StepLog, StepResult } from "./controller-log";
 import { logsOf } from "./controller-log";
 import { isoDay as day } from "@/lib/dates";
+import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 
 const HOUR_MS = 60 * 60 * 1000;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -294,14 +295,19 @@ export async function queueNightlyRuns({
   now = new Date(),
   budgetMs = CONTROLLER_CRON_BUDGET_MS,
   drain = runDueJobs,
-}: Options & { budgetMs?: number; drain?: typeof runDueJobs } = {}): Promise<{
+  userIds,
+}: Options & { budgetMs?: number; drain?: typeof runDueJobs } & OnlyPeople = {}): Promise<{
   queued: number;
   done: number;
 }> {
   const today = day(now);
   // A system job across people: ids only. Each run is scoped to its person.
   const [people, ran, waiting] = await Promise.all([
-    client.account.findMany({ distinct: ["userId"], select: { userId: true } }),
+    client.account.findMany({
+      where: ownedBy(userIds),
+      distinct: ["userId"],
+      select: { userId: true },
+    }),
     client.controllerRun.findMany({ where: { day: today }, select: { userId: true } }),
     client.job.findMany({
       where: { kind: "controller_run", status: { in: ["queued", "running"] } },
@@ -317,7 +323,7 @@ export async function queueNightlyRuns({
   let done = 0;
   const started = Date.now();
   while (Date.now() - started < budgetMs) {
-    const counts = await drain({ client, now });
+    const counts = await drain({ client, now, userIds });
     const handled = counts.done + counts.retried + counts.failed;
     done += counts.done;
     if (handled === 0) break;
