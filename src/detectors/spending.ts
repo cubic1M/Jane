@@ -437,9 +437,16 @@ const budgetOverrun: Detector = {
       cat.set(m, (cat.get(m) ?? 0) + t.amountCents);
       totals.set(group, cat);
     }
+    // Only months the data covers from their first day count toward "usual".
+    const firstDay = data.transactions.reduce(
+      (min, t) => (t.date < min ? t.date : min),
+      data.today,
+    );
+    const full = prior.filter((m) => `${m}-01` >= firstDay);
+    if (full.length < S.budgetOverrunMinMonths) return null;
     const over = [...totals.entries()]
       .map(([group, cat]) => {
-        const avg = prior.reduce((s, m) => s + (cat.get(m) ?? 0), 0) / prior.length;
+        const avg = full.reduce((s, m) => s + (cat.get(m) ?? 0), 0) / full.length;
         const now = cat.get(lastMonth) ?? 0;
         return { group, avg, now, extra: now - avg };
       })
@@ -468,7 +475,7 @@ const budgetOverrun: Detector = {
         evidence("guessed", profile.months, 1, "month over your usual (one month isn't a pattern)"),
       ]),
       urgency: "later",
-      why: `You spent ${formatCents(top.now)} on ${label} last month against about ${formatCents(Math.round(top.avg))} in the three months before.`,
+      why: `You spent ${formatCents(top.now)} on ${label} last month against about ${formatCents(Math.round(top.avg))} in the ${full.length === 1 ? "month" : `${full.length} months`} before.`,
       action: { label: "Set a budget", href: "/budgets" },
     };
   },
