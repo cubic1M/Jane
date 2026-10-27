@@ -143,6 +143,10 @@ export const EITC = {
     married_joint: [$(18_140), $(31_160), $(31_160), $(31_160)],
   },
   investmentIncomeLimit: $(12_200),
+  // Without a qualifying child the credit needs the filer to be 25 to 64 at the end of the year
+  // (IRC 32(c)(1)(A)(ii)(II)); a student under 25 can't claim it (overnight upload QA).
+  childlessMinAge: 25,
+  childlessMaxAge: 64,
 } as const;
 
 // Self-employment tax: 92.35% of net earnings, 12.4% Social Security up to the wage base
