@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ACTIVITY_DISCLOSURE } from "@/config/activity";
 import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import { CONCIERGE_ACTIONS } from "@/config/concierge";
 import { TRIAL_HOURS } from "@/config/trial";
@@ -70,6 +71,18 @@ describe("the legal pages", () => {
     expect(readFileSync("src/app/api/events/route.ts", "utf8")).toMatch(/ONE_YEAR_SECONDS/);
     expect(privacy).toMatch(/A random id cookie \(kept for a year\)/);
     expect(privacy).toMatch(/We don't use advertising cookies or tracking pixels/);
+  });
+
+  it("say the beta records pages and buttons, not what people type, on sign-up and in the policy", () => {
+    expect(ACTIVITY_DISCLOSURE).toBe(
+      "During the beta we record how you use Jane (pages and buttons, not what you type) to improve it.",
+    );
+    expect(text(PrivacyPage)).toContain(ACTIVITY_DISCLOSURE);
+    expect(readFileSync("src/app/(auth)/signup/page.tsx", "utf8")).toMatch(
+      /\{ACTIVITY_DISCLOSURE\}/,
+    );
+    // e2e/activity.spec.ts checks that typing in a field records no value.
+    expect(text(PrivacyPage)).toMatch(/never the words or numbers themselves/);
   });
 
   it("say what goes to Anthropic, and what never does", () => {
