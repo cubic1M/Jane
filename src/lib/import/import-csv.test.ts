@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/categorize/llm", () => ({ classifyMerchants: vi.fn(async () => new Map()) }));
 
 import { AccountNotFoundError, importCsvFiles, previewCsvFiles } from "./import-csv";
+import { classifyMerchants } from "@/categorize/llm";
 import { CsvFormatError } from "@/data-sources/csv/csv-source";
 import type { ScopedDb } from "@/lib/db-scoped";
 
@@ -83,6 +84,19 @@ describe("importCsvFiles", () => {
       categorySource: "rule",
       pending: false,
     });
+  });
+
+  it("says each step as it starts, and never waits on Claude", async () => {
+    vi.mocked(classifyMerchants).mockClear();
+    const stages: unknown[] = [];
+    await importCsvFiles(db, "acct_1", [fixture("chase-checking.csv")], {
+      onStage: (stage) => stages.push(stage),
+    });
+    expect(stages).toEqual([{ stage: "sorting", rows: 9 }, { stage: "saving" }]);
+    // Merchants no rule knows are sorted after the response (categorizeLeftovers).
+    expect(vi.mocked(classifyMerchants).mock.calls.every(([asked]) => asked.length === 0)).toBe(
+      true,
+    );
   });
 
   it("reports rows the database already had as duplicates", async () => {

@@ -45,12 +45,10 @@ vi.mock("@/lib/import/import-csv", async (importOriginal) => ({
   importCsvFiles,
 }));
 
-import { confirmImport, createCsvAccount, previewImport } from "./actions";
-import { CsvFormatError } from "@/data-sources/csv/csv-source";
+import { createCsvAccount, previewImport } from "./actions";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { canImportCsv } from "@/lib/csv-access";
-import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 
 const CHASE_CARD =
   "Transaction Date,Post Date,Description,Category,Type,Amount,Memo\n" +
@@ -87,7 +85,6 @@ describe("CSV access", () => {
     for (const result of [
       await createCsvAccount(null, form({ name: "Card", kind: "credit_card" })),
       await previewImport(form({ files: [csv("card.csv")] })),
-      await confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
     ]) {
       expect(result).toEqual({
         ok: false,
@@ -227,167 +224,5 @@ describe("previewImport", () => {
     );
     expect(result).toEqual({ ok: false, error: "bank.csv: Pick the description column." });
     expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "bad_columns" });
-  });
-});
-
-describe("confirmImport into a new account", () => {
-  const counts = { parsed: 1, inserted: 1, duplicates: 0, skipped: 0 };
-  const fields = { accountId: "new", "new.name": "Chase card", "new.kind": "credit_card" };
-
-  it("makes the account from the file, with no balance needed, then imports into it", async () => {
-    importCsvFiles.mockResolvedValue({
-      ...counts,
-      files: [{ format: "chase_credit_card", rows: 1 }],
-    });
-
-    await expect(
-      confirmImport(form({ ...fields, "new.balance": "", files: [csv("card.csv")] })),
-    ).rejects.toThrow("redirect:/scanning");
-    expect(accountsCreate).toHaveBeenCalledWith({
-      data: {
-        userId: "user_1",
-        source: "csv",
-        name: "Chase card",
-        type: "credit",
-        subtype: "credit card",
-        currentBalanceCents: null,
-      },
-    });
-    expect(importCsvFiles).toHaveBeenCalledWith(expect.anything(), "acct_new", expect.any(Array));
-  });
-
-  it("keeps a balance when one is given", async () => {
-    importCsvFiles.mockResolvedValue({ ...counts, files: [] });
-    await expect(
-      confirmImport(form({ ...fields, "new.balance": "812.40", files: [csv("card.csv")] })),
-    ).rejects.toThrow("redirect:/scanning");
-    expect(accountsCreate.mock.calls[0][0].data.currentBalanceCents).toBe(81240);
-  });
-
-  it("makes no account when a file can't be read", async () => {
-    const result = await confirmImport(
-      form({ ...fields, files: [csv("other.csv", "Date,Payee,Debit\nx,Coffee,1\n")] }),
-    );
-    expect(result).toEqual({ ok: false, error: expect.stringMatching(/^other\.csv: /) });
-    expect(accountsCreate).not.toHaveBeenCalled();
-    expect(importCsvFiles).not.toHaveBeenCalled();
-  });
-
-  it("removes the new account again if the import fails", async () => {
-    importCsvFiles.mockRejectedValue(new CsvFormatError([{ file: "x.csv", error: "Unknown." }]));
-    const result = await confirmImport(form({ ...fields, files: [csv("card.csv")] }));
-    expect(result).toEqual({ ok: false, error: "x.csv: Unknown." });
-    expect(accountsDelete).toHaveBeenCalledWith({ where: { id: "acct_new" } });
-  });
-
-  it("asks for a name and type", async () => {
-    expect(
-      await confirmImport(
-        form({
-          accountId: "new",
-          "new.name": "",
-          "new.kind": "checking",
-          files: [csv("card.csv")],
-        }),
-      ),
-    ).toEqual({ ok: false, error: "Give the account a name (up to 60 characters)." });
-    expect(accountsCreate).not.toHaveBeenCalled();
-  });
-});
-
-describe("confirmImport", () => {
-  it("imports, audit-logs the counts, tracks import_completed and moves to /scanning", async () => {
-    const counts = { parsed: 1, inserted: 1, duplicates: 0, skipped: 0 };
-    importCsvFiles.mockResolvedValue({
-      ...counts,
-      files: [{ format: "chase_credit_card", rows: 1 }],
-    });
-
-    await expect(
-      confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
-    ).rejects.toThrow("redirect:/scanning");
-
-    expect(importCsvFiles).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "user_1" }),
-      "acct_1",
-      [{ name: "card.csv", text: CHASE_CARD }],
-    );
-    expect(logAudit).toHaveBeenCalledWith(
-      { type: "user", id: "user_1" },
-      "import_completed",
-      { type: "account", id: "acct_1" },
-      { ...counts, files: 1 },
-    );
-    expect(track).toHaveBeenCalledWith("user_1", "import_completed", { ...counts, files: 1 });
-    // The format and row count only: nothing from the file itself.
-    expect(track).toHaveBeenCalledWith("user_1", "upload_succeeded", {
-      format: "chase_credit_card",
-      rows: 1,
-    });
-    // Worked out after the response, so the tap answers at once (/scanning waits for it).
-    expect(runDetection).not.toHaveBeenCalled();
-    for (const callback of afterCallbacks) await callback();
-    expect(runDetection).toHaveBeenCalledWith("user_1");
-  });
-
-  it("queues explanations as a job and runs it after responding, then Jane's chat", async () => {
-    importCsvFiles.mockResolvedValue({
-      parsed: 1,
-      inserted: 1,
-      duplicates: 0,
-      skipped: 0,
-      files: [{ format: "chase_credit_card", rows: 1 }],
-    });
-
-    await expect(
-      confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
-    ).rejects.toThrow("redirect:/scanning");
-    expect(enqueueJob).toHaveBeenCalledWith("explain_findings", { userId: "user_1" });
-    expect(runJob).not.toHaveBeenCalled();
-
-    expect(runJaneAgentSafely).not.toHaveBeenCalled();
-
-    for (const callback of afterCallbacks) await callback();
-    // Findings first, then their card text.
-    expect(runDetection.mock.invocationCallOrder[0]).toBeLessThan(
-      runJob.mock.invocationCallOrder[0],
-    );
-    expect(runJob).toHaveBeenCalledWith("job_1");
-    // Spec step 82: Jane says what's new in the chat once the import is in.
-    expect(runJaneAgentSafely).toHaveBeenCalledWith("user_1", { trigger: "import" });
-  });
-
-  it("still moves to /scanning when detection fails after a successful import", async () => {
-    importCsvFiles.mockResolvedValue({
-      parsed: 1,
-      inserted: 1,
-      duplicates: 0,
-      skipped: 0,
-      files: [{ format: "chase_credit_card", rows: 1 }],
-    });
-    runDetection.mockRejectedValue(new Error("database hiccup"));
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
-    await expect(
-      confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
-    ).rejects.toThrow("redirect:/scanning");
-    expect(logAudit).toHaveBeenCalled();
-    // The failure after the response doesn't stop the card text or Jane's message.
-    for (const callback of afterCallbacks) await callback();
-    expect(runJob).toHaveBeenCalledWith("job_1");
-  });
-
-  it("returns a readable error and tracks import_failed for an unknown format", async () => {
-    importCsvFiles.mockRejectedValue(
-      new CsvFormatError([{ file: "x.csv", error: "Unknown format." }]),
-    );
-
-    const result = await confirmImport(form({ accountId: "acct_1", files: [csv("x.csv")] }));
-
-    expect(result).toEqual({ ok: false, error: "x.csv: Unknown format." });
-    expect(track).toHaveBeenCalledWith("user_1", "import_failed", { reason: "unknown_format" });
-    expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "unknown_format" });
-    expect(logAudit).not.toHaveBeenCalled();
-    expect(runDetection).not.toHaveBeenCalled();
   });
 });

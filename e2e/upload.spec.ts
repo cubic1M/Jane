@@ -72,8 +72,36 @@ test("a new person starts with uploading, and lands on the report", async ({ pag
   // Two weeks of statements: ask for three months.
   await expect(page.locator("[data-upload-months]")).toContainText("cover 14 days");
 
+  // The progress bar's steps as they show, kept across the move to the report.
+  await page.evaluate(() => {
+    const seen = new Set<string>();
+    new MutationObserver(() => {
+      document.querySelectorAll("[data-import-progress] li").forEach((li) => {
+        seen.add(li.textContent ?? "");
+      });
+      if (document.querySelector('[role="progressbar"][aria-label="Importing your statements"]')) {
+        seen.add("bar");
+      }
+      sessionStorage.setItem("import-steps", JSON.stringify([...seen]));
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
   await page.getByRole("button", { name: "Import 4 transactions" }).click();
   await expect(page).toHaveURL("/report", { timeout: 90_000 });
+  const seenSteps = JSON.parse(
+    (await page.evaluate(() => sessionStorage.getItem("import-steps"))) ?? "[]",
+  ) as string[];
+  expect(seenSteps).toContain("bar");
+  for (const label of [
+    "Reading your file",
+    "Sorting 4 transactions",
+    "Saving",
+    "Looking for savings",
+  ]) {
+    expect(
+      seenSteps.some((s) => s.includes(label)),
+      label,
+    ).toBe(true);
+  }
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     /We found|Nothing to fix right now/,
     { timeout: 60_000 },
