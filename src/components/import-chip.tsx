@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { dismissImport } from "@/app/import/actions";
 import { IMPORT_POLL_MS, IMPORT_STARTED_EVENT } from "@/config/import";
 import type { ImportRunView } from "@/lib/import/background";
@@ -29,16 +29,18 @@ async function fetchRun(): Promise<ImportRunView | null> {
 export function ImportChip() {
   const router = useRouter();
   const [run, setRun] = useState<ImportRunView | null>(null);
+  // The last answer, to tell when a running upload has just finished.
+  const last = useRef<ImportRunView | null>(null);
 
   const check = useCallback(async () => {
     const next = await fetchRun();
-    setRun((before) => {
-      // Finished while this page was open: its numbers are loaded again.
-      if (before && RUNNING.has(before.stage) && next && !RUNNING.has(next.stage)) {
-        router.refresh();
-      }
-      return next;
-    });
+    const before = last.current;
+    last.current = next;
+    setRun(next);
+    // Finished while this page was open: its numbers are loaded again.
+    if (before && RUNNING.has(before.stage) && next && !RUNNING.has(next.stage)) {
+      router.refresh();
+    }
   }, [router]);
 
   useEffect(() => {
@@ -61,10 +63,13 @@ export function ImportChip() {
 
   if (!run) return null;
   const close = () => {
+    last.current = null;
     setRun(null);
     void dismissImport(run.id);
   };
   const rows = `${run.rows} transaction${run.rows === 1 ? "" : "s"}`;
+  // After a removal the same work runs again: it's an update, not an import.
+  const removal = run.kind === "removal";
 
   return (
     <div
@@ -77,7 +82,8 @@ export function ImportChip() {
       {running ? (
         <>
           <span className="whitespace-nowrap">
-            Importing {rows}… <span className="tabular-nums">{run.percent}%</span>
+            {removal ? "Updating your numbers" : `Importing ${rows}`}…{" "}
+            <span className="tabular-nums">{run.percent}%</span>
           </span>
           <span aria-hidden className="hidden h-1.5 w-20 bg-zinc-200 sm:block dark:bg-zinc-800">
             <span
