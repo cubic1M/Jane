@@ -57,7 +57,7 @@ export type CsvFileResult =
       ok: true;
       file: string;
       // The CSV format, or OFX/QFX (which has no columns to map).
-      format: Pick<CsvFormat, "id" | "label">;
+      format: Pick<CsvFormat, "id" | "label" | "bank">;
       // The account a first upload of this file makes, before the person edits it.
       account: CsvFormat["account"];
       transactions: Omit<NormalizedTransaction, "accountRef">[];
@@ -235,7 +235,7 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
   return {
     ok: true,
     file: file.name,
-    format: { id: format.id, label: format.label },
+    format: { id: format.id, label: format.label, bank: format.bank },
     account:
       format.id === CUSTOM_FORMAT.id
         ? { ...format.account, name: accountNameFromFile(file.name) }

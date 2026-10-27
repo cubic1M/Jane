@@ -58,6 +58,9 @@ test("a card without a balance is asked for, and net worth says it isn't counted
   await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
   await expect(page.locator("[data-import-saved]")).toBeVisible();
   await expect(page.locator("[data-balance-ask]")).toHaveCount(0);
+  // The next file is often another bank's: the choice stays on a new account, not the one just
+  // made. (It used to switch to it, so a second bank's file landed in the first's account.)
+  await expect(page.locator('select[name="accountId"]')).toHaveValue("new");
   await waitForImport(page, { open: "/import" });
 
   await page.locator('select[name="accountId"]').selectOption("new");
@@ -93,6 +96,12 @@ test("a card without a balance is asked for, and net worth says it isn't counted
 
   // Given later on /import: the debt counts, and the note goes.
   await page.goto("/import");
+  // Said once, over the accounts, in the right number.
+  await expect(
+    page.getByText(
+      "One statement doesn't say today's balance. Add it below and net worth counts it.",
+    ),
+  ).toBeVisible();
   const ask = page.locator("[data-uploaded-account] [data-balance-ask]");
   await ask.getByRole("textbox").fill("350.00");
   await ask.getByRole("button", { name: "Save" }).click();

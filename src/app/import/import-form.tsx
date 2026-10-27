@@ -16,9 +16,10 @@ import {
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import type { BalanceAsk } from "@/lib/import/balance-question";
+import { existingAccountNote, mixedFilesNote, wrongAccountNote } from "@/lib/import/wrong-account";
 import { formatCents } from "@/lib/money";
 
-type AccountOption = { id: string; name: string; kindLabel: string };
+type AccountOption = { id: string; name: string; kindLabel: string; kind: AccountKind | null };
 
 const PRIMARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
@@ -48,10 +49,15 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   // An account just added by hand is the one to upload into.
   const ids = accounts.map((a) => a.id);
   const [known, setKnown] = useState(ids);
+  // An upload into a new account adds one too, but the next file is often another bank's: the
+  // choice stays "a new account" then, so it never lands in the last one by mistake (QA: after a
+  // Wells Fargo upload the select said "Wells Fargo checking" for the BofA file).
+  const [uploadedNew, setUploadedNew] = useState(false);
   if (ids.join() !== known.join()) {
     setKnown(ids);
     const added = ids.find((id) => !known.includes(id));
-    if (added) setAccount(added);
+    if (added && !uploadedNew) setAccount(added);
+    if (uploadedNew) setUploadedNew(false);
   }
 
   // The form isn't submitted natively: that would clear the chosen files after preview.
@@ -111,6 +117,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
       if (!result) return setError(FAILED);
       if (!result.ok) return setError(result.error);
       setSaved({ rows: result.rows, runId: result.runId, askBalance: result.askBalance });
+      if (account === NEW_ACCOUNT_ID) setUploadedNew(true);
       setPreview(null);
       setPickers({});
       formRef.current?.reset();
@@ -120,6 +127,18 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   }
 
   const files = preview?.ok ? preview.files : [];
+  const chosen = accounts.find((a) => a.id === account);
+  // What each file says about its account; a layout the person mapped has no kind to go by.
+  const facts = files.flatMap((f) =>
+    f.ok
+      ? [{ file: f.file, bank: f.bank, kind: f.formatId === "custom" ? undefined : f.account.kind }]
+      : [],
+  );
+  // Two accounts' files at once wait (they'd land in one account); else one line when the files
+  // don't fit the chosen account, or are from one Jane already has.
+  const mixed = mixedFilesNote(facts);
+  const wrongAccount =
+    mixed ?? (chosen ? wrongAccountNote(chosen, facts) : existingAccountNote(accounts, facts));
   const ready = files.length > 0 && files.every((f) => f.ok) && files.some((f) => f.rowCount > 0);
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
   const suggested = files.find((f) => f.ok)?.account;
@@ -205,7 +224,12 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
           {pending && busy === "preview" ? "Reading…" : preview ? "Preview again" : "Preview"}
         </button>
         {ready && (
-          <button type="button" onClick={onConfirm} disabled={pending} className={PRIMARY_BUTTON}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending || mixed !== null}
+            className={PRIMARY_BUTTON}
+          >
             {pending ? "Saving…" : `Import ${plural(total, "transaction")}`}
           </button>
         )}
@@ -244,6 +268,15 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
         >
           These files cover {days} {days === 1 ? "day" : "days"}. Jane spots monthly charges and
           bills best with {SUGGESTED_UPLOAD_MONTHS} months, so add older statements if you can.
+        </p>
+      )}
+
+      {ready && wrongAccount && (
+        <p
+          data-wrong-account=""
+          className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+        >
+          {wrongAccount}
         </p>
       )}
 
