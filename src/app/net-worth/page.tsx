@@ -76,24 +76,43 @@ async function NetWorthContent() {
         </p>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["You have", today.assetsCents],
-          ["You owe", today.debtsCents],
-          ["Net worth", today.netCents],
-        ].map(([label, cents]) => (
-          <div
-            key={label}
-            className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-          >
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
-            <span className="text-2xl font-semibold">{formatCents(Number(cents))}</span>
-          </div>
-        ))}
-      </section>
+      {/* No balance known at all (statements without a balance column): not "$0.00", as on Home
+          (QA: /net-worth said $0.00 three times and $0.00 for October). */}
+      {!today.known ? (
+        <section
+          data-net-worth-unknown=""
+          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+        >
+          <span className="text-sm text-zinc-600 dark:text-zinc-400">Net worth</span>
+          <span className="text-2xl font-semibold">Not known yet</span>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Your files don&apos;t include a balance.{" "}
+            <Link href="/import" className="font-medium underline">
+              Add one on the import page
+            </Link>{" "}
+            and your line starts there.
+          </p>
+        </section>
+      ) : (
+        <section className="grid gap-3 sm:grid-cols-3">
+          {[
+            ["You have", today.assetsCents],
+            ["You owe", today.debtsCents],
+            ["Net worth", today.netCents],
+          ].map(([label, cents]) => (
+            <div
+              key={label}
+              className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+            >
+              <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
+              <span className="text-2xl font-semibold">{formatCents(Number(cents))}</span>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* Never a figure that silently leaves a debt out (an uploaded card with no balance). */}
-      {left && (
+      {left && today.known && (
         <p data-net-worth-not-counting="" className="text-sm font-medium">
           {left.sentence}{" "}
           <Link href="/import" className="underline">
@@ -148,7 +167,11 @@ async function NetWorthContent() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Month by month</h2>
-        {months.every((m) => m.netCents === null) ? (
+        {!today.known ? (
+          <p className="text-zinc-600 dark:text-zinc-400">
+            This fills in once Jane knows a balance.
+          </p>
+        ) : months.every((m) => m.netCents === null) ? (
           <p className="text-zinc-600 dark:text-zinc-400">
             We take a snapshot of your balances each day; this fills in from today.
           </p>

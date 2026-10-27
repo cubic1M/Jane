@@ -36,4 +36,4 @@ export function formatCents(cents: number): string {
 
 // Whole dollars, rounded, with thousands separators: "$1,235" for 123,456 cents.
 export const formatWholeDollars = (cents: number): string =>
-  `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+  formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");

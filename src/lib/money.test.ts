@@ -57,3 +57,16 @@ describe("centsToInput", () => {
     expect(centsToInput(undefined)).toBe("");
   });
 });
+
+describe("formatWholeDollars", () => {
+  it("rounds to whole dollars, so the import chip and Home agree", () => {
+    expect(formatWholeDollars(37680)).toBe("$377");
+    expect(formatWholeDollars(37649)).toBe("$376");
+    expect(formatWholeDollars(123456)).toBe("$1,235");
+  });
+
+  it("puts the minus sign before the dollar sign", () => {
+    expect(formatWholeDollars(-149_900)).toBe("-$1,499");
+    expect(formatWholeDollars(0)).toBe("$0");
+  });
+});

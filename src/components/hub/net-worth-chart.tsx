@@ -29,7 +29,7 @@ import {
   type MovementWire,
   type ViewWindow,
 } from "@/insights/net-worth-movements";
-import { formatCents } from "@/lib/money";
+import { formatWholeDollars } from "@/lib/money";
 import { MarchingPath } from "@/components/marching-path";
 import { dayLabel } from "@/lib/day-label";
 
@@ -68,7 +68,8 @@ const RANGE_WORDS: Record<RangeKey, string> = {
   ALL: "Since you started",
 };
 
-const dollars = (cents: number) => formatCents(cents).replace(/\.\d\d$/, "");
+// Whole dollars, rounded (it said $376/yr where the import chip said $377/yr for $376.80).
+const dollars = formatWholeDollars;
 const signed = (cents: number) => `${cents >= 0 ? "+" : "−"}${dollars(Math.abs(cents))}`;
 const percent = (share: number) =>
   `${share >= 0 ? "+" : "−"}${(Math.abs(share) * 100).toFixed(Math.abs(share) < 0.1 ? 2 : 1)}%`;
