@@ -618,6 +618,26 @@ const RULES: readonly Rule[] = [
   },
   { category: "TRAVEL_LODGING", keywords: ["HOTEL", "MOTEL", "INN", "RESORT"] },
 
+  // A bar or a bakery by its kind (QA round 28: "HOLLOW OAK TAVERN", "BLUE HERON BAKERY").
+  { category: "FOOD_AND_DRINK_RESTAURANT", keywords: ["TAVERN", "PUB", "SALOON", "BAR & GRILL"] },
+  { category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK", keywords: ["BAKERY", "BAKE SHOP", "DONUTS"] },
+  // A gift to a church or a charity, and insurance and loans by their own words (QA round 28:
+  // "PARKSIDE COMMUNITY CHURCH", "LEMONADE INSURANCE", "HARBOR CREDIT UNION PMT").
+  {
+    category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+    keywords: ["CHURCH", "MINISTRIES", "PARISH", "TITHE", "TITHES", "DONATION", "CHARITY"],
+    direction: "out",
+  },
+  {
+    category: "GENERAL_SERVICES_INSURANCE",
+    keywords: ["INSURANCE", "ASSURANCE"],
+    direction: "out",
+  },
+  {
+    category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+    keywords: ["LOAN PMT", "LOAN PAYMENT", "CREDIT UNION PMT", "CU LOAN"],
+    direction: "out",
+  },
   // Toast ("TST*") is a till for restaurants only: whatever the place is called, it's a meal.
   // After the merchant names, so "TST* BLUE BOTTLE" is still coffee. (Square's "SQ *" serves
   // every kind of shop, so it says nothing.)

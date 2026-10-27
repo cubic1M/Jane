@@ -212,6 +212,14 @@ describe("categorizeByRules", () => {
     expect(out("TACO BELL #1234")).toBe("FOOD_AND_DRINK_FAST_FOOD");
   });
 
+  it("files a bar, a bakery, a church, insurance and a loan payment by their own words", () => {
+    expect(out("HOLLOW OAK TAVERN")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(out("BLUE HERON BAKERY")).toBe("FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK");
+    expect(out("PARKSIDE COMMUNITY CHURCH")).toBe("GOVERNMENT_AND_NON_PROFIT_DONATIONS");
+    expect(out("LEMONADE INSURANCE")).toBe("GENERAL_SERVICES_INSURANCE");
+    expect(out("HARBOR CREDIT UNION PMT")).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+  });
+
   it("leaves unknown merchants for the LLM", () => {
     expect(out("MYSTERY SHOP 555")).toBeNull();
   });
