@@ -19,13 +19,13 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "NYTIMES*NYTDIGITAL",
-      "perYear": 75
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
     },
     {
       "type": "price_increase",
-      "about": "NYTIMES*NYTDIGITAL 400→625",
-      "perYear": 27
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
     },
     {
       "type": "subscription_review",
@@ -34,57 +34,70 @@
     },
     {
       "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
+      "about": "OPENAI *CHATGPT SUBSCR",
+      "perYear": 240
+    },
+    {
+      "type": "subscription_review",
+      "about": "PELOTON* MEMBERSHIP",
+      "perYear": 528
     },
     {
       "type": "idle_cash",
-      "about": "cash 7045664, excess 6184651",
+      "about": "cash 6791877, excess 5809831",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "NETFLIX.COM, cancelled"
+      "about": "NYTIMES*NYTDIGITAL, cancelled"
     },
     {
       "type": "subscription_review",
-      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
+      "about": "APPLE.COM/BILL, cancelled"
     },
     {
       "type": "subscription_review",
-      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 32438.02
+      "dollars": 31739.35
     },
     {
       "date": "2026-05-31",
-      "dollars": 37189.18
+      "dollars": 36002.96
     },
     {
       "date": "2026-06-30",
-      "dollars": 43048.86
+      "dollars": 41668.3
     },
     {
       "date": "2026-07-31",
-      "dollars": 53062.6
+      "dollars": 51182.61
     },
     {
       "date": "2026-08-31",
-      "dollars": 57948
+      "dollars": 55591.65
     },
     {
       "date": "2026-09-30",
-      "dollars": 63507.38
+      "dollars": 60971.69
     },
     {
       "date": "2026-10-24",
-      "dollars": 69210.45
+      "dollars": 66510.49
     }
   ]
 }

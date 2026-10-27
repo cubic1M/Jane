@@ -133,6 +133,32 @@ describe("fallback recurring detection", () => {
     expect(detectRecurring(input({ transactions: twice }))).toEqual([]);
   });
 
+  it("joins one service written two ways, and nothing else", () => {
+    const at = (m: number, description: string, amountCents = 7999) =>
+      tx({ description, merchantName: null, pfcDetailed: null, date: monthsAgo(m), amountCents });
+    const keys = (transactions: ReturnType<typeof tx>[]) =>
+      detectRecurring(input({ transactions })).map((s) => s.key);
+
+    // The name and the website, with the city after each.
+    expect(
+      keys([
+        at(4, "DIRECTV STREAM SEATTLE WA"),
+        at(3, "DIRECTV STREAM SEATTLE WA"),
+        at(2, "DIRECTV.COM SEATTLE WA"),
+        at(1, "DIRECTV STREAM SEATTLE WA"),
+      ]),
+    ).toEqual(["merchant:directv stream seattle"]);
+    // Rides and food from one company, at prices that don't match, stay apart.
+    expect(
+      keys([
+        at(4, "ACME RIDES", 1_250),
+        at(3, "ACME RIDES", 1_250),
+        at(2, "ACME RIDES", 1_250),
+        at(1, "ACME", 2_310),
+      ]),
+    ).toEqual(["merchant:acme rides"]);
+  });
+
   it("ignores charges at irregular gaps", () => {
     const transactions = ["2026-07-02", "2026-07-20", "2026-09-28", "2026-10-03"].map((date) =>
       tx({ ...GROCERIES, date, amountCents: 5000 }),

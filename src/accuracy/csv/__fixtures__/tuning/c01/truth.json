@@ -20,7 +20,12 @@
     {
       "type": "subscription_review",
       "about": "NETFLIX.COM",
-      "perYear": 185.88
+      "perYear": 215.88
+    },
+    {
+      "type": "price_increase",
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
     },
     {
       "type": "subscription_review",
@@ -33,24 +38,19 @@
       "perYear": 150.2
     },
     {
-      "type": "bank_fees",
-      "about": "card fees",
-      "perYear": 5.67
-    },
-    {
       "type": "idle_cash",
-      "about": "cash 1252560, excess 207488",
+      "about": "cash 1242013, excess 179098",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "SMILE DENTAL GROUP, irregular"
+      "about": "JIFFY LUBE #1234, irregular"
     },
     {
       "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
+      "about": "STARBUCKS STORE 05423 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -60,19 +60,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 5384.24
+      "dollars": 6494.81
     },
     {
       "date": "2026-08-31",
-      "dollars": 7442.92
+      "dollars": 7914.89
     },
     {
       "date": "2026-09-30",
-      "dollars": 8885.15
+      "dollars": 9222.22
     },
     {
       "date": "2026-10-24",
-      "dollars": 9963.81
+      "dollars": 10186.92
     }
   ]
 }

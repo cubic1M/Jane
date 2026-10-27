@@ -20,7 +20,8 @@ const PROCESSOR_PREFIXES = [
 const BOILERPLATE = [
   // Capital One 360 writes "Debit Card Purchase - PAYPAL *HULU": the dash goes too, or the
   // processor prefix after it isn't seen (CSV bench: Hulu read as "Paypal").
-  /^(?:POS|DEBIT CARD|CHECKCARD|CHECK CARD|RECURRING)\s+(?:PURCHASE\s+)?(?:-\s+)?/,
+  // Bank of America's "CHECKCARD 0818 PAYPAL *HULU": the date goes too, for the same reason.
+  /^(?:POS|DEBIT CARD|CHECKCARD|CHECK CARD|RECURRING)\s+(?:PURCHASE\s+)?(?:-\s+)?(?:\d{4}\s+)?/,
   /^PURCHASE AUTHORIZED ON \d{1,2}\/\d{1,2}\s+/,
   /^ORIG CO NAME:\s*/,
 ];

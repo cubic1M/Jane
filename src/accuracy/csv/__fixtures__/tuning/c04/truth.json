@@ -25,13 +25,18 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 167.88
+      "about": "MAX.COM",
+      "perYear": 203.88
     },
     {
       "type": "subscription_review",
-      "about": "HULU 877-8244858",
-      "perYear": 215.88
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
     },
     {
       "type": "subscription_review",
@@ -47,15 +52,11 @@
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "MAX.COM, cancelled"
+      "about": "JIFFY LUBE #1234, irregular"
     },
     {
       "type": "subscription_review",
-      "about": "SMILE DENTAL GROUP, irregular"
-    },
-    {
-      "type": "subscription_review",
-      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+      "about": "STARBUCKS STORE 05423 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -65,31 +66,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 6502.91
+      "dollars": 6675.96
     },
     {
       "date": "2026-05-31",
-      "dollars": 6172.76
+      "dollars": 6705.43
     },
     {
       "date": "2026-06-30",
-      "dollars": 5385.82
+      "dollars": 6423.42
     },
     {
       "date": "2026-07-31",
-      "dollars": 5109.13
+      "dollars": 5647.12
     },
     {
       "date": "2026-08-31",
-      "dollars": 4802.58
+      "dollars": 5068.51
     },
     {
       "date": "2026-09-30",
-      "dollars": 5048.73
+      "dollars": 4972.61
     },
     {
       "date": "2026-10-24",
-      "dollars": 4975.58
+      "dollars": 4612.48
     }
   ]
 }

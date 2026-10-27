@@ -20,17 +20,17 @@
     {
       "type": "subscription_review",
       "about": "SPOTIFY USA",
-      "perYear": 155.88
-    },
-    {
-      "type": "price_increase",
-      "about": "SPOTIFY USA 1199→1299",
-      "perYear": 12
+      "perYear": 143.88
     },
     {
       "type": "subscription_review",
       "about": "MAX.COM",
       "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *YouTubePremium",
+      "perYear": 167.88
     },
     {
       "type": "trial_conversion",
@@ -40,11 +40,11 @@
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 962.62
+      "perYear": 1175.28
     },
     {
       "type": "idle_cash",
-      "about": "cash 1465059, excess 1023405",
+      "about": "cash 1313187, excess 724784",
       "perYear": null
     }
   ],
@@ -55,29 +55,33 @@
     },
     {
       "type": "duplicate_charge",
-      "about": "HOME DEPOT #6612 twice, refunded"
+      "about": "2 AMC 0517 ONLINE seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 1586.65
+      "dollars": 1266.61
     },
     {
       "date": "2026-07-31",
-      "dollars": 3769.21
+      "dollars": 3287.53
     },
     {
       "date": "2026-08-31",
-      "dollars": 5911.69
+      "dollars": 4620.22
     },
     {
       "date": "2026-09-30",
-      "dollars": 8039.47
+      "dollars": 6143.61
     },
     {
       "date": "2026-10-24",
-      "dollars": 9922.91
+      "dollars": 7916.6
     }
   ]
 }

@@ -35,19 +35,32 @@
     },
     {
       "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM",
+      "perYear": 203.88
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 457.14
+      "perYear": 439.33
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
+      "about": "APPLE.COM/BILL, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ADOBE *CREATIVE CLD, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -61,31 +74,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -1917.91
+      "dollars": -1049.42
     },
     {
       "date": "2026-05-31",
-      "dollars": 613.65
+      "dollars": 1754.85
     },
     {
       "date": "2026-06-30",
-      "dollars": 1531.54
+      "dollars": 2303.44
     },
     {
       "date": "2026-07-31",
-      "dollars": 2474.99
+      "dollars": 3244.19
     },
     {
       "date": "2026-08-31",
-      "dollars": 3465.33
+      "dollars": 3924.88
     },
     {
       "date": "2026-09-30",
-      "dollars": 3960.32
+      "dollars": 4344.51
     },
     {
       "date": "2026-10-24",
-      "dollars": 5085.22
+      "dollars": 5439.29
     }
   ]
 }
