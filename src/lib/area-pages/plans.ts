@@ -2,6 +2,7 @@ import type { Route } from "next";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { AHEAD_DATES_DAYS, AHEAD_URGENT_DAYS, HUB_DEADLINE_DAYS } from "@/config/hubs";
 import type { TreeStatus } from "@/components/tree/interactive-tree";
+import { notCounting, type Unbalanced } from "@/insights/net-worth";
 import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, type AreaItem, type AreaTree } from "./tree";
 import { daysBetween } from "@/lib/dates";
@@ -81,7 +82,13 @@ export type PlansTreeInput = {
   }[];
   competing: boolean;
   // known: false when no balance is known yet.
-  netWorth: { todayCents: number; lastMonthCents: number | null; known?: boolean } | null;
+  // unbalanced: accounts it can't count yet (card statements carry no balance).
+  netWorth: {
+    todayCents: number;
+    lastMonthCents: number | null;
+    known?: boolean;
+    unbalanced?: Unbalanced[];
+  } | null;
   lifeEvents: { open: number; newest: { title: string; done: number; total: number } | null };
   lastMonth: { label: string };
   year: number;
@@ -154,22 +161,29 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     }),
   );
 
-  const worth = input.netWorth
+  // Never a figure that silently leaves a debt out, as on /money: "Not known" with no balance at
+  // all, else it says what it isn't counting (QA: /ahead showed checking alone, the card left out).
+  const nw = input.netWorth;
+  const left = nw && nw.known !== false ? notCounting(nw.unbalanced ?? []) : null;
+  const worth = nw
     ? [
         item("worth", "today", {
-          label: "Net worth",
-          status: "good",
-          figure:
-            input.netWorth.known === false ? "Not known" : shortMoney(input.netWorth.todayCents),
+          label: left ? `Net worth, ${left.short}` : "Net worth",
+          status: left ? "look" : "good",
+          figure: nw.known === false ? "Not known" : shortMoney(nw.todayCents),
           summary:
-            input.netWorth.lastMonthCents === null
-              ? "What you have, less what you owe."
-              : (() => {
-                  const change = input.netWorth.todayCents - input.netWorth.lastMonthCents;
-                  return change === 0
-                    ? "The same as at the end of last month."
-                    : `${change > 0 ? "Up" : "Down"} ${shortMoney(Math.abs(change))} since the end of last month.`;
-                })(),
+            nw.known === false
+              ? "Your files don't include a balance yet. Add one on the import page."
+              : left
+                ? left.sentence
+                : nw.lastMonthCents === null
+                  ? "What you have, less what you owe."
+                  : (() => {
+                      const change = nw.todayCents - nw.lastMonthCents;
+                      return change === 0
+                        ? "The same as at the end of last month."
+                        : `${change > 0 ? "Up" : "Down"} ${shortMoney(Math.abs(change))} since the end of last month.`;
+                    })(),
         }),
       ]
     : [];
