@@ -162,7 +162,7 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
 
   it("emails it once, with a link for every figure", async () => {
     const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
-    await runMonthlyReports({ client, now: NOW, send });
+    await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
     const mine = send.mock.calls.filter(([e]) => e.to === email);
     expect(mine).toHaveLength(1);
     const [sent] = mine[0];
@@ -174,7 +174,7 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(sent.html).toContain("In September you spent");
     expect(sent.headers?.["List-Unsubscribe"]).toContain("/api/unsubscribe?token=");
     expect(sent.text).toMatch(/^Moved: .+ \S+\/transfers$/m);
-    await runMonthlyReports({ client, now: NOW, send });
+    await runMonthlyReports({ client, now: NOW, send, userIds: [userId] });
     expect(send.mock.calls.filter(([e]) => e.to === email)).toHaveLength(1);
   });
 
@@ -194,8 +194,10 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
   it("emails a month that only had spending, but never someone who turned emails off", async () => {
     // From the check-in email it replaces: a card with a grocery bill is a month to report.
     const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
+    // The third is someone else's in the shared database: a run kept to the others never
+    // touches them (another test file's person got a report and a check-in from this run).
     const people = await Promise.all(
-      [true, false].map(async (digestEnabled) => {
+      [true, false, true].map(async (digestEnabled) => {
         const person = await client.user.create({
           data: { email: `report-card-${crypto.randomUUID()}@example.com`, digestEnabled },
         });
@@ -218,10 +220,18 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
         return person;
       }),
     );
-    await runMonthlyReports({ client, now: NOW, send });
+    await runMonthlyReports({
+      client,
+      now: NOW,
+      send,
+      userIds: [people[0].id, people[1].id],
+    });
     const to = send.mock.calls.map(([e]) => e.to);
     expect(to).toContain(people[0].email);
     expect(to).not.toContain(people[1].email);
+    expect(to).not.toContain(people[2].email);
+    expect(await client.monthlyReport.count({ where: { userId: people[2].id } })).toBe(0);
+    expect(await client.checkIn.count({ where: { userId: people[2].id } })).toBe(0);
     const mail = send.mock.calls.find(([e]) => e.to === people[0].email)![0];
     expect(mail.text).toContain("In September you spent $45.00");
   });

@@ -236,18 +236,25 @@ ${receipts.length > 0 ? `<h2 style="font-size:16px">Receipts</h2><ul>${receipts.
 }
 
 // The daily run (the digest cron): last month's report to everyone who gets Jane's
-// emails, once, in the first days of the month.
+// emails, once, in the first days of the month. `userIds` keeps the run to those people (a
+// test's own, never everyone's in a shared database).
 export async function runMonthlyReports({
   client = defaultClient,
   now = new Date(),
   send = sendEmail,
-}: Options & { send?: typeof sendEmail } = {}): Promise<{
+  userIds,
+}: Options & { send?: typeof sendEmail; userIds?: readonly string[] } = {}): Promise<{
   sent: number;
   skipped: number;
   failed: number;
 }> {
   const users = await client.user.findMany({
-    where: { digestEnabled: true, deletedAt: null, accounts: { some: {} } },
+    where: {
+      digestEnabled: true,
+      deletedAt: null,
+      accounts: { some: {} },
+      ...(userIds ? { id: { in: [...userIds] } } : {}),
+    },
     select: { id: true, email: true },
     orderBy: { id: "asc" },
   });
