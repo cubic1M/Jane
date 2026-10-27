@@ -227,11 +227,7 @@ describe("fromFirstKnown", () => {
       { month: "2026-04", netCents: null },
       { month: "2026-05", netCents: 300 },
     ];
-    expect(fromFirstKnown(months).map((m) => m.month)).toEqual([
-      "2026-03",
-      "2026-04",
-      "2026-05",
-    ]);
+    expect(fromFirstKnown(months).map((m) => m.month)).toEqual(["2026-03", "2026-04", "2026-05"]);
   });
 
   it("lists nothing when no month has a figure", () => {
