@@ -4,7 +4,8 @@ import { useState } from "react";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 
 // For a CSV in no layout Jane knows: which column is the date, the description and the
-// amount (or money out and money in). The answers go with the form as map.<file>.<field>
+// amount (or money out and money in). Jane's guesses for how dates are written and which sign
+// is spending are shown for the person to check; when the file can't tell, they must say. The answers go with the form as map.<file>.<field>
 // (mappingFromForm in column-mapping.ts reads them) when the person previews again.
 
 const FIELD =
@@ -18,17 +19,27 @@ type Props = {
 };
 
 export function ColumnPicker({ index, file, choices, children }: Props) {
-  const { columns, guess } = choices;
+  const { columns, guess, dateOrders, signs } = choices;
+  const [date, setDate] = useState(guess.date === null ? "" : String(guess.date));
   const [amount, setAmount] = useState(guess.amount === null ? "" : String(guess.amount));
   const name = (field: string) => `map.${index}.${field}`;
+  const order = date === "" ? undefined : dateOrders[Number(date)];
+  const sign = amount === "" ? undefined : signs[Number(amount)];
 
-  const select = (field: string, label: string, initial: number | null, optional?: string) => (
+  const select = (
+    field: string,
+    label: string,
+    initial: number | null,
+    optional?: string,
+    onChange?: (value: string) => void,
+  ) => (
     <label className="flex flex-col gap-1 text-sm font-medium">
       {label}
       <select
         name={name(field)}
         defaultValue={initial === null ? "" : String(initial)}
         required={!optional}
+        onChange={onChange && ((event) => onChange(event.target.value))}
         className={FIELD}
       >
         <option value="">{optional ?? "Pick a column"}</option>
@@ -53,7 +64,29 @@ export function ColumnPicker({ index, file, choices, children }: Props) {
         The first row is column names
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
-        {select("date", "Date", guess.date)}
+        {select("date", "Date", guess.date, undefined, setDate)}
+        {order && (
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Dates are written
+            {/* Keyed by column, so a different date column starts from its own guess. */}
+            <select
+              key={date}
+              name={name("dates")}
+              defaultValue={order === "unknown" ? "" : order}
+              required
+              className={FIELD}
+            >
+              <option value="">Pick one</option>
+              <option value="mdy">Month first (09/05/2026 is Sep 5)</option>
+              <option value="dmy">Day first (05/09/2026 is 5 Sep)</option>
+            </select>
+            {order === "unknown" && (
+              <span className="text-xs font-normal text-zinc-500">
+                Jane can&apos;t tell from the dates in this file.
+              </span>
+            )}
+          </label>
+        )}
         {select("description", "Description", guess.description)}
         <label className="flex flex-col gap-1 text-sm font-medium">
           Amount
@@ -79,10 +112,22 @@ export function ColumnPicker({ index, file, choices, children }: Props) {
         ) : (
           <label className="flex flex-col gap-1 text-sm font-medium">
             Money you spent shows as
-            <select name={name("out")} defaultValue="negative" className={FIELD}>
+            <select
+              key={amount}
+              name={name("out")}
+              defaultValue={sign?.moneyOut ?? ""}
+              required
+              className={FIELD}
+            >
+              <option value="">Pick one</option>
               <option value="negative">A negative number (-12.50)</option>
               <option value="positive">A positive number (12.50)</option>
             </select>
+            <span data-sign-guess="" className="text-xs font-normal text-zinc-500">
+              {sign?.moneyOut
+                ? `Jane's guess: ${sign.why.charAt(0).toLowerCase()}${sign.why.slice(1)}. Check the amounts in the preview.`
+                : "Jane can't tell from the rows. Check one you know, like a grocery shop."}
+            </span>
           </label>
         )}
       </div>

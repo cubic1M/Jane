@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { accountsCreate, importCsvFiles, runDetection, enqueueJob, runJob, afterCallbacks } =
-  vi.hoisted(() => ({
-    enqueueJob: vi.fn(),
-    runJob: vi.fn(),
-    afterCallbacks: [] as (() => Promise<void>)[],
-    accountsCreate: vi.fn(),
-    importCsvFiles: vi.fn(),
-    runDetection: vi.fn(),
-  }));
+const {
+  accountsCreate,
+  accountsDelete,
+  importCsvFiles,
+  runDetection,
+  enqueueJob,
+  runJob,
+  afterCallbacks,
+} = vi.hoisted(() => ({
+  enqueueJob: vi.fn(),
+  runJob: vi.fn(),
+  afterCallbacks: [] as (() => Promise<void>)[],
+  accountsCreate: vi.fn(),
+  accountsDelete: vi.fn(),
+  importCsvFiles: vi.fn(),
+  runDetection: vi.fn(),
+}));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -19,7 +27,10 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/db-scoped", () => ({
-  scopedDb: vi.fn(async () => ({ userId: "user_1", accounts: { create: accountsCreate } })),
+  scopedDb: vi.fn(async () => ({
+    userId: "user_1",
+    accounts: { create: accountsCreate, delete: accountsDelete },
+  })),
 }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "user_1" })) }));
 vi.mock("@/lib/csv-access", () => ({ canImportCsv: vi.fn() }));
@@ -57,7 +68,8 @@ function form(fields: Record<string, string | File[]>) {
 const csv = (name: string, text = CHASE_CARD) => new File([text], name, { type: "text/csv" });
 
 beforeEach(() => {
-  accountsCreate.mockReset().mockResolvedValue({});
+  accountsCreate.mockReset().mockResolvedValue({ id: "acct_new" });
+  accountsDelete.mockReset().mockResolvedValue({});
   importCsvFiles.mockReset();
   runDetection.mockReset().mockResolvedValue({});
   enqueueJob.mockReset().mockResolvedValue("job_1");
@@ -153,10 +165,31 @@ describe("previewImport", () => {
   });
 
   it("tracks upload_started, and upload_failed with only the reason", async () => {
-    await previewImport(form({ files: [csv("other.csv", "Date,Payee\nx,Coffee\n")] }));
+    await previewImport(form({ files: [csv("other.csv", "Date,Payee,Debit\nx,Coffee,1\n")] }));
 
     expect(track).toHaveBeenCalledWith("user_1", "upload_started");
     expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "unknown_format" });
+  });
+
+  it("refuses a web page saved as .csv before the picker, and says what to do", async () => {
+    const result = await previewImport(
+      form({ files: [csv("statement.csv", "<!doctype html><html><body>Sign in</body></html>")] }),
+    );
+    expect(result.ok && result.files[0]).toEqual({
+      file: "statement.csv",
+      ok: false,
+      error: "This isn't a CSV statement. Download the CSV from your bank's website.",
+      reason: "not_csv",
+    });
+    expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "not_csv" });
+  });
+
+  it("suggests the new account's name and type from the file", async () => {
+    const result = await previewImport(form({ files: [csv("card.csv")] }));
+    expect(result.ok && result.files[0]).toMatchObject({
+      ok: true,
+      account: { name: "Chase card", kind: "credit_card" },
+    });
   });
 
   it("offers the column picker for an unknown layout, then reads it with the picked columns", async () => {
@@ -194,6 +227,71 @@ describe("previewImport", () => {
     );
     expect(result).toEqual({ ok: false, error: "bank.csv: Pick the description column." });
     expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "bad_columns" });
+  });
+});
+
+describe("confirmImport into a new account", () => {
+  const counts = { parsed: 1, inserted: 1, duplicates: 0, skipped: 0 };
+  const fields = { accountId: "new", "new.name": "Chase card", "new.kind": "credit_card" };
+
+  it("makes the account from the file, with no balance needed, then imports into it", async () => {
+    importCsvFiles.mockResolvedValue({
+      ...counts,
+      files: [{ format: "chase_credit_card", rows: 1 }],
+    });
+
+    await expect(
+      confirmImport(form({ ...fields, "new.balance": "", files: [csv("card.csv")] })),
+    ).rejects.toThrow("redirect:/scanning");
+    expect(accountsCreate).toHaveBeenCalledWith({
+      data: {
+        userId: "user_1",
+        source: "csv",
+        name: "Chase card",
+        type: "credit",
+        subtype: "credit card",
+        currentBalanceCents: null,
+      },
+    });
+    expect(importCsvFiles).toHaveBeenCalledWith(expect.anything(), "acct_new", expect.any(Array));
+  });
+
+  it("keeps a balance when one is given", async () => {
+    importCsvFiles.mockResolvedValue({ ...counts, files: [] });
+    await expect(
+      confirmImport(form({ ...fields, "new.balance": "812.40", files: [csv("card.csv")] })),
+    ).rejects.toThrow("redirect:/scanning");
+    expect(accountsCreate.mock.calls[0][0].data.currentBalanceCents).toBe(81240);
+  });
+
+  it("makes no account when a file can't be read", async () => {
+    const result = await confirmImport(
+      form({ ...fields, files: [csv("other.csv", "Date,Payee,Debit\nx,Coffee,1\n")] }),
+    );
+    expect(result).toEqual({ ok: false, error: expect.stringMatching(/^other\.csv: /) });
+    expect(accountsCreate).not.toHaveBeenCalled();
+    expect(importCsvFiles).not.toHaveBeenCalled();
+  });
+
+  it("removes the new account again if the import fails", async () => {
+    importCsvFiles.mockRejectedValue(new CsvFormatError([{ file: "x.csv", error: "Unknown." }]));
+    const result = await confirmImport(form({ ...fields, files: [csv("card.csv")] }));
+    expect(result).toEqual({ ok: false, error: "x.csv: Unknown." });
+    expect(accountsDelete).toHaveBeenCalledWith({ where: { id: "acct_new" } });
+  });
+
+  it("asks for a name and type", async () => {
+    expect(
+      await confirmImport(
+        form({
+          accountId: "new",
+          "new.name": "",
+          "new.kind": "checking",
+          files: [csv("card.csv")],
+        }),
+      ),
+    ).toEqual({ ok: false, error: "Give the account a name (up to 60 characters)." });
+    expect(accountsCreate).not.toHaveBeenCalled();
   });
 });
 

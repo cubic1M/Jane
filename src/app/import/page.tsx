@@ -50,24 +50,30 @@ async function ImportContent() {
       </details>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold">1. Your accounts</h2>
-        <AccountList accounts={accounts} />
-        <AddAccountForm />
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold">2. Upload statement files</h2>
-        {accounts.length === 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400">Add an account first.</p>
-        ) : (
-          <ImportForm
-            accounts={accounts.map(({ id, name, kindLabel }) => ({ id, name, kindLabel }))}
-          />
-        )}
+        <h2 className="text-xl font-semibold">Upload statement files</h2>
+        {/* A first upload makes its account from the file, so nothing comes before it. */}
+        <ImportForm
+          accounts={accounts.map(({ id, name, kindLabel }) => ({ id, name, kindLabel }))}
+        />
         <p className="text-xs text-zinc-500">
           Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi,
           American Express and Discover. For any other CSV you pick which column is which.
         </p>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        {accounts.length > 0 && (
+          <>
+            <h2 className="text-xl font-semibold">Your accounts</h2>
+            <AccountList accounts={accounts} />
+          </>
+        )}
+        <details data-add-account="">
+          <summary className="cursor-pointer text-sm font-medium">Add an account by hand</summary>
+          <div className="mt-3">
+            <AddAccountForm />
+          </div>
+        </details>
       </section>
     </>
   );

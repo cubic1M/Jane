@@ -1,3 +1,4 @@
+import type { AccountKind } from "@/data-sources/types";
 import { parseMoneyToCents } from "@/lib/money";
 import type { CsvRecord } from "./parse-csv";
 
@@ -23,6 +24,8 @@ export type CsvFormat = {
   label: string;
   // Lower-cased header names that must all be present for the format to match.
   requiredHeaders: readonly string[];
+  // The account a first upload in this format makes (on /import), before the person edits it.
+  account: { name: string; kind: AccountKind };
   parseRow(get: (header: string) => string): RowResult;
 };
 
@@ -55,11 +58,6 @@ export function parseIsoDate(value: string): string | null {
   return match ? parseUsDate(`${match[2]}/${match[3]}/${match[1]}`) : null;
 }
 
-// Any of the three, for files whose columns the person picked.
-export function parseAnyDate(value: string): string | null {
-  return parseUsDate(value) ?? parseShortUsDate(value) ?? parseIsoDate(value);
-}
-
 function parseCommon(
   dateText: string,
   amountText: string,
@@ -83,6 +81,7 @@ function optional(value: string): string | undefined {
 export const chaseChecking: CsvFormat = {
   id: "chase_checking",
   label: "Chase checking or savings",
+  account: { name: "Chase checking", kind: "checking" },
   requiredHeaders: ["details", "posting date", "description", "amount", "type", "balance"],
   parseRow(get) {
     const common = parseCommon(get("posting date"), get("amount"), get("description"));
@@ -104,6 +103,7 @@ export const chaseChecking: CsvFormat = {
 export const chaseCreditCard: CsvFormat = {
   id: "chase_credit_card",
   label: "Chase credit card",
+  account: { name: "Chase card", kind: "credit_card" },
   requiredHeaders: ["transaction date", "post date", "description", "category", "type", "amount"],
   parseRow(get) {
     const common = parseCommon(get("post date"), get("amount"), get("description"));
@@ -122,11 +122,15 @@ export const chaseCreditCard: CsvFormat = {
 
 // Two columns, one filled per row: money out and money in. Some banks sign the second
 // (Citi writes a payment as -41.00 under Credit), so both are read without their sign.
-export function debitCreditCents(debitText: string, creditText: string): number | string {
+export function debitCreditCents(
+  debitText: string,
+  creditText: string,
+  parse: (text: string) => number | null = parseMoneyToCents,
+): number | string {
   if (!debitText.trim() && !creditText.trim()) return "Missing amount";
-  const debit = debitText.trim() ? parseMoneyToCents(debitText) : 0;
+  const debit = debitText.trim() ? parse(debitText) : 0;
   if (debit === null) return `Unreadable amount "${debitText}"`;
-  const credit = creditText.trim() ? parseMoneyToCents(creditText) : 0;
+  const credit = creditText.trim() ? parse(creditText) : 0;
   if (credit === null) return `Unreadable amount "${creditText}"`;
   return Math.abs(debit) - Math.abs(credit) || 0;
 }
@@ -153,6 +157,7 @@ function debitCreditRow(
 export const bankOfAmericaChecking: CsvFormat = {
   id: "bofa_checking",
   label: "Bank of America checking or savings",
+  account: { name: "Bank of America checking", kind: "checking" },
   requiredHeaders: ["date", "description", "amount", "running bal."],
   parseRow(get) {
     if (!get("amount").trim() && /^beginning balance/i.test(get("description").trim())) {
@@ -177,6 +182,7 @@ export const bankOfAmericaChecking: CsvFormat = {
 export const bankOfAmericaCreditCard: CsvFormat = {
   id: "bofa_credit_card",
   label: "Bank of America credit card",
+  account: { name: "Bank of America card", kind: "credit_card" },
   requiredHeaders: ["posted date", "reference number", "payee", "address", "amount"],
   parseRow(get) {
     const common = parseCommon(get("posted date"), get("amount"), get("payee"));
@@ -198,6 +204,7 @@ export const bankOfAmericaCreditCard: CsvFormat = {
 export const wellsFargo: HeaderlessFormat = {
   id: "wells_fargo",
   label: "Wells Fargo",
+  account: { name: "Wells Fargo checking", kind: "checking" },
   columns: ["date", "amount", "posted", "check number", "description"],
   matches: (fields) =>
     fields.length === 5 &&
@@ -224,6 +231,7 @@ export const wellsFargo: HeaderlessFormat = {
 export const capitalOneCreditCard: CsvFormat = {
   id: "capital_one_credit_card",
   label: "Capital One credit card",
+  account: { name: "Capital One card", kind: "credit_card" },
   requiredHeaders: [
     "transaction date",
     "posted date",
@@ -250,6 +258,7 @@ export const capitalOneCreditCard: CsvFormat = {
 export const capitalOne360: CsvFormat = {
   id: "capital_one_360",
   label: "Capital One 360 checking or savings",
+  account: { name: "Capital One 360", kind: "checking" },
   requiredHeaders: [
     "transaction description",
     "transaction date",
@@ -287,6 +296,7 @@ export const capitalOne360: CsvFormat = {
 export const citiCreditCard: CsvFormat = {
   id: "citi_credit_card",
   label: "Citi credit card",
+  account: { name: "Citi card", kind: "credit_card" },
   requiredHeaders: ["status", "date", "description", "debit", "credit"],
   parseRow(get) {
     return debitCreditRow(
@@ -308,6 +318,7 @@ export const citiCreditCard: CsvFormat = {
 export const amex: CsvFormat = {
   id: "amex",
   label: "American Express",
+  account: { name: "American Express card", kind: "credit_card" },
   requiredHeaders: ["date", "description", "card member", "account #", "amount"],
   parseRow(get) {
     const common = parseCommon(get("date"), get("amount"), get("description"));
@@ -329,6 +340,7 @@ export const amex: CsvFormat = {
 export const discoverCreditCard: CsvFormat = {
   id: "discover_credit_card",
   label: "Discover card",
+  account: { name: "Discover card", kind: "credit_card" },
   requiredHeaders: ["trans. date", "post date", "description", "amount", "category"],
   parseRow(get) {
     const common = parseCommon(get("post date"), get("amount"), get("description"));
@@ -373,7 +385,7 @@ export function detectFormat(headers: string[]): CsvFormat | null {
 export const HEADER_SEARCH_ROWS = 15;
 
 export type Layout = {
-  format: Pick<CsvFormat, "id" | "label" | "parseRow">;
+  format: Pick<CsvFormat, "id" | "label" | "parseRow" | "account">;
   // Each column's name, as parseRow asks for it.
   columns: string[];
   rows: CsvRecord[];

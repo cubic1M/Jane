@@ -30,9 +30,16 @@ test("delete all my data needs DELETE typed, then removes the account", async ({
     { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
   ]);
   await page.goto("/import");
-  await page.getByLabel("Name").fill("Test Card");
-  await page.getByLabel("Type").selectOption({ label: "Credit card" });
-  await page.getByRole("button", { name: "Add account" }).click();
+  // Adding an account by hand is folded away: a first upload can make its own.
+  const addAccount = page.locator("[data-add-account]");
+  if ((await addAccount.getAttribute("open")) === null) {
+    await addAccount.getByText("Add an account by hand").click();
+  }
+  await addAccount.getByLabel("Name").fill("Test Card");
+  await addAccount.getByLabel("Type").selectOption({ label: "Credit card" });
+  await addAccount.getByRole("button", { name: "Add account" }).click();
+  // The upload goes into it once it shows as chosen.
+  await expect(page.locator('select[name="accountId"] option:checked')).toHaveText(/^Test Card /);
   // Exact text: the account dropdown's "Test Card (Credit card)" option is hidden.
   await expect(page.getByText("Test Card", { exact: true })).toBeVisible();
 

@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { mappingFromForm } from "@/data-sources/csv/column-mapping";
 import { CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
-import { ACCOUNT_KINDS, isAccountKind } from "@/data-sources/types";
+import { NEW_ACCOUNT_ID } from "@/config/import";
+import { ACCOUNT_KINDS, isAccountKind, type AccountKind } from "@/data-sources/types";
 import { runDetection } from "@/detection/engine";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { track } from "@/lib/analytics";
@@ -42,6 +43,7 @@ type UploadFailure =
   | "too_big"
   | "unknown_format"
   | "unreadable"
+  | "not_csv"
   | "bad_columns"
   | "account_not_found"
   | "error";
@@ -49,25 +51,25 @@ type UploadFailure =
 const uploadFailed = (userId: string, reason: UploadFailure) =>
   track(userId, "upload_failed", { reason });
 
-export async function createCsvAccount(
-  _previous: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
-  const db = await csvDb();
-  if (!db) return { ok: false, error: NOT_ALLOWED };
-  const name = String(formData.get("name") ?? "").trim();
-  const kind = formData.get("kind");
-  const balanceText = String(formData.get("balance") ?? "").trim();
+type AccountFields = { name: string; kind: AccountKind; balance: number | null };
 
-  if (!name || name.length > 60)
-    return { ok: false, error: "Give the account a name (up to 60 characters)." };
-  if (!isAccountKind(kind)) return { ok: false, error: "Pick checking, savings or credit card." };
+// An account's name, type and (optional) balance from the form, with `prefix` for the
+// new-account fields beside an upload ("new.name", …). A string says what's wrong.
+function accountFields(formData: FormData, prefix = ""): AccountFields | string {
+  const field = (name: string) => formData.get(`${prefix}${name}`);
+  const name = String(field("name") ?? "").trim();
+  const kind = field("kind");
+  const balanceText = String(field("balance") ?? "").trim();
+
+  if (!name || name.length > 60) return "Give the account a name (up to 60 characters).";
+  if (!isAccountKind(kind)) return "Pick checking, savings or credit card.";
   const balance = balanceText ? parseMoneyToCents(balanceText) : null;
-  if (balanceText && balance === null) {
-    return { ok: false, error: "Enter the balance as a number, like 1,234.56." };
-  }
+  if (balanceText && balance === null) return "Enter the balance as a number, like 1,234.56.";
+  return { name, kind, balance };
+}
 
-  await db.accounts.create({
+const createAccount = (db: ScopedDb, { name, kind, balance }: AccountFields) =>
+  db.accounts.create({
     data: {
       userId: db.userId,
       source: "csv",
@@ -77,6 +79,16 @@ export async function createCsvAccount(
       currentBalanceCents: balance,
     },
   });
+
+export async function createCsvAccount(
+  _previous: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
+  const fields = accountFields(formData);
+  if (typeof fields === "string") return { ok: false, error: fields };
+  await createAccount(db, fields);
   revalidatePath("/import");
   return { ok: true };
 }
@@ -135,17 +147,33 @@ export async function previewImport(formData: FormData): Promise<PreviewResult> 
 export async function confirmImport(formData: FormData): Promise<ActionResult> {
   const db = await csvDb();
   if (!db) return { ok: false, error: NOT_ALLOWED };
-  const accountId = String(formData.get("accountId") ?? "");
+  let accountId = String(formData.get("accountId") ?? "");
   const files = await readFiles(formData);
   if (!Array.isArray(files)) {
     await uploadFailed(db.userId, files.reason);
     return { ok: false, error: files.error };
   }
 
+  // A first upload makes its account from the file (name and type suggested, balance
+  // optional), once every file reads, so a failed upload leaves no empty account behind.
+  let created = false;
+  if (accountId === NEW_ACCOUNT_ID) {
+    const fields = accountFields(formData, "new.");
+    if (typeof fields === "string") return { ok: false, error: fields };
+    const failed = previewCsvFiles(files).find((p) => !p.ok);
+    if (failed && !failed.ok) {
+      await uploadFailed(db.userId, failed.reason);
+      return { ok: false, error: `${failed.file}: ${failed.error}` };
+    }
+    accountId = (await createAccount(db, fields)).id;
+    created = true;
+  }
+
   let result;
   try {
     result = await importCsvFiles(db, accountId, files);
   } catch (error) {
+    if (created) await db.accounts.delete({ where: { id: accountId } });
     if (error instanceof CsvFormatError || error instanceof AccountNotFoundError) {
       const reason = error instanceof CsvFormatError ? "unknown_format" : "account_not_found";
       await track(db.userId, "import_failed", { reason });

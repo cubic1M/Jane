@@ -7,7 +7,7 @@ import {
   type CsvFailure,
   type CsvFile,
 } from "@/data-sources/csv/csv-source";
-import { accountKindOf, type SkippedRow } from "@/data-sources/types";
+import { accountKindOf, type AccountKind, type SkippedRow } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
 
 export const MAX_FILES = 10;
@@ -20,6 +20,8 @@ export type FilePreview =
       ok: true;
       format: string;
       formatId: string;
+      // The account a first upload of this file makes: its suggested name and type.
+      account: { name: string; kind: AccountKind };
       rowCount: number;
       // The first and last day it covers (YYYY-MM-DD).
       from: string;
@@ -50,6 +52,7 @@ export function previewCsvFiles(files: CsvFile[]): FilePreview[] {
       ok: true,
       format: result.format.label,
       formatId: result.format.id,
+      account: result.account,
       rowCount: result.transactions.length,
       from: dates[0] ?? "",
       to: dates[dates.length - 1] ?? "",
