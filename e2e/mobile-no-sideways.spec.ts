@@ -44,10 +44,13 @@ test("a phone's /import is never wider than the screen, and Import takes the tap
     .fill("My everyday checking account at the credit union downtown by the park");
   // Give the chat's sheet time to start loading in the background.
   await page.waitForTimeout(1500);
-  const sideways = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(sideways).toBeLessThanOrEqual(0);
+  // What the person feels: the page doesn't scroll sideways, isn't zoomed out, and the tap lands
+  // (scrollWidth isn't asked: a clipped page may still report its content's width).
+  const view = await page.evaluate(() => {
+    window.scrollTo(600, window.scrollY);
+    return { x: window.scrollX, scale: window.visualViewport?.scale ?? 1 };
+  });
+  expect(view).toEqual({ x: 0, scale: 1 });
   await page.getByRole("button", { name: "Import 1 transaction" }).click({ timeout: 15_000 });
   await expect(page.locator("[data-import-saved]")).toContainText("Saved");
 });
