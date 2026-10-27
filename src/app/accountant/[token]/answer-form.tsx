@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { answerAction, type AnswerState } from "./actions";
+import { FormStatus } from "@/components/form-status";
 
 const INPUT =
   "rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base dark:border-zinc-700 dark:bg-zinc-950";
@@ -35,14 +36,7 @@ export function AnswerForm({
       >
         Send
       </button>
-      <p
-        role="status"
-        className={
-          state ? (state.ok ? "text-sm text-emerald-800" : "text-sm text-red-700") : "sr-only"
-        }
-      >
-        {state?.message ?? ""}
-      </p>
+      <FormStatus state={state} />
     </form>
   );
 }

@@ -6,25 +6,13 @@ import { FILING_STATUSES } from "@/config/tax";
 import { DEDUCTION_KINDS } from "@/config/prior-return";
 import { SOURCE_WORDS, type Fields, type Source } from "@/planning/prior-return";
 import { returnAction, type ReturnState } from "./actions";
+import { FormStatus } from "@/components/form-status";
 
 const INPUT =
   "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
 const BUTTON =
   "inline-flex h-11 items-center justify-center self-start rounded-full bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60";
 const LINKISH = "text-sm font-medium text-emerald-700 underline";
-
-function Status({ state }: { state: ReturnState }) {
-  return (
-    <p
-      role="status"
-      className={
-        state ? (state.ok ? "text-sm text-emerald-800" : "text-sm text-red-700") : "sr-only"
-      }
-    >
-      {state?.message ?? ""}
-    </p>
-  );
-}
 
 // What Jane read, each field with where it came from, for the person to fix and confirm.
 export function ReadingForm({
@@ -89,7 +77,7 @@ export function ReadingForm({
           This isn&apos;t my return
         </button>
       </div>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -103,7 +91,7 @@ export function PrepareForm({ year }: { year: number }) {
       <button type="submit" disabled={pending} className={BUTTON}>
         Prepare the amended return
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -128,7 +116,7 @@ export function SignAmendmentForm({ year }: { year: number }) {
       <button type="submit" disabled={pending} className={BUTTON}>
         Sign and file
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }

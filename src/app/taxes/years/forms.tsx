@@ -3,24 +3,12 @@
 import { useActionState } from "react";
 import { PLANNED_EVENT_KINDS } from "@/config/tax-years";
 import { yearsAction, type YearsState } from "./actions";
+import { FormStatus } from "@/components/form-status";
 
 const INPUT =
   "h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950";
 const BUTTON =
   "inline-flex h-11 items-center justify-center self-start rounded-full bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60";
-
-function Status({ state }: { state: YearsState }) {
-  return (
-    <p
-      role="status"
-      className={
-        state ? (state.ok ? "text-sm text-emerald-800" : "text-sm text-red-700") : "sr-only"
-      }
-    >
-      {state?.message ?? ""}
-    </p>
-  );
-}
 
 export function RetireForm({ current }: { current: number }) {
   const [state, action, pending] = useActionState<YearsState, FormData>(yearsAction, null);
@@ -39,7 +27,7 @@ export function RetireForm({ current }: { current: number }) {
       <button type="submit" disabled={pending} className={BUTTON}>
         Save
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -72,7 +60,7 @@ export function EventForm() {
       <button type="submit" disabled={pending} className={BUTTON}>
         Add it
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -91,7 +79,7 @@ export function RemoveButton({ id, label }: { id: string; label: string }) {
       >
         Remove
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -110,7 +98,7 @@ export function PlanButton({ moveKey, label }: { moveKey: string; label: string 
       >
         Put it on my plan
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
