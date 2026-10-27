@@ -2,7 +2,15 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { renderPerson } from "./layouts";
 import { generateCsvPeople, monthEnds, netWorthOn, type CsvPerson, type CsvSet } from "./people";
-import { FINDING_TYPES, precision, recall, scorePerson, summarize, type CsvScoreboard, type PersonScore } from "./score";
+import {
+  FINDING_TYPES,
+  precision,
+  recall,
+  scorePerson,
+  summarize,
+  type CsvScoreboard,
+  type PersonScore,
+} from "./score";
 
 // The CSV bench's tables, baseline and checked-in files, shared by `npm run accuracy`
 // (./scoreboard.cli.test.ts) and the CI gate (./csv-accuracy.test.ts).
@@ -11,7 +19,9 @@ export const CSV_SETS: readonly CsvSet[] = ["tuning", "held-out"];
 export const CSV_FIXTURES = "src/accuracy/csv/__fixtures__";
 export const CSV_BASELINE = "src/accuracy/csv/baseline.json";
 
-export async function scoreSet(set: CsvSet): Promise<{ people: CsvPerson[]; scores: PersonScore[]; board: CsvScoreboard }> {
+export async function scoreSet(
+  set: CsvSet,
+): Promise<{ people: CsvPerson[]; scores: PersonScore[]; board: CsvScoreboard }> {
   const people = generateCsvPeople(undefined, set);
   const scores: PersonScore[] = [];
   for (const p of people) scores.push(await scorePerson(p));
@@ -76,8 +86,17 @@ export function truthOf(p: CsvPerson) {
     person: p.id,
     archetype: p.archetype,
     asOf: p.asOf,
-    accounts: p.accounts.map((a) => ({ name: a.name, layout: a.layout, kind: a.kind, typesBalance: a.typesBalance })),
-    findings: p.truth.findings.map((f) => ({ type: f.type, about: f.note, perYear: f.annualCents === null ? null : f.annualCents / 100 })),
+    accounts: p.accounts.map((a) => ({
+      name: a.name,
+      layout: a.layout,
+      kind: a.kind,
+      typesBalance: a.typesBalance,
+    })),
+    findings: p.truth.findings.map((f) => ({
+      type: f.type,
+      about: f.note,
+      perYear: f.annualCents === null ? null : f.annualCents / 100,
+    })),
     notFindings: p.truth.traps.map((t) => ({ type: t.type, about: t.note })),
     netWorthByMonthEnd: monthEnds(p).map((d) => ({ date: d, dollars: netWorthOn(p, d) / 100 })),
   };

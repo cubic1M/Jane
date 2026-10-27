@@ -22,7 +22,8 @@ describe.runIf(process.env.ACCURACY === "1")("the CSV accuracy scoreboard", () =
       const text = table(set, board);
       console.log(`CSV bench, ${text}\n`);
       if (set === "tuning" && process.env.ACCURACY_MISTAKES === "1") {
-        for (const s of scores) for (const m of s.mistakes) console.log(`${m.what} ${m.kind} ${m.person} ${m.detail}`);
+        for (const s of scores)
+          for (const m of s.mistakes) console.log(`${m.what} ${m.kind} ${m.person} ${m.detail}`);
       }
       baseline[set] = headline(board);
       doc.push(text, "");
@@ -32,7 +33,13 @@ describe.runIf(process.env.ACCURACY === "1")("the CSV accuracy scoreboard", () =
       const start = "<!-- csv-scoreboard:start -->";
       const end = "<!-- csv-scoreboard:end -->";
       const current = readFileSync(DOC, "utf8");
-      writeFileSync(DOC, current.replace(new RegExp(`${start}[\\s\\S]*${end}`), `${start}\n${doc.join("\n").trimEnd()}\n${end}`));
+      writeFileSync(
+        DOC,
+        current.replace(
+          new RegExp(`${start}[\\s\\S]*${end}`),
+          `${start}\n${doc.join("\n").trimEnd()}\n${end}`,
+        ),
+      );
     }
   }, 300_000);
 });

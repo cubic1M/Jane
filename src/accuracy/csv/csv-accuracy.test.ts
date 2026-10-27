@@ -11,7 +11,13 @@ vi.mock("@/categorize/llm", () => ({ classifyMerchants: async () => new Map() })
 
 const ALLOWED_DROP = 0.03;
 // Counts and errors, where lower is better.
-const LOWER_IS_BETTER = new Set(["extraRows", "falseDoubleCharges", "dollarError", "spendingError", "incomeError"]);
+const LOWER_IS_BETTER = new Set([
+  "extraRows",
+  "falseDoubleCharges",
+  "dollarError",
+  "spendingError",
+  "incomeError",
+]);
 
 describe.each(CSV_SETS)("the CSV bench's %s set", (set) => {
   it("is the generator's output, so the files can't drift from their truth", () => {
