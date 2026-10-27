@@ -1,8 +1,7 @@
 import { CALL_SCRIPTS } from "@/config/price-rises";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { priceRises } from "@/planning/price-rises";
 import { type Detector, suggestionId } from "./contract";
-import { dollars } from "./helpers";
 
 // Price rises seen before they land (spec step 243), brought to the person unasked: an intro
 // price about to end, or a yearly plan about to renew, a month or more ahead. Pure; see
@@ -36,7 +35,7 @@ const promoEnding: Detector = {
         rises.length === 1
           ? `Call ${first.name} before ${first.date}, when the price goes up`
           : `${rises.length} prices go up in the next ten weeks: call or switch before they do`,
-      headline: `Ask to keep your prices: ${dollars(worth)}/yr at stake`,
+      headline: `Ask to keep your prices: ${formatWholeDollars(worth)}/yr at stake`,
       short: rises
         .map((r) =>
           r.kind === "promo_end"

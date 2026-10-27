@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatCents, parseMoneyToCents } from "@/lib/money";
+import { formatCents, parseMoneyToCents, centsToInput } from "@/lib/money";
 import { PLANNER_COPY } from "@/planning/debt-copy";
 import {
   parseApr,
@@ -24,8 +24,6 @@ type Row = {
 const INPUT =
   "h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
 const STRATEGIES: Strategy[] = ["avalanche", "snowball"];
-
-const dollars = (cents: number) => (cents / 100).toFixed(2);
 
 export function DebtPlanner({
   cards,
@@ -52,9 +50,9 @@ export function DebtPlanner({
       ? cards.map((c) => ({
           id: c.id,
           name: c.name,
-          balance: dollars(c.balanceCents),
+          balance: centsToInput(c.balanceCents),
           apr: c.aprBps === null ? "" : (c.aprBps / 100).toFixed(2),
-          minimum: c.minimumCents === null ? "" : dollars(c.minimumCents),
+          minimum: c.minimumCents === null ? "" : centsToInput(c.minimumCents),
           fromBank: c.fromBank ?? (c.aprBps !== null && c.minimumCents !== null),
         }))
       : [{ id: "manual-1", name: "Card 1", balance: "", apr: "", minimum: "", fromBank: false }],

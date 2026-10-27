@@ -1,7 +1,7 @@
 import { CHANGE_KINDS } from "@/insights/changes";
 import { BudgetError, setBudget } from "@/lib/budgets";
 import { ChangeError, markChangeExpected } from "@/lib/changes";
-import { formatCents } from "@/lib/money";
+import { formatCents, centsToInput } from "@/lib/money";
 import { findingNo, findingYes } from "./finding";
 import { ChatActionError, type ActionContext, type ActionHandler } from "./handler";
 
@@ -35,7 +35,7 @@ export const changeBudget: ActionHandler = {
     const { category, budgetCents } = changeOf(context);
     if (!category || !budgetCents) throw wrong();
     try {
-      await setBudget(context.userId, category, (budgetCents / 100).toFixed(2), {
+      await setBudget(context.userId, category, centsToInput(budgetCents), {
         client: context.client,
       });
     } catch (error) {

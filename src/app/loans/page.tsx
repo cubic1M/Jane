@@ -425,7 +425,9 @@ async function LoansContent({
         <p className="text-zinc-600 dark:text-zinc-400">
           {book.debts.length === 0
             ? "No loans, cards or plans yet."
-            : `You owe ${formatCents(book.totalOwedCents)}, ${formatCents(book.monthlyCents)} due each month. Open a branch to see more.`}
+            : book.debts.every((d) => d.balanceCents === null)
+              ? "Your files don't say what you owe yet. Add a balance on the import page. Open a branch to see more."
+              : `You owe ${formatCents(book.totalOwedCents)}, ${formatCents(book.monthlyCents)} due each month. Open a branch to see more.`}
         </p>
         <nav aria-label="Loans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/debt" className={LINK}>
@@ -447,9 +449,10 @@ async function LoansContent({
         <p className="text-zinc-600 dark:text-zinc-400">
           When you{" "}
           <Link href="/connect" className={LINK}>
-            link a bank
+            add your accounts
           </Link>{" "}
-          that reports them, they show here with their rates and due dates.
+          (a card statement, or a bank that reports loans), they show here with their rates and due
+          dates.
         </p>
       ) : (
         <AreaPage

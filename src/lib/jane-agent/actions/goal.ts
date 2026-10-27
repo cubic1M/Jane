@@ -1,11 +1,10 @@
 import { addGoal, GoalError } from "@/lib/goals";
 import { ChatActionError, type ActionHandler } from "./handler";
+import { centsToInput } from "@/lib/money";
 
 // "Start a goal for it" (spec step 84), on Jane's answer to "can I afford $900 for a trip in
 // March": adds the savings goal the answer named, through the goals page's own code
 // (src/lib/goals.ts), so the same checks apply.
-
-const dollars = (cents: number) => (cents / 100).toFixed(2);
 
 export const goalStart: ActionHandler = {
   id: "goal.start",
@@ -18,7 +17,7 @@ export const goalStart: ActionHandler = {
         userId,
         {
           name: goal.name,
-          target: dollars(goal.targetCents),
+          target: centsToInput(goal.targetCents),
           targetDate: goal.targetDate,
           accountId: "",
           saved: "",

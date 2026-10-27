@@ -99,7 +99,7 @@ function Results({ result }: { result: AffordResult }) {
         <p className="text-zinc-600 dark:text-zinc-400">
           {AFFORD_COPY.noChecking}{" "}
           <Link href="/connect" className={LINK}>
-            Link a bank
+            Add your accounts
           </Link>
         </p>
       )}

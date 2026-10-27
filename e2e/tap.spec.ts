@@ -108,7 +108,8 @@ test("every kind of tap shows its change within 150 ms", async ({ context, page,
     `[role="treeitem"][data-node="${id}"][aria-expanded="true"]`,
   );
 
-  // A menu, then a form's submit button in it: Sign out answers before the server does.
+  // A menu, then a form's submit button in it: Sign out answers before the server does, with
+  // the calm busy bar (no text spinner).
   const menu = page.getByRole("button", { name: "Your account and settings" });
   times["menu"] = await tapTime(
     page,
@@ -118,7 +119,7 @@ test("every kind of tap shows its change within 150 ms", async ({ context, page,
   times["submit button"] = await tapTime(
     page,
     page.getByRole("button", { name: "Sign out" }),
-    'button[aria-busy="true"]',
+    'button[aria-busy="true"] [data-busy-bar]',
   );
 
   for (const [kind, ms] of Object.entries(times)) {

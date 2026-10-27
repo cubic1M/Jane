@@ -21,7 +21,7 @@ const TOP = 3;
 const MORE = "cursor-pointer text-sm font-medium underline underline-offset-2 hover:no-underline";
 import { scanInProgress } from "@/lib/scan";
 import { RefreshWhenScanned } from "./refresh-when-scanned";
-import { reportState, shortUploadDays } from "./state";
+import { foundLine, reportState, shortUploadDays } from "./state";
 import { SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
 
 // Shown when nothing was found, and while the first scan runs, so the person knows what we
@@ -165,8 +165,12 @@ async function ReportContent() {
                 : `We found ${findings.length} ${findings.length === 1 ? "thing" : "things"} to look at`}
             </h1>
             <p className="text-zinc-600 dark:text-zinc-400">
-              Estimates from {transactions} transactions. The three that matter most are first; open
-              one to decide.
+              {found > 0
+                ? foundLine(
+                    transactions,
+                    findings.map((f) => f.type),
+                  )
+                : foundLine(transactions, [])}
             </p>
           </div>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}

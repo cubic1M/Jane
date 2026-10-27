@@ -13,6 +13,7 @@ import { DRIFT_STOCKS_BAND, HARVEST_MIN_LOSS_SHARE } from "@/config/practice-sca
 import { HARVEST_MIN_LOSS_CENTS } from "@/config/tax";
 import type { LedgerState } from "./practice-ledger";
 import { formatPercent as pct } from "@/lib/percent";
+import { formatCents } from "@/lib/money";
 
 // Autopilot for the practice portfolio (spec step 291, Phase AW, Stage A). Pure: given the model
 // portfolio for the person's level, what the ledger holds and today's prices, the trades that
@@ -45,8 +46,6 @@ export type Prices = Readonly<Record<string, number>>;
 
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 // One formatter, made once: the rule replay formats thousands of reasons.
-const USD = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const dollars = (cents: number) => `$${USD.format(cents / 100)}`;
 // One decimal, so a small gap doesn't read as none ("4.8% against 5%", not "5% against 5%").
 const pctTenth = (n: number) => `${(Math.round(n * 1000) / 10).toString()}%`;
 const LABEL: Record<PracticeClass, string> = {
@@ -231,7 +230,7 @@ export function planTrades(input: {
     for (const from of classTickers(c)) {
       const amount = held(from);
       if (from === to || amount < L.minTradeCents) continue;
-      const reason = `Moved ${dollars(amount)} of ${LABEL[c]} from ${from} to ${to}, the fund of the strategy you chose.`;
+      const reason = `Moved ${formatCents(amount)} of ${LABEL[c]} from ${from} to ${to}, the fund of the strategy you chose.`;
       const before = trades.length;
       track({ ticker: from, side: "sell", amountCents: amount, rule: "strategy_switch", reason });
       if (trades.length === before) continue;
@@ -257,7 +256,7 @@ export function planTrades(input: {
         side: "sell",
         amountCents: amount,
         rule: "cash_buffer",
-        reason: `You asked to keep ${dollars(buffer)} in cash, so ${dollars(amount)} of ${LABEL[c]} was sold to make it up.`,
+        reason: `You asked to keep ${formatCents(buffer)} in cash, so ${formatCents(amount)} of ${LABEL[c]} was sold to make it up.`,
       });
       if (trades.length > before) {
         short -= amount;
@@ -278,7 +277,7 @@ export function planTrades(input: {
         side: "sell",
         amountCents: amount,
         rule: "rebalance",
-        reason: `${LABEL[c]} had grown to ${pctTenth(modelValue(c) / total)} of the portfolio against a target of ${pctTenth(weights[c])}, so ${dollars(amount)} moved back.`,
+        reason: `${LABEL[c]} had grown to ${pctTenth(modelValue(c) / total)} of the portfolio against a target of ${pctTenth(weights[c])}, so ${formatCents(amount)} moved back.`,
       });
     }
   }
@@ -308,8 +307,8 @@ export function planTrades(input: {
       amountCents: amount,
       rule: first ? "model_buy" : "rebalance",
       reason: first
-        ? `Starting the model for your level: ${pct(weights[c])} in ${LABEL[c]}, ${dollars(amount)} to begin.`
-        : `${dollars(amount)} of cash waiting went to ${LABEL[c]}: ${pctTenth(modelValue(c) / total)} of the portfolio against a target of ${pctTenth(weights[c])}.`,
+        ? `Starting the model for your level: ${pct(weights[c])} in ${LABEL[c]}, ${formatCents(amount)} to begin.`
+        : `${formatCents(amount)} of cash waiting went to ${LABEL[c]}: ${pctTenth(modelValue(c) / total)} of the portfolio against a target of ${pctTenth(weights[c])}.`,
     });
   }
   return trades;

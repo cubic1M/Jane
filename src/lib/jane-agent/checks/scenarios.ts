@@ -2,6 +2,7 @@ import { isPersonId } from "@/config/people";
 import type { CheckRun } from "./run";
 import type { CheckQuestion, Expect } from "./bank";
 import { FAIL_BELOW } from "./history";
+import { formatCents } from "@/lib/money";
 
 // A big file of realistic chat scenarios (written by QA, run overnight: `npm run checks:eval`,
 // .github/workflows/chat-eval.yml). Each scenario is one conversation: the messages a person
@@ -267,10 +268,8 @@ export function evalSection(
   const asked = reports.reduce((sum, r) => sum + r.asked, 0);
   const failed = reports.reduce((sum, r) => sum + r.failed, 0);
   const skipped = reports.reduce((sum, r) => sum + r.skipped, 0);
-  const dollars = (cents: number) =>
-    (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
   const lines = [
-    `Last batch on ${meta.date}: ${meta.scenarios} scenarios finished so far, ${asked} messages graded, ${failed} failing (under ${FAIL_BELOW}), ${skipped} skipped. Cost so far ${dollars(meta.costCents)}; a batch is capped at ${dollars(meta.capCents)}${meta.stoppedAtCap ? " (the last one stopped at the cap)" : ""}.`,
+    `Last batch on ${meta.date}: ${meta.scenarios} scenarios finished so far, ${asked} messages graded, ${failed} failing (under ${FAIL_BELOW}), ${skipped} skipped. Cost so far ${formatCents(meta.costCents)}; a batch is capped at ${formatCents(meta.capCents)}${meta.stoppedAtCap ? " (the last one stopped at the cap)" : ""}.`,
     "",
     "| Category | Graded | Failing | Pass rate | Skipped | Average |",
     "| --- | ---: | ---: | ---: | ---: | ---: |",

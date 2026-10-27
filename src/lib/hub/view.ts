@@ -538,7 +538,7 @@ export function tilesView(input: AreasInput): AreaTile[] {
         m !== null,
         {
           value: m ? shortMoney(thisMonth) : null,
-          caption: m ? "Spent this month" : "Link a bank to see it",
+          caption: m ? "Spent this month" : "Add your accounts to see it",
           chart: m
             ? {
                 kind: "bars",
@@ -577,14 +577,22 @@ export function tilesView(input: AreasInput): AreaTile[] {
       const known = l !== null && l.lines.length > 0;
       const overdue = l?.lines.filter((x) => x.overdue).length ?? 0;
       const owed = l?.lines.reduce((sum, x) => sum + (x.balanceCents ?? 0), 0) ?? 0;
+      // Card statements uploaded as files carry no balance (overnight upload QA: "$0 Owed on
+      // 1 account"): an unknown balance is not $0 owed.
+      const withBalance = l?.lines.filter((x) => x.balanceCents !== null).length ?? 0;
+      const lines = l?.lines.length ?? 0;
       return tile(
         "loans",
         input,
         known,
         {
-          value: known ? shortMoney(l.owedCents) : null,
+          value: known && withBalance > 0 ? shortMoney(l.owedCents) : null,
           caption: known
-            ? `Owed on ${plural(l.lines.length, "account")}`
+            ? withBalance === 0
+              ? `${plural(lines, "account")}, balance not known`
+              : withBalance < lines
+                ? `Owed on ${withBalance} of ${lines} accounts`
+                : `Owed on ${plural(lines, "account")}`
             : "No loans or cards linked",
           chart:
             known && owed > 0

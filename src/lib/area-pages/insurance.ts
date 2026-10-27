@@ -43,6 +43,8 @@ export const NEED_LABELS: Record<string, string> = {
   business_equipment: "Work equipment cover",
 };
 
+const WORK_COVER_GAPS: readonly GapKey[] = ["health", "disability"];
+
 const GAP_LABELS: Record<GapKey, string> = {
   renters: "Renters insurance",
   home: "Home insurance",
@@ -185,14 +187,18 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
     });
   });
 
-  const missing = input.gaps.map((g) =>
-    item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
+  // Health and disability cover usually come with a job and are paid out of the paycheck
+  // before it reaches the bank, so bank data can't see them: "not on file", worth a look, not
+  // an urgent "missing" (overnight upload QA: every salaried person had 2 urgent gaps).
+  const missing = input.gaps.map((g) => {
+    const throughWork = WORK_COVER_GAPS.includes(g.key);
+    return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
       label: GAP_LABELS[g.key],
-      status: "act",
-      figure: "Missing",
+      status: throughWork ? "look" : "act",
+      figure: throughWork ? "Not on file" : "Missing",
       summary: g.why,
-    }),
-  );
+    });
+  });
 
   const savings = input.savings.map((s) =>
     item("savings", s.id, {

@@ -1,7 +1,7 @@
 import { SPENDING_MONTHS } from "@/config/areas";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
-import { debtSummary } from "@/insights/loans";
+import { debtSummary, DEBT_ACCOUNT_SELECT } from "@/insights/loans";
 import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -89,28 +89,7 @@ export async function loadHubAreas(
       quietly("insurance", () => loadInsurance(userId, { client, now })),
       quietly("loans", async () => {
         const accounts = await db.accounts.findMany({
-          select: {
-            id: true,
-            name: true,
-            mask: true,
-            type: true,
-            subtype: true,
-            currentBalanceCents: true,
-            liability: {
-              select: {
-                aprBps: true,
-                rateType: true,
-                minimumPaymentCents: true,
-                nextPaymentDueDate: true,
-                payoffDate: true,
-                isOverdue: true,
-                pastDueCents: true,
-                originationPrincipalCents: true,
-                ytdInterestPaidCents: true,
-                description: true,
-              },
-            },
-          },
+          select: DEBT_ACCOUNT_SELECT,
         });
         return debtSummary(accounts, asOf);
       }),
