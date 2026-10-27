@@ -670,6 +670,11 @@ export const DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES: readonly PfcDeta
 // card run twice: a shop doesn't run a card three times (CSV bench: tickets at a cinema whose
 // name says nothing).
 export const DUPLICATE_CHARGE_GROUP_MIN = 3;
+// The same price twice on one day, in this many months or more, is two plans (a second account, a
+// family member's), not a double charge each month: recurring charges list both, and neither is
+// "Charged twice?" (upload QA: Spotify $11.99 twice every month showed as two double charges and
+// was missing from /subscriptions).
+export const TWIN_PLAN_MIN_MONTHS = 2;
 export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
   "theatre",
   "theatres",

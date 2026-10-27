@@ -46,6 +46,16 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 1011.72
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
     }
   ],
   "notFindings": [
@@ -64,24 +74,28 @@
     {
       "type": "subscription_review",
       "about": "SUNRISE BAKERY, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "DEEZER, two plans"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -4029.74
+      "dollars": -4053.72
     },
     {
       "date": "2026-08-31",
-      "dollars": -4635.43
+      "dollars": -4683.39
     },
     {
       "date": "2026-09-30",
-      "dollars": -5310.89
+      "dollars": -5382.83
     },
     {
       "date": "2026-10-24",
-      "dollars": -5753.73
+      "dollars": -5849.65
     }
   ]
 }

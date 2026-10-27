@@ -5,6 +5,7 @@ import {
   GROCERIES,
   HULU,
   NETFLIX,
+  SPOTIFY,
   input,
   monthly,
   monthsAgo,
@@ -157,6 +158,19 @@ describe("fallback recurring detection", () => {
         at(1, "ACME", 2_310),
       ]),
     ).toEqual(["merchant:acme rides"]);
+  });
+
+  it("lists two plans billed together every month as two streams", () => {
+    const twice = (m: number) => {
+      const [a] = monthly(1, 1199, SPOTIFY).map((t) => ({ ...t, date: monthsAgo(m) }));
+      return [a, { ...a, id: `${a.id}-b` }];
+    };
+    const streams = detectRecurring(input({ transactions: [4, 3, 2, 1].flatMap(twice) }));
+
+    expect(streams.map((s) => [s.key, s.charges.length, s.frequency])).toEqual([
+      ["merchant:spotify usa", 4, "MONTHLY"],
+      ["merchant:spotify usa@second", 4, "MONTHLY"],
+    ]);
   });
 
   it("ignores charges at irregular gaps", () => {

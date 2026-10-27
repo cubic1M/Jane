@@ -51,6 +51,16 @@
       "type": "bank_fees",
       "about": "card fees",
       "perYear": 1688.54
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
     }
   ],
   "notFindings": [
@@ -77,28 +87,32 @@
     {
       "type": "subscription_review",
       "about": "SUNRISE BAKERY, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "DEEZER, two plans"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 2510.78
+      "dollars": 2486.8
     },
     {
       "date": "2026-07-31",
-      "dollars": 1886.16
+      "dollars": 1838.2
     },
     {
       "date": "2026-08-31",
-      "dollars": 76.37
+      "dollars": 4.43
     },
     {
       "date": "2026-09-30",
-      "dollars": -2032.75
+      "dollars": -2128.67
     },
     {
       "date": "2026-10-24",
-      "dollars": -2646.9
+      "dollars": -2766.8
     }
   ]
 }
