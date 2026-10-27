@@ -45,7 +45,7 @@ export const TAX_PACK_COPY = {
   lifeEventsPrompt: "Getting ready for a big change instead?",
   lifeEventsLink: "Life-event checklists",
   incomplete:
-    "This only includes what's in your linked accounts. Receipts and statements are the source of truth.",
+    "This only includes what's in the accounts you've added. Receipts and statements are the source of truth.",
   // Spec step 119: the summary, the tags and the forms to expect.
   summaryHeading: "Summary",
   tagsNote: "Gathered from your tax tags. Change any tag and the pack follows.",

@@ -46,6 +46,7 @@ import {
 import { glideMix, yearsUntil } from "./goal-buckets";
 import type { ScanPreferences } from "./practice-opportunities";
 import { avoidLabel, type PracticePreferences } from "./practice-preferences";
+import { formatPercentTenths } from "@/lib/percent";
 
 // What the autopilot and the daily scan do for one person (Phase AW, Stage A): their preferences
 // turned into the mix, the caps and the rules, in one plain object (no functions, no dates as
@@ -110,7 +111,6 @@ export type PracticeProfile = {
 };
 
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 const LABEL: Record<PracticeClass, string> = {
   us_stocks: "US stocks",
   intl_stocks: "international stocks",
@@ -257,7 +257,7 @@ export function profileFor(
   );
   if (glide.moved && glide.yearsLeft !== null) {
     rules.push(
-      `Your goal is ${glide.yearsLeft < 1 ? "less than a year" : `about ${Math.round(glide.yearsLeft)} years`} away, so stocks are ${pct(stocksOf(glide.weights))} instead of ${pct(stocksOf(MODEL_PORTFOLIOS[level].weights))}, moving toward bonds and cash as the date nears (${GLIDE_PATH_SOURCE}).`,
+      `Your goal is ${glide.yearsLeft < 1 ? "less than a year" : `about ${Math.round(glide.yearsLeft)} years`} away, so stocks are ${formatPercentTenths(stocksOf(glide.weights))} instead of ${formatPercentTenths(stocksOf(MODEL_PORTFOLIOS[level].weights))}, moving toward bonds and cash as the date nears (${GLIDE_PATH_SOURCE}).`,
     );
   }
   for (const m of moved) rules.push(`${m[0].toUpperCase()}${m.slice(1)}.`);
@@ -270,7 +270,7 @@ export function profileFor(
       : `Extra moves (${APPETITES[prefs.appetite].label.toLowerCase()}): ${opp.kinds
           .map(
             (k) =>
-              `${k.replace(/_/g, " ")} up to ${pct(opp.caps[k].sizeShare)} each, ${opp.caps[k].perMonth} a month`,
+              `${k.replace(/_/g, " ")} up to ${formatPercentTenths(opp.caps[k].sizeShare)} each, ${opp.caps[k].perMonth} a month`,
           )
           .join("; ")}.`,
   );
@@ -302,7 +302,7 @@ export function profileFor(
       : null;
   if (crypto) {
     rules.push(
-      `A crypto sleeve (${CRYPTO_STRATEGIES[crypto.strategy].label}) of up to ${pct(crypto.share)} of the portfolio, beside the mix: ${CRYPTO_STRATEGIES[crypto.strategy].how}`,
+      `A crypto sleeve (${CRYPTO_STRATEGIES[crypto.strategy].label}) of up to ${formatPercentTenths(crypto.share)} of the portfolio, beside the mix: ${CRYPTO_STRATEGIES[crypto.strategy].how}`,
     );
   } else if (sleeve) {
     rules.push(

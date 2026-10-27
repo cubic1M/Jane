@@ -1,0 +1,86 @@
+{
+  "person": "d11",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "STRAVA",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 68
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 40
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 1101.1
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 ALAMO DRAFTHOUSE 042 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "IKEA US 0123 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": -4772.22
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -5839.19
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -5071.14
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -5652.45
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -6324.19
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -5961.34
+    }
+  ]
+}

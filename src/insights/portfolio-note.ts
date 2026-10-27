@@ -1,5 +1,6 @@
 import type { PortfolioReview } from "./portfolio-review";
 import { classWords } from "./portfolio-review";
+import { monthLabel } from "@/lib/day-label";
 
 // The monthly portfolio note (spec step 137): how the investments stand at the start of the
 // month, what changed, what went in, what they cost, and at most one thing to decide. Pure.
@@ -21,11 +22,10 @@ export type NoteInput = {
 const money = (cents: number) =>
   `$${(Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
-
 export function portfolioNote(input: NoteInput): { body: string; decision: "rebalance" | null } {
-  const parts = [`Your investments start ${monthName(input.month)} at ${money(input.totalCents)}.`];
+  const parts = [
+    `Your investments start ${monthLabel(input.month, { long: true, year: false })} at ${money(input.totalCents)}.`,
+  ];
   if (input.previousCents !== null) {
     const change = input.totalCents - input.previousCents;
     parts.push(

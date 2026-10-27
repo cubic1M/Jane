@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { waitForImport } from "./import-wait";
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -31,7 +32,7 @@ test("a person fixes a category for a merchant", async ({ context, page, baseURL
   await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample-card.csv");
   await page.getByRole("button", { name: "Preview" }).click();
   await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
-  await expect(page).toHaveURL("/report", { timeout: 30_000 });
+  await waitForImport(page);
 
   await page.goto("/transactions?q=netflix");
   await page.locator("summary").first().click();

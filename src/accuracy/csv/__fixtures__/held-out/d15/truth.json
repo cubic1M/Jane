@@ -1,0 +1,87 @@
+{
+  "person": "d15",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SLING TV",
+      "perYear": 480
+    },
+    {
+      "type": "subscription_review",
+      "about": "STRAVA",
+      "perYear": 143.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 VIVID SEATS 866-848-8499 seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 468.49
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -1763.92
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -2336.66
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -4067.06
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -6045.81
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -6980.99
+    }
+  ]
+}

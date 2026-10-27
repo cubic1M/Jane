@@ -9,6 +9,7 @@ import { checkGuardrails } from "@/lib/guardrails";
 import { savedToDate } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
 import { loadNetWorthHistory } from "@/lib/net-worth-history";
+import { monthLabel } from "@/lib/day-label";
 
 // The monthly check-in: the month's numbers (spending, budgets, net worth, what Jane found
 // and what got done) and a short summary written by Claude from those numbers only. The
@@ -67,12 +68,6 @@ export async function loadCheckIn(
   };
 }
 
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
-
 // Every figure the summary may use, as the page writes them.
 function figures(c: CheckIn) {
   const diff = c.spendingCents - c.previousSpendingCents;
@@ -93,7 +88,7 @@ function figures(c: CheckIn) {
       : []),
   ];
   const facts = {
-    month: monthName(c.month),
+    month: monthLabel(c.month, { long: true, year: false }),
     spent: formatCents(c.spendingCents),
     spentMonthBefore: formatCents(c.previousSpendingCents),
     spendingChange: `${diff >= 0 ? "up" : "down"} ${formatCents(Math.abs(diff))}`,

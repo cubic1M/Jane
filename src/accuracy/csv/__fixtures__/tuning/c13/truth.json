@@ -1,0 +1,81 @@
+{
+  "person": "c13",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NYTIMES*NYTDIGITAL",
+      "perYear": 48
+    },
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 167.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AUDIBLE*2K94LM",
+      "perYear": 179.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR",
+      "perYear": 240
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "CVS/PHARMACY #04321 twice",
+      "perYear": 94.83
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1845881, excess 1347379",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 12539.1
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 14077.53
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 16009.11
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 16713.66
+    }
+  ]
+}

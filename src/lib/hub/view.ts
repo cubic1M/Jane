@@ -15,7 +15,7 @@ import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
 import { formatCents } from "@/lib/money";
 import { daysBetween } from "@/lib/dates";
-import { dayLabel } from "@/lib/day-label";
+import { dayLabel, monthLabel } from "@/lib/day-label";
 
 // The home hub's view model (docs/design/home-hub.md): the numbers the hub's loader gathered
 // from the pages that already show them, shaped for the charts. Pure, and no new math: it only
@@ -84,6 +84,8 @@ export type AreasInput = {
     paidCents: number;
     refundCents: number;
     withholdingKnown: boolean;
+    // The year's income the estimate counted; absent in older callers.
+    incomeCents?: number;
   } | null;
   investments: {
     totalCents: number;
@@ -522,12 +524,6 @@ function tile(
   };
 }
 
-const monthLabel = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    timeZone: "UTC",
-  });
-
 export function tilesView(input: AreasInput): AreaTile[] {
   const tiles: Record<AreaKey, AreaTile> = {
     money: (() => {
@@ -544,7 +540,7 @@ export function tilesView(input: AreasInput): AreaTile[] {
             ? {
                 kind: "bars",
                 values: m.months.map((x) => Math.max(0, x.spendingCents)),
-                labels: m.months.map((x) => monthLabel(x.month)),
+                labels: m.months.map((x) => monthLabel(x.month, { year: false })),
               }
             : { kind: "none" },
         },
@@ -611,6 +607,17 @@ export function tilesView(input: AreasInput): AreaTile[] {
     })(),
     taxes: (() => {
       const t = input.taxes;
+      // Income under the standard deduction owes nothing: say so, not "not enough to estimate"
+      // (overnight upload QA: a student with a part-time job).
+      const noTax =
+        t !== null && t.totalTaxCents === 0 && (t.incomeCents ?? 0) > 0 && !t.withholdingKnown;
+      if (noTax) {
+        return tile("taxes", input, true, {
+          value: shortMoney(0),
+          caption: "No income tax expected",
+          chart: { kind: "none" },
+        });
+      }
       const known = t !== null && t.totalTaxCents > 0;
       const refund = t?.refundCents ?? 0;
       return tile("taxes", input, known, {

@@ -1,0 +1,66 @@
+{
+  "person": "d13",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "LA FITNESS",
+      "perYear": 419.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "ULTA BEAUTY #331 twice",
+      "perYear": 143.4
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 3832.58
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 4885.01
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 6687.51
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 8346.39
+    }
+  ]
+}

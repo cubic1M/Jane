@@ -14,6 +14,7 @@ import {
 import type { RiskLevel } from "@/config/investing";
 import { CATALOG_MIX_FUNDS } from "@/config/strategy-catalog";
 import { knownBy, type MarketEvent } from "./event-detect";
+import { formatPercentTenths } from "@/lib/percent";
 
 // The events overlay's rules (src/config/events.ts), pure: one step per trading day. It takes
 // the strategy's own targets and tilts them a little for each event it acts on, then undoes the
@@ -158,8 +159,6 @@ export function tiltedTargets(base: Weights, open: readonly EventSlice[]): Recor
 export const legTicker = (tickers: readonly string[], prices: Prices) =>
   tickers.find((t) => (prices[t] ?? 0) > 0) ?? null;
 
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
-
 export type StepInput = {
   date: string;
   level: RiskLevel;
@@ -235,7 +234,7 @@ export function overlayStep(
         : open.some((s) => s.type === e.type)
           ? "a slice for the same kind of event is already open"
           : Math.min(tilt, room) / type.legs.length <= 0.0005
-            ? `events already move ${pct(used)} of the account, the most at this level`
+            ? `events already move ${formatPercentTenths(used)} of the account, the most at this level`
             : null;
     const perLeg = (why ? tilt : Math.min(tilt, room)) / type.legs.length;
     const slices: EventSlice[] = [];
@@ -252,7 +251,7 @@ export function overlayStep(
         enteredOn: input.date,
         entryCents: input.prices[ticker],
         confidence,
-        reason: `${e.title}. ${type.why} ${leg.side === "buy" ? "Adds" : "Takes"} ${pct(perLeg)} of the account ${leg.side === "buy" ? "in" : "off"} ${ticker} for up to ${EVENT_HOLD_DAYS} trading days, out sooner at a ${pct(EVENT_STOP)} move against it.`,
+        reason: `${e.title}. ${type.why} ${leg.side === "buy" ? "Adds" : "Takes"} ${formatPercentTenths(perLeg)} of the account ${leg.side === "buy" ? "in" : "off"} ${ticker} for up to ${EVENT_HOLD_DAYS} trading days, out sooner at a ${formatPercentTenths(EVENT_STOP)} move against it.`,
       });
     }
     if (slices.length === 0) {

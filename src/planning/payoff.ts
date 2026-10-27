@@ -217,10 +217,3 @@ export function monthAfter(asOf: string, months: number): string {
   const [y, m] = asOf.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + months, 1)).toISOString().slice(0, 7);
 }
-
-export const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });

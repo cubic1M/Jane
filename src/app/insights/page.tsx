@@ -13,13 +13,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { HorizontalBars, MonthBars } from "./bars";
 import { LoadingBar } from "@/components/loading-bar";
-
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+import { monthLabel } from "@/lib/day-label";
 
 async function Insights() {
   const user = await requireUser();
@@ -68,7 +62,7 @@ async function Insights() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">{monthName(latest)} by category</h2>
+        <h2 className="text-xl font-semibold">{monthLabel(latest, { long: true })} by category</h2>
         {categories.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">No spending that month.</p>
         ) : (

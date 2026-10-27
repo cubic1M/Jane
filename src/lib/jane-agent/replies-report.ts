@@ -1,7 +1,8 @@
 import { MONTHLY_REPORT_RECEIPTS } from "@/config/monthly-report";
 import type { StoredReport } from "@/lib/monthly-report-store";
-import { monthName, reportBody } from "@/planning/monthly-report";
+import { reportBody } from "@/planning/monthly-report";
 import type { Reply } from "./replies";
+import { monthLabel } from "@/lib/day-label";
 
 // The monthly money report in the chat (spec step 148): every figure, a few receipts, and
 // the page with all of it.
@@ -18,7 +19,7 @@ export function reportReply(stored: StoredReport | null): Reply {
     actions: [
       {
         id: "open",
-        label: `See ${monthName(stored.month)}`,
+        label: `See ${monthLabel(stored.month, { long: true })}`,
         kind: "link",
         href: `/monthly?m=${stored.month}`,
       },

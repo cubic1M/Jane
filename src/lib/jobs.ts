@@ -6,6 +6,7 @@ import {
   JOB_STUCK_MINUTES,
 } from "@/config/jobs";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { finishImport } from "@/lib/import/background";
 import { db as defaultClient } from "@/lib/db";
 import { agentStep, handleReply, lookUpSupportFor } from "@/lib/agent/run";
 import { simulatedReply } from "@/lib/agent/simulated-company";
@@ -31,8 +32,10 @@ export type JobKind =
   | "chat_notify"
   // The nightly controller run (spec step 142), and the retry of one failed step.
   | "controller_run"
-  | "controller_step";
-export type JobPayload = { userId: string; actionId?: string; step?: string };
+  | "controller_step"
+  // An upload's work after its rows are saved (src/lib/import/background.ts).
+  | "import_finish";
+export type JobPayload = { userId: string; actionId?: string; step?: string; importRunId?: string };
 // Tests pass only the handlers they need; a job with no handler fails like any error.
 export type Handlers = Partial<Record<JobKind, (payload: JobPayload) => Promise<unknown>>>;
 
@@ -53,6 +56,10 @@ export const HANDLERS: Required<Handlers> = {
   chat_notify: ({ userId }) => deliverChatNotifications(userId),
   controller_run: ({ userId }) => runController(userId),
   controller_step: ({ userId, step }) => retryControllerStep(userId, step ?? ""),
+  import_finish: (payload) => {
+    if (!payload.importRunId) throw new Error("This job needs an importRunId");
+    return finishImport(payload.userId, payload.importRunId);
+  },
 };
 
 type Options = { client?: PrismaClient; now?: Date; handlers?: Handlers };

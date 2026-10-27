@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatWholeDollars } from "@/lib/money";
 
 // The backtests' value paths (spec step 295): one line per risk level on one axis, from the same
 // sample amount. Levels are ordered, so one hue runs light (Very low) to dark (Very high); in
@@ -32,8 +33,6 @@ const SWATCHES: Readonly<Record<number, string>> = {
 const DEFAULT_WIDTH = 640;
 const PAD = { left: 52, right: 8, top: 8, bottom: 24 };
 
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 const compact = (cents: number) => `$${Math.round(cents / 100_000)}k`;
 const month = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -173,7 +172,7 @@ export function BacktestChart({ series }: { series: ChartSeries[] }) {
                     />
                     {s.label}
                   </span>
-                  <span>{dollars(s.points[hover].valueCents)}</span>
+                  <span>{formatWholeDollars(s.points[hover].valueCents)}</span>
                 </li>
               ))}
             </ul>

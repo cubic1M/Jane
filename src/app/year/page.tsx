@@ -6,12 +6,7 @@ import { requireUser } from "@/lib/session";
 import { yearInReview } from "@/lib/year";
 import { PrintButton } from "./print-button";
 import { LoadingBar } from "@/components/loading-bar";
-
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    timeZone: "UTC",
-  });
+import { monthLabel } from "@/lib/day-label";
 
 async function Year({ searchParams }: { searchParams: PageProps<"/year">["searchParams"] }) {
   const user = await requireUser();
@@ -81,7 +76,7 @@ async function Year({ searchParams }: { searchParams: PageProps<"/year">["search
         <ul className="flex flex-col gap-1 text-sm">
           {review.months.map((m) => (
             <li key={m.month} className="grid grid-cols-[3rem_1fr_6.5rem] items-center gap-2">
-              <span className="text-zinc-500">{monthName(m.month)}</span>
+              <span className="text-zinc-500">{monthLabel(m.month, { year: false })}</span>
               <span
                 className="h-3 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900"
                 aria-hidden

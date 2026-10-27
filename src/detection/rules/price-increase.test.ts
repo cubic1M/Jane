@@ -34,6 +34,42 @@ describe("price_increase", () => {
     expect(finding.evidence).toMatchObject({ priorAverageCents: 1549 });
   });
 
+  // CSV bench: once the new price had come more often than the old, the old charges fell out of
+  // the run and the rise was lost.
+  it("finds the rise when the new price has come more often than the old", () => {
+    const transactions = monthly(5, [1399, 1399, 1599, 1599, 1599], {
+      ...NETFLIX,
+      description: "DISNEY PLUS",
+      merchantName: "Disney+",
+    });
+
+    const [finding] = run(input({ transactions }));
+
+    expect(finding).toMatchObject({ annualSavingsCents: (1599 - 1399) * 12 });
+    expect(finding.evidence).toMatchObject({ priorAverageCents: 1399 });
+  });
+
+  it("finds a subscription's rise whatever shop category it's filed under", () => {
+    const transactions = monthly(5, [400, 400, 625, 625, 625], {
+      description: "NYTIMES*NYTDIGITAL",
+      merchantName: "The New York Times",
+      pfcPrimary: "GENERAL_MERCHANDISE",
+      pfcDetailed: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+    });
+
+    expect(run(input({ transactions }))).toEqual([
+      expect.objectContaining({ annualSavingsCents: (625 - 400) * 12 }),
+    ]);
+    // A shop's prices still aren't a price increase.
+    const shop = monthly(5, [4000, 4000, 4600, 4600, 4600], {
+      description: "BEST BUY 00012345",
+      merchantName: "Best Buy",
+      pfcPrimary: "GENERAL_MERCHANDISE",
+      pfcDetailed: "GENERAL_MERCHANDISE_ELECTRONICS",
+    });
+    expect(run(input({ transactions: shop }))).toEqual([]);
+  });
+
   it("stops calling it a rise after PRICE_INCREASE_MAX_CHARGES_SINCE charges at the new price", () => {
     const transactions = monthly(7, [1549, 1549, 1549, 1799, 1799, 1799, 1799], NETFLIX);
 

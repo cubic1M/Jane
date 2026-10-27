@@ -12,6 +12,7 @@ import { requireUser } from "@/lib/session";
 import { linkRothIra, putInIra, raiseForMatch } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatPercentTenths } from "@/lib/percent";
 
 // Retirement accounts used fully (spec step 210, demo advice): every limit with what's
 // used, the match left on the table, Roth or traditional, and the backdoor Roth.
@@ -24,7 +25,6 @@ const DONE: Record<string, string> = {
   linked: "Demo Roth IRA linked.",
   changed: "That changed since you last looked. Here's where it stands.",
 };
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 const ROTH_WORDS = {
   roth: "Roth: you're in a lower bracket now, so paying the tax now usually wins.",
   traditional: "Traditional: you're in a higher bracket, so the deduction now usually wins.",
@@ -101,22 +101,23 @@ async function Content({
           {v.match.missedCents > 0 ? (
             <>
               <p className="text-sm">
-                You&apos;re putting in about {pct(v.match.employeeRate)} of pay. Your employer
-                matches {pct(v.match.matchRate)} of what you put in, up to{" "}
-                {pct(v.match.fullMatchRate)} of pay: you&apos;re leaving about{" "}
+                You&apos;re putting in about {formatPercentTenths(v.match.employeeRate)} of pay.
+                Your employer matches {formatPercentTenths(v.match.matchRate)} of what you put in,
+                up to {formatPercentTenths(v.match.fullMatchRate)} of pay: you&apos;re leaving about{" "}
                 {formatCents(v.match.missedCents)} a year of their money on the table. Getting all
                 of it means about {formatCents(v.match.extraEmployeeCents)} more a year from your
                 pay.
               </p>
               {v.pending ? (
                 <p className="text-sm">
-                  Requested: {pct(v.pending.toRate)} of pay from {v.pending.effectiveOn}.
+                  Requested: {formatPercentTenths(v.pending.toRate)} of pay from{" "}
+                  {v.pending.effectiveOn}.
                 </p>
               ) : (
                 <form action={raiseForMatch} className="flex flex-col gap-2">
                   <SimulatedBanner />
                   <SubmitButton className={`${BUTTON} self-start`}>
-                    Raise to {pct(v.match.fullMatchRate)} of pay
+                    Raise to {formatPercentTenths(v.match.fullMatchRate)} of pay
                   </SubmitButton>
                 </form>
               )}
@@ -134,7 +135,7 @@ async function Content({
           {v.roth.choice ? (
             <p className="text-sm">
               {ROTH_WORDS[v.roth.choice]} Your tax estimate puts the next dollar of income at{" "}
-              {pct(v.roth.marginalRate ?? 0)}. ({ROTH_RULE_SOURCE}.)
+              {formatPercentTenths(v.roth.marginalRate ?? 0)}. ({ROTH_RULE_SOURCE}.)
             </p>
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -148,8 +149,8 @@ async function Content({
           )}
           {access?.kind === "partial" && (
             <p className="text-sm">
-              Your income is in the Roth IRA phase-out: about {pct(access.allowedShare)} of the
-              limit can go in directly.
+              Your income is in the Roth IRA phase-out: about{" "}
+              {formatPercentTenths(access.allowedShare)} of the limit can go in directly.
             </p>
           )}
           {access?.kind === "backdoor" && (

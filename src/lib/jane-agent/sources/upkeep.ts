@@ -3,17 +3,12 @@ import { formatCents } from "@/lib/money";
 import { tuneUpLines } from "../replies-review";
 import type { Candidate } from "../types";
 import { type MessageSource } from "./source";
-import { dayLabel } from "@/lib/day-label";
+import { dayLabel, monthLabel } from "@/lib/day-label";
 
 // Plans that keep up (spec step 101): this month's budget tune-up (Accept all, Change,
 // Keep) or, when autopilot applied it, what Jane changed (with Undo); and transfers to
 // savings to count toward a goal (Count it, Not this one), or the ones autopilot counted.
 
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
 const budgetsLink = { id: "open", label: "Change", kind: "link", href: "/budgets" } as const;
 
 export const upkeepSource: MessageSource = {
@@ -26,7 +21,7 @@ export const upkeepSource: MessageSource = {
     if (tune?.status === "proposed") {
       out.push({
         kind: "decision",
-        body: `Budget tune-up for ${monthName(tune.month)}, from what you usually spend: ${tuneUpLines(tune.changes)}.`,
+        body: `Budget tune-up for ${monthLabel(tune.month, { long: true, year: false })}, from what you usually spend: ${tuneUpLines(tune.changes)}.`,
         refs: { tuneUpMonth: tune.month },
         actions: [
           { id: "tuneup.accept", label: "Accept all", kind: "primary" },
@@ -40,7 +35,7 @@ export const upkeepSource: MessageSource = {
     if (tune?.status === "auto") {
       out.push({
         kind: "done",
-        body: `I tuned your budgets for ${monthName(tune.month)} to what you usually spend (autopilot): ${tuneUpLines(tune.changes)}. You can undo it.`,
+        body: `I tuned your budgets for ${monthLabel(tune.month, { long: true, year: false })} to what you usually spend (autopilot): ${tuneUpLines(tune.changes)}. You can undo it.`,
         refs: { tuneUpMonth: tune.month },
         actions: [
           { id: "tuneup.undo", label: "Undo", kind: "secondary" },

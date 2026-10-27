@@ -12,6 +12,7 @@ import {
 } from "@/config/tax-years";
 import { CAPITAL_GAINS_BRACKETS, FEDERAL_BRACKETS } from "@/config/tax-rates";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
+import { formatWholeDollars } from "@/lib/money";
 
 // Tax moves over several years (spec step 220). Pure. A projection of the federal tax for
 // each year from the start year's estimate (step 120) and the plans of every sector: pay
@@ -216,9 +217,6 @@ export type Move = {
   adjust: Adjust;
 };
 
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-
 export function findMoves(plan: Plan, base = project(plan)): Move[] {
   const moves: Move[] = [];
   const total = lifetime(base);
@@ -248,11 +246,11 @@ export function findMoves(plan: Plan, base = project(plan)): Move[] {
         cands.push({
           key: `roth:${row.year}`,
           kind: "roth",
-          title: `Convert ${dollars(amount)} to a Roth IRA in ${row.year}`,
+          title: `Convert ${formatWholeDollars(amount)} to a Roth IRA in ${row.year}`,
           why:
             rateNow > 13
-              ? `${row.year} has room in the 12% bracket (${dollars(row.headroom12Cents)} left), but with your Social Security each converted dollar also makes more of it taxable, so converting costs about ${rateNow}% this year. Over the years it still comes out ahead, because the same money would be taxed at more than that when you withdraw it.`
-              : `${row.year} has room in the 12% bracket (${dollars(row.headroom12Cents)} left). Converting now is taxed at the low rate; the same money would be taxed later at a higher one when you withdraw it.`,
+              ? `${row.year} has room in the 12% bracket (${formatWholeDollars(row.headroom12Cents)} left), but with your Social Security each converted dollar also makes more of it taxable, so converting costs about ${rateNow}% this year. Over the years it still comes out ahead, because the same money would be taxed at more than that when you withdraw it.`
+              : `${row.year} has room in the 12% bracket (${formatWholeDollars(row.headroom12Cents)} left). Converting now is taxed at the low rate; the same money would be taxed later at a higher one when you withdraw it.`,
           year: row.year,
           fromYear: null,
           amountCents: amount,
@@ -276,8 +274,8 @@ export function findMoves(plan: Plan, base = project(plan)): Move[] {
         cands.push({
           key: `gains:${row.year}`,
           kind: "gains",
-          title: `Realise ${dollars(amount)} of long-term gains in ${row.year}`,
-          why: `${row.year}'s taxable income leaves ${dollars(row.headroom0LtcgCents)} in the 0% capital gains bracket. Selling and rebuying (no wash-sale rule for gains) raises the cost basis tax-free; waiting would tax those gains later.`,
+          title: `Realise ${formatWholeDollars(amount)} of long-term gains in ${row.year}`,
+          why: `${row.year}'s taxable income leaves ${formatWholeDollars(row.headroom0LtcgCents)} in the 0% capital gains bracket. Selling and rebuying (no wash-sale rule for gains) raises the cost basis tax-free; waiting would tax those gains later.`,
           year: row.year,
           fromYear: null,
           amountCents: amount,
@@ -327,7 +325,7 @@ export function findMoves(plan: Plan, base = project(plan)): Move[] {
         best = {
           key: `timing:${ev.id}:${row.year}`,
           kind: "timing",
-          title: `Take ${noun} of ${dollars(ev.amountCents)} in ${row.year}, not ${ev.year}`,
+          title: `Take ${noun} of ${formatWholeDollars(ev.amountCents)} in ${row.year}, not ${ev.year}`,
           why: `${row.year} is a lower-tax year for it than ${ev.year}.`,
           year: row.year,
           fromYear: ev.year,

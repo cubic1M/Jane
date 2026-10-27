@@ -1,0 +1,105 @@
+{
+  "person": "d19",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "price_increase",
+      "about": "CRUNCHYROLL*MEMBERSHIP 799→999",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "SLING TV",
+      "perYear": 480
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "STRAVA",
+      "perYear": 143.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "OLD NAVY ON-LINE twice",
+      "perYear": 95.2
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1575440, excess 612846",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 VIVID SEATS 866-848-8499 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 4502.98
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 6204.96
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 8171.73
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 9714.85
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 11813.49
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 14274
+    }
+  ]
+}

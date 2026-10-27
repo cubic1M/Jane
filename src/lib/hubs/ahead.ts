@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/money";
 import { taxYearFrom } from "@/planning/tax-pack";
 import { plural, type HubGroup, type HubTileData } from "./tile";
 import { DAY_MS } from "@/lib/dates";
+import { monthLabel } from "@/lib/day-label";
 
 // The Ahead hub (spec step 80): the planning pages, each tile with a live line where
 // there's data.
@@ -30,13 +31,6 @@ export type AheadData = {
   // Every date in the next HUB_DEADLINE_DAYS, soonest first, for the Plans & goals tree.
   dates?: Pick<Deadline, "key" | "title" | "date" | "amountCents" | "href" | "detail">[];
 };
-
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 const until = (asOf: string) =>
   new Date(Date.parse(`${asOf}T00:00:00Z`) + HUB_DEADLINE_DAYS * DAY_MS).toISOString().slice(0, 10);
@@ -132,7 +126,7 @@ export function aheadTiles(d: AheadData): HubGroup[] {
       label: "Monthly report",
       href: "/monthly",
       value: null,
-      status: `How ${monthName(previousMonth(d.asOf))} went`,
+      status: `How ${monthLabel(previousMonth(d.asOf), { long: true })} went`,
     },
     {
       label: "Year in review",

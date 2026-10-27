@@ -1,5 +1,6 @@
 import { GIVING } from "@/config/giving";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
+import { formatWholeDollars } from "@/lib/money";
 
 // Giving, done smart (spec step 168). Pure. Each option is shown as the tax with it and
 // without it, from the same estimate engine as the rest of taxes (federal tax; a year's
@@ -45,9 +46,6 @@ const tax = (input: EstimateInput, charityCents: number, extraLongTermCents = 0)
     },
   }).totalTaxCents;
 
-const dollars = (cents: number) =>
-  `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-
 export function givingOptions(g: GivingInput): GivingOption[] {
   const gift = g.yearlyCents;
   if (gift < GIVING.minYearlyCents) return [];
@@ -59,7 +57,7 @@ export function givingOptions(g: GivingInput): GivingOption[] {
   out.push({
     key: "bunch",
     title: `Give ${years} years' worth this year, then skip a year`,
-    why: `Gifts only lower your tax once your deductions pass the standard deduction. Giving ${dollars(gift * years)} this year and none next year can clear it in the year you give, where ${dollars(gift)} a year may not.`,
+    why: `Gifts only lower your tax once your deductions pass the standard deduction. Giving ${formatWholeDollars(gift * years)} this year and none next year can clear it in the year you give, where ${formatWholeDollars(gift)} a year may not.`,
     withCents: bunched,
     withoutCents: each,
     savesCents: each - bunched,
@@ -67,7 +65,7 @@ export function givingOptions(g: GivingInput): GivingOption[] {
   out.push({
     key: "fund",
     title: "Bunch through a donor-advised fund",
-    why: `Put ${dollars(gift * years)} into a donor-advised fund this year and take the deduction now; the fund still sends your charities ${dollars(gift)} a year.`,
+    why: `Put ${formatWholeDollars(gift * years)} into a donor-advised fund this year and take the deduction now; the fund still sends your charities ${formatWholeDollars(gift)} a year.`,
     withCents: bunched,
     withoutCents: each,
     savesCents: each - bunched,
@@ -84,8 +82,8 @@ export function givingOptions(g: GivingInput): GivingOption[] {
     const give = tax(g.input, gift);
     out.push({
       key: "shares",
-      title: `Give ${dollars(given)} of ${best.name} shares instead of cash`,
-      why: `They've gone up ${dollars(gain)} on that amount. Given to a charity after more than a year, the gain is never taxed and the gift counts at its full value; sold first, the gain is taxed.`,
+      title: `Give ${formatWholeDollars(given)} of ${best.name} shares instead of cash`,
+      why: `They've gone up ${formatWholeDollars(gain)} on that amount. Given to a charity after more than a year, the gain is never taxed and the gift counts at its full value; sold first, the gain is taxed.`,
       withCents: give,
       withoutCents: sell,
       savesCents: sell - give,
