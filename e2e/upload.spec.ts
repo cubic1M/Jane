@@ -214,3 +214,22 @@ test("the team sees the closed beta's numbers", async ({ page, baseURL }) => {
     await expect(beta.getByRole("rowheader", { name: row })).toBeVisible();
   }
 });
+
+test('the same file again says nothing was new, not "Saved 0 transactions"', async ({
+  page,
+  baseURL,
+}) => {
+  await signIn(page, baseURL);
+  await page.goto("/import");
+  await uploadFile(page, "chase-checking.csv");
+  await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
+  await waitForImport(page, { open: "/import" });
+
+  // Back on /import, the account choice opens on that account; the same file into it.
+  await expect(page.locator('select[name="accountId"] option:checked')).toContainText("Chase");
+  await uploadFile(page, "chase-checking.csv");
+  await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
+  await expect(page.locator("[data-import-saved]")).toContainText(
+    /^Nothing new: Jane already had all \d+ of these transactions\./,
+  );
+});

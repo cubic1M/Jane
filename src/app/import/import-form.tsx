@@ -35,6 +35,8 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   // The upload just saved: the rest runs in the background, followed by the chip.
   const [saved, setSaved] = useState<{
     rows: number;
+    // How many the files had: the rest were already here.
+    read: number;
     runId: string;
     askBalance: BalanceAsk | null;
   } | null>(null);
@@ -81,7 +83,12 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
     startTransition(async () => {
       const result = await startImport(formData());
       if (!result.ok) return setError(result.error);
-      setSaved({ rows: result.rows, runId: result.runId, askBalance: result.askBalance });
+      setSaved({
+        rows: result.rows,
+        read: total,
+        runId: result.runId,
+        askBalance: result.askBalance,
+      });
       setPreview(null);
       setPickers({});
       formRef.current?.reset();
@@ -189,9 +196,12 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
         >
           {/* One line, not two (new-user pass: "Keep using Jane meanwhile: the bar at the top of
               every page says how it's going and what it found" said the same again). */}
+          {/* Says when rows were already here (round 3: the same file again said "Saved 0
+              transactions. Jane finishes the rest in the background"). */}
           <p className="font-medium">
-            Saved {plural(saved.rows, "transaction")}. Jane finishes the rest in the background; the
-            bar at the top shows how it&apos;s going.
+            {saved.rows === 0
+              ? `Nothing new: Jane already had ${saved.read === 1 ? "this transaction" : `all ${saved.read} of these transactions`}.`
+              : `Saved ${plural(saved.rows, saved.rows < saved.read ? "new transaction" : "transaction")}${saved.rows < saved.read ? `; ${saved.read - saved.rows} ${saved.read - saved.rows === 1 ? "was" : "were"} already here` : ""}. Jane finishes the rest in the background; the bar at the top shows how it's going.`}
           </p>
           {saved.askBalance && <BalanceAskForm ask={saved.askBalance} />}
           <p className="flex flex-wrap gap-4">
