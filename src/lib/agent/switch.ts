@@ -12,6 +12,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { handOff, loadAction, merchantOf, note, setStatus, type LoadedAction } from "./run";
 import { isoDay } from "@/lib/dates";
+import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 
 // Switching to the option the person picked (spec steps 76–77). Jane never signs anyone
 // up or moves money: the person signs up with the link, and Jane watches the account to
@@ -187,14 +188,18 @@ export async function confirmSwitches({
   now = new Date(),
   notify = sendStatusEmail,
   userId: only,
-}: Options & { userId?: string } = {}): Promise<{ switched: number; handedOff: number }> {
+  userIds,
+}: Options & { userId?: string } & OnlyPeople = {}): Promise<{
+  switched: number;
+  handedOff: number;
+}> {
   // A system job across users (or one, after their sync): ids only, and everything after
   // is scoped to the person.
   const due = await client.action.findMany({
     where: {
       agentState: "switching",
       status: { in: ["in_progress", "waiting_on_user"] },
-      ...(only ? { userId: only } : {}),
+      ...(only ? { userId: only } : ownedBy(userIds)),
     },
     select: { id: true, userId: true },
     take: 200,

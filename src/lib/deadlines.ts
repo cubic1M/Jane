@@ -32,6 +32,7 @@ import { listBenefits, openEnrollmentAtWork } from "@/lib/insurance/benefits";
 import { listPolicies, nextRenewal } from "@/lib/insurance/policies";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { priceRiseDeadlines } from "@/lib/price-rises";
+import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 
 // Deadlines (spec step 71): loads each source's data, keeps the deadlines the person types
 // in, and raises the deadline_soon reminders (src/insights/deadlines.ts decides which).
@@ -270,7 +271,8 @@ export async function remindAllDeadlines({
   client = defaultClient,
   now = new Date(),
   remind = remindDeadlines,
-}: Options & { remind?: typeof remindDeadlines } = {}): Promise<{
+  userIds,
+}: Options & { remind?: typeof remindDeadlines } & OnlyPeople = {}): Promise<{
   users: number;
   raised: number;
   failed: number;
@@ -280,6 +282,7 @@ export async function remindAllDeadlines({
     where: {
       deletedAt: null,
       OR: [{ accounts: { some: {} } }, { deadlines: { some: { doneAt: null } } }],
+      ...peopleIn(userIds),
     },
     select: { id: true },
     orderBy: { id: "asc" },
