@@ -82,8 +82,6 @@ describe("finishImport", () => {
       "insurance",
       "deadlines",
       "today's snapshot",
-      "chat snapshot",
-      "primer",
       "scan done",
     ]) {
       expect(calls.indexOf(step), step).toBeGreaterThan(calls.indexOf("stage:refreshing"));
@@ -93,8 +91,10 @@ describe("finishImport", () => {
       where: { id: "run_1" },
       data: { stage: "done", foundCents: 36000 },
     });
-    // After "done": Claude's pass, the card text and Jane's message.
+    // After "done": Claude's pass, Jane's saved numbers, the card text and Jane's message.
     expect(calls.indexOf("leftovers")).toBeGreaterThan(done);
+    expect(calls.indexOf("chat snapshot")).toBeGreaterThan(done);
+    expect(calls.indexOf("primer")).toBeGreaterThan(done);
     expect(calls.indexOf("card text")).toBeGreaterThan(done);
     expect(calls.at(-1)).toBe("jane");
   });

@@ -12,6 +12,7 @@ import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { enqueueJob, runJob } from "@/lib/jobs";
+import { withReadCache } from "@/lib/read-cache";
 import { markScanDone } from "@/lib/scan";
 import { takeSnapshots } from "@/lib/snapshots";
 import { scanSuggestions } from "@/lib/suggestions";
@@ -23,13 +24,13 @@ import { scanSuggestions } from "@/lib/suggestions";
 //   matching   card payments paired with what paid them
 //   balances   the uploaded accounts' balances over time (net worth's line)
 //   looking    detection: the findings and the "found $X/yr" total
-//   refreshing everything else worked out per person that a bank sync refreshes, and the daily
-//              runs refresh for everyone: suggestions in every area, Jane's saved numbers and
-//              snapshot, deadlines, switches and insurance that the new rows confirm, today's
-//              balance snapshot, and the first scan marked done
+//   refreshing everything else per person that a bank sync refreshes, and the daily runs refresh
+//              for everyone: suggestions in every area, deadlines, switches and insurance that
+//              the new rows confirm, today's balance snapshot, and the first scan marked done
 //   done       with the money found
 // Then, after "done", Claude sorts the merchants no rule knew (one call per 50, at once), and
-// if that moved anything the card payments, findings and numbers are worked out again; the card
+// if that moved anything the card payments, findings and numbers are worked out again; Jane's
+// saved numbers and snapshot for the chat are kept (seconds, and no page reads them); the card
 // text is written and Jane says what's new in the chat.
 
 export type ImportStage =
@@ -67,7 +68,17 @@ export async function refreshAfterUpload(
       console.error("Refreshing a sector after an upload failed", { error: String(result.reason) });
     }
   }
-  // The chat's saved numbers and snapshot, from everything above.
+  await markScanDone(userId, { client, now }).catch((error) =>
+    console.error("Marking the scan done after an upload failed", { error: String(error) }),
+  );
+}
+
+// The chat's saved numbers and snapshot, from everything above. No page reads them (Jane does,
+// when asked), and they take seconds, so they're kept after "done".
+async function refreshChatNumbers(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options,
+) {
   await keepFullSnapshot(userId, { client, now }).catch((error) =>
     console.error("Keeping the snapshot after an upload failed", { error: String(error) }),
   );
@@ -78,9 +89,6 @@ export async function refreshAfterUpload(
         error: String(error),
       }),
     );
-  await markScanDone(userId, { client, now }).catch((error) =>
-    console.error("Marking the scan done after an upload failed", { error: String(error) }),
-  );
 }
 
 // Card payments, balances, findings and every number, from what's stored now.
@@ -117,7 +125,8 @@ export async function finishImport(
     throw error;
   }
 
-  // After "done": Claude for what the rules didn't know, then the card text and the chat.
+  // After "done": Claude for what the rules didn't know, Jane's saved numbers, then the card text
+  // and the chat.
   try {
     if ((await categorizeLeftovers(db)) > 0) {
       await workOut(userId, options, async () => {});
@@ -126,6 +135,7 @@ export async function finishImport(
   } catch (error) {
     console.error("Sorting the rest of an upload failed", { error: String(error) });
   }
+  await refreshChatNumbers(userId, options);
   await runJob(await enqueueJob("explain_findings", { userId }, options), options);
   await runJaneAgentSafely(userId, { ...options, trigger: "import" });
 }

@@ -130,7 +130,8 @@ test("an upload's numbers reach net worth, Home and the money page; a second fil
   // The money page fills in from the file, with no "link a bank" empty state.
   await page.goto("/money");
   await expect(page.getByText("Link a bank to fill this in")).toHaveCount(0);
-  await expect(page.getByText(/\$[\d,]+/).first()).toBeVisible();
+  // Its tree's branches fill in from the file (folded on a phone, so by their names).
+  await expect(page.getByRole("treeitem", { name: /Where it goes/ })).toBeVisible();
 
   // A card with $350.00 owed: net worth goes down by that.
   // Its layout says it's a card: the new account's type is suggested as one.
