@@ -25,6 +25,7 @@ import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { addDays, daysBetween } from "@/detection/units";
 import { debtSummary, type DebtAccount } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
+import { dayLabel } from "@/lib/day-label";
 
 // Deadlines (spec step 71): return windows, trials, renewals, card and loan payments and
 // the person's own dates (FSA, card benefits, warranties), in one list. Each source here is
@@ -75,13 +76,6 @@ export const DEADLINE_KIND_LABELS: Record<DeadlineKind, string> = {
   other: "Reminder",
   price_rise: "Price goes up",
 };
-
-export const shortDate = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 const merchantName = (t: DetectionTransaction) =>
   t.merchantName ?? merchantOf(t)?.name ?? t.description;
@@ -149,7 +143,7 @@ export function trialDeadlines(input: DetectionInput): Deadline[] {
           source: "transactions",
           amountCents: null,
           href: purchaseLink(merchant),
-          detail: `It started with ${formatCents(start.amountCents)} on ${shortDate(start.date)}. If it's a trial, the full price usually follows; cancel first if you don't want it. The date is an estimate.`,
+          detail: `It started with ${formatCents(start.amountCents)} on ${dayLabel(start.date)}. If it's a trial, the full price usually follows; cancel first if you don't want it. The date is an estimate.`,
         },
       ];
     });
@@ -200,7 +194,7 @@ export function returnDeadlines(input: DetectionInput, streams: Stream[]): Deadl
           source: "transactions",
           amountCents: t.amountCents,
           href: purchaseLink(merchant),
-          detail: `${formatCents(t.amountCents)} on ${shortDate(t.date)}. ${listed ? `${merchant} usually takes` : "Most shops take"} returns within ${days} days; your receipt has the exact date.`,
+          detail: `${formatCents(t.amountCents)} on ${dayLabel(t.date)}. ${listed ? `${merchant} usually takes` : "Most shops take"} returns within ${days} days; your receipt has the exact date.`,
         },
       ];
     });
@@ -366,7 +360,7 @@ export function deadlineAlerts(deadlines: Deadline[], asOf: string): AlertCandid
     .map((d): AlertCandidate => ({
       type: "deadline_soon",
       key: d.key,
-      title: `${d.title}: ${shortDate(d.date)} (${dueIn(d.date, asOf)})`,
+      title: `${d.title}: ${dayLabel(d.date)} (${dueIn(d.date, asOf)})`,
       body: `${d.detail ? `${d.detail} ` : ""}All your dates are on the deadlines page.`,
     }));
 }

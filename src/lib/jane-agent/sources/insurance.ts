@@ -32,7 +32,8 @@ import {
 } from "../insurance/done-by-jane-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
-import { shortDate, snoozeButton, type MessageSource } from "./source";
+import { snoozeButton, type MessageSource } from "./source";
+import { dayLabel } from "@/lib/day-label";
 
 // Insurance (spec Phase X).
 // - Step 102: cover that looks missing, as a heads-up, once per gap: "I have this" opens the
@@ -143,7 +144,7 @@ function checkedMessages(insurance: InsuranceSnapshot): Candidate[] {
       shop.reason === "price_up"
         ? "after its price went up"
         : policy.nextRenewal
-          ? `before it renews on ${shortDate(policy.nextRenewal)}`
+          ? `before it renews on ${dayLabel(policy.nextRenewal)}`
           : "before it renews";
     return [
       {
@@ -170,7 +171,7 @@ function checkedMessages(insurance: InsuranceSnapshot): Candidate[] {
 function switchMessages(insurance: InsuranceSnapshot): Candidate[] {
   return (insurance.switches ?? []).flatMap((sw): Candidate[] => {
     const name = `${sw.carrier} ${kindWords(sw.kind as PolicyKind)}`;
-    const starts = sw.startsOn ? shortDate(sw.startsOn) : "soon";
+    const starts = sw.startsOn ? dayLabel(sw.startsOn) : "soon";
     const open = {
       id: "open",
       label: "See your insurance",
@@ -441,7 +442,7 @@ function fsaMessages(insurance: InsuranceSnapshot): Candidate[] {
   return [
     {
       kind: "heads_up",
-      body: `You have ${formatCents(fsa.leftCents)} left in your FSA, and it's lost after ${shortDate(fsa.deadline)} (${fsa.daysLeft} days), unless your employer allows a carryover. Eligible care and medicine count, like prescriptions, glasses and dental work.`,
+      body: `You have ${formatCents(fsa.leftCents)} left in your FSA, and it's lost after ${dayLabel(fsa.deadline)} (${fsa.daysLeft} days), unless your employer allows a carryover. Eligible care and medicine count, like prescriptions, glasses and dental work.`,
       refs: {},
       actions: [
         { id: "open", label: "Your health year", kind: "link", href: "/insurance?focus=health" },

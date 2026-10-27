@@ -1,7 +1,7 @@
 import { formatCents } from "@/lib/money";
 import type { AccountForecast } from "@/detection/forecast";
 import type { Reply } from "./replies";
-import { shortDate } from "./sources/source";
+import { dayLabel } from "@/lib/day-label";
 
 // "Why is my checking going negative?": where each checking account is heading over the next
 // month, and the bills and paychecks (on their pay schedule) that drive the lowest point.
@@ -30,19 +30,19 @@ export function forecastReply(forecasts: AccountForecast[]): Reply {
   const pay = worst.income.filter((i) => i.date <= lowest.date);
   const first =
     lowest.balanceCents < 0
-      ? `Yes: ${worst.accountName} is forecast to dip to ${formatCents(lowest.balanceCents)} on ${shortDate(lowest.date)}.`
-      : `No: ${worst.accountName} stays above zero, with its lowest point ${formatCents(lowest.balanceCents)} on ${shortDate(lowest.date)}.`;
+      ? `Yes: ${worst.accountName} is forecast to dip to ${formatCents(lowest.balanceCents)} on ${dayLabel(lowest.date)}.`
+      : `No: ${worst.accountName} stays above zero, with its lowest point ${formatCents(lowest.balanceCents)} on ${dayLabel(lowest.date)}.`;
   const lines = [
     first,
     `It starts at ${formatCents(worst.startCents)} today.`,
     bills.length > 0
       ? `Bills before then: ${bills
           .slice(0, SHOWN)
-          .map((b) => `${b.merchant} ${formatCents(b.amountCents)} on ${shortDate(b.date)}`)
+          .map((b) => `${b.merchant} ${formatCents(b.amountCents)} on ${dayLabel(b.date)}`)
           .join(", ")}${bills.length > SHOWN ? `, and ${bills.length - SHOWN} more` : ""}.`
       : null,
     pay.length > 0
-      ? `Paychecks counted: ${pay.map((p) => `${p.merchant} ${formatCents(p.amountCents)} on ${shortDate(p.date)}`).join(", ")}.`
+      ? `Paychecks counted: ${pay.map((p) => `${p.merchant} ${formatCents(p.amountCents)} on ${dayLabel(p.date)}`).join(", ")}.`
       : "No paycheck is expected before then.",
   ].filter((l): l is string => Boolean(l));
   return { body: lines.join("\n"), actions: [link], refs: {} };
