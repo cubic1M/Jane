@@ -41,7 +41,12 @@ export type SafeInput = {
 export type HeroInput = {
   asOf: string;
   safe: SafeInput | null;
-  netWorth: { todayCents: number; months: { month: string; netCents: number | null }[] } | null;
+  netWorth: {
+    todayCents: number;
+    months: { month: string; netCents: number | null }[];
+    // False when no balance is known yet (see loadNetWorthHistory).
+    known?: boolean;
+  } | null;
   foundCents: number;
   savedCents: number;
   // What the saved total is made of, biggest first (savedItems, src/lib/membership/service.ts).

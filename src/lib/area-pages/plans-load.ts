@@ -39,6 +39,7 @@ export async function loadPlansArea(userId: string) {
       ? {
           todayCents: worth.todayCents,
           lastMonthCents: worth.months.at(-2)?.netCents ?? null,
+          known: worth.known,
         }
       : null,
     lifeEvents: data.lifeEvents,

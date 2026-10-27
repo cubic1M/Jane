@@ -80,7 +80,8 @@ export type PlansTreeInput = {
     lateMonths: number | null;
   }[];
   competing: boolean;
-  netWorth: { todayCents: number; lastMonthCents: number | null } | null;
+  // known: false when no balance is known yet.
+  netWorth: { todayCents: number; lastMonthCents: number | null; known?: boolean } | null;
   lifeEvents: { open: number; newest: { title: string; done: number; total: number } | null };
   lastMonth: { label: string };
   year: number;
@@ -158,7 +159,8 @@ export function plansTree(input: PlansTreeInput): AreaTree {
         item("worth", "today", {
           label: "Net worth",
           status: "good",
-          figure: shortMoney(input.netWorth.todayCents),
+          figure:
+            input.netWorth.known === false ? "Not known" : shortMoney(input.netWorth.todayCents),
           summary:
             input.netWorth.lastMonthCents === null
               ? "What you have, less what you owe."

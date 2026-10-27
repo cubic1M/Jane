@@ -29,6 +29,9 @@ export type NetWorth = {
   netCents: number;
   // Accounts we couldn't include, by name.
   missing: string[];
+  // Whether anything counted has a value: false when every balance is unknown (statements
+  // without a balance column) and nothing owned is entered, so netCents' 0 means "not known".
+  known: boolean;
 };
 
 const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
@@ -61,6 +64,7 @@ export function netWorth(
     debtsCents: debts,
     netCents: assets - debts,
     missing: missing.sort(),
+    known: accounts.length > missing.length || owned.length > 0 || cryptoCents > 0,
   };
 }
 
