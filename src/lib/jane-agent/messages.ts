@@ -366,7 +366,8 @@ export async function stackedSuggestions(
   userId: string,
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<ChatMessage[]> {
-  const rows = await scopedFor(userId, client).janeMessages.findMany({
+  const db = scopedFor(userId, client);
+  const rows = await db.janeMessages.findMany({
     where: {
       status: "open",
       refs: { path: ["suggestion"], string_contains: ":" },
@@ -374,10 +375,29 @@ export async function stackedSuggestions(
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: MESSAGE_SELECT,
-    take: SUGGESTIONS_PER_DAY,
+    take: SUGGESTIONS_PER_DAY * 2,
   });
+  // Only suggestions still waiting or offered: one that stopped applying (a second upload
+  // showed the car insurance) leaves the dock at once, before the chat next opens and settles
+  // its message (overnight upload QA: the dock still led with "Check your car is insured").
+  const keyOf = (m: (typeof rows)[number]) => parseRefs(m.refs).suggestion;
+  const keys = [...new Set(rows.flatMap((m) => keyOf(m) ?? []))];
+  const live = new Set(
+    keys.length === 0
+      ? []
+      : (
+          await db.suggestions.findMany({
+            where: { key: { in: keys }, status: { in: ["waiting", "selected"] } },
+            select: { key: true },
+          })
+        ).map((x) => x.key),
+  );
   // In the order the day's best came in: the first card is the best.
-  return rows.reverse().map(toChatMessage);
+  return rows
+    .filter((m) => live.has(keyOf(m) ?? ""))
+    .slice(0, SUGGESTIONS_PER_DAY)
+    .reverse()
+    .map(toChatMessage);
 }
 
 // Jane's own open messages that wait on the person (something to decide, a heads-up with a
