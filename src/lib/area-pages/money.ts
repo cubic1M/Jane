@@ -1,6 +1,7 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
 import { formatCents } from "@/lib/money";
+import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 
 // Spending & bills as a tree (docs/design/area-pages.md): Spending & bills → its branches
@@ -305,7 +306,12 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         }),
       );
     }
-    for (const c of spend.changes.filter((c) => c.changeCents > 0).slice(0, 3)) {
+    const up = spend.changes.filter(
+      (c) =>
+        c.changeCents >= CATEGORY_UP_MIN_CENTS &&
+        c.changeCents >= c.beforeCents * CATEGORY_UP_MIN_SHARE,
+    );
+    for (const c of up.slice(0, 3)) {
       items.spending.push(
         item("spending", `up-${c.category}`, {
           label: `${c.category} is up`,
