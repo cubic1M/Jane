@@ -1,8 +1,9 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
-import { monthName } from "@/planning/payoff";
+
 import { payoffReply } from "../debt-replies";
 import { type MessageSource } from "./source";
+import { monthLabel } from "@/lib/day-label";
 
 // Payoff plans (spec step 110). Jane builds the plan on its own: once there are debts to
 // pay off and no plan yet, it brings it up with the buttons that start it (demo advice
@@ -38,11 +39,11 @@ export const payoffSource: MessageSource = {
       ];
     }
     if (!stored.status || stored.expectedCents === null || stored.actualCents === null) return [];
-    const when = stored.debtFreeMonth ? monthName(stored.debtFreeMonth) : null;
+    const when = stored.debtFreeMonth ? monthLabel(stored.debtFreeMonth, { long: true }) : null;
     if (stored.status === "off_track") {
       const was =
         stored.previousDebtFreeMonth && stored.previousDebtFreeMonth !== stored.debtFreeMonth
-          ? ` instead of ${monthName(stored.previousDebtFreeMonth)}`
+          ? ` instead of ${monthLabel(stored.previousDebtFreeMonth, { long: true })}`
           : "";
       return [
         {

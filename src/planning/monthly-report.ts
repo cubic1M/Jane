@@ -1,4 +1,5 @@
 import { formatCents } from "@/lib/money";
+import { monthLabel } from "@/lib/day-label";
 
 // The monthly money report (spec step 148). Pure: the month's figures in, Jane's words and
 // the page each figure comes from out. Every figure is taken from the loader of the page
@@ -53,13 +54,6 @@ export type YearInReport = {
 };
 
 export type ReportLine = { label: string; text: string; href: string };
-
-export const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 export const receiptWords = (r: ReportReceipt) =>
   `${r.title}: ${formatCents(r.cents)}${r.yearly ? " a year" : " back"}`;
@@ -178,7 +172,7 @@ export function reportBody(report: MonthlyReport, receiptLimit: number): string 
   const receipts = report.receipts.slice(0, receiptLimit).map(receiptWords);
   const more = report.receipts.length - receipts.length;
   return [
-    `Your money report for ${monthName(report.month)} is ready.`,
+    `Your money report for ${monthLabel(report.month, { long: true })} is ready.`,
     ...lines,
     ...(receipts.length > 0
       ? [`Receipts: ${receipts.join("; ")}${more > 0 ? `; and ${more} more on the page` : ""}.`]

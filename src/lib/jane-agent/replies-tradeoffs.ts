@@ -1,6 +1,7 @@
 import type { TradeoffView } from "@/lib/goal-tradeoffs";
-import { monthLabel, type GoalDate } from "@/planning/goal-tradeoffs";
+import { type GoalDate } from "@/planning/goal-tradeoffs";
 import type { Reply } from "./replies";
+import { monthLabel } from "@/lib/day-label";
 
 // Goals that trade off openly in the chat (spec step 241): each goal's date under each order,
 // Jane's suggested order with the reason, and one tap to use it. Nothing re-plans without it.
@@ -11,7 +12,7 @@ const when = (d: GoalDate) => {
     d.lateMonths !== null && d.lateMonths > 0
       ? `, ${d.lateMonths} month${d.lateMonths === 1 ? "" : "s"} late`
       : " (on time)";
-  return `${d.name}: ${monthLabel(d.month)}${late}`;
+  return `${d.name}: ${monthLabel(d.month, { long: true })}${late}`;
 };
 
 export function tradeoffsReply(view: TradeoffView | null): Reply {

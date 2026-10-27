@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   fund,
-  monthLabel,
   orderGoals,
   parseGoalOrder,
   roomFromPlan,
@@ -9,6 +8,7 @@ import {
   tradeoffs,
   type TradeGoal,
 } from "./goal-tradeoffs";
+import { monthLabel } from "@/lib/day-label";
 
 // Spec step 241, pure: each choice's dates under the year plan's room, a suggested order and why.
 
@@ -125,7 +125,7 @@ describe("the year plan's room, goals and the person's pick", () => {
   });
 
   it("names months the way people say them", () => {
-    expect(monthLabel("2027-06")).toBe("June 2027");
+    expect(monthLabel("2027-06", { long: true })).toBe("June 2027");
   });
 });
 

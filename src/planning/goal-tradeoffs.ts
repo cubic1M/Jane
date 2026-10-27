@@ -229,11 +229,3 @@ export function parseGoalOrder(value: unknown): string[] | null {
   if (typeof value !== "string" || value === "") return null;
   return value.split(",").filter(Boolean);
 }
-
-// "2027-06" as "June 2027".
-export const monthLabel = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });

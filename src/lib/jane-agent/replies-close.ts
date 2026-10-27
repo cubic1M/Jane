@@ -1,8 +1,9 @@
 import { formatCents } from "@/lib/money";
 import type { CloseView } from "@/lib/month-close";
 import { categoryWords } from "@/planning/month-close";
-import { monthName } from "@/planning/monthly-report";
+
 import type { Reply } from "./replies";
+import { monthLabel } from "@/lib/day-label";
 
 // The monthly close in the chat (spec step 244).
 
@@ -13,7 +14,7 @@ export function closedBody(view: CloseView): string {
     .map((c) => `${categoryWords(c.category)} ${formatCents(c.cents)}`)
     .join(", ");
   return [
-    `${monthName(view.month)} is closed: ${formatCents(f.incomeCents)} came in and ${formatCents(f.spendingCents)} went out${top ? ` (most on ${top})` : ""}.`,
+    `${monthLabel(view.month, { long: true })} is closed: ${formatCents(f.incomeCents)} came in and ${formatCents(f.spendingCents)} went out${top ? ` (most on ${top})` : ""}.`,
     f.netWorthCents !== null ? `Net worth at the close: ${formatCents(f.netWorthCents)}.` : null,
     f.plan?.did
       ? `Against the plan: saved ${formatCents(f.plan.did.saving)} of ${formatCents(f.plan.planned.saving)}, extra debt payments ${formatCents(f.plan.did.debt)} of ${formatCents(f.plan.planned.debt)}.`
@@ -34,7 +35,7 @@ export function closedBody(view: CloseView): string {
 // says the month is closed and whether the books added up, once (docs/feature-audit.md).
 export function closedNote(view: CloseView): string {
   return [
-    `${monthName(view.month)} is closed.`,
+    `${monthLabel(view.month, { long: true })} is closed.`,
     view.figures.booksOpen > 0
       ? `${view.figures.booksOpen} thing${view.figures.booksOpen === 1 ? "" : "s"} in your accounts didn't add up, so those figures are marked.`
       : "Your books added up.",
@@ -46,7 +47,7 @@ export function waitingBody(view: CloseView): string {
     (t) => `• ${t.description} on ${t.date}: ${formatCents(t.amountCents)}`,
   );
   return [
-    `Closing ${monthName(view.month)}: I wasn't sure what ${view.uncertain.length === 1 ? "this charge was" : `these ${view.uncertain.length} charges were`}. Are they right as they are?`,
+    `Closing ${monthLabel(view.month, { long: true })}: I wasn't sure what ${view.uncertain.length === 1 ? "this charge was" : `these ${view.uncertain.length} charges were`}. Are they right as they are?`,
     ...lines,
   ].join("\n");
 }

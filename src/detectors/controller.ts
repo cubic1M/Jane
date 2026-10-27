@@ -2,9 +2,10 @@ import { BOOKS_URGENT_KINDS, BOOKS_WORRYING_KINDS } from "@/config/books";
 import { previousMonth } from "@/insights/check-in";
 import { formatCents } from "@/lib/money";
 import { uncertainOf } from "@/planning/month-close";
-import { monthName } from "@/planning/monthly-report";
+
 import { type Detector, suggestionId } from "./contract";
 import { dollars, evidence, nice } from "./helpers";
+import { monthLabel } from "@/lib/day-label";
 
 // Detectors for Jane running the money (Phase AP, spec steps 238–244): the books, the
 // figures, the paycheck, goals, two people, price rises and the month's close. Pure; see
@@ -87,8 +88,8 @@ const monthClose: Detector = {
       id: suggestionId("close", "month_close"),
       capability: "close",
       topic: "month_close",
-      title: `Confirm ${unsure.length === 1 ? "one charge" : `${unsure.length} charges`} so ${monthName(month)} can close`,
-      headline: `Confirm ${unsure.length} charge${unsure.length === 1 ? "" : "s"} to close ${monthName(month).split(" ")[0]}: ${dollars(total)}`,
+      title: `Confirm ${unsure.length === 1 ? "one charge" : `${unsure.length} charges`} so ${monthLabel(month, { long: true })} can close`,
+      headline: `Confirm ${unsure.length} charge${unsure.length === 1 ? "" : "s"} to close ${monthLabel(month, { long: true }).split(" ")[0]}: ${dollars(total)}`,
       short:
         `${names.join(", ")}: I'm not sure what ${unsure.length === 1 ? "it was" : "they were"}.`.slice(
           0,
@@ -98,7 +99,7 @@ const monthClose: Detector = {
       worthKind: "risk",
       confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charge"),
       urgency: "soon",
-      why: `I close each month on the first of the next. In ${monthName(month)}, ${names.join(" and ")} sit in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
+      why: `I close each month on the first of the next. In ${monthLabel(month, { long: true })}, ${names.join(" and ")} sit in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
       action: { label: "Confirm the charges", href: "/monthly#close" },
     };
   },

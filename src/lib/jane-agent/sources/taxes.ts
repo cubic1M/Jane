@@ -50,6 +50,7 @@ import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
+import { monthLabel } from "@/lib/day-label";
 
 // Taxes (spec steps 118–127), what Jane brings up on its own:
 // - Step 118: the tax profile, asked one question at a time in one message
@@ -59,12 +60,6 @@ import { shortDate, snoozeButton, type MessageSource } from "./source";
 // - Step 119: a merchant it tagged but isn't sure about ("is MasterClass education?"),
 //   once each; at the levels that let it act, what it tagged last month; and from late
 //   January, each tax form that should have arrived, until the person has it.
-
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
 
 const tagPhrase = (tag: TaxTagKind, count: number, cents: number) =>
   `${TAX_TAGS[tag].plural} ${formatCents(cents)}${count > 1 ? ` (${count})` : ""}`;
@@ -130,7 +125,7 @@ export const taxesSource: MessageSource = {
     if (acts && lastMonth && lastMonth.count > 0) {
       out.push({
         kind: "done",
-        body: `In ${monthName(lastMonth.month)} I tagged ${lastMonth.count} ${lastMonth.count === 1 ? "thing" : "things"} for your taxes: ${listOf(lastMonth.byTag.map((b) => tagPhrase(b.tag, b.count, b.totalCents)))}. They're in your tax-time pack.`,
+        body: `In ${monthLabel(lastMonth.month, { long: true, year: false })} I tagged ${lastMonth.count} ${lastMonth.count === 1 ? "thing" : "things"} for your taxes: ${listOf(lastMonth.byTag.map((b) => tagPhrase(b.tag, b.count, b.totalCents)))}. They're in your tax-time pack.`,
         refs: {},
         actions: [{ id: "open", label: "See tax tags", kind: "link", href: TAGS_HREF }],
         dedupeKey: `month:${lastMonth.month}`,

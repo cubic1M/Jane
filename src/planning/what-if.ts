@@ -8,6 +8,7 @@ import {
   type ScenarioParams,
 } from "@/config/what-if";
 import { formatCents } from "@/lib/money";
+import { monthLabel } from "@/lib/day-label";
 
 // What if (spec step 203). Pure: the person's own baseline in, a scenario run month by month
 // out. The projection only does the cash arithmetic; every other sector's figure (debt-free
@@ -111,12 +112,6 @@ const BASELINE_PARAMS: ScenarioParams = {
 };
 
 const monthWord = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
-const monthName = (ym: string) =>
-  new Date(`${ym}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 export function runScenario(
   scenario: Scenario,
@@ -150,8 +145,8 @@ export function runScenario(
   const debt = !baseline.debt.hasDebts
     ? null
     : baseline.debt.before === baseline.debt.after
-      ? `Debt-free in ${baseline.debt.after ? monthName(baseline.debt.after) : "no set month"}, no change.`
-      : `Debt-free moves from ${baseline.debt.before ? monthName(baseline.debt.before) : "no set month"} to ${baseline.debt.after ? monthName(baseline.debt.after) : "no set month"}.`;
+      ? `Debt-free in ${baseline.debt.after ? monthLabel(baseline.debt.after, { long: true }) : "no set month"}, no change.`
+      : `Debt-free moves from ${baseline.debt.before ? monthLabel(baseline.debt.before, { long: true }) : "no set month"} to ${baseline.debt.after ? monthLabel(baseline.debt.after, { long: true }) : "no set month"}.`;
 
   const yearlyIncomeChange = Math.round(
     -baseline.monthlyIncomeCents *

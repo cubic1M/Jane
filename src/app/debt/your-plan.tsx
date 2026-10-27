@@ -2,9 +2,10 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { Payoff } from "@/lib/debt-plan";
 import { formatCents } from "@/lib/money";
 import type { PayoffPlan, Strategy } from "@/planning/debt";
-import { monthAfter, monthName } from "@/planning/payoff";
+import { monthAfter } from "@/planning/payoff";
 import { startPlan, stopPlan } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { monthLabel } from "@/lib/day-label";
 
 // The payoff plan across every debt (spec step 110), above the planner: the same math,
 // worked out from today's balances. In demo advice mode, Jane's pick and why (labelled);
@@ -24,7 +25,7 @@ function Outcome({ plan, asOf }: { plan: PayoffPlan; asOf: string }) {
   }
   return (
     <span>
-      Debt-free by {monthName(monthAfter(asOf, plan.months))},{" "}
+      Debt-free by {monthLabel(monthAfter(asOf, plan.months), { long: true })},{" "}
       {formatCents(plan.totalInterestCents)} of interest
     </span>
   );
@@ -150,7 +151,7 @@ export function YourPlan({
             {summary.scenarios.map((s) => (
               <tr key={s.extraCents} className="border-t border-zinc-200 dark:border-zinc-800">
                 <td className="py-1">{formatCents(s.extraCents)}</td>
-                <td className="py-1">{monthName(monthAfter(asOf, s.months))}</td>
+                <td className="py-1">{monthLabel(monthAfter(asOf, s.months), { long: true })}</td>
                 <td className="py-1">
                   {s.interestSavedCents === null ? "–" : formatCents(s.interestSavedCents)}
                 </td>
