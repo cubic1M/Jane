@@ -23,7 +23,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { formatCents, parseMoneyToCents, centsToInput } from "@/lib/money";
 import { readPeople, type Person } from "./family-rules";
 import { CoverageError, fieldText, parseCoverage, readCoverage, type Coverage } from "./coverage";
-import { isoDay as day } from "@/lib/dates";
+import { isoDay as day, addMonths } from "@/lib/dates";
 
 // The policies on the person's insurance profile (spec step 102): typed on /insurance,
 // confirmed from their policy documents (spec steps 68 and 151), and from step 99 found from payments.
@@ -122,15 +122,6 @@ export function premiumTotalLine(
     ? `The ones you've confirmed come to about ${formatCents(total)} a year, from the prices on file. Confirm the others to count them.`
     : `Together about ${formatCents(total)} a year, from the prices on file.`;
 }
-
-const addMonths = (iso: string, months: number) => {
-  const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1 + months, 1));
-  // The same day of the month, or its last day (Jan 31 + 1 month is Feb 28).
-  const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(d, last));
-  return day(date);
-};
 
 // The next renewal on or after asOf: the recorded date, rolled forward a term at a time
 // when it has passed (the policy renewed). Null when no date is recorded.

@@ -6,6 +6,7 @@ import { shortMoney } from "@/lib/hub/view";
 import type { SavingKey } from "@/planning/tax-savings";
 import type { FieldStatus } from "@/planning/tax-profile";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
+import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
 
@@ -218,9 +219,6 @@ export const TAXES_ANCHORS: Record<string, string> = {
   ),
 };
 
-const days = (from: string, to: string) =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-
 export type TaxesTreeInput = {
   asOf: string;
   year: number;
@@ -266,7 +264,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
     const status: TreeStatus =
       m.handled !== null || later
         ? "good"
-        : days(input.asOf, m.deadline) <= PLAN_SOON_DAYS
+        : daysBetween(input.asOf, m.deadline) <= PLAN_SOON_DAYS
           ? "act"
           : "look";
     return item("soon", m.id, {

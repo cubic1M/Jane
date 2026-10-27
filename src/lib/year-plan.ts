@@ -15,13 +15,13 @@ import { listGoals } from "@/lib/goals";
 import { healthInput } from "@/lib/health-score";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import {
-  addMonths,
   yearPlan,
   yearTotals,
   type Sectors,
   type YearInput,
   type YearMonth,
 } from "@/planning/year-plan";
+import { shiftMonth } from "@/lib/dates";
 
 // The year's money plan (spec step 205): twelve months of targets from every sector that
 // fit the forecast's margin, kept so a month that has passed never changes, and re-planned
@@ -64,10 +64,11 @@ export async function loadYearPlan(
   const stored = await db.yearPlans.findMany({ orderBy: { startMonth: "desc" }, take: 1 });
   const inForce = stored.find(
     (p) =>
-      p.startMonth <= currentMonth && currentMonth <= addMonths(p.startMonth, YEAR_PLAN_MONTHS - 1),
+      p.startMonth <= currentMonth &&
+      currentMonth <= shiftMonth(p.startMonth, YEAR_PLAN_MONTHS - 1),
   );
   const startMonth = inForce?.startMonth ?? currentMonth;
-  const lastMonth = addMonths(startMonth, YEAR_PLAN_MONTHS - 1);
+  const lastMonth = shiftMonth(startMonth, YEAR_PLAN_MONTHS - 1);
 
   const [health, goals, payoff, auto, deadlines, transfers, runs, estimates] = await Promise.all([
     healthInput(userId, input, { client, now }),

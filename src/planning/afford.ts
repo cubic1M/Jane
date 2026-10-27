@@ -2,6 +2,7 @@ import { AFFORD_MONTHS, MAX_GOAL_MONTHS } from "@/config/afford";
 import { FORECAST_DAYS } from "@/config/detection";
 import { addDays } from "@/detection/units";
 import { goalProgress, type GoalInput } from "./goals";
+import { addMonths, shiftMonth } from "@/lib/dates";
 
 // "Can I afford this?" (spec step 69): what a one-time purchase or a monthly change does
 // to safe to spend, each savings goal and the month-end checking balance for the next 12
@@ -64,22 +65,9 @@ export type AffordResult = {
 
 export const monthOf = (date: string) => date.slice(0, 7);
 
-export function shiftMonth(month: string, by: number): string {
-  const [y, m] = month.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + by, 1));
-  return d.toISOString().slice(0, 7);
-}
-
 export function monthEnd(month: string): string {
   const [y, m] = month.split("-").map(Number);
   return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
-}
-
-// The same day n months later, clamped to the month's last day (Jan 31 + 1 is Feb 28).
-function addMonths(date: string, n: number): string {
-  const month = shiftMonth(monthOf(date), n);
-  const day = Math.min(Number(date.slice(8, 10)), Number(monthEnd(month).slice(8, 10)));
-  return `${month}-${String(day).padStart(2, "0")}`;
 }
 
 // The months shown, this month first, and the last day they cover.

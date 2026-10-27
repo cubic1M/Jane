@@ -13,6 +13,7 @@ import { homeSummary, type HomeSummary } from "@/lib/home";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { practicePaidIn } from "@/lib/investments/practice-paid-in";
 import { loadPractice } from "@/lib/practice/portfolio";
+import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import type { AreasInput, CashFlowInput, HeroInput } from "./view";
 
@@ -73,8 +74,8 @@ export async function loadHubAreas(
 ): Promise<AreasInput> {
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
-  const [health, suggestions, months, insurance, loans, taxes, practice, goals] = await Promise.all(
-    [
+  const [health, suggestions, months, insurance, loans, taxes, practice, goals, practiceOpen] =
+    await Promise.all([
       quietly("the health score", () => healthFor(userId, { client, now })),
       quietly("suggestions", () =>
         db.suggestions.findMany({
@@ -99,13 +100,15 @@ export async function loadHubAreas(
         return view && { ...view, paidInCents: await practicePaidIn(userId, { client }) };
       }),
       quietly("goals", () => listGoals(userId, { client, now })),
-    ],
-  );
+      // The practice portfolio runs in demo advice mode only.
+      quietly("advice mode", () => adviceMode(userId, { client })),
+    ]);
 
   return {
     parts: health?.parts.map((p) => ({ part: p.part, points: p.points, max: p.max })) ?? [],
     suggestions: suggestions ?? [],
     safeShort,
+    practiceOpen: practiceOpen ?? true,
     money: months
       ? {
           months: months.map((m) => ({ month: m.month, spendingCents: m.spendingCents })),

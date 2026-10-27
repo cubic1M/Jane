@@ -62,7 +62,7 @@ import {
   type ScanInput,
   type ScanTrade,
 } from "./practice-scan";
-import { DAY_MS } from "@/lib/dates";
+import { DAY_MS, daysBetween } from "@/lib/dates";
 
 // More kinds of opportunity for the practice portfolio's daily scan (Phase AW, Stage A, after
 // step 292). Pure. The step 292 scan runs first; then, from the same ledger, prices and the
@@ -136,8 +136,6 @@ const dollars = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pct = (n: number) => `${(Math.round(n * 1000) / 10).toString()}%`;
 const points = (n: number) => (Math.round(n * 1000) / 10).toString();
-const daysBetween = (a: string, b: string) =>
-  Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY_MS);
 const SUFFIX: Readonly<Record<number, string>> = { 1: "st", 2: "nd", 3: "rd" };
 const ordinal = (n: number) =>
   `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (SUFFIX[n % 10] ?? "th")}`;

@@ -14,6 +14,7 @@ import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
 import { formatCents } from "@/lib/money";
 import type { Deadline } from "./deadlines";
+import { addMonths } from "@/lib/dates";
 
 // Insurance and renewals from payments (spec step 99). Pure: regular payments to an
 // insurer become policies "found from your payments", with a renewal estimated a term from
@@ -34,14 +35,6 @@ export type FoundPolicy = {
 export function insurerKind(merchantKey: string): PolicyKind | null {
   return INSURER_KINDS.find((i) => merchantMatches(merchantKey, i.words))?.kind ?? null;
 }
-
-const addMonths = (iso: string, months: number) => {
-  const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1 + months, 1));
-  const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(d, last));
-  return date.toISOString().slice(0, 10);
-};
 
 // The first anniversary of `from`, a term at a time, on or after asOf.
 export function estimatedRenewal(from: string, asOf: string, termMonths: number): string {

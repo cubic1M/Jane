@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, yearPlan, yearTotals, type YearInput } from "./year-plan";
+import { yearPlan, yearTotals, type YearInput } from "./year-plan";
+import { shiftMonth } from "@/lib/dates";
 
 const base: YearInput = {
   startMonth: "2026-10",
@@ -81,6 +82,6 @@ describe("yearPlan", () => {
   });
 
   it("adds months across a year end", () => {
-    expect(addMonths("2026-11", 3)).toBe("2027-02");
+    expect(shiftMonth("2026-11", 3)).toBe("2027-02");
   });
 });

@@ -5,7 +5,7 @@ import {
   URGENT_WITHIN_DAYS,
 } from "@/config/priorities";
 import { formatCents } from "@/lib/money";
-import { DAY_MS } from "@/lib/dates";
+import { daysBetween } from "@/lib/dates";
 
 // The next best thing to do (spec step 143). Pure: candidates in, ranked with their scores
 // and the reason each sits where it does. Weights in src/config/priorities.ts.
@@ -38,12 +38,9 @@ export type PriorityItem = {
 
 export type Ranked = PriorityItem & { score: number; urgencyScore: number; why: string };
 
-const daysUntil = (date: string, asOf: string) =>
-  Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / DAY_MS);
-
 export function urgencyOf(item: Pick<PriorityItem, "urgency" | "dueOn">, asOf: string): number {
   if (item.dueOn) {
-    const days = daysUntil(item.dueOn, asOf);
+    const days = daysBetween(asOf, item.dueOn);
     if (days <= URGENT_WITHIN_DAYS) return 1;
     if (days >= URGENCY_HORIZON_DAYS) return item.urgency ?? 0;
     const fromDate = 1 - (days - URGENT_WITHIN_DAYS) / (URGENCY_HORIZON_DAYS - URGENT_WITHIN_DAYS);
@@ -73,7 +70,7 @@ const timeWords = (minutes: number) =>
 function reasonFor(item: Ranked, all: Ranked[], asOf: string): string {
   const reasons: string[] = [];
   if (item.dueOn && item.urgencyScore >= 1) {
-    const days = daysUntil(item.dueOn, asOf);
+    const days = daysBetween(asOf, item.dueOn);
     reasons.push(
       days < 0
         ? "it's overdue"

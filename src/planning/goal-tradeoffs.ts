@@ -3,6 +3,7 @@ import {
   TRADEOFF_MAX_PERMUTE,
   TRADEOFF_NOTICEABLE_MONTHS,
 } from "@/config/tradeoffs";
+import { shiftMonth } from "@/lib/dates";
 
 // Goals that trade off openly (spec step 241). Pure: the goals, and the savings the year plan
 // has room for each month, in; for each order the goals could be funded in, the month each
@@ -44,10 +45,6 @@ export type Tradeoffs = {
   reason: string;
 };
 
-export const addMonth = (month: string, n: number) => {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7);
-};
 const monthsBetween = (a: string, b: string) => {
   const [ya, ma] = a.split("-").map(Number);
   const [yb, mb] = b.split("-").map(Number);
@@ -78,7 +75,7 @@ export function fund(
       }
     }
     for (const id of order) {
-      if (left.get(id)! <= 0 && !reached.has(id)) reached.set(id, addMonth(startMonth, i));
+      if (left.get(id)! <= 0 && !reached.has(id)) reached.set(id, shiftMonth(startMonth, i));
     }
     if (reached.size === goals.length) break;
   }

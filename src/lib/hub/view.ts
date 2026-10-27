@@ -14,6 +14,7 @@ import {
 import type { HealthPart } from "@/config/health-score";
 import { AREA_TABS } from "@/config/navigation";
 import { formatCents } from "@/lib/money";
+import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
 
@@ -67,6 +68,9 @@ export type AreasInput = {
   // Suggestions waiting for the person (the day's and the rest), by capability.
   suggestions: { capability: string; urgency: string }[];
   safeShort: boolean;
+  // False when the practice portfolio is closed to this person: it runs in demo advice mode only
+  // (CLAUDE.md), so real accounts aren't invited to start one. Absent: open.
+  practiceOpen?: boolean;
   money: {
     months: { month: string; spendingCents: number }[];
     budgetsOver: number;
@@ -235,9 +239,6 @@ export function shortMoney(cents: number): string {
 
 const wholeDollars = (cents: number) =>
   formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
-
-const dayIndex = (asOf: string, date: string) =>
-  Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / 86_400_000);
 
 // --- The hero row ---
 
@@ -426,7 +427,7 @@ function savedHero(
 
 export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashFlowView {
   const inWindow = (date: string) => {
-    const d = dayIndex(input.asOf, date);
+    const d = daysBetween(input.asOf, date);
     return d >= 0 && d <= days;
   };
   const bills = input.bills.filter((b) => inWindow(b.date));
@@ -437,7 +438,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
     ...bills.map((b, i) => ({
       key: `bill-${i}-${b.date}`,
       kind: "bill" as const,
-      day: dayIndex(input.asOf, b.date),
+      day: daysBetween(input.asOf, b.date),
       date: b.date,
       label: b.merchant,
       amountCents: b.amountCents,
@@ -447,7 +448,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
     ...pays.map((p, i) => ({
       key: `pay-${i}-${p.date}`,
       kind: "pay" as const,
-      day: dayIndex(input.asOf, p.date),
+      day: daysBetween(input.asOf, p.date),
       date: p.date,
       label: p.merchant,
       amountCents: p.amountCents,
@@ -466,7 +467,7 @@ export function cashFlowView(input: CashFlowInput, days = CASH_FLOW_DAYS): CashF
       .map((d) => ({
         key: `deadline-${d.key}`,
         kind: "deadline" as const,
-        day: dayIndex(input.asOf, d.date),
+        day: daysBetween(input.asOf, d.date),
         date: d.date,
         label: d.title,
         amountCents: null,
@@ -644,7 +645,9 @@ export function tilesView(input: AreasInput): AreaTile[] {
           ? p.totalCents >= p.paidInCents
             ? "Practice money, up"
             : "Practice money, down"
-          : "Start with practice money",
+          : input.practiceOpen === false
+            ? "Demo only for now"
+            : "Start with practice money",
         chart:
           p && total > 0
             ? {
