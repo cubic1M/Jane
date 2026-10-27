@@ -14,7 +14,6 @@ import { rankedFor } from "@/lib/jane-agent/priorities";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { verifiedSavings } from "@/lib/savings-proof";
 import {
-  monthName,
   receiptWords,
   reportLines,
   type MonthlyReport,
@@ -24,6 +23,7 @@ import { storedReport, type StoredReport } from "./monthly-report-store";
 import { yearInReview } from "./year";
 import { loadYearPlan } from "./year-plan";
 import { resultsByKind } from "./worked";
+import { monthLabel } from "@/lib/day-label";
 
 // The monthly money report (spec step 148): in the first days of a month, what the month
 // just ended came to (saved, earned, paid down, moved), the health score's change, what's
@@ -204,7 +204,7 @@ export function renderMonthlyReportEmail(
   report: MonthlyReport,
   links: { base: string; unsubscribe: string },
 ) {
-  const subject = `Your money report for ${monthName(report.month)}`;
+  const subject = `Your money report for ${monthLabel(report.month, { long: true })}`;
   const lines = reportLines(report);
   const receipts = report.receipts.map((r) => `${receiptWords(r)}. ${r.proof}`);
   const page = `${links.base}/monthly?m=${report.month}`;

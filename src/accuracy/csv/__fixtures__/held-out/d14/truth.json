@@ -1,0 +1,97 @@
+{
+  "person": "d14",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SLING TV",
+      "perYear": 480
+    },
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "PHILO trial",
+      "perYear": 28
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 1304.24
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 990584, excess 434727",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "OLD NAVY ON-LINE twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": -1257.15
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -671.35
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 1514.76
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 3644.44
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 5462.44
+    }
+  ]
+}

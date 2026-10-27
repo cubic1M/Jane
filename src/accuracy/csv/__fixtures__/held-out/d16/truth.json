@@ -1,0 +1,80 @@
+{
+  "person": "d16",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WALGREENS #1234 twice",
+      "perYear": 79.59
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #221, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 UNITED 0162345678901 seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 3162.16
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 1981.73
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 1190.07
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 2515.53
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 848.86
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 520.29
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 215.27
+    }
+  ]
+}

@@ -38,7 +38,7 @@ export function pmiLines(m: Mortgage): string[] {
 export function mortgageReply(m: Mortgage | null): Reply {
   if (!m) {
     return {
-      body: "I don't see a mortgage on your linked accounts.",
+      body: "I don't see a mortgage in your accounts.",
       actions: [{ id: "open", label: "See every debt", kind: "link", href: "/loans" }],
       refs: {},
     };

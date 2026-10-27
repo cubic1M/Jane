@@ -1,0 +1,103 @@
+{
+  "person": "d06",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 143.88
+    },
+    {
+      "type": "price_increase",
+      "about": "ESPN PLUS 1099→1199",
+      "perYear": 12
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "DISCOVERY PLUS trial",
+      "perYear": 8.99
+    },
+    {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 4880440, excess 4354355",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 33852.24
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 37215.11
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 40305.68
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 44002.99
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 48137.07
+    }
+  ]
+}

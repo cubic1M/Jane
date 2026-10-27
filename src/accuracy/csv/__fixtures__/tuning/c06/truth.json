@@ -1,0 +1,86 @@
+{
+  "person": "c06",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "PEACOCK trial",
+      "perYear": 7.99
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 5373421, excess 4805526",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 27947.47
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 38144.81
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 42350.43
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 45288.99
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 51527.74
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "person": "d08",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America savings",
+      "layout": "bofa_checking",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "SQ *CORNER BISTRO dinner twice",
+      "perYear": 80.01
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 545.97
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1495068, excess 1017262",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "GRAMMARLY, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #221, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WALGREENS #1234 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 5172.34
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 7290.4
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 7912.08
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 8163.6
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 9205.8
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 10536.22
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 11112.38
+    }
+  ]
+}

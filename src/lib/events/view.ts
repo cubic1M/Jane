@@ -25,6 +25,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { checkGuardrails } from "@/lib/guardrails";
 import { confidenceFor, type ClosedSlice, type EventSlice } from "@/planning/event-overlay";
 import { lastRefresh } from "./refresh";
+import { formatPercentTenths } from "@/lib/percent";
 
 // The Events box on the investments page (founder, 2026-10-26): what's happening now, what the
 // overlay would do or did, how sure it is, its track record, and its switch. From what is stored:
@@ -83,7 +84,6 @@ export type EventsView = {
 
 const DAY_MS = 86_400_000;
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 const safe = (text: string) => checkGuardrails(text, [], undefined, "demo_advice").ok;
 
 export async function loadEventsView(
@@ -134,10 +134,10 @@ export async function loadEventsView(
     const plan = log
       ? log.kind === "skip"
         ? `Not acted on: ${log.reason.split("Not acted on: ")[1] ?? "see the log"}`
-        : `Did: ${funds}, ${pct(tilt)} of the account for up to ${EVENT_HOLD_DAYS} trading days`
+        : `Did: ${funds}, ${formatPercentTenths(tilt)} of the account for up to ${EVENT_HOLD_DAYS} trading days`
       : confidence < EVENT_MIN_CONFIDENCE
         ? `Would wait: its record is ${confidence}% sure, under ${EVENT_MIN_CONFIDENCE}%`
-        : `${on ? "Will" : "Would"} tilt ${funds}, ${pct(tilt)} of the account for up to ${EVENT_HOLD_DAYS} trading days`;
+        : `${on ? "Will" : "Would"} tilt ${funds}, ${formatPercentTenths(tilt)} of the account for up to ${EVENT_HOLD_DAYS} trading days`;
     const row = {
       key: e.key,
       date: dayOf(e.date),

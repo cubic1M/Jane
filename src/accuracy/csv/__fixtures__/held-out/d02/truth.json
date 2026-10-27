@@ -1,0 +1,104 @@
+{
+  "person": "d02",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase savings",
+      "layout": "chase_checking",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 143.88
+    },
+    {
+      "type": "price_increase",
+      "about": "ESPN PLUS 1099→1199",
+      "perYear": 12
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "price_increase",
+      "about": "CRUNCHYROLL*MEMBERSHIP 799→999",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "PHILO trial",
+      "perYear": 28
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 898.97
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 2206206, excess 1278040",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "IKEA US 0123 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 5977.69
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 11122.45
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 13313.34
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 15195.57
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 17450.76
+    }
+  ]
+}

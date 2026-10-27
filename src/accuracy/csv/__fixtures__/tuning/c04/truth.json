@@ -1,0 +1,95 @@
+{
+  "person": "c04",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 167.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "HOME DEPOT #6612 twice",
+      "perYear": 62.6
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 6502.91
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 6172.76
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 5385.82
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 5109.13
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 4802.58
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 5048.73
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 4975.58
+    }
+  ]
+}

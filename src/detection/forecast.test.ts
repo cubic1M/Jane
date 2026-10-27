@@ -34,6 +34,27 @@ describe("upcomingBills", () => {
     ]);
   });
 
+  it("leaves out a coffee at one price every week: a habit, not a bill", () => {
+    const coffee = Array.from({ length: 10 }, (_, i) =>
+      tx({
+        description: "STARBUCKS STORE 05423",
+        merchantName: "Starbucks",
+        pfcPrimary: "FOOD_AND_DRINK",
+        pfcDetailed: "FOOD_AND_DRINK_COFFEE",
+        date: new Date(Date.parse("2026-10-14T00:00:00Z") - i * 7 * 86_400_000)
+          .toISOString()
+          .slice(0, 10),
+        amountCents: 545,
+      }),
+    );
+    const bills = upcomingBills(
+      input({ transactions: [...coffee, ...monthly(4, 1549, NETFLIX)] }),
+      31,
+    );
+
+    expect(bills.map((b) => b.merchant)).toEqual(["Netflix"]);
+  });
+
   it("prefers Plaid's predicted next date", () => {
     const [stream] = buildStreams(
       input({

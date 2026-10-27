@@ -37,6 +37,7 @@ import { requireUser } from "@/lib/session";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
+import { monthLabel } from "@/lib/day-label";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
 // it and where each number came from, and the balances month by month. The page is a tree
@@ -53,13 +54,6 @@ const NAV: readonly { href: Route; label: string }[] = [
 
 const LINK = "font-medium underline underline-offset-2 hover:no-underline";
 const CARD = "flex flex-col gap-1 border border-zinc-200 p-4 dark:border-zinc-800";
-
-const monthLabel = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 const signed = (cents: number) =>
   cents < 0 ? `−${formatCents(-cents)}` : `+${formatCents(cents)}`;

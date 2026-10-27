@@ -1,0 +1,75 @@
+{
+  "person": "d01",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WALGREENS #1234 twice",
+      "perYear": 150.26
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 UNITED 0162345678901 seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 3653.21
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 4233.83
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 5325.66
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 5885.12
+    }
+  ]
+}

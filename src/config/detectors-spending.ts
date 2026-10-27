@@ -38,6 +38,10 @@ export const SPENDING_DETECTOR_RATES = {
   // least this much more, outside housing, loans and transfers.
   budgetOverrunShare: 0.4,
   budgetOverrunMinCents: 15_000,
+  // The average is of the months before that the data covers in full, and needs this many
+  // (overnight upload QA: statements from Jul 28 averaged Aug with an empty Jun and four days
+  // of Jul, so September always "ran over").
+  budgetOverrunMinMonths: 2,
   budgetExcludedPrefixes: [
     "RENT_AND_UTILITIES",
     "LOAN_PAYMENTS",

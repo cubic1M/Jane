@@ -1,0 +1,79 @@
+{
+  "person": "c09",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Chase savings",
+      "layout": "chase_checking",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NYTIMES*NYTDIGITAL",
+      "perYear": 75
+    },
+    {
+      "type": "price_increase",
+      "about": "NYTIMES*NYTDIGITAL 400→625",
+      "perYear": 27
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 6712.92
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 4731.7
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 1683.77
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 1855.85
+    }
+  ]
+}

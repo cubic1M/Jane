@@ -45,11 +45,11 @@ describe("card_interest", () => {
 
     expect(finding.title).toBe("$49.65 in interest on Example Rewards Card in the last 3 months");
     expect(finding.amountCents).toBe(4965);
-    // 90 days of history: $49.65 × 365.25 / 90.
-    expect(finding.annualSavingsCents).toBe(20150);
+    // 3 months of history: $49.65 × 12 / 3.
+    expect(finding.annualSavingsCents).toBe(19860);
   });
 
-  it("doesn't count a single month's interest at a yearly pace", () => {
+  it("counts a single month's interest at the same yearly pace", () => {
     const transactions = [
       tx({ accountId: CARD.id, date: "2026-07-17", amountCents: 1200, description: "TARGET" }),
       interest(2310, "2026-09-25"),
@@ -58,7 +58,7 @@ describe("card_interest", () => {
     const [finding] = cardInterest(input({ transactions }), []);
 
     expect(finding.title).toBe("$23.10 in interest on Example Rewards Card in the last 3 months");
-    expect(finding.annualSavingsCents).toBe(2310);
+    expect(finding.annualSavingsCents).toBe(9240);
   });
 
   it("ignores interest-like rows on non-credit accounts", () => {

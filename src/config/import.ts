@@ -9,9 +9,14 @@ export const UPLOAD_REASSURANCE =
 // The account choice on /import for "a new account from these files".
 export const NEW_ACCOUNT_ID = "new";
 
-// The header the /import page's script sends with an upload (src/app/api/import/route.ts):
-// a form on another site can't set it.
-export const IMPORT_HEADER = "x-jane-import";
+// The browser event /import sends when an upload is saved, so the progress chip on the page
+// starts following it without a reload (src/components/import-chip.tsx).
+export const IMPORT_STARTED_EVENT = "jane:import-started";
+
+// How long the progress chip keeps showing an upload the person hasn't closed.
+export const IMPORT_RUN_SHOWN_HOURS = 24;
+// How often the chip asks how an upload is getting on.
+export const IMPORT_POLL_MS = 1500;
 
 // Monthly charges and bills need a few months to show a pattern.
 export const SUGGESTED_UPLOAD_MONTHS = 3;

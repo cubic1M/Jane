@@ -1,0 +1,105 @@
+{
+  "person": "c03",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 65.93
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 972.19
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *YouTubePremium, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": -2917.22
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -3123.54
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -4046.77
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -5691.89
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -7461.73
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -9348.42
+    }
+  ]
+}

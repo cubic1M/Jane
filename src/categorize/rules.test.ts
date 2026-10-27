@@ -23,6 +23,62 @@ describe("categorizeByRules", () => {
     expect(into(description)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
   });
 
+  // CSV bench (docs/accuracy.md): the card's own side of a payment as each company words it.
+  it.each([
+    ["CAPITAL ONE MOBILE PYMT"],
+    ["BA ELECTRONIC PAYMENT"],
+    ["AUTOPAY 000000000012345RAUTOPAY AUTO-PMT"],
+    ["DIRECTPAY FULL BALANCE"],
+    ["AUTOMATIC PAYMENT - THANK"],
+    ["MOBILE PAYMENT - THANK YOU"],
+  ])("calls money in as %s a card payment", (description) => {
+    expect(into(description)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
+  it("leaves a bill paid online going out as a bill", () => {
+    expect(out("COMCAST ONLINE PAYMENT")).not.toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
+  it.each([
+    ["Online Banking transfer to SAV 1234 Confirmation# 1234567890", "out"],
+    ["Withdrawal to 360 Performance Savings XXXXXX1234", "out"],
+    ["Online Banking transfer from CHK 1234 Confirmation# 1234567890", "in"],
+    ["Deposit from 360 Checking XXXXXX1234", "in"],
+  ])("calls %s a move between the person's accounts", (description, way) => {
+    expect(way === "out" ? out(description) : into(description)).toMatch(/^TRANSFER_(OUT|IN)_/);
+  });
+
+  it("reads fees as the banks word them, and a fee given back nets against it", () => {
+    expect(out("NON-WF ATM WITHDRAWAL FEE 06/20")).toBe("BANK_FEES_ATM_FEES");
+    expect(out("ATM WITHDRAWAL AUTHORIZED ON 06/20 123 MAIN ST")).toBe("TRANSFER_OUT_WITHDRAWAL");
+    expect(into("FEE REVERSAL")).toMatch(/^BANK_FEES_/);
+  });
+
+  it("calls a fare with its 13-digit ticket number a flight, whichever airline", () => {
+    expect(out("UNITED 0162345678901")).toBe("TRAVEL_FLIGHTS");
+    expect(out("SOUTHWES 5262123456789")).toBe("TRAVEL_FLIGHTS");
+    // Longer reference numbers aren't tickets.
+    expect(out("CHECKCARD 1002 TARGET 24492156275000012345678")).not.toBe("TRAVEL_FLIGHTS");
+  });
+
+  it("reads Capital One's, Discover's and American Express's card categories", () => {
+    expect(out("SQ *CORNER BISTRO", { bankCategory: "Dining" })).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(out("SQ *CORNER BISTRO", { bankCategory: "Restaurants" })).toBe(
+      "FOOD_AND_DRINK_RESTAURANT",
+    );
+    expect(out("SQ *CORNER BISTRO", { bankCategory: "Restaurant-Bar & Café" })).toBe(
+      "FOOD_AND_DRINK_RESTAURANT",
+    );
+    expect(out("CORNER MARKET", { bankCategory: "Supermarkets" })).toBe("FOOD_AND_DRINK_GROCERIES");
+    expect(into("CASHBACK BONUS REDEMPTION", { bankCategory: "Payments and Credits" })).toBe(
+      "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    );
+    // A prefix only where the name ends in "-": "Merchandise" isn't "Merchandise & Supplies".
+    expect(out("CORNER SHOP", { bankCategory: "Merchandise" })).toBe(
+      "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
+    );
+  });
+
   it("reads the Bank of America card's interest line as interest", () => {
     expect(out("INTEREST CHARGED ON PURCHASES")).toBe("BANK_FEES_INTEREST_CHARGE");
   });
@@ -38,6 +94,13 @@ describe("categorizeByRules", () => {
     ["WHOLEFDS MKT 10234", "FOOD_AND_DRINK_GROCERIES"],
     ["UBER   *TRIP HELP.UBER.COM CA", "TRANSPORTATION_TAXIS_AND_RIDE_SHARES"],
     ["UBER EATS 8005928996", "FOOD_AND_DRINK_RESTAURANT"],
+    ["UBER   *EATS", "FOOD_AND_DRINK_RESTAURANT"],
+    ["CHIPOTLE 2291", "FOOD_AND_DRINK_FAST_FOOD"],
+    ["H-E-B #602", "FOOD_AND_DRINK_GROCERIES"],
+    ["BEST BUY 00012345", "GENERAL_MERCHANDISE_ELECTRONICS"],
+    ["HOME DEPOT #6612", "HOME_IMPROVEMENT_HARDWARE"],
+    ["NYTIMES*NYTDIGITAL", "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS"],
+    ["GOOGLE *YouTubePremium", "ENTERTAINMENT_TV_AND_MOVIES"],
     ["AMZN Mktp US*2K4L91RT0", "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES"],
     ["GEICO *AUTO 800-841-3000 DC", "GENERAL_SERVICES_INSURANCE"],
     ["T-MOBILE AUTO PAY", "RENT_AND_UTILITIES_TELEPHONE"],
@@ -122,9 +185,9 @@ describe("categorizeByRules", () => {
 
   it("uses a card's own categories, both ways, so a return nets against its purchase", () => {
     const shop = { bankCategory: "Shopping" };
-    expect(out("BEST BUY 00012345", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
-    expect(into("BEST BUY 00012345", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
-    expect(out("TST* SHAKE SHACK 1234", { bankCategory: "Food & Drink" })).toBe(
+    expect(out("CRATE & BARREL 0412", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
+    expect(into("CRATE & BARREL 0412", shop)).toBe("GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE");
+    expect(out("TST* LITTLE STAR PIZZA", { bankCategory: "Food & Drink" })).toBe(
       "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
     );
     // A keyword still wins over the card's broad label.

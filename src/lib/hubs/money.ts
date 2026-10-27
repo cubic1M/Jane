@@ -15,6 +15,7 @@ import { assetPrompts, promptHref, type AssetPrompt } from "@/lib/owned-assets";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { type HubGroup, type HubTileData } from "./tile";
+import { monthLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
 
 // The Money hub (spec step 80): the picture of the person's money, one tile per page, each
@@ -40,12 +41,6 @@ export type MoneyData = {
   // Spec step 102: policies on the insurance profile and gaps in the cover.
   insurance: { policies: number; gaps: number };
 };
-
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
 
 const NO_BANK = "Add your accounts to see it";
 
@@ -103,7 +98,9 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
       label: "Spending",
       href: "/insights",
       value: d.hasAccounts ? formatCents(d.spendingCents) : null,
-      status: d.hasAccounts ? `So far in ${monthName(d.month)}` : NO_BANK,
+      status: d.hasAccounts
+        ? `So far in ${monthLabel(d.month, { long: true, year: false })}`
+        : NO_BANK,
     },
     d.budgets.total > 0
       ? {

@@ -1,0 +1,101 @@
+{
+  "person": "d13",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "GRAMMARLY",
+      "perYear": 144
+    },
+    {
+      "type": "subscription_review",
+      "about": "STRAVA",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 143.88
+    },
+    {
+      "type": "price_increase",
+      "about": "ESPN PLUS 1099→1199",
+      "perYear": 12
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANVA* 04321",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SLING TV",
+      "perYear": 480
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "SQ *CORNER BISTRO dinner twice",
+      "perYear": 45.95
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "OLD NAVY ON-LINE twice",
+      "perYear": 149.29
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1154067, excess 280705",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 4288.4
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 5798.62
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 7585.93
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 9981.33
+    }
+  ]
+}

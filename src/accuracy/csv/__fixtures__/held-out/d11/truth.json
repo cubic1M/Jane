@@ -1,0 +1,86 @@
+{
+  "person": "d11",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 162
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 40
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 1140.94
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "IKEA US 0123 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": -5332.81
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -6008.73
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -5617.4
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -6179.72
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -6512.99
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -7221.64
+    }
+  ]
+}

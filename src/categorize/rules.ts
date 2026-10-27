@@ -16,6 +16,8 @@ type Rule = {
   direction?: Direction;
   bankType?: readonly string[];
   bankCategory?: readonly string[];
+  // Matched against the upper-cased description, for a shape no keyword names.
+  pattern?: RegExp;
 };
 
 const RULES: readonly Rule[] = [
@@ -25,10 +27,25 @@ const RULES: readonly Rule[] = [
     category: "BANK_FEES_INSUFFICIENT_FUNDS",
     keywords: ["INSUFFICIENT FUNDS", "NSF FEE", "RETURNED ITEM FEE"],
   },
-  // Above the cash withdrawal rule: "ATM WITHDRAWAL NON-BANK FEE" is the fee, not the cash.
+  // Above the cash withdrawal rule: "ATM WITHDRAWAL NON-BANK FEE" and Wells Fargo's "NON-WF ATM
+  // WITHDRAWAL FEE" are the fee, not the cash.
   {
     category: "BANK_FEES_ATM_FEES",
-    keywords: ["ATM FEE", "NON-CHASE ATM", "ATM WITHDRAWAL FEE", "NON-BANK FEE", "ATM SURCHARGE"],
+    keywords: [
+      "ATM FEE",
+      "NON-CHASE ATM",
+      "ATM WITHDRAWAL FEE",
+      "NON-BANK FEE",
+      "ATM SURCHARGE",
+      "NON-WF ATM",
+    ],
+  },
+  // A fee given back, however the bank words it (Chase's "FEE REVERSAL"): it nets against the
+  // fee, so the fees finding doesn't ask for money already returned (CSV bench).
+  {
+    category: "BANK_FEES_OTHER_BANK_FEES",
+    keywords: ["FEE REVERSAL", "FEE REFUND", "FEE REVERSED", "FEE REBATE"],
+    direction: "in",
   },
   {
     category: "BANK_FEES_FOREIGN_TRANSACTION_FEES",
@@ -92,6 +109,26 @@ const RULES: readonly Rule[] = [
       "WF CREDIT CARD AUTO PAY",
       "SYNCHRONY BANK PAYMENT",
     ],
+  },
+  // The card's own side, as the card companies write a payment received (CSV bench: Capital
+  // One's "MOBILE PYMT", Bank of America's "BA ELECTRONIC PAYMENT", Citi's "AUTOPAY …
+  // AUTO-PMT", Discover's "DIRECTPAY FULL BALANCE", Chase's "AUTOMATIC PAYMENT - THANK", cut
+  // short). Money coming in only: on checking, an "ONLINE PAYMENT" going out is a bill.
+  {
+    category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    keywords: [
+      "AUTOMATIC PAYMENT",
+      "AUTOPAY PAYMENT",
+      "AUTOPAY PYMT",
+      "AUTO-PMT",
+      "ONLINE PAYMENT",
+      "MOBILE PAYMENT",
+      "MOBILE PYMT",
+      "INTERNET PAYMENT",
+      "ELECTRONIC PAYMENT",
+      "DIRECTPAY",
+    ],
+    direction: "in",
   },
 
   // Income
@@ -176,26 +213,79 @@ const RULES: readonly Rule[] = [
   },
 
   // Transfers between people and accounts
+  // Own-account moves as the banks word them (CSV bench: Bank of America's "Online Banking
+  // transfer to SAV", Capital One's "Withdrawal to 360 Performance Savings").
   {
     category: "TRANSFER_OUT_ACCOUNT_TRANSFER",
-    keywords: ["ZELLE", "VENMO", "CASH APP", "ONLINE TRANSFER TO"],
+    keywords: [
+      "ZELLE",
+      "VENMO",
+      "CASH APP",
+      "TRANSFER TO",
+      "360 PERFORMANCE SAVINGS",
+      "360 SAVINGS",
+    ],
     direction: "out",
   },
   {
     category: "TRANSFER_IN_ACCOUNT_TRANSFER",
-    keywords: ["ZELLE", "VENMO", "CASH APP", "ONLINE TRANSFER FROM"],
+    keywords: ["ZELLE", "VENMO", "CASH APP", "TRANSFER FROM", "360 CHECKING"],
     direction: "in",
   },
   {
     category: "TRANSFER_OUT_WITHDRAWAL",
-    keywords: ["ATM WITHDRAWAL", "CASH WITHDRAWAL"],
+    // Bank of America writes "BKOFAMERICA ATM 10/03 #000001234 WITHDRWL" (CSV bench).
+    keywords: ["ATM WITHDRAWAL", "CASH WITHDRAWAL", "WITHDRWL"],
     direction: "out",
   },
 
+  // An airline ticket: card descriptors carry its 13-digit number (a 3-digit airline code, then
+  // the ticket), whatever the airline ("UNITED 0162345678901", "SOUTHWES 5262123456789"). So
+  // a group's fares aren't a double charge (CSV bench).
+  { category: "TRAVEL_FLIGHTS", pattern: /(?<![0-9])[0-9]{13}(?![0-9])/ },
+
   // Well-known merchants
   {
+    category: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+    keywords: [
+      "NYTIMES",
+      "NYT DIGITAL",
+      "WSJ",
+      "WASHINGTON POST",
+      "WAPO",
+      "THE ATLANTIC",
+      "SUBSTACK",
+    ],
+  },
+  {
+    category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+    keywords: [
+      "OPENAI",
+      "CHATGPT",
+      "ADOBE",
+      "DROPBOX",
+      "MICROSOFT 365",
+      "GOOGLE STORAGE",
+      "ICLOUD",
+      "APPLE.COM/BILL",
+    ],
+  },
+  {
     category: "ENTERTAINMENT_TV_AND_MOVIES",
-    keywords: ["NETFLIX", "HULU", "DISNEY PLUS", "DISNEYPLUS", "HBO MAX", "PEACOCK", "PARAMOUNT+"],
+    keywords: [
+      "NETFLIX",
+      "HULU",
+      "DISNEY PLUS",
+      "DISNEYPLUS",
+      "HBO MAX",
+      "MAX.COM",
+      "PEACOCK",
+      "PARAMOUNT+",
+      "STARZ",
+      "YOUTUBEPREMIUM",
+      "YOUTUBE PREMIUM",
+      "YOUTUBE TV",
+    ],
   },
   {
     category: "ENTERTAINMENT_MUSIC_AND_AUDIO",
@@ -211,7 +301,44 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "FOOD_AND_DRINK_FAST_FOOD",
-    keywords: ["MCDONALD'S", "MCDONALDS", "BURGER KING", "TACO BELL", "WENDY'S", "CHICK-FIL-A"],
+    keywords: [
+      "MCDONALD'S",
+      "MCDONALDS",
+      "BURGER KING",
+      "TACO BELL",
+      "WENDY'S",
+      "CHICK-FIL-A",
+      "CHIPOTLE",
+      "SUBWAY",
+      "DOMINO'S",
+      "PIZZA HUT",
+      "PANERA",
+      "FIVE GUYS",
+      "SHAKE SHACK",
+      "POPEYES",
+      "KFC",
+      "SONIC DRIVE",
+      "JACK IN THE BOX",
+      "IN-N-OUT",
+    ],
+  },
+  // Sit-down chains, by name; the rest come from the card's own category or Claude.
+  {
+    category: "FOOD_AND_DRINK_RESTAURANT",
+    keywords: [
+      "OLIVE GARDEN",
+      "APPLEBEE'S",
+      "CHILI'S",
+      "CHEESECAKE FACTORY",
+      "RED ROBIN",
+      "IHOP",
+      "DENNY'S",
+      "OUTBACK",
+      "TEXAS ROADHOUSE",
+      "BUFFALO WILD WINGS",
+      "SWEETGREEN",
+      "CAVA",
+    ],
   },
   {
     category: "FOOD_AND_DRINK_GROCERIES",
@@ -225,12 +352,25 @@ const RULES: readonly Rule[] = [
       "ALDI",
       "WEGMANS",
       "SPROUTS",
+      "H-E-B",
+      "HEB",
+      "MEIJER",
+      "HY-VEE",
+      "FOOD LION",
+      "STOP & SHOP",
+      "ALBERTSONS",
+      "VONS",
+      "RALPHS",
+      "HARRIS TEETER",
+      "WINCO",
+      "GIANT EAGLE",
+      "FRED MEYER",
     ],
   },
   // Food delivery before ride shares, so "UBER EATS" isn't a taxi.
   {
     category: "FOOD_AND_DRINK_RESTAURANT",
-    keywords: ["UBER EATS", "UBEREATS", "DOORDASH", "GRUBHUB"],
+    keywords: ["UBER EATS", "UBER *EATS", "UBEREATS", "DOORDASH", "GRUBHUB", "POSTMATES"],
   },
   { category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES", keywords: ["UBER", "LYFT"] },
   {
@@ -246,6 +386,29 @@ const RULES: readonly Rule[] = [
     keywords: ["TARGET", "WALMART", "WAL-MART", "COSTCO"],
   },
   { category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", keywords: ["CVS", "WALGREENS", "RITE AID"] },
+  {
+    category: "GENERAL_MERCHANDISE_ELECTRONICS",
+    keywords: ["BEST BUY", "APPLE STORE", "MICRO CENTER"],
+  },
+  {
+    category: "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES",
+    keywords: [
+      "TJ MAXX",
+      "T J MAXX",
+      "TJMAXX",
+      "MARSHALLS",
+      "ROSS STORES",
+      "OLD NAVY",
+      "H&M",
+      "ZARA",
+      "UNIQLO",
+      "NORDSTROM RACK",
+    ],
+  },
+  {
+    category: "HOME_IMPROVEMENT_HARDWARE",
+    keywords: ["HOME DEPOT", "LOWE'S", "LOWES", "ACE HARDWARE", "MENARDS"],
+  },
   {
     category: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
     keywords: ["COMCAST", "XFINITY", "SPECTRUM"],
@@ -309,7 +472,7 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
-    keywords: ["PLANET FITNESS", "EQUINOX", "ORANGETHEORY", "24 HOUR FITNESS"],
+    keywords: ["PLANET FITNESS", "EQUINOX", "ORANGETHEORY", "24 HOUR FITNESS", "PELOTON"],
   },
   { category: "TRAVEL_LODGING", keywords: ["AIRBNB", "MARRIOTT", "HILTON", "HYATT"] },
   // Ticket sellers: a seat each, so two at one price aren't a double charge (accuracy bench).
@@ -329,7 +492,19 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "TRAVEL_FLIGHTS",
-    keywords: ["DELTA AIR", "UNITED AIRLINES", "AMERICAN AIRLINES", "SOUTHWEST AIR", "JETBLUE"],
+    keywords: [
+      "DELTA AIR",
+      "UNITED AIRLINES",
+      "AMERICAN AIRLINES",
+      "AMERICAN AIR",
+      "SOUTHWEST AIR",
+      // Southwest's own card descriptor, cut to eight letters before the ticket number.
+      "SOUTHWES",
+      "JETBLUE",
+      "ALASKA AIR",
+      "SPIRIT AIRL",
+      "FRONTIER AIRLINES",
+    ],
   },
 
   // The bank's own labels, when no keyword matched
@@ -354,7 +529,55 @@ const RULES: readonly Rule[] = [
   { category: "GENERAL_SERVICES_EDUCATION", bankCategory: ["Education"] },
   { category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS", bankCategory: ["Gifts & Donations"] },
   { category: "BANK_FEES_OTHER_BANK_FEES", bankCategory: ["Fees & Adjustments"], direction: "out" },
+  // Capital One's and Discover's card categories, and American Express's (its "Category"
+  // column, "Restaurant-Restaurant", matched by the part before the dash). CSV bench: none
+  // were read, so a card's restaurants were uncategorized without Claude.
+  {
+    category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    bankCategory: ["Payment/Credit", "Payments and Credits"],
+    direction: "in",
+  },
+  {
+    category: "FOOD_AND_DRINK_RESTAURANT",
+    bankCategory: ["Dining", "Restaurants", "Restaurant-"],
+  },
+  {
+    category: "FOOD_AND_DRINK_GROCERIES",
+    bankCategory: ["Grocery", "Supermarkets", "Merchandise & Supplies-Groceries"],
+  },
+  {
+    category: "TRANSPORTATION_GAS",
+    bankCategory: ["Gas/Automotive", "Gasoline", "Transportation-Fuel"],
+  },
+  { category: "TRAVEL_FLIGHTS", bankCategory: ["Airfare", "Travel-Airline"] },
+  { category: "TRAVEL_OTHER_TRAVEL", bankCategory: ["Other Travel", "Travel-"] },
+  { category: "TRANSPORTATION_OTHER_TRANSPORTATION", bankCategory: ["Transportation-"] },
+  { category: "RENT_AND_UTILITIES_TELEPHONE", bankCategory: ["Phone/Cable", "Communications-"] },
+  { category: "MEDICAL_OTHER_MEDICAL", bankCategory: ["Health Care", "Medical Services"] },
+  {
+    category: "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+    bankCategory: ["Travel/ Entertainment", "Entertainment-"],
+  },
+  { category: "GENERAL_MERCHANDISE_DEPARTMENT_STORES", bankCategory: ["Department Stores"] },
+  {
+    category: "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
+    bankCategory: ["Merchandise", "Merchandise & Supplies-"],
+  },
+  {
+    category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+    bankCategory: ["Other Services", "Services", "Business Services-"],
+  },
+  { category: "BANK_FEES_INTEREST_CHARGE", bankCategory: ["Interest"], direction: "out" },
+  {
+    category: "BANK_FEES_OTHER_BANK_FEES",
+    bankCategory: ["Fee/Interest Charge", "Fees"],
+    direction: "out",
+  },
 ];
+
+// A bank category ending in "-" is a prefix: American Express writes "Restaurant-Bar & Café".
+const bankCategoryMatches = (names: readonly string[], value: string) =>
+  names.some((name) => (name.endsWith("-") ? value.startsWith(name) : value === name));
 
 function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -365,7 +588,7 @@ const COMPILED = RULES.map((rule) => ({
   ...rule,
   pattern: rule.keywords
     ? new RegExp(`(?<![A-Z0-9])(?:${rule.keywords.map(escape).join("|")})(?![A-Z0-9])`)
-    : null,
+    : (rule.pattern ?? null),
 }));
 
 export type RuleInput = Pick<NormalizedTransaction, "description" | "amountCents" | "hints">;
@@ -379,7 +602,9 @@ export function categorizeByRules({ description, amountCents, hints }: RuleInput
     const matched =
       (rule.pattern && rule.pattern.test(text)) ||
       (rule.bankType && hints.bankType && rule.bankType.includes(hints.bankType)) ||
-      (rule.bankCategory && hints.bankCategory && rule.bankCategory.includes(hints.bankCategory));
+      (rule.bankCategory &&
+        hints.bankCategory &&
+        bankCategoryMatches(rule.bankCategory, hints.bankCategory));
     if (matched) return categoryOf(rule.category);
   }
   return null;

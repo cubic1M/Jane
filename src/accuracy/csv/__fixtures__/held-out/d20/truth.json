@@ -1,0 +1,101 @@
+{
+  "person": "d20",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "LA FITNESS",
+      "perYear": 419.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 95
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 826.57
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 2129461, excess 1178527",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "ULTA BEAUTY #331 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 1066.53
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 2929.6
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 5593.58
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 10874.69
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 13239.73
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 15299.89
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 17814.54
+    }
+  ]
+}

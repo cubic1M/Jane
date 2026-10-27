@@ -1,0 +1,105 @@
+{
+  "person": "c16",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 167.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TARGET 00023456 twice",
+      "perYear": 92.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 3.05
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 SOUTHWES 5262123456789 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 1166.29
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 2632.85
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 2185.75
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 1636.32
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 994.36
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -212.69
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -854.44
+    }
+  ]
+}

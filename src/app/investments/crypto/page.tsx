@@ -15,6 +15,7 @@ import { requireUser } from "@/lib/session";
 import { linkCrypto, refreshCrypto } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatPercentTenths } from "@/lib/percent";
 
 // Crypto (spec step 161): seen and sized, never traded. Each balance says where it came
 // from and when; in demo advice mode, flags for too big a share and costly fees.
@@ -27,7 +28,6 @@ const DONE: Record<string, string> = {
   linked: "Connected, read-only.",
   refreshed: "Balances read again.",
 };
-const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 const when = (d: Date) =>
   d.toLocaleString("en-US", {
     month: "short",
@@ -82,7 +82,7 @@ async function CryptoContent({
         <section className="flex flex-col gap-2">
           <p className="text-2xl font-semibold">{formatCents(view.size.totalCents)}</p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {pct(view.size.share)} of everything you&apos;ve invested
+            {formatPercentTenths(view.size.share)} of everything you&apos;ve invested
             {view.size.gainCents !== null
               ? `; ${view.size.gainCents >= 0 ? "up" : "down"} ${formatCents(Math.abs(view.size.gainCents))} on what you paid`
               : ""}
@@ -140,9 +140,9 @@ async function CryptoContent({
           <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
             {view.size.overShare && (
               <li>
-                Crypto is {pct(view.size.share)} of what you&apos;ve invested. It can fall by half
-                or more in a year; a common rule of thumb keeps a speculative holding to about{" "}
-                {pct(CRYPTO_SHARE_FLAG)} ({CRYPTO_SHARE_SOURCE}).
+                Crypto is {formatPercentTenths(view.size.share)} of what you&apos;ve invested. It
+                can fall by half or more in a year; a common rule of thumb keeps a speculative
+                holding to about {formatPercentTenths(CRYPTO_SHARE_FLAG)} ({CRYPTO_SHARE_SOURCE}).
               </li>
             )}
             {view.fees?.flag && view.fees.bps !== null && (

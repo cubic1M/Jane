@@ -1,0 +1,93 @@
+{
+  "person": "d17",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "LA FITNESS",
+      "perYear": 419.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 131.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 102
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 40
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 726.4
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #221, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 ALAMO DRAFTHOUSE 042 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PETCO 1234 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 4572.11
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 3471.02
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 1917.82
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 1376.13
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "person": "d15",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
+    },
+    {
+      "type": "price_increase",
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
+    },
+    {
+      "type": "subscription_review",
+      "about": "SLING TV",
+      "perYear": 540
+    },
+    {
+      "type": "price_increase",
+      "about": "SLING TV 4000→4500",
+      "perYear": 60
+    },
+    {
+      "type": "subscription_review",
+      "about": "STRAVA",
+      "perYear": 143.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 5.37
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 1902.07
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 320.13
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -813.33
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -2574.36
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -4186.04
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -4711.14
+    }
+  ]
+}

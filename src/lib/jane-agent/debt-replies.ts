@@ -2,13 +2,14 @@ import { findDebt, sourceLabel, type Debt, type DebtBook } from "@/insights/debt
 import type { Payoff } from "@/lib/debt-plan";
 import { formatCents } from "@/lib/money";
 import type { PayoffPlan, Strategy } from "@/planning/debt";
-import { monthAfter, monthName, type LeftOut } from "@/planning/payoff";
+import { monthAfter, type LeftOut } from "@/planning/payoff";
 import type { DebtIntent } from "./debt-intents";
 import type { Reply } from "./replies";
 import { shortDate } from "./sources/source";
 import type { MessageAction } from "./types";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
+import { monthLabel } from "@/lib/day-label";
 import { plural } from "@/lib/plural";
 
 // Jane's answers about debts (spec Phase Y), from the same debt book as the loans page
@@ -164,7 +165,7 @@ function outcome(plan: PayoffPlan, asOf: string): string {
       ? "that's less than the minimums"
       : "it doesn't finish within 50 years";
   }
-  return `debt-free by ${monthName(monthAfter(asOf, plan.months))} (${plural(plan.months, "month", "months")}), with ${formatCents(plan.totalInterestCents)} of interest`;
+  return `debt-free by ${monthLabel(monthAfter(asOf, plan.months), { long: true })} (${plural(plan.months, "month", "months")}), with ${formatCents(plan.totalInterestCents)} of interest`;
 }
 
 // The buttons that start the plan, Jane's pick first in demo advice mode.
@@ -221,7 +222,7 @@ export function payoffReply(payoff: Payoff, asOf: string): Reply {
       `With more each month: ${more
         .map(
           (s) =>
-            `${formatCents(s.extraCents)} extra, debt-free by ${monthName(monthAfter(asOf, s.months))}`,
+            `${formatCents(s.extraCents)} extra, debt-free by ${monthLabel(monthAfter(asOf, s.months), { long: true })}`,
         )
         .join("; ")}.`,
     );

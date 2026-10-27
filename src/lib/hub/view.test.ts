@@ -380,6 +380,25 @@ describe("the area tiles", () => {
     ).toBe("+$500");
   });
 
+  // Overnight upload QA: a student's part-time pay is under the standard deduction.
+  it("say no income tax is expected when the income owes none", () => {
+    const student = areas({
+      taxes: {
+        totalTaxCents: 0,
+        paidCents: 0,
+        refundCents: 0,
+        withholdingKnown: false,
+        incomeCents: 1_260_000,
+      },
+    });
+    expect(tileOf(student, "taxes")).toMatchObject({
+      value: "$0",
+      caption: "No income tax expected",
+    });
+    const none = areas({ taxes: { ...student.taxes!, incomeCents: 0 } });
+    expect(tileOf(none, "taxes").caption).toBe("Not enough to estimate yet");
+  });
+
   // Overnight upload QA: a real account was invited to "Start with practice money", which only
   // opens in demo advice mode.
   it("don't invite a real account to start practice money", () => {

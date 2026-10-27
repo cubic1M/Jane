@@ -59,6 +59,9 @@ export type CsvFileResult =
       account: CsvFormat["account"];
       transactions: Omit<NormalizedTransaction, "accountRef">[];
       skipped: SkippedRow[];
+      // The account's balance at the end of each day, from a running-balance column (empty
+      // when the layout has none). For net worth over time (src/lib/import/balances.ts).
+      balances?: DayBalance[];
     }
   | {
       ok: false;
@@ -68,6 +71,25 @@ export type CsvFileResult =
       // For an unknown layout: what the column picker offers.
       choices?: MappingChoices;
     };
+
+export type DayBalance = { date: string; balanceCents: number };
+
+// Each day's closing balance from rows in file order. A running balance is the balance after
+// its row, so the day's last row in time order closes it: the first one seen when the file is
+// newest first (Chase), the last one when it's oldest first (Bank of America).
+export function closingBalances(rows: readonly ParsedRow[]): DayBalance[] {
+  const withBalance = rows.filter((r) => r.balanceCents !== undefined);
+  if (withBalance.length === 0) return [];
+  const newestFirst = withBalance[0].date > withBalance[withBalance.length - 1].date;
+  const byDay = new Map<string, number>();
+  for (const row of withBalance) {
+    if (newestFirst && byDay.has(row.date)) continue;
+    byDay.set(row.date, row.balanceCents!);
+  }
+  return [...byDay]
+    .map(([date, balanceCents]) => ({ date, balanceCents }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
 
 export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
 
@@ -179,6 +201,7 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     account: format.account,
     transactions,
     skipped,
+    balances: closingBalances(parsed.map((p) => p.row)),
   };
 }
 
@@ -205,8 +228,11 @@ export class CsvDataSource implements DataSource {
     private readonly files: CsvFile[],
   ) {}
 
-  // `files`: each file's format and how many transactions it had, for analytics.
-  async load(): Promise<SourceBatch & { files: { format: string; rows: number }[] }> {
+  // `files`: each file's format and how many transactions it had, for analytics. `balances`:
+  // each day's closing balance from the files' running-balance columns (a later file wins).
+  async load(): Promise<
+    SourceBatch & { files: { format: string; rows: number }[]; balances: DayBalance[] }
+  > {
     const results = this.files.map(readCsvFile);
     const failures = results.flatMap((r) => (r.ok ? [] : [{ file: r.file, error: r.error }]));
     if (failures.length > 0) throw new CsvFormatError(failures);
@@ -216,15 +242,21 @@ export class CsvDataSource implements DataSource {
       transactions: [] as SourceBatch["transactions"],
       skipped: [] as SourceBatch["skipped"],
       files: [] as { format: string; rows: number }[],
+      balances: [] as DayBalance[],
     };
+    const byDay = new Map<string, number>();
     for (const result of results) {
       if (!result.ok) continue;
       batch.files.push({ format: result.format.id, rows: result.transactions.length });
+      for (const b of result.balances ?? []) byDay.set(b.date, b.balanceCents);
       batch.transactions.push(
         ...result.transactions.map((t) => ({ ...t, accountRef: this.account.ref })),
       );
       batch.skipped.push(...result.skipped);
     }
+    batch.balances = [...byDay]
+      .map(([date, balanceCents]) => ({ date, balanceCents }))
+      .sort((a, b) => a.date.localeCompare(b.date));
     return batch;
   }
 }

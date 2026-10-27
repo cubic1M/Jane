@@ -1,0 +1,103 @@
+{
+  "person": "c11",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Credit union checking",
+      "layout": "custom",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "ADOBE *CREATIVE CLD",
+      "perYear": 275.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 71
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 42.28
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 771.34
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PLANET FITNESS, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TJ MAXX #0811 twice, refunded"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": -2837
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -3918.98
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -3581.42
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -4427.74
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -4982.64
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -5158.94
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ActivityRecorder } from "@/components/activity-recorder";
+import { ImportChip } from "@/components/import-chip";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import { SideChat } from "@/components/side-chat/side-chat";
@@ -54,6 +55,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense>
           <TradePopup />
         </Suspense>
+        {/* An upload finishing in the background, on every page (src/lib/import/background.ts). */}
+        <ImportChip />
         {/* Every link tap shows at once that the next page is on its way. */}
         <Suspense>
           <NavPending />

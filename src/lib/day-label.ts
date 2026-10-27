@@ -9,3 +9,16 @@ export function dayLabel(day: string | Date, { year = false }: { year?: boolean 
     timeZone: "UTC",
   });
 }
+
+// A "YYYY-MM" month as people read it: "Oct 2026"; "October 2026" with long, and without the
+// year when year is false. Read in UTC.
+export function monthLabel(
+  month: string,
+  { long = false, year = true }: { long?: boolean; year?: boolean } = {},
+): string {
+  return new Date(`${month.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString("en-US", {
+    month: long ? "long" : "short",
+    ...(year ? { year: "numeric" } : {}),
+    timeZone: "UTC",
+  });
+}

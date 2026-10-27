@@ -4,6 +4,7 @@ import type { HealthPartScore } from "@/planning/health-score";
 import type { Reply } from "./replies";
 import { sentence } from "./sources/source";
 import type { MessageAction } from "./types";
+import { monthLabel } from "@/lib/day-label";
 
 // Money health score in the chat (spec step 146): the number, the band, how it moved since
 // last month and what moved it, and the one step that would raise it most. Kind words
@@ -16,12 +17,6 @@ const SEE: MessageAction = {
   href: "/jane#health",
 };
 
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
-
 // The part with the most room, and its next step.
 export const mostRoom = (parts: HealthPartScore[]) =>
   [...parts].filter((p) => p.next).sort((a, b) => b.max - b.points - (a.max - a.points))[0] ?? null;
@@ -33,8 +28,9 @@ export function scoreLine(view: Pick<HealthView, "score" | "band">) {
 export function changeLine(view: HealthView): string | null {
   if (!view.before || !view.change) return null;
   const { delta, biggest } = view.change;
-  const since = `since ${monthName(view.before.month)}`;
-  if (delta === 0) return `That's the same as ${monthName(view.before.month)}.`;
+  const since = `since ${monthLabel(view.before.month, { long: true, year: false })}`;
+  if (delta === 0)
+    return `That's the same as ${monthLabel(view.before.month, { long: true, year: false })}.`;
   const why = biggest ? `, mostly from ${biggest.label.toLowerCase()}` : "";
   return delta > 0
     ? `That's up ${delta} ${since}${why}.`

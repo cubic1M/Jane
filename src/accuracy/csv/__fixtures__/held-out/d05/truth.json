@@ -1,0 +1,79 @@
+{
+  "person": "d05",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 102
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 40
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 1071.1
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "ULTA BEAUTY #331 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": -3942.24
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -4460.43
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -5048.39
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -5403.73
+    }
+  ]
+}

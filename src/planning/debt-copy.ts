@@ -26,7 +26,7 @@ export const PLANNER_COPY = {
   neverPaysOff:
     "At this monthly amount the balance doesn't go down fast enough to finish within 50 years. Try a higher monthly amount.",
   noCards:
-    "We didn't find credit cards or loans on your linked accounts. Add one by hand to try the numbers.",
+    "We didn't find credit cards or loans in your accounts. Add one by hand to try the numbers.",
 } as const;
 
 // Every string in the copy, for tests.

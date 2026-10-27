@@ -41,7 +41,7 @@ export const SUGGESTION_NODES: Readonly<Record<string, { branch: MoneyBranch; la
   emergency_fund: { branch: "coming", label: "Build a cash cushion" },
   income_smoothing: { branch: "coming", label: "Smooth out uneven pay" },
   subscriptions: { branch: "subscriptions", label: "Subscriptions to review" },
-  budget_overrun: { branch: "budgets", label: "Spending over budget" },
+  budget_overrun: { branch: "budgets", label: "Spending above your usual" },
   month_close: { branch: "spending", label: "Last month, closed" },
   figure_check: { branch: "books", label: "A figure to check" },
   data_problems: { branch: "books", label: "Data that doesn't add up" },

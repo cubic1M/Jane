@@ -4,6 +4,7 @@ import { shortMoney } from "@/lib/hub/view";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
+import { monthLabel } from "@/lib/day-label";
 
 // The Loans & credit page as a tree (docs/design/area-pages.md): Loans & credit → what's
 // costing you now, your debts, cheaper loans, paying it off, your credit, before you borrow,
@@ -124,12 +125,6 @@ export type LoansTreeInput = {
   review: { needYou: number; on: string | null } | null;
 };
 
-const monthLabel = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 const cut = (text: string, n = 6) => text.split(/\s+/).slice(0, n).join(" ");
 
 export function loansTree(input: LoansTreeInput): AreaTree {

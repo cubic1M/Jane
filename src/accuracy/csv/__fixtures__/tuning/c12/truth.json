@@ -1,0 +1,90 @@
+{
+  "person": "c12",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NYTIMES*NYTDIGITAL",
+      "perYear": 75
+    },
+    {
+      "type": "price_increase",
+      "about": "NYTIMES*NYTDIGITAL 400→625",
+      "perYear": 27
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 7045664, excess 6184651",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 32438.02
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 37189.18
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 43048.86
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 53062.6
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 57948
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 63507.38
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 69210.45
+    }
+  ]
+}

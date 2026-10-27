@@ -12,20 +12,10 @@ import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { optionLabel, type Comparison } from "@/planning/compare";
 import type { AnswerBlock } from "./blocks";
+import { monthLabel } from "@/lib/day-label";
 
 // Spec step 94: blocks from the same numbers as the pages (Insights, Today, Goals and a
 // finding's options), so their figures match. Builders are pure; buildBlock loads.
-
-const monthName = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    timeZone: "UTC",
-  });
-const monthShort = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    timeZone: "UTC",
-  });
 
 // Spending by category in one month, the most first (as on Insights).
 export function spendingBlock(
@@ -40,7 +30,11 @@ export function spendingBlock(
     .map((c) => ({ label: c.category, cents: c.cents }));
   return rows.length === 0
     ? null
-    : { type: "bars", title: `Spending in ${monthName(month)}`, rows };
+    : {
+        type: "bars",
+        title: `Spending in ${monthLabel(month, { long: true, year: false })}`,
+        rows,
+      };
 }
 
 // Spending each month, oldest first (as on Insights).
@@ -48,7 +42,7 @@ export function monthsBlock(transactions: InsightTransaction[], asOf: string): A
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
   const rows = insights.months
     .slice(-CHAT_BLOCK_ROWS)
-    .map((m) => ({ label: monthShort(m.month), cents: m.spendingCents }));
+    .map((m) => ({ label: monthLabel(m.month, { year: false }), cents: m.spendingCents }));
   return rows.some((r) => r.cents > 0) ? { type: "bars", title: "Spending by month", rows } : null;
 }
 

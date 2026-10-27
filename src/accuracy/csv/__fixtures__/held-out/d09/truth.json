@@ -1,0 +1,105 @@
+{
+  "person": "d09",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
+    },
+    {
+      "type": "price_increase",
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
+    },
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANVA* 04321",
+      "perYear": 179.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #221, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 UNITED 0162345678901 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 917.41
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -595.62
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -2132.45
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -4291.43
+    }
+  ]
+}

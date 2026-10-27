@@ -1,0 +1,87 @@
+{
+  "person": "c17",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PLANET FITNESS",
+      "perYear": 299.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PELOTON* MEMBERSHIP",
+      "perYear": 528
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 34
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 135
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 916.02
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": -1982.89
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -3003.22
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -4256.89
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -5024.96
+    }
+  ]
+}

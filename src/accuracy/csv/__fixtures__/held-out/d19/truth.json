@@ -1,0 +1,98 @@
+{
+  "person": "d19",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRAMMARLY",
+      "perYear": 144
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PETCO 1234 twice",
+      "perYear": 88.6
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1440535, excess 935556",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 VIVID SEATS 866-848-8499 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 3691.07
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 5081.56
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 6598.39
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 8438.58
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 10476.86
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 12693.39
+    }
+  ]
+}

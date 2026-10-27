@@ -1,0 +1,99 @@
+{
+  "person": "c08",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 47.04
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 75
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 420.43
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "ADOBE *CREATIVE CLD, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TJ MAXX #0811 twice, refunded"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": -1615
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": -1726.38
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -2577.46
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -1189.55
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -1079.97
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -1022.36
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -596.52
+    }
+  ]
+}
