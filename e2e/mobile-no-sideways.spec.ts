@@ -44,15 +44,19 @@ test("a phone uploads with long names: no sideways scroll, and the import goes t
   await page
     .locator('[name="new.name"]')
     .fill("My everyday checking account at the credit union downtown by the park");
-  // Give the chat's sheet time to start loading in the background.
-  await page.waitForTimeout(1500);
-  // What the person feels: the page doesn't scroll sideways, isn't zoomed out, and the tap lands
-  // (scrollWidth isn't asked: a clipped page may still report its content's width).
-  const view = await page.evaluate(() => {
-    window.scrollTo(600, window.scrollY);
-    return { x: window.scrollX, scale: window.visualViewport?.scale ?? 1 };
-  });
-  expect(view).toEqual({ x: 0, scale: 1 });
+  // The page settled: the chat's sheet is in place (closed, it waits with its loading bar).
+  await expect(page.locator(".side-chat-sheet")).toBeAttached({ timeout: 30_000 });
+  await page.waitForLoadState("networkidle").catch(() => {});
+  // What the person feels: the page doesn't scroll sideways and isn't zoomed out. Asked until
+  // it holds, not read once while the page may still be moving (scrollWidth isn't asked: a
+  // clipped page may still report its content's width).
+  await expect(async () => {
+    const view = await page.evaluate(() => {
+      window.scrollTo(600, window.scrollY);
+      return { x: window.scrollX, scale: window.visualViewport?.scale ?? 1 };
+    });
+    expect(view).toEqual({ x: 0, scale: 1 });
+  }).toPass({ timeout: 15_000 });
   // The tap, as a phone makes it: the keyboard closes (the field loses focus), then one tap where
   // the button is, judged by what it did.
   await page.locator('[name="new.name"]').blur();
