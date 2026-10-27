@@ -455,9 +455,10 @@ async function LoansContent({
         <p className="text-zinc-600 dark:text-zinc-400">
           When you{" "}
           <Link href="/connect" className={LINK}>
-            link a bank
+            add your accounts
           </Link>{" "}
-          that reports them, they show here with their rates and due dates.
+          (a card statement, or a bank that reports loans), they show here with their rates and due
+          dates.
         </p>
       ) : (
         <AreaPage

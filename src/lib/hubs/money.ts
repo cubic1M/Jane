@@ -46,7 +46,7 @@ const monthName = (month: string) =>
     timeZone: "UTC",
   });
 
-const NO_BANK = "Link a bank to see it";
+const NO_BANK = "Add your accounts to see it";
 
 // Pure: the tiles, grouped, from the numbers.
 export function moneyTiles(d: MoneyData): HubGroup[] {

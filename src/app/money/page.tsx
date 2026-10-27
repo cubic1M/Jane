@@ -274,9 +274,9 @@ async function MoneyContent({
 
       {!data.hasAccounts && (
         <p className="border border-zinc-300 p-4 dark:border-zinc-700">
-          Link a bank to fill this in.{" "}
+          Upload your bank statements to fill this in.{" "}
           <Link href="/connect" className={LINK}>
-            Link an account
+            Add your accounts
           </Link>
         </p>
       )}
