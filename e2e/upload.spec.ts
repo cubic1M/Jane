@@ -212,3 +212,28 @@ test("the team sees the closed beta's numbers", async ({ page, baseURL }) => {
     await expect(beta.getByRole("rowheader", { name: row })).toBeVisible();
   }
 });
+
+test("another bank's file going into an existing account gets one line saying so", async ({
+  page,
+  baseURL,
+}) => {
+  await signIn(page, baseURL);
+  await page.goto("/import");
+  await uploadFile(page, "wells-fargo.csv");
+  await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
+  await waitForImport(page, { open: "/import" });
+
+  // Back on /import, the account choice opens on the Wells Fargo account; a Chase card file
+  // previewed into it gets the note.
+  await expect(page.locator('select[name="accountId"] option:checked')).toContainText(
+    "Wells Fargo",
+  );
+  await uploadFile(page, "chase-credit-card.csv");
+  const note = page.locator("[data-wrong-account]");
+  await expect(note).toContainText(
+    "chase-credit-card.csv looks like a Chase file, but it's going into Wells Fargo",
+  );
+  // A new account: nothing to say.
+  await page.locator('select[name="accountId"]').selectOption("new");
+  await expect(note).toHaveCount(0);
+});

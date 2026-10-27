@@ -14,6 +14,7 @@ import {
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import type { BalanceAsk } from "@/lib/import/balance-question";
+import { wrongAccountNote } from "@/lib/import/wrong-account";
 import { formatCents } from "@/lib/money";
 
 type AccountOption = { id: string; name: string; kindLabel: string };
@@ -91,6 +92,13 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   }
 
   const files = preview?.ok ? preview.files : [];
+  const chosen = accounts.find((a) => a.id === account);
+  const wrongAccount = chosen
+    ? wrongAccountNote(
+        chosen.name,
+        files.flatMap((f) => (f.ok ? [{ file: f.file, bank: f.bank }] : [])),
+      )
+    : null;
   const ready = files.length > 0 && files.every((f) => f.ok);
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
   const suggested = files.find((f) => f.ok)?.account;
@@ -215,6 +223,15 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
         >
           These files cover {days} {days === 1 ? "day" : "days"}. Jane spots monthly charges and
           bills best with {SUGGESTED_UPLOAD_MONTHS} months, so add older statements if you can.
+        </p>
+      )}
+
+      {ready && wrongAccount && (
+        <p
+          data-wrong-account=""
+          className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+        >
+          {wrongAccount}
         </p>
       )}
 
