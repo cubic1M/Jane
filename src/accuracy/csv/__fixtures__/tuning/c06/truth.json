@@ -44,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 5545311, excess 4998090",
+      "about": "cash 5502311, excess 4928009",
       "perYear": null
     }
   ],
@@ -56,28 +56,36 @@
     {
       "type": "duplicate_charge",
       "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 28333.4
+      "dollars": 28230.4
     },
     {
       "date": "2026-07-31",
-      "dollars": 39556.58
+      "dollars": 39350.58
     },
     {
       "date": "2026-08-31",
-      "dollars": 44040.12
+      "dollars": 43731.12
     },
     {
       "date": "2026-09-30",
-      "dollars": 46978.27
+      "dollars": 46566.27
     },
     {
       "date": "2026-10-24",
-      "dollars": 53142.75
+      "dollars": 52712.75
     }
   ]
 }

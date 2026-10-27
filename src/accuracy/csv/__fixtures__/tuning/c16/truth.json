@@ -74,36 +74,44 @@
     {
       "type": "duplicate_charge",
       "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 1166.29
+      "dollars": 1063.29
     },
     {
       "date": "2026-05-31",
-      "dollars": 2632.85
+      "dollars": 2426.85
     },
     {
       "date": "2026-06-30",
-      "dollars": 2185.75
+      "dollars": 1876.75
     },
     {
       "date": "2026-07-31",
-      "dollars": 1636.32
+      "dollars": 1224.32
     },
     {
       "date": "2026-08-31",
-      "dollars": 999.35
+      "dollars": 484.35
     },
     {
       "date": "2026-09-30",
-      "dollars": -203.71
+      "dollars": -821.71
     },
     {
       "date": "2026-10-24",
-      "dollars": -855.46
+      "dollars": -1576.46
     }
   ]
 }

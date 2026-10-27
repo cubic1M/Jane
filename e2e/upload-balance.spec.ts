@@ -58,6 +58,9 @@ test("a card without a balance is asked for, and net worth says it isn't counted
   await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
   await expect(page.locator("[data-import-saved]")).toBeVisible();
   await expect(page.locator("[data-balance-ask]")).toHaveCount(0);
+  // The next file is often another bank's: the choice stays on a new account, not the one just
+  // made. (It used to switch to it, so a second bank's file landed in the first's account.)
+  await expect(page.locator('select[name="accountId"]')).toHaveValue("new");
   await waitForImport(page, { open: "/import" });
 
   await page.locator('select[name="accountId"]').selectOption("new");
@@ -93,6 +96,12 @@ test("a card without a balance is asked for, and net worth says it isn't counted
 
   // Given later on /import: the debt counts, and the note goes.
   await page.goto("/import");
+  // Said once, over the accounts, in the right number.
+  await expect(
+    page.getByText(
+      "One statement doesn't say today's balance. Add it below and net worth counts it.",
+    ),
+  ).toBeVisible();
   const ask = page.locator("[data-uploaded-account] [data-balance-ask]");
   await ask.getByRole("textbox").fill("350.00");
   await ask.getByRole("button", { name: "Save" }).click();
@@ -109,4 +118,26 @@ test("a card without a balance is asked for, and net worth says it isn't counted
       .filter({ hasText: /^You owe/ })
       .first(),
   ).toContainText("$350.00");
+});
+
+test("with no balance known at all, /net-worth says so instead of $0.00", async ({
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await page
+    .context()
+    .addCookies([{ name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" }]);
+  await page.goto("/import");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "card.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(cardFile()),
+  });
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: /^Import \d+ transactions$/ }).click();
+  await waitForImport(page, { open: "/net-worth" });
+  await expect(page.locator("[data-net-worth-unknown]")).toContainText("Not known yet");
+  await expect(page.getByText("$0.00")).toHaveCount(0);
 });

@@ -45,36 +45,44 @@
     {
       "type": "duplicate_charge",
       "about": "2 UNITED 0162345678901 seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANYON CU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ROOT INSURANCE CO, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 3162.16
+      "dollars": 3025.16
     },
     {
       "date": "2026-05-31",
-      "dollars": 1981.73
+      "dollars": 1707.73
     },
     {
       "date": "2026-06-30",
-      "dollars": 1190.07
+      "dollars": 779.07
     },
     {
       "date": "2026-07-31",
-      "dollars": 2515.53
+      "dollars": 1967.53
     },
     {
       "date": "2026-08-31",
-      "dollars": 848.86
+      "dollars": 163.86
     },
     {
       "date": "2026-09-30",
-      "dollars": 520.29
+      "dollars": -301.71
     },
     {
       "date": "2026-10-24",
-      "dollars": 215.27
+      "dollars": -648.73
     }
   ]
 }

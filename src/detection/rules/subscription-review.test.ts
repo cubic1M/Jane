@@ -96,6 +96,28 @@ describe("subscription_review", () => {
       expect(run(input({ transactions, declinedSubscriptionMerchantKeys: ["canva"] }))).toEqual([]);
     });
 
+    // QA round 28: a fixed monthly amount isn't a plan when it pays a debt, insures, gives or eats.
+    it.each([
+      ["HARBOR CREDIT UNION PMT", null, null, 8500],
+      ["LEMONADE INSURANCE", null, null, 1800],
+      ["PARKSIDE COMMUNITY CHURCH", null, null, 5000],
+      ["BLUE HERON BAKERY", null, null, 1430],
+      ["HOLLOW OAK TAVERN", null, null, 4610],
+      ["NORTHWIND LENDING", "OTHER", "OTHER_OTHER", 7500],
+      ["CORNER DELI", "FOOD_AND_DRINK", "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK", 1200],
+    ])(
+      "never calls %s at one price every month a subscription",
+      (description, pfcPrimary, pfcDetailed, cents) => {
+        const transactions = monthly(5, cents, {
+          description,
+          merchantName: null,
+          pfcPrimary,
+          pfcDetailed,
+        });
+        expect(run(input({ transactions }))).toEqual([]);
+      },
+    );
+
     it("needs the very same price every month, and under FIXED_PRICE_SUBSCRIPTION_MAX_CENTS", () => {
       const mystery = { description: "MYSTERY CLUB", pfcPrimary: null, pfcDetailed: null };
       expect(run(input({ transactions: monthly(4, 2000, mystery) }))).toHaveLength(1);

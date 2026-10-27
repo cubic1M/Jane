@@ -61,36 +61,44 @@
     {
       "type": "duplicate_charge",
       "about": "two lunches"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 6675.96
+      "dollars": 6615.56
     },
     {
       "date": "2026-05-31",
-      "dollars": 6705.43
+      "dollars": 6584.63
     },
     {
       "date": "2026-06-30",
-      "dollars": 6423.42
+      "dollars": 6242.22
     },
     {
       "date": "2026-07-31",
-      "dollars": 5647.12
+      "dollars": 5405.52
     },
     {
       "date": "2026-08-31",
-      "dollars": 5068.51
+      "dollars": 4766.51
     },
     {
       "date": "2026-09-30",
-      "dollars": 4972.61
+      "dollars": 4610.21
     },
     {
       "date": "2026-10-24",
-      "dollars": 4612.48
+      "dollars": 4189.68
     }
   ]
 }

@@ -65,7 +65,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2206206, excess 1278040",
+      "about": "cash 2147206, excess 1181882",
       "perYear": null
     }
   ],
@@ -77,28 +77,36 @@
     {
       "type": "duplicate_charge",
       "about": "IKEA US 0123 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANYON CU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ROOT INSURANCE CO, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 5977.69
+      "dollars": 5840.69
     },
     {
       "date": "2026-07-31",
-      "dollars": 11122.45
+      "dollars": 10848.45
     },
     {
       "date": "2026-08-31",
-      "dollars": 13313.34
+      "dollars": 12902.34
     },
     {
       "date": "2026-09-30",
-      "dollars": 15195.57
+      "dollars": 14647.57
     },
     {
       "date": "2026-10-24",
-      "dollars": 17450.76
+      "dollars": 16860.76
     }
   ]
 }

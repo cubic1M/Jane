@@ -70,7 +70,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1154067, excess 280705",
+      "about": "cash 1099267, excess 182389",
       "perYear": null
     }
   ],
@@ -78,24 +78,32 @@
     {
       "type": "subscription_review",
       "about": "DUTCH BROS #221 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANYON CU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ROOT INSURANCE CO, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 4288.4
+      "dollars": 4151.4
     },
     {
       "date": "2026-08-31",
-      "dollars": 5798.62
+      "dollars": 5524.62
     },
     {
       "date": "2026-09-30",
-      "dollars": 7585.93
+      "dollars": 7174.93
     },
     {
       "date": "2026-10-24",
-      "dollars": 9981.33
+      "dollars": 9433.33
     }
   ]
 }

@@ -48,10 +48,15 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   // An account just added by hand is the one to upload into.
   const ids = accounts.map((a) => a.id);
   const [known, setKnown] = useState(ids);
+  // An upload into a new account adds one too, but the next file is often another bank's: the
+  // choice stays "a new account" then, so it never lands in the last one by mistake (QA: after a
+  // Wells Fargo upload the select said "Wells Fargo checking" for the BofA file).
+  const [uploadedNew, setUploadedNew] = useState(false);
   if (ids.join() !== known.join()) {
     setKnown(ids);
     const added = ids.find((id) => !known.includes(id));
-    if (added) setAccount(added);
+    if (added && !uploadedNew) setAccount(added);
+    if (uploadedNew) setUploadedNew(false);
   }
 
   // The form isn't submitted natively: that would clear the chosen files after preview.
@@ -59,7 +64,12 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
     return new FormData(formRef.current ?? undefined);
   }
 
+  // Which button the running action came from: "Reading…" is the preview's, not the import's
+  // (QA: the Preview button said "Reading…" while an import saved).
+  const [busy, setBusy] = useState<"preview" | "import" | null>(null);
+
   function onPreview(event: React.FormEvent<HTMLFormElement>) {
+    setBusy("preview");
     event.preventDefault();
     setError(null);
     startTransition(async () => {
@@ -78,6 +88,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
 
   // Saves the rows and returns at once; the person keeps using Jane while the rest runs.
   function onConfirm() {
+    setBusy("import");
     setError(null);
     setSaved(null);
     startTransition(async () => {
@@ -89,6 +100,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
         runId: result.runId,
         askBalance: result.askBalance,
       });
+      if (account === NEW_ACCOUNT_ID) setUploadedNew(true);
       setPreview(null);
       setPickers({});
       formRef.current?.reset();
@@ -180,7 +192,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
 
       <div className="flex flex-wrap gap-3">
         <button type="submit" disabled={pending} className={SECONDARY_BUTTON}>
-          {pending && !preview ? "Reading…" : preview ? "Preview again" : "Preview"}
+          {pending && busy === "preview" ? "Reading…" : preview ? "Preview again" : "Preview"}
         </button>
         {ready && (
           <button type="button" onClick={onConfirm} disabled={pending} className={PRIMARY_BUTTON}>

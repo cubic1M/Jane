@@ -40,7 +40,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1786176, excess 670930",
+      "about": "cash 1749936, excess 615886",
       "perYear": null
     }
   ],
@@ -56,32 +56,40 @@
     {
       "type": "subscription_review",
       "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 7222.45
+      "dollars": 7162.05
     },
     {
       "date": "2026-06-30",
-      "dollars": 8596.43
+      "dollars": 8475.63
     },
     {
       "date": "2026-07-31",
-      "dollars": 10176.25
+      "dollars": 9995.05
     },
     {
       "date": "2026-08-31",
-      "dollars": 12115.77
+      "dollars": 11874.17
     },
     {
       "date": "2026-09-30",
-      "dollars": 14119.3
+      "dollars": 13817.3
     },
     {
       "date": "2026-10-24",
-      "dollars": 16183.41
+      "dollars": 15821.01
     }
   ]
 }
