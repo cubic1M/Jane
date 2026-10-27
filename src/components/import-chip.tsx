@@ -71,8 +71,8 @@ export function ImportChip() {
     void dismissImport(run.id);
   };
   const rows = `${run.rows} transaction${run.rows === 1 ? "" : "s"}`;
-  // After a removal the same work runs again: it's an update, not an import.
-  const removal = run.kind === "removal";
+  // After a removal or a balance given, the same work runs again: it's an update, not an import.
+  const removal = run.kind !== "upload";
 
   return (
     <div

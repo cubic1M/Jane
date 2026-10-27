@@ -29,10 +29,14 @@ export type NetWorth = {
   netCents: number;
   // Accounts we couldn't include, by name.
   missing: string[];
+  // The same, with whether each is a card (what's owed): for notCounting's words.
+  unbalanced: Unbalanced[];
   // Whether anything counted has a value: false when every balance is unknown (statements
   // without a balance column) and nothing owned is entered, so netCents' 0 means "not known".
   known: boolean;
 };
+
+export type Unbalanced = { name: string; card: boolean };
 
 const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
 
@@ -44,10 +48,10 @@ export function netWorth(
   let assets = 0;
   let investments = 0;
   let debts = 0;
-  const missing: string[] = [];
+  const unbalanced: Unbalanced[] = [];
   for (const a of accounts) {
     if (a.balanceCents === null) {
-      missing.push(a.name);
+      unbalanced.push({ name: a.name, card: isDebt(a.type) });
       continue;
     }
     if (isDebt(a.type)) debts += a.balanceCents;
@@ -63,8 +67,9 @@ export function netWorth(
     cryptoCents,
     debtsCents: debts,
     netCents: assets - debts,
-    missing: missing.sort(),
-    known: accounts.length > missing.length || owned.length > 0 || cryptoCents > 0,
+    missing: unbalanced.map((u) => u.name).sort(),
+    unbalanced: unbalanced.sort((a, b) => a.name.localeCompare(b.name)),
+    known: accounts.length > unbalanced.length || owned.length > 0 || cryptoCents > 0,
   };
 }
 
@@ -162,4 +167,25 @@ export function netWorthLine(
     owned.map((o) => ({ ...o, valuedOn: o.valuedOn < start ? o.valuedOn : start })),
   );
   return months.map((m, i) => (i === months.length - 1 ? { ...m, netCents: todayCents } : m));
+}
+
+// What a net worth leaves out for want of a balance (an uploaded card or bank file without one,
+// src/lib/import/account-balance.ts), said beside the figure, never left out silently (CSV
+// bench: card debt missing from most upload-only people's net worth). Null when it's complete.
+// One phrase everywhere: "not counting your card balance". The short form fits a tree label;
+// the sentence names the accounts.
+export function notCounting(
+  unbalanced: readonly Unbalanced[],
+): { short: string; sentence: string } | null {
+  if (unbalanced.length === 0) return null;
+  const one = unbalanced.length === 1;
+  const cards = unbalanced.every((u) => u.card);
+  const short = cards
+    ? `not counting card ${one ? "balance" : "balances"}`
+    : `not counting ${one ? "a balance" : `${unbalanced.length} balances`}`;
+  const names = unbalanced.length <= 2 ? unbalanced.map((u) => u.name).join(" or ") : null;
+  const sentence = names
+    ? `Not counting your ${names} ${one ? "balance" : "balances"}: ${one ? "the file doesn't" : "the files don't"} say ${one ? "it" : "them"} yet.`
+    : `Not counting ${unbalanced.length} balances: the files don't say them yet.`;
+  return { short, sentence };
 }

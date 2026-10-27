@@ -1,5 +1,6 @@
 import type { TreeStatus } from "@/components/tree/interactive-tree";
 import { shortMoney } from "@/lib/hub/view";
+import { notCounting, type Unbalanced } from "@/insights/net-worth";
 import { formatCents } from "@/lib/money";
 import { CATEGORY_UP_MIN_CENTS, CATEGORY_UP_MIN_SHARE } from "@/config/insights";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
@@ -135,6 +136,8 @@ export type MoneyTreeInput = {
     goals: { total: number; onTrack: number };
     // known: how many have a balance (uploaded card statements carry none).
     debt: { accounts: number; owedCents: number; known?: number };
+    // Accounts net worth leaves out for having no balance (an uploaded card, say).
+    missing?: Unbalanced[];
   };
   rules: number;
 };
@@ -351,16 +354,19 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
   }
 
   const h = input.have;
+  const left = notCounting(h.missing ?? []);
   if (input.hasAccounts) {
     items.have.push(
       item("have", "net-worth", {
-        label: "Net worth",
-        status: "good",
+        // Never a figure that silently leaves a debt out: "Not known" with no balance at all,
+        // else it says what it isn't counting.
+        label: left && h.netKnown !== false ? `Net worth, ${left.short}` : "Net worth",
+        status: left && h.netKnown !== false ? "look" : "good",
         figure: h.netKnown === false ? "Not known" : shortMoney(h.netCents),
         summary:
           h.netKnown === false
             ? "Your files don't include a balance yet. Add one on the import page."
-            : `You have ${formatCents(h.assetsCents)} and owe ${formatCents(h.debtsCents)}.`,
+            : `You have ${formatCents(h.assetsCents)} and owe ${formatCents(h.debtsCents)}.${left ? ` ${left.sentence}` : ""}`,
       }),
     );
   }

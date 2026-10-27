@@ -5,7 +5,9 @@ import { after } from "next/server";
 import { track } from "@/lib/analytics";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb, type ScopedDb } from "@/lib/db-scoped";
+import { balancesToAsk, setUploadedBalance, type BalanceAsk } from "@/lib/import/account-balance";
 import { dismissImportRun } from "@/lib/import/background";
+import { parseMoneyToCents } from "@/lib/money";
 import {
   removeEarlierRows,
   removeUpload,
@@ -72,7 +74,15 @@ export async function previewImport(formData: FormData): Promise<PreviewResult> 
   return { ok: true, files: previews };
 }
 
-export type StartResult = { ok: true; runId: string; rows: number } | { ok: false; error: string };
+export type StartResult =
+  | {
+      ok: true;
+      runId: string;
+      rows: number;
+      // The account's balance today, when the file didn't say (a card, Wells Fargo).
+      askBalance: BalanceAsk | null;
+    }
+  | { ok: false; error: string };
 
 export async function startImport(formData: FormData): Promise<StartResult> {
   const db = await csvDb();
@@ -82,7 +92,22 @@ export async function startImport(formData: FormData): Promise<StartResult> {
   // Started at once after the response; the jobs runner picks it up if this one is cut short.
   after(() => runJob(result.jobId).then(() => undefined));
   revalidatePath("/import");
-  return { ok: true, runId: result.runId, rows: result.counts.inserted };
+  const ask = (await balancesToAsk(db)).find((a) => a.accountId === result.accountId) ?? null;
+  return { ok: true, runId: result.runId, rows: result.counts.inserted, askBalance: ask };
+}
+
+// An uploaded account's balance today, given after its upload; the numbers follow in the
+// background.
+export async function setBalanceAction(accountId: string, text: string): Promise<ActionResult> {
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
+  const cents = parseMoneyToCents(text.trim());
+  if (cents === null) return { ok: false, error: "Enter the amount as a number, like 1,234.56." };
+  const set = await setUploadedBalance(db, accountId, cents);
+  if (!set) return { ok: false, error: "That account isn't here any more." };
+  after(() => runJob(set.jobId).then(() => undefined));
+  revalidatePath("/import");
+  return { ok: true };
 }
 
 // Closing the chip once the person has seen how an upload went.

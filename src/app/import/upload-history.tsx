@@ -8,7 +8,9 @@ import {
   startOverAction,
   type ActionResult,
 } from "./actions";
+import { BalanceAskForm } from "./balance-ask";
 import { IMPORT_STARTED_EVENT } from "@/config/import";
+import type { BalanceAsk } from "@/lib/import/balance-question";
 import type { EarlierRows, UploadView } from "@/lib/import/remove";
 
 // What's been uploaded, and taking it back (src/lib/import/remove.ts): one upload's rows, an
@@ -89,11 +91,14 @@ export function UploadHistory({
   earlier,
   accounts,
   totals,
+  asks = [],
 }: {
   uploads: UploadView[];
   earlier: EarlierRows[];
   accounts: Account[];
   totals: { accounts: number; rows: number };
+  // Uploaded accounts still without a balance: asked for here too.
+  asks?: BalanceAsk[];
 }) {
   if (accounts.length === 0) return null;
   return (
@@ -150,6 +155,14 @@ export function UploadHistory({
               {a.name}{" "}
               <span className="text-sm text-zinc-500">· {plural(a.rows, "transaction")}</span>
             </span>
+            {asks.some((ask) => ask.accountId === a.id) && (
+              <div className="w-full">
+                <BalanceAskForm
+                  ask={asks.find((ask) => ask.accountId === a.id)!}
+                  skippable={false}
+                />
+              </div>
+            )}
             <Confirm
               label="Remove account"
               question={`Remove ${a.name} and all ${plural(a.rows, "transaction")} in it?`}

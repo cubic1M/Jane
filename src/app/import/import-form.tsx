@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useRef, useState, useTransition } from "react";
 import { previewImport, startImport, type PreviewResult } from "./actions";
+import { BalanceAskForm } from "./balance-ask";
 import { ColumnPicker } from "./column-picker";
 import {
   IMPORT_STARTED_EVENT,
@@ -12,6 +13,7 @@ import {
 } from "@/config/import";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
+import type { BalanceAsk } from "@/lib/import/balance-question";
 import { formatCents } from "@/lib/money";
 
 type AccountOption = { id: string; name: string; kindLabel: string };
@@ -31,7 +33,11 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   // The upload just saved: the rest runs in the background, followed by the chip.
-  const [saved, setSaved] = useState<{ rows: number; runId: string } | null>(null);
+  const [saved, setSaved] = useState<{
+    rows: number;
+    runId: string;
+    askBalance: BalanceAsk | null;
+  } | null>(null);
   // A first upload makes its account from the file: its name and type come from the preview
   // until the person changes them.
   const [account, setAccount] = useState(accounts[0]?.id ?? NEW_ACCOUNT_ID);
@@ -75,7 +81,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
     startTransition(async () => {
       const result = await startImport(formData());
       if (!result.ok) return setError(result.error);
-      setSaved({ rows: result.rows, runId: result.runId });
+      setSaved({ rows: result.rows, runId: result.runId, askBalance: result.askBalance });
       setPreview(null);
       setPickers({});
       formRef.current?.reset();
@@ -184,6 +190,7 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
           <p className="font-medium">
             Saved {plural(saved.rows, "transaction")}. Jane is finishing the rest in the background.
           </p>
+          {saved.askBalance && <BalanceAskForm ask={saved.askBalance} />}
           <p>
             Keep using Jane meanwhile: the bar at the top of every page says how it&apos;s going and
             what it found.

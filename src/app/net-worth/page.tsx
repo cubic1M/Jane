@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/app-header";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { NET_WORTH_MONTHS } from "@/config/net-worth";
 import { monthsEnding } from "@/insights/spending";
-import { netWorth, netWorthLine } from "@/insights/net-worth";
+import { netWorth, netWorthLine, notCounting } from "@/insights/net-worth";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
@@ -54,6 +54,7 @@ async function NetWorthContent() {
     NET_WORTH_MONTHS,
     today.netCents,
   );
+  const left = notCounting(today.unbalanced);
   const prompts = assetPrompts(
     accounts,
     ownedRows.map((o) => o.loanAccountId),
@@ -90,6 +91,16 @@ async function NetWorthContent() {
           </div>
         ))}
       </section>
+
+      {/* Never a figure that silently leaves a debt out (an uploaded card with no balance). */}
+      {left && (
+        <p data-net-worth-not-counting="" className="text-sm font-medium">
+          {left.sentence}{" "}
+          <Link href="/import" className="underline">
+            Add a balance
+          </Link>
+        </p>
+      )}
 
       {today.investmentsCents > 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -134,17 +145,6 @@ async function NetWorthContent() {
       </p>
 
       <AssetPrompts prompts={prompts} />
-
-      {today.missing.length > 0 && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Not included, because there&apos;s no balance: {today.missing.join(", ")}. Add a balance
-          on the{" "}
-          <Link href="/import" className="font-medium text-emerald-700 hover:underline">
-            import page
-          </Link>
-          .
-        </p>
-      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Month by month</h2>

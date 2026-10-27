@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyNetWorth, netWorth, netWorthLine, netWorthOn } from "./net-worth";
+import { monthlyNetWorth, netWorth, netWorthLine, netWorthOn, notCounting } from "./net-worth";
 
 const accounts = [
   { id: "chk", name: "Checking", type: "depository", balanceCents: 250_000 },
@@ -31,6 +31,7 @@ describe("netWorth", () => {
       debtsCents: 920_000,
       netCents: 330_000,
       missing: ["Old Card"],
+      unbalanced: [{ name: "Old Card", card: true }],
       known: true,
     });
   });
@@ -176,5 +177,36 @@ describe("netWorthLine", () => {
       { month: "2026-09", netCents: null },
       { month: "2026-10", netCents: 2_450_000 },
     ]);
+  });
+});
+
+describe("notCounting", () => {
+  const card = (name: string) => ({ name, card: true });
+  it("says what net worth leaves out, never silently, in one phrase", () => {
+    expect(notCounting([])).toBeNull();
+    expect(notCounting([card("Chase card")])).toEqual({
+      short: "not counting card balance",
+      sentence: "Not counting your Chase card balance: the file doesn't say it yet.",
+    });
+    expect(notCounting([card("Amex"), card("Chase card")])).toEqual({
+      short: "not counting card balances",
+      sentence: "Not counting your Amex or Chase card balances: the files don't say them yet.",
+    });
+    expect(notCounting([{ name: "Wells Fargo checking", card: false }])?.short).toBe(
+      "not counting a balance",
+    );
+    expect(notCounting([card("A"), card("B"), { name: "C", card: false }])).toEqual({
+      short: "not counting 3 balances",
+      sentence: "Not counting 3 balances: the files don't say them yet.",
+    });
+  });
+
+  it("lists the accounts without a balance with whether each is a card", () => {
+    const worth = netWorth([
+      { id: "a", name: "Chase card", type: "credit", balanceCents: null },
+      { id: "b", name: "Checking", type: "depository", balanceCents: 1000 },
+    ]);
+    expect(worth.unbalanced).toEqual([{ name: "Chase card", card: true }]);
+    expect(worth.missing).toEqual(["Chase card"]);
   });
 });

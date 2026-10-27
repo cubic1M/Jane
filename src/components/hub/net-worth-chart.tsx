@@ -150,10 +150,13 @@ export function placeBoxes({
 export function NetWorthChart({
   points,
   events = [],
+  notCounting,
 }: {
   points: SeriesPoint[];
   // The days money moved because of something (src/lib/hub/net-worth-events.ts).
   events?: EventGroup[];
+  // What the figure leaves out for want of a balance, said under it (src/insights/net-worth.ts).
+  notCounting?: string;
 }) {
   const [range, setRange] = useState<RangeKey>("ALL");
   // Zoomed by hand (the wheel, a pinch, the brush): the days in view; null follows the range.
@@ -435,6 +438,14 @@ export function NetWorthChart({
       >
         {dollars(point.cents)}
       </p>
+      {notCounting && (
+        <p data-net-worth-not-counting="" className="text-sm text-zinc-600 dark:text-zinc-400">
+          {notCounting}{" "}
+          <Link href="/import" className="font-medium underline">
+            Add a balance
+          </Link>
+        </p>
+      )}
       {single ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Your line starts today. It grows each day from here.

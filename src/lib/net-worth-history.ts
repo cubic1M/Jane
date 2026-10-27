@@ -1,6 +1,6 @@
-import { NET_WORTH_MONTHS } from "@/config/net-worth";
+import { DEBT_ACCOUNT_TYPES, NET_WORTH_MONTHS } from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { netWorth, netWorthLine } from "@/insights/net-worth";
+import { netWorth, netWorthLine, type Unbalanced } from "@/insights/net-worth";
 import { monthsEnding } from "@/insights/spending";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { db as defaultClient } from "@/lib/db";
@@ -60,4 +60,18 @@ export async function loadNetWorthHistory(
       today.netCents,
     ),
   };
+}
+
+// The accounts net worth can't count yet for want of a balance (src/insights/net-worth.ts
+// notCounting says so beside the figure).
+export async function accountsWithoutBalance(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<Unbalanced[]> {
+  const rows = await scopedFor(userId, client).accounts.findMany({
+    where: { currentBalanceCents: null },
+    select: { name: true, type: true },
+    orderBy: { name: "asc" },
+  });
+  return rows.map((r) => ({ name: r.name, card: DEBT_ACCOUNT_TYPES.includes(r.type) }));
 }

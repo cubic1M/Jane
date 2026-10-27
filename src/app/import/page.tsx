@@ -8,6 +8,7 @@ import { AccountList } from "@/components/account-list";
 import { listAccountSummaries } from "@/lib/accounts";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
+import { balancesToAsk } from "@/lib/import/account-balance";
 import { listUploads, uploadedTotals } from "@/lib/import/remove";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
@@ -17,11 +18,12 @@ async function ImportContent() {
   const user = await requireUser();
   if (!canImportCsv(user)) redirect("/connect");
   const db = await scopedDb();
-  const [accounts, history, totals, uploaded] = await Promise.all([
+  const [accounts, history, totals, uploaded, asks] = await Promise.all([
     listAccountSummaries(db),
     listUploads(db),
     uploadedTotals(db),
     db.accounts.findMany({ where: { source: "csv" }, select: { id: true } }),
+    balancesToAsk(db),
   ]);
   const uploadedIds = new Set(uploaded.map((a) => a.id));
 
@@ -79,6 +81,7 @@ async function ImportContent() {
           .filter((a) => uploadedIds.has(a.id))
           .map((a) => ({ id: a.id, name: a.name, rows: a.transactionCount }))}
         totals={totals}
+        asks={asks}
       />
 
       <section className="flex flex-col gap-4">

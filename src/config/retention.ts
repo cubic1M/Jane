@@ -31,6 +31,7 @@ export const ACTIVITY_EVENTS: readonly string[] = [
   "upload_removed",
   "uploaded_account_removed",
   "uploads_reset",
+  "uploaded_balance_set",
   "membership_reserved",
   "membership_checkout_started",
   "checklist_dismissed",
