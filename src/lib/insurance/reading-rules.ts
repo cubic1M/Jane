@@ -11,7 +11,7 @@ import {
   TERM_MONTHS,
   isPolicyKind,
 } from "@/config/insurance";
-import { formatCents, parseMoneyToCents } from "@/lib/money";
+import { formatCents, parseMoneyToCents, centsToInput } from "@/lib/money";
 import { CoverageError, parseCoverage } from "./coverage";
 import type { PolicyInput } from "./policies";
 import { DAY_MS as DAY } from "@/lib/dates";
@@ -138,7 +138,7 @@ export function checkReading(
       drop(key, note);
       return null;
     }
-    fields[key] = (cents / 100).toFixed(2);
+    fields[key] = centsToInput(cents);
     return cents;
   };
   const premium = money("premium", MAX_PREMIUM_CENTS, "I couldn't read the price.");

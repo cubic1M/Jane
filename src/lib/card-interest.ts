@@ -30,6 +30,7 @@ import {
   type RateAsk,
 } from "@/planning/card-interest";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { formatRate } from "@/lib/percent";
 
 // Less interest on every card (spec step 224). For each card Jane shows what a year of its
 // interest costs, what paying earlier saves, when its next statement closes, how any 0%
@@ -365,7 +366,7 @@ export function standInRateAnswer(
   return {
     granted: true,
     newAprBps,
-    text: `Approved: the rate goes from ${(oldAprBps / 100).toFixed(2)}% to ${(newAprBps / 100).toFixed(2)}%, about ${formatCents(savingYearlyCents)} a year.`,
+    text: `Approved: the rate goes from ${formatRate(oldAprBps)} to ${formatRate(newAprBps)}, about ${formatCents(savingYearlyCents)} a year.`,
   };
 }
 
@@ -406,8 +407,8 @@ export async function refreshCardInterest(
           dueOn: p.endsOn,
           kind: "other",
           note: p.deferred
-            ? `Pay ${formatCents(p.plan.monthlyNeededCents)} a month. If it isn't cleared, interest from the start at ${(p.goToAprBps / 100).toFixed(2)}% is charged: about ${formatCents(p.plan.costIfMissedCents)}.`
-            : `Pay ${formatCents(p.plan.monthlyNeededCents)} a month to clear it before the rate goes to ${(p.goToAprBps / 100).toFixed(2)}%.`,
+            ? `Pay ${formatCents(p.plan.monthlyNeededCents)} a month. If it isn't cleared, interest from the start at ${formatRate(p.goToAprBps)} is charged: about ${formatCents(p.plan.costIfMissedCents)}.`
+            : `Pay ${formatCents(p.plan.monthlyNeededCents)} a month to clear it before the rate goes to ${formatRate(p.goToAprBps)}.`,
         },
         { client, now },
       );
