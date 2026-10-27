@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FEDERAL_PROTECTIONS, LONG_GAME, PSLF_PAYMENTS } from "@/config/student-loans";
-import {
-  addMonths,
-  nextOnCycle,
-  pslfCount,
-  refiGuide,
-  taxOnForgiven,
-  taxPlanDue,
-} from "./student-long-game";
+import { nextOnCycle, pslfCount, refiGuide, taxOnForgiven, taxPlanDue } from "./student-long-game";
+import { addMonths } from "@/lib/dates";
 
 describe("Public Service Loan Forgiveness, month by month", () => {
   it("counts what was counted before plus one for each month a payment was seen", () => {

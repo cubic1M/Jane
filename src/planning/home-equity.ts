@@ -10,6 +10,7 @@ import {
 } from "@/config/home-equity";
 import { formatCents } from "@/lib/money";
 import { formatPercentTenths } from "@/lib/percent";
+import { addMonths } from "@/lib/dates";
 
 // A home's equity, used well (spec step 228). Pure: PMI against the original value, escrow
 // against the real bills, and borrowing for a project compared with the total cost of each.
@@ -43,14 +44,6 @@ function walk(balanceCents: number, aprBps: number, paymentCents: number, target
   }
   return null;
 }
-
-export const addMonths = (iso: string, months: number): string => {
-  const [y, m, d] = iso.split("-").map(Number);
-  const t = new Date(Date.UTC(y, m - 1 + months, 1));
-  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
-  t.setUTCDate(Math.min(d, last));
-  return t.toISOString().slice(0, 10);
-};
 
 export type PmiTimeline = {
   originalValueCents: number;

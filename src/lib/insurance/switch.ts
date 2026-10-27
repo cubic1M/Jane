@@ -17,7 +17,7 @@ import { textPdf } from "./pdf";
 import { POLICY_SELECT, toPolicy, yearlyPremium, type Policy } from "./policies";
 import { startDateFor } from "./quotes";
 import { shopById } from "./shop";
-import { isoDay as day } from "@/lib/dates";
+import { isoDay as day, addMonths } from "@/lib/dates";
 import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 
 // One-tap switch (spec step 105), on step 77's machinery: after the person's Yes (spec step
@@ -42,14 +42,6 @@ type Step = Required<Pick<Options, "client" | "now" | "notify">>;
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const dateWords = (iso: string) =>
   dateOf(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-
-function addMonths(iso: string, months: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1 + months, 1));
-  const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
-  date.setUTCDate(Math.min(d, last));
-  return day(date);
-}
 
 async function activePolicy(userId: string, policyId: string, client: PrismaClient) {
   const row = await scopedFor(userId, client).insurancePolicies.findFirst({

@@ -5,6 +5,7 @@ import {
   PSLF_PAYMENTS,
 } from "@/config/student-loans";
 import { formatCents } from "@/lib/money";
+import { addMonths } from "@/lib/dates";
 import { formatRate } from "@/lib/percent";
 
 // Student loans, the long game (spec step 225). Pure: Public Service Loan Forgiveness counted
@@ -12,13 +13,6 @@ import { formatRate } from "@/lib/percent";
 // debt, and whether refinancing makes sense (a federal loan is never refinanced away from
 // forgiveness without saying what's lost).
 
-const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-export const addMonths = (day: string, months: number) => {
-  const [y, m, d] = day.split("-").map(Number);
-  const first = new Date(Date.UTC(y, m - 1 + months, 1));
-  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
-  return iso(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(d, last)));
-};
 const monthOf = (day: string) => day.slice(0, 7);
 
 export type PslfMonth = { month: string; state: "before" | "seen" | "to_come" };

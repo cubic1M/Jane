@@ -23,7 +23,7 @@ import {
   type Candidate,
   type Transfer,
 } from "@/planning/family-loans";
-import { DAY_MS, isoDay } from "@/lib/dates";
+import { DAY_MS, isoDay, daysBetween } from "@/lib/dates";
 
 // Money between family and friends (spec step 226). Jane spots payment-app transfers (Venmo,
 // Zelle, Cash App) that might be a loan and asks once; a transfer is a loan only after the
@@ -179,7 +179,7 @@ export async function loadFamilyLoans(
     const missed =
       debt.overdue ||
       (debt.pastDueCents !== null && debt.pastDueCents > 0) ||
-      (debt.nextDue !== null && daysBefore(asOf, debt.nextDue) >= COSIGNED_PAST_DUE_DAYS);
+      (debt.nextDue !== null && daysBetween(debt.nextDue, asOf) >= COSIGNED_PAST_DUE_DAYS);
     cosigned.push({
       id: r.id,
       counterparty: r.counterparty,
@@ -233,9 +233,6 @@ export async function loadFamilyLoans(
     inHousehold: household !== null,
   };
 }
-
-const daysBefore = (asOf: string, day: string) =>
-  Math.round((Date.parse(`${asOf}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / DAY_MS);
 
 // The person said a transfer was a loan.
 export async function confirmFamilyLoan(

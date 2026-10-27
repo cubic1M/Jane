@@ -380,6 +380,17 @@ describe("the area tiles", () => {
     ).toBe("+$500");
   });
 
+  // Overnight upload QA: a real account was invited to "Start with practice money", which only
+  // opens in demo advice mode.
+  it("don't invite a real account to start practice money", () => {
+    expect(tileOf(areas({ investments: null }), "investments").caption).toBe(
+      "Start with practice money",
+    );
+    expect(tileOf(areas({ investments: null, practiceOpen: false }), "investments").caption).toBe(
+      "Demo only for now",
+    );
+  });
+
   it("are good with nothing to look at", () => {
     const tiles = tilesView(
       areas({ ahead: { goals: [{ name: "Trip", percent: 40, onTrack: true }] } }),
