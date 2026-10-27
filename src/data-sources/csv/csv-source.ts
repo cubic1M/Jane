@@ -74,20 +74,46 @@ export type CsvFileResult =
 
 export type DayBalance = { date: string; balanceCents: number };
 
-// Each day's closing balance from rows in file order. A running balance is the balance after
-// its row, so the day's last row in time order closes it: the first one seen when the file is
-// newest first (Chase), the last one when it's oldest first (Bank of America).
+// Words in a downloaded file's name that say nothing about the account.
+const FILE_NOISE =
+  /^(?:export|exported|statement|statements|transactions?|activity|download|history|csv|data|account|\d+|\d{4}-\d{2}(?:-\d{2})?)$/i;
+const NAME_CHARS = 60;
+
+// A name for a file's new account when its layout doesn't say whose it is: what's left of the
+// file name ("golden1-export.csv" is "Golden1").
+export function accountNameFromFile(fileName: string): string {
+  const words = fileName
+    .replace(/\.[a-z0-9]+$/i, "")
+    .split(/[\s._-]+/)
+    .filter((w) => w && !FILE_NOISE.test(w));
+  const name = words
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ")
+    .slice(0, NAME_CHARS);
+  return name || "Uploaded account";
+}
+
+// Each day's closing balance from a running-balance column. A running balance is the balance
+// after its row, so the day's closing row is the one no other row of that day leads to: each
+// row's balance before it (its balance plus what went out) is another row's balance after, all
+// but the first's. That holds whatever order the rows of a day are listed in (import QA: a file
+// newest-first by day but oldest-first within one). When it can't single one out (two rows that
+// cancel out), the file's order decides: the first row seen when the file is newest first
+// (Chase), the last when it's oldest first (Bank of America).
 export function closingBalances(rows: readonly ParsedRow[]): DayBalance[] {
   const withBalance = rows.filter((r) => r.balanceCents !== undefined);
   if (withBalance.length === 0) return [];
   const newestFirst = withBalance[0].date > withBalance[withBalance.length - 1].date;
-  const byDay = new Map<string, number>();
-  for (const row of withBalance) {
-    if (newestFirst && byDay.has(row.date)) continue;
-    byDay.set(row.date, row.balanceCents!);
-  }
+  const byDay = new Map<string, ParsedRow[]>();
+  for (const row of withBalance) byDay.set(row.date, [...(byDay.get(row.date) ?? []), row]);
   return [...byDay]
-    .map(([date, balanceCents]) => ({ date, balanceCents }))
+    .map(([date, day]) => {
+      // Money out is positive and lowered the balance: before = after + amount.
+      const before = new Set(day.map((r) => r.balanceCents! + r.amountCents));
+      const closing = day.filter((r) => !before.has(r.balanceCents!));
+      const row = closing.length === 1 ? closing[0] : newestFirst ? day[0] : day[day.length - 1];
+      return { date, balanceCents: row.balanceCents! };
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -198,7 +224,10 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     ok: true,
     file: file.name,
     format: { id: format.id, label: format.label },
-    account: format.account,
+    account:
+      format.id === CUSTOM_FORMAT.id
+        ? { ...format.account, name: accountNameFromFile(file.name) }
+        : format.account,
     transactions,
     skipped,
     balances: closingBalances(parsed.map((p) => p.row)),

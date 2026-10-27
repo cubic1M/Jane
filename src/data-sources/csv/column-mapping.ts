@@ -22,6 +22,9 @@ export type ColumnMapping = {
   amount:
     | { kind: "signed"; column: number; moneyOut: MoneyOut }
     | { kind: "split"; debit: number; credit: number };
+  // A running balance, when the file has one: the account's balance after each row, for net
+  // worth over time and today's balance.
+  balance?: number;
 };
 
 // Jane's guess at which sign is spending in a column, and why, or null to ask.
@@ -37,6 +40,7 @@ export type MappingChoices = {
     amount: number | null;
     debit: number | null;
     credit: number | null;
+    balance: number | null;
   };
   // Columns with numeric dates: the order they're written in, or "unknown" (ask).
   dateOrders: Record<number, DateOrder | "unknown">;
@@ -138,7 +142,7 @@ export function mappingChoices(records: CsvRecord[]): MappingChoices {
 
   // From the values: the first date, the first number after it, the longest text.
   const byValue = guessFromValues(sampleRow);
-  let guess: MappingChoices["guess"] = { ...byValue, debit: null, credit: null };
+  let guess: MappingChoices["guess"] = { ...byValue, debit: null, credit: null, balance: null };
   if (hasHeader) {
     // From the column names, falling back on the values.
     const headers = first.map(normalizeHeader);
@@ -153,6 +157,7 @@ export function mappingChoices(records: CsvRecord[]): MappingChoices {
       amount: amount ?? (debit !== null && credit !== null ? null : byValue.amount),
       debit,
       credit,
+      balance: find(headers, /balance|running bal/),
     };
   }
 
@@ -227,7 +232,19 @@ export function mappedLayout(records: CsvRecord[], mapping: ColumnMapping): Layo
           // Positive is money out (Plaid's convention).
           amountCents = mapping.amount.moneyOut === "negative" ? -cents || 0 : cents;
         }
-        return { ok: true, row: { date, amountCents, description, hints: {} } };
+        // A running balance that doesn't read is left out; the row still counts.
+        const balanceCents =
+          mapping.balance === undefined ? null : parseAmount(at(get, mapping.balance));
+        return {
+          ok: true,
+          row: {
+            date,
+            amountCents,
+            description,
+            hints: {},
+            ...(balanceCents === null ? {} : { balanceCents }),
+          },
+        };
       },
     },
     columns,
@@ -261,6 +278,8 @@ export function mappingFromForm(
   const dates = value("dates");
   const dateOrder: { dateOrder?: DateOrder } =
     dates === "mdy" || dates === "dmy" ? { dateOrder: dates } : {};
+  const balanceColumn = column("balance");
+  const balance = balanceColumn === null ? {} : { balance: balanceColumn };
   const amount = column("amount");
   if (amount !== null) {
     const out = value("out");
@@ -273,6 +292,7 @@ export function mappingFromForm(
       ...dateOrder,
       description,
       amount: { kind: "signed", column: amount, moneyOut: out },
+      ...balance,
     };
   }
   const debit = column("debit");
@@ -280,5 +300,12 @@ export function mappingFromForm(
   if (debit === null || credit === null) {
     return "Pick the amount column, or both the money out and money in columns.";
   }
-  return { hasHeader, date, ...dateOrder, description, amount: { kind: "split", debit, credit } };
+  return {
+    hasHeader,
+    date,
+    ...dateOrder,
+    description,
+    amount: { kind: "split", debit, credit },
+    ...balance,
+  };
 }
