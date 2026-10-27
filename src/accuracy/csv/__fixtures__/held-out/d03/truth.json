@@ -66,32 +66,40 @@
     {
       "type": "subscription_review",
       "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE MINISTRIES TITHE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1319.6
+      "dollars": 1232.1
     },
     {
       "date": "2026-06-30",
-      "dollars": 1103.25
+      "dollars": 928.25
     },
     {
       "date": "2026-07-31",
-      "dollars": -822.81
+      "dollars": -1085.31
     },
     {
       "date": "2026-08-31",
-      "dollars": -2129.77
+      "dollars": -2479.77
     },
     {
       "date": "2026-09-30",
-      "dollars": -3590.53
+      "dollars": -4028.03
     },
     {
       "date": "2026-10-24",
-      "dollars": -5743.02
+      "dollars": -6268.02
     }
   ]
 }

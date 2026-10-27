@@ -5,7 +5,10 @@ on:
   # otherwise run everything twice.
   push:
     branches: [main]
+  # "labeled" too: a PR made with its "e2e" label (gh pr create --label e2e) can start its first
+  # run before the label is on it, and the shards then skip.
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   merge_group:
   # The merge train (merge-train.yml) starts CI on a branch it brought up to date, since
   # pushes made with the workflow token start no workflows.
@@ -130,7 +133,12 @@ jobs:
   # first visit, which made the shards slow and their timings flaky.
   e2e-build:
     name: End-to-end build
-    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e')
+    # Every run on main, whatever started it (the merge train starts main's runs with
+    # workflow_dispatch, not push, so "push" alone skipped them; 10-27 a dock change reached
+    # main untested), and PRs labelled "e2e".
+    if: >-
+      github.ref == 'refs/heads/main' || github.event_name == 'merge_group' ||
+      contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

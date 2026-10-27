@@ -39,7 +39,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1969837, excess 1445739",
+      "about": "cash 1910257, excess 1355245",
       "perYear": null
     }
   ],
@@ -63,32 +63,40 @@
     {
       "type": "duplicate_charge",
       "about": "3 TICKETMASTER seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 3172.58
+      "dollars": 3073.28
     },
     {
       "date": "2026-06-30",
-      "dollars": 5371.13
+      "dollars": 5172.53
     },
     {
       "date": "2026-07-31",
-      "dollars": 9960.47
+      "dollars": 9662.57
     },
     {
       "date": "2026-08-31",
-      "dollars": 12742.61
+      "dollars": 12345.41
     },
     {
       "date": "2026-09-30",
-      "dollars": 14880.03
+      "dollars": 14383.53
     },
     {
       "date": "2026-10-24",
-      "dollars": 17651.94
+      "dollars": 17056.14
     }
   ]
 }

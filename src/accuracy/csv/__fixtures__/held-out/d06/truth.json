@@ -60,7 +60,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4880440, excess 4354355",
+      "about": "cash 4811940, excess 4242714",
       "perYear": null
     }
   ],
@@ -76,28 +76,36 @@
     {
       "type": "subscription_review",
       "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ROOT INSURANCE CO, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANYON CU LOAN PMT, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 33852.24
+      "dollars": 33715.24
     },
     {
       "date": "2026-07-31",
-      "dollars": 37215.11
+      "dollars": 36941.11
     },
     {
       "date": "2026-08-31",
-      "dollars": 40305.68
+      "dollars": 39894.68
     },
     {
       "date": "2026-09-30",
-      "dollars": 44002.99
+      "dollars": 43454.99
     },
     {
       "date": "2026-10-24",
-      "dollars": 48137.07
+      "dollars": 47452.07
     }
   ]
 }
