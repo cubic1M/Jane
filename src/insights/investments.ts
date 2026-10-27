@@ -260,6 +260,3 @@ export function monthlyInvestments(
     };
   });
 }
-
-// "0.75%".
-export const formatBps = (bps: number) => `${(bps / 100).toFixed(2)}%`;

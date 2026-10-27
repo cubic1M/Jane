@@ -28,10 +28,6 @@ export function plaid(): PlaidApi {
   return client;
 }
 
-export function resetPlaidForTests(): void {
-  client = undefined;
-}
-
 // A failed Plaid call, stripped down to what's safe to log. The SDK's own error carries
 // the request (access token in the body, our secret in the headers), so it must never
 // reach a log or a response.

@@ -28,7 +28,6 @@ export type InsuranceBranch = keyof typeof INSURANCE_BRANCHES;
 
 // "needs:life", "policies:<id>": an item's id names its branch, so a link can open both.
 export const itemId = (branch: InsuranceBranch, key: string) => `${branch}:${key}`;
-export const branchOf = (id: string) => id.split(":")[0];
 
 export const NEED_LABELS: Record<string, string> = {
   life: "Life cover",

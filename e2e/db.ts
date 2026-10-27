@@ -151,23 +151,6 @@ export async function addPayment(
   }
 }
 
-export async function addAlert(
-  userId: string,
-  alert: { type: string; title: string; body: string },
-): Promise<void> {
-  const client = new Client({ connectionString: E2E_DATABASE_URL });
-  await client.connect();
-  try {
-    await client.query(
-      `INSERT INTO alerts (id, user_id, type, key, title, body, urgent)
-       VALUES ($1, $2, $3, $1, $4, $5, true)`,
-      [`a${crypto.randomUUID()}`, userId, alert.type, alert.title, alert.body],
-    );
-  } finally {
-    await client.end();
-  }
-}
-
 // Posts one of Jane's chat messages as the app stores them (a reply with refs.options, say),
 // for a test that needs one Claude would write: there's no Anthropic key in tests.
 export async function addJaneMessage(

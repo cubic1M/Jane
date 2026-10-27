@@ -1,8 +1,8 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { SEE_OFFERS } from "../refinance-replies";
 import { snoozeButton, type MessageSource } from "./source";
+import { formatRate } from "@/lib/percent";
 
 // Refinance offers (spec step 111). Jane checks rates every month on its own
 // (src/lib/refinance.ts) and brings one up only when switching would save at least

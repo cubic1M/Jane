@@ -11,6 +11,7 @@ import {
   SUBSCRIPTION_MERCHANTS,
   VARIABLE_BILL_CATEGORIES,
   HIGH_CONFIDENCE_MIN_CHARGES,
+  YEARLY_PLAN_GOODS_WORDS,
   YEARLY_PLAN_MAX_CENTS,
   YEARLY_PLAN_MIN_CENTS,
   YEARLY_PLAN_WORDS,
@@ -46,6 +47,8 @@ export type Stream = {
   accountId: string | null;
   lastDate: string | null;
   predictedNextDate: string | null;
+  // A yearly plan seen once, found by the plan's own name: a subscription whatever its category.
+  namedPlan?: true;
 };
 
 export function merchantOf(t: DetectionTransaction) {
@@ -211,13 +214,35 @@ const isPlanName = (key: string) =>
       (key.startsWith(`${name} `) && YEARLY_PLAN_WORDS.includes(key.slice(name.length + 1))),
   );
 
-// A yearly plan seen once: one charge, in YEARLY_PLAN_*_CENTS, under the plan's own name.
+// The description's words, lower case: "PELOTON* APPAREL" is ["peloton", "apparel"].
+const wordsOf = (text: string) =>
+  text
+    .toLowerCase()
+    .split(/[^a-z0-9&]+/)
+    .filter(Boolean);
+
+// The plan named after the processor's "*", which the merchant name drops: "MICROSOFT*MICROSOFT
+// 365 P" is Microsoft 365 (the bank cut "PERSONAL" to "P"; one-letter ends are left off).
+function planAfterStar(description: string): boolean {
+  const star = description.indexOf("*");
+  if (star < 0) return false;
+  const words = wordsOf(description.slice(star + 1));
+  while (words.length > 1 && words[words.length - 1].length === 1) words.pop();
+  return words.length > 0 && isPlanName(words.join(" "));
+}
+
+const isGoods = (description: string) =>
+  wordsOf(description).some((w) => YEARLY_PLAN_GOODS_WORDS.includes(w));
+
+// A yearly plan seen once: one charge, in YEARLY_PLAN_*_CENTS, under the plan's own name, and not
+// something from the company's shop.
 function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
   const plans = charges.filter(
     (c) => c.amountCents >= YEARLY_PLAN_MIN_CENTS && c.amountCents <= YEARLY_PLAN_MAX_CENTS,
   );
   const merchant = plans.length === 1 ? merchantOf(plans[0]) : null;
-  if (!merchant || !isPlanName(merchant.key)) return null;
+  if (!merchant || isGoods(plans[0].description)) return null;
+  if (!isPlanName(merchant.key) && !planAfterStar(plans[0].description)) return null;
   const [plan] = plans;
   return {
     key: `merchant:${merchant.key}`,
@@ -236,6 +261,7 @@ function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
     accountId: plan.accountId,
     lastDate: plan.date,
     predictedNextDate: null,
+    namedPlan: true,
   };
 }
 

@@ -29,6 +29,7 @@ export const FIXTURES: Record<BenchSet, string> = {
   tuning: "src/accuracy/__fixtures__/histories.json",
   "held-out": "src/accuracy/__fixtures__/held-out.json",
   "held-out-2": "src/accuracy/__fixtures__/held-out-2.json",
+  "held-out-3": "src/accuracy/__fixtures__/held-out-3.json",
 };
 const BASELINE = "src/accuracy/baseline.json";
 const DOC = "docs/accuracy.md";
@@ -61,6 +62,7 @@ const SET_NAMES: Record<BenchSet, string> = {
   tuning: "Tuning set",
   "held-out": "Held-out set",
   "held-out-2": "Second held-out set",
+  "held-out-3": "Third held-out set",
 };
 
 describe.runIf(process.env.ACCURACY === "1")("the accuracy scoreboard", () => {
@@ -68,14 +70,14 @@ describe.runIf(process.env.ACCURACY === "1")("the accuracy scoreboard", () => {
     const write = process.env.ACCURACY_WRITE === "1";
     if (write) {
       writeFileSync(FIXTURES.tuning, `${JSON.stringify(toFixture(generateHistories()))}\n`);
-      for (const set of ["held-out", "held-out-2"] as const) {
+      for (const set of ["held-out", "held-out-2", "held-out-3"] as const) {
         const people = generateHeldOut(undefined, set);
         writeFileSync(FIXTURES[set], `${JSON.stringify(toFixture(people))}\n`);
       }
     }
     const baseline: Record<string, Record<string, { precision: number; recall: number }>> = {};
     const doc: string[] = [];
-    for (const set of ["tuning", "held-out", "held-out-2"] as const) {
+    for (const set of ["tuning", "held-out", "held-out-2", "held-out-3"] as const) {
       const histories = fromFixture(JSON.parse(readFileSync(FIXTURES[set], "utf8")));
       const { scores, mistakes } = scoreboard(histories);
       const buckets = calibration(judgedSuggestions(histories));

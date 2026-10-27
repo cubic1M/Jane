@@ -1,11 +1,11 @@
 import { BORROW_LABELS } from "@/config/borrowing-power";
-import { formatRate } from "@/insights/loans";
 import type { BorrowingPower, Figure } from "@/lib/borrowing-power";
 import { homeVsBorrow, mortgageOf, type HomeMeasure } from "@/planning/home-vs-borrow";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answer to "what could I borrow, and at what rate?" (spec step 250), from
 // src/lib/borrowing-power.ts. Pure. Every figure says when it was checked; the quotes are soft

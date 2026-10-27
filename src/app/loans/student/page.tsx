@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { loadStudentLoans } from "@/lib/student-loans";
@@ -14,6 +13,7 @@ import { saveProfile, stepDone } from "./actions";
 import { LongGameSection } from "./long-game";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Student loans (spec step 114): the federal plans compared at the person's income, from
 // the plans' published rules; forgiveness tracking; and studentaid.gov's steps, each with

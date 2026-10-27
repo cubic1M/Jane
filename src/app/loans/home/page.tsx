@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { HOME_RULES_SOURCE } from "@/config/home-buying";
-import { formatRate } from "@/insights/loans";
 import { dayLabel } from "@/lib/day-label";
 import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
 import { loadHomeBuying } from "@/lib/home-buying";
@@ -14,6 +13,7 @@ import { requireUser } from "@/lib/session";
 import { startGoalAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Buying a home (spec step 179): from saving to closing. What the person can afford under
 // the usual 28/36 rules, the monthly cost with mortgage insurance explained, the cash needed

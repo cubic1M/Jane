@@ -1,4 +1,4 @@
-import { POLICY_KINDS, UMBRELLA_ASSETS_CENTS, type PolicyKind } from "@/config/insurance";
+import { UMBRELLA_ASSETS_CENTS, type PolicyKind } from "@/config/insurance";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
@@ -79,5 +79,3 @@ export function needReply(kind: PolicyKind, profile: InsuranceSnapshot | undefin
     refs: profile.advice ? { advice: true } : {},
   };
 }
-
-export const kindLabel = (kind: PolicyKind) => POLICY_KINDS[kind];

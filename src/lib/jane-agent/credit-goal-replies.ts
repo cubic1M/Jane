@@ -1,4 +1,3 @@
-import { CREDIT_GOAL_LABELS } from "@/config/credit-goals";
 import { dayLabel } from "@/lib/day-label";
 import type { CreditGoals, GoalDraft, GoalView } from "@/lib/credit-goals";
 import { formatCents } from "@/lib/money";
@@ -99,5 +98,3 @@ export function creditGoalReply(
     refs: todo.length ? { advice: true, creditGoalId: g.id ?? undefined } : { advice: true },
   };
 }
-
-export const kindLabel = (k: keyof typeof CREDIT_GOAL_LABELS) => CREDIT_GOAL_LABELS[k];

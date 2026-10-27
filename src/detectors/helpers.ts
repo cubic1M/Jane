@@ -1,5 +1,4 @@
 import { categoryOf } from "@/categorize/taxonomy";
-import { DETECTOR_RATES } from "@/config/detectors";
 import type { InsightTransaction } from "@/insights/spending";
 import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { confidenceOf, counted, type Source } from "@/profile/confidence";
@@ -11,10 +10,6 @@ import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./cont
 export const tx = (data: ProfileInput, f: (t: ProfileTx) => boolean) => data.transactions.filter(f);
 export const outCents = (list: readonly ProfileTx[]) =>
   list.filter((t) => t.amountCents > 0).reduce((s, t) => s + t.amountCents, 0);
-
-// Months of data behind the profile, from any fact.
-export const monthsOf = (data: ProfileInput, months: number) =>
-  data.transactions.length ? months : 0;
 
 // Books QA: the person's one-off costs (a flood's repairs), found once per profile and left out
 // of the typical month (src/insights/typical-month.ts).
@@ -85,8 +80,6 @@ export const factEvidence = (fact: Fact): Confidence => ({
 export function weakest(parts: readonly Confidence[]): Confidence {
   return parts.reduce((a, b) => (b.percent < a.percent ? b : a));
 }
-
-export const urgencyScore = (u: keyof typeof DETECTOR_RATES.urgency) => DETECTOR_RATES.urgency[u];
 
 // A payee as a person would say it: "NETFLIX.COM" is Netflix, "DISNEY PLUS" is Disney Plus.
 export function nice(description: string): string {

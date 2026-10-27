@@ -4,13 +4,13 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
-import { formatRate } from "@/insights/loans";
 import { getApplication, statusLine } from "@/lib/loan-applications";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { acceptAction, submitAction, withdrawAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // One loan application (spec step 112): the terms to review, what's sent with it, and
 // where it stands. Submit needs the terms reviewed (the box ticked); Accept signs for the

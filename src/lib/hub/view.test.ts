@@ -411,6 +411,30 @@ describe("the area tiles", () => {
     expect(tileOf(areas({ safeShort: true }), "money").health).toBe("act");
   });
 
+  // Overnight upload QA: a card uploaded as a file has no balance; it said "$0 Owed on 1 account".
+  it("don't call an unknown card balance $0 owed", () => {
+    const unknown = areas({
+      loans: { owedCents: 0, lines: [{ name: "Card", balanceCents: null, overdue: false }] },
+    });
+    expect(tileOf(unknown, "loans")).toMatchObject({
+      value: null,
+      caption: "1 account, balance not known",
+    });
+    const some = areas({
+      loans: {
+        owedCents: 500_00,
+        lines: [
+          { name: "Card", balanceCents: null, overdue: false },
+          { name: "Car loan", balanceCents: 500_00, overdue: false },
+        ],
+      },
+    });
+    expect(tileOf(some, "loans")).toMatchObject({
+      value: "$500",
+      caption: "Owed on 1 of 2 accounts",
+    });
+  });
+
   it("say what is behind, without a suggestion", () => {
     expect(tileOf(areas(), "ahead")).toMatchObject({ health: "look", healthWhy: "1 goal behind" });
     expect(tileOf(areas({ insurance: { policies: 1, gaps: 2 } }), "insurance")).toMatchObject({

@@ -1,6 +1,5 @@
 import { REFI_MIN_SAVING_CENTS } from "@/config/debt";
 import { findDebt, type DebtBook } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
 import type { Transfers } from "@/lib/balance-transfers";
 import { dayLabel } from "@/lib/day-label";
@@ -10,6 +9,7 @@ import type { Refinance } from "@/lib/refinance";
 import type { RefinanceComparison, ScoredOffer } from "@/planning/refinance";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about refinancing (spec step 111), from the offers it keeps
 // (src/lib/refinance.ts). Pure. A pick is a loan recommendation, so it only exists in demo
