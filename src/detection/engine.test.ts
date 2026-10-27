@@ -4,7 +4,7 @@ const { scoped } = vi.hoisted(() => ({
   scoped: {
     userId: "user_1",
     accounts: { findMany: vi.fn() },
-    transactions: { findMany: vi.fn() },
+    transactions: { findMany: vi.fn(), aggregate: vi.fn(async () => ({ _min: { date: null } })) },
     recurringStreams: { findMany: vi.fn() },
     findings: { findMany: vi.fn(), createMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
     subscriptionChecks: { findMany: vi.fn(), createMany: vi.fn() },

@@ -115,7 +115,7 @@ describe.runIf(url)("a messy real bank, through the CSV import", { timeout: 120_
       {
         type: "bank_fees",
         title: "$1.28 in fees on Chase Freedom in the last 4 months",
-        annualSavingsCents: 128,
+        annualSavingsCents: 384,
       },
       // $15.49, $15.49, $17.99, $17.99: still a rise after the second charge at the new price.
       {
