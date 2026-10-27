@@ -1,12 +1,12 @@
 import { DEBT_AUTOPILOT_SHORT } from "@/config/debt";
 import { SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
-import { formatRate } from "@/insights/loans";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { formatCents } from "@/lib/money";
 import { dueMoveLine } from "@/planning/due-dates";
 import type { Reply } from "./replies";
 import { shortDate } from "./sources/source";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about debts on autopilot (spec step 117). Pure.
 

@@ -1,4 +1,3 @@
-import { formatRate } from "@/insights/loans";
 import {
   LoanApplicationError,
   acceptLoan,
@@ -10,6 +9,7 @@ import {
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 import { ChatActionError, type ActionHandler } from "./handler";
+import { formatRate } from "@/lib/percent";
 
 // One-tap apply from the chat (spec step 112), through the applications' own code
 // (src/lib/loan-applications.ts). "Apply" prepares the application and shows its terms in

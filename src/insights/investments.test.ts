@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  formatBps,
   investmentSummary,
   isRetirement,
   monthlyInvestments,
@@ -10,6 +9,7 @@ import {
   type SecurityRow,
 } from "./investments";
 import { netWorth } from "./net-worth";
+import { formatRate } from "@/lib/percent";
 
 // Spec step 128: what the person owns, from their holdings.
 
@@ -135,7 +135,7 @@ describe("labels", () => {
     expect(subtypeLabel(null)).toBe("Investment account");
     expect(isRetirement("retirement")).toBe(true);
     expect(isRetirement("brokerage")).toBe(false);
-    expect(formatBps(75)).toBe("0.75%");
-    expect(formatBps(3)).toBe("0.03%");
+    expect(formatRate(75)).toBe("0.75%");
+    expect(formatRate(3)).toBe("0.03%");
   });
 });

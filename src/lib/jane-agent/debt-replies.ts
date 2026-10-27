@@ -1,5 +1,4 @@
 import { findDebt, sourceLabel, type Debt, type DebtBook } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import type { Payoff } from "@/lib/debt-plan";
 import { formatCents } from "@/lib/money";
 import type { PayoffPlan, Strategy } from "@/planning/debt";
@@ -8,6 +7,7 @@ import type { DebtIntent } from "./debt-intents";
 import type { Reply } from "./replies";
 import { shortDate } from "./sources/source";
 import type { MessageAction } from "./types";
+import { formatRate } from "@/lib/percent";
 
 // Jane's answers about debts (spec Phase Y), from the same debt book as the loans page
 // (src/lib/debts.ts). Pure: fixed wording, every rate with where it came from.

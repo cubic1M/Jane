@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { debtSummary, formatRate, type DebtAccount } from "./loans";
+import { debtSummary, type DebtAccount } from "./loans";
+import { formatRate } from "@/lib/percent";
 
 const day = (d: string) => new Date(`${d}T00:00:00Z`);
 

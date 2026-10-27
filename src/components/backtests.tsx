@@ -5,7 +5,7 @@ import { formatReturn } from "@/insights/returns";
 import { longDate, type Backtests } from "@/lib/investments/backtest";
 import { formatCents } from "@/lib/money";
 import { monthlyPath } from "@/planning/backtest";
-import { formatPercent as pct } from "@/lib/percent";
+import { formatPercent as pct, formatRate } from "@/lib/percent";
 
 // Backtests by level on the investments page (spec step 295): the value paths as one chart, a
 // few figures per level and the assumptions beside them. Demo advice, always labelled, and
@@ -17,7 +17,6 @@ const monthYear = (iso: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
-const bps = (n: number) => `${(n / 100).toFixed(2)}%`;
 const drop = (fraction: number) => (fraction === 0 ? "None" : formatReturn(fraction));
 
 export function BacktestsSection({ backtests }: { backtests: Backtests }) {
@@ -149,7 +148,7 @@ export function BacktestsSection({ backtests }: { backtests: Backtests }) {
           <li>
             Fund costs taken out daily:{" "}
             {Object.entries(PRACTICE_ETFS)
-              .map(([c, e]) => `${e.ticker} ${bps(a.feeBps[c as keyof typeof a.feeBps])}`)
+              .map(([c, e]) => `${e.ticker} ${formatRate(a.feeBps[c as keyof typeof a.feeBps])}`)
               .join(", ")}{" "}
             a year.
           </li>

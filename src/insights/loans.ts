@@ -101,6 +101,3 @@ export function debtSummary(accounts: DebtAccount[], asOf: string): DebtSummary 
     missingMonthly: lines.filter((l) => l.monthlyCents === null).length,
   };
 }
-
-// 2499 -> "24.99%".
-export const formatRate = (bps: number) => `${(bps / 100).toFixed(2)}%`;

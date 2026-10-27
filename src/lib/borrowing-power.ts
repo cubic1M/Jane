@@ -16,7 +16,6 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDebts } from "@/lib/debts";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import type { LenderPartner, LoanOffer } from "@/lib/lenders/partner";
 import { loadProfileInput } from "@/lib/profile";
@@ -37,6 +36,7 @@ import {
 import type { FitPerson } from "@/planning/fit";
 import { fitPersonFrom } from "@/planning/fit-person";
 import { DAY_MS, isoDay } from "@/lib/dates";
+import { formatRate } from "@/lib/percent";
 
 // What you could borrow (spec step 250), for one person: a mortgage, a car loan, a personal
 // loan and a card, each with the likely amount and rate from the lender partner's soft quotes

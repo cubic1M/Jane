@@ -19,6 +19,7 @@ import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
 import { fit, type FitPerson } from "./fit";
 import { creditBandOf } from "./credit";
+import { formatRate } from "@/lib/percent";
 
 // What you could borrow (spec step 250). Pure: from the person the fit engine works for (their
 // score, take-home pay, debt payments and cash), the most each kind of loan could be with a
@@ -105,8 +106,6 @@ export type LoanFigure = {
   binding: Limit["binding"] | null;
   improve: string[];
 };
-
-const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
 // The amount priced through the fit engine: its pick, or the reason nothing fits.
 export function priced(
@@ -195,7 +194,7 @@ export function improvements(
     const more =
       amountFor(figure.paymentCents, better.aprBps, figure.termMonths) - figure.amountCents;
     out.push(
-      `A score of ${up.score} or more would likely bring the rate to about ${pct(better.aprBps)} (from ${pct(figure.aprBps)})${more > 0 ? `, so the same payment would borrow about ${formatCents(more)} more` : ""}.`,
+      `A score of ${up.score} or more would likely bring the rate to about ${formatRate(better.aprBps)} (from ${formatRate(figure.aprBps)})${more > 0 ? `, so the same payment would borrow about ${formatCents(more)} more` : ""}.`,
     );
   }
   if (figure.binding === "dti") {
@@ -250,7 +249,7 @@ export function cardFigure(
   const nextApr = nextBandAprBps?.length ? Math.min(...nextBandAprBps) : null;
   if (up && nextApr !== null && nextApr < apr) {
     improve.push(
-      `A score of ${up.score} or more would likely mean about ${pct(nextApr)} and a limit nearer ${formatCents(limitFor(up.band))}.`,
+      `A score of ${up.score} or more would likely mean about ${formatRate(nextApr)} and a limit nearer ${formatCents(limitFor(up.band))}.`,
     );
   }
   improve.push("Paying the card in full each month means the rate never applies.");

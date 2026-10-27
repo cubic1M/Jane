@@ -7,7 +7,6 @@ import {
 import { FIT_MIN_SAVING_CENTS } from "@/config/fit";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import type { DebtBook } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadBorrowingPower, type BorrowingPower } from "@/lib/borrowing-power";
 import { loadCarLoan, type CarLoan } from "@/lib/car-loan";
@@ -26,6 +25,7 @@ import { autopilotFor } from "@/lib/sector-autopilot";
 import { upsertOnce } from "@/lib/unique-race";
 import { rateStep } from "@/planning/card-interest";
 import { isoDay } from "@/lib/dates";
+import { formatRate } from "@/lib/percent";
 
 // Credit on autopilot, round three (spec step 251): every month, after its soft checks, Jane
 // goes over borrowing in one pass: a cheaper rate on each loan (the fit engine's pick, the same
