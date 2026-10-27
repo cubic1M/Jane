@@ -212,3 +212,45 @@ test("the team sees the closed beta's numbers", async ({ page, baseURL }) => {
     await expect(beta.getByRole("rowheader", { name: row })).toBeVisible();
   }
 });
+
+test("a file that plainly isn't the chosen account's gets one line saying so", async ({
+  page,
+  baseURL,
+}) => {
+  await signIn(page, baseURL);
+  await page.goto("/import");
+  await uploadFile(page, "chase-checking.csv");
+  await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
+  await waitForImport(page, { open: "/import" });
+
+  // Back on /import, the account choice opens on the Chase checking account.
+  await expect(page.locator('select[name="accountId"] option:checked')).toContainText(
+    "Chase checking",
+  );
+  const note = page.locator("[data-wrong-account]");
+  // A card statement, though Chase's too.
+  await uploadFile(page, "chase-credit-card.csv");
+  await expect(note).toContainText(
+    "chase-credit-card.csv looks like a card statement, but it's going into Chase checking",
+  );
+  // Another bank's.
+  await uploadFile(page, "wells-fargo.csv");
+  await expect(note).toContainText(
+    "wells-fargo.csv looks like a Wells Fargo file, but it's going into Chase checking",
+  );
+  // A new account for a Wells Fargo file: nothing to say.
+  await page.locator('select[name="accountId"]').selectOption("new");
+  await expect(note).toHaveCount(0);
+  // A new account for a Chase checking file: Jane already has that account.
+  await uploadFile(page, "chase-checking.csv");
+  await expect(note).toContainText("You already have Chase checking.");
+  // Two accounts' files at once: they'd land in one account, so the import waits.
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles([`${FIXTURES}/wells-fargo.csv`, `${FIXTURES}/amex.csv`]);
+  await page.getByRole("button", { name: /Preview/ }).click();
+  await expect(note).toContainText(
+    "wells-fargo.csv and amex.csv look like two different accounts. Upload them one at a time",
+  );
+  await expect(page.getByRole("button", { name: /^Import \d+ transactions$/ })).toBeDisabled();
+});
