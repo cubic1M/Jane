@@ -124,6 +124,13 @@ describe("subscription_review", () => {
       expect(run(input({ transactions: monthly(4, [2000, 2150, 1980, 2040], mystery) }))).toEqual(
         [],
       );
+      // One step up is still a plan's price; a step down, two steps or a big jump are not.
+      const plan = (amounts: number[]) =>
+        run(input({ transactions: monthly(amounts.length, amounts, mystery) }));
+      expect(plan([1499, 1499, 1599, 1599, 1599])).toHaveLength(1);
+      expect(plan([1599, 1599, 1499, 1499, 1499])).toEqual([]);
+      expect(plan([1000, 1000, 1100, 1100, 1250])).toEqual([]);
+      expect(plan([1000, 1000, 2000, 2000])).toEqual([]);
       expect(run(input({ transactions: monthly(4, 145_000, mystery) }))).toEqual([]);
       expect(run(input({ transactions: monthly(2, 2000, mystery) }))).toEqual([]);
     });

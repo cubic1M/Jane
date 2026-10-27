@@ -5,6 +5,7 @@ import {
   FIXED_PRICE_SUBSCRIPTION_EXCLUDED_PRIMARIES,
   FIXED_PRICE_SUBSCRIPTION_MAX_CENTS,
   FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE,
+  FIXED_PRICE_SUBSCRIPTION_MAX_STEP,
   FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES,
   FIXED_PRICE_SUBSCRIPTION_NOT_WORDS,
   INSURANCE_CATEGORIES,
@@ -31,8 +32,16 @@ const NOT_A_PLAN = new RegExp(
 
 // A charge whose category can't say, at one price every month (FIXED_PRICE_SUBSCRIPTION_*), that
 // isn't a payment on a debt, insurance, a gift or food and drink by its category or its words.
+// One price, or one step up to a new one (every charge at the old price before every one at the
+// new), by at most FIXED_PRICE_SUBSCRIPTION_MAX_STEP.
+function onePriceOrOneStep(amounts: readonly number[]): boolean {
+  const changes = amounts.filter((a, i) => i > 0 && a !== amounts[i - 1]).length;
+  if (changes === 0) return true;
+  const [first, last] = [amounts[0], amounts[amounts.length - 1]];
+  return changes === 1 && last > first && last <= first * (1 + FIXED_PRICE_SUBSCRIPTION_MAX_STEP);
+}
+
 export function isFixedPricePlan(stream: Stream): boolean {
-  const prices = new Set(stream.charges.map((c) => c.amountCents));
   return (
     !inList(stream.pfcPrimary, FIXED_PRICE_SUBSCRIPTION_EXCLUDED_PRIMARIES) &&
     !inList(stream.pfcDetailed, FIXED_PRICE_SUBSCRIPTION_EXCLUDED_CATEGORIES) &&
@@ -41,7 +50,7 @@ export function isFixedPricePlan(stream: Stream): boolean {
     (stream.pfcDetailed === null ||
       inList(stream.pfcDetailed, AMBIGUOUS_SUBSCRIPTION_CATEGORIES)) &&
     stream.charges.length >= FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES &&
-    prices.size === 1 &&
+    onePriceOrOneStep(stream.charges.map((c) => c.amountCents)) &&
     stream.lastAmountCents <= FIXED_PRICE_SUBSCRIPTION_MAX_CENTS
   );
 }
