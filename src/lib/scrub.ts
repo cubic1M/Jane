@@ -19,6 +19,19 @@ const RULES: [RegExp, string][] = [
   [/\b\d[\d -]{7,}\d\b/g, "[number]"],
 ];
 
+// Only the credentials (tokens, keys, JWTs, database URLs), for text where emails and long
+// numbers can't appear but a secret still mustn't be kept.
+const SECRET_RULES = RULES.filter(
+  ([, replacement]) => replacement !== "[email]" && replacement !== "[number]",
+);
+
+export function scrubSecrets(text: string): string {
+  return SECRET_RULES.reduce(
+    (out, [pattern, replacement]) => out.replace(pattern, replacement),
+    text,
+  );
+}
+
 export function scrub(text: string): string {
   return RULES.reduce((out, [pattern, replacement]) => out.replace(pattern, replacement), text);
 }

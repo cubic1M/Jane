@@ -58,6 +58,12 @@ export default function PrivacyPage() {
           email address; we send it nothing until a founder invites you.
         </li>
         <li>If you turn on notifications: the address your browser gives us to send them to.</li>
+        <li>
+          For security: when you sign in or out, change two-factor, link or disconnect a bank,
+          download your data or delete your account, we record the time, your IP address, your
+          browser and roughly where it is (city and country). You can see your own on the Security
+          page.
+        </li>
       </ul>
 
       <h2>How we use it</h2>
@@ -183,9 +189,9 @@ export default function PrivacyPage() {
         every bank at Plaid, then deletes your account and everything in it: transactions, balances,
         chats, answers, documents, notifications, and practice and paper accounts. If Plaid
         can&apos;t be reached, nothing is deleted and you can try again. Afterwards you see a page
-        confirming your data is deleted. A record that the deletion happened, with ids but no
-        personal details, stays in our security log. You can download a copy of your data in
-        Settings first.
+        confirming your data is deleted. A record that the deletion happened, with ids, the time and
+        the IP address and browser it came from, stays in our security log for the period listed
+        above. You can download a copy of your data in Settings first.
       </p>
 
       <h2>Cookies and your browser</h2>

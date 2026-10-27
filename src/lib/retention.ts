@@ -1,3 +1,4 @@
+import { ACCESS_EVENTS } from "@/config/access-log";
 import { KEEP_RATE_LIMIT_PREFIXES } from "@/config/rate-limits";
 import {
   INACTIVE_ITEM_DAYS,
@@ -21,23 +22,30 @@ export async function runRetention({
 }: { client?: PrismaClient; now?: Date } = {}): Promise<Record<RetainedKind, number>> {
   const before = (kind: RetainedKind) =>
     new Date(now.getTime() - RETENTION_PERIODS[kind].days * DAY);
-  const [analytics, activity, errors, jobs, runs, limits, sessions, links] = await Promise.all([
-    client.analyticsEvent.deleteMany({ where: { createdAt: { lt: before("analyticsEvents") } } }),
-    client.activityEvent.deleteMany({ where: { createdAt: { lt: before("activityEvents") } } }),
-    client.errorEvent.deleteMany({ where: { createdAt: { lt: before("errorEvents") } } }),
-    client.job.deleteMany({
-      where: { status: { in: ["done", "failed"] }, updatedAt: { lt: before("finishedJobs") } },
-    }),
-    client.cronRun.deleteMany({ where: { startedAt: { lt: before("cronRuns") } } }),
-    client.rateLimit.deleteMany({
-      where: {
-        windowStart: { lt: before("rateLimits") },
-        NOT: KEEP_RATE_LIMIT_PREFIXES.map((prefix) => ({ key: { startsWith: prefix } })),
-      },
-    }),
-    client.session.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
-    client.verificationToken.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
-  ]);
+  const [analytics, activity, errors, jobs, runs, limits, sessions, links, access] =
+    await Promise.all([
+      client.analyticsEvent.deleteMany({ where: { createdAt: { lt: before("analyticsEvents") } } }),
+      client.activityEvent.deleteMany({ where: { createdAt: { lt: before("activityEvents") } } }),
+      client.errorEvent.deleteMany({ where: { createdAt: { lt: before("errorEvents") } } }),
+      client.job.deleteMany({
+        where: { status: { in: ["done", "failed"] }, updatedAt: { lt: before("finishedJobs") } },
+      }),
+      client.cronRun.deleteMany({ where: { startedAt: { lt: before("cronRuns") } } }),
+      client.rateLimit.deleteMany({
+        where: {
+          windowStart: { lt: before("rateLimits") },
+          NOT: KEEP_RATE_LIMIT_PREFIXES.map((prefix) => ({ key: { startsWith: prefix } })),
+        },
+      }),
+      client.session.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
+      client.verificationToken.deleteMany({
+        where: { expires: { lt: before("expiredSessions") } },
+      }),
+      // Only the access log's entries: the rest of the audit log (consents, decisions) stays.
+      client.auditLog.deleteMany({
+        where: { event: { in: [...ACCESS_EVENTS] }, createdAt: { lt: before("accessLog") } },
+      }),
+    ]);
   // Spec step 138: everything a trial person owns goes with them (it all cascades). After
   // the rest, not alongside: the cascade deletes sessions too, and the two deletes at once
   // can deadlock.
@@ -52,6 +60,7 @@ export async function runRetention({
     cronRuns: runs.count,
     rateLimits: limits.count,
     expiredSessions: sessions.count + links.count,
+    accessLog: access.count,
     trialPeople: trials.count,
   };
 }

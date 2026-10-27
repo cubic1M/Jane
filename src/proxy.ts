@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { logAdminAccess } from "@/lib/admin-access";
+import { adminSession, sessionTokenFrom } from "@/lib/admin-gate";
 import { edgeLimit } from "@/lib/edge-limits";
 import { newNonce, pageCsp } from "@/lib/security-headers";
 
@@ -8,10 +9,11 @@ import { newNonce, pageCsp } from "@/lib/security-headers";
 //   (src/lib/edge-limits.ts): over the limit, a calm 429 and nothing else runs.
 // - /admin answers everyone but admins with a 404, so its existence isn't revealed, and
 //   sends admins who haven't entered a two-factor code in this session to /mfa. The pages
-//   check again with requireAdmin(); this runs first so the status is a real 404.
+//   check again with requireAdmin(); this runs first so the status is a real 404. Every
+//   admin page view and action goes on the access log (src/lib/admin-access.ts).
 // - Every page gets a Content-Security-Policy with a fresh nonce. Next.js reads it from the
 //   request and puts the nonce on its own scripts; nothing else runs (docs/security/edge.md).
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
   const limited = await edgeLimit({
     method: request.method,
@@ -30,7 +32,17 @@ export async function proxy(request: NextRequest) {
 
   let response = NextResponse.next(init);
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-    const state = await adminSessionState(sessionTokenFrom(request.cookies));
+    const { state, userId } = await adminSession(sessionTokenFrom(request.cookies));
+    if (state === "verified" && userId) {
+      const access = { method: request.method, pathname, headers: request.headers };
+      event.waitUntil(
+        logAdminAccess(userId, access).catch((error) =>
+          console.error("Couldn't log an admin view", {
+            error: error instanceof Error ? error.name : "unknown",
+          }),
+        ),
+      );
+    }
     if (state === "needs_mfa") {
       const target = new URL("/mfa", request.url);
       target.searchParams.set("next", pathname);
