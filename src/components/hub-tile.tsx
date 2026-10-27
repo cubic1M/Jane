@@ -33,14 +33,3 @@ export function HubTile({ tile }: { tile: HubTileData }) {
     </li>
   );
 }
-
-// Tiles in a grid: two across on a phone, three on a wider screen.
-export function HubTiles({ tiles }: { tiles: HubTileData[] }) {
-  return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {tiles.map((tile) => (
-        <HubTile key={tile.href + tile.label} tile={tile} />
-      ))}
-    </ul>
-  );
-}

@@ -19,8 +19,6 @@ import {
   type Student,
 } from "@/planning/family-taxes";
 
-export { worthSaying } from "@/planning/family-taxes";
-
 // Family taxes (spec step 169), loaded from what Jane knows: the children (the person's
 // family details, else step 158's college plans, else the profile's count), childcare and
 // tuition spending from the tax tags, a 529 from the college plans, a spouse's wages. In

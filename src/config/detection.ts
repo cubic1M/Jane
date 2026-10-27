@@ -514,8 +514,6 @@ export const BILL_REMINDER_DAYS = 3;
 // Recurring charges that aren't bills to pay (books QA): card interest is added to the card's
 // balance, which its own payment covers.
 export const NOT_BILL_CATEGORIES: readonly string[] = ["BANK_FEES_INTEREST_CHARGE"];
-// A card payment the bank names with the card company's "thank you" reads as what it is.
-export const CARD_PAYMENT_THANKS = /\bthank\s*you\b/i;
 export const CARD_PAYMENT_NAME = "Credit card payment";
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the
