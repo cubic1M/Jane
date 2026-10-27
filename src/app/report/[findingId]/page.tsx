@@ -130,7 +130,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
           </h2>
           <p className="mt-1">{shown.whatChanges}</p>
           <p className="mt-3 text-lg font-semibold">
-            {savingsLine(card.findingType, card.annualSavingsCents)}
+            {savingsLine(card.findingType, card.annualSavingsCents, finding.evidence)}
           </p>
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
             An estimate from your transactions so far, not a promise.

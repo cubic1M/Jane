@@ -157,7 +157,8 @@ export function mappingChoices(records: CsvRecord[]): MappingChoices {
       amount: amount ?? (debit !== null && credit !== null ? null : byValue.amount),
       debit,
       credit,
-      balance: find(headers, /balance|running bal/),
+      // "Running Total" too, as some credit unions write it (round 2).
+      balance: find(headers, /balance|running bal|running total/),
     };
   }
 

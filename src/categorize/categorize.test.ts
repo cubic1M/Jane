@@ -82,14 +82,14 @@ describe("categorizeTransactions", () => {
 
   it("uses the cache before the LLM, then caches new LLM answers", async () => {
     cache = [
-      { merchantKey: "corner market", pfcDetailed: "FOOD_AND_DRINK_GROCERIES", source: "llm" },
+      { merchantKey: "corner stall", pfcDetailed: "FOOD_AND_DRINK_GROCERIES", source: "llm" },
     ];
     vi.mocked(classifyMerchants).mockResolvedValue(
       new Map([["fancy studio", "PERSONAL_CARE_HAIR_AND_BEAUTY"]]),
     );
 
     const results = await categorizeTransactions(
-      [txn("CORNER MARKET 0042"), txn("FANCY STUDIO"), txn("CORNER MARKET 0042 #2")],
+      [txn("CORNER STALL 0042"), txn("FANCY STUDIO"), txn("CORNER STALL 0042 #2")],
       db,
     );
 
@@ -131,10 +131,10 @@ describe("an upload's categories, quickly", () => {
 
   it("uses the cache but never waits on Claude with askClaude: false", async () => {
     cache = [
-      { merchantKey: "corner market", pfcDetailed: "FOOD_AND_DRINK_GROCERIES", source: "llm" },
+      { merchantKey: "corner stall", pfcDetailed: "FOOD_AND_DRINK_GROCERIES", source: "llm" },
     ];
     const results = await categorizeTransactions(
-      [txn("CORNER MARKET 0042"), txn("FANCY STUDIO")],
+      [txn("CORNER STALL 0042"), txn("FANCY STUDIO")],
       db,
       { askClaude: false },
     );

@@ -251,7 +251,7 @@ Tuning set (20 people, 155 files, 5354 transactions):
 | --- | ---: |
 | Files read | 155 of 155 (151 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 97.7% (119 left for Claude) |
+| Category right (rules only) | 99.0% (50 left for Claude) |
 | False "Charged twice?" | 0 (0 people) |
 | Findings, $/yr | Jane $27,204, truth $27,204; error on the ones found 0.0% |
 | Monthly spending, error | 0.0% |
@@ -269,7 +269,7 @@ Tuning set (20 people, 155 files, 5354 transactions):
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 100.0% | 100.0% | 11 | 0 | 0 |
 | idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
-| bills coming up (31 days) | 99.5% | 100.0% | 183 | 1 | 0 |
+| bills coming up (31 days) | 100.0% | 100.0% | 183 | 0 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
 
@@ -290,9 +290,9 @@ Held-out set (20 people, 135 files, 5226 transactions):
 | --- | ---: |
 | Files read | 135 of 135 (132 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 62.5% (1818 left for Claude) |
+| Category right (rules only) | 66.4% (1681 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
-| Findings, $/yr | Jane $22,704, truth $25,747; error on the ones found 0.0% |
+| Findings, $/yr | Jane $22,656, truth $25,747; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 11 of 20 people (off by $21,118 in all) |
@@ -302,13 +302,13 @@ Held-out set (20 people, 135 files, 5226 transactions):
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | subscription_review | 100.0% | 66.2% | 49 | 0 | 25 |
-| price_increase | 88.2% | 100.0% | 15 | 2 | 0 |
+| price_increase | 93.8% | 100.0% | 15 | 1 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
 | duplicate_charge | 78.6% | 100.0% | 11 | 3 | 0 |
 | idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
-| bills coming up (31 days) | 98.9% | 94.1% | 175 | 2 | 11 |
+| bills coming up (31 days) | 99.4% | 94.1% | 175 | 1 | 11 |
 
 Missed subscriptions Claude would be asked about on a live upload: 10 of 25.
 
@@ -318,9 +318,9 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 16 | 58% | 81% |
-| 60–69% | 32 | 64% | 97% |
+| 60–69% | 31 | 64% | 97% |
 | 70–79% | 6 | 76% | 100% |
-| 80–89% | 4 | 83% | 100% |
+| 80–89% | 3 | 83% | 100% |
 | 90–100% | 0 | – | – |
 <!-- csv-scoreboard:end -->
 
@@ -350,6 +350,15 @@ Rules only, Claude stubbed. Tuning / held-out.
 - **A plan at one price every month is a subscription, even under a name no rule knows** (held-out subscriptions recall 20.3% → 66.2%, precision stays 100%; tuning 94.7% → 100%). A recurring charge whose category can't say (none, or one of `AMBIGUOUS_SUBSCRIPTION_CATEGORIES`), monthly, at the very same price at least `FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES` (3) times and at most `FIXED_PRICE_SUBSCRIPTION_MAX_CENTS` ($100), is a subscription at low confidence (`FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE`), before Claude is asked (`isFixedPricePlan`). Claude is still asked about it. A yes raises it to medium, and a no (`declinedSubscriptionMerchantKeys`, from `subscription_checks`) takes it away. Rent, loans and usage bills cost more or move. The rest of the held-out misses are subscriptions whose price changed, or with too few charges at one price.
 - **...but not a loan payment, insurance, a gift or a meal** (QA round 28, on live data). A credit union loan payment, Lemonade Insurance, a church, a bakery and a tavern, each at one fixed monthly amount under $100, were called subscriptions. The price-only rule now leaves out loan, food-and-drink, non-profit, transfer and utility categories and insurance (`FIXED_PRICE_SUBSCRIPTION_EXCLUDED_*`), and any description with a payment, loan, insurance, church, donation or bar and food word (`FIXED_PRICE_SUBSCRIPTION_NOT_WORDS`). The categorizer also files these by their own words (TAVERN, BAKERY, CHURCH, TITHE, INSURANCE, LOAN PMT). Both CSV sets now carry two such charges per person as traps; without the fix they gave 40 false subscriptions per set (precision 58.8% / 55.1%). With it, subscriptions precision is 100% on both, and held-out recall is still 66.2%.
 - **What kind of place it is, from the words in its name** ("PHO HOA NOODLE", "BRIGHT NOW DENTAL", "MIDAS MUFFLER", "LUXE NAILS"): restaurant, grocery, dental, eye care, vet, pharmacy, clinic, auto service, fuel, hardware, furniture, salon, pet shop, clothing and lodging words. They come after the merchant names and before the cards' broad labels. This is general vocabulary, not names read off a set. Category right with rules alone: tuning 96.1% → 97.6%, held-out 57.2% → 60.9%. The sample bench is unchanged.
+- **More kinds of place by their words** (round 8). New word groups:
+  - landlords (PROPERTY, COMMUNITIES, LEASING, REALTY; a PROPERTY TAX stays a tax)
+  - phone and internet companies (WIRELESS, COMMUNICATIONS, BROADBAND, FIBER, CABLE)
+  - taxis, cinemas and satellite TV (DIRECTV, DISH)
+  - markets (MARKET, FOODS)
+  - cash back and rewards credited to a card (a reward, never matched to a payment from checking)
+  - a TRANSFER however the bank words the rest
+
+  Category right with rules alone: tuning 97.7% → 99.0%, held-out 62.5% → 66.4%. Held-out price-rise precision also rose from 88.2% to 93.8%. The sample bench is unchanged.
 - **Three at one price on one day are seats, not a double charge.** This is general knowledge: a shop doesn't run a card three times (`DUPLICATE_CHARGE_GROUP_MIN`, 3). It covers tickets at a place whose name says nothing, which no word or category marks as per-seat. Held-out CSV set: false "Charged twice?" 5 → 3 (precision 57.9% → 78.6%, recall 100%). Tuning and the sample bench are unchanged. Two seats at an unknown cinema still look exactly like a double charge, which is why the card asks rather than says.
 - **Two seats at a cinema, once it has a category.** Plaid and Claude file cinemas under TV and movies, with streaming services. A streaming plan's double charge sits among payments on other days; a cinema visit is one day. So in `DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES`, two at one price on the only day a merchant was ever paid are seats. The CSV bench can't show this: it runs without Claude, and its last 3 false "Charged twice?" are seats at a cinema whose name says nothing. On a live upload Claude gives that cinema its category, and then it is left out. Unit-tested both ways: a streaming plan charged twice is still found.
 - **One service written two ways, under a name no rule knows** ("DIRECTV STREAM" and "DIRECTV.COM", added to the tuning set). It counted as two merchants, so neither was a bill and no price rise showed. Now, on the same accounts, a merchant whose name another extends (words at the end, or one more inside after the first, as when a card wrote the city after it) is joined to it when every charge of one is at a price the other also charges. App stores are left out (`joinVariants`, `src/detection/streams.ts`). Bank of America's "CHECKCARD 0818 PAYPAL *HULU" also hid PayPal's prefix behind the date. Tuning set: "Coming up" 97.5% → 100%. Held-out set: price rises 81.8% / 60.0% → 88.2% / 100% (precision / recall), and "Coming up" recall 86.7% → 93.6%. The sample bench is unchanged. The service's subscription is still missed without Claude, since no rule knows the name.
