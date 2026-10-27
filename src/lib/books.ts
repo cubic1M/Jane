@@ -261,8 +261,23 @@ export async function runBooksCheck(
           select: { accountId: true, date: true },
         });
   const lastOf = new Map(newest.map((t) => [t.accountId, iso(t.date)]));
+  // Each account's latest upload: right after one, its file ending a few days back isn't said.
+  const uploads =
+    imported.length === 0
+      ? []
+      : await db.importRuns.findMany({
+          where: { kind: "upload", accountId: { in: imported.map((a) => a.id) } },
+          distinct: ["accountId"],
+          orderBy: [{ accountId: "asc" }, { createdAt: "desc" }],
+          select: { accountId: true, createdAt: true },
+        });
+  const uploadedOf = new Map(uploads.map((u) => [u.accountId, iso(u.createdAt)]));
   for (const a of importsEnded(
-    imported.map((a) => ({ ...a, lastDate: lastOf.get(a.id) ?? null })),
+    imported.map((a) => ({
+      ...a,
+      lastDate: lastOf.get(a.id) ?? null,
+      uploadedOn: uploadedOf.get(a.id) ?? null,
+    })),
     asOf,
   )) {
     found.push({

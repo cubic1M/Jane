@@ -263,6 +263,14 @@ describe("importsEnded", () => {
     ]);
     expect(importsEnded([csv("2026-10-20")], "2026-10-25")).toEqual([]);
   });
+  it("waits a week after an upload: a fresh file ending a few days back isn't said", () => {
+    const uploaded = (uploadedOn: string) => ({ ...csv("2026-10-14"), uploadedOn });
+    expect(importsEnded([uploaded("2026-10-27")], "2026-10-27")).toEqual([]);
+    expect(importsEnded([uploaded("2026-10-21")], "2026-10-27")).toEqual([]);
+    expect(importsEnded([uploaded("2026-10-20")], "2026-10-27")).toEqual([
+      { id: "a", name: "Chase checking", lastDate: "2026-10-14" },
+    ]);
+  });
   it("isn't for a linked bank, or an account with nothing imported", () => {
     expect(importsEnded([csv("2026-09-01", "plaid")], "2026-10-27")).toEqual([]);
     expect(importsEnded([csv(null)], "2026-10-27")).toEqual([]);
