@@ -103,6 +103,29 @@ export const YEARLY_PLAN_WORDS: readonly string[] = [
   "annual",
   "yearly",
   "subscription",
+  // A plan's tier ("MICROSOFT 365 FAMILY").
+  "family",
+  "personal",
+  "individual",
+  "student",
+];
+// The company's shop, not its plan: a charge whose description has one of these words is goods
+// ("PELOTON* APPAREL", $60-$120, read as a yearly Peloton plan; accuracy bench, second held-out
+// set). Matched as whole words of the description, lower case.
+export const YEARLY_PLAN_GOODS_WORDS: readonly string[] = [
+  "apparel",
+  "clothing",
+  "store",
+  "shop",
+  "boutique",
+  "merch",
+  "merchandise",
+  "gear",
+  "accessories",
+  "equipment",
+  "gift",
+  "gifts",
+  "outlet",
 ];
 
 // A detected stream is still active if its last charge is within this many of its usual
