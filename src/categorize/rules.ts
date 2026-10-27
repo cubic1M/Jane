@@ -25,7 +25,11 @@ const RULES: readonly Rule[] = [
     category: "BANK_FEES_INSUFFICIENT_FUNDS",
     keywords: ["INSUFFICIENT FUNDS", "NSF FEE", "RETURNED ITEM FEE"],
   },
-  { category: "BANK_FEES_ATM_FEES", keywords: ["ATM FEE", "NON-CHASE ATM"] },
+  // Above the cash withdrawal rule: "ATM WITHDRAWAL NON-BANK FEE" is the fee, not the cash.
+  {
+    category: "BANK_FEES_ATM_FEES",
+    keywords: ["ATM FEE", "NON-CHASE ATM", "ATM WITHDRAWAL FEE", "NON-BANK FEE", "ATM SURCHARGE"],
+  },
   {
     category: "BANK_FEES_FOREIGN_TRANSACTION_FEES",
     keywords: ["FOREIGN TRANSACTION FEE", "FOREIGN EXCHANGE FEE", "INTL TRANSACTION FEE"],
@@ -39,7 +43,7 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "BANK_FEES_INTEREST_CHARGE",
-    keywords: ["INTEREST CHARGE", "PURCHASE INTEREST"],
+    keywords: ["INTEREST CHARGE", "INTEREST CHARGED", "PURCHASE INTEREST"],
     direction: "out",
   },
   { category: "BANK_FEES_LATE_FEES", keywords: ["LATE FEE", "LATE PAYMENT FEE"] },
@@ -62,6 +66,15 @@ const RULES: readonly Rule[] = [
     keywords: [
       "PAYMENT TO CHASE CARD",
       "PAYMENT THANK YOU",
+      // How the cards of the banks whose CSVs Jane reads write it (upload QA: Bank of America,
+      // Citi, Discover and Amex say "PAYMENT - THANK YOU" or "PAYMENT, THANK YOU"; Capital One's
+      // checking says "to Capital One card ending 1234", its card "AUTOPAY PYMT"; Bank of
+      // America's checking "CREDIT CARD Bill Payment").
+      "PAYMENT - THANK YOU",
+      "PAYMENT, THANK YOU",
+      "CAPITAL ONE AUTOPAY",
+      "CAPITAL ONE CARD ENDING",
+      "CREDIT CARD BILL PAYMENT",
       "CREDIT CARD PAYMENT",
       "CREDIT CRD AUTOPAY",
       "CREDIT CRD EPAY",
@@ -110,6 +123,56 @@ const RULES: readonly Rule[] = [
     category: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
     keywords: ["IRS USATAXPYMT", "FRANCHISE TAX"],
     direction: "out",
+  },
+
+  // Loan payments from checking (overnight upload QA: "MORTGAGE PMT ROCKET MORTGAGE" went
+  // uncategorised, so the loans page never saw the mortgage).
+  {
+    category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
+    keywords: ["MORTGAGE", "MTG PMT", "MORTGAGE PMT", "HOME LOAN PMT"],
+    direction: "out",
+  },
+  {
+    category: "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+    keywords: ["NAVIENT", "NELNET", "MOHELA", "SALLIE MAE", "AIDVANTAGE", "DEPT EDUCATION"],
+    direction: "out",
+  },
+  {
+    category: "LOAN_PAYMENTS_CAR_PAYMENT",
+    keywords: ["AUTO LOAN", "TOYOTA FINANCIAL", "HONDA FINANCIAL", "ALLY AUTO", "CARMAX AUTO"],
+    direction: "out",
+  },
+
+  // Rent, even when it goes by Zelle or Venmo (overnight upload QA: "ZELLE TO OAK RIDGE APTS
+  // RENT" was a transfer, so a student's biggest bill was missing from spending and bills).
+  // Renting a car or clothes is not rent, so those go first.
+  {
+    category: "TRAVEL_RENTAL_CARS",
+    keywords: ["RENT-A-CAR", "RENT A CAR", "CAR RENTAL", "HERTZ", "AVIS", "BUDGET RENT"],
+    direction: "out",
+  },
+  {
+    category: "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES",
+    keywords: ["RENT THE RUNWAY"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_RENT",
+    keywords: ["RENT", "APTS", "APARTMENTS", "PROPERTY MGMT", "PROPERTY MANAGEMENT", "LANDLORD"],
+    direction: "out",
+  },
+
+  // Moving money to one's own savings: not spending (overnight upload QA: "TRANSFER TO SAV
+  // XXXXX4410" was uncategorised, so it counted as spending and showed as a $300 bill).
+  {
+    category: "TRANSFER_OUT_SAVINGS",
+    keywords: ["TO SAV", "TO SAVINGS", "SAVINGS TRANSFER", "TRANSFER TO SAVINGS"],
+    direction: "out",
+  },
+  {
+    category: "TRANSFER_IN_SAVINGS",
+    keywords: ["FROM SAV", "FROM SAVINGS"],
+    direction: "in",
   },
 
   // Transfers between people and accounts
@@ -242,7 +305,7 @@ const RULES: readonly Rule[] = [
     keywords: ["COMCAST", "XFINITY", "SPECTRUM"],
   },
   { category: "RENT_AND_UTILITIES_TELEPHONE", keywords: ["VERIZON", "AT&T", "T-MOBILE"] },
-  // Not a bare "RENT": "ENTERPRISE RENT-A-CAR" is a car.
+  // Rent that names no "RENT" (a bare "RENT" is caught above, after car rentals).
   {
     category: "RENT_AND_UTILITIES_RENT",
     keywords: [
@@ -257,12 +320,33 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
-    keywords: ["PG&E", "CON ED", "CONEDISON", "DUKE ENERGY", "SCE", "COMED", "NATIONAL GRID"],
+    keywords: [
+      "PG&E",
+      "CON ED",
+      "CONEDISON",
+      "DUKE ENERGY",
+      "SCE",
+      "COMED",
+      "NATIONAL GRID",
+      // Utilities named for what they sell (accuracy bench: "XCEL ENERGY", "SOUTHERN
+      // CALIFORNIA EDISON" were never bills).
+      "ENERGY",
+      "ELECTRIC",
+      "EDISON",
+      "GAS & ELECTRIC",
+      "GAS CO",
+      "GAS COMPANY",
+    ],
     direction: "out",
   },
   {
     category: "RENT_AND_UTILITIES_WATER",
     keywords: ["WATER UTIL", "WATER DEPT"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_OTHER_UTILITIES",
+    keywords: ["UTILITIES", "UTILITY"],
     direction: "out",
   },
   {
@@ -282,6 +366,21 @@ const RULES: readonly Rule[] = [
     keywords: ["PLANET FITNESS", "EQUINOX", "ORANGETHEORY", "24 HOUR FITNESS"],
   },
   { category: "TRAVEL_LODGING", keywords: ["AIRBNB", "MARRIOTT", "HILTON", "HYATT"] },
+  // Ticket sellers: a seat each, so two at one price aren't a double charge (accuracy bench).
+  {
+    category: "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS",
+    keywords: [
+      "TICKETMASTER",
+      "LIVE NATION",
+      "STUBHUB",
+      "SEATGEEK",
+      "VIVID SEATS",
+      "EVENTBRITE",
+      "AXS",
+      "TICKETWEB",
+    ],
+    direction: "out",
+  },
   {
     category: "TRAVEL_FLIGHTS",
     keywords: ["DELTA AIR", "UNITED AIRLINES", "AMERICAN AIRLINES", "SOUTHWEST AIR", "JETBLUE"],

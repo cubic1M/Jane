@@ -18,7 +18,17 @@ export type EventTypeId =
   | "inflation_hot"
   | "market_panic"
   | "bank_stress"
-  | "chip_boom";
+  | "chip_boom"
+  // Crypto (founder, 2026-10-26): for the 24-hour agent's crypto strategies, around the clock.
+  | "crypto_exchange_failure"
+  | "crypto_etf"
+  | "crypto_regulation"
+  | "stablecoin_depeg"
+  | "crypto_liquidation";
+
+// The market an event type trades in: stock funds (the paper account's strategies and the agent on
+// US funds) or crypto (the agent on bitcoin and ether).
+export type EventMarket = "stocks" | "crypto";
 
 // One fund the overlay moves on an event. "buy" adds a slice; "trim" takes a slice off a fund
 // the strategy holds (to cash), never below zero. The first ticker with a price is used (a proxy
@@ -27,6 +37,7 @@ export type EventLeg = { tickers: readonly string[]; side: "buy" | "trim" };
 
 export type EventType = {
   label: string;
+  market: EventMarket;
   // The kind of fund it points to, for the box.
   theme: string;
   // Why, in a sentence, for the log and the pop-up.
@@ -45,6 +56,7 @@ const ATTACK = /\b(missiles?|air ?strikes?|strikes?|struck|attacks?|attacked|dro
 export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   me_conflict: {
     label: "Fighting in the Middle East",
+    market: "stocks",
     theme: "Energy and defense",
     why: "Fighting near the Gulf has tended to lift oil companies and defense makers for a few weeks.",
     legs: [
@@ -57,6 +69,7 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   },
   war: {
     label: "A war breaks out",
+    market: "stocks",
     theme: "Defense and gold",
     why: "A new war has tended to lift defense makers, and gold as a place to wait.",
     legs: [
@@ -68,6 +81,7 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   },
   fed_cut: {
     label: "The Fed cuts rates",
+    market: "stocks",
     theme: "Long bonds",
     why: "When the Fed cuts, long-dated Treasuries have usually gained.",
     legs: [{ tickers: ["TLT", "BND"], side: "buy" }],
@@ -80,6 +94,7 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   },
   fed_hike: {
     label: "The Fed raises rates",
+    market: "stocks",
     theme: "Banks, fewer bonds",
     why: "Higher rates have tended to help banks' margins and weigh on bonds.",
     legs: [
@@ -95,6 +110,7 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   },
   oil_shock: {
     label: "An oil supply shock",
+    market: "stocks",
     theme: "Energy and commodities",
     why: "A cut or outage in oil supply has tended to lift energy shares and commodities.",
     legs: [
@@ -112,6 +128,7 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   },
   inflation_hot: {
     label: "Inflation runs hot",
+    market: "stocks",
     theme: "Commodities and inflation-linked bonds",
     why: "A hot inflation report has tended to favour commodities and inflation-linked bonds over ordinary ones.",
     legs: [
@@ -130,6 +147,7 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   },
   market_panic: {
     label: "A market scare",
+    market: "stocks",
     theme: "Gold and Treasuries",
     why: "In a sudden sell-off, gold and Treasuries have often held up while shares fell.",
     legs: [
@@ -147,6 +165,7 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   },
   bank_stress: {
     label: "Stress at the banks",
+    market: "stocks",
     theme: "Gold",
     why: "When a bank fails, money has tended to move to gold while bank shares fall.",
     legs: [
@@ -164,6 +183,7 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
   },
   chip_boom: {
     label: "A chip boom",
+    market: "stocks",
     theme: "Chip makers",
     why: "Record chip demand has tended to carry chip makers for weeks after the news.",
     legs: [{ tickers: ["SMH", "NVDA"], side: "buy" }],
@@ -176,9 +196,92 @@ export const EVENT_TYPES: Readonly<Record<EventTypeId, EventType>> = {
       ],
     ],
   },
+  crypto_exchange_failure: {
+    label: "A crypto exchange fails",
+    market: "crypto",
+    theme: "Less crypto, more cash",
+    why: "When a big exchange is hacked or stops withdrawals, bitcoin and ether have tended to fall for days.",
+    legs: [
+      { tickers: ["BTC/USD"], side: "trim" },
+      { tickers: ["ETH/USD"], side: "trim" },
+    ],
+    gdelt:
+      '(exchange OR exchanges) (hack OR hacked OR insolvent OR bankruptcy OR "halts withdrawals" OR "froze withdrawals") (crypto OR bitcoin OR cryptocurrency)',
+    keywords: [
+      [
+        /\b(crypto|bitcoin|cryptocurrency) exchanges?\b|\bexchanges?\b[^.]{0,40}\b(crypto|bitcoin)\b/i,
+        /\b(hack(ed)?|insolvent|bankruptcy|halts? withdrawals|froze withdrawals|collapse[sd]?)\b/i,
+      ],
+    ],
+  },
+  crypto_etf: {
+    label: "Crypto funds approved or flowing in",
+    market: "crypto",
+    theme: "Bitcoin",
+    why: "Fund approvals and record inflows have tended to lift bitcoin for a few weeks.",
+    legs: [{ tickers: ["BTC/USD"], side: "buy" }],
+    gdelt:
+      '("bitcoin etf" OR "ether etf" OR "spot bitcoin" OR "spot ether" OR "crypto etf") (approval OR approves OR approved OR inflows OR "record inflows")',
+    keywords: [
+      [
+        /\b(bitcoin|ether|crypto) etfs?\b|\bspot (bitcoin|ether)\b/i,
+        /\b(approv\w*|inflows?|record inflows)\b/i,
+      ],
+    ],
+  },
+  crypto_regulation: {
+    label: "A crypto crackdown",
+    market: "crypto",
+    theme: "Less crypto, more cash",
+    why: "A ban, a lawsuit or a crackdown on crypto has tended to weigh on bitcoin and ether.",
+    legs: [
+      { tickers: ["BTC/USD"], side: "trim" },
+      { tickers: ["ETH/USD"], side: "trim" },
+    ],
+    gdelt:
+      '(crypto OR bitcoin OR cryptocurrency) (crackdown OR ban OR bans OR lawsuit OR sues OR "sec charges")',
+    keywords: [
+      [
+        /\b(crypto|bitcoin|cryptocurrenc(y|ies))\b/i,
+        /\b(crackdown|bans?|banned|lawsuit|sues|sued|sec charges)\b/i,
+      ],
+    ],
+  },
+  stablecoin_depeg: {
+    label: "A stablecoin loses its peg",
+    market: "crypto",
+    theme: "Less crypto, more cash",
+    why: "When a big stablecoin slips below a dollar, the rest of crypto has tended to sell off.",
+    legs: [
+      { tickers: ["BTC/USD"], side: "trim" },
+      { tickers: ["ETH/USD"], side: "trim" },
+    ],
+    gdelt:
+      '(stablecoin OR tether OR usdc OR usdt) (depeg OR "loses peg" OR "lost its peg" OR "breaks peg")',
+    keywords: [
+      [
+        /\b(stablecoins?|tether|usdc|usdt)\b/i,
+        /\b(depeg\w*|loses? (its )?peg|lost its peg|breaks? (its )?peg)\b/i,
+      ],
+    ],
+  },
+  crypto_liquidation: {
+    label: "A crypto liquidation cascade",
+    market: "crypto",
+    theme: "Bitcoin",
+    why: "After a wave of forced selling, bitcoin has often bounced back over the following weeks.",
+    legs: [{ tickers: ["BTC/USD"], side: "buy" }],
+    gdelt: '(bitcoin OR crypto OR ether) (liquidations OR liquidated OR "liquidation cascade")',
+    keywords: [
+      [/\b(bitcoin|crypto|ether)\b/i, /\b(liquidations?|liquidated|liquidation cascade)\b/i],
+    ],
+  },
 };
 
 export const EVENT_TYPE_IDS = Object.keys(EVENT_TYPES) as EventTypeId[];
+// The types for one market: stock funds or crypto.
+export const eventTypesFor = (market: EventMarket) =>
+  EVENT_TYPE_IDS.filter((t) => EVENT_TYPES[t].market === market);
 
 // --- Spotting an event in GDELT's coverage (src/planning/event-detect.ts) ---
 // A day is an event when its share of all coverage is at least this many times the median of the
@@ -186,6 +289,10 @@ export const EVENT_TYPE_IDS = Object.keys(EVENT_TYPES) as EventTypeId[];
 export const GDELT_SPIKE_RATIO = 2.5;
 export const GDELT_BASELINE_DAYS = 30;
 export const GDELT_MIN_ARTICLES = 200;
+// The same, for one hour within the day (the crypto types' intraday check).
+export const GDELT_MIN_HOURLY_ARTICLES = 25;
+// How far back the intraday check reads, in hours (GDELT answers a short window in 15 minutes).
+export const GDELT_INTRADAY_HOURS = 36;
 // One event per type in this many days: the news of one event runs for days.
 export const EVENT_COOL_OFF_DAYS = 15;
 
@@ -195,10 +302,14 @@ export const PRICE_SHOCKS: readonly {
   // Down moves are negative.
   move: number;
   type: EventTypeId;
+  // The ticker the daily closes are asked for under, when the price source names it differently.
+  fetchAs?: string;
 }[] = [
   { ticker: "VTI", move: -0.035, type: "market_panic" },
   { ticker: "XLE", move: 0.05, type: "oil_shock" },
   { ticker: "XLF", move: -0.05, type: "bank_stress" },
+  // Bitcoin's day, close to close (Yahoo's BTC-USD for the live check).
+  { ticker: "BTC/USD", move: -0.08, type: "crypto_liquidation", fetchAs: "BTC-USD" },
 ];
 
 // --- A US CPI release (BLS) is hot when all items rose at least this much in the month ---
@@ -234,6 +345,27 @@ export const EVENT_COST_BPS = 5;
 export const EVENT_FRESH_DAYS = 5;
 // A paper account that missed days catches up this many closes at most.
 export const EVENT_CATCH_UP_DAYS = 10;
+// Events are stored this many days back (the box shows the most recent even when none is fresh).
+export const EVENT_STORE_DAYS = 30;
+
+// --- Refreshing (src/lib/events/refresh.ts): the daily cron reads every source; opening the
+// investments page refreshes too when the last check is older than this, one request at a time
+// (a lock), so a busy page never asks GDELT more than once in EVENTS_REFRESH_MINUTES. ---
+export const EVENTS_REFRESH_MINUTES = 60;
+// A claimed refresh that never finished frees the lock after this long.
+export const EVENTS_LOCK_SECONDS = 240;
+// A page view's refresh asks GDELT about this many event types (the least recently checked),
+// so it finishes inside a page's time; the cron asks about all of them.
+export const EVENTS_VIEW_GDELT_TYPES = 3;
+// The sources watched, for the box ("Watching N sources").
+export const EVENT_SOURCE_LABELS: Readonly<Record<string, string>> = {
+  gdelt: "GDELT news coverage",
+  fed: "Federal Reserve statements",
+  bls_cpi: "BLS inflation releases",
+  eia: "EIA energy news",
+  headlines: "Stored headlines",
+  prices: "Sharp price moves",
+};
 
 // --- How sure: each type's own record so far, never the future ---
 // A type starts at EVENT_PRIOR_CONFIDENCE (a coin flip) worth EVENT_PRIOR_WEIGHT past events, and

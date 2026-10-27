@@ -1,5 +1,8 @@
+import { ACCESS_EVENTS, FAILED_EVENTS, type AccessEvent } from "@/config/access-log";
 import type { ActorType } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { currentRequestDetails, detailsFrom } from "@/lib/request-details";
+import { scrubSecrets } from "@/lib/scrub";
 
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
@@ -50,6 +53,12 @@ export type AuditEvent =
   | "insurance_claim_filed"
   | "insurance_saving_applied"
   | "user_signed_in"
+  // The access log (src/config/access-log.ts): signing out, a sign-in that didn't work (why,
+  // never the address tried), and every admin page view and admin action (the path).
+  | "user_signed_out"
+  | "sign_in_failed"
+  | "admin_page_viewed"
+  | "admin_action"
   | "import_completed"
   // Finding data was sent to Claude for card text.
   | "explanations_generated"
@@ -62,6 +71,8 @@ export type AuditEvent =
   | "admin_viewed_queue"
   | "admin_viewed_action"
   | "admin_viewed_metrics"
+  // The beta's activity log (/admin/activity): the list, the funnel, or one person's timeline.
+  | "admin_viewed_activity"
   | "action_status_changed"
   | "membership_paid"
   | "item_removed"
@@ -88,6 +99,9 @@ export type AuditEvent =
   | "referral_partner_saved"
   | "referral_conversion_recorded"
   | "job_retried"
+  // Key rotation (src/lib/key-rotation.ts): the key report opened, a rotation run (counts only).
+  | "admin_viewed_keys"
+  | "encryption_keys_rotated"
   | "action_assigned"
   | "saved_reply_saved"
   | "saved_reply_deleted"
@@ -268,17 +282,40 @@ export type AuditActor = { type: ActorType; id: string | null };
 
 export type AuditTarget = { type: string; id: string } | null;
 
-// Never put secrets (tokens, keys, raw bank data) in metadata.
+// Never put secrets (tokens, keys, raw bank data) in metadata. logAudit drops any key named
+// like one and scrubs credentials out of values anyway, as a second line.
 export type AuditMetadata = Record<string, string | number | boolean | null>;
 
 export const SYSTEM_ACTOR: AuditActor = { type: "system", id: null };
 
+const SECRET_KEY = /token|secret|password|authorization|cookie|api_?key|credential/i;
+
+export function safeMetadata(metadata: AuditMetadata): AuditMetadata {
+  return Object.fromEntries(
+    Object.entries(metadata)
+      .filter(([key]) => !SECRET_KEY.test(key))
+      .map(([key, value]) => [key, typeof value === "string" ? scrubSecrets(value) : value]),
+  );
+}
+
+export const isAccessEvent = (event: AuditEvent): event is AccessEvent =>
+  (ACCESS_EVENTS as readonly string[]).includes(event);
+
+// Access-log entries also keep where the request came from and how it went. `headers` is for
+// callers outside a page or action (the proxy); otherwise the current request's are read.
 export async function logAudit(
   actor: AuditActor,
   event: AuditEvent,
   target: AuditTarget,
   metadata: AuditMetadata = {},
+  { headers }: { headers?: Headers } = {},
 ): Promise<void> {
+  const access = isAccessEvent(event)
+    ? {
+        outcome: FAILED_EVENTS.includes(event) ? "failure" : "success",
+        ...(headers ? detailsFrom(headers) : await currentRequestDetails()),
+      }
+    : {};
   await db.auditLog.create({
     data: {
       actorType: actor.type,
@@ -286,7 +323,7 @@ export async function logAudit(
       event,
       targetType: target?.type ?? null,
       targetId: target?.id ?? null,
-      metadata,
+      metadata: { ...access, ...safeMetadata(metadata) },
     },
   });
 }

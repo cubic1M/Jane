@@ -1,7 +1,9 @@
 import {
   AMBIGUOUS_SUBSCRIPTION_CATEGORIES,
+  BILLING_PLATFORM_MERCHANTS,
   INSURANCE_CATEGORIES,
   LLM_SUBSCRIPTION_MAX_CONFIDENCE,
+  NOT_SUBSCRIPTION_PRIMARIES,
   SUBSCRIPTION_CATEGORIES,
   SUBSCRIPTION_MERCHANTS,
 } from "@/config/detection";
@@ -17,13 +19,16 @@ function isRecurringCost(stream: Stream): boolean {
   );
 }
 
-// An active recurring charge from a subscription-like category or merchant. Insurance has
-// its own finding.
+// An active recurring charge from a subscription-like category or merchant, or billed through
+// an app store. Insurance has its own finding.
 export function isSubscription(stream: Stream): boolean {
   return (
     isRecurringCost(stream) &&
-    (inList(stream.pfcDetailed, SUBSCRIPTION_CATEGORIES) ||
-      merchantMatches(stream.merchantKey, SUBSCRIPTION_MERCHANTS))
+    !inList(stream.pfcPrimary, NOT_SUBSCRIPTION_PRIMARIES) &&
+    (stream.namedPlan === true ||
+      inList(stream.pfcDetailed, SUBSCRIPTION_CATEGORIES) ||
+      merchantMatches(stream.merchantKey, SUBSCRIPTION_MERCHANTS) ||
+      merchantMatches(stream.merchantKey, BILLING_PLATFORM_MERCHANTS))
   );
 }
 

@@ -16,10 +16,12 @@ type Db = Pick<ScopedDb, "userId" | "merchantCategories">;
 
 // The person's own merchant rules first, then Plaid's category, then keyword rules, then
 // the LLM for whatever is left, cached per merchant so each merchant is only ever sent
-// once per user.
+// once per user. `askClaude: false` stops at the cache: an upload is answered at once and
+// categorizeLeftovers asks about the rest after the response (founder: imports were slow).
 export async function categorizeTransactions<T extends NormalizedTransaction>(
   transactions: T[],
   db: Db,
+  { askClaude = true }: { askClaude?: boolean } = {},
 ): Promise<Categorized<T>[]> {
   const merchantKeyOf = (t: T) => normalizeMerchant(t.description)?.key ?? null;
   const keys = [...new Set(transactions.map(merchantKeyOf).filter((k) => k !== null))];
@@ -61,7 +63,7 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
     if (category) known.set(row.merchantKey, category);
   }
 
-  const toAsk = [...unplaced].filter((key) => !known.has(key));
+  const toAsk = askClaude ? [...unplaced].filter((key) => !known.has(key)) : [];
   const answers = await classifyMerchants(toAsk);
   if (answers.size > 0) {
     const rows = [...answers].flatMap(([merchantKey, detailed]) => {
@@ -87,4 +89,48 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
     const category = key ? known.get(key) : undefined;
     return category ? { ...result, category, categorySource: "llm" } : result;
   });
+}
+
+// After an upload: the person's transactions no rule placed, sorted by Claude (the cache
+// first, so a merchant is asked about once), and stored. Returns how many rows changed.
+export async function categorizeLeftovers(
+  db: Pick<ScopedDb, "userId" | "merchantCategories" | "transactions">,
+): Promise<number> {
+  const rows = await db.transactions.findMany({
+    where: { pfcDetailed: null, categorySource: null },
+    select: { id: true, accountId: true, date: true, description: true, amountCents: true },
+  });
+  if (rows.length === 0) return 0;
+  const categorized = await categorizeTransactions(
+    rows.map((r) => ({
+      accountRef: r.accountId,
+      date: r.date.toISOString().slice(0, 10),
+      amountCents: r.amountCents,
+      description: r.description,
+      merchantName: null,
+      categoryPrimary: null,
+      categoryDetailed: null,
+      pending: false,
+      externalId: r.id,
+      hints: {},
+    })),
+    db,
+  );
+  // One update per category, not per row.
+  const byCategory = new Map<string, { category: Category; ids: string[] }>();
+  for (const row of categorized) {
+    if (!row.category || row.categorySource !== "llm") continue;
+    const entry = byCategory.get(row.category.detailed) ?? { category: row.category, ids: [] };
+    entry.ids.push(row.externalId);
+    byCategory.set(row.category.detailed, entry);
+  }
+  let changed = 0;
+  for (const { category, ids } of byCategory.values()) {
+    const { count } = await db.transactions.updateMany({
+      where: { id: { in: ids }, pfcDetailed: null },
+      data: { pfcPrimary: category.primary, pfcDetailed: category.detailed, categorySource: "llm" },
+    });
+    changed += count;
+  }
+  return changed;
 }

@@ -136,6 +136,3 @@ export function topThreeFor(report: PersonReport): TopThree {
     pass: topics.length > 0 && wrong.length === 0 && offList.length === 0,
   };
 }
-
-export const topThreeAll = (detectors: readonly Detector[] = DETECTORS): TopThree[] =>
-  runHarness(detectors).map(topThreeFor);

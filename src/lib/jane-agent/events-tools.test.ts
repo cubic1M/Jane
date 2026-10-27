@@ -17,6 +17,10 @@ const client = {} as PrismaClient;
 
 const VIEW: EventsView = {
   on: true,
+  watching: { sources: [{ label: "GDELT news coverage", ok: true }], lastChecked: null },
+  quiet: false,
+  earlier: [],
+  market: "stocks",
   agent: false,
   hasAccount: true,
   level: 3,

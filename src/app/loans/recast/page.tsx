@@ -4,11 +4,11 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { MORTGAGE_MONEY_SOURCES, RECAST_NOTE } from "@/config/mortgage-money";
-import { formatRate } from "@/insights/loans";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Recast, refinance or pay extra (spec step 246): a lump sum and/or extra money each month used
 // three ways on the mortgage, with fees and the date each pays back, against investing it

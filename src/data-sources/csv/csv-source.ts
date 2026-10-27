@@ -1,10 +1,11 @@
 import {
-  CSV_FORMATS,
-  detectFormat,
-  normalizeHeader,
-  type CsvFormat,
-  type ParsedRow,
-} from "./formats";
+  CUSTOM_FORMAT,
+  mappedLayout,
+  mappingChoices,
+  type ColumnMapping,
+  type MappingChoices,
+} from "./column-mapping";
+import { detectLayout, type CsvFormat, type ParsedRow } from "./formats";
 import { parseCsv } from "./parse-csv";
 import { looksLikeOfx, readOfx } from "@/data-sources/ofx/parse-ofx";
 import { dedupeKeys } from "@/data-sources/dedupe";
@@ -17,8 +18,36 @@ import type {
   SourceBatch,
 } from "@/data-sources/types";
 
-// Files are read into memory and never stored: callers pass the text, not a path.
-export type CsvFile = { name: string; text: string };
+// Files are read into memory and never stored: callers pass the text, not a path. `mapping`:
+// the columns the person picked, for a CSV in no bank's layout.
+export type CsvFile = { name: string; text: string; mapping?: ColumnMapping };
+
+// Why a file couldn't be read: in no layout we know (the person can pick its columns), not
+// readable as CSV, or not a statement at all (a web page, a PDF, a spreadsheet).
+export type CsvFailure = "unknown_format" | "unreadable" | "not_csv";
+
+export const NOT_A_STATEMENT =
+  "This isn't a CSV statement. Download the CSV from your bank's website.";
+
+// Fewer columns than a date, a description and an amount: not a statement either.
+const MIN_COLUMNS = 3;
+const SNIFF_CHARS = 8192;
+// Characters that don't occur in text: NULs, other control characters, bytes that weren't
+// UTF-8. More than this share of them means a binary file.
+const MAX_BINARY_SHARE = 0.01;
+
+// Something saved or renamed as .csv that isn't one: a web page (a sign-in page saved by
+// mistake), a PDF, an Excel file, an image.
+export function notAStatement(text: string): boolean {
+  const head = text.slice(0, SNIFF_CHARS);
+  if (/^\s*(?:<!doctype html|<html|<head|<body)|<html[\s>]|<\/(?:div|table|script)>/i.test(head)) {
+    return true;
+  }
+  if (head.startsWith("%PDF") || head.startsWith("PK\u0003\u0004")) return true;
+  if (head.includes("\u0000")) return true;
+  const odd = head.match(/[\u0001-\u0008\u000e-\u001f\ufffd]/g)?.length ?? 0;
+  return head.length > 0 && odd / head.length > MAX_BINARY_SHARE;
+}
 
 export type CsvFileResult =
   | {
@@ -26,40 +55,82 @@ export type CsvFileResult =
       file: string;
       // The CSV format, or OFX/QFX (which has no columns to map).
       format: Pick<CsvFormat, "id" | "label">;
+      // The account a first upload of this file makes, before the person edits it.
+      account: CsvFormat["account"];
       transactions: Omit<NormalizedTransaction, "accountRef">[];
       skipped: SkippedRow[];
     }
-  | { ok: false; file: string; error: string };
-
-const SUPPORTED = CSV_FORMATS.map((format) => format.label).join(", ");
+  | {
+      ok: false;
+      file: string;
+      error: string;
+      reason: CsvFailure;
+      // For an unknown layout: what the column picker offers.
+      choices?: MappingChoices;
+    };
 
 export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
+
+// An OFX file says what kind of account it's from: a card statement, or a bank account's type.
+function ofxAccount(text: string): CsvFormat["account"] {
+  if (/<CCSTMTRS>/i.test(text)) return { name: "Credit card", kind: "credit_card" };
+  if (/<ACCTTYPE>\s*SAVINGS/i.test(text)) return { name: "Savings", kind: "savings" };
+  return { name: "Checking", kind: "checking" };
+}
 
 // Reads one uploaded statement: a CSV export, or an OFX/QFX file (src/data-sources/ofx).
 export function readCsvFile(file: CsvFile): CsvFileResult {
   if (looksLikeOfx(file.name, file.text)) {
     const result = readOfx(file);
-    return result.ok ? { ...result, format: OFX_FORMAT } : result;
+    return result.ok
+      ? { ...result, format: OFX_FORMAT, account: ofxAccount(file.text) }
+      : { ...result, reason: "unreadable" };
+  }
+  if (notAStatement(file.text)) {
+    return { ok: false, file: file.name, error: NOT_A_STATEMENT, reason: "not_csv" };
   }
   let records;
   try {
     records = parseCsv(file.text);
   } catch (error) {
-    return { ok: false, file: file.name, error: (error as Error).message };
+    return { ok: false, file: file.name, error: (error as Error).message, reason: "unreadable" };
   }
-  if (records.length === 0) return { ok: false, file: file.name, error: "The file is empty." };
+  if (records.length === 0) {
+    return { ok: false, file: file.name, error: "The file is empty.", reason: "unreadable" };
+  }
 
-  const [header, ...rows] = records;
-  const format = detectFormat(header.fields);
-  if (!format) {
+  const detected = detectLayout(records);
+  const mapped = !detected && file.mapping ? mappedLayout(records, file.mapping) : null;
+  if (typeof mapped === "string") {
     return {
       ok: false,
       file: file.name,
-      error: `We don't recognize this file's format. Supported exports: ${SUPPORTED}. The first row was: "${header.fields.join(", ").slice(0, 200)}".`,
+      error: mapped,
+      reason: "unknown_format",
+      choices: mappingChoices(records),
+    };
+  }
+  const layout = detected ?? mapped;
+  if (!layout) {
+    const width = Math.max(...records.slice(0, 20).map((r) => r.fields.length));
+    if (width < MIN_COLUMNS) {
+      return {
+        ok: false,
+        file: file.name,
+        error: `This file has ${width === 1 ? "one column" : `${width} columns`}, and a statement needs at least a date, a description and an amount. Download the CSV from your bank's website.`,
+        reason: "unreadable",
+      };
+    }
+    return {
+      ok: false,
+      file: file.name,
+      error: "Jane doesn't know this bank's layout yet. Pick which column is which below.",
+      reason: "unknown_format",
+      choices: mappingChoices(records),
     };
   }
 
-  const columns = header.fields.map(normalizeHeader);
+  const { format, columns, rows } = layout;
   const parsed: { line: number; row: ParsedRow }[] = [];
   const skipped: SkippedRow[] = [];
   for (const record of rows) {
@@ -76,7 +147,8 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     const get = (name: string) => record.fields[columns.indexOf(name)] ?? "";
     const result = format.parseRow(get);
     if (result.ok) parsed.push({ line: record.line, row: result.row });
-    else skipped.push({ file: file.name, line: record.line, reason: result.reason });
+    else if (!result.silent)
+      skipped.push({ file: file.name, line: record.line, reason: result.reason });
   }
 
   const keys = dedupeKeys(parsed.map((p) => p.row));
@@ -91,7 +163,31 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     externalId: keys[i],
     hints: row.hints,
   }));
-  return { ok: true, file: file.name, format, transactions, skipped };
+  if (format.id === CUSTOM_FORMAT.id && transactions.length === 0) {
+    return {
+      ok: false,
+      file: file.name,
+      error: noRowsRead(skipped),
+      reason: "unknown_format",
+      choices: mappingChoices(records),
+    };
+  }
+  return {
+    ok: true,
+    file: file.name,
+    format: { id: format.id, label: format.label },
+    account: format.account,
+    transactions,
+    skipped,
+  };
+}
+
+// What went wrong when the picked columns read nothing, in plain words: the first problem.
+function noRowsRead(skipped: SkippedRow[]): string {
+  const first = skipped[0];
+  return first
+    ? `None of the rows could be read with those columns. On line ${first.line}, ${first.reason}.`
+    : "None of the rows could be read with those columns.";
 }
 
 export class CsvFormatError extends Error {
@@ -109,14 +205,21 @@ export class CsvDataSource implements DataSource {
     private readonly files: CsvFile[],
   ) {}
 
-  async load(): Promise<SourceBatch> {
+  // `files`: each file's format and how many transactions it had, for analytics.
+  async load(): Promise<SourceBatch & { files: { format: string; rows: number }[] }> {
     const results = this.files.map(readCsvFile);
     const failures = results.flatMap((r) => (r.ok ? [] : [{ file: r.file, error: r.error }]));
     if (failures.length > 0) throw new CsvFormatError(failures);
 
-    const batch: SourceBatch = { accounts: [this.account], transactions: [], skipped: [] };
+    const batch = {
+      accounts: [this.account],
+      transactions: [] as SourceBatch["transactions"],
+      skipped: [] as SourceBatch["skipped"],
+      files: [] as { format: string; rows: number }[],
+    };
     for (const result of results) {
       if (!result.ok) continue;
+      batch.files.push({ format: result.format.id, rows: result.transactions.length });
       batch.transactions.push(
         ...result.transactions.map((t) => ({ ...t, accountRef: this.account.ref })),
       );

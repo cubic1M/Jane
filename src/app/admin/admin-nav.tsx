@@ -11,6 +11,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/metrics" className="hover:underline">
           Metrics
         </Link>
+        <Link href="/admin/activity" className="hover:underline">
+          Activity
+        </Link>
         <Link href="/admin/replies" className="hover:underline">
           Replies
         </Link>
@@ -35,6 +38,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/errors" className="hover:underline">
           Errors
         </Link>
+        <Link href="/admin/access-log" className="hover:underline">
+          Access log
+        </Link>
         <Link href="/admin/chat" className="hover:underline">
           Chat
         </Link>
@@ -49,6 +55,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         </Link>
         <Link href="/admin/launch" className="hover:underline">
           Launch check
+        </Link>
+        <Link href="/admin/keys" className="hover:underline">
+          Keys
         </Link>
       </nav>
       <span className="min-w-0 break-all">{email}</span>

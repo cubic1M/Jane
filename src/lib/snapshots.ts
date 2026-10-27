@@ -1,13 +1,15 @@
 import { SNAPSHOT_RETENTION_DAYS } from "@/config/net-worth";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { ownedBy, type OnlyPeople } from "@/lib/only-people";
 
 // The daily balance snapshot, run by the daily job: today's balance for every account
 // that has one. Safe to run more than once a day: each account gets one row per day.
 export async function takeSnapshots({
   client = defaultClient,
   now = new Date(),
-}: { client?: PrismaClient; now?: Date } = {}): Promise<{
+  userIds,
+}: { client?: PrismaClient; now?: Date } & OnlyPeople = {}): Promise<{
   saved: number;
   skipped: number;
   removed: number;
@@ -15,7 +17,7 @@ export async function takeSnapshots({
   const today = new Date(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
   // A system job across all users, writing each row with its own account's owner.
   const accounts = await client.account.findMany({
-    where: { currentBalanceCents: { not: null }, user: { deletedAt: null } },
+    where: { currentBalanceCents: { not: null }, user: { deletedAt: null }, ...ownedBy(userIds) },
     select: { id: true, userId: true, currentBalanceCents: true },
   });
   let saved = 0;
@@ -44,7 +46,7 @@ export async function takeSnapshots({
   }
   const cutoff = new Date(today.getTime() - SNAPSHOT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
   const { count: removed } = await client.balanceSnapshot.deleteMany({
-    where: { date: { lt: cutoff } },
+    where: { date: { lt: cutoff }, ...ownedBy(userIds) },
   });
   return { saved, skipped, removed };
 }

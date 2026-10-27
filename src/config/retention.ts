@@ -45,6 +45,11 @@ export const RETENTION_PERIODS = {
     days: 395,
     policy: "Records of which pages and buttons were used",
   },
+  // The beta's activity log (src/lib/activity/), apart from the funnel events above.
+  activityEvents: {
+    days: 180,
+    policy: "During the beta, records of how you used Jane (pages and buttons, not what you typed)",
+  },
   errorEvents: {
     days: 90,
     policy: "Error reports (with personal details removed)",
@@ -64,6 +69,13 @@ export const RETENTION_PERIODS = {
   expiredSessions: {
     days: 0,
     policy: "Sign-in sessions and sign-in links, once they've expired",
+  },
+  // The access log (src/config/access-log.ts): just over a year, so a yearly security audit
+  // can look back over the whole year it covers.
+  accessLog: {
+    days: 400,
+    policy:
+      "Security records of sign-ins, sign-outs, two-factor and bank-link changes, data downloads, account deletions and team access, with the time, IP address and browser",
   },
   // Spec step 138.
   trialPeople: {

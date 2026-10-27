@@ -176,11 +176,19 @@ describe.runIf(url)("the action agent against a real database", () => {
   it("follows up when nobody answers, then hands off", async () => {
     const { userId, action } = await approved();
     await agentStep(userId, action.id, { client, notify });
+    // Waiting just as long, but left out of the run (as another test file's person would be).
+    const outsider = await approved();
+    await agentStep(outsider.userId, outsider.action.id, { client, notify });
     const later = (days: number) => new Date(Date.now() + days * DAY);
-    await runAgentFollowUps({ client, now: later(4) });
-    await runAgentFollowUps({ client, now: later(8) });
+    const userIds = [userId];
+    await runAgentFollowUps({ client, now: later(4), userIds });
+    await runAgentFollowUps({ client, now: later(8), userIds });
     expect(await reload(action.id)).toMatchObject({ agentFollowUps: 2 });
-    await runAgentFollowUps({ client, now: later(12) });
+    await runAgentFollowUps({ client, now: later(12), userIds });
+    expect(await reload(outsider.action.id)).toMatchObject({
+      agentState: "waiting_reply",
+      agentFollowUps: 0,
+    });
     const handed = await reload(action.id);
     expect(handed).toMatchObject({ agentState: "handed_off" });
     expect(handed.handoffReason).toContain("No reply");

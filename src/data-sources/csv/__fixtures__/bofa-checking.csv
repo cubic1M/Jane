@@ -1,0 +1,12 @@
+Description,,Summary Amt.
+Beginning balance as of 09/01/2026,,"1,204.10"
+Total credits,,"3,200.00"
+Total debits,,"-1,031.64"
+Ending balance as of 09/30/2026,,"3,372.46"
+
+Date,Description,Amount,Running Bal.
+09/01/2026,Beginning balance as of 09/01/2026,,"1,204.10"
+09/02/2026,"NETFLIX.COM DES:NETFLIX.COM ID:XXXXX12345 INDN:SAM EXAMPLE CO ID:XXXXX WEB","-15.49","1,188.61"
+09/05/2026,"ACME CORP DES:PAYROLL ID:XXXXX9028 INDN:EXAMPLE,SAM CO ID:XXXXX PPD","3,200.00","4,388.61"
+09/10/2026,"MONTHLY MAINTENANCE FEE","-12.00","4,376.61"
+09/15/2026,"BANK OF AMERICA CREDIT CARD Bill Payment","-1,004.15","3,372.46"

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { createInviteCode, normalizeCode, revokeInviteCode } from "@/lib/invites";
+import { hit } from "@/lib/rate-limit";
 import { requireAdmin } from "@/lib/session";
 
 export type InviteState = { ok: boolean; message: string; code?: string } | null;
@@ -15,6 +16,10 @@ export async function createInvite(
   formData: FormData,
 ): Promise<InviteState> {
   const admin = await requireAdmin();
+  // Each code lets someone in: even an admin's session makes only so many an hour.
+  if (!(await hit("invites", admin.id)).ok) {
+    return { ok: false, message: "That's a lot of codes for one hour. Please wait and try again." };
+  }
   const uses = Number(formData.get("maxUses"));
   if (!Number.isInteger(uses) || uses < 1 || uses > MAX_USES) {
     return { ok: false, message: `Uses must be a whole number from 1 to ${MAX_USES}.` };

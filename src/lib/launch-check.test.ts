@@ -37,6 +37,23 @@ describe("launchChecks", () => {
     expect(failing({ ...READY, BETA_INVITE_ONLY: "false" })).toEqual(["Closed beta"]);
   });
 
+  it("checks the current key of a rotated keyring (docs/security/keys.md)", () => {
+    const keys = `k2:${randomBytes(32).toString("base64")},k3:${randomBytes(32).toString("base64")}`;
+    const rotated = { ...READY, TOKEN_ENCRYPTION_KEY: "", TOKEN_ENCRYPTION_KEYS: keys };
+    expect(failing({ ...rotated, TOKEN_ENCRYPTION_KEY_CURRENT: "k3" })).toEqual([]);
+    expect(failing({ ...rotated, TOKEN_ENCRYPTION_KEY_CURRENT: "k4" })).toEqual([
+      "Token encryption key",
+    ]);
+    expect(
+      failing({
+        ...rotated,
+        TOKEN_ENCRYPTION_KEYS: "k3:short",
+        TOKEN_ENCRYPTION_KEY_CURRENT: "k3",
+      }),
+    ).toEqual(["Token encryption key"]);
+    expect(failing(rotated)).toEqual(["Token encryption key"]);
+  });
+
   it("treats Stripe as optional, but a test key as wrong once set", () => {
     const stripe = (env: Record<string, string>) =>
       launchChecks({ ...READY, ...env }).find((c) => c.name === "Stripe");

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
+import { ACTIVITY_DISCLOSURE } from "@/config/activity";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
 import { TRIAL_HOURS } from "@/config/trial";
 import { retentionPolicy } from "@/lib/retention";
@@ -46,13 +47,23 @@ export default function PrivacyPage() {
         </li>
         <li>
           How you use Jane: which pages and suggestions you open, your yes or no answers, and your
-          settings.
+          settings. {ACTIVITY_DISCLOSURE} That means the pages you open, the buttons you press,
+          which form fields you fill in and how long you stay, kept in our own database. For what
+          you type we keep only that you typed and how many characters, never the words or numbers
+          themselves (your chat messages and card answers are kept as above). Admins, sample-data
+          trials and the demo bank are never recorded.
         </li>
         <li>
           During the closed beta: the invite code you signed up with. If you join the waitlist, your
           email address; we send it nothing until a founder invites you.
         </li>
         <li>If you turn on notifications: the address your browser gives us to send them to.</li>
+        <li>
+          For security: when you sign in or out, change two-factor, link or disconnect a bank,
+          download your data or delete your account, we record the time, your IP address, your
+          browser and roughly where it is (city and country). You can see your own on the Security
+          page.
+        </li>
       </ul>
 
       <h2>How we use it</h2>
@@ -70,7 +81,8 @@ export default function PrivacyPage() {
           turn off.
         </li>
         <li>
-          To run the beta and improve Jane, using counts and trends rather than individual records.
+          To run the beta and improve Jane: the founders look at counts and trends, and during the
+          beta at how each person moves through the app, to find what&apos;s confusing.
         </li>
       </ul>
 
@@ -177,9 +189,9 @@ export default function PrivacyPage() {
         every bank at Plaid, then deletes your account and everything in it: transactions, balances,
         chats, answers, documents, notifications, and practice and paper accounts. If Plaid
         can&apos;t be reached, nothing is deleted and you can try again. Afterwards you see a page
-        confirming your data is deleted. A record that the deletion happened, with ids but no
-        personal details, stays in our security log. You can download a copy of your data in
-        Settings first.
+        confirming your data is deleted. A record that the deletion happened, with ids, the time and
+        the IP address and browser it came from, stays in our security log for the period listed
+        above. You can download a copy of your data in Settings first.
       </p>
 
       <h2>Cookies and your browser</h2>
@@ -192,6 +204,10 @@ export default function PrivacyPage() {
         <li>
           A random id cookie (kept for a year) lets us count visits, including before you have an
           account. It holds no personal details.
+        </li>
+        <li>
+          During the beta, a random visit id, kept in the browser tab until you close it, groups the
+          pages you open in one visit. It holds no personal details.
         </li>
         <li>
           Your browser also remembers small display choices, like whether the chat panel is open.

@@ -17,6 +17,18 @@ function base64Bytes(value: string | undefined): number {
   }
 }
 
+// The current encryption key works: TOKEN_ENCRYPTION_KEY_CURRENT names a 32-byte entry of
+// TOKEN_ENCRYPTION_KEYS, or (until it's set) TOKEN_ENCRYPTION_KEY is 32 bytes. The app's own
+// parser is src/lib/keyring.ts; this file stays import-free.
+function currentKeyWorks(env: Env): boolean {
+  const current = env.TOKEN_ENCRYPTION_KEY_CURRENT?.trim();
+  if (!current) return base64Bytes(env.TOKEN_ENCRYPTION_KEY?.trim()) === 32;
+  const entry = (env.TOKEN_ENCRYPTION_KEYS ?? "")
+    .split(/[\s,]+/)
+    .find((e) => e.startsWith(`${current}:`));
+  return base64Bytes(entry?.slice(current.length + 1)) === 32;
+}
+
 function hostOf(url: string | undefined): string | null {
   try {
     return url ? new URL(url).hostname : null;
@@ -54,8 +66,8 @@ export function launchChecks(env: Env): Check[] {
     ),
     check(
       "Token encryption key",
-      base64Bytes(env.TOKEN_ENCRYPTION_KEY) === 32,
-      "TOKEN_ENCRYPTION_KEY is 32 bytes, base64",
+      currentKeyWorks(env),
+      "The current encryption key is 32 bytes, base64 (TOKEN_ENCRYPTION_KEY_CURRENT in TOKEN_ENCRYPTION_KEYS, or TOKEN_ENCRYPTION_KEY)",
     ),
     check(
       "Email",

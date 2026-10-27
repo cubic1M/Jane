@@ -1,6 +1,12 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { describe, it } from "vitest";
-import { fromFixture, generateHistories, toFixture } from "./generate";
+import {
+  fromFixture,
+  generateHeldOut,
+  generateHistories,
+  toFixture,
+  type BenchSet,
+} from "./generate";
 import {
   DETECTOR_NAMES,
   calibration,
@@ -14,11 +20,18 @@ import {
 } from "./score";
 
 // `npm run accuracy`: every detector on the labelled histories, precision and recall per
-// detector and the false-alarm rate, then calibration (is "80% sure" right 80% of the time).
-// ACCURACY_WRITE=1 also rewrites the fixtures, the baseline the CI gate holds to
-// (./baseline.json) and the scoreboard in docs/accuracy.md. Skipped in a normal test run.
+// detector and the false-alarm rate, then calibration (is "80% sure" right 80% of the time),
+// for the tuning set and, separately, the held-out set. ACCURACY_WRITE=1 also rewrites the
+// fixtures, the baseline the CI gate holds to (./baseline.json) and the scoreboard in
+// docs/accuracy.md. ACCURACY_MISTAKES=1 lists the tuning set's mistakes, the ones to fix rules
+// on; the held-out sets' are left out on purpose. Skipped in a normal test run.
 
-const FIXTURES = "src/accuracy/__fixtures__/histories.json";
+export const FIXTURES: Record<BenchSet, string> = {
+  tuning: "src/accuracy/__fixtures__/histories.json",
+  "held-out": "src/accuracy/__fixtures__/held-out.json",
+  "held-out-2": "src/accuracy/__fixtures__/held-out-2.json",
+  "held-out-3": "src/accuracy/__fixtures__/held-out-3.json",
+};
 const BASELINE = "src/accuracy/baseline.json";
 const DOC = "docs/accuracy.md";
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
@@ -51,40 +64,60 @@ export function calibrationTable(buckets: Bucket[]): string {
   ].join("\n");
 }
 
+const SET_NAMES: Record<BenchSet, string> = {
+  tuning: "Tuning set",
+  "held-out": "Held-out set",
+  "held-out-2": "Second held-out set",
+  "held-out-3": "Third held-out set",
+};
+
 describe.runIf(process.env.ACCURACY === "1")("the accuracy scoreboard", () => {
   it("scores every detector on the labelled histories", () => {
     const write = process.env.ACCURACY_WRITE === "1";
-    if (write) writeFileSync(FIXTURES, `${JSON.stringify(toFixture(generateHistories()))}\n`);
-    const histories = fromFixture(JSON.parse(readFileSync(FIXTURES, "utf8")));
-    const { scores, mistakes } = scoreboard(histories);
-    const buckets = calibration(judgedSuggestions(histories));
-    const lifeBuckets = calibration(judgedLifeFacts(histories));
-    const lifeNames = DETECTOR_NAMES.filter(isLife);
-    const byLevel = levels(histories);
-    const out = [
-      `${histories.length} people, ${histories.reduce((n, h) => n + h.rows.length, 0)} transactions`,
-      scoreTable(scores),
-      "",
-      "Calibration (suggestions' confidence %):",
-      calibrationTable(buckets),
-      "",
-      "Life facts (the profile's picture of the person's life):",
-      scoreTable(scores, lifeNames),
-      "",
-      "Life facts' calibration:",
-      calibrationTable(lifeBuckets),
-      "",
-      "Finding levels:",
-      ...Object.entries(byLevel).map(
-        ([level, { count, right }]) => `${level}: ${right}/${count} right (${pct(right / count)})`,
-      ),
-    ].join("\n");
-    console.log(out);
-    if (process.env.ACCURACY_MISTAKES === "1") {
-      for (const m of mistakes) console.log(`${m.detector} ${m.kind} ${m.person} ${m.item}`);
-    }
     if (write) {
-      const baseline = Object.fromEntries(
+      writeFileSync(FIXTURES.tuning, `${JSON.stringify(toFixture(generateHistories()))}\n`);
+      for (const set of ["held-out", "held-out-2", "held-out-3"] as const) {
+        const people = generateHeldOut(undefined, set);
+        writeFileSync(FIXTURES[set], `${JSON.stringify(toFixture(people))}\n`);
+      }
+    }
+    const baseline: Record<string, Record<string, { precision: number; recall: number }>> = {};
+    const doc: string[] = [];
+    let lifeBlock = "";
+    const lifeNames = DETECTOR_NAMES.filter(isLife);
+    for (const set of ["tuning", "held-out", "held-out-2", "held-out-3"] as const) {
+      const histories = fromFixture(JSON.parse(readFileSync(FIXTURES[set], "utf8")));
+      const { scores, mistakes } = scoreboard(histories);
+      const buckets = calibration(judgedSuggestions(histories));
+      const lifeBuckets = calibration(judgedLifeFacts(histories));
+      const byLevel = levels(histories);
+      const people = `${histories.length} people, ${histories.reduce((n, h) => n + h.rows.length, 0)} transactions`;
+      console.log(
+        [
+          `${SET_NAMES[set]}: ${people}`,
+          scoreTable(scores),
+          "",
+          "Calibration (suggestions' confidence %):",
+          calibrationTable(buckets),
+          "",
+          "Life facts (the profile's picture of the person's life):",
+          scoreTable(scores, lifeNames),
+          "",
+          "Life facts' calibration:",
+          calibrationTable(lifeBuckets),
+          "",
+          "Finding levels:",
+          ...Object.entries(byLevel).map(
+            ([level, { count, right }]) =>
+              `${level}: ${right}/${count} right (${pct(right / count)})`,
+          ),
+          "",
+        ].join("\n"),
+      );
+      if (set === "tuning" && process.env.ACCURACY_MISTAKES === "1") {
+        for (const m of mistakes) console.log(`${m.detector} ${m.kind} ${m.person} ${m.item}`);
+      }
+      baseline[set] = Object.fromEntries(
         DETECTOR_NAMES.map((d) => [
           d,
           {
@@ -93,17 +126,31 @@ describe.runIf(process.env.ACCURACY === "1")("the accuracy scoreboard", () => {
           },
         ]),
       );
+      if (set === "tuning") {
+        lifeBlock = `<!-- life:start -->\n${scoreTable(scores, lifeNames)}\n\nLife facts' calibration now:\n\n${calibrationTable(lifeBuckets)}\n<!-- life:end -->`;
+      }
+      doc.push(
+        `${SET_NAMES[set]} (${people}):`,
+        "",
+        scoreTable(scores),
+        "",
+        `Calibration, ${SET_NAMES[set].toLowerCase()}:`,
+        "",
+        calibrationTable(buckets),
+        "",
+      );
+    }
+    if (write) {
       writeFileSync(BASELINE, `${JSON.stringify(baseline, null, 2)}\n`);
-      const doc = readFileSync(DOC, "utf8");
+      const text = readFileSync(DOC, "utf8");
       const start = "<!-- scoreboard:start -->";
       const end = "<!-- scoreboard:end -->";
-      const table = `${start}\n${scoreTable(scores)}\n\nCalibration now:\n\n${calibrationTable(buckets)}\n${end}`;
-      const life = `<!-- life:start -->\n${scoreTable(scores, lifeNames)}\n\nLife facts' calibration now:\n\n${calibrationTable(lifeBuckets)}\n<!-- life:end -->`;
+      const table = `${start}\n${doc.join("\n").trimEnd()}\n${end}`;
       writeFileSync(
         DOC,
-        doc
+        text
           .replace(new RegExp(`${start}[\\s\\S]*${end}`), table)
-          .replace(/<!-- life:start -->[\s\S]*<!-- life:end -->/, life),
+          .replace(/<!-- life:start -->[\s\S]*<!-- life:end -->/, lifeBlock),
       );
     }
   });

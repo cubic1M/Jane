@@ -70,7 +70,7 @@ import {
   SELL_WORDS,
 } from "./company-copy";
 import { byHerselfLine } from "./goals-copy";
-import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
+import { type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
 import { classWords, listWords, type PortfolioReview } from "@/insights/portfolio-review";
 import type { Investments } from "@/lib/investments/holdings";
@@ -100,6 +100,7 @@ import {
   startButtons,
 } from "./auto-copy";
 import { asking, PROFILE_INTRO } from "./profile-question";
+import { formatRate } from "@/lib/percent";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
 // wording and buttons out. Facts only, the same for every account; advice is in the later
@@ -237,7 +238,7 @@ export function feesReply(fees: FeeSummary, advice: boolean): Reply {
     .slice(0, 3)
     .map(
       (f) =>
-        `- ${f.holding.name}: ${formatBps(f.expenseRatioBps)}, ${formatCents(f.yearlyCents)} a year`,
+        `- ${f.holding.name}: ${formatRate(f.expenseRatioBps)}, ${formatCents(f.yearlyCents)} a year`,
     )
     .join("\n");
   let body = `${parts.join(", ")}. Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.\nThe costliest:\n${top}`;

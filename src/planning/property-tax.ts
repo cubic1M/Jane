@@ -214,5 +214,3 @@ export function draftAppeal(input: {
     "[Your name]",
   ].join("\n");
 }
-
-export const money = dollars;

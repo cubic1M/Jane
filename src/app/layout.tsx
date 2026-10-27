@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ActivityRecorder } from "@/components/activity-recorder";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import { SideChat } from "@/components/side-chat/side-chat";
@@ -34,7 +36,10 @@ export const viewport: Viewport = {
   interactiveWidget: "resizes-content",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Every page renders per request, so its scripts carry that request's CSP nonce
+  // (src/proxy.ts); a page prerendered at build time would have none and be blocked.
+  await connection();
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
@@ -54,6 +59,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <NavPending />
         </Suspense>
         <ServiceWorker />
+        {/* The beta's activity log: pages and buttons, not what anyone types (/privacy). */}
+        <Suspense>
+          <ActivityRecorder />
+        </Suspense>
       </body>
     </html>
   );

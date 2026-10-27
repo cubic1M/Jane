@@ -1,10 +1,10 @@
 import { BT_REMIND_DAYS } from "@/config/debt";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { daysUntil, dueReminder, shortMonth } from "@/planning/balance-transfer";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
+import { formatRate } from "@/lib/percent";
 
 // Balance transfers (spec step 113). Jane brings up a 0% transfer card when it saves enough
 // against keeping a card's balance, the fee counted (once per offer, labelled demo advice),

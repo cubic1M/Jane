@@ -28,7 +28,6 @@ export type InsuranceBranch = keyof typeof INSURANCE_BRANCHES;
 
 // "needs:life", "policies:<id>": an item's id names its branch, so a link can open both.
 export const itemId = (branch: InsuranceBranch, key: string) => `${branch}:${key}`;
-export const branchOf = (id: string) => id.split(":")[0];
 
 export const NEED_LABELS: Record<string, string> = {
   life: "Life cover",
@@ -42,6 +41,8 @@ export const NEED_LABELS: Record<string, string> = {
   professional_liability: "Professional liability",
   business_equipment: "Work equipment cover",
 };
+
+const WORK_COVER_GAPS: readonly GapKey[] = ["health", "disability"];
 
 const GAP_LABELS: Record<GapKey, string> = {
   renters: "Renters insurance",
@@ -191,14 +192,18 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
     });
   });
 
-  const missing = input.gaps.map((g) =>
-    item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
+  // Health and disability cover usually come with a job and are paid out of the paycheck
+  // before it reaches the bank, so bank data can't see them: "not on file", worth a look, not
+  // an urgent "missing" (overnight upload QA: every salaried person had 2 urgent gaps).
+  const missing = input.gaps.map((g) => {
+    const throughWork = WORK_COVER_GAPS.includes(g.key);
+    return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
       label: GAP_LABELS[g.key],
-      status: "act",
-      figure: "Missing",
+      status: throughWork ? "look" : "act",
+      figure: throughWork ? "Not on file" : "Missing",
       summary: g.why,
-    }),
-  );
+    });
+  });
 
   const savings = input.savings.map((s) =>
     item("savings", s.id, {

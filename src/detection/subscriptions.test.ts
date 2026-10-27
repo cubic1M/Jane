@@ -26,6 +26,7 @@ describe("recurringCharges", () => {
       const row = rows.find((r) => r.key === f.key);
       expect(row?.annualCostCents, f.key).toBe(f.annualSavingsCents);
       expect(row?.subscription).toBe(true);
+      expect(f.key).toBe(`merchant:${row?.merchantKey}`);
     }
   });
 
@@ -42,6 +43,22 @@ describe("recurringCharges", () => {
       [...rows.map((r) => r.annualCostCents)].sort((a, b) => b - a),
     );
     expect(rows.find((r) => r.merchant === "Geico")?.subscription).toBe(false);
+  });
+
+  it('counts a yearly plan named after the bank\'s "*" as a subscription, whatever its category', () => {
+    const plan = recurringCharges(
+      input({
+        transactions: monthly(1, 9_999, {
+          description: "MICROSOFT*MICROSOFT 365 P",
+          merchantName: "Microsoft",
+          pfcPrimary: "ENTERTAINMENT",
+          pfcDetailed: "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+        }),
+      }),
+    );
+    expect(plan).toEqual([
+      expect.objectContaining({ merchantKey: "microsoft", subscription: true }),
+    ]);
   });
 });
 

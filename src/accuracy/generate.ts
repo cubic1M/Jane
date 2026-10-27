@@ -7,10 +7,26 @@ import { addLife, type LifeLabels } from "./life";
 // fees, processor prefixes, uneven pay, overlapping noise), each with the ground truth for every
 // detector. A fixed seed makes the same people every time; scripts write them to
 // src/accuracy/__fixtures__/histories.json, which is what the bench and its CI gate read.
+//
+// Two sets (docs/accuracy.md). The tuning set is what the detectors' rules were fixed on:
+// #766's 40 people, unchanged, and 20 more who carry each known cause of a miss or a false
+// alarm. The held-out set is 40 people from another seed, with the same causes under names the
+// tuning set never uses (other card companies, ticket sellers, utilities, yearly plans), and
+// is only scored, never tuned on, so a gain that holds there is real. A second held-out set,
+// with names neither of the others uses, is kept for checking fixes the first one's mistakes
+// suggested: once a set's mistakes have been read, it is no longer a clean check.
 
 export const SEED = 20261026;
-export const PEOPLE_COUNT = 40;
+export const PEOPLE_COUNT = 60;
+// The first ORIGINAL_COUNT tuning people are #766's, row for row; the rest add the causes.
+export const ORIGINAL_COUNT = 40;
+export const HELD_OUT_SEED = 77_031_337;
+export const HELD_OUT_COUNT = 40;
+export const HELD_OUT_2_SEED = 90_210_455;
+export const HELD_OUT_3_SEED = 31_415_927;
 export const AS_OF = "2026-10-21";
+
+export type BenchSet = "tuning" | "held-out" | "held-out-2" | "held-out-3";
 
 export type RawRow = {
   id: string;
@@ -49,6 +65,7 @@ export type Labels = {
 
 export type History = {
   id: string;
+  set: BenchSet;
   archetype: Archetype;
   asOf: string;
   months: number;
@@ -142,6 +159,153 @@ const SHOPS = [
   { description: "AMZN Mktp US*2K4L91Z3", category: "Shopping", lo: 12, hi: 90 },
 ];
 
+// The causes, under the names each set uses. A fix that works by knowing a name can't pass the
+// held-out set.
+type Plan = { description: string; cents: number };
+type OneOff = { description: string; category: string; lo: number; hi: number };
+const CAUSES: Record<
+  BenchSet,
+  {
+    // Card companies no keyword rule knows.
+    unknownIssuers: string[];
+    // Places where two of the same price, bought together, is normal: a seat each.
+    perSeat: { description: string; category: string }[];
+    // Usage bills from utilities whose names say so, but not in the keyword list by name.
+    utilities: string[];
+    // Plans paid once a year.
+    yearly: Plan[];
+    // App stores that bill several subscriptions as one merchant.
+    platforms: string[];
+    // One-off purchases at merchants that also sell subscriptions.
+    oneOffs: OneOff[];
+    // Where real double charges happen.
+    shops: (typeof SHOPS)[number][];
+  }
+> = {
+  tuning: {
+    unknownIssuers: [
+      "BARCLAYCARD US PAYMENT 0041",
+      "FNBO CARD PMT 2231",
+      "ELAN FINANCIAL SVC PYMT",
+    ],
+    perSeat: [
+      { description: "TICKETMASTER 800-653-8000", category: "Entertainment" },
+      { description: "LIVE NATION TICKETS 8001", category: "Entertainment" },
+      { description: "DELTA AIR 0062312345678", category: "Travel" },
+    ],
+    utilities: [
+      "XCEL ENERGY-PSCO PPD ID: 8840011",
+      "SEATTLE CITY LIGHT UTILITIES",
+      "SOUTHERN CALIFORNIA EDISON",
+    ],
+    yearly: [
+      { description: "AMAZON PRIME*2K4AB7XY0", cents: 13_900 },
+      { description: "DUOLINGO PLUS", cents: 8_399 },
+      { description: "DROPBOX*7GH2K4", cents: 11_988 },
+    ],
+    platforms: ["APPLE.COM/BILL 866-712-7753 CA"],
+    oneOffs: [
+      { description: "AUDIBLE*2K94LM", category: "Entertainment", lo: 8, hi: 30 },
+      { description: "AMAZON PRIME VIDEO*2K4AB", category: "Entertainment", lo: 3, hi: 7 },
+      { description: "APPLE.COM/BILL 866-712-7753 CA", category: "Shopping", lo: 1, hi: 20 },
+    ],
+    shops: SHOPS,
+  },
+  "held-out": {
+    unknownIssuers: ["GS BANK USA PAYMENT 7710", "NAVY FEDERAL CU PMT", "TD BANK CARD PYMT 0918"],
+    perSeat: [
+      { description: "STUBHUB 866-788-2482", category: "Entertainment" },
+      { description: "SEATGEEK* TICKETS", category: "Entertainment" },
+      { description: "AMC THEATRES 2201", category: "Entertainment" },
+      { description: "UNITED AIRLINES 0162345678901", category: "Travel" },
+    ],
+    utilities: [
+      "DOMINION ENERGY PPD ID: 3301",
+      "GEORGIA POWER CO",
+      "CITY OF AUSTIN UTILITIES",
+      "PSE&G PAYMENT",
+    ],
+    yearly: [
+      { description: "ADOBE *CREATIVE CLD 408-536-6000", cents: 23_988 },
+      { description: "NYTIMES*NYTDIGITAL", cents: 19_500 },
+      { description: "AUDIBLE*2K94LM", cents: 14_950 },
+    ],
+    platforms: ["APPLE.COM/BILL 866-712-7753 CA", "GOOGLE *GOOGLE PLAY APPS"],
+    oneOffs: [
+      { description: "PRIME VIDEO*2K4AB", category: "Entertainment", lo: 3, hi: 7 },
+      { description: "GOOGLE *GOOGLE PLAY APPS", category: "Shopping", lo: 1, hi: 20 },
+      { description: "ADOBE STOCK 408-536-6000", category: "Shopping", lo: 30, hi: 90 },
+    ],
+    shops: [
+      { description: "WALGREENS #1234", category: "Health & Wellness", lo: 15, hi: 70 },
+      { description: "LOWE'S #1188", category: "Home", lo: 25, hi: 300 },
+      { description: "COSTCO WHSE #0123", category: "Shopping", lo: 40, hi: 250 },
+    ],
+  },
+  "held-out-2": {
+    unknownIssuers: ["MERRICK BANK PYMT 2201", "PENFED CARD PAYMENT", "FIRST PREMIER BANKCARD PMT"],
+    perSeat: [
+      { description: "VIVID SEATS 866-848-8499", category: "Entertainment" },
+      { description: "HARKINS THEATRES 0412", category: "Entertainment" },
+      { description: "SOUTHWEST AIR 5262123456789", category: "Travel" },
+    ],
+    utilities: [
+      "ENTERGY ARKANSAS PPD ID: 7710",
+      "ALABAMA POWER BILL PAY",
+      "FPL DIRECT DEBIT",
+      "PUGET SOUND ENERGY",
+    ],
+    yearly: [
+      { description: "MICROSOFT*MICROSOFT 365 P", cents: 9_999 },
+      { description: "AMAZON PRIME*8H2LK1QZ0", cents: 13_900 },
+      { description: "DROPBOX*K2L9QX", cents: 11_988 },
+    ],
+    platforms: ["APPLE.COM/BILL 866-712-7753 CA", "ITUNES.COM/BILL"],
+    oneOffs: [
+      { description: "AUDIBLE*7KL2QX", category: "Entertainment", lo: 8, hi: 30 },
+      { description: "APPLE.COM/BILL 866-712-7753 CA", category: "Shopping", lo: 1, hi: 60 },
+      { description: "PELOTON* APPAREL", category: "Shopping", lo: 60, hi: 120 },
+    ],
+    shops: [
+      { description: "KOHLS #0912", category: "Shopping", lo: 20, hi: 150 },
+      { description: "WALMART.COM 8009256278", category: "Shopping", lo: 15, hi: 200 },
+      { description: "PETSMART #1123", category: "Shopping", lo: 15, hi: 120 },
+    ],
+  },
+  // Made (2026-10-27) before any fix for the second held-out set's misses was written, and
+  // scored only: the clean check for those fixes.
+  "held-out-3": {
+    unknownIssuers: ["SYNCHRONY BANK PAYMENT", "USAA CREDIT CARD PMT 4471", "BREAD FINANCIAL PYMT"],
+    perSeat: [
+      { description: "EVENTBRITE*SPRING GALA", category: "Entertainment" },
+      { description: "REGAL CINEMAS 0921", category: "Entertainment" },
+      { description: "JETBLUE 2792112345678", category: "Travel" },
+    ],
+    utilities: [
+      "DUKE ENERGY PAYMENT",
+      "AMEREN ILLINOIS UTILITY PMT",
+      "NATIONAL GRID ELECTRIC",
+      "EVERSOURCE ENERGY",
+    ],
+    yearly: [
+      { description: "MSFT * MICROSOFT 365 FAMILY", cents: 12_999 },
+      { description: "LINKEDIN PREMIUM", cents: 23_988 },
+      { description: "PATREON* MEMBERSHIP", cents: 6_000 },
+    ],
+    platforms: ["APPLE.COM/BILL 866-712-7753 CA", "GOOGLE *GOOGLE PLAY APPS"],
+    oneOffs: [
+      { description: "NYTIMES*STORE", category: "Shopping", lo: 50, hi: 150 },
+      { description: "DUOLINGO*MERCH SHOP", category: "Shopping", lo: 50, hi: 90 },
+      { description: "APPLE.COM/BILL 866-712-7753 CA", category: "Shopping", lo: 1, hi: 60 },
+    ],
+    shops: [
+      { description: "MARSHALLS #0441", category: "Shopping", lo: 20, hi: 150 },
+      { description: "ACE HARDWARE #1207", category: "Home", lo: 10, hi: 120 },
+      { description: "ULTA BEAUTY #331", category: "Health & Wellness", lo: 15, hi: 90 },
+    ],
+  },
+};
+
 class Builder {
   rows: RawRow[] = [];
   labels: Labels = {
@@ -189,13 +353,29 @@ class Builder {
     const key = keyOf(description);
     if (!this.labels.bills.includes(key)) this.labels.bills.push(key);
   }
+  // A yearly plan is a bill only when it renews within the next month.
+  renewal(paid: string, description: string) {
+    if (addMonths(paid, 12) <= addDays(this.asOf, 31)) this.bill(description);
+  }
 }
 
-function person(index: number): History {
-  const r: Rng = rng(SEED + index * 7919);
+function person(index: number, set: BenchSet = "tuning"): History {
+  const base = {
+    tuning: SEED,
+    "held-out": HELD_OUT_SEED,
+    "held-out-2": HELD_OUT_2_SEED,
+    "held-out-3": HELD_OUT_3_SEED,
+  }[set];
+  const seed = base + index * 7919;
+  const r: Rng = rng(seed);
+  // The causes draw from their own stream, so #766's people stay row for row.
+  const x: Rng = rng(seed ^ 0x5eed);
+  const causes = set !== "tuning" || index >= ORIGINAL_COUNT ? CAUSES[set] : null;
   const archetype = ARCHETYPES[index % ARCHETYPES.length];
-  const months = r.pick([2, 3, 4, 6, 8, 12, 12, 14]);
-  const id = `p${String(index + 1).padStart(2, "0")}`;
+  const drawnMonths = r.pick([2, 3, 4, 6, 8, 12, 12, 14]);
+  // Short histories: two charges of everything.
+  const months = causes && x.chance(0.25) ? 2 : drawnMonths;
+  const id = `${{ tuning: "p", "held-out": "h", "held-out-2": "k", "held-out-3": "m" }[set]}${String(index + 1).padStart(2, "0")}`;
   const start = addMonths(AS_OF, -months);
   const b = new Builder(id, start, AS_OF);
   const chk = `${id}-chk`;
@@ -327,20 +507,25 @@ function person(index: number): History {
   b.bill(phone);
   monthlySpendCents += phoneCents;
   // Usage bills move with the season: still bills, never price rises.
-  const power = r.pick([
+  const drawnPower = r.pick([
     "PG&E WEB ONLINE PPD ID: 9471234567",
     "CON ED OF NY INTELL CK",
     "DUKE ENERGY PAYMENT",
   ]);
-  b.monthly(r.int(8, 18), (date) =>
+  const power = causes && x.chance(0.5) ? x.pick(causes.utilities) : drawnPower;
+  // A seasonal bill: twice as much at the height of winter as in spring and autumn.
+  const seasonal = (date: string) =>
+    1 + 0.6 * Math.cos(((toDate(date).getUTCMonth() + 1) * Math.PI) / 6);
+  b.monthly(r.int(8, 18), (date) => {
+    const cents = r.cents(60, 190);
     b.add({
       accountId: chk,
       date,
-      amountCents: r.cents(60, 190),
+      amountCents: causes ? Math.round(9_000 * seasonal(date) * (0.85 + x.next() * 0.3)) : cents,
       description: power,
       bankType: "ACH_DEBIT",
-    }),
-  );
+    });
+  });
   b.bill(power);
   monthlySpendCents += 12_000;
   const hasCar = r.chance(0.6);
@@ -411,10 +596,11 @@ function person(index: number): History {
     b.labels.subscriptions.push(keyOf("APPLE.COM/BILL 866-712-7753 CA"));
     b.bill("APPLE.COM/BILL 866-712-7753 CA");
   }
-  // A yearly one: seen once (or twice in a long history).
+  // A yearly one: seen once (or twice in a long history). Paid before the history starts, the
+  // data can't show it, so it isn't in the truth either.
   if (r.chance(0.3)) {
     const renews = addMonths(AS_OF, -r.int(1, 11), r.int(1, 28));
-    b.add({
+    const paid = b.add({
       accountId: spendOn,
       date: renews,
       amountCents: 13_900,
@@ -428,7 +614,85 @@ function person(index: number): History {
       description: "AMAZON PRIME*2K4AB7XY0",
       ...onCard("Shopping"),
     });
-    b.labels.subscriptions.push(keyOf("AMAZON PRIME*2K4AB7XY0"));
+    if (paid.id) {
+      b.labels.subscriptions.push(keyOf("AMAZON PRIME*2K4AB7XY0"));
+      b.renewal(renews, "AMAZON PRIME*2K4AB7XY0");
+    }
+  }
+  if (causes) {
+    // Several subscriptions billed through one app store, each at its own price and day.
+    if (x.chance(0.5)) {
+      const platform = x.pick(causes.platforms);
+      const prices = [99, 299, 999, 1099, 1499, 1999];
+      const picked = new Set<number>();
+      for (let n = x.int(1, 3); picked.size < n;) picked.add(x.pick(prices));
+      [...picked].forEach((cents, i) =>
+        b.monthly(3 + i * 8, (date) =>
+          b.add({
+            accountId: spendOn,
+            date,
+            amountCents: cents,
+            description: platform,
+            ...onCard("Shopping"),
+          }),
+        ),
+      );
+      if (!b.labels.subscriptions.includes(keyOf(platform)))
+        b.labels.subscriptions.push(keyOf(platform));
+      b.bill(platform);
+    }
+    // A yearly plan, paid once in the last year.
+    if (x.chance(0.5)) {
+      const plan = x.pick(causes.yearly);
+      const key = keyOf(plan.description);
+      const renews = addMonths(AS_OF, -x.int(1, 11), x.int(1, 28));
+      if (!b.labels.subscriptions.includes(key)) {
+        const paid = b.add({
+          accountId: spendOn,
+          date: renews,
+          amountCents: plan.cents,
+          description: plan.description,
+          ...onCard("Entertainment"),
+        });
+        if (paid.id) {
+          b.labels.subscriptions.push(key);
+          b.renewal(renews, plan.description);
+        }
+      }
+    }
+    // One-off purchases where subscriptions are also sold: a book, a rental, an app.
+    if (x.chance(0.6)) {
+      for (let n = x.int(1, 3); n > 0; n -= 1) {
+        const buy = x.pick(causes.oneOffs);
+        b.add({
+          accountId: spendOn,
+          date: addDays(AS_OF, -x.int(1, months * 28)),
+          amountCents: x.cents(buy.lo, buy.hi),
+          description: buy.description,
+          ...onCard(buy.category),
+        });
+      }
+    }
+    // A short history: two purchases at one shop a month apart, at nearly the same price.
+    if (months <= 3 && x.chance(0.6)) {
+      const shop = x.pick(causes.shops);
+      const cents = x.cents(Math.max(20, shop.lo), shop.hi);
+      const first = addDays(AS_OF, -x.int(35, 50));
+      b.add({
+        accountId: spendOn,
+        date: first,
+        amountCents: cents,
+        description: shop.description,
+        ...onCard(shop.category),
+      });
+      b.add({
+        accountId: spendOn,
+        date: addDays(first, x.int(28, 32)),
+        amountCents: Math.round(cents * (0.96 + x.next() * 0.08)),
+        description: shop.description,
+        ...onCard(shop.category),
+      });
+    }
   }
 
   // --- Everyday spending: regular, but never subscriptions ------------------------------
@@ -569,11 +833,48 @@ function person(index: number): History {
     b.add({ ...target, date, amountCents: amount });
     b.add({ ...target, date: addDays(date, 4), amountCents: -amount });
   }
+  if (causes) {
+    // A seat each: two tickets or two fares, the same price on the same day.
+    if (x.chance(0.4)) {
+      const seat = x.pick(causes.perSeat);
+      const date = addDays(AS_OF, -x.int(3, 40));
+      const amount = x.cents(25, 400);
+      for (let i = x.int(2, 3); i > 0; i -= 1) {
+        b.add({
+          accountId: spendOn,
+          date,
+          amountCents: amount,
+          description: seat.description,
+          ...onCard(seat.category),
+        });
+      }
+    }
+    // A real double charge, and one the shop already gave back.
+    if (x.chance(0.4)) {
+      const shop = x.pick(causes.shops);
+      const date = addDays(AS_OF, -x.int(3, 45));
+      const amount = x.cents(Math.max(15, shop.lo), shop.hi);
+      const row = { accountId: spendOn, description: shop.description, ...onCard(shop.category) };
+      b.add({ ...row, date, amountCents: amount });
+      const second = b.add({ ...row, date: addDays(date, x.int(0, 1)), amountCents: amount });
+      if (second.id) b.labels.duplicates.push(second.id);
+    }
+    if (x.chance(0.3)) {
+      const shop = x.pick(causes.shops);
+      const date = addDays(AS_OF, -x.int(10, 40));
+      const amount = x.cents(Math.max(15, shop.lo), shop.hi);
+      const row = { accountId: spendOn, description: shop.description, ...onCard(shop.category) };
+      b.add({ ...row, date, amountCents: amount });
+      b.add({ ...row, date, amountCents: amount });
+      b.add({ ...row, date: addDays(date, x.int(2, 6)), amountCents: -amount });
+    }
+  }
 
   // --- Card: payments from checking, interest, fees -------------------------------------
   const debt = archetype === "struggling" || (archetype === "hourly" && r.chance(0.5));
   if (card) {
-    const payOut = r.pick(CARD_PAYMENT_OUT);
+    const drawnPayOut = r.pick(CARD_PAYMENT_OUT);
+    const payOut = causes && x.chance(0.5) ? x.pick(causes.unknownIssuers) : drawnPayOut;
     b.monthly(r.int(20, 27), (date) => {
       const spent = b.rows
         .filter(
@@ -595,7 +896,8 @@ function person(index: number): History {
       });
       const back = b.add({
         accountId: card,
-        date,
+        // The card company can post the payment a day or two after checking does.
+        date: causes ? addDays(date, x.int(0, 2)) : date,
         amountCents: -amount,
         description: r.pick(["Payment Thank You-Mobile", "AUTOMATIC PAYMENT - THANK YOU"]),
         bankType: "Payment",
@@ -672,6 +974,8 @@ function person(index: number): History {
       }),
     );
     if (!b.labels.feeAccounts.includes(chk)) b.labels.feeAccounts.push(chk);
+    // Taken every month, so it's coming up like any bill.
+    b.bill("MONTHLY SERVICE FEE");
   }
 
   // --- Moving one's own money -----------------------------------------------------------
@@ -720,7 +1024,7 @@ function person(index: number): History {
 
   // --- Their life: kids, a pet, school, the commute, travel, the gym, how they eat ---------
   // A separate dice stream, so none of the other detectors' people change.
-  b.labels.life = addLife(rng(SEED + index * 104729 + 17), {
+  b.labels.life = addLife(rng(base + index * 104729 + 17), {
     add: (row) => b.add(row),
     bill: (description) => b.bill(description),
     subscription: (description) => {
@@ -776,11 +1080,15 @@ function person(index: number): History {
     });
 
   b.rows.sort((a, c) => a.date.localeCompare(c.date) || a.id.localeCompare(c.id));
-  return { id, archetype, asOf: AS_OF, months, accounts, rows: b.rows, labels: b.labels };
+  return { id, set, archetype, asOf: AS_OF, months, accounts, rows: b.rows, labels: b.labels };
 }
 
 export function generateHistories(count = PEOPLE_COUNT): History[] {
   return Array.from({ length: count }, (_, i) => person(i));
+}
+
+export function generateHeldOut(count = HELD_OUT_COUNT, set: BenchSet = "held-out"): History[] {
+  return Array.from({ length: count }, (_, i) => person(i, set));
 }
 
 // The checked-in form (src/accuracy/__fixtures__/histories.json): each row as a tuple, which

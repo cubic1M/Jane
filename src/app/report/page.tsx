@@ -21,7 +21,8 @@ const TOP = 3;
 const MORE = "cursor-pointer text-sm font-medium underline underline-offset-2 hover:no-underline";
 import { scanInProgress } from "@/lib/scan";
 import { RefreshWhenScanned } from "./refresh-when-scanned";
-import { reportState } from "./state";
+import { foundLine, reportState, shortUploadDays } from "./state";
+import { SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
 
 // Shown when nothing was found, and while the first scan runs, so the person knows what we
 // look at.
@@ -41,7 +42,7 @@ const WHAT_WE_CHECK = [
 async function ReportContent() {
   const user = await requireUser();
   const db = await scopedDb();
-  const [accounts, findings, found, firstDetectionDone, scanRunning] = await Promise.all([
+  const [accounts, findings, found, firstDetectionDone, scanRunning, uploaded] = await Promise.all([
     listAccountSummaries(db),
     db.findings.findMany({
       where: { status: { in: ["new", "shown"] } },
@@ -51,7 +52,14 @@ async function ReportContent() {
     moneyFound(user.id),
     isFirstDetectionComplete(user.id),
     scanInProgress(user.id),
+    // What uploaded statements cover, to ask for more months when it's short.
+    db.transactions.aggregate({
+      where: { source: "csv" },
+      _min: { date: true },
+      _max: { date: true },
+    }),
   ]);
+  const uploadDays = shortUploadDays(uploaded._min.date, uploaded._max.date);
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
   const state = reportState({
     transactions,
@@ -122,11 +130,11 @@ async function ReportContent() {
         <section className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">Your money report</h1>
           <p className="text-zinc-600 dark:text-zinc-400">
-            We haven&apos;t read any transactions yet. Link your bank and we&apos;ll look for money
-            you&apos;re losing.
+            We haven&apos;t read any transactions yet. Upload your bank statements and Jane will
+            look for money you&apos;re losing.
           </p>
           <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
-            Link an account
+            Upload your statements
           </Link>
         </section>
       ) : state === "nothing" ? (
@@ -143,6 +151,7 @@ async function ReportContent() {
               ))}
             </ul>
           </details>
+          {uploadDays !== null && <MoreMonths days={uploadDays} />}
           <ShownLink href="/actions" className="font-medium text-emerald-700 hover:underline">
             See what we&apos;re working on
           </ShownLink>
@@ -156,10 +165,15 @@ async function ReportContent() {
                 : `We found ${findings.length} ${findings.length === 1 ? "thing" : "things"} to look at`}
             </h1>
             <p className="text-zinc-600 dark:text-zinc-400">
-              Estimates from {transactions} transactions. The three that matter most are first; open
-              one to decide.
+              {found > 0
+                ? foundLine(
+                    transactions,
+                    findings.map((f) => f.type),
+                  )
+                : foundLine(transactions, [])}
             </p>
           </div>
+          {uploadDays !== null && <MoreMonths days={uploadDays} />}
           {/* What matters now (docs/design/area-pages.md): the three worth the most, open; the
               rest behind "more". */}
           <h2 className="text-xl font-semibold">What matters now</h2>
@@ -190,6 +204,22 @@ async function ReportContent() {
         </details>
       )}
     </>
+  );
+}
+
+// Uploaded statements cover under three months: monthly charges need more to show.
+function MoreMonths({ days }: { days: number }) {
+  return (
+    <p
+      data-more-months=""
+      className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+    >
+      Your statements cover {days} {days === 1 ? "day" : "days"}. Upload {SUGGESTED_UPLOAD_MONTHS}{" "}
+      months and Jane can find more.{" "}
+      <Link href="/import" className="font-medium underline">
+        Upload more statements
+      </Link>
+    </p>
   );
 }
 

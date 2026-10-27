@@ -1296,3 +1296,26 @@ html[data-landing] body footer {
 body:has([data-loading-bar]) > footer {
   display: none;
 }
+
+/* The busy bar on a pressed button (BusyBar, src/components/submit-button.tsx): a short line
+   that slides along the button's bottom edge until the server answers. Under reduced motion it
+   stays still across the whole edge, faint. */
+.busy-bar {
+  opacity: 0.6;
+  animation: busy-slide 1.1s var(--ease-out-soft) infinite;
+}
+@keyframes busy-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .busy-bar {
+    width: 100%;
+    opacity: 0.35;
+    animation: none;
+  }
+}

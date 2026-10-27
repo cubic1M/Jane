@@ -1,16 +1,20 @@
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import {
   EVENT_EVIDENCE,
+  EVENT_EVIDENCE_CRYPTO,
   EVENT_EVIDENCE_RANGE,
   EVENT_EVIDENCE_SUMMARY,
 } from "@/config/event-evidence";
 import {
   EVENT_FRESH_DAYS,
+  EVENT_SOURCE_LABELS,
+  EVENT_STORE_DAYS,
   EVENT_HOLD_DAYS,
   EVENT_MIN_CONFIDENCE,
   EVENT_TILT_BY_LEVEL,
   EVENT_TYPES,
-  EVENT_TYPE_IDS,
+  eventTypesFor,
+  type EventMarket,
   type EventTypeId,
 } from "@/config/events";
 import type { RiskLevel } from "@/config/investing";
@@ -20,6 +24,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { checkGuardrails } from "@/lib/guardrails";
 import { confidenceFor, type ClosedSlice, type EventSlice } from "@/planning/event-overlay";
+import { lastRefresh } from "./refresh";
 
 // The Events box on the investments page (founder, 2026-10-26): what's happening now, what the
 // overlay would do or did, how sure it is, its track record, and its switch. From what is stored:
@@ -30,6 +35,10 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type EventsView = {
   on: boolean;
+  // What it watches and when it last looked (never a blank box).
+  watching: { sources: { label: string; ok: boolean }[]; lastChecked: string | null };
+  // Nothing fresh: the box says so, and shows the most recent events from before (`earlier`).
+  quiet: boolean;
   // The 24-hour agent runs the paper account: it takes the overlay's slices as its own signals.
   agent: boolean;
   hasAccount: boolean;
@@ -48,6 +57,8 @@ export type EventsView = {
     plan: string;
     acting: boolean;
   }[];
+  // The most recent events from before the fresh window, when it is quiet: shown, not acted on.
+  earlier: { key: string; date: string; label: string; title: string; why: string }[];
   open: { ticker: string; side: string; tilt: number; enteredOn: string; reason: string }[];
   recent: {
     id: string;
@@ -59,6 +70,8 @@ export type EventsView = {
     confidence: number;
   }[];
   record: { type: EventTypeId; label: string; events: number; hits: number; confidence: number }[];
+  // The market whose events it shows: crypto for the 24-hour agent on crypto, else stock funds.
+  market: EventMarket;
   backtest: {
     from: string;
     to: string;
@@ -79,26 +92,39 @@ export async function loadEventsView(
 ): Promise<EventsView | null> {
   if (!(await adviceMode(userId, { client }))) return null;
   const db = scopedFor(userId, client);
+  // The 24-hour agent on crypto trades the crypto events; every other strategy, the stock-fund ones.
+  const agentMarket = (
+    await db.paperAccounts.findFirst({ select: { agentPolicy: true, agentMarket: true } })
+  )?.agentMarket;
+  const market: EventMarket = agentMarket === "crypto" ? "crypto" : "stocks";
   const [account, overlay, logs, events] = await Promise.all([
-    db.paperAccounts.findFirst({ select: { id: true, level: true, agentPolicy: true } }),
+    db.paperAccounts.findFirst({
+      select: { id: true, level: true, agentPolicy: true, agentMarket: true },
+    }),
     db.paperEventOverlays.findFirst({}),
     db.paperEventLogs.findMany({ orderBy: { at: "desc" }, take: 12 }),
     client.marketEvent.findMany({
       where: {
         knownAt: { lte: now },
-        date: { gte: new Date(now.getTime() - EVENT_FRESH_DAYS * DAY_MS) },
+        date: { gte: new Date(now.getTime() - EVENT_STORE_DAYS * DAY_MS) },
+        type: { in: eventTypesFor(market) },
       },
       orderBy: { knownAt: "desc" },
-      take: 8,
+      take: 12,
     }),
   ]);
+  const freshFrom = dayOf(new Date(now.getTime() - EVENT_FRESH_DAYS * DAY_MS));
+  const fresh = events.filter((e) => dayOf(e.date) >= freshFrom).slice(0, 8);
+  const older = events.filter((e) => dayOf(e.date) < freshFrom);
+  const checked = await lastRefresh({ client });
   const level = (account?.level ?? null) as RiskLevel | null;
   const state = (overlay?.state ?? {}) as { open?: EventSlice[]; closed?: ClosedSlice[] };
   const closed = state.closed ?? [];
-  const on = Boolean(overlay?.on && account && overlay.accountId === account.id);
+  // On by default: only switched off (or another account's row) is off.
+  const on = Boolean(account && (overlay ? overlay.on && overlay.accountId === account.id : true));
   const acted = new Map(logs.map((l) => [l.eventKey, l]));
 
-  const nowRows = events.flatMap((e) => {
+  const nowRows = fresh.flatMap((e) => {
     const type = EVENT_TYPES[e.type as EventTypeId];
     if (!type) return [];
     const confidence = confidenceFor(e.type as EventTypeId, closed, EVENT_EVIDENCE);
@@ -128,7 +154,7 @@ export async function loadEventsView(
     return safe(`${row.title}. ${row.plan}`) ? [row] : [];
   });
 
-  const record = EVENT_TYPE_IDS.map((type) => {
+  const record = eventTypesFor(market).map((type) => {
     const live = new Map<string, boolean[]>();
     for (const c of closed)
       if (c.type === type) live.set(c.eventKey, [...(live.get(c.eventKey) ?? []), c.hit]);
@@ -145,8 +171,33 @@ export async function loadEventsView(
     };
   });
 
+  // Calendar days between the event's day and today's.
+  const daysAgo = (d: Date) =>
+    Math.round((Date.parse(`${dayOf(now)}T00:00:00Z`) - d.getTime()) / DAY_MS);
+  const earlier = older.slice(0, 3).flatMap((e) => {
+    const type = EVENT_TYPES[e.type as EventTypeId];
+    if (!type) return [];
+    const row = {
+      key: e.key,
+      date: dayOf(e.date),
+      label: type.label,
+      title: e.title,
+      why: `${daysAgo(e.date)} days ago: older than ${EVENT_FRESH_DAYS} days, so not acted on`,
+    };
+    return safe(`${row.title}. ${row.why}`) ? [row] : [];
+  });
+
   return {
     on,
+    watching: {
+      sources: Object.entries(EVENT_SOURCE_LABELS).map(([key, label]) => ({
+        label,
+        ok: checked?.sources[key] !== "failed",
+      })),
+      lastChecked: checked?.checkedAt ?? null,
+    },
+    quiet: nowRows.length === 0,
+    earlier,
     agent: Boolean(account?.agentPolicy),
     hasAccount: Boolean(account),
     level,
@@ -171,6 +222,16 @@ export async function loadEventsView(
         confidence: l.confidence,
       })),
     record,
-    backtest: { ...EVENT_EVIDENCE_RANGE, ...EVENT_EVIDENCE_SUMMARY },
+    market,
+    backtest:
+      market === "crypto"
+        ? {
+            from: EVENT_EVIDENCE_CRYPTO.from,
+            to: EVENT_EVIDENCE_CRYPTO.to,
+            level: EVENT_EVIDENCE_RANGE.level,
+            alone: EVENT_EVIDENCE_CRYPTO.alone,
+            withEvents: EVENT_EVIDENCE_CRYPTO.withEvents,
+          }
+        : { ...EVENT_EVIDENCE_RANGE, ...EVENT_EVIDENCE_SUMMARY },
   };
 }

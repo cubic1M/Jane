@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCsv } from "./parse-csv";
+import { detectDelimiter, parseCsv } from "./parse-csv";
 
 describe("parseCsv", () => {
   it("splits simple rows and keeps line numbers", () => {
@@ -38,5 +38,21 @@ describe("parseCsv", () => {
 
   it("reports an unclosed quote clearly", () => {
     expect(() => parseCsv('a,"b\n1,2')).toThrow("unclosed quote");
+  });
+});
+
+describe("detectDelimiter", () => {
+  it("finds semicolons and tabs, ignoring ones inside quotes, and defaults to commas", () => {
+    expect(detectDelimiter("Datum;Text;Betrag\n01.09.2026;REWE;-23,40\n")).toBe(";");
+    expect(detectDelimiter("Date\tText\tAmount\n2026-09-01\tCoffee\t-4.50\n")).toBe("\t");
+    expect(detectDelimiter('Date,Text,Amount\n2026-09-01,"A; B; C",-4.50\n')).toBe(",");
+    expect(detectDelimiter("just one column\n")).toBe(",");
+  });
+
+  it("splits a semicolon file on semicolons, keeping decimal commas in their fields", () => {
+    expect(parseCsv('Datum;Betrag\n"Sep 5, 2026";-23,40\n')).toEqual([
+      { line: 1, fields: ["Datum", "Betrag"] },
+      { line: 2, fields: ["Sep 5, 2026", "-23,40"] },
+    ]);
   });
 });

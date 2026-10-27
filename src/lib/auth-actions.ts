@@ -5,7 +5,9 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, googleEnabled, signIn, signOut } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
+import { recordFailedSignIn } from "@/lib/auth-events";
 import { INVITE_COOKIE } from "@/lib/auth-gate";
+import { logAudit } from "@/lib/audit";
 import { track } from "@/lib/analytics";
 import {
   checkCode,
@@ -42,7 +44,10 @@ async function signInOrShowError(provider: string, options: Record<string, strin
 async function limitSignIn(email?: string): Promise<void> {
   const subjects = [ipKey(await headers()), ...(email ? [`email:${email.toLowerCase()}`] : [])];
   for (const subject of subjects) {
-    if (!(await hit("auth", subject)).ok) redirect("/login?error=TooManyRequests");
+    if (!(await hit("auth", subject)).ok) {
+      await recordFailedSignIn("rate_limited");
+      redirect("/login?error=TooManyRequests");
+    }
   }
 }
 
@@ -84,7 +89,10 @@ export async function signInWithEmail(formData: FormData): Promise<void> {
   const invite = inviteFrom(formData);
   if (invite) {
     const result = await redeemInvite(invite, email);
-    if (result !== "ok") redirect(`/signup?error=${INVITE_ERRORS[result]}`);
+    if (result !== "ok") {
+      await recordFailedSignIn(`invite_${result}`);
+      redirect(`/signup?error=${INVITE_ERRORS[result]}`);
+    }
   }
   await signInOrShowError("resend", { email: email.trim() });
 }
@@ -100,7 +108,10 @@ export async function signInWithGoogle(formData?: FormData): Promise<void> {
   const invite = formData ? inviteFrom(formData) : null;
   if (invite) {
     const result = await checkCode(invite);
-    if (result !== "ok") redirect(`/signup?error=${INVITE_ERRORS[result]}`);
+    if (result !== "ok") {
+      await recordFailedSignIn(`invite_${result}`);
+      redirect(`/signup?error=${INVITE_ERRORS[result]}`);
+    }
     (await cookies()).set(INVITE_COOKIE, normalizeCode(invite) as string, SHORT_COOKIE);
   }
   await signInOrShowError("google", {});
@@ -119,5 +130,10 @@ export async function joinTheWaitlist(formData: FormData): Promise<void> {
 }
 
 export async function signOutToHome(): Promise<void> {
+  const userId = (await auth())?.user?.id;
+  // Before the session goes, while we still know whose it was. Sample people aren't logged.
+  if (userId && !isTrialUser(userId)) {
+    await logAudit({ type: "user", id: userId }, "user_signed_out", { type: "user", id: userId });
+  }
   await signOut({ redirectTo: "/" });
 }

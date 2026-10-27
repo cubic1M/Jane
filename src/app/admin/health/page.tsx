@@ -12,6 +12,7 @@ async function Health() {
   const admin = await requireAdmin();
   const report = await healthReport(admin);
   const count = (counts: Record<string, number>, key: string) => counts[key] ?? 0;
+  const rlsWhole = report.rls.ok && report.rls.switchWorks;
 
   return (
     <>
@@ -39,6 +40,46 @@ async function Health() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-labelledby="rls-heading">
+        <h2 id="rls-heading" className="text-xl font-semibold">
+          Row-level security
+        </h2>
+        {/* A gap shows like the site's errors, in words and weight (the design is monochrome). */}
+        <p
+          className={
+            rlsWhole
+              ? "text-sm"
+              : "self-start border-2 border-current px-2 py-1 text-sm font-semibold"
+          }
+          role={rlsWhole ? undefined : "alert"}
+          data-testid="rls-coverage"
+        >
+          {rlsWhole ? "" : "[ERROR] "}
+          {report.rls.ok
+            ? `On: ${report.rls.tables.length} of ${report.rls.tables.length} user-owned tables covered`
+            : !report.rls.role
+              ? "Off: the database has no jane_rls role"
+              : `Gap: ${report.rls.missing.length} of ${report.rls.tables.length} user-owned tables not covered (${report.rls.missing.join(", ")})`}
+          {" · "}
+          {report.rls.switchWorks ? "this server switches to it" : "this server can't switch to it"}
+        </p>
+        <details className="rounded-xl border border-zinc-200 text-sm dark:border-zinc-800">
+          <summary className="cursor-pointer px-4 py-3 font-medium">Every table</summary>
+          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {report.rls.tables.map((t) => (
+              <li key={t.table} className="flex flex-wrap justify-between gap-2 px-4 py-2">
+                <span className="font-mono">{t.table}</span>
+                <span className={t.ok ? "" : "font-semibold"}>
+                  {t.ok ? "●" : "○"} RLS {t.rls ? "on" : "off"} · {t.policies}{" "}
+                  {t.policies === 1 ? "policy" : "policies"}
+                  {t.personPolicy ? "" : " · no per-person policy"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
       </section>
 
       <section className="grid gap-3 text-sm sm:grid-cols-3">

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/categorize/llm", () => ({ classifyMerchants: vi.fn(async () => new Map()) }));
 
 import { AccountNotFoundError, importCsvFiles, previewCsvFiles } from "./import-csv";
+import { classifyMerchants } from "@/categorize/llm";
 import { CsvFormatError } from "@/data-sources/csv/csv-source";
 import type { ScopedDb } from "@/lib/db-scoped";
 
@@ -24,10 +25,11 @@ const CSV_ACCOUNT = {
 
 const findUnique = vi.fn();
 const createMany = vi.fn();
+const findManyAccounts = vi.fn(async () => [{ id: "acct_1", type: "depository" }]);
 const db = {
   userId: "user_1",
-  accounts: { findUnique },
-  transactions: { createMany },
+  accounts: { findUnique, findMany: findManyAccounts },
+  transactions: { createMany, findMany: vi.fn(async () => []), updateMany: vi.fn() },
   merchantCategories: { findMany: vi.fn(async () => []), createMany: vi.fn() },
 } as unknown as ScopedDb;
 
@@ -58,7 +60,14 @@ describe("importCsvFiles", () => {
   it("stores categorized transactions with dedupe keys and skips duplicates", async () => {
     const counts = await importCsvFiles(db, "acct_1", [fixture("chase-checking.csv")]);
 
-    expect(counts).toEqual({ parsed: 9, inserted: 9, duplicates: 0, skipped: 1 });
+    expect(counts).toEqual({
+      parsed: 9,
+      inserted: 9,
+      duplicates: 0,
+      skipped: 1,
+      // For upload_succeeded: each file's format and transaction count.
+      files: [{ format: "chase_checking", rows: 9 }],
+    });
     const { data, skipDuplicates } = createMany.mock.calls[0][0];
     expect(skipDuplicates).toBe(true);
     expect(data[0]).toEqual({
@@ -77,6 +86,19 @@ describe("importCsvFiles", () => {
     });
   });
 
+  it("says each step as it starts, and never waits on Claude", async () => {
+    vi.mocked(classifyMerchants).mockClear();
+    const stages: unknown[] = [];
+    await importCsvFiles(db, "acct_1", [fixture("chase-checking.csv")], {
+      onStage: (stage) => stages.push(stage),
+    });
+    expect(stages).toEqual([{ stage: "sorting", rows: 9 }, { stage: "saving" }]);
+    // Merchants no rule knows are sorted after the response (categorizeLeftovers).
+    expect(vi.mocked(classifyMerchants).mock.calls.every(([asked]) => asked.length === 0)).toBe(
+      true,
+    );
+  });
+
   it("reports rows the database already had as duplicates", async () => {
     createMany.mockResolvedValue({ count: 0 });
 
@@ -85,6 +107,7 @@ describe("importCsvFiles", () => {
       inserted: 0,
       duplicates: 9,
       skipped: 1,
+      files: [{ format: "chase_checking", rows: 9 }],
     });
   });
 

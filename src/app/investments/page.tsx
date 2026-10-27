@@ -23,18 +23,20 @@ import { TradingAgent } from "@/components/trading-agent";
 import { AGENT_INTERVAL_IDS, AGENT_MARKET_IDS } from "@/config/trading-agent";
 import { agentChoices, loadAgentView } from "@/lib/trading-agent/agent";
 import { EventsBox } from "@/components/events-box";
+import { refreshEventsIfStale } from "@/lib/events/refresh";
 import { runEventsIfStale } from "@/lib/events/run";
 import { loadEventsView } from "@/lib/events/view";
 import { formatReturn } from "@/insights/returns";
 import { ruleReplaysFor } from "@/lib/investments/rule-replay";
 import { latestStrategies } from "@/lib/investments/strategy-eval";
 import { practiceProfileOf } from "@/lib/practice/preferences";
-import { formatBps, type HoldingView } from "@/insights/investments";
+import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
 // it and where each number came from, and the balances month by month. The page is a tree
@@ -95,7 +97,7 @@ function HoldingRow({ h }: { h: HoldingView }) {
         )}
         <div>
           <dt className="text-zinc-500">Yearly fund cost</dt>
-          <dd>{h.expenseRatioBps === null ? "Not known" : formatBps(h.expenseRatioBps)}</dd>
+          <dd>{h.expenseRatioBps === null ? "Not known" : formatRate(h.expenseRatioBps)}</dd>
         </div>
       </dl>
       <p className="text-xs text-zinc-500">
@@ -161,8 +163,12 @@ async function InvestmentsContent({
   after(() => scanOnOpenQuietly(user.id));
   // The paper account valued at the latest closes, when its last run is stale.
   after(() => runPaperIfStale(user.id));
-  // The events overlay on top of it, when its daily run was missed.
-  after(() => runEventsIfStale(user.id));
+  // The events: read again when the last check is over an hour old (one shared refresh, locked),
+  // then the overlay on top of the paper account, when its run was missed or there's news.
+  after(async () => {
+    const refreshed = await refreshEventsIfStale();
+    await runEventsIfStale(user.id, { news: Boolean(refreshed?.ran && refreshed.report.stored) });
+  });
   const {
     data,
     simulated,

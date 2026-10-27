@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./llm", () => ({ classifyMerchants: vi.fn() }));
 
-import { categorizeTransactions } from "./categorize";
+import { categorizeLeftovers, categorizeTransactions } from "./categorize";
 import { classifyMerchants } from "./llm";
 import type { NormalizedTransaction } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
@@ -119,5 +119,73 @@ describe("categorizeTransactions", () => {
     expect(result.category).toBeNull();
     expect(result.categorySource).toBeNull();
     expect(createMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("an upload's categories, quickly", () => {
+  beforeEach(() => {
+    cache = [];
+    createMany.mockReset().mockResolvedValue({ count: 0 });
+    vi.mocked(classifyMerchants).mockReset().mockResolvedValue(new Map());
+  });
+
+  it("uses the cache but never waits on Claude with askClaude: false", async () => {
+    cache = [
+      { merchantKey: "corner market", pfcDetailed: "FOOD_AND_DRINK_GROCERIES", source: "llm" },
+    ];
+    const results = await categorizeTransactions(
+      [txn("CORNER MARKET 0042"), txn("FANCY SALON")],
+      db,
+      { askClaude: false },
+    );
+    expect(classifyMerchants).toHaveBeenCalledWith([]);
+    expect(results.map((r) => r.category?.detailed ?? null)).toEqual([
+      "FOOD_AND_DRINK_GROCERIES",
+      null,
+    ]);
+  });
+
+  it("sorts what's left after the upload, one update per category", async () => {
+    vi.mocked(classifyMerchants).mockResolvedValue(
+      new Map([
+        ["fancy salon", "PERSONAL_CARE_HAIR_AND_BEAUTY"],
+        ["blue noodle", "FOOD_AND_DRINK_RESTAURANT"],
+      ]),
+    );
+    const rows = ["FANCY SALON", "BLUE NOODLE 101", "BLUE NOODLE 101", "MYSTERY SHOP"].map(
+      (description, i) => ({
+        id: `t${i}`,
+        accountId: "acct_1",
+        date: new Date("2026-09-01T00:00:00Z"),
+        description,
+        amountCents: 1200,
+      }),
+    );
+    const updateMany = vi.fn(async ({ where }: { where: { id: { in: string[] } } }) => ({
+      count: where.id.in.length,
+    }));
+    const transactions = { findMany: vi.fn(async () => rows), updateMany };
+
+    const changed = await categorizeLeftovers({ ...db, transactions } as never);
+
+    expect(transactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { pfcDetailed: null, categorySource: null } }),
+    );
+    expect(changed).toBe(3);
+    expect(updateMany).toHaveBeenCalledTimes(2);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["t1", "t2"] }, pfcDetailed: null },
+      data: {
+        pfcPrimary: "FOOD_AND_DRINK",
+        pfcDetailed: "FOOD_AND_DRINK_RESTAURANT",
+        categorySource: "llm",
+      },
+    });
+  });
+
+  it("does nothing when every row has a category", async () => {
+    const transactions = { findMany: vi.fn(async () => []), updateMany: vi.fn() };
+    expect(await categorizeLeftovers({ ...db, transactions } as never)).toBe(0);
+    expect(classifyMerchants).not.toHaveBeenCalled();
   });
 });

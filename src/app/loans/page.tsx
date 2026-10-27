@@ -7,7 +7,6 @@ import { AreaPage } from "@/components/area-page/area-page";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { ViewTracker } from "@/components/view-tracker";
 import { sourceLabel, type Debt } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import { ComparisonCards } from "@/components/comparison-cards";
 import { adviceMode } from "@/lib/advice-mode";
 import { COMPARE_TOPICS, compareWant, itemId, type LoansBranch } from "@/lib/area-pages/loans";
@@ -21,6 +20,7 @@ import { requireUser } from "@/lib/session";
 import { clearTerms, saveTerms } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // Every debt in one place (spec step 109): loans and cards with what the bank reports,
 // buy now, pay later plans found from payments, and terms the person typed for what the
@@ -433,7 +433,9 @@ async function LoansContent({
         <p className="text-zinc-600 dark:text-zinc-400">
           {book.debts.length === 0
             ? "No loans, cards or plans yet."
-            : `You owe ${formatCents(book.totalOwedCents)}, ${formatCents(book.monthlyCents)} due each month. Open a branch to see more.`}
+            : book.debts.every((d) => d.balanceCents === null)
+              ? "Your files don't say what you owe yet. Add a balance on the import page. Open a branch to see more."
+              : `You owe ${formatCents(book.totalOwedCents)}, ${formatCents(book.monthlyCents)} due each month. Open a branch to see more.`}
         </p>
         <nav aria-label="Loans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/debt" className={LINK}>

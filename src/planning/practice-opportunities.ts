@@ -124,15 +124,6 @@ export type OpportunityInput = ScanInput & {
   lastDepositOn?: string | null;
 };
 
-// Kinds that never trade: they suggest, or open the settings.
-export const ADVICE_ONLY_KINDS: readonly OpportunityKind[] = [
-  "payday_timing",
-  "drift_warning",
-  "glide_path",
-  "risk_mismatch",
-  "max_drop_near",
-];
-
 const CLASSES = Object.keys(PRACTICE_ETFS) as PracticeClass[];
 const LABEL: Record<PracticeClass, string> = {
   us_stocks: "US stocks",

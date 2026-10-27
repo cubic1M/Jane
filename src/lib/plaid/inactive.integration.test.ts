@@ -53,10 +53,13 @@ describe.runIf(url)("inactive cleanup against a real database", () => {
     vi.spyOn(console, "info").mockImplementation(() => {});
     const active = await person("active", 3);
     const quiet = await person("quiet", 55);
+    // Just as quiet, but left out of the run (as another test file's person would be).
+    const outsider = await person("outsider", 55);
+    const userIds = [active, quiet];
     const send = vi.fn();
     const remove = vi.fn();
 
-    await runInactiveCleanup({ client, now: NOW, send, remove });
+    await runInactiveCleanup({ client, now: NOW, send, remove, userIds });
     expect(
       (await client.user.findUniqueOrThrow({ where: { id: quiet } })).plaidRemovalWarnedAt,
     ).toEqual(NOW);
@@ -66,9 +69,13 @@ describe.runIf(url)("inactive cleanup against a real database", () => {
     expect(remove).not.toHaveBeenCalled();
 
     const weekLater = new Date(NOW.getTime() + 7 * DAY);
-    await runInactiveCleanup({ client, now: weekLater, send, remove });
+    await runInactiveCleanup({ client, now: weekLater, send, remove, userIds });
     expect(remove.mock.calls.filter((c) => c[0] === quiet)).toHaveLength(1);
     expect(remove.mock.calls.some((c) => c[0] === active)).toBe(false);
     expect(remove.mock.calls[0][2]).toBe("inactive");
+    expect(
+      (await client.user.findUniqueOrThrow({ where: { id: outsider } })).plaidRemovalWarnedAt,
+    ).toBeNull();
+    expect(remove.mock.calls.some((c) => c[0] === outsider)).toBe(false);
   });
 });

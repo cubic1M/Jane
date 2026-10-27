@@ -27,10 +27,19 @@ async function signIn(page: Page, baseURL: string | undefined) {
 }
 
 async function addAccount(page: Page, name: string, type: string, balance: string) {
-  await page.getByLabel("Name").fill(name);
-  await page.getByLabel("Type").selectOption({ label: type });
-  await page.getByLabel("Current balance").fill(balance);
-  await page.getByRole("button", { name: "Add account" }).click();
+  // Adding an account by hand is folded away: a first upload can make its own.
+  const addAccount = page.locator("[data-add-account]");
+  if ((await addAccount.getAttribute("open")) === null) {
+    await addAccount.getByText("Add an account by hand").click();
+  }
+  await addAccount.getByLabel("Name").fill(name);
+  await addAccount.getByLabel("Type").selectOption({ label: type });
+  await addAccount.getByLabel("Current balance").fill(balance);
+  await addAccount.getByRole("button", { name: "Add account" }).click();
+  // The upload goes into it once it shows as chosen.
+  await expect(page.locator('select[name="accountId"] option:checked')).toHaveText(
+    new RegExp(`^${name} `),
+  );
   await expect(page.getByRole("option", { name: new RegExp(`^${name} `) })).toHaveCount(1);
 }
 

@@ -14,6 +14,7 @@ import { explainFindings } from "@/lib/explanations";
 import { deliverChatNotifications } from "@/lib/jane-agent/notify";
 import { scrub } from "@/lib/scrub";
 import { retryControllerStep, runController } from "@/lib/controller";
+import type { OnlyPeople } from "@/lib/only-people";
 
 // A small job queue in Postgres for slow work that can fail and be retried. A job is
 // claimed with FOR UPDATE SKIP LOCKED, so two runners never take the same one; a failure
@@ -84,8 +85,16 @@ export async function enqueueJob(
   return job.id;
 }
 
-async function claim(client: PrismaClient, now: Date, limit: number, id?: string) {
+// `userIds`: only jobs for those people (by the payload's userId).
+async function claim(
+  client: PrismaClient,
+  now: Date,
+  limit: number,
+  id?: string,
+  userIds?: readonly string[],
+) {
   const stuckBefore = new Date(now.getTime() - JOB_STUCK_MINUTES * MINUTE);
+  const people = userIds ? [...userIds] : null;
   return client.$queryRaw<Claimed[]>`
     UPDATE jobs SET status = 'running', attempts = attempts + 1, updated_at = ${now}
     WHERE id IN (
@@ -93,6 +102,7 @@ async function claim(client: PrismaClient, now: Date, limit: number, id?: string
       WHERE ((status = 'queued' AND run_at <= ${now})
              OR (status = 'running' AND updated_at < ${stuckBefore}))
         AND (${id ?? null}::text IS NULL OR id = ${id ?? null})
+        AND (${people}::text[] IS NULL OR payload->>'userId' = ANY(${people}::text[]))
       ORDER BY run_at, id
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
@@ -131,9 +141,10 @@ export async function runDueJobs({
   client = defaultClient,
   now = new Date(),
   handlers = HANDLERS,
-}: Options = {}): Promise<{ done: number; retried: number; failed: number }> {
+  userIds,
+}: Options & OnlyPeople = {}): Promise<{ done: number; retried: number; failed: number }> {
   const counts = { done: 0, retried: 0, failed: 0 };
-  for (const job of await claim(client, now, JOB_BATCH)) {
+  for (const job of await claim(client, now, JOB_BATCH, undefined, userIds)) {
     counts[await execute(job, client, now, handlers)] += 1;
   }
   return counts;

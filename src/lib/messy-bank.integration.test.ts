@@ -123,19 +123,26 @@ describe.runIf(url)("a messy real bank, through the CSV import", { timeout: 120_
         title: "Netflix went up from $15.49 to $17.99",
         annualSavingsCents: 3_000,
       },
+      // The $139 "AMAZON PRIME*" charge, seen once: the yearly membership (accuracy bench).
+      // Amazon shopping ("AMZN Mktp US") still isn't a subscription.
+      expect.objectContaining({
+        title: "Review your Amazon Prime subscription",
+        annualSavingsCents: 13_900,
+      }),
       expect.objectContaining({ title: "Review your Netflix subscription" }),
       expect.objectContaining({ title: "Review your Planet Fitness subscription" }),
       expect.objectContaining({ title: "Review your Spotify subscription" }),
     ]);
 
     const input = await loadDetectionInput(userId, { client, now: NOW });
-    // Coffee three times a week, Amazon orders and weekly groceries aren't subscriptions.
+    // Coffee three times a week, Amazon orders and weekly groceries aren't subscriptions; the
+    // yearly Prime membership is.
     expect(
       recurringCharges(input)
         .filter((r) => r.subscription)
         .map((r) => r.merchant)
         .sort(),
-    ).toEqual(["Netflix", "Planet Fitness", "Spotify"]);
+    ).toEqual(["Amazon Prime", "Netflix", "Planet Fitness", "Spotify"]);
     // The monthly move to savings isn't a bill, but the forecast still takes it out of checking.
     const bills = upcomingBills(input, 31).map((b) => b.merchant);
     expect(bills.filter((m) => MOVING_MONEY.test(m))).toEqual([]);

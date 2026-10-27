@@ -12,8 +12,10 @@ import { addDays } from "./units";
 // moved to the person's own accounts isn't a charge. Pure.
 
 export type RecurringCharge = {
-  // The stream key ("merchant:netflix"), which is also the subscription finding's key.
+  // The stream key ("merchant:netflix"), which is also the subscription finding's key. A second
+  // subscription billed through the same merchant has its price on it ("merchant:apple@1099").
   key: string;
+  merchantKey: string;
   merchant: string;
   frequency: Frequency;
   lastAmountCents: number;
@@ -31,6 +33,7 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
     .filter((s) => isBillStream(s) && !OWN_ACCOUNT_TRANSFERS.includes(s.pfcDetailed ?? ""))
     .map((s) => ({
       key: s.key,
+      merchantKey: s.merchantKey,
       merchant: billName(s),
       frequency: s.frequency as Frequency,
       lastAmountCents: s.lastAmountCents,

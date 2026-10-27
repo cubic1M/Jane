@@ -6,6 +6,20 @@ import { RETENTION_PERIODS } from "./retention";
 export type Limit = { limit: number; windowSeconds: number };
 
 export const RATE_LIMITS = {
+  // Backstops in the proxy (src/lib/edge-limits.ts), before any API route or server action
+  // runs, on top of the per-feature limits below. Per IP, and per signed-in session.
+  // Polling while a bank scans is about 100 requests a minute, well under these.
+  api: { limit: 300, windowSeconds: 60 },
+  apiSession: { limit: 300, windowSeconds: 60 },
+  // Server actions (forms and buttons that change something).
+  actions: { limit: 120, windowSeconds: 60 },
+  actionsSession: { limit: 60, windowSeconds: 60 },
+  // Try Jane's sample people (spec step 138) get their own, tighter session backstops: anyone
+  // can make one without an account.
+  trialApi: { limit: 180, windowSeconds: 60 },
+  trialActions: { limit: 30, windowSeconds: 60 },
+  // Coming back from a sign-in link or from Google, per IP.
+  authCallback: { limit: 30, windowSeconds: 10 * 60 },
   // Sign-in and sign-up emails, per IP and per address.
   auth: { limit: 10, windowSeconds: 10 * 60 },
   // Plaid link tokens and token exchanges, per user.
@@ -18,6 +32,8 @@ export const RATE_LIMITS = {
   membership: { limit: 20, windowSeconds: 10 * 60 },
   // Analytics events from the browser, per IP.
   events: { limit: 120, windowSeconds: 60 },
+  // Batches from the beta's activity log (one every few seconds per tab), per IP.
+  activity: { limit: 120, windowSeconds: 60 },
   // Unsubscribe links, per IP.
   unsubscribe: { limit: 20, windowSeconds: 10 * 60 },
   // "Download my data", per user.
@@ -41,6 +57,10 @@ export const RATE_LIMITS = {
   trial: { limit: 20, windowSeconds: 60 * 60 },
   // Questions Claude answers for one sample (Try Jane) person, in all: one very long window.
   claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
+  // Invite codes made by an admin, per admin.
+  invites: { limit: 30, windowSeconds: 60 * 60 },
+  // Reports of something the Content-Security-Policy blocked, per IP (each is stored).
+  cspReport: { limit: 20, windowSeconds: 10 * 60 },
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;

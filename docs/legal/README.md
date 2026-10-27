@@ -27,6 +27,7 @@ a change in one breaks the test until the pages say it too.
 | Delete everything in one step; Plaid first, nothing deleted if Plaid can't be reached; ids-only audit record; /goodbye | `deleteAllData` (`src/lib/account-deletion.ts`), `src/app/goodbye/page.tsx` |
 | Trials deleted after `TRIAL_HOURS`, never emailed or counted | `src/lib/trial.ts`, `src/config/trial.ts`, `src/lib/analytics.ts` (`isTrialUser`) |
 | PostHog gets event names and some figures, keyed by a random id, from the server, only when configured | `src/lib/analytics.ts` (`POSTHOG_KEY`) |
+| Beta activity log: pages, buttons, which fields were filled and their length, never typed values; real beta users only (not admins, trials, the demo bank); 180 days; disclosed on /signup | `src/lib/activity/`, `src/config/activity.ts` (`ACTIVITY_DISCLOSURE`), `src/app/api/activity/route.ts` |
 | Resend sends sign-in links and the emails people opt into | `src/lib/email.ts` |
 | Browser push carries notifications when turned on | `src/lib/push.ts` (`VAPID_*`) |
 | Cookies: the sign-in cookie; `fc_invite` and `fc_terms` (15 minutes); `fc_aid` (a random id, a year); browser storage for display choices | Auth.js; `src/lib/auth-actions.ts`; `src/app/api/events/route.ts`; `src/components/side-chat/store.ts`, `src/lib/ask-jane.ts`, `src/app/landing-mode-switch.tsx` |
@@ -104,6 +105,10 @@ a change in one breaks the test until the pages say it too.
     enough, and what about household members' joint accounts?
 12. **Referral fees and the membership test.** What disclosure do partner fees and the Stripe
     membership test need?
+13. **Beta activity log.** During the beta we record each signed-in person's pages, button
+    presses, which form fields they filled (and the length, never the value) and time on page, in
+    our own database, with a one-line notice on /signup and in the policy. Is that notice enough
+    under California's wiretap and session-replay case law (CIPA), or do we need an opt-in box?
 
 ## When the review is done
 

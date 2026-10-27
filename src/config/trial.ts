@@ -11,3 +11,7 @@ export const TRIAL_HOURS = RETENTION_PERIODS.trialPeople.days * 24;
 // .invalid domain can never receive mail.
 export const TRIAL_ID_PREFIX = "trial_";
 export const TRIAL_EMAIL_DOMAIN = "try.jane.invalid";
+
+// Trial sessions' tokens start with this, so the proxy can give them their own rate limits
+// (src/lib/edge-limits.ts) without a database read. The rest is 256 random bits.
+export const TRIAL_SESSION_PREFIX = "trial_";

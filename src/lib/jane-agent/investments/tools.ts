@@ -1,6 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { formatBps } from "@/insights/investments";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { GOALS, HORIZONS, RISK_LEVELS, type RiskLevel } from "@/config/investing";
 import { DEMO_ADVICE_LABEL } from "@/config/advice";
@@ -82,6 +81,7 @@ import { tradeLog } from "@/lib/practice/autopilot";
 import { loadPractice } from "@/lib/practice/portfolio";
 import { practiceIdeasFor } from "./practice-ideas";
 import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
+import { formatRate } from "@/lib/percent";
 
 // Claude's tools for investment questions in Jane's chat (spec step 128 on): read-only,
 // scoped to the person, and every dollar figure recorded for the guardrails. Each later
@@ -402,7 +402,7 @@ export async function runInvestmentTool(
             value: money(h.valueCents),
             paid: h.costBasisCents === null || h.isCash ? null : money(h.costBasisCents),
             gainOrLoss: h.gainCents === null ? null : money(h.gainCents),
-            yearlyCost: h.expenseRatioBps === null ? null : formatBps(h.expenseRatioBps),
+            yearlyCost: h.expenseRatioBps === null ? null : formatRate(h.expenseRatioBps),
             source: h.source,
           })),
         })),
@@ -449,7 +449,7 @@ export async function runInvestmentTool(
         funds: fees.funds.map((f) => ({
           name: f.holding.name,
           account: f.accountName,
-          yearlyCost: formatBps(f.expenseRatioBps),
+          yearlyCost: formatRate(f.expenseRatioBps),
           aYear: money(f.yearlyCents),
         })),
         costNotKnown: fees.unknown,
@@ -460,7 +460,7 @@ export async function runInvestmentTool(
               hold: e.name,
               ticker: e.ticker,
               kind: e.category,
-              itsYearlyCost: formatBps(e.expenseRatioBps),
+              itsYearlyCost: formatRate(e.expenseRatioBps),
               offeredInPlan: e.inPlanMenu,
               savingAYear: money(e.yearlySavingCents),
               [`savingOver${fees.years}Years`]: span(e.overYears),

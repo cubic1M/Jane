@@ -7,9 +7,9 @@ import {
   SNOWBALL_QUICK_WIN_MONTHS,
 } from "@/config/debt";
 import type { Debt } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { payoffOrder, payoffPlan, type DebtCard, type PayoffPlan, type Strategy } from "./debt";
+import { formatRate } from "@/lib/percent";
 
 // Payoff plans across every debt (spec step 110): the debt planner's own math
 // (./debt.ts payoffPlan, so the numbers always match /debt), over every loan, card and

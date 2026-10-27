@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DUPLICATE_CHARGE_PER_SEAT_CATEGORIES } from "@/config/detection";
 import { AS_OF, CARD, CHECKING, input, tx } from "../__fixtures__/build";
 import { buildStreams } from "../streams";
 import type { DetectionInput, DetectionTransaction } from "../types";
@@ -56,5 +57,18 @@ describe("duplicate_charge", () => {
     none([charge(10), charge(10), charge(8, { amountCents: -4_999 })]);
     // Too old to dispute.
     none([charge(90), charge(90)]);
+    // Two concert tickets, or two fares: a seat each.
+    const seat = (pfcDetailed: string) => ({
+      pfcPrimary: pfcDetailed.split("_")[0],
+      pfcDetailed,
+    });
+    for (const category of DUPLICATE_CHARGE_PER_SEAT_CATEGORIES) {
+      none([charge(10, seat(category)), charge(10, seat(category))]);
+    }
+    const cinema = { description: "AMC THEATRES 2201", merchantName: null };
+    none([charge(10, cinema), charge(10, cinema)]);
+    // Two overdraft fees on one day: the bank fees finding's.
+    const overdraft = { pfcPrimary: "BANK_FEES", pfcDetailed: "BANK_FEES_OVERDRAFT_FEES" };
+    none([charge(10, overdraft), charge(10, overdraft)]);
   });
 });

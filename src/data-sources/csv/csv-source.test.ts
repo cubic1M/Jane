@@ -83,14 +83,46 @@ describe("Chase credit card export", () => {
 });
 
 describe("readCsvFile", () => {
-  it("rejects an unknown format with a readable message instead of crashing", () => {
+  it("rejects an unknown format with a readable message and the column picker's choices", () => {
     const result = readCsvFile(fixture("unknown-bank.csv"));
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toContain("don't recognize this file's format");
-    expect(result.error).toContain("Chase checking or savings");
-    expect(result.error).toContain("Date, Payee, Debit, Credit");
+    expect(result.reason).toBe("unknown_format");
+    expect(result.error).toContain("Pick which column is which");
+    expect(result.choices?.columns).toHaveLength(4);
+  });
+
+  it.each([
+    [
+      "a web page",
+      "<!DOCTYPE html>\n<html><head><title>Sign in</title></head><body></body></html>",
+    ],
+    ["a page saved without a doctype", "<div class='x'>Accounts</div>\n<table></table>"],
+    ["a PDF", "%PDF-1.7\n%\u00e2\u00e3\n1 0 obj"],
+    ["an Excel file", "PK\u0003\u0004\u0014\u0000\u0006\u0000"],
+    ["binary bytes", "\ufffd\ufffdPNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR"],
+  ])("rejects %s up front, before the column picker", (_, text) => {
+    expect(readCsvFile({ name: "statement.csv", text })).toEqual({
+      ok: false,
+      file: "statement.csv",
+      error: "This isn't a CSV statement. Download the CSV from your bank's website.",
+      reason: "not_csv",
+    });
+  });
+
+  it("says plainly when a file has too few columns to be a statement", () => {
+    expect(readCsvFile({ name: "notes.csv", text: "Shopping list\nmilk\neggs\n" })).toMatchObject({
+      ok: false,
+      reason: "unreadable",
+      error:
+        "This file has one column, and a statement needs at least a date, a description and an amount. Download the CSV from your bank's website.",
+    });
+  });
+
+  it("keeps a description with a few odd characters", () => {
+    const text = "Date,Description,Amount\n2026-09-01,CAF\u00c9 \u2013 \u00dcBER,-4.50\n";
+    expect(readCsvFile({ name: "x.csv", text })).toMatchObject({ reason: "unknown_format" });
   });
 
   it("rejects an empty file", () => {
@@ -98,6 +130,7 @@ describe("readCsvFile", () => {
       ok: false,
       file: "empty.csv",
       error: "The file is empty.",
+      reason: "unreadable",
     });
   });
 

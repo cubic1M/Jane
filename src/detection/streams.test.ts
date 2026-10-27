@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AS_OF,
   CARD,
   GROCERIES,
   HULU,
@@ -11,6 +12,9 @@ import {
   tx,
 } from "./__fixtures__/build";
 import { buildStreams, detectRecurring } from "./streams";
+import { addDays } from "./units";
+
+const RENT = { pfcPrimary: "RENT_AND_UTILITIES", pfcDetailed: "RENT_AND_UTILITIES_RENT" };
 
 describe("fallback recurring detection", () => {
   it("finds a monthly charge with steady amounts", () => {
@@ -48,8 +52,85 @@ describe("fallback recurring detection", () => {
     expect(stream.annualCostCents).toBe(1000 * 52);
   });
 
-  it("needs at least three charges", () => {
-    expect(detectRecurring(input({ transactions: monthly(2, 1549, NETFLIX) }))).toEqual([]);
+  it("needs at least three charges, or two a month apart for a bill or a subscription", () => {
+    const shop = { ...GROCERIES, pfcPrimary: "GENERAL_MERCHANDISE", pfcDetailed: null };
+    expect(detectRecurring(input({ transactions: monthly(2, 4999, shop) }))).toEqual([]);
+
+    const [stream] = detectRecurring(input({ transactions: monthly(2, 1549, NETFLIX) }));
+    expect(stream).toMatchObject({ frequency: "MONTHLY", confidence: "low" });
+    expect(
+      detectRecurring(input({ transactions: monthly(2, 9000, { ...GROCERIES, ...RENT }) })),
+    ).toHaveLength(1);
+
+    // Two a week apart is a second purchase.
+    const week = ["2026-10-01", "2026-10-08"].map((date) => tx({ ...NETFLIX, date }));
+    expect(detectRecurring(input({ transactions: week }))).toEqual([]);
+  });
+
+  it("isn't fooled by a few of a shop's many charges landing a month apart", () => {
+    // Weekly groceries, small and big; three middling ones happen to come a month apart.
+    const weekly = Array.from({ length: 10 }, (_, i) =>
+      tx({ ...GROCERIES, date: addDays(AS_OF, -7 * i - 1), amountCents: i % 2 ? 5_000 : 15_000 }),
+    );
+    const alike = [0, 28, 56].map((days) =>
+      tx({ ...GROCERIES, date: addDays(AS_OF, -days - 3), amountCents: 10_000 + days }),
+    );
+
+    expect(detectRecurring(input({ transactions: [...weekly, ...alike] }))).toEqual([]);
+    // Alone, the three are a run.
+    expect(detectRecurring(input({ transactions: alike }))).toHaveLength(1);
+  });
+
+  it("finds each subscription billed through an app store, at its own price", () => {
+    const apple = { description: "APPLE.COM/BILL 866-712-7753 CA", pfcDetailed: null };
+    const transactions = [
+      ...monthly(4, 99, apple).map((t) => ({ ...t, date: t.date.slice(0, 8) + "05" })),
+      ...monthly(4, 1099, apple),
+      tx({ ...apple, date: monthsAgo(2, 20), amountCents: 499 }),
+    ];
+
+    const streams = detectRecurring(input({ transactions }));
+
+    expect(streams.map((s) => [s.key, s.merchantKey, s.lastAmountCents])).toEqual([
+      ["merchant:apple", "apple", 99],
+      ["merchant:apple@1099", "apple", 1099],
+    ]);
+  });
+
+  it("finds a yearly plan seen once, under the plan's own name", () => {
+    const prime = { description: "AMAZON PRIME*2K4AB7XY0", pfcDetailed: null };
+    const once = (description: string, amountCents: number) =>
+      detectRecurring(
+        input({ transactions: [tx({ ...prime, description, date: monthsAgo(5), amountCents })] }),
+      );
+
+    expect(once(prime.description, 13_900)).toEqual([
+      expect.objectContaining({
+        key: "merchant:amazon prime",
+        frequency: "ANNUALLY",
+        annualCostCents: 13_900,
+        confidence: "low",
+        active: true,
+      }),
+    ]);
+    expect(once("DUOLINGO PLUS", 8_399)).toHaveLength(1);
+    // A rental, something else the company sells, a one-off too small or too big.
+    expect(once("AMAZON PRIME VIDEO*2K4", 13_900)).toEqual([]);
+    expect(once("ADOBE STOCK 408-536-6000", 7_999)).toEqual([]);
+    expect(once(prime.description, 499)).toEqual([]);
+    expect(once("PELOTON* BIKE", 144_500)).toEqual([]);
+    // Something from the company's shop, at a plan's price (accuracy bench, second held-out set).
+    expect(once("PELOTON* APPAREL", 10_001)).toEqual([]);
+    expect(once("NYTIMES*STORE", 8_500)).toEqual([]);
+    // The plan named after the "*", cut short by the bank, is the plan, and a subscription.
+    expect(once("MICROSOFT*MICROSOFT 365 P", 9_999)).toEqual([
+      expect.objectContaining({ key: "merchant:microsoft", namedPlan: true }),
+    ]);
+    expect(once("MSFT * MICROSOFT 365 FAMILY", 12_999)).toHaveLength(1);
+    expect(once("MICROSOFT*XBOX GAME 4K2", 6_999)).toEqual([]);
+    // Two of them in a year aren't a yearly plan.
+    const twice = [3, 8].map((m) => tx({ ...prime, date: monthsAgo(m), amountCents: 13_900 }));
+    expect(detectRecurring(input({ transactions: twice }))).toEqual([]);
   });
 
   it("ignores charges at irregular gaps", () => {

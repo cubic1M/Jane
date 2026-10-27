@@ -542,7 +542,10 @@ export function buildProfile(input: ProfileInput): Profile {
   const cardDebt = accounts
     .filter((a) => cardIds.has(a.id))
     .reduce((s, a) => s + Math.max(0, a.balanceCents), 0);
-  set("card_debt_cents", cardDebt, "seen", "cards linked", cardIds.size);
+  // With no card linked the data can't say what's owed on cards (QA: "Credit card debt = $0,
+  // 63% sure, based on no cards linked").
+  if (cardIds.size > 0) set("card_debt_cents", cardDebt, "seen", "cards linked", cardIds.size);
+  else unknown("card_debt_cents");
   const payday = count(
     (t) => t.pfc === "LOAN_PAYMENTS_CASH_ADVANCES" || t.pfc === "LOAN_PAYMENTS_EWA",
   );

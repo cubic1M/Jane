@@ -5,13 +5,13 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { PMI_SOURCE } from "@/config/debt";
-import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { loadMortgage } from "@/lib/mortgage";
 import { ensureChecked } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
 import { pmiTimelineLines } from "@/lib/jane-agent/home-equity-replies";
 import { LoadingBar } from "@/components/loading-bar";
+import { formatRate } from "@/lib/percent";
 
 // The mortgage, watched (spec step 115): PMI by the one rule (the home's value when the loan
 // began, as on /loans/equity, where the request is drafted), escrow changes, extra principal

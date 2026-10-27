@@ -322,6 +322,7 @@ model User {
   digests                Digest[]
   membershipIntents      MembershipIntent[]
   analyticsEvents        AnalyticsEvent[]
+  activityEvents         ActivityEvent[]
   merchantCategories     MerchantCategory[]
   subscriptionChecks     SubscriptionCheck[]
   alerts                 Alert[]
@@ -2031,6 +2032,32 @@ model AnalyticsEvent {
   @@index([userId])
   @@index([name, createdAt])
   @@map("analytics_events")
+}
+
+// The beta's activity log (src/lib/activity/): what a real beta user did in the browser (pages,
+// buttons, forms, fields, errors), never what they typed. /admin/activity reads it.
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  // Null only for anonymous views of the landing page.
+  userId    String?  @map("user_id")
+  // One browser tab's visit, a random id made in the tab.
+  visitId   String   @map("visit_id")
+  // page_view, page_time, click, rage_click, submit, focus, blur or error.
+  kind      String
+  // Path without the query string.
+  path      String
+  // The element's role (button, link...), and its label or a form or field name, redacted.
+  role      String?
+  label     String?
+  // Counts and flags only (typed, length, ms, fields filled), never a typed value.
+  data      Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("activity_events")
 }
 
 // Two-factor backup codes: each works once, in place of an authenticator code. Only a
@@ -4608,22 +4635,22 @@ model StrategyEvaluation {
 // strategy they picked on real daily closes (src/lib/paper/). Never a real order, broker or
 // account. Money in cents, times in UTC.
 model PaperAccount {
-  id            String    @id @default(cuid())
-  userId        String    @unique @map("user_id")
-  startingCents Int       @map("starting_cents")
-  cashCents     Int       @map("cash_cents")
-  level         Int
+  id             String    @id @default(cuid())
+  userId         String    @unique @map("user_id")
+  startingCents  Int       @map("starting_cents")
+  cashCents      Int       @map("cash_cents")
+  level          Int
   // The strategy it follows, as the investments page's key ("default", "catalog:haa").
-  strategy      String
+  strategy       String
   // Where its prices come from: "alpaca", "yahoo" or "sample" (development only).
-  priceSource   String    @map("price_source")
+  priceSource    String    @map("price_source")
   // Just holding: the level's mix bought at the start and never traded, units by ticker.
-  hold          Json
+  hold           Json
   // The last closes it was valued at, by ticker, and their day (the page reads these).
-  prices        Json      @default("{}")
-  pricesDate    DateTime? @map("prices_date") @db.Date
-  startedAt     DateTime  @map("started_at") @db.Timestamptz(3)
-  lastRunAt     DateTime? @map("last_run_at") @db.Timestamptz(3)
+  prices         Json      @default("{}")
+  pricesDate     DateTime? @map("prices_date") @db.Date
+  startedAt      DateTime  @map("started_at") @db.Timestamptz(3)
+  lastRunAt      DateTime? @map("last_run_at") @db.Timestamptz(3)
   // The 24-hour agent (src/lib/trading-agent/), when it runs the account: its strategy's key,
   // setting, bar interval ("15m", "1h") and market ("crypto", "stocks"), its state between ticks
   // (src/planning/trading-agent/types.ts AgentState, with just holding's units), when it started,
@@ -4759,7 +4786,8 @@ model PaperEventOverlay {
   id         String    @id @default(cuid())
   accountId  String    @unique @map("account_id")
   userId     String    @unique @map("user_id")
-  on         Boolean   @default(false)
+  // On unless the person switched it off (founder, 2026-10-26: always on, with a switch).
+  on         Boolean   @default(true)
   switchedAt DateTime  @map("switched_at") @db.Timestamptz(3)
   lastDate   DateTime? @map("last_date") @db.Date
   state      Json      @default("{}")
@@ -4797,4 +4825,16 @@ model PaperEventLog {
   @@unique([accountId, eventKey, kind, ticker])
   @@index([userId, at])
   @@map("paper_event_logs")
+}
+
+// A shared job that many requests may want to run, run by one at a time (src/lib/events/
+// refresh.ts): the first to claim it sets lockedUntil; the others skip. lastRunAt is when it last
+// finished, and report what it found (the events box shows "last checked" from it). Not a person's.
+model RefreshLock {
+  key         String    @id
+  lockedUntil DateTime? @map("locked_until") @db.Timestamptz(3)
+  lastRunAt   DateTime? @map("last_run_at") @db.Timestamptz(3)
+  report      Json      @default("{}")
+
+  @@map("refresh_locks")
 }

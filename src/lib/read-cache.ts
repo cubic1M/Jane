@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { isAsUser } from "@/lib/rls";
 
 // A read cache for one piece of background work (a bank sync and everything it sets off): the
 // same person's facts, asked for again and again by the detectors, Jane's brief, the practice
@@ -168,7 +169,8 @@ function tracked(client: PrismaClient, scope: () => Scope | undefined): PrismaCl
             if (rel && model && rel.has(model)) tablesOf(rel, model, params, reads.models);
             else reads.all = true;
           }
-        } else {
+        } else if (!isAsUser(operation, args)) {
+          // (Switching a scoped query's transaction to its user, src/lib/rls.ts, writes nothing.)
           const current = scope();
           if (current) forget(current, writeOf(rel, model, operation, params));
         }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { recordRun } from "@/lib/health";
-import { runEventsForAll } from "@/lib/events/run";
+import { runEventsForAll } from "@/lib/events/refresh";
 
 // GDELT asks for one request every 5 seconds, so reading every event type takes about a minute.
 export const maxDuration = 300;

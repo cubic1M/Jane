@@ -154,5 +154,3 @@ export async function refreshClaimStatuses(
   }
   return moved;
 }
-
-export { STATUS_WORDS } from "./claim-rules";

@@ -8,10 +8,10 @@ import {
   type LoanProduct,
 } from "@/config/debt";
 import { loanPaymentCents, type Debt } from "@/insights/debts";
-import { formatRate } from "@/insights/loans";
 import type { LoanOffer } from "@/lib/lenders/partner";
 import { formatCents } from "@/lib/money";
 import { payoffPlan } from "./debt";
+import { formatRate } from "@/lib/percent";
 
 // Refinance offers compared (spec step 111): for one debt, what keeping it costs (paying what
 // the person pays now until it's gone, the same as the fit engine's "keep") against what each

@@ -8,6 +8,29 @@ const into = (description: string, hints = {}) =>
   categorizeByRules({ description, amountCents: -1000, hints })?.detailed ?? null;
 
 describe("categorizeByRules", () => {
+  // The wordings in the bank CSVs Jane reads (src/data-sources/csv/__fixtures__): a card payment
+  // is never spending, from either side, and the card's interest line is interest.
+  it.each([
+    ["PAYMENT - THANK YOU"],
+    ["ONLINE PAYMENT, THANK YOU"],
+    ["INTERNET PAYMENT - THANK YOU"],
+    ["AUTOPAY PAYMENT - THANK YOU"],
+    ["CAPITAL ONE AUTOPAY PYMT"],
+    ["Withdrawal to Capital One card ending 1234"],
+    ["BANK OF AMERICA CREDIT CARD Bill Payment"],
+  ])("calls %s a card payment", (description) => {
+    expect(out(description)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+    expect(into(description)).toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
+  it("reads the Bank of America card's interest line as interest", () => {
+    expect(out("INTEREST CHARGED ON PURCHASES")).toBe("BANK_FEES_INTEREST_CHARGE");
+  });
+
+  it("leaves other bill payments alone", () => {
+    expect(out("COMCAST BILL PAYMENT")).not.toBe("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+  });
+
   it.each([
     ["NETFLIX.COM NETFLIX.COM CA 10/14", "ENTERTAINMENT_TV_AND_MOVIES"],
     ["Spotify USA", "ENTERTAINMENT_MUSIC_AND_AUDIO"],
@@ -76,6 +99,21 @@ describe("categorizeByRules", () => {
     expect(into("SSA TREAS 310 XXSOC SEC")).toBe("INCOME_RETIREMENT_PENSION");
     expect(into("STATE TEACHERS RETIREMENT SYS PENSION")).toBe("INCOME_RETIREMENT_PENSION");
     expect(out("PENSION SERVICES LLC")).toBeNull();
+  });
+
+  it("files ticket sellers as events, even under the card's own category", () => {
+    const events = "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS";
+    expect(out("TICKETMASTER 800-653-8000", { bankCategory: "Entertainment" })).toBe(events);
+    expect(out("STUBHUB 866-788-2482")).toBe(events);
+    // Parking tickets are parking (the life facts' commute), never an event.
+    expect(out("CITY PARKING TICKETS")).toBe("TRANSPORTATION_PARKING");
+  });
+
+  it("files utilities named for what they sell as utilities", () => {
+    expect(out("XCEL ENERGY-PSCO PPD ID: 8840011")).toBe("RENT_AND_UTILITIES_GAS_AND_ELECTRICITY");
+    expect(out("SOUTHERN CALIFORNIA EDISON")).toBe("RENT_AND_UTILITIES_GAS_AND_ELECTRICITY");
+    expect(out("SEATTLE CITY LIGHT UTILITIES")).toBe("RENT_AND_UTILITIES_OTHER_UTILITIES");
+    expect(into("XCEL ENERGY REFUND")).toBeNull();
   });
 
   it("counts a payout for one's own work as income, not a refund", () => {
