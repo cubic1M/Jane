@@ -309,7 +309,7 @@ async function subscriptionMerchantKeys(
   db: ScopedDb,
   input: DetectionInput,
   check: (merchants: string[]) => Promise<Map<string, boolean>>,
-): Promise<string[]> {
+): Promise<{ yes: string[]; no: string[] }> {
   const stored = await db.subscriptionChecks.findMany({
     select: { merchantKey: true, isSubscription: true },
   });
@@ -338,10 +338,12 @@ async function subscriptionMerchantKeys(
       for (const row of rows) known.set(row.merchantKey, row.isSubscription);
     }
   }
-  return [...known]
-    .filter(([, isSubscription]) => isSubscription)
-    .map(([key]) => key)
-    .sort();
+  const keys = (answer: boolean) =>
+    [...known]
+      .filter(([, isSubscription]) => isSubscription === answer)
+      .map(([key]) => key)
+      .sort();
+  return { yes: keys(true), no: keys(false) };
 }
 
 // Runs every rule on the user's data and saves the results. Safe to run as often as we
@@ -360,7 +362,9 @@ export async function runDetection(
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
   const input = await loadInput(db, await todayOf(userId, { client, now }), client);
-  input.subscriptionMerchantKeys = await subscriptionMerchantKeys(db, input, check);
+  const answers = await subscriptionMerchantKeys(db, input, check);
+  input.subscriptionMerchantKeys = answers.yes;
+  input.declinedSubscriptionMerchantKeys = answers.no;
   const candidates = detect(input);
   // A card's interest finding is worth a year of its interest from the balance and rate, the same
   // figure as the brief and the chat (the card interest page); the charges seen stay as the
