@@ -186,6 +186,28 @@ describe("fallback recurring detection", () => {
     ]);
   });
 
+  it("reads a usage bill no rule knows by its shape: one a month, same day, amounts that move", () => {
+    const water = {
+      description: "METRO WATER SERVICES",
+      merchantName: null,
+      pfcPrimary: null,
+      pfcDetailed: null,
+    };
+    const bills = [5, 4, 3, 2, 1].map((m, i) =>
+      tx({
+        ...water,
+        date: monthsAgo(m, 18 + (i % 3)),
+        amountCents: [6100, 8800, 7400, 9900, 6800][i],
+      }),
+    );
+    expect(detectRecurring(input({ transactions: bills })).map((s) => s.frequency)).toEqual([
+      "MONTHLY",
+    ]);
+    // Twice in a month, or on days far apart, it isn't one.
+    const twice = [...bills, tx({ ...water, date: monthsAgo(2, 3), amountCents: 2500 })];
+    expect(detectRecurring(input({ transactions: twice }))).toEqual([]);
+  });
+
   it("ignores charges at irregular gaps", () => {
     const transactions = ["2026-07-02", "2026-07-20", "2026-09-28", "2026-10-03"].map((date) =>
       tx({ ...GROCERIES, date, amountCents: 5000 }),

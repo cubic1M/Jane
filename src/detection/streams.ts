@@ -6,6 +6,8 @@ import {
   FALLBACK_INTERVAL_DAYS,
   FALLBACK_MIN_CHARGES,
   RUN_MIN_SHARE_OF_CHARGES,
+  USAGE_BILL_DAY_SPREAD,
+  USAGE_BILL_MIN_CHARGES,
   SHORT_RUN_CATEGORIES,
   SHORT_RUN_MIN_CHARGES,
   SUBSCRIPTION_MERCHANTS,
@@ -24,7 +26,7 @@ import {
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { byDate, inList, inLookback, merchantMatches } from "./helpers";
 import type { DetectionInput, DetectionRecurringStream, DetectionTransaction } from "./types";
-import { average, daysBetween, firstOfMonth, median } from "./units";
+import { average, dayOfMonth, daysBetween, firstOfMonth, median } from "./units";
 
 // A recurring outflow, from Plaid's recurring streams when we have them, otherwise found
 // in the transactions by our own fallback. Rules only ever see this shape.
@@ -131,8 +133,19 @@ function withinTolerance(amount: number, reference: number): boolean {
   return Math.abs(amount - reference) <= reference * FALLBACK_AMOUNT_TOLERANCE;
 }
 
+// One charge in each month, on about the same day, with no category: a usage bill by its shape.
+function usageBillShape(charges: DetectionTransaction[]): boolean {
+  if (charges.length < USAGE_BILL_MIN_CHARGES || charges.some((c) => c.pfcDetailed !== null)) {
+    return false;
+  }
+  if (new Set(charges.map((c) => firstOfMonth(c.date))).size !== charges.length) return false;
+  const days = charges.map((c) => dayOfMonth(c.date));
+  return Math.max(...days) - Math.min(...days) <= USAGE_BILL_DAY_SPREAD;
+}
+
 const isVariable = (charges: DetectionTransaction[]) =>
-  inList(mostCommon(charges.map((c) => c.pfcDetailed)), VARIABLE_BILL_CATEGORIES);
+  inList(mostCommon(charges.map((c) => c.pfcDetailed)), VARIABLE_BILL_CATEGORIES) ||
+  usageBillShape(charges);
 
 // Where two charges a month apart can only be a bill or a subscription.
 function shortRunAllowed(charges: DetectionTransaction[]): boolean {
