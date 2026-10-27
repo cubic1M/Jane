@@ -85,7 +85,8 @@ export type PlansTreeInput = {
   lastMonth: { label: string };
   year: number;
   yearly: { monthlyCents: number; bills: number };
-  debt: { accounts: number; owedCents: number };
+  // known: how many have a balance (uploaded card statements carry none).
+  debt: { accounts: number; owedCents: number; known?: number };
 };
 
 export function plansTree(input: PlansTreeInput): AreaTree {
@@ -216,7 +217,12 @@ export function plansTree(input: PlansTreeInput): AreaTree {
     }),
     item("money", "debt", {
       label: "Paying off cards and loans",
-      figure: input.debt.accounts > 0 ? shortMoney(input.debt.owedCents) : undefined,
+      figure:
+        input.debt.accounts > 0
+          ? input.debt.known === 0
+            ? "Not known"
+            : shortMoney(input.debt.owedCents)
+          : undefined,
       summary:
         input.debt.accounts > 0
           ? `On ${plural(input.debt.accounts, "card or loan", "cards and loans")}, not the mortgage.`

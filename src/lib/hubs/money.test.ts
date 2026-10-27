@@ -156,6 +156,12 @@ describe("moneyTiles", () => {
     expect(t["Budgets"]).toMatchObject({ value: null, status: "Set a monthly budget" });
     expect(t["Bills and subscriptions"]).toMatchObject({ value: null });
     expect(t["Loans and cards"]).toMatchObject({ value: null, status: "No loans or cards linked" });
+    // Overnight upload QA: a card statement carries no balance.
+    const unknown = byLabel({ ...FULL, debt: { accounts: 1, owedCents: 0, known: 0 } });
+    expect(unknown["Loans and cards"]).toMatchObject({
+      value: null,
+      status: "1 account, balance not known",
+    });
     expect(t["Documents"]).toMatchObject({ value: null, status: "Add a policy or receipt" });
   });
 

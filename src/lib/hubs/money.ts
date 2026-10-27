@@ -36,7 +36,8 @@ export type MoneyData = {
   spendingCents: number;
   budgets: { total: number; over: number; daysLeft: number };
   recurring: { count: number; yearlyCents: number };
-  debt: { accounts: number; owedCents: number };
+  // known: how many of the accounts have a balance (uploaded card statements carry none).
+  debt: { accounts: number; owedCents: number; known?: number };
   documents: number;
   // Spec step 102: policies on the insurance profile and gaps in the cover.
   insurance: { policies: number; gaps: number };
@@ -134,10 +135,12 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
     {
       label: "Loans and cards",
       href: "/loans",
-      value: d.debt.accounts > 0 ? formatCents(d.debt.owedCents) : null,
+      value: d.debt.accounts > 0 && d.debt.known !== 0 ? formatCents(d.debt.owedCents) : null,
       status:
         d.debt.accounts > 0
-          ? `Owed across ${plural(d.debt.accounts, "account")}`
+          ? d.debt.known === 0
+            ? `${plural(d.debt.accounts, "account")}, balance not known`
+            : `Owed across ${plural(d.debt.accounts, "account")}`
           : "No loans or cards linked",
     },
   ];
@@ -249,7 +252,11 @@ export async function loadMoneyHub(
       count: charges.length,
       yearlyCents: charges.reduce((sum, c) => sum + c.annualCostCents, 0),
     },
-    debt: { accounts: debt.lines.length, owedCents: debt.totalOwedCents },
+    debt: {
+      accounts: debt.lines.length,
+      owedCents: debt.totalOwedCents,
+      known: debt.lines.filter((l) => l.balanceCents !== null).length,
+    },
     documents,
     insurance: { policies: insurance.policies.length, gaps: insurance.gaps.length },
   };
