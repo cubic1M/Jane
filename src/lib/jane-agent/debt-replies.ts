@@ -68,8 +68,8 @@ export function debtsReply(book: DebtBook): Reply {
   );
   if (book.debts.length === 0) {
     return {
-      body: "I don't see any loans, cards or buy now, pay later plans. When you link a bank that reports them, I'll keep track of every one.",
-      actions: [link("Link a bank", "/connect")],
+      body: "I don't see any loans, cards or buy now, pay later plans. When you upload a card or loan statement, or link a bank that reports them, I'll keep track of every one.",
+      actions: [link("Add your accounts", "/connect")],
       refs: {},
     };
   }
