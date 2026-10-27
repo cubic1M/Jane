@@ -255,8 +255,9 @@ Tuning set (20 people, 146 files, 5215 transactions):
 | Findings, $/yr | Jane $27,542, truth $27,542; error on the ones found 0.0% |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 5 of 20 people (off by $93,060 in all) |
-| Net worth line: month-ends drawn | 18.2% (error where drawn 7.7%) |
+| Net worth today right | 7 of 20 people (off by $51,145 in all) |
+| Net worth line: month-ends drawn | 97.3% (error where drawn 18.3%) |
+| Net worth line, people whose every balance Jane knows | 7 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -266,7 +267,7 @@ Tuning set (20 people, 146 files, 5215 transactions):
 | bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 100.0% | 100.0% | 11 | 0 | 0 |
-| idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
+| idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
 | bills coming up (31 days) | 99.4% | 100.0% | 169 | 1 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
@@ -282,8 +283,9 @@ Held-out set (20 people, 129 files, 5013 transactions):
 | Findings, $/yr | Jane $15,793, truth $25,747; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 5 of 20 people (off by $74,281 in all) |
-| Net worth line: month-ends drawn | 18.2% (error where drawn 6.6%) |
+| Net worth today right | 11 of 20 people (off by $20,335 in all) |
+| Net worth line: month-ends drawn | 91.8% (error where drawn 9.0%) |
+| Net worth line, people whose every balance Jane knows | 11 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -293,7 +295,7 @@ Held-out set (20 people, 129 files, 5013 transactions):
 | bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
 | duplicate_charge | 57.9% | 100.0% | 11 | 8 | 0 |
-| idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
+| idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
 | bills coming up (31 days) | 98.7% | 86.7% | 150 | 2 | 23 |
 
 Missed subscriptions Claude would be asked about on a live upload: 32 of 59.
@@ -322,6 +324,7 @@ Rules only, Claude stubbed. Tuning / held-out.
   
   A third CSV set would be needed to check any fix for these.
 - **Round 4, more mess:** bills that come when they come (the dentist, a car repair, at uneven gaps), a roommate's share of the bills by Zelle each month, rent by paper check, and a gym's yearly fee beside its monthly one. Two misses on the tuning set, both fixed. Bank of America's ATM line ("BKOFAMERICA ATM … WITHDRWL") counted as spending. A subscription whose second way of writing it carried a code before the city ("SPOTIFY P1A2B3C4D5 CHICAGO IL") read as "Spotify Chicago". Now, when a description ends in a US state, the merchant directory also tries the name without its last one or two words, which matches only companies it already knows (`withoutCity`, `src/detection/merchants.ts`). Tuning set after: subscriptions, price rises and "Coming up" 100%, spending error 0.0%. On the held-out set round 4 brought 2 false price rises, which haven't been read.
+- **Net worth and its line, scored through the upload's own balances (#849).** The bench now keeps what an upload keeps: each day's closing balance from the statement's running-balance column (Chase checking, Bank of America, Capital One 360). An account with no balance typed takes the statement's latest. Month ends are worked back from today's balance where the statement gave none (`closingBalances`, `derivedBalances`). The line starts at the first balance, as the home hub's does. Before, a person who only uploaded had a one-point line (today), and net worth was right for 5 of 20 people in each set. Now it's right for 7 / 11 of 20, with 97% / 92% of month-ends drawn. For everyone whose balances Jane knows today, the line is exact (0.0% error). The rest is accounts nobody gave a balance for: card exports and Wells Fargo have no balance column, so the card's debt is missing until the person types it.
 
 ## Calibration
 

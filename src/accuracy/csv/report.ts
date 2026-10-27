@@ -51,6 +51,7 @@ export function headline(b: CsvScoreboard) {
     incomeError: b.incomeError,
     netWorthRight: b.netWorth.right / b.people,
     lineCoverage: b.line.coverage,
+    lineErrorWhereKnown: b.line.errorWhereKnown,
   };
 }
 
@@ -73,6 +74,7 @@ export function table(set: CsvSet, b: CsvScoreboard): string {
     `| Monthly income, error | ${pct(b.incomeError)} |`,
     `| Net worth today right | ${b.netWorth.right} of ${b.people} people (off by ${dollars(b.netWorth.absError)} in all) |`,
     `| Net worth line: month-ends drawn | ${pct(b.line.coverage)} (error where drawn ${pct(b.line.error)}) |`,
+    `| Net worth line, people whose every balance Jane knows | ${b.line.peopleKnown} of ${b.people}, error ${pct(b.line.errorWhereKnown)} |`,
     "",
     "| Finding | Precision | Recall | Right | False alarms | Missed |",
     "| --- | ---: | ---: | ---: | ---: | ---: |",
