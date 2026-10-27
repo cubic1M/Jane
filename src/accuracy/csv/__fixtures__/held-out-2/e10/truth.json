@@ -1,0 +1,99 @@
+{
+  "person": "e10",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "MASTERCLASS",
+      "perYear": 180
+    },
+    {
+      "type": "subscription_review",
+      "about": "1PASSWORD",
+      "perYear": 35.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "HELLOFRESH trial",
+      "perYear": 69.99
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "MENARDS 3301 twice",
+      "perYear": 98.87
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 122.4
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "NOOM INC, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ASPEN DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FIRESTONE COMPLETE AUTO, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HIPPO INSURANCE, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 1462.2
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 60.59
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -971.91
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -2038.31
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -2599.22
+    }
+  ]
+}

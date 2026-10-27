@@ -13,7 +13,8 @@ export const CSV_SEED = 20_261_027;
 export const CSV_AS_OF = "2026-10-24";
 export const CSV_PEOPLE_COUNT = 20;
 export const CSV_HELD_OUT_SEED = 61_803_398;
-export type CsvSet = "tuning" | "held-out";
+export type CsvSet = "tuning" | "held-out" | "held-out-2";
+export const CSV_HELD_OUT_2_SEED = 14_142_135;
 
 export type Layout =
   | "chase_checking"
@@ -744,17 +745,230 @@ const spend = (
   flow: "purchase" as const,
 });
 
+// The second held-out set (2026-10-27, made and scored before any fix it could check): the same
+// kinds of people and mess under names neither other set uses.
+const HELD_OUT_2: Pool = {
+  grocers: [
+    { descriptor: "FOOD 4 LESS #0332", category: "FOOD_AND_DRINK_GROCERIES", lo: 20, hi: 130 },
+    { descriptor: "LUCKY STORES 712", category: "FOOD_AND_DRINK_GROCERIES", lo: 25, hi: 120 },
+    { descriptor: "SAVE A LOT 18822", category: "FOOD_AND_DRINK_GROCERIES", lo: 15, hi: 90 },
+    { descriptor: "INGLES MARKETS #41", category: "FOOD_AND_DRINK_GROCERIES", lo: 25, hi: 140 },
+  ],
+  restaurants: [
+    { descriptor: "TST* SALT & SMOKE", category: "FOOD_AND_DRINK_RESTAURANT", lo: 20, hi: 70 },
+    { descriptor: "SQ *MAMAS KITCHEN", category: "FOOD_AND_DRINK_RESTAURANT", lo: 14, hi: 45 },
+    { descriptor: "CRACKER BARREL #221", category: "FOOD_AND_DRINK_RESTAURANT", lo: 25, hi: 70 },
+    { descriptor: "QDOBA 2204", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 9, hi: 20 },
+    { descriptor: "SEAMLESS*GOLDEN WOK", category: "FOOD_AND_DRINK_RESTAURANT", lo: 18, hi: 50 },
+    { descriptor: "ZAXBYS #0412", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 8, hi: 18 },
+  ],
+  coffee: [
+    { descriptor: "CARIBOU COFFEE #33", category: "FOOD_AND_DRINK_COFFEE", lo: 4.75, hi: 4.75 },
+    { descriptor: "SQ *DIGNITY ROASTERS", category: "FOOD_AND_DRINK_COFFEE", lo: 5.5, hi: 5.5 },
+  ],
+  shops: [
+    {
+      descriptor: "ETSY.COM*SHOP 3321",
+      category: "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES",
+      lo: 12,
+      hi: 80,
+    },
+    {
+      descriptor: "BJS WHOLESALE #0611",
+      category: "GENERAL_MERCHANDISE_SUPERSTORES",
+      lo: 40,
+      hi: 220,
+    },
+    { descriptor: "WAYFAIR*4K2L9", category: "HOME_IMPROVEMENT_FURNITURE", lo: 40, hi: 320 },
+    {
+      descriptor: "RITE AID #05532",
+      category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS",
+      lo: 8,
+      hi: 45,
+    },
+    { descriptor: "MENARDS 3301", category: "HOME_IMPROVEMENT_HARDWARE", lo: 15, hi: 200 },
+    {
+      descriptor: "BURLINGTON STORES 712",
+      category: "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES",
+      lo: 20,
+      hi: 90,
+    },
+    { descriptor: "SEPHORA.COM", category: "PERSONAL_CARE_HAIR_AND_BEAUTY", lo: 20, hi: 90 },
+    { descriptor: "CHEWY.COM", category: "GENERAL_MERCHANDISE_PET_SUPPLIES", lo: 20, hi: 100 },
+  ],
+  gas: [
+    { descriptor: "CIRCLE K 2700412", category: "TRANSPORTATION_GAS", lo: 28, hi: 60 },
+    { descriptor: "QT 0471 OUTSIDE", category: "TRANSPORTATION_GAS", lo: 30, hi: 65 },
+    { descriptor: "WAWA 8812", category: "TRANSPORTATION_GAS", lo: 25, hi: 55 },
+  ],
+  rides: [
+    { descriptor: "ALTO RIDES", category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES", lo: 12, hi: 40 },
+    {
+      descriptor: "LYFT   *RIDE MON 9AM",
+      category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES",
+      lo: 9,
+      hi: 30,
+    },
+  ],
+  subscriptions: [
+    {
+      descriptor: "SPOTIFY USA",
+      category: "ENTERTAINMENT_MUSIC_AND_AUDIO",
+      cents: 1199,
+      rise: 1299,
+    },
+    {
+      descriptor: "APPLE TV+",
+      variants: ["APPLE.COM/BILL"],
+      category: "ENTERTAINMENT_TV_AND_MOVIES",
+      cents: 999,
+    },
+    { descriptor: "MUBI", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1499, rise: 1599 },
+    { descriptor: "BRITBOX", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 899 },
+    {
+      descriptor: "NOOM INC",
+      variants: ["NOOM.COM"],
+      category: "PERSONAL_CARE_OTHER_PERSONAL_CARE",
+      cents: 5900,
+      alsoOk: [...DIGITAL, "PERSONAL_CARE"],
+    },
+    {
+      descriptor: "1PASSWORD",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 299,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "NOTION LABS",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 1000,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "MASTERCLASS",
+      category: "GENERAL_SERVICES_EDUCATION",
+      cents: 1500,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "ORANGETHEORY FITNESS",
+      category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
+      cents: 5900,
+    },
+    { descriptor: "SIRIUSXM", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1099, rise: 1299 },
+    {
+      descriptor: "PATREON* MEMBERSHIP",
+      category: "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+      cents: 800,
+      alsoOk: DIGITAL,
+    },
+  ],
+  trials: [
+    {
+      descriptor: "HELLOFRESH",
+      category: "FOOD_AND_DRINK_GROCERIES",
+      cents: 6999,
+      alsoOk: ["FOOD_AND_DRINK"],
+    },
+    {
+      descriptor: "KINDLE UNLIMITED",
+      category: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+      cents: 1199,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "BUMBLE",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 2999,
+      alsoOk: DIGITAL,
+    },
+  ],
+  seats: [
+    { descriptor: "ANGELIKA FILM CENTER", category: "ENTERTAINMENT_TV_AND_MOVIES", lo: 15, hi: 22 },
+    {
+      descriptor: "GAMETIME*TICKETS",
+      category: "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS",
+      lo: 40,
+      hi: 140,
+    },
+    { descriptor: "FRONTIER AIRLINES 4222345678901", category: "TRAVEL_FLIGHTS", lo: 90, hi: 260 },
+  ],
+  employers: ["TYRELL CORP", "OSCORP HOLDINGS", "VANDELAY IND", "PIED PIPER INC", "DUNDER MIFFLIN"],
+  landlords: ["LINCOLN APARTMENTS", "BRIDGE PROPERTY GRP", "WILLOW CREEK HOMES"],
+  power: ["ENTERGY TEXAS", "TECO ENERGY", "NV ENERGY", "PSEG LONG ISLAND", "OG&E"],
+  internet: ["WOW INTERNET", "ASTOUND BROADBAND", "METRONET", "RCN"],
+  phones: ["US CELLULAR", "GOOGLE FI", "BOOST MOBILE"],
+  insurers: ["ERIE INSURANCE", "TRAVELERS INS", "AMICA MUTUAL"],
+  friends: ["JAMIE ORTIZ", "MORGAN BELL", "ROWAN PRICE", "EMERY SHAW", "HAYDEN COLE"],
+  water: "METRO WATER SERVICES",
+  yearly: {
+    descriptor: "SAMS CLUB MEMBERSHIP",
+    category: "GENERAL_MERCHANDISE_SUPERSTORES",
+    cents: 5000,
+    alsoOk: DIGITAL,
+  },
+  twin: { descriptor: "PANDORA", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1099 },
+  notPlans: [
+    {
+      descriptor: "SUMMIT FCU LOAN PMT",
+      category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+      lo: 120,
+      hi: 120,
+    },
+    { descriptor: "HIPPO INSURANCE", category: "GENERAL_SERVICES_INSURANCE", lo: 31, hi: 31 },
+    {
+      descriptor: "FIRST BAPTIST CHURCH",
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      lo: 40,
+      hi: 40,
+    },
+    {
+      descriptor: "SWEET CRUMB BAKERY",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 11.75,
+      hi: 11.75,
+    },
+    { descriptor: "RUSTY NAIL PUB", category: "FOOD_AND_DRINK_RESTAURANT", lo: 42, hi: 42 },
+  ],
+  irregular: [
+    { descriptor: "ASPEN DENTAL", category: "MEDICAL_DENTAL_CARE", lo: 90, hi: 420 },
+    {
+      descriptor: "FIRESTONE COMPLETE AUTO",
+      category: "GENERAL_SERVICES_AUTOMOTIVE",
+      lo: 60,
+      hi: 380,
+    },
+  ],
+  abroad: [
+    { descriptor: "TIM HORTONS TORONTO CAN", category: "FOOD_AND_DRINK_COFFEE", lo: 3, hi: 9 },
+    { descriptor: "TTC PRESTO TORONTO", category: "TRANSPORTATION_PUBLIC_TRANSIT", lo: 3, hi: 12 },
+    { descriptor: "LOBLAWS TORONTO", category: "FOOD_AND_DRINK_GROCERIES", lo: 15, hi: 60 },
+  ],
+};
+
 function person(index: number, set: CsvSet = "tuning"): CsvPerson {
-  const r = rng((set === "tuning" ? CSV_SEED : CSV_HELD_OUT_SEED) + index * 104_729);
-  const id = `${set === "tuning" ? "c" : "d"}${String(index + 1).padStart(2, "0")}`;
-  const P = set === "tuning" ? TUNING : HELD_OUT;
+  const base = {
+    tuning: CSV_SEED,
+    "held-out": CSV_HELD_OUT_SEED,
+    "held-out-2": CSV_HELD_OUT_2_SEED,
+  }[set];
+  const r = rng(base + index * 104_729);
+  const id = `${{ tuning: "c", "held-out": "d", "held-out-2": "e" }[set]}${String(index + 1).padStart(2, "0")}`;
+  const P = { tuning: TUNING, "held-out": HELD_OUT, "held-out-2": HELD_OUT_2 }[set];
   const archetype = ARCHETYPES[index % ARCHETYPES.length];
   const months = 3 + (index % 4);
   const asOf = CSV_AS_OF;
   const start = addMonths(asOf, -months, 1);
   const L = new Ledger(id, start, asOf);
   // The held-out set banks elsewhere: the same plans, shifted.
-  const plan = PLANS[set === "tuning" ? index : (index + 7) % PLANS.length];
+  const plan =
+    PLANS[
+      {
+        tuning: index,
+        "held-out": (index + 7) % PLANS.length,
+        "held-out-2": (index + 13) % PLANS.length,
+      }[set]
+    ];
 
   const mask = () => String(r.int(1000, 9999));
   const checking: CsvAccount = {
@@ -1607,7 +1821,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
 
   // Two fixed monthly amounts that aren't subscriptions, from their own dice so no other row
   // changes: on checking, the same price on the same day every month.
-  const q = rng((set === "tuning" ? CSV_SEED : CSV_HELD_OUT_SEED) + index * 104_729 + 28);
+  const q = rng(base + index * 104_729 + 28);
   for (const m of [...P.notPlans].sort(() => q.next() - 0.5).slice(0, 2)) {
     const rows: string[] = [];
     const day = q.int(3, 26);
@@ -1627,7 +1841,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
 
   // Two plans billed together, on one card on one day every month: two subscriptions and two
   // bills, never "Charged twice?" (upload QA), from their own dice too.
-  const t2 = rng((set === "tuning" ? CSV_SEED : CSV_HELD_OUT_SEED) + index * 104_729 + 29);
+  const t2 = rng(base + index * 104_729 + 29);
   if (t2.chance(0.35)) {
     const day = t2.int(2, 27);
     const [a, b]: string[][] = [[], []];

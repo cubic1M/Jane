@@ -1,0 +1,100 @@
+{
+  "person": "e05",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MASTERCLASS",
+      "perYear": 180
+    },
+    {
+      "type": "subscription_review",
+      "about": "SIRIUSXM",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE TV+",
+      "perYear": 119.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 414
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 120
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 824.37
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "ASPEN DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FIRESTONE COMPLETE AUTO, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "CARIBOU COFFEE #33 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BURLINGTON STORES 712 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "RUSTY NAIL PUB, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": -4207.97
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -5667.69
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -6688.68
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -7718.37
+    }
+  ]
+}

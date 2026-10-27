@@ -1,0 +1,116 @@
+{
+  "person": "e17",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "MUBI",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "BRITBOX",
+      "perYear": 107.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOOM INC",
+      "perYear": 708
+    },
+    {
+      "type": "subscription_review",
+      "about": "PATREON* MEMBERSHIP",
+      "perYear": 96
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOTION LABS",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 102
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 870
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 725.34
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "ASPEN DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *DIGNITY ROASTERS at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 FRONTIER AIRLINES 4222345678901 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "RITE AID #05532 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HIPPO INSURANCE, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": -4029.4
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -6114.63
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -7956.86
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -7256.3
+    }
+  ]
+}

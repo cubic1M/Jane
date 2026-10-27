@@ -240,6 +240,7 @@ Beta users start by uploading statements, so the sample people above (already-cl
 - **Files:** `src/accuracy/csv/layouts.ts` writes each account in its bank's layout: Chase checking and card, Bank of America checking (summary block above the header) and card, Wells Fargo (no header), Capital One 360 (two-digit years, unsigned amounts with a type) and card (ISO dates, debit and credit columns), Citi (pending rows in an export taken mid-month, payments as negative credits), American Express (half with "additional details": line breaks inside quotes), Discover, and a credit union's semicolon file with day-first dates and decimal commas (through the column picker, Jane's guesses accepted, the right column picked where it asks). Byte-order marks, Windows line ends, running balances, padded and cut descriptions ("AUTOMATIC PAYMENT - THANK"), each bank's ACH, Zelle, Venmo, transfer, ATM, fee and card-payment wording, and monthly files that overlap by a few days. The files are checked in (`src/accuracy/csv/__fixtures__/<set>/<person>/`, with a `truth.json` of what each person should see), so anyone can upload one person by hand.
 - **Two sets.** The tuning set (`CSV_SEED`) is what rules were fixed on. The held-out set (`CSV_HELD_OUT_SEED`) has the same kinds of people and mess under names the tuning set never uses (other grocers, restaurants, landlords, utilities, employers, subscriptions, airlines and cinemas) and different banks per person. It was written before any fix and is only scored.
 - **Scoring:** `src/accuracy/csv/score.ts` runs what `/import` runs, without a database: `readCsvFile` on every file, one copy of rows two files share, `categorizeTransactions` with Claude off and no cached merchants, card payments matched from the card's side, the merchant directory's seed, `detect()`, the spending chart's monthly totals and the home hub's net worth line. Claude is stubbed (`vi.mock`), so nothing is spent and the categories and subscriptions are the rules' alone: a lower bound. On a live upload Claude places what the rules leave, and is asked about recurring charges whose category can't say; the tables count both.
+- **A second held-out set** (`CSV_HELD_OUT_2_SEED`, 2026-10-27). It has names neither other set uses (grocers, restaurants, landlords, utilities, phone and internet companies, employers, subscriptions, trials, cinemas, a twin plan, the not-a-plan traps) and the banks shifted again. It was made and scored before any fix it could check, so it is the clean check for rounds 7 and later. As first scored: category right 69.7%, subscriptions 100% / 85.5%, false "Charged twice?" 6, trials 100% / 80%, "Coming up" 99.5% / 95.3% (precision / recall).
 - **Run it:** `npm run accuracy` prints both benches. `ACCURACY_WRITE=1` also rewrites the files, `src/accuracy/csv/baseline.json` and the tables below. `ACCURACY_MISTAKES=1` lists the tuning set's mistakes.
 - **Calibration:** the suggestions an uploaded person would see, made from the upload's rows and only the balances Jane knows. They are bucketed by their "% sure" and judged on the same topics as the sample bench. Like the sample bench, they are under-confident on purpose ("58% sure" is right 94% of the time on the tuning set, 87% held out). The only wrong ones are two "build an emergency fund" suggestions for people near the idle-cash line. The gate holds the same bar: no 0%, no bucket of 10 or more over 10 points surer than right.
 - **Gate:** `src/accuracy/csv/csv-accuracy.test.ts`, with the unit tests: the files must match the generator, every share in the baseline may drop at most 3 points, and extra rows and false "Charged twice?" may not rise at all.
@@ -321,6 +322,45 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 60–69% | 31 | 64% | 97% |
 | 70–79% | 6 | 76% | 100% |
 | 80–89% | 4 | 83% | 100% |
+| 90–100% | 0 | – | – |
+
+Second held-out set (20 people, 128 files, 5419 transactions):
+
+| Step | Score |
+| --- | ---: |
+| Files read | 128 of 128 (126 exactly) |
+| Rows read exactly | 100.0% (0 extra, 0 missing) |
+| Category right (rules only) | 69.7% (1518 left for Claude) |
+| False "Charged twice?" | 6 (6 people) |
+| Findings, $/yr | Jane $28,569, truth $29,248; error on the ones found 0.0% |
+| Monthly spending, error | 0.1% |
+| Monthly income, error | 0.0% |
+| Net worth today right | 10 of 20 people (off by $60,155 in all) |
+| Net worth line: month-ends drawn | 100.0% (error where drawn 23.3%) |
+| Net worth line, people whose every balance Jane knows | 10 of 20, error 0.0% |
+
+| Finding | Precision | Recall | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| subscription_review | 100.0% | 85.5% | 71 | 0 | 12 |
+| price_increase | 100.0% | 100.0% | 7 | 0 | 0 |
+| trial_conversion | 100.0% | 80.0% | 4 | 0 | 1 |
+| bank_fees | 100.0% | 100.0% | 25 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
+| duplicate_charge | 64.7% | 100.0% | 11 | 6 | 0 |
+| idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
+| bills coming up (31 days) | 99.5% | 95.3% | 201 | 1 | 10 |
+
+Missed subscriptions Claude would be asked about on a live upload: 2 of 12.
+
+Suggestions' confidence (is "80% sure" right 80% of the time?):
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 16 | 59% | 100% |
+| 60–69% | 39 | 64% | 92% |
+| 70–79% | 6 | 76% | 100% |
+| 80–89% | 1 | 83% | 100% |
 | 90–100% | 0 | – | – |
 <!-- csv-scoreboard:end -->
 

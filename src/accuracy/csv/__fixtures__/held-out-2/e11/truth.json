@@ -1,0 +1,100 @@
+{
+  "person": "e11",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SIRIUSXM",
+      "perYear": 131.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 204
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 80
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 858.34
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 758231, excess 242844",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "APPLE TV+, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *DIGNITY ROASTERS at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "SEPHORA.COM twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FIRST BAPTIST CHURCH, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 7584.55
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 6548.1
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 6994.6
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 5889.23
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 4624.51
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 3988.91
+    }
+  ]
+}
