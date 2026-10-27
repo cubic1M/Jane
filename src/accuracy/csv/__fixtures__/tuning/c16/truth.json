@@ -1,0 +1,83 @@
+{
+  "person": "c16",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 167.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR",
+      "perYear": 240
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice",
+      "perYear": 132.55
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 850.58
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 292.48
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -426.05
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -1051.64
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -1711.87
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -2153.33
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -2743.6
+    }
+  ]
+}

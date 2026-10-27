@@ -1,0 +1,108 @@
+{
+  "person": "d02",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase savings",
+      "layout": "chase_checking",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "LA FITNESS",
+      "perYear": 419.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "price_increase",
+      "about": "CRUNCHYROLL*MEMBERSHIP 799→999",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRAMMARLY",
+      "perYear": 144
+    },
+    {
+      "type": "trial_conversion",
+      "about": "PHILO trial",
+      "perYear": 28
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 48
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 343.1
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 2280770, excess 1412748",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 VIVID SEATS 866-848-8499 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "LOWE'S #1188 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 5871.22
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 10983.97
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 14023.15
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 15913.92
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 18230.86
+    }
+  ]
+}

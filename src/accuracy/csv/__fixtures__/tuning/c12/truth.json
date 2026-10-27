@@ -1,0 +1,81 @@
+{
+  "person": "c12",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "ADOBE *CREATIVE CLD",
+      "perYear": 275.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR",
+      "perYear": 240
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 6859910, excess 5958060",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 SOUTHWES 5262123456789 seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 32023.16
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 37461.81
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 42983.62
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 52747.68
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 57479.7
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 61790.42
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 67259.24
+    }
+  ]
+}

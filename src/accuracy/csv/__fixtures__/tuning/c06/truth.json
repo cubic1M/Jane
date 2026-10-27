@@ -1,0 +1,92 @@
+{
+  "person": "c06",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "PELOTON* MEMBERSHIP",
+      "perYear": 528
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "PEACOCK trial",
+      "perYear": 7.99
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 5328690, excess 4751463",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 29820.02
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 37598.74
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 41733.92
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 46290.49
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 51426.37
+    }
+  ]
+}

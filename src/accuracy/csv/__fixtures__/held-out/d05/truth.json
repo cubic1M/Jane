@@ -1,0 +1,93 @@
+{
+  "person": "d05",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANVA* 04321",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRAMMARLY",
+      "perYear": 144
+    },
+    {
+      "type": "subscription_review",
+      "about": "STRAVA",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 102
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 40
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 365.24
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 ALAMO DRAFTHOUSE 042 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "ULTA BEAUTY #331 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": -4152.11
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -5856.98
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -6617.95
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -6685.3
+    }
+  ]
+}

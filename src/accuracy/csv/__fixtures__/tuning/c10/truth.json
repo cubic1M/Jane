@@ -1,0 +1,105 @@
+{
+  "person": "c10",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "PLANET FITNESS",
+      "perYear": 299.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *YouTubePremium",
+      "perYear": 167.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "STARZ trial",
+      "perYear": 10.99
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TJ MAXX #0811 twice",
+      "perYear": 146.48
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 300.52
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": -22.92
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -1493.77
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -2531.7
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -3935.61
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -5331.24
+    }
+  ]
+}

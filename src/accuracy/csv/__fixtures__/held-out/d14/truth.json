@@ -1,0 +1,92 @@
+{
+  "person": "d14",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "price_increase",
+      "about": "CRUNCHYROLL*MEMBERSHIP 799→999",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANVA* 04321",
+      "perYear": 179.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "PHILO trial",
+      "perYear": 28
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 522.5
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 UNITED 0162345678901 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "ULTA BEAUTY #331 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": -962.66
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -0.34
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 1770.48
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 2767.9
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 4742.81
+    }
+  ]
+}

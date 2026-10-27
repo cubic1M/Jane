@@ -1,0 +1,79 @@
+{
+  "person": "d10",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "FUBOTV trial",
+      "perYear": 79.99
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "LOWE'S #1188 twice",
+      "perYear": 52.18
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 95
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 3264.64
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 2923.65
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 2001.54
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 1208.98
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 979.77
+    }
+  ]
+}

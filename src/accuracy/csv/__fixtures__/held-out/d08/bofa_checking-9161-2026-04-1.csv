@@ -1,0 +1,10 @@
+Description,,Summary Amt.
+Beginning balance as of 04/01/2026,,"4,250.30"
+Total credits,,"216.30"
+Total debits,,"0.00"
+Ending balance as of 05/01/2026,,"4,466.60"
+
+Date,Description,Amount,Running Bal.
+04/01/2026,Beginning balance as of 04/01/2026,,"4,250.30"
+04/06/2026,Online Banking transfer from CHK 4356 Confirmation# 2138520707,"202.13","4,452.43"
+04/28/2026,Interest Earned,"14.17","4,466.60"

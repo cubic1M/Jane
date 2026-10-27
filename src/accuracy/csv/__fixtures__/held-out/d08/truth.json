@@ -1,0 +1,117 @@
+{
+  "person": "d08",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America savings",
+      "layout": "bofa_checking",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 155.88
+    },
+    {
+      "type": "price_increase",
+      "about": "SPOTIFY USA 1199→1299",
+      "perYear": 12
+    },
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRAMMARLY",
+      "perYear": 144
+    },
+    {
+      "type": "subscription_review",
+      "about": "SLING TV",
+      "perYear": 480
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 143.88
+    },
+    {
+      "type": "price_increase",
+      "about": "ESPN PLUS 1099→1199",
+      "perYear": 12
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 538.47
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PETCO 1234 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 4817.5
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 7198.35
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 7619.65
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 8261.16
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 8569.77
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 8749.88
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 9571.66
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "person": "c17",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NYTIMES*NYTDIGITAL",
+      "perYear": 48
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "ADOBE *CREATIVE CLD",
+      "perYear": 275.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AUDIBLE*2K94LM",
+      "perYear": 179.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 167.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 34
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 135
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 269.32
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 SOUTHWES 5262123456789 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "HOME DEPOT #6612 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": -1480.84
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -2458.5
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -3673.61
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -4932.82
+    }
+  ]
+}
