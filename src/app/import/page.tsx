@@ -79,16 +79,26 @@ async function ImportContent() {
         earlier={history.earlier}
         accounts={accounts
           .filter((a) => uploadedIds.has(a.id))
-          .map((a) => ({ id: a.id, name: a.name, rows: a.transactionCount }))}
+          .map((a) => ({
+            id: a.id,
+            name: a.name,
+            rows: a.transactionCount,
+            kindLabel: a.kindLabel,
+            credit: a.kind === "credit_card",
+            balanceCents: a.currentBalanceCents,
+            firstDate: a.firstDate,
+            lastDate: a.lastDate,
+          }))}
         totals={totals}
         asks={asks}
       />
 
       <section className="flex flex-col gap-4">
-        {accounts.length > 0 && (
+        {/* Uploaded accounts are listed with their uploads above; linked banks here. */}
+        {accounts.some((a) => !uploadedIds.has(a.id)) && (
           <>
-            <h2 className="text-xl font-semibold">Your accounts</h2>
-            <AccountList accounts={accounts} />
+            <h2 className="text-xl font-semibold">Linked accounts</h2>
+            <AccountList accounts={accounts.filter((a) => !uploadedIds.has(a.id))} />
           </>
         )}
         <details data-add-account="">

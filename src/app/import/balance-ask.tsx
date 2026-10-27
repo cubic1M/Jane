@@ -17,9 +17,12 @@ const BUTTON =
 export function BalanceAskForm({
   ask,
   skippable = true,
+  explain = true,
 }: {
   ask: BalanceAsk;
   skippable?: boolean;
+  // Why it's asked, unless the page has said it once above a list of them.
+  explain?: boolean;
 }) {
   const [state, setState] = useState<"asking" | "saved" | "skipped">("asking");
   const [error, setError] = useState<string | null>(null);
@@ -52,11 +55,13 @@ export function BalanceAskForm({
     >
       <label className="flex flex-col gap-1 text-sm font-semibold">
         {question}
-        <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">
-          {ask.kind === "credit_card"
-            ? "The statement doesn't say, so net worth can't count this card's debt until you do."
-            : "The statement doesn't say, so net worth can't count this account until you do."}
-        </span>
+        {explain && (
+          <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">
+            {ask.kind === "credit_card"
+              ? "The statement doesn't say, so net worth can't count this card's debt until you do."
+              : "The statement doesn't say, so net worth can't count this account until you do."}
+          </span>
+        )}
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <input
