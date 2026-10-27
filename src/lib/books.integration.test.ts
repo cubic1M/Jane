@@ -315,7 +315,7 @@ describe.runIf(url)("books that balance", { timeout: 120_000 }, () => {
     const view = await runBooksCheck(user.id, { client, now: NOW });
     const ended = view.open.find((i) => i.accountId === account.id && i.kind === "stale");
     expect(ended?.words).toBe(
-      "Chase checking's data ends on 2026-10-06, the last day in the file you imported, so I can't see anything after it. Import a newer file and I'll pick up from there.",
+      "Chase checking's file ends on Oct 6, 2026. Import a newer one and I'll pick up from there.",
     );
     const [said] = booksSource.gather(
       { books: { open: [ended!], markedAccountIds: [], merged: 0 } } as never,

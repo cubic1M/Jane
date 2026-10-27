@@ -101,6 +101,9 @@ test("a card without a balance is asked for, and net worth says it isn't counted
   await expect(page.locator('[data-import-chip="done"]')).toContainText("up to date", {
     timeout: 120_000,
   });
+  // /loans says what's owed, and no "$0.00 due each month" for a card with no payment known.
+  await page.goto("/loans");
+  await expect(page.getByText(/^You owe \$350\.00\. Open a branch/)).toBeVisible();
   await page.goto("/net-worth");
   await expect(page.locator("[data-net-worth-not-counting]")).toHaveCount(0);
   await expect(
