@@ -67,7 +67,7 @@ export async function firstWeekChecklist(
   const items: ChecklistItem[] = [
     {
       key: "link_bank",
-      label: "Link a bank or import a statement",
+      label: "Upload your statements or link a bank",
       href: "/connect",
       done: accounts > 0,
     },

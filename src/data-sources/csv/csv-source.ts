@@ -1,10 +1,11 @@
 import {
-  CSV_FORMATS,
-  detectFormat,
-  normalizeHeader,
-  type CsvFormat,
-  type ParsedRow,
-} from "./formats";
+  CUSTOM_FORMAT,
+  mappedLayout,
+  mappingChoices,
+  type ColumnMapping,
+  type MappingChoices,
+} from "./column-mapping";
+import { detectLayout, type CsvFormat, type ParsedRow } from "./formats";
 import { parseCsv } from "./parse-csv";
 import { looksLikeOfx, readOfx } from "@/data-sources/ofx/parse-ofx";
 import { dedupeKeys } from "@/data-sources/dedupe";
@@ -17,8 +18,13 @@ import type {
   SourceBatch,
 } from "@/data-sources/types";
 
-// Files are read into memory and never stored: callers pass the text, not a path.
-export type CsvFile = { name: string; text: string };
+// Files are read into memory and never stored: callers pass the text, not a path. `mapping`:
+// the columns the person picked, for a CSV in no bank's layout.
+export type CsvFile = { name: string; text: string; mapping?: ColumnMapping };
+
+// Why a file couldn't be read: in no layout we know (the person can pick its columns), or
+// not readable at all.
+export type CsvFailure = "unknown_format" | "unreadable";
 
 export type CsvFileResult =
   | {
@@ -29,9 +35,14 @@ export type CsvFileResult =
       transactions: Omit<NormalizedTransaction, "accountRef">[];
       skipped: SkippedRow[];
     }
-  | { ok: false; file: string; error: string };
-
-const SUPPORTED = CSV_FORMATS.map((format) => format.label).join(", ");
+  | {
+      ok: false;
+      file: string;
+      error: string;
+      reason: CsvFailure;
+      // For an unknown layout: what the column picker offers.
+      choices?: MappingChoices;
+    };
 
 export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
 
@@ -39,27 +50,30 @@ export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
 export function readCsvFile(file: CsvFile): CsvFileResult {
   if (looksLikeOfx(file.name, file.text)) {
     const result = readOfx(file);
-    return result.ok ? { ...result, format: OFX_FORMAT } : result;
+    return result.ok ? { ...result, format: OFX_FORMAT } : { ...result, reason: "unreadable" };
   }
   let records;
   try {
     records = parseCsv(file.text);
   } catch (error) {
-    return { ok: false, file: file.name, error: (error as Error).message };
+    return { ok: false, file: file.name, error: (error as Error).message, reason: "unreadable" };
   }
-  if (records.length === 0) return { ok: false, file: file.name, error: "The file is empty." };
+  if (records.length === 0) {
+    return { ok: false, file: file.name, error: "The file is empty.", reason: "unreadable" };
+  }
 
-  const [header, ...rows] = records;
-  const format = detectFormat(header.fields);
-  if (!format) {
+  const layout = detectLayout(records) ?? (file.mapping && mappedLayout(records, file.mapping));
+  if (!layout) {
     return {
       ok: false,
       file: file.name,
-      error: `We don't recognize this file's format. Supported exports: ${SUPPORTED}. The first row was: "${header.fields.join(", ").slice(0, 200)}".`,
+      error: "We don't know this bank's layout yet. Pick which column is which below.",
+      reason: "unknown_format",
+      choices: mappingChoices(records),
     };
   }
 
-  const columns = header.fields.map(normalizeHeader);
+  const { format, columns, rows } = layout;
   const parsed: { line: number; row: ParsedRow }[] = [];
   const skipped: SkippedRow[] = [];
   for (const record of rows) {
@@ -76,7 +90,8 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     const get = (name: string) => record.fields[columns.indexOf(name)] ?? "";
     const result = format.parseRow(get);
     if (result.ok) parsed.push({ line: record.line, row: result.row });
-    else skipped.push({ file: file.name, line: record.line, reason: result.reason });
+    else if (!result.silent)
+      skipped.push({ file: file.name, line: record.line, reason: result.reason });
   }
 
   const keys = dedupeKeys(parsed.map((p) => p.row));
@@ -91,7 +106,22 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     externalId: keys[i],
     hints: row.hints,
   }));
-  return { ok: true, file: file.name, format, transactions, skipped };
+  if (format.id === CUSTOM_FORMAT.id && transactions.length === 0) {
+    return {
+      ok: false,
+      file: file.name,
+      error: "No rows could be read with those columns. Check the date and amount columns.",
+      reason: "unknown_format",
+      choices: mappingChoices(records),
+    };
+  }
+  return {
+    ok: true,
+    file: file.name,
+    format: { id: format.id, label: format.label },
+    transactions,
+    skipped,
+  };
 }
 
 export class CsvFormatError extends Error {
@@ -109,14 +139,21 @@ export class CsvDataSource implements DataSource {
     private readonly files: CsvFile[],
   ) {}
 
-  async load(): Promise<SourceBatch> {
+  // `files`: each file's format and how many transactions it had, for analytics.
+  async load(): Promise<SourceBatch & { files: { format: string; rows: number }[] }> {
     const results = this.files.map(readCsvFile);
     const failures = results.flatMap((r) => (r.ok ? [] : [{ file: r.file, error: r.error }]));
     if (failures.length > 0) throw new CsvFormatError(failures);
 
-    const batch: SourceBatch = { accounts: [this.account], transactions: [], skipped: [] };
+    const batch = {
+      accounts: [this.account],
+      transactions: [] as SourceBatch["transactions"],
+      skipped: [] as SourceBatch["skipped"],
+      files: [] as { format: string; rows: number }[],
+    };
     for (const result of results) {
       if (!result.ok) continue;
+      batch.files.push({ format: result.format.id, rows: result.transactions.length });
       batch.transactions.push(
         ...result.transactions.map((t) => ({ ...t, accountRef: this.account.ref })),
       );

@@ -16,6 +16,10 @@ describe("normalizeMerchant", () => {
     ["ORIG CO NAME:ACME CORP PAYROLL", "Acme Corp Payroll"],
     ["POS PURCHASE TARGET T-1234", "Target"],
     ["ACME CORP PAYROLL PPD ID: 9876543210", "Acme Corp Payroll"],
+    // Bank of America's ACH lines, Capital One 360's and Wells Fargo's card lines.
+    ["NETFLIX.COM DES:NETFLIX.COM ID:XXXXX12345 INDN:SAM EXAMPLE CO ID:XXXXX WEB", "Netflix"],
+    ["Debit Card Purchase - PLANET FITNESS 800-123-4567 NH", "Planet Fitness"],
+    ["PURCHASE AUTHORIZED ON 09/11 SAFEWAY #1234 OAKLAND CA S386254 CARD 1234", "Safeway Oakland"],
   ])("cleans %j to %j", (description, name) => {
     expect(normalizeMerchant(description)?.name).toBe(name);
   });

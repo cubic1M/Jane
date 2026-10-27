@@ -1,10 +1,9 @@
-import type { ScopedDb } from "@/lib/db-scoped";
 import type { SessionUser } from "@/lib/session";
+import { isTrialUser } from "@/lib/trial-ids";
 
-// CSV import is for the founders and admins; everyone else links accounts through Plaid.
-// "Founders" are the people who already have CSV accounts, so nobody loses access to
-// data they've been importing.
-export async function canImportCsv(user: SessionUser, db: Pick<ScopedDb, "accounts">) {
-  if (user.role === "admin") return true;
-  return (await db.accounts.count({ where: { source: "csv" } })) > 0;
+// Uploading statements (/import) is the main way in for the closed beta: every signed-in
+// person with a real account may. Trial people (spec step 138) are sample data, so they
+// never upload anything of their own.
+export function canImportCsv(user: Pick<SessionUser, "id">): boolean {
+  return !isTrialUser(user.id);
 }

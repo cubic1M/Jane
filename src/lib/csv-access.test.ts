@@ -1,22 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { canImportCsv } from "./csv-access";
 
-const db = (csvAccounts: number) => ({
-  accounts: { count: vi.fn().mockResolvedValue(csvAccounts) },
-});
-
 describe("canImportCsv", () => {
-  it("lets admins import", async () => {
-    expect(await canImportCsv({ id: "u", role: "admin" } as never, db(0) as never)).toBe(true);
+  it("lets every signed-in person with a real account upload statements", () => {
+    expect(canImportCsv({ id: "cm1abc" })).toBe(true);
+    expect(canImportCsv({ id: "cm1admin", role: "admin" } as never)).toBe(true);
   });
 
-  it("lets people who already have CSV accounts keep importing", async () => {
-    const accounts = db(1);
-    expect(await canImportCsv({ id: "u", role: "user" } as never, accounts as never)).toBe(true);
-    expect(accounts.accounts.count).toHaveBeenCalledWith({ where: { source: "csv" } });
-  });
-
-  it("sends everyone else to Plaid", async () => {
-    expect(await canImportCsv({ id: "u", role: "user" } as never, db(0) as never)).toBe(false);
+  it("keeps trial people (sample data) out", () => {
+    expect(canImportCsv({ id: "trial_abc123" })).toBe(false);
   });
 });

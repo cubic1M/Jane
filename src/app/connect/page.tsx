@@ -11,6 +11,7 @@ import { linkDemo } from "./demo-actions";
 import { LinkButton } from "./link-button";
 import { SubmitButton } from "@/components/submit-button";
 import { LoadingBar } from "@/components/loading-bar";
+import { SUGGESTED_UPLOAD_MONTHS, UPLOAD_REASSURANCE } from "@/config/import";
 
 const PRIMARY_BUTTON =
   "inline-flex h-12 w-full items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 sm:w-auto";
@@ -23,10 +24,27 @@ const PROMISES = [
   ["Disconnect anytime", "Remove a bank or delete all your data whenever you want."],
 ];
 
+function Promises() {
+  return (
+    <ul className="grid gap-3 sm:grid-cols-3">
+      {PROMISES.map(([title, body]) => (
+        <li key={title} className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+          <p className="font-semibold">{title}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{body}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 async function ConnectContent() {
   const user = await requireUser();
   const db = await scopedDb();
-  const [items, csvAllowed] = await Promise.all([
+  // The closed beta leads with uploading statements (founder: linking feels scary); linking a
+  // bank is the smaller second choice. Trial people (sample data) can't upload, so they see
+  // linking and the demo bank as before.
+  const uploadFirst = canImportCsv(user);
+  const [items, uploadedAccounts] = await Promise.all([
     db.plaidItems.findMany({
       select: {
         id: true,
@@ -39,7 +57,7 @@ async function ConnectContent() {
       },
       orderBy: { createdAt: "asc" },
     }),
-    canImportCsv(user, db),
+    uploadFirst ? db.accounts.count({ where: { source: "csv" } }) : 0,
   ]);
   const now = new Date();
   const notices = bankNotices(
@@ -50,22 +68,42 @@ async function ConnectContent() {
   return (
     <>
       <AppHeader user={user} />
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Connect your accounts</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Link the checking, savings and credit card accounts you use most. We read the last year of
-          transactions to find money you&apos;re losing.
-        </p>
-      </div>
-
-      <ul className="grid gap-3 sm:grid-cols-3">
-        {PROMISES.map(([title, body]) => (
-          <li key={title} className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="font-semibold">{title}</p>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">{body}</p>
-          </li>
-        ))}
-      </ul>
+      {uploadFirst ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">Add your accounts</h1>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Jane reads the transactions from the checking, savings and credit card accounts you
+              use most to find money you&apos;re losing.
+            </p>
+          </div>
+          <section
+            data-upload-first=""
+            className="flex flex-col gap-3 rounded-xl border-2 border-zinc-900 p-5 dark:border-zinc-100"
+          >
+            <h2 className="text-xl font-semibold">Upload your statements</h2>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Download the last {SUGGESTED_UPLOAD_MONTHS} months of transactions from your
+              bank&apos;s website and upload the files. We show you how for each bank.
+            </p>
+            <p className="text-sm font-medium">{UPLOAD_REASSURANCE}</p>
+            <Link href="/import" className={PRIMARY_BUTTON + " self-start"}>
+              {uploadedAccounts > 0 ? "Upload more statements" : "Upload your statements"}
+            </Link>
+          </section>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">Connect your accounts</h1>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Link the checking, savings and credit card accounts you use most. We read the last
+              year of transactions to find money you&apos;re losing.
+            </p>
+          </div>
+          <Promises />
+        </>
+      )}
 
       {items.length > 0 && (
         <section className="flex flex-col gap-3">
@@ -117,13 +155,32 @@ async function ConnectContent() {
       )}
 
       <section className="flex flex-col gap-3">
-        {plaidEnabled() ? (
+        {plaidEnabled() && uploadFirst ? (
+          <div data-link-instead="" className="flex flex-col gap-2">
+            <h2 className="font-semibold">Link your bank instead</h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Read-only, through Plaid: you sign in to your bank in Plaid&apos;s window, and Jane
+              keeps up with new transactions on its own.
+            </p>
+            <details className="text-sm">
+              <summary className="cursor-pointer text-zinc-500">How linking works</summary>
+              <div className="mt-2">
+                <Promises />
+              </div>
+            </details>
+            <LinkButton
+              label={items.length > 0 ? "Link another bank" : "Link your bank"}
+              className={SECONDARY_BUTTON + " self-start"}
+            />
+          </div>
+        ) : plaidEnabled() ? (
           <LinkButton
             label={items.length > 0 ? "Add another account" : "Link an account"}
             className={PRIMARY_BUTTON}
           />
         ) : (
-          !demoBankEnabled() && (
+          !demoBankEnabled() &&
+          !uploadFirst && (
             <p className="text-zinc-600 dark:text-zinc-400">Bank linking isn&apos;t set up yet.</p>
           )
         )}
@@ -142,14 +199,9 @@ async function ConnectContent() {
             </SubmitButton>
           </form>
         )}
-        {items.length > 0 && (
+        {(items.length > 0 || uploadedAccounts > 0) && (
           <Link href="/scanning" className="font-medium text-emerald-700 hover:underline">
             Continue to your report
-          </Link>
-        )}
-        {csvAllowed && (
-          <Link href="/import" className="text-sm text-zinc-500 hover:underline">
-            Import CSV files instead
           </Link>
         )}
       </section>
