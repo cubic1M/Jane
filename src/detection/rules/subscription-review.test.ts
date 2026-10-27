@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { GEICO, GROCERIES, NETFLIX, input, monthly, monthsAgo, tx } from "../__fixtures__/build";
+import {
+  GEICO,
+  GROCERIES,
+  NETFLIX,
+  SPOTIFY,
+  input,
+  monthly,
+  monthsAgo,
+  tx,
+} from "../__fixtures__/build";
 import { buildStreams } from "../streams";
 import type { DetectionInput } from "../types";
 import { isAmbiguousRecurring, subscriptionReview } from "./subscription-review";
@@ -20,6 +29,19 @@ describe("subscription_review", () => {
     });
     expect(finding.evidence).toMatchObject({ merchant: "Netflix", frequency: "MONTHLY" });
     expect((finding.evidence.charges as unknown[]).length).toBe(4);
+  });
+
+  it("tells two plans of one merchant at two prices apart by their price", () => {
+    const transactions = [...monthly(4, 1199, SPOTIFY), ...monthly(4, 1699, SPOTIFY)];
+    const titles = run(input({ transactions })).map((f) => f.title);
+    expect(titles).toHaveLength(2);
+    expect(new Set(titles).size).toBe(2);
+    expect(titles).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^Review your Spotify.* subscription at \$11\.99$/),
+        expect.stringMatching(/^Review your Spotify.* subscription at \$16\.99$/),
+      ]),
+    );
   });
 
   it("recognizes subscription merchants outside subscription categories", () => {

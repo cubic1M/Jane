@@ -651,6 +651,14 @@ export function NetWorthChart({
                   onShut={shut}
                 />
               )}
+              <Scale
+                width={width}
+                high={hi0}
+                low={lo0}
+                start={shown[0].cents}
+                y={y}
+                zero={lo < 0 && hi > 0 ? y(0) : null}
+              />
             </div>
             {expanded && movesState !== "idle" && (
               <p
@@ -1046,6 +1054,65 @@ function Brush({
 
 // A day's summary: what moved the money, a line each (at most SUMMARY_LINES, then "+N more"),
 // More details and close. Inside the chart, where placeBoxes put it.
+// What the line's heights are worth (QA round 31: with no scale, a card-only person's line, all
+// below zero, read as dipping under $0 and spiking above it against the dashed start line). The
+// highest and lowest in view at the left, the start line's amount at the right, and $0 drawn
+// when the line crosses it. Not read out: the slider says each day's figure.
+function Scale({
+  width,
+  high,
+  low,
+  start,
+  y,
+  zero,
+}: {
+  width: number;
+  high: number;
+  low: number;
+  start: number;
+  y: (cents: number) => number;
+  zero: number | null;
+}) {
+  const label = "pointer-events-none absolute text-[10px] leading-none text-zinc-500 tabular-nums";
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      {zero !== null && (
+        <>
+          <div
+            data-net-worth-zero=""
+            className="absolute right-0 left-0 border-t border-zinc-400 dark:border-zinc-500"
+            style={{ top: zero }}
+          />
+          <span data-net-worth-scale="zero" className={label} style={{ top: zero + 2, right: 2 }}>
+            $0
+          </span>
+        </>
+      )}
+      <span
+        data-net-worth-scale="high"
+        className={label}
+        style={{ top: Math.max(0, y(high) - 12), left: 2 }}
+      >
+        {dollars(high)}
+      </span>
+      {low !== high && (
+        <span data-net-worth-scale="low" className={label} style={{ top: y(low) + 2, left: 2 }}>
+          {dollars(low)}
+        </span>
+      )}
+      {start !== high && start !== low && width > 0 && (
+        <span
+          data-net-worth-scale="start"
+          className={label}
+          style={{ top: y(start) - 12, right: 2 }}
+        >
+          {dollars(start)}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // A dot's days: its last, and the link to its transactions (one day, or the days it holds).
 const lastDate = (g: EventGroup) =>
   g.events.reduce((last, e) => (e.date > last ? e.date : last), g.date);
