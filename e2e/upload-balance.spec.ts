@@ -90,6 +90,15 @@ test("a card without a balance is asked for, and net worth says it isn't counted
   await expect(
     page.getByRole("treeitem", { name: /Net worth, not counting card balance/ }),
   ).toBeVisible();
+  // And /ahead's net worth, under its own branch.
+  await page.goto("/ahead");
+  await page
+    .getByRole("treeitem", { name: /Net worth/ })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("treeitem", { name: /Net worth, not counting card balance/ }),
+  ).toBeVisible();
 
   // Given later on /import: the debt counts, and the note goes.
   await page.goto("/import");
