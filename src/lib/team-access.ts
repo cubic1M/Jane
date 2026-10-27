@@ -21,9 +21,10 @@ type Metadata = Record<string, unknown>;
 // How a shown event names its person:
 // - action: targets one of their actions (or carries their id as metadata user_id)
 // - queue: targets the person (target user) and lists their action ids in action_ids
+// - person: targets the person (target user), about no one request
 type Shown = {
   shown: true;
-  whose: "action" | "queue";
+  whose: "action" | "queue" | "person";
   what: (metadata: Metadata, company: string | null) => string;
 };
 
@@ -100,6 +101,12 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   },
   admin_viewed_action: onAction(() => "Viewed your request"),
   admin_viewed_metrics: notOnePerson,
+  // The beta's activity log: the list holds no one person's data; their own timeline does.
+  admin_viewed_activity: {
+    shown: true,
+    whose: "person",
+    what: () => "Looked at how you used Jane (pages and buttons, not what you typed)",
+  },
   action_status_changed: onAction((m) =>
     m.from === m.to ? "Updated its notes" : (STATUS_WORDS[String(m.to)] ?? "Updated its status"),
   ),
@@ -283,6 +290,8 @@ export type TeamAccessEntry = {
 };
 
 export const UNDONE_WHY = "A request you've since undone";
+// Why for a look at the person rather than a request: the beta's activity log.
+export const PERSON_WHY = "To improve Jane during the beta";
 
 const metadataOf = (value: unknown): Metadata =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as Metadata) : {};
@@ -306,6 +315,18 @@ export function teamAccessEntries(
     const who: Who = row.actorType === "admin" ? TEAM : AGENT;
     const metadata = metadataOf(row.metadata);
 
+    if (rule.whose === "person") {
+      if (row.targetType !== "user" || row.targetId !== userId) continue;
+      entries.push({
+        key: row.id,
+        at: row.createdAt,
+        who,
+        what: rule.what(metadata, null),
+        why: PERSON_WHY,
+        actionId: null,
+      });
+      continue;
+    }
     let actionIds: string[];
     if (rule.whose === "queue") {
       if (row.targetType !== "user" || row.targetId !== userId) continue;

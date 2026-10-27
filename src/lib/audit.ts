@@ -62,6 +62,8 @@ export type AuditEvent =
   | "admin_viewed_queue"
   | "admin_viewed_action"
   | "admin_viewed_metrics"
+  // The beta's activity log (/admin/activity): the list, the funnel, or one person's timeline.
+  | "admin_viewed_activity"
   | "action_status_changed"
   | "membership_paid"
   | "item_removed"

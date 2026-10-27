@@ -14,7 +14,9 @@ export function AccountList({ accounts }: { accounts: AccountSummary[] }) {
           className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3"
         >
           <div>
-            <p className="font-medium">{account.name}</p>
+            <p className="font-medium" data-private>
+              {account.name}
+            </p>
             <p className="text-sm text-zinc-500">
               {account.kindLabel} · {account.transactionCount} transactions
               {account.firstDate &&

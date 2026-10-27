@@ -45,6 +45,11 @@ export const RETENTION_PERIODS = {
     days: 395,
     policy: "Records of which pages and buttons were used",
   },
+  // The beta's activity log (src/lib/activity/), apart from the funnel events above.
+  activityEvents: {
+    days: 180,
+    policy: "During the beta, records of how you used Jane (pages and buttons, not what you typed)",
+  },
   errorEvents: {
     days: 90,
     policy: "Error reports (with personal details removed)",

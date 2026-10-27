@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ActivityRecorder } from "@/components/activity-recorder";
 import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import { SideChat } from "@/components/side-chat/side-chat";
@@ -58,6 +59,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <NavPending />
         </Suspense>
         <ServiceWorker />
+        {/* The beta's activity log: pages and buttons, not what anyone types (/privacy). */}
+        <Suspense>
+          <ActivityRecorder />
+        </Suspense>
       </body>
     </html>
   );

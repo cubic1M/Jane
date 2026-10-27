@@ -21,8 +21,9 @@ export async function runRetention({
 }: { client?: PrismaClient; now?: Date } = {}): Promise<Record<RetainedKind, number>> {
   const before = (kind: RetainedKind) =>
     new Date(now.getTime() - RETENTION_PERIODS[kind].days * DAY);
-  const [analytics, errors, jobs, runs, limits, sessions, links] = await Promise.all([
+  const [analytics, activity, errors, jobs, runs, limits, sessions, links] = await Promise.all([
     client.analyticsEvent.deleteMany({ where: { createdAt: { lt: before("analyticsEvents") } } }),
+    client.activityEvent.deleteMany({ where: { createdAt: { lt: before("activityEvents") } } }),
     client.errorEvent.deleteMany({ where: { createdAt: { lt: before("errorEvents") } } }),
     client.job.deleteMany({
       where: { status: { in: ["done", "failed"] }, updatedAt: { lt: before("finishedJobs") } },
@@ -45,6 +46,7 @@ export async function runRetention({
   });
   return {
     analyticsEvents: analytics.count,
+    activityEvents: activity.count,
     errorEvents: errors.count,
     finishedJobs: jobs.count,
     cronRuns: runs.count,
