@@ -28,6 +28,9 @@ export type CsvFormat = {
   requiredHeaders: readonly string[];
   // The account a first upload in this format makes (on /import), before the person edits it.
   account: { name: string; kind: AccountKind };
+  // The bank whose export this is (none for a layout the person mapped): /import says so when
+  // the file is going into an account named for another bank.
+  bank?: string;
   parseRow(get: (header: string) => string): RowResult;
 };
 
@@ -88,6 +91,7 @@ function balanceOf(text: string): { balanceCents?: number } {
 // Check or Slip #". Amounts are negative for money leaving the account.
 export const chaseChecking: CsvFormat = {
   id: "chase_checking",
+  bank: "Chase",
   label: "Chase checking or savings",
   account: { name: "Chase checking", kind: "checking" },
   requiredHeaders: ["details", "posting date", "description", "amount", "type", "balance"],
@@ -111,6 +115,7 @@ export const chaseChecking: CsvFormat = {
 // Purchases are negative and payments or refunds positive.
 export const chaseCreditCard: CsvFormat = {
   id: "chase_credit_card",
+  bank: "Chase",
   label: "Chase credit card",
   account: { name: "Chase card", kind: "credit_card" },
   requiredHeaders: ["transaction date", "post date", "description", "category", "type", "amount"],
@@ -165,6 +170,7 @@ function debitCreditRow(
 // under it is the beginning balance with no amount. Money out is negative.
 export const bankOfAmericaChecking: CsvFormat = {
   id: "bofa_checking",
+  bank: "Bank of America",
   label: "Bank of America checking or savings",
   account: { name: "Bank of America checking", kind: "checking" },
   requiredHeaders: ["date", "description", "amount", "running bal."],
@@ -191,6 +197,7 @@ export const bankOfAmericaChecking: CsvFormat = {
 // Purchases are negative and payments positive.
 export const bankOfAmericaCreditCard: CsvFormat = {
   id: "bofa_credit_card",
+  bank: "Bank of America",
   label: "Bank of America credit card",
   account: { name: "Bank of America card", kind: "credit_card" },
   requiredHeaders: ["posted date", "reference number", "payee", "address", "amount"],
@@ -213,6 +220,7 @@ export const bankOfAmericaCreditCard: CsvFormat = {
 // empty) and the description. Money out is negative.
 export const wellsFargo: HeaderlessFormat = {
   id: "wells_fargo",
+  bank: "Wells Fargo",
   label: "Wells Fargo",
   account: { name: "Wells Fargo checking", kind: "checking" },
   columns: ["date", "amount", "posted", "check number", "description"],
@@ -240,6 +248,7 @@ export const wellsFargo: HeaderlessFormat = {
 // Debit,Credit", dates as YYYY-MM-DD. Purchases fill Debit and payments Credit.
 export const capitalOneCreditCard: CsvFormat = {
   id: "capital_one_credit_card",
+  bank: "Capital One",
   label: "Capital One credit card",
   account: { name: "Capital One card", kind: "credit_card" },
   requiredHeaders: [
@@ -267,6 +276,7 @@ export const capitalOneCreditCard: CsvFormat = {
 // sign; the type says Debit (money out) or Credit (money in).
 export const capitalOne360: CsvFormat = {
   id: "capital_one_360",
+  bank: "Capital One",
   label: "Capital One 360 checking or savings",
   account: { name: "Capital One 360", kind: "checking" },
   requiredHeaders: [
@@ -306,6 +316,7 @@ export const capitalOne360: CsvFormat = {
 // with a minus sign.
 export const citiCreditCard: CsvFormat = {
   id: "citi_credit_card",
+  bank: "Citi",
   label: "Citi credit card",
   account: { name: "Citi card", kind: "credit_card" },
   requiredHeaders: ["status", "date", "description", "debit", "credit"],
@@ -333,6 +344,7 @@ export const citiCreditCard: CsvFormat = {
 // Charges are positive and payments negative.
 export const amex: CsvFormat = {
   id: "amex",
+  bank: "American Express",
   label: "American Express",
   account: { name: "American Express card", kind: "credit_card" },
   requiredHeaders: ["date", "description", "card member", "account #", "amount"],
@@ -355,6 +367,7 @@ export const amex: CsvFormat = {
 // positive and payments negative.
 export const discoverCreditCard: CsvFormat = {
   id: "discover_credit_card",
+  bank: "Discover",
   label: "Discover card",
   account: { name: "Discover card", kind: "credit_card" },
   requiredHeaders: ["trans. date", "post date", "description", "amount", "category"],
@@ -401,7 +414,7 @@ export function detectFormat(headers: string[]): CsvFormat | null {
 export const HEADER_SEARCH_ROWS = 15;
 
 export type Layout = {
-  format: Pick<CsvFormat, "id" | "label" | "parseRow" | "account">;
+  format: Pick<CsvFormat, "id" | "label" | "parseRow" | "account" | "bank">;
   // Each column's name, as parseRow asks for it.
   columns: string[];
   rows: CsvRecord[];
