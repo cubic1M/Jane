@@ -427,7 +427,8 @@ async function LoansContent({
             ? "No loans, cards or plans yet."
             : book.debts.every((d) => d.balanceCents === null)
               ? "Your files don't say what you owe yet. Add a balance on the import page. Open a branch to see more."
-              : `You owe ${formatCents(book.totalOwedCents)}, ${formatCents(book.monthlyCents)} due each month. Open a branch to see more.`}
+              : // No "$0.00 due each month" when no payment is known (uploaded cards: round-2 pass).
+                `You owe ${formatCents(book.totalOwedCents)}${book.monthlyCents > 0 ? `, ${formatCents(book.monthlyCents)} due each month` : ""}. Open a branch to see more.`}
         </p>
         <nav aria-label="Loans pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/debt" className={LINK}>

@@ -5,6 +5,7 @@ import {
   DUPLICATE_CHARGE_MIN_CENTS,
   DUPLICATE_CHARGE_PER_SEAT_CATEGORIES,
   DUPLICATE_CHARGE_PER_SEAT_WORDS,
+  DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES,
   DUPLICATE_CHARGE_WINDOW_DAYS,
   REFUND_MAX_AGE_DAYS,
 } from "@/config/detection";
@@ -25,6 +26,12 @@ const merchantName = (t: DetectionTransaction) =>
 // fares). Shared with the double-charge alert.
 export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
   const groups = new Map<string, DetectionTransaction[]>();
+  // The days each merchant was paid on: a streaming plan comes back, a cinema visit doesn't.
+  const days = new Map<string, Set<string>>();
+  for (const t of inLookback(input)) {
+    const key = merchantOf(t)?.key;
+    if (key) days.set(key, (days.get(key) ?? new Set()).add(t.date));
+  }
   for (const t of inLookback(input)) {
     if (Math.abs(t.amountCents) < DUPLICATE_CHARGE_MIN_CENTS) continue;
     const meal =
@@ -34,6 +41,12 @@ export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
     if (inList(t.pfcDetailed, DUPLICATE_CHARGE_PER_SEAT_CATEGORIES)) continue;
     const merchant = merchantOf(t)?.key;
     if (!merchant || merchantMatches(merchant, DUPLICATE_CHARGE_PER_SEAT_WORDS)) continue;
+    if (
+      inList(t.pfcDetailed, DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES) &&
+      (days.get(merchant)?.size ?? 0) === 1
+    ) {
+      continue;
+    }
     const key = `${t.accountId}\u0000${merchant}\u0000${Math.abs(t.amountCents)}`;
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }

@@ -70,7 +70,11 @@ describe("categorizeByRules", () => {
       "FOOD_AND_DRINK_RESTAURANT",
     );
     expect(out("CORNER MARKET", { bankCategory: "Supermarkets" })).toBe("FOOD_AND_DRINK_GROCERIES");
+    // Cash back is a reward, not money paid in from checking: it must never be matched to one.
     expect(into("CASHBACK BONUS REDEMPTION", { bankCategory: "Payments and Credits" })).toBe(
+      "INCOME_OTHER",
+    );
+    expect(into("REFUND", { bankCategory: "Payments and Credits" })).toBe(
       "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
     );
     // A prefix only where the name ends in "-": "Merchandise" isn't "Merchandise & Supplies".
@@ -180,7 +184,7 @@ describe("categorizeByRules", () => {
 
   it("counts a payout for one's own work as income, not a refund", () => {
     expect(into("STRIPE TRANSFER ST-K3J9Q2 PPD ID: 4270465600")).toBe("INCOME_CONTRACTOR");
-    expect(out("STRIPE TRANSFER ST-K3J9Q2")).toBeNull();
+    expect(out("STRIPE TRANSFER ST-K3J9Q2")).not.toBe("INCOME_CONTRACTOR");
   });
 
   it("uses a card's own categories, both ways, so a return nets against its purchase", () => {
@@ -218,6 +222,18 @@ describe("categorizeByRules", () => {
     expect(out("PARKSIDE COMMUNITY CHURCH")).toBe("GOVERNMENT_AND_NON_PROFIT_DONATIONS");
     expect(out("LEMONADE INSURANCE")).toBe("GENERAL_SERVICES_INSURANCE");
     expect(out("HARBOR CREDIT UNION PMT")).toBe("LOAN_PAYMENTS_OTHER_PAYMENT");
+  });
+
+  it("reads landlords, phone and internet companies, taxis, cinemas and markets by their words", () => {
+    expect(out("ESSEX PROPERTY TR AUTOPAY")).toBe("RENT_AND_UTILITIES_RENT");
+    expect(out("COUNTY PROPERTY TAX")).toBe("GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT");
+    expect(out("NORTHSTAR WIRELESS")).toBe("RENT_AND_UTILITIES_TELEPHONE");
+    expect(out("HILLTOP COMMUNICATIONS")).toBe("RENT_AND_UTILITIES_INTERNET_AND_CABLE");
+    expect(out("YELLOW CAB 4411")).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
+    expect(out("ROXY CINEMA 2")).toBe("ENTERTAINMENT_TV_AND_MOVIES");
+    expect(out("DIRECTV STREAM")).toBe("ENTERTAINMENT_TV_AND_MOVIES");
+    expect(out("FULTON FISH MARKET")).toBe("FOOD_AND_DRINK_GROCERIES");
+    expect(out("ACME TRANSFER 0042")).toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
   });
 
   it("leaves unknown merchants for the LLM", () => {

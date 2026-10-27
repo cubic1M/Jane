@@ -52,6 +52,8 @@ export function ImportForm({
   // The upload just saved: the rest runs in the background, followed by the chip.
   const [saved, setSaved] = useState<{
     rows: number;
+    // How many the files had: the rest were already here.
+    read: number;
     runId: string;
     askBalance: BalanceAsk | null;
   } | null>(null);
@@ -130,7 +132,12 @@ export function ImportForm({
       const result = await startImport(data).catch(() => null);
       if (!result) return setError(FAILED);
       if (!result.ok) return setError(result.error);
-      setSaved({ rows: result.rows, runId: result.runId, askBalance: result.askBalance });
+      setSaved({
+        rows: result.rows,
+        read: total,
+        runId: result.runId,
+        askBalance: result.askBalance,
+      });
       if (account === NEW_ACCOUNT_ID) setUploadedNew(true);
       setPreview(null);
       setPickers({});
@@ -273,14 +280,16 @@ export function ImportForm({
           data-import-saved={saved.runId}
           className="flex flex-col gap-2 rounded-lg bg-zinc-100 p-4 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
         >
+          {/* One line, not two (new-user pass: "Keep using Jane meanwhile: the bar at the top of
+              every page says how it's going and what it found" said the same again). */}
+          {/* Says when rows were already here (round 3: the same file again said "Saved 0
+              transactions. Jane finishes the rest in the background"). */}
           <p className="font-medium">
-            Saved {plural(saved.rows, "transaction")}. Jane is finishing the rest in the background.
+            {saved.rows === 0
+              ? `Nothing new: Jane already had ${saved.read === 1 ? "this transaction" : `all ${saved.read} of these transactions`}.`
+              : `Saved ${plural(saved.rows, saved.rows < saved.read ? "new transaction" : "transaction")}${saved.rows < saved.read ? `; ${saved.read - saved.rows} ${saved.read - saved.rows === 1 ? "was" : "were"} already here` : ""}. Jane finishes the rest in the background; the bar at the top shows how it's going.`}
           </p>
           {saved.askBalance && <BalanceAskForm ask={saved.askBalance} />}
-          <p>
-            Keep using Jane meanwhile: the bar at the top of every page says how it&apos;s going and
-            what it found.
-          </p>
           <p className="flex flex-wrap gap-4">
             <Link href="/report" className="font-medium underline">
               See your report

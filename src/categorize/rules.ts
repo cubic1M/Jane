@@ -618,6 +618,61 @@ const RULES: readonly Rule[] = [
   },
   { category: "TRAVEL_LODGING", keywords: ["HOTEL", "MOTEL", "INN", "RESORT"] },
 
+  // More kinds of place, in the words their names use (CSV bench, round 8): landlords, phone and
+  // internet companies, taxis, cinemas, markets, rewards credited to a card, and a transfer
+  // however the bank words it. A property tax is a tax, so it goes first.
+  {
+    category: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    keywords: ["PROPERTY TAX", "PROP TAX", "TAX COLLECTOR"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_RENT",
+    keywords: ["PROPERTY", "PROPERTIES", "COMMUNITIES", "LEASING", "REALTY", "RESIDENTIAL"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_TELEPHONE",
+    keywords: ["WIRELESS", "CELLULAR"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
+    keywords: ["COMMUNICATIONS", "BROADBAND", "FIBER", "CABLE"],
+    direction: "out",
+  },
+  {
+    category: "RENT_AND_UTILITIES_WATER",
+    keywords: ["PUBLIC WORKS", "WATER DISTRICT"],
+    direction: "out",
+  },
+  { category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES", keywords: ["TAXI", "CAB", "LIMO"] },
+  {
+    category: "ENTERTAINMENT_TV_AND_MOVIES",
+    keywords: [
+      "CINEMA",
+      "CINEMAS",
+      "THEATRE",
+      "THEATRES",
+      "THEATER",
+      "AMC",
+      "REGAL",
+      "CINEMARK",
+      "FANDANGO",
+      // Television by satellite or stream, not a phone or internet bill.
+      "DIRECTV",
+      "DISH NETWORK",
+    ],
+  },
+  { category: "FOOD_AND_DRINK_GROCERIES", keywords: ["MARKET", "FOODS"], direction: "out" },
+  {
+    category: "INCOME_OTHER",
+    keywords: ["CASHBACK", "CASH BACK", "REWARDS CREDIT", "STATEMENT CREDIT", "REDEMPTION"],
+    direction: "in",
+  },
+  { category: "TRANSFER_OUT_ACCOUNT_TRANSFER", keywords: ["TRANSFER"], direction: "out" },
+  { category: "TRANSFER_IN_ACCOUNT_TRANSFER", keywords: ["TRANSFER"], direction: "in" },
+
   // A bar or a bakery by its kind (QA round 28: "HOLLOW OAK TAVERN", "BLUE HERON BAKERY").
   { category: "FOOD_AND_DRINK_RESTAURANT", keywords: ["TAVERN", "PUB", "SALOON", "BAR & GRILL"] },
   { category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK", keywords: ["BAKERY", "BAKE SHOP", "DONUTS"] },

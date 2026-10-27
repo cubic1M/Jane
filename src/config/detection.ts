@@ -657,8 +657,14 @@ export const DUPLICATE_CHARGE_PER_SEAT_CATEGORIES: readonly PfcDetailed[] = [
   "TRAVEL_FLIGHTS",
   "TRANSPORTATION_PUBLIC_TRANSIT",
 ];
-// Cinemas sell a seat each too, but Plaid files them with streaming services, where a double
-// charge is real, so they are known by name (whole words of the merchant; accuracy bench, first
+// Cinemas sell a seat each too, but Plaid (and Claude) file them with streaming services. A
+// streaming service's double charge is on a plan paid on other days too; a cinema visit is one
+// day. So in these categories, two at one price on the only day a merchant was ever paid are
+// seats (CSV bench: two seats at a cinema whose name says nothing).
+export const DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES: readonly PfcDetailed[] = [
+  "ENTERTAINMENT_TV_AND_MOVIES",
+];
+// Cinemas are also known by name (whole words of the merchant; accuracy bench, first
 // held-out set: two seats at AMC).
 // This many identical charges at one place on one day are a group's seats (or rounds), not a
 // card run twice: a shop doesn't run a card three times (CSV bench: tickets at a cinema whose

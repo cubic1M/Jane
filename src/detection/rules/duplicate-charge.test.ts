@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DUPLICATE_CHARGE_PER_SEAT_CATEGORIES } from "@/config/detection";
-import { AS_OF, CARD, CHECKING, input, tx } from "../__fixtures__/build";
+import { AS_OF, CARD, CHECKING, NETFLIX, input, monthly, tx } from "../__fixtures__/build";
 import { buildStreams } from "../streams";
 import type { DetectionInput, DetectionTransaction } from "../types";
 import { addDays } from "../units";
@@ -19,6 +19,15 @@ const charge = (daysAgo: number, overrides: Partial<DetectionTransaction> = {}) 
   });
 
 describe("duplicate_charge", () => {
+  it("still finds a streaming plan charged twice, though cinemas share its category", () => {
+    const plan = monthly(4, 1549, NETFLIX);
+    const last = plan[plan.length - 1];
+    const again = { ...last, id: `${last.id}-again` };
+    expect(run(input({ transactions: [...plan, again] }))).toEqual([
+      expect.objectContaining({ type: "duplicate_charge" }),
+    ]);
+  });
+
   it("finds the second of two identical charges a day apart, as a refund", () => {
     const second = charge(9);
     const [finding] = run(input({ transactions: [charge(10), second] }));
@@ -67,6 +76,14 @@ describe("duplicate_charge", () => {
     }
     const cinema = { description: "AMC THEATRES 2201", merchantName: null };
     none([charge(10, cinema), charge(10, cinema)]);
+    // Two seats at a cinema filed with TV and movies, at a place with no regular charge.
+    const cinema2 = {
+      description: "GRAND PALACE 042",
+      merchantName: null,
+      pfcPrimary: "ENTERTAINMENT",
+      pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
+    };
+    none([charge(10, cinema2), charge(10, cinema2)]);
     // Three at one price on one day, at a place whose name says nothing: a group's seats.
     const hall = { description: "GRAND HALL 042", merchantName: null };
     none([charge(10, hall), charge(10, hall), charge(10, hall)]);

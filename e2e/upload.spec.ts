@@ -76,6 +76,8 @@ test("a new person starts with uploading, and lands on the report", async ({ pag
   // Saved at once, the rest in the background: the chip at the top follows it.
   await page.getByRole("button", { name: "Import 4 transactions" }).click();
   await expect(page.locator("[data-import-saved]")).toContainText("Saved 4 transactions");
+  // Said once: no second paragraph repeating where the progress shows.
+  await expect(page.locator("[data-import-saved]")).not.toContainText("Keep using Jane meanwhile");
   await expect(page.locator("[data-import-chip]")).toBeVisible();
   // Only on the page: never again inside the docked chat's frame (QA: it covered the chat).
   await expect(
@@ -253,6 +255,25 @@ test("a file that plainly isn't the chosen account's gets one line saying so", a
     "wells-fargo.csv and amex.csv look like two different accounts. Upload them one at a time",
   );
   await expect(page.getByRole("button", { name: /^Import \d+ transactions$/ })).toBeDisabled();
+});
+
+test('the same file again says nothing was new, not "Saved 0 transactions"', async ({
+  page,
+  baseURL,
+}) => {
+  await signIn(page, baseURL);
+  await page.goto("/import");
+  await uploadFile(page, "chase-checking.csv");
+  await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
+  await waitForImport(page, { open: "/import" });
+
+  // Back on /import, the account choice opens on that account; the same file into it.
+  await expect(page.locator('select[name="accountId"] option:checked')).toContainText("Chase");
+  await uploadFile(page, "chase-checking.csv");
+  await page.getByRole("button", { name: /^Import \d+ transactions?$/ }).click();
+  await expect(page.locator("[data-import-saved]")).toContainText(
+    /^Nothing new: Jane already had all \d+ of these transactions\./,
+  );
 });
 
 test("empty, header-only, Latin-1 and too-big uploads say what's wrong, and never crash the page", async ({
