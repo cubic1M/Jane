@@ -621,6 +621,11 @@ export const DUPLICATE_CHARGE_PER_SEAT_WORDS: readonly string[] = [
   "cinema",
   "cinemas",
   "cineplex",
+  // The big chains by name, which their card descriptors use alone ("AMC 0517 ONLINE"; CSV bench).
+  "amc",
+  "regal",
+  "cinemark",
+  "fandango",
 ];
 // Money moving rather than spent never counts as an unusually large charge.
 export const LARGE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [

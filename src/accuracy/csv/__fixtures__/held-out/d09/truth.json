@@ -1,0 +1,70 @@
+{
+  "person": "d09",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "STRAVA",
+      "perYear": 143.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 VIVID SEATS 866-848-8499 seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 1385.76
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -232.34
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -1386.11
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -3756.25
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# The CSV bench statements are byte for byte as the banks export them: CRLF and BOM included.
+* -text

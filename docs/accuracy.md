@@ -84,11 +84,11 @@ Calibration, tuning set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 41 | 56% | 100% |
+| 50–59% | 43 | 56% | 100% |
 | 60–69% | 18 | 65% | 100% |
 | 70–79% | 7 | 74% | 100% |
-| 80–89% | 29 | 86% | 100% |
-| 90–100% | 28 | 95% | 100% |
+| 80–89% | 31 | 86% | 100% |
+| 90–100% | 32 | 95% | 100% |
 
 Held-out set (40 people, 10008 transactions):
 
@@ -110,9 +110,9 @@ Calibration, held-out set:
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 26 | 56% | 100% |
-| 60–69% | 30 | 65% | 100% |
+| 60–69% | 31 | 65% | 100% |
 | 70–79% | 10 | 75% | 100% |
-| 80–89% | 15 | 85% | 100% |
+| 80–89% | 17 | 85% | 100% |
 | 90–100% | 12 | 95% | 100% |
 
 Second held-out set (40 people, 10748 transactions):
@@ -134,11 +134,11 @@ Calibration, second held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 28 | 57% | 100% |
+| 50–59% | 29 | 57% | 100% |
 | 60–69% | 18 | 64% | 100% |
 | 70–79% | 8 | 75% | 100% |
-| 80–89% | 18 | 86% | 100% |
-| 90–100% | 18 | 95% | 100% |
+| 80–89% | 19 | 86% | 100% |
+| 90–100% | 19 | 95% | 100% |
 
 Third held-out set (40 people, 9384 transactions):
 
@@ -159,11 +159,11 @@ Calibration, third held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 41 | 55% | 100% |
+| 50–59% | 40 | 55% | 100% |
 | 60–69% | 16 | 66% | 100% |
 | 70–79% | 8 | 73% | 100% |
 | 80–89% | 12 | 85% | 100% |
-| 90–100% | 6 | 95% | 100% |
+| 90–100% | 8 | 95% | 100% |
 <!-- scoreboard:end -->
 
 ### What changed in #766
@@ -230,6 +230,71 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
   - The plan's own name after the bank's `*` counts, with a one-letter cut-off end dropped ("MICROSOFT*MICROSOFT 365 P" is Microsoft 365, though the merchant reads "Microsoft"); plan tiers (family, personal, individual, student) join `YEARLY_PLAN_WORDS`. A yearly plan found this way is a subscription whatever its category (`Stream.namedPlan`).
   - Tuning and first held-out set unchanged (100% precision on both).
 - **Left:** one Dropbox plan switched from monthly to yearly in the same year (second held-out set); the monthly run has ended and the yearly charge sits among monthly ones, so neither rule takes it.
+
+## CSV bench: the upload path, on bank files (2026-10-27)
+
+Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
+
+- **People:** `src/accuracy/csv/people.ts`, 20 synthetic people per set (none real), 3 to 6 months each, a checking account and one or two cards, some with savings. Every true transaction carries its category, and each person the truth for every finding: what should fire, what shouldn't (a group's tickets, a refunded double charge, coffee at one price every day, a pending copy), the $/yr Jane should show, net worth today and at each month end.
+- **Files:** `src/accuracy/csv/layouts.ts` writes each account in its bank's layout: Chase checking and card, Bank of America checking (summary block above the header) and card, Wells Fargo (no header), Capital One 360 (two-digit years, unsigned amounts with a type) and card (ISO dates, debit and credit columns), Citi (pending rows in an export taken mid-month, payments as negative credits), American Express (half with "additional details": line breaks inside quotes), Discover, and a credit union's semicolon file with day-first dates and decimal commas (through the column picker, Jane's guesses accepted, the right column picked where it asks). Byte-order marks, Windows line ends, running balances, padded and cut descriptions ("AUTOMATIC PAYMENT - THANK"), each bank's ACH, Zelle, Venmo, transfer, ATM, fee and card-payment wording, and monthly files that overlap by a few days. The files are checked in (`src/accuracy/csv/__fixtures__/<set>/<person>/`, with a `truth.json` of what each person should see), so anyone can upload one person by hand.
+- **Two sets.** The tuning set (`CSV_SEED`) is what rules were fixed on. The held-out set (`CSV_HELD_OUT_SEED`) has the same kinds of people and mess under names the tuning set never uses (other grocers, restaurants, landlords, utilities, employers, subscriptions, airlines and cinemas) and different banks per person. It was written before any fix and is only scored.
+- **Scoring:** `src/accuracy/csv/score.ts` runs what `/import` runs, without a database: `readCsvFile` on every file, one copy of rows two files share, `categorizeTransactions` with Claude off and no cached merchants, card payments matched from the card's side, the merchant directory's seed, `detect()`, the spending chart's monthly totals and the home hub's net worth line. Claude is stubbed (`vi.mock`), so nothing is spent and the categories and subscriptions are the rules' alone: a lower bound. On a live upload Claude places what the rules leave, and is asked about recurring charges whose category can't say; the tables count both.
+- **Run it:** `npm run accuracy` prints both benches. `ACCURACY_WRITE=1` also rewrites the files, `src/accuracy/csv/baseline.json` and the tables below. `ACCURACY_MISTAKES=1` lists the tuning set's mistakes.
+- **Gate:** `src/accuracy/csv/csv-accuracy.test.ts`, with the unit tests: the files must match the generator, every share in the baseline may drop at most 3 points, and extra rows and false "Charged twice?" may not rise at all.
+
+<!-- csv-scoreboard:start -->
+Tuning set (20 people, 127 files, 5091 transactions):
+
+| Step | Score |
+| --- | ---: |
+| Files read | 127 of 127 (122 exactly) |
+| Rows read exactly | 100.0% (7 extra, 0 missing) |
+| Category right (rules only) | 96.9% (157 left for Claude) |
+| False "Charged twice?" | 1 (1 people) |
+| Findings, $/yr | Jane $27,848, truth $27,750; error on the ones found 0.0% |
+| Monthly spending, error | 0.8% |
+| Monthly income, error | 0.0% |
+| Net worth today right | 5 of 20 people (off by $99,131 in all) |
+| Net worth line: month-ends drawn | 18.2% (error where drawn 8.1%) |
+
+| Finding | Precision | Recall | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| subscription_review | 100.0% | 100.0% | 80 | 0 | 0 |
+| price_increase | 100.0% | 100.0% | 12 | 0 | 0 |
+| trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
+| bank_fees | 100.0% | 100.0% | 16 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
+| duplicate_charge | 87.5% | 100.0% | 7 | 1 | 0 |
+| idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
+
+Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
+
+Held-out set (20 people, 151 files, 5003 transactions):
+
+| Step | Score |
+| --- | ---: |
+| Files read | 151 of 151 (147 exactly) |
+| Rows read exactly | 100.0% (7 extra, 0 missing) |
+| Category right (rules only) | 65.1% (1619 left for Claude) |
+| False "Charged twice?" | 5 (3 people) |
+| Findings, $/yr | Jane $14,780, truth $27,484; error on the ones found 0.0% |
+| Monthly spending, error | 0.4% |
+| Monthly income, error | 0.0% |
+| Net worth today right | 5 of 20 people (off by $76,484 in all) |
+| Net worth line: month-ends drawn | 18.2% (error where drawn 6.7%) |
+
+| Finding | Precision | Recall | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| subscription_review | 100.0% | 22.2% | 18 | 0 | 63 |
+| price_increase | 100.0% | 92.3% | 12 | 0 | 1 |
+| trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
+| bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
+| duplicate_charge | 58.3% | 100.0% | 7 | 5 | 0 |
+| idle_cash | 100.0% | 100.0% | 6 | 0 | 0 |
+
+Missed subscriptions Claude would be asked about on a live upload: 57 of 63.
+<!-- csv-scoreboard:end -->
 
 ## Calibration
 

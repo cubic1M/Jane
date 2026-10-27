@@ -1,0 +1,93 @@
+{
+  "person": "c14",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NYTIMES*NYTDIGITAL",
+      "perYear": 75
+    },
+    {
+      "type": "price_increase",
+      "about": "NYTIMES*NYTDIGITAL 400→625",
+      "perYear": 27
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "SIRIUSXM trial",
+      "perYear": 10.99
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 920.53
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1285825, excess 272199",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "CVS/PHARMACY #04321 twice, refunded"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 2199.67
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 5268.48
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 6489.19
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 8068.52
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 9162.76
+    }
+  ]
+}

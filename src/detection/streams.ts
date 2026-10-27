@@ -178,6 +178,23 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
     }
   }
 
+  // And before it: once the new price has come more often than the old, the typical amount is
+  // the new one, and the charges at the old price, at the same gap, are the run's oldest (CSV
+  // bench: Disney+ $13.99, $13.99, $15.99, $15.99, $15.99 was no price increase).
+  for (const charge of [...charges].reverse()) {
+    const first = run[0];
+    if (charge.date >= first.date) continue;
+    const gap = daysBetween(charge.date, first.date);
+    const firstOldPrice = run[0] === core[0];
+    if (
+      gap >= min &&
+      gap <= max &&
+      (variable || firstOldPrice || withinTolerance(charge.amountCents, first.amountCents))
+    ) {
+      run.unshift(charge);
+    }
+  }
+
   const last = run[run.length - 1];
   const merchant = merchantOf(last);
   if (!merchant) return null;

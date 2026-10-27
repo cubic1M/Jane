@@ -1,0 +1,82 @@
+{
+  "person": "d16",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
+    },
+    {
+      "type": "price_increase",
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANVA* 04321",
+      "perYear": 179.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "IKEA US 0123 twice",
+      "perYear": 127.38
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 3449.69
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 3038.56
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 2810.24
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 2853.99
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 2067.85
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 1120.65
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 791.85
+    }
+  ]
+}

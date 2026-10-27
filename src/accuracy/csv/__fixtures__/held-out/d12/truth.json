@@ -1,0 +1,96 @@
+{
+  "person": "d12",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Credit union checking",
+      "layout": "custom",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "HEADSPACE",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "LA FITNESS",
+      "perYear": 419.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 131.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 5407975, excess 4858355",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 VIVID SEATS 866-848-8499 seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 22640.41
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 31021.55
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 35140.23
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 39910.36
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 43970.7
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 47801.42
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 52585.11
+    }
+  ]
+}

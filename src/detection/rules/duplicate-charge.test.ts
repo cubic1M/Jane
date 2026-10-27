@@ -67,6 +67,9 @@ describe("duplicate_charge", () => {
     }
     const cinema = { description: "AMC THEATRES 2201", merchantName: null };
     none([charge(10, cinema), charge(10, cinema)]);
+    // A cinema chain whose descriptor is its name alone (CSV bench).
+    const amc = { description: "AMC 0517 ONLINE", merchantName: null };
+    none([charge(10, amc), charge(10, amc)]);
     // Two overdraft fees on one day: the bank fees finding's.
     const overdraft = { pfcPrimary: "BANK_FEES", pfcDetailed: "BANK_FEES_OVERDRAFT_FEES" };
     none([charge(10, overdraft), charge(10, overdraft)]);

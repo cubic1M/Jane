@@ -13,6 +13,7 @@ import { inList, lowest } from "../helpers";
 import type { Stream } from "../streams";
 import type { Candidate } from "../types";
 import { streamEvidence, type Rule } from "./rule";
+import { isSubscription } from "./subscription-review";
 
 const near = (cents: number, to: number) =>
   Math.abs(cents - to) <= to * PRICE_INCREASE_MAX_PRIOR_SPREAD;
@@ -54,7 +55,9 @@ export const priceIncrease: Rule = (_input, streams) =>
       !step ||
       step.priorAverageCents <= 0 ||
       step.priorCount < PRICE_INCREASE_MIN_PRIOR_CHARGES ||
-      inList(stream.pfcPrimary, PRICE_INCREASE_EXCLUDED_PRIMARIES) ||
+      // A subscription's price is its price, whatever shop category it's filed under (CSV
+      // bench: The New York Times, a newsstand, went from $4 to $6.25 unnoticed).
+      (!isSubscription(stream) && inList(stream.pfcPrimary, PRICE_INCREASE_EXCLUDED_PRIMARIES)) ||
       inList(stream.pfcDetailed, PRICE_INCREASE_EXCLUDED_CATEGORIES) ||
       lastAmountCents < step.priorAverageCents * (1 + PRICE_INCREASE_THRESHOLD)
     ) {

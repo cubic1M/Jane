@@ -1,0 +1,79 @@
+{
+  "person": "c15",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America savings",
+      "layout": "bofa_checking",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "OPENAI *CHATGPT SUBSCR",
+      "perYear": 240
+    },
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 5126.12
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 2876.41
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 1626.11
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 135.86
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -2210.11
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -3807.14
+    }
+  ]
+}

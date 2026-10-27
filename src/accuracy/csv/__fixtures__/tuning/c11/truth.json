@@ -1,0 +1,100 @@
+{
+  "person": "c11",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Credit union checking",
+      "layout": "custom",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "ADOBE *CREATIVE CLD",
+      "perYear": 275.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PLANET FITNESS",
+      "perYear": 299.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NYTIMES*NYTDIGITAL",
+      "perYear": 48
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 102
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 40
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 775.01
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 AMC 0517 ONLINE seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WAL-MART #2281 twice, refunded"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": -2914.7
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -3980.05
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -3658.52
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -4397.08
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -5249.73
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -5717.98
+    }
+  ]
+}

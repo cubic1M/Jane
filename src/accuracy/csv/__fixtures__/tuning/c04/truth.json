@@ -1,0 +1,92 @@
+{
+  "person": "c04",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "MAX.COM",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PLANET FITNESS",
+      "perYear": 299.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice",
+      "perYear": 45.71
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 AMC 0517 ONLINE seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 6539.03
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 5833.01
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 5761.97
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 5036.2
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 4328.96
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 3932.77
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 3601.57
+    }
+  ]
+}

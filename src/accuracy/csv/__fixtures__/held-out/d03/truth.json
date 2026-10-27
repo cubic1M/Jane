@@ -1,0 +1,98 @@
+{
+  "person": "d03",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRAMMARLY",
+      "perYear": 144
+    },
+    {
+      "type": "subscription_review",
+      "about": "ESPN PLUS",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 60
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 695
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "PEETS COFFEE 00121 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 VIVID SEATS 866-848-8499 seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 1633.9
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -276.69
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -3174.49
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -4355.94
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -5705.38
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -7788.07
+    }
+  ]
+}

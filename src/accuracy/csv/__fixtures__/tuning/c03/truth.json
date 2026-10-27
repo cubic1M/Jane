@@ -1,0 +1,97 @@
+{
+  "person": "c03",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "PLANET FITNESS",
+      "perYear": 299.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AUDIBLE*2K94LM",
+      "perYear": 179.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "DISNEY PLUS",
+      "perYear": 191.88
+    },
+    {
+      "type": "price_increase",
+      "about": "DISNEY PLUS 1399→1599",
+      "perYear": 24
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 63
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 996.65
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 SOUTHWES 5262123456789 seats"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": -2499
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -4329.2
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -4949.03
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -6630.29
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -8474.36
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -10355.96
+    }
+  ]
+}
