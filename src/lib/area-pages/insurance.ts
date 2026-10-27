@@ -44,7 +44,7 @@ export const NEED_LABELS: Record<string, string> = {
   business_equipment: "Work equipment cover",
 };
 
-const WORK_COVER_GAPS: readonly GapKey[] = ["health", "disability"];
+const NOT_URGENT_GAPS: readonly GapKey[] = ["health", "disability", "travel", "pet"];
 
 const GAP_LABELS: Record<GapKey, string> = {
   renters: "Renters insurance",
@@ -186,15 +186,17 @@ export function insuranceTree(input: InsuranceTreeInput): AreaTree {
     });
   });
 
-  // Health and disability cover usually come with a job and are paid out of the paycheck
-  // before it reaches the bank, so bank data can't see them: "not on file", worth a look, not
-  // an urgent "missing" (overnight upload QA: every salaried person had 2 urgent gaps).
+  // Gaps guessed from what the bank data doesn't show, for cover that is often had another way
+  // or is the person's choice: "not on file", worth a look, not an urgent "missing". Health and
+  // disability usually come with a job, out of pay before it reaches the bank; travel cover
+  // often comes with a card; pet cover is the person's choice (overnight upload QA: a flyer had
+  // an urgent "Travel cover: Missing"). Renters cover stays urgent: a lease often requires it.
   const missing = input.gaps.map((g) => {
-    const throughWork = WORK_COVER_GAPS.includes(g.key);
+    const guessed = NOT_URGENT_GAPS.includes(g.key);
     return item("missing", g.key + (g.policyId ? `-${g.policyId}` : ""), {
       label: GAP_LABELS[g.key],
-      status: throughWork ? "look" : "act",
-      figure: throughWork ? "Not on file" : "Missing",
+      status: guessed ? "look" : "act",
+      figure: guessed ? "Not on file" : "Missing",
       summary: g.why,
     });
   });
