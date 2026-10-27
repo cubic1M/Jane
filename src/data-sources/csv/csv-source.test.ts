@@ -196,6 +196,8 @@ describe("accountNameFromFile", () => {
     ["Navy_Federal_Statement_2026-10.csv", "Navy Federal"],
     ["transactions.csv", "Uploaded account"],
     ["my credit union.CSV", "My Credit Union"],
+    ["export (3).csv", "Uploaded account"],
+    ["Golden1 Checking (1).csv", "Golden1 Checking"],
   ])("names %j %j", (file, name) => {
     expect(accountNameFromFile(file)).toBe(name);
   });

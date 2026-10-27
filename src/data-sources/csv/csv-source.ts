@@ -84,6 +84,8 @@ const NAME_CHARS = 60;
 export function accountNameFromFile(fileName: string): string {
   const words = fileName
     .replace(/\.[a-z0-9]+$/i, "")
+    // A browser's copy marker on a second download: "export (3).csv" (round 2 named one "(3)").
+    .replace(/\s*\(\d+\)\s*$/, "")
     .split(/[\s._-]+/)
     .filter((w) => w && !FILE_NOISE.test(w));
   const name = words

@@ -187,6 +187,20 @@ describe("semicolons, decimal commas and written-out dates", () => {
 });
 
 describe("a running balance column", () => {
+  it('is guessed when it says "Running Total", beside money out in parentheses', () => {
+    const text =
+      "Posted On,Memo,Amount,Running Total\n" +
+      '2026-10-12,"GEICO AUTO PAYMENT",(142.50),"1,057.50"\n' +
+      '2026-10-05,"SHARE TRANSFER FROM CHECKING",200.00,"1,200.00"\n';
+    const first = readCsvFile({ name: "export (3).csv", text });
+    expect(!first.ok && first.choices?.guess).toMatchObject({
+      date: 0,
+      description: 1,
+      amount: 2,
+      balance: 3,
+    });
+  });
+
   const text =
     "Date,Description,Withdrawal,Deposit,Balance\n" +
     "10/14/2026,COFFEE,4.50,,995.50\n" +
