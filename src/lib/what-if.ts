@@ -97,8 +97,6 @@ export async function whatIf(
   return first;
 }
 
-export class WhatIfError extends Error {}
-
 export type AdoptedPlan = {
   id: string;
   scenario: Scenario;
