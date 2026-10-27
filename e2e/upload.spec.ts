@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { Client } from "pg";
 import { TERMS_VERSION } from "../src/config/legal";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { waitForImport } from "./import-wait";
 
 // Upload first (closed beta, founder: linking feels scary): a new person starts on /connect
 // with "Upload your statements", downloads from their bank with the steps on /import, uploads a
@@ -72,36 +73,11 @@ test("a new person starts with uploading, and lands on the report", async ({ pag
   // Two weeks of statements: ask for three months.
   await expect(page.locator("[data-upload-months]")).toContainText("cover 14 days");
 
-  // The progress bar's steps as they show, kept across the move to the report.
-  await page.evaluate(() => {
-    const seen = new Set<string>();
-    new MutationObserver(() => {
-      document.querySelectorAll("[data-import-progress] li").forEach((li) => {
-        seen.add(li.textContent ?? "");
-      });
-      if (document.querySelector('[role="progressbar"][aria-label="Importing your statements"]')) {
-        seen.add("bar");
-      }
-      sessionStorage.setItem("import-steps", JSON.stringify([...seen]));
-    }).observe(document.body, { childList: true, subtree: true, characterData: true });
-  });
+  // Saved at once, the rest in the background: the chip at the top follows it.
   await page.getByRole("button", { name: "Import 4 transactions" }).click();
-  await expect(page).toHaveURL("/report", { timeout: 90_000 });
-  const seenSteps = JSON.parse(
-    (await page.evaluate(() => sessionStorage.getItem("import-steps"))) ?? "[]",
-  ) as string[];
-  expect(seenSteps).toContain("bar");
-  for (const label of [
-    "Reading your file",
-    "Sorting 4 transactions",
-    "Saving",
-    "Looking for savings",
-  ]) {
-    expect(
-      seenSteps.some((s) => s.includes(label)),
-      label,
-    ).toBe(true);
-  }
+  await expect(page.locator("[data-import-saved]")).toContainText("Saved 4 transactions");
+  await expect(page.locator("[data-import-chip]")).toBeVisible();
+  await waitForImport(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     /We found|Nothing to fix right now/,
     { timeout: 60_000 },
@@ -136,7 +112,7 @@ test("a CSV in an unknown layout gets a column picker instead of failing", async
   await expect(page.getByRole("cell", { name: "COFFEE PLACE" })).toBeVisible();
   await page.locator('[data-new-account] [name="new.name"]').fill("Credit union");
   await page.getByRole("button", { name: "Import 3 transactions" }).click();
-  await expect(page).toHaveURL("/report", { timeout: 90_000 });
+  await waitForImport(page);
 });
 
 test("the picker reads day-first dates, guesses positive spending, and asks when unsure", async ({

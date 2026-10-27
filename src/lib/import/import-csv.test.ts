@@ -67,6 +67,11 @@ describe("importCsvFiles", () => {
       skipped: 1,
       // For upload_succeeded: each file's format and transaction count.
       files: [{ format: "chase_checking", rows: 9 }],
+      // Each day's closing balance from the running-balance column, for net worth over time.
+      balances: expect.arrayContaining([{ date: "2026-10-14", balanceCents: 248451 }]),
+      // The days the upload's rows cover, for the upload history.
+      from: "2026-10-05",
+      to: "2026-10-14",
     });
     const { data, skipDuplicates } = createMany.mock.calls[0][0];
     expect(skipDuplicates).toBe(true);
@@ -83,7 +88,14 @@ describe("importCsvFiles", () => {
       pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
       categorySource: "rule",
       pending: false,
+      importRunId: null,
     });
+  });
+
+  it("keeps the upload's record on each row it adds", async () => {
+    await importCsvFiles(db, "acct_1", [fixture("chase-checking.csv")], { importRunId: "run_7" });
+    const { data } = createMany.mock.calls[0][0];
+    expect(data.every((row: { importRunId: string }) => row.importRunId === "run_7")).toBe(true);
   });
 
   it("says each step as it starts, and never waits on Claude", async () => {
@@ -108,6 +120,9 @@ describe("importCsvFiles", () => {
       duplicates: 9,
       skipped: 1,
       files: [{ format: "chase_checking", rows: 9 }],
+      balances: expect.any(Array),
+      from: "2026-10-05",
+      to: "2026-10-14",
     });
   });
 

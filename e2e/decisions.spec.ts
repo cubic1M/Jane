@@ -3,6 +3,7 @@ import { isHiddenPage, shownHref } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { demoPerson } from "./demo-person";
 import { openFinding } from "./report-page";
+import { waitForImport } from "./import-wait";
 
 // Read-only mode, on a 375px-wide screen. A real account (a CSV import): import -> report ->
 // "Show me how" -> the steps and drafts to do it themselves, Copy and Mark done, and nothing
@@ -41,7 +42,7 @@ async function importSampleCard(page: Page) {
   await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample-card.csv");
   await page.getByRole("button", { name: "Preview" }).click();
   await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
-  await expect(page).toHaveURL("/report", { timeout: 60_000 });
+  await waitForImport(page);
 }
 
 test.describe("a real account", () => {

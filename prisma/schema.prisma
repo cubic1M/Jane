@@ -430,6 +430,7 @@ model User {
   practicePortfolio    PracticePortfolio?
   practicePreferences  PracticePreferences?
   paperAccount         PaperAccount?
+  importRuns           ImportRun[]
 
   @@map("users")
 }
@@ -569,6 +570,7 @@ model Account {
   // Spec step 133: orders placed in it.
   brokerageOrders        BrokerageOrder[]
   beneficiaries          AccountBeneficiary[]
+  importRuns             ImportRun[]
 
   @@index([userId])
   @@index([itemId])
@@ -579,6 +581,9 @@ model Transaction {
   id                 String          @id @default(cuid())
   userId             String          @map("user_id")
   accountId          String          @map("account_id")
+  // The upload that added it (src/lib/import/upload.ts), so removing that upload removes
+  // exactly its rows. Null for Plaid rows and rows uploaded before uploads were recorded.
+  importRunId        String?         @map("import_run_id")
   source             DataSourceKind
   // Plaid-only; null for CSV transactions.
   plaidTransactionId String?         @unique @map("plaid_transaction_id")
@@ -599,12 +604,14 @@ model Transaction {
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  importRun  ImportRun?  @relation(fields: [importRunId], references: [id], onDelete: SetNull)
   taxTags    TaxTag[]
   hsaReceipt HsaReceipt?
 
   suddenMoney SuddenMoney?
 
   @@unique([accountId, dedupeKey])
+  @@index([importRunId])
   @@index([userId])
   @@index([accountId])
   @@index([userId, date])
@@ -1787,6 +1794,10 @@ model BalanceSnapshot {
   accountId    String   @map("account_id")
   date         DateTime @db.Date
   balanceCents Int      @map("balance_cents")
+  // Where an uploaded account's balance came from (src/lib/import/balances.ts): "file" (the
+  // statement's running balance) or "derived" (worked back from today's balance), so they can
+  // be rebuilt. Null for the daily snapshot and Plaid's.
+  source       String?
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1795,6 +1806,38 @@ model BalanceSnapshot {
   @@unique([accountId, date])
   @@index([userId, date])
   @@map("balance_snapshots")
+}
+
+// An upload being finished in the background (src/lib/import/background.ts): its rows are
+// saved at once and the rest (card payments, balances, findings, every sector's numbers) runs
+// as a job. The progress chip on every page reads it. stage: queued, matching, balances,
+// looking, refreshing, done or failed.
+model ImportRun {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  // "upload", or "removal" for the refresh after an upload, an account or everything is
+  // removed (src/lib/import/remove.ts).
+  kind       String    @default("upload")
+  // An upload's account, file names and the days its rows cover, for the upload history.
+  accountId  String?   @map("account_id")
+  fileNames  String[]  @default([]) @map("file_names")
+  fromDate   DateTime? @map("from_date") @db.Date
+  toDate     DateTime? @map("to_date") @db.Date
+  rows       Int
+  stage      String    @default("queued")
+  foundCents Int?      @map("found_cents")
+  // When the person closed the chip saying it's done.
+  seenAt     DateTime? @map("seen_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account      Account?      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId, createdAt])
+  @@index([accountId])
+  @@map("import_runs")
 }
 
 // Slow work done outside the request (writing explanations), retried with backoff when it

@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AddAccountForm } from "./add-account-form";
 import { ImportForm } from "./import-form";
+import { UploadHistory } from "./upload-history";
 import { AppHeader } from "@/components/app-header";
 import { AccountList } from "@/components/account-list";
 import { listAccountSummaries } from "@/lib/accounts";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
+import { listUploads, uploadedTotals } from "@/lib/import/remove";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
 import { BANK_DOWNLOADS, SUGGESTED_UPLOAD_MONTHS, UPLOAD_REASSURANCE } from "@/config/import";
@@ -15,7 +17,13 @@ async function ImportContent() {
   const user = await requireUser();
   if (!canImportCsv(user)) redirect("/connect");
   const db = await scopedDb();
-  const accounts = await listAccountSummaries(db);
+  const [accounts, history, totals, uploaded] = await Promise.all([
+    listAccountSummaries(db),
+    listUploads(db),
+    uploadedTotals(db),
+    db.accounts.findMany({ where: { source: "csv" }, select: { id: true } }),
+  ]);
+  const uploadedIds = new Set(uploaded.map((a) => a.id));
 
   return (
     <>
@@ -25,8 +33,11 @@ async function ImportContent() {
         <h1 className="text-3xl font-semibold tracking-tight">Upload your statements</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Download the last {SUGGESTED_UPLOAD_MONTHS} months of transactions from your bank&apos;s
-          website as CSV, OFX or QFX, and upload them here. {UPLOAD_REASSURANCE} Uploading the same
-          file twice is safe: Jane skips rows it already has.
+          website as CSV, OFX or QFX, and upload them here. {UPLOAD_REASSURANCE}
+        </p>
+        <p data-reupload-safe="" className="text-zinc-600 dark:text-zinc-400">
+          Uploading the same file again, or one that overlaps, is safe: Jane skips the rows it
+          already has, so there&apos;s no need to remove anything first.
         </p>
       </div>
 
@@ -60,6 +71,15 @@ async function ImportContent() {
           American Express and Discover. For any other CSV you pick which column is which.
         </p>
       </section>
+
+      <UploadHistory
+        uploads={history.uploads}
+        earlier={history.earlier}
+        accounts={accounts
+          .filter((a) => uploadedIds.has(a.id))
+          .map((a) => ({ id: a.id, name: a.name, rows: a.transactionCount }))}
+        totals={totals}
+      />
 
       <section className="flex flex-col gap-4">
         {accounts.length > 0 && (

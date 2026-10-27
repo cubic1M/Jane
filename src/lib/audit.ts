@@ -60,6 +60,10 @@ export type AuditEvent =
   | "admin_page_viewed"
   | "admin_action"
   | "import_completed"
+  // Removing uploads (src/lib/import/remove.ts): what was removed, as counts only.
+  | "upload_removed"
+  | "uploaded_account_removed"
+  | "uploads_reset"
   // Finding data was sent to Claude for card text.
   | "explanations_generated"
   | "decision_made"

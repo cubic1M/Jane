@@ -45,6 +45,9 @@ export type OfxResult =
       file: string;
       transactions: Omit<NormalizedTransaction, "accountRef">[];
       skipped: SkippedRow[];
+      // The statement's closing balance (<LEDGERBAL>), as Jane keeps balances: what a card
+      // owes is positive. Empty when the file has none.
+      balances: { date: string; balanceCents: number }[];
     }
   | { ok: false; file: string; error: string };
 
@@ -96,5 +99,19 @@ export function readOfx(file: { name: string; text: string }): OfxResult {
   if (transactions.length === 0 && skipped.length === 0) {
     return { ok: false, file: file.name, error: "The file has no transactions." };
   }
-  return { ok: true, file: file.name, transactions, skipped };
+  return { ok: true, file: file.name, transactions, skipped, balances: ledgerBalance(file.text) };
+}
+
+// <LEDGERBAL><BALAMT>…<DTASOF>…: the balance on that day. A card statement's is negative
+// for what's owed (OFX's sign), so it's turned round.
+function ledgerBalance(text: string): { date: string; balanceCents: number }[] {
+  const block = /<LEDGERBAL>([\s\S]*?)(?:<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>|<\/CCSTMTRS>)/i.exec(
+    text,
+  )?.[1];
+  if (!block) return [];
+  const amount = ofxAmount(field(block, "BALAMT"));
+  const date = ofxDate(field(block, "DTASOF"));
+  if (amount === null || !date) return [];
+  const card = /<CCSTMTRS>/i.test(text);
+  return [{ date, balanceCents: card ? -amount || 0 : amount }];
 }

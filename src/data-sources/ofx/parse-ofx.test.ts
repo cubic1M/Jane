@@ -9,6 +9,15 @@ const fixture = (name: string) => ({
 });
 
 describe("readOfx", () => {
+  it("keeps the statement's closing balance, with a card's turned into what's owed", () => {
+    const checking = readOfx(fixture("checking-sgml.ofx"));
+    const card = readOfx(fixture("card-xml.qfx"));
+    expect(checking.ok && checking.balances).toEqual([
+      { date: "2026-10-15", balanceCents: 123456 },
+    ]);
+    expect(card.ok && card.balances).toEqual([{ date: "2026-10-15", balanceCents: 21045 }]);
+  });
+
   it("reads an OFX 1.x (SGML) checking statement", () => {
     const result = readOfx(fixture("checking-sgml.ofx"));
     if (!result.ok) throw new Error(result.error);

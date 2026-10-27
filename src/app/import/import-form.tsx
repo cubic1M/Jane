@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Fragment, useRef, useState, useTransition } from "react";
-import { previewImport, type PreviewResult } from "./actions";
+import { previewImport, startImport, type PreviewResult } from "./actions";
 import { ColumnPicker } from "./column-picker";
-import { ImportProgress } from "./import-progress";
-import { readEvents, type ImportStep } from "./progress";
 import {
-  IMPORT_HEADER,
+  IMPORT_STARTED_EVENT,
   NEW_ACCOUNT_ID,
   SUGGESTED_UPLOAD_DAYS,
   SUGGESTED_UPLOAD_MONTHS,
@@ -32,9 +30,8 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
   const [pickers, setPickers] = useState<Record<number, MappingChoices>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const router = useRouter();
-  // The import's progress, as /api/import reports each step (null: not importing).
-  const [importing, setImporting] = useState<{ step: ImportStep | null; rows: number | null }>();
+  // The upload just saved: the rest runs in the background, followed by the chip.
+  const [saved, setSaved] = useState<{ rows: number; runId: string } | null>(null);
   // A first upload makes its account from the file: its name and type come from the preview
   // until the person changes them.
   const [account, setAccount] = useState(accounts[0]?.id ?? NEW_ACCOUNT_ID);
@@ -71,56 +68,20 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
     });
   }
 
-  // Posts the upload and follows its steps as the server streams them, then opens the report.
-  async function onConfirm() {
+  // Saves the rows and returns at once; the person keeps using Jane while the rest runs.
+  function onConfirm() {
     setError(null);
-    setImporting({ step: null, rows: null });
-    const failed = (text: string) => {
-      setImporting(undefined);
-      setError(text);
-    };
-    try {
-      const response = await fetch("/api/import", {
-        method: "POST",
-        headers: { [IMPORT_HEADER]: "1" },
-        body: formData(),
-      });
-      if (!response.ok || !response.body) {
-        // JSON from the route, or plain text from the rate limit in front of it.
-        const text = await response.text().catch(() => "");
-        let message = text.trim();
-        try {
-          message = (JSON.parse(text) as { error?: string }).error ?? "";
-        } catch {
-          // Plain text: shown as it is.
-        }
-        return failed(message || "The upload didn't go through. Try again.");
-      }
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const read = readEvents(buffer + decoder.decode(value, { stream: true }));
-        buffer = read.rest;
-        for (const event of read.events) {
-          if ("stage" in event) {
-            setImporting((now) => ({
-              step: event.stage,
-              rows: event.stage === "sorting" ? event.rows : (now?.rows ?? null),
-            }));
-          } else if (event.type === "error") {
-            return failed(event.text);
-          } else {
-            return router.push(event.next);
-          }
-        }
-      }
-      failed("The upload stopped before it finished. Try again.");
-    } catch {
-      failed("The upload didn't go through. Check your connection and try again.");
-    }
+    setSaved(null);
+    startTransition(async () => {
+      const result = await startImport(formData());
+      if (!result.ok) return setError(result.error);
+      setSaved({ rows: result.rows, runId: result.runId });
+      setPreview(null);
+      setPickers({});
+      formRef.current?.reset();
+      // The chip on every page starts following it (src/components/import-chip.tsx).
+      window.dispatchEvent(new CustomEvent(IMPORT_STARTED_EVENT, { detail: result.runId }));
+    });
   }
 
   const files = preview?.ok ? preview.files : [];
@@ -205,21 +166,38 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
       </label>
 
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={pending || !!importing} className={SECONDARY_BUTTON}>
+        <button type="submit" disabled={pending} className={SECONDARY_BUTTON}>
           {pending && !preview ? "Reading…" : preview ? "Preview again" : "Preview"}
         </button>
         {ready && (
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={pending || !!importing}
-            className={PRIMARY_BUTTON}
-          >
-            {importing ? "Importing…" : `Import ${plural(total, "transaction")}`}
+          <button type="button" onClick={onConfirm} disabled={pending} className={PRIMARY_BUTTON}>
+            {pending ? "Saving…" : `Import ${plural(total, "transaction")}`}
           </button>
         )}
       </div>
-      {importing && <ImportProgress step={importing.step} rows={importing.rows} />}
+      {saved && (
+        <div
+          role="status"
+          data-import-saved={saved.runId}
+          className="flex flex-col gap-2 rounded-lg bg-zinc-100 p-4 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+        >
+          <p className="font-medium">
+            Saved {plural(saved.rows, "transaction")}. Jane is finishing the rest in the background.
+          </p>
+          <p>
+            Keep using Jane meanwhile: the bar at the top of every page says how it&apos;s going and
+            what it found.
+          </p>
+          <p className="flex flex-wrap gap-4">
+            <Link href="/report" className="font-medium underline">
+              See your report
+            </Link>
+            <Link href="/home" className="font-medium underline">
+              Go to Home
+            </Link>
+          </p>
+        </div>
+      )}
 
       {preview && !preview.ok && <Alert>{preview.error}</Alert>}
       {error && <Alert>{error}</Alert>}

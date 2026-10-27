@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { isHiddenPage, shownHref } from "../src/config/hidden-pages";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, treatAsDemoBank } from "./db";
 import { openFinding } from "./report-page";
+import { waitForImport } from "./import-wait";
 
 // The team's queue: non-admins get a 404 everywhere under /admin; an admin can move an
 // approved action and the person sees the new status on /actions.
@@ -81,7 +82,7 @@ test.describe("signed in", () => {
     await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample-card.csv");
     await page.getByRole("button", { name: "Preview" }).click();
     await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
-    await expect(page).toHaveURL("/report", { timeout: 30_000 });
+    await waitForImport(page);
     // A real account's yes is theirs to do (read-only mode); the queue is the demo bank's.
     await treatAsDemoBank(user.userId);
     await openFinding(page, /Geico insurance/i);
