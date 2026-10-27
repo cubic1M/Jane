@@ -106,7 +106,10 @@ export function ImportForm({
       return setError(over);
     }
     startTransition(async () => {
-      const result = await previewImport(data).catch(() => null);
+      // A preview changes nothing, so a dropped request is tried once more before saying so.
+      const result = await previewImport(data)
+        .catch(() => previewImport(data))
+        .catch(() => null);
       if (!result) return setError(FAILED);
       setPreview(result);
       if (!result.ok) return;

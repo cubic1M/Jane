@@ -43,14 +43,17 @@ const range = (from: string | null, to: string | null) =>
 const BUTTON =
   "inline-flex h-9 items-center rounded-full border border-zinc-300 px-4 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 
-// A button that asks before it removes anything.
+// A button that asks before it removes anything. `what` names what it removes, for a screen
+// reader beside the rows' identical buttons ("Remove this upload: wells-fargo.csv").
 function Confirm({
   label,
+  what,
   question,
   yes,
   run,
 }: {
   label: string;
+  what?: string;
   question: string;
   yes: string;
   run: () => Promise<ActionResult>;
@@ -60,7 +63,12 @@ function Confirm({
   const [pending, startTransition] = useTransition();
   if (!asking) {
     return (
-      <button type="button" className={BUTTON} onClick={() => setAsking(true)}>
+      <button
+        type="button"
+        className={BUTTON}
+        aria-label={what ? `${label}: ${what}` : undefined}
+        onClick={() => setAsking(true)}
+      >
         {label}
       </button>
     );
@@ -69,8 +77,10 @@ function Confirm({
     <div role="group" aria-label={label} className="flex flex-col gap-2 text-sm">
       <p>{question}</p>
       <div className="flex flex-wrap gap-2">
+        {/* Focus moves to the question's answer: the button pressed is gone. */}
         <button
           type="button"
+          autoFocus
           disabled={pending}
           className={`${BUTTON} border-zinc-900 font-semibold dark:border-zinc-100`}
           onClick={() =>
@@ -134,6 +144,7 @@ export function UploadHistory({
             </p>
             <Confirm
               label="Remove this upload"
+              what={u.fileNames.join(", ") || u.accountName}
               question={`Remove the ${plural(u.rows, "transaction")} this upload added to ${u.accountName}? Rows from your other uploads stay.`}
               yes="Yes, remove them"
               run={() => removeUploadAction(u.id)}
@@ -151,6 +162,7 @@ export function UploadHistory({
             </p>
             <Confirm
               label="Remove these"
+              what={`earlier rows of ${e.accountName}`}
               question={`Remove the ${plural(e.rows, "transaction")} uploaded to ${e.accountName} before uploads were listed here?`}
               yes="Yes, remove them"
               run={() => removeEarlierRowsAction(e.accountId)}
@@ -196,6 +208,7 @@ export function UploadHistory({
             )}
             <Confirm
               label="Remove account"
+              what={a.name}
               question={`Remove ${a.name} and all ${plural(a.rows, "transaction")} in it?`}
               yes="Yes, remove the account"
               run={() => removeAccountAction(a.id)}

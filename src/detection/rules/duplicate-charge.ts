@@ -11,7 +11,7 @@ import {
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { byDate, evidenceOf, inList, inLookback, merchantMatches } from "../helpers";
-import { merchantOf } from "../streams";
+import { merchantOf, twinCharges } from "../streams";
 import type { Candidate, DetectionInput, DetectionTransaction } from "../types";
 import { daysBetween } from "../units";
 import type { Rule } from "./rule";
@@ -56,6 +56,8 @@ export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
     rows.sort(byDate);
     const charges = rows.filter((t) => t.amountCents > 0);
     const refunds = rows.filter((t) => t.amountCents < 0);
+    // Twice on one day, month after month: two plans, not a double charge.
+    if (twinCharges(charges)) continue;
     const sameDay = (date: string) => charges.filter((c) => c.date === date).length;
     for (let i = 1; i < charges.length; i += 1) {
       const [first, second] = [charges[i - 1], charges[i]];

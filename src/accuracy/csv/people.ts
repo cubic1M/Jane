@@ -369,6 +369,8 @@ type Pool = {
   // One price every month and no name a rule knows, but not a subscription: a loan payment,
   // insurance, a church, a bakery, a bar (QA round 28).
   notPlans: Merchant[];
+  // A plan billed twice on the same day every month (two accounts, or one for a family member).
+  twin: Sub;
 };
 
 const TUNING: Pool = {
@@ -395,6 +397,7 @@ const TUNING: Pool = {
     cents: 13_900,
     alsoOk: DIGITAL,
   },
+  twin: { descriptor: "TIDAL.COM", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1099 },
   notPlans: [
     {
       descriptor: "HARBOR CREDIT UNION PMT",
@@ -610,6 +613,7 @@ const HELD_OUT: Pool = {
     cents: 6_500,
     alsoOk: DIGITAL,
   },
+  twin: { descriptor: "DEEZER", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1199 },
   notPlans: [
     { descriptor: "CANYON CU LOAN PMT", category: "LOAN_PAYMENTS_OTHER_PAYMENT", lo: 95, hi: 95 },
     { descriptor: "ROOT INSURANCE CO", category: "GENERAL_SERVICES_INSURANCE", lo: 42, hi: 42 },
@@ -1619,6 +1623,36 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     if (m.category.startsWith("LOAN") || m.category.endsWith("INSURANCE"))
       L.bill(rows, m.descriptor);
     else L.neutralBills.push(rows);
+  }
+
+  // Two plans billed together, on one card on one day every month: two subscriptions and two
+  // bills, never "Charged twice?" (upload QA), from their own dice too.
+  const t2 = rng((set === "tuning" ? CSV_SEED : CSV_HELD_OUT_SEED) + index * 104_729 + 29);
+  if (t2.chance(0.35)) {
+    const day = t2.int(2, 27);
+    const [a, b]: string[][] = [[], []];
+    L.monthly(day, (date) => {
+      const first = L.add(spend(card.id, date, P.twin.cents, P.twin));
+      const second = L.add(spend(card.id, date, P.twin.cents, P.twin));
+      if (first && second) {
+        a.push(first.id);
+        b.push(second.id);
+      }
+    });
+    for (const rows of [a, b]) {
+      L.findings.push({
+        type: "subscription_review",
+        rows,
+        annualCents: P.twin.cents * 12,
+        note: `${P.twin.descriptor}, one of two`,
+      });
+      L.bill(rows, P.twin.descriptor);
+    }
+    L.traps.push({
+      type: "duplicate_charge",
+      rows: [...a, ...b],
+      note: `${P.twin.descriptor}, two plans`,
+    });
   }
 
   // Idle cash: a saver keeps months of spending in checking.

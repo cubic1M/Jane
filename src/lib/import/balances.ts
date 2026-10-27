@@ -29,20 +29,33 @@ function snapshotDays(first: string, today: string): string[] {
   return days;
 }
 
-// An account's balance at the end of each snapshot day, worked back from today's.
+// An account's balance at the end of each snapshot day, worked back from today's. With the
+// statement's own balances (`anchors`), each day is worked from the nearest of them instead: back
+// from the next one after it, else forward from the last one before it. A gap in the rows then
+// stays a gap (round 8 of the new-user passes: after the newer of two uploads was removed, the
+// older months were worked back from today's balance across 45 missing days, and June read
+// $5,491 where the file said $1,000).
 export function derivedBalances(
   type: string,
   currentCents: number,
   transactions: readonly { date: string; amountCents: number }[],
   today: string,
+  anchors: readonly DayBalance[] = [],
 ): DayBalance[] {
   if (transactions.length === 0) return [{ date: today, balanceCents: currentCents }];
   const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+  const marks = [...anchors].sort((a, b) => a.date.localeCompare(b.date));
   // Money out is positive: it lowered a bank balance and raised what's owed on a card.
   const sign = type === "credit" ? -1 : 1;
+  const between = (from: string, to: string) =>
+    sorted.filter((t) => t.date > from && t.date <= to).reduce((sum, t) => sum + t.amountCents, 0);
   return snapshotDays(sorted[0].date, today).map((date) => {
-    const after = sorted.filter((t) => t.date > date).reduce((sum, t) => sum + t.amountCents, 0);
-    return { date, balanceCents: currentCents + sign * after };
+    if (date === today) return { date, balanceCents: currentCents };
+    const next = marks.find((m) => m.date > date);
+    if (next) return { date, balanceCents: next.balanceCents + sign * between(date, next.date) };
+    const last = marks.findLast((m) => m.date <= date);
+    if (last) return { date, balanceCents: last.balanceCents - sign * between(last.date, date) };
+    return { date, balanceCents: currentCents + sign * between(date, "9999-12-31") };
   });
 }
 
@@ -93,7 +106,7 @@ export async function rebuildUploadedBalances(
     const [fromFile, rows] = await Promise.all([
       db.balanceSnapshots.findMany({
         where: { accountId: account.id, source: FILE_SOURCE },
-        select: { date: true },
+        select: { date: true, balanceCents: true },
       }),
       db.transactions.findMany({
         where: { accountId: account.id },
@@ -108,6 +121,7 @@ export async function rebuildUploadedBalances(
       account.currentBalanceCents ?? 0,
       rows.map((r) => ({ date: isoDay(r.date), amountCents: r.amountCents })),
       today,
+      fromFile.map((s) => ({ date: isoDay(s.date), balanceCents: s.balanceCents })),
     ).filter((b) => !fileDays.has(b.date));
     const { count } = await db.balanceSnapshots.createMany({
       data: balances.map((b) => ({

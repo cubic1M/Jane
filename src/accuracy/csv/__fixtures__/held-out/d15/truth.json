@@ -56,6 +56,16 @@
       "type": "bank_fees",
       "about": "card fees",
       "perYear": 10.74
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DEEZER, one of two",
+      "perYear": 143.88
     }
   ],
   "notFindings": [
@@ -74,32 +84,36 @@
     {
       "type": "subscription_review",
       "about": "GRACE MINISTRIES TITHE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "DEEZER, two plans"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1732.07
+      "dollars": 1708.09
     },
     {
       "date": "2026-06-30",
-      "dollars": -19.87
+      "dollars": -67.83
     },
     {
       "date": "2026-07-31",
-      "dollars": -1323.33
+      "dollars": -1395.27
     },
     {
       "date": "2026-08-31",
-      "dollars": -3254.36
+      "dollars": -3350.28
     },
     {
       "date": "2026-09-30",
-      "dollars": -5036.04
+      "dollars": -5155.94
     },
     {
       "date": "2026-10-24",
-      "dollars": -5731.14
+      "dollars": -5875.02
     }
   ]
 }

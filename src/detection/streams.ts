@@ -9,6 +9,7 @@ import {
   SHORT_RUN_CATEGORIES,
   SHORT_RUN_MIN_CHARGES,
   SUBSCRIPTION_MERCHANTS,
+  TWIN_PLAN_MIN_MONTHS,
   VARIABLE_BILL_CATEGORIES,
   HIGH_CONFIDENCE_MIN_CHARGES,
   YEARLY_PLAN_GOODS_WORDS,
@@ -21,7 +22,7 @@ import {
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { byDate, inList, inLookback, merchantMatches } from "./helpers";
 import type { DetectionInput, DetectionRecurringStream, DetectionTransaction } from "./types";
-import { average, daysBetween, median } from "./units";
+import { average, daysBetween, firstOfMonth, median } from "./units";
 
 // A recurring outflow, from Plaid's recurring streams when we have them, otherwise found
 // in the transactions by our own fallback. Rules only ever see this shape.
@@ -289,9 +290,42 @@ function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
 // is a run of its own. Every run after the first keeps the merchant's key with its price
 // ("merchant:apple@1099"), so every finding's key stays unique. With no run at all, a yearly
 // plan seen once.
+// The same price twice on one day, month after month: the days' second charges (TWIN_PLAN_*).
+export function twinCharges(charges: readonly DetectionTransaction[]): Set<string> | null {
+  const seen = new Map<string, DetectionTransaction>();
+  const second = new Set<string>();
+  const months = new Set<string>();
+  for (const c of [...charges].sort(byDate)) {
+    const at = `${c.accountId}|${c.date}|${c.amountCents}`;
+    if (seen.has(at)) {
+      second.add(c.id);
+      months.add(firstOfMonth(c.date));
+    } else seen.set(at, c);
+  }
+  return months.size >= TWIN_PLAN_MIN_MONTHS ? second : null;
+}
+
+// Two plans billed together: each its own run, the second keyed apart ("merchant:spotify@second").
+function twinPlans(charges: DetectionTransaction[], asOf: string): Stream[] | null {
+  const second = twinCharges(charges);
+  if (!second) return null;
+  const a = detectRun(
+    charges.filter((c) => !second.has(c.id)),
+    asOf,
+  );
+  const b = detectRun(
+    charges.filter((c) => second.has(c.id)),
+    asOf,
+  );
+  if (!a || !b) return null;
+  return [a, { ...b, key: `${b.key}@second`, merchant: `${b.merchant} (second plan)` }];
+}
+
 function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
   const key = merchantOf(charges[charges.length - 1])?.key ?? "";
   if (!merchantMatches(key, BILLING_PLATFORM_MERCHANTS)) {
+    const twins = twinPlans(charges, asOf);
+    if (twins) return twins;
     const main = detectRun(charges, asOf);
     if (
       main &&

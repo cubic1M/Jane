@@ -83,14 +83,13 @@ async function ImportContent() {
 
       <section className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold">Upload statement files</h2>
-        {/* A first upload makes its account from the file, so nothing comes before it. */}
+        {/* A first upload makes its account from the file, so nothing comes before it. Only
+            uploaded accounts take files: a linked bank's are filled by the bank (round 9 of the
+            new-user passes: the page opened on "Demo Checking", and Import then failed). */}
         <ImportForm
-          accounts={accounts.map(({ id, name, kindLabel, kind }) => ({
-            id,
-            name,
-            kindLabel,
-            kind,
-          }))}
+          accounts={accounts
+            .filter((a) => uploadedIds.has(a.id))
+            .map(({ id, name, kindLabel, kind }) => ({ id, name, kindLabel, kind }))}
           linked={linked}
         />
         <p className="text-xs text-zinc-500">
