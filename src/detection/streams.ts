@@ -10,6 +10,8 @@ import {
   SHORT_RUN_MIN_CHARGES,
   SUBSCRIPTION_MERCHANTS,
   TWIN_PLAN_MIN_MONTHS,
+  PRICE_PLANS_FREQUENCIES,
+  PRICE_PLANS_MIN,
   VARIABLE_BILL_CATEGORIES,
   HIGH_CONFIDENCE_MIN_CHARGES,
   YEARLY_PLAN_GOODS_WORDS,
@@ -321,20 +323,9 @@ function twinPlans(charges: DetectionTransaction[], asOf: string): Stream[] | nu
   return [a, { ...b, key: `${b.key}@second`, merchant: `${b.merchant} (second plan)` }];
 }
 
-function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
-  const key = merchantOf(charges[charges.length - 1])?.key ?? "";
-  if (!merchantMatches(key, BILLING_PLATFORM_MERCHANTS)) {
-    const twins = twinPlans(charges, asOf);
-    if (twins) return twins;
-    const main = detectRun(charges, asOf);
-    if (
-      main &&
-      (isVariable(charges) || main.charges.length >= charges.length * RUN_MIN_SHARE_OF_CHARGES)
-    )
-      return [main];
-    const plan = yearlyPlan(charges);
-    return plan ? [plan] : [];
-  }
+// Each exact price that comes regularly, a run of its own; every run after the first keeps the
+// merchant's key with its price ("merchant:apple@1099").
+function runsByPrice(charges: DetectionTransaction[], asOf: string): Stream[] {
   const runs: Stream[] = [];
   const byPrice = new Map<number, DetectionTransaction[]>();
   for (const c of charges) byPrice.set(c.amountCents, [...(byPrice.get(c.amountCents) ?? []), c]);
@@ -344,6 +335,33 @@ function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
       runs.push(runs.length === 0 ? run : { ...run, key: `${run.key}@${run.lastAmountCents}` });
   }
   return runs;
+}
+
+function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
+  const key = merchantOf(charges[charges.length - 1])?.key ?? "";
+  if (merchantMatches(key, BILLING_PLATFORM_MERCHANTS)) return runsByPrice(charges, asOf);
+  const twins = twinPlans(charges, asOf);
+  if (twins) return twins;
+  const main = detectRun(charges, asOf);
+  if (
+    main &&
+    (isVariable(charges) || main.charges.length >= charges.length * RUN_MIN_SHARE_OF_CHARGES)
+  )
+    return [main];
+  // Two plans from one company at two prices, each every month (Spotify $11.99 and $16.99): the
+  // typical amount falls between them, so neither is a run of the whole; each price is one (QA
+  // round 30: both were missing from /subscriptions). Only when two or more prices come regularly.
+  const plans = isVariable(charges) ? [] : runsByPrice(charges, asOf);
+  const held = plans.reduce((n, p) => n + p.charges.length, 0);
+  if (
+    plans.length >= PRICE_PLANS_MIN &&
+    plans.every((p) => p.frequency !== null && PRICE_PLANS_FREQUENCIES.includes(p.frequency)) &&
+    held >= charges.length * RUN_MIN_SHARE_OF_CHARGES
+  ) {
+    return plans;
+  }
+  const plan = yearlyPlan(charges);
+  return plan ? [plan] : [];
 }
 
 // Whether `long` is `short` with words added at the end, or with one more word inside after the

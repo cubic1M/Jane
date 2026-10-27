@@ -67,6 +67,16 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 650.76
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLINKIST plan 1",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLINKIST plan 2",
+      "perYear": 299.88
     }
   ],
   "notFindings": [
@@ -94,23 +104,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 100.34
+      "dollars": 60.36
     },
     {
       "date": "2026-07-31",
-      "dollars": -1263.02
+      "dollars": -1342.98
     },
     {
       "date": "2026-08-31",
-      "dollars": -2752.52
+      "dollars": -2872.46
     },
     {
       "date": "2026-09-30",
-      "dollars": -5109.73
+      "dollars": -5269.65
     },
     {
       "date": "2026-10-24",
-      "dollars": -6035.97
+      "dollars": -6235.87
     }
   ]
 }

@@ -72,6 +72,16 @@
       "type": "subscription_review",
       "about": "PANDORA, one of two",
       "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SCRIBD plan 1",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SCRIBD plan 2",
+      "perYear": 203.88
     }
   ],
   "notFindings": [
@@ -107,23 +117,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -2981.44
+      "dollars": -3010.42
     },
     {
       "date": "2026-07-31",
-      "dollars": -6.21
+      "dollars": -64.17
     },
     {
       "date": "2026-08-31",
-      "dollars": -33.1
+      "dollars": -120.04
     },
     {
       "date": "2026-09-30",
-      "dollars": 842.48
+      "dollars": 726.56
     },
     {
       "date": "2026-10-24",
-      "dollars": 2291.21
+      "dollars": 2158.3
     }
   ]
 }

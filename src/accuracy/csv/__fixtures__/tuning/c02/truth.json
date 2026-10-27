@@ -43,8 +43,18 @@
       "perYear": 1175.28
     },
     {
+      "type": "subscription_review",
+      "about": "BLINKIST plan 1",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLINKIST plan 2",
+      "perYear": 299.88
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 1282987, excess 675564",
+      "about": "cash 1282987, excess 662975",
       "perYear": null
     }
   ],
@@ -73,23 +83,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 1206.21
+      "dollars": 1166.23
     },
     {
       "date": "2026-07-31",
-      "dollars": 3166.73
+      "dollars": 3086.77
     },
     {
       "date": "2026-08-31",
-      "dollars": 4439.02
+      "dollars": 4319.08
     },
     {
       "date": "2026-09-30",
-      "dollars": 5902.01
+      "dollars": 5742.09
     },
     {
       "date": "2026-10-24",
-      "dollars": 7614.6
+      "dollars": 7414.7
     }
   ]
 }

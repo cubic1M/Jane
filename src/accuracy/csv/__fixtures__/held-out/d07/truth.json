@@ -86,6 +86,16 @@
       "type": "subscription_review",
       "about": "DEEZER, one of two",
       "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MEDIUM.COM plan 1",
+      "perYear": 60
+    },
+    {
+      "type": "subscription_review",
+      "about": "MEDIUM.COM plan 2",
+      "perYear": 180
     }
   ],
   "notFindings": [
@@ -121,27 +131,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2103.49
+      "dollars": -2123.49
     },
     {
       "date": "2026-06-30",
-      "dollars": -3007.07
+      "dollars": -3047.07
     },
     {
       "date": "2026-07-31",
-      "dollars": -667
+      "dollars": -727
     },
     {
       "date": "2026-08-31",
-      "dollars": -246.92
+      "dollars": -326.92
     },
     {
       "date": "2026-09-30",
-      "dollars": -447.19
+      "dollars": -547.19
     },
     {
       "date": "2026-10-24",
-      "dollars": 227.36
+      "dollars": 122.36
     }
   ]
 }

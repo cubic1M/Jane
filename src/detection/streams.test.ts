@@ -160,6 +160,19 @@ describe("fallback recurring detection", () => {
     ).toEqual(["merchant:acme rides"]);
   });
 
+  it("lists two plans from one company at two prices as two streams", () => {
+    const at = (m: number, amountCents: number, day: number) =>
+      tx({ ...SPOTIFY, id: `s-${m}-${amountCents}`, date: monthsAgo(m, day), amountCents });
+    const transactions = [4, 3, 2, 1].flatMap((m) => [at(m, 1199, 5), at(m, 1699, 18)]);
+
+    expect(detectRecurring(input({ transactions })).map((s) => [s.key, s.lastAmountCents])).toEqual(
+      [
+        ["merchant:spotify usa", 1199],
+        ["merchant:spotify usa@1699", 1699],
+      ],
+    );
+  });
+
   it("lists two plans billed together every month as two streams", () => {
     const twice = (m: number) => {
       const [a] = monthly(1, 1199, SPOTIFY).map((t) => ({ ...t, date: monthsAgo(m) }));

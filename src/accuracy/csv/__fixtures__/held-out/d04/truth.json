@@ -61,6 +61,16 @@
       "type": "bank_fees",
       "about": "card fees",
       "perYear": 6.42
+    },
+    {
+      "type": "subscription_review",
+      "about": "MEDIUM.COM plan 1",
+      "perYear": 60
+    },
+    {
+      "type": "subscription_review",
+      "about": "MEDIUM.COM plan 2",
+      "perYear": 180
     }
   ],
   "notFindings": [
@@ -88,31 +98,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 948.14
+      "dollars": 928.14
     },
     {
       "date": "2026-05-31",
-      "dollars": 1512.45
+      "dollars": 1472.45
     },
     {
       "date": "2026-06-30",
-      "dollars": 793.97
+      "dollars": 733.97
     },
     {
       "date": "2026-07-31",
-      "dollars": 856.13
+      "dollars": 776.13
     },
     {
       "date": "2026-08-31",
-      "dollars": 507.49
+      "dollars": 407.49
     },
     {
       "date": "2026-09-30",
-      "dollars": 223.88
+      "dollars": 103.88
     },
     {
       "date": "2026-10-24",
-      "dollars": 82.59
+      "dollars": -57.41
     }
   ]
 }
