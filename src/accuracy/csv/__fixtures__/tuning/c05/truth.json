@@ -25,12 +25,7 @@
     {
       "type": "subscription_review",
       "about": "DISNEY PLUS",
-      "perYear": 191.88
-    },
-    {
-      "type": "price_increase",
-      "about": "DISNEY PLUS 1399→1599",
-      "perYear": 24
+      "perYear": 167.88
     },
     {
       "type": "subscription_review",
@@ -38,29 +33,34 @@
       "perYear": 275.88
     },
     {
+      "type": "subscription_review",
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
+    },
+    {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 107
+      "perYear": 321
     },
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 735
+      "perYear": 2205
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 1225.08
+      "perYear": 1133.73
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "STARBUCKS STORE 05423 at one price"
+      "about": "SMILE DENTAL GROUP, irregular"
     },
     {
-      "type": "duplicate_charge",
-      "about": "3 SOUTHWES 5262123456789 seats"
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
     },
     {
       "type": "duplicate_charge",
@@ -70,19 +70,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -3876.83
+      "dollars": -3926.48
     },
     {
       "date": "2026-08-31",
-      "dollars": -5959.66
+      "dollars": -6307.64
     },
     {
       "date": "2026-09-30",
-      "dollars": -7397.89
+      "dollars": -7589.01
     },
     {
       "date": "2026-10-24",
-      "dollars": -9639.24
+      "dollars": -8994.53
     }
   ]
 }

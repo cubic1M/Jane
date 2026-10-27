@@ -146,7 +146,7 @@ async function loadInput(
   client: PrismaClient,
 ): Promise<DetectionInput> {
   const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
-  const [allAccounts, allTransactions, streams, cancelled, directory] = await Promise.all([
+  const [allAccounts, allTransactions, streams, cancelled, directory, first] = await Promise.all([
     db.accounts.findMany({
       select: {
         id: true,
@@ -193,6 +193,8 @@ async function loadInput(
     }),
     // The merchant directory is shared, not user data, so it's read without scoping.
     client.merchant.findMany({ select: { key: true, name: true, aliases: true, category: true } }),
+    // How far back the person's data goes, before the lookback window too.
+    db.transactions.aggregate({ where: { pending: false }, _min: { date: true } }),
   ]);
 
   // Books QA: an account linked twice (through two logins) counts once.
@@ -204,6 +206,7 @@ async function loadInput(
   return withDirectory(
     {
       asOf,
+      ...(first._min.date ? { historyFrom: isoDate(first._min.date) } : {}),
       accounts: accounts.map((a) => ({
         id: a.id,
         name: a.name,

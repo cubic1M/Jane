@@ -19,64 +19,62 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 215.88
-    },
-    {
-      "type": "price_increase",
-      "about": "NETFLIX.COM 1549→1799",
-      "perYear": 30
-    },
-    {
-      "type": "subscription_review",
-      "about": "CANVA* 04321",
+      "about": "CALM.COM",
       "perYear": 179.88
     },
     {
-      "type": "duplicate_charge",
-      "about": "IKEA US 0123 twice",
-      "perYear": 127.38
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
     },
     {
-      "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 72
+      "type": "duplicate_charge",
+      "about": "WALGREENS #1234 twice",
+      "perYear": 79.59
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "TIM HORTONS #8812 at one price"
+      "about": "MIDAS #221, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 UNITED 0162345678901 seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 3449.69
+      "dollars": 3162.16
     },
     {
       "date": "2026-05-31",
-      "dollars": 3038.56
+      "dollars": 1981.73
     },
     {
       "date": "2026-06-30",
-      "dollars": 2810.24
+      "dollars": 1190.07
     },
     {
       "date": "2026-07-31",
-      "dollars": 2853.99
+      "dollars": 2515.53
     },
     {
       "date": "2026-08-31",
-      "dollars": 2067.85
+      "dollars": 848.86
     },
     {
       "date": "2026-09-30",
-      "dollars": 1120.65
+      "dollars": 520.29
     },
     {
       "date": "2026-10-24",
-      "dollars": 791.85
+      "dollars": 215.27
     }
   ]
 }

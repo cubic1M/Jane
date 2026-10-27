@@ -19,6 +19,8 @@ describe("bank_fees", () => {
       fee("BANK_FEES_ATM_FEES", 300, "2026-06-11"),
       fee("BANK_FEES_OTHER_BANK_FEES", 1200, "2026-09-30"),
       fee("BANK_FEES_LATE_FEES", 4000, "2026-08-20", CARD.id),
+      // A year of history on the card.
+      tx({ accountId: CARD.id, date: "2025-11-02", amountCents: 2_000, description: "TARGET" }),
     ];
 
     const findings = bankFees(input({ transactions }), []);
@@ -41,8 +43,8 @@ describe("bank_fees", () => {
     const [finding] = bankFees(input({ transactions }), []);
 
     expect(finding.title).toBe("$36.00 in fees on Everyday Checking in the last 3 months");
-    // Fees aren't counted at a yearly pace: some are one-offs.
-    expect(finding.annualSavingsCents).toBe(3600);
+    // A year at that pace, as the dock's and the chat's figure (src/planning/bank-fees.ts).
+    expect(finding.annualSavingsCents).toBe(14400);
   });
 
   it("leaves interest to the card interest finding", () => {

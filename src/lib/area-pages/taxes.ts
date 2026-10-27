@@ -8,6 +8,7 @@ import type { FieldStatus } from "@/planning/tax-profile";
 import { buildAreaTree, firstSentences, type AreaItem, type AreaTree } from "./tree";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
+import { plural } from "@/lib/plural";
 
 // The Taxes page as a tree (docs/design/area-pages.md): Taxes → its branches (what's due soon,
 // ways to pay less, this year's estimate, records and forms, the person's situation, the tax
@@ -218,8 +219,6 @@ export const TAXES_ANCHORS: Record<string, string> = {
   ),
 };
 
-const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
 export type TaxesTreeInput = {
   asOf: string;
   year: number;
@@ -330,7 +329,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       item("estimate", "refund", {
         label: input.refunds === 1 ? "Your refund" : "Your refunds",
         status: "good",
-        figure: count(input.refunds, "refund"),
+        figure: plural(input.refunds, "refund"),
         summary: "Each refund Jane saw, matched to your estimate.",
       }),
     );
@@ -340,7 +339,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       item("estimate", "investments", {
         label: "Investments",
         status: washSales > 0 || harvest > 0 ? "look" : "good",
-        figure: washSales > 0 ? count(washSales, "wash sale") : undefined,
+        figure: washSales > 0 ? plural(washSales, "wash sale") : undefined,
         summary: "Gains and losses from the cost basis your broker reports.",
       }),
     );
@@ -354,7 +353,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       figure: f.total === 0 ? "None" : `${f.received} of ${f.total} in`,
       summary:
         f.toCheck > 0
-          ? `${count(f.toCheck, "form")} Jane collected ${f.toCheck === 1 ? "needs" : "need"} your check.`
+          ? `${plural(f.toCheck, "form")} Jane collected ${f.toCheck === 1 ? "needs" : "need"} your check.`
           : "The forms your accounts should send, ticked off as they come.",
     }),
     item("records", "tags", {
@@ -369,7 +368,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       figure:
         input.records.needs + input.records.gaps > 0
           ? `${input.records.needs + input.records.gaps} missing`
-          : count(input.records.items, "item"),
+          : plural(input.records.items, "item"),
       summary: "Every deduction and credit with where it came from.",
     }),
   ];
@@ -398,7 +397,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       item("life", "family", {
         label: "Family tax choices",
         status: input.family.choices > 0 ? "look" : "good",
-        figure: input.family.choices > 0 ? count(input.family.choices, "choice") : undefined,
+        figure: input.family.choices > 0 ? plural(input.family.choices, "choice") : undefined,
         summary: "Each family choice with the federal tax both ways.",
       }),
     );
@@ -411,7 +410,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
         figure: g.totalCents > 0 ? shortMoney(g.totalCents) : undefined,
         summary:
           g.receiptsMissing > 0
-            ? `${count(g.receiptsMissing, "gift")} of $250 or more ${g.receiptsMissing === 1 ? "needs" : "need"} the charity's receipt.`
+            ? `${plural(g.receiptsMissing, "gift")} of $250 or more ${g.receiptsMissing === 1 ? "needs" : "need"} the charity's receipt.`
             : "Your gifts to charity this year, and their receipts.",
       }),
     );
@@ -430,7 +429,7 @@ export function taxesTree(input: TaxesTreeInput): AreaTree {
       item("profile", "new-income", {
         label: "New income to add",
         status: "look",
-        figure: count(input.profile.newIncome, "kind"),
+        figure: plural(input.profile.newIncome, "kind"),
         summary: "Income Jane saw since you answered.",
       }),
     );

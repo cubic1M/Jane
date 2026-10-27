@@ -10,6 +10,7 @@ import type { MessageAction } from "./types";
 import { dayLabel } from "@/lib/day-label";
 import { formatRate } from "@/lib/percent";
 import { monthLabel } from "@/lib/day-label";
+import { plural } from "@/lib/plural";
 
 // Jane's answers about debts (spec Phase Y), from the same debt book as the loans page
 // (src/lib/debts.ts). Pure: fixed wording, every rate with where it came from.
@@ -21,8 +22,6 @@ const link = (label: string, href: string): MessageAction => ({
   href,
 });
 export const SEE_DEBTS = link("See every debt", "/loans");
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 // "at 6.90% fixed (from your bank)" or "with no rate yet".
 export function rateWords(debt: Debt): string {

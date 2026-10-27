@@ -12,6 +12,7 @@ import {
 } from "@/config/health-score";
 import type { OneOff } from "@/insights/typical-month";
 import { formatCents } from "@/lib/money";
+import { plural } from "@/lib/plural";
 
 // Money health score (spec step 146). Pure: one number from 0 to 100 out of a few parts,
 // each weighted in src/config/health-score.ts and explained in plain words, with the next
@@ -64,7 +65,6 @@ export const HEALTH_LABELS: Record<HealthPart, string> = {
 
 const clamp = (x: number) => Math.min(1, Math.max(0, x));
 const one = (x: number) => (Math.round(x * 10) / 10).toString();
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // Under a month of cover reads better in days ("about 0 months" explains nothing).
 const cover = (months: number) => {
   if (months >= 1) return `about ${one(months)} ${months === 1 ? "month" : "months"}`;

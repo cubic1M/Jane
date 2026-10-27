@@ -15,11 +15,9 @@ export type ConfidenceLevel = "low" | "medium" | "high";
 export const LOOKBACK_MONTHS = 12;
 
 // An account with less history than this (often 3 months of uploaded statements) has its fee
-// and interest findings say the months the data covers, not "the last 12 months", and card
-// interest seen in at least two months counts at its yearly pace (overnight upload QA).
+// and interest findings say the months the data covers, not "the last 12 months", and count
+// them at their yearly pace, as src/planning/bank-fees.ts does (overnight upload QA).
 export const SHORT_HISTORY_DAYS = 200;
-// Card interest counts at its yearly pace only when it was charged in this many months or more.
-export const YEARLY_PACE_MIN_MONTHS = 2;
 
 // The "money found" total counts only findings at or above this confidence.
 export const MONEY_FOUND_MIN_CONFIDENCE: ConfidenceLevel = "medium";
@@ -549,6 +547,10 @@ export const NOT_BILL_CATEGORIES: readonly string[] = [
   "BANK_FEES_INTEREST_CHARGE",
   "BANK_FEES_ATM_FEES",
 ];
+// A habit at one price every week or two (the same coffee) is regular but not a bill to pay, so
+// "Coming up" leaves it out (accuracy bench: weekly fixed-price coffee was listed as coming up).
+export const NOT_BILL_HABIT_PRIMARIES: readonly string[] = ["FOOD_AND_DRINK"];
+export const NOT_BILL_HABIT_FREQUENCIES: readonly Frequency[] = ["WEEKLY", "BIWEEKLY"];
 export const CARD_PAYMENT_NAME = "Credit card payment";
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the

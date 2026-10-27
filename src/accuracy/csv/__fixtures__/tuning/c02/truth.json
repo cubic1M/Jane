@@ -19,31 +19,6 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "MAX.COM",
-      "perYear": 203.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "GOOGLE *YouTubePremium",
-      "perYear": 167.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 215.88
-    },
-    {
-      "type": "price_increase",
-      "about": "NETFLIX.COM 1549→1799",
-      "perYear": 30
-    },
-    {
-      "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 167.88
-    },
-    {
-      "type": "subscription_review",
       "about": "SPOTIFY USA",
       "perYear": 155.88
     },
@@ -54,8 +29,8 @@
     },
     {
       "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
+      "about": "MAX.COM",
+      "perYear": 203.88
     },
     {
       "type": "trial_conversion",
@@ -65,22 +40,18 @@
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 1146.43
+      "perYear": 962.62
     },
     {
       "type": "idle_cash",
-      "about": "cash 1336777, excess 739448",
+      "about": "cash 1465059, excess 1023405",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "3 SOUTHWES 5262123456789 seats"
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
     },
     {
       "type": "duplicate_charge",
@@ -90,23 +61,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 1292.61
+      "dollars": 1586.65
     },
     {
       "date": "2026-07-31",
-      "dollars": 3065.44
+      "dollars": 3769.21
     },
     {
       "date": "2026-08-31",
-      "dollars": 4499.01
+      "dollars": 5911.69
     },
     {
       "date": "2026-09-30",
-      "dollars": 5766.33
+      "dollars": 8039.47
     },
     {
       "date": "2026-10-24",
-      "dollars": 7365.32
+      "dollars": 9922.91
     }
   ]
 }

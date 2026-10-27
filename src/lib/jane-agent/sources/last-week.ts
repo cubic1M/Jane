@@ -4,6 +4,7 @@ import type { LocalTime } from "../quiet-hours";
 import { weekDone } from "../replies-review";
 import type { Snapshot } from "../snapshot";
 import { dayLabel } from "@/lib/day-label";
+import { plural } from "@/lib/plural";
 
 // How last week went, as one line of the morning brief on the first day of the person's week.
 // It replaces two weekly messages of their own (docs/feature-audit.md, cluster 2): the week's
@@ -11,17 +12,15 @@ import { dayLabel } from "@/lib/day-label";
 // what Jane did and what it saved). What's next and the one decision are the brief's own
 // lines already. Null on other days, and after a week with nothing in it. Pure.
 
-const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
 export function lastWeekLine(snapshot: Snapshot, local: LocalTime, now: Date): string | null {
   if (local.date !== snapshot.weekStart) return null;
   const { did, savedCents } = weekDone(snapshot, now);
   const week = snapshot.lastWeek;
   const covered = week
     ? [
-        week.asked > 0 ? count(week.asked, "question you asked", "questions you asked") : null,
+        week.asked > 0 ? plural(week.asked, "question you asked", "questions you asked") : null,
         week.yes + week.no > 0
-          ? `${count(week.yes + week.no, "decision")} (${week.yes} yes, ${week.no} no)`
+          ? `${plural(week.yes + week.no, "decision")} (${week.yes} yes, ${week.no} no)`
           : null,
       ].filter(Boolean)
     : [];

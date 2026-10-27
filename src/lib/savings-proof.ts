@@ -1,5 +1,5 @@
 import { actionWorthCents } from "@/lib/saved-amount";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { CHARGES_PER_YEAR, type Frequency } from "@/config/detection";
 import { CANCEL_GRACE_DAYS, LOWER_BILL_LOOK_DAYS, SHARE_TOKEN_BYTES } from "@/config/saved";
 import { normalizeMerchant } from "@/data-sources/merchant";
@@ -16,6 +16,7 @@ import { snapshotTitle } from "@/lib/hubs/jane";
 import { formatCents } from "@/lib/money";
 import { savingsRecord, type SavingsRecord } from "@/lib/outcomes";
 import { dayLabel } from "@/lib/day-label";
+import { sha256Hex } from "@/lib/hash";
 
 // What Jane saved you (spec step 139). Only what the person's own transactions show counts
 // as confirmed, each with its receipt: a refund that came back, a lower bill that arrived,
@@ -251,8 +252,6 @@ export async function verifiedSavings(
   };
 }
 
-const hashOf = (token: string) => createHash("sha256").update(token).digest("hex");
-
 // A link to the confirmed total as it is now. Only the total is on the shared page.
 export async function shareSavedTotal(
   userId: string,
@@ -261,7 +260,7 @@ export async function shareSavedTotal(
   const { confirmedCents } = await verifiedSavings(userId, options);
   const token = randomBytes(SHARE_TOKEN_BYTES).toString("base64url");
   await scopedFor(userId, options.client ?? defaultClient).savedShares.create({
-    data: { userId, tokenHash: hashOf(token), totalCents: confirmedCents },
+    data: { userId, tokenHash: sha256Hex(token), totalCents: confirmedCents },
   });
   await track(userId, "savings_shared", {});
   return { token, totalCents: confirmedCents };
@@ -287,7 +286,7 @@ export async function sharedTotal(
 ): Promise<{ totalCents: number; createdAt: Date } | null> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
   const share = await client.savedShare.findUnique({
-    where: { tokenHash: hashOf(token) },
+    where: { tokenHash: sha256Hex(token) },
     select: { totalCents: true, createdAt: true, revokedAt: true },
   });
   return share && !share.revokedAt

@@ -16,6 +16,7 @@ import { AREA_TABS } from "@/config/navigation";
 import { formatCents } from "@/lib/money";
 import { daysBetween } from "@/lib/dates";
 import { dayLabel, monthLabel } from "@/lib/day-label";
+import { plural } from "@/lib/plural";
 
 // The home hub's view model (docs/design/home-hub.md): the numbers the hub's loader gathered
 // from the pages that already show them, shaped for the charts. Pure, and no new math: it only
@@ -240,8 +241,6 @@ export function shortMoney(cents: number): string {
 
 const wholeDollars = (cents: number) =>
   formatCents(Math.round(cents / 100) * 100).replace(/\.00$/, "");
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // --- The hero row ---
 

@@ -184,6 +184,24 @@ describe("the insurance tree", () => {
     ]);
   });
 
+  it("says optional cover is not on file, worth a look", () => {
+    const { tree } = insuranceTree(
+      input({
+        gaps: [
+          { key: "travel", why: "You booked flights.", policyId: null },
+          { key: "pet", why: "You buy pet food.", policyId: null },
+          ...input().gaps,
+        ],
+      }),
+    );
+    const missing = tree.branches.find((b) => b.id === "missing")!;
+    expect(missing.items.map((i) => [i.label, i.status, i.figure])).toEqual([
+      [expect.any(String), "look", "Not on file"],
+      [expect.any(String), "look", "Not on file"],
+      ["Home insurance", "act", "Missing"],
+    ]);
+  });
+
   it("lifts at most three urgent items to the top, biggest dollars first", () => {
     const { chips } = insuranceTree(input());
     expect(chips).toEqual([

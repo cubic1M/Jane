@@ -20,71 +20,59 @@
     {
       "type": "subscription_review",
       "about": "NETFLIX.COM",
-      "perYear": 215.88
-    },
-    {
-      "type": "price_increase",
-      "about": "NETFLIX.COM 1549→1799",
-      "perYear": 30
-    },
-    {
-      "type": "subscription_review",
-      "about": "GOOGLE *YouTubePremium",
-      "perYear": 167.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "OPENAI *CHATGPT SUBSCR",
-      "perYear": 240
+      "perYear": 185.88
     },
     {
       "type": "subscription_review",
       "about": "SPOTIFY USA",
-      "perYear": 155.88
-    },
-    {
-      "type": "price_increase",
-      "about": "SPOTIFY USA 1199→1299",
-      "perYear": 12
+      "perYear": 143.88
     },
     {
       "type": "duplicate_charge",
-      "about": "WAL-MART #2281 twice",
-      "perYear": 88.04
+      "about": "CVS/PHARMACY #04321 twice",
+      "perYear": 150.2
     },
     {
       "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 3
+      "about": "card fees",
+      "perYear": 5.67
     },
     {
       "type": "idle_cash",
-      "about": "cash 1308910, excess 414677",
+      "about": "cash 1252560, excess 207488",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
       "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 SOUTHWES 5262123456789 seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 5693.86
+      "dollars": 5384.24
     },
     {
       "date": "2026-08-31",
-      "dollars": 6527.17
+      "dollars": 7442.92
     },
     {
       "date": "2026-09-30",
-      "dollars": 8828.17
+      "dollars": 8885.15
     },
     {
       "date": "2026-10-24",
-      "dollars": 11175.18
+      "dollars": 9963.81
     }
   ]
 }

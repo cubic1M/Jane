@@ -25,66 +25,55 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "PELOTON* MEMBERSHIP",
-      "perYear": 528
-    },
-    {
-      "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 167.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "MAX.COM",
-      "perYear": 203.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "ADOBE *CREATIVE CLD",
-      "perYear": 275.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "SPOTIFY USA",
-      "perYear": 155.88
+      "about": "NYTIMES*NYTDIGITAL",
+      "perYear": 75
     },
     {
       "type": "price_increase",
-      "about": "SPOTIFY USA 1199→1299",
-      "perYear": 12
+      "about": "NYTIMES*NYTDIGITAL 400→625",
+      "perYear": 27
+    },
+    {
+      "type": "subscription_review",
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "3 AMC 0517 ONLINE seats"
+      "about": "two lunches"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 6609.02
+      "dollars": 6712.92
     },
     {
       "date": "2026-08-31",
-      "dollars": 4032.48
+      "dollars": 4731.7
     },
     {
       "date": "2026-09-30",
-      "dollars": 1858.6
+      "dollars": 1683.77
     },
     {
       "date": "2026-10-24",
-      "dollars": 1292.05
+      "dollars": 1855.85
     }
   ]
 }

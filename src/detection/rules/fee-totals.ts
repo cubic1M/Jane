@@ -1,13 +1,14 @@
-import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS, YEARLY_PACE_MIN_MONTHS } from "@/config/detection";
+import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
 import { byDate, evidenceOf, sumCents } from "../helpers";
 import type { Candidate, DetectionAccount, DetectionInput, DetectionTransaction } from "../types";
-import { DAYS_PER_MONTH, DAYS_PER_YEAR, daysBetween, monthOf } from "../units";
+import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "../units";
 
-// Days of history for an account: from its first transaction the rules see to asOf.
-function historyDays(input: DetectionInput, accountId: string): number {
-  const first = input.transactions
-    .filter((t) => t.accountId === accountId)
-    .reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
+// Days of history: from the person's first transaction to asOf. The person's, not the
+// account's, as src/planning/bank-fees.ts counts months, so the report and the dock agree.
+function historyDays(input: DetectionInput): number {
+  const first =
+    input.historyFrom ??
+    input.transactions.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
   return daysBetween(first, input.asOf);
 }
 
@@ -17,9 +18,10 @@ export const lastMonths = (months: number) =>
 
 // Shared by bank fees and card interest: total the matching charges per account over the
 // lookback window. Refunds in the same category net out; nothing is found if the net is zero
-// or less. `months` is what the window really covers: under SHORT_HISTORY_DAYS of history
-// (3 months of uploaded statements) it's those months, not LOOKBACK_MONTHS. With `yearly`, a
-// short history's charges seen in two months or more count at their yearly pace.
+// or less. `months` is what the data really covers: under SHORT_HISTORY_DAYS of history
+// (3 months of uploaded statements) it's those months, not LOOKBACK_MONTHS, and the saving is
+// a year's worth at that pace: the one definition the brief, the dock and the chat use for bank
+// fees (src/planning/bank-fees.ts), so the report and the dock say the same figure.
 export function totalsByAccount(
   input: DetectionInput,
   transactions: DetectionTransaction[],
@@ -28,7 +30,6 @@ export function totalsByAccount(
     totalCents: number,
     months: number,
   ) => Pick<Candidate, "type" | "title">,
-  { yearly = false }: { yearly?: boolean } = {},
 ): Candidate[] {
   const byAccount = new Map<string, DetectionTransaction[]>();
   for (const t of transactions)
@@ -39,18 +40,12 @@ export function totalsByAccount(
     const total = sumCents(charges);
     if (total <= 0) return [];
     const account = input.accounts.find((a) => a.id === accountId);
-    const days = historyDays(input, accountId);
+    const days = historyDays(input);
     const short = days < SHORT_HISTORY_DAYS;
     const months = short
       ? Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH)))
       : LOOKBACK_MONTHS;
-    const chargedMonths = new Set(
-      charges.filter((c) => c.amountCents > 0).map((c) => monthOf(c.date)),
-    );
-    const annual =
-      yearly && short && chargedMonths.size >= YEARLY_PACE_MIN_MONTHS
-        ? Math.round((total * DAYS_PER_YEAR) / Math.max(days, DAYS_PER_MONTH))
-        : total;
+    const annual = short ? Math.round((total * MONTHS_PER_YEAR) / months) : total;
     // Keyword rules and Plaid are reliable on fee lines; an LLM guess is less certain.
     const sure = charges.every((c) => c.categorySource === "rule" || c.categorySource === "plaid");
     return [
