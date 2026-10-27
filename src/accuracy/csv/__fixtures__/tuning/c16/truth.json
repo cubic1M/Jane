@@ -30,13 +30,13 @@
     },
     {
       "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 167.88
+      "about": "SPOTIFY USA",
+      "perYear": 155.88
     },
     {
-      "type": "subscription_review",
-      "about": "APPLE.COM/BILL",
-      "perYear": 35.88
+      "type": "price_increase",
+      "about": "SPOTIFY USA 1199→1299",
+      "perYear": 12
     },
     {
       "type": "duplicate_charge",
@@ -57,7 +57,11 @@
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "SPOTIFY USA, cancelled"
+      "about": "DISNEY PLUS, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "APPLE.COM/BILL, cancelled"
     },
     {
       "type": "subscription_review",
@@ -91,15 +95,15 @@
     },
     {
       "date": "2026-08-31",
-      "dollars": 994.36
+      "dollars": 999.35
     },
     {
       "date": "2026-09-30",
-      "dollars": -212.69
+      "dollars": -203.71
     },
     {
       "date": "2026-10-24",
-      "dollars": -854.44
+      "dollars": -855.46
     }
   ]
 }

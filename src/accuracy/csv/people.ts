@@ -309,6 +309,13 @@ const SUBSCRIPTIONS: Sub[] = [
   },
   { descriptor: "PARAMOUNT+", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1199 },
   { descriptor: "MAX.COM", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1699 },
+  // A name no rule knows, written two ways: the service and its website.
+  {
+    descriptor: "DIRECTV STREAM",
+    variants: ["DIRECTV.COM"],
+    category: "ENTERTAINMENT_TV_AND_MOVIES",
+    cents: 7999,
+  },
 ];
 // Free or $1 trials that turned into the full price.
 const TRIALS: Sub[] = [

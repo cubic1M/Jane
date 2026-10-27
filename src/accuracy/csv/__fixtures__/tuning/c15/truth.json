@@ -25,27 +25,23 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "HULU 877-8244858",
-      "perYear": 215.88
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
     },
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 3.48
+      "perYear": 4.82
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "APPLE.COM/BILL, cancelled"
+      "about": "HULU 877-8244858, cancelled"
     },
     {
       "type": "subscription_review",
-      "about": "SMILE DENTAL GROUP, irregular"
-    },
-    {
-      "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
+      "about": "STARBUCKS STORE 05423 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -55,27 +51,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 5278.83
+      "dollars": 5374.5
     },
     {
       "date": "2026-06-30",
-      "dollars": 3007.28
+      "dollars": 3048.03
     },
     {
       "date": "2026-07-31",
-      "dollars": 1931.44
+      "dollars": 1976.23
     },
     {
       "date": "2026-08-31",
-      "dollars": -252.17
+      "dollars": -98.25
     },
     {
       "date": "2026-09-30",
-      "dollars": -2283.53
+      "dollars": -2293.39
     },
     {
       "date": "2026-10-24",
-      "dollars": -3800.29
+      "dollars": -3910.64
     }
   ]
 }

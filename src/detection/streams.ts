@@ -312,6 +312,46 @@ function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
   return runs;
 }
 
+// Whether `long` is `short` with words added at the end, or with one more word inside after the
+// first ("directv stream seattle" and "directv seattle", where a card wrote the city after it).
+function extends_(short: string, long: string): boolean {
+  if (long.startsWith(`${short} `)) return true;
+  const a = short.split(" ");
+  const b = long.split(" ");
+  if (b.length !== a.length + 1 || a[0] !== b[0]) return false;
+  return b.some((_, i) => i > 0 && [...b.slice(0, i), ...b.slice(i + 1)].join(" ") === short);
+}
+
+// One service written two ways from month to month, its name and its website ("DIRECTV STREAM",
+// "DIRECTV.COM"), is one merchant: a key that another extends, on the same accounts, with every
+// charge at a price the other also charges (CSV bench: a subscription no rule knows by
+// name counted as two, so neither was a bill). Not for app stores, which bill many things at many
+// prices.
+function joinVariants(groups: Map<string, DetectionTransaction[]>) {
+  const accounts = (rows: DetectionTransaction[]) => new Set(rows.map((r) => r.accountId));
+  for (const short of [...groups.keys()].sort((a, b) => a.length - b.length)) {
+    const base = groups.get(short);
+    if (!base || merchantMatches(short, BILLING_PLATFORM_MERCHANTS)) continue;
+    for (const long of [...groups.keys()]) {
+      const rows = groups.get(long)!;
+      if (long === short || !extends_(short, long)) continue;
+      const prices: Set<number> = new Set(base.map((r) => r.amountCents));
+      const where = accounts(base);
+      if (
+        rows.every((r) => prices.has(r.amountCents) && where.has(r.accountId)) ||
+        base.every(
+          (r) =>
+            new Set(rows.map((x) => x.amountCents)).has(r.amountCents) &&
+            accounts(rows).has(r.accountId),
+        )
+      ) {
+        groups.set(short, [...base, ...rows]);
+        groups.delete(long);
+      }
+    }
+  }
+}
+
 export function detectRecurring(input: DetectionInput): Stream[] {
   const groups = new Map<string, DetectionTransaction[]>();
   for (const t of inLookback(input)) {
@@ -320,6 +360,7 @@ export function detectRecurring(input: DetectionInput): Stream[] {
     if (!key) continue;
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }
+  joinVariants(groups);
   return [...groups.keys()]
     .sort()
     .flatMap((key) => detectRuns((groups.get(key) ?? []).sort(byDate), input.asOf));

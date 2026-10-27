@@ -26,12 +26,7 @@
     {
       "type": "subscription_review",
       "about": "NYTIMES*NYTDIGITAL",
-      "perYear": 75
-    },
-    {
-      "type": "price_increase",
-      "about": "NYTIMES*NYTDIGITAL 400→625",
-      "perYear": 27
+      "perYear": 48
     },
     {
       "type": "subscription_review",
@@ -40,15 +35,11 @@
     },
     {
       "type": "subscription_review",
-      "about": "PARAMOUNT+",
-      "perYear": 143.88
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
     }
   ],
   "notFindings": [
-    {
-      "type": "subscription_review",
-      "about": "JIFFY LUBE #1234, irregular"
-    },
     {
       "type": "subscription_review",
       "about": "SQ *BLUE BOTTLE COFFEE at one price"
@@ -56,24 +47,28 @@
     {
       "type": "duplicate_charge",
       "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 AMC 0517 ONLINE seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 6712.92
+      "dollars": 6326.94
     },
     {
       "date": "2026-08-31",
-      "dollars": 4731.7
+      "dollars": 4580.56
     },
     {
       "date": "2026-09-30",
-      "dollars": 1683.77
+      "dollars": 4063.47
     },
     {
       "date": "2026-10-24",
-      "dollars": 1855.85
+      "dollars": 2607.85
     }
   ]
 }

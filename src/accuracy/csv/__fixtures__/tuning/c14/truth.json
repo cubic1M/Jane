@@ -19,18 +19,18 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "NYTIMES*NYTDIGITAL",
-      "perYear": 75
-    },
-    {
-      "type": "price_increase",
-      "about": "NYTIMES*NYTDIGITAL 400→625",
-      "perYear": 27
+      "about": "HULU 877-8244858",
+      "perYear": 215.88
     },
     {
       "type": "subscription_review",
-      "about": "HULU 877-8244858",
-      "perYear": 215.88
+      "about": "GOOGLE *YouTubePremium",
+      "perYear": 167.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
     },
     {
       "type": "trial_conversion",
@@ -45,23 +45,35 @@
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 228
+      "perYear": 238.49
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 948.22
+      "perYear": 1042.97
     },
     {
       "type": "idle_cash",
-      "about": "cash 1269109, excess 788403",
+      "about": "cash 1237337, excess 656038",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
+      "about": "NYTIMES*NYTDIGITAL, cancelled"
+    },
+    {
+      "type": "subscription_review",
       "about": "APPLE.COM/BILL, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DIRECTV STREAM, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
     },
     {
       "type": "subscription_review",
@@ -69,7 +81,7 @@
     },
     {
       "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
+      "about": "STARBUCKS STORE 05423 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -77,29 +89,33 @@
     },
     {
       "type": "duplicate_charge",
-      "about": "TARGET 00023456 twice, refunded"
+      "about": "2 AMC 0517 ONLINE seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 2013.39
+      "dollars": 1113.57
     },
     {
       "date": "2026-07-31",
-      "dollars": 5029.25
+      "dollars": 4218.39
     },
     {
       "date": "2026-08-31",
-      "dollars": 5780.45
+      "dollars": 5213.44
     },
     {
       "date": "2026-09-30",
-      "dollars": 6686.61
+      "dollars": 6163.86
     },
     {
       "date": "2026-10-24",
-      "dollars": 8412.64
+      "dollars": 7492.93
     }
   ]
 }

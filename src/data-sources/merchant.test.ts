@@ -16,6 +16,7 @@ describe("normalizeMerchant", () => {
     ["SPOTIFY USA              SAN FRANCISCO CA", "Spotify Usa"],
     ["Debit Card Purchase - PAYPAL *HULU CHICAGO IL", "Hulu Chicago"],
     ["Debit Card Purchase - HULU 877-8244858 CHICAGO IL", "Hulu Chicago"],
+    ["CHECKCARD 0818 PAYPAL *HULU DENVER CO 81486510203861977402251", "Hulu Denver"],
     ["76 - CHEVRON 0091", "76 Chevron"],
     ["ORIG CO NAME:ACME CORP PAYROLL", "Acme Corp Payroll"],
     ["POS PURCHASE TARGET T-1234", "Target"],
