@@ -61,9 +61,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   if (!chat) {
     return (
       <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
-        Link a bank and I&apos;ll start looking after your money.{" "}
+        Upload your bank statements and I&apos;ll start looking after your money.{" "}
         <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
-          Link a bank
+          Upload your statements
         </Link>
       </p>
     );

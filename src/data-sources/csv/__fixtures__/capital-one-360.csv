@@ -1,0 +1,5 @@
+Account Number,Transaction Description,Transaction Date,Transaction Type,Transaction Amount,Balance
+5678,Debit Card Purchase - PLANET FITNESS 800-123-4567 NH,09/28/26,Debit,24.99,"2,475.01"
+5678,Deposit from ACME CORP PAYROLL,09/26/26,Credit,"2,500.00","2,500.00"
+5678,Monthly Interest Paid,09/30/26,Credit,0.21,"2,475.22"
+5678,Withdrawal to Capital One card ending 1234,09/20/26,Debit,650.00,0.00

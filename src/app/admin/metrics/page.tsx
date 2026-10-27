@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { loadBetaMetrics, type BetaMetrics } from "@/lib/beta-metrics";
 import { loadMetrics, type Metrics } from "@/lib/metrics";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
@@ -83,13 +84,52 @@ function rows(windows: { days: number; metrics: Metrics }[]) {
   ] as [string, string[]][];
 }
 
+// The closed beta's traction, all time: what goes in the application and the update emails.
+function betaRows(b: BetaMetrics): [string, string][] {
+  const people = (n: number) => `${n} ${n === 1 ? "person" : "people"}`;
+  return [
+    ["Invited (redeemed a code)", String(b.invited)],
+    ["Signed up", String(b.signedUp)],
+    ["Added accounts by upload", `${b.uploaded.accounts} accounts (${people(b.uploaded.users)})`],
+    ["Linked accounts with Plaid", `${b.linked.accounts} accounts (${people(b.linked.users)})`],
+    ["People with at least one finding", String(b.withFinding)],
+    ["Found, total per year", `${formatCents(b.found.totalCents)} (${people(b.found.users)})`],
+    [
+      "Found, median per person per year",
+      b.found.medianCents === null ? "–" : formatCents(b.found.medianCents),
+    ],
+    ["People who acted on at least one card", String(b.acted)],
+    ["Verified savings so far", `${formatCents(b.verified.cents)} (${people(b.verified.users)})`],
+  ];
+}
+
 async function MetricsContent() {
   const admin = await requireAdmin();
-  const { windows, automateNext } = await loadMetrics(admin, WINDOWS);
+  const [{ windows, automateNext }, beta] = await Promise.all([
+    loadMetrics(admin, WINDOWS),
+    loadBetaMetrics(),
+  ]);
   return (
     <>
       <AdminNav email={admin.email} />
       <h1 className="text-3xl font-semibold tracking-tight">Metrics</h1>
+      <section data-beta-metrics="" className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Closed beta</h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          All time, real people only: no trial, demo-bank-only or team accounts. Found counts what
+          the report counts plus findings already done, per person who added an account. Verified
+          savings are what later transactions showed.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <tbody>
+              {betaRows(beta).map(([name, value]) => (
+                <Row key={name} name={name} values={[value]} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

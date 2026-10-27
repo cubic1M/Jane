@@ -20,6 +20,26 @@ const ranked = (id: string) => rankSuggestions(run(id)).map((r) => r.suggestion)
 const mine = (topics: readonly string[], list: ReturnType<typeof run>) =>
   list.filter((s) => topics.includes(s.topic));
 
+describe("the debt plan", () => {
+  it("speaks of the interest alone when no card is linked (QA: 'Your cards hold $0.00')", () => {
+    const noCards = (d: ProfileInput) => ({
+      ...d,
+      accounts: d.accounts.filter((a) => a.type !== "credit"),
+    });
+    const plan = run("debt", noCards).find((s) => s.topic === "debt_plan");
+    expect(plan).toBeDefined();
+    expect(plan!.short).toMatch(/^Your debts cost you \$/);
+    expect(plan!.why).toMatch(/^Your debts cost you \$[\d,.]+ in interest a year\.$/);
+    expect(`${plan!.short} ${plan!.why}`).not.toContain("cards hold");
+    expect(plan!.confidence.percent).toBeGreaterThan(0);
+  });
+
+  it("names the card balance when cards are linked", () => {
+    const plan = run("debt").find((s) => s.topic === "debt_plan");
+    expect(plan!.short).toMatch(/^Your cards hold \$[\d,.]+ and cost you \$/);
+  });
+});
+
 describe("ranking for the person's life", () => {
   it("puts a plan and relief ahead of tips for Chris, who is in debt trouble", () => {
     // What Chris is shown: suggestions on the same money count once, so the card tips go

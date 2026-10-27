@@ -22,6 +22,7 @@ import { appBase, clickLink } from "./links";
 import { renderDigest, type DigestLinks } from "./render";
 import { unsubscribeToken } from "./unsubscribe";
 import { weekStart } from "./week";
+import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 
 // Runs daily (Vercel Cron). Each person gets one digest per week, on the first run that
 // falls on their Monday or later, so everyone gets it on Monday in their own timezone.
@@ -197,10 +198,11 @@ export async function runDigests({
   now = new Date(),
   dryRun = false,
   send = sendEmail,
-}: Options = {}): Promise<DigestRun> {
+  userIds,
+}: Options & OnlyPeople = {}): Promise<DigestRun> {
   // Active people: digest on, not deleted, at least one account.
   const users = await client.user.findMany({
-    where: { digestEnabled: true, deletedAt: null, accounts: { some: {} } },
+    where: { digestEnabled: true, deletedAt: null, accounts: { some: {} }, ...peopleIn(userIds) },
     select: { id: true, email: true, timezone: true, createdAt: true },
     orderBy: { id: "asc" },
   });

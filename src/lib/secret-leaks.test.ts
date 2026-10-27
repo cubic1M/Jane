@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 // Leak check over the source (docs/security/keys.md): no log line or API answer names a token,
 // a two-factor secret or a key, and only the crypto modules ever hold a key. The runtime
-// check is plaid/token-leak.integration.test.ts.
+// checks are key-leak.integration.test.ts and plaid/token-leak.integration.test.ts.
 
 const ROOT = join(process.cwd(), "src");
 const SKIP = /(\.test\.tsx?$|^generated\/|^test-setup\/|^accuracy\/)/;
@@ -80,12 +80,12 @@ describe("secret leak check (source)", () => {
     ).map((f) => f.path);
     expect(envReaders).toEqual([join("lib", "keyring.ts")]);
 
-    // Keys come out of src/lib/keyring.ts only into crypto.ts.
+    // Keys come out of src/lib/keyring.ts only into crypto.ts and the rotation job.
     const importers = ALL.filter(({ text }) => /from "@\/lib\/keyring"/.test(text));
     const keyHolders = importers
       .filter(({ text }) => /\b(?:keyFor|currentKey|keyring)\(/.test(text))
       .map((f) => f.path)
       .sort();
-    expect(keyHolders).toEqual([join("lib", "crypto.ts")]);
+    expect(keyHolders).toEqual([join("lib", "crypto.ts"), join("lib", "key-rotation.ts")].sort());
   });
 });

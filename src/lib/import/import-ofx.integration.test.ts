@@ -49,6 +49,7 @@ describe.runIf(url)("importing OFX and QFX against a real database", () => {
       inserted: 3,
       duplicates: 0,
       skipped: 1,
+      files: [{ format: "ofx", rows: 3 }],
     });
     expect(await importCsvFiles(db, card, [fixture("card-xml.qfx")])).toMatchObject({
       inserted: 2,
