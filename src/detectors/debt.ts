@@ -506,12 +506,15 @@ const familyLoans: Detector = {
   topic: "family_loans",
   needs: [],
   detect({ profile, data }) {
+    // Only plain transfers: rent or a bill paid through the app is what it says (overnight
+    // upload QA: three months of Zelle rent showed as "Money lent in the family $5.5k").
     const sent = tx(
       data,
       (t) =>
         t.amountCents >= D.familyLoanMinCents &&
         D.paymentApp.test(t.description) &&
-        !/\bfrom\b/i.test(t.description),
+        !/\bfrom\b/i.test(t.description) &&
+        (t.pfc === null || t.pfc.startsWith("TRANSFER_OUT")),
     );
     const back = tx(data, (t) => t.amountCents < 0 && D.paymentApp.test(t.description));
     if (sent.length === 0 || back.length > 0) return null;

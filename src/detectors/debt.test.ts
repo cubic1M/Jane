@@ -259,6 +259,19 @@ describe("card use, pay-later plans, medical bills, collections, forgiveness and
     ).not.toContain("student_forgiveness");
   });
 
+  it("doesn't take rent paid by Zelle for money lent", () => {
+    const rent = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      transactions: [
+        ...d.transactions.filter((t) => !/ZELLE|VENMO/i.test(t.description)),
+        ...["2026-08-01", "2026-09-01", "2026-10-01"].map((date, i) =>
+          tx(date, 185_000, "ZELLE TO OAK RIDGE APTS RENT", "RENT_AND_UTILITIES_RENT", `r${i}`),
+        ),
+      ],
+    });
+    expect(topics("preretire", rent)).not.toContain("family_loans");
+  });
+
   it("notes the money Dan and Lena sent their son, and goes quiet once some comes back", () => {
     const s = fire("preretire").find((x) => x.topic === "family_loans")!;
     expect(s.worthCents).toBe(60_000);
