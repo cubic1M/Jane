@@ -68,8 +68,6 @@ export function ImportChip() {
     void dismissImport(run.id);
   };
   const rows = `${run.rows} transaction${run.rows === 1 ? "" : "s"}`;
-  // After a removal the same work runs again: it's an update, not an import.
-  const removal = run.kind === "removal";
 
   return (
     <div
@@ -82,8 +80,7 @@ export function ImportChip() {
       {running ? (
         <>
           <span className="whitespace-nowrap">
-            {removal ? "Updating your numbers" : `Importing ${rows}`}…{" "}
-            <span className="tabular-nums">{run.percent}%</span>
+            Importing {rows}… <span className="tabular-nums">{run.percent}%</span>
           </span>
           <span aria-hidden className="hidden h-1.5 w-20 bg-zinc-200 sm:block dark:bg-zinc-800">
             <span
