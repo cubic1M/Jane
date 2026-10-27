@@ -4,9 +4,7 @@ import { inList, inLookback } from "../helpers";
 import { lastMonths, totalsByAccount } from "./fee-totals";
 import type { Rule } from "./rule";
 
-// Interest charged on credit accounts over the lookback window, one finding per card. A card
-// that charged interest in two months carries a balance, so a short history counts at its
-// yearly pace.
+// Interest charged on credit accounts over the lookback window, one finding per card.
 export const cardInterest: Rule = (input) => {
   const credit = new Set(input.accounts.filter((a) => a.type === "credit").map((a) => a.id));
   return totalsByAccount(
@@ -18,6 +16,5 @@ export const cardInterest: Rule = (input) => {
       type: "card_interest",
       title: `${formatCents(total)} in interest on ${account?.name ?? "your card"} in ${lastMonths(months)}`,
     }),
-    { yearly: true },
   );
 };

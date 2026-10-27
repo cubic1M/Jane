@@ -48,6 +48,9 @@ export type DetectionRecurringStream = {
 export type DetectionInput = {
   // "Today" for the rules: the lookback window ends here.
   asOf: string;
+  // The person's first posted transaction, ever (YYYY-MM-DD): how much history there is, even
+  // before the lookback window. Absent: the earliest transaction below.
+  historyFrom?: string;
   accounts: DetectionAccount[];
   // Posted (not pending) transactions inside the lookback window.
   transactions: DetectionTransaction[];
