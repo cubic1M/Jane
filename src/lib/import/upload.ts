@@ -6,7 +6,7 @@ import { ACCOUNT_KINDS, isAccountKind, type AccountKind } from "@/data-sources/t
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import type { ScopedDb } from "@/lib/db-scoped";
-import { keepFileBalances } from "@/lib/import/balances";
+import { keepFileBalances, keepGivenBalance } from "@/lib/import/balances";
 import {
   AccountNotFoundError,
   MAX_FILE_BYTES,
@@ -100,8 +100,8 @@ export function accountFields(formData: FormData, prefix = ""): AccountFields | 
   return { name, kind, balance };
 }
 
-export const createCsvAccountRow = (db: ScopedDb, { name, kind, balance }: AccountFields) =>
-  db.accounts.create({
+export async function createCsvAccountRow(db: ScopedDb, { name, kind, balance }: AccountFields) {
+  const account = await db.accounts.create({
     data: {
       userId: db.userId,
       source: "csv",
@@ -111,6 +111,10 @@ export const createCsvAccountRow = (db: ScopedDb, { name, kind, balance }: Accou
       currentBalanceCents: balance,
     },
   });
+  // A typed balance is as of today: an upload ending before today doesn't replace it.
+  if (balance !== null) await keepGivenBalance(db, account.id, balance);
+  return account;
+}
 
 export type UploadStage = { stage: "reading" } | ImportStage;
 

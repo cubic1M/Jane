@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { importCsvFiles, enqueueJob, keepFileBalances } = vi.hoisted(() => ({
+const { importCsvFiles, enqueueJob, keepFileBalances, keepGivenBalance } = vi.hoisted(() => ({
   importCsvFiles: vi.fn(),
   enqueueJob: vi.fn(),
   keepFileBalances: vi.fn(),
+  keepGivenBalance: vi.fn(),
 }));
 
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/jobs", () => ({ enqueueJob }));
-vi.mock("@/lib/import/balances", () => ({ keepFileBalances }));
+vi.mock("@/lib/import/balances", () => ({ keepFileBalances, keepGivenBalance }));
 vi.mock("@/lib/import/import-csv", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/import/import-csv")>()),
   importCsvFiles,
@@ -198,6 +199,8 @@ describe("saveUpload into a new account", () => {
   it("keeps a balance when one is given", async () => {
     await saveUpload(db, form({ ...fields, "new.balance": "812.40", files: [csv("card.csv")] }));
     expect(accountsCreate.mock.calls[0][0].data.currentBalanceCents).toBe(81240);
+    // As of today, so a statement ending earlier doesn't replace it.
+    expect(keepGivenBalance).toHaveBeenCalledWith(db, "acct_new", 81240);
   });
 
   it("makes no account when a file can't be read", async () => {

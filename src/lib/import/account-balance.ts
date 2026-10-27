@@ -2,6 +2,7 @@ import { accountKindOf } from "@/data-sources/types";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import type { ScopedDb } from "@/lib/db-scoped";
+import { keepGivenBalance } from "@/lib/import/balances";
 import { enqueueJob } from "@/lib/jobs";
 
 // An uploaded account's balance today, asked for when its file doesn't carry one (cards, Wells
@@ -29,7 +30,7 @@ export async function balancesToAsk(db: Pick<ScopedDb, "accounts">): Promise<Bal
 // background (src/lib/import/background.ts): balances over time, net worth, every area. Null
 // when it isn't the person's uploaded account.
 export async function setUploadedBalance(
-  db: Pick<ScopedDb, "userId" | "accounts" | "importRuns">,
+  db: Pick<ScopedDb, "userId" | "accounts" | "importRuns" | "balanceSnapshots">,
   accountId: string,
   cents: number,
 ): Promise<{ jobId: string } | null> {
@@ -38,6 +39,7 @@ export async function setUploadedBalance(
     data: { currentBalanceCents: cents },
   });
   if (count === 0) return null;
+  await keepGivenBalance(db, accountId, cents);
   await Promise.all([
     logAudit({ type: "user", id: db.userId }, "uploaded_balance_set", {
       type: "account",
