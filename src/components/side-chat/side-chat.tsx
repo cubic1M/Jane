@@ -335,6 +335,8 @@ export function SideChat() {
       ref={frame}
       src={src}
       title="Chat with Jane"
+      // Speaking to Jane works inside the frame too (Permissions-Policy: microphone=(self)).
+      allow="microphone"
       onLoad={() => {
         setLoaded(true);
         post(where);
