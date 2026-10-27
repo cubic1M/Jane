@@ -1,5 +1,7 @@
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
+import { SHORT_HISTORY_DAYS, YEARLY_PACE_MIN_MONTHS } from "@/config/detection";
 import type { AccountKind } from "@/data-sources/types";
+import { DAYS_PER_MONTH, DAYS_PER_YEAR, daysBetween } from "@/detection/units";
 
 // The CSV accuracy bench's people (2026-10-27): 20 synthetic people, each with 3 to 6 months of
 // true transactions on 2 or 3 accounts and the truth for everything Jane should say about them.
@@ -1260,6 +1262,16 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       a.date.localeCompare(b.date) ||
       Number(a.id.slice(a.id.indexOf("-r") + 2)) - Number(b.id.slice(b.id.indexOf("-r") + 2)),
   );
+  // Card interest from a short history is worth its yearly pace once it came in two months or
+  // more (#828): what it would cost over a year, not just the months the files cover.
+  for (const f of L.findings.filter((x) => x.type === "card_interest")) {
+    const first = L.rows.find((x) => x.account === f.account)!.date;
+    const days = daysBetween(first, asOf);
+    const months = new Set(f.rows!.map((id) => L.rows.find((x) => x.id === id)!.date.slice(0, 7)));
+    if (days < SHORT_HISTORY_DAYS && months.size >= YEARLY_PACE_MIN_MONTHS) {
+      f.annualCents = Math.round((f.annualCents! * DAYS_PER_YEAR) / Math.max(days, DAYS_PER_MONTH));
+    }
+  }
   const balanceOf = (a: CsvAccount) =>
     a.openingCents -
     L.rows.filter((x) => x.account === a.id).reduce((s, x) => s + x.amountCents, 0);

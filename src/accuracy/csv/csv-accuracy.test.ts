@@ -10,6 +10,8 @@ import { CSV_SETS, fixtureFiles, headline, readFixtures, scoreSet } from "./repo
 vi.mock("@/categorize/llm", () => ({ classifyMerchants: async () => new Map() }));
 
 const ALLOWED_DROP = 0.03;
+// Counts, which may not rise at all.
+const COUNTS = new Set(["extraRows", "falseDoubleCharges"]);
 // Counts and errors, where lower is better.
 const LOWER_IS_BETTER = new Set([
   "extraRows",
@@ -32,7 +34,7 @@ describe.each(CSV_SETS)("the CSV bench's %s set", (set) => {
     const base = baseline[set] as Record<string, number>;
     for (const [name, was] of Object.entries(base)) {
       if (LOWER_IS_BETTER.has(name)) {
-        const slack = Number.isInteger(was) ? 0 : ALLOWED_DROP;
+        const slack = COUNTS.has(name) ? 0 : ALLOWED_DROP;
         expect(now[name], name).toBeLessThanOrEqual(was + slack);
       } else {
         expect(now[name], name).toBeGreaterThanOrEqual(was - ALLOWED_DROP);

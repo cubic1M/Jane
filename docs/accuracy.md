@@ -251,7 +251,7 @@ Tuning set (20 people, 127 files, 5091 transactions):
 | Rows read exactly | 100.0% (7 extra, 0 missing) |
 | Category right (rules only) | 96.9% (157 left for Claude) |
 | False "Charged twice?" | 1 (1 people) |
-| Findings, $/yr | Jane $23,124, truth $23,026; error on the ones found 0.0% |
+| Findings, $/yr | Jane $27,848, truth $27,750; error on the ones found 0.0% |
 | Monthly spending, error | 0.8% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 5 of 20 people (off by $99,131 in all) |
@@ -277,7 +277,7 @@ Held-out set (20 people, 151 files, 5003 transactions):
 | Rows read exactly | 100.0% (7 extra, 0 missing) |
 | Category right (rules only) | 65.1% (1619 left for Claude) |
 | False "Charged twice?" | 5 (3 people) |
-| Findings, $/yr | Jane $11,055, truth $23,758; error on the ones found 0.0% |
+| Findings, $/yr | Jane $14,780, truth $27,484; error on the ones found 0.0% |
 | Monthly spending, error | 0.4% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 5 of 20 people (off by $76,484 in all) |
