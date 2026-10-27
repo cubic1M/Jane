@@ -162,8 +162,9 @@ export function UploadHistory({
       <h3 className="font-semibold">Your accounts</h3>
       {asks.length > 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Their statements don&apos;t say today&apos;s balance, so net worth can&apos;t count{" "}
-          {asks.length === 1 ? "this one" : "these"} until you add it.
+          {asks.length === 1
+            ? "One statement doesn't say today's balance. Add it below and net worth counts it."
+            : `${asks.length} statements don't say today's balance. Add them below and net worth counts them.`}
         </p>
       )}
       <ul className="flex flex-col gap-3">

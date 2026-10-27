@@ -96,6 +96,12 @@ test("a card without a balance is asked for, and net worth says it isn't counted
 
   // Given later on /import: the debt counts, and the note goes.
   await page.goto("/import");
+  // Said once, over the accounts, in the right number.
+  await expect(
+    page.getByText(
+      "One statement doesn't say today's balance. Add it below and net worth counts it.",
+    ),
+  ).toBeVisible();
   const ask = page.locator("[data-uploaded-account] [data-balance-ask]");
   await ask.getByRole("textbox").fill("350.00");
   await ask.getByRole("button", { name: "Save" }).click();
