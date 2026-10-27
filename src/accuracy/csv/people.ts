@@ -1,7 +1,7 @@
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
-import { SHORT_HISTORY_DAYS, YEARLY_PACE_MIN_MONTHS } from "@/config/detection";
+import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
 import type { AccountKind } from "@/data-sources/types";
-import { DAYS_PER_MONTH, DAYS_PER_YEAR, daysBetween } from "@/detection/units";
+import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "@/detection/units";
 
 // The CSV accuracy bench's people (2026-10-27): 20 synthetic people, each with 3 to 6 months of
 // true transactions on 2 or 3 accounts and the truth for everything Jane should say about them.
@@ -1262,14 +1262,16 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       a.date.localeCompare(b.date) ||
       Number(a.id.slice(a.id.indexOf("-r") + 2)) - Number(b.id.slice(b.id.indexOf("-r") + 2)),
   );
-  // Card interest from a short history is worth its yearly pace once it came in two months or
-  // more (#828): what it would cost over a year, not just the months the files cover.
-  for (const f of L.findings.filter((x) => x.type === "card_interest")) {
-    const first = L.rows.find((x) => x.account === f.account)!.date;
-    const days = daysBetween(first, asOf);
-    const months = new Set(f.rows!.map((id) => L.rows.find((x) => x.id === id)!.date.slice(0, 7)));
-    if (days < SHORT_HISTORY_DAYS && months.size >= YEARLY_PACE_MIN_MONTHS) {
-      f.annualCents = Math.round((f.annualCents! * DAYS_PER_YEAR) / Math.max(days, DAYS_PER_MONTH));
+  // Fees and card interest from a short history are worth a year at their pace (#853): over the
+  // months the person's data covers, from their first transaction on any account, as the dock
+  // and the report count them (src/detection/rules/fee-totals.ts).
+  const days = daysBetween(L.rows[0]!.date, asOf);
+  if (days < SHORT_HISTORY_DAYS) {
+    const months = Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH)));
+    for (const f of L.findings.filter(
+      (x) => x.type === "card_interest" || x.type === "bank_fees",
+    )) {
+      f.annualCents = Math.round((f.annualCents! * MONTHS_PER_YEAR) / months);
     }
   }
   const balanceOf = (a: CsvAccount) =>

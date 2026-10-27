@@ -45,17 +45,17 @@
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 34
+      "perYear": 102
     },
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 135
+      "perYear": 405
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 870.52
+      "perYear": 807.96
     }
   ],
   "notFindings": [

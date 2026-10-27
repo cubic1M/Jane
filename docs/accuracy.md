@@ -248,11 +248,11 @@ Tuning set (20 people, 127 files, 5091 transactions):
 | Step | Score |
 | --- | ---: |
 | Files read | 127 of 127 (122 exactly) |
-| Rows read exactly | 100.0% (7 extra, 0 missing) |
+| Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 96.9% (157 left for Claude) |
-| False "Charged twice?" | 1 (1 people) |
-| Findings, $/yr | Jane $27,848, truth $27,750; error on the ones found 0.0% |
-| Monthly spending, error | 0.8% |
+| False "Charged twice?" | 0 (0 people) |
+| Findings, $/yr | Jane $29,897, truth $29,897; error on the ones found 0.0% |
+| Monthly spending, error | 0.7% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 5 of 20 people (off by $99,131 in all) |
 | Net worth line: month-ends drawn | 18.2% (error where drawn 8.1%) |
@@ -264,7 +264,7 @@ Tuning set (20 people, 127 files, 5091 transactions):
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 16 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
-| duplicate_charge | 87.5% | 100.0% | 7 | 1 | 0 |
+| duplicate_charge | 100.0% | 100.0% | 7 | 0 | 0 |
 | idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
@@ -274,11 +274,11 @@ Held-out set (20 people, 151 files, 5003 transactions):
 | Step | Score |
 | --- | ---: |
 | Files read | 151 of 151 (147 exactly) |
-| Rows read exactly | 100.0% (7 extra, 0 missing) |
+| Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 65.1% (1619 left for Claude) |
 | False "Charged twice?" | 5 (3 people) |
-| Findings, $/yr | Jane $14,780, truth $27,484; error on the ones found 0.0% |
-| Monthly spending, error | 0.4% |
+| Findings, $/yr | Jane $17,646, truth $30,350; error on the ones found 0.0% |
+| Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 5 of 20 people (off by $76,484 in all) |
 | Net worth line: month-ends drawn | 18.2% (error where drawn 6.7%) |

@@ -56,12 +56,12 @@
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 48
+      "perYear": 115.2
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 864.26
+      "perYear": 823.44
     },
     {
       "type": "idle_cash",

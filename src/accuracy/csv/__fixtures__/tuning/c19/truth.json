@@ -55,7 +55,7 @@
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 60
+      "perYear": 120
     },
     {
       "type": "idle_cash",
