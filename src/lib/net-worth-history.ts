@@ -24,6 +24,8 @@ export async function loadNetWorthHistory(
   // False when nothing counted has a value: every account's balance is unknown (statements
   // without a balance column) and nothing owned is entered, so "$0" would be wrong.
   known: boolean;
+  // The accounts it can't count yet for want of a balance, for notCounting's words.
+  unbalanced: Unbalanced[];
 } | null> {
   const db = scopedFor(userId, client);
   const asOf = await todayOf(userId, { client, now });
@@ -51,6 +53,7 @@ export async function loadNetWorthHistory(
   return {
     todayCents: today.netCents,
     known: today.known,
+    unbalanced: today.unbalanced,
     months: netWorthLine(
       accounts,
       snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),

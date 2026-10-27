@@ -97,6 +97,33 @@ describe("the plans and goals tree", () => {
     expect(tree.sub).toBe("1 urgent · 3 to look at");
   });
 
+  it("says what net worth isn't counting, or that it isn't known, never a silent figure", () => {
+    const worth = (netWorth: PlansTreeInput["netWorth"]) => {
+      const { tree, summaries } = plansTree(input({ netWorth }));
+      const leaf = tree.branches.flatMap((b) => b.items).find((i) => i.id === "worth:today")!;
+      return { ...leaf, summary: summaries["worth:today"] };
+    };
+    const card = worth({
+      todayCents: 200_000,
+      lastMonthCents: 150_000,
+      unbalanced: [{ name: "Chase card", card: true }],
+    });
+    expect(card.label).toBe("Net worth, not counting card balance");
+    expect(card.status).toBe("look");
+    expect(card.summary).toBe("Not counting your Chase card balance: the file doesn't say it yet.");
+    const none = worth({
+      todayCents: 0,
+      lastMonthCents: 0,
+      known: false,
+      unbalanced: [{ name: "Chase card", card: true }],
+    });
+    expect(none.label).toBe("Net worth");
+    expect(none.figure).toBe("Not known");
+    expect(none.summary).toBe(
+      "Your files don't include a balance yet. Add one on the import page.",
+    );
+  });
+
   it("says a card balance isn't known", () => {
     const { tree } = plansTree(input({ debt: { accounts: 1, owedCents: 0, known: 0 } }));
     const debt = tree.branches.flatMap((b) => b.items).find((i) => i.id === "money:debt")!;
