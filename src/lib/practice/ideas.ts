@@ -22,6 +22,7 @@ import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { practiceProfileOf } from "./preferences";
 import { tradesHeldBy } from "./limits";
 import { DAY_MS } from "@/lib/dates";
+import { formatCents } from "@/lib/money";
 
 // The practice scan's ideas as suggestions (Phase AW, Stage A). The scan keeps a flag as
 // "suggested" when the person is in suggest-only mode or the kind only suggests; here those
@@ -39,9 +40,6 @@ type StoredDetails = {
   ask?: { headline: string; short: string; worthCents: number; worthKind: WorthKind };
   trades?: { ticker: string; side: "buy" | "sell"; amountCents: number }[];
 };
-
-const dollars = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // The ideas waiting for the person, newest first.
 export async function openPracticeIdeas(
@@ -219,7 +217,9 @@ export async function answerPracticeIdea(
   }
   await db.practiceOpportunities.updateMany({ where: { id: row.id }, data: { tradeIds } });
   const what = trades
-    .map((t) => `${t.side === "buy" ? "bought" : "sold"} ${dollars(t.amountCents)} of ${t.ticker}`)
+    .map(
+      (t) => `${t.side === "buy" ? "bought" : "sold"} ${formatCents(t.amountCents)} of ${t.ticker}`,
+    )
     .join(", ");
   return {
     note: `Done in your practice portfolio: ${what}. Practice money only: nothing real was bought or sold.`,

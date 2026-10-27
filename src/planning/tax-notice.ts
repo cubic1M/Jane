@@ -5,7 +5,7 @@ import {
   type NoticeFieldKey,
   type NoticeKind,
 } from "@/config/tax-notices";
-import { parseMoneyToCents } from "@/lib/money";
+import { parseMoneyToCents, formatCents } from "@/lib/money";
 import { addDays } from "@/lib/dates";
 
 // A tax notice from the IRS or the state (spec step 217). Pure.
@@ -98,8 +98,6 @@ export type Check = {
   why: string;
 };
 
-const dollars = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const same = (a: string, b: string) => {
   const w = (s: string) =>
     s
@@ -132,15 +130,15 @@ export function checkAgainstWhatJaneKnows(fields: Fields, facts: NoticeFacts): C
     }
     const form = facts.forms.find((f) => same(f.from, payer));
     const seen = facts.incomeByPayer.find((p) => same(p.payer, payer));
-    if (form) lines.push(`I have the form from ${form.from}: ${dollars(form.cents)}.`);
-    if (seen) lines.push(`Your accounts show ${seen.payer} paid you ${dollars(seen.cents)}.`);
+    if (form) lines.push(`I have the form from ${form.from}: ${formatCents(form.cents)}.`);
+    if (seen) lines.push(`Your accounts show ${seen.payer} paid you ${formatCents(seen.cents)}.`);
     if (!form && !seen) lines.push(`I can't find ${payer} in your forms or accounts.`);
     const known = form?.cents ?? seen?.cents ?? null;
     if (known !== null && close(known, reported)) {
       return {
         lines,
         points: "agree",
-        why: `${dollars(reported)} matches what I see from ${payer}. If it wasn't on your return, the notice is probably right.`,
+        why: `${formatCents(reported)} matches what I see from ${payer}. If it wasn't on your return, the notice is probably right.`,
       };
     }
     return {
@@ -149,26 +147,26 @@ export function checkAgainstWhatJaneKnows(fields: Fields, facts: NoticeFacts): C
       why:
         known === null
           ? `I can't find that income anywhere, so it's worth asking ${payer} for proof.`
-          : `The notice says ${dollars(reported)}, but I see ${dollars(known)}.`,
+          : `The notice says ${formatCents(reported)}, but I see ${formatCents(known)}.`,
     };
   }
   if (rule.amount === "owed") {
     const owed = centsOf(fields, "amount");
     const paid = facts.payments.reduce((s, p) => s + p.cents, 0);
     for (const p of facts.payments.slice(0, 4))
-      lines.push(`You paid ${dollars(p.cents)} to ${p.payee} on ${p.date}.`);
+      lines.push(`You paid ${formatCents(p.cents)} to ${p.payee} on ${p.date}.`);
     if (owed > 0 && paid >= owed) {
       return {
         lines,
         points: "dispute",
-        why: `You've paid ${dollars(paid)}, which covers ${dollars(owed)}: the payment may not have been applied. Send proof of payment.`,
+        why: `You've paid ${formatCents(paid)}, which covers ${formatCents(owed)}: the payment may not have been applied. Send proof of payment.`,
       };
     }
     if (owed > 0) {
       return {
         lines,
         points: "pay",
-        why: `Nothing I can see in your accounts covers the ${dollars(owed)}.`,
+        why: `Nothing I can see in your accounts covers the ${formatCents(owed)}.`,
       };
     }
   }

@@ -63,6 +63,7 @@ import {
   type ScanTrade,
 } from "./practice-scan";
 import { DAY_MS, daysBetween } from "@/lib/dates";
+import { formatCents } from "@/lib/money";
 
 // More kinds of opportunity for the practice portfolio's daily scan (Phase AW, Stage A, after
 // step 292). Pure. The step 292 scan runs first; then, from the same ledger, prices and the
@@ -132,8 +133,6 @@ const LABEL: Record<PracticeClass, string> = {
   cash: "short-term bills",
 };
 const cap = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
-const dollars = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pct = (n: number) => `${(Math.round(n * 1000) / 10).toString()}%`;
 const points = (n: number) => (Math.round(n * 1000) / 10).toString();
 const SUFFIX: Readonly<Record<number, string>> = { 1: "st", 2: "nd", 3: "rd" };
@@ -312,25 +311,25 @@ function newMoneyFlag(
   const sale =
     wouldSell > 0
       ? stillOver > 0
-        ? ` The autopilot would have sold about ${dollars(wouldSell)}; now about ${dollars(stillOver)}.`
-        : ` The autopilot would have sold about ${dollars(wouldSell)}; now nothing needs selling.`
+        ? ` The autopilot would have sold about ${formatCents(wouldSell)}; now about ${formatCents(stillOver)}.`
+        : ` The autopilot would have sold about ${formatCents(wouldSell)}; now nothing needs selling.`
       : " Nothing needs selling.";
-  const reason = `Your mix is ${points(n.off)} points off on ${n.what} (the band is ${points(n.band)}), and ${dollars(available)} of cash was waiting, so ${dollars(spent)} of it went where the mix is short.${sale}`;
+  const reason = `Your mix is ${points(n.off)} points off on ${n.what} (the band is ${points(n.band)}), and ${formatCents(available)} of cash was waiting, so ${formatCents(spent)} of it went where the mix is short.${sale}`;
   return {
     kind: "new_money_rebalance",
     ticker: trades[0].ticker,
     key: `new_money_rebalance:${input.today}`,
-    headline: `Rebalance with ${dollars(spent)} of new money, no sale`,
+    headline: `Rebalance with ${formatCents(spent)} of new money, no sale`,
     reason,
     amountCents: spent,
     trades: trades.map((t) => ({ ...t, reason })),
     figures: [
       ...sharesFigures(weightsOf(input), n.d.shares),
-      { label: "Cash waiting", value: dollars(available) },
-      { label: "Sale avoided", value: dollars(Math.max(0, wouldSell - stillOver)) },
+      { label: "Cash waiting", value: formatCents(available) },
+      { label: "Sale avoided", value: formatCents(Math.max(0, wouldSell - stillOver)) },
     ],
     caps: [
-      `Only cash waiting above your buffer of ${dollars(input.prefs.cashBufferCents)}`,
+      `Only cash waiting above your buffer of ${formatCents(input.prefs.cashBufferCents)}`,
       `At most ${pct(SCAN_CAPS.new_money_rebalance.sizeShare)} of the portfolio`,
       `No fund over ${pct(SCAN_CAPS.new_money_rebalance.positionShare)} of the portfolio`,
       `At most ${SCAN_CAPS.new_money_rebalance.perMonth} a month`,
@@ -338,7 +337,7 @@ function newMoneyFlag(
     confidence: SCAN_CONFIDENCE.new_money_rebalance,
     ask: {
       headline: `Rebalance with ${wholeDollars(spent)} of new money, no sale`,
-      short: `Your mix is ${points(n.off)} points off on ${n.what}, and ${dollars(available)} of practice cash is waiting.`,
+      short: `Your mix is ${points(n.off)} points off on ${n.what}, and ${formatCents(available)} of practice cash is waiting.`,
       worthCents: spent,
       worthKind: "risk",
     },
@@ -365,28 +364,28 @@ function cashDragFlag(
   const spent = trades.reduce((s, t) => s + t.amountCents, 0);
   if (spent === 0) return null;
   const yearly = Math.round(available * CASH_DRAG_RATE);
-  const reason = `${dollars(available)} of cash has waited ${daysBetween(lastBuy, input.today)} days above your buffer; it earns nothing in the ledger. ${dollars(spent)} of it buys your level's own mix where it's short.`;
+  const reason = `${formatCents(available)} of cash has waited ${daysBetween(lastBuy, input.today)} days above your buffer; it earns nothing in the ledger. ${formatCents(spent)} of it buys your level's own mix where it's short.`;
   const week = Math.ceil(Number(input.today.slice(8, 10)) / 7);
   return {
     kind: "cash_drag",
     ticker: trades[0].ticker,
     key: `cash_drag:${input.today.slice(0, 7)}:w${week}`,
-    headline: `Invest ${dollars(spent)} of idle cash`,
+    headline: `Invest ${formatCents(spent)} of idle cash`,
     reason,
     amountCents: spent,
     trades: trades.map((t) => ({ ...t, reason })),
     figures: [
-      { label: "Cash waiting", value: dollars(input.state.cashCents) },
-      { label: "Your buffer", value: dollars(input.prefs.cashBufferCents) },
+      { label: "Cash waiting", value: formatCents(input.state.cashCents) },
+      { label: "Your buffer", value: formatCents(input.prefs.cashBufferCents) },
       { label: "Days since the last buy", value: String(daysBetween(lastBuy, input.today)) },
       {
         label: `What it would earn a year at the bill yield (${pct(CASH_DRAG_RATE)})`,
-        value: dollars(yearly),
+        value: formatCents(yearly),
       },
       { label: "Yield from", value: CASH_DRAG_RATE_SOURCE },
     ],
     caps: [
-      `Cash above your buffer only, at least ${dollars(CASH_DRAG_MIN_CENTS)} and ${pct(CASH_DRAG_MIN_SHARE)} of the portfolio`,
+      `Cash above your buffer only, at least ${formatCents(CASH_DRAG_MIN_CENTS)} and ${pct(CASH_DRAG_MIN_SHARE)} of the portfolio`,
       `Waiting at least ${CASH_DRAG_MIN_DAYS} days`,
       `At most ${pct(SCAN_CAPS.cash_drag.sizeShare)} of the portfolio, into your level's mix only`,
       `At most ${SCAN_CAPS.cash_drag.perMonth} a month`,
@@ -394,7 +393,7 @@ function cashDragFlag(
     confidence: SCAN_CONFIDENCE.cash_drag,
     ask: {
       headline: `Invest idle practice cash, about ${wholeDollars(yearly)} a year more`,
-      short: `${dollars(available)} has waited ${daysBetween(lastBuy, input.today)} days above your buffer, earning nothing.`,
+      short: `${formatCents(available)} has waited ${daysBetween(lastBuy, input.today)} days above your buffer, earning nothing.`,
       worthCents: yearly,
       worthKind: "earns",
     },
@@ -435,12 +434,12 @@ function cheaperFundFlags(
     if (amount < AUTOPILOT_LIMITS.minTradeCents) continue;
     const savedBps = fee - PRACTICE_FUND_FEE_BPS[twin];
     const yearly = Math.round((amount * savedBps) / 10_000);
-    const reason = `${ticker} costs ${pct(fee / 10_000)} a year and ${twin}, a fund of the same kind, ${pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000)}, so ${dollars(amount)} moves across: the mix stays the same and the yearly cost falls by about ${dollars(yearly)}.`;
+    const reason = `${ticker} costs ${pct(fee / 10_000)} a year and ${twin}, a fund of the same kind, ${pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000)}, so ${formatCents(amount)} moves across: the mix stays the same and the yearly cost falls by about ${formatCents(yearly)}.`;
     flags.push({
       kind: "cheaper_fund",
       ticker,
       key: `cheaper_fund:${ticker}:${input.today.slice(0, 7)}`,
-      headline: `Switch ${dollars(amount)} to ${twin}, a cheaper twin`,
+      headline: `Switch ${formatCents(amount)} to ${twin}, a cheaper twin`,
       reason,
       amountCents: amount,
       trades: [
@@ -450,8 +449,8 @@ function cheaperFundFlags(
       figures: [
         { label: `${ticker} a year`, value: pct(fee / 10_000) },
         { label: `${twin} a year`, value: pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000) },
-        { label: "Saved a year", value: dollars(yearly) },
-        { label: "Gain or loss on the sale", value: dollars(gain) },
+        { label: "Saved a year", value: formatCents(yearly) },
+        { label: "Gain or loss on the sale", value: formatCents(gain) },
         { label: "Costs from", value: PRACTICE_FUND_FEE_SOURCE },
       ],
       caps: [
@@ -468,7 +467,7 @@ function cheaperFundFlags(
           yearly >= 50
             ? `Switch ${ticker} to ${twin}, save ${wholeDollars(yearly)} a year`
             : `Switch ${ticker} to ${twin}, a cheaper twin fund`,
-        short: `${ticker} costs ${pct(fee / 10_000)} a year and ${twin} ${pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000)}, on ${dollars(amount)} of practice money.`,
+        short: `${ticker} costs ${pct(fee / 10_000)} a year and ${twin} ${pct(PRACTICE_FUND_FEE_BPS[twin] / 10_000)}, on ${formatCents(amount)} of practice money.`,
         worthCents: yearly,
         worthKind: "saves",
       },
@@ -502,7 +501,7 @@ function paydayFlag(input: OpportunityInput): ScanFlag | null {
   const apart = Math.abs(target - input.addDay);
   const gap = Math.min(apart, 30 - apart);
   if (gap < PAYDAY_TIMING_MIN_GAP_DAYS) return null;
-  const reason = `You're paid around the ${ordinal(input.paydayDay)}, and your ${dollars(input.monthlyAddCents)} of monthly practice money lands on the ${ordinal(input.addDay)}. Moving it to the ${ordinal(target)} practises investing as the pay comes in, before it's spent.`;
+  const reason = `You're paid around the ${ordinal(input.paydayDay)}, and your ${formatCents(input.monthlyAddCents)} of monthly practice money lands on the ${ordinal(input.addDay)}. Moving it to the ${ordinal(target)} practises investing as the pay comes in, before it's spent.`;
   return {
     kind: "payday_timing",
     ticker: PRACTICE_ETFS.us_stocks.ticker,
@@ -515,7 +514,7 @@ function paydayFlag(input: OpportunityInput): ScanFlag | null {
       { label: "Your payday", value: `around the ${ordinal(input.paydayDay)}` },
       { label: "Practice money lands", value: `the ${ordinal(input.addDay)}` },
       { label: "Suggested day", value: `the ${ordinal(target)}` },
-      { label: "Monthly practice money", value: dollars(input.monthlyAddCents) },
+      { label: "Monthly practice money", value: formatCents(input.monthlyAddCents) },
     ],
     caps: [
       `Only when the days are at least ${PAYDAY_TIMING_MIN_GAP_DAYS} apart`,
@@ -661,7 +660,7 @@ function maxDropFlag(input: OpportunityInput): ScanFlag | null {
   );
   if (!r || r.drop < MAX_DROP_NEAR_SHARE * limit) return null;
   const next = (input.level - 1) as RiskLevel;
-  const reason = `Your practice portfolio is down ${pct(r.drop)} from its high of ${dollars(r.peakCents)} on ${r.peakDate}, and you said you could take about ${pct(limit)}. Moving to ${levelName(next)} (${pct(stocksShare(next))} in stocks) keeps you inside your own limit. This isn't a call on where markets go next.`;
+  const reason = `Your practice portfolio is down ${pct(r.drop)} from its high of ${formatCents(r.peakCents)} on ${r.peakDate}, and you said you could take about ${pct(limit)}. Moving to ${levelName(next)} (${pct(stocksShare(next))} in stocks) keeps you inside your own limit. This isn't a call on where markets go next.`;
   return {
     kind: "max_drop_near",
     ticker: PRACTICE_ETFS.bonds.ticker,
@@ -671,8 +670,8 @@ function maxDropFlag(input: OpportunityInput): ScanFlag | null {
     amountCents: r.peakCents - r.nowCents,
     trades: [],
     figures: [
-      { label: "High", value: `${dollars(r.peakCents)} on ${r.peakDate}` },
-      { label: "Now", value: dollars(r.nowCents) },
+      { label: "High", value: `${formatCents(r.peakCents)} on ${r.peakDate}` },
+      { label: "Now", value: formatCents(r.nowCents) },
       { label: "Down", value: pct(r.drop) },
       { label: "Drop you said you could take", value: pct(limit) },
       { label: "Next level down", value: levelName(next) },
@@ -757,7 +756,7 @@ function themeFlags(
     const past = `It beat the whole US market in ${record.hits} of ${record.events} past events of this kind, by ${pct(record.averageExcess)} on average over a month; the worst was ${pct(record.worst)}.`;
     const exit = `Out after ${THEME_HOLD_DAYS} trading days, or sooner if it falls ${pct(THEME_STOP_LOSS)}.`;
     const paid = fund ? ` paid from ${fund.ticker}` : " from cash waiting";
-    const reason = `News on ${h.date}: "${h.title}". ${theme.what} ${past} A ${dollars(amount)} slice of ${theme.ticker}${paid}. ${theme.risk} ${exit}`;
+    const reason = `News on ${h.date}: "${h.title}". ${theme.what} ${past} A ${formatCents(amount)} slice of ${theme.ticker}${paid}. ${theme.risk} ${exit}`;
     const trades: ScanTrade[] = [];
     if (fund)
       trades.push({
@@ -778,7 +777,7 @@ function themeFlags(
       kind: "theme_idea",
       ticker: theme.ticker,
       key,
-      headline: `${theme.label}: ${dollars(amount)} in ${theme.ticker}`,
+      headline: `${theme.label}: ${formatCents(amount)} in ${theme.ticker}`,
       reason,
       amountCents: amount,
       trades,

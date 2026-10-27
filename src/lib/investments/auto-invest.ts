@@ -27,9 +27,7 @@ import { splitNewMoney } from "@/planning/goal-buckets";
 import { loadGoalBuckets } from "./goal-buckets";
 import { profileOf } from "./profile";
 import { DAY_MS, isoDay as iso } from "@/lib/dates";
-
-const dollars = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { formatCents } from "@/lib/money";
 
 // Automatic investing (spec step 134). Set up once with a tap (an amount every payday, or
 // the rest after bills and goals); after that Jane runs it on its own on each new paycheck,
@@ -290,7 +288,7 @@ export async function runAutoInvest(
                 .filter((p) => p.amountCents > 0)
                 .map(
                   (p) =>
-                    `${goals.buckets!.find((b) => b.id === p.id)?.name ?? "goal"} ${dollars(p.amountCents)}`,
+                    `${goals.buckets!.find((b) => b.id === p.id)?.name ?? "goal"} ${formatCents(p.amountCents)}`,
                 )
                 .join(", ")}`
             : null,
