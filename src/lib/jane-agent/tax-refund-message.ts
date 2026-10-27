@@ -3,16 +3,10 @@ import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { listOf } from "@/planning/tax-profile";
 import type { MessageAction, MessageRefs } from "./types";
+import { dayLabel } from "@/lib/day-label";
 
 // A tax refund in the chat (spec step 125): spotted, matched to the estimate and, in demo
 // advice mode, where it could go, set up with one tap.
-
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 export function matchLine(view: RefundView): string {
   const m = view.match;
@@ -28,7 +22,7 @@ export function refundMessage(view: RefundView): {
   refs: MessageRefs;
 } {
   const r = view.refund;
-  const landed = `Your ${r.to} tax refund of ${formatCents(r.cents)} landed on ${day(r.date)}.${matchLine(view)}`;
+  const landed = `Your ${r.to} tax refund of ${formatCents(r.cents)} landed on ${dayLabel(r.date)}.${matchLine(view)}`;
   if (!view.plan || view.plan.items.length === 0) {
     return {
       body: landed,

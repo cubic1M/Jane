@@ -60,6 +60,19 @@ export function yearElapsed(year: number, today: string): number {
   return (now - start) / DAY_MS / daysInYear(year);
 }
 
+// How much of the year the person's data covers, by today: from their first transaction when
+// it's this year (3 months of uploaded statements), else from Jan 1, as yearElapsed. Income seen
+// over Jul 28 to Oct 27 is a quarter year's pay, not ten months' (overnight upload QA: a $69k
+// salary estimated at $321 of tax).
+export function yearCovered(year: number, today: string, firstSeen: string | null): number {
+  const elapsed = yearElapsed(year, today);
+  if (!firstSeen || elapsed <= 0 || elapsed >= 1 || firstSeen <= `${year}-01-01`) return elapsed;
+  const now = Date.parse(`${today}T00:00:00Z`);
+  const from = Date.parse(`${firstSeen}T00:00:00Z`);
+  if (from >= now) return elapsed;
+  return (now - from) / DAY_MS / daysInYear(year);
+}
+
 const scale = (pay: PaySoFar, by: number): PaySoFar =>
   Object.fromEntries(Object.entries(pay).map(([k, v]) => [k, Math.round(v * by)])) as PaySoFar;
 
@@ -254,8 +267,12 @@ export function otherIncomeSoFar(
 }
 
 // The rest of the year at the same pace. Gains aren't projected: they happen when you sell.
-export function projectOther(soFar: OtherIncome, year: number, today: string): OtherIncome {
-  const elapsed = yearElapsed(year, today);
+export function projectOther(
+  soFar: OtherIncome,
+  year: number,
+  today: string,
+  elapsed: number = yearElapsed(year, today),
+): OtherIncome {
   if (elapsed >= 1 || elapsed <= 0) return soFar;
   const pace = (cents: number) => Math.round(cents / elapsed);
   return {

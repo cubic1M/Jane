@@ -2,24 +2,12 @@
 
 import { useActionState } from "react";
 import { fileAction, type FileState } from "./actions";
+import { FormStatus } from "@/components/form-status";
 
 // Start the return; review and sign it (spec step 126).
 
 const BUTTON =
   "inline-flex h-11 items-center justify-center self-start rounded-full bg-emerald-700 px-5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60";
-
-function Status({ state }: { state: FileState }) {
-  return (
-    <p
-      role="status"
-      className={
-        state ? (state.ok ? "text-sm text-emerald-800" : "text-sm text-red-700") : "sr-only"
-      }
-    >
-      {state?.message ?? ""}
-    </p>
-  );
-}
 
 export function StartForm() {
   const [state, action, pending] = useActionState<FileState, FormData>(fileAction, null);
@@ -29,7 +17,7 @@ export function StartForm() {
       <button type="submit" disabled={pending} className={BUTTON}>
         Start my return
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }
@@ -58,7 +46,7 @@ export function SignForm({ year }: { year: number }) {
       <button type="submit" disabled={pending} className={BUTTON}>
         Sign and file
       </button>
-      <Status state={state} />
+      <FormStatus state={state} />
     </form>
   );
 }

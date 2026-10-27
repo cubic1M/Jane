@@ -4,18 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { formatCents } from "@/lib/money";
 import { cashGroups, type CashEvent, type CashFlowView, type CashGroup } from "@/lib/hub/view";
+import { dayLabel } from "@/lib/day-label";
 
 // The hub's cash-flow strip (docs/design/home-hub.md): the next 30 days on one line, paydays
 // above it, bills below it (sized by amount against the biggest), other dates on it. Hover,
 // focus or tap shows what and how much, with a link to its page; a day's events of one kind are
 // one marker whose card lists them all. One tab stop: the arrow keys move along the line.
-
-const shortDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 const KIND_WORD: Record<CashEvent["kind"], string> = {
   bill: "bill",
@@ -27,7 +21,7 @@ const describe = (e: CashEvent) =>
   [
     e.label,
     KIND_WORD[e.kind],
-    shortDate(e.date),
+    dayLabel(e.date),
     e.amountCents !== null ? formatCents(e.amountCents) : null,
   ]
     .filter(Boolean)
@@ -36,7 +30,7 @@ const describe = (e: CashEvent) =>
 const describeGroup = (g: CashGroup) =>
   g.events.length === 1
     ? describe(g.events[0])
-    : `${g.events.length} ${KIND_WORD[g.kind]}s, ${shortDate(g.date)}: ${g.events
+    : `${g.events.length} ${KIND_WORD[g.kind]}s, ${dayLabel(g.date)}: ${g.events
         .map((e) =>
           [e.label, e.amountCents !== null ? formatCents(e.amountCents) : null]
             .filter(Boolean)
@@ -184,7 +178,7 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
                   : { bottom: "calc(50% + 0.75rem)" }),
               }}
             >
-              <p className="text-zinc-600 dark:text-zinc-400">{shortDate(open.date)}</p>
+              <p className="text-zinc-600 dark:text-zinc-400">{dayLabel(open.date)}</p>
               <ul className="flex flex-col gap-1">
                 {open.events.map((ev) => (
                   <li key={ev.key}>
@@ -212,7 +206,7 @@ export function CashFlowStrip({ view, endDate }: { view: CashFlowView; endDate: 
       )}
       <div aria-hidden className="flex justify-between text-xs text-zinc-500">
         <span>Today</span>
-        <span>{shortDate(endDate)}</span>
+        <span>{dayLabel(endDate)}</span>
       </div>
     </section>
   );

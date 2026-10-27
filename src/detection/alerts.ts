@@ -26,6 +26,7 @@ import { duplicatePairs } from "./rules/duplicate-charge";
 import { buildStreams, merchantOf, type Stream } from "./streams";
 import type { Candidate, DetectionInput, DetectionTransaction } from "./types";
 import { addDays, median } from "./units";
+import { dayLabel } from "@/lib/day-label";
 
 // Alerts: things that just happened and are worth a look now. Like the rules, these are
 // pure: the user's data and this scan's findings in, alerts out. Each alert's key names
@@ -55,13 +56,6 @@ export type AlertContext = {
   // deadline reminds about those, so no second bill reminder.
   dueReported?: ReadonlySet<string>;
 };
-
-const shortDate = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 function isRecent(date: string | undefined, asOf: string): date is string {
   return date !== undefined && date > addDays(asOf, -ALERT_RECENT_DAYS) && date <= asOf;
@@ -120,7 +114,7 @@ export function priceIncreaseAlerts(
           type: "price_increase",
           key: `${c.key}:${date}`,
           title: c.title,
-          body: `Charged on ${shortDate(date)}${yearly}. It's on your report if you want to look at it.`,
+          body: `Charged on ${dayLabel(date)}${yearly}. It's on your report if you want to look at it.`,
         },
       ];
     });
@@ -137,7 +131,7 @@ export function feeAlerts(input: DetectionInput): AlertCandidate[] {
       type: "fee_charged",
       key: t.id,
       title: `${formatCents(t.amountCents)} fee on ${accountName(input, t.accountId)}`,
-      body: `"${t.description}" on ${shortDate(t.date)}. Banks often take a fee back when asked; it's on your report.`,
+      body: `"${t.description}" on ${dayLabel(t.date)}. Banks often take a fee back when asked; it's on your report.`,
     }));
 }
 
@@ -182,7 +176,7 @@ export function largeChargeAlerts(
         type: "large_charge",
         key: t.id,
         title: `${formatCents(t.amountCents)} at ${merchantName(t)}`,
-        body: `On ${accountName(input, t.accountId)}, ${shortDate(t.date)}. That's much more than you usually spend there; if you don't recognize it, contact your bank.`,
+        body: `On ${accountName(input, t.accountId)}, ${dayLabel(t.date)}. That's much more than you usually spend there; if you don't recognize it, contact your bank.`,
       }));
   });
 }
@@ -195,7 +189,7 @@ export function duplicateChargeAlerts(input: DetectionInput): AlertCandidate[] {
       type: "duplicate_charge",
       key: second.id,
       title: `Charged twice? ${formatCents(second.amountCents)} at ${merchantName(second)}`,
-      body: `Two charges of ${formatCents(second.amountCents)} on ${accountName(input, second.accountId)}, ${shortDate(first.date)} and ${shortDate(second.date)}. If you only bought once, it's on your report and we can ask for the money back.`,
+      body: `Two charges of ${formatCents(second.amountCents)} on ${accountName(input, second.accountId)}, ${dayLabel(first.date)} and ${dayLabel(second.date)}. If you only bought once, it's on your report and we can ask for the money back.`,
     }));
 }
 
@@ -252,7 +246,7 @@ export function billReminderAlerts(
       return {
         type: "bill_due",
         key: `${b.merchant}:${b.date}`,
-        title: `${b.merchant}, about ${formatCents(b.amountCents)}, due ${shortDate(b.date)}`,
+        title: `${b.merchant}, about ${formatCents(b.amountCents)}, due ${dayLabel(b.date)}`,
         body: short
           ? `Your balance could be about ${formatCents(balance)} that day, so there may not be enough. Moving money in first could avoid a fee.`
           : "Expected from your past charges; the date and amount are estimates.",
@@ -280,7 +274,7 @@ export function renewalAlerts(input: DetectionInput, streams: Stream[]): AlertCa
         .map((date): AlertCandidate => ({
           type: "renews_soon",
           key: `${s.key}:${date}`,
-          title: `${s.merchant} renews ${shortDate(date)}, about ${formatCents(s.lastAmountCents)}`,
+          title: `${s.merchant} renews ${dayLabel(date)}, about ${formatCents(s.lastAmountCents)}`,
           body: "If you don't want another year (or quarter), cancel before then. It's on your subscriptions page.",
         })),
     );
@@ -296,7 +290,7 @@ export function estimatedTaxAlerts(input: DetectionInput): AlertCandidate[] {
   if (!hasIncome) return [];
   const date = nextEstimatedTaxDate(input.asOf);
   if (date > addDays(input.asOf, ESTIMATED_TAX_ALERT_DAYS)) return [];
-  return [{ type: "estimated_tax", key: date, ...estimatedTaxAlertCopy(shortDate(date)) }];
+  return [{ type: "estimated_tax", key: date, ...estimatedTaxAlertCopy(dayLabel(date)) }];
 }
 
 // One alert per charge (docs/feature-audit.md, cluster 10). A charge the unusual rules ask

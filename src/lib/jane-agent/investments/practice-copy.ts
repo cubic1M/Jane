@@ -14,6 +14,7 @@ import type { LoadedRuleReplays, RuleVerdict } from "@/lib/investments/rule-repl
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
+import { dayLabel } from "@/lib/day-label";
 
 // Jane's rule answers about the practice portfolio (spec step 297, Phase AW, Stage A): what it
 // bought and sold this week and why, the pause switch, and how a level would have done in a
@@ -64,13 +65,6 @@ export type PracticeTradeRow = {
   rule: string;
 };
 
-const longDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 const day = (d: Date) =>
   d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
@@ -175,7 +169,7 @@ export function backtestReply(
     if (y) {
       return `A ${l.label} portfolio in ${year}: ${formatCents(y.startCents)} became ${formatCents(y.endCents)} (${formatReturn(y.return)}), with a worst fall of ${formatReturn(y.worstDrop)} inside the year.`;
     }
-    return `A ${l.label} portfolio from ${longDate(b.from)} to ${longDate(b.to)}: ${formatCents(r.startCents)} became ${formatCents(r.endCents)} (${formatReturn(r.totalReturn)}), with a worst fall of ${formatReturn(r.worstDrop.fraction)}.`;
+    return `A ${l.label} portfolio from ${dayLabel(b.from, { year: true })} to ${dayLabel(b.to, { year: true })}: ${formatCents(r.startCents)} became ${formatCents(r.endCents)} (${formatReturn(r.totalReturn)}), with a worst fall of ${formatReturn(r.worstDrop.fraction)}.`;
   });
   const missing = year !== null && !chosen.some((l) => l.result.years.some((x) => x.year === year));
   const lead = missing ? `The replay doesn't cover ${year}, so here is all of it. ` : "";

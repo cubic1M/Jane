@@ -3,19 +3,13 @@ import type { GivingView } from "@/lib/giving";
 import { formatCents } from "@/lib/money";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { GivingButton } from "./giving-buttons";
+import { dayLabel } from "@/lib/day-label";
 
 // Giving on /taxes (spec step 168): the year's gifts and their receipts, and in demo advice
 // mode the options that do more good for the same money, each as the tax with and without
 // it, with a donor-advised fund through the stand-in.
 
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
-
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 export function GivingSection({ view }: { view: GivingView }) {
   return (
@@ -38,7 +32,7 @@ export function GivingSection({ view }: { view: GivingView }) {
               <li key={g.transactionId} className="flex flex-col gap-1">
                 <span className="flex flex-wrap justify-between gap-x-3">
                   <span className="[overflow-wrap:anywhere]">
-                    {day(g.date)}: {g.payee}
+                    {dayLabel(g.date)}: {g.payee}
                   </span>
                   <span className="whitespace-nowrap">{formatCents(g.cents)}</span>
                 </span>
@@ -60,8 +54,8 @@ export function GivingSection({ view }: { view: GivingView }) {
       )}
       {view.fund && (
         <p className="text-sm">
-          Your donor-advised fund: {view.fund.name}, opened {day(view.fund.openedAt)} (a stand-in
-          for now).
+          Your donor-advised fund: {view.fund.name}, opened {dayLabel(view.fund.openedAt)} (a
+          stand-in for now).
         </p>
       )}
       {view.advice && view.options.length > 0 && (

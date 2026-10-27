@@ -11,19 +11,13 @@ import { requireUser } from "@/lib/session";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { HelperForm } from "./helper-form";
 import { LoadingBar } from "@/components/loading-bar";
+import { dayLabel } from "@/lib/day-label";
 
 // Freelance taxes (spec step 123): business expenses, the home office and mileage helpers,
 // what to set aside from each payment and the estimated tax payments left (demo advice).
 
 const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "font-medium text-emerald-700 hover:underline";
-const day = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 
 async function Content() {
   const user = await requireUser();
@@ -131,7 +125,7 @@ async function Content() {
                   <tbody>
                     {v.federal.payments.map((p) => (
                       <tr key={p.date} className="border-t border-zinc-200 dark:border-zinc-800">
-                        <td className="py-1">{day(p.date)}</td>
+                        <td className="py-1">{dayLabel(p.date, { year: true })}</td>
                         <td className="py-1 text-right">{formatCents(p.cents)}</td>
                         {v.state && (
                           <td className="py-1 text-right">

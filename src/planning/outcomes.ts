@@ -13,6 +13,7 @@ import type { Watch } from "@/detectors/contract";
 import { addDays } from "@/detection/units";
 import { formatCents } from "@/lib/money";
 import { DAY_MS } from "@/lib/dates";
+import { dayLabel } from "@/lib/day-label";
 
 // Whether a suggestion the person acted on shows in their later transactions (the verified
 // savings record). Pure: the watch the detector left, the day the person acted, today, what
@@ -41,12 +42,6 @@ export type Check =
 const daysBetween = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / DAY_MS;
 const keyOf = (description: string) =>
   normalizeMerchant(description)?.key ?? description.trim().toLowerCase();
-const short = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 
 // Confirmed when the transactions show most of what was expected; partial when some.
 const verdict = (cents: number, expectedCents: number): "confirmed" | "partial" =>
@@ -94,7 +89,7 @@ export function verifyWatch(
       cents += p.amountCents * p.perYear;
       evidence.push(last.id);
       proofs.push(
-        `last charged ${formatCents(last.amountCents)} on ${short(last.date)}, nothing since, though the next was due ${short(due)}`,
+        `last charged ${formatCents(last.amountCents)} on ${dayLabel(last.date)}, nothing since, though the next was due ${dayLabel(due)}`,
       );
     }
     if (cents > 0) {
@@ -114,7 +109,7 @@ export function verifyWatch(
         evidence: still.map((t) => t.id),
         proof:
           still.length > 0
-            ? `Still charged: ${still.map((t) => `${formatCents(t.amountCents)} on ${short(t.date)}`).join(", ")}.`
+            ? `Still charged: ${still.map((t) => `${formatCents(t.amountCents)} on ${dayLabel(t.date)}`).join(", ")}.`
             : "No charge to compare with.",
       };
     }
@@ -133,7 +128,7 @@ export function verifyWatch(
         cents += (p.beforeCents - lower.amountCents) * p.perYear;
         evidence.push(lower.id);
         proofs.push(
-          `the bill came in at ${formatCents(lower.amountCents)} on ${short(lower.date)}, down from ${formatCents(p.beforeCents)}`,
+          `the bill came in at ${formatCents(lower.amountCents)} on ${dayLabel(lower.date)}, down from ${formatCents(p.beforeCents)}`,
         );
       } else full.push(...after);
     }
@@ -154,7 +149,7 @@ export function verifyWatch(
         evidence: full.map((t) => t.id),
         proof:
           full.length > 0
-            ? `Still billed in full: ${full.map((t) => `${formatCents(t.amountCents)} on ${short(t.date)}`).join(", ")}.`
+            ? `Still billed in full: ${full.map((t) => `${formatCents(t.amountCents)} on ${dayLabel(t.date)}`).join(", ")}.`
             : "No lower bill came.",
       };
     }
@@ -178,7 +173,7 @@ export function verifyWatch(
       if (!back) continue;
       cents += -back.amountCents;
       evidence.push(back.id);
-      proofs.push(`${formatCents(-back.amountCents)} came back on ${short(back.date)}`);
+      proofs.push(`${formatCents(-back.amountCents)} came back on ${dayLabel(back.date)}`);
     }
     if (cents > 0) {
       return {
