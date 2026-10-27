@@ -42,6 +42,12 @@ const SETS = [
     generate: () => generateHeldOut(HELD_OUT_COUNT, "held-out-2"),
     count: HELD_OUT_COUNT,
   },
+  {
+    set: "held-out-3",
+    path: "src/accuracy/__fixtures__/held-out-3.json",
+    generate: () => generateHeldOut(HELD_OUT_COUNT, "held-out-3"),
+    count: HELD_OUT_COUNT,
+  },
 ] as const;
 
 describe.each(SETS)("the accuracy bench's $set set", ({ set, path, generate, count }) => {

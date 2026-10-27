@@ -25,7 +25,8 @@ export function isSubscription(stream: Stream): boolean {
   return (
     isRecurringCost(stream) &&
     !inList(stream.pfcPrimary, NOT_SUBSCRIPTION_PRIMARIES) &&
-    (inList(stream.pfcDetailed, SUBSCRIPTION_CATEGORIES) ||
+    (stream.namedPlan === true ||
+      inList(stream.pfcDetailed, SUBSCRIPTION_CATEGORIES) ||
       merchantMatches(stream.merchantKey, SUBSCRIPTION_MERCHANTS) ||
       merchantMatches(stream.merchantKey, BILLING_PLATFORM_MERCHANTS))
   );
