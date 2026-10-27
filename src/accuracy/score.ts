@@ -113,6 +113,8 @@ export function profileInputOf(h: History): ProfileInput {
 
 const after = (prefix: string, key: string) =>
   key.startsWith(prefix) ? key.slice(prefix.length) : key;
+// A stream's merchant: "merchant:apple@1099", a second subscription billed through Apple, is Apple.
+const merchantIn = (key: string) => after("merchant:", key).split("@")[0];
 const keysOf = (findings: Candidate[], type: Candidate["type"], prefix: string) =>
   findings.filter((f) => f.type === type).map((f) => after(prefix, f.key));
 
@@ -134,8 +136,8 @@ export function predict(h: History): { predicted: Predicted; findings: Candidate
     predicted: {
       subscriptions: recurringCharges(input)
         .filter((c) => c.subscription)
-        .map((c) => after("merchant:", c.key)),
-      price_rises: keysOf(findings, "price_increase", "merchant:"),
+        .map((c) => c.merchantKey),
+      price_rises: keysOf(findings, "price_increase", "merchant:").map(merchantIn),
       fees: keysOf(findings, "bank_fees", "account:"),
       double_charges: keysOf(findings, "duplicate_charge", "transaction:"),
       idle_cash: findings.some((f) => f.type === "idle_cash") ? [h.id] : [],
@@ -286,8 +288,8 @@ export function levels(
 ): Record<string, { count: number; right: number }> {
   const out: Record<string, { count: number; right: number }> = {};
   const truthFor: Partial<Record<Candidate["type"], (h: History, f: Candidate) => boolean>> = {
-    subscription_review: (h, f) => h.labels.subscriptions.includes(after("merchant:", f.key)),
-    price_increase: (h, f) => h.labels.priceRises.includes(after("merchant:", f.key)),
+    subscription_review: (h, f) => h.labels.subscriptions.includes(merchantIn(f.key)),
+    price_increase: (h, f) => h.labels.priceRises.includes(merchantIn(f.key)),
     bank_fees: (h, f) => h.labels.feeAccounts.includes(after("account:", f.key)),
     duplicate_charge: (h, f) => h.labels.duplicates.includes(after("transaction:", f.key)),
     idle_cash: (h) => h.labels.idleCash,
