@@ -19,28 +19,18 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "ESPN PLUS",
-      "perYear": 131.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "CANVA* 04321",
-      "perYear": 179.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "GRAMMARLY",
-      "perYear": 144
-    },
-    {
-      "type": "subscription_review",
-      "about": "STRAVA",
-      "perYear": 143.88
-    },
-    {
-      "type": "subscription_review",
       "about": "HEADSPACE",
       "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
     },
     {
       "type": "bank_fees",
@@ -55,17 +45,13 @@
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 1095.72
+      "perYear": 1011.72
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "TIM HORTONS #8812 at one price"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "3 ALAMO DRAFTHOUSE 042 seats"
+      "about": "DUTCH BROS #221 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -75,19 +61,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -4152.11
+      "dollars": -3942.24
     },
     {
       "date": "2026-08-31",
-      "dollars": -5856.98
+      "dollars": -4460.43
     },
     {
       "date": "2026-09-30",
-      "dollars": -6617.95
+      "dollars": -5048.39
     },
     {
       "date": "2026-10-24",
-      "dollars": -6685.3
+      "dollars": -5403.73
     }
   ]
 }

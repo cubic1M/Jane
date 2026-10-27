@@ -24,18 +24,28 @@
     },
     {
       "type": "subscription_review",
-      "about": "MICROSOFT*XBOX",
-      "perYear": 203.88
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
     },
     {
       "type": "subscription_review",
-      "about": "HEADSPACE",
-      "perYear": 155.88
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
+    },
+    {
+      "type": "price_increase",
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
     },
     {
       "type": "subscription_review",
       "about": "SLING TV",
-      "perYear": 480
+      "perYear": 540
+    },
+    {
+      "type": "price_increase",
+      "about": "SLING TV 4000→4500",
+      "perYear": 60
     },
     {
       "type": "subscription_review",
@@ -44,44 +54,44 @@
     },
     {
       "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 6
+      "about": "card fees",
+      "perYear": 10.74
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PEETS COFFEE 00121 at one price"
+      "about": "BRIGHT NOW DENTAL, irregular"
     },
     {
-      "type": "duplicate_charge",
-      "about": "2 VIVID SEATS 866-848-8499 seats"
+      "type": "subscription_review",
+      "about": "DUTCH BROS #221 at one price"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 468.49
+      "dollars": 1902.07
     },
     {
       "date": "2026-06-30",
-      "dollars": -1763.92
+      "dollars": 320.13
     },
     {
       "date": "2026-07-31",
-      "dollars": -2336.66
+      "dollars": -813.33
     },
     {
       "date": "2026-08-31",
-      "dollars": -4067.06
+      "dollars": -2574.36
     },
     {
       "date": "2026-09-30",
-      "dollars": -6045.81
+      "dollars": -4186.04
     },
     {
       "date": "2026-10-24",
-      "dollars": -6980.99
+      "dollars": -4711.14
     }
   ]
 }

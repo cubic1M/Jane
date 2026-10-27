@@ -19,57 +19,50 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
+      "about": "CALM.COM",
+      "perYear": 179.88
     },
     {
       "type": "subscription_review",
-      "about": "CRUNCHYROLL*MEMBERSHIP",
-      "perYear": 119.88
-    },
-    {
-      "type": "price_increase",
-      "about": "CRUNCHYROLL*MEMBERSHIP 799→999",
-      "perYear": 24
-    },
-    {
-      "type": "subscription_review",
-      "about": "SLING TV",
-      "perYear": 480
-    },
-    {
-      "type": "subscription_review",
-      "about": "AMAZON MUSIC*AB12C",
-      "perYear": 131.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "STRAVA",
-      "perYear": 143.88
+      "about": "GRAMMARLY",
+      "perYear": 144
     },
     {
       "type": "duplicate_charge",
-      "about": "OLD NAVY ON-LINE twice",
-      "perYear": 95.2
+      "about": "PETCO 1234 twice",
+      "perYear": 88.6
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 6
     },
     {
       "type": "idle_cash",
-      "about": "cash 1575440, excess 612846",
+      "about": "cash 1440535, excess 935556",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
+      "about": "NETFLIX.COM, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BRIGHT NOW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
       "about": "TIM HORTONS #8812 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "2 VIVID SEATS 866-848-8499 seats"
+      "about": "two lunches"
     },
     {
       "type": "duplicate_charge",
-      "about": "pending copy of a posted charge"
+      "about": "3 VIVID SEATS 866-848-8499 seats"
     },
     {
       "type": "duplicate_charge",
@@ -79,27 +72,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 4502.98
+      "dollars": 3691.07
     },
     {
       "date": "2026-06-30",
-      "dollars": 6204.96
+      "dollars": 5081.56
     },
     {
       "date": "2026-07-31",
-      "dollars": 8171.73
+      "dollars": 6598.39
     },
     {
       "date": "2026-08-31",
-      "dollars": 9714.85
+      "dollars": 8438.58
     },
     {
       "date": "2026-09-30",
-      "dollars": 11813.49
+      "dollars": 10476.86
     },
     {
       "date": "2026-10-24",
-      "dollars": 14274
+      "dollars": 12693.39
     }
   ]
 }

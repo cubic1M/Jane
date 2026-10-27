@@ -25,17 +25,22 @@
     {
       "type": "subscription_review",
       "about": "CRUNCHYROLL*MEMBERSHIP",
-      "perYear": 119.88
-    },
-    {
-      "type": "price_increase",
-      "about": "CRUNCHYROLL*MEMBERSHIP 799→999",
-      "perYear": 24
+      "perYear": 95.88
     },
     {
       "type": "subscription_review",
-      "about": "CANVA* 04321",
+      "about": "SLING TV",
+      "perYear": 480
+    },
+    {
+      "type": "subscription_review",
+      "about": "CALM.COM",
       "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
     },
     {
       "type": "trial_conversion",
@@ -43,50 +48,50 @@
       "perYear": 28
     },
     {
-      "type": "bank_fees",
-      "about": "checking fees",
-      "perYear": 7.2
-    },
-    {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 1254
+      "perYear": 1242.65
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 990584, excess 434727",
+      "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PEETS COFFEE 00121 at one price"
+      "about": "TIM HORTONS #8812 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "2 UNITED 0162345678901 seats"
+      "about": "two lunches"
     },
     {
       "type": "duplicate_charge",
-      "about": "ULTA BEAUTY #331 twice, refunded"
+      "about": "OLD NAVY ON-LINE twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -962.66
+      "dollars": -1257.15
     },
     {
       "date": "2026-07-31",
-      "dollars": -0.34
+      "dollars": -671.35
     },
     {
       "date": "2026-08-31",
-      "dollars": 1770.48
+      "dollars": 1514.76
     },
     {
       "date": "2026-09-30",
-      "dollars": 2767.9
+      "dollars": 3644.44
     },
     {
       "date": "2026-10-24",
-      "dollars": 4742.81
+      "dollars": 5462.44
     }
   ]
 }

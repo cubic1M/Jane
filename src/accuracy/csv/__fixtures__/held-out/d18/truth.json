@@ -19,33 +19,13 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "ESPN PLUS",
-      "perYear": 143.88
-    },
-    {
-      "type": "price_increase",
-      "about": "ESPN PLUS 1099→1199",
-      "perYear": 12
-    },
-    {
-      "type": "subscription_review",
-      "about": "NETFLIX.COM",
-      "perYear": 185.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "SLING TV",
-      "perYear": 540
-    },
-    {
-      "type": "price_increase",
-      "about": "SLING TV 4000→4500",
-      "perYear": 60
-    },
-    {
-      "type": "subscription_review",
-      "about": "CANVA* 04321",
+      "about": "CALM.COM",
       "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRAMMARLY",
+      "perYear": 144
     },
     {
       "type": "subscription_review",
@@ -53,51 +33,62 @@
       "perYear": 155.88
     },
     {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "price_increase",
+      "about": "CRUNCHYROLL*MEMBERSHIP 799→999",
+      "perYear": 24
+    },
+    {
       "type": "trial_conversion",
       "about": "DISCOVERY PLUS trial",
       "perYear": 8.99
     },
     {
+      "type": "duplicate_charge",
+      "about": "SQ *CORNER BISTRO dinner twice",
+      "perYear": 45.01
+    },
+    {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 1668
+      "perYear": 600
     },
     {
       "type": "idle_cash",
-      "about": "cash 5421659, excess 4419452",
+      "about": "cash 5292995, excess 4715183",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "TIM HORTONS #8812 at one price"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "2 UNITED 0162345678901 seats"
+      "about": "DUTCH BROS #221 at one price"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 30474.73
+      "dollars": 31184.16
     },
     {
       "date": "2026-07-31",
-      "dollars": 38994.42
+      "dollars": 39298.82
     },
     {
       "date": "2026-08-31",
-      "dollars": 43676.05
+      "dollars": 42926.99
     },
     {
       "date": "2026-09-30",
-      "dollars": 47972.94
+      "dollars": 46764.8
     },
     {
       "date": "2026-10-24",
-      "dollars": 52150.31
+      "dollars": 51535.78
     }
   ]
 }

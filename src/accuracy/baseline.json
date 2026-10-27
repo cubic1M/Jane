@@ -63,7 +63,7 @@
       "recall": 1
     },
     "bills": {
-      "precision": 0.9894,
+      "precision": 1,
       "recall": 0.969
     },
     "income": {
@@ -101,7 +101,7 @@
       "recall": 1
     },
     "bills": {
-      "precision": 0.9963,
+      "precision": 1,
       "recall": 0.9439
     },
     "income": {
@@ -139,7 +139,7 @@
       "recall": 1
     },
     "bills": {
-      "precision": 0.9856,
+      "precision": 0.9964,
       "recall": 0.9964
     },
     "income": {

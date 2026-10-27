@@ -25,13 +25,13 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "LA FITNESS",
-      "perYear": 419.88
+      "about": "ESPN PLUS",
+      "perYear": 143.88
     },
     {
-      "type": "subscription_review",
-      "about": "HEADSPACE",
-      "perYear": 155.88
+      "type": "price_increase",
+      "about": "ESPN PLUS 1099→1199",
+      "perYear": 12
     },
     {
       "type": "subscription_review",
@@ -45,8 +45,8 @@
     },
     {
       "type": "subscription_review",
-      "about": "GRAMMARLY",
-      "perYear": 144
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
     },
     {
       "type": "trial_conversion",
@@ -56,53 +56,49 @@
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 115.2
+      "perYear": 7.2
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 823.44
+      "perYear": 856.51
     },
     {
       "type": "idle_cash",
-      "about": "cash 2280770, excess 1412748",
+      "about": "cash 2206206, excess 1278040",
       "perYear": null
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PEETS COFFEE 00121 at one price"
+      "about": "DUTCH BROS #221 at one price"
     },
     {
       "type": "duplicate_charge",
-      "about": "3 VIVID SEATS 866-848-8499 seats"
-    },
-    {
-      "type": "duplicate_charge",
-      "about": "LOWE'S #1188 twice, refunded"
+      "about": "IKEA US 0123 twice, refunded"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 5871.22
+      "dollars": 5977.69
     },
     {
       "date": "2026-07-31",
-      "dollars": 10983.97
+      "dollars": 11122.45
     },
     {
       "date": "2026-08-31",
-      "dollars": 14023.15
+      "dollars": 13313.34
     },
     {
       "date": "2026-09-30",
-      "dollars": 15913.92
+      "dollars": 15195.57
     },
     {
       "date": "2026-10-24",
-      "dollars": 18230.86
+      "dollars": 17450.76
     }
   ]
 }

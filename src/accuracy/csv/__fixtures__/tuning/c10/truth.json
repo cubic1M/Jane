@@ -25,38 +25,18 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "HULU 877-8244858",
-      "perYear": 215.88
-    },
-    {
-      "type": "subscription_review",
-      "about": "DISNEY PLUS",
-      "perYear": 191.88
-    },
-    {
-      "type": "price_increase",
-      "about": "DISNEY PLUS 1399→1599",
-      "perYear": 24
-    },
-    {
-      "type": "subscription_review",
-      "about": "PLANET FITNESS",
-      "perYear": 299.88
-    },
-    {
-      "type": "subscription_review",
       "about": "NETFLIX.COM",
       "perYear": 185.88
     },
     {
       "type": "subscription_review",
-      "about": "GOOGLE *YouTubePremium",
-      "perYear": 167.88
+      "about": "SPOTIFY USA",
+      "perYear": 143.88
     },
     {
       "type": "subscription_review",
-      "about": "PARAMOUNT+",
-      "perYear": 143.88
+      "about": "AUDIBLE*2K94LM",
+      "perYear": 179.4
     },
     {
       "type": "trial_conversion",
@@ -64,42 +44,69 @@
       "perYear": 10.99
     },
     {
+      "type": "subscription_review",
+      "about": "AMAZON PRIME*2K4AB7XY0 yearly",
+      "perYear": 139
+    },
+    {
       "type": "duplicate_charge",
-      "about": "TJ MAXX #0811 twice",
-      "perYear": 146.48
+      "about": "TARGET 00023456 twice",
+      "perYear": 124.53
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 122.4
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 1673.83
     },
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 721.25
+      "perYear": 743.45
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "STARBUCKS STORE 05423 at one price"
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 TICKETMASTER seats"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -22.92
+      "dollars": -370.5
     },
     {
       "date": "2026-07-31",
-      "dollars": -1493.77
+      "dollars": -1922.63
     },
     {
       "date": "2026-08-31",
-      "dollars": -2531.7
+      "dollars": -3933.15
     },
     {
       "date": "2026-09-30",
-      "dollars": -3935.61
+      "dollars": -6390.25
     },
     {
       "date": "2026-10-24",
-      "dollars": -5331.24
+      "dollars": -7421.37
     }
   ]
 }

@@ -19,43 +19,48 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "HEADSPACE",
-      "perYear": 155.88
-    },
-    {
-      "type": "subscription_review",
       "about": "AMAZON MUSIC*AB12C",
       "perYear": 131.88
     },
     {
       "type": "subscription_review",
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
       "about": "SPOTIFY USA",
-      "perYear": 155.88
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CANVA* 04321",
+      "perYear": 179.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
     },
     {
       "type": "price_increase",
-      "about": "SPOTIFY USA 1199→1299",
-      "perYear": 12
-    },
-    {
-      "type": "subscription_review",
-      "about": "GRAMMARLY",
-      "perYear": 144
-    },
-    {
-      "type": "subscription_review",
-      "about": "SLING TV",
-      "perYear": 480
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
     },
     {
       "type": "duplicate_charge",
-      "about": "WALGREENS #1234 twice",
-      "perYear": 108.77
+      "about": "OLD NAVY ON-LINE twice",
+      "perYear": 50.28
     },
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 3
+      "perYear": 72
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 6.42
     }
   ],
   "notFindings": [
@@ -65,7 +70,7 @@
     },
     {
       "type": "duplicate_charge",
-      "about": "pending copy of a posted charge"
+      "about": "two lunches"
     },
     {
       "type": "duplicate_charge",
@@ -75,31 +80,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 1563.27
+      "dollars": 1028.14
     },
     {
       "date": "2026-05-31",
-      "dollars": 185.87
+      "dollars": 1672.45
     },
     {
       "date": "2026-06-30",
-      "dollars": 307.23
+      "dollars": 1033.97
     },
     {
       "date": "2026-07-31",
-      "dollars": 295.68
+      "dollars": 1176.13
     },
     {
       "date": "2026-08-31",
-      "dollars": 275.98
+      "dollars": 907.49
     },
     {
       "date": "2026-09-30",
-      "dollars": 266.13
+      "dollars": 703.88
     },
     {
       "date": "2026-10-24",
-      "dollars": 63.76
+      "dollars": 600.59
     }
   ]
 }

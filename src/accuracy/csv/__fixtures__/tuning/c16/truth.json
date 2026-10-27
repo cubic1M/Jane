@@ -25,59 +25,81 @@
   "findings": [
     {
       "type": "subscription_review",
+      "about": "PARAMOUNT+",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
       "about": "DISNEY PLUS",
       "perYear": 167.88
     },
     {
       "type": "subscription_review",
-      "about": "OPENAI *CHATGPT SUBSCR",
-      "perYear": 240
+      "about": "APPLE.COM/BILL",
+      "perYear": 35.88
     },
     {
       "type": "duplicate_charge",
-      "about": "BEST BUY 00012345 twice",
-      "perYear": 132.55
+      "about": "TARGET 00023456 twice",
+      "perYear": 92.88
     },
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 72
+      "perYear": 3
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 3.05
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+      "about": "SPOTIFY USA, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 SOUTHWES 5262123456789 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 850.58
+      "dollars": 1166.29
     },
     {
       "date": "2026-05-31",
-      "dollars": 292.48
+      "dollars": 2632.85
     },
     {
       "date": "2026-06-30",
-      "dollars": -426.05
+      "dollars": 2185.75
     },
     {
       "date": "2026-07-31",
-      "dollars": -1051.64
+      "dollars": 1636.32
     },
     {
       "date": "2026-08-31",
-      "dollars": -1711.87
+      "dollars": 994.36
     },
     {
       "date": "2026-09-30",
-      "dollars": -2153.33
+      "dollars": -212.69
     },
     {
       "date": "2026-10-24",
-      "dollars": -2743.6
+      "dollars": -854.44
     }
   ]
 }

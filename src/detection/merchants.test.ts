@@ -14,6 +14,19 @@ describe("withDirectory", () => {
     expect(summary(detect(withDirectory(year, MERCHANT_SEED)))).toEqual(summary(detect(year)));
   });
 
+  it("knows a company when the card wrote the city after it", () => {
+    const named = withDirectory(
+      input({
+        transactions: [
+          tx({ description: "SPOTIFY P1A2B3C4D5 CHICAGO IL", merchantName: null }),
+          tx({ description: "MAXWELL ST GRILL CHICAGO IL", merchantName: null }),
+        ],
+      }),
+      MERCHANT_SEED,
+    ).transactions.map((t) => t.merchantName);
+    expect(named).toEqual(["Spotify", null]);
+  });
+
   it("joins a company's different statement names into one subscription", () => {
     // A CSV export with no categories, where Spotify shows up two ways.
     const charge = (m: number, description: string) =>

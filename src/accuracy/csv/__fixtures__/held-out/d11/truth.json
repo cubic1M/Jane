@@ -19,18 +19,18 @@
   "findings": [
     {
       "type": "subscription_review",
-      "about": "STRAVA",
-      "perYear": 143.88
+      "about": "MICROSOFT*XBOX",
+      "perYear": 203.88
     },
     {
       "type": "subscription_review",
-      "about": "HEADSPACE",
-      "perYear": 155.88
+      "about": "AMAZON MUSIC*AB12C",
+      "perYear": 131.88
     },
     {
       "type": "bank_fees",
       "about": "checking fees",
-      "perYear": 136
+      "perYear": 324
     },
     {
       "type": "bank_fees",
@@ -40,17 +40,17 @@
     {
       "type": "card_interest",
       "about": "card interest",
-      "perYear": 1061.16
+      "perYear": 1093.3
     }
   ],
   "notFindings": [
     {
       "type": "subscription_review",
-      "about": "PEETS COFFEE 00121 at one price"
+      "about": "BRIGHT NOW DENTAL, irregular"
     },
     {
-      "type": "duplicate_charge",
-      "about": "3 ALAMO DRAFTHOUSE 042 seats"
+      "type": "subscription_review",
+      "about": "TIM HORTONS #8812 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -60,27 +60,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -4772.22
+      "dollars": -5332.81
     },
     {
       "date": "2026-06-30",
-      "dollars": -5839.19
+      "dollars": -6008.73
     },
     {
       "date": "2026-07-31",
-      "dollars": -5071.14
+      "dollars": -5617.4
     },
     {
       "date": "2026-08-31",
-      "dollars": -5652.45
+      "dollars": -6179.72
     },
     {
       "date": "2026-09-30",
-      "dollars": -6324.19
+      "dollars": -6512.99
     },
     {
       "date": "2026-10-24",
-      "dollars": -5961.34
+      "dollars": -7221.64
     }
   ]
 }
