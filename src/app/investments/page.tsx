@@ -34,6 +34,8 @@ import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
+import { loadPanicSells } from "@/lib/investments/panic-sells";
+import { panicSummary } from "@/planning/panic-sells";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { brokerageAsks } from "@/lib/investing/brokerage-balance";
@@ -169,6 +171,29 @@ async function BrokerageAsks({ user }: { user: Parameters<typeof canImportCsv>[0
           sentText={`You sent ${formatCents(a.inCents)} to ${a.app} in ${a.count} ${a.count === 1 ? "transfer" : "transfers"}.`}
         />
       ))}
+    </section>
+  );
+}
+
+// Selling after a big drop, from the person's own sales: a fact looking back, with the dollars.
+async function PanicSells({ userId }: { userId: string }) {
+  const result = await loadPanicSells(userId);
+  const summary = panicSummary(result);
+  if (!summary) return null;
+  return (
+    <section
+      className="flex flex-col gap-2 border border-zinc-200 p-4 dark:border-zinc-800"
+      aria-labelledby="panic-heading"
+    >
+      <h2 id="panic-heading" className="text-lg font-semibold">
+        Selling after a drop
+      </h2>
+      <p className="text-sm">{summary}</p>
+      <ul className="flex flex-col gap-1 text-sm">
+        {result.sales.slice(0, 5).map((s) => (
+          <li key={`${s.ticker}-${s.date}`}>{s.sentence}</li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -434,6 +459,10 @@ async function InvestmentsContent({
 
       <Suspense fallback={null}>
         <BrokerageAsks user={user} />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <PanicSells userId={user.id} />
       </Suspense>
 
       {backtests.advice && (
