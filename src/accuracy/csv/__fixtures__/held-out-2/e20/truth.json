@@ -55,7 +55,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2394293, excess 1848560",
+      "about": "cash 2257841, excess 1712108",
       "perYear": null
     }
   ],
@@ -87,36 +87,40 @@
     {
       "type": "subscription_review",
       "about": "FIRST BAPTIST CHURCH, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TD AMERITRADE CLEARING, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 7110.98
+      "dollars": 6948.37
     },
     {
       "date": "2026-05-31",
-      "dollars": 10343.38
+      "dollars": 10004.18
     },
     {
       "date": "2026-06-30",
-      "dollars": 11899.39
+      "dollars": 11431.88
     },
     {
       "date": "2026-07-31",
-      "dollars": 15224.4
+      "dollars": 14503.21
     },
     {
       "date": "2026-08-31",
-      "dollars": 16934.68
+      "dollars": 15855.7
     },
     {
       "date": "2026-09-30",
-      "dollars": 18143.83
+      "dollars": 16825.59
     },
     {
       "date": "2026-10-24",
-      "dollars": 19564.52
+      "dollars": 18200
     }
   ]
 }

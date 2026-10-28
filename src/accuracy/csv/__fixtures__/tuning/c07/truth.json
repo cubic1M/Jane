@@ -40,7 +40,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1749936, excess 615886",
+      "about": "cash 1608366, excess 474316",
       "perYear": null
     }
   ],
@@ -64,32 +64,36 @@
     {
       "type": "subscription_review",
       "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TD AMERITRADE CLEARING, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 7162.05
+      "dollars": 6926.1
     },
     {
       "date": "2026-06-30",
-      "dollars": 8475.63
+      "dollars": 8003.73
     },
     {
       "date": "2026-07-31",
-      "dollars": 9995.05
+      "dollars": 9287.2
     },
     {
       "date": "2026-08-31",
-      "dollars": 11874.17
+      "dollars": 10930.37
     },
     {
       "date": "2026-09-30",
-      "dollars": 13817.3
+      "dollars": 12637.55
     },
     {
       "date": "2026-10-24",
-      "dollars": 15821.01
+      "dollars": 14405.31
     }
   ]
 }

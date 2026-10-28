@@ -109,6 +109,10 @@
       "about": "QZ NOTES PRO, the monthly plan it left"
     },
     {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two orders"
     }
@@ -116,31 +120,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 4621.57
+      "dollars": 4590.6
     },
     {
       "date": "2026-05-31",
-      "dollars": 3707.37
+      "dollars": 3302.15
     },
     {
       "date": "2026-06-30",
-      "dollars": 2892.68
+      "dollars": 1759.96
     },
     {
       "date": "2026-07-31",
-      "dollars": 2022.12
+      "dollars": 788.84
     },
     {
       "date": "2026-08-31",
-      "dollars": 751.1
+      "dollars": -816.91
     },
     {
       "date": "2026-09-30",
-      "dollars": -414.65
+      "dollars": -2108.15
     },
     {
       "date": "2026-10-24",
-      "dollars": -1151.21
+      "dollars": -2951.9
     }
   ]
 }

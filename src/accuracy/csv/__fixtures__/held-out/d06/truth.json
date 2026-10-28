@@ -70,7 +70,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4811940, excess 4236416",
+      "about": "cash 4758065, excess 4182541",
       "perYear": null
     }
   ],
@@ -94,28 +94,32 @@
     {
       "type": "subscription_review",
       "about": "CANYON CU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ACORNS INVEST 8123, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 33695.24
+      "dollars": 33587.49
     },
     {
       "date": "2026-07-31",
-      "dollars": 36901.11
+      "dollars": 36685.61
     },
     {
       "date": "2026-08-31",
-      "dollars": 39834.68
+      "dollars": 39511.43
     },
     {
       "date": "2026-09-30",
-      "dollars": 43374.99
+      "dollars": 42943.99
     },
     {
       "date": "2026-10-24",
-      "dollars": 47352.07
+      "dollars": 46813.32
     }
   ]
 }

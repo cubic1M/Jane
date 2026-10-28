@@ -50,32 +50,36 @@
     {
       "type": "subscription_review",
       "about": "HOLLOW OAK TAVERN, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2852.17
+      "dollars": -3196.43
     },
     {
       "date": "2026-06-30",
-      "dollars": -3352.72
+      "dollars": -3984.97
     },
     {
       "date": "2026-07-31",
-      "dollars": -4195.64
+      "dollars": -5152.76
     },
     {
       "date": "2026-08-31",
-      "dollars": -6055.41
+      "dollars": -7532.36
     },
     {
       "date": "2026-09-30",
-      "dollars": -7833.59
+      "dollars": -9342.58
     },
     {
       "date": "2026-10-24",
-      "dollars": -9753.43
+      "dollars": -11262.42
     }
   ]
 }

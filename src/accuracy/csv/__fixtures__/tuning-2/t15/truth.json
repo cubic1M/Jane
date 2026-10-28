@@ -90,6 +90,10 @@
       "about": "OAK RIDGE HOA, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "ACORNS INVEST 8123, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two orders"
     }
@@ -97,27 +101,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -1449.96
+      "dollars": -1579.19
     },
     {
       "date": "2026-06-30",
-      "dollars": -2285.27
+      "dollars": -2543.73
     },
     {
       "date": "2026-07-31",
-      "dollars": -4878.1
+      "dollars": -5265.79
     },
     {
       "date": "2026-08-31",
-      "dollars": -6436.23
+      "dollars": -6953.15
     },
     {
       "date": "2026-09-30",
-      "dollars": -8383.63
+      "dollars": -9029.78
     },
     {
       "date": "2026-10-24",
-      "dollars": -9724.89
+      "dollars": -10500.27
     }
   ]
 }

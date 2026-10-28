@@ -82,36 +82,40 @@
     {
       "type": "subscription_review",
       "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 1063.29
+      "dollars": 910.38
     },
     {
       "date": "2026-05-31",
-      "dollars": 2426.85
+      "dollars": 2121.03
     },
     {
       "date": "2026-06-30",
-      "dollars": 1876.75
+      "dollars": 1418.02
     },
     {
       "date": "2026-07-31",
-      "dollars": 1224.32
+      "dollars": 612.68
     },
     {
       "date": "2026-08-31",
-      "dollars": 484.35
+      "dollars": -280.2
     },
     {
       "date": "2026-09-30",
-      "dollars": -821.71
+      "dollars": -1739.17
     },
     {
       "date": "2026-10-24",
-      "dollars": -1576.46
+      "dollars": -2646.83
     }
   ]
 }

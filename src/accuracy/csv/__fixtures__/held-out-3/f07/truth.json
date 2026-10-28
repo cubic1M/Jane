@@ -55,7 +55,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2026516, excess 1365261",
+      "about": "cash 1930762, excess 1269507",
       "perYear": null
     }
   ],
@@ -83,32 +83,36 @@
     {
       "type": "subscription_review",
       "about": "SUMMIT FCU LOAN PYMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TD AMERITRADE CLEARING, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 3820.28
+      "dollars": 3763.08
     },
     {
       "date": "2026-06-30",
-      "dollars": 6296.22
+      "dollars": 6026.08
     },
     {
       "date": "2026-07-31",
-      "dollars": 11186.41
+      "dollars": 10802.09
     },
     {
       "date": "2026-08-31",
-      "dollars": 13308.64
+      "dollars": 12666.53
     },
     {
       "date": "2026-09-30",
-      "dollars": 15551.06
+      "dollars": 14725.93
     },
     {
       "date": "2026-10-24",
-      "dollars": 18206.12
+      "dollars": 17248.58
     }
   ]
 }

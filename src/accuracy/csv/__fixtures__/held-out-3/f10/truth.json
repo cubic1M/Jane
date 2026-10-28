@@ -80,7 +80,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 902426, excess 315211",
+      "about": "cash 866651, excess 279436",
       "perYear": null
     }
   ],
@@ -102,6 +102,10 @@
       "about": "GRACE FELLOWSHIP, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "PANDORA*PLUS, two plans"
     }
@@ -109,23 +113,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 8073.31
+      "dollars": 8001.76
     },
     {
       "date": "2026-07-31",
-      "dollars": 8362.83
+      "dollars": 8219.73
     },
     {
       "date": "2026-08-31",
-      "dollars": 7898.99
+      "dollars": 7684.34
     },
     {
       "date": "2026-09-30",
-      "dollars": 7359.89
+      "dollars": 7073.69
     },
     {
       "date": "2026-10-24",
-      "dollars": 6812.5
+      "dollars": 6454.75
     }
   ]
 }
