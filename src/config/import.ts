@@ -124,6 +124,22 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
     ],
   },
   {
+    bank: "Venmo",
+    steps: [
+      "On venmo.com, open Statements.",
+      "Pick a month and Download CSV. Do this for each of the last 3 months.",
+      "Payments you made from a bank or card count once: here, with their note.",
+    ],
+  },
+  {
+    bank: "PayPal",
+    steps: [
+      "On paypal.com, open Activity, then Download (or Statements, Activity download).",
+      "Pick CSV and the last 3 months, then Create report and download it.",
+      "Purchases a card or bank paid for are left to that statement, so nothing counts twice.",
+    ],
+  },
+  {
     bank: "Any other bank",
     steps: [
       'Look for "Download", "Export" or "Quicken" next to your transactions.',

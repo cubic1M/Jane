@@ -9,6 +9,10 @@ export const ACCOUNT_KINDS = {
   checking: { label: "Checking", type: "depository", subtype: "checking" },
   savings: { label: "Savings", type: "depository", subtype: "savings" },
   credit_card: { label: "Credit card", type: "credit", subtype: "credit card" },
+  // Venmo and PayPal: cash, but no bills are paid from it and a short balance is topped up from
+  // the bank or card behind it, so it gets no checking forecast or low-balance alarm. "paypal"
+  // is Plaid's depository subtype for it.
+  payment_app: { label: "Payment app (Venmo, PayPal)", type: "depository", subtype: "paypal" },
 } as const;
 
 export type AccountKind = keyof typeof ACCOUNT_KINDS;

@@ -32,6 +32,12 @@ export type CsvFormat = {
   // the file is going into an account named for another bank.
   bank?: string;
   parseRow(get: (header: string) => string): RowResult;
+  // Rows with fewer columns than the header are a title or a note (Venmo's disclaimer), left
+  // out quietly instead of reported.
+  shortRows?: "skip";
+  // After every row is read: a reason to leave each out, or null to keep it (PayPal: a payment
+  // and the card deposit that paid for it).
+  finish?(rows: readonly ParsedRow[]): (string | null)[];
 };
 
 // An export with no header row (Wells Fargo): names for its columns in order, and a test the
@@ -517,6 +523,129 @@ export const schwabBank: CsvFormat = {
   },
 };
 
+// "- $25.00" or "+ $1,200.00" (Venmo) to cents, the sign kept.
+function spacedSignCents(text: string): number | null {
+  return parseMoneyToCents(text.replace(/\s+/g, "").replace(/^\+/, ""));
+}
+
+// Venmo statements (Statements → Download CSV): a title line, then ",ID,Datetime,Type,Status,
+// Note,From,To,Amount (total),…,Funding Source,Destination,…" (newer: "Transaction ID,Date,
+// Time (UTC),…"). Money sent is "- $25.00", received "+ $40.00". Balance and disclaimer lines
+// have no ID. A payment paid from a bank or card stays: that statement shows it as a Venmo
+// transfer, not spending, so it counts once, here, with its note.
+export const venmo: CsvFormat = {
+  id: "venmo",
+  bank: "Venmo",
+  label: "Venmo",
+  account: { name: "Venmo", kind: "payment_app" },
+  requiredHeaders: ["type", "status", "note", "from", "to", "amount (total)"],
+  shortRows: "skip",
+  parseRow(get) {
+    const id = (get("id") || get("transaction id")).trim();
+    const when = (get("datetime") || get("date")).trim();
+    if (!id || !when) return { ok: false, reason: "Not a transaction", silent: true };
+    if (!/^(complete|issued)/i.test(get("status").trim())) {
+      return {
+        ok: false,
+        reason: `Not completed (${get("status").trim() || "no status"})`,
+        silent: true,
+      };
+    }
+    const date = parseIsoDate(when.slice(0, 10)) ?? parseUsDate(when.split(/\s+/)[0]);
+    if (!date) return { ok: false, reason: `Unreadable date "${when}"` };
+    const cents = spacedSignCents(get("amount (total)"));
+    if (cents === null)
+      return { ok: false, reason: `Unreadable amount "${get("amount (total)")}"` };
+    const type = get("type").trim();
+    const note = get("note").trim();
+    // Sent: to whom; received: from whom. A transfer out to the bank says so.
+    const who = (cents < 0 ? get("to") : get("from")).trim();
+    const description = /transfer/i.test(type)
+      ? `Transfer to bank${note ? `: ${note}` : ""}`
+      : [who, note].filter(Boolean).join(": ") || type;
+    if (!description) return { ok: false, reason: "Missing description" };
+    return {
+      ok: true,
+      row: { date, amountCents: -cents || 0, description, hints: { bankType: optional(type) } },
+    };
+  },
+};
+
+// PayPal (Activity → Download, CSV): "Date","Time","TimeZone","Name","Type","Status","Currency",
+// "Gross","Fee","Net",…. Net is what moved the PayPal balance; money out is negative. Only
+// completed US-dollar rows count.
+export const paypal: CsvFormat = {
+  id: "paypal",
+  bank: "PayPal",
+  label: "PayPal",
+  account: { name: "PayPal", kind: "payment_app" },
+  requiredHeaders: [
+    "date",
+    "time",
+    "timezone",
+    "name",
+    "type",
+    "status",
+    "currency",
+    "gross",
+    "net",
+  ],
+  parseRow(get) {
+    if (!/^completed$/i.test(get("status").trim())) {
+      return {
+        ok: false,
+        reason: `Not completed (${get("status").trim() || "no status"})`,
+        silent: true,
+      };
+    }
+    const currency = get("currency").trim().toUpperCase();
+    if (currency && currency !== "USD") {
+      return { ok: false, reason: `In ${currency}, not US dollars` };
+    }
+    const type = get("type").trim();
+    // Money moved to or from the bank has no name: said as a transfer, so it isn't spending.
+    const moved = /withdrawal/i.test(type)
+      ? "Transfer to bank"
+      : /deposit/i.test(type)
+        ? "Transfer from bank"
+        : type;
+    const common = parseCommon(get("date"), get("net") || get("gross"), get("name") || moved);
+    if (!common.ok) return common;
+    return {
+      ok: true,
+      row: {
+        date: common.date,
+        amountCents: -common.cents || 0,
+        description: common.description,
+        hints: { bankType: optional(type) },
+        ...balanceOf(get("balance")),
+      },
+    };
+  },
+  // A purchase paid by card or bank comes as two rows: the card's deposit into PayPal and the
+  // payment, same day, same amount. The card or bank statement already has that charge, so
+  // both are left out; a payment from the PayPal balance stays.
+  finish(rows) {
+    const reasons: (string | null)[] = rows.map(() => null);
+    const deposit = (row: ParsedRow) =>
+      /deposit/i.test(row.hints.bankType ?? "") && row.amountCents < 0;
+    rows.forEach((row, i) => {
+      if (!deposit(row)) return;
+      const paid = rows.findIndex(
+        (other, j) =>
+          reasons[j] === null &&
+          j !== i &&
+          !deposit(other) &&
+          other.date === row.date &&
+          other.amountCents === -row.amountCents,
+      );
+      if (paid === -1) return;
+      reasons[i] = reasons[paid] = "Paid by card or bank: that statement has it";
+    });
+    return reasons;
+  },
+};
+
 // Most specific first: a file matches the first format whose headers it all has.
 export const CSV_FORMATS: readonly CsvFormat[] = [
   chaseChecking,
@@ -532,6 +661,8 @@ export const CSV_FORMATS: readonly CsvFormat[] = [
   usBank,
   ally,
   schwabBank,
+  venmo,
+  paypal,
 ];
 
 export const HEADERLESS_FORMATS: readonly HeaderlessFormat[] = [wellsFargo];
@@ -549,7 +680,10 @@ export function detectFormat(headers: string[]): CsvFormat | null {
 export const HEADER_SEARCH_ROWS = 15;
 
 export type Layout = {
-  format: Pick<CsvFormat, "id" | "label" | "parseRow" | "account" | "bank">;
+  format: Pick<
+    CsvFormat,
+    "id" | "label" | "parseRow" | "account" | "bank" | "shortRows" | "finish"
+  >;
   // Each column's name, as parseRow asks for it.
   columns: string[];
   rows: CsvRecord[];
