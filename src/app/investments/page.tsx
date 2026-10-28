@@ -38,6 +38,7 @@ import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import { BrokerageAskForm } from "./brokerage-ask";
+import { ownedFacts } from "@/planning/owned-facts";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
@@ -207,6 +208,7 @@ async function InvestmentsContent({
     area,
   } = await loadInvestingArea(user.id);
 
+  const facts = ownedFacts(data.accounts);
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
   // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
@@ -435,6 +437,26 @@ async function InvestmentsContent({
       <Suspense fallback={null}>
         <BrokerageAsks user={user} />
       </Suspense>
+
+      {!backtests.advice && facts && (
+        <section
+          className="flex flex-col gap-2 border border-zinc-200 p-4 dark:border-zinc-800"
+          aria-labelledby="owned-facts-heading"
+        >
+          <h2 id="owned-facts-heading" className="text-lg font-semibold">
+            What you own, in short
+          </h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {facts.sentences.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-zinc-500">
+            Facts from your accounts, not advice. Fund costs are the fund companies&apos; published
+            yearly fees, rounded; confirm yours on the fund&apos;s page.
+          </p>
+        </section>
+      )}
 
       {backtests.advice && (
         <Suspense fallback={<LoadingBar label="Loading the strategies" />}>
