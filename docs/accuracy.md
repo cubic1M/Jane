@@ -268,6 +268,8 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
 - **Two orders are not one charge twice** (round 14, second tuning set). The second tuning set now also has same-price pairs on one day that aren't double charges: two orders from one shop, each with its own order number ("AMZN Mktp US*2K4L91Z3" and "AMZN Mktp US*7HQ2MX0PB"), and a service paid per person (two kids' haircuts, two copays). As first scored: 25 false "Charged twice?". Two charges whose order numbers after the processor's "*" differ (`DUPLICATE_CHARGE_ORDER_NUMBER`, a token with a digit) are now two orders: 25 → 14. A service paid per person was tried as a seat each (hair, doctor, dentist, eye care) and dropped: it took a real double charge away from the first held-out set. The 13 per-person pairs are left (nothing on a statement tells two haircuts from one run twice). Held-out sets unchanged.
 
+- **Software and radio under the names statements use** (round 15, second tuning set). Intuit (QuickBooks), Autodesk and other business software by the month, tax software and preparers (TurboTax, H&R Block) as accounting, SiriusXM written with a space, and Capital One's checking paying a Bank of America card. Second tuning set category right 98.6% → 99.4%; what's left is rent paid by cheque (a cheque could be anything) and an insurer known only by "premium". Held-out sets unchanged.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -329,10 +331,10 @@ Second tuning set (20 people, 122 files, 5550 transactions):
 | --- | ---: |
 | Files read | 122 of 122 (118 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 98.6% (75 left for Claude) |
+| Category right (rules only) | 99.4% (35 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
 | Findings, $/yr | Jane $42,563, truth $40,848; error on the ones found 0.0% |
-| Monthly spending, error | 0.7% |
+| Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 9 of 20 people (off by $129,844 in all) |
 | Net worth line: month-ends drawn | 96.4% (error where drawn 47.8%) |
@@ -356,7 +358,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 19 | 58% | 79% |
+| 50–59% | 20 | 58% | 80% |
 | 60–69% | 34 | 64% | 91% |
 | 70–79% | 4 | 77% | 100% |
 | 80–89% | 1 | 83% | 100% |

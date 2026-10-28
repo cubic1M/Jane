@@ -30,7 +30,7 @@
   "tuning-2": {
     "rowsReadExactly": 1,
     "extraRows": 0,
-    "categoryRight": 0.9864864864864865,
+    "categoryRight": 0.9936936936936936,
     "subscription_review.precision": 0.9762,
     "subscription_review.recall": 0.988,
     "price_increase.precision": 1,
@@ -49,7 +49,7 @@
     "bills.recall": 0.9952,
     "falseDoubleCharges": 14,
     "dollarError": 0,
-    "spendingError": 0.006937610931395394,
+    "spendingError": 0.0033789887272430742,
     "incomeError": 0,
     "netWorthRight": 0.45,
     "lineCoverage": 0.9636363636363636,
