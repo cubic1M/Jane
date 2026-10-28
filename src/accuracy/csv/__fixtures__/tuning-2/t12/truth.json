@@ -29,6 +29,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "PAYPAL *CRUNCHYROLL, paused a month",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
       "about": "NINTENDO *SWITCH ONLINE, one of two",
       "perYear": 47.88
     },
@@ -39,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4918622, excess 4381159",
+      "about": "cash 4918622, excess 4379033",
       "perYear": null
     }
   ],
@@ -72,31 +77,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 24686.7
+      "dollars": 24678.71
     },
     {
       "date": "2026-05-31",
-      "dollars": 27718.98
+      "dollars": 27703
     },
     {
       "date": "2026-06-30",
-      "dollars": 31070.69
+      "dollars": 31046.72
     },
     {
       "date": "2026-07-31",
-      "dollars": 37639.08
+      "dollars": 37615.11
     },
     {
       "date": "2026-08-31",
-      "dollars": 40931.72
+      "dollars": 40899.76
     },
     {
       "date": "2026-09-30",
-      "dollars": 43811.06
+      "dollars": 43771.11
     },
     {
       "date": "2026-10-24",
-      "dollars": 47365.05
+      "dollars": 47317.11
     }
   ]
 }

@@ -76,6 +76,14 @@ export const FALLBACK_INTERVAL_DAYS: Readonly<
 // Two charges a month apart are enough where a repeat can only be a bill or a subscription: these
 // categories and SUBSCRIPTION_MERCHANTS (accuracy bench: a two-month history had none of its rent,
 // phone, power or subscriptions found). Such a run is low confidence.
+// A plan paused for a beat and picked up again (a gym's freeze): at most this many gaps of about
+// twice the usual one, among at least PAUSE_MIN_REGULAR_GAPS regular gaps, still make a run
+// (CSV bench, second tuning set: Crunchyroll and a yoga studio, each skipped one month, were
+// missed).
+export const PAUSE_MAX_SKIPPED = 1;
+export const PAUSE_MIN_REGULAR_GAPS = 2;
+// A skipped beat is a gap this many intervals long.
+export const PAUSE_GAP_MULTIPLE = 2;
 export const SHORT_RUN_MIN_CHARGES = 2;
 // ...and only at these gaps: a month, or a quarter (a water bill or insurance paid every three
 // months, seen twice in a short history; CSV bench, second tuning set). A week apart is a second
