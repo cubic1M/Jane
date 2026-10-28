@@ -386,6 +386,137 @@ export const discoverCreditCard: CsvFormat = {
   },
 };
 
+// Apple Card (Wallet → Card Balance → a month's statement → Export Transactions → CSV):
+// "Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD)", newer exports
+// with "Purchased By" after it. Purchases are positive; payments and returns negative.
+export const appleCard: CsvFormat = {
+  id: "apple_card",
+  bank: "Apple",
+  label: "Apple Card",
+  account: { name: "Apple Card", kind: "credit_card" },
+  requiredHeaders: [
+    "transaction date",
+    "clearing date",
+    "description",
+    "merchant",
+    "category",
+    "type",
+    "amount (usd)",
+  ],
+  parseRow(get) {
+    const common = parseCommon(
+      get("clearing date") || get("transaction date"),
+      get("amount (usd)"),
+      get("description"),
+    );
+    if (!common.ok) return common;
+    return {
+      ok: true,
+      row: {
+        date: common.date,
+        amountCents: common.cents,
+        description: common.description,
+        hints: { bankCategory: optional(get("category")), bankType: optional(get("type")) },
+      },
+    };
+  },
+};
+
+// Up to four decimal places ("-12.3400", U.S. Bank's older exports) to cents.
+function roundedCents(text: string): number | null {
+  const match = /^\s*(-?)\$?(\d+(?:,\d{3})*)\.(\d{3,4})\s*$/.exec(text);
+  if (!match) return parseMoneyToCents(text);
+  const value = Number(`${match[2].replaceAll(",", "")}.${match[3]}`);
+  const cents = Math.round(value * 100);
+  return (match[1] ? -cents : cents) || 0;
+}
+
+// U.S. Bank checking and savings: "Date,Transaction,Name,Memo,Amount". Dates as YYYY-MM-DD in
+// current exports and M/D/YYYY in older ones, older amounts with four decimals. Money out is
+// negative; Memo is the same filler on every row ("Download from usbank.com."), so the name is
+// the description.
+export const usBank: CsvFormat = {
+  id: "us_bank",
+  bank: "US Bank",
+  label: "U.S. Bank",
+  account: { name: "US Bank checking", kind: "checking" },
+  requiredHeaders: ["date", "transaction", "name", "memo", "amount"],
+  parseRow(get) {
+    const date = parseIsoDate(get("date")) ?? parseUsDate(get("date"));
+    if (!date) return { ok: false, reason: `Unreadable date "${get("date")}"` };
+    const cents = roundedCents(get("amount"));
+    if (cents === null) return { ok: false, reason: `Unreadable amount "${get("amount")}"` };
+    const description = get("name").trim();
+    if (!description) return { ok: false, reason: "Missing description" };
+    return {
+      ok: true,
+      row: {
+        date,
+        amountCents: -cents || 0,
+        description,
+        hints: { bankType: optional(get("transaction")) },
+      },
+    };
+  },
+};
+
+// Ally Bank: "Date, Time, Amount, Type, Description", a space after every comma, dates as
+// YYYY-MM-DD and the clock time in a column of its own. Withdrawals are negative.
+export const ally: CsvFormat = {
+  id: "ally",
+  bank: "Ally",
+  label: "Ally Bank",
+  account: { name: "Ally savings", kind: "savings" },
+  requiredHeaders: ["date", "time", "amount", "type", "description"],
+  parseRow(get) {
+    const common = parseCommon(
+      get("date"),
+      get("amount"),
+      get("description"),
+      (value) => parseIsoDate(value) ?? parseUsDate(value),
+    );
+    if (!common.ok) return common;
+    return {
+      ok: true,
+      row: {
+        date: common.date,
+        amountCents: -common.cents || 0,
+        description: common.description,
+        hints: { bankType: optional(get("type")) },
+      },
+    };
+  },
+};
+
+// Schwab Bank checking (History → Export): "Date,Status,Type,CheckNumber,Description,Withdrawal,
+// Deposit,RunningBalance" (older exports have no Status). A date can read "09/20/2026 as of
+// 09/18/2026": the first is the day it posted. Pending rows come again once posted.
+export const schwabBank: CsvFormat = {
+  id: "schwab_bank",
+  bank: "Schwab",
+  label: "Schwab Bank checking",
+  account: { name: "Schwab checking", kind: "checking" },
+  requiredHeaders: ["date", "type", "description", "withdrawal", "deposit", "runningbalance"],
+  parseRow(get) {
+    if (/^pending$/i.test(get("status").trim())) {
+      return { ok: false, reason: "Still pending", silent: true };
+    }
+    const result = debitCreditRow(
+      get("date")
+        .trim()
+        .split(/\s+as of\s+/i)[0],
+      get("description"),
+      get("withdrawal"),
+      get("deposit"),
+      parseUsDate,
+      { bankType: optional(get("type")) },
+    );
+    return result.ok
+      ? { ok: true, row: { ...result.row, ...balanceOf(get("runningbalance")) } }
+      : result;
+  },
+};
+
 // Most specific first: a file matches the first format whose headers it all has.
 export const CSV_FORMATS: readonly CsvFormat[] = [
   chaseChecking,
@@ -397,6 +528,10 @@ export const CSV_FORMATS: readonly CsvFormat[] = [
   citiCreditCard,
   amex,
   discoverCreditCard,
+  appleCard,
+  usBank,
+  ally,
+  schwabBank,
 ];
 
 export const HEADERLESS_FORMATS: readonly HeaderlessFormat[] = [wellsFargo];

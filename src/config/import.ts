@@ -92,6 +92,38 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
     ],
   },
   {
+    bank: "Apple Card",
+    steps: [
+      "On your iPhone, open Wallet, tap Apple Card, then Card Balance.",
+      "Tap a month's statement, then Export Transactions.",
+      "Pick CSV. Do this for each of the last 3 months.",
+    ],
+  },
+  {
+    bank: "U.S. Bank",
+    steps: [
+      "Sign in at usbank.com and open the account.",
+      'Choose "Download transactions".',
+      "Pick CSV and the last 3 months, then Download.",
+    ],
+  },
+  {
+    bank: "Ally",
+    steps: [
+      "Sign in at ally.com and open the account.",
+      'Choose "Download" above your transactions.',
+      "Pick CSV and the last 3 months, then Download.",
+    ],
+  },
+  {
+    bank: "Schwab",
+    steps: [
+      "Sign in at schwab.com and open your checking account's History.",
+      'Click "Export".',
+      "Pick the last 3 months; the file is a CSV.",
+    ],
+  },
+  {
     bank: "Any other bank",
     steps: [
       'Look for "Download", "Export" or "Quicken" next to your transactions.',
