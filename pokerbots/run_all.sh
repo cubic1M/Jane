@@ -12,7 +12,7 @@ if [[ "${QUICK:-0}" == "1" ]]; then
   PAIRS=2; HANDS=200; FULL_BUDGETS="1"; PRE_BUDGETS="1"; LEAD_PAIRS=4; ROB_PAIRS=2
   export BUDGET_OVERRIDE=1m
   # keep smoke results apart from the study's results
-  export POKER_RAW="$PWD/results/quick_raw" TABLES_OUT="$PWD/report/tables_quick.md"
+  export POKER_RESULTS="$PWD/results_quick" TABLES_OUT="$PWD/report/tables_quick.md"
 else
   PAIRS=10; HANDS=1000; FULL_BUDGETS="15,30,60"; PRE_BUDGETS="5,15,30"; LEAD_PAIRS=60; ROB_PAIRS=6
 fi

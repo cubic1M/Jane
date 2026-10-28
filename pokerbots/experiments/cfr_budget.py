@@ -16,11 +16,11 @@ import json
 import re
 from pathlib import Path
 
-from experiments.common import ROOT, load_results, pair_units, run_jobs
+from experiments.common import RESULTS, ROOT, load_results, pair_units, run_jobs
 from experiments.stats import fmt_ci, mean_ci
 
 CACHE = ROOT / "cache" / "cfr"
-EXPL = ROOT / "results" / "cfr_expl.json"
+EXPL = RESULTS / "cfr_expl.json"
 
 
 def checkpoints(kind: str, variant: str) -> list[int]:
@@ -103,7 +103,7 @@ def main(argv=None):
                     cells.append(f"{fmt_ci(mm, h)} (n={n})" if n else "")
                 lines.append(f"| {v} | {bot} | {m} min | {ex.get('iterations', '')} | {exs} | " + " | ".join(cells) + " |")
     md = "\n".join(lines)
-    (ROOT / "results" / "cfr_budget.md").write_text(md + "\n")
+    (RESULTS / "cfr_budget.md").write_text(md + "\n")
     print(md)
 
 

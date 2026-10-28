@@ -3,3 +3,5 @@ __pycache__/
 results/raw/
 cache/
 *.log
+results_quick/
+report/tables_quick.md

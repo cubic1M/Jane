@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from experiments.common import ROOT, load_results, match_wins, pair_units
+from experiments.common import RESULTS, ROOT, load_results, match_wins, pair_units
 from experiments.stats import fmt_ci, mean_ci, t95
 
 OUT = Path(__import__("os").environ.get("TABLES_OUT", str(ROOT / "report" / "tables.md")))
@@ -191,7 +191,7 @@ def robustness_table() -> str:
 
 
 def timing_table() -> str:
-    p = ROOT / "results" / "timing.json"
+    p = RESULTS / "timing.json"
     if not p.exists():
         return "_no timing results yet_"
     res = json.loads(p.read_text())
@@ -208,10 +208,10 @@ def main():
     parts = ["# Generated tables\n", "## Round-robin\n", roundrobin_tables(),
              "\n## Out-of-sample: hybrid and its parents (fresh seeds 20000+)\n", hybrid_table(),
              "\n## Robustness\n", robustness_table(), "\n## Timing\n", timing_table()]
-    extra = ROOT / "results" / "cfr_budget.md"
+    extra = RESULTS / "cfr_budget.md"
     if extra.exists():
         parts += ["\n## CFR strength vs training time\n", extra.read_text()]
-    lp = ROOT / "results" / "lead_protection.md"
+    lp = RESULTS / "lead_protection.md"
     if lp.exists():
         parts += ["\n## Lead protection\n", lp.read_text()]
     OUT.write_text("\n".join(parts) + "\n")

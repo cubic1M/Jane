@@ -3,11 +3,11 @@ Columns: experiment, variant, a, b, seed, hands per match, A's bb/hand (both sea
 A's chips seat0, A's chips seat1."""
 import csv
 
-from experiments.common import RAW, ROOT, load_results
+from experiments.common import RESULTS, RAW, ROOT, load_results
 
 
 def main():
-    out = ROOT / "results" / "pairs.csv"
+    out = RESULTS / "pairs.csv"
     with open(out, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["experiment", "variant", "a", "b", "seed", "hands", "a_bb_per_hand", "a_chips_seat0", "a_chips_seat1"])

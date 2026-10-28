@@ -19,14 +19,15 @@ adaptive bot when its opponent model says the opponent is exploitable) once a
   100bb. A wrong rules mapping costs it 0–0.6 bb/hand on four of the five tested bugs
   (~1.1 for a flipped blind order).
 * **Its weakness.** Heads-up against sound, equilibrium-style bots it is only even,
-  and full CFR beats it by 0.1–0.5 bb/hand: 94–46 in matches.
+  and full CFR beats it by 0.1–0.5 bb/hand: significant on 3 of 7 variants, 94–46
+  in matches overall.
 * **Why the hybrid on top.** Out of sample, on fresh card seeds, it beat adaptive on
   4 of 5 variants (+0.24 to +0.41 bb/hand) and kept ~93% of adaptive's winnings
   against weak opponents. CFR quality plateaus at ~15 minutes of training here.
 * **Fall back to (stay on) adaptive** when the variant is hostile to CFR:
   - costly hand evaluation (Omaha-like, many hole cards). CFR gets too few iterations;
-    on Omaha the hybrid lost to adaptive (−0.31 bb/hand) and full CFR lost to every
-    heuristic.
+    on Omaha the hybrid lost to adaptive (−0.31 bb/hand) and full CFR was the weakest
+    strong bot (lost to balanced and preflop CFR by ~0.3).
   - the CFR checkpoint is not ready and verified by about minute 40.
   - any doubt remains about the rules mapping. A mapping error costs CFR 1.3–2.4
     bb/hand.

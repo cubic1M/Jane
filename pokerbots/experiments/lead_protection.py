@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 import math
 
-from experiments.common import ROOT, load_results, match_wins, pair_units, run_jobs
+from experiments.common import RESULTS, ROOT, load_results, match_wins, pair_units, run_jobs
 from experiments.stats import fmt_ci, mean_ci
 
 
@@ -47,8 +47,8 @@ def main(argv=None):
             for v in variants for b in bots for k in range(a.pairs)]
     run_jobs(jobs, workers=a.workers, label="lead")
     md = summarize(bots, variants)
-    (ROOT / "results").mkdir(exist_ok=True)
-    (ROOT / "results" / "lead_protection.md").write_text(md + "\n")
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    (RESULTS / "lead_protection.md").write_text(md + "\n")
     print(md)
 
 

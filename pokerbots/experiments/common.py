@@ -20,7 +20,8 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-RAW = Path(os.environ.get("POKER_RAW", str(ROOT / "results" / "raw")))  # QUICK runs use another dir
+RESULTS = Path(os.environ.get("POKER_RESULTS", str(ROOT / "results")))  # QUICK runs use another dir
+RAW = RESULTS / "raw"
 
 
 def make_bot(spec_str: str):

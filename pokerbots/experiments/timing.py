@@ -15,7 +15,7 @@ import os
 
 import numpy as np
 
-from experiments.common import ROOT, make_bot
+from experiments.common import RESULTS, ROOT, make_bot
 
 BUDGETS_MS = (100, 500, 2000)
 
@@ -52,7 +52,7 @@ def main(argv=None):
     ap.add_argument("--bots", default="equity,balanced,adaptive,preflop_cfr@15m,full_cfr@30m,adaptive_cfr@15m")
     ap.add_argument("--variants", default="all")
     ap.add_argument("--hands", type=int, default=200)
-    ap.add_argument("--out", default=str(ROOT / "results" / "timing.json"))
+    ap.add_argument("--out", default=str(RESULTS / "timing.json"))
     a = ap.parse_args(argv)
     os.environ.setdefault("OMP_NUM_THREADS", "1")
     variants = list(VARIANTS) if a.variants == "all" else a.variants.split(",")

@@ -41,6 +41,7 @@ numba, scipy or Cython). That is also the most portable choice for the day.
 | 4 | `preflop_cfr@<budget>` | full-width DCFR on preflop (169 suit classes for 2 cards, 50 equity buckets for 3+), terminal = pot × bucket-vs-bucket equity matrix (realisation IP 1.0/OOP 0.92), balanced postflop | converges in seconds; budget buys matrix accuracy |
 | 5 | `full_cfr@<budget>` | chance-sampled vectorised MCCFR (DCFR 1.5/0/2) over all streets, 16/10/10/10 equity buckets, bet 0.5/1 pot, pot raise, all-in, 3–4 raise cap, pseudo-harmonic translation | 1–4 iterations/s × 1024 deals |
 | 4+3 | `adaptive_cfr@<budget>` | preflop CFR + adaptive postflop; switches preflop to the adaptive bot's play when the opponent model is confident the opponent is extreme preflop | added mid-study (see REPORT §5) |
+| 5+3 | `hybrid@<budget>` | full CFR for whole hands by default; the adaptive bot plays the hand when any of its opponent-model exploit scores is ≥ 0.35; both bots see every hand result | added after the round-robin; evaluated only on fresh seeds (REPORT §2e) |
 | 6 | `push` | all-in every hand | sanity opponent |
 | 7 | `station`, `maniac` | always call; raise big 70% | robustness opponents |
 | – | `random_legal` | uniform random legal action incl. odd sizes | conformance + dummy |
