@@ -87,21 +87,25 @@ DEFAULT_PARAMS = {
     "iso_bb": 3.5,               # BB raise-to vs a limp, in big blinds
     "threebet_mult": 3.2,        # first re-raise: raise to this x the opponent's raise-to
     "fourbet_mult": 2.3,         # later re-raises
-    "shove_max_bb": 24.0,        # effective stack (bb) at or below which we play push/fold
+    "shove_max_bb": 12.0,        # effective stack (bb) at or below which we play push/fold
     "shove_k": 7.5,              # push/fold: shove the top min(1, shove_k / eff_bb) of hands
     "shove_frac_min": 0.08,
     "pct_temp": 0.02,            # softness of percentile gates (mixing near the edge)
     # ---- preflop: facing a raise (equity vs the raise-implied range) ----------------
     "pre_range_k": 1.6,          # opponent range after raising to R bb: top k / R**exp
-    "pre_range_exp": 0.7,        #   (2.5bb -> 84%, 8bb -> 37%, 20bb -> 20%, 100bb -> 6%)
-    "pre_range_min": 0.04,
+    "pre_range_exp": 0.6,        #   (2.5bb -> 92%, 8bb -> 46%, 20bb -> 27%, 100bb -> 10%)
+    "pre_range_min": 0.10,
     "pre_call_keep": 0.80,       # opponent called our raise: drop his bottom 20%
-    "pre_mix": 0.08,             # share of uniformly random hands in a raise range
+    "pre_mix": 0.08,             # share of uniformly random hands in a raise range ...
+    "pre_polar": 0.5,            # ... plus pre_polar * B/(P+2B) for a raise of B into P
+                                 #   (big overbets are polarised: more bluffs)
     "pre_raise_eq": 0.60,        # re-raise for value with equity >= this vs the range
     "pre_call_margin_oop": 0.03, # extra equity needed to call out of position (BB)
     "pre_call_margin_ip": 0.00,  # ... in position (SB)
     "pre_allin_margin": 0.00,    # ... when the call is for all the chips
     "pre_bluff_raise_freq": 0.06,# light re-raise frequency with hands just below calling
+    "mdf_scale": 1.0,            # facing a raise, continue with at least the top
+                                 #   mdf_scale * pot/(pot+bet) of my own range (anti-overbet floor)
     # ---- postflop opponent range model ----------------------------------------------
     "post_bet_keep": 0.55,       # opponent bets: keep the top 55% of made hands ...
     "post_raise_keep": 0.35,     # opponent raises our bet: keep the top 35% ...
@@ -147,6 +151,7 @@ ADJUSTABLE = {
     "semibluff_freq": (0.0, 0.9),
     "bluff_raise_freq": (0.0, 0.15),
     "pre_bluff_raise_freq": (0.0, 0.25),
+    "mdf_scale": (0.0, 1.5),
     "call_margin": (-0.10, 0.15),          # defence looseness postflop (lower = calls more)
     "pre_call_margin_oop": (-0.08, 0.12),
     "pre_call_margin_ip": (-0.08, 0.12),
@@ -157,6 +162,7 @@ ADJUSTABLE = {
     "iso_frac": (0.10, 0.70),
     "shove_k": (3.0, 14.0),
     "pre_range_k": (0.8, 4.0),             # how wide we think the opponent raises preflop
+    "pre_polar": (0.0, 1.0),
     "post_bet_keep": (0.25, 1.0),          # how much an opponent bet means (1 = nothing)
     "post_raise_keep": (0.15, 1.0),
     "post_mix": (0.05, 0.8),
@@ -252,7 +258,7 @@ class PreflopProfile:
         pred = float(self.predict(np.array([cards]))[0])
         if n <= 0:
             return pred
-        key = (_rules_key(self.spec), canonical(cards))
+        key = (self.spec, canonical(cards))   # self.spec is already a rules key
         hit = _PRE_EQ.get(key)
         if hit is None or hit[1] < n:
             rng = np.random.default_rng(abs(hash(key[1])) & 0xFFFFFFFF)
@@ -316,7 +322,9 @@ class RangeSampler:
     def __call__(self, n, avail, rng):
         use_pre = self.f_pre < 0.999 and self.profile is not None and self.k == self.profile.k
         filt = (self.f_pre if use_pre else 1.0) * (self.post_keep if self.can_eval else 1.0)
-        m = int(np.clip(n * 1.5 / max(filt, 1e-3), n, 6000))
+        # candidates cost about one evaluation each: cap them at a few times n so a
+        # narrow range never blows the time budget (top rows are then reused)
+        m = int(np.clip(n * 1.5 / max(filt, 1e-3), n, 4 * n))
         cand = _draw_rows(m, avail, self.k, rng)
         wide = cand
         if use_pre:
@@ -360,7 +368,8 @@ class RangeSampler:
 # --------------------------------------------------------------------------------------
 def replay(obs, spec):
     """Rebuild bet sizes from the history. Returns a list of dicts with keys
-    pos, street, kind, amount, frac (raise size / pot after calling), is_bet
+    pos, street, kind, amount, pip_before (actor's pip on this street before the
+    action), pot_before, frac (raise size / pot after calling), is_bet
     (first bet of a postflop street), facing_raise (a call of a raise above the blind)."""
     sb, bb, ante = spec.small_blind, spec.big_blind, spec.ante
     committed = [ante + sb, ante + bb]
@@ -372,7 +381,7 @@ def replay(obs, spec):
             street, pips = rec.street, [0, 0]
         p = rec.position
         ev = {"pos": p, "street": street, "kind": rec.kind, "amount": rec.amount,
-              "frac": 0.0, "is_bet": False, "facing_raise": False}
+              "pip_before": pips[p], "pot_before": sum(committed), "frac": 0.0, "is_bet": False, "facing_raise": False}
         if rec.kind == "raise":
             prev_max = max(pips)
             to_call = prev_max - pips[p]
@@ -477,11 +486,12 @@ class BalancedBot(Bot):
 
     # ---- opponent model from the action history --------------------------------------
     def opponent_range(self, obs):
-        """(f_pre, post_keep): preflop range share and postflop made-hand keep share."""
+        """(f_pre, post_keep, pre_mix): preflop range share, postflop made-hand keep
+        share, and the share of random hands mixed into the preflop range."""
         p = self.params
         bb = self.spec.big_blind
         opp = 1 - obs.position
-        f_pre, keep = 1.0, 1.0
+        f_pre, keep, mix = 1.0, 1.0, p["pre_mix"]
         for e in replay(obs, self.spec):
             if e["pos"] != opp:
                 continue
@@ -490,6 +500,8 @@ class BalancedBot(Bot):
                     r_bb = max(1.0, e["amount"] / bb)
                     f = p["pre_range_k"] / r_bb ** p["pre_range_exp"]
                     f_pre = min(f_pre, max(p["pre_range_min"], f))
+                    r = (e["amount"] - e["pip_before"]) / max(1, e["pot_before"])
+                    mix = p["pre_mix"] + p["pre_polar"] * r / (1 + 2 * r)
                 elif e["kind"] == "call" and e["facing_raise"]:
                     f_pre *= p["pre_call_keep"]
             else:
@@ -499,7 +511,7 @@ class BalancedBot(Bot):
                     keep *= base ** sf
                 elif e["kind"] == "call" and e["amount"] > 0:
                     keep *= p["post_call_keep"]
-        return min(1.0, f_pre), max(p["post_keep_min"], keep)
+        return min(1.0, f_pre), max(p["post_keep_min"], keep), min(0.9, mix)
 
     def _can_eval(self, n_hole: int, n_board: int) -> bool:
         sp = self.spec
@@ -513,7 +525,7 @@ class BalancedBot(Bot):
         if self._an_key == key:
             return self._an
         p = self.params
-        f_pre, keep = self.opponent_range(obs)
+        f_pre, keep, pre_mix = self.opponent_range(obs)
         n = self._n(self._budget_ms(obs, p["budget_ms"]))
         info = {"f_pre": f_pre, "post_keep": keep, "n": n, "percentile": None,
                 "made": None, "draw": 0.0}
@@ -530,7 +542,7 @@ class BalancedBot(Bot):
             can_eval = obs.street > 0 and self._can_eval(len(obs.my_cards), len(obs.board))
             sampler = RangeSampler(
                 self.profile, self.ev, obs.opp_num_cards, obs.my_cards, obs.board,
-                f_pre=f_pre, pre_mix=p["pre_mix"],
+                f_pre=f_pre, pre_mix=pre_mix,
                 post_keep=keep if obs.street > 0 else 1.0, post_mix=p["post_mix"],
                 can_eval=can_eval)
             info["equity"] = self.model.equity_obs(obs, n=n, rng=self.np_rng, opp_sampler=sampler)
@@ -622,10 +634,39 @@ class BalancedBot(Bot):
             return self._reraise(obs, short)
         if self._gate(eq, req + margin, et):
             return Call()
+        floor = self._mdf_floor(obs)
+        if floor > 0 and self._gate(pct, 1 - floor, t):
+            return Call()
         if (lg.can_raise and not short and not all_in_call and eq > req + margin - 0.08
                 and self._chance(p["pre_bluff_raise_freq"])):
             return self._reraise(obs, short)
         return Fold()
+
+    def _my_preflop_share(self, obs) -> float:
+        """Rough share of all hands that reach this node with my preflop line."""
+        p = self.params
+        share = 1.0
+        for e in replay(obs, self.spec):
+            if e["street"] != 0 or e["pos"] != obs.position:
+                continue
+            if e["kind"] == "raise":
+                share *= p["open_frac"] if (obs.position == 0 and share == 1.0) else 0.3
+            elif e["kind"] == "call" and obs.position == 0 and share == 1.0:
+                share = p["limp_frac"]
+            elif e["kind"] == "check":
+                share *= 1 - p["iso_frac"]
+        return share
+
+    def _mdf_floor(self, obs) -> float:
+        """Minimum share of ALL hands to continue with facing the last raise, so that
+        raising any two cards (e.g. always shoving) cannot profit from our folds."""
+        evs = replay(obs, self.spec)
+        last = next((e for e in reversed(evs) if e["kind"] == "raise"), None)
+        if last is None or last["pos"] == obs.position:
+            return 0.0
+        pot_before = obs.pot - (last["amount"] - last["pip_before"])
+        mdf = pot_before / max(1, obs.pot)
+        return self.params["mdf_scale"] * mdf * self._my_preflop_share(obs)
 
     def _raise_to_bb(self, obs, size_bb: float):
         target = size_bb * self.spec.big_blind

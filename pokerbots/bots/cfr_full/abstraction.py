@@ -197,10 +197,12 @@ class CardAbstraction:
         self.be.evaluate(cards[:, :h], cards[:, h:])
         us = (time.perf_counter() - t0) / 2000 * 1e6
         self.info["eval_us"] = us
+        # cost tiers rather than a continuous formula, so a busy machine does not change
+        # the abstraction: ~0.5 us/hand (hold'em-like) -> 56, Omaha-like (~5 us) -> 24
         if not self.n_post:
-            self.n_post = int(np.clip(32.0 / max(us, 1e-3), 24, 64))
+            self.n_post = 56 if us < 2.0 else 24
         if not self.n_disc:
-            self.n_disc = int(np.clip(self.n_post // 2, 16, 32))
+            self.n_disc = 32 if us < 2.0 else 16
         if not self.n_pre:
             self.n_pre = self.n_post
         return us
@@ -315,6 +317,9 @@ class CardAbstraction:
         opts = list(combinations(range(hc), rule.count))
         btc = sum(self.spec.board_cards_per_street[street + 1:])
         eqs = np.empty((len(opts), B))
+        # common random numbers across options (as EquityModel.discard_options): the known
+        # card set is the same for every option, so one seed gives identical samples
+        seed = int(rng.integers(2 ** 62))
         for i, disc in enumerate(opts):
             keep = [c for c in range(hc) if c not in disc]
             d = hole[:, list(disc)]
@@ -322,7 +327,7 @@ class CardAbstraction:
             dead = np.concatenate([muck_own, opp_vis] + ([] if rule.to_board else [d]), axis=1)
             eqs[i] = self.be.equity(hole[:, keep], bd, dead, opp_num=opp_num, board_to_come=btc,
                                     my_left=my_left, opp_left=opp_left, to_board=to_board,
-                                    n=self.n_disc, rng=rng)
+                                    n=self.n_disc, rng=np.random.default_rng(seed))
         return np.argmax(eqs, axis=0)
 
     # ---- bucketing --------------------------------------------------------------------
