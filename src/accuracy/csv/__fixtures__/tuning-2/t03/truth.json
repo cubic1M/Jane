@@ -64,37 +64,37 @@
     },
     {
       "type": "subscription_review",
-      "about": "HOLLOW OAK TAVERN, not a plan"
+      "about": "OAK RIDGE HOA, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+      "about": "NEW HOPE CHAPEL, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1522.06
+      "dollars": 1458.16
     },
     {
       "date": "2026-06-30",
-      "dollars": 917.35
+      "dollars": 789.55
     },
     {
       "date": "2026-07-31",
-      "dollars": -68.65
+      "dollars": -260.35
     },
     {
       "date": "2026-08-31",
-      "dollars": -1378.07
+      "dollars": -1633.67
     },
     {
       "date": "2026-09-30",
-      "dollars": -3270.68
+      "dollars": -3590.18
     },
     {
       "date": "2026-10-24",
-      "dollars": -4115.85
+      "dollars": -4499.25
     }
   ]
 }

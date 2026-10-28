@@ -73,37 +73,37 @@
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "AFFIRM *PAY 3K9L2, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "OAK RIDGE HOA, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -1097.98
+      "dollars": -1138.31
     },
     {
       "date": "2026-06-30",
-      "dollars": -1581.23
+      "dollars": -1661.89
     },
     {
       "date": "2026-07-31",
-      "dollars": -3746.77
+      "dollars": -3867.76
     },
     {
       "date": "2026-08-31",
-      "dollars": -4952.98
+      "dollars": -5114.3
     },
     {
       "date": "2026-09-30",
-      "dollars": -6473.36
+      "dollars": -6675.01
     },
     {
       "date": "2026-10-24",
-      "dollars": -7447.18
+      "dollars": -7689.16
     }
   ]
 }

@@ -44,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 5252868, excess 4164415",
+      "about": "cash 5247518, excess 4155696",
       "perYear": null
     }
   ],
@@ -71,33 +71,33 @@
     },
     {
       "type": "subscription_review",
-      "about": "BLUE HERON BAKERY, not a plan"
+      "about": "ACORNS INVEST, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "OAK RIDGE HOA, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 31908.92
+      "dollars": 31898.22
     },
     {
       "date": "2026-07-31",
-      "dollars": 37056.8
+      "dollars": 37035.4
     },
     {
       "date": "2026-08-31",
-      "dollars": 40062.37
+      "dollars": 40030.27
     },
     {
       "date": "2026-09-30",
-      "dollars": 45590.07
+      "dollars": 45547.27
     },
     {
       "date": "2026-10-24",
-      "dollars": 50426.17
+      "dollars": 50372.67
     }
   ]
 }

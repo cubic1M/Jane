@@ -80,11 +80,11 @@
     },
     {
       "type": "subscription_review",
-      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+      "about": "LAKESHORE AUTO FIN, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "AFFIRM *PAY 3K9L2, not a plan"
     },
     {
       "type": "duplicate_charge",
@@ -94,19 +94,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -5428.05
+      "dollars": -5447.38
     },
     {
       "date": "2026-08-31",
-      "dollars": -7983.93
+      "dollars": -8022.59
     },
     {
       "date": "2026-09-30",
-      "dollars": -10011.11
+      "dollars": -10069.1
     },
     {
       "date": "2026-10-24",
-      "dollars": -11542.99
+      "dollars": -11620.31
     }
   ]
 }

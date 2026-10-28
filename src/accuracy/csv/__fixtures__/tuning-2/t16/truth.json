@@ -78,11 +78,11 @@
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "ACORNS INVEST, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "KLARNA* NIKE, not a plan"
     },
     {
       "type": "duplicate_charge",
@@ -92,31 +92,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 2381.27
+      "dollars": 2428.02
     },
     {
       "date": "2026-05-31",
-      "dollars": 1199.85
+      "dollars": 1293.35
     },
     {
       "date": "2026-06-30",
-      "dollars": -191.94
+      "dollars": -51.69
     },
     {
       "date": "2026-07-31",
-      "dollars": -1186.15
+      "dollars": -999.15
     },
     {
       "date": "2026-08-31",
-      "dollars": -2368.19
+      "dollars": -2134.44
     },
     {
       "date": "2026-09-30",
-      "dollars": -3501.33
+      "dollars": -3220.83
     },
     {
       "date": "2026-10-24",
-      "dollars": -4135.02
+      "dollars": -3807.77
     }
   ]
 }

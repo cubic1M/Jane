@@ -44,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1047031, excess 343639",
+      "about": "cash 1046731, excess 343150",
       "perYear": null
     }
   ],
@@ -75,33 +75,33 @@
     },
     {
       "type": "subscription_review",
-      "about": "HOLLOW OAK TAVERN, not a plan"
+      "about": "BETH SHALOM TEMPLE, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "BLUE HERON BAKERY, not a plan"
+      "about": "ACORNS INVEST, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -453.64
+      "dollars": -454.24
     },
     {
       "date": "2026-07-31",
-      "dollars": 1846.32
+      "dollars": 1845.12
     },
     {
       "date": "2026-08-31",
-      "dollars": 2661.36
+      "dollars": 2659.56
     },
     {
       "date": "2026-09-30",
-      "dollars": 3375.81
+      "dollars": 3373.41
     },
     {
       "date": "2026-10-24",
-      "dollars": 5311.18
+      "dollars": 5308.18
     }
   ]
 }

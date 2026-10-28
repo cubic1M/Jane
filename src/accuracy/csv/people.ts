@@ -1087,6 +1087,45 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  // Fixed monthly amounts that aren't plans, of the kinds real statements carry: a buy-now-pay-later
+  // instalment, a car loan, home insurance by its premium, a chapel and a temple, a homeowners'
+  // association, a robo-investing deposit and a pastry shop (round 14).
+  notPlans: [
+    {
+      descriptor: "AFFIRM *PAY 3K9L2",
+      category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+      lo: 58.33,
+      hi: 58.33,
+    },
+    { descriptor: "KLARNA* NIKE", category: "LOAN_PAYMENTS_OTHER_PAYMENT", lo: 31.25, hi: 31.25 },
+    { descriptor: "LAKESHORE AUTO FIN", category: "LOAN_PAYMENTS_CAR_PAYMENT", lo: 96, hi: 96 },
+    { descriptor: "HOMESHIELD PREMIUM", category: "GENERAL_SERVICES_INSURANCE", lo: 64, hi: 64 },
+    {
+      descriptor: "NEW HOPE CHAPEL",
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      lo: 75,
+      hi: 75,
+    },
+    {
+      descriptor: "BETH SHALOM TEMPLE",
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      lo: 36,
+      hi: 36,
+    },
+    { descriptor: "OAK RIDGE HOA", category: "RENT_AND_UTILITIES_OTHER_UTILITIES", lo: 85, hi: 85 },
+    {
+      descriptor: "ACORNS INVEST",
+      category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+      lo: 25,
+      hi: 25,
+    },
+    {
+      descriptor: "SUNNYSIDE PASTRY",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 12.5,
+      hi: 12.5,
+    },
+  ],
   pricePlans: {
     descriptor: "GOOGLE *GOOGLE ONE",
     category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",

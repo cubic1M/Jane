@@ -78,29 +78,29 @@
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "AFFIRM *PAY 3K9L2, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "ACORNS INVEST, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 2934.54
+      "dollars": 2954.21
     },
     {
       "date": "2026-08-31",
-      "dollars": 937.65
+      "dollars": 976.99
     },
     {
       "date": "2026-09-30",
-      "dollars": -1509.09
+      "dollars": -1450.08
     },
     {
       "date": "2026-10-24",
-      "dollars": -3806.42
+      "dollars": -3745.74
     }
   ]
 }

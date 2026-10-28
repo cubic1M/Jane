@@ -204,7 +204,85 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "LOAN_PAYMENTS_CAR_PAYMENT",
-    keywords: ["AUTO LOAN", "TOYOTA FINANCIAL", "HONDA FINANCIAL", "ALLY AUTO", "CARMAX AUTO"],
+    keywords: [
+      "AUTO LOAN",
+      "TOYOTA FINANCIAL",
+      "HONDA FINANCIAL",
+      "ALLY AUTO",
+      "CARMAX AUTO",
+      // A car lender by its own words (CSV bench, second tuning set: "LAKESHORE AUTO FIN").
+      "AUTO FIN",
+      "AUTO FINANCE",
+      "MOTOR CREDIT",
+      "FORD CREDIT",
+      "GM FINANCIAL",
+      "NISSAN MOTOR ACCEPT",
+      "HYUNDAI MOTOR FIN",
+      "SANTANDER CONSUMER",
+      "CAPITAL ONE AUTO",
+      "WESTLAKE FINANCIAL",
+      "EXETER FINANCE",
+    ],
+    direction: "out",
+  },
+  // Buy now, pay later: each instalment pays off a purchase, whatever shop follows the name
+  // ("KLARNA* NIKE" is a loan payment, not clothes). CSV bench, second tuning set.
+  {
+    category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+    keywords: [
+      "AFFIRM",
+      "KLARNA",
+      "AFTERPAY",
+      "SEZZLE",
+      "ZIP.CO",
+      "QUADPAY",
+      "PAYPAL PAY IN 4",
+      "PAY IN 4",
+      "APPLE PAY LATER",
+      "PAYBRIGHT",
+      "SPLITIT",
+    ],
+    direction: "out",
+  },
+  // Money put into an investing app or a brokerage is moved, not spent (CSV bench, second tuning
+  // set: "ACORNS INVEST" at $25 every month read as a subscription).
+  {
+    category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+    keywords: [
+      "ACORNS INVEST",
+      "ACORNS*INVEST",
+      "ACORNS GROW",
+      "STASH INVEST",
+      "BETTERMENT",
+      "WEALTHFRONT",
+      "ROBINHOOD",
+      "VANGUARD",
+      "FIDELITY",
+      "SCHWAB",
+      "E*TRADE",
+      "ETRADE",
+      "M1 FINANCE",
+      "PUBLIC.COM",
+      "COINBASE",
+      "WEBULL",
+      "SOFI INVEST",
+      "IRA CONTRIB",
+      "BROKERAGE",
+    ],
+    direction: "out",
+  },
+  // Dues to a homeowners' or condo association: a home bill, not a plan.
+  {
+    category: "RENT_AND_UTILITIES_OTHER_UTILITIES",
+    keywords: [
+      "HOA DUES",
+      "HOMEOWNERS ASSOC",
+      "HOMEOWNERS ASSN",
+      "HOMEOWNERS ASSOCIATION",
+      "CONDO ASSOC",
+      "CONDOMINIUM ASSOC",
+      "PROPERTY OWNERS ASSOC",
+    ],
     direction: "out",
   },
 
@@ -1724,7 +1802,10 @@ const RULES: readonly Rule[] = [
 
   // A bar or a bakery by its kind (QA round 28: "HOLLOW OAK TAVERN", "BLUE HERON BAKERY").
   { category: "FOOD_AND_DRINK_RESTAURANT", keywords: ["TAVERN", "PUB", "SALOON", "BAR & GRILL"] },
-  { category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK", keywords: ["BAKERY", "BAKE SHOP", "DONUTS"] },
+  {
+    category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+    keywords: ["BAKERY", "BAKE SHOP", "DONUTS", "PASTRY", "PATISSERIE"],
+  },
   // A gift to a church or a charity, and insurance and loans by their own words (QA round 28:
   // "PARKSIDE COMMUNITY CHURCH", "LEMONADE INSURANCE", "HARBOR CREDIT UNION PMT").
   {
@@ -1854,11 +1935,22 @@ const RULES: readonly Rule[] = [
   // every kind of shop, so it says nothing.)
   { category: "FOOD_AND_DRINK_RESTAURANT", pattern: /(?:^|\s)TST\s*\*/ },
 
+  // Last of the words, so a gym, a shop or a restaurant by its kind wins first ("IRON TEMPLE GYM",
+  // "PHO HOA NOODLE"): other houses of worship, and a homeowners' association by its letters
+  // (CSV bench, second tuning set).
+  {
+    category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+    keywords: ["CHAPEL", "TEMPLE", "SYNAGOGUE", "MOSQUE", "MASJID", "CONGREGATION", "CATHEDRAL"],
+    direction: "out",
+  },
+  { category: "RENT_AND_UTILITIES_OTHER_UTILITIES", keywords: ["HOA"], direction: "out" },
+
   // The bank's own labels, when no keyword matched
   { category: "BANK_FEES_OTHER_BANK_FEES", bankType: ["FEE_TRANSACTION", "Fee"] },
   { category: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT", bankType: ["Payment"] },
   { category: "LOAN_PAYMENTS_OTHER_PAYMENT", bankType: ["LOAN_PMT"], direction: "out" },
   { category: "TRANSFER_OUT_WITHDRAWAL", bankType: ["ATM"], direction: "out" },
+
   { category: "FOOD_AND_DRINK_GROCERIES", bankCategory: ["Groceries"], direction: "out" },
   { category: "TRANSPORTATION_GAS", bankCategory: ["Gas"], direction: "out" },
   // A card's own categories (Chase's), in either direction, so a return nets against its

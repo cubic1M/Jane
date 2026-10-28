@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4904480, excess 4294990",
+      "about": "cash 4920148, excess 4320526",
       "perYear": null
     }
   ],
@@ -74,11 +74,11 @@
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "AFFIRM *PAY 3K9L2, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "ACORNS INVEST, not a plan"
     },
     {
       "type": "duplicate_charge",
@@ -88,23 +88,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 25650.27
+      "dollars": 25669.94
     },
     {
       "date": "2026-07-31",
-      "dollars": 30028.54
+      "dollars": 30067.88
     },
     {
       "date": "2026-08-31",
-      "dollars": 34677.92
+      "dollars": 34736.93
     },
     {
       "date": "2026-09-30",
-      "dollars": 39436.83
+      "dollars": 39515.51
     },
     {
       "date": "2026-10-24",
-      "dollars": 44045.68
+      "dollars": 44202.36
     }
   ]
 }

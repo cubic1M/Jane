@@ -65,33 +65,33 @@
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "KLARNA* NIKE, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "BLUE HERON BAKERY, not a plan"
+      "about": "HOMESHIELD PREMIUM, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 6683.68
+      "dollars": 6620.73
     },
     {
       "date": "2026-07-31",
-      "dollars": 4361.45
+      "dollars": 4235.55
     },
     {
       "date": "2026-08-31",
-      "dollars": 2828.19
+      "dollars": 2639.34
     },
     {
       "date": "2026-09-30",
-      "dollars": 1581.06
+      "dollars": 1329.26
     },
     {
       "date": "2026-10-24",
-      "dollars": -51.05
+      "dollars": -365.8
     }
   ]
 }

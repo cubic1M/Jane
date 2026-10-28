@@ -39,7 +39,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4939547, excess 4411360",
+      "about": "cash 4981022, excess 4471221",
       "perYear": null
     }
   ],
@@ -58,11 +58,11 @@
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "SUNNYSIDE PASTRY, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "KLARNA* NIKE, not a plan"
     },
     {
       "type": "duplicate_charge",
@@ -72,31 +72,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 24939.45
+      "dollars": 24998.7
     },
     {
       "date": "2026-05-31",
-      "dollars": 27912.48
+      "dollars": 28030.98
     },
     {
       "date": "2026-06-30",
-      "dollars": 31204.94
+      "dollars": 31382.69
     },
     {
       "date": "2026-07-31",
-      "dollars": 38026.08
+      "dollars": 38263.08
     },
     {
       "date": "2026-08-31",
-      "dollars": 41259.47
+      "dollars": 41555.72
     },
     {
       "date": "2026-09-30",
-      "dollars": 44079.56
+      "dollars": 44435.06
     },
     {
       "date": "2026-10-24",
-      "dollars": 47574.3
+      "dollars": 47989.05
     }
   ]
 }

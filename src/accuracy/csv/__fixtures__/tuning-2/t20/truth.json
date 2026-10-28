@@ -73,41 +73,41 @@
     },
     {
       "type": "subscription_review",
-      "about": "HOLLOW OAK TAVERN, not a plan"
+      "about": "NEW HOPE CHAPEL, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "OAK RIDGE HOA, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -238.68
+      "dollars": -267.58
     },
     {
       "date": "2026-05-31",
-      "dollars": 1418.33
+      "dollars": 1360.53
     },
     {
       "date": "2026-06-30",
-      "dollars": 1083.96
+      "dollars": 997.26
     },
     {
       "date": "2026-07-31",
-      "dollars": 1315.52
+      "dollars": 1199.92
     },
     {
       "date": "2026-08-31",
-      "dollars": 958.17
+      "dollars": 813.67
     },
     {
       "date": "2026-09-30",
-      "dollars": 702.44
+      "dollars": 529.04
     },
     {
       "date": "2026-10-24",
-      "dollars": 496.66
+      "dollars": 209.36
     }
   ]
 }
