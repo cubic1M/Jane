@@ -990,7 +990,7 @@ const HELD_OUT_3: Pool = {
   restaurants: [
     { descriptor: "SQ *MAMA LUCIAS", category: "FOOD_AND_DRINK_RESTAURANT", lo: 18, hi: 70 },
     { descriptor: "TST* LITTLE SPOON", category: "FOOD_AND_DRINK_RESTAURANT", lo: 20, hi: 80 },
-    { descriptor: "PANERA BREAD #601234", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 9, hi: 24 },
+    { descriptor: "PANERA BREAD 601234", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 9, hi: 24 },
     { descriptor: "CULVERS OF MADISON", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 8, hi: 22 },
     { descriptor: "ZAXBYS #42101", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 8, hi: 20 },
     { descriptor: "GRUBHUB*PHOLICIOUS", category: "FOOD_AND_DRINK_RESTAURANT", lo: 18, hi: 45 },
