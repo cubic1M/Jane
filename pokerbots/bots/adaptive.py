@@ -53,7 +53,8 @@ Scores are averaged into exploit dimensions:
   B   bluffs more at showdown (+) / value-heavy (-)       sd_bluff, weak sd_agg_hs
   L   calls light at showdown                             weak sd_call_hs
   CR  check-raises more than the population              check_raise
-For every knob (KNOB_MAP), t = clip(sum(weight * dimension), -1, 1); t > 0 moves the
+For every knob (KNOB_MAP), t = clip(sum(weight * dimension), -1, 1) ("PF+" = only the
+positive part of PF, etc.); t > 0 moves the
 knob from its default towards the ADJUSTABLE upper bound by t * reach_pos of the way,
 t < 0 towards the lower bound by |t| * reach_neg. Knobs therefore never leave their
 ADJUSTABLE bounds. Two knobs that are not in ADJUSTABLE are moved the same way within
@@ -79,7 +80,8 @@ Intended exploits
   post_mix, pre_range_k, pre_polar up, range floors), call/defend wider
   (call_margin, pre_call_margins down, mdf_scale up), bluff less (F < 0), trap
   (slowplay_freq up), open less as SB vs a re-raiser (we only want hands that call a
-  shove).
+  shove). Opening is not tightened just because the opponent never folds to an open
+  (balanced itself defends ~95%; that move measured slightly negative vs balanced).
 * nit (folds a lot, rarely bets):
   F, PF high -> steal and bluff more (open_frac, iso_frac, shove_k, bluff
   frequencies up), A < 0 -> its bets mean more (keeps down) and we fold more to them
@@ -174,8 +176,8 @@ KNOB_MAP = {
     "raise_eq": ([("A", -0.4), ("L", -0.3)], 0.6, 0.5),
     "pre_raise_eq": ([("PA", -0.5)], 0.6, 0.5),
     # preflop ranges: steal vs folders; vs a re-raiser open only hands that call a shove
-    "open_frac": ([("PF", 1.0), ("PA", -0.6)], 0.5, 1.0),
-    "iso_frac": ([("PF", 1.0), ("PA", -0.4)], 0.6, 0.8),
+    "open_frac": ([("PF+", 1.0), ("PA+", -1.0)], 0.5, 1.0),
+    "iso_frac": ([("PF+", 1.0), ("PA", -0.4)], 0.6, 0.8),
     "shove_k": ([("PF", 1.0)], 0.6, 0.8),
     # reading the opponent's range
     "pre_range_k": ([("PA", 1.0), ("B", 0.3)], 0.5, 1.0),
@@ -192,6 +194,15 @@ KNOB_MAP = {
     "value_bet_freq": ([("L", 0.6), ("F", -0.6)], 0.5, 1.0),
     "big_freq_value": ([("L", 0.6), ("FB", -0.5)], 0.6, 0.8),
 }
+
+
+def dim_value(dims: dict, d: str) -> float:
+    """dims[d]; "X+" / "X-" is only the positive / negative part of dimension X."""
+    if d[-1] == "+":
+        return max(0.0, dims[d[:-1]])
+    if d[-1] == "-":
+        return min(0.0, dims[d[:-1]])
+    return dims[d]
 
 
 def knob_bounds(name: str) -> tuple:
@@ -427,7 +438,7 @@ class AdaptiveBot(BalancedBot):
         self.dims = dims
         params = dict(self.base_params)
         for knob, (parts, reach_neg, reach_pos) in KNOB_MAP.items():
-            t = sum(w * dims[d] for d, w in parts)
+            t = sum(w * dim_value(dims, d) for d, w in parts)
             t = max(-1.0, min(1.0, t))
             lo, hi = knob_bounds(knob)
             d0 = self.base_params[knob]

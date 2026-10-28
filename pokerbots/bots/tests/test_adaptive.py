@@ -53,7 +53,7 @@ class TestApi(unittest.TestCase):
             parts, rn, rp = KNOB_MAP[k]
             self.assertTrue(0 <= rn <= 1 and 0 <= rp <= 1, k)
             for d, _ in parts:
-                self.assertIn(d, DIMENSIONS)
+                self.assertIn(d.rstrip("+-"), DIMENSIONS)
         for k in EXTRA_ADJUSTABLE:
             self.assertNotIn(k, ADJUSTABLE)
         for parts in DIMENSIONS.values():
@@ -111,7 +111,7 @@ class TestAdaptation(unittest.TestCase):
                 super().end_hand(result)
                 st = self.stats
                 for knob, (parts, _, _) in KNOB_MAP.items():
-                    stats = [s for d, _ in parts for s, _ in DIMENSIONS[d]]
+                    stats = [s for d, _ in parts for s, _ in DIMENSIONS[d.rstrip("+-")]]
                     if knob == "post_bet_keep":
                         stats.append("stab")
                     if knob == "post_raise_keep":
