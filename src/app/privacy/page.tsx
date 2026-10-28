@@ -34,7 +34,8 @@ export default function PrivacyPage() {
         <li>
           From the banks you link, through Plaid and read-only: account names and types, the last
           four digits of account numbers, balances and transactions. If your bank shares them, also
-          loan and card details (such as rates and payments) and investment holdings.
+          loan and card details (such as rates and payments) and, once Jane turns investment
+          accounts on, investment holdings and their trades.
         </li>
         <li>
           CSV statements you upload. Each file is read once, in memory, and never stored as a file;
@@ -90,9 +91,9 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Plaid</strong> connects your bank, read-only. Jane asks Plaid only for
-          transactions, and for loan, card and investment details where your bank shares them; never
-          for anything that moves money. Plaid&apos;s own privacy policy covers what Plaid does with
-          your data.
+          transactions, and for loan and card details where your bank shares them (investment
+          details too, once Jane turns investment accounts on); never for anything that moves money.
+          Plaid&apos;s own privacy policy covers what Plaid does with your data.
         </li>
         <li>
           <strong>Anthropic</strong> makes Claude, the AI model that writes Jane&apos;s answers and
