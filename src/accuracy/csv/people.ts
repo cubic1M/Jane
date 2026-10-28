@@ -119,6 +119,10 @@ export type CsvPerson = {
   start: string;
   accounts: CsvAccount[];
   rows: TrueRow[];
+  // Statements uploaded again besides the account's own (round 23): the same file twice, or
+  // an export of another stretch that overlaps the others by a week or more (as a joint account
+  // exported by each partner arrives).
+  uploads?: { account: string; from: string; to: string; again?: boolean }[];
   truth: {
     findings: TrueFinding[];
     // Things that look like a finding and aren't, by row: a group's tickets, a pending copy,
@@ -381,6 +385,10 @@ type Pool = {
   // A plan that moved to another card part-way, one billed on the month's last day, and one
   // service paid twice from two cards on different days (two people's accounts). Round 19.
   moved?: Sub[];
+  // The upload mess real beta users hit (round 23): a statement uploaded twice, two overlapping
+  // by a week, a chargeback, a card paid from a checking account never uploaded, a month with no
+  // income. Each person gets one, by turn.
+  uploadMess?: boolean;
   // A plan billed in another currency: its dollar amount moves a little every month with the
   // exchange rate (round 22).
   fx?: Sub[];
@@ -1114,6 +1122,7 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  uploadMess: true,
   fx: [
     {
       descriptor: "PADDLE.NET* QZFOCUS",
@@ -2656,12 +2665,66 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       f.annualCents = Math.round((f.annualCents! * MONTHS_PER_YEAR) / months);
     }
   }
+  // Round 23: the upload mess, one kind per person, from its own dice.
+  const um = rng(base + index * 104_729 + 37);
+  const uploads: NonNullable<CsvPerson["uploads"]> = [];
+  let shown = accounts;
+  const drop = (gone: Set<string>) => {
+    const keep = (ids: string[]) => !ids.some((id) => gone.has(id));
+    L.rows = L.rows.filter((x) => !gone.has(x.id));
+    L.findings = L.findings.filter(
+      (f) => keep(f.rows ?? []) && !(f.account && gone.has(f.account)),
+    );
+    L.traps = L.traps.filter((t) => keep(t.rows));
+    L.neutral = L.neutral.filter(keep);
+    L.bills = L.bills.filter((b) => keep(b.rows));
+    L.neutralBills = L.neutralBills.filter(keep);
+  };
+  if (P.uploadMess) {
+    const kind = (["twice", "overlap", "chargeback", "noChecking", "noIncome"] as const)[index % 5];
+    if (kind === "twice") uploads.push({ account: chk, from: start, to: asOf, again: true });
+    if (kind === "overlap") {
+      const from = addDays(addMonths(start, 1, 1), -um.int(7, 10));
+      uploads.push({ account: um.chance(0.5) ? chk : card.id, from, to: addMonths(from, 1, 20) });
+    }
+    if (kind === "chargeback") {
+      const m = P.shops[3];
+      const date = addDays(asOf, -um.int(30, 60));
+      const cents = um.cents(80, 240);
+      L.add(spend(card.id, date, cents, m));
+      L.add({
+        ...spend(card.id, addDays(date, um.int(10, 20)), -cents, {
+          ...m,
+          descriptor: `PROVISIONAL CREDIT ${m.descriptor}`,
+        }),
+        flow: "refund",
+      });
+    }
+    if (kind === "noChecking" && !savings) {
+      // The card is paid from a checking account that was never uploaded: Jane sees the card
+      // alone, its payments from the card's side.
+      drop(new Set([chk, ...L.rows.filter((x) => x.account === chk).map((x) => x.id)]));
+      shown = accounts.filter((a) => a.id !== chk);
+    }
+    if (kind === "noIncome") {
+      // Out of work for a month: no pay at all in it.
+      const month = addMonths(start, Math.max(1, months - 2), 1).slice(0, 7);
+      drop(
+        new Set(
+          L.rows.filter((x) => x.kind === "income" && x.date.startsWith(month)).map((x) => x.id),
+        ),
+      );
+    }
+  }
+
   const balanceOf = (a: CsvAccount) =>
     a.openingCents -
     L.rows.filter((x) => x.account === a.id).reduce((s, x) => s + x.amountCents, 0);
   // Idle cash, as Jane defines it (docs/accuracy.md): checking and savings above three months
   // of spending, by at least $1,000.
-  const cash = balanceOf(checking) + (savings ? balanceOf(savings) : 0);
+  const cash = shown
+    .filter((a) => a.kind !== "credit_card")
+    .reduce((sum, a) => sum + balanceOf(a), 0);
   const spent = L.rows
     .filter((x) => x.kind === "spending" && x.amountCents > 0)
     .reduce((s, x) => s + x.amountCents, 0);
@@ -2681,8 +2744,9 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     asOf,
     months,
     start,
-    accounts,
+    accounts: shown,
     rows: L.rows,
+    ...(uploads.length > 0 ? { uploads } : {}),
     truth: {
       findings: L.findings,
       traps: L.traps,

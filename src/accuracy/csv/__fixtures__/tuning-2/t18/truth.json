@@ -74,7 +74,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4920148, excess 4279069",
+      "about": "cash 4920148, excess 4265105",
       "perYear": null
     }
   ],
@@ -123,7 +123,7 @@
     },
     {
       "date": "2026-09-30",
-      "dollars": 39009.21
+      "dollars": 38787.48
     },
     {
       "date": "2026-10-24",
