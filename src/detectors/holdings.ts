@@ -5,6 +5,7 @@ import { olderPlans } from "@/planning/rollover";
 import { type Detector, suggestionId } from "./contract";
 import {
   evidence,
+  feeEvidence,
   factEvidence,
   liquidCents,
   monthlySpendCents,
@@ -31,15 +32,17 @@ const feeDrag: Detector = {
   detect({ profile, data }) {
     const rows = held(data.holdings).flatMap((h) => {
       const facts = FUND_FACTS[h.ticker!];
-      const cheaper = (LOWER_COST_EQUIVALENTS[h.ticker!] ?? [])
-        .map((t) => FUND_FACTS[t]?.expenseRatioBps)
-        .filter((b): b is number => b !== undefined)
-        .sort((a, b) => a - b)[0];
-      if (!facts || cheaper === undefined || facts.expenseRatioBps <= cheaper) return [];
+      const options = (LOWER_COST_EQUIVALENTS[h.ticker!] ?? [])
+        .filter((t) => FUND_FACTS[t])
+        .map((t) => ({ ticker: t, bps: FUND_FACTS[t].expenseRatioBps }))
+        .sort((a, b) => a.bps - b.bps);
+      const cheaper = options[0];
+      if (!facts || !cheaper || facts.expenseRatioBps <= cheaper.bps) return [];
       return [
         {
           h,
-          saving: Math.round((h.valueCents * (facts.expenseRatioBps - cheaper)) / 10_000),
+          cheaper,
+          saving: Math.round((h.valueCents * (facts.expenseRatioBps - cheaper.bps)) / 10_000),
         },
       ];
     });
@@ -59,7 +62,10 @@ const feeDrag: Detector = {
       worthKind: "saves",
       confidence: weakest([
         evidence("seen", profile.months, rows.length, "funds with a cheaper equivalent"),
-        { percent: 85, reason: "fund costs from Jane's fund table" },
+        feeEvidence(
+          rows.flatMap((r) => [FUND_FACTS[r.h.ticker!], FUND_FACTS[r.cheaper.ticker]]),
+          data.today,
+        ),
       ]),
       urgency: "later",
       why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); switching all of them would save about ${formatCents(total)} a year in fees.`,

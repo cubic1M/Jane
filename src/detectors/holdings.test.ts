@@ -59,3 +59,28 @@ describe("holdings detectors on the eight people", () => {
     }
   });
 });
+
+describe("fund costs from real, published figures", () => {
+  it("finds a real costly fund and its cheaper twin, sure to the degree the figures are", () => {
+    const data = inputFor("family");
+    const real = {
+      ...data,
+      holdings: [
+        {
+          accountId: "x",
+          ticker: "FCNTX",
+          valueCents: 10_000_000,
+          basisCents: null,
+          isCash: false,
+        },
+      ],
+    };
+    const s = runDetectors({ profile: buildProfile(real), data: real }, HOLDINGS_DETECTORS).find(
+      (x) => x.topic === "investment_fees",
+    )!;
+    // 0.39% against the 0.02% S&P 500 index fund on $100,000: $370 a year.
+    expect(s.worthCents).toBe(37_000);
+    expect(s.confidence.reason).toMatch(/published expense ratios, rounded/);
+    expect(s.confidence.percent).toBeLessThanOrEqual(85);
+  });
+});
