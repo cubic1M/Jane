@@ -469,6 +469,22 @@ function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
     (isVariable(charges) || main.charges.length >= charges.length * RUN_MIN_SHARE_OF_CHARGES)
   )
     return [main];
+  // One service paid from two accounts on their own days (two people's plans, on two cards): each
+  // account's charges are a run, though together they come at no one gap (CSV bench, second
+  // tuning set). The first keeps the merchant's key; the others are numbered.
+  const accounts = [...new Set(charges.map((c) => c.accountId))];
+  if (accounts.length > 1) {
+    const perAccount = accounts.flatMap((a) => {
+      const run = detectRun(
+        charges.filter((c) => c.accountId === a),
+        asOf,
+      );
+      return run ? [run] : [];
+    });
+    if (perAccount.length === accounts.length) {
+      return perAccount.map((run, i) => (i === 0 ? run : { ...run, key: `${run.key}@${i + 1}` }));
+    }
+  }
   const plan = yearlyPlan(charges);
   return plan ? [plan] : [];
 }

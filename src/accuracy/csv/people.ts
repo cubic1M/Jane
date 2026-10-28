@@ -378,6 +378,9 @@ type Pool = {
   // every four weeks (13 a year, not 12), a water bill or insurance every quarter. A plan is a
   // subscription; the rest are bills. Only some pools have them.
   cadences?: (Merchant & { everyDays: number; plan: boolean })[];
+  // A plan that moved to another card part-way, one billed on the month's last day, and one
+  // service paid twice from two cards on different days (two people's accounts). Round 19.
+  moved?: Sub[];
   // A plan paused for a month and picked up again (a gym's freeze, a box skipped): still a
   // subscription (round 18). Only some pools have them.
   paused?: Sub[];
@@ -1099,6 +1102,16 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  moved: [
+    { descriptor: "SPOTIFY USA", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1199 },
+    { descriptor: "NETFLIX.COM", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1549 },
+    {
+      descriptor: "QZ CLOUD BACKUP",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 999,
+      alsoOk: DIGITAL,
+    },
+  ],
   paused: [
     {
       descriptor: "SQ *CORE YOGA STUDIO",
@@ -2351,6 +2364,39 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     if (m.category.startsWith("LOAN") || m.category.endsWith("INSURANCE"))
       L.bill(rows, m.descriptor);
     else L.neutralBills.push(rows);
+  }
+
+  // Round 19, from its own dice: a plan that moved card, one on the month's last day, one service
+  // from two cards.
+  const mv = rng(base + index * 104_729 + 34);
+  if (P.moved && mv.chance(0.6)) {
+    const sub = P.moved[index % P.moved.length];
+    const kind = (["moved", "monthEnd", "twoCards"] as const)[index % 3];
+    const other = cards.length > 1 ? cards[1].id : chk;
+    const day = kind === "monthEnd" ? 31 : mv.int(2, 20);
+    const moveAt = Math.max(1, months - mv.int(1, 2));
+    const runs: { account: string; day: number }[] =
+      kind === "twoCards"
+        ? [
+            { account: card.id, day },
+            { account: other, day: day + mv.int(5, 8) },
+          ]
+        : [{ account: card.id, day }];
+    for (const run of runs) {
+      const rows: string[] = [];
+      L.monthly(run.day, (date, i) => {
+        const account = kind === "moved" && i >= moveAt ? other : run.account;
+        const row = L.add(spend(account, date, sub.cents, sub));
+        if (row) rows.push(row.id);
+      });
+      L.findings.push({
+        type: "subscription_review",
+        rows,
+        annualCents: sub.cents * 12,
+        note: `${sub.descriptor}, ${kind}`,
+      });
+      L.bill(rows, sub.descriptor);
+    }
   }
 
   // A plan paused for one month in the middle (round 18), from its own dice.

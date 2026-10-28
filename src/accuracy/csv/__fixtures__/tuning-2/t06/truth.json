@@ -44,12 +44,22 @@
     },
     {
       "type": "subscription_review",
+      "about": "QZ CLOUD BACKUP, twoCards",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "QZ CLOUD BACKUP, twoCards",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
       "about": "SQ *ORANGETHEORY 4WK every 28 days",
       "perYear": 769.11
     },
     {
       "type": "idle_cash",
-      "about": "cash 5234322, excess 4106684",
+      "about": "cash 5229327, excess 4095397",
       "perYear": null
     }
   ],
@@ -94,23 +104,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 31839.22
+      "dollars": 31819.24
     },
     {
       "date": "2026-07-31",
-      "dollars": 36917.4
+      "dollars": 36877.44
     },
     {
       "date": "2026-08-31",
-      "dollars": 39721.31
+      "dollars": 39661.37
     },
     {
       "date": "2026-09-30",
-      "dollars": 45179.31
+      "dollars": 45099.39
     },
     {
       "date": "2026-10-24",
-      "dollars": 49803.97
+      "dollars": 49704.07
     }
   ]
 }

@@ -34,6 +34,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "SPOTIFY USA, moved",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
       "about": "PAYPAL *CRUNCHYROLL, paused a month",
       "perYear": 95.88
     },
@@ -59,7 +64,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 956783, excess 305910",
+      "about": "cash 954385, excess 299779",
       "perYear": null
     }
   ],
@@ -88,27 +93,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1199.15
+      "dollars": 1187.16
     },
     {
       "date": "2026-06-30",
-      "dollars": 2153.81
+      "dollars": 2129.83
     },
     {
       "date": "2026-07-31",
-      "dollars": 2986.18
+      "dollars": 2950.21
     },
     {
       "date": "2026-08-31",
-      "dollars": 4068.4
+      "dollars": 4020.44
     },
     {
       "date": "2026-09-30",
-      "dollars": 4717.21
+      "dollars": 4657.26
     },
     {
       "date": "2026-10-24",
-      "dollars": 5978.72
+      "dollars": 5906.78
     }
   ]
 }

@@ -29,6 +29,16 @@
     },
     {
       "type": "subscription_review",
+      "about": "QZ CLOUD BACKUP, twoCards",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "QZ CLOUD BACKUP, twoCards",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
       "about": "PAYPAL *CRUNCHYROLL, paused a month",
       "perYear": 95.88
     },
@@ -44,7 +54,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4918622, excess 4379033",
+      "about": "cash 4911629, excess 4365840",
       "perYear": null
     }
   ],
@@ -77,31 +87,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 24678.71
+      "dollars": 24658.73
     },
     {
       "date": "2026-05-31",
-      "dollars": 27703
+      "dollars": 27663.04
     },
     {
       "date": "2026-06-30",
-      "dollars": 31046.72
+      "dollars": 30986.78
     },
     {
       "date": "2026-07-31",
-      "dollars": 37615.11
+      "dollars": 37535.19
     },
     {
       "date": "2026-08-31",
-      "dollars": 40899.76
+      "dollars": 40799.86
     },
     {
       "date": "2026-09-30",
-      "dollars": 43771.11
+      "dollars": 43651.23
     },
     {
       "date": "2026-10-24",
-      "dollars": 47317.11
+      "dollars": 47177.25
     }
   ]
 }

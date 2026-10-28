@@ -50,6 +50,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "NETFLIX.COM, monthEnd",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
       "about": "BARKBOX every 28 days",
       "perYear": 456.25
     },
@@ -96,27 +101,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -5919.94
+      "dollars": -5935.43
     },
     {
       "date": "2026-06-30",
-      "dollars": -7804.26
+      "dollars": -7835.24
     },
     {
       "date": "2026-07-31",
-      "dollars": -8893.5
+      "dollars": -8939.97
     },
     {
       "date": "2026-08-31",
-      "dollars": -10738.16
+      "dollars": -10800.12
     },
     {
       "date": "2026-09-30",
-      "dollars": -13296.57
+      "dollars": -13374.02
     },
     {
       "date": "2026-10-24",
-      "dollars": -15286.93
+      "dollars": -15364.38
     }
   ]
 }

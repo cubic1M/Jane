@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   AS_OF,
+  CARD,
+  CHECKING,
   GEICO,
   GROCERIES,
   NETFLIX,
@@ -196,6 +198,23 @@ describe("subscription_review", () => {
       tx({ ...yoga, date: monthsAgo(m, 8), amountCents: 9900 }),
     );
     expect(run(input({ transactions: twice }))).toEqual([]);
+  });
+
+  // CSV bench, second tuning set: one service, two people's plans on two cards on their own days.
+  it("finds a plan paid from two cards on different days as two", () => {
+    const backup = { description: "QZ CLOUD BACKUP", pfcPrimary: null, pfcDetailed: null };
+    const transactions = [
+      ...[4, 3, 2, 1, 0].map((m) =>
+        tx({ ...backup, accountId: CARD.id, date: monthsAgo(m, 4), amountCents: 999 }),
+      ),
+      ...[4, 3, 2, 1, 0].map((m) =>
+        tx({ ...backup, accountId: CHECKING.id, date: monthsAgo(m, 11), amountCents: 999 }),
+      ),
+    ];
+    expect(run(input({ transactions })).map((f) => f.key)).toEqual([
+      "merchant:qz cloud backup",
+      "merchant:qz cloud backup@2",
+    ]);
   });
 
   it("never calls a payment on a debt a subscription, whatever its name", () => {
