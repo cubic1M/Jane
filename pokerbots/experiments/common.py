@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-RAW = ROOT / "results" / "raw"
+RAW = Path(os.environ.get("POKER_RAW", str(ROOT / "results" / "raw")))  # QUICK runs use another dir
 
 
 def make_bot(spec_str: str):
@@ -35,7 +35,8 @@ def make_bot(spec_str: str):
     kw = {}
     if "@" in s:
         s, budget = s.split("@", 1)
-        kw["budget"] = budget
+        # QUICK runs train tiny budgets only: BUDGET_OVERRIDE=1m maps every @XXm to it
+        kw["budget"] = os.environ.get("BUDGET_OVERRIDE") or budget
     bot = make(s + ("+lp" if lp else ""), **kw)
     if bug:
         from experiments.robustness import Miswired

@@ -12,7 +12,7 @@ import numpy as np
 from experiments.common import ROOT, load_results, match_wins, pair_units
 from experiments.stats import fmt_ci, mean_ci, t95
 
-OUT = ROOT / "report" / "tables.md"
+OUT = Path(__import__("os").environ.get("TABLES_OUT", str(ROOT / "report" / "tables.md")))
 
 
 def _bots_in(recs):
@@ -137,6 +137,36 @@ def field_summary(exp, cands, opponents) -> str:
     return "\n".join(out)
 
 
+def hybrid_table() -> str:
+    """Out-of-sample (fresh seeds) results for hybrid and its parents."""
+    from experiments.hybrid_eval import OPPONENTS, SUBJECTS, VARIANTS as HV
+    lines = ["| variant | bot | " + " | ".join(OPPONENTS) + " | mean vs strong (full_cfr, adaptive, balanced, preflop_cfr) | mean vs dummies |",
+             "|---|---|" + "---|" * (len(OPPONENTS) + 2)]
+    any_rows = False
+    for v in HV:
+        recs = load_results("hybrid", v)
+        if not recs:
+            continue
+        for s_ in SUBJECTS:
+            cells, strong, dumm = [], [], []
+            for o in OPPONENTS:
+                if o == s_:
+                    cells.append("—")
+                    continue
+                m, h, n = mean_ci(pair_units(recs, s_, o))
+                cells.append(f"{fmt_ci(m, h)}" if n else "")
+                if n:
+                    (dumm if o in ("push", "station", "maniac", "random_legal") else strong).append((m, h / t95(max(n - 1, 1)), n))
+            def avg(xs):
+                if not xs or min(x[2] for x in xs) < 2:
+                    return ""
+                return fmt_ci(float(np.mean([x[0] for x in xs])),
+                              1.96 * float(np.sqrt(np.sum(np.square([x[1] for x in xs])))) / len(xs))
+            lines.append(f"| {v} | {s_} | " + " | ".join(cells) + f" | {avg(strong)} | {avg(dumm)} |")
+            any_rows = True
+    return "\n".join(lines) if any_rows else "_no hybrid results yet_"
+
+
 def robustness_table() -> str:
     from experiments.robustness import BUGS
     recs_all = {}
@@ -176,6 +206,7 @@ def timing_table() -> str:
 
 def main():
     parts = ["# Generated tables\n", "## Round-robin\n", roundrobin_tables(),
+             "\n## Out-of-sample: hybrid and its parents (fresh seeds 20000+)\n", hybrid_table(),
              "\n## Robustness\n", robustness_table(), "\n## Timing\n", timing_table()]
     extra = ROOT / "results" / "cfr_budget.md"
     if extra.exists():
