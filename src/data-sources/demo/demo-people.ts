@@ -448,6 +448,17 @@ const DEFS: Record<PersonId, Def> = {
         [7, 14, 21],
         "Olive Garden",
       ),
+      // The family dog: food every month and the vet a few times a year (one of the life facts
+      // the profile reads from payments, src/profile/life-facts.ts).
+      R(
+        "petfood",
+        "card",
+        "CHEWY.COM",
+        "GENERAL_MERCHANDISE_PET_SUPPLIES",
+        [42, 78],
+        [12],
+        "Chewy",
+      ),
       R(
         "autoins",
         "checking",
@@ -488,7 +499,17 @@ const DEFS: Record<PersonId, Def> = {
       ...streaming("card", "netflix", "spotify", "hulu", "gym"),
       R("disney", "card", "DISNEY PLUS", "ENTERTAINMENT_TV_AND_MOVIES", 13.99, [17], "Disney+"),
     ],
-    once: [],
+    once: [
+      O(
+        "vet",
+        "card",
+        "RIVERSIDE ANIMAL HOSPITAL",
+        "MEDICAL_VETERINARY_SERVICES",
+        [95, 240],
+        [-200, -95, -30],
+        "Riverside Animal Hospital",
+      ),
+    ],
     cards: [{ account: "card", apr: 21.49, balance: 3120, minimum: 78 }],
     mortgage: {
       account: "mortgage",

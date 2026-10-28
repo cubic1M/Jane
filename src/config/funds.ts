@@ -32,11 +32,206 @@ export type FundFacts = {
   // rather than qualified dividends.
   yieldBps?: number;
   interest?: boolean;
+  // The day the expense ratio was read from the fund's own filing (its prospectus fee table, Form
+  // N-1A, or summary prospectus), when it has been. Without it the figure is the fund company's
+  // published one, rounded, and not yet checked against the filing.
+  asOf?: string;
 };
 
 const DEMO_SOURCE = "Demo fund facts (sample data, not a real fund)";
 
-export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
+// Spec: the investing area for the read-only beta. Expense ratios the fund companies publish for
+// well-known real funds, rounded, for facts on real accounts (what the funds cost in dollars a
+// year). They change a little each year: every figure shows where it came from and says to
+// confirm it on the fund's own page. A fund missing here shows "not known", never a guess.
+const REAL_SOURCE =
+  "Fund company's published expense ratio, rounded; the fee table in its prospectus (SEC Form N-1A) is the check";
+const real = (expenseRatioBps: number, mix: AssetMix, category: string): FundFacts => ({
+  expenseRatioBps,
+  mix,
+  category,
+  source: REAL_SOURCE,
+});
+// A figure read from the fund's own latest filing (SEC risk/return summary data, the fee table of
+// its prospectus): the filing's date is the asOf and its folder on sec.gov the source. It wins over
+// the fund company's published figure. Net of any fee waiver when the filing gives a net figure.
+const sec = (
+  expenseRatioBps: number,
+  mix: AssetMix,
+  category: string,
+  filed: string,
+  filing: { cik: number; adsh: string; form: string },
+): FundFacts => ({
+  expenseRatioBps,
+  mix,
+  category,
+  asOf: `${filed.slice(0, 4)}-${filed.slice(4, 6)}-${filed.slice(6, 8)}`,
+  source: `SEC ${filing.form} filed ${filed.slice(0, 4)}-${filed.slice(4, 6)}-${filed.slice(6, 8)}, fee table: https://www.sec.gov/Archives/edgar/data/${filing.cik}/${filing.adsh.replaceAll("-", "")}/`,
+});
+const US = { us_stocks: 1 } as const;
+const INTL = { intl_stocks: 1 } as const;
+const BONDS = { bonds: 1 } as const;
+
+export const REAL_FUND_FACTS: Readonly<Record<string, FundFacts>> = {
+  VTI: sec(3, US, "US total stock market ETF", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  VOO: sec(3, US, "S&P 500 ETF", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  IVV: real(3, US, "S&P 500 ETF"),
+  SPY: real(9, US, "S&P 500 ETF"),
+  QQQ: sec(18, US, "Nasdaq-100 ETF", "20251219", {
+    cik: 1067839,
+    adsh: "0001104659-25-123273",
+    form: "485BPOS",
+  }),
+  VUG: sec(3, US, "US large-company growth ETF", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  VTV: sec(3, US, "US large-company value ETF", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  SCHB: sec(3, US, "US broad market ETF", "20251222", {
+    cik: 1454889,
+    adsh: "0001104659-25-123308",
+    form: "485BPOS",
+  }),
+  SCHX: sec(3, US, "US large-company ETF", "20251222", {
+    cik: 1454889,
+    adsh: "0001104659-25-123308",
+    form: "485BPOS",
+  }),
+  SCHD: sec(6, US, "US dividend ETF", "20251222", {
+    cik: 1454889,
+    adsh: "0001104659-25-123308",
+    form: "485BPOS",
+  }),
+  VTSAX: sec(4, US, "US total stock market index fund", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  VFIAX: sec(4, US, "S&P 500 index fund", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  FXAIX: sec(1, US, "S&P 500 index fund", "20260424", {
+    cik: 819118,
+    adsh: "0000819118-26-000072",
+    form: "485BPOS",
+  }),
+  FSKAX: sec(1, US, "US total stock market index fund", "20260424", {
+    cik: 819118,
+    adsh: "0000819118-26-000072",
+    form: "485BPOS",
+  }),
+  SWTSX: sec(3, US, "US total stock market index fund", "20260226", {
+    cik: 904333,
+    adsh: "0000884546-26-000041",
+    form: "485BPOS",
+  }),
+  SWPPX: sec(2, US, "S&P 500 index fund", "20260226", {
+    cik: 904333,
+    adsh: "0000884546-26-000041",
+    form: "485BPOS",
+  }),
+  FCNTX: sec(74, US, "US large-company growth fund (actively managed)", "20260224", {
+    cik: 24238,
+    adsh: "0000024238-26-000028",
+    form: "485BPOS",
+  }),
+  ARKK: sec(75, US, "Actively managed innovation ETF", "20251126", {
+    cik: 1579982,
+    adsh: "0001213900-25-115285",
+    form: "485BPOS",
+  }),
+  SPXL: real(91, US, "Leveraged S&P 500 ETF (3x daily)"),
+  TQQQ: real(84, US, "Leveraged Nasdaq-100 ETF (3x daily)"),
+  VXUS: sec(5, INTL, "International total stock market ETF", "20260227", {
+    cik: 736054,
+    adsh: "0001193125-26-077488",
+    form: "485BPOS",
+  }),
+  VEA: sec(3, INTL, "Developed-markets ETF", "20260428", {
+    cik: 923202,
+    adsh: "0000923202-26-000059",
+    form: "485BPOS",
+  }),
+  VWO: sec(6, INTL, "Emerging-markets ETF", "20260227", {
+    cik: 857489,
+    adsh: "0001193125-26-077485",
+    form: "485BPOS",
+  }),
+  IEFA: sec(7, INTL, "Developed-markets ETF", "20251121", {
+    cik: 1100663,
+    adsh: "0001193125-25-291438",
+    form: "485BPOS",
+  }),
+  IEMG: sec(9, INTL, "Emerging-markets ETF", "20251219", {
+    cik: 930667,
+    adsh: "0001193125-25-327007",
+    form: "485BPOS",
+  }),
+  SCHF: sec(3, INTL, "International large-company ETF", "20251222", {
+    cik: 1454889,
+    adsh: "0001104659-25-123308",
+    form: "485BPOS",
+  }),
+  VTIAX: sec(9, INTL, "International total stock market index fund", "20260227", {
+    cik: 736054,
+    adsh: "0001193125-26-077488",
+    form: "485BPOS",
+  }),
+  FTIHX: sec(6, INTL, "International total stock market index fund", "20251229", {
+    cik: 35315,
+    adsh: "0000035315-25-001299",
+    form: "485BPOS",
+  }),
+  VT: sec(6, { us_stocks: 0.6, intl_stocks: 0.4 }, "Total world stock ETF", "20260227", {
+    cik: 857489,
+    adsh: "0001193125-26-077485",
+    form: "485BPOS",
+  }),
+  BND: sec(3, BONDS, "US total bond market ETF", "20260428", {
+    cik: 794105,
+    adsh: "0000794105-26-000106",
+    form: "485BPOS",
+  }),
+  AGG: sec(3, BONDS, "US total bond market ETF", "20260618", {
+    cik: 1100663,
+    adsh: "0001193125-26-275730",
+    form: "485BPOS",
+  }),
+  VBTLX: sec(4, BONDS, "US total bond market index fund", "20260428", {
+    cik: 794105,
+    adsh: "0000794105-26-000106",
+    form: "485BPOS",
+  }),
+  FXNAX: sec(3, BONDS, "US total bond market index fund", "20251027", {
+    cik: 35315,
+    adsh: "0000035315-25-001071",
+    form: "485BPOS",
+  }),
+  VNQ: sec(13, { other: 1 }, "Real estate ETF", "20260528", {
+    cik: 734383,
+    adsh: "0000734383-26-000129",
+    form: "485BPOS",
+  }),
+  GLD: real(40, { other: 1 }, "Gold ETF"),
+  IBIT: real(25, { other: 1 }, "Bitcoin ETF"),
+};
+
+const DEMO_FUND_FACTS: Readonly<Record<string, FundFacts>> = {
   NSTDX: {
     expenseRatioBps: 75,
     mix: { us_stocks: 0.54, intl_stocks: 0.36, bonds: 0.1 },
@@ -158,6 +353,12 @@ export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
   },
 };
 
+// Demo funds and the well-known real ones, by ticker.
+export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
+  ...REAL_FUND_FACTS,
+  ...DEMO_FUND_FACTS,
+};
+
 // Names for funds Jane may suggest but nobody holds yet (held ones are named by Plaid).
 export const FUND_NAMES: Readonly<Record<string, string>> = {
   NSTDX: "Northstar Target 2055 Fund",
@@ -185,6 +386,12 @@ export const LOWER_COST_EQUIVALENTS: Readonly<Record<string, readonly string[]>>
   NSTDX: ["KTRGX"],
   SLGFX: ["KLCX", "KTSIX"],
   PDIFX: ["KDVX", "KLCX"],
+  // Real funds: the same job at a lower published cost (S&P 500, developed-markets and
+  // international-total-market funds); FOR REVIEW with the fund company's own page.
+  FCNTX: ["FXAIX", "VOO"],
+  SPY: ["VOO", "IVV"],
+  VTIAX: ["VXUS"],
+  IEFA: ["VEA", "SCHF"],
 };
 
 // The funds the demo employer's 401(k) offers. Plaid doesn't report a plan's menu.

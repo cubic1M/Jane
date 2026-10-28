@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1364535, excess 806430",
+      "about": "cash 1200300, excess 124950",
       "perYear": null
     }
   ],
@@ -97,6 +97,10 @@
       "about": "KINGS HEAD PUB, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "DEEZER, two plans"
     }
@@ -104,27 +108,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 3514.09
+      "dollars": 3135.03
     },
     {
       "date": "2026-06-30",
-      "dollars": 4727.6
+      "dollars": 4195.29
     },
     {
       "date": "2026-07-31",
-      "dollars": 6067.45
+      "dollars": 5226.99
     },
     {
       "date": "2026-08-31",
-      "dollars": 7730.66
+      "dollars": 6505.15
     },
     {
       "date": "2026-09-30",
-      "dollars": 9591.96
+      "dollars": 8208.3
     },
     {
       "date": "2026-10-24",
-      "dollars": 11669.51
+      "dollars": 10027.16
     }
   ]
 }

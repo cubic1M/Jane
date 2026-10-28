@@ -1,10 +1,11 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { FUND_FACTS, FUND_NAMES, LOWER_COST_EQUIVALENTS } from "@/config/funds";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { olderPlans } from "@/planning/rollover";
 import { type Detector, suggestionId } from "./contract";
 import {
   evidence,
+  feeEvidence,
   factEvidence,
   liquidCents,
   monthlySpendCents,
@@ -31,15 +32,17 @@ const feeDrag: Detector = {
   detect({ profile, data }) {
     const rows = held(data.holdings).flatMap((h) => {
       const facts = FUND_FACTS[h.ticker!];
-      const cheaper = (LOWER_COST_EQUIVALENTS[h.ticker!] ?? [])
-        .map((t) => FUND_FACTS[t]?.expenseRatioBps)
-        .filter((b): b is number => b !== undefined)
-        .sort((a, b) => a - b)[0];
-      if (!facts || cheaper === undefined || facts.expenseRatioBps <= cheaper) return [];
+      const options = (LOWER_COST_EQUIVALENTS[h.ticker!] ?? [])
+        .filter((t) => FUND_FACTS[t])
+        .map((t) => ({ ticker: t, bps: FUND_FACTS[t].expenseRatioBps }))
+        .sort((a, b) => a.bps - b.bps);
+      const cheaper = options[0];
+      if (!facts || !cheaper || facts.expenseRatioBps <= cheaper.bps) return [];
       return [
         {
           h,
-          saving: Math.round((h.valueCents * (facts.expenseRatioBps - cheaper)) / 10_000),
+          cheaper,
+          saving: Math.round((h.valueCents * (facts.expenseRatioBps - cheaper.bps)) / 10_000),
         },
       ];
     });
@@ -50,8 +53,10 @@ const feeDrag: Detector = {
       id: suggestionId("investing", "investment_fees"),
       capability: "investing",
       topic: "investment_fees",
-      title: "Switch to cheaper funds that do the same job",
-      headline: headlineOf("Switch to cheaper funds", total, "saves"),
+      // A fact, so a real account sees it too: what the funds cost against similar ones, with no
+      // instruction to buy, sell or switch (that belongs to demo advice).
+      title: "Your funds cost more than similar funds that do the same job",
+      headline: `Check fund costs: ${formatWholeDollars(total)} a year more than similar funds`,
       short: clip(
         `${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}) costs more than a similar fund.`,
       ),
@@ -59,11 +64,23 @@ const feeDrag: Detector = {
       worthKind: "saves",
       confidence: weakest([
         evidence("seen", profile.months, rows.length, "funds with a cheaper equivalent"),
-        { percent: 85, reason: "fund costs from Jane's fund table" },
+        feeEvidence(
+          rows.flatMap((r) => [FUND_FACTS[r.h.ticker!], FUND_FACTS[r.cheaper.ticker]]),
+          data.today,
+        ),
       ]),
       urgency: "later",
-      why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); switching all of them would save about ${formatCents(total)} a year in fees.`,
+      why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); together they cost about ${formatCents(total)} a year more than similar funds do.`,
       action: { label: "See the fees", href: "/investments/fees" },
+      // Later holdings show the costly funds gone (the verified savings record).
+      watch: {
+        kind: "funds_left",
+        funds: rows.map((r) => ({
+          ticker: r.h.ticker!,
+          valueCents: r.h.valueCents,
+          yearlyCents: r.saving,
+        })),
+      },
     };
   },
 };
@@ -205,6 +222,14 @@ const oldAccounts: Detector = {
       urgency: "later",
       why: `You have ${plans.length} 401(k) accounts; ${formatCents(old)} sits in the smaller one${plans.length > 2 ? "s" : ""}. Old plans often cost about ${R.oldPlanFeeGapBps / 100}% a year more, so rolling it over (moved directly, never withdrawn) saves about ${formatCents(Math.round((old * R.oldPlanFeeGapBps) / 10_000))} a year.`,
       action: { label: "See your old accounts", href: "/investments/old-accounts" },
+      watch: {
+        kind: "account_closed",
+        accounts: older.plans.map((a) => ({
+          id: a.id,
+          balanceCents: a.balanceCents,
+          yearlyCents: Math.round((a.balanceCents * R.oldPlanFeeGapBps) / 10_000),
+        })),
+      },
     };
   },
 };
@@ -276,6 +301,16 @@ const costlyAnnuity: Detector = {
       urgency: "soon",
       why: `You hold ${formatCents(balance)} in an annuity. Many charge about ${R.annuityFeeBps / 100}% a year against ${R.annuityIndexBps / 100}% for an index fund, about ${formatCents(saving)} a year on your balance, and some charge to leave. Read its contract before changing anything.`,
       action: { label: "See costly products", href: "/investments/costly-products" },
+      watch: {
+        kind: "account_closed",
+        accounts: annuities.map((a) => ({
+          id: a.id,
+          balanceCents: a.balanceCents,
+          yearlyCents: Math.round(
+            (a.balanceCents * (R.annuityFeeBps - R.annuityIndexBps)) / 10_000,
+          ),
+        })),
+      },
     };
   },
 };

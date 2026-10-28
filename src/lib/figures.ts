@@ -23,7 +23,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import { categoryLabel } from "@/insights/labels";
-import { netWorth } from "@/insights/net-worth";
+import { netWorth, notCounting } from "@/insights/net-worth";
 import { oneOffNote } from "@/insights/typical-month";
 import { kindOf } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
@@ -213,9 +213,14 @@ export async function explainFigure(
     return {
       ...base,
       ...empty,
-      value: formatCents(worth.netCents),
-      summary:
+      // Never a silent $0: "Not known yet" when no balance is known, and what's left out said.
+      value: worth.known ? formatCents(worth.netCents) : "Not known yet",
+      summary: [
         "What your accounts hold and what you own, at the values you gave, less what you owe on cards and loans.",
+        notCounting(worth.unbalanced)?.sentence,
+      ]
+        .filter(Boolean)
+        .join(" "),
       rows: [
         ...accounts.map((a) => ({
           label: a.name,

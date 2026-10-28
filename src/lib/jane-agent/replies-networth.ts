@@ -1,5 +1,5 @@
 import { formatCents } from "@/lib/money";
-import type { netWorth } from "@/insights/net-worth";
+import { notCounting, type netWorth } from "@/insights/net-worth";
 import type { Reply } from "./replies";
 
 // "What's my net worth?": what they own less what they owe, as the net worth page says it.
@@ -10,6 +10,15 @@ export function netWorthReply(worth: ReturnType<typeof netWorth>): Reply {
     kind: "link" as const,
     href: "/net-worth",
   };
+  const left = notCounting(worth.unbalanced);
+  // Accounts there, but no balance on any: not known, never $0 (QA rounds 6-7).
+  if (!worth.known && left) {
+    return {
+      body: `I don't know your net worth yet. ${left.sentence} Add a balance and I'll add it up.`,
+      actions: [link],
+      refs: {},
+    };
+  }
   if (worth.assetsCents === 0 && worth.debtsCents === 0) {
     return {
       body: "I can't work out your net worth yet: add your accounts or something you own, and I'll add it up.",
@@ -21,10 +30,7 @@ export function netWorthReply(worth: ReturnType<typeof netWorth>): Reply {
     worth.cryptoCents > 0
       ? ` That includes ${formatCents(worth.cryptoCents)} of crypto I only read.`
       : "";
-  const missing =
-    worth.missing.length > 0
-      ? ` ${worth.missing.length} ${worth.missing.length === 1 ? "account has" : "accounts have"} no balance yet, so it isn't counted.`
-      : "";
+  const missing = left ? ` ${left.sentence}` : "";
   return {
     body: `Your net worth is ${formatCents(worth.netCents)}: you have ${formatCents(worth.assetsCents)} and owe ${formatCents(worth.debtsCents)}.${crypto}${missing}`,
     actions: [link],

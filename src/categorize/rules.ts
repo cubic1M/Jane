@@ -253,6 +253,10 @@ const RULES: readonly Rule[] = [
     keywords: [
       "ACORNS INVEST",
       "ACORNS*INVEST",
+      "FID BKG SVC",
+      "TD AMERITRADE",
+      "TDAMERITRADE",
+      "MERRILL EDGE",
       "ACORNS GROW",
       "STASH INVEST",
       "BETTERMENT",
@@ -500,6 +504,12 @@ const RULES: readonly Rule[] = [
   {
     category: "TRANSPORTATION_GAS",
     keywords: ["SHELL OIL", "CHEVRON", "EXXON", "EXXONMOBIL", "MOBIL", "ARCO", "SUNOCO"],
+  },
+  // Money in from a marketplace is a seller's payout, not a return (life bench, #798).
+  {
+    category: "INCOME_GIG_ECONOMY",
+    keywords: ["ETSY PAYOUT", "ETSY DEPOSIT", "EBAY PAYOUT", "EBAY COMMERCE"],
+    direction: "in",
   },
   {
     category: "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES",
@@ -1702,12 +1712,31 @@ const RULES: readonly Rule[] = [
   { category: "MEDICAL_EYE_CARE", keywords: ["OPTOMETRY", "EYECARE", "OPTICAL"] },
   {
     category: "MEDICAL_VETERINARY_SERVICES",
-    keywords: ["VETERINARY", "ANIMAL HOSPITAL", "VET CLINIC"],
+    keywords: [
+      "VETERINARY",
+      "VETERINARIAN",
+      "ANIMAL HOSPITAL",
+      "ANIMAL CLINIC",
+      "PET HOSPITAL",
+      "VET CLINIC",
+    ],
   },
   { category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", keywords: ["PHARMACY", "DRUG STORE"] },
   {
     category: "MEDICAL_PRIMARY_CARE",
-    keywords: ["URGENT CARE", "MEDICAL CENTER", "CLINIC", "PEDIATRICS", "PHYSICIANS"],
+    keywords: [
+      "URGENT CARE",
+      "MEDICAL CENTER",
+      "CLINIC",
+      "PEDIATRICS",
+      "PEDIATRIC",
+      "PHYSICIANS",
+      // From the life bench (#798): the doctors a person's payments name.
+      "FAMILY MEDICINE",
+      "DERMATOLOGY",
+      "ORTHOPEDIC",
+      "ORTHOPEDICS",
+    ],
     direction: "out",
   },
   {
@@ -1924,12 +1953,12 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "GENERAL_SERVICES_CHILDCARE",
-    keywords: ["DAYCARE", "CHILDCARE", "PRESCHOOL"],
+    keywords: ["DAYCARE", "DAY CARE", "CHILDCARE", "CHILD CARE", "PRESCHOOL"],
     direction: "out",
   },
   {
     category: "GENERAL_SERVICES_EDUCATION",
-    keywords: ["UNIVERSITY", "COLLEGE", "ACADEMY", "TUITION", "SCHOOL"],
+    keywords: ["UNIVERSITY", "COLLEGE", "ACADEMY", "TUITION", "SCHOOL", "BURSAR", "MEAL PLAN"],
     direction: "out",
   },
   {

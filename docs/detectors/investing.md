@@ -111,3 +111,43 @@ family), `rmd` (Ruth). Already built by step 254 for the same capability: `conce
 rest of the inventory (fees, rebalancing, harvesting, rollovers, location and so on) needs
 holdings-level data that the profile input does not carry yet; those wait for the profile to
 include holdings (a follow-up for step 253's loader).
+
+
+## Accuracy bench (2026-10-28)
+
+Each investing detector is scored on the eight sample people against a truth table written from
+their lives, not from the detectors' output (`src/accuracy/investing/truth.ts`): who it should
+reach (`yes`), who may or may not (`maybe`), and everyone else, who must not get it. Precision is
+right fires over all fires that weren't "maybe"; recall is right fires over the people it should
+reach. The gate (`src/accuracy/investing/investing-accuracy.test.ts`, with the unit tests) fails on
+any false fire or missed person, and on an investing detector with no truth. The practice
+portfolio's own ideas (`practice_*`) are the practice lane's and not scored here.
+
+| Detector | Precision | Recall | False fires | Missed |
+| --- | ---: | ---: | --- | --- |
+| employer_match | 100% | 100% | – | – |
+| catch_up | 100% | 100% | – | – |
+| hsa | 100% | 100% | – | – |
+| backdoor_roth | 100% | 100% | – | – |
+| education_529 | 100% | 100% | – | – |
+| rmd | 100% | 100% | – | – |
+| investment_fees | 100% | 100% | – | – |
+| rebalance | 100% | 100% | – | – |
+| auto_invest | 100% | 100% | – | – |
+| old_accounts | 100% | 100% | – | – |
+| asset_location | 100% | 100% | – | – |
+| costly_products | 100% | 100% | – | – |
+| plan_menu | 100% | 100% | – | – |
+| short_term_cash | 100% | 100% | – | – |
+| sudden_money | 100% | 100% | – | – |
+| values_funds | 100% | 100% | – | – |
+| beneficiaries | 100% | 100% | – | – |
+| invested_cash | 100% | 100% | – | – |
+| concentration | 100% | 100% | – | – |
+| retirement_self_employed | 100% | 100% | – | – |
+| idle_cash | 100% | 100% | – | – |
+| social_security_timing | 100% | 100% | – | – |
+
+## Fund expense ratios from SEC filings (2026-10-28)
+
+30 of the 36 real funds in `REAL_FUND_FACTS` take their expense ratio from the fund's own latest filing: the SEC "Mutual Fund Prospectus Risk/Return Summary" data sets (`NetExpensesOverAssets`, else `ExpensesOverAssets`, per share class, class found by ticker in `company_tickers_mf.json`), latest filing across 2025q4–2026q2. `asOf` is the filing date and `source` the filing's folder on sec.gov. The filing wins over the company's published figure (FCNTX is 0.74%, not 0.39%). SPY, IVV, SPXL, TQQQ, GLD and IBIT are not in the data sets (trusts and exchange-traded products with other fee tables): they stay "published" at lower confidence. Re-run by reading the data sets again each quarter.

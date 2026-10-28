@@ -55,6 +55,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 261
+    },
+    {
+      "type": "subscription_review",
       "about": "QZ NOTES PRO, now yearly",
       "perYear": 79.99
     },
@@ -104,6 +109,10 @@
       "about": "QZ NOTES PRO, the monthly plan it left"
     },
     {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two orders"
     }
@@ -111,31 +120,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 4643.25
+      "dollars": 4590.6
     },
     {
       "date": "2026-05-31",
-      "dollars": 3750.17
+      "dollars": 3302.15
     },
     {
       "date": "2026-06-30",
-      "dollars": 2956.36
+      "dollars": 1759.96
     },
     {
       "date": "2026-07-31",
-      "dollars": 2107.66
+      "dollars": 788.84
     },
     {
       "date": "2026-08-31",
-      "dollars": 858.48
+      "dollars": -816.91
     },
     {
       "date": "2026-09-30",
-      "dollars": -286.19
+      "dollars": -2108.15
     },
     {
       "date": "2026-10-24",
-      "dollars": -1001
+      "dollars": -2951.9
     }
   ]
 }

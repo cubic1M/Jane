@@ -65,7 +65,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1459718, excess 953879",
+      "about": "cash 1412860, excess 174043",
       "perYear": null
     }
   ],
@@ -95,6 +95,10 @@
       "about": "SUNRISE BAKERY, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "DEEZER, two plans"
     }
@@ -102,31 +106,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 5077.86
+      "dollars": 5010.92
     },
     {
       "date": "2026-05-31",
-      "dollars": 7101.44
+      "dollars": 6967.56
     },
     {
       "date": "2026-06-30",
-      "dollars": 7628.64
+      "dollars": 7427.82
     },
     {
       "date": "2026-07-31",
-      "dollars": 7785.68
+      "dollars": 7517.92
     },
     {
       "date": "2026-08-31",
-      "dollars": 8733.4
+      "dollars": 8398.7
     },
     {
       "date": "2026-09-30",
-      "dollars": 9969.34
+      "dollars": 9567.7
     },
     {
       "date": "2026-10-24",
-      "dollars": 10480
+      "dollars": 10011.42
     }
   ]
 }

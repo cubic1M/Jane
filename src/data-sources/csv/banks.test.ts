@@ -163,3 +163,155 @@ describe("Discover card", () => {
     expect(result.transactions[0].hints).toEqual({ bankCategory: "Services" });
   });
 });
+
+describe("Apple Card", () => {
+  const result = read("apple-card.csv");
+
+  it("uses the clearing date; purchases are money out, the payment and a return money in", () => {
+    expect(result.format.id).toBe("apple_card");
+    expect(result.account).toMatchObject({ kind: "credit_card" });
+    expect(amounts(result)).toEqual([
+      ["2026-09-29", 2345],
+      ["2026-09-25", -50000],
+      ["2026-09-21", 1549],
+      ["2026-09-13", -3000],
+    ]);
+    expect(result.transactions[0].hints).toEqual({
+      bankCategory: "Restaurants",
+      bankType: "Purchase",
+    });
+  });
+
+  it("works without the Purchased By column", () => {
+    const older = readCsvFile({
+      name: "apple-older.csv",
+      text: "Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD)\n09/02/2026,09/03/2026,APPLE.COM/BILL,Apple Services,Other,Purchase,2.99\n",
+    });
+    expect(older.ok && older.transactions.map((t) => [t.date, t.amountCents])).toEqual([
+      ["2026-09-03", 299],
+    ]);
+  });
+});
+
+describe("U.S. Bank", () => {
+  const result = read("us-bank.csv");
+
+  it("reads the name as the description and money out as positive", () => {
+    expect(result.format.id).toBe("us_bank");
+    expect(amounts(result)).toEqual([
+      ["2026-09-29", 1549],
+      ["2026-09-26", -250000],
+      ["2026-09-20", 12000],
+    ]);
+    expect(result.transactions[0].description).toBe("NETFLIX.COM");
+  });
+
+  it("reads older exports: M/D/YYYY dates and four decimal places", () => {
+    const older = readCsvFile({
+      name: "us-bank-older.csv",
+      text: '"Date","Transaction","Name","Memo","Amount"\n"9/2/2026","DEBIT","SHELL OIL 57444","Download from usbank.com.","-41.2350"\n"9/1/2026","CREDIT","ACME CORP PAYROLL","Download from usbank.com.","2500.0000"\n',
+    });
+    expect(older.ok && older.transactions.map((t) => [t.date, t.amountCents])).toEqual([
+      ["2026-09-02", 4124],
+      ["2026-09-01", -250000],
+    ]);
+  });
+});
+
+describe("Ally Bank", () => {
+  const result = read("ally.csv");
+
+  it("reads the spaced header, ISO dates and signed amounts", () => {
+    expect(result.format.id).toBe("ally");
+    expect(result.account).toMatchObject({ kind: "savings" });
+    expect(result.skipped).toEqual([]);
+    expect(amounts(result)).toEqual([
+      ["2026-09-29", 1549],
+      ["2026-09-26", -250000],
+      ["2026-09-30", -411],
+    ]);
+    expect(result.transactions[2].description).toBe("Interest Paid");
+  });
+});
+
+describe("Schwab Bank checking", () => {
+  const result = read("schwab-bank.csv");
+
+  it("leaves pending rows out, reads the posted date and keeps the running balance", () => {
+    expect(result.format.id).toBe("schwab_bank");
+    expect(result.skipped).toEqual([]);
+    expect(amounts(result)).toEqual([
+      ["2026-09-29", 1549],
+      ["2026-09-26", -250000],
+      ["2026-09-20", 12000],
+      ["2026-09-15", -300],
+    ]);
+    expect(result.balances).toContainEqual({ date: "2026-09-29", balanceCents: 432110 });
+  });
+
+  it("works on older exports without a Status column", () => {
+    const older = readCsvFile({
+      name: "schwab-older.csv",
+      text: '"Date","Type","CheckNumber","Description","Withdrawal","Deposit","RunningBalance"\n"09/02/2026","ACH","","NETFLIX.COM","$15.49","","$100.00"\n',
+    });
+    expect(older.ok && older.transactions.map((t) => t.amountCents)).toEqual([1549]);
+  });
+});
+
+describe("Venmo", () => {
+  const result = read("venmo.csv");
+
+  it("finds the header under the title, reads signed amounts and names who and what", () => {
+    expect(result.format.id).toBe("venmo");
+    expect(result.account).toEqual({ name: "Venmo", kind: "payment_app" });
+    // The balance lines and the disclaimer go quietly; the pending charge waits.
+    expect(result.skipped).toEqual([]);
+    expect(result.transactions.map((t) => [t.date, t.amountCents, t.description])).toEqual([
+      ["2026-09-03", 3250, "Alex Kim: Dinner 🍕"],
+      ["2026-09-05", 120000, "Oak Ridge Apts: September rent"],
+      ["2026-09-12", -4500, "Jordan Lee: Concert tickets"],
+      ["2026-09-20", 5000, "Transfer to bank"],
+    ]);
+  });
+
+  it("reads the newer layout (Transaction ID, Date)", () => {
+    const newer = readCsvFile({
+      name: "venmo-newer.csv",
+      text: "Transaction ID,Date,Time (UTC),Type,Status,Note,From,Donor email,To,Amount (total)\n9001,2026-10-02,18:00:00,Payment,Complete,Groceries,Sam Example,,Alex Kim,- $18.25\n",
+    });
+    expect(newer.ok && newer.transactions.map((t) => [t.date, t.amountCents])).toEqual([
+      ["2026-10-02", 1825],
+    ]);
+  });
+});
+
+describe("PayPal", () => {
+  const result = read("paypal.csv");
+
+  it("keeps payments from the PayPal balance and leaves out what a card paid for", () => {
+    expect(result.format.id).toBe("paypal");
+    expect(result.account).toEqual({ name: "PayPal", kind: "payment_app" });
+    expect(result.transactions.map((t) => [t.date, t.amountCents, t.description])).toEqual([
+      ["2026-09-02", 1199, "Spotify USA"],
+      ["2026-09-15", -2500, "Jamie Rivera"],
+      ["2026-09-28", 6301, "Transfer to bank"],
+    ]);
+    // The card deposit and the Etsy payment it paid for; the euro payment. Pending: quietly.
+    expect(result.skipped.map((s) => s.reason)).toEqual([
+      "In EUR, not US dollars",
+      "Paid by card or bank: that statement has it",
+      "Paid by card or bank: that statement has it",
+    ]);
+    expect(result.balances).toContainEqual({ date: "2026-09-28", balanceCents: 0 });
+  });
+
+  it("keeps a bank deposit into PayPal that paid for nothing that day", () => {
+    const topUp = readCsvFile({
+      name: "paypal-topup.csv",
+      text: '"Date","Time","TimeZone","Name","Type","Status","Currency","Gross","Fee","Net"\n"09/01/2026","09:00:00","PDT","","Bank Deposit to PP Account","Completed","USD","100.00","0.00","100.00"\n',
+    });
+    expect(topUp.ok && topUp.transactions.map((t) => [t.amountCents, t.description])).toEqual([
+      [-10000, "Transfer from bank"],
+    ]);
+  });
+});

@@ -96,6 +96,10 @@
       "about": "SUNRISE DONUT, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "ACORNS INVEST 8123, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "PANDORA*PLUS, two plans"
     }
@@ -103,31 +107,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 595.89
+      "dollars": 512.27
     },
     {
       "date": "2026-05-31",
-      "dollars": 303.12
+      "dollars": 135.88
     },
     {
       "date": "2026-06-30",
-      "dollars": -2051.73
+      "dollars": -2302.59
     },
     {
       "date": "2026-07-31",
-      "dollars": -1918.94
+      "dollars": -2253.42
     },
     {
       "date": "2026-08-31",
-      "dollars": -3026.07
+      "dollars": -3444.17
     },
     {
       "date": "2026-09-30",
-      "dollars": -4475.37
+      "dollars": -4977.09
     },
     {
       "date": "2026-10-24",
-      "dollars": -4479.74
+      "dollars": -5065.08
     }
   ]
 }

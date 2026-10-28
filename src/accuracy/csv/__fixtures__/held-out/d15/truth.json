@@ -86,6 +86,10 @@
       "about": "GRACE MINISTRIES TITHE, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "ACORNS INVEST 8123, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "DEEZER, two plans"
     }
@@ -93,27 +97,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1708.09
+      "dollars": 1588.52
     },
     {
       "date": "2026-06-30",
-      "dollars": -67.83
+      "dollars": -447.09
     },
     {
       "date": "2026-07-31",
-      "dollars": -1395.27
+      "dollars": -1917.69
     },
     {
       "date": "2026-08-31",
-      "dollars": -3350.28
+      "dollars": -4087.29
     },
     {
       "date": "2026-09-30",
-      "dollars": -5155.94
+      "dollars": -6148.15
     },
     {
       "date": "2026-10-24",
-      "dollars": -5875.02
+      "dollars": -6979.98
     }
   ]
 }

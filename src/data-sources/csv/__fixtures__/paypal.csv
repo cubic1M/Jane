@@ -1,0 +1,8 @@
+"Date","Time","TimeZone","Name","Type","Status","Currency","Gross","Fee","Net","From Email Address","To Email Address","Transaction ID","Balance"
+"09/02/2026","10:01:12","PDT","Spotify USA","PreApproved Payment Bill User Payment","Completed","USD","-11.99","0.00","-11.99","sam@example.test","billing@spotify.example","1AB00001","38.01"
+"09/10/2026","14:20:00","PDT","","General Card Deposit","Completed","USD","64.20","0.00","64.20","","sam@example.test","1AB00002","102.21"
+"09/10/2026","14:20:01","PDT","Etsy Seller Shop","Express Checkout Payment","Completed","USD","-64.20","0.00","-64.20","sam@example.test","shop@etsy.example","1AB00003","38.01"
+"09/15/2026","09:00:00","PDT","Jamie Rivera","General Payment","Completed","USD","25.00","0.00","25.00","jamie@example.test","sam@example.test","1AB00004","63.01"
+"09/18/2026","11:11:11","PDT","eBay Seller","Express Checkout Payment","Pending","USD","-19.99","0.00","-19.99","sam@example.test","seller@ebay.example","1AB00005","63.01"
+"09/20/2026","16:45:00","PDT","Foreign Shop","Express Checkout Payment","Completed","EUR","-12.00","0.00","-12.00","sam@example.test","shop@foreign.example","1AB00006","63.01"
+"09/28/2026","08:30:00","PDT","","User Initiated Withdrawal","Completed","USD","-63.01","0.00","-63.01","sam@example.test","","1AB00007","0.00"

@@ -39,6 +39,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "PADDLE.NET* QZFOCUS, in euros",
+      "perYear": 141.96
+    },
+    {
+      "type": "subscription_review",
       "about": "SPOTIFY USA, moved",
       "perYear": 143.88
     },
@@ -66,6 +71,10 @@
       "about": "ACORNS INVEST, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at GREAT CLIPS 4412"
     },
@@ -77,19 +86,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 5041.17
+      "dollars": 4819.94
     },
     {
       "date": "2026-08-31",
-      "dollars": 5674.81
+      "dollars": 4901.68
     },
     {
       "date": "2026-09-30",
-      "dollars": 6090.16
+      "dollars": 5095.82
     },
     {
       "date": "2026-10-24",
-      "dollars": 6626.79
+      "dollars": 5411.05
     }
   ]
 }

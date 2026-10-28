@@ -7,6 +7,7 @@ import { forecastAccounts, upcomingBills } from "@/detection/forecast";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { LoadingBar } from "@/components/loading-bar";
+import { EmptyState } from "@/components/empty-state";
 
 const dayLabel = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -58,7 +59,10 @@ async function Bills() {
       })}
 
       {bills.length === 0 ? (
-        <p className="text-zinc-600 dark:text-zinc-400">No regular charges expected.</p>
+        <EmptyState
+          words="Nothing expected in the next month yet. Jane learns your bills once a charge comes back month after month, so a few months of statements show the most."
+          next={{ href: "/import", label: "Add older statements" }}
+        />
       ) : (
         <ol className="flex flex-col gap-4">
           {[...byDate].map(([date, rows]) => (

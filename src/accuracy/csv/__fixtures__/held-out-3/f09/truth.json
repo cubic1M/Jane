@@ -68,24 +68,28 @@
     {
       "type": "subscription_review",
       "about": "GRACE FELLOWSHIP, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 1952.4
+      "dollars": 1764.07
     },
     {
       "date": "2026-08-31",
-      "dollars": 2496.34
+      "dollars": 1962.55
     },
     {
       "date": "2026-09-30",
-      "dollars": 1338.57
+      "dollars": 448.58
     },
     {
       "date": "2026-10-24",
-      "dollars": -779.89
+      "dollars": -1828.61
     }
   ]
 }

@@ -12,9 +12,11 @@ import { detect } from "@/detection/detect";
 import { addDays, expectedDates, isComingUp } from "@/detection/forecast";
 import { withDirectory } from "@/detection/merchants";
 import { isAmbiguousRecurring } from "@/detection/rules/subscription-review";
+import { rentTransfers } from "@/detection/rent-transfers";
 import { buildStreams, merchantOf } from "@/detection/streams";
 import type { Candidate, DetectionInput, DetectionTransaction } from "@/detection/types";
 import { monthsBefore } from "@/detection/units";
+import { netWorth, notCounting } from "@/insights/net-worth";
 import { dailyNetWorth } from "@/insights/net-worth-series";
 import { kindOf } from "@/insights/spending";
 import type { ScopedDb } from "@/lib/db-scoped";
@@ -100,6 +102,8 @@ export type Upload = {
   findings: Candidate[];
   // Balances kept for the net worth line: the statements' own, then month ends worked back.
   snapshots: (DayBalance & { accountId: string })[];
+  // Each account's latest balance in its own files, or null when they carry none.
+  fileLatest: Record<string, number | null>;
 };
 
 const clean = (s: string) => normalizeDescription(s);
@@ -224,7 +228,81 @@ export async function runUpload(person: CsvPerson): Promise<Upload> {
     },
     MERCHANT_SEED,
   );
-  return { person, files, failedFiles, rows, input, findings: detect(input), snapshots };
+  const fileLatest = Object.fromEntries(person.accounts.map((a) => [a.id, latestInFile(a.id)]));
+  return {
+    person,
+    files,
+    failedFiles,
+    rows,
+    input,
+    findings: detect(input),
+    snapshots,
+    fileLatest,
+  };
+}
+
+// The two ways /import's balance question goes (#872: "What do you owe on this card today?"):
+// the person answers it for every account, or skips it for every one. Answered, net worth and
+// idle cash must be the hand-worked figures. Skipped, every account whose files carry no balance
+// must be named as not counted (never a silent $0 or a figure that leaves it out), and idle cash
+// must not fire from the cash Jane can see when the truth has none.
+export type BalancePaths = {
+  typedRight: boolean;
+  idleTypedRight: boolean;
+  // "Is this your rent?" (round 24): payees asked about, those that aren't rent, and idle cash
+  // (balances typed) once the person answers truthfully. Unanswered, nothing changes.
+  rentAsked: number;
+  rentAskedNotRent: number;
+  idleAnsweredRight: boolean;
+  leftOut: number;
+  silent: boolean;
+  idleSkippedFalse: boolean;
+};
+
+export function balancePaths(up: Upload): BalancePaths {
+  const { person } = up;
+  const withBalances = (balanceOf: (a: CsvPerson["accounts"][number]) => number | null) =>
+    up.input.accounts.map((a) => {
+      const account = person.accounts.find((x) => x.id === a.id)!;
+      return { ...a, currentBalanceCents: balanceOf(account) };
+    });
+  const worthOf = (accounts: typeof up.input.accounts) =>
+    netWorth(accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })));
+  const idleOf = (accounts: typeof up.input.accounts) =>
+    detect({ ...up.input, accounts }).some((f) => f.type === "idle_cash");
+  const idleTruth = person.truth.findings.some((f) => f.type === "idle_cash");
+
+  const typed = withBalances((a) => balanceOn(person, a, person.asOf));
+  const skipped = withBalances((a) => up.fileLatest[a.id] ?? null);
+  const skippedWorth = worthOf(skipped);
+  const leftOut = skipped.filter((a) => a.currentBalanceCents === null).length;
+  const said = notCounting(skippedWorth.unbalanced);
+  // The person answers each question truthfully: a yes files the payee's payments as rent.
+  const rentIds = new Set(
+    person.rows.filter((r) => r.category === "RENT_AND_UTILITIES_RENT").map((r) => r.id),
+  );
+  const asked = rentTransfers(up.input);
+  const isRent = asked.filter((a) => a.transactionIds.every((id) => rentIds.has(id)));
+  const nowRent = new Set(isRent.flatMap((a) => a.transactionIds));
+  const answered = {
+    ...up.input,
+    accounts: typed,
+    transactions: up.input.transactions.map((t) =>
+      nowRent.has(t.id)
+        ? { ...t, pfcPrimary: "RENT_AND_UTILITIES", pfcDetailed: "RENT_AND_UTILITIES_RENT" }
+        : t,
+    ),
+  };
+  return {
+    typedRight: worthOf(typed).netCents === netWorthOn(person, person.asOf),
+    idleTypedRight: idleOf(typed) === idleTruth,
+    rentAsked: asked.length,
+    rentAskedNotRent: asked.length - isRent.length,
+    idleAnsweredRight: detect(answered).some((f) => f.type === "idle_cash") === idleTruth,
+    leftOut,
+    silent: leftOut > 0 && (said === null || skippedWorth.unbalanced.length !== leftOut),
+    idleSkippedFalse: idleOf(skipped) && !idleTruth,
+  };
 }
 
 // --- Suggestions' confidence ------------------------------------------------------------------
@@ -318,6 +396,7 @@ export type PersonScore = {
   spending: { truth: number; absError: number };
   income: { truth: number; absError: number };
   netWorth: { truth: number; jane: number };
+  balancePaths: BalancePaths;
   line: { points: number; shown: number; absError: number; scale: number };
   // Whether Jane knew every account's balance today (typed, or from the statement).
   balancesKnown: boolean;
@@ -569,6 +648,7 @@ export async function scorePerson(person: CsvPerson): Promise<PersonScore> {
     spending,
     income,
     netWorth: { truth: truthNet, jane: todayCents },
+    balancePaths: balancePaths(up),
     line,
     balancesKnown: up.input.accounts.every((a) => a.currentBalanceCents !== null),
     judged: judgedOfUpload(up),
@@ -596,6 +676,18 @@ export type CsvScoreboard = {
   spendingError: number;
   incomeError: number;
   netWorth: { right: number; absError: number };
+  // /import's balance question, answered or skipped (balancePaths).
+  balances: {
+    typedRight: number;
+    idleTypedRight: number;
+    rentAsked: number;
+    rentAskedNotRent: number;
+    idleAnsweredRight: number;
+    skippedPeople: number;
+    leftOut: number;
+    silent: number;
+    idleSkippedFalse: number;
+  };
   line: { coverage: number; error: number; errorWhereKnown: number; peopleKnown: number };
   // Is "80% sure" right 80% of the time, on uploaded statements?
   calibration: Bucket[];
@@ -651,6 +743,17 @@ export function summarize(scores: readonly PersonScore[]): CsvScoreboard {
       sum((s) => s.income.absError),
       sum((s) => s.income.truth),
     ),
+    balances: {
+      typedRight: scores.filter((s) => s.balancePaths.typedRight).length,
+      idleTypedRight: scores.filter((s) => s.balancePaths.idleTypedRight).length,
+      rentAsked: sum((s) => s.balancePaths.rentAsked),
+      rentAskedNotRent: sum((s) => s.balancePaths.rentAskedNotRent),
+      idleAnsweredRight: scores.filter((s) => s.balancePaths.idleAnsweredRight).length,
+      skippedPeople: scores.filter((s) => s.balancePaths.leftOut > 0).length,
+      leftOut: sum((s) => s.balancePaths.leftOut),
+      silent: scores.filter((s) => s.balancePaths.silent).length,
+      idleSkippedFalse: scores.filter((s) => s.balancePaths.idleSkippedFalse).length,
+    },
     netWorth: {
       right: scores.filter((s) => s.netWorth.jane === s.netWorth.truth).length,
       absError: sum((s) => Math.abs(s.netWorth.jane - s.netWorth.truth)),

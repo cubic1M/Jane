@@ -24,6 +24,8 @@ import type { PriceRise } from "@/planning/price-rises";
 import { loadMoneyForTwo, type MoneyForTwoView } from "@/lib/money-for-two";
 import { loadTradeoffs, type TradeoffView } from "@/lib/goal-tradeoffs";
 import { nextQuestion, type OpenQuestion } from "@/lib/questions";
+import { loadRentQuestion } from "@/lib/rent-question";
+import type { RentTransfer } from "@/detection/rent-transfers";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
 import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
@@ -152,6 +154,9 @@ export type Snapshot = {
   tradeoffs?: TradeoffView | null;
   // Spec step 257: the one question worth asking now. Optional, like changes.
   question?: OpenQuestion | null;
+  // CSV bench round 24: a payee sent about the same amount near each month's start, to ask
+  // "Is this your rent?". Optional, like changes.
+  rentQuestion?: RentTransfer | null;
   // Spec step 208: unusual-activity alerts waiting for "this was me" or "not me".
   unusual?: { id: string; key: string; title: string; body: string }[];
   // Spec step 207: what the person says yes to and what worked, by kind of finding.
@@ -347,6 +352,7 @@ export async function loadSnapshot(
     two,
     tradeoffs,
     close,
+    rentQuestion,
   ] = await Promise.all([
     light ? NO_MORE : loadMore(userId, { client, now, input }),
     light ? {} : loadTaxSnapshot(userId, { client, now }),
@@ -368,6 +374,7 @@ export async function loadSnapshot(
     loadMoneyForTwo(userId, { client, now }),
     light ? null : loadTradeoffs(userId, { client, now, input }),
     loadClose(userId, { client }),
+    light ? null : loadRentQuestion(userId, { client, now, input }),
   ]);
 
   return {
@@ -443,6 +450,7 @@ export async function loadSnapshot(
     two,
     tradeoffs,
     close,
+    rentQuestion,
     lean: light
       ? { open: [], ended: [] }
       : {

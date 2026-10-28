@@ -1,13 +1,26 @@
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
-import type { AccountKind } from "@/data-sources/types";
+import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "@/detection/units";
+import { idleCashOf } from "@/planning/idle-cash";
 
 // The CSV accuracy bench's people (2026-10-27): 20 synthetic people, each with 3 to 6 months of
 // true transactions on 2 or 3 accounts and the truth for everything Jane should say about them.
 // ./render.ts writes each account as its bank exports it (./layouts.ts), mess and all; ./score.ts
 // runs the upload path on those files and scores it against this truth. Nothing here is a real
 // person or a real account. A fixed seed makes the same people every time.
+
+// The ways a bank words money sent to a brokerage or an investing app (read-only beta).
+const INVESTING_TRANSFERS: readonly { descriptor: string }[] = [
+  { descriptor: "ROBINHOOD DEBITS XXXXXX3412" },
+  { descriptor: "FID BKG SVC LLC MONEYLINE" },
+  { descriptor: "VANGUARD BUY INVESTMENT" },
+  { descriptor: "SCHWAB BROKERAGE MONEYLINK" },
+  { descriptor: "COINBASE" },
+  { descriptor: "E*TRADE ACH DEPOSIT" },
+  { descriptor: "TD AMERITRADE CLEARING" },
+  { descriptor: "ACORNS INVEST 8123" },
+];
 
 export const CSV_SEED = 20_261_027;
 export const CSV_AS_OF = "2026-10-24";
@@ -119,6 +132,10 @@ export type CsvPerson = {
   start: string;
   accounts: CsvAccount[];
   rows: TrueRow[];
+  // Statements uploaded again besides the account's own (round 23): the same file twice, or
+  // an export of another stretch that overlaps the others by a week or more (as a joint account
+  // exported by each partner arrives).
+  uploads?: { account: string; from: string; to: string; again?: boolean }[];
   truth: {
     findings: TrueFinding[];
     // Things that look like a finding and aren't, by row: a group's tickets, a pending copy,
@@ -381,6 +398,13 @@ type Pool = {
   // A plan that moved to another card part-way, one billed on the month's last day, and one
   // service paid twice from two cards on different days (two people's accounts). Round 19.
   moved?: Sub[];
+  // The upload mess real beta users hit (round 23): a statement uploaded twice, two overlapping
+  // by a week, a chargeback, a card paid from a checking account never uploaded, a month with no
+  // income. Each person gets one, by turn.
+  uploadMess?: boolean;
+  // A plan billed in another currency: its dollar amount moves a little every month with the
+  // exchange rate (round 22).
+  fx?: Sub[];
   // A plan switched from monthly to yearly: the monthly charges stop, one yearly charge comes
   // (round 21). The yearly one is the subscription now.
   toYearly?: {
@@ -1111,6 +1135,21 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  uploadMess: true,
+  fx: [
+    {
+      descriptor: "PADDLE.NET* QZFOCUS",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 1190,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "FS *QZSKETCH EUR",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 2140,
+      alsoOk: DIGITAL,
+    },
+  ],
   toYearly: [
     {
       descriptor: "AMAZON PRIME*4K2LM90",
@@ -2398,6 +2437,28 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     else L.neutralBills.push(rows);
   }
 
+  // Round 22, from its own dice: a plan billed in euros, a little over or under its price each month.
+  const fxr = rng(base + index * 104_729 + 36);
+  if (P.fx && fxr.chance(0.5)) {
+    const plan = fxr.pick(P.fx);
+    const rows: string[] = [];
+    L.monthly(fxr.int(2, 27), (date) => {
+      const cents = Math.round(plan.cents * (1 + (fxr.next() - 0.5) * 0.05));
+      const row = L.add(spend(card.id, date, cents, plan));
+      if (row) rows.push(row.id);
+    });
+    const last = L.rows.find((x) => x.id === rows[rows.length - 1]);
+    if (last && rows.length >= 2) {
+      L.findings.push({
+        type: "subscription_review",
+        rows,
+        annualCents: last.amountCents * 12,
+        note: `${plan.descriptor}, in euros`,
+      });
+    }
+    L.bill(rows, plan.descriptor);
+  }
+
   // Round 21, from its own dice: monthly, then switched to yearly two months ago.
   const ty = rng(base + index * 104_729 + 35);
   if (P.toYearly && months >= 5 && ty.chance(0.5)) {
@@ -2424,6 +2485,49 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       rows: monthlyRows,
       note: `${plan.descriptor}, the monthly plan it left`,
     });
+  }
+
+  // Investing transfers (read-only beta, 2026-10-28), from its own dice: money sent to a
+  // brokerage or an investing app each month, and sometimes an IRA contribution, is moved and never
+  // spending, a subscription or a bill, however the bank words it.
+  const iv = rng(base + index * 104_729 + 36);
+  if (iv.chance(0.55)) {
+    const app = INVESTING_TRANSFERS[(index + (iv.int(0, 99) % 5)) % INVESTING_TRANSFERS.length];
+    const day = iv.int(2, 26);
+    const fixed = iv.chance(0.6);
+    const amount = iv.cents(25, 400);
+    const rows: string[] = [];
+    L.monthly(day, (date) => {
+      const row = L.add({
+        account: chk,
+        date,
+        amountCents: fixed ? amount : iv.cents(25, 400),
+        descriptor: app.descriptor,
+        category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+        alsoOk: ["TRANSFER_OUT"],
+        kind: "moving",
+        flow: "ach_out",
+      });
+      if (row) rows.push(row.id);
+    });
+    L.traps.push({
+      type: "subscription_review",
+      rows,
+      note: `${app.descriptor}, money sent to an investing account`,
+    });
+    L.neutralBills.push(rows);
+    if (iv.chance(0.35)) {
+      L.add({
+        account: chk,
+        date: addDays(start, iv.int(20, Math.max(21, months * 30 - 5))),
+        amountCents: iv.cents(200, 600),
+        descriptor: "IRA CONTRIB",
+        category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+        alsoOk: ["TRANSFER_OUT"],
+        kind: "moving",
+        flow: "ach_out",
+      });
+    }
   }
 
   // Round 19, from its own dice: a plan that moved card, one on the month's last day, one service
@@ -2617,22 +2721,84 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       f.annualCents = Math.round((f.annualCents! * MONTHS_PER_YEAR) / months);
     }
   }
+  // Round 23: the upload mess, one kind per person, from its own dice.
+  const um = rng(base + index * 104_729 + 37);
+  const uploads: NonNullable<CsvPerson["uploads"]> = [];
+  let shown = accounts;
+  const drop = (gone: Set<string>) => {
+    const keep = (ids: string[]) => !ids.some((id) => gone.has(id));
+    L.rows = L.rows.filter((x) => !gone.has(x.id));
+    L.findings = L.findings.filter(
+      (f) => keep(f.rows ?? []) && !(f.account && gone.has(f.account)),
+    );
+    L.traps = L.traps.filter((t) => keep(t.rows));
+    L.neutral = L.neutral.filter(keep);
+    L.bills = L.bills.filter((b) => keep(b.rows));
+    L.neutralBills = L.neutralBills.filter(keep);
+  };
+  if (P.uploadMess) {
+    const kind = (["twice", "overlap", "chargeback", "noChecking", "noIncome"] as const)[index % 5];
+    if (kind === "twice") uploads.push({ account: chk, from: start, to: asOf, again: true });
+    if (kind === "overlap") {
+      const from = addDays(addMonths(start, 1, 1), -um.int(7, 10));
+      uploads.push({ account: um.chance(0.5) ? chk : card.id, from, to: addMonths(from, 1, 20) });
+    }
+    if (kind === "chargeback") {
+      const m = P.shops[3];
+      const date = addDays(asOf, -um.int(30, 60));
+      const cents = um.cents(80, 240);
+      L.add(spend(card.id, date, cents, m));
+      L.add({
+        ...spend(card.id, addDays(date, um.int(10, 20)), -cents, {
+          ...m,
+          descriptor: `PROVISIONAL CREDIT ${m.descriptor}`,
+        }),
+        flow: "refund",
+      });
+    }
+    if (kind === "noChecking" && !savings) {
+      // The card is paid from a checking account that was never uploaded: Jane sees the card
+      // alone, its payments from the card's side.
+      drop(new Set([chk, ...L.rows.filter((x) => x.account === chk).map((x) => x.id)]));
+      shown = accounts.filter((a) => a.id !== chk);
+    }
+    if (kind === "noIncome") {
+      // Out of work for a month: no pay at all in it.
+      const month = addMonths(start, Math.max(1, months - 2), 1).slice(0, 7);
+      drop(
+        new Set(
+          L.rows.filter((x) => x.kind === "income" && x.date.startsWith(month)).map((x) => x.id),
+        ),
+      );
+    }
+  }
+
   const balanceOf = (a: CsvAccount) =>
     a.openingCents -
     L.rows.filter((x) => x.account === a.id).reduce((s, x) => s + x.amountCents, 0);
-  // Idle cash, as Jane defines it (docs/accuracy.md): checking and savings above three months
-  // of spending, by at least $1,000.
-  const cash = balanceOf(checking) + (savings ? balanceOf(savings) : 0);
-  const spent = L.rows
-    .filter((x) => x.kind === "spending" && x.amountCents > 0)
-    .reduce((s, x) => s + x.amountCents, 0);
-  const span = (toDate(asOf).getTime() - toDate(start).getTime()) / DAY / 30.44;
-  const excess = cash - 3 * (spent / span);
-  if (excess >= 100_000) {
+  // Idle cash, Jane's own definition (idleCashOf: checking and savings above three months of
+  // spending, by at least IDLE_CASH_MIN_EXCESS_CENTS) on the true data: every balance known, every
+  // row in its true category. What the bench then checks is whether the upload gets there.
+  const idle = idleCashOf({
+    asOf,
+    accounts: shown.map((a) => ({
+      id: a.id,
+      type: ACCOUNT_KINDS[a.kind].type,
+      subtype: ACCOUNT_KINDS[a.kind].subtype,
+      balanceCents: balanceOf(a),
+    })),
+    transactions: L.rows.map((x) => ({
+      date: x.date,
+      amountCents: x.amountCents,
+      accountId: x.account,
+      pfc: x.category,
+    })),
+  });
+  if (idle) {
     L.findings.push({
       type: "idle_cash",
       annualCents: null,
-      note: `cash ${cash}, excess ${Math.round(excess)}`,
+      note: `cash ${idle.balanceCents}, excess ${idle.excessCents}`,
     });
   }
 
@@ -2642,8 +2808,9 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     asOf,
     months,
     start,
-    accounts,
+    accounts: shown,
     rows: L.rows,
+    ...(uploads.length > 0 ? { uploads } : {}),
     truth: {
       findings: L.findings,
       traps: L.traps,

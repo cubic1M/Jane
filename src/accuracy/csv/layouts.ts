@@ -511,8 +511,10 @@ export function renderAccount(p: CsvPerson, account: CsvAccount): BenchFile[] {
     }));
   const crlf = r.chance(0.5);
   const bom = r.chance(0.3);
-  return windows(p, account, r).map((w, i, all) => {
-    const last = i === all.length - 1;
+  const extra = (p.uploads ?? []).filter((u) => u.account === account.id);
+  const main = windows(p, account, r);
+  return [...main, ...extra].map((w, i, all) => {
+    const last = i >= main.length - 1;
     const inside: Line[] = [];
     for (const line of lines) {
       const copy = line.row.pendingCopy;
@@ -525,7 +527,8 @@ export function renderAccount(p: CsvPerson, account: CsvAccount): BenchFile[] {
     const body = renderLines(p, account, inside, w, r);
     const eol = crlf ? "\r\n" : "\n";
     const text = `${bom ? "﻿" : ""}${body.join(eol)}${eol}`;
-    const name = `${account.layout}-${account.mask}-${w.from.slice(0, 7)}${all.length > 1 ? `-${i + 1}` : ""}.csv`;
+    const again = "again" in w && w.again ? " (1)" : "";
+    const name = `${account.layout}-${account.mask}-${w.from.slice(0, 7)}${all.length > 1 ? `-${i + 1}` : ""}${again}.csv`;
     return {
       name,
       account: account.id,

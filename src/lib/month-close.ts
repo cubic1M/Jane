@@ -2,7 +2,7 @@ import { MONTH_CLOSE_DAY } from "@/config/month-close";
 import { BOOKS_WORRYING_KINDS } from "@/config/books";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
-import { netWorth } from "@/insights/net-worth";
+
 import { track } from "@/lib/analytics";
 import { openBooks } from "@/lib/books";
 import { cryptoTotal } from "@/lib/crypto/crypto";
@@ -11,7 +11,13 @@ import { scopedFor } from "@/lib/db-scoped";
 import { localDate } from "@/lib/digest/week";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { storedReport } from "@/lib/monthly-report-store";
-import { monthFigures, uncertainOf, type CloseFigures, type CloseTx } from "@/planning/month-close";
+import {
+  monthFigures,
+  uncertainOf,
+  type CloseFigures,
+  type CloseTx,
+  closeNetWorth,
+} from "@/planning/month-close";
 
 // The monthly close (spec step 244). From the first of the month Jane closes the month before,
 // like a company's books: the books checked (step 238), the charges it wasn't sure of asked
@@ -64,7 +70,7 @@ async function figuresFor(
   month: string,
   confirmed: number,
   client: PrismaClient,
-  keep?: Pick<CloseFigures, "netWorthCents" | "booksOpen">,
+  keep?: Pick<CloseFigures, "netWorthCents" | "netWorthNotCounting" | "booksOpen">,
 ): Promise<CloseFigures> {
   const db = scopedFor(userId, client);
   const [txns, accounts, books, report, owned, crypto] = await Promise.all([
@@ -84,20 +90,11 @@ async function figuresFor(
   return {
     ...monthFigures(txns, month),
     // A snapshot at the close; a correction later keeps the one taken then.
-    netWorthCents: keep
-      ? keep.netWorthCents
-      : accounts!.length > 0
-        ? netWorth(
-            accounts!.map((a) => ({
-              id: a.id,
-              name: a.name,
-              type: a.type,
-              balanceCents: a.currentBalanceCents,
-            })),
-            owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
-            crypto,
-          ).netCents
-        : null,
+    // Never a silent $0 or a figure that leaves an account out: null when no balance is known,
+    // and what it leaves out said beside it.
+    ...(keep
+      ? { netWorthCents: keep.netWorthCents, netWorthNotCounting: keep.netWorthNotCounting ?? null }
+      : closeNetWorth(accounts!, owned, crypto)),
     booksOpen: keep
       ? keep.booksOpen
       : books!.open.filter((o) => BOOKS_WORRYING_KINDS.includes(o.kind)).length,

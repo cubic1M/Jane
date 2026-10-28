@@ -87,6 +87,10 @@ export const DETECTOR_RATES = {
   // Beneficiaries: an account with nobody named can go through a court process, which often
   // costs a few percent of what is in it.
   beneficiaryRiskShare: 0.03,
+  // Cash inside investment accounts (the investing leak): keep this much for trades, and
+  // mention it only when more than this is waiting above that.
+  investedCashBufferCents: 100_000,
+  investedCashMinCents: 50_000,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
   // Income that moves around by this much month to month is worth smoothing.
@@ -118,6 +122,8 @@ export const DETECTOR_RATES = {
   // something Jane can't see (the card's real benefits, the employer's real plan). Without a
   // ceiling a clean run of charges would make a guess look certain.
   insuranceCaps: {
+    // A pet's cover: a typical vet bill, not a quote.
+    pet: 70,
     shopping: 70,
     health: 70,
     medigap: 70,
