@@ -20,6 +20,9 @@ import {
   YEARLY_PLAN_MAX_CENTS,
   YEARLY_PLAN_MIN_CENTS,
   YEARLY_PLAN_WORDS,
+  YEARLY_RENEWAL_WORDS,
+  PLAN_DESCRIPTION_WORDS,
+  PLAN_NAME_PLUS,
   type ConfidenceLevel,
   type Frequency,
 } from "@/config/detection";
@@ -267,15 +270,16 @@ function planAfterStar(description: string): boolean {
 const isGoods = (description: string) =>
   wordsOf(description).some((w) => YEARLY_PLAN_GOODS_WORDS.includes(w));
 
-// A yearly plan seen once: one charge, in YEARLY_PLAN_*_CENTS, under the plan's own name, and not
-// something from the company's shop.
+// A yearly plan seen once: one charge, in YEARLY_PLAN_*_CENTS, under the plan's own name or
+// saying it renews the year, and not something from the company's shop.
 function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
   const plans = charges.filter(
     (c) => c.amountCents >= YEARLY_PLAN_MIN_CENTS && c.amountCents <= YEARLY_PLAN_MAX_CENTS,
   );
   const merchant = plans.length === 1 ? merchantOf(plans[0]) : null;
   if (!merchant || isGoods(plans[0].description)) return null;
-  if (!isPlanName(merchant.key) && !planAfterStar(plans[0].description)) return null;
+  const renewal = wordsOf(plans[0].description).some((w) => YEARLY_RENEWAL_WORDS.includes(w));
+  if (!isPlanName(merchant.key) && !planAfterStar(plans[0].description) && !renewal) return null;
   const [plan] = plans;
   return {
     key: `merchant:${merchant.key}`,
@@ -350,29 +354,59 @@ function runsByPrice(charges: DetectionTransaction[], asOf: string): Stream[] {
   return runs;
 }
 
+const PLAN_WORDS = new RegExp(
+  `(?<![A-Z0-9])(?:${PLAN_DESCRIPTION_WORDS.map((w) => w.replace(/[*+]/g, "\\$&")).join("|")})(?![A-Z0-9])`,
+);
+// A charge that says it's a plan: a membership word, or a name ending in "+" (PLAN_DESCRIPTION_*).
+export function saysPlan(description: string): boolean {
+  const text = description.toUpperCase();
+  return PLAN_WORDS.test(text) || PLAN_NAME_PLUS.test(text);
+}
+
 function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
   const key = merchantOf(charges[charges.length - 1])?.key ?? "";
   if (merchantMatches(key, BILLING_PLATFORM_MERCHANTS)) return runsByPrice(charges, asOf);
+  // A membership at a company that sells something else ("UBER *ONE MEMBERSHIP" among the rides):
+  // its charges are a run of their own (CSV bench, second tuning set). Not when the rest are
+  // mostly at the plan's prices: that is the plan written another way ("NAME" and "NAME
+  // SUBSCRIPTION").
+  const said = charges.filter((c) => saysPlan(c.description));
+  const others = charges.filter((c) => !saysPlan(c.description));
+  const planPrices = new Set(said.map((c) => c.amountCents));
+  const atPlanPrices = others.filter((c) => planPrices.has(c.amountCents)).length;
+  if (
+    said.length > 0 &&
+    others.length > 0 &&
+    atPlanPrices < others.length * RUN_MIN_SHARE_OF_CHARGES
+  ) {
+    const plan = detectRun(said, asOf);
+    const rest = detectRuns(others, asOf);
+    return plan ? [{ ...plan, key: `${plan.key}@plan` }, ...rest] : rest;
+  }
   const twins = twinPlans(charges, asOf);
   if (twins) return twins;
   const main = detectRun(charges, asOf);
-  if (
-    main &&
-    (isVariable(charges) || main.charges.length >= charges.length * RUN_MIN_SHARE_OF_CHARGES)
-  )
-    return [main];
   // Two plans from one company at two prices, each every month (Spotify $11.99 and $16.99): the
   // typical amount falls between them, so neither is a run of the whole; each price is one (QA
-  // round 30: both were missing from /subscriptions). Only when two or more prices come regularly.
+  // round 30: both were missing from /subscriptions). Only when two or more prices come regularly,
+  // and they hold more charges than the run of the whole: when one plan has most of the charges,
+  // the run is that plan alone (CSV bench, second tuning set: Google One at $2.99 and $9.99, the
+  // $2.99 one lost). A price rise stays one run: its run already holds the new price.
   const plans = isVariable(charges) ? [] : runsByPrice(charges, asOf);
   const held = plans.reduce((n, p) => n + p.charges.length, 0);
   if (
     plans.length >= PRICE_PLANS_MIN &&
     plans.every((p) => p.frequency !== null && PRICE_PLANS_FREQUENCIES.includes(p.frequency)) &&
-    held >= charges.length * RUN_MIN_SHARE_OF_CHARGES
+    held >= charges.length * RUN_MIN_SHARE_OF_CHARGES &&
+    held > (main?.charges.length ?? 0)
   ) {
     return plans;
   }
+  if (
+    main &&
+    (isVariable(charges) || main.charges.length >= charges.length * RUN_MIN_SHARE_OF_CHARGES)
+  )
+    return [main];
   const plan = yearlyPlan(charges);
   return plan ? [plan] : [];
 }

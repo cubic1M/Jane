@@ -1,0 +1,113 @@
+{
+  "person": "t20",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "KINDLE SVCS*KINDLE UNLTD",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "UBER *ONE MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 75
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 252.55
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 537.19
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *GOOGLE ONE plan 1",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *GOOGLE ONE plan 2",
+      "perYear": 119.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WAL-MART #2281 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": -238.68
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 1418.33
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 1083.96
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 1315.52
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 958.17
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 702.44
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 496.66
+    }
+  ]
+}

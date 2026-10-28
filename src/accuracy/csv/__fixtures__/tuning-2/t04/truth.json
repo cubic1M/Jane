@@ -1,0 +1,113 @@
+{
+  "person": "t04",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase savings",
+      "layout": "chase_checking",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *IRON TEMPLE GYM",
+      "perYear": 780
+    },
+    {
+      "type": "subscription_review",
+      "about": "UBER *ONE MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DOORDASH DASHPASS",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "KINDLE SVCS*KINDLE UNLTD",
+      "perYear": 143.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice",
+      "perYear": 83.45
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "INTUIT *QBOOKS ONLINE, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 4744.81
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 3953.29
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 3261.04
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 2513.9
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 1496.28
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 483.78
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -197.46
+    }
+  ]
+}

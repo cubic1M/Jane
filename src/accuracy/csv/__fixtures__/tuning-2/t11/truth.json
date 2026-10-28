@@ -1,0 +1,104 @@
+{
+  "person": "t11",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "PAYPAL *SIRIUS XM",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "UBER *ONE MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 204
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 80
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 692.6
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 SOUTHWES 5262123456789 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WAL-MART #2281 twice, refunded"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": -5456.99
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -6953.35
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -7579.64
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -9036.34
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -11206.79
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -12608.15
+    }
+  ]
+}

@@ -44,6 +44,16 @@ describe("subscription_review", () => {
     );
   });
 
+  // CSV bench, second tuning set: one plan with most of the charges doesn't hide the other.
+  it("keeps both plans when one of them has most of the charges", () => {
+    const google = { description: "GOOGLE *GOOGLE ONE", pfcPrimary: null, pfcDetailed: null };
+    const transactions = [
+      ...monthly(6, 999, google),
+      ...monthly(5, 299, google).map((t) => ({ ...t, date: t.date.slice(0, 8) + "25" })),
+    ];
+    expect(run(input({ transactions }))).toHaveLength(2);
+  });
+
   it("recognizes subscription merchants outside subscription categories", () => {
     const transactions = monthly(3, 999, {
       description: "DROPBOX*ABC123XYZ",
@@ -68,6 +78,72 @@ describe("subscription_review", () => {
       "merchant:apple",
       "merchant:apple@1099",
     ]);
+  });
+
+  // CSV bench, second tuning set: a plan at a company that sells something else, by its words.
+  it("finds a membership among the same company's other charges, by its words", () => {
+    const uber = {
+      pfcPrimary: "TRANSPORTATION",
+      pfcDetailed: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES",
+    };
+    const rides = [3, 2, 1, 0].flatMap((m) => [
+      tx({ ...uber, description: "UBER *TRIP", date: monthsAgo(m, 3), amountCents: 1840 }),
+      tx({ ...uber, description: "UBER *TRIP", date: monthsAgo(m, 11), amountCents: 2610 }),
+      tx({ ...uber, description: "UBER *TRIP", date: monthsAgo(m, 20), amountCents: 999 }),
+    ]);
+    const plan = monthly(4, 999, { ...uber, description: "UBER *ONE MEMBERSHIP" });
+    expect(run(input({ transactions: [...rides, ...plan] })).map((f) => f.key)).toEqual([
+      "merchant:uber@plan",
+    ]);
+    // Rides alone are no plan.
+    expect(run(input({ transactions: rides }))).toEqual([]);
+  });
+
+  it.each([
+    ["DOORDASH DASHPASS", "FOOD_AND_DRINK", "FOOD_AND_DRINK_RESTAURANT"],
+    ["WALMART+ 800-925-6278", "GENERAL_MERCHANDISE", "GENERAL_MERCHANDISE_SUPERSTORES"],
+    ["INSTACART+ MEMBERSHIP", "FOOD_AND_DRINK", "FOOD_AND_DRINK_GROCERIES"],
+  ])("calls %s a subscription though its category isn't one", (description, primary, detailed) => {
+    const transactions = monthly(4, 999, {
+      description,
+      pfcPrimary: primary,
+      pfcDetailed: detailed,
+    });
+    expect(run(input({ transactions }))).toHaveLength(1);
+  });
+
+  it("keeps one plan written with and without its plan word as one", () => {
+    const transactions = monthly(5, 1299, {
+      description: "QZAA",
+      pfcPrimary: null,
+      pfcDetailed: null,
+    }).map((t, i) => (i % 2 ? { ...t, description: "QZAA SUBSCRIPTION" } : t));
+    expect(run(input({ transactions })).map((f) => f.key)).toEqual(["merchant:qzaa"]);
+  });
+
+  it("finds software by its name above the price-only cap", () => {
+    const transactions = monthly(3, 24_500, {
+      description: "AUTODESK INC",
+      pfcPrimary: null,
+      pfcDetailed: null,
+    });
+    expect(run(input({ transactions })).map((f) => f.key)).toEqual(["merchant:autodesk inc"]);
+  });
+
+  it("finds a yearly renewal that says so, whoever the company", () => {
+    const renewal = tx({
+      description: "COSTCO *ANNUAL RENEWAL",
+      pfcPrimary: "GENERAL_MERCHANDISE",
+      pfcDetailed: "GENERAL_MERCHANDISE_SUPERSTORES",
+      date: monthsAgo(4),
+      amountCents: 6500,
+    });
+    const [finding] = run(input({ transactions: [renewal] }));
+    expect(finding).toMatchObject({ annualSavingsCents: 6500 });
+    // A shopping trip of the same size is not.
+    expect(run(input({ transactions: [{ ...renewal, description: "COSTCO WHSE 0412" }] }))).toEqual(
+      [],
+    );
   });
 
   it("never calls a payment on a debt a subscription, whatever its name", () => {

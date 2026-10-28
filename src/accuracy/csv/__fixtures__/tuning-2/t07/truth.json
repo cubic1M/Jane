@@ -1,0 +1,95 @@
+{
+  "person": "t07",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "INSTACART+ MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DOORDASH DASHPASS",
+      "perYear": 119.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice",
+      "perYear": 127.43
+    },
+    {
+      "type": "subscription_review",
+      "about": "NINTENDO *SWITCH ONLINE, one of two",
+      "perYear": 47.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NINTENDO *SWITCH ONLINE, one of two",
+      "perYear": 47.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 953481, excess 441180",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "NINTENDO *SWITCH ONLINE, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 1606.43
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 3050.37
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 4290.02
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 5779.52
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 7044.6
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 8649.4
+    }
+  ]
+}

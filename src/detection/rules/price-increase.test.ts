@@ -22,6 +22,16 @@ describe("price_increase", () => {
     expect(finding.evidence).toMatchObject({ priorAverageCents: 1549, lastAmountCents: 1799 });
   });
 
+  // CSV bench, second tuning set: a city utility bill moves with use, like power and water.
+  it("never calls a city utility bill's move a price rise", () => {
+    const transactions = monthly(4, [9800, 9600, 9900, 12_200], {
+      description: "CITY OF SPRINGFIELD UTILITY BILLING",
+      pfcPrimary: "RENT_AND_UTILITIES",
+      pfcDetailed: "RENT_AND_UTILITIES_OTHER_UTILITIES",
+    });
+    expect(run(input({ transactions }))).toEqual([]);
+  });
+
   // Messy-bank QA: the rise stays a finding after the second charge at the new price.
   it("still finds the rise once a charge or two more come at the new price", () => {
     const [finding] = run(input({ transactions: monthly(4, [1549, 1549, 1799, 1799], NETFLIX) }));

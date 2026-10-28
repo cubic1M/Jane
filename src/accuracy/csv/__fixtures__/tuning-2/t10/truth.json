@@ -1,0 +1,97 @@
+{
+  "person": "t10",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America savings",
+      "layout": "bofa_checking",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "PAYPAL *SIRIUS XM",
+      "perYear": 131.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "BABBEL.COM trial",
+      "perYear": 13.95
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "CVS/PHARMACY #04321 twice",
+      "perYear": 108.05
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 115.2
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 5.5
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 930.65
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "AUTODESK INC, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 6683.68
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 4361.45
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 2828.19
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 1581.06
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -51.05
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "person": "t02",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "INTUIT *QBOOKS ONLINE",
+      "perYear": 420
+    },
+    {
+      "type": "subscription_review",
+      "about": "INSTACART+ MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "UBER *ONE MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "AUTODESK INC",
+      "perYear": 2940
+    },
+    {
+      "type": "trial_conversion",
+      "about": "HEADSPACE trial",
+      "perYear": 12.99
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 122.4
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 600
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 807.43
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *GOOGLE ONE plan 1",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *GOOGLE ONE plan 2",
+      "perYear": 119.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 SOUTHWES 5262123456789 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 952.4
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 1376.61
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 2170.49
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 3497.72
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 4717.08
+    }
+  ]
+}

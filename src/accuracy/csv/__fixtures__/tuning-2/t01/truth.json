@@ -1,0 +1,77 @@
+{
+  "person": "t01",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "INTUIT *QBOOKS ONLINE",
+      "perYear": 420
+    },
+    {
+      "type": "subscription_review",
+      "about": "INSTACART+ MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "CVS/PHARMACY #04321 twice",
+      "perYear": 108.56
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 12.75
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "STARBUCKS STORE 05423 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 5140.86
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 5874.19
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 6433.23
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 7169.89
+    }
+  ]
+}

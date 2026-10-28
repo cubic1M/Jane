@@ -5,7 +5,7 @@ import { CSV_BASELINE, CSV_SETS, headline, scoreSet, table, writeFixtures } from
 // `npm run accuracy`, the CSV half (docs/accuracy.md, "CSV bench"): every step of the upload
 // path scored on the tuning and held-out sets. ACCURACY_WRITE=1 also rewrites the checked-in
 // files, the baseline the gate holds to and the tables in docs/accuracy.md. ACCURACY_MISTAKES=1
-// lists the tuning set's mistakes, the ones to fix rules on; never the held-out set's. Claude is
+// lists the tuning sets' mistakes, the ones to fix rules on; never the held-out set's. Claude is
 // stubbed: the bench scores the rules alone and spends nothing.
 vi.mock("@/categorize/llm", () => ({ classifyMerchants: async () => new Map() }));
 
@@ -21,7 +21,7 @@ describe.runIf(process.env.ACCURACY === "1")("the CSV accuracy scoreboard", () =
       const { scores, board } = await scoreSet(set);
       const text = table(set, board);
       console.log(`CSV bench, ${text}\n`);
-      if (set === "tuning" && process.env.ACCURACY_MISTAKES === "1") {
+      if (set.startsWith("tuning") && process.env.ACCURACY_MISTAKES === "1") {
         for (const s of scores)
           for (const m of s.mistakes) console.log(`${m.what} ${m.kind} ${m.person} ${m.detail}`);
       }

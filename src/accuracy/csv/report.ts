@@ -15,7 +15,13 @@ import {
 // The CSV bench's tables, baseline and checked-in files, shared by `npm run accuracy`
 // (./scoreboard.cli.test.ts) and the CI gate (./csv-accuracy.test.ts).
 
-export const CSV_SETS: readonly CsvSet[] = ["tuning", "held-out", "held-out-2", "held-out-3"];
+export const CSV_SETS: readonly CsvSet[] = [
+  "tuning",
+  "tuning-2",
+  "held-out",
+  "held-out-2",
+  "held-out-3",
+];
 export const CSV_FIXTURES = "src/accuracy/csv/__fixtures__";
 export const CSV_BASELINE = "src/accuracy/csv/baseline.json";
 
@@ -61,7 +67,7 @@ export function table(set: CsvSet, b: CsvScoreboard): string {
     return `| ${t} | ${pct(precision(x))} | ${pct(recall(x))} | ${x.tp} | ${x.fp} | ${x.fn} |`;
   };
   return [
-    `${{ tuning: "Tuning set", "held-out": "Held-out set", "held-out-2": "Second held-out set", "held-out-3": "Third held-out set" }[set]} (${b.people} people, ${b.files} files, ${b.parse.truthRows} transactions):`,
+    `${{ tuning: "Tuning set", "tuning-2": "Second tuning set", "held-out": "Held-out set", "held-out-2": "Second held-out set", "held-out-3": "Third held-out set" }[set]} (${b.people} people, ${b.files} files, ${b.parse.truthRows} transactions):`,
     "",
     "| Step | Score |",
     "| --- | ---: |",

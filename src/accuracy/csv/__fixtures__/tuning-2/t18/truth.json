@@ -1,0 +1,110 @@
+{
+  "person": "t18",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "PAYPAL *SIRIUS XM",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "INSTACART+ MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "MASTERCLASS trial",
+      "perYear": 15
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 64.54
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 7.2
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 1014.5
+    },
+    {
+      "type": "subscription_review",
+      "about": "NINTENDO *SWITCH ONLINE, one of two",
+      "perYear": 47.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NINTENDO *SWITCH ONLINE, one of two",
+      "perYear": 47.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 4904480, excess 4294990",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "NINTENDO *SWITCH ONLINE, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 25650.27
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 30028.54
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 34677.92
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 39436.83
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 44045.68
+    }
+  ]
+}
