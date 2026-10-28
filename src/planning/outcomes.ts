@@ -9,7 +9,7 @@ import {
   WATCH_DAYS,
 } from "@/config/outcomes";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import type { Watch } from "@/detectors/contract";
+import type { TransactionWatch, Watch } from "@/detectors/contract";
 import { addDays } from "@/detection/units";
 import { formatCents } from "@/lib/money";
 import { DAY_MS } from "@/lib/dates";
@@ -48,7 +48,7 @@ const verdict = (cents: number, expectedCents: number): "confirmed" | "partial" 
   cents >= expectedCents * CONFIRMED_SHARE ? "confirmed" : "partial";
 
 export function verifyWatch(
-  watch: Watch,
+  watch: TransactionWatch,
   { startedOn, asOf, expectedCents }: { startedOn: string; asOf: string; expectedCents: number },
   transactions: readonly OutcomeTx[],
 ): Check {
@@ -228,6 +228,13 @@ export function asWatch(value: unknown): Watch | null {
     return Array.isArray(w.pfcs) && typeof w.monthlyCents === "number" ? (value as Watch) : null;
   if (w.kind === "charge_stops" || w.kind === "bill_drops" || w.kind === "refund")
     return Array.isArray(w.payees) && w.payees.length > 0 ? (value as Watch) : null;
+  const h = value as { funds?: unknown; accounts?: unknown; beforeCents?: unknown };
+  if (w.kind === "funds_left")
+    return Array.isArray(h.funds) && h.funds.length > 0 ? (value as Watch) : null;
+  if (w.kind === "account_closed")
+    return Array.isArray(h.accounts) && h.accounts.length > 0 ? (value as Watch) : null;
+  if (w.kind === "cash_invested")
+    return typeof h.beforeCents === "number" ? (value as Watch) : null;
   return null;
 }
 

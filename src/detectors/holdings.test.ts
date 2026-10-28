@@ -59,3 +59,20 @@ describe("holdings detectors on the eight people", () => {
     }
   });
 });
+
+describe("what later holdings should show (verified savings)", () => {
+  it("leaves a watch on the fund, old-account and annuity suggestions", () => {
+    const watchOf = (id: PersonId, topic: string) =>
+      firedFor(id).find((s) => s.topic === topic)?.watch;
+    expect(watchOf("equity", "investment_fees")).toMatchObject({ kind: "funds_left" });
+    expect(watchOf("preretire", "old_accounts")).toMatchObject({ kind: "account_closed" });
+    expect(watchOf("retiree", "costly_products")).toMatchObject({ kind: "account_closed" });
+    for (const p of PEOPLE) {
+      for (const s of firedFor(p.id)) {
+        if (s.watch && "funds" in s.watch) {
+          expect(s.watch.funds.reduce((n, f) => n + f.yearlyCents, 0)).toBe(s.worthCents);
+        }
+      }
+    }
+  });
+});

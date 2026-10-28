@@ -48,6 +48,7 @@ const investedCash: Detector = {
       urgency: "later",
       why: `${formatCents(total)} sits as cash inside your investment accounts. After keeping ${formatCents(R.investedCashBufferCents)} for trades, ${formatCents(excess)} could earn about ${formatCents(earns)} more a year in a money market fund or Treasury bills than most brokers pay on a sweep.`,
       action: { label: "See where it sits", href: "/investments" },
+      watch: { kind: "cash_invested", beforeCents: total, excessCents: excess, yearlyCents: earns },
     };
   },
 };

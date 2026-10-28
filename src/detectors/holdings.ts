@@ -64,6 +64,15 @@ const feeDrag: Detector = {
       urgency: "later",
       why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); switching all of them would save about ${formatCents(total)} a year in fees.`,
       action: { label: "See the fees", href: "/investments/fees" },
+      // Later holdings show the costly funds gone (the verified savings record).
+      watch: {
+        kind: "funds_left",
+        funds: rows.map((r) => ({
+          ticker: r.h.ticker!,
+          valueCents: r.h.valueCents,
+          yearlyCents: r.saving,
+        })),
+      },
     };
   },
 };
@@ -205,6 +214,14 @@ const oldAccounts: Detector = {
       urgency: "later",
       why: `You have ${plans.length} 401(k) accounts; ${formatCents(old)} sits in the smaller one${plans.length > 2 ? "s" : ""}. Old plans often cost about ${R.oldPlanFeeGapBps / 100}% a year more, so rolling it over (moved directly, never withdrawn) saves about ${formatCents(Math.round((old * R.oldPlanFeeGapBps) / 10_000))} a year.`,
       action: { label: "See your old accounts", href: "/investments/old-accounts" },
+      watch: {
+        kind: "account_closed",
+        accounts: older.plans.map((a) => ({
+          id: a.id,
+          balanceCents: a.balanceCents,
+          yearlyCents: Math.round((a.balanceCents * R.oldPlanFeeGapBps) / 10_000),
+        })),
+      },
     };
   },
 };
@@ -276,6 +293,16 @@ const costlyAnnuity: Detector = {
       urgency: "soon",
       why: `You hold ${formatCents(balance)} in an annuity. Many charge about ${R.annuityFeeBps / 100}% a year against ${R.annuityIndexBps / 100}% for an index fund, about ${formatCents(saving)} a year on your balance, and some charge to leave. Read its contract before changing anything.`,
       action: { label: "See costly products", href: "/investments/costly-products" },
+      watch: {
+        kind: "account_closed",
+        accounts: annuities.map((a) => ({
+          id: a.id,
+          balanceCents: a.balanceCents,
+          yearlyCents: Math.round(
+            (a.balanceCents * (R.annuityFeeBps - R.annuityIndexBps)) / 10_000,
+          ),
+        })),
+      },
     };
   },
 };
