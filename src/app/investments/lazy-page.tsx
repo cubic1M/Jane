@@ -35,7 +35,7 @@ export function LazyPage({
       ) : (
         body
       )}
-      <Link href={href} className="text-sm font-medium text-emerald-700 hover:underline">
+      <Link href={href} className="text-sm font-medium underline">
         Open the full page: {label}
       </Link>
     </div>

@@ -289,6 +289,8 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
 - **A plan billed in another currency** (round 22, second tuning set). The second tuning set now has plans billed in euros through a reseller ("PADDLE.NET* QZFOCUS", "FS *QZSKETCH EUR"): the dollar amount moves a little every month with the exchange rate, so the price-only rule, which wants the very same price, missed them. Now every charge within a spread of `FIXED_PRICE_SUBSCRIPTION_FX_SPREAD` (5%) of the usual price also counts as one price. Second tuning set: subscriptions recall 93.0% → 100%. Held-out sets and the sample bench unchanged; precision unchanged.
 
+- **The upload mess beta users hit** (round 23, second tuning set, bench only). Each second-tuning person now gets one of: the same statement uploaded twice; an extra export overlapping the others by a week or more (how a joint account exported by each partner arrives); a chargeback ("PROVISIONAL CREDIT …" after a purchase); a card paid from a checking account that was never uploaded (Jane sees the card alone); a month with no income. Already in every set: pending rows that post at another amount (a tip), refunds and partial refunds, foreign charges with their fee, and transfers between a person's own accounts at two banks. Scored: every row read exactly once (0 extra, 0 missing), spending error 0.3% and income error 0.0% as before, and no false finding from any of them. What stays wrong is net worth where Jane can't know a balance: a card export has no balance column, so a person who uploads only a card sees $0 instead of what they owe (2 people), and a checking export without balances, when the person types none, leaves its cash out (2 people). That is the card-balance gap passed to the manager on 10-27 ("What do you owe on this card today?" at upload), now with a checking-side case too.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -344,31 +346,31 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Second tuning set (20 people, 135 files, 6091 transactions):
+Second tuning set (20 people, 137 files, 5926 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 135 of 135 (131 exactly) |
+| Files read | 137 of 137 (133 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 98.4% (97 left for Claude) |
+| Category right (rules only) | 98.4% (92 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $100,099, truth $98,245; error on the ones found 0.1% |
+| Findings, $/yr | Jane $97,159, truth $95,305; error on the ones found 0.1% |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 9 of 20 people (off by $134,400 in all) |
-| Net worth line: month-ends drawn | 96.4% (error where drawn 49.9%) |
+| Net worth today right | 9 of 20 people (off by $135,996 in all) |
+| Net worth line: month-ends drawn | 93.6% (error where drawn 47.2%) |
 | Net worth line, people whose every balance Jane knows | 9 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 98.6% | 100.0% | 142 | 2 | 0 |
+| subscription_review | 98.6% | 100.0% | 141 | 2 | 0 |
 | price_increase | 100.0% | 100.0% | 4 | 0 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 21 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 44.0% | 100.0% | 11 | 14 | 0 |
-| idle_cash | 100.0% | 50.0% | 3 | 0 | 3 |
-| bills coming up (31 days) | 100.0% | 100.0% | 266 | 0 | 0 |
+| idle_cash | 100.0% | 60.0% | 3 | 0 | 2 |
+| bills coming up (31 days) | 100.0% | 100.0% | 257 | 0 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
 
@@ -377,7 +379,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 21 | 58% | 81% |
+| 50–59% | 20 | 59% | 80% |
 | 60–69% | 43 | 64% | 91% |
 | 70–79% | 7 | 74% | 71% |
 | 80–89% | 4 | 83% | 100% |

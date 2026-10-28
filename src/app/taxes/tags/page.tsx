@@ -11,6 +11,7 @@ import type { TagSource } from "@/planning/tax-tags";
 import { CheckButtons, TagForm } from "./tag-form";
 import { LoadingBar } from "@/components/loading-bar";
 import { dayLabel } from "@/lib/day-label";
+import { EmptyState } from "@/components/empty-state";
 
 // Tax tags (spec step 119): what Jane tagged for the year, the ones it's unsure about,
 // and a search to tag anything else (a work expense). Tags never change spending.
@@ -59,16 +60,24 @@ async function TagsContent({
         <h2 id="totals" className="text-xl font-semibold">
           This year so far
         </h2>
-        <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-          {TAX_TAG_ORDER.map((tag) => (
-            <div key={tag} className="flex justify-between gap-2">
-              <dt className="text-zinc-600 dark:text-zinc-400">{TAX_TAGS[tag].label}</dt>
-              <dd className="whitespace-nowrap">
-                {formatCents(view.totals[tag].totalCents)} ({view.totals[tag].count})
-              </dd>
-            </div>
-          ))}
-        </dl>
+        {/* Nothing tagged yet: a line and the way to tag one, not a list of $0.00 (0). */}
+        {TAX_TAG_ORDER.every((tag) => view.totals[tag].count === 0) ? (
+          <EmptyState
+            words={`Nothing tagged in ${year} yet. Jane tags donations, medical, childcare and education spending as it comes in.`}
+            next={{ href: `/taxes/tags?year=${year}#search`, label: "Tag a charge yourself" }}
+          />
+        ) : (
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+            {TAX_TAG_ORDER.map((tag) => (
+              <div key={tag} className="flex justify-between gap-2">
+                <dt className="text-zinc-600 dark:text-zinc-400">{TAX_TAGS[tag].label}</dt>
+                <dd className="whitespace-nowrap">
+                  {formatCents(view.totals[tag].totalCents)} ({view.totals[tag].count})
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
       </section>
 
       {view.checks.length > 0 && (

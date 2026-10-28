@@ -200,6 +200,7 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
       continue;
     // Chase adds a trailing comma to some rows; extra empty fields are harmless.
     const extra = record.fields.slice(columns.length);
+    if (record.fields.length < columns.length && format.shortRows === "skip") continue;
     if (record.fields.length < columns.length || extra.some((value) => value.trim() !== "")) {
       skipped.push({
         file: file.name,
@@ -215,6 +216,16 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
       skipped.push({ file: file.name, line: record.line, reason: result.reason });
   }
 
+  // The format's last word on the rows as a whole (PayPal's card-paid pairs).
+  if (format.finish) {
+    const reasons = format.finish(parsed.map((p) => p.row));
+    const kept = parsed.filter((p, i) => {
+      const reason = reasons[i];
+      if (reason) skipped.push({ file: file.name, line: p.line, reason });
+      return !reason;
+    });
+    parsed.splice(0, parsed.length, ...kept);
+  }
   const keys = dedupeKeys(parsed.map((p) => p.row));
   const transactions = parsed.map(({ row }, i) => ({
     date: row.date,

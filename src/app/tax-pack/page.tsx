@@ -11,6 +11,7 @@ import { selectableYears, taxYearFrom, type PackGroup } from "@/planning/tax-pac
 import { QUARTER_LABELS, TAX_PACK_COPY as COPY } from "@/planning/tax-pack-copy";
 import { LoadingBar } from "@/components/loading-bar";
 import { dayLabel } from "@/lib/day-label";
+import { EmptyState } from "@/components/empty-state";
 
 // The tax-time pack (spec step 72): organizing only, no tax advice and no Claude text.
 
@@ -78,6 +79,11 @@ async function TaxPackContent({
   const year = taxYearFrom(typeof asked === "string" ? asked : undefined, today);
   const pack = await loadTaxPack(user.id, year, { now });
   const groups = Object.keys(pack.preparer) as PreparerGroup[];
+  const summary: (readonly [string, number])[] = [
+    [COPY.charityHeading, pack.charity.totalCents],
+    ...groups.map((g) => [COPY.groupLabels[g], pack.preparer[g].totalCents] as const),
+    [COPY.incomeHeading, pack.income.totalCents],
+  ];
 
   return (
     <>
@@ -117,26 +123,30 @@ async function TaxPackContent({
         <h2 id="summary" className="text-xl font-semibold">
           {COPY.summaryHeading}
         </h2>
-        <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-          {(
-            [
-              [COPY.charityHeading, pack.charity.totalCents],
-              ...groups.map((g) => [COPY.groupLabels[g], pack.preparer[g].totalCents] as const),
-              [COPY.incomeHeading, pack.income.totalCents],
-            ] as const
-          ).map(([label, cents]) => (
-            <div key={label} className="flex justify-between gap-2">
-              <dt className="text-zinc-600 dark:text-zinc-400">{label}</dt>
-              <dd className="whitespace-nowrap">{formatCents(cents)}</dd>
-            </div>
-          ))}
-        </dl>
-        <p className="text-xs text-zinc-500">
-          {COPY.tagsNote}{" "}
-          <Link href="/taxes/tags" className={LINK}>
-            {COPY.tagsLink}
-          </Link>
-        </p>
+        {/* Nothing for the year yet: a line and where it comes from, not a list of $0.00. */}
+        {summary.every(([, cents]) => cents === 0) ? (
+          <EmptyState
+            words={`Nothing for ${year} yet. The pack fills in as Jane tags donations, medical and work costs, and reads income from your accounts.`}
+            next={{ href: `/taxes/tags?year=${year}`, label: "See your tax tags" }}
+          />
+        ) : (
+          <>
+            <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+              {summary.map(([label, cents]) => (
+                <div key={label} className="flex justify-between gap-2">
+                  <dt className="text-zinc-600 dark:text-zinc-400">{label}</dt>
+                  <dd className="whitespace-nowrap">{formatCents(cents)}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="text-xs text-zinc-500">
+              {COPY.tagsNote}{" "}
+              <Link href="/taxes/tags" className={LINK}>
+                {COPY.tagsLink}
+              </Link>
+            </p>
+          </>
+        )}
       </section>
 
       <section aria-labelledby="forms" className={CARD}>
