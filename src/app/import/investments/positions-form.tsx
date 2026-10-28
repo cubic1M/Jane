@@ -170,7 +170,11 @@ export function PositionsForm() {
             ))}
           </div>
         ) : (
-          <p key={file.file} role="alert" className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+          <p
+            key={file.file}
+            role="alert"
+            className="text-sm font-medium text-zinc-900 dark:text-zinc-100"
+          >
             {file.file}: {file.error}
           </p>
         ),
