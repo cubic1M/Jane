@@ -946,7 +946,7 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "GENERAL_MERCHANDISE_PET_SUPPLIES",
-    keywords: ["PETSMART", "PETCO", "CHEWY"],
+    keywords: ["PETSMART", "PETCO", "CHEWY", "BARKBOX", "BARK BOX", "BARKSHOP"],
     direction: "out",
   },
   {
