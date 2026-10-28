@@ -28,6 +28,19 @@ describe("duplicate_charge", () => {
     ]);
   });
 
+  // CSV bench, second tuning set: each order carries its own number after the "*".
+  it("never calls two orders with their own order numbers a double charge", () => {
+    const amazon = { merchantName: null, pfcPrimary: "GENERAL_MERCHANDISE" };
+    const two = [
+      charge(5, { ...amazon, description: "AMZN Mktp US*2K4L91Z3" }),
+      charge(5, { ...amazon, description: "AMZN Mktp US*7HQ2MX0PB" }),
+    ];
+    expect(run(input({ transactions: two }))).toEqual([]);
+    // The same order number twice is the card run twice.
+    const same = [two[0], { ...two[0], id: `${two[0].id}-again` }];
+    expect(run(input({ transactions: same }))).toHaveLength(1);
+  });
+
   it("never calls two plans billed together every month a double charge", () => {
     const plan = monthly(4, 1549, NETFLIX);
     const twins = plan.flatMap((t) => [t, { ...t, id: `${t.id}-b` }]);

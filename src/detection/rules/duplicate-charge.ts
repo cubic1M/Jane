@@ -3,6 +3,7 @@ import {
   DUPLICATE_CHARGE_GROUP_MIN,
   DUPLICATE_CHARGE_MEAL_MIN_CENTS,
   DUPLICATE_CHARGE_MIN_CENTS,
+  DUPLICATE_CHARGE_ORDER_NUMBER,
   DUPLICATE_CHARGE_PER_SEAT_CATEGORIES,
   DUPLICATE_CHARGE_PER_SEAT_WORDS,
   DUPLICATE_CHARGE_SEAT_UNLESS_RECURRING_CATEGORIES,
@@ -17,6 +18,14 @@ import { daysBetween } from "../units";
 import type { Rule } from "./rule";
 
 export type DuplicatePair = { first: DetectionTransaction; second: DetectionTransaction };
+
+// The order number after the processor's "*", when there is one.
+const orderNumber = (t: DetectionTransaction) =>
+  DUPLICATE_CHARGE_ORDER_NUMBER.exec(t.description.toUpperCase())?.[1] ?? null;
+const twoOrders = (a: DetectionTransaction, b: DetectionTransaction) => {
+  const [x, y] = [orderNumber(a), orderNumber(b)];
+  return x !== null && y !== null && x !== y;
+};
 
 const merchantName = (t: DetectionTransaction) =>
   t.merchantName ?? merchantOf(t)?.name ?? t.description;
@@ -65,6 +74,7 @@ export function duplicatePairs(input: DetectionInput): DuplicatePair[] {
       if (sameDay(first.date) >= DUPLICATE_CHARGE_GROUP_MIN) continue;
       if (sameDay(second.date) >= DUPLICATE_CHARGE_GROUP_MIN) continue;
       if (daysBetween(first.date, second.date) > DUPLICATE_CHARGE_WINDOW_DAYS) continue;
+      if (twoOrders(first, second)) continue;
       // The merchant already gave the money back.
       if (refunds.some((r) => r.date >= first.date)) continue;
       pairs.push({ first, second });

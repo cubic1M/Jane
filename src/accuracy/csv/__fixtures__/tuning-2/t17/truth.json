@@ -87,6 +87,14 @@
     },
     {
       "type": "duplicate_charge",
+      "about": "two at GREAT CLIPS 4412"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
+    },
+    {
+      "type": "duplicate_charge",
       "about": "NINTENDO *SWITCH ONLINE, two plans"
     }
   ],
@@ -101,11 +109,11 @@
     },
     {
       "date": "2026-09-30",
-      "dollars": -8314.81
+      "dollars": -8360.39
     },
     {
       "date": "2026-10-24",
-      "dollars": -8902.78
+      "dollars": -8992.36
     }
   ]
 }

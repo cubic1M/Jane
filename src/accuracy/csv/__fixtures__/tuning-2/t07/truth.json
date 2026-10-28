@@ -44,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 956783, excess 446195",
+      "about": "cash 956783, excess 443082",
       "perYear": null
     }
   ],
@@ -60,6 +60,10 @@
     {
       "type": "subscription_review",
       "about": "AFFIRM *PAY 3K9L2, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at RIVERSIDE PEDIATRICS"
     },
     {
       "type": "duplicate_charge",
@@ -85,11 +89,11 @@
     },
     {
       "date": "2026-09-30",
-      "dollars": 7142.95
+      "dollars": 7082.95
     },
     {
       "date": "2026-10-24",
-      "dollars": 8682.42
+      "dollars": 8622.42
     }
   ]
 }

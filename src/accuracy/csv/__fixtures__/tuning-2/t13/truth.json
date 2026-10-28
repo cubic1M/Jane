@@ -74,6 +74,10 @@
     {
       "type": "subscription_review",
       "about": "KLARNA* NIKE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at GREAT CLIPS 4412"
     }
   ],
   "netWorthByMonthEnd": [
@@ -91,7 +95,7 @@
     },
     {
       "date": "2026-10-24",
-      "dollars": -67.74
+      "dollars": -111.74
     }
   ]
 }

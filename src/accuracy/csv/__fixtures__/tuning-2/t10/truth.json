@@ -70,6 +70,10 @@
     {
       "type": "subscription_review",
       "about": "HOMESHIELD PREMIUM, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at BRIGHT SMILE DENTAL"
     }
   ],
   "netWorthByMonthEnd": [
@@ -91,7 +95,7 @@
     },
     {
       "date": "2026-10-24",
-      "dollars": -365.8
+      "dollars": -455.8
     }
   ]
 }

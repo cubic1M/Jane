@@ -78,6 +78,10 @@
     {
       "type": "subscription_review",
       "about": "OAK RIDGE HOA, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
     }
   ],
   "netWorthByMonthEnd": [
@@ -103,7 +107,7 @@
     },
     {
       "date": "2026-10-24",
-      "dollars": -7689.16
+      "dollars": -7779.2
     }
   ]
 }

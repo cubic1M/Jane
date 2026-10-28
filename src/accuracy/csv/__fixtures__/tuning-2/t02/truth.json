@@ -98,6 +98,14 @@
     {
       "type": "subscription_review",
       "about": "NEW HOPE CHAPEL, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at RIVERSIDE PEDIATRICS"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
     }
   ],
   "netWorthByMonthEnd": [
@@ -115,11 +123,11 @@
     },
     {
       "date": "2026-09-30",
-      "dollars": 3198.12
+      "dollars": 3058.76
     },
     {
       "date": "2026-10-24",
-      "dollars": 4342.58
+      "dollars": 4203.22
     }
   ]
 }

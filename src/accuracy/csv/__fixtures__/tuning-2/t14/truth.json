@@ -44,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1046731, excess 343150",
+      "about": "cash 1046731, excess 335889",
       "perYear": null
     }
   ],
@@ -80,6 +80,10 @@
     {
       "type": "subscription_review",
       "about": "ACORNS INVEST, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
     }
   ],
   "netWorthByMonthEnd": [
@@ -101,7 +105,7 @@
     },
     {
       "date": "2026-10-24",
-      "dollars": 5308.18
+      "dollars": 5192.88
     }
   ]
 }

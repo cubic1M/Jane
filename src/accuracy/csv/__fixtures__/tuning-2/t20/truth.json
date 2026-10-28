@@ -78,6 +78,14 @@
     {
       "type": "subscription_review",
       "about": "OAK RIDGE HOA, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at GREAT CLIPS 4412"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
     }
   ],
   "netWorthByMonthEnd": [
@@ -107,7 +115,7 @@
     },
     {
       "date": "2026-10-24",
-      "dollars": 209.36
+      "dollars": 81.22
     }
   ]
 }

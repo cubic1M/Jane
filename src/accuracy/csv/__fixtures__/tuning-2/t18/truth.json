@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4920148, excess 4320526",
+      "about": "cash 4920148, excess 4314104",
       "perYear": null
     }
   ],
@@ -82,6 +82,14 @@
     },
     {
       "type": "duplicate_charge",
+      "about": "two at GREAT CLIPS 4412"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
+    },
+    {
+      "type": "duplicate_charge",
       "about": "NINTENDO *SWITCH ONLINE, two plans"
     }
   ],
@@ -100,11 +108,11 @@
     },
     {
       "date": "2026-09-30",
-      "dollars": 39515.51
+      "dollars": 39471.51
     },
     {
       "date": "2026-10-24",
-      "dollars": 44202.36
+      "dollars": 44100.4
     }
   ]
 }

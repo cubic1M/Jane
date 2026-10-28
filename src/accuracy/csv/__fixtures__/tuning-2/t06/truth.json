@@ -44,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 5247518, excess 4155696",
+      "about": "cash 5247518, excess 4146769",
       "perYear": null
     }
   ],
@@ -76,6 +76,14 @@
     {
       "type": "subscription_review",
       "about": "OAK RIDGE HOA, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at RIVERSIDE PEDIATRICS"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
     }
   ],
   "netWorthByMonthEnd": [
@@ -97,7 +105,7 @@
     },
     {
       "date": "2026-10-24",
-      "dollars": 50372.67
+      "dollars": 50230.93
     }
   ]
 }
