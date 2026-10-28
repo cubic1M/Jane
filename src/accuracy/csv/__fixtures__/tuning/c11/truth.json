@@ -71,32 +71,36 @@
     {
       "type": "subscription_review",
       "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TD AMERITRADE CLEARING, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -2961.06
+      "dollars": -3360.76
     },
     {
       "date": "2026-06-30",
-      "dollars": -2942.9
+      "dollars": -3451.6
     },
     {
       "date": "2026-07-31",
-      "dollars": -2683.48
+      "dollars": -3301.18
     },
     {
       "date": "2026-08-31",
-      "dollars": -3549.24
+      "dollars": -4275.94
     },
     {
       "date": "2026-09-30",
-      "dollars": -4261.12
+      "dollars": -5096.82
     },
     {
       "date": "2026-10-24",
-      "dollars": -4590.11
+      "dollars": -5534.81
     }
   ]
 }

@@ -72,28 +72,32 @@
     {
       "type": "subscription_review",
       "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 1462.2
+      "dollars": 1117.96
     },
     {
       "date": "2026-07-31",
-      "dollars": 60.59
+      "dollars": -627.89
     },
     {
       "date": "2026-08-31",
-      "dollars": -971.91
+      "dollars": -2004.63
     },
     {
       "date": "2026-09-30",
-      "dollars": -2038.31
+      "dollars": -3415.27
     },
     {
       "date": "2026-10-24",
-      "dollars": -2599.22
+      "dollars": -4320.42
     }
   ]
 }

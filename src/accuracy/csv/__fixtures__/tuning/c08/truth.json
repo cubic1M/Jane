@@ -77,36 +77,40 @@
     {
       "type": "subscription_review",
       "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SCHWAB BROKERAGE MONEYLINK, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -1875.45
+      "dollars": -1983.5
     },
     {
       "date": "2026-05-31",
-      "dollars": -2000.04
+      "dollars": -2534.62
     },
     {
       "date": "2026-06-30",
-      "dollars": -2226.9
+      "dollars": -2869.53
     },
     {
       "date": "2026-07-31",
-      "dollars": -585.97
+      "dollars": -1336.65
     },
     {
       "date": "2026-08-31",
-      "dollars": -428.41
+      "dollars": -1287.14
     },
     {
       "date": "2026-09-30",
-      "dollars": -636.5
+      "dollars": -1603.28
     },
     {
       "date": "2026-10-24",
-      "dollars": -338.72
+      "dollars": -1413.55
     }
   ]
 }

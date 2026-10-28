@@ -90,6 +90,10 @@
       "about": "KLARNA* NIKE, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at BRIGHT SMILE DENTAL"
     },
@@ -105,31 +109,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 2128.06
+      "dollars": 1905.44
     },
     {
       "date": "2026-05-31",
-      "dollars": 618.44
+      "dollars": 173.2
     },
     {
       "date": "2026-06-30",
-      "dollars": -1026.56
+      "dollars": -1694.42
     },
     {
       "date": "2026-07-31",
-      "dollars": -2273.98
+      "dollars": -3164.46
     },
     {
       "date": "2026-08-31",
-      "dollars": -3784.22
+      "dollars": -4897.32
     },
     {
       "date": "2026-09-30",
-      "dollars": -5260.57
+      "dollars": -6596.29
     },
     {
       "date": "2026-10-24",
-      "dollars": -6130.02
+      "dollars": -7688.36
     }
   ]
 }

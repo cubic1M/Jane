@@ -8,7 +8,7 @@ export type InvestingApp = { name: string; words: readonly string[] };
 // The names are the ones people use; the words are what bank statements print.
 export const INVESTING_APPS: readonly InvestingApp[] = [
   { name: "Robinhood", words: ["ROBINHOOD"] },
-  { name: "Fidelity", words: ["FIDELITY"] },
+  { name: "Fidelity", words: ["FIDELITY", "FID BKG SVC"] },
   { name: "Vanguard", words: ["VANGUARD"] },
   { name: "Schwab", words: ["SCHWAB"] },
   { name: "Acorns", words: ["ACORNS"] },
@@ -18,6 +18,8 @@ export const INVESTING_APPS: readonly InvestingApp[] = [
   { name: "E*Trade", words: ["E*TRADE", "ETRADE"] },
   { name: "M1", words: ["M1 FINANCE"] },
   { name: "Public", words: ["PUBLIC.COM"] },
+  { name: "TD Ameritrade", words: ["TD AMERITRADE", "TDAMERITRADE"] },
+  { name: "Merrill Edge", words: ["MERRILL EDGE"] },
   { name: "Coinbase", words: ["COINBASE"] },
   { name: "Webull", words: ["WEBULL"] },
   { name: "SoFi Invest", words: ["SOFI INVEST"] },

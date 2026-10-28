@@ -64,7 +64,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1187687, excess 562529",
+      "about": "cash 1015443, excess 390285",
       "perYear": null
     }
   ],
@@ -112,28 +112,32 @@
     {
       "type": "subscription_review",
       "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ACORNS INVEST 8123, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 974.29
+      "dollars": 711.5
     },
     {
       "date": "2026-07-31",
-      "dollars": 3939.83
+      "dollars": 3414.25
     },
     {
       "date": "2026-08-31",
-      "dollars": 4795.6
+      "dollars": 3598.74
     },
     {
       "date": "2026-09-30",
-      "dollars": 5606.74
+      "dollars": 4147.09
     },
     {
       "date": "2026-10-24",
-      "dollars": 6796.53
+      "dollars": 5074.09
     }
   ]
 }

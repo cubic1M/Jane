@@ -31,3 +31,12 @@ describe("investing apps in a person's transfers", () => {
     expect(askQuestion("Robinhood")).toBe("What's in your Robinhood account today?");
   });
 });
+
+describe("more of the ways statements word it", () => {
+  it("knows Fidelity's ACH wording and the other brokerages", async () => {
+    const { appOf } = await import("./apps");
+    expect(appOf("FID BKG SVC LLC MONEYLINE")).toBe("Fidelity");
+    expect(appOf("TD AMERITRADE CLEARING")).toBe("TD Ameritrade");
+    expect(appOf("MERRILL EDGE")).toBe("Merrill Edge");
+  });
+});

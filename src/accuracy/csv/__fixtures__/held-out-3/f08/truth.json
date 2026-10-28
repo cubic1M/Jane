@@ -80,36 +80,40 @@
     {
       "type": "subscription_review",
       "about": "GRACE FELLOWSHIP, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SCHWAB BROKERAGE MONEYLINK, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -5048.79
+      "dollars": -5316.63
     },
     {
       "date": "2026-05-31",
-      "dollars": -3407.04
+      "dollars": -3942.72
     },
     {
       "date": "2026-06-30",
-      "dollars": -3701.59
+      "dollars": -4505.11
     },
     {
       "date": "2026-07-31",
-      "dollars": -3655.86
+      "dollars": -4727.22
     },
     {
       "date": "2026-08-31",
-      "dollars": -4253.79
+      "dollars": -5592.99
     },
     {
       "date": "2026-09-30",
-      "dollars": -4353.84
+      "dollars": -5960.88
     },
     {
       "date": "2026-10-24",
-      "dollars": -4674.18
+      "dollars": -6549.06
     }
   ]
 }

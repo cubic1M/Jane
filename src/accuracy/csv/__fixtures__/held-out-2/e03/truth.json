@@ -64,32 +64,36 @@
     {
       "type": "subscription_review",
       "about": "SWEET CRUMB BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 991.06
+      "dollars": 748.22
     },
     {
       "date": "2026-06-30",
-      "dollars": -1990.94
+      "dollars": -2328.77
     },
     {
       "date": "2026-07-31",
-      "dollars": -3010.81
+      "dollars": -4039.5
     },
     {
       "date": "2026-08-31",
-      "dollars": -4959.21
+      "dollars": -6379.55
     },
     {
       "date": "2026-09-30",
-      "dollars": -7169.74
+      "dollars": -8951.75
     },
     {
       "date": "2026-10-24",
-      "dollars": -8703.57
+      "dollars": -10838.08
     }
   ]
 }

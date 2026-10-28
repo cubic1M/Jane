@@ -253,6 +253,10 @@ const RULES: readonly Rule[] = [
     keywords: [
       "ACORNS INVEST",
       "ACORNS*INVEST",
+      "FID BKG SVC",
+      "TD AMERITRADE",
+      "TDAMERITRADE",
+      "MERRILL EDGE",
       "ACORNS GROW",
       "STASH INVEST",
       "BETTERMENT",

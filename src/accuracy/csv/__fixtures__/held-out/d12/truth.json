@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 5553353, excess 5060288",
+      "about": "cash 5376287, excess 4883222",
       "perYear": null
     }
   ],
@@ -87,36 +87,40 @@
     {
       "type": "subscription_review",
       "about": "SUNRISE BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "TD AMERITRADE CLEARING, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 22923.92
+      "dollars": 22890.68
     },
     {
       "date": "2026-05-31",
-      "dollars": 32406.59
+      "dollars": 31975.44
     },
     {
       "date": "2026-06-30",
-      "dollars": 36191.48
+      "dollars": 35394.18
     },
     {
       "date": "2026-07-31",
-      "dollars": 40891.32
+      "dollars": 39894.13
     },
     {
       "date": "2026-08-31",
-      "dollars": 45205.43
+      "dollars": 43838.84
     },
     {
       "date": "2026-09-30",
-      "dollars": 49593.34
+      "dollars": 48048.14
     },
     {
       "date": "2026-10-24",
-      "dollars": 54630.77
+      "dollars": 52860.11
     }
   ]
 }

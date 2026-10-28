@@ -66,6 +66,10 @@
       "about": "ACORNS INVEST, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at GREAT CLIPS 4412"
     },
@@ -77,19 +81,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 5041.17
+      "dollars": 4831.6
     },
     {
       "date": "2026-08-31",
-      "dollars": 5674.81
+      "dollars": 4925.24
     },
     {
       "date": "2026-09-30",
-      "dollars": 6090.16
+      "dollars": 5131.02
     },
     {
       "date": "2026-10-24",
-      "dollars": 6626.79
+      "dollars": 5458.08
     }
   ]
 }

@@ -75,6 +75,10 @@
       "about": "KINGS HEAD PUB, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "DEEZER, two plans"
     }
@@ -82,27 +86,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -5407.29
+      "dollars": -5477.13
     },
     {
       "date": "2026-06-30",
-      "dollars": -6157.69
+      "dollars": -6297.37
     },
     {
       "date": "2026-07-31",
-      "dollars": -5840.84
+      "dollars": -6050.36
     },
     {
       "date": "2026-08-31",
-      "dollars": -6477.64
+      "dollars": -6757
     },
     {
       "date": "2026-09-30",
-      "dollars": -6885.39
+      "dollars": -7234.59
     },
     {
       "date": "2026-10-24",
-      "dollars": -7594.04
+      "dollars": -8013.08
     }
   ]
 }

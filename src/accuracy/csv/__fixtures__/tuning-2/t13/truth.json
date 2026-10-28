@@ -81,6 +81,10 @@
       "about": "KLARNA* NIKE, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "TD AMERITRADE CLEARING, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at GREAT CLIPS 4412"
     }
@@ -88,19 +92,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 1766.19
+      "dollars": 1392.03
     },
     {
       "date": "2026-08-31",
-      "dollars": 1426.92
+      "dollars": 820.91
     },
     {
       "date": "2026-09-30",
-      "dollars": 1523.17
+      "dollars": 619.31
     },
     {
       "date": "2026-10-24",
-      "dollars": -251.74
+      "dollars": -1412.18
     }
   ]
 }

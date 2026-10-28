@@ -79,32 +79,36 @@
     {
       "type": "subscription_review",
       "about": "NEW HOPE CHAPEL, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1029.07
+      "dollars": 722.06
     },
     {
       "date": "2026-06-30",
-      "dollars": -22.48
+      "dollars": -636.5
     },
     {
       "date": "2026-07-31",
-      "dollars": -1372.34
+      "dollars": -2293.37
     },
     {
       "date": "2026-08-31",
-      "dollars": -3240.73
+      "dollars": -4870.45
     },
     {
       "date": "2026-09-30",
-      "dollars": -5505.19
+      "dollars": -7441.92
     },
     {
       "date": "2026-10-24",
-      "dollars": -6647.22
+      "dollars": -8583.95
     }
   ]
 }

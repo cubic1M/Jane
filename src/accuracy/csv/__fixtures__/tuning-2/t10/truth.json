@@ -77,6 +77,10 @@
       "about": "HOMESHIELD PREMIUM, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at BRIGHT SMILE DENTAL"
     }
@@ -84,23 +88,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 6561.73
+      "dollars": 6294.46
     },
     {
       "date": "2026-07-31",
-      "dollars": 4117.55
+      "dollars": 3090.99
     },
     {
       "date": "2026-08-31",
-      "dollars": 2462.34
+      "dollars": 1168.51
     },
     {
       "date": "2026-09-30",
-      "dollars": 1093.26
+      "dollars": -467.84
     },
     {
       "date": "2026-10-24",
-      "dollars": -750.8
+      "dollars": -2579.17
     }
   ]
 }

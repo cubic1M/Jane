@@ -46,11 +46,6 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 627.18
-    },
-    {
-      "type": "idle_cash",
-      "about": "cash 1303841, excess 159777",
-      "perYear": null
     }
   ],
   "notFindings": [
@@ -77,36 +72,40 @@
     {
       "type": "subscription_review",
       "about": "SWEET CRUMB BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "ROBINHOOD DEBITS XXXXXX3412, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -1755.49
+      "dollars": -1807.93
     },
     {
       "date": "2026-05-31",
-      "dollars": -66.48
+      "dollars": -460.94
     },
     {
       "date": "2026-06-30",
-      "dollars": 791.65
+      "dollars": 331.72
     },
     {
       "date": "2026-07-31",
-      "dollars": 4780
+      "dollars": 4228.62
     },
     {
       "date": "2026-08-31",
-      "dollars": 5268.11
+      "dollars": 4605.04
     },
     {
       "date": "2026-09-30",
-      "dollars": 6420.39
+      "dollars": 5628.77
     },
     {
       "date": "2026-10-24",
-      "dollars": 8185.57
+      "dollars": 7297.31
     }
   ]
 }
