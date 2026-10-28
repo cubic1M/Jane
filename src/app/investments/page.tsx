@@ -34,10 +34,18 @@ import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
+import { loadInvestingLeak } from "@/lib/investments/leak";
+import { loadPanicSells } from "@/lib/investments/panic-sells";
+import { panicSummary } from "@/planning/panic-sells";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
+import { EMBEDDED_PAGES } from "@/config/embedded-pages";
+import { LazyPage } from "./lazy-page";
 import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import { BrokerageAskForm } from "./brokerage-ask";
+import { INTRADAY_AGENT_EVIDENCE } from "@/config/intraday-agent-evidence";
+import { honestLine } from "@/planning/trading-agent/honest-line";
+import { ownedFacts } from "@/planning/owned-facts";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
@@ -133,7 +141,9 @@ async function Strategies({ userId, ideas }: { userId: string; ideas: number }) 
   return (
     <>
       <PaperAccount view={paper} strategy={strategyLabel(chosen.key, chosen.level)} />
-      {paper && <TradingAgent view={agent} choices={choices} />}
+      {paper && (
+        <TradingAgent view={agent} choices={choices} honest={honestLine(INTRADAY_AGENT_EVIDENCE)} />
+      )}
       {/* The events overlay: its own box, apart from the suggestion dock (advice mode only). */}
       {events && <EventsBox view={events} />}
       <StrategyTree tiles={tiles} board={board} ideas={ideas} />
@@ -173,6 +183,29 @@ async function BrokerageAsks({ user }: { user: Parameters<typeof canImportCsv>[0
   );
 }
 
+// Selling after a big drop, from the person's own sales: a fact looking back, with the dollars.
+async function PanicSells({ userId }: { userId: string }) {
+  const result = await loadPanicSells(userId);
+  const summary = panicSummary(result);
+  if (!summary) return null;
+  return (
+    <section
+      className="flex flex-col gap-2 border border-zinc-200 p-4 dark:border-zinc-800"
+      aria-labelledby="panic-heading"
+    >
+      <h2 id="panic-heading" className="text-lg font-semibold">
+        Selling after a drop
+      </h2>
+      <p className="text-sm">{summary}</p>
+      <ul className="flex flex-col gap-1 text-sm">
+        {result.sales.slice(0, 5).map((s) => (
+          <li key={`${s.ticker}-${s.date}`}>{s.sentence}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 async function InvestmentsContent({
   searchParams,
 }: {
@@ -207,6 +240,8 @@ async function InvestmentsContent({
     area,
   } = await loadInvestingArea(user.id);
 
+  const facts = ownedFacts(data.accounts);
+  const leak = await loadInvestingLeak(user.id);
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
   // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
@@ -408,7 +443,12 @@ async function InvestmentsContent({
     profile.complete ? "Change it" : "Answer them",
   );
   for (const branch of ["plan", "kinds", "costs"] as const)
-    for (const pg of PAGES[branch]) details[itemId(branch, pg.key)] = go(pg.href, pg.label);
+    for (const pg of PAGES[branch])
+      details[itemId(branch, pg.key)] = EMBEDDED_PAGES.includes(pg.key) ? (
+        <LazyPage pageKey={pg.key} href={pg.href} label={pg.label} />
+      ) : (
+        go(pg.href, pg.label)
+      );
 
   return (
     <>
@@ -420,6 +460,27 @@ async function InvestmentsContent({
         <p className="text-zinc-600 dark:text-zinc-400">
           Your accounts, as your bank reports them.
         </p>
+        {leak.totalCents > 0 && (
+          <section
+            className="flex flex-col gap-1 border border-zinc-200 p-4 dark:border-zinc-800"
+            aria-labelledby="leak-heading"
+          >
+            <h2 id="leak-heading" className="text-xl font-semibold">
+              Investing leaks about {formatCents(leak.totalCents)} a year
+            </h2>
+            <ul className="text-sm">
+              {leak.parts.map((p) => (
+                <li key={p.key}>
+                  {p.label}: {formatCents(p.cents)} a year
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-zinc-500">
+              Each is one of Jane&apos;s ideas below, counted once. Cash in checking and savings is
+              on the Money page, not here.
+            </p>
+          </section>
+        )}
         <nav aria-label="Investing pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/investments/practice" className={LINK}>
             Practice portfolio
@@ -434,6 +495,40 @@ async function InvestmentsContent({
 
       <Suspense fallback={null}>
         <BrokerageAsks user={user} />
+      </Suspense>
+
+      {!backtests.advice && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Jane can also run a practice portfolio on made-up money.{" "}
+          <Link href="/" target="_blank" rel="noopener" className={LINK}>
+            See it on sample data
+          </Link>{" "}
+          (opens a separate sample person in a new tab; use a private window to stay signed in to
+          your own account).
+        </p>
+      )}
+
+      {!backtests.advice && facts && (
+        <section
+          className="flex flex-col gap-2 border border-zinc-200 p-4 dark:border-zinc-800"
+          aria-labelledby="owned-facts-heading"
+        >
+          <h2 id="owned-facts-heading" className="text-lg font-semibold">
+            What you own, in short
+          </h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {facts.sentences.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-zinc-500">
+            Facts from your accounts, not advice. Fund costs are the fund companies&apos; published
+            yearly fees, rounded; confirm yours on the fund&apos;s page.
+          </p>
+        </section>
+      )}
+      <Suspense fallback={null}>
+        <PanicSells userId={user.id} />
       </Suspense>
 
       {backtests.advice && (

@@ -318,21 +318,21 @@ Beta users start by uploading statements, so the sample people above (already-cl
 - **Gate:** `src/accuracy/csv/csv-accuracy.test.ts`, with the unit tests: the files must match the generator, every share in the baseline may drop at most 3 points, and extra rows and false "Charged twice?" may not rise at all.
 
 <!-- csv-scoreboard:start -->
-Tuning set (20 people, 155 files, 5444 transactions):
+Tuning set (20 people, 147 files, 5513 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 155 of 155 (151 exactly) |
+| Files read | 147 of 147 (143 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 99.8% (11 left for Claude) |
 | False "Charged twice?" | 0 (0 people) |
 | Findings, $/yr | Jane $30,610, truth $30,610; error on the ones found 0.0% |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 7 of 20 people (off by $52,333 in all) |
+| Net worth today right | 7 of 20 people (off by $53,201 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
 | Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 0 false idle cash |
-| Net worth line: month-ends drawn | 97.3% (error where drawn 19.1%) |
+| Net worth line: month-ends drawn | 97.3% (error where drawn 19.0%) |
 | Net worth line, people whose every balance Jane knows | 7 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
@@ -343,7 +343,7 @@ Tuning set (20 people, 155 files, 5444 transactions):
 | bank_fees | 100.0% | 100.0% | 17 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 100.0% | 100.0% | 11 | 0 | 0 |
-| idle_cash | 100.0% | 87.5% | 7 | 0 | 1 |
+| idle_cash | 100.0% | 85.7% | 6 | 0 | 1 |
 | bills coming up (31 days) | 100.0% | 100.0% | 199 | 0 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
@@ -353,27 +353,27 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 17 | 58% | 94% |
+| 50–59% | 16 | 59% | 100% |
 | 60–69% | 32 | 64% | 100% |
 | 70–79% | 5 | 76% | 100% |
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Second tuning set (20 people, 131 files, 5869 transactions):
+Second tuning set (20 people, 137 files, 5926 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 131 of 131 (127 exactly) |
+| Files read | 137 of 137 (133 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 98.4% (92 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
 | Findings, $/yr | Jane $97,264, truth $95,305; error on the ones found 0.1% |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 9 of 20 people (off by $137,405 in all) |
+| Net worth today right | 9 of 20 people (off by $135,996 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 19) |
 | Balances skipped: accounts named as not counted | 30 in 20 people; 0 left out silently, 0 false idle cash |
-| Net worth line: month-ends drawn | 93.6% (error where drawn 47.7%) |
+| Net worth line: month-ends drawn | 93.6% (error where drawn 47.2%) |
 | Net worth line, people whose every balance Jane knows | 9 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
@@ -400,21 +400,21 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 80–89% | 4 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Held-out set (20 people, 135 files, 5393 transactions):
+Held-out set (20 people, 114 files, 5484 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 135 of 135 (132 exactly) |
+| Files read | 114 of 114 (111 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 94.2% (256 left for Claude) |
+| Category right (rules only) | 94.3% (256 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
 | Findings, $/yr | Jane $28,825, truth $29,777; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 11 of 20 people (off by $21,673 in all) |
+| Net worth today right | 11 of 20 people (off by $24,004 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
 | Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 0 false idle cash |
-| Net worth line: month-ends drawn | 91.8% (error where drawn 9.4%) |
+| Net worth line: month-ends drawn | 91.8% (error where drawn 9.7%) |
 | Net worth line, people whose every balance Jane knows | 11 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
@@ -436,26 +436,26 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 19 | 58% | 84% |
-| 60–69% | 35 | 64% | 100% |
+| 60–69% | 36 | 64% | 97% |
 | 70–79% | 6 | 76% | 100% |
 | 80–89% | 5 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Second held-out set (20 people, 128 files, 5470 transactions):
+Second held-out set (20 people, 138 files, 5532 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 128 of 128 (126 exactly) |
+| Files read | 138 of 138 (136 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 91.5% (393 left for Claude) |
+| Category right (rules only) | 91.6% (393 left for Claude) |
 | False "Charged twice?" | 2 (2 people) |
 | Findings, $/yr | Jane $31,131, truth $30,987; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 10 of 20 people (off by $60,329 in all) |
+| Net worth today right | 10 of 20 people (off by $59,230 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
 | Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 0 false idle cash |
-| Net worth line: month-ends drawn | 100.0% (error where drawn 23.4%) |
+| Net worth line: month-ends drawn | 100.0% (error where drawn 23.5%) |
 | Net worth line, people whose every balance Jane knows | 10 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
@@ -466,7 +466,7 @@ Second held-out set (20 people, 128 files, 5470 transactions):
 | bank_fees | 100.0% | 100.0% | 25 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
 | duplicate_charge | 84.6% | 100.0% | 11 | 2 | 0 |
-| idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
+| idle_cash | 100.0% | 87.5% | 7 | 0 | 1 |
 | bills coming up (31 days) | 99.5% | 100.0% | 221 | 1 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
@@ -477,26 +477,26 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 19 | 59% | 100% |
-| 60–69% | 39 | 64% | 95% |
+| 60–69% | 40 | 64% | 93% |
 | 70–79% | 6 | 76% | 100% |
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Third held-out set (20 people, 157 files, 5636 transactions):
+Third held-out set (20 people, 148 files, 5695 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 157 of 157 (152 exactly) |
+| Files read | 148 of 148 (143 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 79.6% (1102 left for Claude) |
+| Category right (rules only) | 79.8% (1102 left for Claude) |
 | False "Charged twice?" | 4 (4 people) |
-| Findings, $/yr | Jane $51,833, truth $35,077; error on the ones found 0.0% |
+| Findings, $/yr | Jane $51,799, truth $35,077; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 7 of 20 people (off by $41,405 in all) |
+| Net worth today right | 7 of 20 people (off by $41,990 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 19) |
 | Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 1 false idle cash |
-| Net worth line: month-ends drawn | 90.9% (error where drawn 14.2%) |
+| Net worth line: month-ends drawn | 90.9% (error where drawn 14.4%) |
 | Net worth line, people whose every balance Jane knows | 7 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |

@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 5239245, excess 4159242",
+      "about": "cash 5198160, excess 4118157",
       "perYear": null
     }
   ],
@@ -75,28 +75,32 @@
     {
       "type": "subscription_review",
       "about": "CANYON CU LOAN PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 31076.66
+      "dollars": 30994.49
     },
     {
       "date": "2026-07-31",
-      "dollars": 39083.82
+      "dollars": 38919.48
     },
     {
       "date": "2026-08-31",
-      "dollars": 42604.49
+      "dollars": 42357.98
     },
     {
       "date": "2026-09-30",
-      "dollars": 46334.8
+      "dollars": 46006.12
     },
     {
       "date": "2026-10-24",
-      "dollars": 50998.28
+      "dollars": 50587.43
     }
   ]
 }

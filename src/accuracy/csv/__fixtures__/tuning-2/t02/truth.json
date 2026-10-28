@@ -115,6 +115,10 @@
       "about": "NEW HOPE CHAPEL, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at RIVERSIDE PEDIATRICS"
     },
@@ -126,23 +130,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 371.58
+      "dollars": 7.01
     },
     {
       "date": "2026-07-31",
-      "dollars": 304.1
+      "dollars": -425.04
     },
     {
       "date": "2026-08-31",
-      "dollars": 606.2
+      "dollars": -487.51
     },
     {
       "date": "2026-09-30",
-      "dollars": 1213.15
+      "dollars": -245.13
     },
     {
       "date": "2026-10-24",
-      "dollars": 2030.8
+      "dollars": 207.95
     }
   ]
 }

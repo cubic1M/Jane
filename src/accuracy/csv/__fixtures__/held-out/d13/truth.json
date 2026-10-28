@@ -70,7 +70,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1099267, excess 180208",
+      "about": "cash 1043342, excess 124283",
       "perYear": null
     }
   ],
@@ -86,24 +86,28 @@
     {
       "type": "subscription_review",
       "about": "ROOT INSURANCE CO, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 4151.4
+      "dollars": 3917.79
     },
     {
       "date": "2026-08-31",
-      "dollars": 5524.62
+      "dollars": 5125.95
     },
     {
       "date": "2026-09-30",
-      "dollars": 7174.93
+      "dollars": 6728.95
     },
     {
       "date": "2026-10-24",
-      "dollars": 9433.33
+      "dollars": 8874.08
     }
   ]
 }

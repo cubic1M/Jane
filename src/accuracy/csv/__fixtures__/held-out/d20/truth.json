@@ -60,7 +60,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2050361, excess 1047728",
+      "about": "cash 1920798, excess 918165",
       "perYear": null
     }
   ],
@@ -86,6 +86,10 @@
       "about": "KINGS HEAD PUB, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "DEEZER, two plans"
     }
@@ -93,31 +97,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 929.55
+      "dollars": 744.46
     },
     {
       "date": "2026-05-31",
-      "dollars": 2655.64
+      "dollars": 2285.46
     },
     {
       "date": "2026-06-30",
-      "dollars": 5182.64
+      "dollars": 4627.37
     },
     {
       "date": "2026-07-31",
-      "dollars": 10326.77
+      "dollars": 9586.41
     },
     {
       "date": "2026-08-31",
-      "dollars": 12554.83
+      "dollars": 11629.38
     },
     {
       "date": "2026-09-30",
-      "dollars": 14478.01
+      "dollars": 13367.47
     },
     {
       "date": "2026-10-24",
-      "dollars": 16855.68
+      "dollars": 15560.05
     }
   ]
 }

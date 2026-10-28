@@ -88,24 +88,28 @@
     {
       "type": "subscription_review",
       "about": "THE RUSTY ANCHOR, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 2864.71
+      "dollars": 2621.32
     },
     {
       "date": "2026-08-31",
-      "dollars": 4616.64
+      "dollars": 4129.86
     },
     {
       "date": "2026-09-30",
-      "dollars": 6055.65
+      "dollars": 5325.48
     },
     {
       "date": "2026-10-24",
-      "dollars": 7940.78
+      "dollars": 6967.22
     }
   ]
 }

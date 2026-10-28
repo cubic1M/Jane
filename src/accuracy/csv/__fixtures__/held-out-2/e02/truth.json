@@ -75,7 +75,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1724430, excess 648477",
+      "about": "cash 1575531, excess 499578",
       "perYear": null
     }
   ],
@@ -107,28 +107,32 @@
     {
       "type": "subscription_review",
       "about": "SWEET CRUMB BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 9222.12
+      "dollars": 8877.62
     },
     {
       "date": "2026-07-31",
-      "dollars": 10974.97
+      "dollars": 10388.64
     },
     {
       "date": "2026-08-31",
-      "dollars": 11068.43
+      "dollars": 10355.93
     },
     {
       "date": "2026-09-30",
-      "dollars": 11365.69
+      "dollars": 10061.11
     },
     {
       "date": "2026-10-24",
-      "dollars": 11586.99
+      "dollars": 10098
     }
   ]
 }

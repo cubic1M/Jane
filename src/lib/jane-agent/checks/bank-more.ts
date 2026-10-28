@@ -113,6 +113,9 @@ const rows: Row[] = [
     "what would my family need if something happens to me",
   ],
   ["familyfile", "/investments/family-file", "family_file", "should i make a will or a trust"],
+  ["investing", "/investments", "investing_leak", "how much is my investing costing me a year"],
+  ["investing", "/investments", "investing_leak", "where am i losing money in my investments"],
+  ["investing", "/investments", "investing_leak", "total of what i could save on investing"],
   ["values", "/investments/values", "values_investing", "do you have esg funds"],
   ["windfall", "/investments/sudden-money", "sudden_money", "i got a big bonus what should i do"],
   [

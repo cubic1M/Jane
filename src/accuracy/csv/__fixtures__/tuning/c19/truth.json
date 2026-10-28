@@ -49,7 +49,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1910257, excess 882571",
+      "about": "cash 1710869, excess 683183",
       "perYear": null
     }
   ],
@@ -81,32 +81,36 @@
     {
       "type": "subscription_review",
       "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SCHWAB BROKERAGE MONEYLINK, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 3033.3
+      "dollars": 2736.14
     },
     {
       "date": "2026-06-30",
-      "dollars": 5092.57
+      "dollars": 4498.25
     },
     {
       "date": "2026-07-31",
-      "dollars": 9542.63
+      "dollars": 8651.15
     },
     {
       "date": "2026-08-31",
-      "dollars": 12185.49
+      "dollars": 10785.93
     },
     {
       "date": "2026-09-30",
-      "dollars": 14183.63
+      "dollars": 12486.91
     },
     {
       "date": "2026-10-24",
-      "dollars": 16816.26
+      "dollars": 14822.38
     }
   ]
 }

@@ -5,7 +5,18 @@ import type { Watch } from "@/detectors/contract";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { asWatch, verifyWatch, watchOfFinding, type OutcomeTx } from "@/planning/outcomes";
+import {
+  asWatch,
+  verifyWatch,
+  watchOfFinding,
+  type Check,
+  type OutcomeTx,
+} from "@/planning/outcomes";
+import {
+  isHoldingsWatch,
+  verifyHoldingsWatch,
+  type HoldingsNow,
+} from "@/planning/outcomes-holdings";
 import { DAY_MS, isoDay as isoDate } from "@/lib/dates";
 
 // The verified savings record: what happened to each suggestion that reached the person (shown,
@@ -219,7 +230,40 @@ export async function recordFindingDone(
   });
 }
 
-// Each night: the open outcomes against the transactions. Returns what changed.
+// What a person holds now, for the investing savings (src/planning/outcomes-holdings.ts).
+async function loadHoldingsNow(userId: string, client: PrismaClient): Promise<HoldingsNow> {
+  const db = scopedFor(userId, client);
+  const [accounts, holdings] = await Promise.all([
+    db.accounts.findMany({
+      select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
+    }),
+    db.holdings.findMany({
+      select: {
+        accountId: true,
+        valueCents: true,
+        security: { select: { ticker: true, isCashEquivalent: true, type: true } },
+      },
+    }),
+  ]);
+  return {
+    accounts: accounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      subtype: a.subtype,
+      balanceCents: a.currentBalanceCents ?? 0,
+    })),
+    holdings: holdings.map((h) => ({
+      accountId: h.accountId,
+      ticker: h.security.ticker,
+      isCash: h.security.isCashEquivalent || h.security.type === "cash",
+      valueCents: h.valueCents,
+    })),
+  };
+}
+
+// Each night: the open outcomes against the transactions (and, for investing, the holdings).
+// Returns what changed.
 export async function verifyOutcomes(
   userId: string,
   {
@@ -240,6 +284,7 @@ export async function verifyOutcomes(
     pfc: t.pfcDetailed,
   }));
   const asOf = isoDate(now);
+  let holdingsNow: HoldingsNow | null = null;
   let confirmed = 0;
   let notSeen = 0;
   for (const o of open) {
@@ -254,11 +299,11 @@ export async function verifyOutcomes(
     }
     // Long past its window (twice over): it stays as it is.
     if (now.getTime() - started.getTime() > 2 * WATCH_DAYS[watch.kind] * DAY_MS) continue;
-    const check = verifyWatch(
-      watch,
-      { startedOn: isoDate(started), asOf, expectedCents: o.expectedCents },
-      txs,
-    );
+    const about = { startedOn: isoDate(started), asOf, expectedCents: o.expectedCents };
+    // Investing savings show in what they hold now, not in their transactions.
+    const check: Check = isHoldingsWatch(watch)
+      ? verifyHoldingsWatch(watch, about, (holdingsNow ??= await loadHoldingsNow(userId, client)))
+      : verifyWatch(watch, about, txs);
     if (check.status === "waiting") {
       await db.suggestionOutcomes.updateMany({ where: { id: o.id }, data: { checkedAt: now } });
       continue;

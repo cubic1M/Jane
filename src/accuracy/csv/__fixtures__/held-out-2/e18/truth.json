@@ -79,7 +79,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4346619, excess 3374190",
+      "about": "cash 4236773, excess 3264344",
       "perYear": null
     }
   ],
@@ -103,28 +103,32 @@
     {
       "type": "subscription_review",
       "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "VANGUARD BUY INVESTMENT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 23728.96
+      "dollars": 23413.32
     },
     {
       "date": "2026-07-31",
-      "dollars": 29117.57
+      "dollars": 28313.05
     },
     {
       "date": "2026-08-31",
-      "dollars": 33218.81
+      "dollars": 32377.73
     },
     {
       "date": "2026-09-30",
-      "dollars": 37007.92
+      "dollars": 36083.33
     },
     {
       "date": "2026-10-24",
-      "dollars": 40908.74
+      "dollars": 39810.28
     }
   ]
 }

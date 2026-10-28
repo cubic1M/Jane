@@ -85,7 +85,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1541184, excess 366213",
+      "about": "cash 1519004, excess 344033",
       "perYear": null
     }
   ],
@@ -103,6 +103,10 @@
       "about": "AMICA AUTO PREMIUM, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "VANGUARD BUY INVESTMENT, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "PANDORA*PLUS, two plans"
     }
@@ -110,19 +114,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 7812.19
+      "dollars": 7756.74
     },
     {
       "date": "2026-08-31",
-      "dollars": 8328.29
+      "dollars": 8217.39
     },
     {
       "date": "2026-09-30",
-      "dollars": 9199.35
+      "dollars": 9033
     },
     {
       "date": "2026-10-24",
-      "dollars": 9351.89
+      "dollars": 9130.09
     }
   ]
 }

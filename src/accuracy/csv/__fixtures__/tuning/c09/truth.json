@@ -59,24 +59,28 @@
     {
       "type": "subscription_review",
       "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 6294.64
+      "dollars": 5913.39
     },
     {
       "date": "2026-08-31",
-      "dollars": 4515.96
+      "dollars": 3897.51
     },
     {
       "date": "2026-09-30",
-      "dollars": 3966.57
+      "dollars": 3215.25
     },
     {
       "date": "2026-10-24",
-      "dollars": 2478.65
+      "dollars": 1398.65
     }
   ]
 }

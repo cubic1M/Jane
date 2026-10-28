@@ -2,7 +2,7 @@
   "tuning": {
     "rowsReadExactly": 1,
     "extraRows": 0,
-    "categoryRight": 0.9979794268919912,
+    "categoryRight": 0.9980047161255214,
     "subscription_review.precision": 1,
     "subscription_review.recall": 1,
     "price_increase.precision": 1,
@@ -16,7 +16,7 @@
     "duplicate_charge.precision": 1,
     "duplicate_charge.recall": 1,
     "idle_cash.precision": 1,
-    "idle_cash.recall": 0.875,
+    "idle_cash.recall": 0.8571,
     "bills.precision": 1,
     "bills.recall": 1,
     "falseDoubleCharges": 0,
@@ -34,7 +34,7 @@
   "tuning-2": {
     "rowsReadExactly": 1,
     "extraRows": 0,
-    "categoryRight": 0.9843244164252855,
+    "categoryRight": 0.9844751940600742,
     "subscription_review.precision": 0.986,
     "subscription_review.recall": 1,
     "price_increase.precision": 1,
@@ -66,7 +66,7 @@
   "held-out": {
     "rowsReadExactly": 1,
     "extraRows": 0,
-    "categoryRight": 0.941961802336362,
+    "categoryRight": 0.9429248723559446,
     "subscription_review.precision": 1,
     "subscription_review.recall": 0.9135,
     "price_increase.precision": 1,
@@ -98,7 +98,7 @@
   "held-out-2": {
     "rowsReadExactly": 1,
     "extraRows": 0,
-    "categoryRight": 0.9148080438756856,
+    "categoryRight": 0.915762834417932,
     "subscription_review.precision": 1,
     "subscription_review.recall": 1,
     "price_increase.precision": 1,
@@ -112,7 +112,7 @@
     "duplicate_charge.precision": 0.8462,
     "duplicate_charge.recall": 1,
     "idle_cash.precision": 1,
-    "idle_cash.recall": 0.8889,
+    "idle_cash.recall": 0.875,
     "bills.precision": 0.9955,
     "bills.recall": 1,
     "falseDoubleCharges": 2,
@@ -130,7 +130,7 @@
   "held-out-3": {
     "rowsReadExactly": 1,
     "extraRows": 0,
-    "categoryRight": 0.7959545777146912,
+    "categoryRight": 0.7980684811237928,
     "subscription_review.precision": 0.7647,
     "subscription_review.recall": 1,
     "price_increase.precision": 1,

@@ -54,7 +54,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 3525607, excess 2446576",
+      "about": "cash 3414184, excess 2335153",
       "perYear": null
     }
   ],
@@ -74,28 +74,32 @@
     {
       "type": "subscription_review",
       "about": "AMICA AUTO PREMIUM, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 21739.31
+      "dollars": 21603.58
     },
     {
       "date": "2026-07-31",
-      "dollars": 24785.77
+      "dollars": 24514.31
     },
     {
       "date": "2026-08-31",
-      "dollars": 27244.43
+      "dollars": 26401.66
     },
     {
       "date": "2026-09-30",
-      "dollars": 30556.33
+      "dollars": 29577.83
     },
     {
       "date": "2026-10-24",
-      "dollars": 33800.01
+      "dollars": 32685.78
     }
   ]
 }

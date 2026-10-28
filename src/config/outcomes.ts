@@ -14,7 +14,17 @@ export const LOWER_BILL_SHARE = 0.97;
 export const REFUND_MIN_SHARE = 0.5;
 // How long after acting each kind of saving can take to show; after this with nothing, it is
 // "not seen" (a fee or a bill still charged in full, no refund).
-export const WATCH_DAYS = { charge_stops: 75, bill_drops: 75, refund: 60, fee_stops: 60 } as const;
+export const WATCH_DAYS = {
+  charge_stops: 75,
+  bill_drops: 75,
+  refund: 60,
+  fee_stops: 60,
+  // Investing: the next holdings or statement data after acting (a transfer takes days to settle,
+  // a rollover a few weeks).
+  funds_left: 60,
+  cash_invested: 45,
+  account_closed: 75,
+} as const;
 // Fees: the days after acting that are compared with the month before.
 export const FEE_COMPARE_DAYS = 60;
 
@@ -34,4 +44,8 @@ export const VERIFIED_PERCENT = {
   fees_stopped: 80,
   // Fewer fees, not none.
   fees_fewer: 65,
+  // The holdings themselves show it: the fund is gone, the cash put to work, the account closed.
+  holdings_changed: 90,
+  // Smaller, not gone.
+  holdings_smaller: 65,
 } as const;
