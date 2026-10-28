@@ -27,11 +27,16 @@ describe("the legal pages", () => {
   it("say Plaid is read-only: transactions, with loan and investment details optional", () => {
     const link = readFileSync("src/lib/plaid/link.ts", "utf8");
     expect(link).toMatch(/products: \[Products\.Transactions\]/);
-    expect(link).toMatch(/optional_products: \[Products\.Liabilities, Products\.Investments\]/);
+    // Loan details are optional; investment details are optional too, and asked for only while
+    // PLAID_INVESTMENTS=1.
+    expect(link).toMatch(
+      /optional_products: \[\s*Products\.Liabilities,\s*\.\.\.\(plaidInvestmentsEnabled\(\) \? \[Products\.Investments\] : \[\]\),?\s*\]/,
+    );
     // Nothing that moves money is asked for.
     expect(link).not.toMatch(/Products\.(Transfer|PaymentInitiation|Auth|Signal)/);
     const privacy = text(PrivacyPage);
     expect(privacy).toMatch(/through Plaid and read-only/);
+    expect(privacy).toMatch(/investment details too, once Jane turns investment accounts on/);
     expect(privacy).toMatch(/It can never move money/);
     expect(text(TermsPage)).toMatch(/Jane never moves money/);
   });

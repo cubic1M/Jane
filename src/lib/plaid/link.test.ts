@@ -37,7 +37,19 @@ describe("Plaid Link", () => {
     vi.unstubAllEnvs();
   });
 
+  it("asks for Investments only once PLAID_INVESTMENTS is on", async () => {
+    await createLinkToken("user_1", null, { api });
+    expect(linkTokenCreate.mock.calls[0][0].optional_products).toEqual(["liabilities"]);
+
+    itemPublicTokenExchange.mockResolvedValue({
+      data: { access_token: "access-sandbox-secret", item_id: "plaid_item_1" },
+    });
+    await exchangePublicToken("user_1", "public-sandbox-1", "First Platypus Bank", { api });
+    expect(scoped.plaidItems.create.mock.calls[0][0].data.investments).toBe(false);
+  });
+
   it("asks for Transactions, Liabilities and Investments where supported, a year of history and our webhook", async () => {
+    vi.stubEnv("PLAID_INVESTMENTS", "1");
     expect(await createLinkToken("user_1", null, { api })).toBe("link-sandbox-1");
 
     expect(linkTokenCreate).toHaveBeenCalledWith(
@@ -113,6 +125,7 @@ describe("Plaid Link", () => {
   });
 
   it("stores the access token encrypted and never in the audit log", async () => {
+    vi.stubEnv("PLAID_INVESTMENTS", "1");
     itemPublicTokenExchange.mockResolvedValue({
       data: { access_token: "access-sandbox-secret", item_id: "plaid_item_1" },
     });
