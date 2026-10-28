@@ -52,45 +52,181 @@ const real = (expenseRatioBps: number, mix: AssetMix, category: string): FundFac
   category,
   source: REAL_SOURCE,
 });
+// A figure read from the fund's own latest filing (SEC risk/return summary data, the fee table of
+// its prospectus): the filing's date is the asOf and its folder on sec.gov the source. It wins over
+// the fund company's published figure. Net of any fee waiver when the filing gives a net figure.
+const sec = (
+  expenseRatioBps: number,
+  mix: AssetMix,
+  category: string,
+  filed: string,
+  filing: { cik: number; adsh: string; form: string },
+): FundFacts => ({
+  expenseRatioBps,
+  mix,
+  category,
+  asOf: `${filed.slice(0, 4)}-${filed.slice(4, 6)}-${filed.slice(6, 8)}`,
+  source: `SEC ${filing.form} filed ${filed.slice(0, 4)}-${filed.slice(4, 6)}-${filed.slice(6, 8)}, fee table: https://www.sec.gov/Archives/edgar/data/${filing.cik}/${filing.adsh.replaceAll("-", "")}/`,
+});
 const US = { us_stocks: 1 } as const;
 const INTL = { intl_stocks: 1 } as const;
 const BONDS = { bonds: 1 } as const;
 
 export const REAL_FUND_FACTS: Readonly<Record<string, FundFacts>> = {
-  VTI: real(3, US, "US total stock market ETF"),
-  VOO: real(3, US, "S&P 500 ETF"),
+  VTI: sec(3, US, "US total stock market ETF", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  VOO: sec(3, US, "S&P 500 ETF", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
   IVV: real(3, US, "S&P 500 ETF"),
   SPY: real(9, US, "S&P 500 ETF"),
-  QQQ: real(20, US, "Nasdaq-100 ETF"),
-  VUG: real(4, US, "US large-company growth ETF"),
-  VTV: real(4, US, "US large-company value ETF"),
-  SCHB: real(3, US, "US broad market ETF"),
-  SCHX: real(3, US, "US large-company ETF"),
-  SCHD: real(6, US, "US dividend ETF"),
-  VTSAX: real(4, US, "US total stock market index fund"),
-  VFIAX: real(4, US, "S&P 500 index fund"),
-  FXAIX: real(2, US, "S&P 500 index fund"),
-  FSKAX: real(2, US, "US total stock market index fund"),
-  SWTSX: real(3, US, "US total stock market index fund"),
-  SWPPX: real(2, US, "S&P 500 index fund"),
-  FCNTX: real(39, US, "US large-company growth fund (actively managed)"),
-  ARKK: real(75, US, "Actively managed innovation ETF"),
+  QQQ: sec(18, US, "Nasdaq-100 ETF", "20251219", {
+    cik: 1067839,
+    adsh: "0001104659-25-123273",
+    form: "485BPOS",
+  }),
+  VUG: sec(3, US, "US large-company growth ETF", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  VTV: sec(3, US, "US large-company value ETF", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  SCHB: sec(3, US, "US broad market ETF", "20251222", {
+    cik: 1454889,
+    adsh: "0001104659-25-123308",
+    form: "485BPOS",
+  }),
+  SCHX: sec(3, US, "US large-company ETF", "20251222", {
+    cik: 1454889,
+    adsh: "0001104659-25-123308",
+    form: "485BPOS",
+  }),
+  SCHD: sec(6, US, "US dividend ETF", "20251222", {
+    cik: 1454889,
+    adsh: "0001104659-25-123308",
+    form: "485BPOS",
+  }),
+  VTSAX: sec(4, US, "US total stock market index fund", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  VFIAX: sec(4, US, "S&P 500 index fund", "20260428", {
+    cik: 36405,
+    adsh: "0000036405-26-000181",
+    form: "485BPOS",
+  }),
+  FXAIX: sec(1, US, "S&P 500 index fund", "20260424", {
+    cik: 819118,
+    adsh: "0000819118-26-000072",
+    form: "485BPOS",
+  }),
+  FSKAX: sec(1, US, "US total stock market index fund", "20260424", {
+    cik: 819118,
+    adsh: "0000819118-26-000072",
+    form: "485BPOS",
+  }),
+  SWTSX: sec(3, US, "US total stock market index fund", "20260226", {
+    cik: 904333,
+    adsh: "0000884546-26-000041",
+    form: "485BPOS",
+  }),
+  SWPPX: sec(2, US, "S&P 500 index fund", "20260226", {
+    cik: 904333,
+    adsh: "0000884546-26-000041",
+    form: "485BPOS",
+  }),
+  FCNTX: sec(74, US, "US large-company growth fund (actively managed)", "20260224", {
+    cik: 24238,
+    adsh: "0000024238-26-000028",
+    form: "485BPOS",
+  }),
+  ARKK: sec(75, US, "Actively managed innovation ETF", "20251126", {
+    cik: 1579982,
+    adsh: "0001213900-25-115285",
+    form: "485BPOS",
+  }),
   SPXL: real(91, US, "Leveraged S&P 500 ETF (3x daily)"),
   TQQQ: real(84, US, "Leveraged Nasdaq-100 ETF (3x daily)"),
-  VXUS: real(5, INTL, "International total stock market ETF"),
-  VEA: real(5, INTL, "Developed-markets ETF"),
-  VWO: real(8, INTL, "Emerging-markets ETF"),
-  IEFA: real(7, INTL, "Developed-markets ETF"),
-  IEMG: real(9, INTL, "Emerging-markets ETF"),
-  SCHF: real(6, INTL, "International large-company ETF"),
-  VTIAX: real(9, INTL, "International total stock market index fund"),
-  FTIHX: real(6, INTL, "International total stock market index fund"),
-  VT: real(6, { us_stocks: 0.6, intl_stocks: 0.4 }, "Total world stock ETF"),
-  BND: real(3, BONDS, "US total bond market ETF"),
-  AGG: real(3, BONDS, "US total bond market ETF"),
-  VBTLX: real(5, BONDS, "US total bond market index fund"),
-  FXNAX: real(3, BONDS, "US total bond market index fund"),
-  VNQ: real(13, { other: 1 }, "Real estate ETF"),
+  VXUS: sec(5, INTL, "International total stock market ETF", "20260227", {
+    cik: 736054,
+    adsh: "0001193125-26-077488",
+    form: "485BPOS",
+  }),
+  VEA: sec(3, INTL, "Developed-markets ETF", "20260428", {
+    cik: 923202,
+    adsh: "0000923202-26-000059",
+    form: "485BPOS",
+  }),
+  VWO: sec(6, INTL, "Emerging-markets ETF", "20260227", {
+    cik: 857489,
+    adsh: "0001193125-26-077485",
+    form: "485BPOS",
+  }),
+  IEFA: sec(7, INTL, "Developed-markets ETF", "20251121", {
+    cik: 1100663,
+    adsh: "0001193125-25-291438",
+    form: "485BPOS",
+  }),
+  IEMG: sec(9, INTL, "Emerging-markets ETF", "20251219", {
+    cik: 930667,
+    adsh: "0001193125-25-327007",
+    form: "485BPOS",
+  }),
+  SCHF: sec(3, INTL, "International large-company ETF", "20251222", {
+    cik: 1454889,
+    adsh: "0001104659-25-123308",
+    form: "485BPOS",
+  }),
+  VTIAX: sec(9, INTL, "International total stock market index fund", "20260227", {
+    cik: 736054,
+    adsh: "0001193125-26-077488",
+    form: "485BPOS",
+  }),
+  FTIHX: sec(6, INTL, "International total stock market index fund", "20251229", {
+    cik: 35315,
+    adsh: "0000035315-25-001299",
+    form: "485BPOS",
+  }),
+  VT: sec(6, { us_stocks: 0.6, intl_stocks: 0.4 }, "Total world stock ETF", "20260227", {
+    cik: 857489,
+    adsh: "0001193125-26-077485",
+    form: "485BPOS",
+  }),
+  BND: sec(3, BONDS, "US total bond market ETF", "20260428", {
+    cik: 794105,
+    adsh: "0000794105-26-000106",
+    form: "485BPOS",
+  }),
+  AGG: sec(3, BONDS, "US total bond market ETF", "20260618", {
+    cik: 1100663,
+    adsh: "0001193125-26-275730",
+    form: "485BPOS",
+  }),
+  VBTLX: sec(4, BONDS, "US total bond market index fund", "20260428", {
+    cik: 794105,
+    adsh: "0000794105-26-000106",
+    form: "485BPOS",
+  }),
+  FXNAX: sec(3, BONDS, "US total bond market index fund", "20251027", {
+    cik: 35315,
+    adsh: "0000035315-25-001071",
+    form: "485BPOS",
+  }),
+  VNQ: sec(13, { other: 1 }, "Real estate ETF", "20260528", {
+    cik: 734383,
+    adsh: "0000734383-26-000129",
+    form: "485BPOS",
+  }),
   GLD: real(40, { other: 1 }, "Gold ETF"),
   IBIT: real(25, { other: 1 }, "Bitcoin ETF"),
 };

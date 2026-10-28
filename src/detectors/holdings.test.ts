@@ -95,9 +95,9 @@ describe("fund costs from real, published figures", () => {
     const s = runDetectors({ profile: buildProfile(real), data: real }, HOLDINGS_DETECTORS).find(
       (x) => x.topic === "investment_fees",
     )!;
-    // 0.39% against the 0.02% S&P 500 index fund on $100,000: $370 a year.
-    expect(s.worthCents).toBe(37_000);
-    expect(s.confidence.reason).toMatch(/published expense ratios, rounded/);
-    expect(s.confidence.percent).toBeLessThanOrEqual(85);
+    // 0.74% (its filing) against the 0.01% S&P 500 index fund on $100,000: $730 a year.
+    expect(s.worthCents).toBe(73_000);
+    // Both funds read from their filings, so the weak point is the months seen, not the figures.
+    expect(s.confidence.reason).not.toMatch(/published|demo/);
   });
 });

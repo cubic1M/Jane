@@ -147,3 +147,7 @@ portfolio's own ideas (`practice_*`) are the practice lane's and not scored here
 | retirement_self_employed | 100% | 100% | – | – |
 | idle_cash | 100% | 100% | – | – |
 | social_security_timing | 100% | 100% | – | – |
+
+## Fund expense ratios from SEC filings (2026-10-28)
+
+30 of the 36 real funds in `REAL_FUND_FACTS` take their expense ratio from the fund's own latest filing: the SEC "Mutual Fund Prospectus Risk/Return Summary" data sets (`NetExpensesOverAssets`, else `ExpensesOverAssets`, per share class, class found by ticker in `company_tickers_mf.json`), latest filing across 2025q4–2026q2. `asOf` is the filing date and `source` the filing's folder on sec.gov. The filing wins over the company's published figure (FCNTX is 0.74%, not 0.39%). SPY, IVV, SPXL, TQQQ, GLD and IBIT are not in the data sets (trusts and exchange-traded products with other fee tables): they stay "published" at lower confidence. Re-run by reading the data sets again each quarter.
