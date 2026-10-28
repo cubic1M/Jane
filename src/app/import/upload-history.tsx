@@ -33,11 +33,13 @@ type Account = {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // "Jul 28 to Oct 20, 2026", as the rest of the page writes dates.
+// Dates read as the account list writes them, each with its year: "Jul 29, 2026 to Oct 24,
+// 2026" (overnight beta list).
 const range = (from: string | null, to: string | null) =>
   from && to
     ? from === to
       ? dayLabel(from, { year: true })
-      : `${dayLabel(from)} to ${dayLabel(to, { year: true })}`
+      : `${dayLabel(from, { year: true })} to ${dayLabel(to, { year: true })}`
     : "no dates";
 
 const BUTTON =
@@ -139,8 +141,8 @@ export function UploadHistory({
           >
             <p className="font-medium">{u.fileNames.join(", ") || "Statement"}</p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {u.accountName} · {range(u.from, u.to)} · {plural(u.rows, "transaction")} added ·{" "}
-              {new Date(u.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              {u.accountName} · {range(u.from, u.to)} · {plural(u.rows, "transaction")} added{" "}
+              {dayLabel(new Date(u.at), { year: true })}
             </p>
             <Confirm
               label="Remove this upload"

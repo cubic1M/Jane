@@ -313,6 +313,9 @@ describe("subscription_review", () => {
       expect(plan([1000, 1000, 1100, 1100, 1250])).toEqual([]);
       expect(plan([1000, 1000, 2000, 2000])).toEqual([]);
       expect(run(input({ transactions: monthly(4, 145_000, mystery) }))).toEqual([]);
+      // Billed in euros: a little over or under every month with the exchange rate (CSV bench,
+      // second tuning set).
+      expect(plan([2097, 2183, 2192, 2107, 2184])).toHaveLength(1);
       expect(run(input({ transactions: monthly(2, 2000, mystery) }))).toEqual([]);
     });
 

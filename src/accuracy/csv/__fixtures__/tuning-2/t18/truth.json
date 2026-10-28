@@ -49,6 +49,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 260.76
+    },
+    {
+      "type": "subscription_review",
       "about": "BARKBOX every 28 days",
       "perYear": 456.25
     },
@@ -69,7 +74,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4920148, excess 4284504",
+      "about": "cash 4920148, excess 4265105",
       "perYear": null
     }
   ],
@@ -106,23 +111,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 25575.94
+      "dollars": 25554.21
     },
     {
       "date": "2026-07-31",
-      "dollars": 29879.88
+      "dollars": 29837.01
     },
     {
       "date": "2026-08-31",
-      "dollars": 34454.93
+      "dollars": 34390.36
     },
     {
       "date": "2026-09-30",
-      "dollars": 39095.51
+      "dollars": 38787.48
     },
     {
       "date": "2026-10-24",
-      "dollars": 43630.4
+      "dollars": 43544.1
     }
   ]
 }

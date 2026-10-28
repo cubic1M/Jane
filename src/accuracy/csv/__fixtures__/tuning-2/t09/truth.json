@@ -4,12 +4,6 @@
   "asOf": "2026-10-24",
   "accounts": [
     {
-      "name": "Capital One checking",
-      "layout": "capital_one_360",
-      "kind": "checking",
-      "typesBalance": true
-    },
-    {
       "name": "American Express card",
       "layout": "amex",
       "kind": "credit_card",
@@ -21,11 +15,6 @@
       "type": "subscription_review",
       "about": "INTUIT *QBOOKS ONLINE",
       "perYear": 420
-    },
-    {
-      "type": "subscription_review",
-      "about": "AUTODESK INC",
-      "perYear": 2940
     },
     {
       "type": "subscription_review",
@@ -74,20 +63,8 @@
       "about": "SMILE DENTAL GROUP, irregular"
     },
     {
-      "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
-    },
-    {
       "type": "duplicate_charge",
       "about": "two lunches"
-    },
-    {
-      "type": "subscription_review",
-      "about": "AFFIRM *PAY 3K9L2, not a plan"
-    },
-    {
-      "type": "subscription_review",
-      "about": "ACORNS INVEST, not a plan"
     },
     {
       "type": "duplicate_charge",
@@ -101,19 +78,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 2919.21
+      "dollars": -2131.65
     },
     {
       "date": "2026-08-31",
-      "dollars": 906.99
+      "dollars": -2491.8
     },
     {
       "date": "2026-09-30",
-      "dollars": -1555.08
+      "dollars": -2105.83
     },
     {
       "date": "2026-10-24",
-      "dollars": -4038.84
+      "dollars": -1522.55
     }
   ]
 }

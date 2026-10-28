@@ -39,6 +39,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "PADDLE.NET* QZFOCUS, in euros",
+      "perYear": 141.96
+    },
+    {
+      "type": "subscription_review",
       "about": "SPOTIFY USA, moved",
       "perYear": 143.88
     },
@@ -77,19 +82,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 5041.17
+      "dollars": 5029.51
     },
     {
       "date": "2026-08-31",
-      "dollars": 5674.81
+      "dollars": 5651.25
     },
     {
       "date": "2026-09-30",
-      "dollars": 6090.16
+      "dollars": 6054.96
     },
     {
       "date": "2026-10-24",
-      "dollars": 6626.79
+      "dollars": 6579.76
     }
   ]
 }

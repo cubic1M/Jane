@@ -92,6 +92,54 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
     ],
   },
   {
+    bank: "Apple Card",
+    steps: [
+      "On your iPhone, open Wallet, tap Apple Card, then Card Balance.",
+      "Tap a month's statement, then Export Transactions.",
+      "Pick CSV. Do this for each of the last 3 months.",
+    ],
+  },
+  {
+    bank: "U.S. Bank",
+    steps: [
+      "Sign in at usbank.com and open the account.",
+      'Choose "Download transactions".',
+      "Pick CSV and the last 3 months, then Download.",
+    ],
+  },
+  {
+    bank: "Ally",
+    steps: [
+      "Sign in at ally.com and open the account.",
+      'Choose "Download" above your transactions.',
+      "Pick CSV and the last 3 months, then Download.",
+    ],
+  },
+  {
+    bank: "Schwab",
+    steps: [
+      "Sign in at schwab.com and open your checking account's History.",
+      'Click "Export".',
+      "Pick the last 3 months; the file is a CSV.",
+    ],
+  },
+  {
+    bank: "Venmo",
+    steps: [
+      "On venmo.com, open Statements.",
+      "Pick a month and Download CSV. Do this for each of the last 3 months.",
+      "Payments you made from a bank or card count once: here, with their note.",
+    ],
+  },
+  {
+    bank: "PayPal",
+    steps: [
+      "On paypal.com, open Activity, then Download (or Statements, Activity download).",
+      "Pick CSV and the last 3 months, then Create report and download it.",
+      "Purchases a card or bank paid for are left to that statement, so nothing counts twice.",
+    ],
+  },
+  {
     bank: "Any other bank",
     steps: [
       'Look for "Download", "Export" or "Quicken" next to your transactions.',

@@ -1,0 +1,6 @@
+"Date","Status","Type","CheckNumber","Description","Withdrawal","Deposit","RunningBalance"
+"09/30/2026","Pending","VISA","","STARBUCKS STORE 1234","$5.10","",""
+"09/29/2026","Posted","ACH","","NETFLIX.COM","$15.49","","$4,321.10"
+"09/26/2026","Posted","ACH","","ACME CORP PAYROLL","","$2,500.00","$4,336.59"
+"09/20/2026 as of 09/18/2026","Posted","CHECK","1042","Check Paid #1042","$120.00","","$1,836.59"
+"09/15/2026","Posted","ATMREBATE","","ATM Fee Rebate","","$3.00","$1,956.59"

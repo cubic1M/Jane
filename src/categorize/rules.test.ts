@@ -315,6 +315,24 @@ describe("categorizeByRules", () => {
     expect(out(description)).toBe(category);
   });
 
+  // From the life bench (#798): vets before the clinic words, children's care, doctors by kind,
+  // a college's offices, a seller's payout.
+  it.each([
+    ["VCA ANIMAL CLINIC", "MEDICAL_VETERINARY_SERVICES"],
+    ["RIVERSIDE VETERINARIAN", "MEDICAL_VETERINARY_SERVICES"],
+    ["SUNNY DAY CARE", "GENERAL_SERVICES_CHILDCARE"],
+    ["OAK FAMILY MEDICINE", "MEDICAL_PRIMARY_CARE"],
+    ["NORTHSIDE DERMATOLOGY", "MEDICAL_PRIMARY_CARE"],
+    ["STATE U BURSAR", "GENERAL_SERVICES_EDUCATION"],
+  ])("reads %s as %s", (description, category) => {
+    expect(out(description)).toBe(category);
+  });
+
+  it("reads a marketplace's payout as a seller's income, and a purchase there as shopping", () => {
+    expect(into("ETSY PAYOUT 4410")).toBe("INCOME_GIG_ECONOMY");
+    expect(out("ETSY.COM*ORDER 12")).toBe("GENERAL_MERCHANDISE_ONLINE_MARKETPLACES");
+  });
+
   it("leaves unknown merchants for the LLM", () => {
     expect(out("MYSTERY SHOP 555")).toBeNull();
   });

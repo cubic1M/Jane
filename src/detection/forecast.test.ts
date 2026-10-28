@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AS_OF,
+  CARD,
   CHECKING,
   GEICO,
   NETFLIX,
@@ -10,7 +11,13 @@ import {
   plaidStream,
   tx,
 } from "./__fixtures__/build";
-import { expectedDates, forecastAccounts, incomeStreams, upcomingBills } from "./forecast";
+import {
+  billName,
+  expectedDates,
+  forecastAccounts,
+  incomeStreams,
+  upcomingBills,
+} from "./forecast";
 import { addDays } from "./units";
 import { buildStreams } from "./streams";
 
@@ -218,5 +225,57 @@ describe("forecastAccounts", () => {
       transactions: monthly(4, 1549, NETFLIX),
     });
     expect(forecastAccounts(data, 30)).toEqual([]);
+  });
+});
+
+// Overnight beta list: a card payment is named for its card, not "Credit card payment".
+describe("billName for a card payment", () => {
+  const cardPay = (description: string, accountId = CHECKING.id) =>
+    monthly(4, 30_000, {
+      accountId,
+      description,
+      merchantName: null,
+      pfcPrimary: "LOAN_PAYMENTS",
+      pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    });
+  const named = (description: string, accounts = [CHECKING], accountId = CHECKING.id) => {
+    const bills = upcomingBills(
+      input({ accounts, transactions: cardPay(description, accountId) }),
+      31,
+    );
+    return bills.map((b) => b.merchant);
+  };
+  const SAPPHIRE = { ...CARD, id: "acct_sapphire", name: "Chase Sapphire" };
+  const AMEX_GOLD = { ...CARD, id: "acct_gold", name: "Amex Gold" };
+
+  it("names the card company the payment names", () => {
+    expect(named("CHASE CREDIT CRD AUTOPAY PPD ID: 4760039224")).toEqual(["Chase card payment"]);
+    expect(named("AMEX EPAYMENT ACH PMT W4562")).toEqual(["American Express card payment"]);
+    expect(named("CAPITAL ONE ONLINE PMT 9F2K")).toEqual(["Capital One card payment"]);
+    expect(named("CITI AUTOPAY PAYMENT 4410")).toEqual(["Citi card payment"]);
+  });
+
+  it("names the person's own card of that company, short names too", () => {
+    const cards = [CHECKING, SAPPHIRE, AMEX_GOLD];
+    expect(named("CHASE CREDIT CRD AUTOPAY", cards)).toEqual(["Chase Sapphire payment"]);
+    expect(named("AMERICAN EXPRESS ACH PMT", cards)).toEqual(["Amex Gold payment"]);
+  });
+
+  it("names the card a payment is on", () => {
+    expect(named("PAYMENT THANK YOU", [CHECKING, SAPPHIRE], SAPPHIRE.id)).toEqual([
+      "Chase Sapphire payment",
+    ]);
+  });
+
+  it("doesn't guess a lone card for a company it doesn't know, or one it isn't", () => {
+    expect(named("FNBO CARD PMT 2231", [CHECKING, SAPPHIRE])).toEqual(["Credit card payment"]);
+    expect(named("DISCOVER E-PAYMENT 7731", [CHECKING, SAPPHIRE])).toEqual([
+      "Discover card payment",
+    ]);
+  });
+
+  it("leaves every other bill's name alone", () => {
+    const [netflix] = buildStreams(input({ transactions: monthly(4, 1549, NETFLIX) }));
+    expect(billName(netflix, [CHECKING, SAPPHIRE])).toBe(netflix.merchant);
   });
 });

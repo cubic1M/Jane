@@ -263,6 +263,10 @@ export const LLM_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "medium";
 // the held-out statements, 57 of 63 missed subscriptions were such charges under names no rule
 // knows). Rent, loans and bills cost more or move; a same-price monthly charge under $100 is
 // almost always a plan. Never rated above FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE.
+// ...or every charge within a spread (highest less lowest) of this share of its usual price: a
+// plan billed in another currency moves a little with the exchange rate (CSV bench, second tuning
+// set: a plan in euros, $20.97 to $21.92, was missed).
+export const FIXED_PRICE_SUBSCRIPTION_FX_SPREAD = 0.05;
 export const FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES = 3;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CENTS = 10_000;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "low";
@@ -687,6 +691,31 @@ export const SUBSCRIPTION_BOX_MERCHANTS: readonly string[] = [
   "imperfect foods",
 ];
 export const CARD_PAYMENT_NAME = "Credit card payment";
+// Card companies as a payment to them reads from checking, and the name for a card of theirs: a
+// card payment is named for its card, not "Credit card payment" (overnight beta list).
+export const CARD_ISSUERS: readonly (readonly [RegExp, string])[] = [
+  [/\bchase\b/i, "Chase"],
+  [/\bamex\b|american express/i, "American Express"],
+  [/\bciti(bank|cards?)?\b/i, "Citi"],
+  [/capital one/i, "Capital One"],
+  [/\bdiscover\b/i, "Discover"],
+  [/bank of america|\bbofa\b|\bbk of amer/i, "Bank of America"],
+  [/wells fargo/i, "Wells Fargo"],
+  [/\bbarclay/i, "Barclays"],
+  [/\bsynchrony\b|\bsyncb\b/i, "Synchrony"],
+  [/apple ?card|\bgs bank\b|goldman sachs/i, "Apple Card"],
+  [/\bus ?bank\b/i, "U.S. Bank"],
+  [/navy federal/i, "Navy Federal"],
+  [/\busaa\b/i, "USAA"],
+  [/\bpenfed\b/i, "PenFed"],
+  [/\btd bank\b/i, "TD Bank"],
+];
+// A card's account name may use a short form of its issuer's name.
+export const CARD_ISSUER_SHORT: Readonly<Record<string, readonly string[]>> = {
+  "American Express": ["amex"],
+  "Bank of America": ["bofa"],
+  "U.S. Bank": ["us bank", "usbank"],
+};
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the
 // one reminder for that payment and the guessed bill reminder is left out (books QA: two

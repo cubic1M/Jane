@@ -27,6 +27,10 @@ export const PLANNER_COPY = {
     "At this monthly amount the balance doesn't go down fast enough to finish within 50 years. Try a higher monthly amount.",
   noCards:
     "We didn't find credit cards or loans in your accounts. Add one by hand to try the numbers.",
+  // An uploaded card's statement says no balance (overnight beta pass: an upload-only person read
+  // "we didn't find credit cards" about the card they'd just uploaded).
+  balanceUnknown: (names: readonly string[]) =>
+    `Jane knows your ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`}, but not what you owe on ${names.length === 1 ? "it" : "them"} yet. Add it and the plan works out the rest.`,
 } as const;
 
 // Every string in the copy, for tests.

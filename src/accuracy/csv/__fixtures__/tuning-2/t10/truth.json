@@ -55,6 +55,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "PADDLE.NET* QZFOCUS, in euros",
+      "perYear": 144.48
+    },
+    {
+      "type": "subscription_review",
       "about": "SQ *ORANGETHEORY 4WK every 28 days",
       "perYear": 769.11
     }
@@ -84,23 +89,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 6561.73
+      "dollars": 6549.84
     },
     {
       "date": "2026-07-31",
-      "dollars": 4117.55
+      "dollars": 4093.67
     },
     {
       "date": "2026-08-31",
-      "dollars": 2462.34
+      "dollars": 138.58
     },
     {
       "date": "2026-09-30",
-      "dollars": 1093.26
+      "dollars": -1242.17
     },
     {
       "date": "2026-10-24",
-      "dollars": -750.8
+      "dollars": -3098.27
     }
   ]
 }

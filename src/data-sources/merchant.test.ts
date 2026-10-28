@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeMerchant, withoutCity } from "./merchant";
+import { normalizeMerchant, withoutCity, withoutPaymentApp } from "./merchant";
 
 describe("normalizeMerchant", () => {
   it.each([
@@ -48,5 +48,38 @@ describe("normalizeMerchant", () => {
   it("returns null when nothing merchant-like is left", () => {
     expect(normalizeMerchant("#####")).toBeNull();
     expect(normalizeMerchant("123456 CA")).toBeNull();
+  });
+  // Overnight beta list: the payment app goes, the memo and date after the payee too.
+  it.each([
+    ["Zelle To Oak Ridge Apts Rent", "Oak Ridge Apts"],
+    ["ZELLE PAYMENT TO OAK RIDGE APTS JPM99ABC1234", "Oak Ridge Apts"],
+    ['Zelle payment to OAK RIDGE for "Rent"; Conf# abc123', "Oak Ridge"],
+    ["ZELLE TO SMITH JOHN ON 10/03 REF # WFCT0ABC", "Smith John"],
+    ["VENMO PAYMENT TO JORDAN LEE", "Jordan Lee"],
+    ["CASHAPP TO ALEX", "Alex"],
+    ["Apple Cash Sent To Kim Payment", "Kim"],
+  ])("drops the payment app: %s is %s", (description, name) => {
+    expect(normalizeMerchant(description)?.name).toBe(name);
+  });
+
+  it("keeps the direction of money in, so its key isn't the one for money out", () => {
+    expect(normalizeMerchant("ZELLE FROM MOM")).toEqual({ name: "From Mom", key: "from mom" });
+    expect(normalizeMerchant("Zelle money received from Sam Rivera")?.name).toBe("From Sam Rivera");
+    expect(normalizeMerchant("ZELLE TO MOM")?.key).toBe("mom");
+  });
+
+  it("gives a stored name the same key again, so old and new imports stay one merchant", () => {
+    for (const d of ["Zelle To Oak Ridge Apts Rent", "ZELLE FROM MOM"]) {
+      const once = normalizeMerchant(d);
+      expect(normalizeMerchant(once?.name ?? "")).toEqual(once);
+    }
+  });
+
+  it("keeps the app when there's no payee after it, or the payee would be empty", () => {
+    expect(normalizeMerchant("VENMO PAYMENT 1234567890 WEB ID: 3264681992")?.name).toBe(
+      "Venmo Payment",
+    );
+    expect(normalizeMerchant("Zelle To Rent")?.name).toBe("Rent");
+    expect(withoutPaymentApp("ZELLE TRANSFER CONF JANE DOE")).toBe("ZELLE TRANSFER CONF JANE DOE");
   });
 });

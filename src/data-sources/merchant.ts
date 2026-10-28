@@ -26,6 +26,26 @@ const BOILERPLATE = [
   /^ORIG CO NAME:\s*/,
 ];
 
+// A payment app in front of the person or company paid: "ZELLE TO OAK RIDGE APTS RENT" is Oak
+// Ridge Apts (overnight beta list), and money in keeps its direction ("ZELLE FROM MOM" is From
+// Mom), so a category set for one isn't used for the other. Run on the cleaned words, so the
+// same patterns move saved keys in SQL (prisma/migrations/20270414000000_merchant_without_
+// payment_app): keep them in step. No \b: Postgres reads it as a backspace.
+const PAYMENT_APP =
+  /^(?:ZELLE|VENMO|CASH ?APP|APPLE CASH)(?: (?:PAYMENT|MONEY|TRANSFER))?(?: (?:SENT|RECEIVED))? (TO|FROM) (.+)$/;
+// After the payee: the bank's memo, date and reference ("FOR RENT", "ON 10/03 REF # WFCT0ABC").
+const PAYMENT_APP_MEMO = / (?:FOR|ON|REF|CONF|MEMO)(?: .*)?$/;
+// A last word that says what the money was for, not who got it.
+const PAYMENT_APP_PURPOSE = / (?:RENT|PAYMENT|PMT)$/;
+
+export function withoutPaymentApp(text: string): string {
+  const match = PAYMENT_APP.exec(text);
+  if (!match) return text;
+  const payee = match[2].replace(PAYMENT_APP_MEMO, "").replace(PAYMENT_APP_PURPOSE, "");
+  if (!payee) return text;
+  return match[1] === "FROM" ? `FROM ${payee}` : payee;
+}
+
 const US_STATES = new Set(
   "AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split(
     " ",
@@ -90,7 +110,7 @@ export function normalizeMerchant(description: string): Merchant | null {
   if (Number.isInteger(half) && words.slice(0, half).join(" ") === words.slice(half).join(" ")) {
     words = words.slice(0, half);
   }
-  text = words.join(" ");
+  text = withoutPaymentApp(words.join(" "));
 
   if (!text) return null;
   return { name: titleCase(text), key: text.toLowerCase() };

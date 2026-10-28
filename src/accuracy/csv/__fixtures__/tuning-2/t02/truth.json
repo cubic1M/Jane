@@ -65,6 +65,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 262.08
+    },
+    {
+      "type": "subscription_review",
       "about": "FACTOR75 MEALS every 7 days",
       "perYear": 4692.34
     },
@@ -121,23 +126,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 392.55
+      "dollars": 371.58
     },
     {
       "date": "2026-07-31",
-      "dollars": 346.9
+      "dollars": 304.1
     },
     {
       "date": "2026-08-31",
-      "dollars": 670.92
+      "dollars": 606.2
     },
     {
       "date": "2026-09-30",
-      "dollars": 1298.94
+      "dollars": 1213.15
     },
     {
       "date": "2026-10-24",
-      "dollars": 2138.43
+      "dollars": 2030.8
     }
   ]
 }
