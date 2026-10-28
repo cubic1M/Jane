@@ -97,7 +97,9 @@ describe.runIf(url)("the picture of you, loaded", { timeout: 120_000 }, () => {
     }
     expect(parseIntent("What do you know about me?", "2026-10-18")).toEqual({ kind: "profile" });
     const reply = profileReply(await loadProfile(made.get("retiree")!, { client, now: NOW }));
-    expect(reply.body).toMatch(/% sure/);
+    // A short paragraph built from the facts, each said as sure as Jane is (./jane-agent/who-am-i.ts).
+    expect(reply.body).toMatch(/^Here's the picture I have of you/);
+    expect(reply.body).toMatch(/correct it on your profile/);
     expect(reply.actions[0]).toMatchObject({ kind: "link", href: "/profile" });
   });
 });
