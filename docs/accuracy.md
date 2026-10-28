@@ -285,6 +285,8 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
 - **A quarterly bill not due in the next 31 days** (bench truth, round 20). The second tuning set's truth expected every recurring bill in "Coming up", including a quarterly water bill paid two weeks ago and not due again for months; Jane was right to leave it out. A bill on another cadence is now expected only when its next charge falls in the 31 days, and otherwise is one Jane may list or not. Second tuning set "Coming up" recall 99.2% → 100%. Nothing in detection changed.
 
+- **A plan switched from monthly to yearly** (round 21, second tuning set). The second tuning set now has plans paid monthly that switched to one yearly charge two months ago (Amazon Prime $14.99 then $139, Dropbox, and a plan no rule knows). All were missed: the monthly run took the yearly charge as its new price, and a no-category plan read as a usage bill that may move. Now a monthly plan that ended, then one charge at the same company worth `YEARLY_SWITCH_MIN_MONTHS` to `YEARLY_SWITCH_MAX_MONTHS` of it, is the plan paid by the year (key `@yearly`). A charge that size is never a run's new price, and never part of a usage bill. Second tuning set: subscriptions recall 97.0% → 100%. Held-out sets and the sample bench unchanged.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -340,15 +342,15 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Second tuning set (20 people, 123 files, 5962 transactions):
+Second tuning set (20 people, 123 files, 5981 transactions):
 
 | Step | Score |
 | --- | ---: |
 | Files read | 123 of 123 (119 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 98.8% (73 left for Claude) |
+| Category right (rules only) | 98.7% (78 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $97,433, truth $95,579; error on the ones found 0.1% |
+| Findings, $/yr | Jane $97,852, truth $95,998; error on the ones found 0.1% |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 9 of 20 people (off by $135,407 in all) |
@@ -357,7 +359,7 @@ Second tuning set (20 people, 123 files, 5962 transactions):
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 98.5% | 100.0% | 128 | 2 | 0 |
+| subscription_review | 98.5% | 100.0% | 132 | 2 | 0 |
 | price_increase | 100.0% | 100.0% | 4 | 0 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 21 | 0 | 0 |
@@ -374,8 +376,8 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 21 | 58% | 81% |
-| 60–69% | 39 | 64% | 92% |
-| 70–79% | 4 | 77% | 100% |
+| 60–69% | 41 | 64% | 90% |
+| 70–79% | 7 | 74% | 71% |
 | 80–89% | 3 | 83% | 100% |
 | 90–100% | 0 | – | – |
 

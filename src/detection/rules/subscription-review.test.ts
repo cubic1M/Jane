@@ -217,6 +217,18 @@ describe("subscription_review", () => {
     ]);
   });
 
+  // CSV bench, second tuning set: a monthly plan switched to yearly.
+  it("finds a plan switched from monthly to yearly, by the yearly charge's size", () => {
+    const notes = { description: "QZ NOTES PRO", pfcPrimary: null, pfcDetailed: null };
+    const transactions = [
+      ...[6, 5, 4, 3].map((m) => tx({ ...notes, date: monthsAgo(m, 9), amountCents: 899 })),
+      tx({ ...notes, date: monthsAgo(2, 9), amountCents: 7999 }),
+    ];
+    expect(run(input({ transactions }))).toEqual([
+      expect.objectContaining({ key: "merchant:qz notes pro@yearly", annualSavingsCents: 7999 }),
+    ]);
+  });
+
   it("never calls a payment on a debt a subscription, whatever its name", () => {
     const transactions = monthly(4, 25_000, {
       description: "APPLE CARD PAYMENT",

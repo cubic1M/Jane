@@ -49,6 +49,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "QZ NOTES PRO, now yearly",
+      "perYear": 79.99
+    },
+    {
+      "type": "subscription_review",
       "about": "PAYPAL *CRUNCHYROLL, paused a month",
       "perYear": 95.88
     },
@@ -90,6 +95,10 @@
       "about": "OAK RIDGE HOA, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "QZ NOTES PRO, the monthly plan it left"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at GREAT CLIPS 4412"
     },
@@ -101,31 +110,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -334.57
+      "dollars": -343.56
     },
     {
       "date": "2026-05-31",
-      "dollars": 1226.55
+      "dollars": 1208.57
     },
     {
       "date": "2026-06-30",
-      "dollars": 804.28
+      "dollars": 777.31
     },
     {
       "date": "2026-07-31",
-      "dollars": 939.95
+      "dollars": 903.99
     },
     {
       "date": "2026-08-31",
-      "dollars": 427.71
+      "dollars": 311.76
     },
     {
       "date": "2026-09-30",
-      "dollars": 76.09
+      "dollars": -39.86
     },
     {
       "date": "2026-10-24",
-      "dollars": -371.73
+      "dollars": -487.68
     }
   ]
 }

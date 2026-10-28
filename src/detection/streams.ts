@@ -21,6 +21,8 @@ import {
   YEARLY_PLAN_MIN_CENTS,
   YEARLY_PLAN_WORDS,
   YEARLY_RENEWAL_WORDS,
+  YEARLY_SWITCH_MAX_MONTHS,
+  YEARLY_SWITCH_MIN_MONTHS,
   FOUR_WEEKLY_CHARGES_PER_YEAR,
   FOUR_WEEKLY_GAP_DAYS,
   FOUR_WEEKLY_MIN_GAPS,
@@ -187,6 +189,9 @@ function usageBillShape(charges: DetectionTransaction[]): boolean {
     return false;
   }
   if (new Set(charges.map((c) => firstOfMonth(c.date))).size !== charges.length) return false;
+  // A bill moves with use, but never to a year's worth of itself: that's a plan gone yearly.
+  const amounts = charges.map((c) => c.amountCents);
+  if (Math.max(...amounts) >= Math.min(...amounts) * YEARLY_SWITCH_MIN_MONTHS) return false;
   const days = charges.map((c) => dayOfMonth(c.date));
   return Math.max(...days) - Math.min(...days) <= USAGE_BILL_DAY_SPREAD;
 }
@@ -231,7 +236,10 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
     const last = run[run.length - 1];
     if (charge.date <= last.date) continue;
     const gap = daysBetween(last.date, charge.date);
-    const firstNewPrice = run.length === core.length;
+    // A new price, but not a year's worth of the old one: that's the plan switched to yearly.
+    const firstNewPrice =
+      run.length === core.length &&
+      charge.amountCents < last.amountCents * YEARLY_SWITCH_MIN_MONTHS;
     if (
       gap >= min &&
       gap <= max &&
@@ -332,6 +340,22 @@ function planAfterStar(description: string): boolean {
 const isGoods = (description: string) =>
   wordsOf(description).some((w) => YEARLY_PLAN_GOODS_WORDS.includes(w));
 
+// A monthly plan that ended, then one charge after it worth YEARLY_SWITCH_*_MONTHS of it: the
+// plan, now paid by the year.
+function switchedToYearly(main: Stream, charges: DetectionTransaction[]): Stream | null {
+  if (main.active || main.frequency !== "MONTHLY" || main.lastDate === null) return null;
+  const ended = main.lastDate;
+  const after = charges.filter((c) => c.date > ended);
+  if (after.length !== 1) return null;
+  const [plan] = after;
+  const months = plan.amountCents / main.lastAmountCents;
+  const merchant = merchantOf(plan);
+  if (!merchant || months < YEARLY_SWITCH_MIN_MONTHS || months > YEARLY_SWITCH_MAX_MONTHS) {
+    return null;
+  }
+  return { ...yearlyStream(plan, merchant), key: `merchant:${merchant.key}@yearly` };
+}
+
 // A yearly plan seen once: one charge, in YEARLY_PLAN_*_CENTS, under the plan's own name or
 // saying it renews the year, and not something from the company's shop.
 function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
@@ -342,7 +366,13 @@ function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
   if (!merchant || isGoods(plans[0].description)) return null;
   const renewal = wordsOf(plans[0].description).some((w) => YEARLY_RENEWAL_WORDS.includes(w));
   if (!isPlanName(merchant.key) && !planAfterStar(plans[0].description) && !renewal) return null;
-  const [plan] = plans;
+  return yearlyStream(plans[0], merchant);
+}
+
+function yearlyStream(
+  plan: DetectionTransaction,
+  merchant: NonNullable<ReturnType<typeof merchantOf>>,
+): Stream {
   return {
     key: `merchant:${merchant.key}`,
     merchant: plan.merchantName ?? merchant.name,
@@ -467,8 +497,10 @@ function detectRuns(charges: DetectionTransaction[], asOf: string): Stream[] {
   if (
     main &&
     (isVariable(charges) || main.charges.length >= charges.length * RUN_MIN_SHARE_OF_CHARGES)
-  )
-    return [main];
+  ) {
+    const switched = isVariable(charges) ? null : switchedToYearly(main, charges);
+    return switched ? [main, switched] : [main];
+  }
   // One service paid from two accounts on their own days (two people's plans, on two cards): each
   // account's charges are a run, though together they come at no one gap (CSV bench, second
   // tuning set). The first keeps the merchant's key; the others are numbered.

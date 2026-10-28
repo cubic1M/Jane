@@ -55,6 +55,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "QZ NOTES PRO, now yearly",
+      "perYear": 79.99
+    },
+    {
+      "type": "subscription_review",
       "about": "SPOTIFY USA, moved",
       "perYear": 143.88
     },
@@ -95,6 +100,10 @@
       "about": "KLARNA* NIKE, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "QZ NOTES PRO, the monthly plan it left"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two orders"
     }
@@ -102,31 +111,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 4652.24
+      "dollars": 4643.25
     },
     {
       "date": "2026-05-31",
-      "dollars": 3768.15
+      "dollars": 3750.17
     },
     {
       "date": "2026-06-30",
-      "dollars": 2983.33
+      "dollars": 2956.36
     },
     {
       "date": "2026-07-31",
-      "dollars": 2143.62
+      "dollars": 2107.66
     },
     {
       "date": "2026-08-31",
-      "dollars": 974.43
+      "dollars": 858.48
     },
     {
       "date": "2026-09-30",
-      "dollars": -170.24
+      "dollars": -286.19
     },
     {
       "date": "2026-10-24",
-      "dollars": -885.05
+      "dollars": -1001
     }
   ]
 }
