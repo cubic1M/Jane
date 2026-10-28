@@ -1,0 +1,133 @@
+{
+  "person": "f04",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SIMPLISAFE INC",
+      "perYear": 335.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOOM INC",
+      "perYear": 708
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "FLEET FARM #12 twice",
+      "perYear": 76.28
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 1.67
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 695
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 1",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 2",
+      "perYear": 360
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #2231, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BIGGBY COFFEE #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE FELLOWSHIP, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE DONUT, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA*PLUS, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 595.89
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 303.12
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -2051.73
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -1918.94
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -3026.07
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -4475.37
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -4479.74
+    }
+  ]
+}

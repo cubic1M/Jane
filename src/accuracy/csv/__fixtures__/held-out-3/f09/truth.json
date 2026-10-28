@@ -1,0 +1,91 @@
+{
+  "person": "f09",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "SIMPLISAFE INC",
+      "perYear": 335.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "XBOX GAME PASS",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "EXPRESSVPN",
+      "perYear": 155.4
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 7.83
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 1",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 2",
+      "perYear": 360
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "BIGGBY COFFEE #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 FRONTIER AI 4222123456789 seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE DONUT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE FELLOWSHIP, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 1952.4
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 2496.34
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 1338.57
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -779.89
+    }
+  ]
+}

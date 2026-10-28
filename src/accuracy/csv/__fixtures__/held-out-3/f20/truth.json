@@ -1,0 +1,126 @@
+{
+  "person": "f20",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "XBOX GAME PASS",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "EXPRESSVPN",
+      "perYear": 155.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "RING BASIC PLAN",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 3
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 614.54
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1222799, excess 609326",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #2231, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *MOXIE ROASTERS at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 SEATGEEK seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "HOBBY-LOBBY #0412 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE FELLOWSHIP, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMICA AUTO PREMIUM, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA*PLUS, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": -502.64
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": -737.68
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 14.13
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 3791.48
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 5148.93
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 6135.18
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 7581.31
+    }
+  ]
+}

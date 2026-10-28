@@ -1,0 +1,97 @@
+{
+  "person": "f17",
+  "archetype": "struggling",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "EXPRESSVPN",
+      "perYear": 155.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOOM INC",
+      "perYear": 708
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCH FITNESS",
+      "perYear": 299.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 204
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 129.72
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 735.21
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "BIGGBY COFFEE #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "HOBBY-LOBBY #0412 twice, refunded"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMICA AUTO PREMIUM, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PYMT, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": -5284.1
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -7096.23
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -8517.83
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -9430.74
+    }
+  ]
+}

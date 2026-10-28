@@ -13,8 +13,9 @@ export const CSV_SEED = 20_261_027;
 export const CSV_AS_OF = "2026-10-24";
 export const CSV_PEOPLE_COUNT = 20;
 export const CSV_HELD_OUT_SEED = 61_803_398;
-export type CsvSet = "tuning" | "held-out" | "held-out-2";
+export type CsvSet = "tuning" | "held-out" | "held-out-2" | "held-out-3";
 export const CSV_HELD_OUT_2_SEED = 14_142_135;
+export const CSV_HELD_OUT_3_SEED = 27_182_818;
 
 export type Layout =
   | "chase_checking"
@@ -971,15 +972,255 @@ const HELD_OUT_2: Pool = {
   ],
 };
 
+// A third held-out set (2026-10-27, after round 12): written to check whether round 12's chain
+// names reach past the merchant pools they were seen beside. Its names were picked without
+// looking at the rules: real chains of every size (national, regional, and written the way
+// statements cut them: "CULVERS", "OLLIES", "HOBBY-LOBBY") and local places no list can know.
+// Only ever scored.
+const HELD_OUT_3: Pool = {
+  grocers: [
+    { descriptor: "FOOD CITY #0681", category: "FOOD_AND_DRINK_GROCERIES", lo: 20, hi: 140 },
+    { descriptor: "GIANT 6134", category: "FOOD_AND_DRINK_GROCERIES", lo: 20, hi: 140 },
+    { descriptor: "HARVEST MARKET 22", category: "FOOD_AND_DRINK_GROCERIES", lo: 20, hi: 140 },
+    { descriptor: "RALEY'S #112", category: "FOOD_AND_DRINK_GROCERIES", lo: 20, hi: 140 },
+    { descriptor: "BROOKSHIRE BROS #45", category: "FOOD_AND_DRINK_GROCERIES", lo: 20, hi: 140 },
+    { descriptor: "NEW SEASONS MARKET", category: "FOOD_AND_DRINK_GROCERIES", lo: 20, hi: 140 },
+    { descriptor: "STOP & SHOP 0441", category: "FOOD_AND_DRINK_GROCERIES", lo: 20, hi: 140 },
+  ],
+  restaurants: [
+    { descriptor: "SQ *MAMA LUCIAS", category: "FOOD_AND_DRINK_RESTAURANT", lo: 18, hi: 70 },
+    { descriptor: "TST* LITTLE SPOON", category: "FOOD_AND_DRINK_RESTAURANT", lo: 20, hi: 80 },
+    { descriptor: "PANERA BREAD #601234", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 9, hi: 24 },
+    { descriptor: "CULVERS OF MADISON", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 8, hi: 22 },
+    { descriptor: "ZAXBYS #42101", category: "FOOD_AND_DRINK_FAST_FOOD", lo: 8, hi: 20 },
+    { descriptor: "GRUBHUB*PHOLICIOUS", category: "FOOD_AND_DRINK_RESTAURANT", lo: 18, hi: 45 },
+    { descriptor: "SWEET BASIL THAI", category: "FOOD_AND_DRINK_RESTAURANT", lo: 22, hi: 60 },
+    { descriptor: "EL TORO LOCO", category: "FOOD_AND_DRINK_RESTAURANT", lo: 15, hi: 50 },
+  ],
+  coffee: [
+    { descriptor: "DUTCH BROS #0412", category: "FOOD_AND_DRINK_COFFEE", lo: 4.75, hi: 4.75 },
+    { descriptor: "SQ *MOXIE ROASTERS", category: "FOOD_AND_DRINK_COFFEE", lo: 5.25, hi: 5.25 },
+    { descriptor: "BIGGBY COFFEE #221", category: "FOOD_AND_DRINK_COFFEE", lo: 4.1, hi: 4.1 },
+  ],
+  shops: [
+    {
+      descriptor: "AMAZON.COM*AB12CD34E",
+      category: "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES",
+      lo: 12,
+      hi: 120,
+    },
+    {
+      descriptor: "KOHLS #0921",
+      category: "GENERAL_MERCHANDISE_DEPARTMENT_STORES",
+      lo: 20,
+      hi: 110,
+    },
+    {
+      descriptor: "WALGREENS #5521",
+      category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS",
+      lo: 8,
+      hi: 50,
+    },
+    { descriptor: "MENARDS 3311", category: "HOME_IMPROVEMENT_HARDWARE", lo: 15, hi: 200 },
+    {
+      descriptor: "OLLIES BARGAIN #112",
+      category: "GENERAL_MERCHANDISE_DISCOUNT_STORES",
+      lo: 10,
+      hi: 60,
+    },
+    {
+      descriptor: "BATH & BODY WORKS 0442",
+      category: "PERSONAL_CARE_OTHER_PERSONAL_CARE",
+      lo: 12,
+      hi: 55,
+    },
+    {
+      descriptor: "HOBBY-LOBBY #0412",
+      category: "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
+      lo: 10,
+      hi: 80,
+    },
+    { descriptor: "MEIJER #221", category: "GENERAL_MERCHANDISE_SUPERSTORES", lo: 20, hi: 140 },
+    {
+      descriptor: "FLEET FARM #12",
+      category: "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
+      lo: 15,
+      hi: 150,
+    },
+  ],
+  gas: [
+    { descriptor: "MAVERIK #427", category: "TRANSPORTATION_GAS", lo: 28, hi: 65 },
+    { descriptor: "RACETRAC 2231", category: "TRANSPORTATION_GAS", lo: 28, hi: 65 },
+    { descriptor: "HOLIDAY 0221", category: "TRANSPORTATION_GAS", lo: 28, hi: 65 },
+    { descriptor: "KUM&GO 0614", category: "TRANSPORTATION_GAS", lo: 28, hi: 65 },
+  ],
+  rides: [
+    {
+      descriptor: "LYFT   *RIDE SAT 11PM",
+      category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES",
+      lo: 8,
+      hi: 30,
+    },
+    {
+      descriptor: "UBER   *TRIP HELP.UBER.COM",
+      category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES",
+      lo: 9,
+      hi: 38,
+    },
+  ],
+  subscriptions: [
+    { descriptor: "NETFLIX.COM", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1549, rise: 1799 },
+    { descriptor: "CRUNCHYROLL*MEMBERSHIP", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 799 },
+    { descriptor: "FUBOTV INC", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 7999 },
+    {
+      descriptor: "NOOM INC",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 5900,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "PATREON* MEMBERSHIP",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 500,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "DUOLINGO PLUS",
+      category: "GENERAL_SERVICES_EDUCATION",
+      cents: 1299,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "SIMPLISAFE INC",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 2799,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "EXPRESSVPN",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 1295,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "WSJ DIGITAL",
+      category: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+      cents: 1299,
+      alsoOk: DIGITAL,
+    },
+    { descriptor: "XBOX GAME PASS", category: "ENTERTAINMENT_VIDEO_GAMES", cents: 1699 },
+    {
+      descriptor: "CRUNCH FITNESS",
+      category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
+      cents: 2499,
+    },
+    {
+      descriptor: "RING BASIC PLAN",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 499,
+      alsoOk: DIGITAL,
+    },
+  ],
+  trials: [
+    { descriptor: "SHUDDER", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 799 },
+    { descriptor: "ACORN TV", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 799 },
+    { descriptor: "BRITBOX", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 799 },
+  ],
+  seats: [
+    { descriptor: "FANDANGO", category: "ENTERTAINMENT_TV_AND_MOVIES", lo: 13, hi: 21 },
+    {
+      descriptor: "SEATGEEK",
+      category: "ENTERTAINMENT_SPORTING_EVENTS_AMUSEMENT_PARKS_AND_MUSEUMS",
+      lo: 40,
+      hi: 160,
+    },
+    { descriptor: "FRONTIER AI 4222123456789", category: "TRAVEL_FLIGHTS", lo: 90, hi: 260 },
+  ],
+  employers: [
+    "INITECH LLC",
+    "UMBRELLA CORP",
+    "WAYNE ENTERPRISES",
+    "SOYLENT CORP",
+    "VANDELAY INDUSTRIES",
+  ],
+  landlords: ["MORGAN PROPERTIES", "CORTLAND PARTNERS", "SUMMIT RIDGE APTS"],
+  power: ["GEORGIA POWER", "AMEREN MISSOURI", "TECO ENERGY", "OHIO EDISON"],
+  internet: ["COX COMMUNICATIONS", "GOOGLE FIBER", "ZIPLY FIBER", "ASTOUND BROADBAND"],
+  phones: ["VISIBLE SERVICE", "US CELLULAR", "CONSUMER CELLULAR"],
+  insurers: ["AMICA MUTUAL INS", "ERIE INSURANCE GRP", "ROOT INSURANCE"],
+  friends: ["RILEY OKAFOR", "MORGAN SILVA", "AVERY COHEN", "QUINN MURPHY", "DREW TANAKA"],
+  water: "CITY OF RIVERTON WATER SVC",
+  yearly: {
+    descriptor: "SAMS CLUB MEMBERSHIP",
+    category: "GENERAL_MERCHANDISE_SUPERSTORES",
+    cents: 5000,
+    alsoOk: DIGITAL,
+  },
+  twin: { descriptor: "PANDORA*PLUS", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 499 },
+  pricePlans: {
+    descriptor: "MIDJOURNEY INC.",
+    category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+    cents: [1000, 3000],
+    alsoOk: DIGITAL,
+  },
+  notPlans: [
+    {
+      descriptor: "SUMMIT FCU LOAN PYMT",
+      category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+      lo: 140,
+      hi: 140,
+    },
+    { descriptor: "AMICA AUTO PREMIUM", category: "GENERAL_SERVICES_INSURANCE", lo: 92, hi: 92 },
+    {
+      descriptor: "GRACE FELLOWSHIP",
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      lo: 40,
+      hi: 40,
+    },
+    {
+      descriptor: "SUNRISE DONUT",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 9.5,
+      hi: 9.5,
+    },
+    { descriptor: "THE RUSTY ANCHOR", category: "FOOD_AND_DRINK_RESTAURANT", lo: 38, hi: 38 },
+  ],
+  irregular: [
+    { descriptor: "VALLEY VIEW DENTAL", category: "MEDICAL_DENTAL_CARE", lo: 80, hi: 450 },
+    { descriptor: "MIDAS #2231", category: "GENERAL_SERVICES_AUTOMOTIVE", lo: 70, hi: 520 },
+  ],
+  abroad: [
+    {
+      descriptor: "PAUL BOULANGERIE PARIS FRA",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 6,
+      hi: 18,
+    },
+    { descriptor: "RATP PARIS", category: "TRANSPORTATION_PUBLIC_TRANSIT", lo: 2, hi: 16 },
+    {
+      descriptor: "G7 TAXI PARIS",
+      category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES",
+      lo: 12,
+      hi: 45,
+    },
+  ],
+};
+
 function person(index: number, set: CsvSet = "tuning"): CsvPerson {
   const base = {
     tuning: CSV_SEED,
     "held-out": CSV_HELD_OUT_SEED,
     "held-out-2": CSV_HELD_OUT_2_SEED,
+    "held-out-3": CSV_HELD_OUT_3_SEED,
   }[set];
   const r = rng(base + index * 104_729);
-  const id = `${{ tuning: "c", "held-out": "d", "held-out-2": "e" }[set]}${String(index + 1).padStart(2, "0")}`;
-  const P = { tuning: TUNING, "held-out": HELD_OUT, "held-out-2": HELD_OUT_2 }[set];
+  const id = `${{ tuning: "c", "held-out": "d", "held-out-2": "e", "held-out-3": "f" }[set]}${String(index + 1).padStart(2, "0")}`;
+  const P = {
+    tuning: TUNING,
+    "held-out": HELD_OUT,
+    "held-out-2": HELD_OUT_2,
+    "held-out-3": HELD_OUT_3,
+  }[set];
   const archetype = ARCHETYPES[index % ARCHETYPES.length];
   const months = 3 + (index % 4);
   const asOf = CSV_AS_OF;
@@ -992,6 +1233,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
         tuning: index,
         "held-out": (index + 7) % PLANS.length,
         "held-out-2": (index + 13) % PLANS.length,
+        "held-out-3": (index + 3) % PLANS.length,
       }[set]
     ];
 

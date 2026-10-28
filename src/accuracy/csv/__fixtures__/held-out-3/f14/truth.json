@@ -1,0 +1,108 @@
+{
+  "person": "f14",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "ACORN TV trial",
+      "perYear": 7.99
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 1677.72
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 1121.62
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 1",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 2",
+      "perYear": 360
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #2231, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #0412 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 SEATGEEK seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "MENARDS 3311 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PYMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMICA AUTO PREMIUM, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": -2886.32
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -2137.39
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -2726.51
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -3353.21
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -3094.12
+    }
+  ]
+}

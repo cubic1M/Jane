@@ -1,0 +1,114 @@
+{
+  "person": "f07",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "RING BASIC PLAN",
+      "perYear": 59.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "HOBBY-LOBBY #0412 twice",
+      "perYear": 95.16
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 126
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 500
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 1",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 2",
+      "perYear": 360
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 2026516, excess 1365261",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SIMPLISAFE INC, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "VALLEY VIEW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #2231, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BIGGBY COFFEE #221 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMICA AUTO PREMIUM, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PYMT, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 3820.28
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 6296.22
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 11186.41
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 13308.64
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 15551.06
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 18206.12
+    }
+  ]
+}

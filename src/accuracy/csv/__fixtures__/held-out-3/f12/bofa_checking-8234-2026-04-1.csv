@@ -1,0 +1,10 @@
+﻿Description,,Summary Amt.
+Beginning balance as of 04/01/2026,,"4,597.91"
+Total credits,,"196.54"
+Total debits,,"0.00"
+Ending balance as of 05/03/2026,,"4,794.45"
+
+Date,Description,Amount,Running Bal.
+04/01/2026,Beginning balance as of 04/01/2026,,"4,597.91"
+04/04/2026,Online Banking transfer from CHK 5068 Confirmation# 9130300755,"181.21","4,779.12"
+04/28/2026,Interest Earned,"15.33","4,794.45"

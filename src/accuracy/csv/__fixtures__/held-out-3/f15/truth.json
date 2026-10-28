@@ -1,0 +1,95 @@
+{
+  "person": "f15",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUOLINGO PLUS",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 6
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #0412 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE FELLOWSHIP, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PYMT, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA*PLUS, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 567.93
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -498.05
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -1250.9
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -2328.17
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -3490.88
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -4637.23
+    }
+  ]
+}

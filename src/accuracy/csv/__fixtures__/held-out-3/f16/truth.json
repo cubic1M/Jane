@@ -1,0 +1,108 @@
+{
+  "person": "f16",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Credit union checking",
+      "layout": "custom",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "WSJ DIGITAL",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOOM INC",
+      "perYear": 708
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "HOBBY-LOBBY #0412 twice",
+      "perYear": 144.92
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 72
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #2231, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *MOXIE ROASTERS at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE FELLOWSHIP, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE DONUT, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA*PLUS, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 2523.01
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 1822.65
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 1176.58
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 604.39
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -144.04
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -2285.06
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -1409.74
+    }
+  ]
+}

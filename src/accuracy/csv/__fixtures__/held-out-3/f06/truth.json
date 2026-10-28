@@ -1,0 +1,92 @@
+{
+  "person": "f06",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase savings",
+      "layout": "chase_checking",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "DUOLINGO PLUS",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "RING BASIC PLAN",
+      "perYear": 59.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "BRITBOX trial",
+      "perYear": 7.99
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 4922125, excess 4296418",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "VALLEY VIEW DENTAL, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BIGGBY COFFEE #221 at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE DONUT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PYMT, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 31267.61
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 35520.07
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 39511.46
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 42936.58
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 47141.22
+    }
+  ]
+}

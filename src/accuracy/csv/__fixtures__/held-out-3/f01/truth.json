@@ -1,0 +1,128 @@
+{
+  "person": "f01",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCHYROLL*MEMBERSHIP",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "FUBOTV INC",
+      "perYear": 959.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "XBOX GAME PASS",
+      "perYear": 203.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PATREON* MEMBERSHIP",
+      "perYear": 60
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "WALGREENS #5521 twice",
+      "perYear": 99.4
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 108
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 1101.3
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 1",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDJOURNEY INC. plan 2",
+      "perYear": 360
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1541184, excess 370809",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SQ *MOXIE ROASTERS at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE DONUT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMICA AUTO PREMIUM, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA*PLUS, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 7812.19
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 8328.29
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 9199.35
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 9351.89
+    }
+  ]
+}

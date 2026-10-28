@@ -251,6 +251,8 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
   Bills recall on the sample bench also rose (first held-out 98.6% → 99.7%, second 98.6% → 99.6%); everything else is unchanged.
 
+  **Checked on a fresh set.** The first two held-out pools were written before the list, by the same hand, so a gain there could be the list and the pools sharing the same well-known names. A third held-out CSV set (`CSV_HELD_OUT_3_SEED`, new names, written after the list and spelled the way statements cut names: "CULVERS", "OLLIES", "HOBBY-LOBBY", plus regional chains and local places) gains much less: category right 71.0% → 79.6% (+8.6 points, against +28.3 and +16.0). By merchant, the rules place 36 of its 82 names before and 50 after. So most of the first held-out jump came from names its pool happens to share with the list; the third set's gain is the better estimate of what the list adds on real statements, and it is a harsh one, since its names were picked knowing the list. Of the 850 words added, 759 are company names (real companies, counting spellings such as KOHL'S and KOHLS apart) and 91 are generic words (curry, florist, daycare, toll, museum). The third set is only scored: no rule is fixed on it.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -260,6 +262,7 @@ Beta users start by uploading statements, so the sample people above (already-cl
 - **Two sets.** The tuning set (`CSV_SEED`) is what rules were fixed on. The held-out set (`CSV_HELD_OUT_SEED`) has the same kinds of people and mess under names the tuning set never uses (other grocers, restaurants, landlords, utilities, employers, subscriptions, airlines and cinemas) and different banks per person. It was written before any fix and is only scored.
 - **Scoring:** `src/accuracy/csv/score.ts` runs what `/import` runs, without a database: `readCsvFile` on every file, one copy of rows two files share, `categorizeTransactions` with Claude off and no cached merchants, card payments matched from the card's side, the merchant directory's seed, `detect()`, the spending chart's monthly totals and the home hub's net worth line. Claude is stubbed (`vi.mock`), so nothing is spent and the categories and subscriptions are the rules' alone: a lower bound. On a live upload Claude places what the rules leave, and is asked about recurring charges whose category can't say; the tables count both.
 - **A second held-out set** (`CSV_HELD_OUT_2_SEED`, 2026-10-27). It has names neither other set uses (grocers, restaurants, landlords, utilities, phone and internet companies, employers, subscriptions, trials, cinemas, a twin plan, the not-a-plan traps) and the banks shifted again. It was made and scored before any fix it could check, so it is the clean check for rounds 7 and later. As first scored: category right 69.7%, subscriptions 100% / 85.5%, false "Charged twice?" 6, trials 100% / 80%, "Coming up" 99.5% / 95.3% (precision / recall).
+- **A third held-out set** (`CSV_HELD_OUT_3_SEED`, 2026-10-27, after round 12). New names again, written after round 12's chain list to check it (real chains of every size, spelled as statements cut them, and local places), and the banks shifted again. Only scored. As first scored, with round 12: category right 79.6%, subscriptions 74.8% / 91.3% (32 false alarms, the next thing to look into, from the tuning set), false "Charged twice?" 4, "Coming up" 100% / 99.1%.
 - **Run it:** `npm run accuracy` prints both benches. `ACCURACY_WRITE=1` also rewrites the files, `src/accuracy/csv/baseline.json` and the tables below. `ACCURACY_MISTAKES=1` lists the tuning set's mistakes.
 - **Calibration:** the suggestions an uploaded person would see, made from the upload's rows and only the balances Jane knows. They are bucketed by their "% sure" and judged on the same topics as the sample bench. Like the sample bench, they are under-confident on purpose ("58% sure" is right 94% of the time on the tuning set, 87% held out). The only wrong ones are two "build an emergency fund" suggestions for people near the idle-cash line. The gate holds the same bar: no 0%, no bucket of 10 or more over 10 points surer than right.
 - **Gate:** `src/accuracy/csv/csv-accuracy.test.ts`, with the unit tests: the files must match the generator, every share in the baseline may drop at most 3 points, and extra rows and false "Charged twice?" may not rise at all.
@@ -380,6 +383,45 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 60–69% | 39 | 64% | 95% |
 | 70–79% | 6 | 76% | 100% |
 | 80–89% | 2 | 83% | 100% |
+| 90–100% | 0 | – | – |
+
+Third held-out set (20 people, 157 files, 5636 transactions):
+
+| Step | Score |
+| --- | ---: |
+| Files read | 157 of 157 (152 exactly) |
+| Rows read exactly | 100.0% (0 extra, 0 missing) |
+| Category right (rules only) | 79.6% (1102 left for Claude) |
+| False "Charged twice?" | 4 (4 people) |
+| Findings, $/yr | Jane $51,153, truth $35,077; error on the ones found 0.0% |
+| Monthly spending, error | 0.1% |
+| Monthly income, error | 0.0% |
+| Net worth today right | 7 of 20 people (off by $41,405 in all) |
+| Net worth line: month-ends drawn | 90.9% (error where drawn 14.2%) |
+| Net worth line, people whose every balance Jane knows | 7 of 20, error 0.0% |
+
+| Finding | Precision | Recall | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| subscription_review | 74.8% | 91.3% | 95 | 32 | 9 |
+| price_increase | 100.0% | 100.0% | 7 | 0 | 0 |
+| trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
+| bank_fees | 100.0% | 100.0% | 23 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
+| duplicate_charge | 73.3% | 100.0% | 11 | 4 | 0 |
+| idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
+| bills coming up (31 days) | 100.0% | 99.1% | 219 | 0 | 2 |
+
+Missed subscriptions Claude would be asked about on a live upload: 0 of 9.
+
+Suggestions' confidence (is "80% sure" right 80% of the time?):
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 22 | 58% | 91% |
+| 60–69% | 36 | 64% | 94% |
+| 70–79% | 4 | 76% | 100% |
+| 80–89% | 6 | 83% | 100% |
 | 90–100% | 0 | – | – |
 <!-- csv-scoreboard:end -->
 
