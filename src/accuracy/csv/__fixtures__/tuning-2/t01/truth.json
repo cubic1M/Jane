@@ -49,29 +49,37 @@
     },
     {
       "type": "subscription_review",
-      "about": "BLUE HERON BAKERY, not a plan"
+      "about": "BETH SHALOM TEMPLE, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "ACORNS INVEST, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at GREAT CLIPS 4412"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 5140.86
+      "dollars": 5112.16
     },
     {
       "date": "2026-08-31",
-      "dollars": 5874.19
+      "dollars": 5816.79
     },
     {
       "date": "2026-09-30",
-      "dollars": 6433.23
+      "dollars": 6303.13
     },
     {
       "date": "2026-10-24",
-      "dollars": 7169.89
+      "dollars": 6910.75
     }
   ]
 }

@@ -55,7 +55,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2536208, excess 2013137",
+      "about": "cash 2544260, excess 2022254",
       "perYear": null
     }
   ],
@@ -82,37 +82,41 @@
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "KLARNA* NIKE, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "AFFIRM *PAY 3K9L2, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at RIVERSIDE PEDIATRICS"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 8104.22
+      "dollars": 8117.64
     },
     {
       "date": "2026-06-30",
-      "dollars": 12112.26
+      "dollars": 12139.1
     },
     {
       "date": "2026-07-31",
-      "dollars": 17346.26
+      "dollars": 17386.52
     },
     {
       "date": "2026-08-31",
-      "dollars": 19471.87
+      "dollars": 19525.55
     },
     {
       "date": "2026-09-30",
-      "dollars": 21713.08
+      "dollars": 21780.18
     },
     {
       "date": "2026-10-24",
-      "dollars": 24111.44
+      "dollars": 24131.96
     }
   ]
 }

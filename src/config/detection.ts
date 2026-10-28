@@ -695,6 +695,10 @@ export const DUPLICATE_CHARGE_PER_SEAT_CATEGORIES: readonly PfcDetailed[] = [
   "TRAVEL_FLIGHTS",
   "TRANSPORTATION_PUBLIC_TRANSIT",
 ];
+// Two orders, not one charged twice: each charge carries its own order number after the
+// processor's "*" ("AMZN Mktp US*2K4L91Z3" and "AMZN Mktp US*7HQ2MX0PB"; CSV bench, second tuning
+// set). The number has a digit in it, so a plain name after a "*" is not one.
+export const DUPLICATE_CHARGE_ORDER_NUMBER = /\*\s*([A-Z0-9]*[0-9][A-Z0-9]*)/;
 // Cinemas sell a seat each too, but Plaid (and Claude) file them with streaming services. A
 // streaming service's double charge is on a plan paid on other days too; a cinema visit is one
 // day. So in these categories, two at one price on the only day a merchant was ever paid are

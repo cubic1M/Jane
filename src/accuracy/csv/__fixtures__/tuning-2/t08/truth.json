@@ -69,41 +69,41 @@
     },
     {
       "type": "subscription_review",
-      "about": "HOLLOW OAK TAVERN, not a plan"
+      "about": "NEW HOPE CHAPEL, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "BLUE HERON BAKERY, not a plan"
+      "about": "HOMESHIELD PREMIUM, not a plan"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 7275.51
+      "dollars": 7196.91
     },
     {
       "date": "2026-05-31",
-      "dollars": 7131.51
+      "dollars": 6974.31
     },
     {
       "date": "2026-06-30",
-      "dollars": 7373.02
+      "dollars": 7137.22
     },
     {
       "date": "2026-07-31",
-      "dollars": 9191.29
+      "dollars": 8876.89
     },
     {
       "date": "2026-08-31",
-      "dollars": 8946.42
+      "dollars": 8553.42
     },
     {
       "date": "2026-09-30",
-      "dollars": 8675.33
+      "dollars": 8203.73
     },
     {
       "date": "2026-10-24",
-      "dollars": 8221.14
+      "dollars": 7670.94
     }
   ]
 }

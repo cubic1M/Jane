@@ -264,6 +264,10 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
   Two more from the second tuning set: two plans from one company at two prices stay two when one of them has most of the charges (Google One at $2.99 and $9.99; the run of the whole had kept only the $9.99 one), and a city's utility bill (`RENT_AND_UTILITIES_OTHER_UTILITIES`) is no price rise, like power and water. "Coming up" recall rose with them (first held-out 98.6% → 100%, second 97.7% → 99.1%, third 99.1% → 100%). Precision is unchanged on every set (100%, and 74.8% → 76.5% on the third held-out set as more are found); the first tuning set and the sample bench are unchanged. Left on the second tuning set: a plan seen three times whose price rose on the third (two charges at the old price are too few for a run).
 
+- **Fixed monthly amounts that aren't plans** (round 14, second tuning set). The second tuning set now carries the not-a-plan charges real statements have: buy-now-pay-later instalments ("AFFIRM *PAY", "KLARNA* NIKE"), a car lender ("LAKESHORE AUTO FIN"), a robo-investing deposit ("ACORNS INVEST"), homeowners' association dues, a chapel and a temple, home insurance by its premium, a pastry shop. As first scored they made 33 false subscription alarms (precision 71.3%). The rules now read buy-now-pay-later and car lenders as loan payments, investing apps and brokerages as investment transfers, HOA dues as a home bill, chapels, temples, synagogues and mosques as gifts (last of the words, so "IRON TEMPLE GYM" stays a gym), and pastry shops as food; each of those is a category no subscription comes from. Second tuning set: subscriptions precision 71.3% → 97.6%, category right 94.9% → 98.6%. Left: "HOMESHIELD PREMIUM" (premium is a plan word too: YouTube Premium), for Claude. The held-out sets are unchanged, the third set's 32 false alarms included: they are not these kinds. "AUTO PMT" was tried as a car-loan word and dropped: it is how banks write autopay on any bill, and it tripled the first held-out set's false "Charged twice?".
+
+- **Two orders are not one charge twice** (round 14, second tuning set). The second tuning set now also has same-price pairs on one day that aren't double charges: two orders from one shop, each with its own order number ("AMZN Mktp US*2K4L91Z3" and "AMZN Mktp US*7HQ2MX0PB"), and a service paid per person (two kids' haircuts, two copays). As first scored: 25 false "Charged twice?". Two charges whose order numbers after the processor's "*" differ (`DUPLICATE_CHARGE_ORDER_NUMBER`, a token with a digit) are now two orders: 25 → 14. A service paid per person was tried as a seat each (hair, doctor, dentist, eye care) and dropped: it took a real double charge away from the first held-out set. The 13 per-person pairs are left (nothing on a statement tells two haircuts from one run twice). Held-out sets unchanged.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -319,31 +323,31 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Second tuning set (20 people, 127 files, 5496 transactions):
+Second tuning set (20 people, 122 files, 5550 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 127 of 127 (123 exactly) |
+| Files read | 122 of 122 (118 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 98.9% (63 left for Claude) |
-| False "Charged twice?" | 0 (0 people) |
-| Findings, $/yr | Jane $40,613, truth $40,848; error on the ones found 0.0% |
-| Monthly spending, error | 0.4% |
+| Category right (rules only) | 98.6% (75 left for Claude) |
+| False "Charged twice?" | 14 (14 people) |
+| Findings, $/yr | Jane $42,563, truth $40,848; error on the ones found 0.0% |
+| Monthly spending, error | 0.7% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 9 of 20 people (off by $129,195 in all) |
-| Net worth line: month-ends drawn | 96.4% (error where drawn 47.7%) |
+| Net worth today right | 9 of 20 people (off by $129,844 in all) |
+| Net worth line: month-ends drawn | 96.4% (error where drawn 47.8%) |
 | Net worth line, people whose every balance Jane knows | 9 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 100.0% | 98.8% | 82 | 0 | 1 |
+| subscription_review | 97.6% | 98.8% | 82 | 2 | 1 |
 | price_increase | 100.0% | 75.0% | 3 | 0 | 1 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 21 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
-| duplicate_charge | 100.0% | 100.0% | 11 | 0 | 0 |
-| idle_cash | 75.0% | 50.0% | 3 | 1 | 3 |
-| bills coming up (31 days) | 100.0% | 99.5% | 212 | 0 | 1 |
+| duplicate_charge | 44.0% | 100.0% | 11 | 14 | 0 |
+| idle_cash | 100.0% | 50.0% | 3 | 0 | 3 |
+| bills coming up (31 days) | 100.0% | 99.5% | 208 | 0 | 1 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 1.
 
@@ -352,8 +356,8 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 17 | 59% | 100% |
-| 60–69% | 30 | 64% | 97% |
+| 50–59% | 19 | 58% | 79% |
+| 60–69% | 34 | 64% | 91% |
 | 70–79% | 4 | 77% | 100% |
 | 80–89% | 1 | 83% | 100% |
 | 90–100% | 0 | – | – |

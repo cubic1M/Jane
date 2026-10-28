@@ -68,37 +68,45 @@
     },
     {
       "type": "subscription_review",
-      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+      "about": "LAKESHORE AUTO FIN, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "ACORNS INVEST, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at BRIGHT SMILE DENTAL"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -5456.99
+      "dollars": -5509.99
     },
     {
       "date": "2026-06-30",
-      "dollars": -6953.35
+      "dollars": -7059.35
     },
     {
       "date": "2026-07-31",
-      "dollars": -7579.64
+      "dollars": -7738.64
     },
     {
       "date": "2026-08-31",
-      "dollars": -9036.34
+      "dollars": -9248.34
     },
     {
       "date": "2026-09-30",
-      "dollars": -11206.79
+      "dollars": -11471.79
     },
     {
       "date": "2026-10-24",
-      "dollars": -12608.15
+      "dollars": -13127.19
     }
   ]
 }

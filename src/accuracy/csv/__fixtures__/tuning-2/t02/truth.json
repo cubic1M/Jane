@@ -93,33 +93,41 @@
     },
     {
       "type": "subscription_review",
-      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+      "about": "LAKESHORE AUTO FIN, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "HOLLOW OAK TAVERN, not a plan"
+      "about": "NEW HOPE CHAPEL, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at RIVERSIDE PEDIATRICS"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two orders"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 952.4
+      "dollars": 877.5
     },
     {
       "date": "2026-07-31",
-      "dollars": 1376.61
+      "dollars": 1226.81
     },
     {
       "date": "2026-08-31",
-      "dollars": 2170.49
+      "dollars": 1945.79
     },
     {
       "date": "2026-09-30",
-      "dollars": 3497.72
+      "dollars": 3058.76
     },
     {
       "date": "2026-10-24",
-      "dollars": 4717.08
+      "dollars": 4203.22
     }
   ]
 }

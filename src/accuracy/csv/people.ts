@@ -374,6 +374,11 @@ type Pool = {
   notPlans: Merchant[];
   // A plan billed twice on the same day every month (two accounts, or one for a family member).
   twin: Sub;
+  // Same-price pairs on one day that aren't double charges: a service paid per person (two kids'
+  // haircuts, two copays), and two orders from one shop with their own order numbers (round 14).
+  // Only some pools have them; the rows come from their own dice.
+  perPerson?: Merchant[];
+  orders?: { prefix: string; category: PfcDetailed };
   // Two plans from one service at two prices, each on its own day every month (QA round 30).
   pricePlans: {
     descriptor: string;
@@ -1087,6 +1092,51 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  perPerson: [
+    { descriptor: "GREAT CLIPS 4412", category: "PERSONAL_CARE_HAIR_AND_BEAUTY", lo: 22, hi: 22 },
+    { descriptor: "RIVERSIDE PEDIATRICS", category: "MEDICAL_PRIMARY_CARE", lo: 30, hi: 30 },
+    { descriptor: "BRIGHT SMILE DENTAL", category: "MEDICAL_DENTAL_CARE", lo: 45, hi: 45 },
+  ],
+  orders: { prefix: "AMZN Mktp US*", category: "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES" },
+  // Fixed monthly amounts that aren't plans, of the kinds real statements carry: a buy-now-pay-later
+  // instalment, a car loan, home insurance by its premium, a chapel and a temple, a homeowners'
+  // association, a robo-investing deposit and a pastry shop (round 14).
+  notPlans: [
+    {
+      descriptor: "AFFIRM *PAY 3K9L2",
+      category: "LOAN_PAYMENTS_OTHER_PAYMENT",
+      lo: 58.33,
+      hi: 58.33,
+    },
+    { descriptor: "KLARNA* NIKE", category: "LOAN_PAYMENTS_OTHER_PAYMENT", lo: 31.25, hi: 31.25 },
+    { descriptor: "LAKESHORE AUTO FIN", category: "LOAN_PAYMENTS_CAR_PAYMENT", lo: 96, hi: 96 },
+    { descriptor: "HOMESHIELD PREMIUM", category: "GENERAL_SERVICES_INSURANCE", lo: 64, hi: 64 },
+    {
+      descriptor: "NEW HOPE CHAPEL",
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      lo: 75,
+      hi: 75,
+    },
+    {
+      descriptor: "BETH SHALOM TEMPLE",
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      lo: 36,
+      hi: 36,
+    },
+    { descriptor: "OAK RIDGE HOA", category: "RENT_AND_UTILITIES_OTHER_UTILITIES", lo: 85, hi: 85 },
+    {
+      descriptor: "ACORNS INVEST",
+      category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+      lo: 25,
+      hi: 25,
+    },
+    {
+      descriptor: "SUNNYSIDE PASTRY",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 12.5,
+      hi: 12.5,
+    },
+  ],
   pricePlans: {
     descriptor: "GOOGLE *GOOGLE ONE",
     category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
@@ -2230,6 +2280,45 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     if (m.category.startsWith("LOAN") || m.category.endsWith("INSURANCE"))
       L.bill(rows, m.descriptor);
     else L.neutralBills.push(rows);
+  }
+
+  // Same price, same day, not charged twice (round 14), from their own dice: two people's
+  // haircuts or copays, and two orders with their own order numbers.
+  const pp = rng(base + index * 104_729 + 31);
+  if (P.perPerson && pp.chance(0.5)) {
+    const m = pp.pick(P.perPerson);
+    const date = addDays(asOf, -pp.int(3, 40));
+    const ids = [
+      L.add(spend(card.id, date, m.lo * 100, m))?.id,
+      L.add(spend(card.id, date, m.lo * 100, m))?.id,
+    ];
+    L.traps.push({
+      type: "duplicate_charge",
+      rows: ids.filter((x): x is string => !!x),
+      note: `two at ${m.descriptor}`,
+    });
+  }
+  if (P.orders && pp.chance(0.5)) {
+    const date = addDays(asOf, -pp.int(3, 40));
+    const cents = pp.cents(12, 60);
+    const code = () =>
+      Array.from({ length: 9 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789"[pp.int(0, 33)]).join("");
+    const order = {
+      descriptor: `${P.orders.prefix}${code()}`,
+      category: P.orders.category,
+      lo: 0,
+      hi: 0,
+    };
+    const ids = [
+      L.add(spend(card.id, date, cents, order))?.id,
+      L.add(spend(card.id, date, cents, { ...order, descriptor: `${P.orders.prefix}${code()}` }))
+        ?.id,
+    ];
+    L.traps.push({
+      type: "duplicate_charge",
+      rows: ids.filter((x): x is string => !!x),
+      note: "two orders",
+    });
   }
 
   // Two plans billed together, on one card on one day every month: two subscriptions and two

@@ -69,29 +69,33 @@
     },
     {
       "type": "subscription_review",
-      "about": "HARBOR CREDIT UNION PMT, not a plan"
+      "about": "AFFIRM *PAY 3K9L2, not a plan"
     },
     {
       "type": "subscription_review",
-      "about": "LEMONADE INSURANCE, not a plan"
+      "about": "KLARNA* NIKE, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two at GREAT CLIPS 4412"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 1787.77
+      "dollars": 1801.19
     },
     {
       "date": "2026-08-31",
-      "dollars": 1470.08
+      "dollars": 1496.92
     },
     {
       "date": "2026-09-30",
-      "dollars": 1587.91
+      "dollars": 1628.17
     },
     {
       "date": "2026-10-24",
-      "dollars": -103.42
+      "dollars": -111.74
     }
   ]
 }

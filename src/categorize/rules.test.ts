@@ -279,6 +279,31 @@ describe("categorizeByRules", () => {
     expect(out("GAP INSURANCE")).toBe("GENERAL_SERVICES_INSURANCE");
   });
 
+  // CSV bench, second tuning set: fixed monthly amounts that aren't plans, by their words.
+  it.each([
+    ["AFFIRM *PAY 3K9L2", "LOAN_PAYMENTS_OTHER_PAYMENT"],
+    ["KLARNA* NIKE", "LOAN_PAYMENTS_OTHER_PAYMENT"],
+    ["AFTERPAY US", "LOAN_PAYMENTS_OTHER_PAYMENT"],
+    ["LAKESHORE AUTO FIN", "LOAN_PAYMENTS_CAR_PAYMENT"],
+    ["GM FINANCIAL ONLINE", "LOAN_PAYMENTS_CAR_PAYMENT"],
+    ["ACORNS INVEST", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["BETTERMENT 4410", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["OAK RIDGE HOA", "RENT_AND_UTILITIES_OTHER_UTILITIES"],
+    ["NEW HOPE CHAPEL", "GOVERNMENT_AND_NON_PROFIT_DONATIONS"],
+    ["BETH SHALOM TEMPLE", "GOVERNMENT_AND_NON_PROFIT_DONATIONS"],
+    ["SUNNYSIDE PASTRY", "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK"],
+  ])("reads %s as %s", (description, category) => {
+    expect(out(description)).toBe(category);
+  });
+
+  it("lets a place's kind win over the words that come last", () => {
+    expect(out("SQ *IRON TEMPLE GYM")).toBe("PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS");
+    expect(out("PHO HOA NOODLE 22")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(out("LITTLE ACORNS DAYCARE")).toBe("GENERAL_SERVICES_CHILDCARE");
+    // Autopay on a bill is the bill, not a car loan.
+    expect(out("VERIZON WIRELESS AUTO PMT")).toBe("RENT_AND_UTILITIES_TELEPHONE");
+  });
+
   it("leaves unknown merchants for the LLM", () => {
     expect(out("MYSTERY SHOP 555")).toBeNull();
   });
