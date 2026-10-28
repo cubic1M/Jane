@@ -691,6 +691,31 @@ export const SUBSCRIPTION_BOX_MERCHANTS: readonly string[] = [
   "imperfect foods",
 ];
 export const CARD_PAYMENT_NAME = "Credit card payment";
+// Card companies as a payment to them reads from checking, and the name for a card of theirs: a
+// card payment is named for its card, not "Credit card payment" (overnight beta list).
+export const CARD_ISSUERS: readonly (readonly [RegExp, string])[] = [
+  [/\bchase\b/i, "Chase"],
+  [/\bamex\b|american express/i, "American Express"],
+  [/\bciti(bank|cards?)?\b/i, "Citi"],
+  [/capital one/i, "Capital One"],
+  [/\bdiscover\b/i, "Discover"],
+  [/bank of america|\bbofa\b|\bbk of amer/i, "Bank of America"],
+  [/wells fargo/i, "Wells Fargo"],
+  [/\bbarclay/i, "Barclays"],
+  [/\bsynchrony\b|\bsyncb\b/i, "Synchrony"],
+  [/apple ?card|\bgs bank\b|goldman sachs/i, "Apple Card"],
+  [/\bus ?bank\b/i, "U.S. Bank"],
+  [/navy federal/i, "Navy Federal"],
+  [/\busaa\b/i, "USAA"],
+  [/\bpenfed\b/i, "PenFed"],
+  [/\btd bank\b/i, "TD Bank"],
+];
+// A card's account name may use a short form of its issuer's name.
+export const CARD_ISSUER_SHORT: Readonly<Record<string, readonly string[]>> = {
+  "American Express": ["amex"],
+  "Bank of America": ["bofa"],
+  "U.S. Bank": ["us bank", "usbank"],
+};
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the
 // one reminder for that payment and the guessed bill reminder is left out (books QA: two
