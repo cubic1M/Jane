@@ -18,10 +18,12 @@ import { FIGURES_DETECTORS } from "@/detectors/figures";
 import { FIT_DETECTORS } from "@/detectors/fit";
 import { runHarness } from "@/detectors/harness";
 import { HOLDINGS_DETECTORS } from "@/detectors/holdings";
+import { INVESTED_CASH_DETECTORS } from "@/detectors/invested-cash";
 import { HOME_DETECTORS } from "@/detectors/home";
 import { INSURANCE_DETECTORS } from "@/detectors/insurance";
 import { INVESTING_DETECTORS } from "@/detectors/investing";
 import { LIFE_DETECTORS } from "@/detectors/life";
+import { LIFE_FACT_DETECTORS } from "@/detectors/life-facts";
 import { MONEY_DETECTORS } from "@/detectors/money";
 import { PLANNING_DETECTORS } from "@/detectors/planning";
 import { PRACTICE_DETECTORS } from "@/detectors/practice";
@@ -49,7 +51,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "money", detectors: MONEY_DETECTORS },
   { key: "home", detectors: HOME_DETECTORS },
   { key: "work", detectors: WORK_DETECTORS },
-  { key: "life", detectors: LIFE_DETECTORS },
+  { key: "life", detectors: [...LIFE_DETECTORS, ...LIFE_FACT_DETECTORS] },
   { key: "insurance", detectors: INSURANCE_DETECTORS },
   { key: "coverGaps", detectors: COVER_GAP_DETECTORS },
   { key: "debt", detectors: DEBT_DETECTORS },
@@ -60,7 +62,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "familyCredit", detectors: FAMILY_CREDIT_DETECTORS },
   { key: "taxes", detectors: TAX_DETECTORS },
   { key: "investing", detectors: INVESTING_DETECTORS },
-  { key: "holdings", detectors: HOLDINGS_DETECTORS },
+  { key: "holdings", detectors: [...HOLDINGS_DETECTORS, ...INVESTED_CASH_DETECTORS] },
   { key: "priceRises", detectors: PRICE_RISE_DETECTORS },
   { key: "figures", detectors: FIGURES_DETECTORS },
   { key: "controller", detectors: CONTROLLER_DETECTORS },

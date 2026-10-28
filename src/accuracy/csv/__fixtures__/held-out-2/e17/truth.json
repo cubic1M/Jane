@@ -93,24 +93,28 @@
     {
       "type": "subscription_review",
       "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "VANGUARD BUY INVESTMENT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -4029.4
+      "dollars": -4358.45
     },
     {
       "date": "2026-08-31",
-      "dollars": -6114.63
+      "dollars": -6772.73
     },
     {
       "date": "2026-09-30",
-      "dollars": -7956.86
+      "dollars": -8944.01
     },
     {
       "date": "2026-10-24",
-      "dollars": -7256.3
+      "dollars": -8572.5
     }
   ]
 }

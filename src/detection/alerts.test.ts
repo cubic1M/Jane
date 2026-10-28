@@ -345,7 +345,9 @@ describe("bill_due", () => {
   it("leaves a card payment to the bank's due date, and keeps other bills", () => {
     const titles = (due?: Set<string>) =>
       billReminderAlerts(withCard, due).map((a) => a.title.split(",")[0]);
-    expect(titles()).toEqual(["Credit card payment", "Geico"]);
+    expect(titles()).toEqual(["Chase card payment", "Geico"]);
+    // The key it had before it was named for its card: a reminder already sent isn't sent again.
+    expect(billReminderAlerts(withCard)[0].key).toMatch(/^Credit card payment:\d{4}-\d{2}-\d{2}$/);
     expect(titles(new Set(["LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"]))).toEqual(["Geico"]);
   });
 

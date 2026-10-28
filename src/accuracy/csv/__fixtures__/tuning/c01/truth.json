@@ -36,11 +36,6 @@
       "type": "duplicate_charge",
       "about": "CVS/PHARMACY #04321 twice",
       "perYear": 150.2
-    },
-    {
-      "type": "idle_cash",
-      "about": "cash 1202293, excess 107837",
-      "perYear": null
     }
   ],
   "notFindings": [
@@ -63,24 +58,28 @@
     {
       "type": "subscription_review",
       "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "VANGUARD BUY INVESTMENT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 6395.51
+      "dollars": 6074.89
     },
     {
       "date": "2026-08-31",
-      "dollars": 7716.29
+      "dollars": 7044.79
     },
     {
       "date": "2026-09-30",
-      "dollars": 8924.32
+      "dollars": 7942.26
     },
     {
       "date": "2026-10-24",
-      "dollars": 9789.72
+      "dollars": 8413.63
     }
   ]
 }

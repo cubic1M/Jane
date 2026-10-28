@@ -7,6 +7,7 @@ import {
   LOW_BALANCE_CUSHION_CENTS,
   BANK_FEE_CATEGORIES,
   CARD_INTEREST_CATEGORIES,
+  CARD_PAYMENT_NAME,
   LARGE_CHARGE_EXCLUDED_PRIMARIES,
   LARGE_CHARGE_MEDIAN_MULTIPLE,
   LARGE_CHARGE_MIN_CENTS,
@@ -245,7 +246,9 @@ export function billReminderAlerts(
       const short = balance !== undefined && balance < LOW_BALANCE_CUSHION_CENTS;
       return {
         type: "bill_due",
-        key: `${b.merchant}:${b.date}`,
+        // A card payment keeps the key it had before it was named for its card, so a reminder
+        // already made and emailed isn't made again under the new name.
+        key: `${b.cardPayment ? CARD_PAYMENT_NAME : b.merchant}:${b.date}`,
         title: `${b.merchant}, about ${formatCents(b.amountCents)}, due ${dayLabel(b.date)}`,
         body: short
           ? `Your balance could be about ${formatCents(balance)} that day, so there may not be enough. Moving money in first could avoid a fee.`

@@ -78,24 +78,28 @@
     {
       "type": "subscription_review",
       "about": "SUNRISE BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "FID BKG SVC LLC MONEYLINE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 4484.61
+      "dollars": 4133.77
     },
     {
       "date": "2026-08-31",
-      "dollars": 3296.02
+      "dollars": 2594.34
     },
     {
       "date": "2026-09-30",
-      "dollars": 1655.32
+      "dollars": 602.8
     },
     {
       "date": "2026-10-24",
-      "dollars": 1026.13
+      "dollars": -377.23
     }
   ]
 }

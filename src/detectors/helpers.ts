@@ -143,3 +143,26 @@ export function ideaShortForms(title: string, why: string): { headline: string; 
     short: clip(firstSentence),
   };
 }
+
+// How sure Jane is of a fund's cost, from where the figure came from (src/config/funds.ts): read
+// from the fund's own filing and recent, the fund company's published figure not yet checked
+// against the filing, or the demo table's made-up one. The weakest of the funds counts.
+export function feeEvidence(
+  facts: readonly { source: string; asOf?: string }[],
+  today: string,
+): Confidence {
+  const demo = facts.some((f) => /^Demo fund facts/.test(f.source));
+  if (demo) return { percent: 70, reason: "fund costs from Jane's demo fund table" };
+  const dated = facts.every((f) => f.asOf);
+  if (dated) {
+    const oldest = facts.map((f) => f.asOf!).sort()[0];
+    const age = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${oldest}T00:00:00Z`)) / 86_400_000;
+    return age <= 400
+      ? { percent: 92, reason: `expense ratios from the funds' filings, as of ${oldest}` }
+      : {
+          percent: 80,
+          reason: `expense ratios from the funds' filings, as of ${oldest} (over a year old)`,
+        };
+  }
+  return { percent: 80, reason: "the fund companies' published expense ratios, rounded" };
+}

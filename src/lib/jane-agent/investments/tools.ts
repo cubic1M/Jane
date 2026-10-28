@@ -1,3 +1,4 @@
+import { loadInvestingLeak } from "@/lib/investments/leak";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
@@ -136,6 +137,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     name: "account_plan",
     description:
       "Which account to put money into first (employer match, HSA, IRA (Roth or traditional by their tax bracket from the tax estimate), the rest of the workplace plan, a taxable account), each with its yearly room and why, changing with the investor profile (money needed soon goes somewhere flexible); which holdings in a taxable account would be better kept in a tax-deferred one and what they cost in tax a year; and gains and losses not yet taxed. The order and moves are demo advice only; the gains are facts.",
+    input_schema: noInput,
+  },
+  {
+    name: "investing_leak",
+    description:
+      "What the person's investing loses each year, added up once from Jane's own ideas: fund and plan costs, cash waiting inside investment accounts, an employer match not used, tax they could avoid paying (placement and harvesting) and a costly annuity, each in dollars a year. Risks (too much in one stock) and cash in checking and savings (the money page's) are not in it. Facts and estimates from the person's own accounts; never promise a return.",
     input_schema: noInput,
   },
   {
@@ -359,6 +366,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
   investments_overview: "Looking at how your investments are doing…",
+  investing_leak: "Adding up what your investing costs you…",
 };
 
 export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t.name === name);
@@ -639,6 +647,14 @@ export async function runInvestmentTool(
           better: m.better,
           taxAYearWhereItIs: money(m.taxDragCents),
         })),
+      });
+    }
+    case "investing_leak": {
+      const leak = await loadInvestingLeak(userId, { client });
+      return out({
+        lostEachYear: money(leak.totalCents),
+        parts: leak.parts.map((p) => ({ what: p.label, aYear: money(p.cents) })),
+        note: "Each part is one of Jane's ideas, counted once; checking and savings cash is on the money page.",
       });
     }
     case "investments_overview": {

@@ -35,6 +35,8 @@ export const RISK_ANNUAL_PROBABILITY: Readonly<Record<string, number>> = {
   // The share of renters who file a claim in a year.
   renters_insurance: 0.03,
   home_insurance: 0.05,
+  // A big vet bill (an emergency or surgery) in a year; an assumption, shown as typical.
+  pet_insurance: 0.1,
   // An at-fault accident.
   auto_insurance: 0.05,
   // A hospital stay, for someone without health cover.
@@ -148,6 +150,18 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "health_insurance",
   "education_529",
   "employer_match",
+  // Investing moves (the investing brief, 2026-10-28): to switch, roll over, rebalance, place or
+  // start something is a recommendation, demo advice only. What the funds cost and what cash
+  // earns (investment_fees, invested_cash), what an annuity costs (costly_products) and who is
+  // named on an account (beneficiaries) are facts and stay for everyone.
+  "old_accounts",
+  "asset_location",
+  "plan_menu",
+  "rebalance",
+  "auto_invest",
+  "short_term_cash",
+  "sudden_money",
+  "values_funds",
   // Tax moves (taxes QA, 2026-10-22): the chat already holds these back from real accounts
   // (src/lib/tax-decisions.ts), so the cards do too. Deadlines, penalties, records and what the
   // law requires (file, Marketplace income, HSA excess, receipts) stay facts for everyone.
@@ -168,6 +182,8 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   // What is a fact stays for everyone (no car insurance seen, a deadline, a bill above the plan's
   // share, a policy document to read).
   "disability_insurance",
+  // Cover for a pet is cover to buy: demo advice only.
+  "pet_insurance",
   "renters_insurance",
   "umbrella",
   "liability_levels",

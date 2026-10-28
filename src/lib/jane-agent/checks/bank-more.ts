@@ -113,6 +113,9 @@ const rows: Row[] = [
     "what would my family need if something happens to me",
   ],
   ["familyfile", "/investments/family-file", "family_file", "should i make a will or a trust"],
+  ["investing", "/investments", "investing_leak", "how much is my investing costing me a year"],
+  ["investing", "/investments", "investing_leak", "where am i losing money in my investments"],
+  ["investing", "/investments", "investing_leak", "total of what i could save on investing"],
   ["values", "/investments/values", "values_investing", "do you have esg funds"],
   ["windfall", "/investments/sudden-money", "sudden_money", "i got a big bonus what should i do"],
   [
@@ -183,6 +186,10 @@ const rows: Row[] = [
   ["profile", "/profile", "my_profile", "what do you know about me"],
   ["profile", "/profile", "my_profile", "show me my profile"],
   ["profile", "/profile", "my_profile", "what have you learned about me"],
+  // The life facts (founder, 2026-10-26).
+  ["profile", "/profile", "my_profile", "give me a summary of who I am"],
+  ["profile", "/profile", "my_profile", "who am I"],
+  ["profile", "/profile", "my_profile", "tell me about myself"],
   // A steady paycheck from uneven income (spec step 240).
   [
     "steady",

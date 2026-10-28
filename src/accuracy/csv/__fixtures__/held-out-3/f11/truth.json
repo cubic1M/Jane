@@ -88,6 +88,10 @@
       "about": "GRACE FELLOWSHIP, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "TD AMERITRADE CLEARING, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "PANDORA*PLUS, two plans"
     }
@@ -95,27 +99,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -5399.1
+      "dollars": -5514.94
     },
     {
       "date": "2026-06-30",
-      "dollars": -7198.69
+      "dollars": -7430.37
     },
     {
       "date": "2026-07-31",
-      "dollars": -8741.62
+      "dollars": -9089.14
     },
     {
       "date": "2026-08-31",
-      "dollars": -10227.56
+      "dollars": -10690.92
     },
     {
       "date": "2026-09-30",
-      "dollars": -11910.64
+      "dollars": -12489.84
     },
     {
       "date": "2026-10-24",
-      "dollars": -12446.34
+      "dollars": -13025.54
     }
   ]
 }

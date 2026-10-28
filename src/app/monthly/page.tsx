@@ -235,6 +235,11 @@ function MonthClose({ view }: { view: CloseView }) {
               <dd>{formatCents(f.netWorthCents)}</dd>
             </>
           )}
+          {f.netWorthNotCounting && (
+            <dd className={`col-span-2 ${MUTED}`} data-net-worth-not-counting="">
+              {f.netWorthNotCounting}
+            </dd>
+          )}
           {f.topCategories.map((c) => (
             <div key={c.category} className="contents">
               <dt className={MUTED}>{categoryWords(c.category)}</dt>

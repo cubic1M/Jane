@@ -59,3 +59,45 @@ describe("holdings detectors on the eight people", () => {
     }
   });
 });
+
+describe("what later holdings should show (verified savings)", () => {
+  it("leaves a watch on the fund, old-account and annuity suggestions", () => {
+    const watchOf = (id: PersonId, topic: string) =>
+      firedFor(id).find((s) => s.topic === topic)?.watch;
+    expect(watchOf("equity", "investment_fees")).toMatchObject({ kind: "funds_left" });
+    expect(watchOf("preretire", "old_accounts")).toMatchObject({ kind: "account_closed" });
+    expect(watchOf("retiree", "costly_products")).toMatchObject({ kind: "account_closed" });
+    for (const p of PEOPLE) {
+      for (const s of firedFor(p.id)) {
+        if (s.watch && "funds" in s.watch) {
+          expect(s.watch.funds.reduce((n, f) => n + f.yearlyCents, 0)).toBe(s.worthCents);
+        }
+      }
+    }
+  });
+});
+
+describe("fund costs from real, published figures", () => {
+  it("finds a real costly fund and its cheaper twin, sure to the degree the figures are", () => {
+    const data = inputFor("family");
+    const real = {
+      ...data,
+      holdings: [
+        {
+          accountId: "x",
+          ticker: "FCNTX",
+          valueCents: 10_000_000,
+          basisCents: null,
+          isCash: false,
+        },
+      ],
+    };
+    const s = runDetectors({ profile: buildProfile(real), data: real }, HOLDINGS_DETECTORS).find(
+      (x) => x.topic === "investment_fees",
+    )!;
+    // 0.74% (its filing) against the 0.01% S&P 500 index fund on $100,000: $730 a year.
+    expect(s.worthCents).toBe(73_000);
+    // Both funds read from their filings, so the weak point is the months seen, not the figures.
+    expect(s.confidence.reason).not.toMatch(/published|demo/);
+  });
+});

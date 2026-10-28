@@ -1,0 +1,5 @@
+Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD),Purchased By
+09/28/2026,09/29/2026,"UBER *EATS 8005928996 CA","Uber Eats","Restaurants","Purchase","23.45","Sam Example"
+09/25/2026,09/25/2026,"ACH DEPOSIT INTERNET TRANSFER FROM ACCOUNT ENDING IN 1234","Payment","Payment","Payment","-500.00","Sam Example"
+09/20/2026,09/21/2026,"NETFLIX.COM LOS GATOS CA","Netflix","Other","Purchase","15.49","Sam Example"
+09/12/2026,09/13/2026,"AMAZON MKTPL*2K4L91RT0 AMZN.COM/BILL WA","Amazon","Shopping","Credit","-30.00","Sam Example"

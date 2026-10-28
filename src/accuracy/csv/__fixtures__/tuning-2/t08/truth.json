@@ -55,6 +55,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 261.96
+    },
+    {
+      "type": "subscription_review",
       "about": "AMAZON PRIME*4K2LM90, now yearly",
       "perYear": 139
     },
@@ -98,36 +103,40 @@
     {
       "type": "subscription_review",
       "about": "AMAZON PRIME*4K2LM90, the monthly plan it left"
+    },
+    {
+      "type": "subscription_review",
+      "about": "VANGUARD BUY INVESTMENT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 6707.47
+      "dollars": 6478.16
     },
     {
       "date": "2026-05-31",
-      "dollars": 5905.44
+      "dollars": 5446.87
     },
     {
       "date": "2026-06-30",
-      "dollars": 5677.91
+      "dollars": 4990.22
     },
     {
       "date": "2026-07-31",
-      "dollars": 6838.15
+      "dollars": 5920.82
     },
     {
       "date": "2026-08-31",
-      "dollars": 5901.23
+      "dollars": 4754.98
     },
     {
       "date": "2026-09-30",
-      "dollars": 5077.09
+      "dollars": 3498.5
     },
     {
       "date": "2026-10-24",
-      "dollars": 4085.34
+      "dollars": 2709.39
     }
   ]
 }

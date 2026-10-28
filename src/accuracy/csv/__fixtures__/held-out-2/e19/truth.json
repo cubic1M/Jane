@@ -44,7 +44,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1541320, excess 652997",
+      "about": "cash 1508566, excess 620317",
       "perYear": null
     }
   ],
@@ -66,6 +66,10 @@
       "about": "HIPPO INSURANCE, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "SCHWAB BROKERAGE MONEYLINK, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "PANDORA, two plans"
     }
@@ -73,27 +77,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 5127.89
+      "dollars": 5073.3
     },
     {
       "date": "2026-06-30",
-      "dollars": 6609.2
+      "dollars": 6500.02
     },
     {
       "date": "2026-07-31",
-      "dollars": 9993.15
+      "dollars": 9829.38
     },
     {
       "date": "2026-08-31",
-      "dollars": 11026.7
+      "dollars": 10808.34
     },
     {
       "date": "2026-09-30",
-      "dollars": 12213.5
+      "dollars": 11940.55
     },
     {
       "date": "2026-10-24",
-      "dollars": 13584.89
+      "dollars": 13257.35
     }
   ]
 }

@@ -35,7 +35,7 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
     .map((s) => ({
       key: s.key,
       merchantKey: s.merchantKey,
-      merchant: billName(s),
+      merchant: billName(s, input.accounts),
       frequency: s.frequency as Frequency,
       lastAmountCents: s.lastAmountCents,
       lastDate: s.lastDate,

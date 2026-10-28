@@ -15,9 +15,18 @@ const ALLOWED_DROP = 0.03;
 const BUCKET_MIN = 10;
 const OVERCONFIDENT_BY = 10;
 // Counts, which may not rise at all.
-const COUNTS = new Set(["extraRows", "falseDoubleCharges"]);
+const COUNTS = new Set([
+  "extraRows",
+  "falseDoubleCharges",
+  "silentNetWorth",
+  "skippedIdleCashFalse",
+  "rentAskedNotRent",
+  "rentAskedNotRent",
+]);
 // Counts and errors, where lower is better.
 const LOWER_IS_BETTER = new Set([
+  "silentNetWorth",
+  "skippedIdleCashFalse",
   "lineErrorWhereKnown",
   "extraRows",
   "falseDoubleCharges",

@@ -55,7 +55,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1742169, excess 854093",
+      "about": "cash 1567585, excess 674029",
       "perYear": null
     }
   ],
@@ -79,36 +79,40 @@
     {
       "type": "subscription_review",
       "about": "HIPPO INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SCHWAB BROKERAGE MONEYLINK, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 10417.21
+      "dollars": 10095.8
     },
     {
       "date": "2026-05-31",
-      "dollars": 11582.48
+      "dollars": 11103.39
     },
     {
       "date": "2026-06-30",
-      "dollars": 11768.72
+      "dollars": 11211.38
     },
     {
       "date": "2026-07-31",
-      "dollars": 12477.22
+      "dollars": 11615.22
     },
     {
       "date": "2026-08-31",
-      "dollars": 12881.76
+      "dollars": 11663.5
     },
     {
       "date": "2026-09-30",
-      "dollars": 13361.65
+      "dollars": 12011.78
     },
     {
       "date": "2026-10-24",
-      "dollars": 13557.33
+      "dollars": 11811.49
     }
   ]
 }

@@ -70,6 +70,11 @@ test("an upload can be removed, and its findings go with it", async ({ page, bas
   const upload = page.locator("[data-upload]").first();
   await expect(upload).toContainText("fees.csv");
   await expect(upload).toContainText("transactions added");
+  // Dates as the account list writes them, each with its year (overnight beta list).
+  const day = String.raw`[A-Z][a-z]{2} \d{1,2}, \d{4}`;
+  await expect(upload).toContainText(
+    new RegExp(`${day} to ${day} · \\d+ transactions added ${day}`),
+  );
 
   // It asks first, then removes.
   await upload.getByRole("button", { name: "Remove this upload" }).click();

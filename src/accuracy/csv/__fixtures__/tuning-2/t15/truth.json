@@ -55,6 +55,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "PADDLE.NET* QZFOCUS, in euros",
+      "perYear": 145.2
+    },
+    {
+      "type": "subscription_review",
       "about": "HELLOFRESH 646-846-3663 every 7 days",
       "perYear": 3910.19
     }
@@ -85,6 +90,10 @@
       "about": "OAK RIDGE HOA, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "ACORNS INVEST 8123, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two orders"
     }
@@ -92,27 +101,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -1438.27
+      "dollars": -1579.19
     },
     {
       "date": "2026-06-30",
-      "dollars": -2261.81
+      "dollars": -2543.73
     },
     {
       "date": "2026-07-31",
-      "dollars": -4842.63
+      "dollars": -5265.79
     },
     {
       "date": "2026-08-31",
-      "dollars": -6389.13
+      "dollars": -9053.82
     },
     {
       "date": "2026-09-30",
-      "dollars": -8324.79
+      "dollars": -11130.45
     },
     {
       "date": "2026-10-24",
-      "dollars": -9653.95
+      "dollars": -12600.94
     }
   ]
 }

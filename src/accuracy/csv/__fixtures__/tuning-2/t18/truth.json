@@ -49,6 +49,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 260.76
+    },
+    {
+      "type": "subscription_review",
       "about": "BARKBOX every 28 days",
       "perYear": 456.25
     },
@@ -69,7 +74,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4920148, excess 4284504",
+      "about": "cash 4779213, excess 3597540",
       "perYear": null
     }
   ],
@@ -91,6 +96,10 @@
       "about": "ACORNS INVEST, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at GREAT CLIPS 4412"
     },
@@ -106,23 +115,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 25575.94
+      "dollars": 25235.88
     },
     {
       "date": "2026-07-31",
-      "dollars": 29879.88
+      "dollars": 29191.95
     },
     {
       "date": "2026-08-31",
-      "dollars": 34454.93
+      "dollars": 33346.27
     },
     {
       "date": "2026-09-30",
-      "dollars": 39095.51
+      "dollars": 37378.13
     },
     {
       "date": "2026-10-24",
-      "dollars": 43630.4
+      "dollars": 42134.75
     }
   ]
 }

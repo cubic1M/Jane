@@ -10,6 +10,7 @@ import { autopilotOf } from "@/lib/autopilot";
 import { investmentsByHerself } from "@/lib/jane-agent/investments/replies";
 import { autopilotFor } from "@/lib/sector-autopilot";
 import { scopedFor } from "@/lib/db-scoped";
+import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
@@ -67,8 +68,10 @@ export async function loadInvestingArea(userId: string) {
   const max = Math.max(1, ...data.months.map((m) => m.totalCents ?? 0));
   const hasMonths = data.months.some((m) => m.totalCents !== null);
 
+  const { asks } = await brokerageAsks(db);
   const area = investingTree({
     suggestions: mine,
+    toAnswer: asks.length,
     accounts: data.accounts.map((a) => ({
       id: a.id,
       name: a.name,

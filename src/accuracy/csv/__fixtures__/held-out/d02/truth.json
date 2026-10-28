@@ -65,7 +65,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2147206, excess 1181882",
+      "about": "cash 2134401, excess 1169157",
       "perYear": null
     }
   ],
@@ -85,28 +85,32 @@
     {
       "type": "subscription_review",
       "about": "ROOT INSURANCE CO, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 5840.69
+      "dollars": 5815.08
     },
     {
       "date": "2026-07-31",
-      "dollars": 10848.45
+      "dollars": 10797.23
     },
     {
       "date": "2026-08-31",
-      "dollars": 12902.34
+      "dollars": 12825.51
     },
     {
       "date": "2026-09-30",
-      "dollars": 14647.57
+      "dollars": 14545.13
     },
     {
       "date": "2026-10-24",
-      "dollars": 16860.76
+      "dollars": 16732.71
     }
   ]
 }

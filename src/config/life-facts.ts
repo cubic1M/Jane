@@ -181,3 +181,26 @@ export const HEALTH_COST_MIN_PAYMENTS = 6;
 export const HEALTH_COST_MIN_MONTHS = 3;
 // Veterinary bills are pets, not health.
 export const HEALTH_COST_EXCLUDED = ["MEDICAL_VETERINARY_SERVICES"] as const;
+
+// --- What the facts change in the suggestions ----------------------------------------------
+// A pet's cover: a typical emergency vet bill (a rough list-price figure, shown as typical, not
+// quoted) and the charges that already say there is cover.
+export const PET_VET_BILL_CENTS = 300_000;
+export const PET_COVER_WORDS =
+  /TRUPANION|EMBRACE PET|PETS BEST|LEMONADE PET|HEALTHY PAWS|FIGO|SPOT PET|ASPCA PET|FETCH PET|PET INSURANCE/;
+
+// Student plans: what a plan for students saves a year over the usual one (the services' list
+// prices, October 2026; typical, not quoted, so confirm on the service's page). A discount is
+// suggested only for a service the person is already paying for in at least two months.
+export const STUDENT_PLANS: readonly {
+  name: string;
+  words: RegExp;
+  yearlySavingCents: number;
+}[] = [
+  { name: "Spotify", words: /SPOTIFY/, yearlySavingCents: 7_200 },
+  { name: "Amazon Prime", words: /AMAZON PRIME|AMZN PRIME|PRIME VIDEO/, yearlySavingCents: 9_000 },
+  { name: "Apple Music", words: /APPLE MUSIC/, yearlySavingCents: 6_000 },
+  { name: "YouTube Premium", words: /YOUTUBE ?PREMIUM|GOOGLE \*YOUTUBE/, yearlySavingCents: 7_200 },
+  { name: "Adobe", words: /ADOBE/, yearlySavingCents: 24_000 },
+];
+export const STUDENT_PLAN_MIN_MONTHS = 2;

@@ -59,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4309018, excess 3155561",
+      "about": "cash 4254148, excess 3100786",
       "perYear": null
     }
   ],
@@ -79,28 +79,32 @@
     {
       "type": "subscription_review",
       "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 21490.8
+      "dollars": 21381.06
     },
     {
       "date": "2026-07-31",
-      "dollars": 27789.97
+      "dollars": 27570.49
     },
     {
       "date": "2026-08-31",
-      "dollars": 31454.43
+      "dollars": 31125.21
     },
     {
       "date": "2026-09-30",
-      "dollars": 34780.14
+      "dollars": 34341.18
     },
     {
       "date": "2026-10-24",
-      "dollars": 38670.28
+      "dollars": 38121.58
     }
   ]
 }
