@@ -52,7 +52,18 @@ H_PLO5 = GameSpec(
     name="h_plo5", hole_cards=5, hole_usage="exactly", hole_exact=2, betting="pot_limit",
     starting_stack=200, notes="HOLD-OUT drill: 5-card pot-limit Omaha, exactly 2 hole cards, 100bb.")
 
-DAY_VARIANTS: tuple = (H_PLO5,)
+I_DOUBLE_DISCARD = GameSpec(
+    name="i_double_discard", hole_cards=4, starting_stack=100, ante=1,
+    discards=(DiscardRule(street=1, count=1, to_board=True, face_up=True),
+              DiscardRule(street=2, count=1, to_board=True, face_up=True)),
+    notes="HOLD-OUT drill: 4 hole cards; discard one face up to the board after the flop and "
+          "another after the turn; any 5; 50bb with a 1-chip ante.")
+
+J_3STREET = GameSpec(
+    name="j_3street", board_cards_per_street=(0, 4, 1), starting_stack=200,
+    notes="HOLD-OUT drill: only 3 betting rounds: preflop, a 4-card flop, a 1-card river. 100bb.")
+
+DAY_VARIANTS: tuple = (H_PLO5, I_DOUBLE_DISCARD, J_3STREET)
 
 ALL_VARIANTS = {**VARIANTS, **{s.name: s for s in DAY_VARIANTS}}
 
