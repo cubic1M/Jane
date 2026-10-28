@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import Link from "next/link";
 import { AddAccountForm } from "./add-account-form";
 import { ImportForm } from "./import-form";
 import { accountKindOf } from "@/data-sources/types";
@@ -98,6 +99,15 @@ async function ImportContent() {
           statements. For any other CSV you pick which column is which.
         </p>
       </section>
+
+      {/* Holdings files have their own page: one upload form per page (src/app/import/investments). */}
+      <p data-positions-link="" className="text-sm text-zinc-600 dark:text-zinc-400">
+        Have a brokerage or retirement account?{" "}
+        <Link href="/import/investments" className="font-semibold underline">
+          Upload your investments
+        </Link>{" "}
+        from Fidelity, Schwab, Vanguard or Robinhood.
+      </p>
 
       <UploadHistory
         uploads={history.uploads}

@@ -96,6 +96,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   admin_page_viewed: notOnePerson,
   admin_action: notOnePerson,
   import_completed: own,
+  positions_imported: own,
   upload_removed: own,
   uploaded_account_removed: own,
   uploads_reset: own,
