@@ -26,7 +26,7 @@ test("a person reports a problem from any page, and the founders read it", async
   await page.goto("/net-worth");
   await page.getByRole("button", { name: "Your account and settings" }).click();
   await page.getByRole("link", { name: "Report a problem" }).click();
-  await expect(page).toHaveURL("/report?from=%2Fnet-worth");
+  await expect(page).toHaveURL("/report-a-problem?from=%2Fnet-worth");
   await expect(page.getByText("Something wrong on /net-worth?")).toBeVisible();
 
   const words = `The line looks wrong ${crypto.randomUUID().slice(0, 8)}`;

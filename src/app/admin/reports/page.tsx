@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
 
-// What beta testers reported (src/app/report): their words, the page and when, newest first.
+// What beta testers reported (src/app/report-a-problem): their words, the page and when, newest first.
 async function Reports() {
   const admin = await requireAdmin();
   const reports = await db.problemReport.findMany({

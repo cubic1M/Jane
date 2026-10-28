@@ -70,9 +70,9 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
             {t.label}
           </Link>
         ))}
-        {/* Closed beta: the person's own words about this page, nothing else (src/app/report). */}
+        {/* Closed beta: the person's own words about this page, nothing else (src/app/report-a-problem). */}
         <Link
-          href={`/report?from=${encodeURIComponent(pathname)}`}
+          href={`/report-a-problem?from=${encodeURIComponent(pathname)}`}
           data-report-problem=""
           onClick={() => setOpen(false)}
           className="flex min-h-11 items-center px-3 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"

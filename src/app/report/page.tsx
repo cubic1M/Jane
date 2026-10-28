@@ -1,35 +1,233 @@
+import Link from "next/link";
+import { ShownLink } from "@/components/shown-link";
 import { Suspense } from "react";
+import { AccountList } from "@/components/account-list";
 import { AppHeader } from "@/components/app-header";
-import { LoadingBar } from "@/components/loading-bar";
-import { reportPath } from "@/lib/problem-reports";
+import { ViewTracker } from "@/components/view-tracker";
+import { isFirstDetectionComplete, moneyFound } from "@/detection/engine";
+import { listAccountSummaries } from "@/lib/accounts";
+import { CARD_SELECT } from "@/lib/cards";
+import { scopedDb } from "@/lib/db-scoped";
+import { explanationFor } from "@/lib/card-text";
+import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { ReportForm } from "./report-form";
+import { savingsLine } from "@/lib/savings-text";
+import { LoadingBar } from "@/components/loading-bar";
+import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 
-// "Report a problem" (closed beta), from the profile menu on every signed-in page and from the
-// error pages: the person's own words and the page they were on. Nothing else is sent.
-async function Report({ searchParams }: { searchParams: PageProps<"/report">["searchParams"] }) {
+// How many findings the report opens with; the rest are behind "more" (founder: "show what
+// matters, hide the rest").
+const TOP = 3;
+const MORE = "cursor-pointer text-sm font-medium underline underline-offset-2 hover:no-underline";
+import { scanInProgress } from "@/lib/scan";
+import { RefreshWhenScanned } from "./refresh-when-scanned";
+import { foundLine, reportState, shortUploadDays } from "./state";
+import { SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
+
+// Shown when nothing was found, and while the first scan runs, so the person knows what we
+// look at.
+const WHAT_WE_CHECK = [
+  "Subscriptions you may not use",
+  "Paying for two services that do the same thing",
+  "Bills that went up",
+  "Bank and card fees",
+  "Cash earning little interest",
+  "Insurance you could reshop",
+  "Credit card interest",
+  "Bills that could take your balance too low",
+  "Double charges, charges after you cancelled, and trials that became full charges",
+  "Phone and internet bills above the typical price",
+];
+
+async function ReportContent() {
   const user = await requireUser();
-  const from = reportPath((await searchParams).from);
+  const db = await scopedDb();
+  const [accounts, findings, found, firstDetectionDone, scanRunning, uploaded] = await Promise.all([
+    listAccountSummaries(db),
+    db.findings.findMany({
+      where: { status: { in: ["new", "shown"] } },
+      select: CARD_SELECT,
+      orderBy: [{ annualSavingsCents: { sort: "desc", nulls: "last" } }, { id: "asc" }],
+    }),
+    moneyFound(user.id),
+    isFirstDetectionComplete(user.id),
+    scanInProgress(user.id),
+    // What uploaded statements cover, to ask for more months when it's short.
+    db.transactions.aggregate({
+      where: { source: "csv" },
+      _min: { date: true },
+      _max: { date: true },
+    }),
+  ]);
+  const uploadDays = shortUploadDays(uploaded._min.date, uploaded._max.date);
+  const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
+  const state = reportState({
+    transactions,
+    findings: findings.length,
+    firstDetectionDone,
+    scanRunning,
+  });
+  // Worth the most first (the query's order); the time-sensitive ones ahead of them.
+  const ordered = [
+    ...findings.filter((f) => PLAN_URGENT_FINDING_TYPES.includes(f.type)),
+    ...findings.filter((f) => !PLAN_URGENT_FINDING_TYPES.includes(f.type)),
+  ];
+  const top = ordered.slice(0, TOP);
+  const rest = ordered.slice(TOP);
+  const row = (finding: (typeof findings)[number]) => {
+    const text = explanationFor(finding);
+    return (
+      <li key={finding.id}>
+        <Link
+          href={`/report/${finding.id}`}
+          className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 p-4 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+        >
+          <span className="flex flex-col gap-1">
+            <span className="font-semibold">{text.title}</span>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              {savingsLine(finding.type, finding.annualSavingsCents, finding.evidence)}
+            </span>
+          </span>
+          <span aria-hidden className="text-zinc-400">
+            ›
+          </span>
+        </Link>
+      </li>
+    );
+  };
+  // While the first scan runs, what's found so far, in the same order.
+  const list = <ul className="flex flex-col gap-3">{ordered.map(row)}</ul>;
+
   return (
     <>
       <AppHeader user={user} />
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Report a problem</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Something wrong on <span className="font-medium">{from}</span>? Tell us in a few words.
-          Only what you write and the page go to the founders, never your balances or transactions.
-        </p>
-      </div>
-      <ReportForm from={from} />
+      <ViewTracker event="report_viewed" />
+
+      {state === "scanning" ? (
+        <section className="flex flex-col gap-3" data-report-scanning="">
+          <RefreshWhenScanned />
+          <h1 className="text-3xl font-semibold tracking-tight">Still reading your accounts</h1>
+          <LoadingBar label="Reading your transactions" />
+          <p className="text-zinc-600 dark:text-zinc-400">
+            {transactions > 0
+              ? `Jane has read ${transactions} transactions so far. What it finds shows here as it goes.`
+              : "Jane is reading your accounts. What it finds shows here as it goes."}
+          </p>
+          {findings.length > 0 && (
+            <>
+              <h2 className="text-xl font-semibold">Found so far</h2>
+              {list}
+            </>
+          )}
+          <h2 className="text-xl font-semibold">What Jane is checking</h2>
+          <ul className="flex list-disc flex-col gap-1 pl-5">
+            {WHAT_WE_CHECK.map((check) => (
+              <li key={check}>{check}</li>
+            ))}
+          </ul>
+        </section>
+      ) : state === "no_data" ? (
+        <section className="flex flex-col gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight">Your money report</h1>
+          <p className="text-zinc-600 dark:text-zinc-400">
+            We haven&apos;t read any transactions yet. Upload your bank statements and Jane will
+            look for money you&apos;re losing.
+          </p>
+          <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
+            Upload your statements
+          </Link>
+        </section>
+      ) : state === "nothing" ? (
+        <section className="flex flex-col gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight">Nothing to fix right now</h1>
+          <p className="text-zinc-600 dark:text-zinc-400">
+            We read {transactions} transactions and didn&apos;t find anything new.
+          </p>
+          <details>
+            <summary className={MORE}>What we checked</summary>
+            <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
+              {WHAT_WE_CHECK.map((check) => (
+                <li key={check}>{check}</li>
+              ))}
+            </ul>
+          </details>
+          {uploadDays !== null && <MoreMonths days={uploadDays} />}
+          <ShownLink href="/actions" className="font-medium text-emerald-700 hover:underline">
+            See what we&apos;re working on
+          </ShownLink>
+        </section>
+      ) : (
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {found > 0
+                ? `We found ${formatCents(found)} a year`
+                : `We found ${findings.length} ${findings.length === 1 ? "thing" : "things"} to look at`}
+            </h1>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              {found > 0
+                ? foundLine(
+                    transactions,
+                    findings.map((f) => f.type),
+                  )
+                : foundLine(transactions, [])}
+            </p>
+          </div>
+          {uploadDays !== null && <MoreMonths days={uploadDays} />}
+          {/* What matters now (docs/design/area-pages.md): the three worth the most, open; the
+              rest behind "more". */}
+          <h2 className="text-xl font-semibold">What matters now</h2>
+          <ul aria-label="What matters now" className="flex flex-col gap-3">
+            {top.map(row)}
+          </ul>
+          {rest.length > 0 && (
+            <details
+              data-report-more=""
+              className="border-t border-zinc-200 pt-3 dark:border-zinc-800"
+            >
+              <summary className={MORE}>{rest.length} more to look at</summary>
+              <ul className="mt-3 flex flex-col gap-3">{rest.map(row)}</ul>
+            </details>
+          )}
+        </section>
+      )}
+
+      {accounts.length > 0 && (
+        <details className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <summary className={MORE}>Accounts we read ({accounts.length})</summary>
+          <div className="mt-3 flex flex-col gap-3">
+            <AccountList accounts={accounts} />
+            <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
+              Add or manage accounts
+            </Link>
+          </div>
+        </details>
+      )}
     </>
   );
 }
 
-export default function ReportPage({ searchParams }: PageProps<"/report">) {
+// Uploaded statements cover under three months: monthly charges need more to show.
+function MoreMonths({ days }: { days: number }) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
+    <p
+      data-more-months=""
+      className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+    >
+      Your statements cover {days} {days === 1 ? "day" : "days"}. Upload {SUGGESTED_UPLOAD_MONTHS}{" "}
+      months and Jane can find more.{" "}
+      <Link href="/import" className="font-medium underline">
+        Upload more statements
+      </Link>
+    </p>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
       <Suspense fallback={<LoadingBar />}>
-        <Report searchParams={searchParams} />
+        <ReportContent />
       </Suspense>
     </main>
   );
