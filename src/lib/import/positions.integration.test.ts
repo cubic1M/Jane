@@ -28,10 +28,11 @@ const fixture = (name: string) =>
   );
 
 // A Fidelity download holding a fund Jane's fund table knows a cheaper twin of (NSTDX, 0.75% a
-// year, against KTRGX at 0.08%), and a lot of cash in the core position.
+// year, against KTRGX at 0.08%), and a lot of plain cash (FCASH, not a money market fund) as the
+// core position.
 const FIDELITY = [
   "Account Number,Account Name,Symbol,Description,Quantity,Last Price,Last Price Change,Current Value,Today's Gain/Loss Dollar,Today's Gain/Loss Percent,Total Gain/Loss Dollar,Total Gain/Loss Percent,Percent Of Account,Cost Basis Total,Average Cost Basis,Type",
-  "Z00000009,Individual,SPAXX**,HELD IN MONEY MARKET,,,,$40000.00,,,,,40.00%,,,Cash,",
+  "Z00000009,Individual,FCASH**,CASH,,,,$40000.00,,,,,40.00%,,,Cash,",
   "Z00000009,Individual,NSTDX,TARGET DATE 2055 FUND,1000,$60.00,+$0.10,$60000.00,+$100.00,+0.17%,+$5000.00,+9.09%,60.00%,$55000.00,$55.00,Cash,",
   "",
   '"Date downloaded Oct-27-2026 9:00 a.m ET"',
@@ -162,5 +163,12 @@ describe.runIf(url)("positions downloads, against a real database", () => {
     // $60,000 at 0.75% against 0.08%: $402 a year.
     expect(fees?.worthCents).toBe(40200);
     expect(fees?.why).toMatch(/\$60,000\.00/);
+    // The cash reaches the checks as cash with no ticker (a sweep, not a fund), which is what
+    // the uninvested-cash check reads.
+    const { loadProfileInput } = await import("@/lib/profile");
+    const input = await loadProfileInput(otherId, { client, now: NOW });
+    expect(input.holdings?.filter((h) => h.isCash)).toEqual([
+      expect.objectContaining({ ticker: null, valueCents: 4_000_000 }),
+    ]);
   });
 });

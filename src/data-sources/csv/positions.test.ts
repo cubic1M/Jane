@@ -50,6 +50,14 @@ describe("Fidelity positions", () => {
     expect(file.accounts[0].valueCents).toBe(2498269);
   });
 
+  it("keeps plain cash (FCASH) apart from a money market fund (SPAXX): no ticker", () => {
+    expect(rows(file, 1)).toEqual([
+      [null, 300, 30000, true],
+      ["VTI", 20, 570000, false],
+    ]);
+    expect(file.accounts[1].positions[0].name).toBe("Cash");
+  });
+
   it("keeps the cost basis and price, and none for cash", () => {
     const [cash, magellan] = file.accounts[0].positions;
     expect(cash.costBasisCents).toBeNull();

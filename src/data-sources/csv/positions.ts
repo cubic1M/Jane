@@ -227,6 +227,13 @@ const CASH_WORDS = /money market|cash|sweep|settlement fund|fdic-insured deposit
 const isCashPosition = (ticker: string | null, name: string) =>
   (ticker !== null && CASH_TICKERS.has(ticker)) || CASH_WORDS.test(name);
 
+// Cash that isn't a fund: Fidelity's FCASH and CORE stand-ins and a bank deposit sweep. Kept with
+// no ticker, like Schwab's "Cash & Cash Investments", so the investing checks can tell it from a
+// money market fund (which pays a fund's rate).
+const PLAIN_CASH_TICKERS = new Set(["FCASH", "CORE"]);
+const isPlainCash = (ticker: string | null, name: string) =>
+  (ticker !== null && PLAIN_CASH_TICKERS.has(ticker)) || /deposit sweep|fdic/i.test(name);
+
 // Fidelity marks its core (cash) position with "**" after the symbol: "SPAXX**".
 const cleanTicker = (symbol: string | undefined) => {
   const t = (symbol ?? "").trim().replace(/\*+$/, "").toUpperCase();
@@ -290,13 +297,15 @@ const readFidelity: Reader = (records, at) => {
       account = accountOf("fidelity", accountNumber, fields[label] ?? "", lastFour(accountNumber));
       accounts.set(accountNumber, account);
     }
-    const ticker = cleanTicker(raw);
-    const isCash = raw.endsWith("**") || isCashPosition(ticker, name);
+    const symbolTicker = cleanTicker(raw);
+    const isCash = raw.endsWith("**") || isCashPosition(symbolTicker, name);
+    const plain = isCash && isPlainCash(symbolTicker, name);
+    const ticker = plain ? null : symbolTicker;
     const qty = parseNumber(fields[quantity]);
     const priceCents = cents(price === null ? undefined : fields[price]);
     add(account, {
       ticker,
-      name: titleCase(name || ticker || "Cash"),
+      name: plain ? "Cash" : titleCase(name || ticker || "Cash"),
       // Fidelity leaves the core position's quantity and price blank: it is dollars at $1.
       quantity: qty ?? (isCash ? valueCents / 100 : 0),
       priceCents: priceCents ?? (isCash ? 100 : 0),
