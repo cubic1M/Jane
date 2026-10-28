@@ -152,7 +152,21 @@ Setup: 10 duplicate pairs × 2 × 1000 hands per cell, variants a, c, d, e, g.
 * On Omaha (d), where full CFR is weak (1,820 iterations), the hybrid inherits that
   weakness: hence the fallback rule in §1.
 
-<!-- HYBRID15 -->
+**Day-of budget check: hybrid with the 15-minute CFR policy** (fresh seeds 21000+,
+6 pairs per cell, so wider CIs):
+
+| variant | vs adaptive | vs full_cfr@30m | vs balanced | vs station |
+|---|---|---|---|---|
+| a | +0.36 ± 0.36 | **−0.30 ± 0.24** | +0.14 ± 0.15 | +11.77 ± 1.08 |
+| c | −0.27 ± 0.42 | −0.26 ± 0.48 | +0.10 ± 0.31 | +16.98 ± 1.38 |
+| e | **+0.63 ± 0.14** | −0.24 ± 0.29 | +0.38 ± 0.38 | +10.97 ± 1.06 |
+| g | +0.15 ± 0.36 | +0.07 ± 0.27 | +0.30 ± 0.33 | +16.33 ± 1.12 |
+
+Consistent with the 30-minute hybrid: it points the same way on 3 of 4 variants, but
+only e is significant with 6 pairs, and it does no better on c. Honest summary: the
+hybrid's edge over adaptive is real but small (a few tenths of a bb/hand), and with a
+15-minute policy it is not established on every variant. That is why adaptive is the
+base and the hybrid an upgrade taken only when its checks pass.
 
 ### 2f. Timing (single process, idle machine; 200 hands vs random-legal + 200 vs balanced per cell)
 
