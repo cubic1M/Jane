@@ -54,6 +54,17 @@ def _check_no_fallback(bot, label):
             break
 
 
+def _uses_fallback(bot) -> bool:
+    inner = bot
+    for _ in range(4):
+        if getattr(inner, "using_fallback", False):
+            return True
+        inner = getattr(inner, "inner", None)
+        if inner is None:
+            return False
+    return False
+
+
 def result_path(exp: str, variant: str, a: str, b: str, seed: int) -> Path:
     safe = lambda x: x.replace("/", "_")
     return RAW / exp / variant / f"{safe(a)}__vs__{safe(b)}__s{seed}.json"
@@ -77,8 +88,13 @@ def run_pair(job: dict) -> str:
         A, B = make_bot(a), make_bot(b)
         pair = (A, B) if seat_a == 0 else (B, A)
         r = play_match(pair[0], pair[1], spec, deal_seed=seed, hands=hands, keep_times=True)
-        _check_no_fallback(A, a)
-        _check_no_fallback(B, b)
+        # a bugged ("!") bot falling back to its default policy is a legitimate outcome
+        # of the bug, so record it instead of failing the job
+        for bot, label in ((A, a), (B, b)):
+            if "!" in label:
+                rec.setdefault("fallback", {})[label] = _uses_fallback(bot)
+            else:
+                _check_no_fallback(bot, label)
         d_a = r.deltas if seat_a == 0 else -r.deltas
         rec[f"a_deltas_seat{seat_a}"] = d_a.astype(int).tolist()
         rec[f"stats_seat{seat_a}"] = dict(a=r.stats[seat_a].summary(), b=r.stats[1 - seat_a].summary())
