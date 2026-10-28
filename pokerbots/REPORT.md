@@ -7,7 +7,33 @@ Adaptation drill: `report/drill_log.md`. Day-of tool: `dayof.py`.
 
 ## 1. Recommendation
 
-<!-- RECOMMENDATION -->
+**Bring the adaptive heuristic (`bots/adaptive.py`) as the base bot. On the day,
+upgrade it to the hybrid (`bots/hybrid.py`: full-game CFR, handing over to the
+adaptive bot when its opponent model says the opponent is exploitable) once a
+15-minute CFR training run has finished and checked out.**
+
+* **Why adaptive as the base.** It needs no training and adapted to all 7 prepared
+  variants and 3 unseen ones with zero code changes (rules to a GO verdict in under
+  2 minutes). Against a field that contains any exploitable bot, it wins by far the
+  most chips: about 2× balanced or either CFR bot, e.g. +4.3 vs +1.8/+1.1 bb/hand at
+  100bb. A wrong rules mapping costs it 0–0.6 bb/hand on four of the five tested bugs
+  (~1.1 for a flipped blind order).
+* **Its weakness.** Heads-up against sound, equilibrium-style bots it is only even,
+  and full CFR beats it by 0.1–0.5 bb/hand: 94–46 in matches.
+* **Why the hybrid on top.** Out of sample, on fresh card seeds, it beat adaptive on
+  4 of 5 variants (+0.24 to +0.41 bb/hand) and kept ~93% of adaptive's winnings
+  against weak opponents. CFR quality plateaus at ~15 minutes of training here.
+* **Fall back to (stay on) adaptive** when the variant is hostile to CFR:
+  - costly hand evaluation (Omaha-like, many hole cards). CFR gets too few iterations;
+    on Omaha the hybrid lost to adaptive (−0.31 bb/hand) and full CFR lost to every
+    heuristic.
+  - the CFR checkpoint is not ready and verified by about minute 40.
+  - any doubt remains about the rules mapping. A mapping error costs CFR 1.3–2.4
+    bb/hand.
+* **If our engine cannot express the variant at all** (multiway, draw, hi-lo, stud),
+  the plain equity bot is the quickest thing to make legal after the engine change.
+* **Scoring.** Switch lead protection on (`+lp`) only if matches are scored as
+  wins/losses: +17.5 points of match win rate, for −0.76 bb/hand.
 
 ## 2. Results: round-robin on every variant
 
@@ -77,7 +103,56 @@ bb/hand. Balanced over-folds to small bets; adaptive learns that and fixes it.
 
 ### 2e. Out-of-sample check of the late designs (fresh seeds)
 
-<!-- HYBRID -->
+Two bots were designed after seeing round-robin results:
+* `adaptive_cfr`: preflop CFR + adaptive. It was in the round-robin and was no better
+  than adaptive (§2c).
+* `hybrid`: full CFR by default, the adaptive bot for whole hands once the opponent
+  model is confident (any exploit score ≥ 0.35). It was evaluated **only on fresh
+  seeds (20000+) the round-robin never used**, together with its two parents on the
+  same seeds, so the design cannot have been fitted to these cards.
+
+Setup: 10 duplicate pairs × 2 × 1000 hands per cell, variants a, c, d, e, g.
+
+| variant | bot | vs full_cfr | vs adaptive | vs balanced | vs preflop_cfr | mean vs strong 4 | mean vs 4 dummies |
+|---|---|---|---|---|---|---|---|
+| a | **hybrid** | **−0.20 ± 0.12** | **+0.24 ± 0.16** | +0.14 ± 0.20 | +0.07 ± 0.16 | +0.07 ± 0.07 | +8.11 ± 0.25 |
+| a | adaptive | **−0.17 ± 0.10** | — | −0.01 ± 0.19 | −0.05 ± 0.29 | −0.08 ± 0.11 | +8.74 ± 0.27 |
+| a | full_cfr | — | **+0.17 ± 0.10** | **+0.14 ± 0.11** | −0.04 ± 0.12 | **+0.09 ± 0.06** | +1.85 ± 0.14 |
+| c | **hybrid** | −0.17 ± 0.19 | **+0.38 ± 0.31** | +0.24 ± 0.31 | +0.05 ± 0.33 | **+0.13 ± 0.12** | +16.74 ± 0.60 |
+| c | adaptive | **−0.47 ± 0.21** | — | +0.05 ± 0.42 | −0.25 ± 0.28 | **−0.22 ± 0.16** | +17.80 ± 0.60 |
+| c | full_cfr | — | **+0.47 ± 0.21** | **+0.36 ± 0.20** | +0.13 ± 0.41 | **+0.32 ± 0.15** | +4.50 ± 0.30 |
+| d | **hybrid** | +0.04 ± 0.17 | **−0.31 ± 0.25** | −0.26 ± 0.38 | −0.19 ± 0.19 | **−0.18 ± 0.11** | +6.27 ± 0.30 |
+| d | adaptive | **+0.35 ± 0.19** | — | −0.08 ± 0.31 | +0.21 ± 0.40 | +0.16 ± 0.16 | +6.93 ± 0.33 |
+| d | full_cfr | — | **−0.35 ± 0.19** | −0.24 ± 0.26 | **−0.31 ± 0.26** | **−0.30 ± 0.12** | +1.65 ± 0.32 |
+| e | **hybrid** | **−0.30 ± 0.17** | **+0.41 ± 0.26** | **+0.27 ± 0.18** | **+0.36 ± 0.25** | **+0.19 ± 0.09** | +6.71 ± 0.28 |
+| e | adaptive | **−0.48 ± 0.14** | — | −0.01 ± 0.27 | +0.00 ± 0.29 | **−0.16 ± 0.12** | +7.20 ± 0.29 |
+| e | full_cfr | — | **+0.48 ± 0.14** | **+0.38 ± 0.19** | **+0.31 ± 0.28** | **+0.39 ± 0.11** | +1.86 ± 0.23 |
+| g | **hybrid** | −0.03 ± 0.11 | **+0.41 ± 0.20** | +0.27 ± 0.28 | **+0.40 ± 0.23** | **+0.26 ± 0.09** | +13.09 ± 0.44 |
+| g | adaptive | **−0.39 ± 0.20** | — | −0.19 ± 0.25 | +0.02 ± 0.31 | **−0.19 ± 0.13** | +14.05 ± 0.35 |
+| g | full_cfr | — | **+0.39 ± 0.20** | **+0.32 ± 0.17** | **+0.43 ± 0.19** | **+0.38 ± 0.10** | +2.88 ± 0.22 |
+
+* **The hybrid is the best compromise everywhere except Omaha.**
+  - Against the strong four it is at or near full CFR (+0.07 to +0.26), well above
+    adaptive (−0.08 to −0.22).
+  - Against the dummies it keeps ~93% of adaptive's winnings, 3.5–4.5× what full CFR
+    extracts.
+  - Equal-weight whole field (4 strong + 4 dummies), variant a:
+
+    | bot | whole field (bb/hand) |
+    |---|---|
+    | adaptive | +4.33 |
+    | hybrid | +4.09 |
+    | full_cfr | +0.97 |
+
+* **It still loses slightly to full CFR (−0.03 to −0.30).** The gate sometimes opens
+  against full CFR: its "folds to our preflop raises" score sits near 0.3, close to
+  the 0.35 gate, and adaptive is the weaker bot in that matchup. A per-opponent
+  calibration of the gate (or a higher gate, e.g. 0.5) is the obvious next test; it
+  was not tuned here, to avoid fitting it to these results.
+* On Omaha (d), where full CFR is weak (1,820 iterations), the hybrid inherits that
+  weakness: hence the fallback rule in §1.
+
+<!-- HYBRID15 -->
 
 ### 2f. Timing (single process, idle machine; 200 hands vs random-legal + 200 vs balanced per cell)
 
@@ -239,6 +314,9 @@ Surprises
 * **The combination adaptive_cfr (preflop CFR + adaptive) is no better than adaptive**
   (−0.04 to −0.31, all within noise). The bot was designed mid-study after seeing half
   the data; its failure is honest evidence that stacking parts is not automatically better.
+  **The full-CFR + adaptive hybrid does work**: on fresh seeds it beats adaptive by
+  +0.24 to +0.41 bb/hand on 4 of 5 variants, because the part being replaced
+  (adaptive's play vs sound bots) is exactly where full CFR is stronger.
 * **CFR is the least robust to a wrong rules mapping** (−2.4 bb/hand with the discard
   destination wrong), although it is the most robust to a flipped blind order (−0.38).
 * **Lead protection is a large effect** (+17.5 points of match win rate for adaptive)
@@ -266,7 +344,48 @@ Next with more time
 
 ## 6. Day-of plan (60 minutes)
 
-<!-- DAYOF -->
+For the recommended bot (also in `report/dayof_plan.md`). Rehearsed on three unseen
+variants (§4): spec + `dayof.py` to GO in 35–112 s each.
+
+Two people is ideal: **A** owns rules + bot, **B** owns the tournament protocol
+adapter. One person can do it in this order too.
+
+| time | who | step | done when |
+|---|---|---|---|
+| 0–5 | A | Read the rules. Copy the closest spec in `engine/variants.py`, edit it, add it to `DAY_VARIANTS`. Write down anything the spec cannot express (multiway, draw, hi-lo, stud): those need engine work, so switch to the fallback plan below. | spec written |
+| 5–8 | A | `python3 dayof.py --variant <name> --train-full 20` : reads back the rules in plain words, narrates two hands, checks hand-ranking frequencies, conformance + timing for the bots, strength sanity, and starts 20 minutes of full-game CFR training in the background (checkpoints at 5 and 15). **Read section A of the output against the announcement line by line** (blind order, who discards first and where the card goes, exactly-K usage, stack in chips and bb). | GO |
+| 5–25 | B | Wire the tournament's bot API to our `Observation` (`tournament/mit_adapter.py` if it is the MIT skeleton: edit `PROTOCOL` only; otherwise copy its three translations). Run their sample engine locally with `OUR_BOT=adaptive`; the adapter prints `[adapter]` warnings on blind/stack/hole-card mismatches: there must be none. | 300 local hands, 0 warnings, 0 illegal |
+| 25 | A+B | **Submit adaptive** (no training needed) as soon as the adapter is clean. This is the safe entry. | submitted |
+| 25–40 | A | When the 15-minute CFR checkpoint exists: `python3 dayof.py --variant <name> --bots hybrid@15m,adaptive` (conformance + timing with the tournament's time limit in the spec). Switch the submission to `hybrid@15m` only if (1) GO, (2) no `NO POLICY` flag, (3) the variant is not one where CFR is weak (expensive evaluation: Omaha-like, 5+ hole cards; < ~1,000 iterations at the checkpoint, see the training log), and (4) the rules mapping has been double-checked (a wrong mapping costs CFR 1–2.4 bb/hand vs 0–0.3 for adaptive). | decision made |
+| 40–50 | A+B | Final local run through the tournament adapter with the chosen bot and the real time limits; check the adapter log is clean and the time per 1000 hands is under half the clock. | |
+| 50–60 | | Buffer. Freeze. Do not tune parameters in the last 10 minutes. | |
+
+Files that change on the day:
+* `engine/variants.py`: one `GameSpec` (3–10 lines).
+* The tournament adapter (`tournament/mit_adapter.py` `PROTOCOL`, or a new adapter
+  file written from it).
+* Generated, not edited: `cache/cfr/full_<name>_<M>m.pkl`.
+
+Files that do not change: everything else in `engine/` (cards, evaluator, game, match,
+equity), all of `bots/`, `experiments/`, `dayof.py`.
+
+Settings to decide from the announcement:
+* Scoring by **matches won** → submit `adaptive+lp` (or `hybrid@15m+lp`): +17.5 points
+  of match win rate in our test. Scoring by **total chips** → no `+lp`.
+* Per-decision limit below ~30 ms or a very tight match clock → the bots already
+  shrink their sampling with `time_left`; confirm with `dayof.py` (timing section)
+  after putting the limits in the spec.
+
+Fallback plan (variant hostile to the main bot):
+* The engine cannot express it (multiway, draws, hi-lo, stud): adapt `engine/` first
+  (evaluator or state machine), then `equity` is the bot with the fewest assumptions
+  (Monte Carlo equity + pot odds) and the quickest to make work; adaptive/balanced
+  next once equity works.
+* Evaluation is very expensive (many hole cards): adaptive, no CFR (training gets too
+  few iterations; the heuristics size their sampling by time automatically).
+* The adapter is not clean by minute 40: submit `equity` or `balanced` through the
+  simplest possible adapter (they need only cards, board, pot, stacks, legal actions;
+  `equity` does not use position or history at all, so a blind-order bug cannot hurt it).
 
 ## Appendix: assumptions and defaults chosen
 * Scoring: total chips (lead protection off). If matches are won/lost, switch it on.
