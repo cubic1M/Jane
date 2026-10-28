@@ -374,6 +374,10 @@ type Pool = {
   notPlans: Merchant[];
   // A plan billed twice on the same day every month (two accounts, or one for a family member).
   twin: Sub;
+  // Charges that come on a cadence other than monthly (round 16): a meal kit every week, a plan
+  // every four weeks (13 a year, not 12), a water bill or insurance every quarter. A plan is a
+  // subscription; the rest are bills. Only some pools have them.
+  cadences?: (Merchant & { everyDays: number; plan: boolean })[];
   // Same-price pairs on one day that aren't double charges: a service paid per person (two kids'
   // haircuts, two copays), and two orders from one shop with their own order numbers (round 14).
   // Only some pools have them; the rows come from their own dice.
@@ -1092,6 +1096,56 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  cadences: [
+    {
+      descriptor: "HELLOFRESH 646-846-3663",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 74.99,
+      hi: 74.99,
+      everyDays: 7,
+      plan: true,
+    },
+    {
+      descriptor: "FACTOR75 MEALS",
+      category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+      lo: 89.99,
+      hi: 89.99,
+      everyDays: 7,
+      plan: true,
+    },
+    {
+      descriptor: "SQ *ORANGETHEORY 4WK",
+      category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
+      lo: 59,
+      hi: 59,
+      everyDays: 28,
+      plan: true,
+    },
+    {
+      descriptor: "BARKBOX",
+      category: "GENERAL_MERCHANDISE_PET_SUPPLIES",
+      lo: 35,
+      hi: 35,
+      everyDays: 28,
+      plan: true,
+    },
+    {
+      descriptor: "MILLBROOK WATER DEPT",
+      category: "RENT_AND_UTILITIES_WATER",
+      lo: 88,
+      hi: 141,
+      everyDays: 91,
+      plan: false,
+    },
+    {
+      descriptor: "STATE FARM INSURANCE QTRLY",
+      category: "GENERAL_SERVICES_INSURANCE",
+      lo: 312,
+      hi: 312,
+      everyDays: 91,
+      plan: false,
+    },
+  ],
   perPerson: [
     { descriptor: "GREAT CLIPS 4412", category: "PERSONAL_CARE_HAIR_AND_BEAUTY", lo: 22, hi: 22 },
     { descriptor: "RIVERSIDE PEDIATRICS", category: "MEDICAL_PRIMARY_CARE", lo: 30, hi: 30 },
@@ -2280,6 +2334,31 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     if (m.category.startsWith("LOAN") || m.category.endsWith("INSURANCE"))
       L.bill(rows, m.descriptor);
     else L.neutralBills.push(rows);
+  }
+
+  // Charges on another cadence (round 16), from their own dice: one or two per person.
+  const cd = rng(base + index * 104_729 + 32);
+  for (const c of P.cadences
+    ? [...P.cadences].sort(() => cd.next() - 0.5).slice(0, cd.int(1, 2))
+    : []) {
+    const rows: string[] = [];
+    const onCard = c.plan ? card.id : chk;
+    L.every(c.everyDays, addDays(start, cd.int(0, c.everyDays - 1)), (date) => {
+      const row = L.add({
+        ...spend(onCard, date, cd.cents(c.lo, c.hi), c),
+        alsoOk: c.category.startsWith("FOOD") ? ["FOOD_AND_DRINK"] : undefined,
+      });
+      if (row) rows.push(row.id);
+    });
+    if (c.plan && rows.length >= 2) {
+      L.findings.push({
+        type: "subscription_review",
+        rows,
+        annualCents: Math.round((c.lo * 100 * 365) / c.everyDays),
+        note: `${c.descriptor} every ${c.everyDays} days`,
+      });
+    }
+    L.bill(rows, c.descriptor);
   }
 
   // Same price, same day, not charged twice (round 14), from their own dice: two people's

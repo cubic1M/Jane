@@ -43,8 +43,13 @@
       "perYear": 5.93
     },
     {
+      "type": "subscription_review",
+      "about": "SQ *ORANGETHEORY 4WK every 28 days",
+      "perYear": 769.11
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 5247518, excess 4146769",
+      "about": "cash 5234322, excess 4106684",
       "perYear": null
     }
   ],
@@ -89,23 +94,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 31898.22
+      "dollars": 31839.22
     },
     {
       "date": "2026-07-31",
-      "dollars": 37035.4
+      "dollars": 36917.4
     },
     {
       "date": "2026-08-31",
-      "dollars": 40030.27
+      "dollars": 39721.31
     },
     {
       "date": "2026-09-30",
-      "dollars": 45547.27
+      "dollars": 45179.31
     },
     {
       "date": "2026-10-24",
-      "dollars": 50230.93
+      "dollars": 49803.97
     }
   ]
 }

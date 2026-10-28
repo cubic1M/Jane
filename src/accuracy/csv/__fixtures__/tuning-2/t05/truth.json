@@ -60,6 +60,16 @@
     },
     {
       "type": "subscription_review",
+      "about": "FACTOR75 MEALS every 7 days",
+      "perYear": 4692.34
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *ORANGETHEORY 4WK every 28 days",
+      "perYear": 769.11
+    },
+    {
+      "type": "subscription_review",
       "about": "NINTENDO *SWITCH ONLINE, one of two",
       "perYear": 47.88
     },
@@ -94,19 +104,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -5447.38
+      "dollars": -5956.33
     },
     {
       "date": "2026-08-31",
-      "dollars": -8022.59
+      "dollars": -8950.5
     },
     {
       "date": "2026-09-30",
-      "dollars": -10069.1
+      "dollars": -11415.97
     },
     {
       "date": "2026-10-24",
-      "dollars": -11620.31
+      "dollars": -13386.14
     }
   ]
 }

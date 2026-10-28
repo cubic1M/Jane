@@ -47,6 +47,16 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 692.6
+    },
+    {
+      "type": "subscription_review",
+      "about": "BARKBOX every 28 days",
+      "perYear": 456.25
+    },
+    {
+      "type": "subscription_review",
+      "about": "HELLOFRESH 646-846-3663 every 7 days",
+      "perYear": 3910.19
     }
   ],
   "notFindings": [
@@ -86,27 +96,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -5509.99
+      "dollars": -5919.94
     },
     {
       "date": "2026-06-30",
-      "dollars": -7059.35
+      "dollars": -7804.26
     },
     {
       "date": "2026-07-31",
-      "dollars": -7738.64
+      "dollars": -8893.5
     },
     {
       "date": "2026-08-31",
-      "dollars": -9248.34
+      "dollars": -10738.16
     },
     {
       "date": "2026-09-30",
-      "dollars": -11471.79
+      "dollars": -13296.57
     },
     {
       "date": "2026-10-24",
-      "dollars": -13127.19
+      "dollars": -15286.93
     }
   ]
 }

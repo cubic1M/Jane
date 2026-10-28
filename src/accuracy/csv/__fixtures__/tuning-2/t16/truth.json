@@ -54,6 +54,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "HELLOFRESH 646-846-3663 every 7 days",
+      "perYear": 3910.19
+    },
+    {
+      "type": "subscription_review",
       "about": "NINTENDO *SWITCH ONLINE, one of two",
       "perYear": 47.88
     },
@@ -100,31 +105,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 2428.02
+      "dollars": 2128.06
     },
     {
       "date": "2026-05-31",
-      "dollars": 1293.35
+      "dollars": 618.44
     },
     {
       "date": "2026-06-30",
-      "dollars": -51.69
+      "dollars": -1026.56
     },
     {
       "date": "2026-07-31",
-      "dollars": -999.15
+      "dollars": -2273.98
     },
     {
       "date": "2026-08-31",
-      "dollars": -2134.44
+      "dollars": -3784.22
     },
     {
       "date": "2026-09-30",
-      "dollars": -3310.83
+      "dollars": -5260.57
     },
     {
       "date": "2026-10-24",
-      "dollars": -3955.31
+      "dollars": -6130.02
     }
   ]
 }

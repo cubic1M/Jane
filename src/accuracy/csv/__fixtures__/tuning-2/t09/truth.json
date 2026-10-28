@@ -54,6 +54,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "BARKBOX every 28 days",
+      "perYear": 456.25
+    },
+    {
+      "type": "subscription_review",
       "about": "GOOGLE *GOOGLE ONE plan 1",
       "perYear": 35.88
     },
@@ -96,19 +101,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 2954.21
+      "dollars": 2919.21
     },
     {
       "date": "2026-08-31",
-      "dollars": 976.99
+      "dollars": 906.99
     },
     {
       "date": "2026-09-30",
-      "dollars": -1450.08
+      "dollars": -1555.08
     },
     {
       "date": "2026-10-24",
-      "dollars": -3898.84
+      "dollars": -4038.84
     }
   ]
 }

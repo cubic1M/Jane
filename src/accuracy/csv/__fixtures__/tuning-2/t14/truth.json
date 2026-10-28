@@ -43,8 +43,13 @@
       "perYear": 1447.66
     },
     {
+      "type": "subscription_review",
+      "about": "BARKBOX every 28 days",
+      "perYear": 456.25
+    },
+    {
       "type": "idle_cash",
-      "about": "cash 1046731, excess 335889",
+      "about": "cash 1021919, excess 284429",
       "perYear": null
     }
   ],
@@ -89,23 +94,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -454.24
+      "dollars": -489.24
     },
     {
       "date": "2026-07-31",
-      "dollars": 1845.12
+      "dollars": 1634.3
     },
     {
       "date": "2026-08-31",
-      "dollars": 2659.56
+      "dollars": 2413.74
     },
     {
       "date": "2026-09-30",
-      "dollars": 3373.41
+      "dollars": 3092.59
     },
     {
       "date": "2026-10-24",
-      "dollars": 5192.88
+      "dollars": 4769.76
     }
   ]
 }

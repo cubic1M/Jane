@@ -39,7 +39,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4981022, excess 4471221",
+      "about": "cash 4918622, excess 4381159",
       "perYear": null
     }
   ],
@@ -72,31 +72,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 24998.7
+      "dollars": 24686.7
     },
     {
       "date": "2026-05-31",
-      "dollars": 28030.98
+      "dollars": 27718.98
     },
     {
       "date": "2026-06-30",
-      "dollars": 31382.69
+      "dollars": 31070.69
     },
     {
       "date": "2026-07-31",
-      "dollars": 38263.08
+      "dollars": 37639.08
     },
     {
       "date": "2026-08-31",
-      "dollars": 41555.72
+      "dollars": 40931.72
     },
     {
       "date": "2026-09-30",
-      "dollars": 44435.06
+      "dollars": 43811.06
     },
     {
       "date": "2026-10-24",
-      "dollars": 47989.05
+      "dollars": 47365.05
     }
   ]
 }

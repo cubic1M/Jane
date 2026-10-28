@@ -49,6 +49,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "SQ *ORANGETHEORY 4WK every 28 days",
+      "perYear": 769.11
+    },
+    {
+      "type": "subscription_review",
       "about": "GOOGLE *GOOGLE ONE plan 1",
       "perYear": 35.88
     },
@@ -91,31 +96,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -267.58
+      "dollars": -326.58
     },
     {
       "date": "2026-05-31",
-      "dollars": 1360.53
+      "dollars": 1242.53
     },
     {
       "date": "2026-06-30",
-      "dollars": 997.26
+      "dollars": 820.26
     },
     {
       "date": "2026-07-31",
-      "dollars": 1199.92
+      "dollars": 963.92
     },
     {
       "date": "2026-08-31",
-      "dollars": 813.67
+      "dollars": 459.67
     },
     {
       "date": "2026-09-30",
-      "dollars": 529.04
+      "dollars": 116.04
     },
     {
       "date": "2026-10-24",
-      "dollars": 81.22
+      "dollars": -331.78
     }
   ]
 }

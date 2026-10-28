@@ -52,6 +52,16 @@
       "type": "bank_fees",
       "about": "checking fees",
       "perYear": 3
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *ORANGETHEORY 4WK every 28 days",
+      "perYear": 769.11
+    },
+    {
+      "type": "subscription_review",
+      "about": "BARKBOX every 28 days",
+      "perYear": 456.25
     }
   ],
   "notFindings": [
@@ -87,31 +97,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 4758.23
+      "dollars": 4664.23
     },
     {
       "date": "2026-05-31",
-      "dollars": 3980.13
+      "dollars": 3792.13
     },
     {
       "date": "2026-06-30",
-      "dollars": 3301.3
+      "dollars": 3019.3
     },
     {
       "date": "2026-07-31",
-      "dollars": 2567.58
+      "dollars": 2191.58
     },
     {
       "date": "2026-08-31",
-      "dollars": 1563.38
+      "dollars": 1034.38
     },
     {
       "date": "2026-09-30",
-      "dollars": 524.7
+      "dollars": -98.3
     },
     {
       "date": "2026-10-24",
-      "dollars": -143.12
+      "dollars": -801.12
     }
   ]
 }

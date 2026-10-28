@@ -52,6 +52,11 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 930.65
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *ORANGETHEORY 4WK every 28 days",
+      "perYear": 769.11
     }
   ],
   "notFindings": [
@@ -79,23 +84,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 6620.73
+      "dollars": 6561.73
     },
     {
       "date": "2026-07-31",
-      "dollars": 4235.55
+      "dollars": 4117.55
     },
     {
       "date": "2026-08-31",
-      "dollars": 2639.34
+      "dollars": 2462.34
     },
     {
       "date": "2026-09-30",
-      "dollars": 1329.26
+      "dollars": 1093.26
     },
     {
       "date": "2026-10-24",
-      "dollars": -455.8
+      "dollars": -750.8
     }
   ]
 }

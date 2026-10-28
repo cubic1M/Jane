@@ -7,7 +7,13 @@ import {
   OWN_ACCOUNT_TRANSFERS,
 } from "@/config/detection";
 import { expectedPaydays, isPaycheck } from "./paydays";
-import { buildStreams, detectRecurring, fromPlaidStream, type Stream } from "./streams";
+import {
+  buildStreams,
+  detectRecurring,
+  fromPlaidStream,
+  isSubscriptionBox,
+  type Stream,
+} from "./streams";
 import type { DetectionInput, DetectionTransaction } from "./types";
 import { addDays, dayOfMonth, nextOccurrence } from "./units";
 
@@ -131,6 +137,7 @@ export function scheduledTransfers(input: DetectionInput, days: number): Expecte
 }
 
 const isHabit = (s: Stream) =>
+  !isSubscriptionBox(s) &&
   NOT_BILL_HABIT_PRIMARIES.includes(s.pfcPrimary ?? "") &&
   s.frequency !== null &&
   NOT_BILL_HABIT_FREQUENCIES.includes(s.frequency);

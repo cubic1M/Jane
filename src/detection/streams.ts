@@ -21,6 +21,11 @@ import {
   YEARLY_PLAN_MIN_CENTS,
   YEARLY_PLAN_WORDS,
   YEARLY_RENEWAL_WORDS,
+  FOUR_WEEKLY_CHARGES_PER_YEAR,
+  FOUR_WEEKLY_GAP_DAYS,
+  FOUR_WEEKLY_MIN_GAPS,
+  SHORT_RUN_FREQUENCIES,
+  SUBSCRIPTION_BOX_MERCHANTS,
   PLAN_DESCRIPTION_WORDS,
   PLAN_NAME_PLUS,
   type ConfidenceLevel,
@@ -73,6 +78,27 @@ function priorStats(charges: DetectionTransaction[]) {
 
 function annualCost(amountCents: number, frequency: Frequency | null): number | null {
   return frequency ? amountCents * CHARGES_PER_YEAR[frequency] : null;
+}
+
+// A box sold by subscription (SUBSCRIPTION_BOX_MERCHANTS), by its merchant or its charges' words:
+// the merchant name drops a word with a digit ("FACTOR75 MEALS" is "meals").
+export function isSubscriptionBox(stream: Stream): boolean {
+  return (
+    merchantMatches(stream.merchantKey, SUBSCRIPTION_BOX_MERCHANTS) ||
+    stream.charges.some((c) =>
+      merchantMatches(wordsOf(c.description).join(" "), SUBSCRIPTION_BOX_MERCHANTS),
+    )
+  );
+}
+
+// Every four weeks to the day, not monthly: FOUR_WEEKLY_*.
+function fourWeekly(run: DetectionTransaction[], frequency: Frequency | null): boolean {
+  const gaps = run.slice(1).map((c, i) => daysBetween(run[i].date, c.date));
+  return (
+    frequency === "MONTHLY" &&
+    gaps.length >= FOUR_WEEKLY_MIN_GAPS &&
+    gaps.every((gap) => gap === FOUR_WEEKLY_GAP_DAYS)
+  );
 }
 
 // The most common category among the charges; ties go to the alphabetically first name.
@@ -178,8 +204,8 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
   const frequency = frequencyOf(gaps);
   const range = frequency && FALLBACK_INTERVAL_DAYS[frequency];
   if (!frequency || !range) return null;
-  // Two charges are only a run a month apart: a week apart is a second purchase.
-  if (short && frequency !== "MONTHLY") return null;
+  // Two charges are only a run a month or a quarter apart (SHORT_RUN_FREQUENCIES).
+  if (short && !SHORT_RUN_FREQUENCIES.includes(frequency)) return null;
   const [min, max] = range;
 
   const run = [...core];
@@ -226,7 +252,9 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
     charges: run,
     lastAmountCents: last.amountCents,
     ...priorStats(run),
-    annualCostCents: annualCost(last.amountCents, frequency),
+    annualCostCents: fourWeekly(run, frequency)
+      ? last.amountCents * FOUR_WEEKLY_CHARGES_PER_YEAR
+      : annualCost(last.amountCents, frequency),
     pfcPrimary: mostCommon(run.map((c) => c.pfcPrimary)),
     pfcDetailed: mostCommon(run.map((c) => c.pfcDetailed)),
     active: daysBetween(last.date, asOf) <= usualGap * ACTIVE_WITHIN_INTERVALS,

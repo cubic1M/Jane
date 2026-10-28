@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AS_OF,
   CHECKING,
   GEICO,
   NETFLIX,
@@ -10,6 +11,7 @@ import {
   tx,
 } from "./__fixtures__/build";
 import { expectedDates, forecastAccounts, incomeStreams, upcomingBills } from "./forecast";
+import { addDays } from "./units";
 import { buildStreams } from "./streams";
 
 const PAY = {
@@ -25,6 +27,35 @@ const paychecks = (amounts: number[]) =>
   );
 
 describe("upcomingBills", () => {
+  // CSV bench, second tuning set.
+  it("lists a meal kit every week, which is a plan, not a food habit", () => {
+    const transactions = [0, 1, 2, 3, 4, 5].map((i) =>
+      tx({
+        description: "HELLOFRESH 646-846-3663",
+        pfcPrimary: "FOOD_AND_DRINK",
+        pfcDetailed: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+        date: addDays(AS_OF, -7 * (5 - i) - 1),
+        amountCents: 7499,
+      }),
+    );
+    expect(upcomingBills(input({ transactions }), 31).length).toBeGreaterThan(0);
+  });
+
+  it("lists a water bill paid every quarter, seen twice", () => {
+    const water = {
+      description: "MILLBROOK WATER DEPT",
+      pfcPrimary: "RENT_AND_UTILITIES",
+      pfcDetailed: "RENT_AND_UTILITIES_WATER",
+    };
+    const transactions = [
+      tx({ ...water, date: addDays(AS_OF, -175), amountCents: 12_114 }),
+      tx({ ...water, date: addDays(AS_OF, -84), amountCents: 11_213 }),
+    ];
+    expect(upcomingBills(input({ transactions }), 31)).toEqual([
+      expect.objectContaining({ merchant: expect.stringMatching(/Millbrook/i) }),
+    ]);
+  });
+
   it("expands each active stream across the window", () => {
     const bills = upcomingBills(input({ transactions: monthly(4, 1549, NETFLIX) }), 61);
 
