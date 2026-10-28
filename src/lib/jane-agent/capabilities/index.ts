@@ -305,6 +305,7 @@ export const CAPABILITIES: readonly Capability[] = [
     // Every investing tool Claude has: the overview first, then one per topic.
     tools: [
       "investments_overview",
+      "investing_leak",
       "company_stock",
       "crypto",
       "cash_plan",
