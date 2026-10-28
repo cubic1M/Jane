@@ -101,6 +101,8 @@ const RULES: readonly Rule[] = [
       "AMERICAN EXPRESS ACH PMT",
       "CAPITAL ONE ONLINE PMT",
       "CAPITAL ONE MOBILE PMT",
+      // Capital One's checking paying a Bank of America card (CSV bench, second tuning set).
+      "BANK OF AMERICA ONLINE PMT",
       "DISCOVER E-PAYMENT",
       "CITI AUTOPAY",
       "CITI CARD ONLINE PAYMENT",
@@ -363,9 +365,25 @@ const RULES: readonly Rule[] = [
       "SUBSTACK",
     ],
   },
+  // Tax software and preparers, above Intuit's other software ("INTUIT *TURBOTAX").
+  {
+    category: "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING",
+    keywords: ["TURBOTAX", "H&R BLOCK", "HRB TAX", "TAXACT", "JACKSON HEWITT", "FREETAXUSA"],
+    direction: "out",
+  },
   {
     category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
     keywords: [
+      // Business software by the month (CSV bench, second tuning set: QuickBooks, Autodesk).
+      "INTUIT",
+      "QUICKBOOKS",
+      "QBOOKS",
+      "AUTODESK",
+      "ATLASSIAN",
+      "JETBRAINS",
+      "SALESFORCE",
+      "HUBSPOT",
+      "MAILCHIMP",
       "OPENAI",
       "CHATGPT",
       "ADOBE",
@@ -395,7 +413,7 @@ const RULES: readonly Rule[] = [
   },
   {
     category: "ENTERTAINMENT_MUSIC_AND_AUDIO",
-    keywords: ["SPOTIFY", "PANDORA", "SIRIUSXM", "AUDIBLE", "TIDAL"],
+    keywords: ["SPOTIFY", "PANDORA", "SIRIUSXM", "SIRIUS XM", "AUDIBLE", "TIDAL"],
   },
   {
     category: "ENTERTAINMENT_VIDEO_GAMES",

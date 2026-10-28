@@ -304,6 +304,17 @@ describe("categorizeByRules", () => {
     expect(out("VERIZON WIRELESS AUTO PMT")).toBe("RENT_AND_UTILITIES_TELEPHONE");
   });
 
+  // CSV bench, second tuning set: software and radio under the names statements use.
+  it.each([
+    ["INTUIT *QBOOKS ONLINE", "GENERAL_SERVICES_OTHER_GENERAL_SERVICES"],
+    ["INTUIT *TURBOTAX", "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING"],
+    ["AUTODESK INC", "GENERAL_SERVICES_OTHER_GENERAL_SERVICES"],
+    ["PAYPAL *SIRIUS XM", "ENTERTAINMENT_MUSIC_AND_AUDIO"],
+    ["Withdrawal to BANK OF AMERICA ONLINE PMT PMT", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
+  ])("reads %s as %s", (description, category) => {
+    expect(out(description)).toBe(category);
+  });
+
   it("leaves unknown merchants for the LLM", () => {
     expect(out("MYSTERY SHOP 555")).toBeNull();
   });
