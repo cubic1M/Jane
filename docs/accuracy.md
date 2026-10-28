@@ -371,7 +371,7 @@ Second tuning set (20 people, 137 files, 5926 transactions):
 | --- | ---: |
 | Files read | 137 of 137 (133 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 98.4% (92 left for Claude) |
+| Category right (rules only) | 98.7% (78 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
 | Findings, $/yr | Jane $97,264, truth $95,305; error on the ones found 0.1% |
 | Monthly spending, error | 0.3% |

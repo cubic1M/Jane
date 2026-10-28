@@ -292,6 +292,7 @@ describe("categorizeByRules", () => {
     ["NEW HOPE CHAPEL", "GOVERNMENT_AND_NON_PROFIT_DONATIONS"],
     ["BETH SHALOM TEMPLE", "GOVERNMENT_AND_NON_PROFIT_DONATIONS"],
     ["SUNNYSIDE PASTRY", "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK"],
+    ["BARKBOX", "GENERAL_MERCHANDISE_PET_SUPPLIES"],
   ])("reads %s as %s", (description, category) => {
     expect(out(description)).toBe(category);
   });
