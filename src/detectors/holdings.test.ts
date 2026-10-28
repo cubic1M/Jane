@@ -74,6 +74,9 @@ describe("what later holdings should show (verified savings)", () => {
         }
       }
     }
+  });
+});
+
 describe("fund costs from real, published figures", () => {
   it("finds a real costly fund and its cheaper twin, sure to the degree the figures are", () => {
     const data = inputFor("family");
