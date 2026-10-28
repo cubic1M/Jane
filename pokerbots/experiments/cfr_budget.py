@@ -14,7 +14,6 @@ import argparse
 import io
 import json
 import re
-from contextlib import redirect_stdout
 from pathlib import Path
 
 from experiments.common import ROOT, load_results, pair_units, run_jobs
@@ -48,10 +47,12 @@ def exploitability(kind: str, path: Path) -> dict:
             meta = load_policy_data(str(path)).get("meta", {})
             res = dict(expl_lo=r["expl_out"], expl_hi=r["expl_in"], iterations=meta.get("iterations"))
         else:
-            from bots.cfr_preflop import evaluate as pe
-            with redirect_stdout(buf):
-                r = pe.evaluate_policy(str(path))
-            res = dict(expl_lo=r.get("expl_mbb"), expl_hi=r.get("expl_mbb"), iterations=r.get("iterations"))
+            from bots.cfr_preflop.evaluate import policy_exploitability
+            from bots.cfr_preflop.policy import load_policy
+            pol = load_policy(str(path))
+            r = policy_exploitability(pol)
+            res = dict(expl_lo=r["mbb"], expl_hi=r["mbb"], iterations=pol.meta.get("iterations"),
+                       matrix_stderr=pol.meta.get("matrix_stderr"))
     except Exception as e:  # report but do not stop the experiment
         res = dict(error=repr(e))
     res["log"] = buf.getvalue()[-2000:]
@@ -95,7 +96,7 @@ def main(argv=None):
                 elif kind == "full":
                     exs = f"{ex['expl_lo']:.0f} – {ex['expl_hi']:.0f}"
                 else:
-                    exs = f"{ex['expl_lo']:.1f}" if ex.get("expl_lo") is not None else "n/a"
+                    exs = f"{ex['expl_lo']:.3f} (matrix stderr {ex.get('matrix_stderr') or 0:.4f})"
                 cells = []
                 for o in opps:
                     mm, h, n = mean_ci(pair_units(recs, f"{bot}@{m}m", o))
