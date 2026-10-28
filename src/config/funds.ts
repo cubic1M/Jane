@@ -32,6 +32,10 @@ export type FundFacts = {
   // rather than qualified dividends.
   yieldBps?: number;
   interest?: boolean;
+  // The day the expense ratio was read from the fund's own filing (its prospectus fee table, Form
+  // N-1A, or summary prospectus), when it has been. Without it the figure is the fund company's
+  // published one, rounded, and not yet checked against the filing.
+  asOf?: string;
 };
 
 const DEMO_SOURCE = "Demo fund facts (sample data, not a real fund)";
@@ -40,7 +44,8 @@ const DEMO_SOURCE = "Demo fund facts (sample data, not a real fund)";
 // well-known real funds, rounded, for facts on real accounts (what the funds cost in dollars a
 // year). They change a little each year: every figure shows where it came from and says to
 // confirm it on the fund's own page. A fund missing here shows "not known", never a guess.
-const REAL_SOURCE = "Fund company's published expense ratio, rounded; confirm on its page";
+const REAL_SOURCE =
+  "Fund company's published expense ratio, rounded; the fee table in its prospectus (SEC Form N-1A) is the check";
 const real = (expenseRatioBps: number, mix: AssetMix, category: string): FundFacts => ({
   expenseRatioBps,
   mix,
@@ -245,6 +250,12 @@ export const LOWER_COST_EQUIVALENTS: Readonly<Record<string, readonly string[]>>
   NSTDX: ["KTRGX"],
   SLGFX: ["KLCX", "KTSIX"],
   PDIFX: ["KDVX", "KLCX"],
+  // Real funds: the same job at a lower published cost (S&P 500, developed-markets and
+  // international-total-market funds); FOR REVIEW with the fund company's own page.
+  FCNTX: ["FXAIX", "VOO"],
+  SPY: ["VOO", "IVV"],
+  VTIAX: ["VXUS"],
+  IEFA: ["VEA", "SCHF"],
 };
 
 // The funds the demo employer's 401(k) offers. Plaid doesn't report a plan's menu.
