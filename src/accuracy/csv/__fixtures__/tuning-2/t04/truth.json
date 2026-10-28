@@ -55,6 +55,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 261
+    },
+    {
+      "type": "subscription_review",
       "about": "QZ NOTES PRO, now yearly",
       "perYear": 79.99
     },
@@ -111,31 +116,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 4643.25
+      "dollars": 4621.57
     },
     {
       "date": "2026-05-31",
-      "dollars": 3750.17
+      "dollars": 3707.37
     },
     {
       "date": "2026-06-30",
-      "dollars": 2956.36
+      "dollars": 2892.68
     },
     {
       "date": "2026-07-31",
-      "dollars": 2107.66
+      "dollars": 2022.12
     },
     {
       "date": "2026-08-31",
-      "dollars": 858.48
+      "dollars": 751.1
     },
     {
       "date": "2026-09-30",
-      "dollars": -286.19
+      "dollars": -414.65
     },
     {
       "date": "2026-10-24",
-      "dollars": -1001
+      "dollars": -1151.21
     }
   ]
 }

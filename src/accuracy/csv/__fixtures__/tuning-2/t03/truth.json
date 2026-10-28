@@ -50,6 +50,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 256.8
+    },
+    {
+      "type": "subscription_review",
       "about": "PAYPAL *CRUNCHYROLL, paused a month",
       "perYear": 95.88
     },
@@ -84,27 +89,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1029.07
+      "dollars": 1007.98
     },
     {
       "date": "2026-06-30",
-      "dollars": -22.48
+      "dollars": -65.24
     },
     {
       "date": "2026-07-31",
-      "dollars": -1372.34
+      "dollars": -1436.08
     },
     {
       "date": "2026-08-31",
-      "dollars": -3240.73
+      "dollars": -3326.13
     },
     {
       "date": "2026-09-30",
-      "dollars": -5505.19
+      "dollars": -5611.99
     },
     {
       "date": "2026-10-24",
-      "dollars": -6647.22
+      "dollars": -6754.02
     }
   ]
 }

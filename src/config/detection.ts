@@ -263,6 +263,10 @@ export const LLM_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "medium";
 // the held-out statements, 57 of 63 missed subscriptions were such charges under names no rule
 // knows). Rent, loans and bills cost more or move; a same-price monthly charge under $100 is
 // almost always a plan. Never rated above FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE.
+// ...or every charge within a spread (highest less lowest) of this share of its usual price: a
+// plan billed in another currency moves a little with the exchange rate (CSV bench, second tuning
+// set: a plan in euros, $20.97 to $21.92, was missed).
+export const FIXED_PRICE_SUBSCRIPTION_FX_SPREAD = 0.05;
 export const FIXED_PRICE_SUBSCRIPTION_MIN_CHARGES = 3;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CENTS = 10_000;
 export const FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "low";

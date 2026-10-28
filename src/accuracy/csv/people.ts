@@ -381,6 +381,9 @@ type Pool = {
   // A plan that moved to another card part-way, one billed on the month's last day, and one
   // service paid twice from two cards on different days (two people's accounts). Round 19.
   moved?: Sub[];
+  // A plan billed in another currency: its dollar amount moves a little every month with the
+  // exchange rate (round 22).
+  fx?: Sub[];
   // A plan switched from monthly to yearly: the monthly charges stop, one yearly charge comes
   // (round 21). The yearly one is the subscription now.
   toYearly?: {
@@ -1111,6 +1114,20 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  fx: [
+    {
+      descriptor: "PADDLE.NET* QZFOCUS",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 1190,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "FS *QZSKETCH EUR",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 2140,
+      alsoOk: DIGITAL,
+    },
+  ],
   toYearly: [
     {
       descriptor: "AMAZON PRIME*4K2LM90",
@@ -2396,6 +2413,28 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     if (m.category.startsWith("LOAN") || m.category.endsWith("INSURANCE"))
       L.bill(rows, m.descriptor);
     else L.neutralBills.push(rows);
+  }
+
+  // Round 22, from its own dice: a plan billed in euros, a little over or under its price each month.
+  const fxr = rng(base + index * 104_729 + 36);
+  if (P.fx && fxr.chance(0.5)) {
+    const plan = fxr.pick(P.fx);
+    const rows: string[] = [];
+    L.monthly(fxr.int(2, 27), (date) => {
+      const cents = Math.round(plan.cents * (1 + (fxr.next() - 0.5) * 0.05));
+      const row = L.add(spend(card.id, date, cents, plan));
+      if (row) rows.push(row.id);
+    });
+    const last = L.rows.find((x) => x.id === rows[rows.length - 1]);
+    if (last && rows.length >= 2) {
+      L.findings.push({
+        type: "subscription_review",
+        rows,
+        annualCents: last.amountCents * 12,
+        note: `${plan.descriptor}, in euros`,
+      });
+    }
+    L.bill(rows, plan.descriptor);
   }
 
   // Round 21, from its own dice: monthly, then switched to yearly two months ago.
