@@ -56,20 +56,24 @@ class EquityModel:
         known = set(int(c) for c in my_cards) | set(int(c) for c in board) | set(int(c) for c in dead)
         avail = np.array([c for c in self.deck if int(c) not in known], dtype=np.int64)
         A = len(avail)
-        keys = rng.random((n, A))
         if opp_sampler is not None:
+            keys = rng.random((n, A))
             opp = np.asarray(opp_sampler(n, avail, rng), dtype=np.int64)  # (n, opp_num_cards)
-            # exclude opponent's cards from the board draw
-            pos = np.searchsorted(avail, opp) if np.all(np.diff(avail) > 0) else None
-            if pos is None:
-                raise ValueError("avail must be sorted")
+            # exclude opponent's cards from the board draw (avail is sorted)
+            pos = np.searchsorted(avail, opp)
             np.put_along_axis(keys, pos, 2.0, axis=1)
             order = np.argsort(keys, axis=1)
             fut = avail[order[:, :board_to_come]]
         else:
+            # keys over the FULL deck (known cards masked) so that calls differing in a
+            # card or two draw nearly the same samples from the same seed (common
+            # random numbers for comparing options)
             k = opp_num_cards + board_to_come
-            order = np.argpartition(keys, k - 1, axis=1)[:, :k] if k < A else np.argsort(keys, axis=1)[:, :k]
-            drawn = avail[order]
+            keys = rng.random((n, len(self.deck)))
+            keys[:, np.isin(self.deck, np.fromiter(known, dtype=np.int64, count=len(known)))] = 2.0
+            idx = np.argpartition(keys, k - 1, axis=1)[:, :k]
+            idx = np.take_along_axis(idx, np.argsort(np.take_along_axis(keys, idx, axis=1), axis=1), axis=1)
+            drawn = self.deck[idx]
             opp = drawn[:, :opp_num_cards]
             fut = drawn[:, opp_num_cards:k]
         myb = np.broadcast_to(my, (n, len(my)))
@@ -129,11 +133,15 @@ class EquityModel:
         """For a discard decision: [(cards_to_discard, equity_after), ...] best first."""
         k = obs.legal.discard_count
         rule = next(d for d in self.spec.discards if d.street == obs.street)
+        # common random numbers: every option sees the same sample stream, so the
+        # comparison between options is far less noisy than the absolute values
+        base = int((rng if rng is not None else np.random.default_rng()).integers(2 ** 62))
         out = []
         for disc in combinations(obs.my_cards, k):
             keep = tuple(c for c in obs.my_cards if c not in disc)
             extra = disc if rule.to_board else ()
-            eq = self.equity_obs(obs, n=n, rng=rng, my_cards=keep, extra_board=extra)
+            eq = self.equity_obs(obs, n=n, rng=np.random.default_rng(base), my_cards=keep,
+                                 extra_board=extra)
             out.append((disc, eq))
         out.sort(key=lambda x: -x[1])
         return out
@@ -156,13 +164,15 @@ class EquityModel:
         return self._ms_per_sample
 
     def preflop_equity(self, my_cards, n: int = 1500, rng=None) -> float:
-        """Equity vs a random hand from the start of the hand, cached by suit class."""
-        key = canonical(my_cards)
+        """Equity vs a random hand from the start of the hand, cached by (suit class, n),
+        so bots sharing a process never inherit each other's precision."""
+        cls = canonical(my_cards)
+        key = (cls, int(n))
         v = self._pre_cache.get(key)
         if v is None:
-            rng = rng if rng is not None else np.random.default_rng(hash(key) & 0xFFFFFFFF)
+            rng = rng if rng is not None else np.random.default_rng([*cls, int(n)])
             d = sum(x.count for x in self.spec.discards)
-            v = self.equity(key, (), opp_num_cards=self.spec.hole_cards,
+            v = self.equity(cls, (), opp_num_cards=self.spec.hole_cards,
                             board_to_come=self.spec.total_board_dealt,
                             my_discards_left=d, opp_discards_left=d,
                             discard_to_board=self._future_to_board(0), n=n, rng=rng)
