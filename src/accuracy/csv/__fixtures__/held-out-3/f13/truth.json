@@ -62,11 +62,6 @@
       "type": "bank_fees",
       "about": "checking fees",
       "perYear": 9
-    },
-    {
-      "type": "idle_cash",
-      "about": "cash 923459, excess 268784",
-      "perYear": null
     }
   ],
   "notFindings": [

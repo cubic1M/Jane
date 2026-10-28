@@ -61,11 +61,6 @@
       "type": "subscription_review",
       "about": "BLINKIST plan 2",
       "perYear": 299.88
-    },
-    {
-      "type": "idle_cash",
-      "about": "cash 1187687, excess 562529",
-      "perYear": null
     }
   ],
   "notFindings": [

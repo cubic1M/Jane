@@ -61,11 +61,6 @@
       "type": "subscription_review",
       "about": "MEDIUM.COM plan 2",
       "perYear": 180
-    },
-    {
-      "type": "idle_cash",
-      "about": "cash 950584, excess 363552",
-      "perYear": null
     }
   ],
   "notFindings": [

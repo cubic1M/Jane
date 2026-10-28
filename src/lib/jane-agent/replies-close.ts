@@ -15,7 +15,11 @@ export function closedBody(view: CloseView): string {
     .join(", ");
   return [
     `${monthLabel(view.month, { long: true })} is closed: ${formatCents(f.incomeCents)} came in and ${formatCents(f.spendingCents)} went out${top ? ` (most on ${top})` : ""}.`,
-    f.netWorthCents !== null ? `Net worth at the close: ${formatCents(f.netWorthCents)}.` : null,
+    f.netWorthCents !== null
+      ? `Net worth at the close: ${formatCents(f.netWorthCents)}.${f.netWorthNotCounting ? ` ${f.netWorthNotCounting}` : ""}`
+      : f.netWorthNotCounting
+        ? `Net worth at the close isn't known: ${f.netWorthNotCounting}`
+        : null,
     f.plan?.did
       ? `Against the plan: saved ${formatCents(f.plan.did.saving)} of ${formatCents(f.plan.planned.saving)}, extra debt payments ${formatCents(f.plan.did.debt)} of ${formatCents(f.plan.planned.debt)}.`
       : null,

@@ -12,7 +12,7 @@ import { sendEmail } from "@/lib/email";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { netWorth, netWorthOn } from "@/insights/net-worth";
+import { netWorth, netWorthOn, notCounting } from "@/insights/net-worth";
 import { listGoals } from "@/lib/goals";
 import { sendPush } from "@/lib/push";
 import { whatJaneDid } from "@/lib/what-jane-did";
@@ -169,13 +169,23 @@ async function plansFor(userId: string, now: Date, client: PrismaClient): Promis
         savedChangeCents: then === undefined ? null : g.progress.savedCents - Math.max(0, then),
       };
     }),
-    netWorth: usesNetWorth
-      ? {
-          nowCents: netWorth(accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })))
-            .netCents,
-          weekAgoCents: netWorthOn(accounts, snaps, weekAgo),
-        }
-      : null,
+    netWorth: usesNetWorth ? digestNetWorth(accounts, snaps, weekAgo) : null,
+  };
+}
+
+// Net worth for the digest: none when no balance is known (never a silent $0), and what it
+// leaves out said beside the figure.
+function digestNetWorth(
+  accounts: { id: string; name: string; type: string; currentBalanceCents: number | null }[],
+  snaps: Parameters<typeof netWorthOn>[1],
+  weekAgo: string,
+) {
+  const worth = netWorth(accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })));
+  if (!worth.known) return null;
+  return {
+    nowCents: worth.netCents,
+    weekAgoCents: netWorthOn(accounts, snaps, weekAgo),
+    notCounting: notCounting(worth.unbalanced)?.short ?? null,
   };
 }
 
