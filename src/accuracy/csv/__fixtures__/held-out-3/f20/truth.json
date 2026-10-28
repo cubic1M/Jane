@@ -56,11 +56,6 @@
       "type": "subscription_review",
       "about": "PANDORA*PLUS, one of two",
       "perYear": 59.88
-    },
-    {
-      "type": "idle_cash",
-      "about": "cash 1222799, excess 609326",
-      "perYear": null
     }
   ],
   "notFindings": [

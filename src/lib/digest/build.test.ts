@@ -124,7 +124,25 @@ describe("buildDigest", () => {
       { category: "Travel", spentCents: 30_000, budgetCents: 20_000, over: true },
     ]);
     expect(digest?.goals).toEqual([{ name: "Trip", percent: 40, savedChangeCents: 10_000 }]);
-    expect(digest?.netWorth).toEqual({ nowCents: 500_000, changeCents: 20_000 });
+    expect(digest?.netWorth).toEqual({ nowCents: 500_000, changeCents: 20_000, notCounting: null });
+  });
+
+  // Upload QA: a figure that leaves an account out says so beside it.
+  it("carries what net worth leaves out for want of a balance", () => {
+    const digest = buildDigest(
+      input({
+        plans: {
+          budgets: [],
+          goals: [],
+          netWorth: {
+            nowCents: 500_000,
+            weekAgoCents: 480_000,
+            notCounting: "not counting card balance",
+          },
+        },
+      }),
+    );
+    expect(digest?.netWorth?.notCounting).toBe("not counting card balance");
   });
 
   it("leaves out net worth without last week's snapshot, and still never sends empty", () => {

@@ -77,11 +77,6 @@
       "type": "subscription_review",
       "about": "MIDJOURNEY INC. plan 2",
       "perYear": 360
-    },
-    {
-      "type": "idle_cash",
-      "about": "cash 902426, excess 315211",
-      "perYear": null
     }
   ],
   "notFindings": [

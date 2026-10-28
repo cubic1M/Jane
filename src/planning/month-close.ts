@@ -1,3 +1,4 @@
+import { netWorth, notCounting } from "@/insights/net-worth";
 import {
   CLOSE_TOP_CATEGORIES,
   UNCERTAIN_CATEGORIES,
@@ -24,6 +25,8 @@ export type CloseFigures = {
   spendingCents: number;
   topCategories: { category: string; cents: number }[];
   netWorthCents: number | null;
+  // What that net worth leaves out for want of a balance, said beside it; null when complete.
+  netWorthNotCounting?: string | null;
   // Open problems from the books check (step 238) when it closed: their figures are marked.
   booksOpen: number;
   // From the monthly report (step 148): paid down, plan against actual (205), what worked (207).
@@ -89,3 +92,27 @@ export const categoryWords = (primary: string) => {
   const w = primary.toLowerCase().replaceAll("_", " ");
   return w.charAt(0).toUpperCase() + w.slice(1);
 };
+
+// Net worth at the close: none when no balance is known (never a silent $0), and what it leaves
+// out for want of a balance said beside it (the CSV bench's skipped-balance path). Pure.
+export function closeNetWorth(
+  accounts: { id: string; name: string; type: string; currentBalanceCents: number | null }[],
+  owned: { id: string; valueCents: number; valuedOn: Date }[],
+  crypto: number,
+): Pick<CloseFigures, "netWorthCents" | "netWorthNotCounting"> {
+  if (accounts.length === 0) return { netWorthCents: null, netWorthNotCounting: null };
+  const worth = netWorth(
+    accounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: a.type,
+      balanceCents: a.currentBalanceCents,
+    })),
+    owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+    crypto,
+  );
+  return {
+    netWorthCents: worth.known ? worth.netCents : null,
+    netWorthNotCounting: notCounting(worth.unbalanced)?.sentence ?? null,
+  };
+}

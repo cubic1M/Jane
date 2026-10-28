@@ -80,6 +80,10 @@ Server work per warm page (family sample person, local database):
 about 5 percent). `npm run check:perf-budget` runs after the CI build and fails when a page is
 over. Lower a number when a page gets lighter; raise one only with a reason in the pull request.
 
+- 2026-10-28: `/investments` 620,000 to 625,000 bytes. The app-wide error boundary (#942, never a
+  blank screen) adds about 3.8 kB of first-load JS to every page; `/investments` was 2.7 kB under
+  its ceiling and went 1.1 kB over. The other pages still have room.
+
 ## After (2026-10-26): the landing column, the footer, shared reads
 
 Pull requests: landing column image and window (#774), footer waits while a page loads (#781),
