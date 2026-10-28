@@ -38,6 +38,7 @@ import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import { BrokerageAskForm } from "./brokerage-ask";
+import { PositionsImportForm } from "./positions-import";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
@@ -153,7 +154,13 @@ async function RuleReplays({ userId }: { userId: string }) {
 async function BrokerageAsks({ user }: { user: Parameters<typeof canImportCsv>[0] }) {
   if (!canImportCsv(user)) return null;
   const { asks, inLast3MonthsCents } = await brokerageAsks(await scopedDb());
-  if (inLast3MonthsCents === 0) return null;
+  if (inLast3MonthsCents === 0) {
+    return (
+      <section className="border border-zinc-200 p-4 dark:border-zinc-800">
+        <PositionsImportForm />
+      </section>
+    );
+  }
   return (
     <section
       className="flex flex-col gap-3 border border-zinc-200 p-4 dark:border-zinc-800"
@@ -162,6 +169,7 @@ async function BrokerageAsks({ user }: { user: Parameters<typeof canImportCsv>[0
       <h2 id="brokerage-heading" className="text-lg font-semibold">
         You put {formatCents(inLast3MonthsCents)} into investing in the last 3 months
       </h2>
+      <PositionsImportForm />
       {asks.map((a) => (
         <BrokerageAskForm
           key={a.app}

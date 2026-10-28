@@ -66,6 +66,8 @@ export type AuditEvent =
   | "uploads_reset"
   // An uploaded account's balance given after its upload (src/lib/import/account-balance.ts).
   | "uploaded_balance_set"
+  // Read-only beta: a brokerage positions file saved as holdings (counts only, never the file).
+  | "positions_imported"
   // Finding data was sent to Claude for card text.
   | "explanations_generated"
   | "decision_made"
