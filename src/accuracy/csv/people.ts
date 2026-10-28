@@ -13,9 +13,10 @@ export const CSV_SEED = 20_261_027;
 export const CSV_AS_OF = "2026-10-24";
 export const CSV_PEOPLE_COUNT = 20;
 export const CSV_HELD_OUT_SEED = 61_803_398;
-export type CsvSet = "tuning" | "held-out" | "held-out-2" | "held-out-3";
+export type CsvSet = "tuning" | "tuning-2" | "held-out" | "held-out-2" | "held-out-3";
 export const CSV_HELD_OUT_2_SEED = 14_142_135;
 export const CSV_HELD_OUT_3_SEED = 27_182_818;
+export const CSV_TUNING_2_SEED = 16_180_339;
 
 export type Layout =
   | "chase_checking"
@@ -972,6 +973,128 @@ const HELD_OUT_2: Pool = {
   ],
 };
 
+// A second tuning set (2026-10-27, round 13): the first one's shops and bills, with the
+// subscriptions people miss on real statements. A membership at a company that sells something
+// else (Uber One, DashPass, Walmart+, Instacart+), software over $100 a month, a yearly renewal at
+// a warehouse club, plans billed through a processor ("PAYPAL *", "SQ *"). Rules may be fixed on
+// it, like the first.
+const MEMBERSHIP_OK: PfcPrimary[] = [...DIGITAL, "TRANSPORTATION", "FOOD_AND_DRINK"];
+const TUNING_2: Pool = {
+  ...TUNING,
+  subscriptions: [
+    {
+      descriptor: "UBER *ONE MEMBERSHIP",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 999,
+      alsoOk: MEMBERSHIP_OK,
+    },
+    {
+      descriptor: "DOORDASH DASHPASS",
+      variants: ["DD *DOORDASH DASHPASS"],
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 999,
+      alsoOk: MEMBERSHIP_OK,
+    },
+    {
+      descriptor: "LYFT *PINK MEMBERSHIP",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 999,
+      alsoOk: MEMBERSHIP_OK,
+    },
+    {
+      descriptor: "INSTACART+ MEMBERSHIP",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 999,
+      alsoOk: MEMBERSHIP_OK,
+    },
+    {
+      descriptor: "WALMART+ 800-925-6278",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 1295,
+      alsoOk: MEMBERSHIP_OK,
+    },
+    {
+      descriptor: "AUTODESK INC",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 24_500,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "INTUIT *QBOOKS ONLINE",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 3500,
+      rise: 3800,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "PAYPAL *SIRIUS XM",
+      variants: ["SIRIUS XM RADIO"],
+      category: "ENTERTAINMENT_MUSIC_AND_AUDIO",
+      cents: 1099,
+    },
+    {
+      descriptor: "SQ *IRON TEMPLE GYM",
+      category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
+      cents: 6500,
+    },
+    {
+      descriptor: "KINDLE SVCS*KINDLE UNLTD",
+      category: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+      cents: 1199,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "MICROSOFT*XBOX GAME PASS",
+      category: "ENTERTAINMENT_VIDEO_GAMES",
+      cents: 1699,
+      rise: 1999,
+    },
+    {
+      descriptor: "SHOPIFY* 21389442",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 3900,
+      alsoOk: DIGITAL,
+    },
+  ],
+  trials: [
+    {
+      descriptor: "BABBEL.COM",
+      category: "GENERAL_SERVICES_EDUCATION",
+      cents: 1395,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "HEADSPACE",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 1299,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "MASTERCLASS",
+      category: "GENERAL_SERVICES_EDUCATION",
+      cents: 1500,
+      alsoOk: DIGITAL,
+    },
+  ],
+  yearly: {
+    descriptor: "COSTCO *ANNUAL RENEWAL",
+    category: "GENERAL_MERCHANDISE_SUPERSTORES",
+    cents: 6500,
+    alsoOk: DIGITAL,
+  },
+  twin: {
+    descriptor: "NINTENDO *SWITCH ONLINE",
+    category: "ENTERTAINMENT_VIDEO_GAMES",
+    cents: 399,
+  },
+  pricePlans: {
+    descriptor: "GOOGLE *GOOGLE ONE",
+    category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+    cents: [299, 999],
+    alsoOk: DIGITAL,
+  },
+};
+
 // A third held-out set (2026-10-27, after round 12): written to check whether round 12's chain
 // names reach past the merchant pools they were seen beside. Its names were picked without
 // looking at the rules: real chains of every size (national, regional, and written the way
@@ -1209,14 +1332,16 @@ const HELD_OUT_3: Pool = {
 function person(index: number, set: CsvSet = "tuning"): CsvPerson {
   const base = {
     tuning: CSV_SEED,
+    "tuning-2": CSV_TUNING_2_SEED,
     "held-out": CSV_HELD_OUT_SEED,
     "held-out-2": CSV_HELD_OUT_2_SEED,
     "held-out-3": CSV_HELD_OUT_3_SEED,
   }[set];
   const r = rng(base + index * 104_729);
-  const id = `${{ tuning: "c", "held-out": "d", "held-out-2": "e", "held-out-3": "f" }[set]}${String(index + 1).padStart(2, "0")}`;
+  const id = `${{ tuning: "c", "tuning-2": "t", "held-out": "d", "held-out-2": "e", "held-out-3": "f" }[set]}${String(index + 1).padStart(2, "0")}`;
   const P = {
     tuning: TUNING,
+    "tuning-2": TUNING_2,
     "held-out": HELD_OUT,
     "held-out-2": HELD_OUT_2,
     "held-out-3": HELD_OUT_3,
@@ -1231,6 +1356,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     PLANS[
       {
         tuning: index,
+        "tuning-2": (index + 5) % PLANS.length,
         "held-out": (index + 7) % PLANS.length,
         "held-out-2": (index + 13) % PLANS.length,
         "held-out-3": (index + 3) % PLANS.length,

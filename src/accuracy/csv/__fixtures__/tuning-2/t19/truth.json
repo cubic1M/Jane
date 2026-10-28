@@ -1,0 +1,118 @@
+{
+  "person": "t19",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One card",
+      "layout": "capital_one_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "INSTACART+ MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PAYPAL *SIRIUS XM",
+      "perYear": 131.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BEST BUY 00012345 twice",
+      "perYear": 88.5
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *GOOGLE ONE plan 1",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *GOOGLE ONE plan 2",
+      "perYear": 119.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 2536208, excess 2013137",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "UBER *ONE MEMBERSHIP, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 SOUTHWES 5262123456789 seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 8104.22
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 12112.26
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 17346.26
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 19471.87
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 21713.08
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 24111.44
+    }
+  ]
+}

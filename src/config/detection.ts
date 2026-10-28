@@ -103,6 +103,14 @@ export const USAGE_BILL_DAY_SPREAD = 5;
 // was missed). Smaller is a one-off (a book, a rental); larger is equipment. Low confidence.
 export const YEARLY_PLAN_MIN_CENTS = 5_000;
 export const YEARLY_PLAN_MAX_CENTS = 50_000;
+// ...or a charge that says it is the year's renewal, whoever the company ("COSTCO *ANNUAL
+// RENEWAL"; CSV bench, second tuning set). Whole words of the description, lower case.
+export const YEARLY_RENEWAL_WORDS: readonly string[] = [
+  "annual",
+  "yearly",
+  "renewal",
+  "membership",
+];
 // ...and the merchant is the plan itself: a SUBSCRIPTION_MERCHANTS name, alone or with one of
 // these words ("DUOLINGO PLUS"). A longer name is something else the company sells ("ADOBE
 // STOCK", "AMAZON PRIME VIDEO"; accuracy bench, first held-out set).
@@ -178,7 +186,26 @@ export const SUBSCRIPTION_MERCHANTS: readonly string[] = [
   "peloton",
   "wsj",
   "youtube premium",
+  // Software sold by the month above FIXED_PRICE_SUBSCRIPTION_MAX_CENTS (CSV bench, second
+  // tuning set: "AUTODESK INC" at $245).
+  "autodesk",
 ];
+
+// A plan by its own words on the statement, whatever else the company sells: a membership at a
+// ride, delivery or warehouse company ("UBER *ONE MEMBERSHIP", "DOORDASH DASHPASS", "LYFT *PINK
+// MEMBERSHIP"), or a name ending in "+" ("WALMART+", "INSTACART+", "AMC+"). CSV bench, second
+// tuning set: every one of these was missed, its category being rides, food or a superstore.
+// Words are matched whole, upper case.
+export const PLAN_DESCRIPTION_WORDS: readonly string[] = [
+  "MEMBERSHIP",
+  "SUBSCRIPTION",
+  "DASHPASS",
+  "UBER ONE",
+  "UBER *ONE",
+  "LYFT PINK",
+  "LYFT *PINK",
+];
+export const PLAN_NAME_PLUS = /[A-Z]{3,}\+(?![A-Z0-9])/;
 
 // App stores bill other companies' subscriptions under their own name, each at its own price
 // and day ("APPLE.COM/BILL"): a regular charge at one price there is a subscription (accuracy
@@ -336,6 +363,9 @@ export const PRICE_INCREASE_EXCLUDED_CATEGORIES: readonly PfcDetailed[] = [
   "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
   "RENT_AND_UTILITIES_WATER",
   "RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT",
+  // A city's utility bill moves with use too (CSV bench, second tuning set: "CITY OF SPRINGFIELD
+  // UTILITY BILLING" from $98 to $122 read as a price rise).
+  "RENT_AND_UTILITIES_OTHER_UTILITIES",
 ];
 
 // --- Bank fees and card interest ---------------------------------------------------

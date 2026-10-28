@@ -1,0 +1,109 @@
+{
+  "person": "t08",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Capital One savings",
+      "layout": "capital_one_360",
+      "kind": "savings",
+      "typesBalance": false
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "INSTACART+ MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "MICROSOFT*XBOX GAME PASS",
+      "perYear": 239.88
+    },
+    {
+      "type": "price_increase",
+      "about": "MICROSOFT*XBOX GAME PASS 1699→1999",
+      "perYear": 36
+    },
+    {
+      "type": "subscription_review",
+      "about": "COSTCO *ANNUAL RENEWAL yearly",
+      "perYear": 65
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 67.06
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 574.69
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "2 SOUTHWES 5262123456789 seats"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "HOME DEPOT #6612 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "BLUE HERON BAKERY, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 7275.51
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 7131.51
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 7373.02
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 9191.29
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 8946.42
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 8675.33
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 8221.14
+    }
+  ]
+}

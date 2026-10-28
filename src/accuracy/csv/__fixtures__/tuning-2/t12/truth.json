@@ -1,0 +1,102 @@
+{
+  "person": "t12",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Wells Fargo checking",
+      "layout": "wells_fargo",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "UBER *ONE MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 251.58
+    },
+    {
+      "type": "subscription_review",
+      "about": "NINTENDO *SWITCH ONLINE, one of two",
+      "perYear": 47.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NINTENDO *SWITCH ONLINE, one of two",
+      "perYear": 47.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 4939547, excess 4411360",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "KINDLE SVCS*KINDLE UNLTD, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 TICKETMASTER seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "NINTENDO *SWITCH ONLINE, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 24939.45
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 27912.48
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 31204.94
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 38026.08
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 41259.47
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 44079.56
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 47574.3
+    }
+  ]
+}

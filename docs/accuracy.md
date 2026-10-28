@@ -253,6 +253,17 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
   **Checked on a fresh set.** The first two held-out pools were written before the list, by the same hand, so a gain there could be the list and the pools sharing the same well-known names. A third held-out CSV set (`CSV_HELD_OUT_3_SEED`, new names, written after the list and spelled the way statements cut names: "CULVERS", "OLLIES", "HOBBY-LOBBY", plus regional chains and local places) gains much less: category right 71.0% → 79.6% (+8.6 points, against +28.3 and +16.0). By merchant, the rules place 36 of its 82 names before and 50 after. So most of the first held-out jump came from names its pool happens to share with the list; the third set's gain is the better estimate of what the list adds on real statements, and it is a harsh one, since its names were picked knowing the list. Of the 850 words added, 759 are company names (real companies, counting spellings such as KOHL'S and KOHLS apart) and 91 are generic words (curry, florist, daycare, toll, museum). The third set is only scored: no rule is fixed on it.
 
+- **Subscriptions by their own words** (round 13, second tuning set). A charge that says it is a plan counts as a subscription whatever the company's category: a membership word (`PLAN_DESCRIPTION_WORDS`: membership, subscription, DashPass, Uber One, Lyft Pink) or a name ending in "+" (`PLAN_NAME_PLUS`: Walmart+, Instacart+, AMC+). Its charges make a run of their own when the same company's other charges are mostly at other prices (Uber One among the rides, key `@plan`), but not when they are the plan written another way. One charge that says it renews the year (`YEARLY_RENEWAL_WORDS`: annual, yearly, renewal, membership) is a yearly plan, whoever the company. Autodesk joins `SUBSCRIPTION_MERCHANTS` (software above the price-only cap). Subscriptions recall:
+
+  | Set | Before | After |
+  | --- | ---: | ---: |
+  | CSV second tuning | 48.2% | 98.8% |
+  | CSV first held-out | 82.7% | 91.3% |
+  | CSV second held-out | 86.0% | 97.8% |
+  | CSV third held-out | 91.3% | 100% |
+
+  Two more from the second tuning set: two plans from one company at two prices stay two when one of them has most of the charges (Google One at $2.99 and $9.99; the run of the whole had kept only the $9.99 one), and a city's utility bill (`RENT_AND_UTILITIES_OTHER_UTILITIES`) is no price rise, like power and water. "Coming up" recall rose with them (first held-out 98.6% → 100%, second 97.7% → 99.1%, third 99.1% → 100%). Precision is unchanged on every set (100%, and 74.8% → 76.5% on the third held-out set as more are found); the first tuning set and the sample bench are unchanged. Left on the second tuning set: a plan seen three times whose price rose on the third (two charges at the old price are too few for a run).
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -262,6 +273,7 @@ Beta users start by uploading statements, so the sample people above (already-cl
 - **Two sets.** The tuning set (`CSV_SEED`) is what rules were fixed on. The held-out set (`CSV_HELD_OUT_SEED`) has the same kinds of people and mess under names the tuning set never uses (other grocers, restaurants, landlords, utilities, employers, subscriptions, airlines and cinemas) and different banks per person. It was written before any fix and is only scored.
 - **Scoring:** `src/accuracy/csv/score.ts` runs what `/import` runs, without a database: `readCsvFile` on every file, one copy of rows two files share, `categorizeTransactions` with Claude off and no cached merchants, card payments matched from the card's side, the merchant directory's seed, `detect()`, the spending chart's monthly totals and the home hub's net worth line. Claude is stubbed (`vi.mock`), so nothing is spent and the categories and subscriptions are the rules' alone: a lower bound. On a live upload Claude places what the rules leave, and is asked about recurring charges whose category can't say; the tables count both.
 - **A second held-out set** (`CSV_HELD_OUT_2_SEED`, 2026-10-27). It has names neither other set uses (grocers, restaurants, landlords, utilities, phone and internet companies, employers, subscriptions, trials, cinemas, a twin plan, the not-a-plan traps) and the banks shifted again. It was made and scored before any fix it could check, so it is the clean check for rounds 7 and later. As first scored: category right 69.7%, subscriptions 100% / 85.5%, false "Charged twice?" 6, trials 100% / 80%, "Coming up" 99.5% / 95.3% (precision / recall).
+- **A second tuning set** (`CSV_TUNING_2_SEED`, 2026-10-27, round 13). The first tuning set was used up: with every subscription's brand swapped for a name no rule knows, it still missed nothing but a yearly plan, so it could no longer show what the held-out sets miss. The second keeps the first one's shops and bills and brings the subscriptions people miss on real statements: a membership at a company that sells something else (Uber One, DashPass, Lyft Pink, Instacart+, Walmart+), software over $100 a month, a warehouse club's yearly renewal, plans billed through a processor. Rules may be fixed on it. As first scored: subscriptions 100% / 48.2%.
 - **A third held-out set** (`CSV_HELD_OUT_3_SEED`, 2026-10-27, after round 12). New names again, written after round 12's chain list to check it (real chains of every size, spelled as statements cut them, and local places), and the banks shifted again. Only scored. As first scored, with round 12: category right 79.6%, subscriptions 74.8% / 91.3% (32 false alarms, the next thing to look into, from the tuning set), false "Charged twice?" 4, "Coming up" 100% / 99.1%.
 - **Run it:** `npm run accuracy` prints both benches. `ACCURACY_WRITE=1` also rewrites the files, `src/accuracy/csv/baseline.json` and the tables below. `ACCURACY_MISTAKES=1` lists the tuning set's mistakes.
 - **Calibration:** the suggestions an uploaded person would see, made from the upload's rows and only the balances Jane knows. They are bucketed by their "% sure" and judged on the same topics as the sample bench. Like the sample bench, they are under-confident on purpose ("58% sure" is right 94% of the time on the tuning set, 87% held out). The only wrong ones are two "build an emergency fund" suggestions for people near the idle-cash line. The gate holds the same bar: no 0%, no bucket of 10 or more over 10 points surer than right.
@@ -307,6 +319,45 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
+Second tuning set (20 people, 127 files, 5496 transactions):
+
+| Step | Score |
+| --- | ---: |
+| Files read | 127 of 127 (123 exactly) |
+| Rows read exactly | 100.0% (0 extra, 0 missing) |
+| Category right (rules only) | 98.9% (63 left for Claude) |
+| False "Charged twice?" | 0 (0 people) |
+| Findings, $/yr | Jane $40,613, truth $40,848; error on the ones found 0.0% |
+| Monthly spending, error | 0.4% |
+| Monthly income, error | 0.0% |
+| Net worth today right | 9 of 20 people (off by $129,195 in all) |
+| Net worth line: month-ends drawn | 96.4% (error where drawn 47.7%) |
+| Net worth line, people whose every balance Jane knows | 9 of 20, error 0.0% |
+
+| Finding | Precision | Recall | Right | False alarms | Missed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| subscription_review | 100.0% | 98.8% | 82 | 0 | 1 |
+| price_increase | 100.0% | 75.0% | 3 | 0 | 1 |
+| trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
+| bank_fees | 100.0% | 100.0% | 21 | 0 | 0 |
+| card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
+| duplicate_charge | 100.0% | 100.0% | 11 | 0 | 0 |
+| idle_cash | 75.0% | 50.0% | 3 | 1 | 3 |
+| bills coming up (31 days) | 100.0% | 99.5% | 212 | 0 | 1 |
+
+Missed subscriptions Claude would be asked about on a live upload: 0 of 1.
+
+Suggestions' confidence (is "80% sure" right 80% of the time?):
+
+| Said | Suggestions | Average said | Actually right |
+| --- | ---: | ---: | ---: |
+| 0–49% | 0 | – | – |
+| 50–59% | 17 | 59% | 100% |
+| 60–69% | 30 | 64% | 97% |
+| 70–79% | 4 | 77% | 100% |
+| 80–89% | 1 | 83% | 100% |
+| 90–100% | 0 | – | – |
+
 Held-out set (20 people, 135 files, 5393 transactions):
 
 | Step | Score |
@@ -315,7 +366,7 @@ Held-out set (20 people, 135 files, 5393 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 94.2% (256 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
-| Findings, $/yr | Jane $28,135, truth $29,777; error on the ones found 0.0% |
+| Findings, $/yr | Jane $28,825, truth $29,777; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 11 of 20 people (off by $21,673 in all) |
@@ -324,16 +375,16 @@ Held-out set (20 people, 135 files, 5393 transactions):
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 100.0% | 82.7% | 86 | 0 | 18 |
+| subscription_review | 100.0% | 91.3% | 95 | 0 | 9 |
 | price_increase | 100.0% | 100.0% | 15 | 0 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 19 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
 | duplicate_charge | 78.6% | 100.0% | 11 | 3 | 0 |
 | idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
-| bills coming up (31 days) | 99.5% | 98.6% | 213 | 1 | 3 |
+| bills coming up (31 days) | 99.5% | 100.0% | 216 | 1 | 0 |
 
-Missed subscriptions Claude would be asked about on a live upload: 0 of 18.
+Missed subscriptions Claude would be asked about on a live upload: 0 of 9.
 
 Suggestions' confidence (is "80% sure" right 80% of the time?):
 
@@ -354,7 +405,7 @@ Second held-out set (20 people, 128 files, 5470 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 91.5% (393 left for Claude) |
 | False "Charged twice?" | 2 (2 people) |
-| Findings, $/yr | Jane $30,059, truth $30,987; error on the ones found 0.0% |
+| Findings, $/yr | Jane $30,891, truth $30,987; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 10 of 20 people (off by $60,329 in all) |
@@ -363,16 +414,16 @@ Second held-out set (20 people, 128 files, 5470 transactions):
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 100.0% | 86.0% | 80 | 0 | 13 |
+| subscription_review | 100.0% | 97.8% | 91 | 0 | 2 |
 | price_increase | 100.0% | 100.0% | 7 | 0 | 0 |
 | trial_conversion | 100.0% | 80.0% | 4 | 0 | 1 |
 | bank_fees | 100.0% | 100.0% | 25 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
 | duplicate_charge | 84.6% | 100.0% | 11 | 2 | 0 |
 | idle_cash | 100.0% | 88.9% | 8 | 0 | 1 |
-| bills coming up (31 days) | 99.5% | 97.7% | 216 | 1 | 5 |
+| bills coming up (31 days) | 99.5% | 99.1% | 219 | 1 | 2 |
 
-Missed subscriptions Claude would be asked about on a live upload: 0 of 13.
+Missed subscriptions Claude would be asked about on a live upload: 0 of 2.
 
 Suggestions' confidence (is "80% sure" right 80% of the time?):
 
@@ -393,7 +444,7 @@ Third held-out set (20 people, 157 files, 5636 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 79.6% (1102 left for Claude) |
 | False "Charged twice?" | 4 (4 people) |
-| Findings, $/yr | Jane $51,153, truth $35,077; error on the ones found 0.0% |
+| Findings, $/yr | Jane $51,743, truth $35,077; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 7 of 20 people (off by $41,405 in all) |
@@ -402,16 +453,16 @@ Third held-out set (20 people, 157 files, 5636 transactions):
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 74.8% | 91.3% | 95 | 32 | 9 |
+| subscription_review | 76.5% | 100.0% | 104 | 32 | 0 |
 | price_increase | 100.0% | 100.0% | 7 | 0 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 23 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 8 | 0 | 0 |
 | duplicate_charge | 73.3% | 100.0% | 11 | 4 | 0 |
 | idle_cash | 100.0% | 77.8% | 7 | 0 | 2 |
-| bills coming up (31 days) | 100.0% | 99.1% | 219 | 0 | 2 |
+| bills coming up (31 days) | 100.0% | 100.0% | 221 | 0 | 0 |
 
-Missed subscriptions Claude would be asked about on a live upload: 0 of 9.
+Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
 
 Suggestions' confidence (is "80% sure" right 80% of the time?):
 

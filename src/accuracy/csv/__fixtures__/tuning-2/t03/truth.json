@@ -1,0 +1,100 @@
+{
+  "person": "t03",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    },
+    {
+      "name": "Discover card",
+      "layout": "discover_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "UBER *ONE MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "KINDLE SVCS*KINDLE UNLTD",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *IRON TEMPLE GYM",
+      "perYear": 780
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* THE COUNTER CAFE dinner twice",
+      "perYear": 88.31
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 120
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "INTUIT *QBOOKS ONLINE, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *BLUE BOTTLE COFFEE at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HOLLOW OAK TAVERN, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "PARKSIDE COMMUNITY CHURCH, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 1522.06
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 917.35
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -68.65
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -1378.07
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -3270.68
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -4115.85
+    }
+  ]
+}

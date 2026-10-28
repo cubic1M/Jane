@@ -1,0 +1,122 @@
+{
+  "person": "t16",
+  "archetype": "retiree",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "WALMART+ 800-925-6278",
+      "perYear": 155.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "INSTACART+ MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "LYFT *PINK MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DOORDASH DASHPASS",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "UBER *ONE MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TARGET 00023456 twice",
+      "perYear": 155.15
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 2.35
+    },
+    {
+      "type": "subscription_review",
+      "about": "NINTENDO *SWITCH ONLINE, one of two",
+      "perYear": 47.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NINTENDO *SWITCH ONLINE, one of two",
+      "perYear": 47.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "JIFFY LUBE #1234, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "3 TICKETMASTER seats"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "NINTENDO *SWITCH ONLINE, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": 2381.27
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": 1199.85
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -191.94
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -1186.15
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -2368.19
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -3501.33
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -4135.02
+    }
+  ]
+}

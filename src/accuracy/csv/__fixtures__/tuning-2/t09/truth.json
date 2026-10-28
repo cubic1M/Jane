@@ -1,0 +1,106 @@
+{
+  "person": "t09",
+  "archetype": "gig",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Capital One checking",
+      "layout": "capital_one_360",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "INTUIT *QBOOKS ONLINE",
+      "perYear": 420
+    },
+    {
+      "type": "subscription_review",
+      "about": "AUTODESK INC",
+      "perYear": 2940
+    },
+    {
+      "type": "subscription_review",
+      "about": "PAYPAL *SIRIUS XM",
+      "perYear": 131.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "INSTACART+ MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "LYFT *PINK MEMBERSHIP",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "WALMART+ 800-925-6278",
+      "perYear": 155.4
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 292.62
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *GOOGLE ONE plan 1",
+      "perYear": 35.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "GOOGLE *GOOGLE ONE plan 2",
+      "perYear": 119.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SMILE DENTAL GROUP, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUNKIN 348812 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "subscription_review",
+      "about": "HARBOR CREDIT UNION PMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "LEMONADE INSURANCE, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-07-31",
+      "dollars": 2934.54
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 937.65
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -1509.09
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -3806.42
+    }
+  ]
+}
