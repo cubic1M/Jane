@@ -14,6 +14,7 @@ import {
   SUBSCRIPTION_CATEGORIES,
   SUBSCRIPTION_MERCHANTS,
 } from "@/config/detection";
+import { formatCents } from "@/lib/money";
 import { inList, lowest, merchantMatches } from "../helpers";
 import type { Stream } from "../streams";
 import { streamEvidence, type Rule } from "./rule";
@@ -101,25 +102,31 @@ export function isAmbiguousRecurring(stream: Stream): boolean {
 export const subscriptionReview: Rule = (input, streams) => {
   const confirmed = new Set(input.subscriptionMerchantKeys ?? []);
   const declined = new Set(input.declinedSubscriptionMerchantKeys ?? []);
-  return streams
-    .filter(
-      (s) =>
-        isSubscriptionUnless(declined)(s) ||
-        (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey)),
-    )
-    .map((stream) => ({
-      type: "subscription_review",
-      key: stream.key,
-      title: `Review your ${stream.merchant} subscription`,
-      annualSavingsCents: stream.annualCostCents,
-      amountCents: stream.annualCostCents,
-      // Known by name or category: its own confidence. Claude said yes: up to medium. Only its
-      // one price says so: low.
-      confidence: isKnownSubscription(stream)
-        ? stream.confidence
-        : confirmed.has(stream.merchantKey)
-          ? lowest(stream.confidence, LLM_SUBSCRIPTION_MAX_CONFIDENCE)
-          : lowest(stream.confidence, FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE),
-      evidence: streamEvidence(stream),
-    }));
+  const found = streams.filter(
+    (s) =>
+      isSubscriptionUnless(declined)(s) ||
+      (isAmbiguousRecurring(s) && confirmed.has(s.merchantKey)),
+  );
+  // Two plans of one merchant at two prices are told apart by their price (QA round 31: both
+  // read "Review your Spotify subscription").
+  const named = new Map<string, number>();
+  for (const s of found) named.set(s.merchant, (named.get(s.merchant) ?? 0) + 1);
+  return found.map((stream) => ({
+    type: "subscription_review",
+    key: stream.key,
+    title:
+      (named.get(stream.merchant) ?? 0) > 1
+        ? `Review your ${stream.merchant} subscription at ${formatCents(stream.lastAmountCents)}`
+        : `Review your ${stream.merchant} subscription`,
+    annualSavingsCents: stream.annualCostCents,
+    amountCents: stream.annualCostCents,
+    // Known by name or category: its own confidence. Claude said yes: up to medium. Only its
+    // one price says so: low.
+    confidence: isKnownSubscription(stream)
+      ? stream.confidence
+      : confirmed.has(stream.merchantKey)
+        ? lowest(stream.confidence, LLM_SUBSCRIPTION_MAX_CONFIDENCE)
+        : lowest(stream.confidence, FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE),
+    evidence: streamEvidence(stream),
+  }));
 };
