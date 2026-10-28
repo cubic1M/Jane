@@ -49,7 +49,7 @@ Scores are averaged into exploit dimensions:
   FS, FB  same for small and big bets                     fold_small, fold_big
   PF  preflop over-folding to raises                      pre_fold
   A   postflop aggression (+ maniac, - passive)           agg, stab, raise_bet
-  PA  preflop aggression                                  pre_open, pre_reraise, pfr, weak sd_pre_pct
+  PA  preflop aggression                                  pre_reraise, pfr, pre_open, weak sd_pre_pct
   B   bluffs more at showdown (+) / value-heavy (-)       sd_bluff, weak sd_agg_hs
   L   calls light at showdown                             weak sd_call_hs
   CR  check-raises more than the population              check_raise
@@ -116,22 +116,22 @@ ADAPT_PARAMS = {
 # BalancedBot does in self-play (variants a and c, see the tests); the extremes are
 # where an archetype sits (score -1 / +1).
 STATS = {
-    "vpip": (0.70, 0.20, 1.00),
-    "pfr": (0.45, 0.05, 0.95),
+    "vpip": (0.88, 0.30, 1.00),
+    "pfr": (0.49, 0.05, 0.95),
     "pre_open": (0.80, 0.20, 1.00),
-    "pre_reraise": (0.20, 0.00, 0.90),
-    "pre_fold": (0.40, 0.00, 0.85),
-    "fold_bet": (0.40, 0.00, 0.80),
-    "fold_small": (0.35, 0.00, 0.80),
-    "fold_big": (0.45, 0.00, 0.85),
-    "agg": (0.55, 0.10, 0.95),
-    "stab": (0.30, 0.00, 0.80),
-    "raise_bet": (0.10, 0.00, 0.60),
+    "pre_reraise": (0.12, 0.00, 0.80),
+    "pre_fold": (0.06, -0.10, 0.60),   # balanced defends ~94% vs an open; lo is out of reach
+    "fold_bet": (0.41, 0.00, 0.80),
+    "fold_small": (0.30, 0.00, 0.75),
+    "fold_big": (0.52, 0.00, 0.90),
+    "agg": (0.65, 0.10, 0.85),
+    "stab": (0.35, 0.00, 0.75),
+    "raise_bet": (0.10, 0.00, 0.40),
     "check_raise": (0.08, 0.00, 0.40),
-    "sd_bluff": (0.10, 0.00, 0.50),
-    "sd_agg_hs": (0.80, 0.95, 0.50),   # value-heaviness: low hs = weak (score +1 at 0.5)
-    "sd_call_hs": (0.75, 0.90, 0.50),
-    "sd_pre_pct": (0.62, 0.80, 0.50),
+    "sd_bluff": (0.12, 0.00, 0.50),
+    "sd_agg_hs": (0.78, 0.95, 0.50),   # value-heaviness: low hs = weak (score +1 at 0.5)
+    "sd_call_hs": (0.76, 0.90, 0.50),
+    "sd_pre_pct": (0.67, 0.85, 0.50),
 }
 SHOWDOWN_STATS = ("sd_bluff", "sd_agg_hs", "sd_call_hs", "sd_pre_pct")
 
@@ -142,7 +142,7 @@ DIMENSIONS = {
     "FB": [("fold_big", 1.0)],
     "PF": [("pre_fold", 1.0)],
     "A": [("agg", 1.0), ("stab", 1.0), ("raise_bet", 1.0)],
-    "PA": [("pre_open", 1.0), ("pre_reraise", 1.0), ("pfr", 0.5), ("sd_pre_pct", 0.5)],
+    "PA": [("pre_reraise", 1.0), ("pfr", 0.5), ("pre_open", 0.3), ("sd_pre_pct", 0.5)],
     "B": [("sd_bluff", 1.0), ("sd_agg_hs", 0.5)],
     "L": [("sd_call_hs", 1.0)],
     "CR": [("check_raise", 1.0)],
@@ -447,7 +447,7 @@ class AdaptiveBot(BalancedBot):
 
     def opponent_range(self, obs):
         f_pre, keep, mix = super().opponent_range(obs)
-        if obs.street >= 0 and (self.floors["pre_open"] > 0 or self.floors["pre_reraise"] > 0):
+        if self.floors["pre_open"] > 0 or self.floors["pre_reraise"] > 0:
             opp = 1 - obs.position
             bb = self.spec.big_blind
             pips = [self.spec.small_blind, bb]
