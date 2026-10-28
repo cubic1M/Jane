@@ -1,7 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, headlineOf, weakest } from "./helpers";
+import { evidence, weakest } from "./helpers";
 
 // Cash sitting inside investment accounts (spec: the investing leak): the "Cash & Cash
 // Investments" a brokerage holds beside the funds, which earns little while it waits. Checking
@@ -36,8 +36,9 @@ const investedCash: Detector = {
       id: suggestionId("investing", "invested_cash"),
       capability: "investing",
       topic: "invested_cash",
-      title: "Put the cash waiting in your investment accounts to work",
-      headline: headlineOf("Put your waiting cash to work", earns, "earns"),
+      // A fact: what the cash earns against what a money market fund pays, no instruction to move it.
+      title: "Cash waiting in your investment accounts earns little",
+      headline: `Check waiting cash: ${formatWholeDollars(earns)} a year more elsewhere`,
       short: `${formatCents(total)} is cash inside your investment accounts.`,
       worthCents: earns,
       worthKind: "earns",
@@ -46,7 +47,7 @@ const investedCash: Detector = {
         { percent: 75, reason: "what your broker pays on this cash isn't known" },
       ]),
       urgency: "later",
-      why: `${formatCents(total)} sits as cash inside your investment accounts. After keeping ${formatCents(R.investedCashBufferCents)} for trades, ${formatCents(excess)} could earn about ${formatCents(earns)} more a year in a money market fund or Treasury bills than most brokers pay on a sweep.`,
+      why: `${formatCents(total)} sits as cash inside your investment accounts. After keeping ${formatCents(R.investedCashBufferCents)} for trades, ${formatCents(excess)} would earn about ${formatCents(earns)} a year more in a money market fund or Treasury bills than most brokers pay on a sweep.`,
       action: { label: "See where it sits", href: "/investments" },
       watch: { kind: "cash_invested", beforeCents: total, excessCents: excess, yearlyCents: earns },
     };

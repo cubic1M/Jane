@@ -1,6 +1,6 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { FUND_FACTS, FUND_NAMES, LOWER_COST_EQUIVALENTS } from "@/config/funds";
-import { formatCents } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 import { olderPlans } from "@/planning/rollover";
 import { type Detector, suggestionId } from "./contract";
 import {
@@ -53,8 +53,10 @@ const feeDrag: Detector = {
       id: suggestionId("investing", "investment_fees"),
       capability: "investing",
       topic: "investment_fees",
-      title: "Switch to cheaper funds that do the same job",
-      headline: headlineOf("Switch to cheaper funds", total, "saves"),
+      // A fact, so a real account sees it too: what the funds cost against similar ones, with no
+      // instruction to buy, sell or switch (that belongs to demo advice).
+      title: "Your funds cost more than similar funds that do the same job",
+      headline: `Check fund costs: ${formatWholeDollars(total)} a year more than similar funds`,
       short: clip(
         `${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}) costs more than a similar fund.`,
       ),
@@ -68,7 +70,7 @@ const feeDrag: Detector = {
         ),
       ]),
       urgency: "later",
-      why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); switching all of them would save about ${formatCents(total)} a year in fees.`,
+      why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); together they cost about ${formatCents(total)} a year more than similar funds do.`,
       action: { label: "See the fees", href: "/investments/fees" },
       // Later holdings show the costly funds gone (the verified savings record).
       watch: {

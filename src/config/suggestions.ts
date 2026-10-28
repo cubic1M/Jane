@@ -150,6 +150,18 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "health_insurance",
   "education_529",
   "employer_match",
+  // Investing moves (the investing brief, 2026-10-28): to switch, roll over, rebalance, place or
+  // start something is a recommendation, demo advice only. What the funds cost and what cash
+  // earns (investment_fees, invested_cash), what an annuity costs (costly_products) and who is
+  // named on an account (beneficiaries) are facts and stay for everyone.
+  "old_accounts",
+  "asset_location",
+  "plan_menu",
+  "rebalance",
+  "auto_invest",
+  "short_term_cash",
+  "sudden_money",
+  "values_funds",
   // Tax moves (taxes QA, 2026-10-22): the chat already holds these back from real accounts
   // (src/lib/tax-decisions.ts), so the cards do too. Deadlines, penalties, records and what the
   // law requires (file, Marketplace income, HSA excess, receipts) stay facts for everyone.

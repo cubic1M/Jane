@@ -230,6 +230,8 @@ export type InvestingTreeInput = {
   }[];
   accounts: { id: string; name: string; balanceCents: number | null; holdings: number }[];
   totalCents: number;
+  // Investing apps money went to whose balance Jane still has to ask for.
+  toAnswer?: number;
   byType: number;
   cryptoCents: number;
   profile: { complete: boolean; label: string | null };
@@ -438,7 +440,9 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
         ? `${urgent} urgent · ${look} to look at`
         : look > 0
           ? `${look} to look at`
-          : input.accounts.length > 0
+          : (input.toAnswer ?? 0) > 0
+            ? `${input.toAnswer} to answer`
+            : input.accounts.length > 0
             ? `${shortMoney(input.totalCents)} invested`
             : "All good",
     branches: branches.map((b) => ({ id: b.id, label: INVESTING_BRANCHES[b.id], items: b.items })),
