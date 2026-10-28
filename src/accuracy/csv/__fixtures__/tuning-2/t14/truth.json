@@ -44,12 +44,17 @@
     },
     {
       "type": "subscription_review",
+      "about": "SQ *CORE YOGA STUDIO, paused a month",
+      "perYear": 1188
+    },
+    {
+      "type": "subscription_review",
       "about": "BARKBOX every 28 days",
       "perYear": 456.25
     },
     {
       "type": "idle_cash",
-      "about": "cash 1021919, excess 284429",
+      "about": "cash 1021919, excess 259489",
       "perYear": null
     }
   ],
@@ -94,23 +99,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -489.24
+      "dollars": -588.24
     },
     {
       "date": "2026-07-31",
-      "dollars": 1634.3
+      "dollars": 1535.3
     },
     {
       "date": "2026-08-31",
-      "dollars": 2413.74
+      "dollars": 2215.74
     },
     {
       "date": "2026-09-30",
-      "dollars": 3092.59
+      "dollars": 2795.59
     },
     {
       "date": "2026-10-24",
-      "dollars": 4769.76
+      "dollars": 4373.76
     }
   ]
 }

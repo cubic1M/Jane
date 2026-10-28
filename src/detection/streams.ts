@@ -25,6 +25,9 @@ import {
   FOUR_WEEKLY_GAP_DAYS,
   FOUR_WEEKLY_MIN_GAPS,
   SHORT_RUN_FREQUENCIES,
+  PAUSE_GAP_MULTIPLE,
+  PAUSE_MAX_SKIPPED,
+  PAUSE_MIN_REGULAR_GAPS,
   FIXED_PRICE_SUBSCRIPTION_MAX_STEP,
   SUBSCRIPTION_BOX_MERCHANTS,
   PLAN_DESCRIPTION_WORDS,
@@ -155,6 +158,21 @@ export function fromPlaidStream(
 function frequencyOf(gaps: number[]): Frequency | null {
   for (const [frequency, [min, max]] of Object.entries(FALLBACK_INTERVAL_DAYS)) {
     if (gaps.every((gap) => gap >= min && gap <= max)) return frequency as Frequency;
+  }
+  // Or with a beat skipped (PAUSE_*): a gap of about two intervals among regular ones.
+  for (const [frequency, [min, max]] of Object.entries(FALLBACK_INTERVAL_DAYS)) {
+    const regular = gaps.filter((gap) => gap >= min && gap <= max).length;
+    const skipped = gaps.filter(
+      (gap) => gap >= PAUSE_GAP_MULTIPLE * min && gap <= PAUSE_GAP_MULTIPLE * max,
+    ).length;
+    if (
+      skipped > 0 &&
+      skipped <= PAUSE_MAX_SKIPPED &&
+      regular >= PAUSE_MIN_REGULAR_GAPS &&
+      regular + skipped === gaps.length
+    ) {
+      return frequency as Frequency;
+    }
   }
   return null;
 }

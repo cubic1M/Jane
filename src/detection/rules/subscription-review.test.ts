@@ -180,6 +180,24 @@ describe("subscription_review", () => {
     },
   );
 
+  // CSV bench, second tuning set: a plan paused for a month and picked up again.
+  it("finds a plan that skipped one month", () => {
+    const yoga = {
+      description: "SQ *CORE YOGA STUDIO",
+      pfcPrimary: "PERSONAL_CARE",
+      pfcDetailed: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
+    };
+    const transactions = [5, 4, 2, 1, 0].map((m) =>
+      tx({ ...yoga, date: monthsAgo(m, 8), amountCents: 9900 }),
+    );
+    expect(run(input({ transactions }))).toHaveLength(1);
+    // Two skipped months are a plan that stopped and started again, not a pause.
+    const twice = [5, 3, 1, 0].map((m) =>
+      tx({ ...yoga, date: monthsAgo(m, 8), amountCents: 9900 }),
+    );
+    expect(run(input({ transactions: twice }))).toEqual([]);
+  });
+
   it("never calls a payment on a debt a subscription, whatever its name", () => {
     const transactions = monthly(4, 25_000, {
       description: "APPLE CARD PAYMENT",

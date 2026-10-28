@@ -378,6 +378,9 @@ type Pool = {
   // every four weeks (13 a year, not 12), a water bill or insurance every quarter. A plan is a
   // subscription; the rest are bills. Only some pools have them.
   cadences?: (Merchant & { everyDays: number; plan: boolean })[];
+  // A plan paused for a month and picked up again (a gym's freeze, a box skipped): still a
+  // subscription (round 18). Only some pools have them.
+  paused?: Sub[];
   // Same-price pairs on one day that aren't double charges: a service paid per person (two kids'
   // haircuts, two copays), and two orders from one shop with their own order numbers (round 14).
   // Only some pools have them; the rows come from their own dice.
@@ -1096,6 +1099,20 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  paused: [
+    {
+      descriptor: "SQ *CORE YOGA STUDIO",
+      category: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
+      cents: 9900,
+    },
+    { descriptor: "PAYPAL *CRUNCHYROLL", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 799 },
+    {
+      descriptor: "QZ STUDIO PASS",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      cents: 2500,
+      alsoOk: DIGITAL,
+    },
+  ],
   cadences: [
     {
       descriptor: "HELLOFRESH 646-846-3663",
@@ -2334,6 +2351,27 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     if (m.category.startsWith("LOAN") || m.category.endsWith("INSURANCE"))
       L.bill(rows, m.descriptor);
     else L.neutralBills.push(rows);
+  }
+
+  // A plan paused for one month in the middle (round 18), from its own dice.
+  const pz = rng(base + index * 104_729 + 33);
+  if (P.paused && months >= 4 && pz.chance(0.5)) {
+    const sub = pz.pick(P.paused);
+    const day = pz.int(2, 27);
+    const skip = pz.int(1, months - 3);
+    const rows: string[] = [];
+    L.monthly(day, (date, i) => {
+      if (i === skip) return;
+      const row = L.add(spend(card.id, date, sub.cents, sub));
+      if (row) rows.push(row.id);
+    });
+    L.findings.push({
+      type: "subscription_review",
+      rows,
+      annualCents: sub.cents * 12,
+      note: `${sub.descriptor}, paused a month`,
+    });
+    L.bill(rows, sub.descriptor);
   }
 
   // Charges on another cadence (round 16), from their own dice: one or two per person.

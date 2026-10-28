@@ -49,6 +49,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "PAYPAL *CRUNCHYROLL, paused a month",
+      "perYear": 95.88
+    },
+    {
+      "type": "subscription_review",
       "about": "SQ *ORANGETHEORY 4WK every 28 days",
       "perYear": 769.11
     },
@@ -96,31 +101,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": -326.58
+      "dollars": -334.57
     },
     {
       "date": "2026-05-31",
-      "dollars": 1242.53
+      "dollars": 1226.55
     },
     {
       "date": "2026-06-30",
-      "dollars": 820.26
+      "dollars": 804.28
     },
     {
       "date": "2026-07-31",
-      "dollars": 963.92
+      "dollars": 939.95
     },
     {
       "date": "2026-08-31",
-      "dollars": 459.67
+      "dollars": 427.71
     },
     {
       "date": "2026-09-30",
-      "dollars": 116.04
+      "dollars": 76.09
     },
     {
       "date": "2026-10-24",
-      "dollars": -331.78
+      "dollars": -371.73
     }
   ]
 }
