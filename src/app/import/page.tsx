@@ -94,8 +94,8 @@ async function ImportContent() {
         />
         <p className="text-xs text-zinc-500">
           Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi,
-          American Express, Discover, Apple Card, U.S. Bank, Ally and Schwab. For any other CSV you
-          pick which column is which.
+          American Express, Discover, Apple Card, U.S. Bank, Ally and Schwab, and Venmo and PayPal
+          statements. For any other CSV you pick which column is which.
         </p>
       </section>
 

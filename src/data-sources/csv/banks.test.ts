@@ -257,3 +257,59 @@ describe("Schwab Bank checking", () => {
     expect(older.ok && older.transactions.map((t) => t.amountCents)).toEqual([1549]);
   });
 });
+
+describe("Venmo", () => {
+  const result = read("venmo.csv");
+
+  it("finds the header under the title, reads signed amounts and names who and what", () => {
+    expect(result.format.id).toBe("venmo");
+    // The balance lines and the disclaimer go quietly; the pending charge waits.
+    expect(result.skipped).toEqual([]);
+    expect(result.transactions.map((t) => [t.date, t.amountCents, t.description])).toEqual([
+      ["2026-09-03", 3250, "Alex Kim: Dinner 🍕"],
+      ["2026-09-05", 120000, "Oak Ridge Apts: September rent"],
+      ["2026-09-12", -4500, "Jordan Lee: Concert tickets"],
+      ["2026-09-20", 5000, "Transfer to bank"],
+    ]);
+  });
+
+  it("reads the newer layout (Transaction ID, Date)", () => {
+    const newer = readCsvFile({
+      name: "venmo-newer.csv",
+      text: "Transaction ID,Date,Time (UTC),Type,Status,Note,From,Donor email,To,Amount (total)\n9001,2026-10-02,18:00:00,Payment,Complete,Groceries,Sam Example,,Alex Kim,- $18.25\n",
+    });
+    expect(newer.ok && newer.transactions.map((t) => [t.date, t.amountCents])).toEqual([
+      ["2026-10-02", 1825],
+    ]);
+  });
+});
+
+describe("PayPal", () => {
+  const result = read("paypal.csv");
+
+  it("keeps payments from the PayPal balance and leaves out what a card paid for", () => {
+    expect(result.format.id).toBe("paypal");
+    expect(result.transactions.map((t) => [t.date, t.amountCents, t.description])).toEqual([
+      ["2026-09-02", 1199, "Spotify USA"],
+      ["2026-09-15", -2500, "Jamie Rivera"],
+      ["2026-09-28", 6301, "Transfer to bank"],
+    ]);
+    // The card deposit and the Etsy payment it paid for; the euro payment. Pending: quietly.
+    expect(result.skipped.map((s) => s.reason)).toEqual([
+      "In EUR, not US dollars",
+      "Paid by card or bank: that statement has it",
+      "Paid by card or bank: that statement has it",
+    ]);
+    expect(result.balances).toContainEqual({ date: "2026-09-28", balanceCents: 0 });
+  });
+
+  it("keeps a bank deposit into PayPal that paid for nothing that day", () => {
+    const topUp = readCsvFile({
+      name: "paypal-topup.csv",
+      text: '"Date","Time","TimeZone","Name","Type","Status","Currency","Gross","Fee","Net"\n"09/01/2026","09:00:00","PDT","","Bank Deposit to PP Account","Completed","USD","100.00","0.00","100.00"\n',
+    });
+    expect(topUp.ok && topUp.transactions.map((t) => [t.amountCents, t.description])).toEqual([
+      [-10000, "Transfer from bank"],
+    ]);
+  });
+});
