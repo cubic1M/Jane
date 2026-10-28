@@ -42,6 +42,12 @@ export const CHARGES_PER_YEAR = {
 } as const;
 
 export type Frequency = keyof typeof CHARGES_PER_YEAR;
+// A plan billed every four weeks to the day ("SQ *ORANGETHEORY 4WK") reads as monthly but comes 13
+// times a year: every gap exactly this many days, at least this many gaps (a monthly charge's
+// gaps are 28 only into March). CSV bench, second tuning set: the yearly cost was 8% low.
+export const FOUR_WEEKLY_GAP_DAYS = 28;
+export const FOUR_WEEKLY_MIN_GAPS = 2;
+export const FOUR_WEEKLY_CHARGES_PER_YEAR = 13;
 
 // Fallback detection, used when we have no Plaid recurring streams: 3+ charges at the same
 // merchant, amounts within 10% of each other, every gap inside one of these day ranges.
@@ -71,6 +77,10 @@ export const FALLBACK_INTERVAL_DAYS: Readonly<
 // categories and SUBSCRIPTION_MERCHANTS (accuracy bench: a two-month history had none of its rent,
 // phone, power or subscriptions found). Such a run is low confidence.
 export const SHORT_RUN_MIN_CHARGES = 2;
+// ...and only at these gaps: a month, or a quarter (a water bill or insurance paid every three
+// months, seen twice in a short history; CSV bench, second tuning set). A week apart is a second
+// purchase.
+export const SHORT_RUN_FREQUENCIES: readonly Frequency[] = ["MONTHLY", "QUARTERLY"];
 export const SHORT_RUN_CATEGORIES: readonly PfcDetailed[] = [
   "RENT_AND_UTILITIES_RENT",
   "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
@@ -634,6 +644,35 @@ export const NOT_BILL_CATEGORIES: readonly string[] = [
 // "Coming up" leaves it out (accuracy bench: weekly fixed-price coffee was listed as coming up).
 export const NOT_BILL_HABIT_PRIMARIES: readonly string[] = ["FOOD_AND_DRINK"];
 export const NOT_BILL_HABIT_FREQUENCIES: readonly Frequency[] = ["WEEKLY", "BIWEEKLY"];
+// Boxes sold by subscription, whatever their category: a meal kit every week is a plan to review
+// and a bill coming up, not a food habit (CSV bench, second tuning set: HelloFresh and Factor
+// every week were missed). Whole words of the merchant name, lower case. Never a yearly plan from
+// one order, so not SUBSCRIPTION_MERCHANTS.
+export const SUBSCRIPTION_BOX_MERCHANTS: readonly string[] = [
+  "hellofresh",
+  "hello fresh",
+  "factor75",
+  "blue apron",
+  "home chef",
+  "green chef",
+  "everyplate",
+  "sunbasket",
+  "marley spoon",
+  "dinnerly",
+  "gobble",
+  "freshly",
+  "daily harvest",
+  "purple carrot",
+  "butcherbox",
+  "barkbox",
+  "ipsy",
+  "birchbox",
+  "fabfitfun",
+  "dollar shave club",
+  "stitch fix",
+  "misfits market",
+  "imperfect foods",
+];
 export const CARD_PAYMENT_NAME = "Credit card payment";
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the

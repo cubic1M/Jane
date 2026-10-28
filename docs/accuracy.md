@@ -270,6 +270,13 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
 - **Software and radio under the names statements use** (round 15, second tuning set). Intuit (QuickBooks), Autodesk and other business software by the month, tax software and preparers (TurboTax, H&R Block) as accounting, SiriusXM written with a space, and Capital One's checking paying a Bank of America card. Second tuning set category right 98.6% → 99.4%; what's left is rent paid by cheque (a cheque could be anything) and an insurer known only by "premium". Held-out sets unchanged.
 
+- **Plans and bills on other cadences** (round 16, second tuning set). The second tuning set now has charges that aren't monthly: a meal kit every week (HelloFresh, Factor), a plan every four weeks (a gym, BarkBox), and a water bill and insurance every quarter. As first scored: subscriptions recall 90.8%, "Coming up" recall 94.1%, $/yr found $52,583 of $90,835. Three fixes:
+  - a plan billed every four weeks to the day counts 13 times a year, not 12 (`FOUR_WEEKLY_*`)
+  - a box sold by subscription (`SUBSCRIPTION_BOX_MERCHANTS`: meal kits, BarkBox, Ipsy and so on) is a subscription whatever its category, and never a weekly food habit in "Coming up". It's matched on the charges' words too, since the merchant name drops "FACTOR75". It's kept out of `SUBSCRIPTION_MERCHANTS`, so one order is never read as a yearly plan
+  - two charges a quarter apart in a bill's category are a run (`SHORT_RUN_FREQUENCIES`)
+
+  After: subscriptions recall 99.1%, "Coming up" 98.7%, $/yr found $92,413 of $90,835. Held-out sets and the sample bench are unchanged.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -325,31 +332,31 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Second tuning set (20 people, 122 files, 5550 transactions):
+Second tuning set (20 people, 117 files, 5863 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 122 of 122 (118 exactly) |
+| Files read | 117 of 117 (113 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 99.4% (35 left for Claude) |
+| Category right (rules only) | 99.2% (49 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $42,563, truth $40,848; error on the ones found 0.0% |
+| Findings, $/yr | Jane $92,413, truth $90,835; error on the ones found 0.2% |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 9 of 20 people (off by $129,844 in all) |
-| Net worth line: month-ends drawn | 96.4% (error where drawn 47.8%) |
+| Net worth today right | 9 of 20 people (off by $135,869 in all) |
+| Net worth line: month-ends drawn | 96.4% (error where drawn 49.8%) |
 | Net worth line, people whose every balance Jane knows | 9 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 97.6% | 98.8% | 82 | 2 | 1 |
+| subscription_review | 98.2% | 99.1% | 108 | 2 | 1 |
 | price_increase | 100.0% | 75.0% | 3 | 0 | 1 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 21 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 44.0% | 100.0% | 11 | 14 | 0 |
 | idle_cash | 100.0% | 50.0% | 3 | 0 | 3 |
-| bills coming up (31 days) | 100.0% | 99.5% | 208 | 0 | 1 |
+| bills coming up (31 days) | 100.0% | 98.7% | 236 | 0 | 3 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 1.
 
@@ -358,10 +365,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 20 | 58% | 80% |
-| 60–69% | 34 | 64% | 91% |
+| 50–59% | 21 | 58% | 81% |
+| 60–69% | 36 | 64% | 92% |
 | 70–79% | 4 | 77% | 100% |
-| 80–89% | 1 | 83% | 100% |
+| 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
 Held-out set (20 people, 135 files, 5393 transactions):

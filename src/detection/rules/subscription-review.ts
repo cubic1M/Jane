@@ -16,7 +16,7 @@ import {
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { inList, lowest, merchantMatches } from "../helpers";
-import { saysPlan, type Stream } from "../streams";
+import { isSubscriptionBox, saysPlan, type Stream } from "../streams";
 import { streamEvidence, type Rule } from "./rule";
 
 function isRecurringCost(stream: Stream): boolean {
@@ -84,6 +84,7 @@ function isKnownSubscription(stream: Stream): boolean {
       inList(stream.pfcDetailed, SUBSCRIPTION_CATEGORIES) ||
       merchantMatches(stream.merchantKey, SUBSCRIPTION_MERCHANTS) ||
       merchantMatches(stream.merchantKey, BILLING_PLATFORM_MERCHANTS) ||
+      isSubscriptionBox(stream) ||
       stream.charges.some((c) => saysPlan(c.description)))
   );
 }

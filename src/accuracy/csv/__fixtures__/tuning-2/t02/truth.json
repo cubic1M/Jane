@@ -65,6 +65,16 @@
     },
     {
       "type": "subscription_review",
+      "about": "FACTOR75 MEALS every 7 days",
+      "perYear": 4692.34
+    },
+    {
+      "type": "subscription_review",
+      "about": "BARKBOX every 28 days",
+      "perYear": 456.25
+    },
+    {
+      "type": "subscription_review",
       "about": "GOOGLE *GOOGLE ONE plan 1",
       "perYear": 35.88
     },
@@ -111,23 +121,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 877.5
+      "dollars": 392.55
     },
     {
       "date": "2026-07-31",
-      "dollars": 1226.81
+      "dollars": 346.9
     },
     {
       "date": "2026-08-31",
-      "dollars": 1945.79
+      "dollars": 670.92
     },
     {
       "date": "2026-09-30",
-      "dollars": 3058.76
+      "dollars": 1298.94
     },
     {
       "date": "2026-10-24",
-      "dollars": 4203.22
+      "dollars": 2138.43
     }
   ]
 }

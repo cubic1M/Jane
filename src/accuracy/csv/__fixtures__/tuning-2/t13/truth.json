@@ -56,6 +56,11 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 706.53
+    },
+    {
+      "type": "subscription_review",
+      "about": "BARKBOX every 28 days",
+      "perYear": 456.25
     }
   ],
   "notFindings": [
@@ -83,19 +88,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 1801.19
+      "dollars": 1766.19
     },
     {
       "date": "2026-08-31",
-      "dollars": 1496.92
+      "dollars": 1426.92
     },
     {
       "date": "2026-09-30",
-      "dollars": 1628.17
+      "dollars": 1523.17
     },
     {
       "date": "2026-10-24",
-      "dollars": -111.74
+      "dollars": -251.74
     }
   ]
 }

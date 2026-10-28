@@ -49,6 +49,16 @@
     },
     {
       "type": "subscription_review",
+      "about": "BARKBOX every 28 days",
+      "perYear": 456.25
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *ORANGETHEORY 4WK every 28 days",
+      "perYear": 769.11
+    },
+    {
+      "type": "subscription_review",
       "about": "NINTENDO *SWITCH ONLINE, one of two",
       "perYear": 47.88
     },
@@ -59,7 +69,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4920148, excess 4314104",
+      "about": "cash 4920148, excess 4284504",
       "perYear": null
     }
   ],
@@ -96,23 +106,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 25669.94
+      "dollars": 25575.94
     },
     {
       "date": "2026-07-31",
-      "dollars": 30067.88
+      "dollars": 29879.88
     },
     {
       "date": "2026-08-31",
-      "dollars": 34736.93
+      "dollars": 34454.93
     },
     {
       "date": "2026-09-30",
-      "dollars": 39471.51
+      "dollars": 39095.51
     },
     {
       "date": "2026-10-24",
-      "dollars": 44100.4
+      "dollars": 43630.4
     }
   ]
 }

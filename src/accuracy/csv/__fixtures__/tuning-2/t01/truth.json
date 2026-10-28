@@ -36,6 +36,11 @@
       "type": "bank_fees",
       "about": "card fees",
       "perYear": 12.75
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *ORANGETHEORY 4WK every 28 days",
+      "perYear": 769.11
     }
   ],
   "notFindings": [
@@ -67,19 +72,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": 5112.16
+      "dollars": 5053.16
     },
     {
       "date": "2026-08-31",
-      "dollars": 5816.79
+      "dollars": 5698.79
     },
     {
       "date": "2026-09-30",
-      "dollars": 6303.13
+      "dollars": 6126.13
     },
     {
       "date": "2026-10-24",
-      "dollars": 6910.75
+      "dollars": 6674.75
     }
   ]
 }

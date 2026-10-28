@@ -52,6 +52,11 @@
       "type": "card_interest",
       "about": "card interest",
       "perYear": 574.69
+    },
+    {
+      "type": "subscription_review",
+      "about": "FACTOR75 MEALS every 7 days",
+      "perYear": 4692.34
     }
   ],
   "notFindings": [
@@ -79,31 +84,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 7196.91
+      "dollars": 6836.95
     },
     {
       "date": "2026-05-31",
-      "dollars": 6974.31
+      "dollars": 6164.4
     },
     {
       "date": "2026-06-30",
-      "dollars": 7137.22
+      "dollars": 5967.35
     },
     {
       "date": "2026-07-31",
-      "dollars": 8876.89
+      "dollars": 7257.07
     },
     {
       "date": "2026-08-31",
-      "dollars": 8553.42
+      "dollars": 6573.64
     },
     {
       "date": "2026-09-30",
-      "dollars": 8203.73
+      "dollars": 5863.99
     },
     {
       "date": "2026-10-24",
-      "dollars": 7670.94
+      "dollars": 4971.24
     }
   ]
 }

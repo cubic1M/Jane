@@ -47,6 +47,11 @@
       "type": "bank_fees",
       "about": "checking fees",
       "perYear": 120
+    },
+    {
+      "type": "subscription_review",
+      "about": "HELLOFRESH 646-846-3663 every 7 days",
+      "perYear": 3910.19
     }
   ],
   "notFindings": [
@@ -74,27 +79,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1458.16
+      "dollars": 1037.06
     },
     {
       "date": "2026-06-30",
-      "dollars": 789.55
+      "dollars": -6.5
     },
     {
       "date": "2026-07-31",
-      "dollars": -260.35
+      "dollars": -1356.36
     },
     {
       "date": "2026-08-31",
-      "dollars": -1633.67
+      "dollars": -3216.76
     },
     {
       "date": "2026-09-30",
-      "dollars": -3590.18
+      "dollars": -5473.23
     },
     {
       "date": "2026-10-24",
-      "dollars": -4499.25
+      "dollars": -6607.27
     }
   ]
 }

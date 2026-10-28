@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AS_OF,
   GEICO,
   GROCERIES,
   NETFLIX,
@@ -10,6 +11,7 @@ import {
   tx,
 } from "../__fixtures__/build";
 import { buildStreams } from "../streams";
+import { addDays } from "../units";
 import type { DetectionInput } from "../types";
 import { isAmbiguousRecurring, subscriptionReview } from "./subscription-review";
 
@@ -145,6 +147,38 @@ describe("subscription_review", () => {
       [],
     );
   });
+
+  // CSV bench, second tuning set: plans on other cadences.
+  it("counts a plan billed every four weeks 13 times a year", () => {
+    const transactions = [0, 1, 2, 3].map((i) =>
+      tx({
+        description: "SQ *ORANGETHEORY 4WK",
+        pfcPrimary: "PERSONAL_CARE",
+        pfcDetailed: "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS",
+        date: addDays(AS_OF, -28 * (3 - i) - 2),
+        amountCents: 5900,
+      }),
+    );
+    expect(run(input({ transactions }))).toEqual([
+      expect.objectContaining({ annualSavingsCents: 5900 * 13 }),
+    ]);
+  });
+
+  it.each(["HELLOFRESH 646-846-3663", "FACTOR75 MEALS"])(
+    "finds %s every week, though it's filed as food",
+    (description) => {
+      const transactions = [0, 1, 2, 3, 4, 5].map((i) =>
+        tx({
+          description,
+          pfcPrimary: "FOOD_AND_DRINK",
+          pfcDetailed: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+          date: addDays(AS_OF, -7 * (5 - i) - 1),
+          amountCents: 7499,
+        }),
+      );
+      expect(run(input({ transactions }))).toHaveLength(1);
+    },
+  );
 
   it("never calls a payment on a debt a subscription, whatever its name", () => {
     const transactions = monthly(4, 25_000, {
