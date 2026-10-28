@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from experiments.common import ROOT, load_results, match_wins, pair_units
-from experiments.stats import fmt_ci, mean_ci
+from experiments.stats import fmt_ci, mean_ci, t95
 
 OUT = ROOT / "report" / "tables.md"
 
@@ -60,16 +60,34 @@ def roundrobin_tables(exp="roundrobin", cands=None, dummies=None) -> str:
                     l_tot += l
             # mean over opponents of per-pair units (each opponent equally weighted)
             if cand_means:
-                k = min(len(x) for x in cand_means)
-                per_seed = np.mean([x[:k] for x in cand_means], axis=0)
-                m, h, _ = mean_ci(per_seed)
-                summary.setdefault(v, {})[a] = (m, h)
-                avg = fmt_ci(m, h)
+                # equal weight per opponent; CI from the per-opponent standard errors
+                ms, ses, ok = [], [], True
+                for x in cand_means:
+                    m_i, h_i, n_i = mean_ci(x)
+                    if n_i < 2:
+                        ok = False
+                        break
+                    ms.append(m_i)
+                    ses.append(h_i / t95(n_i - 1))
+                if ok:
+                    m = float(np.mean(ms))
+                    h = 1.96 * float(np.sqrt(np.sum(np.square(ses)))) / len(ms)
+                    summary.setdefault(v, {})[a] = (m, h)
+                    avg = fmt_ci(m, h)
+                else:
+                    avg = "(too few pairs)"
             else:
                 avg = ""
             lines.append(f"| {a} | " + " | ".join(cells) + f" | {avg} | {w_tot}-{l_tot} |")
     head = ["Cells: bb/hand for the row bot, mean ± 95% CI over duplicate pairs "
             "(n = pairs; each pair = 2 matches with seats swapped). **Bold** = CI excludes 0."]
+    strong = [c for c in cands if c != "equity"]
+    for title, opp_set in (("vs the strong field (other candidates, excluding the naive equity bot)", strong),
+                           ("vs the whole field (all other candidates + the four dummies, equal weight)", cands + dummies)):
+        tab = field_summary(exp, cands, opp_set)
+        if tab:
+            head.append(f"\n#### Summary: mean bb/hand {title}\n")
+            head.append(tab)
     if summary:
         head.append("\n#### Summary: mean bb/hand vs the other candidates\n")
         vs = list(summary)
@@ -80,6 +98,43 @@ def roundrobin_tables(exp="roundrobin", cands=None, dummies=None) -> str:
             row = [fmt_ci(*summary[v][b]) if b in summary[v] else "" for v in vs]
             head.append(f"| {b} | " + " | ".join(row) + " |")
     return "\n".join(head + lines)
+
+
+def field_summary(exp, cands, opponents) -> str:
+    """Per variant and bot: equal-weight mean over the given opponents of the
+    per-opponent duplicate means; CI from per-opponent standard errors."""
+    from engine.variants import VARIANTS
+    rows = {c: [] for c in cands}
+    vs = []
+    for v in VARIANTS:
+        recs = load_results(exp, v)
+        if not recs:
+            continue
+        vs.append(v)
+        for a in cands:
+            ms, ses = [], []
+            for b in opponents:
+                if b == a:
+                    continue
+                m_i, h_i, n_i = mean_ci(pair_units(recs, a, b))
+                if n_i < 2:
+                    ms = None
+                    break
+                ms.append(m_i)
+                ses.append(h_i / t95(n_i - 1))
+            if ms:
+                m = float(np.mean(ms))
+                h = 1.96 * float(np.sqrt(np.sum(np.square(ses)))) / len(ms)
+                cell = fmt_ci(m, h)
+            else:
+                cell = "…"
+            rows[a].append(cell)
+    if not vs:
+        return ""
+    out = ["| bot | " + " | ".join(vs) + " |", "|---" * (len(vs) + 1) + "|"]
+    for a in cands:
+        out.append(f"| {a} | " + " | ".join(rows[a]) + " |")
+    return "\n".join(out)
 
 
 def robustness_table() -> str:
