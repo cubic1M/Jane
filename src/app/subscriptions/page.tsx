@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { EmptyState } from "@/components/empty-state";
 import { loadDetectionInput } from "@/detection/engine";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
 import { frequencyWords } from "@/lib/explain-input";
@@ -90,12 +91,17 @@ async function Subscriptions() {
       <section className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-xl font-semibold">Subscriptions</h2>
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            {formatCents(total(subscriptions))} a year
-          </span>
+          {subscriptions.length > 0 && (
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              {formatCents(total(subscriptions))} a year
+            </span>
+          )}
         </div>
         {subscriptions.length === 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400">No subscriptions found.</p>
+          <EmptyState
+            words="None found yet. Jane spots a subscription once it has charged you twice, so a few months of statements find the most."
+            next={{ href: "/import", label: "Add older statements" }}
+          />
         ) : (
           <Rows rows={subscriptions} cards={cards} />
         )}

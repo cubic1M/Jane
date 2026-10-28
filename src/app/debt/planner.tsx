@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatCents, parseMoneyToCents, centsToInput } from "@/lib/money";
+import { EmptyState } from "@/components/empty-state";
 import { PLANNER_COPY } from "@/planning/debt-copy";
 import {
   parseApr,
@@ -30,6 +31,7 @@ export function DebtPlanner({
   startYear,
   startMonth,
   maxCards,
+  unknown = [],
 }: {
   cards: {
     id: string;
@@ -44,6 +46,9 @@ export function DebtPlanner({
   // 0-based, like Date.getUTCMonth.
   startMonth: number;
   maxCards: number;
+  // Cards and loans Jane knows of but not what's owed on them (an uploaded card's statement says
+  // no balance): named, not "we didn't find credit cards".
+  unknown?: string[];
 }) {
   const [rows, setRows] = useState<Row[]>(() =>
     cards.length > 0
@@ -91,7 +96,13 @@ export function DebtPlanner({
 
   return (
     <div className="flex flex-col gap-6">
-      {cards.length === 0 && (
+      {cards.length === 0 && unknown.length > 0 && (
+        <EmptyState
+          words={PLANNER_COPY.balanceUnknown(unknown)}
+          next={{ href: "/import", label: "Add what you owe" }}
+        />
+      )}
+      {cards.length === 0 && unknown.length === 0 && (
         <p className="text-zinc-600 dark:text-zinc-400">{PLANNER_COPY.noCards}</p>
       )}
       <ul className="flex flex-col gap-4">
