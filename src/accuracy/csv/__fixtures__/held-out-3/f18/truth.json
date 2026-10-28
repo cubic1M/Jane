@@ -1,0 +1,101 @@
+{
+  "person": "f18",
+  "archetype": "saver",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Chase card",
+      "layout": "chase_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
+    },
+    {
+      "type": "price_increase",
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
+    },
+    {
+      "type": "subscription_review",
+      "about": "EXPRESSVPN",
+      "perYear": 155.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "WSJ DIGITAL",
+      "perYear": 155.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "BRITBOX trial",
+      "perYear": 7.99
+    },
+    {
+      "type": "subscription_review",
+      "about": "SAMS CLUB MEMBERSHIP yearly",
+      "perYear": 50
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* LITTLE SPOON dinner twice",
+      "perYear": 86.21
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 3525607, excess 2446488",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #2231, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SQ *MOXIE ROASTERS at one price"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE DONUT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMICA AUTO PREMIUM, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 21739.31
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 24785.77
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 27244.43
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 30556.33
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 33800.01
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "person": "f19",
+  "archetype": "salaried",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Bank of America checking",
+      "layout": "bofa_checking",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Bank of America card",
+      "layout": "bofa_credit_card",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "PATREON* MEMBERSHIP",
+      "perYear": 60
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUOLINGO PLUS",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "CRUNCH FITNESS",
+      "perYear": 299.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "RING BASIC PLAN",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM",
+      "perYear": 215.88
+    },
+    {
+      "type": "price_increase",
+      "about": "NETFLIX.COM 1549→1799",
+      "perYear": 30
+    },
+    {
+      "type": "subscription_review",
+      "about": "SIMPLISAFE INC",
+      "perYear": 335.88
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "MEIJER #221 twice",
+      "perYear": 129.75
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 6
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 7.9
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1634360, excess 607023",
+      "perYear": null
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "BIGGBY COFFEE #221 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "two lunches"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PYMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE DONUT, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-05-31",
+      "dollars": 3661.54
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": 4969.35
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 7158.41
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 9339.86
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 11247.92
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 13747.28
+    }
+  ]
+}

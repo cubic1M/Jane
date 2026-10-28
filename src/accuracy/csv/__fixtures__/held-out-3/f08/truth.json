@@ -1,0 +1,115 @@
+{
+  "person": "f08",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Credit union checking",
+      "layout": "custom",
+      "kind": "checking",
+      "typesBalance": true
+    },
+    {
+      "name": "Citi card",
+      "layout": "citi_credit_card",
+      "kind": "credit_card",
+      "typesBalance": false
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "EXPRESSVPN",
+      "perYear": 155.4
+    },
+    {
+      "type": "subscription_review",
+      "about": "RING BASIC PLAN",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUOLINGO PLUS",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "NOOM INC",
+      "perYear": 708
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "TST* LITTLE SPOON dinner twice",
+      "perYear": 91.47
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 634.35
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "SIMPLISAFE INC, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "NETFLIX.COM, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "MIDAS #2231, irregular"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #0412 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "BATH & BODY WORKS 0442 twice, refunded"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "pending copy of a posted charge"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUNRISE DONUT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "GRACE FELLOWSHIP, not a plan"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-04-30",
+      "dollars": -5048.79
+    },
+    {
+      "date": "2026-05-31",
+      "dollars": -3407.04
+    },
+    {
+      "date": "2026-06-30",
+      "dollars": -3701.59
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": -3655.86
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": -4253.79
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": -4353.84
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": -4674.18
+    }
+  ]
+}

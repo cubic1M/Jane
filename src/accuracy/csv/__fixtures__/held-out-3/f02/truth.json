@@ -1,0 +1,114 @@
+{
+  "person": "f02",
+  "archetype": "hourly",
+  "asOf": "2026-10-24",
+  "accounts": [
+    {
+      "name": "Chase checking",
+      "layout": "chase_checking",
+      "kind": "checking",
+      "typesBalance": false
+    },
+    {
+      "name": "American Express card",
+      "layout": "amex",
+      "kind": "credit_card",
+      "typesBalance": true
+    }
+  ],
+  "findings": [
+    {
+      "type": "subscription_review",
+      "about": "RING BASIC PLAN",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUOLINGO PLUS",
+      "perYear": 155.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "WSJ DIGITAL",
+      "perYear": 155.88
+    },
+    {
+      "type": "trial_conversion",
+      "about": "ACORN TV trial",
+      "perYear": 7.99
+    },
+    {
+      "type": "bank_fees",
+      "about": "checking fees",
+      "perYear": 7.2
+    },
+    {
+      "type": "bank_fees",
+      "about": "card fees",
+      "perYear": 232.75
+    },
+    {
+      "type": "card_interest",
+      "about": "card interest",
+      "perYear": 765.19
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    },
+    {
+      "type": "subscription_review",
+      "about": "PANDORA*PLUS, one of two",
+      "perYear": 59.88
+    }
+  ],
+  "notFindings": [
+    {
+      "type": "subscription_review",
+      "about": "XBOX GAME PASS, cancelled"
+    },
+    {
+      "type": "subscription_review",
+      "about": "DUTCH BROS #0412 at one price"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "OLLIES BARGAIN #112 twice, refunded"
+    },
+    {
+      "type": "subscription_review",
+      "about": "SUMMIT FCU LOAN PYMT, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "AMICA AUTO PREMIUM, not a plan"
+    },
+    {
+      "type": "duplicate_charge",
+      "about": "PANDORA*PLUS, two plans"
+    }
+  ],
+  "netWorthByMonthEnd": [
+    {
+      "date": "2026-06-30",
+      "dollars": 336.78
+    },
+    {
+      "date": "2026-07-31",
+      "dollars": 3001.09
+    },
+    {
+      "date": "2026-08-31",
+      "dollars": 3672.89
+    },
+    {
+      "date": "2026-09-30",
+      "dollars": 4417.46
+    },
+    {
+      "date": "2026-10-24",
+      "dollars": 5746.79
+    }
+  ]
+}
