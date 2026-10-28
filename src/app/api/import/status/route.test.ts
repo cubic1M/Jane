@@ -31,10 +31,18 @@ describe("GET /api/import/status", () => {
     expect(currentImportRun).toHaveBeenCalledWith("u1");
   });
 
-  it("is null when there's nothing to show, and refuses people who aren't signed in", async () => {
+  it("is null when there's nothing to show", async () => {
     vi.mocked(currentImportRun).mockResolvedValue(null);
     expect(await (await GET()).json()).toEqual({ run: null });
+  });
+
+  // The chip asks on signed-out pages too (/, /login, /goodbye): no error, nothing looked up.
+  it("is null, not a 401, for someone who isn't signed in", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(null);
-    expect((await GET()).status).toBe(401);
+    const response = await GET();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ run: null });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(currentImportRun).not.toHaveBeenCalled();
   });
 });

@@ -87,6 +87,19 @@ describe("renderDigest", () => {
     expect(text).toContain("- Trip: 40% (+$100.00 this week)\n- Car: 10%");
     expect(text).toContain("Net worth\n- $12,345.00, down $200.00 this week");
     expect(text).toContain(`See your net worth: ${LINKS.netWorth}`);
+    // What the figure leaves out for want of a balance is said beside it.
+    const partial = renderDigest(
+      {
+        ...payload,
+        netWorth: {
+          nowCents: 1_234_500,
+          changeCents: 0,
+          notCounting: "not counting card balance",
+        },
+      },
+      LINKS,
+    ).text;
+    expect(partial).toContain("- $12,345.00, no change this week (not counting card balance)");
 
     const plain = renderDigest(payload, LINKS).text;
     for (const heading of ["Budgets this month", "Your goals", "Net worth"]) {

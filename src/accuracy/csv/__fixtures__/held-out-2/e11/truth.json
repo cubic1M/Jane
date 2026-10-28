@@ -52,6 +52,11 @@
       "type": "subscription_review",
       "about": "SCRIBD plan 2",
       "perYear": 203.88
+    },
+    {
+      "type": "idle_cash",
+      "about": "cash 1572159, excess 488076",
+      "perYear": null
     }
   ],
   "notFindings": [
