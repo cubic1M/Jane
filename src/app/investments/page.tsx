@@ -442,6 +442,17 @@ async function InvestmentsContent({
         <BrokerageAsks user={user} />
       </Suspense>
 
+      {!backtests.advice && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Jane can also run a practice portfolio on made-up money.{" "}
+          <Link href="/" target="_blank" rel="noopener" className={LINK}>
+            See it on sample data
+          </Link>{" "}
+          (opens a separate sample person in a new tab; use a private window to stay signed in to
+          your own account).
+        </p>
+      )}
+
       {!backtests.advice && facts && (
         <section
           className="flex flex-col gap-2 border border-zinc-200 p-4 dark:border-zinc-800"
