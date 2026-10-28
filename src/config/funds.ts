@@ -36,7 +36,61 @@ export type FundFacts = {
 
 const DEMO_SOURCE = "Demo fund facts (sample data, not a real fund)";
 
-export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
+// Spec: the investing area for the read-only beta. Expense ratios the fund companies publish for
+// well-known real funds, rounded, for facts on real accounts (what the funds cost in dollars a
+// year). They change a little each year: every figure shows where it came from and says to
+// confirm it on the fund's own page. A fund missing here shows "not known", never a guess.
+const REAL_SOURCE = "Fund company's published expense ratio, rounded; confirm on its page";
+const real = (expenseRatioBps: number, mix: AssetMix, category: string): FundFacts => ({
+  expenseRatioBps,
+  mix,
+  category,
+  source: REAL_SOURCE,
+});
+const US = { us_stocks: 1 } as const;
+const INTL = { intl_stocks: 1 } as const;
+const BONDS = { bonds: 1 } as const;
+
+export const REAL_FUND_FACTS: Readonly<Record<string, FundFacts>> = {
+  VTI: real(3, US, "US total stock market ETF"),
+  VOO: real(3, US, "S&P 500 ETF"),
+  IVV: real(3, US, "S&P 500 ETF"),
+  SPY: real(9, US, "S&P 500 ETF"),
+  QQQ: real(20, US, "Nasdaq-100 ETF"),
+  VUG: real(4, US, "US large-company growth ETF"),
+  VTV: real(4, US, "US large-company value ETF"),
+  SCHB: real(3, US, "US broad market ETF"),
+  SCHX: real(3, US, "US large-company ETF"),
+  SCHD: real(6, US, "US dividend ETF"),
+  VTSAX: real(4, US, "US total stock market index fund"),
+  VFIAX: real(4, US, "S&P 500 index fund"),
+  FXAIX: real(2, US, "S&P 500 index fund"),
+  FSKAX: real(2, US, "US total stock market index fund"),
+  SWTSX: real(3, US, "US total stock market index fund"),
+  SWPPX: real(2, US, "S&P 500 index fund"),
+  FCNTX: real(39, US, "US large-company growth fund (actively managed)"),
+  ARKK: real(75, US, "Actively managed innovation ETF"),
+  SPXL: real(91, US, "Leveraged S&P 500 ETF (3x daily)"),
+  TQQQ: real(84, US, "Leveraged Nasdaq-100 ETF (3x daily)"),
+  VXUS: real(5, INTL, "International total stock market ETF"),
+  VEA: real(5, INTL, "Developed-markets ETF"),
+  VWO: real(8, INTL, "Emerging-markets ETF"),
+  IEFA: real(7, INTL, "Developed-markets ETF"),
+  IEMG: real(9, INTL, "Emerging-markets ETF"),
+  SCHF: real(6, INTL, "International large-company ETF"),
+  VTIAX: real(9, INTL, "International total stock market index fund"),
+  FTIHX: real(6, INTL, "International total stock market index fund"),
+  VT: real(6, { us_stocks: 0.6, intl_stocks: 0.4 }, "Total world stock ETF"),
+  BND: real(3, BONDS, "US total bond market ETF"),
+  AGG: real(3, BONDS, "US total bond market ETF"),
+  VBTLX: real(5, BONDS, "US total bond market index fund"),
+  FXNAX: real(3, BONDS, "US total bond market index fund"),
+  VNQ: real(13, { other: 1 }, "Real estate ETF"),
+  GLD: real(40, { other: 1 }, "Gold ETF"),
+  IBIT: real(25, { other: 1 }, "Bitcoin ETF"),
+};
+
+const DEMO_FUND_FACTS: Readonly<Record<string, FundFacts>> = {
   NSTDX: {
     expenseRatioBps: 75,
     mix: { us_stocks: 0.54, intl_stocks: 0.36, bonds: 0.1 },
@@ -156,6 +210,12 @@ export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     yieldBps: 370,
     interest: true,
   },
+};
+
+// Demo funds and the well-known real ones, by ticker.
+export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
+  ...REAL_FUND_FACTS,
+  ...DEMO_FUND_FACTS,
 };
 
 // Names for funds Jane may suggest but nobody holds yet (held ones are named by Plaid).
