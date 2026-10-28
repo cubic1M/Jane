@@ -4,12 +4,6 @@
   "asOf": "2026-10-24",
   "accounts": [
     {
-      "name": "Credit union checking",
-      "layout": "custom",
-      "kind": "checking",
-      "typesBalance": false
-    },
-    {
       "name": "Discover card",
       "layout": "discover_credit_card",
       "kind": "credit_card",
@@ -56,18 +50,9 @@
       "type": "subscription_review",
       "about": "BARKBOX every 28 days",
       "perYear": 456.25
-    },
-    {
-      "type": "idle_cash",
-      "about": "cash 1021919, excess 255587",
-      "perYear": null
     }
   ],
   "notFindings": [
-    {
-      "type": "subscription_review",
-      "about": "UBER *ONE MEMBERSHIP, cancelled"
-    },
     {
       "type": "subscription_review",
       "about": "SMILE DENTAL GROUP, irregular"
@@ -75,10 +60,6 @@
     {
       "type": "subscription_review",
       "about": "JIFFY LUBE #1234, irregular"
-    },
-    {
-      "type": "subscription_review",
-      "about": "DUNKIN 348812 at one price"
     },
     {
       "type": "duplicate_charge",
@@ -89,14 +70,6 @@
       "about": "HOME DEPOT #6612 twice, refunded"
     },
     {
-      "type": "subscription_review",
-      "about": "BETH SHALOM TEMPLE, not a plan"
-    },
-    {
-      "type": "subscription_review",
-      "about": "ACORNS INVEST, not a plan"
-    },
-    {
       "type": "duplicate_charge",
       "about": "two orders"
     }
@@ -104,23 +77,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -603.73
+      "dollars": -7857.42
     },
     {
       "date": "2026-07-31",
-      "dollars": 1504.32
+      "dollars": -6889.71
     },
     {
       "date": "2026-08-31",
-      "dollars": 2169.27
+      "dollars": -6714.76
     },
     {
       "date": "2026-09-30",
-      "dollars": 2733.63
+      "dollars": -6713.97
     },
     {
       "date": "2026-10-24",
-      "dollars": 4311.8
+      "dollars": -5907.39
     }
   ]
 }
