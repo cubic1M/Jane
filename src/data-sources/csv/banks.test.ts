@@ -163,3 +163,97 @@ describe("Discover card", () => {
     expect(result.transactions[0].hints).toEqual({ bankCategory: "Services" });
   });
 });
+
+describe("Apple Card", () => {
+  const result = read("apple-card.csv");
+
+  it("uses the clearing date; purchases are money out, the payment and a return money in", () => {
+    expect(result.format.id).toBe("apple_card");
+    expect(result.account).toMatchObject({ kind: "credit_card" });
+    expect(amounts(result)).toEqual([
+      ["2026-09-29", 2345],
+      ["2026-09-25", -50000],
+      ["2026-09-21", 1549],
+      ["2026-09-13", -3000],
+    ]);
+    expect(result.transactions[0].hints).toEqual({
+      bankCategory: "Restaurants",
+      bankType: "Purchase",
+    });
+  });
+
+  it("works without the Purchased By column", () => {
+    const older = readCsvFile({
+      name: "apple-older.csv",
+      text: "Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD)\n09/02/2026,09/03/2026,APPLE.COM/BILL,Apple Services,Other,Purchase,2.99\n",
+    });
+    expect(older.ok && older.transactions.map((t) => [t.date, t.amountCents])).toEqual([
+      ["2026-09-03", 299],
+    ]);
+  });
+});
+
+describe("U.S. Bank", () => {
+  const result = read("us-bank.csv");
+
+  it("reads the name as the description and money out as positive", () => {
+    expect(result.format.id).toBe("us_bank");
+    expect(amounts(result)).toEqual([
+      ["2026-09-29", 1549],
+      ["2026-09-26", -250000],
+      ["2026-09-20", 12000],
+    ]);
+    expect(result.transactions[0].description).toBe("NETFLIX.COM");
+  });
+
+  it("reads older exports: M/D/YYYY dates and four decimal places", () => {
+    const older = readCsvFile({
+      name: "us-bank-older.csv",
+      text: '"Date","Transaction","Name","Memo","Amount"\n"9/2/2026","DEBIT","SHELL OIL 57444","Download from usbank.com.","-41.2350"\n"9/1/2026","CREDIT","ACME CORP PAYROLL","Download from usbank.com.","2500.0000"\n',
+    });
+    expect(older.ok && older.transactions.map((t) => [t.date, t.amountCents])).toEqual([
+      ["2026-09-02", 4124],
+      ["2026-09-01", -250000],
+    ]);
+  });
+});
+
+describe("Ally Bank", () => {
+  const result = read("ally.csv");
+
+  it("reads the spaced header, ISO dates and signed amounts", () => {
+    expect(result.format.id).toBe("ally");
+    expect(result.account).toMatchObject({ kind: "savings" });
+    expect(result.skipped).toEqual([]);
+    expect(amounts(result)).toEqual([
+      ["2026-09-29", 1549],
+      ["2026-09-26", -250000],
+      ["2026-09-30", -411],
+    ]);
+    expect(result.transactions[2].description).toBe("Interest Paid");
+  });
+});
+
+describe("Schwab Bank checking", () => {
+  const result = read("schwab-bank.csv");
+
+  it("leaves pending rows out, reads the posted date and keeps the running balance", () => {
+    expect(result.format.id).toBe("schwab_bank");
+    expect(result.skipped).toEqual([]);
+    expect(amounts(result)).toEqual([
+      ["2026-09-29", 1549],
+      ["2026-09-26", -250000],
+      ["2026-09-20", 12000],
+      ["2026-09-15", -300],
+    ]);
+    expect(result.balances).toContainEqual({ date: "2026-09-29", balanceCents: 432110 });
+  });
+
+  it("works on older exports without a Status column", () => {
+    const older = readCsvFile({
+      name: "schwab-older.csv",
+      text: '"Date","Type","CheckNumber","Description","Withdrawal","Deposit","RunningBalance"\n"09/02/2026","ACH","","NETFLIX.COM","$15.49","","$100.00"\n',
+    });
+    expect(older.ok && older.transactions.map((t) => t.amountCents)).toEqual([1549]);
+  });
+});
