@@ -940,3 +940,20 @@ export const THIN_DATA_MAX_PER_MONTH = 3;
 // bench's doubles are cleaner than a real bank's (two of the same shirt look the same too), so
 // "Charged twice?" stays no surer than this until real outcomes say otherwise.
 export const DUPLICATE_CHARGE_MAX_PERCENT = 65;
+
+// --- Rent paid to a person ----------------------------------------------------------------------
+
+// Rent sent by Zelle or Venmo to a landlord who is a person reads as a transfer, so it's missing
+// from spending, bills and the idle-cash cushion (CSV bench, round 24). Jane asks rather than
+// guesses: "Is this your rent?". It asks about about the same amount to the same payee every
+// month, near the start of the month, for at least RENT_TRANSFER_MIN_MONTHS months, and at least
+// RENT_TRANSFER_MIN_CENTS. A yes files those payments as rent; a no keeps them as transfers, and
+// either way Jane never asks about that payee again.
+export const RENT_TRANSFER_WORDS: readonly string[] = ["ZELLE", "VENMO", "CASH APP", "PAYPAL"];
+export const RENT_TRANSFER_MIN_MONTHS = 2;
+export const RENT_TRANSFER_MIN_CENTS = 50_000;
+// Within this share of the usual amount (a rent can carry a small fee or a utility share).
+export const RENT_TRANSFER_AMOUNT_TOLERANCE = 0.05;
+// Near the start of the month: from this day of the month before, to this day of the month.
+export const RENT_TRANSFER_FROM_DAY = 25;
+export const RENT_TRANSFER_TO_DAY = 7;

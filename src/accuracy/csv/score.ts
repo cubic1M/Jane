@@ -12,6 +12,7 @@ import { detect } from "@/detection/detect";
 import { addDays, expectedDates, isComingUp } from "@/detection/forecast";
 import { withDirectory } from "@/detection/merchants";
 import { isAmbiguousRecurring } from "@/detection/rules/subscription-review";
+import { rentTransfers } from "@/detection/rent-transfers";
 import { buildStreams, merchantOf } from "@/detection/streams";
 import type { Candidate, DetectionInput, DetectionTransaction } from "@/detection/types";
 import { monthsBefore } from "@/detection/units";
@@ -248,6 +249,11 @@ export async function runUpload(person: CsvPerson): Promise<Upload> {
 export type BalancePaths = {
   typedRight: boolean;
   idleTypedRight: boolean;
+  // "Is this your rent?" (round 24): payees asked about, those that aren't rent, and idle cash
+  // (balances typed) once the person answers truthfully. Unanswered, nothing changes.
+  rentAsked: number;
+  rentAskedNotRent: number;
+  idleAnsweredRight: boolean;
   leftOut: number;
   silent: boolean;
   idleSkippedFalse: boolean;
@@ -271,9 +277,28 @@ export function balancePaths(up: Upload): BalancePaths {
   const skippedWorth = worthOf(skipped);
   const leftOut = skipped.filter((a) => a.currentBalanceCents === null).length;
   const said = notCounting(skippedWorth.unbalanced);
+  // The person answers each question truthfully: a yes files the payee's payments as rent.
+  const rentIds = new Set(
+    person.rows.filter((r) => r.category === "RENT_AND_UTILITIES_RENT").map((r) => r.id),
+  );
+  const asked = rentTransfers(up.input);
+  const isRent = asked.filter((a) => a.transactionIds.every((id) => rentIds.has(id)));
+  const nowRent = new Set(isRent.flatMap((a) => a.transactionIds));
+  const answered = {
+    ...up.input,
+    accounts: typed,
+    transactions: up.input.transactions.map((t) =>
+      nowRent.has(t.id)
+        ? { ...t, pfcPrimary: "RENT_AND_UTILITIES", pfcDetailed: "RENT_AND_UTILITIES_RENT" }
+        : t,
+    ),
+  };
   return {
     typedRight: worthOf(typed).netCents === netWorthOn(person, person.asOf),
     idleTypedRight: idleOf(typed) === idleTruth,
+    rentAsked: asked.length,
+    rentAskedNotRent: asked.length - isRent.length,
+    idleAnsweredRight: detect(answered).some((f) => f.type === "idle_cash") === idleTruth,
     leftOut,
     silent: leftOut > 0 && (said === null || skippedWorth.unbalanced.length !== leftOut),
     idleSkippedFalse: idleOf(skipped) && !idleTruth,
@@ -655,6 +680,9 @@ export type CsvScoreboard = {
   balances: {
     typedRight: number;
     idleTypedRight: number;
+    rentAsked: number;
+    rentAskedNotRent: number;
+    idleAnsweredRight: number;
     skippedPeople: number;
     leftOut: number;
     silent: number;
@@ -718,6 +746,9 @@ export function summarize(scores: readonly PersonScore[]): CsvScoreboard {
     balances: {
       typedRight: scores.filter((s) => s.balancePaths.typedRight).length,
       idleTypedRight: scores.filter((s) => s.balancePaths.idleTypedRight).length,
+      rentAsked: sum((s) => s.balancePaths.rentAsked),
+      rentAskedNotRent: sum((s) => s.balancePaths.rentAskedNotRent),
+      idleAnsweredRight: scores.filter((s) => s.balancePaths.idleAnsweredRight).length,
       skippedPeople: scores.filter((s) => s.balancePaths.leftOut > 0).length,
       leftOut: sum((s) => s.balancePaths.leftOut),
       silent: scores.filter((s) => s.balancePaths.silent).length,
