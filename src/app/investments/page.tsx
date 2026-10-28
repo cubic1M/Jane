@@ -34,6 +34,7 @@ import { type HoldingView } from "@/insights/investments";
 import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
+import { loadInvestingLeak } from "@/lib/investments/leak";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
@@ -178,6 +179,8 @@ async function InvestmentsContent({
     area,
   } = await loadInvestingArea(user.id);
 
+  const leak = await loadInvestingLeak(user.id);
+  const leak = await loadInvestingLeak(user.id);
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
   // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
@@ -391,6 +394,27 @@ async function InvestmentsContent({
         <p className="text-zinc-600 dark:text-zinc-400">
           Your accounts, as your bank reports them.
         </p>
+        {leak.totalCents > 0 && (
+          <section
+            className="flex flex-col gap-1 border border-zinc-200 p-4 dark:border-zinc-800"
+            aria-labelledby="leak-heading"
+          >
+            <h2 id="leak-heading" className="text-xl font-semibold">
+              Investing leaks about {formatCents(leak.totalCents)} a year
+            </h2>
+            <ul className="text-sm">
+              {leak.parts.map((p) => (
+                <li key={p.key}>
+                  {p.label}: {formatCents(p.cents)} a year
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-zinc-500">
+              Each is one of Jane&apos;s ideas below, counted once. Cash in checking and savings is
+              on the Money page, not here.
+            </p>
+          </section>
+        )}
         <nav aria-label="Investing pages" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link prefetch={false} href="/investments/practice" className={LINK}>
             Practice portfolio
