@@ -39,6 +39,8 @@ import { loadPanicSells } from "@/lib/investments/panic-sells";
 import { panicSummary } from "@/planning/panic-sells";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
+import { EMBEDDED_PAGES } from "@/config/embedded-pages";
+import { LazyPage } from "./lazy-page";
 import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import { BrokerageAskForm } from "./brokerage-ask";
 import { INTRADAY_AGENT_EVIDENCE } from "@/config/intraday-agent-evidence";
@@ -441,7 +443,12 @@ async function InvestmentsContent({
     profile.complete ? "Change it" : "Answer them",
   );
   for (const branch of ["plan", "kinds", "costs"] as const)
-    for (const pg of PAGES[branch]) details[itemId(branch, pg.key)] = go(pg.href, pg.label);
+    for (const pg of PAGES[branch])
+      details[itemId(branch, pg.key)] = EMBEDDED_PAGES.includes(pg.key) ? (
+        <LazyPage pageKey={pg.key} href={pg.href} label={pg.label} />
+      ) : (
+        go(pg.href, pg.label)
+      );
 
   return (
     <>
