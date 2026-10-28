@@ -46,7 +46,7 @@
     "idle_cash.precision": 1,
     "idle_cash.recall": 0.5,
     "bills.precision": 1,
-    "bills.recall": 0.9922,
+    "bills.recall": 1,
     "falseDoubleCharges": 14,
     "dollarError": 0.001433261630145471,
     "spendingError": 0.0031217763942329078,

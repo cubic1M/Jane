@@ -2442,7 +2442,11 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
         note: `${c.descriptor} every ${c.everyDays} days`,
       });
     }
-    L.bill(rows, c.descriptor);
+    // "Coming up" covers the next 31 days: a quarterly bill paid last month isn't due again in
+    // them, so it's one Jane may list or not.
+    const last = L.rows.find((x) => x.id === rows[rows.length - 1]);
+    if (last && addDays(last.date, c.everyDays) <= addDays(asOf, 31)) L.bill(rows, c.descriptor);
+    else L.neutralBills.push(rows);
   }
 
   // Same price, same day, not charged twice (round 14), from their own dice: two people's
