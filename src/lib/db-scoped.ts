@@ -198,6 +198,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     balanceSnapshots: scoped.balanceSnapshot,
     // Uploads finishing in the background (src/lib/import/background.ts).
     importRuns: scoped.importRun,
+    // "Report a problem" (src/app/report): the person's words and page, nothing else.
+    problemReports: scoped.problemReport,
     checkIns: scoped.checkIn,
     mfaBackupCodes: scoped.mfaBackupCode,
     standingRules: scoped.standingRule,

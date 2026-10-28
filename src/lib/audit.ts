@@ -66,6 +66,8 @@ export type AuditEvent =
   | "uploads_reset"
   // An uploaded account's balance given after its upload (src/lib/import/account-balance.ts).
   | "uploaded_balance_set"
+  // "Report a problem" sent (src/app/report): the report's id only, never its words.
+  | "problem_reported"
   // Finding data was sent to Claude for card text.
   | "explanations_generated"
   | "decision_made"

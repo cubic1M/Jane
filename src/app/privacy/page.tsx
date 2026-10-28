@@ -59,6 +59,10 @@ export default function PrivacyPage() {
         </li>
         <li>If you turn on notifications: the address your browser gives us to send them to.</li>
         <li>
+          If you report a problem: what you write and the page you were on, nothing else. The
+          founders read it, and it&apos;s deleted with your account.
+        </li>
+        <li>
           For security: when you sign in or out, change two-factor, link or disconnect a bank,
           download your data or delete your account, we record the time, your IP address, your
           browser and roughly where it is (city and country). You can see your own on the Security

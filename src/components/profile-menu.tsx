@@ -11,7 +11,8 @@ import { SubmitButton } from "@/components/submit-button";
 // The profile menu (spec step 79): who's signed in, What Jane did, Settings and Sign out. These
 // live here rather than in the area tabs; their pages (and /connect, /import) light the icon up.
 export function ProfileMenu({ email }: { email: string | null | undefined }) {
-  const tab = tabFor(usePathname());
+  const pathname = usePathname();
+  const tab = tabFor(pathname);
   const inSettings = PROFILE_TABS.some((t) => t.key === tab);
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
@@ -69,6 +70,15 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
             {t.label}
           </Link>
         ))}
+        {/* Closed beta: the person's own words about this page, nothing else (src/app/report). */}
+        <Link
+          href={`/report?from=${encodeURIComponent(pathname)}`}
+          data-report-problem=""
+          onClick={() => setOpen(false)}
+          className="flex min-h-11 items-center px-3 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          Report a problem
+        </Link>
         <form action={signOutToHome}>
           <SubmitButton className="flex min-h-11 w-full items-center rounded-lg px-3 text-left font-medium text-emerald-700 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             Sign out
