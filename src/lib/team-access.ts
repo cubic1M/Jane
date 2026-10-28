@@ -100,6 +100,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   uploaded_account_removed: own,
   uploads_reset: own,
   uploaded_balance_set: own,
+  problem_reported: own,
   explanations_generated: automatic,
   decision_made: own,
   decision_undone: own,

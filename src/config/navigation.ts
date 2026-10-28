@@ -103,7 +103,16 @@ export const SETTINGS_TAB: Tab = {
   key: "settings",
   label: "Settings",
   href: "/settings",
-  paths: ["/settings", "/connect", "/import", "/documents", "/things", "/household"],
+  // "Report a problem" is in the profile menu with Settings (src/components/profile-menu.tsx).
+  paths: [
+    "/settings",
+    "/connect",
+    "/import",
+    "/documents",
+    "/things",
+    "/household",
+    "/report-a-problem",
+  ],
 };
 
 const ALL_TABS: readonly Tab[] = [...TABS, SETTINGS_TAB];

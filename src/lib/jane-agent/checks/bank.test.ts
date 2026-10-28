@@ -21,6 +21,7 @@ const NOT_ASKABLE = new Set([
   "mfa",
   "offline",
   "privacy",
+  "report-a-problem",
   "s",
   "scanning",
   "security",

@@ -431,6 +431,7 @@ model User {
   practicePreferences  PracticePreferences?
   paperAccount         PaperAccount?
   importRuns           ImportRun[]
+  problemReports       ProblemReport[]
 
   @@map("users")
 }
@@ -4880,4 +4881,21 @@ model RefreshLock {
   report      Json      @default("{}")
 
   @@map("refresh_locks")
+}
+
+// "Report a problem" (closed beta): the person's own words and the page they were on, for the
+// founders (/admin/reports). Nothing else is attached, never balances or transactions, and it
+// never goes to analytics. Deleted with the person (a trial person's too).
+model ProblemReport {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  path      String
+  message   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("problem_reports")
 }
