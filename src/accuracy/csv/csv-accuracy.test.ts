@@ -20,6 +20,8 @@ const COUNTS = new Set([
   "falseDoubleCharges",
   "silentNetWorth",
   "skippedIdleCashFalse",
+  "rentAskedNotRent",
+  "rentAskedNotRent",
 ]);
 // Counts and errors, where lower is better.
 const LOWER_IS_BETTER = new Set([

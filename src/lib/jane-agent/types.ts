@@ -343,6 +343,9 @@ export const ACTION_IDS = [
   "ask.answer.3",
   "ask.answer.4",
   "ask.answer.5",
+  // CSV bench round 24: "Is this your rent?" (refs.rentKey).
+  "rent.yes",
+  "rent.no",
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
@@ -452,6 +455,8 @@ export type MessageRefs = {
   cardDetails?: CardExtras;
   // Spec step 257: the profile fact the answer buttons are for.
   askFact?: string;
+  // CSV bench round 24: the payee "Is this your rent?" asks about, as a merchant rule keys it.
+  rentKey?: string;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;

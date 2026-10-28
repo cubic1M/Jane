@@ -302,6 +302,11 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
   Home, /net-worth, the money hub and the area pages already did this.
 
+- **"Is this your rent?"** (round 25). Rent sent by Zelle or Venmo to a landlord who is a person reads as a transfer, so it's missing from spending, bills and the idle-cash cushion. Jane now asks rather than guesses.
+  - **When it asks:** about the same amount (within `RENT_TRANSFER_AMOUNT_TOLERANCE`) to one payee near the start of each month (from day `RENT_TRANSFER_FROM_DAY` to day `RENT_TRANSFER_TO_DAY`), one payment a month, at least `RENT_TRANSFER_MIN_MONTHS` months and `RENT_TRANSFER_MIN_CENTS`, sent by Zelle, Venmo, Cash App or PayPal. The rule is `src/detection/rent-transfers.ts`; the chat asks one payee at a time (`rent_question` source, `rent.yes` / `rent.no`).
+  - **What an answer does:** it becomes the person's own rule for that payee (`setMerchantCategory`, the same as setting a category on /transactions). A yes files every payment to them as rent, past and future, so spending, bills and the cushion count it. A no keeps them as transfers. Either way the payee has a rule, so Jane never asks again.
+  - **Scored both ways:** unanswered, nothing changes. Answered truthfully, idle cash with balances typed is right for 20 of 20 people on every set (the second tuning and third held-out sets had 19). It asked about 3 to 6 payees per set, none of them not rent (`rentAskedNotRent`, held by the gate).
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -331,6 +336,7 @@ Tuning set (20 people, 147 files, 5513 transactions):
 | Monthly income, error | 0.0% |
 | Net worth today right | 7 of 20 people (off by $53,201 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
+| "Is this your rent?" | asked about 6 payees (0 not rent); idle cash right once answered for 20 of 20 |
 | Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 0 false idle cash |
 | Net worth line: month-ends drawn | 97.3% (error where drawn 19.0%) |
 | Net worth line, people whose every balance Jane knows | 7 of 20, error 0.0% |
@@ -372,6 +378,7 @@ Second tuning set (20 people, 137 files, 5926 transactions):
 | Monthly income, error | 0.0% |
 | Net worth today right | 9 of 20 people (off by $135,996 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 19) |
+| "Is this your rent?" | asked about 6 payees (0 not rent); idle cash right once answered for 20 of 20 |
 | Balances skipped: accounts named as not counted | 30 in 20 people; 0 left out silently, 0 false idle cash |
 | Net worth line: month-ends drawn | 93.6% (error where drawn 47.2%) |
 | Net worth line, people whose every balance Jane knows | 9 of 20, error 0.0% |
@@ -413,6 +420,7 @@ Held-out set (20 people, 114 files, 5484 transactions):
 | Monthly income, error | 0.0% |
 | Net worth today right | 11 of 20 people (off by $24,004 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
+| "Is this your rent?" | asked about 3 payees (0 not rent); idle cash right once answered for 20 of 20 |
 | Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 0 false idle cash |
 | Net worth line: month-ends drawn | 91.8% (error where drawn 9.7%) |
 | Net worth line, people whose every balance Jane knows | 11 of 20, error 0.0% |
@@ -454,6 +462,7 @@ Second held-out set (20 people, 138 files, 5532 transactions):
 | Monthly income, error | 0.0% |
 | Net worth today right | 10 of 20 people (off by $59,230 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 20) |
+| "Is this your rent?" | asked about 6 payees (0 not rent); idle cash right once answered for 20 of 20 |
 | Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 0 false idle cash |
 | Net worth line: month-ends drawn | 100.0% (error where drawn 23.5%) |
 | Net worth line, people whose every balance Jane knows | 10 of 20, error 0.0% |
@@ -495,6 +504,7 @@ Third held-out set (20 people, 148 files, 5695 transactions):
 | Monthly income, error | 0.0% |
 | Net worth today right | 7 of 20 people (off by $41,990 in all) |
 | Balances typed at /import: net worth right | 20 of 20 people (idle cash right for 19) |
+| "Is this your rent?" | asked about 6 payees (0 not rent); idle cash right once answered for 20 of 20 |
 | Balances skipped: accounts named as not counted | 31 in 20 people; 0 left out silently, 1 false idle cash |
 | Net worth line: month-ends drawn | 90.9% (error where drawn 14.4%) |
 | Net worth line, people whose every balance Jane knows | 7 of 20, error 0.0% |
