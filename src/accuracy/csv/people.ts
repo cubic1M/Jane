@@ -9,6 +9,18 @@ import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "@/detection/units"
 // runs the upload path on those files and scores it against this truth. Nothing here is a real
 // person or a real account. A fixed seed makes the same people every time.
 
+// The ways a bank words money sent to a brokerage or an investing app (read-only beta).
+const INVESTING_TRANSFERS: readonly { descriptor: string }[] = [
+  { descriptor: "ROBINHOOD DEBITS XXXXXX3412" },
+  { descriptor: "FID BKG SVC LLC MONEYLINE" },
+  { descriptor: "VANGUARD BUY INVESTMENT" },
+  { descriptor: "SCHWAB BROKERAGE MONEYLINK" },
+  { descriptor: "COINBASE" },
+  { descriptor: "E*TRADE ACH DEPOSIT" },
+  { descriptor: "TD AMERITRADE CLEARING" },
+  { descriptor: "ACORNS INVEST 8123" },
+];
+
 export const CSV_SEED = 20_261_027;
 export const CSV_AS_OF = "2026-10-24";
 export const CSV_PEOPLE_COUNT = 20;
@@ -2463,6 +2475,49 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       rows: monthlyRows,
       note: `${plan.descriptor}, the monthly plan it left`,
     });
+  }
+
+  // Investing transfers (read-only beta, 2026-10-28), from its own dice: money sent to a
+  // brokerage or an investing app each month, and sometimes an IRA contribution, is moved and never
+  // spending, a subscription or a bill, however the bank words it.
+  const iv = rng(base + index * 104_729 + 36);
+  if (iv.chance(0.55)) {
+    const app = INVESTING_TRANSFERS[(index + (iv.int(0, 99) % 5)) % INVESTING_TRANSFERS.length];
+    const day = iv.int(2, 26);
+    const fixed = iv.chance(0.6);
+    const amount = iv.cents(25, 400);
+    const rows: string[] = [];
+    L.monthly(day, (date) => {
+      const row = L.add({
+        account: chk,
+        date,
+        amountCents: fixed ? amount : iv.cents(25, 400),
+        descriptor: app.descriptor,
+        category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+        alsoOk: ["TRANSFER_OUT"],
+        kind: "moving",
+        flow: "ach_out",
+      });
+      if (row) rows.push(row.id);
+    });
+    L.traps.push({
+      type: "subscription_review",
+      rows,
+      note: `${app.descriptor}, money sent to an investing account`,
+    });
+    L.neutralBills.push(rows);
+    if (iv.chance(0.35)) {
+      L.add({
+        account: chk,
+        date: addDays(start, iv.int(20, Math.max(21, months * 30 - 5))),
+        amountCents: iv.cents(200, 600),
+        descriptor: "IRA CONTRIB",
+        category: "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
+        alsoOk: ["TRANSFER_OUT"],
+        kind: "moving",
+        flow: "ach_out",
+      });
+    }
   }
 
   // Round 19, from its own dice: a plan that moved card, one on the month's last day, one service
