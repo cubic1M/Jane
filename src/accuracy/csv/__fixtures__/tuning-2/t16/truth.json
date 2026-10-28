@@ -54,6 +54,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 255.12
+    },
+    {
+      "type": "subscription_review",
       "about": "HELLOFRESH 646-846-3663 every 7 days",
       "perYear": 3910.19
     },
@@ -105,31 +110,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 2128.06
+      "dollars": 2107.12
     },
     {
       "date": "2026-05-31",
-      "dollars": 618.44
+      "dollars": 576.07
     },
     {
       "date": "2026-06-30",
-      "dollars": -1026.56
+      "dollars": -1090.43
     },
     {
       "date": "2026-07-31",
-      "dollars": -2273.98
+      "dollars": -2358.74
     },
     {
       "date": "2026-08-31",
-      "dollars": -3784.22
+      "dollars": -3890.16
     },
     {
       "date": "2026-09-30",
-      "dollars": -5260.57
+      "dollars": -5388.35
     },
     {
       "date": "2026-10-24",
-      "dollars": -6130.02
+      "dollars": -6279.06
     }
   ]
 }

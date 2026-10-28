@@ -3,6 +3,7 @@ import {
   BILLING_PLATFORM_MERCHANTS,
   FIXED_PRICE_SUBSCRIPTION_EXCLUDED_CATEGORIES,
   FIXED_PRICE_SUBSCRIPTION_EXCLUDED_PRIMARIES,
+  FIXED_PRICE_SUBSCRIPTION_FX_SPREAD,
   FIXED_PRICE_SUBSCRIPTION_MAX_CENTS,
   FIXED_PRICE_SUBSCRIPTION_MAX_CONFIDENCE,
   FIXED_PRICE_SUBSCRIPTION_MAX_STEP,
@@ -17,6 +18,7 @@ import {
 import { formatCents } from "@/lib/money";
 import { inList, lowest, merchantMatches } from "../helpers";
 import { isSubscriptionBox, saysPlan, type Stream } from "../streams";
+import { median } from "../units";
 import { streamEvidence, type Rule } from "./rule";
 
 function isRecurringCost(stream: Stream): boolean {
@@ -34,10 +36,17 @@ const NOT_A_PLAN = new RegExp(
 // A charge whose category can't say, at one price every month (FIXED_PRICE_SUBSCRIPTION_*), that
 // isn't a payment on a debt, insurance, a gift or food and drink by its category or its words.
 // One price, or one step up to a new one (every charge at the old price before every one at the
-// new), by at most FIXED_PRICE_SUBSCRIPTION_MAX_STEP.
+// new), by at most FIXED_PRICE_SUBSCRIPTION_MAX_STEP; or every charge near its usual price
+// (FIXED_PRICE_SUBSCRIPTION_FX_SPREAD).
 function onePriceOrOneStep(amounts: readonly number[]): boolean {
   const changes = amounts.filter((a, i) => i > 0 && a !== amounts[i - 1]).length;
   if (changes === 0) return true;
+  if (
+    Math.max(...amounts) - Math.min(...amounts) <=
+    median([...amounts]) * FIXED_PRICE_SUBSCRIPTION_FX_SPREAD
+  ) {
+    return true;
+  }
   const [first, last] = [amounts[0], amounts[amounts.length - 1]];
   return changes === 1 && last > first && last <= first * (1 + FIXED_PRICE_SUBSCRIPTION_MAX_STEP);
 }

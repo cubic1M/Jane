@@ -55,6 +55,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "FS *QZSKETCH EUR, in euros",
+      "perYear": 261.96
+    },
+    {
+      "type": "subscription_review",
       "about": "AMAZON PRIME*4K2LM90, now yearly",
       "perYear": 139
     },
@@ -103,31 +108,31 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 6707.47
+      "dollars": 6686.03
     },
     {
       "date": "2026-05-31",
-      "dollars": 5905.44
+      "dollars": 5862.61
     },
     {
       "date": "2026-06-30",
-      "dollars": 5677.91
+      "dollars": 5613.83
     },
     {
       "date": "2026-07-31",
-      "dollars": 6838.15
+      "dollars": 6752.3
     },
     {
       "date": "2026-08-31",
-      "dollars": 5901.23
+      "dollars": 5794.33
     },
     {
       "date": "2026-09-30",
-      "dollars": 5077.09
+      "dollars": 4948.36
     },
     {
       "date": "2026-10-24",
-      "dollars": 4085.34
+      "dollars": 3956.61
     }
   ]
 }
