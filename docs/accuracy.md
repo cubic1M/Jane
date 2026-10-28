@@ -281,6 +281,8 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
 - **A plan paused for a month** (round 18, second tuning set). The second tuning set now has a plan that skipped one month and picked up again (a yoga studio's freeze, Crunchyroll paused). Its gaps weren't all monthly, so it had no cadence and was missed. Now one gap of about two intervals (`PAUSE_GAP_MULTIPLE`, at most `PAUSE_MAX_SKIPPED`) among at least `PAUSE_MIN_REGULAR_GAPS` regular ones keeps the cadence. Second tuning set: subscriptions recall 94.8% → 100%, "Coming up" 96.7% → 99.2%. Second held-out set: subscriptions recall 97.8% → 100%, "Coming up" 99.1% → 100%. Precision is unchanged everywhere; the other sets and the sample bench are unchanged.
 
+- **One service paid from two cards** (round 19, second tuning set). The second tuning set now has a plan that moved to another card part-way, one billed on the month's last day, and one service paid from two cards on their own days (two people's plans). The first two were already found. The third wasn't: together the charges come at no one gap. Now, when a merchant's charges make no run as a whole, each account's charges are tried as a run of their own (the first keeps the merchant's key, the others are numbered, `@2`). Second tuning set: subscriptions recall 98.4% → 100%, "Coming up" 98.4% → 99.2%. Held-out sets and the sample bench unchanged.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -336,31 +338,31 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
-Second tuning set (20 people, 117 files, 5894 transactions):
+Second tuning set (20 people, 123 files, 5962 transactions):
 
 | Step | Score |
 | --- | ---: |
-| Files read | 117 of 117 (113 exactly) |
+| Files read | 123 of 123 (119 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 99.2% (49 left for Claude) |
+| Category right (rules only) | 98.8% (73 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $95,449, truth $93,595; error on the ones found 0.1% |
+| Findings, $/yr | Jane $97,433, truth $95,579; error on the ones found 0.1% |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
-| Net worth today right | 9 of 20 people (off by $135,473 in all) |
-| Net worth line: month-ends drawn | 96.4% (error where drawn 49.9%) |
+| Net worth today right | 9 of 20 people (off by $135,407 in all) |
+| Net worth line: month-ends drawn | 96.4% (error where drawn 50.0%) |
 | Net worth line, people whose every balance Jane knows | 9 of 20, error 0.0% |
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 98.3% | 100.0% | 115 | 2 | 0 |
+| subscription_review | 98.5% | 100.0% | 128 | 2 | 0 |
 | price_increase | 100.0% | 100.0% | 4 | 0 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 21 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 44.0% | 100.0% | 11 | 14 | 0 |
 | idle_cash | 100.0% | 50.0% | 3 | 0 | 3 |
-| bills coming up (31 days) | 100.0% | 99.2% | 243 | 0 | 2 |
+| bills coming up (31 days) | 100.0% | 99.2% | 256 | 0 | 2 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
 
@@ -370,7 +372,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 21 | 58% | 81% |
-| 60–69% | 38 | 64% | 92% |
+| 60–69% | 39 | 64% | 92% |
 | 70–79% | 4 | 77% | 100% |
 | 80–89% | 3 | 83% | 100% |
 | 90–100% | 0 | – | – |

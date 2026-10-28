@@ -45,6 +45,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "SPOTIFY USA, moved",
+      "perYear": 143.88
+    },
+    {
+      "type": "subscription_review",
       "about": "SQ *ORANGETHEORY 4WK every 28 days",
       "perYear": 769.11
     },
@@ -60,7 +65,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 2523531, excess 1972402",
+      "about": "cash 2519934, excess 1965072",
       "perYear": null
     }
   ],
@@ -101,27 +106,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 8058.64
+      "dollars": 8046.65
     },
     {
       "date": "2026-06-30",
-      "dollars": 11917.26
+      "dollars": 11893.28
     },
     {
       "date": "2026-07-31",
-      "dollars": 17105.68
+      "dollars": 17069.71
     },
     {
       "date": "2026-08-31",
-      "dollars": 19185.71
+      "dollars": 19137.75
     },
     {
       "date": "2026-09-30",
-      "dollars": 21277.89
+      "dollars": 21217.94
     },
     {
       "date": "2026-10-24",
-      "dollars": 23570.67
+      "dollars": 23498.73
     }
   ]
 }

@@ -44,6 +44,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "NETFLIX.COM, monthEnd",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
       "about": "SQ *CORE YOGA STUDIO, paused a month",
       "perYear": 1188
     },
@@ -54,7 +59,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 1021919, excess 259489",
+      "about": "cash 1021919, excess 255587",
       "perYear": null
     }
   ],
@@ -99,23 +104,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": -588.24
+      "dollars": -603.73
     },
     {
       "date": "2026-07-31",
-      "dollars": 1535.3
+      "dollars": 1504.32
     },
     {
       "date": "2026-08-31",
-      "dollars": 2215.74
+      "dollars": 2169.27
     },
     {
       "date": "2026-09-30",
-      "dollars": 2795.59
+      "dollars": 2733.63
     },
     {
       "date": "2026-10-24",
-      "dollars": 4373.76
+      "dollars": 4311.8
     }
   ]
 }

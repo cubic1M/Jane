@@ -59,6 +59,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "NETFLIX.COM, monthEnd",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
       "about": "SQ *ORANGETHEORY 4WK every 28 days",
       "perYear": 769.11
     },
@@ -111,19 +116,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -5646.12
+      "dollars": -5661.61
     },
     {
       "date": "2026-08-31",
-      "dollars": -7714.83
+      "dollars": -7745.81
     },
     {
       "date": "2026-09-30",
-      "dollars": -9707.26
+      "dollars": -9753.73
     },
     {
       "date": "2026-10-24",
-      "dollars": -10758.19
+      "dollars": -10804.66
     }
   ]
 }

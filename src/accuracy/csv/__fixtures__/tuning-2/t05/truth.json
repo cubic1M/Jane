@@ -60,6 +60,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "NETFLIX.COM, monthEnd",
+      "perYear": 185.88
+    },
+    {
+      "type": "subscription_review",
       "about": "FACTOR75 MEALS every 7 days",
       "perYear": 4692.34
     },
@@ -104,19 +109,19 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-07-31",
-      "dollars": -5956.33
+      "dollars": -5971.82
     },
     {
       "date": "2026-08-31",
-      "dollars": -8950.5
+      "dollars": -8981.48
     },
     {
       "date": "2026-09-30",
-      "dollars": -11415.97
+      "dollars": -11462.44
     },
     {
       "date": "2026-10-24",
-      "dollars": -13386.14
+      "dollars": -13432.61
     }
   ]
 }
