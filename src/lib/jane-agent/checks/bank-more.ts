@@ -183,6 +183,10 @@ const rows: Row[] = [
   ["profile", "/profile", "my_profile", "what do you know about me"],
   ["profile", "/profile", "my_profile", "show me my profile"],
   ["profile", "/profile", "my_profile", "what have you learned about me"],
+  // The life facts (founder, 2026-10-26).
+  ["profile", "/profile", "my_profile", "give me a summary of who I am"],
+  ["profile", "/profile", "my_profile", "who am I"],
+  ["profile", "/profile", "my_profile", "tell me about myself"],
   // A steady paycheck from uneven income (spec step 240).
   [
     "steady",

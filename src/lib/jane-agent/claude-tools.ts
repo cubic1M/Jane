@@ -33,6 +33,7 @@ import { loadMoneyForTwo } from "@/lib/money-for-two";
 import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import type { TradeOrder } from "@/planning/goal-tradeoffs";
 import { FACT_KEYS } from "@/profile/facts";
+import { whoAmI } from "./who-am-i";
 import { scopedFor } from "@/lib/db-scoped";
 import { withReadCache } from "@/lib/read-cache";
 import { loadChanges } from "@/lib/changes";
@@ -301,7 +302,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "my_profile",
     description:
-      'What Jane knows about the person (spec step 253): income pattern and employer, household, home, car, debts, cover, accounts and life stage, each with where it came from (seen in their data, told by them, or a guess), how sure Jane is as a percentage with the reason, and whether they corrected it. Use it for "what do you know about me" and to check a fact before relying on it.',
+      'What Jane knows about the person (spec step 253): income pattern and employer, household, home, car, debts, cover, accounts and life stage, each with where it came from (seen in their data, told by them, or a guess), how sure Jane is as a percentage with the reason, and whether they corrected it. Includes a short summary paragraph of who they are, built from the facts. Use it for "what do you know about me", "give me a summary of who I am" and to check a fact before relying on it. Say only what the facts say, as sure as they say it.',
     input_schema: noInput,
   },
   {
@@ -778,7 +779,13 @@ async function runChatToolWork(
     }
     case "my_profile": {
       const profile = await loadProfile(userId, { client, now });
+      const who = whoAmI(profile);
       return out({
+        // For "give me a summary of who I am" and "what do you know about me": this paragraph is
+        // built from the facts below, each worded as sure as Jane is. Say it warmly in your own
+        // words, keep every "probably" and "I'm not sure", add nothing the facts don't hold, and
+        // point to /profile to correct anything.
+        summaryOfThem: who.body,
         months: profile.months,
         facts: Object.values(profile.facts).map((f) => ({
           fact: f.label,
