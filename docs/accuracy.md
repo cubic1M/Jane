@@ -283,6 +283,8 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
 - **One service paid from two cards** (round 19, second tuning set). The second tuning set now has a plan that moved to another card part-way, one billed on the month's last day, and one service paid from two cards on their own days (two people's plans). The first two were already found. The third wasn't: together the charges come at no one gap. Now, when a merchant's charges make no run as a whole, each account's charges are tried as a run of their own (the first keeps the merchant's key, the others are numbered, `@2`). Second tuning set: subscriptions recall 98.4% → 100%, "Coming up" 98.4% → 99.2%. Held-out sets and the sample bench unchanged.
 
+- **A quarterly bill not due in the next 31 days** (bench truth, round 20). The second tuning set's truth expected every recurring bill in "Coming up", including a quarterly water bill paid two weeks ago and not due again for months; Jane was right to leave it out. A bill on another cadence is now expected only when its next charge falls in the 31 days, and otherwise is one Jane may list or not. Second tuning set "Coming up" recall 99.2% → 100%. Nothing in detection changed.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -362,7 +364,7 @@ Second tuning set (20 people, 123 files, 5962 transactions):
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 44.0% | 100.0% | 11 | 14 | 0 |
 | idle_cash | 100.0% | 50.0% | 3 | 0 | 3 |
-| bills coming up (31 days) | 100.0% | 99.2% | 256 | 0 | 2 |
+| bills coming up (31 days) | 100.0% | 100.0% | 256 | 0 | 0 |
 
 Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
 
