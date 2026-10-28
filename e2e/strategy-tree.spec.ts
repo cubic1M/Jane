@@ -31,7 +31,11 @@ for (const size of [
   { name: "a computer", width: 1280, height: 900 },
   { name: "a phone", width: 375, height: 812 },
 ]) {
-  test(`pick a strategy in the tree, see it in the graph, use it and revert, on ${size.name}`, async ({
+  // Quarantined 10-27 (failed main twice in a day, df6a544f and cd88b312: after "Use this
+  // strategy" the leaf's "■ YOURS" didn't show within 3s on CI, and once the level-5 tree was
+  // missing; green locally and on the runs between). Put back once it's deflaked: wait for the
+  // save, not a fixed 3s.
+  test.fixme(`pick a strategy in the tree, see it in the graph, use it and revert, on ${size.name}`, async ({
     page,
     baseURL,
   }) => {
