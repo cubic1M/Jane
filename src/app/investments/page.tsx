@@ -35,6 +35,10 @@ import { formatCents } from "@/lib/money";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { loadInvestingLeak } from "@/lib/investments/leak";
+import { canImportCsv } from "@/lib/csv-access";
+import { scopedDb } from "@/lib/db-scoped";
+import { brokerageAsks } from "@/lib/investing/brokerage-balance";
+import { BrokerageAskForm } from "./brokerage-ask";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
@@ -143,6 +147,31 @@ async function RuleReplays({ userId }: { userId: string }) {
   return replays.advice && replays.data ? (
     <RuleReplaySection data={replays.data} level={profile.level} />
   ) : null;
+}
+
+// "What's in your Robinhood account today?" (read-only beta): money sent to an investing app is
+// moved, not spent, so Jane says how much went in and asks what is in each one.
+async function BrokerageAsks({ user }: { user: Parameters<typeof canImportCsv>[0] }) {
+  if (!canImportCsv(user)) return null;
+  const { asks, inLast3MonthsCents } = await brokerageAsks(await scopedDb());
+  if (inLast3MonthsCents === 0) return null;
+  return (
+    <section
+      className="flex flex-col gap-3 border border-zinc-200 p-4 dark:border-zinc-800"
+      aria-labelledby="brokerage-heading"
+    >
+      <h2 id="brokerage-heading" className="text-lg font-semibold">
+        You put {formatCents(inLast3MonthsCents)} into investing in the last 3 months
+      </h2>
+      {asks.map((a) => (
+        <BrokerageAskForm
+          key={a.app}
+          app={a.app}
+          sentText={`You sent ${formatCents(a.inCents)} to ${a.app} in ${a.count} ${a.count === 1 ? "transfer" : "transfers"}.`}
+        />
+      ))}
+    </section>
+  );
 }
 
 async function InvestmentsContent({
@@ -425,6 +454,10 @@ async function InvestmentsContent({
           ))}
         </nav>
       </div>
+
+      <Suspense fallback={null}>
+        <BrokerageAsks user={user} />
+      </Suspense>
 
       {backtests.advice && (
         <Suspense fallback={<LoadingBar label="Loading the strategies" />}>
