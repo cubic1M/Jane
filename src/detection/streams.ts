@@ -25,6 +25,7 @@ import {
   FOUR_WEEKLY_GAP_DAYS,
   FOUR_WEEKLY_MIN_GAPS,
   SHORT_RUN_FREQUENCIES,
+  FIXED_PRICE_SUBSCRIPTION_MAX_STEP,
   SUBSCRIPTION_BOX_MERCHANTS,
   PLAN_DESCRIPTION_WORDS,
   PLAN_NAME_PLUS,
@@ -196,9 +197,8 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
   const variable = isVariable(charges);
   const core = variable ? charges : charges.filter((c) => withinTolerance(c.amountCents, typical));
   const short = core.length < FALLBACK_MIN_CHARGES;
-  if (core.length < (shortRunAllowed(charges) ? SHORT_RUN_MIN_CHARGES : FALLBACK_MIN_CHARGES)) {
-    return null;
-  }
+  const allowed = shortRunAllowed(charges);
+  if (core.length < SHORT_RUN_MIN_CHARGES) return null;
 
   const gaps = core.slice(1).map((c, i) => daysBetween(core[i].date, c.date));
   const frequency = frequencyOf(gaps);
@@ -239,6 +239,22 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
       run.unshift(charge);
     }
   }
+
+  // Two at one price are a run only where a repeat can only be a bill or a plan
+  // (SHORT_RUN_CATEGORIES), or when a third came at the same gap one step up: a plan whose price
+  // rose, seen three times (CSV bench, second tuning set: Xbox Game Pass $16.99, $16.99, $19.99).
+  // Every charge at the merchant is one of the run's: a shop's would have others.
+  const rose =
+    run.length >= FALLBACK_MIN_CHARGES &&
+    run.length === charges.length &&
+    run
+      .slice(core.length)
+      .every(
+        (c) =>
+          c.amountCents > core[0].amountCents &&
+          c.amountCents <= core[0].amountCents * (1 + FIXED_PRICE_SUBSCRIPTION_MAX_STEP),
+      );
+  if (short && !allowed && !rose) return null;
 
   const last = run[run.length - 1];
   const merchant = merchantOf(last);

@@ -22,6 +22,20 @@ describe("price_increase", () => {
     expect(finding.evidence).toMatchObject({ priorAverageCents: 1549, lastAmountCents: 1799 });
   });
 
+  // CSV bench, second tuning set: a plan seen only three times, rising on the third.
+  it("finds a rise on the third of three charges a month apart", () => {
+    const xbox = {
+      description: "MICROSOFT*XBOX GAME PASS",
+      pfcPrimary: "ENTERTAINMENT",
+      pfcDetailed: "ENTERTAINMENT_VIDEO_GAMES",
+    };
+    expect(run(input({ transactions: monthly(3, [1699, 1699, 1999], xbox) }))).toEqual([
+      expect.objectContaining({ title: expect.stringMatching(/\$16\.99 to \$19\.99/) }),
+    ]);
+    // A big jump is a different purchase, not a plan's new price.
+    expect(run(input({ transactions: monthly(3, [1699, 1699, 5999], xbox) }))).toEqual([]);
+  });
+
   // CSV bench, second tuning set: a city utility bill moves with use, like power and water.
   it("never calls a city utility bill's move a price rise", () => {
     const transactions = monthly(4, [9800, 9600, 9900, 12_200], {
