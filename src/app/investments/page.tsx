@@ -38,6 +38,8 @@ import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { brokerageAsks } from "@/lib/investing/brokerage-balance";
 import { BrokerageAskForm } from "./brokerage-ask";
+import { INTRADAY_AGENT_EVIDENCE } from "@/config/intraday-agent-evidence";
+import { honestLine } from "@/planning/trading-agent/honest-line";
 import { ownedFacts } from "@/planning/owned-facts";
 import { loadInvestingArea } from "@/lib/area-pages/investing-load";
 import { LoadingBar } from "@/components/loading-bar";
@@ -134,7 +136,9 @@ async function Strategies({ userId, ideas }: { userId: string; ideas: number }) 
   return (
     <>
       <PaperAccount view={paper} strategy={strategyLabel(chosen.key, chosen.level)} />
-      {paper && <TradingAgent view={agent} choices={choices} />}
+      {paper && (
+        <TradingAgent view={agent} choices={choices} honest={honestLine(INTRADAY_AGENT_EVIDENCE)} />
+      )}
       {/* The events overlay: its own box, apart from the suggestion dock (advice mode only). */}
       {events && <EventsBox view={events} />}
       <StrategyTree tiles={tiles} board={board} ideas={ideas} />
