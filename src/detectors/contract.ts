@@ -44,7 +44,7 @@ export type Confidence = {
 // What the person's later transactions should show once they act on a suggestion: the verified
 // savings record (src/lib/outcomes.ts) checks it each night. Payees are the charges' own
 // descriptions. A detector whose saving can't be seen in transactions leaves it out.
-export type Watch =
+export type TransactionWatch =
   // Charges that should stop (a cancelled subscription or trial): each payee, its usual charge
   // and how often it comes a year.
   | {
@@ -57,6 +57,19 @@ export type Watch =
   | { kind: "refund"; payees: { description: string; amountCents: number }[] }
   // Fees of these categories that should stop: what they came to a month before.
   | { kind: "fee_stops"; pfcs: string[]; monthlyCents: number };
+
+// Investing savings show in what the person holds, not in their transactions (the next holdings
+// or statement data): a fund they held is gone or smaller, waiting cash was put to work, an old
+// account closed. Each carries what was there when Jane said so, and the yearly dollars at stake.
+export type HoldingsWatch =
+  | { kind: "funds_left"; funds: { ticker: string; valueCents: number; yearlyCents: number }[] }
+  | { kind: "cash_invested"; beforeCents: number; excessCents: number; yearlyCents: number }
+  | {
+      kind: "account_closed";
+      accounts: { id: string; balanceCents: number; yearlyCents: number }[];
+    };
+
+export type Watch = TransactionWatch | HoldingsWatch;
 
 export type Suggestion = {
   // "<capability>:<topic>": stable, so the same suggestion is never shown twice after a no.
