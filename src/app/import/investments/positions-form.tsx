@@ -10,7 +10,7 @@ import type { PositionsImportResult } from "@/lib/import/positions";
 import { formatCents } from "@/lib/money";
 
 const PRIMARY_BUTTON =
-  "inline-flex h-11 items-center justify-center rounded-full bg-emerald-700 px-6 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
+  "inline-flex h-11 items-center justify-center rounded-full bg-zinc-900 px-6 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300";
 const SECONDARY_BUTTON =
   "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
 const FIELD =
@@ -110,7 +110,7 @@ export function PositionsForm() {
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
           {error}
         </p>
       )}
@@ -130,7 +130,7 @@ export function PositionsForm() {
                 : "."}
             </p>
             {file.notes.map((note) => (
-              <p key={note} className="text-sm text-amber-800 dark:text-amber-300">
+              <p key={note} className="text-sm text-zinc-600 dark:text-zinc-400">
                 {note}
               </p>
             ))}
@@ -170,7 +170,7 @@ export function PositionsForm() {
             ))}
           </div>
         ) : (
-          <p key={file.file} role="alert" className="text-sm text-red-700 dark:text-red-400">
+          <p key={file.file} role="alert" className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
             {file.file}: {file.error}
           </p>
         ),
