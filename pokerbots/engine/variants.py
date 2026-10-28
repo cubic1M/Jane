@@ -45,10 +45,22 @@ VARIANTS = {s.name: s for s in (A_NLHE100, B_NLHE200, C_DISCARD3, D_OMAHA4X2, E_
                                 F_NLHE20, G_PINEAPPLE)}
 
 
+# ---- day-of variants -------------------------------------------------------------
+# On the day: copy the closest spec above, edit it to the announced rules, and add
+# it to this tuple. Then: python3 dayof.py --variant <name>
+H_PLO5 = GameSpec(
+    name="h_plo5", hole_cards=5, hole_usage="exactly", hole_exact=2, betting="pot_limit",
+    starting_stack=200, notes="HOLD-OUT drill: 5-card pot-limit Omaha, exactly 2 hole cards, 100bb.")
+
+DAY_VARIANTS: tuple = (H_PLO5,)
+
+ALL_VARIANTS = {**VARIANTS, **{s.name: s for s in DAY_VARIANTS}}
+
+
 def get_variant(name: str) -> GameSpec:
-    if name in VARIANTS:
-        return VARIANTS[name]
-    for k, v in VARIANTS.items():
+    if name in ALL_VARIANTS:
+        return ALL_VARIANTS[name]
+    for k, v in ALL_VARIANTS.items():
         if k.split("_")[0] == name:
             return v
     raise KeyError(name)

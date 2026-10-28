@@ -29,7 +29,7 @@ import time
 
 import numpy as np
 
-from engine.variants import VARIANTS
+from engine.variants import ALL_VARIANTS as VARIANTS
 
 from .policy import Policy, load_policy_data
 from .tree import DECISION, FOLD_T, SHOW_T
