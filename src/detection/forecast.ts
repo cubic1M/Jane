@@ -1,4 +1,6 @@
 import {
+  CARD_ISSUERS,
+  CARD_ISSUER_SHORT,
   CARD_PAYMENT_NAME,
   FORECAST_SUBTYPES,
   NOT_BILL_CATEGORIES,
@@ -14,7 +16,7 @@ import {
   isSubscriptionBox,
   type Stream,
 } from "./streams";
-import type { DetectionInput, DetectionTransaction } from "./types";
+import type { DetectionAccount, DetectionInput, DetectionTransaction } from "./types";
 import { addDays, dayOfMonth, nextOccurrence } from "./units";
 
 // Upcoming bills and income, and a day-by-day balance forecast for checking accounts.
@@ -25,6 +27,8 @@ export type Expected = {
   date: string;
   amountCents: number;
   accountId: string | null;
+  // A payment to a card, named for its card (see billName).
+  cardPayment?: true;
 };
 
 export type AccountForecast = {
@@ -71,6 +75,9 @@ function expand(streams: Stream[], asOf: string, until: string): Expected[] {
         date,
         amountCents: s.lastAmountCents,
         accountId: s.accountId,
+        ...(s.pfcDetailed === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" && {
+          cardPayment: true as const,
+        }),
       })),
     )
     .sort((a, b) => a.date.localeCompare(b.date) || a.merchant.localeCompare(b.merchant));
@@ -121,11 +128,29 @@ export function expectedIncome(input: DetectionInput, until: string): Expected[]
 // Books QA: card interest isn't a bill (the card's own payment covers it), and a card payment
 // the bank names "... thank you" reads as what it is. Shared with the recurring charges.
 export const isBillStream = (s: Stream) => !NOT_BILL_CATEGORIES.includes(s.pfcDetailed ?? "");
-// A card payment from checking reads as one whatever the card company calls it ("CHASE CREDIT
-// CRD AUTOPAY", "AMEX EPAYMENT"), now that usage bills and card payments are found by their
-// timing (accuracy bench).
-export const billName = (s: Stream) =>
-  s.pfcDetailed === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" ? CARD_PAYMENT_NAME : s.merchant;
+// A card payment reads as one whatever the card company calls it ("CHASE CREDIT CRD AUTOPAY",
+// "AMEX EPAYMENT"), now that usage bills and card payments are found by their timing (accuracy
+// bench), and is named for its card ("Chase Freedom payment"), not "Credit card payment"
+// (overnight beta list): the card it's on, else the card of the company the payment names, else
+// "Chase card payment", else the plain name (a lone card isn't assumed: the payment may be to
+// one Jane hasn't seen).
+export function billName(s: Stream, accounts: readonly DetectionAccount[] = []): string {
+  if (s.pfcDetailed !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT") return s.merchant;
+  const cards = accounts.filter((a) => a.type === "credit");
+  const own = cards.find((a) => a.id === s.accountId);
+  if (own) return `${own.name} payment`;
+  const said = `${s.charges[0]?.description ?? ""} ${s.merchant}`;
+  const issuer = CARD_ISSUERS.find(([pattern]) => pattern.test(said))?.[1];
+  const named = issuer
+    ? cards.find((a) =>
+        [issuer, ...(CARD_ISSUER_SHORT[issuer] ?? [])].some((n) =>
+          a.name.toLowerCase().includes(n.toLowerCase()),
+        ),
+      )
+    : undefined;
+  if (named) return `${named.name} payment`;
+  return issuer ? `${issuer} card payment` : CARD_PAYMENT_NAME;
+}
 
 // Money the person moves to their own savings or investments on a schedule: never a bill
 // (messy-bank QA: "Online Transfer To Sav" was listed as a $500 bill), though the forecast
@@ -154,7 +179,7 @@ export function upcomingBills(
   const bills = buildStreams(input)
     .filter(isComingUp)
     .filter((s) => !remindedElsewhere.has(s.pfcDetailed ?? ""))
-    .map((s) => ({ ...s, merchant: billName(s) }));
+    .map((s) => ({ ...s, merchant: billName(s, input.accounts) }));
   return expand(bills, input.asOf, addDays(input.asOf, days));
 }
 
