@@ -180,7 +180,6 @@ async function InvestmentsContent({
   } = await loadInvestingArea(user.id);
 
   const leak = await loadInvestingLeak(user.id);
-  const leak = await loadInvestingLeak(user.id);
   const details: Record<string, ReactNode> = {};
   const more: Record<string, ReactNode> = {};
   // A page the read-only beta hides (src/config/hidden-pages.ts) gets no link.
