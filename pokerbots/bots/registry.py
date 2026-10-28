@@ -13,6 +13,7 @@ BOTS = {
     "preflop_cfr": ("bots.preflop_cfr", {}),
     "full_cfr": ("bots.full_cfr", {}),
     "adaptive_cfr": ("bots.adaptive_cfr", {}),
+    "hybrid": ("bots.hybrid", {}),
     "push": ("bots.dummies", {"kind": "push"}),
     "station": ("bots.dummies", {"kind": "station"}),
     "maniac": ("bots.dummies", {"kind": "maniac"}),

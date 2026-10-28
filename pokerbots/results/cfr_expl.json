@@ -1,0 +1,125 @@
+{
+ "cache/cfr/full_a_nlhe100_1m.pkl": {
+  "expl_lo": 590.076688671141,
+  "expl_hi": 624.5505467218566,
+  "iterations": 134,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_a_nlhe100_1m.pkl: a_nlhe100 iters 134 deals 137216 budget 1.0m  (sampling 32s, BR 27s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +88.0 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +503.0 +- 18.6  in-sample +549.2 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +677.2 +- 23.6  in-sample +699.9 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 590.1 mbb/h, in-sample (upper-biased) 624.6 mbb/h; = 0.590 .. 0.625 bb/h\n"
+ },
+ "cache/cfr/full_a_nlhe100_5m.pkl": {
+  "expl_lo": 163.2444502841599,
+  "expl_hi": 261.12367557566427,
+  "iterations": 658,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_a_nlhe100_5m.pkl: a_nlhe100 iters 658 deals 673792 budget 5.0m  (sampling 32s, BR 28s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +63.9 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +137.5 +- 18.6  in-sample +271.7 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +189.0 +- 18.1  in-sample +250.6 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 163.2 mbb/h, in-sample (upper-biased) 261.1 mbb/h; = 0.163 .. 0.261 bb/h\n"
+ },
+ "cache/cfr/full_a_nlhe100_15m.pkl": {
+  "expl_lo": 82.03336415796662,
+  "expl_hi": 239.81417790070097,
+  "iterations": 1746,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_a_nlhe100_15m.pkl: a_nlhe100 iters 1746 deals 1787904 budget 15.0m  (sampling 32s, BR 27s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +49.6 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +91.9 +- 22.9  in-sample +248.5 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +72.1 +- 18.3  in-sample +231.1 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 82.0 mbb/h, in-sample (upper-biased) 239.8 mbb/h; = 0.082 .. 0.240 bb/h\n"
+ },
+ "cache/cfr/full_a_nlhe100_30m.pkl": {
+  "expl_lo": 40.27548537875514,
+  "expl_hi": 218.0661888013133,
+  "iterations": 3031,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_a_nlhe100_30m.pkl: a_nlhe100 iters 3031 deals 3103744 budget 30.0m  (sampling 32s, BR 27s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +48.3 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +60.2 +- 22.4  in-sample +221.1 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +20.3 +- 20.8  in-sample +215.0 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 40.3 mbb/h, in-sample (upper-biased) 218.1 mbb/h; = 0.040 .. 0.218 bb/h\n"
+ },
+ "cache/cfr/full_a_nlhe100_60m.pkl": {
+  "expl_lo": 27.748084735308105,
+  "expl_hi": 199.97514622020827,
+  "iterations": 6426,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_a_nlhe100_60m.pkl: a_nlhe100 iters 6426 deals 6580224 budget 60.0m  (sampling 32s, BR 27s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +54.9 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +46.8 +- 22.6  in-sample +184.9 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +8.7 +- 26.0  in-sample +215.1 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 27.7 mbb/h, in-sample (upper-biased) 200.0 mbb/h; = 0.028 .. 0.200 bb/h\n"
+ },
+ "cache/cfr/preflop_a_nlhe100_1m.pkl": {
+  "expl_lo": 0.01280105426901268,
+  "expl_hi": 0.01280105426901268,
+  "iterations": 4712,
+  "matrix_stderr": 0.0035093775101966156,
+  "log": ""
+ },
+ "cache/cfr/preflop_a_nlhe100_3m.pkl": {
+  "expl_lo": 0.01201843701821581,
+  "expl_hi": 0.01201843701821581,
+  "iterations": 14428,
+  "matrix_stderr": 0.002030269738576408,
+  "log": ""
+ },
+ "cache/cfr/preflop_a_nlhe100_5m.pkl": {
+  "expl_lo": 0.002349137084828312,
+  "expl_hi": 0.002349137084828312,
+  "iterations": 24203,
+  "matrix_stderr": 0.0016993718190957037,
+  "log": ""
+ },
+ "cache/cfr/preflop_a_nlhe100_15m.pkl": {
+  "expl_lo": 0.0013569596305634812,
+  "expl_hi": 0.0013569596305634812,
+  "iterations": 73056,
+  "matrix_stderr": 0.0008475503548085164,
+  "log": ""
+ },
+ "cache/cfr/preflop_a_nlhe100_30m.pkl": {
+  "expl_lo": 0.0008593551884122919,
+  "expl_hi": 0.0008593551884122919,
+  "iterations": 146520,
+  "matrix_stderr": 0.0006708014060898696,
+  "log": ""
+ },
+ "cache/cfr/full_c_discard3_1m.pkl": {
+  "expl_lo": 1331.091066250309,
+  "expl_hi": 1465.4159962647168,
+  "iterations": 75,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_c_discard3_1m.pkl: c_discard3 iters 75 deals 76800 budget 1.0m  (sampling 63s, BR 40s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +278.4 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +1294.4 +- 45.2  in-sample +1430.1 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +1367.8 +- 48.8  in-sample +1500.7 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 1331.1 mbb/h, in-sample (upper-biased) 1465.4 mbb/h; = 1.331 .. 1.465 bb/h\n"
+ },
+ "cache/cfr/full_c_discard3_5m.pkl": {
+  "expl_lo": 366.0333981284721,
+  "expl_hi": 563.8902959742679,
+  "iterations": 388,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_c_discard3_5m.pkl: c_discard3 iters 388 deals 397312 budget 5.0m  (sampling 64s, BR 42s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +250.8 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +346.1 +- 36.8  in-sample +593.6 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +386.0 +- 35.6  in-sample +534.2 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 366.0 mbb/h, in-sample (upper-biased) 563.9 mbb/h; = 0.366 .. 0.564 bb/h\n"
+ },
+ "cache/cfr/full_c_discard3_15m.pkl": {
+  "expl_lo": 104.10068926431254,
+  "expl_hi": 400.7071304620725,
+  "iterations": 1029,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_c_discard3_15m.pkl: c_discard3 iters 1029 deals 1053696 budget 15.0m  (sampling 63s, BR 41s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +278.1 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +82.0 +- 27.3  in-sample +408.1 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +126.2 +- 41.7  in-sample +393.3 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 104.1 mbb/h, in-sample (upper-biased) 400.7 mbb/h; = 0.104 .. 0.401 bb/h\n"
+ },
+ "cache/cfr/full_c_discard3_30m.pkl": {
+  "expl_lo": 82.23303360892479,
+  "expl_hi": 348.5951713357835,
+  "iterations": 1760,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_c_discard3_30m.pkl: c_discard3 iters 1760 deals 1802240 budget 30.0m  (sampling 63s, BR 41s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +285.4 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +75.7 +- 25.7  in-sample +346.0 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +88.8 +- 35.5  in-sample +351.2 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 82.2 mbb/h, in-sample (upper-biased) 348.6 mbb/h; = 0.082 .. 0.349 bb/h\n"
+ },
+ "cache/cfr/full_c_discard3_60m.pkl": {
+  "expl_lo": 20.407711077172394,
+  "expl_hi": 342.38953931282344,
+  "iterations": 3769,
+  "log": "policy /home/user/Jane/pokerbots/cache/cfr/full_c_discard3_60m.pkl: c_discard3 iters 3769 deals 3859456 budget 60.0m  (sampling 64s, BR 42s, 50000 deals x2)\n  value of policy vs itself (pos0/SB): +291.9 mbb/h\n  BR vs frozen BB (BR plays SB): gain held-out +17.5 +- 30.7  in-sample +355.2 mbb/h\n  BR vs frozen SB (BR plays BB): gain held-out +23.3 +- 40.6  in-sample +329.6 mbb/h\n  EXPLOITABILITY estimate: held-out (lower) 20.4 mbb/h, in-sample (upper-biased) 342.4 mbb/h; = 0.020 .. 0.342 bb/h\n"
+ },
+ "cache/cfr/preflop_c_discard3_1m.pkl": {
+  "expl_lo": 0.013394294424842051,
+  "expl_hi": 0.013394294424842051,
+  "iterations": 7650,
+  "matrix_stderr": 0.0034343651176297367,
+  "log": ""
+ },
+ "cache/cfr/preflop_c_discard3_5m.pkl": {
+  "expl_lo": 0.00019634292835329914,
+  "expl_hi": 0.00019634292835329914,
+  "iterations": 40597,
+  "matrix_stderr": 0.0015560626628947137,
+  "log": ""
+ },
+ "cache/cfr/preflop_c_discard3_15m.pkl": {
+  "expl_lo": 8.050156666619679e-05,
+  "expl_hi": 8.050156666619679e-05,
+  "iterations": 129215,
+  "matrix_stderr": 0.00089276525044136,
+  "log": ""
+ },
+ "cache/cfr/preflop_c_discard3_30m.pkl": {
+  "expl_lo": 4.094485771266587e-05,
+  "expl_hi": 4.094485771266587e-05,
+  "iterations": 264486,
+  "matrix_stderr": 0.0006020984075160023,
+  "log": ""
+ }
+}
