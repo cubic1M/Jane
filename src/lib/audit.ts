@@ -60,6 +60,8 @@ export type AuditEvent =
   | "admin_page_viewed"
   | "admin_action"
   | "import_completed"
+  // A brokerage's positions download saved (src/lib/import/positions.ts), as counts only.
+  | "positions_imported"
   // Removing uploads (src/lib/import/remove.ts): what was removed, as counts only.
   | "upload_removed"
   | "uploaded_account_removed"

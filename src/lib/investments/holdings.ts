@@ -35,6 +35,7 @@ export async function loadInvestments(
         name: true,
         subtype: true,
         currentBalanceCents: true,
+        source: true,
         item: { select: { institutionName: true } },
       },
       orderBy: { name: "asc" },
@@ -70,7 +71,8 @@ export async function loadInvestments(
     name: a.name,
     subtype: a.subtype,
     balanceCents: a.currentBalanceCents,
-    institution: a.item?.institutionName ?? null,
+    // A positions download has no linked bank: its numbers are the file's.
+    institution: a.item?.institutionName ?? (a.source === "csv" ? "Your upload" : null),
   }));
   return {
     asOf,
