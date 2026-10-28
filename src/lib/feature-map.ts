@@ -22,6 +22,7 @@ import { HOME_DETECTORS } from "@/detectors/home";
 import { INSURANCE_DETECTORS } from "@/detectors/insurance";
 import { INVESTING_DETECTORS } from "@/detectors/investing";
 import { LIFE_DETECTORS } from "@/detectors/life";
+import { LIFE_FACT_DETECTORS } from "@/detectors/life-facts";
 import { MONEY_DETECTORS } from "@/detectors/money";
 import { PLANNING_DETECTORS } from "@/detectors/planning";
 import { PRACTICE_DETECTORS } from "@/detectors/practice";
@@ -49,7 +50,7 @@ export const DETECTOR_FAMILIES: readonly { key: FamilyKey; detectors: readonly D
   { key: "money", detectors: MONEY_DETECTORS },
   { key: "home", detectors: HOME_DETECTORS },
   { key: "work", detectors: WORK_DETECTORS },
-  { key: "life", detectors: LIFE_DETECTORS },
+  { key: "life", detectors: [...LIFE_DETECTORS, ...LIFE_FACT_DETECTORS] },
   { key: "insurance", detectors: INSURANCE_DETECTORS },
   { key: "coverGaps", detectors: COVER_GAP_DETECTORS },
   { key: "debt", detectors: DEBT_DETECTORS },

@@ -36,3 +36,10 @@ Health conditions, religion, politics, sexuality, immigration status. Health spe
 cost category (`health_costs`); a pharmacy's or a church's name is not read for what it might say
 about someone. Veterinary bills are pets, not health. A student-loan payment is not read as "in
 school": it points to someone who finished (the student-loan detector has that on its own).
+
+## What the facts change in the suggestions
+
+- **Cover for a pet** (`pet_insurance`, demo advice only): only when `has_pet` is true and no pet-insurance charge is seen. It names the vet and pet payments, takes the fact's confidence (a guess stays under 50%), and is capped at 70% because a $3,000 vet bill is typical, not quoted. The Reyes family's dog (Chewy every month, the vet a few times a year) is in the demo bank.
+- **Student plans** (`student_discounts`): only when `is_student` is true, and only for a service the person already pays for in two or more months (Spotify, Amazon Prime, Apple Music, YouTube Premium, Adobe); the saving is the service's list-price difference, said as typical.
+- **Renters' cover** is for `housing = rent` only, so a homeowner (a mortgage, or monthly HOA dues) is never pitched it. The child tax credit, the childcare tax break, the 529 and life cover for parents already read `has_children`, which is now seen from schools, pediatric visits and kids' stores as well as childcare.
+- Correcting a fact on `/profile` changes all of these at the next scan: tell Jane "no dog" and the pet suggestion goes; take it back and it returns (`src/lib/life-facts.integration.test.ts`).

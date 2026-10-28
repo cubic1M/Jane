@@ -35,6 +35,8 @@ export const RISK_ANNUAL_PROBABILITY: Readonly<Record<string, number>> = {
   // The share of renters who file a claim in a year.
   renters_insurance: 0.03,
   home_insurance: 0.05,
+  // A big vet bill (an emergency or surgery) in a year; an assumption, shown as typical.
+  pet_insurance: 0.1,
   // An at-fault accident.
   auto_insurance: 0.05,
   // A hospital stay, for someone without health cover.
@@ -168,6 +170,8 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   // What is a fact stays for everyone (no car insurance seen, a deadline, a bill above the plan's
   // share, a policy document to read).
   "disability_insurance",
+  // Cover for a pet is cover to buy: demo advice only.
+  "pet_insurance",
   "renters_insurance",
   "umbrella",
   "liability_levels",

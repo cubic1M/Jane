@@ -56,6 +56,9 @@ export const SUGGESTION_TOPICS = [
   "pmi_removal",
   "life_checklist",
   "household_setup",
+  // The profile's life facts (src/profile/life-facts.ts) change what is suggested.
+  "pet_insurance",
+  "student_discounts",
   "refinance",
   // Spec step 260: debt and credit.
   "student_repayment",
@@ -237,6 +240,10 @@ export const PEOPLE: readonly Person[] = [
       "practice_risk_mismatch",
     ],
     mustNot: [
+      // Life facts (src/profile/life-facts.ts): cover for a pet and student plans only reach
+      // someone with a pet or in school.
+      "pet_insurance",
+      "student_discounts",
       "beneficiaries",
       "values_funds",
       "umbrella",
@@ -316,6 +323,8 @@ export const PEOPLE: readonly Person[] = [
       "plan_menu",
       "life_checklist",
       "household_setup",
+      // The family dog (vet visits and Chewy orders): cover only for someone who has a pet.
+      "pet_insurance",
 
       "liability_levels",
       "disability_insurance",
@@ -336,6 +345,9 @@ export const PEOPLE: readonly Person[] = [
       "practice_drift_warning",
     ],
     mustNot: [
+      // Life facts (src/profile/life-facts.ts): cover for a pet and student plans only reach
+      // someone with a pet or in school.
+      "student_discounts",
       "values_funds",
       "renters_insurance",
       "medigap",
@@ -404,6 +416,10 @@ export const PEOPLE: readonly Person[] = [
       "practice_theme_idea",
     ],
     mustNot: [
+      // Life facts (src/profile/life-facts.ts): cover for a pet and student plans only reach
+      // someone with a pet or in school.
+      "pet_insurance",
+      "student_discounts",
       "beneficiaries",
       "values_funds",
       "employer_match",
@@ -476,6 +492,10 @@ export const PEOPLE: readonly Person[] = [
       "practice_theme_idea",
     ],
     mustNot: [
+      // Life facts (src/profile/life-facts.ts): cover for a pet and student plans only reach
+      // someone with a pet or in school.
+      "pet_insurance",
+      "student_discounts",
       "beneficiaries",
       "bank_fees",
       "late_fees",
@@ -550,6 +570,10 @@ export const PEOPLE: readonly Person[] = [
       "practice_theme_idea",
     ],
     mustNot: [
+      // Life facts (src/profile/life-facts.ts): cover for a pet and student plans only reach
+      // someone with a pet or in school.
+      "pet_insurance",
+      "student_discounts",
       "values_funds",
       "education_529",
       "credit_building",
@@ -612,6 +636,10 @@ export const PEOPLE: readonly Person[] = [
       "practice_cash_drag",
     ],
     mustNot: [
+      // Life facts (src/profile/life-facts.ts): cover for a pet and student plans only reach
+      // someone with a pet or in school.
+      "pet_insurance",
+      "student_discounts",
       "beneficiaries",
       "values_funds",
       "renters_insurance",
@@ -685,6 +713,10 @@ export const PEOPLE: readonly Person[] = [
       "practice_theme_idea",
     ],
     mustNot: [
+      // Life facts (src/profile/life-facts.ts): cover for a pet and student plans only reach
+      // someone with a pet or in school.
+      "pet_insurance",
+      "student_discounts",
       "beneficiaries",
       "values_funds",
       "concentration",
@@ -767,6 +799,10 @@ export const PEOPLE: readonly Person[] = [
       "practice_cheaper_fund",
     ],
     mustNot: [
+      // Life facts (src/profile/life-facts.ts): cover for a pet and student plans only reach
+      // someone with a pet or in school.
+      "pet_insurance",
+      "student_discounts",
       "beneficiaries",
       "values_funds",
       "employer_match",
