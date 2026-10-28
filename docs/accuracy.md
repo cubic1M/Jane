@@ -277,6 +277,8 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
 
   After: subscriptions recall 99.1%, "Coming up" 98.7%, $/yr found $92,413 of $90,835. Held-out sets and the sample bench are unchanged.
 
+- **A price rise seen only three times** (round 17, second tuning set). Xbox Game Pass at $16.99, $16.99, $19.99 in a three-month history was neither a subscription nor a price rise: two charges at one price are too few for a run outside `SHORT_RUN_CATEGORIES`, and the third was off the price. Now two at one price and a third at the same gap one step up (no more than `FIXED_PRICE_SUBSCRIPTION_MAX_STEP`) are a run, when every charge at the merchant is in it (a shop's would have others; without that, the second and third held-out sets each gained a false bill in "Coming up"). Second tuning set: subscriptions recall 99.1% → 100%, price rises 75% → 100%. Held-out sets and the sample bench unchanged.
+
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
 Beta users start by uploading statements, so the sample people above (already-clean rows) can't show what goes wrong between a bank's CSV and Jane's numbers. The CSV bench holds the whole upload path to labelled statements, as the banks export them.
@@ -340,7 +342,7 @@ Second tuning set (20 people, 117 files, 5863 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 99.2% (49 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $92,413, truth $90,835; error on the ones found 0.2% |
+| Findings, $/yr | Jane $92,689, truth $90,835; error on the ones found 0.2% |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 9 of 20 people (off by $135,869 in all) |
@@ -349,16 +351,16 @@ Second tuning set (20 people, 117 files, 5863 transactions):
 
 | Finding | Precision | Recall | Right | False alarms | Missed |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| subscription_review | 98.2% | 99.1% | 108 | 2 | 1 |
-| price_increase | 100.0% | 75.0% | 3 | 0 | 1 |
+| subscription_review | 98.2% | 100.0% | 109 | 2 | 0 |
+| price_increase | 100.0% | 100.0% | 4 | 0 | 0 |
 | trial_conversion | 100.0% | 100.0% | 5 | 0 | 0 |
 | bank_fees | 100.0% | 100.0% | 21 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 10 | 0 | 0 |
 | duplicate_charge | 44.0% | 100.0% | 11 | 14 | 0 |
 | idle_cash | 100.0% | 50.0% | 3 | 0 | 3 |
-| bills coming up (31 days) | 100.0% | 98.7% | 236 | 0 | 3 |
+| bills coming up (31 days) | 100.0% | 99.2% | 237 | 0 | 2 |
 
-Missed subscriptions Claude would be asked about on a live upload: 0 of 1.
+Missed subscriptions Claude would be asked about on a live upload: 0 of 0.
 
 Suggestions' confidence (is "80% sure" right 80% of the time?):
 
