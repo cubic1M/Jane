@@ -50,6 +50,11 @@
     },
     {
       "type": "subscription_review",
+      "about": "DROPBOX*PLUS, now yearly",
+      "perYear": 119.88
+    },
+    {
+      "type": "subscription_review",
       "about": "NETFLIX.COM, monthEnd",
       "perYear": 185.88
     },
@@ -90,6 +95,10 @@
       "about": "ACORNS INVEST, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "DROPBOX*PLUS, the monthly plan it left"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at BRIGHT SMILE DENTAL"
     },
@@ -101,27 +110,27 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": -5935.43
+      "dollars": -5947.42
     },
     {
       "date": "2026-06-30",
-      "dollars": -7835.24
+      "dollars": -7859.22
     },
     {
       "date": "2026-07-31",
-      "dollars": -8939.97
+      "dollars": -8975.94
     },
     {
       "date": "2026-08-31",
-      "dollars": -10800.12
+      "dollars": -10955.97
     },
     {
       "date": "2026-09-30",
-      "dollars": -13374.02
+      "dollars": -13529.87
     },
     {
       "date": "2026-10-24",
-      "dollars": -15364.38
+      "dollars": -15520.23
     }
   ]
 }

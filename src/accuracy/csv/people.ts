@@ -381,6 +381,15 @@ type Pool = {
   // A plan that moved to another card part-way, one billed on the month's last day, and one
   // service paid twice from two cards on different days (two people's accounts). Round 19.
   moved?: Sub[];
+  // A plan switched from monthly to yearly: the monthly charges stop, one yearly charge comes
+  // (round 21). The yearly one is the subscription now.
+  toYearly?: {
+    descriptor: string;
+    category: PfcDetailed;
+    monthly: number;
+    yearly: number;
+    alsoOk?: PfcPrimary[];
+  }[];
   // A plan paused for a month and picked up again (a gym's freeze, a box skipped): still a
   // subscription (round 18). Only some pools have them.
   paused?: Sub[];
@@ -1102,6 +1111,29 @@ const TUNING_2: Pool = {
     category: "ENTERTAINMENT_VIDEO_GAMES",
     cents: 399,
   },
+  toYearly: [
+    {
+      descriptor: "AMAZON PRIME*4K2LM90",
+      category: "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES",
+      monthly: 1499,
+      yearly: 13_900,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "DROPBOX*PLUS",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      monthly: 1199,
+      yearly: 11_988,
+      alsoOk: DIGITAL,
+    },
+    {
+      descriptor: "QZ NOTES PRO",
+      category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+      monthly: 899,
+      yearly: 7999,
+      alsoOk: DIGITAL,
+    },
+  ],
   moved: [
     { descriptor: "SPOTIFY USA", category: "ENTERTAINMENT_MUSIC_AND_AUDIO", cents: 1199 },
     { descriptor: "NETFLIX.COM", category: "ENTERTAINMENT_TV_AND_MOVIES", cents: 1549 },
@@ -2364,6 +2396,34 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     if (m.category.startsWith("LOAN") || m.category.endsWith("INSURANCE"))
       L.bill(rows, m.descriptor);
     else L.neutralBills.push(rows);
+  }
+
+  // Round 21, from its own dice: monthly, then switched to yearly two months ago.
+  const ty = rng(base + index * 104_729 + 35);
+  if (P.toYearly && months >= 5 && ty.chance(0.5)) {
+    const plan = ty.pick(P.toYearly);
+    const day = ty.int(2, 27);
+    const monthlyRows: string[] = [];
+    L.monthly(day, (date, i) => {
+      if (i < months - 2) {
+        const row = L.add(spend(card.id, date, plan.monthly, plan));
+        if (row) monthlyRows.push(row.id);
+      } else if (i === months - 2) {
+        const row = L.add(spend(card.id, date, plan.yearly, plan));
+        if (row)
+          L.findings.push({
+            type: "subscription_review",
+            rows: [row.id],
+            annualCents: plan.yearly,
+            note: `${plan.descriptor}, now yearly`,
+          });
+      }
+    });
+    L.traps.push({
+      type: "subscription_review",
+      rows: monthlyRows,
+      note: `${plan.descriptor}, the monthly plan it left`,
+    });
   }
 
   // Round 19, from its own dice: a plan that moved card, one on the month's last day, one service

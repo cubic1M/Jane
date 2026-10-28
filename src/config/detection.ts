@@ -123,6 +123,11 @@ export const YEARLY_PLAN_MIN_CENTS = 5_000;
 export const YEARLY_PLAN_MAX_CENTS = 50_000;
 // ...or a charge that says it is the year's renewal, whoever the company ("COSTCO *ANNUAL
 // RENEWAL"; CSV bench, second tuning set). Whole words of the description, lower case.
+// ...or a monthly plan that ended, then one charge at the same company worth this many of its
+// months: the plan switched to yearly (CSV bench, second tuning set: Amazon Prime $14.99 a month,
+// then $139).
+export const YEARLY_SWITCH_MIN_MONTHS = 8;
+export const YEARLY_SWITCH_MAX_MONTHS = 12.5;
 export const YEARLY_RENEWAL_WORDS: readonly string[] = [
   "annual",
   "yearly",
