@@ -537,7 +537,7 @@ export const venmo: CsvFormat = {
   id: "venmo",
   bank: "Venmo",
   label: "Venmo",
-  account: { name: "Venmo", kind: "checking" },
+  account: { name: "Venmo", kind: "payment_app" },
   requiredHeaders: ["type", "status", "note", "from", "to", "amount (total)"],
   shortRows: "skip",
   parseRow(get) {
@@ -578,7 +578,7 @@ export const paypal: CsvFormat = {
   id: "paypal",
   bank: "PayPal",
   label: "PayPal",
-  account: { name: "PayPal", kind: "checking" },
+  account: { name: "PayPal", kind: "payment_app" },
   requiredHeaders: [
     "date",
     "time",

@@ -263,6 +263,7 @@ describe("Venmo", () => {
 
   it("finds the header under the title, reads signed amounts and names who and what", () => {
     expect(result.format.id).toBe("venmo");
+    expect(result.account).toEqual({ name: "Venmo", kind: "payment_app" });
     // The balance lines and the disclaimer go quietly; the pending charge waits.
     expect(result.skipped).toEqual([]);
     expect(result.transactions.map((t) => [t.date, t.amountCents, t.description])).toEqual([
@@ -289,6 +290,7 @@ describe("PayPal", () => {
 
   it("keeps payments from the PayPal balance and leaves out what a card paid for", () => {
     expect(result.format.id).toBe("paypal");
+    expect(result.account).toEqual({ name: "PayPal", kind: "payment_app" });
     expect(result.transactions.map((t) => [t.date, t.amountCents, t.description])).toEqual([
       ["2026-09-02", 1199, "Spotify USA"],
       ["2026-09-15", -2500, "Jamie Rivera"],
