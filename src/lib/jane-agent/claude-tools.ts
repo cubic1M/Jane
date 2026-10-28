@@ -16,7 +16,7 @@ import { LIFE_EVENTS } from "@/config/life-events";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { netWorth } from "@/insights/net-worth";
+import { netWorth, notCounting } from "@/insights/net-worth";
 import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -1284,9 +1284,12 @@ async function runChatToolWork(
       return out({
         has: money(worth.assetsCents),
         owes: money(worth.debtsCents),
-        netWorth: money(worth.netCents),
+        // Not known when no balance is: never a $0 for Claude to repeat.
+        netWorth: worth.known ? money(worth.netCents) : null,
         ...(worth.cryptoCents > 0 ? { ofWhichCryptoReadOnly: money(worth.cryptoCents) } : {}),
         accountsWithoutABalance: worth.missing.length,
+        // Say this beside the figure: what it leaves out, by name.
+        notCounting: notCounting(worth.unbalanced)?.sentence ?? null,
       });
     }
     case "backtest_by_level": {

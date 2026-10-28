@@ -1,7 +1,8 @@
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
-import type { AccountKind } from "@/data-sources/types";
+import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "@/detection/units";
+import { idleCashOf } from "@/planning/idle-cash";
 
 // The CSV accuracy bench's people (2026-10-27): 20 synthetic people, each with 3 to 6 months of
 // true transactions on 2 or 3 accounts and the truth for everything Jane should say about them.
@@ -2720,21 +2721,29 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
   const balanceOf = (a: CsvAccount) =>
     a.openingCents -
     L.rows.filter((x) => x.account === a.id).reduce((s, x) => s + x.amountCents, 0);
-  // Idle cash, as Jane defines it (docs/accuracy.md): checking and savings above three months
-  // of spending, by at least $1,000.
-  const cash = shown
-    .filter((a) => a.kind !== "credit_card")
-    .reduce((sum, a) => sum + balanceOf(a), 0);
-  const spent = L.rows
-    .filter((x) => x.kind === "spending" && x.amountCents > 0)
-    .reduce((s, x) => s + x.amountCents, 0);
-  const span = (toDate(asOf).getTime() - toDate(start).getTime()) / DAY / 30.44;
-  const excess = cash - 3 * (spent / span);
-  if (excess >= 100_000) {
+  // Idle cash, Jane's own definition (idleCashOf: checking and savings above three months of
+  // spending, by at least IDLE_CASH_MIN_EXCESS_CENTS) on the true data: every balance known, every
+  // row in its true category. What the bench then checks is whether the upload gets there.
+  const idle = idleCashOf({
+    asOf,
+    accounts: shown.map((a) => ({
+      id: a.id,
+      type: ACCOUNT_KINDS[a.kind].type,
+      subtype: ACCOUNT_KINDS[a.kind].subtype,
+      balanceCents: balanceOf(a),
+    })),
+    transactions: L.rows.map((x) => ({
+      date: x.date,
+      amountCents: x.amountCents,
+      accountId: x.account,
+      pfc: x.category,
+    })),
+  });
+  if (idle) {
     L.findings.push({
       type: "idle_cash",
       annualCents: null,
-      note: `cash ${cash}, excess ${Math.round(excess)}`,
+      note: `cash ${idle.balanceCents}, excess ${idle.excessCents}`,
     });
   }
 
