@@ -9,6 +9,13 @@ export function plaidEnabled(): boolean {
   return Boolean(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET);
 }
 
+// Plaid Investments (holdings and investment transactions, read-only) is billed per item and
+// must be turned on in the Plaid dashboard first, so it stays off unless PLAID_INVESTMENTS=1.
+// The demo bank's stand-in investments don't need it.
+export function plaidInvestmentsEnabled(): boolean {
+  return process.env.PLAID_INVESTMENTS === "1";
+}
+
 export function plaidEnvironment(): "sandbox" | "production" {
   return process.env.PLAID_ENV === "production" ? "production" : "sandbox";
 }

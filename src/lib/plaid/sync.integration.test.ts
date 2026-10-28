@@ -422,6 +422,7 @@ describe.runIf(url)("syncItem against a real database", () => {
   });
 
   it("keeps investment balances, holdings and investment transactions (spec step 128)", async () => {
+    vi.stubEnv("PLAID_INVESTMENTS", "1");
     const investItem = await client.plaidItem.create({
       data: {
         userId,
@@ -534,5 +535,23 @@ describe.runIf(url)("syncItem against a real database", () => {
     expect((await syncItem(investItem.id, { client, api, now: NOW })).investments).toBe(
       "unavailable",
     );
+  });
+  it("leaves a real bank's investments alone while PLAID_INVESTMENTS is off", async () => {
+    vi.stubEnv("PLAID_INVESTMENTS", "");
+    const item = await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `item-invest-off-${suffix}`,
+        accessTokenEncrypted: encrypt("access-sandbox-invest-off"),
+        investments: true,
+      },
+    });
+    transactionsSync.mockResolvedValueOnce(syncPage({ accounts: [], next_cursor: "off-1" }));
+    transactionsRecurringGet.mockResolvedValueOnce({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+    investmentsHoldingsGet.mockReset();
+    expect((await syncItem(item.id, { client, api, now: NOW })).investments).toBe("off");
+    expect(investmentsHoldingsGet).not.toHaveBeenCalled();
   });
 });

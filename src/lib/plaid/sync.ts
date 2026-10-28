@@ -28,7 +28,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { withReadCache } from "@/lib/read-cache";
 import { enqueueJob, runJob } from "@/lib/jobs";
-import { plaid, plaidCall, plaidErrorCode } from "./client";
+import { plaid, plaidCall, plaidErrorCode, plaidInvestmentsEnabled } from "./client";
 import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import type { DemoOrder } from "@/data-sources/demo/demo-holdings";
@@ -732,7 +732,11 @@ async function syncItemWork(
   const [recurring, liabilities, investments] = await Promise.all([
     saveRecurringStreams(db, api, accessToken, accountIds),
     item.liabilities ? saveLiabilities(db, api, accessToken, item.id) : ("off" as const),
-    item.investments ? saveInvestments(db, api, accessToken, item.id, now) : ("off" as const),
+    // A real bank's only while Plaid Investments is on (PLAID_INVESTMENTS); the demo bank's
+    // always.
+    item.investments && (plaidInvestmentsEnabled() || isDemoToken(accessToken))
+      ? saveInvestments(db, api, accessToken, item.id, now)
+      : ("off" as const),
   ]);
   timing.mark("recurring_liabilities_investments");
   // A sample person's values list and named beneficiaries (steps 236 and 237), once their

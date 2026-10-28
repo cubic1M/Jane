@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { plaid, plaidCall, webhookUrl } from "./client";
+import { plaid, plaidCall, plaidInvestmentsEnabled, webhookUrl } from "./client";
 
 // Plaid Link from our side: a link token to open Link, and the exchange that turns
 // Link's public token into a stored item. The access token is encrypted before it is
@@ -58,8 +58,11 @@ export async function createLinkToken(
             products: [Products.Transactions],
             // Loans and card rates (spec step 65) and investment balances (step 66) where
             // the bank supports them; billed only then, and it doesn't limit which banks
-            // can be picked.
-            optional_products: [Products.Liabilities, Products.Investments],
+            // can be picked. Investments only once it's on our Plaid plan (PLAID_INVESTMENTS).
+            optional_products: [
+              Products.Liabilities,
+              ...(plaidInvestmentsEnabled() ? [Products.Investments] : []),
+            ],
             transactions: { days_requested: TRANSACTION_DAYS_REQUESTED },
           }),
     }),
@@ -99,7 +102,7 @@ export async function exchangePublicToken(
       accessTokenEncrypted: encrypt(data.access_token),
       institutionName,
       liabilities: true,
-      investments: true,
+      investments: plaidInvestmentsEnabled(),
     },
     select: { id: true },
   });
