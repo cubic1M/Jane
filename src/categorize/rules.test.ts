@@ -241,6 +241,44 @@ describe("categorizeByRules", () => {
     expect(out("ACME TRANSFER 0042")).toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
   });
 
+  // CSV bench, round 12: well-known chains by name, and more kinds of place by their words.
+  it.each([
+    ["GREYSTAR RE PAYMENT WEB PMT PPD ID: 1839429794", "RENT_AND_UTILITIES_RENT"],
+    ["TFL TRAVEL CH LONDON", "TRANSPORTATION_PUBLIC_TRANSIT"],
+    ["MTA*NYCT PAYGO NEW YORK NY", "TRANSPORTATION_PUBLIC_TRANSIT"],
+    ["PRET A MANGER LONDON GBR", "FOOD_AND_DRINK_FAST_FOOD"],
+    ["BLINKIST DENVER CO", "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS"],
+    ["SHELL OIL 57442", "TRANSPORTATION_GAS"],
+    ["WAWA 8123", "TRANSPORTATION_GAS"],
+    ["LIDL US 0412", "FOOD_AND_DRINK_GROCERIES"],
+    ["DOLLAR TREE #4410", "GENERAL_MERCHANDISE_DISCOUNT_STORES"],
+    ["E-ZPASS NY REBILL", "TRANSPORTATION_TOLLS"],
+    ["HAMPTON INN AUSTIN", "TRAVEL_LODGING"],
+    ["HERTZ RENT-A-CAR", "TRAVEL_RENTAL_CARS"],
+    ["XCEL ENERGY", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["WASTE MANAGEMENT", "RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT"],
+    ["JIFFY LUBE 1123", "GENERAL_SERVICES_AUTOMOTIVE"],
+    ["MAPLE CURRY HOUSE", "FOOD_AND_DRINK_RESTAURANT"],
+    ["SUNNY SIDE CREAMERY", "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK"],
+    ["RIVERSIDE FLORIST", "GENERAL_MERCHANDISE_GIFTS_AND_NOVELTIES"],
+    ["BRIGHT STAR CLEANERS", "PERSONAL_CARE_LAUNDRY_AND_DRY_CLEANING"],
+    ["USPS PO 0523", "GENERAL_SERVICES_POSTAGE_AND_SHIPPING"],
+    ["LITTLE ACORNS DAYCARE", "GENERAL_SERVICES_CHILDCARE"],
+    ["IRONWORKS FITNESS", "PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS"],
+  ])("reads %s as %s", (description, category) => {
+    expect(out(description)).toBe(category);
+  });
+
+  // A name above still wins, and a word many names share isn't taken for a chain.
+  it("keeps the names above and leaves common words alone", () => {
+    expect(out("ACADEMY SPORTS 0042")).toBe("GENERAL_MERCHANDISE_SPORTING_GOODS");
+    expect(out("DIRECTV STREAM")).toBe("ENTERTAINMENT_TV_AND_MOVIES");
+    // USAA is a bank as well as an insurer: its transfers are not insurance.
+    expect(out("USAA FUNDS TRANSFER")).toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
+    expect(out("USAA P&C AUTOPAY")).toBe("GENERAL_SERVICES_INSURANCE");
+    expect(out("GAP INSURANCE")).toBe("GENERAL_SERVICES_INSURANCE");
+  });
+
   it("leaves unknown merchants for the LLM", () => {
     expect(out("MYSTERY SHOP 555")).toBeNull();
   });

@@ -88,7 +88,7 @@ Calibration, tuning set:
 | 60–69% | 18 | 65% | 100% |
 | 70–79% | 7 | 74% | 100% |
 | 80–89% | 31 | 86% | 100% |
-| 90–100% | 32 | 95% | 100% |
+| 90–100% | 33 | 95% | 100% |
 
 Held-out set (40 people, 10008 transactions):
 
@@ -100,7 +100,7 @@ Held-out set (40 people, 10008 transactions):
 | double_charges | 100.0% | 100.0% | 0.0% | 31 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 10 | 0 | 0 |
-| bills | 100.0% | 98.6% | 0.0% | 286 | 0 | 4 |
+| bills | 100.0% | 99.7% | 0.0% | 289 | 0 | 1 |
 | income | 100.0% | 100.0% | 0.0% | 774 | 0 | 0 |
 | transfers | 100.0% | 99.6% | 0.0% | 833 | 0 | 3 |
 
@@ -112,7 +112,7 @@ Calibration, held-out set:
 | 50–59% | 26 | 56% | 100% |
 | 60–69% | 31 | 65% | 100% |
 | 70–79% | 10 | 75% | 100% |
-| 80–89% | 17 | 85% | 100% |
+| 80–89% | 18 | 85% | 100% |
 | 90–100% | 12 | 95% | 100% |
 
 Second held-out set (40 people, 10748 transactions):
@@ -125,7 +125,7 @@ Second held-out set (40 people, 10748 transactions):
 | double_charges | 100.0% | 100.0% | 0.0% | 20 | 0 | 0 |
 | idle_cash | 100.0% | 100.0% | 0.0% | 6 | 0 | 0 |
 | card_interest | 100.0% | 100.0% | 0.0% | 12 | 0 | 0 |
-| bills | 100.0% | 98.6% | 0.0% | 281 | 0 | 4 |
+| bills | 100.0% | 99.6% | 0.0% | 284 | 0 | 1 |
 | income | 100.0% | 100.0% | 0.0% | 780 | 0 | 0 |
 | transfers | 100.0% | 99.8% | 0.0% | 888 | 0 | 2 |
 
@@ -241,6 +241,15 @@ Income, fees, price rises, card interest and idle cash were 100% / 100% before a
   | Sample second held-out | 94.4% | 98.6% |
 
   Precision is unchanged, and CSV held-out price-rise precision rose from 93.8% to 100%. The tuning sets are unchanged.
+- **Well-known chains by name, and more kinds of place by their words** (round 12). Most of what the rules couldn't place on the held-out CSV sets was a national or international chain the lists didn't name. From general knowledge (never from the held-out rows), the rules now name the big grocers, fuel stations, fast food and restaurant chains, department, discount, sporting-goods and craft stores, hotels, airlines, rental cars, rail and transit (TfL, MTA, BART, Clipper and others), tolls, phone, cable, power, water and waste companies, large landlords (Greystar and others), insurers, car services, childcare and donations, plus kind words (curry, creamery, florist, cleaners, daycare, fitness and so on). They sit below the first name lists, so a name above still wins; words many names share (GAP, EXPRESS, CAMDEN, LIME, PATH) are left out, and USAA is named only as an insurer, since it is a bank too (its transfers dropped the third sample held-out set's transfer recall to 95% before that). Category right, rules only:
+
+  | Set | Before | After |
+  | --- | ---: | ---: |
+  | CSV tuning | 98.3% | 99.8% |
+  | CSV first held-out | 65.9% | 94.2% |
+  | CSV second held-out | 75.5% | 91.5% |
+
+  Bills recall on the sample bench also rose (first held-out 98.6% → 99.7%, second 98.6% → 99.6%); everything else is unchanged.
 
 ## CSV bench: the upload path, on bank files (2026-10-27)
 
@@ -262,7 +271,7 @@ Tuning set (20 people, 155 files, 5444 transactions):
 | --- | ---: |
 | Files read | 155 of 155 (151 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 98.3% (90 left for Claude) |
+| Category right (rules only) | 99.8% (11 left for Claude) |
 | False "Charged twice?" | 0 (0 people) |
 | Findings, $/yr | Jane $30,610, truth $30,610; error on the ones found 0.0% |
 | Monthly spending, error | 0.0% |
@@ -301,7 +310,7 @@ Held-out set (20 people, 135 files, 5393 transactions):
 | --- | ---: |
 | Files read | 135 of 135 (132 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 65.9% (1762 left for Claude) |
+| Category right (rules only) | 94.2% (256 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
 | Findings, $/yr | Jane $28,135, truth $29,777; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
@@ -328,10 +337,10 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 16 | 58% | 81% |
-| 60–69% | 31 | 64% | 97% |
+| 50–59% | 19 | 58% | 84% |
+| 60–69% | 35 | 64% | 97% |
 | 70–79% | 6 | 76% | 100% |
-| 80–89% | 4 | 83% | 100% |
+| 80–89% | 5 | 83% | 100% |
 | 90–100% | 0 | – | – |
 
 Second held-out set (20 people, 128 files, 5470 transactions):
@@ -340,7 +349,7 @@ Second held-out set (20 people, 128 files, 5470 transactions):
 | --- | ---: |
 | Files read | 128 of 128 (126 exactly) |
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
-| Category right (rules only) | 75.5% (1236 left for Claude) |
+| Category right (rules only) | 91.5% (393 left for Claude) |
 | False "Charged twice?" | 2 (2 people) |
 | Findings, $/yr | Jane $30,059, truth $30,987; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
@@ -367,8 +376,8 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 16 | 59% | 100% |
-| 60–69% | 38 | 64% | 95% |
+| 50–59% | 19 | 59% | 100% |
+| 60–69% | 39 | 64% | 95% |
 | 70–79% | 6 | 76% | 100% |
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
