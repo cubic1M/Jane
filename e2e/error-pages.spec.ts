@@ -34,7 +34,11 @@ test("a page that broke in the browser reaches /admin/errors, typed values gone"
   baseURL,
 }) => {
   const tag = crypto.randomUUID().slice(0, 8);
+  // Its own made-up IP (like e2e/rate-limits.spec.ts), so the shard's other browsers, which share
+  // one address in CI, can't use up the /api limit first and get this a 429.
+  const ip = `198.51.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`;
   const sent = await page.request.post(`${baseURL}/api/client-error`, {
+    headers: { "x-forwarded-for": ip },
     data: {
       name: "RangeError",
       message: `Invalid amount '1,240.50' for rent ${tag}`,
