@@ -32,4 +32,26 @@ describe("statementMask", () => {
     expect(statementMask("2026-10-27_transaction_download.csv", "Date,Description\n")).toBeNull();
     expect(statementMask("export (3).csv", "Date,Description\n")).toBeNull();
   });
+
+  it("reads a file whose start cuts through a quoted field, and never throws", () => {
+    // Amex: an address in quotes over two lines, far enough down that the read of the start
+    // ends inside it.
+    const row = (i: number) =>
+      `10/${String((i % 28) + 1).padStart(2, "0")}/2026,UBER EATS,SAM,-12345,26.77,,UBER EATS,,"OAKLAND\nCA",94612`;
+    const amex = [
+      "Date,Description,Card Member,Account #,Amount,Extended Details,Appears On Your Statement As,Address,City/State,Zip Code",
+      ...Array.from({ length: 80 }, (_, i) => row(i)),
+    ].join("\n");
+    expect(statementMask("activity.csv", amex)).toBe("2345");
+
+    // Wells Fargo: every field quoted, no header.
+    const wells = Array.from(
+      { length: 80 },
+      () => '"10/24/2026","-49.76","*","","PURCHASE AUTHORIZED ON 10/24 SAFEWAY #1234 OAKLAND CA"',
+    ).join("\n");
+    expect(() => statementMask("wells-fargo.csv", wells)).not.toThrow();
+
+    // Broken all the way through: no mask, not a failed upload.
+    expect(statementMask("broken.csv", 'Date,Description\n10/01/2026,"NETFLIX')).toBeNull();
+  });
 });

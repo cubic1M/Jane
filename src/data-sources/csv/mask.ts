@@ -1,6 +1,9 @@
 import { looksLikeOfx } from "@/data-sources/ofx/parse-ofx";
 import { normalizeHeader } from "./formats";
-import { parseCsv } from "./parse-csv";
+import { parseCsv, type CsvRecord } from "./parse-csv";
+
+// How much of a file's start is read for its header and first row.
+const HEAD_CHARS = 4000;
 
 // The last four of the account a statement is from, when it says: an OFX/QFX file's account
 // number, a "Card No." or "Account #" column (Capital One, Amex), or the file's name ("Chase4321_
@@ -12,7 +15,7 @@ export function statementMask(name: string, text: string): string | null {
   if (looksLikeOfx(name, text)) {
     return last4(/<ACCTID>\s*([^<\s]+)/i.exec(text)?.[1]?.replace(/\D/g, "") ?? "");
   }
-  const [header, first] = parseCsv(text.slice(0, 4000)).map((r) => r.fields);
+  const [header, first] = firstRecords(text).map((r) => r.fields);
   const column = (header ?? [])
     .map(normalizeHeader)
     .findIndex((h) => /^(card no\.?|account #)$/.test(h));
@@ -24,4 +27,19 @@ export function statementMask(name: string, text: string): string | null {
   const groups = name.replace(/\.[a-z0-9]+$/i, "").match(/(?<!\d)\d{4}(?!\d)/g) ?? [];
   const mask = groups.find((g) => !/^(19|20)\d\d$/.test(g));
   return mask ?? null;
+}
+
+// The header and first row, read from the file's start. A cut there can fall inside a quoted
+// field (Wells Fargo quotes every field; Amex has a two-line address), which won't parse on its
+// own: then the whole file, and nothing at all rather than a failed upload. The mask is only a
+// hint (an upload QA pass: Preview failed for every Wells Fargo and Amex file longer than the cut).
+function firstRecords(text: string): CsvRecord[] {
+  for (const part of [text.slice(0, HEAD_CHARS), text]) {
+    try {
+      return parseCsv(part);
+    } catch {
+      // Try the next, longer read.
+    }
+  }
+  return [];
 }

@@ -49,6 +49,20 @@ describe("previewCsvFiles", () => {
     expect(checking.ok && checking.skipped).toHaveLength(1);
     expect(unknown).toMatchObject({ ok: false, file: "unknown-bank.csv" });
   });
+
+  it("previews a Wells Fargo file longer than the account-number read (every field quoted)", () => {
+    const rows = Array.from(
+      { length: 90 },
+      (_, i) =>
+        `"10/${String((i % 28) + 1).padStart(2, "0")}/2026","-49.76","*","","PURCHASE AUTHORIZED ON 10/24 SAFEWAY #1234 OAKLAND CA S386254 CARD 1234"`,
+    );
+    const text = rows.join("\n");
+    expect(text.length).toBeGreaterThan(4000);
+
+    const [wells] = previewCsvFiles([{ name: "wells-fargo.csv", text }]);
+
+    expect(wells).toMatchObject({ ok: true, rowCount: 90 });
+  });
 });
 
 describe("importCsvFiles", () => {
