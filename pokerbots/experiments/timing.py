@@ -49,7 +49,7 @@ def time_bot(bot_str: str, variant: str, hands: int, seed: int = 777) -> dict:
 def main(argv=None):
     from engine.variants import VARIANTS
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bots", default="equity,balanced,adaptive,preflop_cfr@15m,full_cfr@30m")
+    ap.add_argument("--bots", default="equity,balanced,adaptive,preflop_cfr@15m,full_cfr@30m,adaptive_cfr@15m")
     ap.add_argument("--variants", default="all")
     ap.add_argument("--hands", type=int, default=200)
     ap.add_argument("--out", default=str(ROOT / "results" / "timing.json"))

@@ -72,7 +72,7 @@ class Miswired(Bot):
 def main(argv=None):
     from experiments.common import run_jobs
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bots", default="equity,balanced,adaptive,preflop_cfr@15m,full_cfr@30m")
+    ap.add_argument("--bots", default="equity,balanced,adaptive,preflop_cfr@15m,full_cfr@30m,adaptive_cfr@15m")
     ap.add_argument("--bugs", default=",".join(BUGS))
     ap.add_argument("--pairs", type=int, default=6)
     ap.add_argument("--hands", type=int, default=1000)

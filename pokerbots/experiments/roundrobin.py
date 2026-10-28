@@ -13,7 +13,7 @@ from itertools import combinations
 
 from experiments.common import run_jobs
 
-CANDIDATES = ["equity", "balanced", "adaptive", "preflop_cfr@15m", "full_cfr@30m"]
+CANDIDATES = ["equity", "balanced", "adaptive", "preflop_cfr@15m", "full_cfr@30m", "adaptive_cfr@15m"]
 DUMMIES = ["push", "station", "maniac", "random_legal"]
 
 
