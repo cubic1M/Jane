@@ -193,6 +193,13 @@ def main(argv=None):
         proj = st["mean_ms"] * dph * spec.hands_per_match / 1000
         clock = spec.time_per_match
         verdict = "OK" if not probs else "FAIL"
+        probe = make_bot(b)
+        probe.new_match(spec, 0)
+        inner = probe
+        while inner is not None and not getattr(inner, "using_fallback", False):
+            inner = getattr(inner, "inner", None)
+        if inner is not None and not probs:
+            verdict = "OK but NO POLICY (playing its fallback; train it or use another bot)"
         if clock and proj > clock / 2:
             verdict = "FAIL (projected match time over half the clock)"
             probs.append("clock")
