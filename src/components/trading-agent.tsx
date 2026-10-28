@@ -212,12 +212,22 @@ function Running({ view }: { view: AgentView }) {
   );
 }
 
-export function TradingAgent({ view, choices }: { view: AgentView | null; choices: AgentChoices }) {
+export function TradingAgent({
+  view,
+  choices,
+  honest,
+}: {
+  view: AgentView | null;
+  choices: AgentChoices;
+  // The replay's honest result in plain words (src/planning/trading-agent/honest-line.ts).
+  honest?: string;
+}) {
   return (
     <section aria-labelledby="agent-heading" className={`flex flex-col gap-3 p-4 ${BOX}`}>
       <h2 id="agent-heading" className="text-lg font-semibold">
         24-hour agent
       </h2>
+      {honest && <p className="text-sm font-semibold">{honest}</p>}
       {view ? <Running view={view} /> : <Picker choices={choices} />}
       <DemoAdviceLabel />
     </section>
