@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { dismissImport } from "@/app/import/actions";
 import { IMPORT_POLL_MS, IMPORT_STARTED_EVENT } from "@/config/import";
@@ -56,6 +56,16 @@ export function ImportChip() {
       window.removeEventListener(IMPORT_STARTED_EVENT, started);
     };
   }, [check]);
+
+  // A chip showing is asked about again on each new page: after "Delete all my data" (a client
+  // navigation to /goodbye), there's no run, or no one to ask for, and it goes (it stayed,
+  // "Done: found $228/yr", for a person whose account was gone).
+  const pathname = usePathname();
+  useEffect(() => {
+    if (!last.current || window.self !== window.top) return;
+    const again = setTimeout(check, 0);
+    return () => clearTimeout(again);
+  }, [pathname, check]);
 
   const running = run !== null && RUNNING.has(run.stage);
   useEffect(() => {
