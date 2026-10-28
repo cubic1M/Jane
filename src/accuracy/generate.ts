@@ -141,6 +141,26 @@ const CARD_PAYMENT_OUT = [
   // A card company the keyword rules don't know: real exports have them.
   "BARCLAYCARD US PAYMENT 0041",
 ];
+// The name "Coming up" should give each card company's payment, written out by hand rather than
+// from the detector's own list.
+const CARD_COMPANIES: [string, string][] = [
+  ["CHASE ", "Chase"],
+  ["AMEX ", "American Express"],
+  ["CAPITAL ONE ", "Capital One"],
+  ["DISCOVER ", "Discover"],
+  ["CITI ", "Citi"],
+  ["BARCLAYCARD ", "Barclays"],
+  ["GS BANK ", "Apple Card"],
+  ["NAVY FEDERAL ", "Navy Federal"],
+  ["TD BANK ", "TD Bank"],
+  ["SYNCHRONY ", "Synchrony"],
+  ["USAA ", "USAA"],
+  ["PENFED ", "PenFed"],
+];
+const cardPaymentName = (payOut: string) => {
+  const company = CARD_COMPANIES.find(([start]) => payOut.startsWith(start))?.[1];
+  return company ? `${company} card payment` : "Credit card payment";
+};
 const SHOPS = [
   { description: "BEST BUY 00012345", category: "Shopping", lo: 40, hi: 300 },
   { description: "TARGET 00023456", category: "Shopping", lo: 15, hi: 120 },
@@ -897,8 +917,9 @@ function person(index: number, set: BenchSet = "tuning"): History {
       });
       for (const row of [out, back]) if (row.id) b.labels.transfers.push(row.id);
     });
-    // "Coming up" calls any card payment "Credit card payment".
-    b.bill("Credit card payment");
+    // "Coming up" names a card payment for its card company; this person's card is just "Credit
+    // card", so it's "Chase card payment", or "Credit card payment" for a company Jane doesn't know.
+    b.bill(cardPaymentName(payOut));
     if (debt) {
       b.monthly(r.int(10, 18), (date) =>
         b.add({

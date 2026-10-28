@@ -691,6 +691,31 @@ export const SUBSCRIPTION_BOX_MERCHANTS: readonly string[] = [
   "imperfect foods",
 ];
 export const CARD_PAYMENT_NAME = "Credit card payment";
+// Card companies as a payment to them reads from checking, and the name for a card of theirs: a
+// card payment is named for its card, not "Credit card payment" (overnight beta list).
+export const CARD_ISSUERS: readonly (readonly [RegExp, string])[] = [
+  [/\bchase\b/i, "Chase"],
+  [/\bamex\b|american express/i, "American Express"],
+  [/\bciti(bank|cards?)?\b/i, "Citi"],
+  [/capital one/i, "Capital One"],
+  [/\bdiscover\b/i, "Discover"],
+  [/bank of america|\bbofa\b|\bbk of amer/i, "Bank of America"],
+  [/wells fargo/i, "Wells Fargo"],
+  [/\bbarclay/i, "Barclays"],
+  [/\bsynchrony\b|\bsyncb\b/i, "Synchrony"],
+  [/apple ?card|\bgs bank\b|goldman sachs/i, "Apple Card"],
+  [/\bus ?bank\b/i, "U.S. Bank"],
+  [/navy federal/i, "Navy Federal"],
+  [/\busaa\b/i, "USAA"],
+  [/\bpenfed\b/i, "PenFed"],
+  [/\btd bank\b/i, "TD Bank"],
+];
+// A card's account name may use a short form of its issuer's name.
+export const CARD_ISSUER_SHORT: Readonly<Record<string, readonly string[]>> = {
+  "American Express": ["amex"],
+  "Bank of America": ["bofa"],
+  "U.S. Bank": ["us bank", "usbank"],
+};
 // The payment category for a card or loan, by account type, then subtype (Plaid's detailed
 // categories). When the bank reports the due date of every such account, the deadline is the
 // one reminder for that payment and the guessed bill reminder is left out (books QA: two
@@ -915,3 +940,20 @@ export const THIN_DATA_MAX_PER_MONTH = 3;
 // bench's doubles are cleaner than a real bank's (two of the same shirt look the same too), so
 // "Charged twice?" stays no surer than this until real outcomes say otherwise.
 export const DUPLICATE_CHARGE_MAX_PERCENT = 65;
+
+// --- Rent paid to a person ----------------------------------------------------------------------
+
+// Rent sent by Zelle or Venmo to a landlord who is a person reads as a transfer, so it's missing
+// from spending, bills and the idle-cash cushion (CSV bench, round 24). Jane asks rather than
+// guesses: "Is this your rent?". It asks about about the same amount to the same payee every
+// month, near the start of the month, for at least RENT_TRANSFER_MIN_MONTHS months, and at least
+// RENT_TRANSFER_MIN_CENTS. A yes files those payments as rent; a no keeps them as transfers, and
+// either way Jane never asks about that payee again.
+export const RENT_TRANSFER_WORDS: readonly string[] = ["ZELLE", "VENMO", "CASH APP", "PAYPAL"];
+export const RENT_TRANSFER_MIN_MONTHS = 2;
+export const RENT_TRANSFER_MIN_CENTS = 50_000;
+// Within this share of the usual amount (a rent can carry a small fee or a utility share).
+export const RENT_TRANSFER_AMOUNT_TOLERANCE = 0.05;
+// Near the start of the month: from this day of the month before, to this day of the month.
+export const RENT_TRANSFER_FROM_DAY = 25;
+export const RENT_TRANSFER_TO_DAY = 7;

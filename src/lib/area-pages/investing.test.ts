@@ -180,4 +180,11 @@ describe("the investing tree", () => {
     expect(chips).toEqual([]);
     expect(tree.sub).toBe("$94k invested");
   });
+
+  it("says how many balances are still to answer, not all good", () => {
+    const { tree } = investingTree(
+      input({ suggestions: [], accounts: [], totalCents: 0, toAnswer: 2, practice: null }),
+    );
+    expect(tree.sub).toBe("2 to answer");
+  });
 });

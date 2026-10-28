@@ -62,6 +62,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   tradeoffs: 1,
   // Spec step 257: one question about the person at a time.
   questions: 1,
+  // CSV bench round 24: "Is this your rent?", one payee at a time.
+  rent_question: 1,
   // Spec step 208.
   unusual: 2,
   // Spec step 148.
@@ -202,6 +204,8 @@ export const MESSAGE_PRIORITY = {
   tradeoffs: 52,
   // Spec step 257: a question that unlocks suggestions, after those it would unlock.
   questions: 36,
+  // CSV bench round 24: rent read as a transfer leaves spending and the cushion short.
+  rent_question: 38,
   // Spec step 208: a charge that may not be theirs; as urgent as an alert.
   unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.

@@ -74,7 +74,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 4920148, excess 4279069",
+      "about": "cash 4779213, excess 3597540",
       "perYear": null
     }
   ],
@@ -96,6 +96,10 @@
       "about": "ACORNS INVEST, not a plan"
     },
     {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
+    },
+    {
       "type": "duplicate_charge",
       "about": "two at GREAT CLIPS 4412"
     },
@@ -111,23 +115,23 @@
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 25554.21
+      "dollars": 25235.88
     },
     {
       "date": "2026-07-31",
-      "dollars": 29837.01
+      "dollars": 29191.95
     },
     {
       "date": "2026-08-31",
-      "dollars": 34390.36
+      "dollars": 33346.27
     },
     {
       "date": "2026-09-30",
-      "dollars": 39009.21
+      "dollars": 37378.13
     },
     {
       "date": "2026-10-24",
-      "dollars": 43544.1
+      "dollars": 42134.75
     }
   ]
 }

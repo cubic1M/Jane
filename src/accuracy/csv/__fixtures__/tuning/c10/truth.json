@@ -99,28 +99,32 @@
     {
       "type": "subscription_review",
       "about": "BLUE HERON BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "E*TRADE ACH DEPOSIT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-06-30",
-      "dollars": 60.36
+      "dollars": -225.93
     },
     {
       "date": "2026-07-31",
-      "dollars": -1342.98
+      "dollars": -1915.56
     },
     {
       "date": "2026-08-31",
-      "dollars": -2872.46
+      "dollars": -3731.33
     },
     {
       "date": "2026-09-30",
-      "dollars": -5269.65
+      "dollars": -6414.81
     },
     {
       "date": "2026-10-24",
-      "dollars": -6235.87
+      "dollars": -7667.32
     }
   ]
 }

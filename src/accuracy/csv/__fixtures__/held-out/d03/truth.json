@@ -74,32 +74,36 @@
     {
       "type": "subscription_review",
       "about": "SUNRISE BAKERY, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "VANGUARD BUY INVESTMENT, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 1232.1
+      "dollars": 847.56
     },
     {
       "date": "2026-06-30",
-      "dollars": 928.25
+      "dollars": 69.55
     },
     {
       "date": "2026-07-31",
-      "dollars": -1085.31
+      "dollars": -2174.44
     },
     {
       "date": "2026-08-31",
-      "dollars": -2479.77
+      "dollars": -3894.08
     },
     {
       "date": "2026-09-30",
-      "dollars": -4028.03
+      "dollars": -5688.71
     },
     {
       "date": "2026-10-24",
-      "dollars": -6268.02
+      "dollars": -8245.68
     }
   ]
 }

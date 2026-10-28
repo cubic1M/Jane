@@ -26,6 +26,7 @@ import { leanSource } from "./lean";
 import { booksSource } from "./books";
 import { closeSource } from "./close";
 import { questionsSource } from "./questions";
+import { rentQuestionSource } from "./rent-question";
 import { suggestionsSource } from "./suggestions";
 import { steadySource } from "./steady";
 import { priceRisesSource } from "./price-rises";
@@ -83,6 +84,7 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   twoSource,
   tradeoffsSource,
   questionsSource,
+  rentQuestionSource,
   unusualSource,
   reportSource,
   // Spec step 128 on.

@@ -77,6 +77,9 @@ async function Planner({ searchParams }: { searchParams: PageProps<"/debt">["sea
             fromBank: false,
           })),
         ].slice(0, MAX_PLANNER_CARDS)}
+        unknown={payoff.book.debts
+          .filter((d) => d.balanceCents === null && d.kind !== "mortgage")
+          .map((d) => d.name)}
         startYear={now.getUTCFullYear()}
         startMonth={now.getUTCMonth()}
         maxCards={MAX_PLANNER_CARDS}

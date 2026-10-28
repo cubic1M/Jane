@@ -55,7 +55,7 @@
     },
     {
       "type": "idle_cash",
-      "about": "cash 758231, excess 233822",
+      "about": "cash 1572159, excess 488076",
       "perYear": null
     }
   ],
@@ -79,32 +79,36 @@
     {
       "type": "subscription_review",
       "about": "FIRST BAPTIST CHURCH, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-05-31",
-      "dollars": 7555.57
+      "dollars": 7243.41
     },
     {
       "date": "2026-06-30",
-      "dollars": 6490.14
+      "dollars": 5865.82
     },
     {
       "date": "2026-07-31",
-      "dollars": 6907.66
+      "dollars": 5492.92
     },
     {
       "date": "2026-08-31",
-      "dollars": 5773.31
+      "dollars": 4046.41
     },
     {
       "date": "2026-09-30",
-      "dollars": 4479.61
+      "dollars": 2440.55
     },
     {
       "date": "2026-10-24",
-      "dollars": 3815.03
+      "dollars": 1463.81
     }
   ]
 }

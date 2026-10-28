@@ -139,6 +139,80 @@ describe.runIf(url)("the verified savings record", { timeout: 120_000 }, () => {
     ]);
   });
 
+  it("confirms an investing saving from what they hold: a costly fund gone, with the proof", async () => {
+    const { userId } = await person();
+    const account = await client.account.create({
+      data: {
+        userId,
+        source: "csv",
+        name: "Fidelity",
+        type: "investment",
+        subtype: "brokerage",
+        currentBalanceCents: 5_000_000,
+      },
+    });
+    const security = await client.security.create({
+      data: {
+        userId,
+        plaidSecurityId: `csv:FCNTX-${userId}`,
+        name: "Contrafund",
+        ticker: "FCNTX",
+        type: "mutual fund",
+      },
+    });
+    const holding = await client.holding.create({
+      data: {
+        userId,
+        accountId: account.id,
+        securityId: security.id,
+        quantity: 100,
+        priceCents: 50_000,
+        valueCents: 5_000_000,
+      },
+    });
+    const watch = {
+      kind: "funds_left",
+      funds: [{ ticker: "FCNTX", valueCents: 5_000_000, yearlyCents: 19_000 }],
+    };
+    const fees = {
+      key: "investing:investment_fees",
+      capability: "investing",
+      topic: "investment_fees",
+      title: "Switch to cheaper funds",
+      worthCents: 19_000,
+      worthKind: "saves",
+      confidencePercent: 80,
+      watch: watch as never,
+    };
+    await recordShown(userId, [fees], { client, now: at("2026-10-01") });
+    await recordAnswer(userId, "investing:investment_fees", "yes", {
+      client,
+      now: at("2026-10-01"),
+    });
+    // Still held: waiting, an expectation.
+    expect(await verifyOutcomes(userId, { client, now: at("2026-10-10") })).toMatchObject({
+      confirmed: 0,
+    });
+    // Sold: the next holdings show it gone.
+    await client.holding.update({
+      where: { id: holding.id },
+      data: { valueCents: 0, quantity: 0 },
+    });
+    expect(await verifyOutcomes(userId, { client, now: at("2026-10-20") })).toMatchObject({
+      confirmed: 1,
+    });
+    const row = await client.suggestionOutcome.findFirstOrThrow({ where: { userId } });
+    expect(row).toMatchObject({
+      status: "confirmed",
+      confirmedCents: 19_000,
+      yearly: true,
+      verifiedPercent: 90,
+    });
+    expect(row.proof).toMatch(/FCNTX went from \$50,000\.00 to \$0\.00/);
+    const record = await savingsRecord(userId, { client });
+    expect(record.confirmedCents).toBe(19_000);
+  });
+
   it("keeps a no apart, and a yes with nothing to watch as an expectation", async () => {
     const { userId } = await person();
     await recordShown(userId, [shown("a:no"), shown("b:unseen", null)], {

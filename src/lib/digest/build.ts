@@ -45,7 +45,8 @@ export type DigestInput = {
 export type DigestPlans = {
   budgets: { category: string; spentCents: number; budgetCents: number }[];
   goals: { name: string; percent: number; savedChangeCents: number | null }[];
-  netWorth: { nowCents: number; weekAgoCents: number | null } | null;
+  // What net worth leaves out for want of a balance ("not counting card balance"), or null.
+  netWorth: { nowCents: number; weekAgoCents: number | null; notCounting?: string | null } | null;
 };
 
 export type DigestPayload = {
@@ -60,7 +61,7 @@ export type DigestPayload = {
   // Older payloads (before step 39) have none of these.
   budgets?: { category: string; spentCents: number; budgetCents: number; over: boolean }[];
   goals?: { name: string; percent: number; savedChangeCents: number | null }[];
-  netWorth?: { nowCents: number; changeCents: number } | null;
+  netWorth?: { nowCents: number; changeCents: number; notCounting?: string | null } | null;
   // Jane's plan: how many open findings wait for a yes or no (none before step 49).
   plan?: { items: number };
   // What the action agent did this week (none before step 56).
@@ -88,7 +89,11 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
   const worth = input.plans?.netWorth;
   const netWorth =
     worth && worth.weekAgoCents !== null
-      ? { nowCents: worth.nowCents, changeCents: worth.nowCents - worth.weekAgoCents }
+      ? {
+          nowCents: worth.nowCents,
+          changeCents: worth.nowCents - worth.weekAgoCents,
+          notCounting: worth.notCounting ?? null,
+        }
       : null;
 
   if (

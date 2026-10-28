@@ -93,36 +93,40 @@
     {
       "type": "subscription_review",
       "about": "ROOT INSURANCE CO, not a plan"
+    },
+    {
+      "type": "subscription_review",
+      "about": "COINBASE, money sent to an investing account"
     }
   ],
   "netWorthByMonthEnd": [
     {
       "date": "2026-04-30",
-      "dollars": 928.14
+      "dollars": 593.19
     },
     {
       "date": "2026-05-31",
-      "dollars": 1472.45
+      "dollars": 412.52
     },
     {
       "date": "2026-06-30",
-      "dollars": 733.97
+      "dollars": -660.91
     },
     {
       "date": "2026-07-31",
-      "dollars": 776.13
+      "dollars": -953.7
     },
     {
       "date": "2026-08-31",
-      "dollars": 407.49
+      "dollars": -1657.29
     },
     {
       "date": "2026-09-30",
-      "dollars": 103.88
+      "dollars": -2295.85
     },
     {
       "date": "2026-10-24",
-      "dollars": -57.41
+      "dollars": -2792.09
     }
   ]
 }

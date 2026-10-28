@@ -8,6 +8,7 @@ import { comingUp } from "@/insights/coming-up";
 import { irregularCosts } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
 import { loadDetectionInput, moneyFound } from "@/detection/engine";
+import { loadInvestingLeak } from "@/lib/investments/leak";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
@@ -47,6 +48,7 @@ export async function homeSummary(
     janeDid,
     goals,
     plan,
+    leak,
   ] = await Promise.all([
     moneyFound(userId, { client }),
     savedItems(userId, { client }),
@@ -80,6 +82,8 @@ export async function homeSummary(
     listGoals(userId, { client, now }),
     // The year plan as last kept (spec step 205): what this month has room to save.
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
+    // The investing leak (src/planning/investing-leak.ts): never the idle cash the money finding has.
+    loadInvestingLeak(userId, { client }),
   ]);
   // The person's own day, as the bills and safe to spend read it (src/lib/today.ts).
   const asOf = input.asOf;
@@ -114,7 +118,10 @@ export async function homeSummary(
     .sort((a, b) => b.getTime() - a.getTime())[0];
 
   return {
-    moneyFoundCents: found,
+    // Money found: the findings, plus what investing loses each year (fees, waiting cash, an
+    // unused match, avoidable tax), counted once.
+    moneyFoundCents: found + leak.totalCents,
+    investingLeakCents: leak.totalCents,
     savedToDateCents: saved.reduce((sum, i) => sum + i.cents, 0),
     confirmedSavedCents: verified.confirmedCents,
     // What the saved total is made of, biggest first (the Saved tile's summary).

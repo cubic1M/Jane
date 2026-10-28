@@ -68,6 +68,40 @@ describe.runIf(url)("home summary against a real database", () => {
     expect(await homeSummary(emptyId, { client, now: NOW })).toBeNull();
   });
 
+  it("adds what investing loses each year to money found, once, and never the idle cash", async () => {
+    const before = await homeSummary(userId, { client, now: NOW });
+    const row = (topic: string, worthCents: number, worthKind = "saves") => ({
+      userId,
+      key: `investing:${topic}`,
+      capability: "investing",
+      topic,
+      title: topic,
+      worthCents,
+      worthKind,
+      confidencePercent: 80,
+      confidenceReason: "test",
+      urgency: "later",
+      why: "test",
+      actionLabel: "Open",
+      actionHref: "/investments",
+    });
+    await client.suggestion.createMany({
+      data: [
+        row("investment_fees", 40_000),
+        row("plan_menu", 25_000),
+        row("employer_match", 100_000, "earns"),
+        row("idle_cash", 999_000, "earns"),
+        row("concentration", 5_000_000, "risk"),
+      ],
+    });
+    const after = await homeSummary(userId, { client, now: NOW });
+    // Fees count once (the larger of fees and the plan menu), the match counts, the idle cash
+    // (the money page's own finding) and a risk do not.
+    expect(after!.investingLeakCents).toBe(140_000);
+    expect(after!.moneyFoundCents - before!.moneyFoundCents).toBe(140_000);
+    await client.suggestion.deleteMany({ where: { userId } });
+  });
+
   it("matches the report's numbers and lists the plan and what's coming up", async () => {
     const home = await homeSummary(userId, { client, now: NOW });
 

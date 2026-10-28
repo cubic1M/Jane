@@ -136,14 +136,14 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
     });
   }
   if (p.netWorth) {
-    const { nowCents, changeCents } = p.netWorth;
+    const { nowCents, changeCents, notCounting } = p.netWorth;
     const direction =
       changeCents === 0
         ? "no change this week"
         : `${changeCents > 0 ? "up" : "down"} ${formatCents(Math.abs(changeCents))} this week`;
     out.push({
       heading: "Net worth",
-      items: [`${formatCents(nowCents)}, ${direction}`],
+      items: [`${formatCents(nowCents)}, ${direction}${notCounting ? ` (${notCounting})` : ""}`],
       link: { label: "See your net worth", url: links.netWorth },
     });
   }

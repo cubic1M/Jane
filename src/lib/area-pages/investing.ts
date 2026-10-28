@@ -201,6 +201,7 @@ export const TOPIC_LABELS: Record<string, string> = {
   old_accounts: "Roll over an old account",
   rebalance: "Rebalance your mix",
   idle_cash: "Put idle cash to work",
+  invested_cash: "Put waiting cash to work",
   beneficiaries: "Name a beneficiary",
   plan_menu: "Cheaper funds in your plan",
   short_term_cash: "Short-term money",
@@ -229,6 +230,8 @@ export type InvestingTreeInput = {
   }[];
   accounts: { id: string; name: string; balanceCents: number | null; holdings: number }[];
   totalCents: number;
+  // Investing apps money went to whose balance Jane still has to ask for.
+  toAnswer?: number;
   byType: number;
   cryptoCents: number;
   profile: { complete: boolean; label: string | null };
@@ -437,9 +440,11 @@ export function investingTree(input: InvestingTreeInput): AreaTree {
         ? `${urgent} urgent · ${look} to look at`
         : look > 0
           ? `${look} to look at`
-          : input.accounts.length > 0
-            ? `${shortMoney(input.totalCents)} invested`
-            : "All good",
+          : (input.toAnswer ?? 0) > 0
+            ? `${input.toAnswer} to answer`
+            : input.accounts.length > 0
+              ? `${shortMoney(input.totalCents)} invested`
+              : "All good",
     branches: branches.map((b) => ({ id: b.id, label: INVESTING_BRANCHES[b.id], items: b.items })),
   });
 }

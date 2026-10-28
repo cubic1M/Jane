@@ -3,6 +3,7 @@ import { CHECKING, GEICO, input, monthsAgo, tx } from "../__fixtures__/build";
 import { buildStreams } from "../streams";
 import type { DetectionInput } from "../types";
 import { lowBalanceRisk } from "./low-balance-risk";
+import { ACCOUNT_KINDS } from "@/data-sources/types";
 
 const run = (data: DetectionInput) => lowBalanceRisk(data, buildStreams(data));
 // Geico on the 1st of each month, so the next bill (Nov 1) is inside the window.
@@ -42,6 +43,13 @@ describe("low_balance_risk", () => {
           transactions: geico,
         }),
       ),
+    ).toEqual([]);
+  });
+
+  it("leaves a payment app alone: Venmo and PayPal top up from the bank behind them", () => {
+    const wallet = { ...CHECKING, name: "PayPal", subtype: ACCOUNT_KINDS.payment_app.subtype };
+    expect(
+      run(input({ accounts: [{ ...wallet, currentBalanceCents: 1_500 }], transactions: geico })),
     ).toEqual([]);
   });
 });
