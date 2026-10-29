@@ -38,6 +38,7 @@ function deadlines(snapshot: Snapshot): Candidate[] {
         refs: {
           deadlineKey: deadline.key,
           ...(deadline.entryId ? { deadlineEntryId: deadline.entryId } : {}),
+          ...(deadline.confidence ? { confidence: deadline.confidence } : {}),
         },
         // Spec step 83: one the person typed in can be marked done here, as on Deadlines.
         actions: [

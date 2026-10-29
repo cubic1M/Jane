@@ -17,8 +17,10 @@ import {
   RENEWAL_FREQUENCIES,
   SUBSCRIPTION_CATEGORIES,
   SUBSCRIPTION_MERCHANTS,
+  TRIAL_DEADLINE_MAX_PERCENT,
   TRIAL_MAX_START_CENTS,
 } from "@/config/detection";
+import type { Confidence } from "@/detectors/contract";
 import type { AlertCandidate } from "@/detection/alerts";
 import { expectedDates } from "@/detection/forecast";
 import { byDate, inList, inLookback, isRenewable, merchantMatches } from "@/detection/helpers";
@@ -28,6 +30,7 @@ import { addDays, daysBetween, median } from "@/detection/units";
 import { debtSummary, type DebtAccount } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
+import { seenConfidence } from "./sure";
 
 // Deadlines (spec step 71): return windows, trials, renewals, card and loan payments and
 // the person's own dates (FSA, card benefits, warranties), in one list. Each source here is
@@ -65,6 +68,8 @@ export type Deadline = {
   detail: string | null;
   // The deadlines row, for ones the person typed in (to mark done or delete).
   entryId?: string;
+  // How sure Jane is, for one it guessed from the charges (a trial's end).
+  confidence?: Confidence;
 };
 
 export const DEADLINE_KIND_LABELS: Record<DeadlineKind, string> = {
@@ -146,6 +151,7 @@ export function trialDeadlines(input: DetectionInput): Deadline[] {
           amountCents: null,
           href: purchaseLink(merchant),
           detail: `It started with ${formatCents(start.amountCents)} on ${dayLabel(start.date)}. If it's a trial, the full price usually follows; cancel first if you don't want it. The date is an estimate.`,
+          confidence: seenConfidence(input, 1, "small first charge", TRIAL_DEADLINE_MAX_PERCENT),
         },
       ];
     });

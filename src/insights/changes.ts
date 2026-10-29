@@ -19,17 +19,24 @@ import {
 } from "@/config/changes";
 import {
   BANK_FEE_CATEGORIES,
+  INSURANCE_CATEGORIES,
+  PREMIUM_RENEWAL_MAX_GAP_DAYS,
+  PREMIUM_RENEWAL_MIN_CENTS,
+  PREMIUM_RENEWAL_MIN_GAP_DAYS,
+  PREMIUM_RENEWAL_MIN_SHARE,
   PRICE_INCREASE_EXCLUDED_CATEGORIES,
   PRICE_INCREASE_EXCLUDED_PRIMARIES,
 } from "@/config/detection";
+import type { Confidence } from "@/detectors/contract";
 import { byDate, inList } from "@/detection/helpers";
 import { paychecksByEmployer } from "@/detection/paydays";
-import type { Stream } from "@/detection/streams";
+import { merchantOf, type Stream } from "@/detection/streams";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { addDays, average, dayOfMonth, daysBetween, median } from "@/detection/units";
 import { formatCents } from "@/lib/money";
 import { categoryLabel } from "./labels";
 import { kindOf, monthsEnding } from "./spending";
+import { seenConfidence } from "./sure";
 import { dayLabel } from "@/lib/day-label";
 
 // Jane notices changes (spec step 97): what changed in someone's money lately, before they
@@ -44,6 +51,7 @@ export const CHANGE_KINDS = [
   "new_employer",
   "category_pace",
   "new_fee",
+  "premium_renewed",
 ] as const;
 export type ChangeKind = (typeof CHANGE_KINDS)[number];
 
@@ -68,6 +76,23 @@ export type Change = {
   up: boolean | null;
   // The account a fee was charged on (its bank_fees finding is "account:<id>").
   accountId: string | null;
+  // How many charges (or paychecks, or months) show it, for its confidence.
+  seen: number;
+};
+
+// A change with how sure Jane is, as every heads-up shows it.
+export type SureChange = Change & { confidence: Confidence };
+
+// What `seen` counts, in the confidence's reason.
+const SEEN_WHAT: Record<ChangeKind, string> = {
+  bill_changed: "earlier charges",
+  new_subscription: "charges",
+  paycheck_late: "paychecks",
+  paycheck_smaller: "paychecks",
+  new_employer: "earlier paychecks from other employers",
+  category_pace: "months of spending",
+  new_fee: "fee charges",
+  premium_renewed: "charges from the same insurer",
 };
 
 const base = {
@@ -78,6 +103,7 @@ const base = {
   streamKey: null,
   up: null,
   accountId: null,
+  seen: 1,
 } satisfies Partial<Change>;
 
 const recent = (date: string, asOf: string) =>
@@ -118,6 +144,7 @@ export function billChanges(input: DetectionInput, streams: Stream[]): Change[] 
         merchant: stream.merchant,
         streamKey: stream.key,
         up,
+        seen: prior.length,
       },
     ];
   });
@@ -143,6 +170,7 @@ export function newSubscriptions(input: DetectionInput, streams: Stream[]): Chan
         amountCents: last.amountCents,
         merchant: stream.merchant,
         streamKey: stream.key,
+        seen: stream.charges.length,
       },
     ];
   });
@@ -177,6 +205,9 @@ export function paycheckChanges(input: DetectionInput): Change[] {
         title: `A paycheck from a new employer: ${formatCents(-last.amountCents)} from ${name} on ${dayLabel(last.date)}.`,
         amountCents: -last.amountCents,
         merchant: name,
+        seen: Math.max(
+          ...others.map((e) => e.deposits.filter((d) => d.date < deposits[0].date).length),
+        ),
       });
     }
     if (deposits.length < PAYCHECK_MIN_HISTORY) return out;
@@ -200,6 +231,7 @@ export function paycheckChanges(input: DetectionInput): Change[] {
         title: `Your paycheck from ${name} hasn't come in. It usually arrives around ${dayLabel(due)}; the last one was on ${dayLabel(last.date)}.`,
         amountCents: -last.amountCents,
         merchant: name,
+        seen: deposits.length,
       });
     }
 
@@ -220,6 +252,7 @@ export function paycheckChanges(input: DetectionInput): Change[] {
         amountCents: amount,
         usualCents: usual,
         merchant: name,
+        seen: deposits.length,
       });
     }
     return out;
@@ -272,6 +305,7 @@ export function paceChanges(input: DetectionInput): Change[] {
         usualCents: pace,
         category,
         usualMonthCents: usualMonth,
+        seen: past.length,
       },
     ];
   });
@@ -319,12 +353,56 @@ export function newFees(input: DetectionInput): Change[] {
   });
 }
 
-export function detectChanges(input: DetectionInput, streams: Stream[]): Change[] {
+// An insurance premium that went up at renewal: a policy paid every six months or once a year
+// (no charge from the insurer in between), whose latest charge is above the term before's. A
+// policy paid monthly is the bill-change rule's.
+export function premiumRenewals(input: DetectionInput): Change[] {
+  const byInsurer = new Map<string, DetectionTransaction[]>();
+  for (const t of input.transactions) {
+    if (t.amountCents <= 0 || t.date > input.asOf || !inList(t.pfcDetailed, INSURANCE_CATEGORIES))
+      continue;
+    const key = merchantOf(t)?.key;
+    if (key) byInsurer.set(key, [...(byInsurer.get(key) ?? []), t]);
+  }
+  return [...byInsurer.keys()].sort().flatMap((insurer): Change[] => {
+    const charges = byInsurer.get(insurer)!.sort(byDate);
+    const [before, last] = charges.slice(-2);
+    if (!before || !last || !recent(last.date, input.asOf)) return [];
+    const gap = daysBetween(before.date, last.date);
+    if (gap < PREMIUM_RENEWAL_MIN_GAP_DAYS || gap > PREMIUM_RENEWAL_MAX_GAP_DAYS) return [];
+    const rise = last.amountCents - before.amountCents;
+    if (rise < Math.max(before.amountCents * PREMIUM_RENEWAL_MIN_SHARE, PREMIUM_RENEWAL_MIN_CENTS))
+      return [];
+    const merchant = last.merchantName ?? merchantOf(last)?.name ?? last.description;
+    return [
+      {
+        ...base,
+        kind: "premium_renewed",
+        key: `premium:${insurer}:${last.id}`,
+        date: last.date,
+        title: `Your ${merchant} premium went up at renewal, from ${formatCents(before.amountCents)} to ${formatCents(last.amountCents)}.`,
+        amountCents: last.amountCents,
+        usualCents: before.amountCents,
+        merchant,
+        up: true,
+        seen: charges.length,
+      },
+    ];
+  });
+}
+
+export function detectChanges(input: DetectionInput, streams: Stream[]): SureChange[] {
   return [
     ...billChanges(input, streams),
     ...newSubscriptions(input, streams),
     ...paycheckChanges(input),
     ...paceChanges(input),
     ...newFees(input),
-  ].sort((a, b) => b.date.localeCompare(a.date) || a.key.localeCompare(b.key));
+    ...premiumRenewals(input),
+  ]
+    .map((change) => ({
+      ...change,
+      confidence: seenConfidence(input, change.seen, SEEN_WHAT[change.kind]),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date) || a.key.localeCompare(b.key));
 }

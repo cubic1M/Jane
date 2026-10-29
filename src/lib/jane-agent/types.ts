@@ -644,6 +644,8 @@ export type MessageRefs = {
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
+  // How sure Jane is of a heads-up it brought up (a change, a trial ending), shown on its card.
+  confidence?: { percent: number; reason: string };
   // Spec step 100: the life event (moving, new_job, new_baby) Yes would start.
   lifeKind?: string;
   // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.

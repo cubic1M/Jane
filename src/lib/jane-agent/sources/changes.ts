@@ -28,7 +28,8 @@ const budgetFor = (usualMonthCents: number) =>
   Math.ceil(usualMonthCents / BUDGET_SUGGESTION_ROUNDING_CENTS) * BUDGET_SUGGESTION_ROUNDING_CENTS;
 
 function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
-  const refs = { change: { key: change.key, kind: change.kind } };
+  // Every heads-up says how sure Jane is (founder: a confidence % on each).
+  const refs = { change: { key: change.key, kind: change.kind }, confidence: change.confidence };
   const base = {
     dedupeKey: change.key,
     priority: MESSAGE_PRIORITY.change,
@@ -124,6 +125,14 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
         refs,
         actions: [expected, open("Look into it", "/transactions")],
       };
+    case "premium_renewed":
+      return {
+        ...base,
+        kind: "heads_up",
+        body: `${change.title} If you didn't expect that, take a look.`,
+        refs,
+        actions: [expected, open("Look into it", "/insurance")],
+      };
   }
 }
 
@@ -135,6 +144,7 @@ const RANK: Record<ChangeView["kind"], number> = {
   new_employer: 1,
   bill_changed: 2,
   new_fee: 2,
+  premium_renewed: 2,
   new_subscription: 3,
   category_pace: 4,
 };

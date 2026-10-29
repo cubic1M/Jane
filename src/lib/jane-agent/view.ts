@@ -29,6 +29,8 @@ export type MessageView = {
   note: string | null;
   // Demo advice (spec step 98): shown with DEMO_ADVICE_LABEL.
   advice: boolean;
+  // How sure Jane is of a heads-up (refs.confidence), shown on its card.
+  confidence?: { percent: number; reason: string };
   buttons: { id: ActionId; label: string; kind: "primary" | "secondary" | "quick" }[];
   links: { label: string; href: string }[];
   // Until when Undo works, so the page can hide it then.
@@ -180,6 +182,7 @@ export function toView(
     answeredWith: message.answeredWith,
     note: message.refs.note ?? null,
     advice: message.refs.advice === true,
+    ...(message.refs.confidence ? { confidence: message.refs.confidence } : {}),
     buttons,
     // Spec step 86: a page opened from here links back to this message. An old link to an
     // area page lands on its node (src/lib/area-pages/landing.ts).

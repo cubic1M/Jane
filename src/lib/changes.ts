@@ -3,7 +3,7 @@ import type { FindingStatus, FindingType, PrismaClient } from "@/generated/prism
 import { loadDetectionInput } from "@/detection/engine";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
-import { detectChanges, type Change, type ChangeKind } from "@/insights/changes";
+import { detectChanges, type Change, type ChangeKind, type SureChange } from "@/insights/changes";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -32,7 +32,7 @@ export type ChangeFinding = {
   handledBy: "rule" | "person" | null;
 };
 
-export type ChangeView = Change & {
+export type ChangeView = SureChange & {
   finding: ChangeFinding | null;
   // A late paycheck the lean-plan question (spec step 204) already asks about.
   askedByLean?: boolean;
@@ -115,7 +115,7 @@ export async function loadChanges(
 
 export class ChangeError extends Error {}
 
-const CHANGE_KEY = /^(bill|new|late|smaller|employer|pace|fee):.{1,300}$/;
+const CHANGE_KEY = /^(bill|new|late|smaller|employer|pace|fee|premium):.{1,300}$/;
 
 // "That's expected": this change is never brought up again.
 export async function markChangeExpected(
