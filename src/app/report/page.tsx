@@ -6,7 +6,7 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { isFirstDetectionComplete, moneyFound } from "@/detection/engine";
 import { listAccountSummaries } from "@/lib/accounts";
-import { CARD_SELECT, buildCard } from "@/lib/cards";
+import { CARD_SELECT } from "@/lib/cards";
 import { scopedDb } from "@/lib/db-scoped";
 import { explanationFor } from "@/lib/card-text";
 import { formatCents } from "@/lib/money";
@@ -48,7 +48,7 @@ const WHAT_WE_CHECK = [
 async function ReportContent() {
   const user = await requireUser();
   const db = await scopedDb();
-  const [accounts, findings, found, firstDetectionDone, scanRunning, uploaded, read] =
+  const [accounts, findings, found, firstDetectionDone, scanRunning, uploaded, read, sures] =
     await Promise.all([
       listAccountSummaries(db),
       db.findings.findMany({
@@ -64,8 +64,13 @@ async function ReportContent() {
         _min: { date: true },
         _max: { date: true },
       }),
-      // How much history Jane has read, for each finding's "% sure".
+      // How much history Jane has read, and the scan's own confidence on each topic, for each
+      // finding's "% sure" (the newest first).
       db.transactions.aggregate({ _min: { date: true }, _max: { date: true } }),
+      db.suggestions.findMany({
+        select: { topic: true, confidencePercent: true, confidenceReason: true },
+        orderBy: { lastSeenAt: "desc" },
+      }),
     ]);
   const months =
     read._min.date && read._max.date
@@ -99,7 +104,7 @@ async function ReportContent() {
   const rest = ordered.slice(TOP);
   const row = (finding: (typeof findings)[number]) => {
     const text = explanationFor(finding);
-    const sure = findingSure(buildCard(finding).evidence, months);
+    const sure = findingSure(finding, sures, months);
     return (
       <li key={finding.id}>
         <Link

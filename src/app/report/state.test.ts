@@ -1,6 +1,13 @@
 import type { FindingType } from "@/generated/prisma/client";
 import { describe, expect, it } from "vitest";
-import { findingSure, foundLine, reportOrder, reportState, shortUploadDays } from "./state";
+import {
+  evidenceCharges,
+  findingSure,
+  foundLine,
+  reportOrder,
+  reportState,
+  shortUploadDays,
+} from "./state";
 
 const base = { transactions: 240, findings: 0, firstDetectionDone: true, scanRunning: false };
 
@@ -84,23 +91,50 @@ describe("the report's order", () => {
 });
 
 describe("a finding's % sure on the report", () => {
-  it("counts its dated charges over the months read", () => {
+  const fees = {
+    type: "bank_fees",
+    evidence: {
+      transactions: Array.from({ length: 12 }, (_, i) => ({ date: `2026-0${(i % 4) + 6}-01` })),
+    },
+  };
+
+  // Demo-video re-take: idle cash read 59% on its card and 62% on the report.
+  it("says what the scan's suggestion on the same topic says", () => {
     const sure = findingSure(
-      [{ date: "2026-07-01" }, { date: "2026-08-01" }, { date: "2026-09-01" }, { date: null }],
+      { type: "idle_cash", evidence: {} },
+      [
+        {
+          topic: "bank_fees",
+          confidencePercent: 62,
+          confidenceReason: "12 bank fees in 4 months of data",
+        },
+        {
+          topic: "idle_cash",
+          confidencePercent: 59,
+          confidenceReason: "1 cash account in 4 months of data",
+        },
+      ],
       4,
     );
-    expect(sure.reason).toBe("3 charges in 4 months of data");
-    expect(sure.percent).toBeGreaterThan(0);
-    expect(sure.percent).toBeLessThanOrEqual(100);
+    expect(sure).toEqual({ percent: 59, reason: "1 cash account in 4 months of data" });
+  });
+
+  // Demo-video re-take: "6 charges" on the report, from the six rows its card lists, beside
+  // "12 fee charges" on /jane.
+  it("without one, counts every charge behind it, not the few its card lists", () => {
+    expect(findingSure(fees, [], 4).reason).toBe("12 charges in 4 months of data");
+    expect(evidenceCharges(fees.evidence)).toBe(12);
+    expect(evidenceCharges({ charges: [{}, {}], transactions: [{}] })).toBe(3);
+    expect(evidenceCharges(null)).toBe(0);
   });
 
   it("goes by the months alone when it rests on balances, not charges", () => {
-    expect(findingSure([{ date: null }], 4).reason).toBe("4 months of data");
-    expect(findingSure([{ date: "2026-10-01" }], 1).reason).toBe("1 charge in 1 month of data");
+    expect(findingSure({ type: "idle_cash", evidence: { accounts: [] } }, [], 4).reason).toBe(
+      "4 months of data",
+    );
   });
 
   it("is surer with more history", () => {
-    const rows = [{ date: "2026-10-01" }, { date: "2026-09-01" }];
-    expect(findingSure(rows, 2).percent).toBeLessThan(findingSure(rows, 12).percent);
+    expect(findingSure(fees, [], 2).percent).toBeLessThan(findingSure(fees, [], 12).percent);
   });
 });

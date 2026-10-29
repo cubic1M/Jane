@@ -74,16 +74,33 @@ export function reportOrder<T extends Rankable>(findings: readonly T[]): T[] {
 }
 
 // How sure Jane is of a finding, for its line on the report (demo-video list: the list showed
-// none), the way every suggestion says it (src/profile/confidence.ts): from the months of data
-// and the dated charges behind it.
+// none). The same words the cards and /jane say, from one source (demo-video re-take: idle cash
+// read 59% on its card and 62% on the report; fees "12" on /jane and "6" here): the scan's
+// suggestion on the same topic when there is one; else worked out the way the suggestions are
+// (src/profile/confidence.ts), from the months of data and every charge behind the finding.
+export type SuggestionSure = { topic: string; confidencePercent: number; confidenceReason: string };
+
 export function findingSure(
-  evidence: readonly { date: string | null }[],
+  finding: { type: string; evidence: unknown },
+  suggestions: readonly SuggestionSure[],
   months: number,
 ): { percent: number; reason: string } {
-  const charges = evidence.filter((r) => r.date !== null).length;
+  const same = suggestions.find((s) => s.topic === finding.type);
+  if (same) return { percent: same.confidencePercent, reason: same.confidenceReason };
+  const charges = evidenceCharges(finding.evidence);
   const span = `${months} month${months === 1 ? "" : "s"} of data`;
   return {
     percent: confidenceOf("seen", { months, matches: charges || months }),
     reason: charges > 0 ? `${counted(charges, "charges")} in ${span}` : span,
   };
+}
+
+// Every dated charge a finding rests on: all of them, not the few its card lists.
+export function evidenceCharges(evidence: unknown): number {
+  if (!evidence || typeof evidence !== "object") return 0;
+  const e = evidence as Record<string, unknown>;
+  return ["transactions", "charges"].reduce(
+    (n, k) => n + (Array.isArray(e[k]) ? (e[k] as unknown[]).length : 0),
+    0,
+  );
 }
