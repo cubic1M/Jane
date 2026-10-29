@@ -24,6 +24,9 @@ import { RefreshWhenScanned } from "./refresh-when-scanned";
 import { Checkup } from "./checkup";
 import { loadCheckup } from "@/lib/checkup";
 import { foundLine, reportState, shortUploadDays } from "./state";
+import { ShareButton } from "./share-button";
+import { cardFor } from "@/lib/share-card";
+import { isTrialUser } from "@/lib/trial-ids";
 import { SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
 
 // Shown while the first scan runs, so the person knows what we look at. Once it's done, the
@@ -82,6 +85,9 @@ async function ReportContent() {
     ...findings.filter((f) => PLAN_URGENT_FINDING_TYPES.includes(f.type)),
     ...findings.filter((f) => !PLAN_URGENT_FINDING_TYPES.includes(f.type)),
   ];
+  // The shareable result card (src/lib/share-card.ts); sample data never shares.
+  const card = isTrialUser(user.id) ? null : cardFor({ foundCents: found, checks: checks.length });
+  const share = card && <ShareButton card={card} />;
   const top = ordered.slice(0, TOP);
   const rest = ordered.slice(TOP);
   const row = (finding: (typeof findings)[number]) => {
@@ -156,6 +162,7 @@ async function ReportContent() {
           </p>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}
           <Checkup lines={checks} />
+          {share}
           <ShownLink href="/actions" className="font-medium text-emerald-700 hover:underline">
             See what we&apos;re working on
           </ShownLink>
@@ -194,6 +201,7 @@ async function ReportContent() {
             </details>
           )}
           <Checkup lines={checks} />
+          {share}
         </section>
       )}
 

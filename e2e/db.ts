@@ -535,3 +535,63 @@ export async function seedCryptoRecord(userId: string): Promise<void> {
     await client.end();
   }
 }
+
+// Money found for the share card (src/lib/share-card.ts): a checked-in account with a few
+// charges and one open finding worth $1,234.56 a year, with detection already done.
+export async function addFoundMoney(userId: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const account = `a${crypto.randomUUID().replaceAll("-", "")}`;
+    await client.query(
+      `INSERT INTO accounts (id, user_id, source, name, mask, type, subtype, current_balance_cents, updated_at)
+       VALUES ($1, $2, 'csv', 'Chase Total Checking', '4417', 'depository', 'checking', 876543, now())`,
+      [account, userId],
+    );
+    for (let month = 1; month <= 3; month += 1) {
+      await client.query(
+        `INSERT INTO transactions (id, user_id, account_id, source, date, amount_cents, description, pending, updated_at)
+         VALUES ($1, $2, $3, 'csv', (now() - make_interval(months => $4))::date, 3500, 'MONTHLY SERVICE FEE', false, now())`,
+        [`t${crypto.randomUUID()}`, userId, account, month],
+      );
+    }
+    await client.query(
+      `INSERT INTO findings (id, user_id, type, key, title, confidence, annual_savings_cents, evidence, updated_at)
+       VALUES ($1, $2, 'bank_fees', 'account:fees', 'Monthly service fees', 'high', 123456, '{}', now())`,
+      [`f${crypto.randomUUID()}`, userId],
+    );
+    await client.query(`UPDATE users SET first_detection_at = now() WHERE id = $1`, [userId]);
+  } finally {
+    await client.end();
+  }
+}
+
+// The person's share code, and the funnel events counted for it so far.
+export async function shareInvite(
+  userId: string,
+): Promise<{ code: string; card: string; sent: number; opened: number } | null> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(
+      `SELECT i.code, i.card_kind || ':' || i.card_value AS card,
+         (SELECT count(*) FROM analytics_events e WHERE e.name = 'invite_sent' AND e.properties->>'invite_id' = i.id)::int AS sent,
+         (SELECT count(*) FROM analytics_events e WHERE e.name = 'invite_opened' AND e.properties->>'invite_id' = i.id)::int AS opened
+       FROM invite_codes i WHERE i.shared_by_id = $1`,
+      [userId],
+    );
+    return rows[0] ?? null;
+  } finally {
+    await client.end();
+  }
+}
+
+export async function deleteShareInvite(userId: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(`DELETE FROM invite_codes WHERE shared_by_id = $1`, [userId]);
+  } finally {
+    await client.end();
+  }
+}

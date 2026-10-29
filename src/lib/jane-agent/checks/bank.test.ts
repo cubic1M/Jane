@@ -17,6 +17,7 @@ const NOT_ASKABLE = new Set([
   "api",
   "goodbye",
   "icons",
+  "join",
   "login",
   "mfa",
   "offline",

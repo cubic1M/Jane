@@ -18,6 +18,7 @@ const NOT_ASKABLE = new Set([
   "favicon.ico",
   "goodbye",
   "icons",
+  "join",
   "login",
   "mfa",
   "offline",
