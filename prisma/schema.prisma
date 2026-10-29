@@ -1446,13 +1446,18 @@ model Action {
 }
 
 model Digest {
-  id        String    @id @default(cuid())
-  userId    String    @map("user_id")
-  weekStart DateTime  @map("week_start") @db.Date
-  payload   Json
-  sentAt    DateTime? @map("sent_at") @db.Timestamptz(3)
-  openedAt  DateTime? @map("opened_at") @db.Timestamptz(3)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  weekStart     DateTime  @map("week_start") @db.Date
+  payload       Json
+  sentAt        DateTime? @map("sent_at") @db.Timestamptz(3)
+  // The first click on one of its links (/api/digest/click).
+  openedAt      DateTime? @map("opened_at") @db.Timestamptz(3)
+  // Resend's id for the email, and when Resend saw it first opened (its webhook, when open
+  // tracking is on for the domain). An open isn't a visit, so metrics count it apart.
+  resendId      String?   @unique @map("resend_id")
+  emailOpenedAt DateTime? @map("email_opened_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

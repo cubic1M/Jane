@@ -35,6 +35,10 @@ export type AuditEvent =
   | "family_credit_changed"
   | "home_request_sent"
   | "user_signed_up"
+  // The weekly "what changed" email (src/lib/digest/send.ts): sent, as counts only, and turned
+  // off from its one-click link.
+  | "digest_sent"
+  | "digest_unsubscribed"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
   | "insurance_policy_removed"
