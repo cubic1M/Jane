@@ -95,7 +95,7 @@ export const TABS: readonly Tab[] = [
     key: "jane",
     label: "What Jane did",
     href: "/jane",
-    paths: ["/jane", "/plan", "/report", "/actions", "/saved", "/profile"],
+    paths: ["/jane", "/plan", "/report", "/actions", "/saved", "/close", "/profile"],
   },
 ];
 

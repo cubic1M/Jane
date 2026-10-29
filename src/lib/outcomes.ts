@@ -493,6 +493,8 @@ export type OutcomeView = {
   // The ledger (src/planning/ledger.ts): its state, how sure Jane was when it found it, how it
   // is verified, and Held (or came back) with the lines that show it.
   state: LedgerState;
+  // The day Jane first showed it.
+  foundOn: string;
   confidencePercent: number;
   rule: string;
   heldOn: string | null;
@@ -559,6 +561,7 @@ export async function savingsRecord(
     markedDone: r.doneAt !== null,
     verifiedOn: r.verifiedAt ? isoDate(r.verifiedAt) : null,
     state: ledgerStateOf(r) ?? "done",
+    foundOn: isoDate(r.firstShownAt),
     confidencePercent: r.confidencePercent,
     rule: verifyRule(asWatch(r.watch)),
     heldOn: r.heldAt ? isoDate(r.heldAt) : null,

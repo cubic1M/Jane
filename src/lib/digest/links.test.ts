@@ -16,6 +16,7 @@ describe("digest links", () => {
     expect(landingPath("/jane")).toBe(
       "/jane?utm_source=digest&utm_medium=email&utm_campaign=weekly",
     );
+    expect(landingPath("/close")).toMatch(/^\/close\?utm_source=digest/);
     // A page that's gone (/alerts) or hidden lands on the report.
     expect(landingPath("/alerts")).toMatch(/^\/report\?/);
     expect(landingPath("https://evil.example.com")).toMatch(/^\/report\?/);

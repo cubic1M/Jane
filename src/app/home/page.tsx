@@ -231,6 +231,16 @@ async function HubContent() {
         endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
       />
 
+      {/* The monthly close: Jane closing last month's books (src/app/close). */}
+      <Link
+        href="/close"
+        prefetch={false}
+        data-home-close=""
+        className="self-start font-mono text-sm font-medium underline-offset-2 hover:underline"
+      >
+        [CLOSE] Last month&apos;s close ›
+      </Link>
+
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
       {autopilot === null && <AutopilotChooser compact />}
       {checklist && !checklist.complete && <FirstWeekChecklist items={checklist.items} />}

@@ -26,6 +26,8 @@ export const DIGEST_LINK_PATHS = [
   "/budgets",
   "/goals",
   "/net-worth",
+  // The monthly close.
+  "/close",
   "/settings",
 ] as const;
 

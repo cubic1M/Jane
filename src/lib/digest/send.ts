@@ -249,6 +249,7 @@ function linksFor(digestId: string, userId: string): DigestLinks {
     budgets: clickLink(digestId, "/budgets"),
     goals: clickLink(digestId, "/goals"),
     netWorth: clickLink(digestId, "/net-worth"),
+    close: clickLink(digestId, "/close"),
     settings: clickLink(digestId, "/settings"),
     unsubscribe: `${appBase()}/unsubscribe?token=${unsubscribeToken(userId)}`,
   };

@@ -86,6 +86,9 @@ const SIGNED_IN = [
   // Spec steps 144 and 148.
   "/transfers",
   "/monthly",
+  // The savings ledger and the monthly close.
+  "/saved",
+  "/close",
   // Spec steps 203 and 209.
   "/what-if",
   "/long-view",

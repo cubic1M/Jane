@@ -9,6 +9,7 @@ const LINKS = {
   budgets: "https://app.example.com/api/digest/click?d=d1&to=%2Fbudgets",
   goals: "https://app.example.com/api/digest/click?d=d1&to=%2Fgoals",
   netWorth: "https://app.example.com/api/digest/click?d=d1&to=%2Fnet-worth",
+  close: "https://app.example.com/api/digest/click?d=d1&to=%2Fclose",
   settings: "https://app.example.com/api/digest/click?d=d1&to=%2Fsettings",
   unsubscribe: "https://app.example.com/unsubscribe?token=t",
 };
@@ -27,6 +28,15 @@ const payload = {
 };
 
 describe("renderDigest", () => {
+  it("links the monthly close in every email, near the top", () => {
+    const email = renderDigest(payload, LINKS);
+    expect(email.text).toContain(`See your monthly close: ${LINKS.close}`);
+    expect(email.text.indexOf("See your monthly close")).toBeLessThan(
+      email.text.indexOf("We need something from you"),
+    );
+    expect(email.html).toContain(`href="${LINKS.close.replaceAll("&", "&amp;")}"`);
+  });
+
   it("leads with this week's savings and puts what the person must do first", () => {
     const email = renderDigest(payload, LINKS);
 

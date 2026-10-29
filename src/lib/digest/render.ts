@@ -16,6 +16,8 @@ export type DigestLinks = {
   budgets: string;
   goals: string;
   netWorth: string;
+  // The monthly close (/close): what Jane found, what was verified, what changed.
+  close: string;
   settings: string;
   unsubscribe: string;
   // A one-tap link for this week's no-risk items (spec step 60), when there are any.
@@ -220,11 +222,13 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
     `Still to look at: ${formatCents(p.moneyFoundCents)} a year`,
   ].filter((line): line is string => typeof line === "string");
   const body = sections(p, links);
+  const close = { label: "See your monthly close", url: links.close };
 
   const text = [
     headline,
     "",
     ...totals,
+    `${close.label}: ${close.url}`,
     ...body.flatMap((s) => [
       "",
       s.heading,
@@ -240,6 +244,7 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#171717;line-height:1.5">
 <h1 style="font-size:22px">${escapeHtml(headline)}</h1>
 ${totals.map((t) => `<p style="margin:4px 0">${escapeHtml(t)}</p>`).join("\n")}
+<p style="margin:4px 0"><a href="${escapeHtml(close.url)}" style="color:#171717">${escapeHtml(close.label)}</a></p>
 ${body
   .map(
     (s) => `<h2 style="font-size:17px;margin-top:24px">${escapeHtml(s.heading)}</h2>
