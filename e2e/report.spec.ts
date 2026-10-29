@@ -24,6 +24,10 @@ test("the report opens with three findings, the rest behind more", async ({
   await expect(page.getByRole("heading", { level: 1 })).toContainText("We found");
   const top = page.getByRole("list", { name: "What matters now" });
   await expect(top.getByRole("listitem")).toHaveCount(3);
+  // Each says how sure Jane is, as the cards do (demo-video list: the list showed none).
+  for (const row of await top.getByRole("listitem").all()) {
+    await expect(row.locator("[data-finding-sure]")).toHaveText(/^\d+% sure: \S/);
+  }
   const more = page.locator("[data-report-more]");
   await expect(more).not.toHaveAttribute("open", "");
   await expect(more.locator("summary")).toHaveText(/^\d+ more to look at$/);

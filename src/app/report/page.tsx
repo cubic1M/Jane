@@ -6,14 +6,13 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { isFirstDetectionComplete, moneyFound } from "@/detection/engine";
 import { listAccountSummaries } from "@/lib/accounts";
-import { CARD_SELECT } from "@/lib/cards";
+import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { scopedDb } from "@/lib/db-scoped";
 import { explanationFor } from "@/lib/card-text";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsLine } from "@/lib/savings-text";
 import { LoadingBar } from "@/components/loading-bar";
-import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 
 // How many findings the report opens with; the rest are behind "more" (founder: "show what
 // matters, hide the rest").
@@ -23,7 +22,9 @@ import { scanInProgress } from "@/lib/scan";
 import { RefreshWhenScanned } from "./refresh-when-scanned";
 import { Checkup } from "./checkup";
 import { loadCheckup } from "@/lib/checkup";
-import { foundLine, reportState, shortUploadDays } from "./state";
+import { findingSure, foundLine, reportOrder, reportState, shortUploadDays } from "./state";
+import { isoDay } from "@/lib/dates";
+import { DAYS_PER_MONTH, daysBetween } from "@/detection/units";
 import { ShareButton } from "./share-button";
 import { cardFor } from "@/lib/share-card";
 import { isTrialUser } from "@/lib/trial-ids";
@@ -47,23 +48,32 @@ const WHAT_WE_CHECK = [
 async function ReportContent() {
   const user = await requireUser();
   const db = await scopedDb();
-  const [accounts, findings, found, firstDetectionDone, scanRunning, uploaded] = await Promise.all([
-    listAccountSummaries(db),
-    db.findings.findMany({
-      where: { status: { in: ["new", "shown"] } },
-      select: CARD_SELECT,
-      orderBy: [{ annualSavingsCents: { sort: "desc", nulls: "last" } }, { id: "asc" }],
-    }),
-    moneyFound(user.id),
-    isFirstDetectionComplete(user.id),
-    scanInProgress(user.id),
-    // What uploaded statements cover, to ask for more months when it's short.
-    db.transactions.aggregate({
-      where: { source: "csv" },
-      _min: { date: true },
-      _max: { date: true },
-    }),
-  ]);
+  const [accounts, findings, found, firstDetectionDone, scanRunning, uploaded, read] =
+    await Promise.all([
+      listAccountSummaries(db),
+      db.findings.findMany({
+        where: { status: { in: ["new", "shown"] } },
+        select: { ...CARD_SELECT, confidence: true },
+      }),
+      moneyFound(user.id),
+      isFirstDetectionComplete(user.id),
+      scanInProgress(user.id),
+      // What uploaded statements cover, to ask for more months when it's short.
+      db.transactions.aggregate({
+        where: { source: "csv" },
+        _min: { date: true },
+        _max: { date: true },
+      }),
+      // How much history Jane has read, for each finding's "% sure".
+      db.transactions.aggregate({ _min: { date: true }, _max: { date: true } }),
+    ]);
+  const months =
+    read._min.date && read._max.date
+      ? Math.max(
+          1,
+          Math.round(daysBetween(isoDay(read._min.date), isoDay(read._max.date)) / DAYS_PER_MONTH),
+        )
+      : 0;
   const uploadDays = shortUploadDays(uploaded._min.date, uploaded._max.date);
   const transactions = accounts.reduce((sum, a) => sum + a.transactionCount, 0);
   const state = reportState({
@@ -80,11 +90,8 @@ async function ReportContent() {
           findings.map((f) => f.type),
         )
       : [];
-  // Worth the most first (the query's order); the time-sensitive ones ahead of them.
-  const ordered = [
-    ...findings.filter((f) => PLAN_URGENT_FINDING_TYPES.includes(f.type)),
-    ...findings.filter((f) => !PLAN_URGENT_FINDING_TYPES.includes(f.type)),
-  ];
+  // The time-sensitive first, then what each is likely to be worth (src/app/report/state.ts).
+  const ordered = reportOrder(findings);
   // The shareable result card (src/lib/share-card.ts); sample data never shares.
   const card = isTrialUser(user.id) ? null : cardFor({ foundCents: found, checks: checks.length });
   const share = card && <ShareButton card={card} />;
@@ -92,6 +99,7 @@ async function ReportContent() {
   const rest = ordered.slice(TOP);
   const row = (finding: (typeof findings)[number]) => {
     const text = explanationFor(finding);
+    const sure = findingSure(buildCard(finding).evidence, months);
     return (
       <li key={finding.id}>
         <Link
@@ -102,6 +110,9 @@ async function ReportContent() {
             <span className="font-semibold">{text.title}</span>
             <span className="text-sm text-zinc-600 dark:text-zinc-400">
               {savingsLine(finding.type, finding.annualSavingsCents, finding.evidence)}
+            </span>
+            <span data-finding-sure="" className="text-xs text-zinc-500">
+              {sure.percent}% sure: {sure.reason}
             </span>
           </span>
           <span aria-hidden className="text-zinc-400">

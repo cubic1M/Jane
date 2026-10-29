@@ -36,6 +36,15 @@ export const FINDING_MINUTES: Partial<Record<FindingType, number>> = {
 // How sure Jane is, 0 to 1.
 export const CONFIDENCE_SCORE = { high: 1, medium: 0.7, low: 0.4 } as const;
 
+// How likely a finding's yearly figure is to become a real saving, for the report's order
+// (demo-video list: Planet Fitness ranked #2 just for being a subscription). A subscription to
+// review is only a saving if the person no longer uses it, so its whole price counts for this
+// share; every other kind counts in full. Then times CONFIDENCE_SCORE for the finding's own
+// confidence.
+export const REPORT_LIKELIHOOD: Readonly<Partial<Record<string, number>>> = {
+  subscription_review: 0.25,
+};
+
 // /jane shows this many of the things that matter most.
 export const TOP_THINGS = 3;
 

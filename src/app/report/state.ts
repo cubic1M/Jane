@@ -1,4 +1,7 @@
 import { COUNT_ONLY_WHEN_APPROVED } from "@/config/detection";
+import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
+import { CONFIDENCE_SCORE, REPORT_LIKELIHOOD } from "@/config/priorities";
+import { confidenceOf, counted } from "@/profile/confidence";
 import { SUGGESTED_UPLOAD_DAYS } from "@/config/import";
 import type { FindingType } from "@/generated/prisma/client";
 
@@ -46,4 +49,41 @@ export function foundLine(transactions: number, types: readonly FindingType[]): 
   return types.some((t) => COUNT_ONLY_WHEN_APPROVED.includes(t))
     ? `${base} Subscriptions count toward the total once you decide to cancel them.`
     : base;
+}
+
+// The report's order: the time-sensitive first, then by what each is likely to be worth (its
+// yearly figure, times how likely that is to be a real saving and how sure Jane is), so a
+// subscription that's only a saving if it's unused doesn't outrank surer money.
+type Rankable = {
+  id: string;
+  type: FindingType;
+  annualSavingsCents: number | null;
+  confidence: keyof typeof CONFIDENCE_SCORE;
+};
+export const likelyWorth = (f: Rankable): number =>
+  (f.annualSavingsCents ?? 0) * (REPORT_LIKELIHOOD[f.type] ?? 1) * CONFIDENCE_SCORE[f.confidence];
+
+export function reportOrder<T extends Rankable>(findings: readonly T[]): T[] {
+  const urgent = (f: T) => PLAN_URGENT_FINDING_TYPES.includes(f.type);
+  return [...findings].sort(
+    (a, b) =>
+      Number(urgent(b)) - Number(urgent(a)) ||
+      likelyWorth(b) - likelyWorth(a) ||
+      a.id.localeCompare(b.id),
+  );
+}
+
+// How sure Jane is of a finding, for its line on the report (demo-video list: the list showed
+// none), the way every suggestion says it (src/profile/confidence.ts): from the months of data
+// and the dated charges behind it.
+export function findingSure(
+  evidence: readonly { date: string | null }[],
+  months: number,
+): { percent: number; reason: string } {
+  const charges = evidence.filter((r) => r.date !== null).length;
+  const span = `${months} month${months === 1 ? "" : "s"} of data`;
+  return {
+    percent: confidenceOf("seen", { months, matches: charges || months }),
+    reason: charges > 0 ? `${counted(charges, "charges")} in ${span}` : span,
+  };
 }

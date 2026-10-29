@@ -1,5 +1,6 @@
+import type { FindingType } from "@/generated/prisma/client";
 import { describe, expect, it } from "vitest";
-import { foundLine, reportState, shortUploadDays } from "./state";
+import { findingSure, foundLine, reportOrder, reportState, shortUploadDays } from "./state";
 
 const base = { transactions: 240, findings: 0, firstDetectionDone: true, scanRunning: false };
 
@@ -46,5 +47,60 @@ describe("foundLine", () => {
     expect(foundLine(162, ["card_interest"])).toBe(
       "Estimates from 162 transactions. The three that matter most are first; open one to decide.",
     );
+  });
+});
+
+describe("the report's order", () => {
+  const f = (
+    id: string,
+    type: FindingType,
+    annualSavingsCents: number,
+    confidence: "high" | "medium" | "low" = "high",
+  ) => ({ id, type, annualSavingsCents, confidence });
+
+  // Demo-video list: Planet Fitness ($299.88/yr) ranked #2 just for being a subscription.
+  it("puts a subscription to review below surer money of a similar size", () => {
+    const order = reportOrder([
+      f("gym", "subscription_review", 29_988, "medium"),
+      f("cash", "idle_cash", 51_000),
+      f("fees", "bank_fees", 14_400),
+      f("netflix", "subscription_review", 21_588, "medium"),
+    ]).map((x) => x.id);
+    expect(order).toEqual(["cash", "fees", "gym", "netflix"]);
+  });
+
+  it("keeps the time-sensitive first, whatever they're worth", () => {
+    const order = reportOrder([
+      f("cash", "idle_cash", 90_000),
+      f("dup", "duplicate_charge", 1_299),
+    ]);
+    expect(order.map((x) => x.id)).toEqual(["dup", "cash"]);
+  });
+
+  it("ranks the surer of two the same size first", () => {
+    const order = reportOrder([f("a", "bank_fees", 10_000, "low"), f("b", "bank_fees", 10_000)]);
+    expect(order.map((x) => x.id)).toEqual(["b", "a"]);
+  });
+});
+
+describe("a finding's % sure on the report", () => {
+  it("counts its dated charges over the months read", () => {
+    const sure = findingSure(
+      [{ date: "2026-07-01" }, { date: "2026-08-01" }, { date: "2026-09-01" }, { date: null }],
+      4,
+    );
+    expect(sure.reason).toBe("3 charges in 4 months of data");
+    expect(sure.percent).toBeGreaterThan(0);
+    expect(sure.percent).toBeLessThanOrEqual(100);
+  });
+
+  it("goes by the months alone when it rests on balances, not charges", () => {
+    expect(findingSure([{ date: null }], 4).reason).toBe("4 months of data");
+    expect(findingSure([{ date: "2026-10-01" }], 1).reason).toBe("1 charge in 1 month of data");
+  });
+
+  it("is surer with more history", () => {
+    const rows = [{ date: "2026-10-01" }, { date: "2026-09-01" }];
+    expect(findingSure(rows, 2).percent).toBeLessThan(findingSure(rows, 12).percent);
   });
 });
