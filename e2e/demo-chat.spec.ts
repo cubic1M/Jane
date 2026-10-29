@@ -56,6 +56,8 @@ test("after an upload the side chat catches up, and the chip keeps out of the wa
   await expect(page.locator("[data-card-dock] [data-card-sure]")).toHaveText(/^\d+% sure$/, {
     timeout: 60_000,
   });
+  // And the chat under them doesn't say there's nothing new (demo-video re-take).
+  await expect(chat.getByText("Nothing new from me yet")).toHaveCount(0);
 
   // On the findings the chip has said its piece and goes, and stays gone.
   await page.goto("/report");
