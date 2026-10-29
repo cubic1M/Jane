@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { DetectionInput } from "@/detection/types";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { dayLabel } from "@/lib/day-label";
 import { asWatch } from "@/planning/outcomes";
 import { HELD_RULE, verifyRule, type LedgerState } from "@/planning/ledger";
 import { verifiedSavings, type Receipt } from "@/lib/savings-proof";
@@ -98,7 +99,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       rule: RECEIPT_RULE[r.kind],
       proof: r.proof,
       lines: [{ id: `${r.actionId}:seen`, ...r.seen }],
-      heldProof: r.heldOn ? `Still true on ${r.heldOn}.` : null,
+      heldProof: r.heldOn ? `Still true on ${dayLabel(r.heldOn, { year: true })}.` : null,
       heldLines: [],
       lapsed: false,
       actedOn: null,
