@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { currentChatStart } from "@/lib/chat-start";
 import { ChatInputError, sendToJane } from "@/lib/jane-agent/typing";
 import { requireUser } from "@/lib/session";
 
@@ -14,7 +15,7 @@ export async function sendMessage(previous: SendState, formData: FormData): Prom
   const user = await requireUser();
   const text = String(formData.get("message") ?? "");
   try {
-    await sendToJane(user.id, text);
+    await sendToJane(user.id, text, { since: await currentChatStart() });
   } catch (error) {
     if (error instanceof ChatInputError) return { error: error.message, sentAt: previous.sentAt };
     console.error("Typing to Jane failed", {

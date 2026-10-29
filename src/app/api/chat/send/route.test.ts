@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ getCurrentUser: vi.fn() }));
+// This sign-in's chat starts here (src/lib/chat-start.ts).
+const SINCE = vi.hoisted(() => new Date("2026-10-29T15:00:00Z"));
+vi.mock("@/lib/chat-start", () => ({ currentChatStart: vi.fn(async () => SINCE) }));
 vi.mock("@/lib/jane-agent/typing", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/jane-agent/typing")>()),
   sendToJane: vi.fn(),
@@ -65,6 +68,7 @@ describe("POST /api/chat/send", () => {
       { type: "done" },
     ]);
     expect(vi.mocked(sendToJane).mock.calls[0].slice(0, 2)).toEqual(["u1", "how's my food budget"]);
+    expect(vi.mocked(sendToJane).mock.calls[0][2]?.since).toEqual(SINCE);
   });
 
   it("says what's wrong with the message, and nothing more when something else fails", async () => {
