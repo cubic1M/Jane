@@ -25,6 +25,7 @@ vi.mock("@/lib/db-scoped", () => ({
   scopedFor: vi.fn(() => ({ digests: { updateMany: digestsUpdateMany } })),
 }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/digest/send", () => ({ runDigests: vi.fn() }));
 vi.mock("@/lib/health", () => ({
   recordRun: vi.fn((_name: string, run: () => Promise<unknown>) => run()),
@@ -36,6 +37,7 @@ vi.mock("@/lib/jobs", () => ({
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { track } from "@/lib/analytics";
+import { logAudit } from "@/lib/audit";
 import { runDigests } from "@/lib/digest/send";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { GET as cron } from "../cron/digest/route";
@@ -51,6 +53,7 @@ beforeEach(() => {
   userFindUnique.mockReset().mockResolvedValue({ alertPrefs: { low_balance: "off" } });
   userUpdate.mockReset();
   vi.mocked(track).mockReset();
+  vi.mocked(logAudit).mockReset();
   vi.mocked(runDigests)
     .mockReset()
     .mockResolvedValue({
@@ -59,6 +62,7 @@ beforeEach(() => {
       skipped: 0,
       alreadySent: 0,
       failed: 0,
+      excluded: {},
       previews: [{ userId: "u1", subject: "s", text: "t" }],
     });
 });
@@ -110,6 +114,10 @@ describe("POST /api/unsubscribe", () => {
       data: { digestEnabled: false },
     });
     expect(track).toHaveBeenCalledWith("u1", "digest_unsubscribed", {});
+    expect(logAudit).toHaveBeenCalledWith({ type: "user", id: "u1" }, "digest_unsubscribed", {
+      type: "user",
+      id: "u1",
+    });
   });
 
   it("sends the page's button back to a confirmation", async () => {
@@ -150,7 +158,21 @@ describe("GET /api/cron/digest", () => {
 
   it("refuses calls without the cron secret", async () => {
     expect((await call("", "Bearer nope")).status).toBe(401);
+    expect((await call("", "")).status).toBe(401);
+    expect((await call("", "cron-secret")).status).toBe(401);
     expect(runDigests).not.toHaveBeenCalled();
+  });
+
+  it("refuses every call when CRON_SECRET isn't set, even one saying 'Bearer undefined'", async () => {
+    vi.stubEnv("CRON_SECRET", "");
+    expect((await call("", "Bearer ")).status).toBe(401);
+    expect((await call("", "Bearer undefined")).status).toBe(401);
+    expect(runDigests).not.toHaveBeenCalled();
+  });
+
+  it("runs the weekly email with the right secret", async () => {
+    expect((await call()).status).toBe(200);
+    expect(runDigests).toHaveBeenCalledTimes(1);
   });
 
   it("returns rendered previews only in a dry run", async () => {

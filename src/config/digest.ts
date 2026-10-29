@@ -34,3 +34,17 @@ export const DIGEST_BUDGET_NEAR_SHARE = 0.9;
 
 // Added to every digest link, so analytics can attribute visits.
 export const DIGEST_UTM = { utm_source: "digest", utm_medium: "email", utm_campaign: "weekly" };
+
+// What changed (the weekly "what changed" email): the change kinds it lists from
+// src/insights/changes.ts. New subscriptions come as their own alert, and a spending pace is a
+// projection, not a fact, so neither is listed here.
+export const DIGEST_CHANGE_KINDS = [
+  "bill_changed",
+  "new_fee",
+  "premium_renewed",
+  "paycheck_smaller",
+  "paycheck_late",
+] as const;
+
+// At most this many lines under "What changed", the surest first.
+export const DIGEST_MAX_CHANGES = 8;

@@ -11,6 +11,9 @@ type Email = {
   replyTo?: string;
 };
 
+// Resend's id for a sent email, so its webhook events (an open, a bounce) can be matched back.
+export type SentEmail = { id: string | null };
+
 export async function sendEmail({
   to,
   subject,
@@ -18,7 +21,7 @@ export async function sendEmail({
   text,
   headers,
   replyTo,
-}: Email): Promise<void> {
+}: Email): Promise<SentEmail | void> {
   // Spec step 138: a trial person's address can never receive mail; nothing is sent.
   if (isTrialEmail(to)) return;
   const apiKey = process.env.RESEND_API_KEY;
@@ -41,6 +44,8 @@ export async function sendEmail({
   if (!response.ok) {
     throw new Error(`Resend rejected the email (${response.status}): ${await response.text()}`);
   }
+  const body = (await response.json().catch(() => null)) as { id?: unknown } | null;
+  return { id: typeof body?.id === "string" ? body.id : null };
 }
 
 function escapeHtml(value: string): string {

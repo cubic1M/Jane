@@ -1,7 +1,9 @@
 import { BACK_OR_AGREED, SAVED_SO_FAR_LABEL } from "@/lib/saved-amount";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
+import { SUGGESTION_CONFIDENCE_FROM } from "@/config/priorities";
+import type { Confidence } from "@/generated/prisma/client";
 import { formatCents } from "@/lib/money";
-import type { DigestPayload } from "./build";
+import type { DigestCheckup, DigestPayload } from "./build";
 
 // The digest email, as HTML and plain text. Links are passed in already wrapped for
 // click tracking.
@@ -31,10 +33,55 @@ function escapeHtml(value: string): string {
 const yearly = (cents: number | null) =>
   cents === null ? "" : ` (about ${formatCents(cents)} a year)`;
 
+// How sure, after each line: "(84% sure)". A finding stores a level, which is the band its
+// percentage fell in (SUGGESTION_CONFIDENCE_FROM), so it says that band.
+const sure = (percent: number | null | undefined) =>
+  typeof percent === "number" ? ` (${percent}% sure)` : "";
+const levelSure = (level: Confidence | undefined) => {
+  const { high, medium } = SUGGESTION_CONFIDENCE_FROM;
+  if (level === "high") return ` (${high}%+ sure)`;
+  if (level === "medium") return ` (${medium}–${high - 1}% sure)`;
+  if (level === "low") return ` (under ${medium}% sure)`;
+  return "";
+};
+
+// A change's title ends with a full stop; the "(84% sure)" after it ends the line instead.
+const fact = (title: string) => title.replace(/\.$/, "");
+
+// The things that changed this week: the alerts and the changes Jane noticed.
+export const changedCount = (p: DigestPayload) =>
+  (p.alerts?.length ?? 0) + (p.changes?.length ?? 0);
+
+export function checkupLine(c: DigestCheckup): string {
+  const parts = [
+    c.found > 0 && `${c.found} found something`,
+    c.passed > 0 && `${c.passed} found nothing wrong`,
+    c.notEnoughData > 0 &&
+      `${c.notEnoughData} ${c.notEnoughData === 1 ? "needs" : "need"} more data`,
+  ].filter((part): part is string => typeof part === "string");
+  return `Jane ran ${c.checks} ${c.checks === 1 ? "check" : "checks"}: ${parts.join(", ")}.`;
+}
+
+// Under every email: these are facts from the person's own accounts.
+export const FACTS_NOT_ADVICE =
+  "Facts from your own accounts, with how sure Jane is of each. Not financial advice.";
+
 type Section = { heading: string; items: string[]; link?: { label: string; url: string } };
 
 function sections(p: DigestPayload, links: DigestLinks): Section[] {
   const out: Section[] = [];
+  // First, what changed: each line a fact with how sure Jane is, and one link to see it.
+  // Older payloads (stored before alerts existed) have no alerts list.
+  if (changedCount(p) > 0) {
+    out.push({
+      heading: "What changed",
+      items: [
+        ...(p.alerts ?? []).map((a) => `${fact(a.title)}${sure(a.percent)}`),
+        ...(p.changes ?? []).map((c) => `${fact(c.title)}${sure(c.percent)}`),
+      ],
+      link: { label: "See it in Jane", url: links.alerts },
+    });
+  }
   const waiting = p.pending.filter((a) => a.status === "waiting_on_user");
   if (waiting.length > 0) {
     out.push({
@@ -97,19 +144,20 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       link: { label: "See all your actions", url: links.actions },
     });
   }
-  // Older payloads (stored before alerts existed) have no alerts list.
-  if (p.alerts?.length > 0) {
-    out.push({
-      heading: "Alerts",
-      items: p.alerts.map((a) => a.title),
-      link: { label: "See your alerts", url: links.alerts },
-    });
-  }
   if (p.newFindings.length > 0) {
     out.push({
       heading: "New since last week",
-      items: p.newFindings.map((f) => `${f.title}${yearly(f.annualSavingsCents)}`),
+      items: p.newFindings.map(
+        (f) => `${f.title}${yearly(f.annualSavingsCents)}${levelSure(f.confidence)}`,
+      ),
       link: { label: "Open your report", url: links.report },
+    });
+  }
+  if (p.checkup) {
+    out.push({
+      heading: "Jane's checkup",
+      items: [checkupLine(p.checkup)],
+      link: { label: "See every check", url: links.report },
     });
   }
   if (p.budgets?.length) {
@@ -158,14 +206,19 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
 }
 
 export function renderDigest(p: DigestPayload, links: DigestLinks) {
+  const changed = changedCount(p);
   const headline =
-    p.savedThisWeekCents > 0
-      ? `You saved about ${formatCents(p.savedThisWeekCents)} a year this week`
-      : "Your week in money";
+    changed > 0
+      ? `${changed} ${changed === 1 ? "thing" : "things"} changed in your money this week`
+      : p.savedThisWeekCents > 0
+        ? `You saved about ${formatCents(p.savedThisWeekCents)} a year this week`
+        : "Your week in money";
+  // Nothing saved yet (the read-only beta, where people act themselves) says nothing.
   const totals = [
-    `${SAVED_SO_FAR_LABEL}: about ${formatCents(p.savedToDateCents)} a year`,
+    p.savedToDateCents > 0 &&
+      `${SAVED_SO_FAR_LABEL}: about ${formatCents(p.savedToDateCents)} a year`,
     `Still to look at: ${formatCents(p.moneyFoundCents)} a year`,
-  ];
+  ].filter((line): line is string => typeof line === "string");
   const body = sections(p, links);
 
   const text = [
@@ -179,6 +232,7 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
       ...(s.link ? [`${s.link.label}: ${s.link.url}`] : []),
     ]),
     "",
+    FACTS_NOT_ADVICE,
     `Email settings: ${links.settings}`,
     `Unsubscribe: ${links.unsubscribe}`,
   ].join("\n");
@@ -196,7 +250,8 @@ ${body
     }`,
   )
   .join("\n")}
-<p style="margin-top:32px;font-size:12px;color:#737373"><a href="${escapeHtml(links.settings)}" style="color:#737373">Email settings</a> · <a href="${escapeHtml(links.unsubscribe)}" style="color:#737373">Unsubscribe</a></p>
+<p style="margin-top:32px;font-size:12px;color:#737373">${escapeHtml(FACTS_NOT_ADVICE)}</p>
+<p style="font-size:12px;color:#737373"><a href="${escapeHtml(links.settings)}" style="color:#737373">Email settings</a> · <a href="${escapeHtml(links.unsubscribe)}" style="color:#737373">Unsubscribe</a></p>
 </div>`;
 
   return { subject: headline, text, html };

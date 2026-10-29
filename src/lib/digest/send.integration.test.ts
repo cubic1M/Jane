@@ -4,12 +4,15 @@ import { PrismaClient, type FindingType, type Prisma } from "@/generated/prisma/
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 
 import { track } from "@/lib/analytics";
+import { logAudit } from "@/lib/audit";
 import { ACTION_FOR_FINDING } from "@/lib/cards";
 import { savedToDate } from "@/lib/membership/service";
 import { findingOfType } from "../__fixtures__/findings";
 import { runDigests } from "./send";
+import { digestNumbers } from "./stats";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 // Other tests share the database, so assertions look only at this file's users.
@@ -79,6 +82,7 @@ describe.runIf(url)("runDigests against a real database", () => {
   beforeEach(() => {
     send.mockReset();
     vi.mocked(track).mockReset();
+    vi.mocked(logAudit).mockReset();
   });
 
   // A run kept to this file's own people: everyone else in the shared database is another file's.
@@ -148,7 +152,7 @@ describe.runIf(url)("runDigests against a real database", () => {
     const run = await runDigests({ client, userIds: own(), now: MONDAY, dryRun: true, send });
 
     const preview = run.previews.find((p) => p.userId === ids.alerted);
-    expect(preview?.text).toContain("Alerts\n- $35.00 fee on Checking");
+    expect(preview?.text).toContain("What changed\n- $35.00 fee on Checking");
     expect(run.previews.some((p) => p.userId === ids.muted)).toBe(false);
   });
 
@@ -308,5 +312,89 @@ describe.runIf(url)("runDigests against a real database", () => {
     } finally {
       await client.user.delete({ where: { id: outsider.id } });
     }
+  });
+
+  // The weekly "what changed" email never reaches sample data: trial people and people whose
+  // only bank is the demo bank, whatever their settings say.
+  it("never emails a trial person or a demo-bank-only account", async () => {
+    const trial = await client.user.create({
+      data: { id: `trial_${suffix}`, email: `t-${suffix}@try.jane.invalid`, digestEnabled: true },
+    });
+    ids.trial = trial.id;
+    await person("demo", { finding: true, account: false });
+    const item = await client.plaidItem.create({
+      data: {
+        userId: ids.demo,
+        plaidItemId: `demo-${suffix}`,
+        accessTokenEncrypted: "x",
+        institutionName: "Demo Bank",
+      },
+    });
+    await client.account.create({
+      data: { userId: ids.trial, source: "csv", name: "Card", type: "credit" },
+    });
+    await client.account.create({
+      data: {
+        userId: ids.demo,
+        source: "plaid",
+        itemId: item.id,
+        plaidAccountId: `acct-${suffix}`,
+        name: "Demo checking",
+        type: "depository",
+      },
+    });
+    const f = findingOfType("bank_fees");
+    await client.finding.create({
+      data: {
+        userId: ids.trial,
+        type: f.type,
+        key: f.key,
+        title: f.title,
+        annualSavingsCents: f.annualSavingsCents,
+        amountCents: f.amountCents,
+        confidence: f.confidence,
+        evidence: f.evidence as Prisma.InputJsonObject,
+        createdAt: new Date("2026-10-17T00:00:00Z"),
+      },
+    });
+
+    const nextMonday = new Date("2026-11-02T22:00:00Z");
+    const run = await runDigests({ client, userIds: [ids.trial, ids.demo], now: nextMonday, send });
+
+    expect(run.users).toBe(0);
+    expect(run.excluded).toEqual({ demo_only: 1 });
+    expect(send).not.toHaveBeenCalled();
+    expect(await client.digest.count({ where: { userId: { in: [ids.trial, ids.demo] } } })).toBe(0);
+  });
+
+  it("keeps Resend's id, writes the audit log, and counts sends for the numbers page", async () => {
+    await person("counted", { finding: true });
+    send.mockResolvedValue({ id: `re_${suffix}` });
+
+    await runDigests({ client, userIds: [ids.counted], now: MONDAY, send });
+
+    const [digest] = await digestsOf("counted");
+    expect(digest.resendId).toBe(`re_${suffix}`);
+    expect(logAudit).toHaveBeenCalledWith(
+      { type: "system", id: null },
+      "digest_sent",
+      { type: "digest", id: digest.id },
+      expect.objectContaining({ user_id: ids.counted, new_findings: 1, changes: 0 }),
+    );
+    expect(track).toHaveBeenCalledWith(
+      ids.counted,
+      "digest_sent",
+      expect.objectContaining({ digest_id: digest.id }),
+    );
+
+    const before = await digestNumbers({ client, since: MONDAY });
+    await client.digest.update({
+      where: { id: digest.id },
+      data: { emailOpenedAt: new Date("2026-10-20T08:00:00Z") },
+    });
+    const opened = await digestNumbers({ client, since: MONDAY });
+    expect(opened.opened - before.opened).toBe(1);
+    expect(opened.clicked - before.clicked).toBe(0);
+    expect(opened.sent).toBe(before.sent);
   });
 });
