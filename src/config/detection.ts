@@ -594,6 +594,20 @@ export const TRIAL_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
   "LOAN_PAYMENTS",
 ];
 
+// --- Watching once money is in good shape ---------------------------------------------------------
+
+// An insurance premium that rose at renewal (src/insights/changes.ts): a policy paid every six
+// months or once a year, whose latest charge is at least this share and this much above the
+// one before, a term earlier (between these many days; a charge in between means it's paid
+// monthly, which the bill-change rule already watches).
+export const PREMIUM_RENEWAL_MIN_GAP_DAYS = 150;
+export const PREMIUM_RENEWAL_MAX_GAP_DAYS = 400;
+export const PREMIUM_RENEWAL_MIN_SHARE = PRICE_INCREASE_THRESHOLD;
+export const PREMIUM_RENEWAL_MIN_CENTS = 1_000;
+// A trial's end date is a guess from its first charge (TRIAL_LENGTH_DAYS), so its heads-up is
+// never surer than this.
+export const TRIAL_DEADLINE_MAX_PERCENT = 60;
+
 // --- Bill negotiation ---------------------------------------------------------------
 
 // Typical monthly prices for bills people can often negotiate down. A recurring bill

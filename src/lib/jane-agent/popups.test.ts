@@ -96,6 +96,21 @@ describe("a pop-up's card", () => {
       notNowLabel: "Remind me later",
       choices: [],
     });
+    expect(heads.details.confidence).toBeUndefined();
+  });
+
+  it("shows a heads-up's confidence behind More details", () => {
+    const card = popupCard(
+      message({
+        kind: "heads_up",
+        body: "Netflix went up from $15.49 to $17.99. If you didn't expect that, take a look.",
+        confidence: { percent: 84, reason: "3 earlier charges in 11 months of data" },
+      }),
+    );
+    expect(card.details.confidence).toEqual({
+      percent: 84,
+      reason: "3 earlier charges in 11 months of data",
+    });
   });
 
   it("shows its first sentence whole, never cut with an ellipsis, and the rest behind More details", () => {

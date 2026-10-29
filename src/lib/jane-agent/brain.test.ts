@@ -355,6 +355,32 @@ describe("heads-ups", () => {
       { id: "open", label: "Open", kind: "link", href: "/subscriptions" },
     ]);
   });
+
+  it("brings up a trial about to end with how sure Jane is", () => {
+    const [message] = bySource(
+      snapshot({
+        deadlines: [
+          {
+            key: "trial:tx_1",
+            title: "Paramount+ trial may end",
+            date: "2026-10-21",
+            kind: "trial",
+            source: "transactions",
+            amountCents: null,
+            href: null,
+            detail: null,
+            confidence: { percent: 56, reason: "1 small first charge in 3 months of data" },
+          },
+        ],
+      }),
+      "heads_ups",
+    );
+    expect(message).toMatchObject({
+      kind: "heads_up",
+      body: "Coming up in 2 days: Paramount+ trial may end.",
+      refs: { confidence: { percent: 56 } },
+    });
+  });
 });
 
 describe("plan (the limits)", () => {

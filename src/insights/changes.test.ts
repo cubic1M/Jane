@@ -3,6 +3,7 @@ import {
   AS_OF,
   CARD,
   CHECKING,
+  GEICO,
   GROCERIES,
   NETFLIX,
   SPOTIFY,
@@ -22,6 +23,7 @@ import {
   newSubscriptions,
   paceChanges,
   paycheckChanges,
+  premiumRenewals,
 } from "./changes";
 
 // Spec step 97: each rule for what changed, with its edge cases. AS_OF is 2026-10-15.
@@ -295,6 +297,80 @@ describe("detectChanges", () => {
     ];
     const found = detectChanges(...withStreams(input({ transactions })));
     expect(found.map((c) => c.kind)).toEqual(["bill_changed", "new_fee"]);
+  });
+
+  it("says how sure Jane is of each, from the charges and the months behind it", () => {
+    const transactions = [
+      ...monthly(12, [...Array(11).fill(1549), 1799], { ...NETFLIX, accountId: CARD.id }),
+      tx({
+        description: "OVERDRAFT FEE",
+        pfcPrimary: "BANK_FEES",
+        pfcDetailed: "BANK_FEES_OVERDRAFT_FEES",
+        amountCents: 3400,
+        date: "2026-10-14",
+      }),
+    ];
+    const [bill, fee] = detectChanges(...withStreams(input({ transactions })));
+    expect(bill.confidence).toEqual({
+      percent: 84,
+      reason: "3 earlier charges in 11 months of data",
+    });
+    expect(fee.confidence.reason).toBe("1 fee charge in 11 months of data");
+    expect(fee.confidence.percent).toBeLessThan(bill.confidence.percent);
+  });
+});
+
+// A premium paid every six months or once a year, up at its renewal. AS_OF is 2026-10-15.
+describe("premiumRenewals", () => {
+  const premium = (date: string, amountCents: number) => tx({ ...GEICO, date, amountCents });
+
+  it("spots a yearly premium that went up at renewal", () => {
+    const [change] = premiumRenewals(
+      input({ transactions: [premium("2025-10-10", 61_200), premium("2026-10-10", 68_900)] }),
+    );
+    expect(change).toMatchObject({
+      kind: "premium_renewed",
+      title: "Your Geico premium went up at renewal, from $612.00 to $689.00.",
+      amountCents: 68_900,
+      usualCents: 61_200,
+      up: true,
+      seen: 2,
+    });
+    expect(change.key).toMatch(/^premium:geico:tx_\d+$/);
+  });
+
+  it("spots a six-monthly one", () => {
+    const found = premiumRenewals(
+      input({ transactions: [premium("2026-04-12", 40_000), premium("2026-10-12", 43_000)] }),
+    );
+    expect(found).toHaveLength(1);
+  });
+
+  it("leaves monthly premiums to the bill-change rule", () => {
+    const found = premiumRenewals(
+      input({ transactions: monthly(12, [...Array(11).fill(9_800), 11_000], GEICO) }),
+    );
+    expect(found).toEqual([]);
+  });
+
+  it("stays quiet for a small rise, a drop, or a renewal that isn't recent", () => {
+    const quiet = [
+      [premium("2025-10-10", 61_200), premium("2026-10-10", 61_900)],
+      [premium("2025-10-10", 61_200), premium("2026-10-10", 55_000)],
+      [premium("2025-08-10", 61_200), premium("2026-08-10", 68_900)],
+    ];
+    for (const transactions of quiet) expect(premiumRenewals(input({ transactions }))).toEqual([]);
+  });
+
+  it("is a change Jane brings up, with how sure it is", () => {
+    const transactions = [
+      tx({ ...GROCERIES, date: "2025-09-01" }),
+      premium("2025-10-10", 61_200),
+      premium("2026-10-10", 68_900),
+    ];
+    const [change] = detectChanges(...withStreams(input({ transactions })));
+    expect(change.kind).toBe("premium_renewed");
+    expect(change.confidence.reason).toBe("2 charges from the same insurer in 13 months of data");
   });
 });
 

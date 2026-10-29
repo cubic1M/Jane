@@ -26,6 +26,8 @@ const change = (over: Partial<ChangeView>): ChangeView => ({
   streamKey: "merchant:netflix",
   up: true,
   accountId: null,
+  seen: 3,
+  confidence: { percent: 84, reason: "3 earlier charges in 12 months of data" },
   finding: null,
   ...over,
 });
@@ -226,6 +228,44 @@ describe("the changes source", () => {
       "changes:bill:merchant:netflix:1799",
       "changes:smaller:acme:2026-10-15",
     ]);
+  });
+
+  it("says an insurance premium that rose at renewal, as a fact with how sure Jane is", () => {
+    const [message] = fromChanges(
+      snapshot([
+        change({
+          kind: "premium_renewed",
+          key: "premium:geico:tx_1",
+          title: "Your Geico premium went up at renewal, from $612.00 to $689.00.",
+          streamKey: null,
+          seen: 2,
+          confidence: {
+            percent: 84,
+            reason: "2 charges from the same insurer in 13 months of data",
+          },
+        }),
+      ]),
+    );
+    expect(message).toMatchObject({
+      kind: "heads_up",
+      body: "Your Geico premium went up at renewal, from $612.00 to $689.00. If you didn't expect that, take a look.",
+      refs: {
+        change: { key: "premium:geico:tx_1", kind: "premium_renewed" },
+        confidence: { percent: 84 },
+      },
+    });
+    expect(message.actions.map((a) => a.label)).toEqual(["That's expected", "Look into it"]);
+  });
+
+  it("carries every change's confidence on its message", () => {
+    const messages = fromChanges(
+      snapshot([
+        change({}),
+        change({ kind: "new_fee", key: "fee:tx_9", accountId: "a1", streamKey: null, up: null }),
+      ]),
+    );
+    expect(messages).toHaveLength(2);
+    for (const m of messages) expect(m.refs.confidence?.percent).toBe(84);
   });
 
   it("says nothing without changes", () => {

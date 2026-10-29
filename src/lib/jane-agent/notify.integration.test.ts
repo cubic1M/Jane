@@ -10,6 +10,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { CHAT_EMAILS_PER_DAY, CHAT_NOTIFY_DAILY_LIMIT } from "@/config/chat-notify";
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { logAudit } from "@/lib/audit";
 import { findingOfType } from "@/lib/__fixtures__/findings";
 import { linkDemoBank } from "@/lib/plaid/demo";
@@ -413,6 +414,35 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       expect(send).toHaveBeenCalledTimes(2);
       expect(JSON.stringify(send.mock.calls[1][0])).toContain("below zero before payday");
       expect(JSON.stringify(send.mock.calls[1][0])).not.toContain('"New"');
+    });
+
+    it("never emails or pushes a trial person, even a change heads-up", async () => {
+      const id = `${TRIAL_ID_PREFIX}${crypto.randomUUID().replaceAll("-", "")}`;
+      await client.user.create({
+        data: {
+          id,
+          email: `${id}@example.com`,
+          chatNotifyPrefs: { channel: "both" },
+        },
+      });
+      created.push(id);
+      await device(id);
+      await client.janeMessage.create({
+        data: {
+          userId: id,
+          kind: "heads_up",
+          body: "Your Geico premium went up at renewal, from $612.00 to $689.00.",
+          dedupeKey: "changes:premium:geico:tx_1",
+          refs: { confidence: { percent: 84, reason: "2 charges from the same insurer" } },
+          createdAt: at(0),
+        },
+      });
+      const { push, send } = fakes();
+      expect(await deliverChatNotifications(id, { client, now: at(2 * HOUR), push, send })).toEqual(
+        { pushed: 0, emailed: 0 },
+      );
+      expect(send).not.toHaveBeenCalled();
+      expect(push).not.toHaveBeenCalled();
     });
 
     it("emails when no phone takes the push", async () => {

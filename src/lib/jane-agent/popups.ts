@@ -149,6 +149,7 @@ export function popupCard(m: MessageView): PopupCard {
     details: {
       about: more.trim() || undefined,
       notes: m.advice ? ["Demo advice: sample data, not financial advice"] : undefined,
+      ...(m.confidence ? { confidence: m.confidence } : {}),
     },
     yesLabel: main.label,
     // Its own snooze is Not now, unless it is the only button (then Yes, and Not now just

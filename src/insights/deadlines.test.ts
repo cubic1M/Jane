@@ -7,6 +7,7 @@ import {
   RETURN_WINDOW_DAYS,
   TRIAL_LENGTH_DAYS,
 } from "@/config/deadlines";
+import { TRIAL_DEADLINE_MAX_PERCENT } from "@/config/detection";
 import { AS_OF, CARD, input, plaidStream, tx } from "@/detection/__fixtures__/build";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
@@ -105,6 +106,16 @@ describe("trials", () => {
         kind: "trial",
       }),
     ]);
+  });
+
+  it("says how sure it is, never more than the guessed date allows", () => {
+    const start = trial();
+    const long = [tx({ date: "2025-10-20", amountCents: 500, description: "COFFEE" }), start];
+    const [deadline] = trialDeadlines(input({ transactions: long }));
+    expect(deadline.confidence).toEqual({
+      percent: TRIAL_DEADLINE_MAX_PERCENT,
+      reason: "1 small first charge in 12 months of data",
+    });
   });
 
   it("ignores a trial that already converted, a bigger charge, or a non-subscription shop", () => {

@@ -23,6 +23,7 @@ import { renderChatEmail, type EmailMessage } from "./notify-email";
 import { alwaysSaid, sourceOf, type Attention } from "./attention";
 import { loadAttention } from "./attention-load";
 import { chatNotifyPrefs, notifiesKind, type ChatNotifyPrefs } from "./notify-prefs";
+import { isTrialUser } from "@/lib/trial-ids";
 import { inQuietHours } from "./quiet-hours";
 import type { Trigger } from "./sources";
 import { parseActions, parseRefs, type MessageAction } from "./types";
@@ -174,6 +175,8 @@ export async function deliverChatNotifications(
   }: DeliverOptions = {},
 ): Promise<{ pushed: number; emailed: number }> {
   const none = { pushed: 0, emailed: 0 };
+  // Spec step 138: a trial person is sample data, never emailed or pushed, whatever sends it.
+  if (isTrialUser(userId)) return none;
   // Users have their own helpers, so a read of these columns by id.
   const user = await client.user.findUnique({
     where: { id: userId },
