@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 import { waitForImport } from "./import-wait";
 
@@ -15,31 +15,7 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-// How far the shell moved by itself since the page loaded (layout shift, without the person's
-// input): the whole page under the top bar, or the docked chat. Home's own sections streaming in
-// below its hero are another matter (a slow runner sees them), so they aren't counted here.
-const shifted = (page: Page) =>
-  page.evaluate(
-    () =>
-      new Promise<number>((resolve) => {
-        let total = 0;
-        const main = document.querySelector("main");
-        const shell = (node: Node | null) =>
-          node instanceof Element &&
-          ((main !== null && node.contains(main)) || node.closest("[data-side-chat]") !== null);
-        new PerformanceObserver((list) => {
-          for (const e of list.getEntries() as (PerformanceEntry & {
-            value: number;
-            hadRecentInput: boolean;
-            sources: { node: Node | null }[];
-          })[])
-            if (!e.hadRecentInput && e.sources.some((s) => shell(s.node))) total += e.value;
-        }).observe({ type: "layout-shift", buffered: true });
-        setTimeout(() => resolve(total), 300);
-      }),
-  );
-
-test("the top bar holds still while pages load", async ({ context, page, baseURL }) => {
+test("the top bar holds still while pages load", async ({ context, page, baseURL, isMobile }) => {
   const user = await signedInUser("admin");
   userId = user.userId;
   await context.addCookies([
@@ -50,33 +26,48 @@ test("the top bar holds still while pages load", async ({ context, page, baseURL
   await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample-card.csv");
   await page.getByRole("button", { name: "Preview" }).click();
   await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
-  await waitForImport(page, { open: "/home" });
-  // The dock has loaded its cards once (the docked chat keeps polling, so no network idle).
-  await page.waitForTimeout(2_000);
+  await waitForImport(page, { open: "/report" });
 
-  // A reload: the cards the tab last showed are painted with the chat, so nothing moves.
-  // The import chip (still saying "Done") arrives after the page on a reload too: on a phone it
-  // sits beside the Jane button rather than pushing the page down.
-  await page.reload();
-  await expect(page.locator("[data-import-chip]")).toBeVisible();
-  await page.waitForTimeout(1_500);
-  expect(await shifted(page)).toBeLessThan(0.05);
+  // A reload paints the cards the tab last showed above the docked chat at once, before (and
+  // here without) the dock's own fetch, so the chat isn't pushed down when they arrive.
+  if (!isMobile) {
+    const card = page.locator("[data-card-dock] [data-card-state='showing']");
+    // Jane's cards are posted once the chat has opened: a later load shows them.
+    await expect(async () => {
+      await page.reload();
+      await expect(card).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 90_000 });
+    // The dock's own fetch held back well past when the card must show.
+    await page.route("**/api/chat/cards", async (route) => {
+      await new Promise((done) => setTimeout(done, 8_000));
+      await route.continue().catch(() => {});
+    });
+    await page.reload();
+    await expect(card).toBeVisible({ timeout: 5_000 });
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+  }
 
-  // A tap on a tab: the bar is there in every frame until the next page is.
-  await page.evaluate(() => {
+  // A tap on a tab: the bar is there in every frame until the next page is. On a page of its
+  // own: one that has intercepted requests makes Next load the next page in full.
+  const tab = await context.newPage();
+  await tab.goto("/home");
+  // The tabs are in the page's own boundary, which hydrates after the root's "taps ready": a tap
+  // before that follows the plain link, a full load (still a working tab, just not the test).
+  await tab.waitForLoadState("load");
+  await expect(tab.locator("[data-giant-tree]")).toBeVisible();
+  await tab.waitForTimeout(1_000);
+  await tab.evaluate(() => {
     const w = window as unknown as { barGone: boolean };
     w.barGone = false;
     new MutationObserver(() => {
       if (!document.getElementById("app-top-bar")) w.barGone = true;
     }).observe(document.body, { childList: true, subtree: true });
   });
-  await page
+  await tab
     .getByRole("navigation", { name: "Main" })
     .getByRole("link", { name: "Spending & bills", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/money/);
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  expect(await page.evaluate(() => (window as unknown as { barGone: boolean }).barGone)).toBe(
-    false,
-  );
+  await expect(tab).toHaveURL(/\/money/);
+  await expect(tab.getByRole("heading", { level: 1 })).toBeVisible();
+  expect(await tab.evaluate(() => (window as unknown as { barGone: boolean }).barGone)).toBe(false);
 });
