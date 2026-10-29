@@ -8,10 +8,13 @@ export function CorrectMemoryForm({
   factId,
   label,
   choices,
+  current,
 }: {
   factId: string;
   label: string;
   choices?: readonly string[];
+  // What Jane knows now, picked to begin with.
+  current?: string;
 }) {
   const [state, action, pending] = useActionState<CorrectMemoryState, FormData>(
     correctMemoryFact,
@@ -28,6 +31,7 @@ export function CorrectMemoryForm({
         <select
           id={field}
           name="answer"
+          defaultValue={current}
           className="h-10 rounded-lg border border-zinc-300 bg-white px-2 dark:border-zinc-700 dark:bg-zinc-900"
         >
           {choices.map((c) => (

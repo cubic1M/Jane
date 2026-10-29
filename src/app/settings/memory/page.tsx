@@ -58,7 +58,14 @@ function FactItem({ fact }: { fact: KnownFact }) {
               Correct<span className="sr-only">: {fact.label}</span>
             </summary>
             <div className="pt-2">
-              <CorrectMemoryForm factId={fact.id} label={fact.label} choices={choicesFor(fact)} />
+              <CorrectMemoryForm
+                factId={fact.id}
+                label={fact.label}
+                choices={choicesFor(fact)}
+                current={
+                  typeof fact.value === "boolean" ? (fact.value ? "yes" : "no") : String(fact.value)
+                }
+              />
             </div>
           </details>
         )}

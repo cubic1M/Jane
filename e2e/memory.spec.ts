@@ -79,15 +79,17 @@ test("the chat starts empty, and a fact Jane knows can be forgotten", async ({
   await expect(rent).toContainText("You said it in the chat");
   await expect(rent).toContainText("80% sure");
 
-  // Forgotten: gone from the page, and still gone after a reload.
+  // Forgotten: gone from the page, and still gone after a reload. A tap before the page has
+  // hydrated can be lost, so tap again only while the button is still there (the server action
+  // and the page's refresh can take a while on a busy runner).
+  // Its own row's Forget (the hidden words make its name "Forget : You rent your home").
+  const forget = rent.getByRole("button", { name: /^Forget/ });
   await expect(async () => {
-    await rent
-      .getByRole("button", { name: "Forget: You rent your home" })
-      .click({ timeout: 5_000 });
+    if ((await forget.count()) > 0) await forget.click({ timeout: 5_000 });
     await expect(facts.filter({ hasText: "You rent your home" })).toHaveCount(0, {
-      timeout: 5_000,
+      timeout: 15_000,
     });
-  }).toPass({ timeout: 30_000 });
+  }).toPass({ timeout: 60_000 });
   await page.reload();
   await expect(facts.filter({ hasText: "You rent your home" })).toHaveCount(0);
   await expect(facts.filter({ hasText: "Your main bank is Chase" })).toHaveCount(1);
