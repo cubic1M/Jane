@@ -14,6 +14,13 @@ import {
 // sign-up with the invite code filled in. Sent and opened are counted.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
+// Its own address for the /api limit (as e2e/error-pages.spec.ts does): the card's image is an
+// /api request, and a busy shard's browsers share one IP, so a 429 left it with no width.
+test.use({
+  extraHTTPHeaders: {
+    "x-forwarded-for": `10.31.${Math.floor(Math.random() * 250) + 1}.${Math.floor(Math.random() * 250) + 1}`,
+  },
+});
 
 let userId: string | undefined;
 test.afterEach(async () => {
