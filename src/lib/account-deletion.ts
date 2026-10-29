@@ -33,6 +33,12 @@ export async function deleteAllData(
       await tx.betaAccess.deleteMany({ where: { email: user.email } });
       await tx.waitlistEntry.deleteMany({ where: { email: user.email } });
     }
+    // Their share link stops working and forgets the card it showed. The code stays, so
+    // friends who already redeemed it keep their place.
+    await tx.inviteCode.updateMany({
+      where: { sharedById: userId },
+      data: { revokedAt: new Date(), sharedById: null, cardKind: null, cardValue: null },
+    });
     if (membership) {
       const where = { where: { householdId: membership.householdId } };
       await tx.sharedCharge.deleteMany(where);
