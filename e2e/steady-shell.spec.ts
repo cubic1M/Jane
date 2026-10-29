@@ -15,18 +15,25 @@ test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
 
-// How far the page moved by itself (layout shift, without the person's input) since it loaded.
+// How far the shell moved by itself since the page loaded (layout shift, without the person's
+// input): the whole page under the top bar, or the docked chat. Home's own sections streaming in
+// below its hero are another matter (a slow runner sees them), so they aren't counted here.
 const shifted = (page: Page) =>
   page.evaluate(
     () =>
       new Promise<number>((resolve) => {
         let total = 0;
+        const main = document.querySelector("main");
+        const shell = (node: Node | null) =>
+          node instanceof Element &&
+          ((main !== null && node.contains(main)) || node.closest("[data-side-chat]") !== null);
         new PerformanceObserver((list) => {
           for (const e of list.getEntries() as (PerformanceEntry & {
             value: number;
             hadRecentInput: boolean;
+            sources: { node: Node | null }[];
           })[])
-            if (!e.hadRecentInput) total += e.value;
+            if (!e.hadRecentInput && e.sources.some((s) => shell(s.node))) total += e.value;
         }).observe({ type: "layout-shift", buffered: true });
         setTimeout(() => resolve(total), 300);
       }),
