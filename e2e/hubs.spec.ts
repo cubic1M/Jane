@@ -43,8 +43,8 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
   ).toBeVisible();
   // What matters now is open; every other section is folded to its heading and one line
   // (docs/design/area-pages.md), opened with a tap. (In progress opens when something is
-  // underway while /actions is hidden: e2e/decisions.spec.ts.)
-  for (const name of ["To decide", "Done", "Alerts"]) {
+  // underway while /actions is hidden: e2e/decisions.spec.ts; Alerts when there are new ones.)
+  for (const name of ["To decide", "Done"]) {
     await expect(page.locator(`[data-jane-section="${name}"]`)).not.toHaveAttribute("open", "");
   }
   await expect(page.getByText(/^Jane's pick: /).first()).toBeHidden();
@@ -54,8 +54,8 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
     "href",
     "/plan",
   );
-  // Every alert says how sure Jane is, as the dock's heads-ups do.
-  await page.locator('[data-jane-section="Alerts"] > summary').click();
+  // New alerts show without a tap, and each says how sure Jane is, as the dock's heads-ups do.
+  await expect(page.locator('[data-jane-section="Alerts"]')).toHaveAttribute("open", "");
   await expect(page.locator("[data-alert-confidence]").first()).toHaveText(/^\d+% sure: \S/);
   await page.locator('main a[href^="/report/"]').first().click();
   await expect(page).toHaveURL(/\/report\/[\w-]+$/);

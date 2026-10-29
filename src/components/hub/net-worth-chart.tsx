@@ -708,14 +708,8 @@ export function NetWorthChart({
                       opened?.key === group.date ? "bg-current" : "bg-white dark:bg-zinc-950"
                     } ${group.events.length > 1 ? "outline outline-1 outline-offset-2 outline-current" : ""}`}
                   />
-                  {group.events.length > 1 && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-full -mt-1 text-[10px] leading-none font-semibold tabular-nums"
-                    >
-                      ×{group.events.length}
-                    </span>
-                  )}
+                  {/* No "×N" here: on nearly every dot it made the chart busy (demo-video list);
+                      the outline says there are several, and the open chart counts them. */}
                 </button>
               ))}
               {open && place && (

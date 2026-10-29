@@ -1,6 +1,6 @@
 import type { DayBalance } from "@/data-sources/csv/csv-source";
 import type { ScopedDb } from "@/lib/db-scoped";
-import { isoDay } from "@/lib/dates";
+import { addDays, isoDay } from "@/lib/dates";
 
 // Balances over time for uploaded accounts, so net worth on /home and /net-worth isn't a flat
 // line at today's balance (founder: "the graphs are flat straight lines"). Plaid syncs write
@@ -17,15 +17,16 @@ export const GIVEN_SOURCE = "given";
 
 const dayDate = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
-// The last day of each month from the first transaction's month before (the opening balance)
-// up to the month before today's, then today.
+// The opening balance the day before the first transaction (not at the month before's end: that
+// drew a flat month the file doesn't cover; demo-video list), the last day of each month from the
+// first transaction's up to the month before today's, then today.
 // And every day money moved before today, so the line steps on each of them, not straight between
 // month ends (founder: "the graph doesn't show every single movement of the money").
 function snapshotDays(first: string, today: string, moved: readonly string[] = []): string[] {
-  const days: string[] = [];
+  // The day before the first transaction: the balance before any of them.
+  const days: string[] = [addDays(first, -1)];
   const [year, month] = first.split("-").map(Number);
-  // The end of the month before the first transaction: the balance before any of them.
-  let end = new Date(Date.UTC(year, month - 1, 0));
+  let end = new Date(Date.UTC(year, month, 0));
   while (isoDay(end) < today.slice(0, 7) + "-01") {
     days.push(isoDay(end));
     end = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 2, 0));

@@ -69,8 +69,9 @@ describe("derivedBalances", () => {
 
   it("works a bank account back from today: each month end and each day money moved", () => {
     expect(derivedBalances("depository", 100000, txns, "2026-10-27")).toEqual([
-      // Before any of them: +15.00 +25.00 out added back, the 500.00 in taken off, +10.00 back.
-      { date: "2026-06-30", balanceCents: 100000 + 1500 + 2500 - 50000 + 1000 },
+      // The day before any of them (not June 30: no flat month before the file):
+      // +15.00 +25.00 out added back, the 500.00 in taken off, +10.00 back.
+      { date: "2026-07-02", balanceCents: 100000 + 1500 + 2500 - 50000 + 1000 },
       { date: "2026-07-03", balanceCents: 100000 + 1500 + 2500 - 50000 },
       { date: "2026-07-31", balanceCents: 100000 + 1500 + 2500 - 50000 },
       { date: "2026-08-15", balanceCents: 100000 + 1500 + 2500 },
@@ -93,7 +94,7 @@ describe("derivedBalances", () => {
       "2026-10-27",
     );
     expect(card).toEqual([
-      { date: "2026-08-31", balanceCents: 30000 - 2500 + 10000 },
+      { date: "2026-09-09", balanceCents: 30000 - 2500 + 10000 },
       { date: "2026-09-10", balanceCents: 30000 + 10000 },
       { date: "2026-09-30", balanceCents: 30000 + 10000 },
       { date: "2026-10-05", balanceCents: 30000 },
