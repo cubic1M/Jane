@@ -57,14 +57,21 @@ describe("the autopilot question", () => {
       dedupeKey: "autopilot:ask",
       priority: MESSAGE_PRIORITY.autopilot,
     });
-    expect(message.body.split("\n")[0]).toBe("How much should I do on my own?");
-    expect(message.body).toContain(AUTOPILOT_LEVELS.safe.description);
+    expect(message.body.split("\n")[0]).toMatch(/^How much should I do on my own\? /);
+    // One short line a level, not the settings page's paragraphs (demo-video list).
+    expect(message.body).toContain(`Handle the safe stuff: ${AUTOPILOT_LEVELS.safe.short}`);
+    expect(message.body).not.toContain(AUTOPILOT_LEVELS.safe.description);
+    expect(message.body.length).toBeLessThan(300);
     expect(message.actions).toEqual([
       { id: "autopilot.safe", label: "Handle the safe stuff", kind: "primary" },
       { id: "autopilot.all", label: "Handle everything allowed", kind: "secondary" },
       { id: "autopilot.ask", label: "Ask me first", kind: "secondary" },
       { id: "open", label: "Settings", kind: "link", href: "/settings#autopilot" },
     ]);
+  });
+
+  it("isn't asked when Jane does nothing on its own (read-only beta, concierge off)", () => {
+    expect(bySource(snapshot({ autopilot: null, concierge: false }), "autopilot")).toEqual([]);
   });
 
   it("stays quiet once a level is picked, custom included", () => {

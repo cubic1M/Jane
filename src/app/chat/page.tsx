@@ -63,12 +63,16 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   ]);
   if (!chat) {
     return (
-      <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
-        Upload your bank statements and I&apos;ll start looking after your money.{" "}
-        <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
-          Upload your statements
-        </Link>
-      </p>
+      <>
+        {/* Listening, so the chat reloads once an upload is in. */}
+        <EmbedBridge />
+        <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
+          <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
+            Upload a bank statement
+          </Link>{" "}
+          and I&apos;ll start looking after your money.
+        </p>
+      </>
     );
   }
   // The cards are the one place a suggestion or a waiting decision shows (on a computer, the
@@ -79,7 +83,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
 
   return (
     <>
-      <EmbedBridge />
+      <EmbedBridge cards={stacked.map((m) => m.id).join()} />
       <h1 data-chat-embed className="sr-only">
         Chat with Jane
       </h1>
