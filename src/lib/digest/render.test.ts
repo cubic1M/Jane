@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderDigest } from "./render";
+import { FACTS_NOT_ADVICE, checkupLine, renderDigest } from "./render";
 
 const LINKS = {
   plan: "https://app.example.com/api/digest/click?d=d1&to=%2Fplan",
@@ -55,17 +55,78 @@ describe("renderDigest", () => {
     );
   });
 
-  it("lists alerts with a link to the alerts page", () => {
-    const { text } = renderDigest(
-      { ...payload, alerts: [{ title: "$35.00 fee on Checking" }] },
+  it("leads with what changed: alerts, then changes, each with how sure Jane is", () => {
+    const email = renderDigest(
+      {
+        ...payload,
+        alerts: [{ title: "$35.00 fee on Checking", percent: 92 }, { title: "Old alert" }],
+        changes: [{ title: "Comcast went up from $80.00 to $95.00.", percent: 84 }],
+      },
       LINKS,
     );
 
-    expect(text).toContain("Alerts\n- $35.00 fee on Checking");
-    expect(text).toContain(`See your alerts: ${LINKS.alerts}`);
+    expect(email.subject).toBe("3 things changed in your money this week");
+    expect(email.text).toContain(
+      "What changed\n- $35.00 fee on Checking (92% sure)\n- Old alert\n- Comcast went up from $80.00 to $95.00 (84% sure)",
+    );
+    // One link back to Jane for all of it.
+    expect(email.text).toContain(`See it in Jane: ${LINKS.alerts}`);
+    expect(email.text.indexOf("What changed")).toBeLessThan(
+      email.text.indexOf("We need something from you"),
+    );
     // A payload stored before alerts existed still renders.
     const old = { ...payload, alerts: undefined } as unknown as typeof payload;
-    expect(renderDigest(old, LINKS).text).not.toContain("See your alerts");
+    expect(renderDigest(old, LINKS).text).not.toContain("What changed");
+  });
+
+  it("says one thing changed in the singular", () => {
+    const email = renderDigest({ ...payload, changes: [{ title: "x", percent: 70 }] }, LINKS);
+    expect(email.subject).toBe("1 thing changed in your money this week");
+  });
+
+  it("gives new findings their confidence band", () => {
+    const { text } = renderDigest(
+      {
+        ...payload,
+        newFindings: [
+          { title: "Bank fees", annualSavingsCents: 4_200, confidence: "high" },
+          { title: "Idle cash", annualSavingsCents: null, confidence: "medium" },
+          { title: "Maybe a trial", annualSavingsCents: null, confidence: "low" },
+        ],
+      },
+      LINKS,
+    );
+    expect(text).toContain("- Bank fees (about $42.00 a year) (80%+ sure)");
+    expect(text).toContain("- Idle cash (50–79% sure)");
+    expect(text).toContain("- Maybe a trial (under 50% sure)");
+  });
+
+  it("sums the checkup in one line, linked to the report", () => {
+    const { text } = renderDigest(
+      { ...payload, checkup: { checks: 12, found: 2, passed: 9, notEnoughData: 1 } },
+      LINKS,
+    );
+    expect(text).toContain(
+      "Jane's checkup\n- Jane ran 12 checks: 2 found something, 9 found nothing wrong, 1 needs more data.",
+    );
+    expect(text).toContain(`See every check: ${LINKS.report}`);
+    expect(checkupLine({ checks: 1, found: 0, passed: 1, notEnoughData: 0 })).toBe(
+      "Jane ran 1 check: 1 found nothing wrong.",
+    );
+  });
+
+  it("says saved so far only once something was saved", () => {
+    expect(renderDigest(payload, LINKS).text).toContain("about $359.76 a year");
+    expect(renderDigest({ ...payload, savedToDateCents: 0 }, LINKS).text).not.toContain(
+      "Saved so far",
+    );
+  });
+
+  it("says these are facts, not advice, and always has an unsubscribe link", () => {
+    const email = renderDigest(payload, LINKS);
+    expect(email.text).toContain(FACTS_NOT_ADVICE);
+    expect(email.html).toContain(FACTS_NOT_ADVICE);
+    expect(email.html).toContain(`href="${LINKS.unsubscribe}"`);
   });
 
   it("shows budgets, goals and net worth only when there's something to show", () => {

@@ -359,6 +359,9 @@ export const WEEKS_PER_MONTH = 4.345;
 // with the last thing talked about only within this many minutes, and never from another
 // day in the person's timezone.
 export const CHAT_CONTEXT_MINUTES = 30;
+// Each sign-in starts the chat empty (src/lib/chat-start.ts): messages from up to this many
+// seconds before the sign-in still show, for what was posted as it happened.
+export const CHAT_SIGN_IN_GRACE_SECONDS = 60;
 // How many of Jane's recent answers are looked back through for the card a "why?" means, when
 // the answer just before it has nothing to explain.
 export const CARD_TOPIC_LOOKBACK = 4;

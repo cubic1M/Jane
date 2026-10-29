@@ -11,6 +11,7 @@ import { openChat } from "@/lib/jane-agent/open";
 import { practiceCards } from "@/lib/practice/cards";
 import { requireUser } from "@/lib/session";
 import { chatRedirect } from "@/lib/side-chat";
+import { currentChatStart } from "@/lib/chat-start";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
 import { ScanRefresher } from "./scan-refresher";
@@ -49,10 +50,12 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   const embed = params.embed === "1";
   // No chat page of its own: Home, with the side chat open (src/lib/side-chat.ts).
   if (!embed) redirect(chatRedirect(params));
+  // Each sign-in starts the chat empty: older conversations stay, unseen (src/lib/chat-start.ts).
+  const since = await currentChatStart();
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
   const [chat, pinned, stacked, practice] = await Promise.all([
-    openChat(user.id, { pages }),
-    pinnedMessages(user.id),
+    openChat(user.id, { pages, since }),
+    pinnedMessages(user.id, { since }),
     // Jane's cards: the day's suggestions, then whatever else waits on the person.
     loadPopupStack(user.id),
     // Spec step 296: the practice portfolio's cards (demo advice mode only).

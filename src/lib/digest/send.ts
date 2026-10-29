@@ -1,10 +1,15 @@
 import { actionWorthCents } from "@/lib/saved-amount";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { ALERT_TYPES, ALERTS_PAGE_LIMIT } from "@/config/alerts";
-import { moneyFound } from "@/detection/engine";
+import { DIGEST_CHANGE_KINDS } from "@/config/digest";
+import { TRIAL_ID_PREFIX } from "@/config/trial";
+import { loadDetectionInput, moneyFound } from "@/detection/engine";
 import { alertPrefs } from "@/lib/alerts";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
+import { logAudit } from "@/lib/audit";
+import { loadChanges } from "@/lib/changes";
+import { loadCheckup } from "@/lib/checkup";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { offerFor, savedToDate } from "@/lib/membership/service";
@@ -20,12 +25,15 @@ import { createPlanLink } from "@/lib/plan-links";
 import { buildDigest, type DigestPayload, type DigestPlans } from "./build";
 import { appBase, clickLink } from "./links";
 import { renderDigest, type DigestLinks } from "./render";
+import { whyNoDigest, type NoDigestReason } from "./recipients";
 import { unsubscribeToken } from "./unsubscribe";
 import { weekStart } from "./week";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 
 // Runs daily (Vercel Cron). Each person gets one digest per week, on the first run that
-// falls on their Monday or later, so everyone gets it on Monday in their own timezone.
+// falls on their Monday or later, so everyone gets it on Monday in their own timezone. It's the
+// weekly "what changed" email: only real people get it (./recipients.ts), only when something
+// changed (./build.ts), and each send is in the audit log and analytics_events.
 
 export type DigestRun = {
   users: number;
@@ -33,6 +41,8 @@ export type DigestRun = {
   skipped: number;
   alreadySent: number;
   failed: number;
+  // People never emailed: trial people and demo-bank-only accounts, by reason.
+  excluded: Partial<Record<NoDigestReason, number>>;
   previews: { userId: string; subject: string; text: string }[];
 };
 
@@ -68,7 +78,13 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     }),
     db.findings.findMany({
       where: { status: { in: ["new", "shown"] } },
-      select: { title: true, annualSavingsCents: true, createdAt: true },
+      select: {
+        type: true,
+        title: true,
+        annualSavingsCents: true,
+        createdAt: true,
+        confidence: true,
+      },
     }),
     moneyFound(userId, { client }),
     savedToDate(userId, { client }),
@@ -88,12 +104,18 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       createdAt: { gt: last?.sentAt ?? new Date(0) },
       emailedAt: null,
     },
-    select: { title: true, createdAt: true, emailedAt: true },
+    select: { title: true, createdAt: true, emailedAt: true, confidencePercent: true },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: ALERTS_PAGE_LIMIT,
   });
   const plans = await plansFor(userId, now, client);
   const did = await whatJaneDid(userId, { client, now });
+  const { changes, checkup } = await changesAndCheckup(
+    userId,
+    findings.map((f) => f.type),
+    now,
+    client,
+  );
   return buildDigest({
     now,
     lastSentAt: last?.sentAt ?? null,
@@ -111,6 +133,8 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     })),
     findings,
     alerts,
+    changes,
+    checkup,
     plans,
     janeDid: {
       finished: did.finished.length,
@@ -120,6 +144,33 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       waiting: did.waiting.length,
     },
   });
+}
+
+// What changed (src/lib/changes.ts) and the report's checkup, from one read of the
+// transactions. Rules only: no Claude call. A problem here leaves them out, never the email.
+async function changesAndCheckup(
+  userId: string,
+  open: Parameters<typeof loadCheckup>[1],
+  now: Date,
+  client: PrismaClient,
+) {
+  try {
+    const input = await loadDetectionInput(userId, { client, now });
+    const kinds: readonly string[] = DIGEST_CHANGE_KINDS;
+    const changes = (await loadChanges(userId, { client, now, input }))
+      .filter((c) => kinds.includes(c.kind))
+      .map((c) => ({
+        title: c.title,
+        date: c.date,
+        merchant: c.merchant,
+        confidencePercent: c.confidence.percent,
+      }));
+    const checkup = await loadCheckup(userId, open, { client, now, input });
+    return { changes, checkup: checkup.map((c) => ({ status: c.status })) };
+  } catch (error) {
+    console.error("Digest changes failed", { userId, error: String(error) });
+    return { changes: [], checkup: [] };
+  }
 }
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -210,11 +261,44 @@ export async function runDigests({
   send = sendEmail,
   userIds,
 }: Options & OnlyPeople = {}): Promise<DigestRun> {
-  // Active people: digest on, not deleted, at least one account.
-  const users = await client.user.findMany({
-    where: { digestEnabled: true, deletedAt: null, accounts: { some: {} }, ...peopleIn(userIds) },
-    select: { id: true, email: true, timezone: true, createdAt: true },
+  // Active people: digest on, not deleted, at least one account, never a trial person. Then
+  // whyNoDigest leaves out anyone whose only bank is the demo bank.
+  const candidates = await client.user.findMany({
+    where: {
+      digestEnabled: true,
+      deletedAt: null,
+      accounts: { some: {} },
+      NOT: { id: { startsWith: TRIAL_ID_PREFIX } },
+      ...peopleIn(userIds),
+    },
+    select: {
+      id: true,
+      email: true,
+      timezone: true,
+      createdAt: true,
+      digestEnabled: true,
+      deletedAt: true,
+      plaidItems: { select: { plaidItemId: true } },
+      _count: { select: { accounts: true } },
+    },
     orderBy: { id: "asc" },
+  });
+  const csvAccounts = await client.account.groupBy({
+    by: ["userId"],
+    where: { source: "csv", userId: { in: candidates.map((c) => c.id) } },
+    _count: { _all: true },
+  });
+  const csvCount = new Map(csvAccounts.map((a) => [a.userId, a._count._all]));
+  const excluded: DigestRun["excluded"] = {};
+  const users = candidates.filter((c) => {
+    const reason = whyNoDigest({
+      ...c,
+      plaidItemIds: c.plaidItems.map((i) => i.plaidItemId),
+      csvAccounts: csvCount.get(c.id) ?? 0,
+      accounts: c._count.accounts,
+    });
+    if (reason) excluded[reason] = (excluded[reason] ?? 0) + 1;
+    return reason === null;
   });
   const run: DigestRun = {
     users: users.length,
@@ -222,6 +306,7 @@ export async function runDigests({
     skipped: 0,
     alreadySent: 0,
     failed: 0,
+    excluded,
     previews: [],
   };
 
@@ -267,8 +352,9 @@ export async function runDigests({
         : await createPlanLink(user.id, { client, now }).catch(() => null);
       const links = { ...linksFor(digest.id, user.id), ...(goAhead ? { goAhead } : {}) };
       const email = renderDigest(payload, links);
+      let sent: Awaited<ReturnType<typeof send>>;
       try {
-        await send({
+        sent = await send({
           to: user.email,
           ...email,
           headers: {
@@ -284,7 +370,10 @@ export async function runDigests({
         run.failed += 1;
         continue;
       }
-      await db.digests.updateMany({ where: { id: digest.id }, data: { sentAt: now } });
+      await db.digests.updateMany({
+        where: { id: digest.id },
+        data: { sentAt: now, resendId: sent?.id ?? null },
+      });
       // A phone notification too, for people who turned them on.
       if (payload.plan && payload.plan.items > 0) {
         const n = payload.plan.items;
@@ -302,12 +391,20 @@ export async function runDigests({
           console.error("Plan push failed", { userId: user.id, error: String(error) }),
         );
       }
-      await track(user.id, "digest_sent", {
+      const counts = {
         saved_this_week_cents: payload.savedThisWeekCents,
         pending: payload.pending.length,
         new_findings: payload.newFindings.length,
         alerts: payload.alerts.length,
-      });
+        changes: payload.changes?.length ?? 0,
+      };
+      await logAudit(
+        { type: "system", id: null },
+        "digest_sent",
+        { type: "digest", id: digest.id },
+        { user_id: user.id, ...counts },
+      );
+      await track(user.id, "digest_sent", { digest_id: digest.id, ...counts });
       run.sent += 1;
     } catch (error) {
       console.error("Digest failed", { userId: user.id, error: String(error) });

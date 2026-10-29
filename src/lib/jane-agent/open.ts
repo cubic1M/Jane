@@ -10,7 +10,8 @@ import { toView, type MessageView } from "./view";
 
 // Opening the chat (spec step 81). The first visit of the day is never empty: with nothing
 // posted yet today, Jane's brain runs first (quiet hours don't apply, the person is
-// looking). Null when the person has no accounts yet, like Today.
+// looking). Null when the person has no accounts yet, like Today. With `since`, only what came
+// after this sign-in (src/lib/chat-start.ts).
 
 // The person's timezone, for "today" and the times shown. Users have their own helpers,
 // so a read of this one column by id.
@@ -51,7 +52,8 @@ export async function openChat(
     client = defaultClient,
     now = new Date(),
     pages = 1,
-  }: { client?: PrismaClient; now?: Date; pages?: number } = {},
+    since,
+  }: { client?: PrismaClient; now?: Date; pages?: number; since?: Date } = {},
 ): Promise<{ messages: MessageView[]; hasEarlier: boolean; scanning: boolean } | null> {
   if ((await scopedFor(userId, client).accounts.count()) === 0) return null;
   const [timezone, concierge] = await Promise.all([
@@ -65,7 +67,7 @@ export async function openChat(
   // this one from the chat").
   const scanning = await scanInProgress(userId, { client, now });
   if (scanning) {
-    const feed = await chatFeed(userId, { client, pages, now });
+    const feed = await chatFeed(userId, { client, pages, now, since });
     return {
       messages: feed.messages
         .filter(notTheOldHello)
@@ -84,7 +86,7 @@ export async function openChat(
   } else {
     await runJaneAgentSafely(userId, { client, now, trigger: "open" });
   }
-  const feed = await chatFeed(userId, { client, pages, now });
+  const feed = await chatFeed(userId, { client, pages, now, since });
   return {
     messages: feed.messages
       .filter(notTheOldHello)
