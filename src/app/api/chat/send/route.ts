@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { TERMS_VERSION } from "@/config/legal";
+import { currentChatStart } from "@/lib/chat-start";
 import { ChatInputError, sendToJane } from "@/lib/jane-agent/typing";
 import { getCurrentUser } from "@/lib/session";
 
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid message" }, { status: 400 });
   }
   const text = body.message;
+  // Read before the stream starts: the request's cookies aren't there once the response is.
+  const since = await currentChatStart();
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -40,7 +43,7 @@ export async function POST(request: Request) {
       const send = (line: object) =>
         controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`));
       try {
-        await sendToJane(user.id, text, { onEvent: send });
+        await sendToJane(user.id, text, { onEvent: send, since });
         send({ type: "done" });
       } catch (error) {
         if (error instanceof ChatInputError) {

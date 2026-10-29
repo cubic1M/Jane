@@ -30,7 +30,7 @@ import {
 import { resolvePronoun, type Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
-import { storeReply } from "./messages";
+import { sinceSignIn, storeReply } from "./messages";
 import { localTime } from "./quiet-hours";
 import { unknownReply, type Reply } from "./replies";
 import { MESSAGE_SELECT, parseRefs, toChatMessage, type ChatMessage } from "./types";
@@ -51,6 +51,9 @@ type Options = {
   onEvent?: (event: ChatStreamEvent) => void;
   // How long Claude waits for the person's numbers (the answer checks wait for all of them).
   primerMs?: number;
+  // This sign-in's start (src/lib/chat-start.ts): what was said before it isn't the
+  // conversation any more, so "it" and Claude's history look only after it.
+  since?: Date;
 };
 
 export type ChatInputErrorCode = "empty" | "too_long" | "rate_limited";
@@ -69,13 +72,18 @@ export class ChatInputError extends Error {
 // something from another day.
 export async function lastTopic(
   userId: string,
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    since,
+  }: { client?: PrismaClient; now?: Date; since?: Date } = {},
 ): Promise<Topic | null> {
   const [last, user] = await Promise.all([
     scopedFor(userId, client).janeMessages.findFirst({
       where: {
         kind: "reply",
         createdAt: { gte: new Date(now.getTime() - CHAT_CONTEXT_MINUTES * 60_000), lte: now },
+        AND: [sinceSignIn(since)],
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: { refs: true, createdAt: true },
@@ -97,13 +105,18 @@ export async function lastTopic(
 // (answer-check sweep: "cancel Hulu", "what's my net worth", "why?" asked which one).
 export async function lastCardTopic(
   userId: string,
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    since,
+  }: { client?: PrismaClient; now?: Date; since?: Date } = {},
 ): Promise<Topic | null> {
   const [rows, user] = await Promise.all([
     scopedFor(userId, client).janeMessages.findMany({
       where: {
         kind: "reply",
         createdAt: { gte: new Date(now.getTime() - CHAT_CONTEXT_MINUTES * 60_000), lte: now },
+        AND: [sinceSignIn(since)],
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: CARD_TOPIC_LOOKBACK,
@@ -120,13 +133,14 @@ export async function lastCardTopic(
   return null;
 }
 
-// The recent typed messages and Jane's answers to them, oldest first: all Claude sees.
+// The recent typed messages and Jane's answers to them, oldest first: all Claude sees. Only this
+// sign-in's with `since`: what Jane learned before is in its memory, not replayed.
 export async function recentTurns(
   userId: string,
-  { client = defaultClient }: { client?: PrismaClient } = {},
+  { client = defaultClient, since }: { client?: PrismaClient; since?: Date } = {},
 ): Promise<ChatTurn[]> {
   const rows = await scopedFor(userId, client).janeMessages.findMany({
-    where: { kind: { in: ["user", "reply"] } },
+    where: { kind: { in: ["user", "reply"] }, ...sinceSignIn(since) },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: CHAT_CLAUDE_HISTORY,
     select: { kind: true, body: true },
@@ -174,7 +188,14 @@ async function answer(
   userId: string,
   text: string,
   history: ChatTurn[],
-  { client, now, claude, onEvent, primerMs }: Required<Pick<Options, "client" | "now">> & Options,
+  {
+    client,
+    now,
+    claude,
+    onEvent,
+    primerMs,
+    since,
+  }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source; issues?: string[] }> {
   const asOf = now.toISOString().slice(0, 10);
   let intent = parseIntent(text, asOf);
@@ -183,8 +204,8 @@ async function answer(
   if (toFlow) return { reply: toFlow, intent: "flow_answer", source: "rules" };
   // Spec step 88: what the conversation was about, for a follow-up.
   const [topic, cardTopic] = await Promise.all([
-    lastTopic(userId, { client, now }),
-    lastCardTopic(userId, { client, now }),
+    lastTopic(userId, { client, now, since }),
+    lastCardTopic(userId, { client, now, since }),
   ]);
   intent = resolvePronoun(text, intent, topic, (t) => parseIntent(t, asOf));
   // Spec step 188: how the person likes Jane to talk.
@@ -308,7 +329,7 @@ export async function sendToJane(
 async function sendToJaneWork(
   userId: string,
   raw: string,
-  { client = defaultClient, now = new Date(), claude, onEvent, primerMs }: Options = {},
+  { client = defaultClient, now = new Date(), claude, onEvent, primerMs, since }: Options = {},
 ): Promise<Sent> {
   const text = raw.trim();
   if (!text) throw new ChatInputError("empty", "Type a message first.");
@@ -324,7 +345,7 @@ async function sendToJaneWork(
   }
 
   const db = scopedFor(userId, client);
-  const history = await recentTurns(userId, { client });
+  const history = await recentTurns(userId, { client, since });
   const key = randomUUID();
   const sent = await db.janeMessages.create({
     data: {
@@ -345,6 +366,7 @@ async function sendToJaneWork(
     claude,
     onEvent,
     primerMs,
+    since,
   });
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);
