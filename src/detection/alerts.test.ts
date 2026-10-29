@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { UNUSUAL_EXPECTED_FOR_BUSINESS } from "@/config/detection";
+import { DUPLICATE_CHARGE_MAX_PERCENT, UNUSUAL_EXPECTED_FOR_BUSINESS } from "@/config/detection";
 import {
   AS_OF,
   CARD,
@@ -242,17 +242,17 @@ describe("low_balance", () => {
 
   it("alerts once per account per month of the dip", () => {
     const data = withBalance(15_000);
-    expect(lowBalanceAlerts(detect(data))).toEqual([
+    expect(lowBalanceAlerts(data, detect(data))).toEqual([
       expect.objectContaining({ type: "low_balance", key: "account:acct_checking:2026-11" }),
     ]);
     // The day is in the title, once, as people read it.
-    const [alert] = lowBalanceAlerts(detect(data));
+    const [alert] = lowBalanceAlerts(data, detect(data));
     expect(alert.title).toMatch(/around Nov 1$/);
     expect(alert.body).not.toMatch(/\d{4}-\d{2}-\d{2}|around/);
   });
 
   it("says nothing with enough cushion", () => {
-    expect(lowBalanceAlerts(detect(withBalance(50_000)))).toEqual([]);
+    expect(lowBalanceAlerts(withBalance(50_000), detect(withBalance(50_000)))).toEqual([]);
   });
 });
 
@@ -436,6 +436,7 @@ describe("onePerCharge", () => {
     key,
     title: type,
     body: "",
+    confidence: { percent: 80, reason: "test" },
   });
 
   it("asks 'Was this you?' about a big first charge, without the large-charge alert too", () => {
@@ -472,5 +473,48 @@ describe("onePerCharge", () => {
     expect(onePerCharge([large])).toEqual([large]);
     const spikeElsewhere = alert("unusual_activity", keyOf("spike", "shop", "tx_5"));
     expect(onePerCharge([large, spikeElsewhere])).toEqual([large, spikeElsewhere]);
+  });
+});
+
+// Every alert says how sure Jane is (founder: a confidence % on each).
+describe("confidence", () => {
+  it("comes with every alert, from the charges behind it", () => {
+    const data = sampleYear();
+    const alerts = detectAlerts(data, detect(data), {
+      knownFindings: new Set(),
+      firstScan: false,
+    });
+    expect(alerts.length).toBeGreaterThan(0);
+    for (const a of alerts) {
+      expect(a.confidence.percent).toBeGreaterThan(0);
+      expect(a.confidence.percent).toBeLessThanOrEqual(100);
+      expect(a.confidence.reason).toMatch(/in \d+ months? of data$/);
+    }
+  });
+
+  it("is no surer than the calibration allows for a double charge", () => {
+    const pair = [1, 2].map(() =>
+      tx({ ...GROCERIES, date: "2026-10-14", amountCents: 8_412, accountId: CARD.id }),
+    );
+    const history = monthly(12, 1_000, { description: "COFFEE" });
+    const [alert] = duplicateChargeAlerts(input({ transactions: [...history, ...pair] }));
+    expect(alert.confidence.percent).toBeLessThanOrEqual(DUPLICATE_CHARGE_MAX_PERCENT);
+  });
+
+  it("is surer for a fee with more history behind it", () => {
+    const fee = (date: string) =>
+      tx({
+        date,
+        amountCents: 3_400,
+        description: "OVERDRAFT FEE",
+        pfcPrimary: "BANK_FEES",
+        pfcDetailed: "BANK_FEES_OVERDRAFT_FEES",
+      });
+    const [short] = feeAlerts(input({ transactions: [fee("2026-10-14")] }));
+    const [long] = feeAlerts(
+      input({ historyFrom: "2025-10-15", transactions: [fee("2026-10-14")] }),
+    );
+    expect(short.confidence.percent).toBeLessThan(long.confidence.percent);
+    expect(long.confidence.reason).toBe("1 fee charge in 12 months of data");
   });
 });

@@ -14,7 +14,7 @@ function urgentAlerts(snapshot: Snapshot): Candidate[] {
   return snapshot.urgentAlerts.map((alert) => ({
     kind: "heads_up",
     body: `${sentence(alert.title)} ${alert.body}`,
-    refs: { alertId: alert.id },
+    refs: { alertId: alert.id, ...(alert.confidence ? { confidence: alert.confidence } : {}) },
     // Spec step 83: "Got it" marks it read, as opening Alerts does.
     actions: [
       { id: "alert.got_it", label: "Got it", kind: "primary" },

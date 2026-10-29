@@ -165,7 +165,16 @@ export async function loadJaneHub(
     },
     alerts: {
       unread,
-      items: alerts.map((a) => ({ id: a.id, title: a.title, body: a.body })),
+      items: alerts.map((a) => ({
+        id: a.id,
+        title: a.title,
+        body: a.body,
+        // Alerts from before confidence was kept have none, and show none.
+        confidence:
+          a.confidencePercent === null
+            ? null
+            : { percent: a.confidencePercent, reason: a.confidenceReason ?? "" },
+      })),
     },
   };
 }

@@ -16,6 +16,7 @@ import {
 import {
   RENEWAL_FREQUENCIES,
   SUBSCRIPTION_CATEGORIES,
+  DEADLINE_SOURCE_CONFIDENCE,
   SUBSCRIPTION_MERCHANTS,
   TRIAL_DEADLINE_MAX_PERCENT,
   TRIAL_MAX_START_CENTS,
@@ -385,5 +386,6 @@ export function deadlineAlerts(deadlines: Deadline[], asOf: string): AlertCandid
       key: d.key,
       title: `${d.title}: ${dayLabel(d.date)} (${dueIn(d.date, asOf)})`,
       body: `${d.detail ? `${d.detail} ` : ""}All your dates are on the deadlines page.`,
+      confidence: d.confidence ?? { ...DEADLINE_SOURCE_CONFIDENCE[d.source] },
     }));
 }
