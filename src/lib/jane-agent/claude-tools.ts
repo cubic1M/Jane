@@ -48,6 +48,7 @@ import { loadDetectionInput } from "@/detection/engine";
 import { forecastAccounts } from "@/detection/forecast";
 import { FORECAST_DAYS } from "@/config/detection";
 import { newestUnreadAlerts } from "@/lib/alerts";
+import { alertsThatHold } from "./still-true";
 import { householdOf } from "@/lib/household";
 import { wholePicture } from "./whole-picture";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
@@ -1111,7 +1112,13 @@ async function runChatToolWork(
       });
     }
     case "alerts": {
-      const alerts = await newestUnreadAlerts(userId, { client, limit: 10 });
+      // Only those that still hold, as in the dock (./still-true.ts): not a charge from a bank
+      // since disconnected.
+      const alerts = await alertsThatHold(
+        userId,
+        await newestUnreadAlerts(userId, { client, limit: 10 }),
+        { client, now },
+      );
       return out({
         unread: alerts.map((a) => ({
           title: a.title,

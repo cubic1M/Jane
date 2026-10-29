@@ -29,7 +29,10 @@ const budgetFor = (usualMonthCents: number) =>
 
 function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
   // Every heads-up says how sure Jane is (founder: a confidence % on each).
-  const refs = { change: { key: change.key, kind: change.kind }, confidence: change.confidence };
+  const refs = {
+    change: { key: change.key, kind: change.kind, title: change.title },
+    confidence: change.confidence,
+  };
   const base = {
     dedupeKey: change.key,
     priority: MESSAGE_PRIORITY.change,
