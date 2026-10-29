@@ -49,3 +49,7 @@ export const VERIFIED_PERCENT = {
   // Smaller, not gone.
   holdings_smaller: 65,
 } as const;
+
+// The ledger's last state (Held): a verified saving still true this many days after it was
+// verified, on statements that cover those days. Until then it stays Verified.
+export const HELD_DAYS = 90;

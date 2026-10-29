@@ -146,6 +146,9 @@ export type AuditEvent =
   | "books_merged"
   // A finished action whose saving never showed up (spec step 207).
   | "saving_marked_not_shown"
+  // The savings ledger (src/lib/ledger.ts): a finding moved between Estimated, Done, Verified,
+  // Held and Not seen (the key, both states and the cents, never the transactions).
+  | "saving_state_changed"
   // Unusual activity answered: this was me, or not me (spec step 208).
   | "unusual_answered"
   // Money for two (spec step 242): the household's split rule and big-move amount, a goal made

@@ -3,7 +3,7 @@ import type { FindingType, PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import type { DetectionInput } from "@/detection/types";
 import { addDays } from "@/detection/units";
-import { logAudit } from "@/lib/audit";
+import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { provenSavings } from "@/lib/savings-proof";
@@ -50,6 +50,37 @@ export async function checkResults(
       "saving_marked_not_shown",
       { type: "user", id: userId },
       { count: late.length },
+    );
+  }
+  // The savings ledger: a finished action whose saving the transactions now show (Verified),
+  // still show HELD_DAYS later (Held), or no longer show. Each move to the audit log.
+  const receipts = new Map(proven.confirmed.map((r) => [r.actionId, r]));
+  const missed = new Set(late.map((a) => a.id));
+  const done = await db.actions.findMany({
+    where: { status: "done" },
+    select: { id: true, savingVerifiedAt: true, savingHeldAt: true, savingMissedAt: true },
+  });
+  for (const a of done) {
+    const r = receipts.get(a.id);
+    const before = a.savingHeldAt ? "held" : a.savingVerifiedAt ? "verified" : null;
+    const after = r ? (r.heldOn ? "held" : "verified") : null;
+    if (before === after) continue;
+    await db.actions.updateMany({
+      where: { id: a.id },
+      data: {
+        savingVerifiedAt: r ? (a.savingVerifiedAt ?? now) : null,
+        savingHeldAt: r?.heldOn ? (a.savingHeldAt ?? now) : null,
+      },
+    });
+    await logAudit(
+      SYSTEM_ACTOR,
+      "saving_state_changed",
+      { type: "action", id: a.id },
+      {
+        from: before ?? "done",
+        to: after ?? (missed.has(a.id) || a.savingMissedAt ? "not_seen" : "done"),
+        cents: r?.cents ?? 0,
+      },
     );
   }
   return { marked: late.length, restored: restored.count };

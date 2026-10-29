@@ -90,6 +90,13 @@ describe("savedReply", () => {
       actedOn: "2026-08-01",
       markedDone: true,
       verifiedOn: "2026-10-01",
+      state: "verified" as const,
+      confidencePercent: 80,
+      rule: "",
+      heldOn: null,
+      lapsed: false,
+      heldProof: null,
+      heldEvidence: [],
     };
     const reply = savedReply({
       actions: { confirmed: [], confirmedCents: 0, estimated: [], estimatedCents: 0, notShown: [] },

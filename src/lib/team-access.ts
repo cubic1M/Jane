@@ -179,6 +179,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   lean_plan_started: own,
   books_merged: own,
   saving_marked_not_shown: own,
+  saving_state_changed: own,
   unusual_answered: own,
   household_split_set: own,
   household_big_move_set: own,

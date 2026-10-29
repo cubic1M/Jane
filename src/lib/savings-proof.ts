@@ -1,6 +1,7 @@
 import { actionWorthCents } from "@/lib/saved-amount";
 import { randomBytes } from "node:crypto";
 import { CHARGES_PER_YEAR, type Frequency } from "@/config/detection";
+import { HELD_DAYS, STOP_GRACE_DAYS } from "@/config/outcomes";
 import { CANCEL_GRACE_DAYS, LOWER_BILL_LOOK_DAYS, SHARE_TOKEN_BYTES } from "@/config/saved";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -14,7 +15,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { snapshotTitle } from "@/lib/hubs/jane";
 import { formatCents } from "@/lib/money";
-import { savingsRecord, type SavingsRecord } from "@/lib/outcomes";
+import { savingsRecord, statementCoverage, type SavingsRecord } from "@/lib/outcomes";
 import { dayLabel } from "@/lib/day-label";
 import { sha256Hex } from "@/lib/hash";
 
@@ -38,6 +39,10 @@ export type Receipt = {
   seen: { date: string; description: string; amountCents: number };
   // One line on what the transaction shows.
   proof: string;
+  // The ledger (src/planning/ledger.ts): the day the transactions showed it (Verified), and the
+  // day it was still true HELD_DAYS later (Held), once the statements reach that far.
+  verifiedOn: string;
+  heldOn: string | null;
 };
 
 export type Estimate = { actionId: string; title: string; cents: number; why: string };
@@ -99,6 +104,23 @@ export async function provenSavings(
   const charges = input.transactions.filter((t) => t.amountCents > 0);
   const from = (key: string | null) =>
     key ? charges.filter((t) => merchantOf(t)?.key === key) : [];
+  // An absence (a charge that stopped, a refund not taken back) is only seen as far as the
+  // account's statements reach.
+  const coverage = await statementCoverage(userId, input, { client, now });
+  const reach = (accountId: string) => coverage[accountId] ?? "";
+  const heldIf = (verifiedOn: string, stillTrue: (heldDue: string) => boolean) => {
+    const heldDue = addDays(verifiedOn, HELD_DAYS);
+    return stillTrue(heldDue) ? heldDue : null;
+  };
+  // A bill still coming in at the held day: one within a cycle of it.
+  const billNear = (bills: DetectionTransaction[], heldDue: string, perYear: number) => {
+    const latest = bills.at(-1);
+    return latest &&
+      asOf >= heldDue &&
+      latest.date >= addDays(heldDue, -(Math.round(365 / perYear) + STOP_GRACE_DAYS))
+      ? latest
+      : null;
+  };
 
   const confirmed: Receipt[] = [];
   const estimated: Estimate[] = [];
@@ -119,12 +141,18 @@ export async function provenSavings(
         (t) => t.date === day && t.amountCents === -action.refundCents!,
       );
       if (back) {
+        const merchant = merchantOf(back)?.key ?? null;
+        const takenBack = from(merchant).some(
+          (t) => t.date > back.date && t.amountCents === action.refundCents,
+        );
         receipt({
           kind: "refund",
           cents: action.refundCents,
           yearly: false,
           seen: view(back),
           proof: `${formatCents(action.refundCents)} came back on ${dayLabel(back.date, { year: true })}.`,
+          verifiedOn: back.date,
+          heldOn: heldIf(back.date, (due) => !takenBack && reach(back.accountId) >= due),
         });
         continue;
       }
@@ -133,7 +161,8 @@ export async function provenSavings(
     // A switch: the new plan's first bill (spec steps 76–77).
     const switched = switchOf(action.decision.options);
     if (done && switched && action.confirmedAnnualCents !== null) {
-      const first = from(keyOf(switched.name)).find((t) => t.date >= since);
+      const bills = from(keyOf(switched.name)).filter((t) => t.date >= since);
+      const first = bills[0];
       if (first) {
         receipt({
           kind: "switched",
@@ -141,6 +170,8 @@ export async function provenSavings(
           yearly: true,
           seen: view(first),
           proof: `${switched.name}'s first bill, ${formatCents(first.amountCents)}, came on ${dayLabel(first.date, { year: true })}.`,
+          verifiedOn: first.date,
+          heldOn: heldIf(first.date, (due) => !!billNear(bills, due, CHARGES_PER_YEAR.MONTHLY)),
         });
         continue;
       }
@@ -149,19 +180,31 @@ export async function provenSavings(
     // A lower price (a call, a price fight): a bill below the old price after the work.
     const oldPrice = num(evidence.lastAmountCents);
     if (done && !switched && action.confirmedAnnualCents !== null && oldPrice !== null) {
-      const lower = from(keyOf(evidence.merchant)).find(
+      const bills = from(keyOf(evidence.merchant));
+      const lower = bills.find(
         (t) =>
           t.date >= since &&
           t.date <= addDays(since, LOWER_BILL_LOOK_DAYS) &&
           t.amountCents < oldPrice,
       );
       if (lower) {
+        const later = bills.filter((t) => t.date > lower.date);
+        const frequency = evidence.frequency as Frequency | undefined;
+        const perYear = (frequency && CHARGES_PER_YEAR[frequency]) || CHARGES_PER_YEAR.MONTHLY;
         receipt({
           kind: "lower_bill",
           cents: action.confirmedAnnualCents,
           yearly: true,
           seen: view(lower),
           proof: `The bill came in at ${formatCents(lower.amountCents)} on ${dayLabel(lower.date, { year: true })}, down from ${formatCents(oldPrice)}.`,
+          verifiedOn: lower.date,
+          // Held: no bill back at the old price since, and one still lower near the held day.
+          heldOn: heldIf(
+            lower.date,
+            (due) =>
+              later.every((t) => t.amountCents < oldPrice) &&
+              !!billNear([lower, ...later], due, perYear),
+          ),
         });
         continue;
       }
@@ -176,14 +219,19 @@ export async function provenSavings(
       const last = history.filter((t) => t.date <= cancelled).at(-1);
       const after = history.some((t) => t.date > cancelled);
       const due = last ? addDays(last.date, Math.round(365 / perYear)) : null;
-      if (last && due && !after && addDays(due, CANCEL_GRACE_DAYS) < asOf) {
+      // Only once a statement after the due day (and its grace) shows nothing.
+      const seenTo = last ? reach(last.accountId) : "";
+      if (last && due && !after && addDays(due, CANCEL_GRACE_DAYS) < seenTo) {
         const yearly = num(evidence.annualCostCents) ?? last.amountCents * perYear;
+        const verifiedOn = addDays(due, CANCEL_GRACE_DAYS);
         receipt({
           kind: "cancelled",
           cents: yearly,
           yearly: true,
           seen: view(last),
           proof: `Last charged ${formatCents(last.amountCents)} on ${dayLabel(last.date, { year: true })}; nothing since, though the next one was due ${dayLabel(due, { year: true })}.`,
+          verifiedOn,
+          heldOn: heldIf(verifiedOn, (heldDue) => seenTo >= heldDue),
         });
         continue;
       }

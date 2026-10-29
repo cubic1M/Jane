@@ -18,8 +18,9 @@ import { kindFactor, type KindStat, type KindStats } from "@/planning/suggestion
 type Options = { client?: PrismaClient };
 
 // Statuses that mean the person acted on it (a yes or a Mark done), and what was checked to the end.
-const ACTED = ["open", "unverifiable", "confirmed", "partial", "not_seen"];
-const DECIDED = ["confirmed", "partial", "not_seen"];
+// A lapsed one (verified, then it came back) was checked to the end and didn't pay off.
+const ACTED = ["open", "unverifiable", "confirmed", "partial", "not_seen", "lapsed"];
+const DECIDED = ["confirmed", "partial", "not_seen", "lapsed"];
 const PAID_OFF = ["confirmed", "partial"];
 
 // Each night. A do-it-yourself finding card (capability "finding") is only on the record once it

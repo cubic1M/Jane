@@ -107,7 +107,13 @@ describe.runIf(url)("the verified savings record", { timeout: 120_000 }, () => {
     });
     expect((await savingsRecord(userId, { client })).expected).toHaveLength(1);
 
-    // The next one never came: confirmed, a year of it, with the last charge as evidence.
+    // Past the due day, but no statement after it yet: nothing verified (an absence needs one).
+    expect(await verifyOutcomes(userId, { client, now: at("2026-09-20") })).toMatchObject({
+      confirmed: 0,
+    });
+    // A newer statement reaches past the due day: the next one never came. Confirmed, a year of
+    // it, with the last charge as evidence.
+    await charge("2026-09-18", "TRADER JOE'S #552", 4_210, "FOOD_AND_DRINK_GROCERIES");
     expect(await verifyOutcomes(userId, { client, now: at("2026-09-20") })).toMatchObject({
       confirmed: 1,
     });
@@ -302,6 +308,7 @@ describe.runIf(url)("the verified savings record", { timeout: 120_000 }, () => {
     });
     const decisionId = decision.id;
     await markDiyDone(userId, decisionId, { client, now: at("2026-08-10") });
+    await charge("2026-09-18", "TRADER JOE'S #552", 4_210, "FOOD_AND_DRINK_GROCERIES");
     await verifyOutcomes(userId, { client, now: at("2026-09-20") });
     const record = await savingsRecord(userId, { client });
     expect(record.confirmed.map((o) => [o.key, o.confirmedCents])).toEqual([
