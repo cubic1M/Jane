@@ -966,3 +966,7 @@ export const CHECKUP_MIN_HISTORY_DAYS = 30;
 // Checks on recurring bills (subscriptions, price rises, insurance, phone and internet) need a
 // bill to come at least twice, so about two months.
 export const CHECKUP_MIN_RECURRING_DAYS = 60;
+// A check's span is said in days under this many ("45 days"), in months from it ("3 months").
+export const CHECKUP_DAYS_UNTIL_MONTHS = 61;
+// How many examples a line's detail names (what it found, the kinds of overlap it checks).
+export const CHECKUP_EXAMPLES = 3;

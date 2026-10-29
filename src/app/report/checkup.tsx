@@ -7,12 +7,13 @@ const MARK: Record<CheckStatus, { sign: string; label: string; className: string
   found: {
     sign: "!",
     label: "Found",
-    className: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    // Black and white only (docs/design/area-pages.md): found is the filled mark.
+    className: "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900",
   },
   passed: {
     sign: "✓",
     label: "Passed",
-    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    className: "border border-zinc-900 text-zinc-900 dark:border-white dark:text-white",
   },
   not_enough_data: {
     sign: "–",

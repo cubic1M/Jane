@@ -1,5 +1,7 @@
 import {
   BANK_FEE_CATEGORIES,
+  CHECKUP_DAYS_UNTIL_MONTHS,
+  CHECKUP_EXAMPLES,
   CHECKUP_MIN_HISTORY_DAYS,
   CHECKUP_MIN_RECURRING_DAYS,
   DUPLICATE_CHARGE_WINDOW_DAYS,
@@ -68,10 +70,15 @@ type Check = {
 // "3 months" from 90 days and more; under that, days.
 export function spanOf(days: number): string {
   const months = Math.round(days / DAYS_PER_MONTH);
-  if (days < 2 * DAYS_PER_MONTH) return days === 1 ? "1 day" : `${days} days`;
+  if (days < CHECKUP_DAYS_UNTIL_MONTHS) return days === 1 ? "1 day" : `${days} days`;
   return `${months} months`;
 }
 
+const PERCENT = new Intl.NumberFormat("en-US", { style: "percent" });
+// A few of the kinds of service the overlap check groups ("streaming, music, ...").
+const KINDS = SERVICE_GROUPS.slice(0, CHECKUP_EXAMPLES)
+  .map((g) => g.label)
+  .join(", ");
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 const shortHistory = (min: number) => (f: Facts) =>
@@ -132,12 +139,7 @@ export const CHECKS: Record<FindingType, Check> = {
     missing: shortHistory(CHECKUP_MIN_RECURRING_DAYS),
     passed: (f) => ({
       line: "No two doing the same job",
-      detail: `Jane checked ${plural(subscriptions(f).length, "subscription")} for two of the same kind (${SERVICE_GROUPS.slice(
-        0,
-        3,
-      )
-        .map((g) => g.label)
-        .join(", ")} and more).`,
+      detail: `Jane checked ${plural(subscriptions(f).length, "subscription")} for two of the same kind (${KINDS} and more).`,
     }),
   },
   price_increase: {
@@ -149,7 +151,7 @@ export const CHECKS: Record<FindingType, Check> = {
     ),
     passed: (f) => ({
       line: `None on ${plural(priced(f).length, "recurring bill")}`,
-      detail: `A bill counts as risen when its latest charge is ${Math.round(PRICE_INCREASE_THRESHOLD * 100)}% or more above the ones before.`,
+      detail: `A bill counts as risen when its latest charge is ${PERCENT.format(PRICE_INCREASE_THRESHOLD)} or more above the ones before.`,
     }),
   },
   bank_fees: {
@@ -285,7 +287,7 @@ function foundLine(candidates: Candidate[], open: number): { line: string; detai
     detail:
       candidates.length > 0
         ? candidates
-            .slice(0, 3)
+            .slice(0, CHECKUP_EXAMPLES)
             .map((c) => `${c.title}.`)
             .join(" ")
         : "Listed above.",
