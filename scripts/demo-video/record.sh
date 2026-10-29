@@ -38,6 +38,7 @@ fi
 
 # 3. A production build with the flags the e2e production build uses (skip with SKIP_BUILD=1).
 if [ "${SKIP_BUILD:-}" != 1 ]; then
+  npx prisma generate >/dev/null
   DATABASE_URL="$DEMO_DATABASE_URL" DIRECT_URL="$DEMO_DATABASE_URL" \
     TRY_JANE=1 DEMO_BANK=1 DEMO_ADVICE=1 SIMULATED_AGENT=1 npx next build
 fi

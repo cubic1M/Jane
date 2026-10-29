@@ -84,31 +84,25 @@ for (const shot of SHOTS) {
     };
     const story = new Story(page, shot.touch);
     let trimStart = 0;
-    // Jane brings each finding as a card beside the chat (a computer's dock), made in the
-    // chat once it opens after the import, and the dock loads them on the next page; its
-    // chevron opens why and how sure Jane is. Shown once, on the finding, else on Home.
+    // Jane brings each finding as a card beside the chat (a computer's dock), with how sure it
+    // is under the headline. The chat refreshes when the import finishes and the dock follows.
+    // Shown once, on the finding, else on Home.
     let shownSure = false;
     const howSure = async (after: string, timeout: number) => {
-      const more = page.getByRole("button", { name: "More details" }).first();
+      const sure = page.locator("[data-card-sure]").first();
       if (shot.touch || shownSure) return;
       if (
-        !(await more.waitFor({ timeout }).then(
+        !(await sure.waitFor({ timeout }).then(
           () => true,
           () => false,
         ))
       )
         return;
       shownSure = true;
-      await caption(page, "Jane says how sure it is");
-      await story.click(more);
-      await page.waitForTimeout(1_200);
-      // The open card is taller than the dock: bring its last line, how sure, into view.
-      const sure = page.locator("[data-card-confidence]").first();
-      await sure.evaluate((el) => el.scrollIntoView({ behavior: "smooth", block: "end" }));
-      await moveTo(page, sure, { steps: 20 });
+      await caption(page, "Jane brings it to you, with how sure it is");
+      await moveTo(page, sure, { steps: 24 });
       await page.waitForTimeout(3_000);
       await still("suggestion-sure");
-      await story.click(more);
       await caption(page, after);
       await page.waitForTimeout(800);
     };
@@ -167,10 +161,7 @@ for (const shot of SHOTS) {
       await page.waitForTimeout(1_500);
       await still("imported");
       // 4. The findings, with dollars and how sure Jane is.
-      // A full load, not the chip's in-place link: the side chat doesn't refresh by itself, and
-      // opening it is what posts Jane's cards for the dock.
-      await moveTo(page, done.getByRole("link", { name: "See findings" }));
-      await page.goto("/report");
+      await story.click(done.getByRole("link", { name: "See findings" }));
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^We found \$/, {
         timeout: 60_000,
       });
@@ -178,17 +169,14 @@ for (const shot of SHOTS) {
       await story.settle();
       await still("report");
       await page.waitForTimeout(1_200);
-      // The import's "Done" chip has said its piece: closed, as a person would.
-      const chipClose = page
-        .locator('[data-import-chip="done"]')
-        .getByRole("button", { name: "Close" });
-      if (await chipClose.isVisible()) await story.click(chipClose);
-      await page.waitForTimeout(600);
       const top = page.getByRole("list", { name: "What matters now" }).getByRole("link");
       for (const n of [0, 1, 2]) {
         await moveTo(page, top.nth(n), { steps: 18 });
         await page.waitForTimeout(800);
       }
+      await caption(page, "Each with how sure Jane is");
+      await moveTo(page, top.first().locator("[data-finding-sure]"), { steps: 18 });
+      await page.waitForTimeout(2_000);
 
       // 5. One finding and its steps.
       await story.click(top.first());
@@ -228,12 +216,12 @@ for (const shot of SHOTS) {
       const alerts = page.locator("#alerts");
       await expect(alerts).toBeVisible();
       await story.settle();
+      // New alerts show without a tap.
       await glideTo(page, alerts, { offset: shot.touch ? 70 : 130, ms: 1_500 });
-      await story.click(alerts.locator("summary").first());
-      await expect(alerts.locator("[data-alert-confidence]").first()).toBeVisible();
-      await page.waitForTimeout(500);
-      await glideTo(page, alerts, { offset: shot.touch ? 70 : 130, ms: 1_200 });
-      await page.waitForTimeout(2_500);
+      const alert = alerts.locator("[data-alert-confidence]").first();
+      await expect(alert).toBeVisible();
+      await moveTo(page, alert, { steps: 20 });
+      await page.waitForTimeout(3_000);
       await still("alerts");
 
       // 8. The net-worth home.
@@ -244,6 +232,15 @@ for (const shot of SHOTS) {
       await page.waitForTimeout(1_000);
       await still("home");
       await howSure("Your whole picture, on one home", 3_000);
+      // Every area Jane looks after, then back up to the net worth.
+      const areas = page.locator("[data-giant-tree]").first();
+      if (await areas.isVisible()) {
+        await glideTo(page, areas, { offset: shot.touch ? 70 : 90, ms: 1_800 });
+        await page.waitForTimeout(2_000);
+        await still("home-areas");
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+        await page.waitForTimeout(1_400);
+      }
       // Scrub the line from four months ago to today, then let go on today's figure.
       const plot = page.locator("[data-net-worth-plot]").first();
       const box = await plot.boundingBox();
