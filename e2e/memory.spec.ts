@@ -72,8 +72,9 @@ test("the chat starts empty, and a fact Jane knows can be forgotten", async ({
   await expect(
     page.getByRole("heading", { level: 1, name: "What Jane knows about you" }),
   ).toBeVisible();
+  // Opening the chat ran Jane's scan, which may add what it read from the account: the two
+  // facts from before are found by their words.
   const facts = page.getByRole("list", { name: "What Jane knows" }).getByRole("listitem");
-  await expect(facts).toHaveCount(2);
   const rent = facts.filter({ hasText: "You rent your home" });
   await expect(rent).toContainText("You said it in the chat");
   await expect(rent).toContainText("80% sure");
@@ -88,6 +89,6 @@ test("the chat starts empty, and a fact Jane knows can be forgotten", async ({
     });
   }).toPass({ timeout: 30_000 });
   await page.reload();
-  await expect(facts).toHaveCount(1);
-  await expect(facts.first()).toContainText("Your main bank is Chase");
+  await expect(facts.filter({ hasText: "You rent your home" })).toHaveCount(0);
+  await expect(facts.filter({ hasText: "Your main bank is Chase" })).toHaveCount(1);
 });
