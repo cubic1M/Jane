@@ -33,4 +33,8 @@ test("the report opens with three findings, the rest behind more", async ({
   // Opening "more" shows the rest.
   await more.locator("summary").click();
   await expect(more.getByRole("link").first()).toBeVisible();
+  // Under the findings, the checkup: what each check found or passed.
+  const checkup = page.locator("[data-checkup]");
+  await expect(checkup.locator('[data-check="found"]').first()).toBeVisible();
+  await expect(checkup.getByText(/^\d+ of \d+ checks passed$/)).toBeVisible();
 });

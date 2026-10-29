@@ -35,11 +35,15 @@ export type IdleCash = {
 
 const DAYS_PER_MONTH = 30.4375;
 
-export function idleCashOf(input: {
+type IdleInput = {
   asOf: string;
   accounts: readonly IdleAccount[];
   transactions: readonly IdleTx[];
-}): IdleCash | null {
+};
+
+// The cushion figures whatever the excess, so a checkup can say how near the line cash is.
+// Null with no checking or savings balance, or no spending to measure months by.
+export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | null {
   const accounts = input.accounts
     .filter(
       (a) =>
@@ -73,17 +77,23 @@ export function idleCashOf(input: {
   if (accounts.length === 0 || monthlyCents <= 0) return null;
   const balanceCents = accounts.reduce((sum, a) => sum + (a.balanceCents ?? 0), 0);
   const cushionCents = monthlyCents * IDLE_CASH_MONTHS_OF_SPENDING;
-  const excessCents = balanceCents - cushionCents;
-  if (excessCents < IDLE_CASH_MIN_EXCESS_CENTS) return null;
   return {
     accountIds: accounts.map((a) => a.id),
     balanceCents,
     monthlyCents,
     cushionCents,
-    excessCents,
-    earnsCents: Math.round(
-      (excessCents * (REFERENCE_HIGH_YIELD_RATE_BPS - ASSUMED_CURRENT_RATE_BPS)) / 10_000,
-    ),
+    excessCents: balanceCents - cushionCents,
     shortestHistoryMonths: shortest,
+  };
+}
+
+export function idleCashOf(input: IdleInput): IdleCash | null {
+  const cushion = cashCushionOf(input);
+  if (!cushion || cushion.excessCents < IDLE_CASH_MIN_EXCESS_CENTS) return null;
+  return {
+    ...cushion,
+    earnsCents: Math.round(
+      (cushion.excessCents * (REFERENCE_HIGH_YIELD_RATE_BPS - ASSUMED_CURRENT_RATE_BPS)) / 10_000,
+    ),
   };
 }
