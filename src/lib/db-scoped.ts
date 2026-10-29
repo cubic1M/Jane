@@ -130,10 +130,23 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
         findings: typeof inTransaction.finding;
         decisions: typeof inTransaction.decision;
         actions: typeof inTransaction.action;
+        // What Jane knows, and the chat (src/lib/memory/facts.ts forgets them together).
+        userFacts: typeof inTransaction.userFact;
+        janePreferences: typeof inTransaction.janePreference;
+        janeMessages: typeof inTransaction.janeMessage;
+        askConversations: typeof inTransaction.askConversation;
       }) => Promise<T>,
     ) =>
       asUserTransaction(inTransaction, userId, (tx) =>
-        run({ findings: tx.finding, decisions: tx.decision, actions: tx.action }),
+        run({
+          findings: tx.finding,
+          decisions: tx.decision,
+          actions: tx.action,
+          userFacts: tx.userFact,
+          janePreferences: tx.janePreference,
+          janeMessages: tx.janeMessage,
+          askConversations: tx.askConversation,
+        }),
       )
         // Reads made inside it may have seen rows that were rolled back.
         .finally(() => forgetReads()),
@@ -210,6 +223,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     janeMessages: scoped.janeMessage,
     // Spec step 91.
     janePreferences: scoped.janePreference,
+    // What Jane knows about the person (src/lib/memory/).
+    userFacts: scoped.userFact,
     documents: scoped.document,
     deadlines: scoped.deadline,
     lifeEvents: scoped.lifeEvent,

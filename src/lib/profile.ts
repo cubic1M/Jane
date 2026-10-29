@@ -7,6 +7,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { copiesToLeaveOut } from "@/planning/books";
 import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
+import { listFacts, toldFromFacts } from "@/lib/memory/facts";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 import { isoDay as dayOf } from "@/lib/dates";
@@ -84,6 +85,7 @@ async function loadProfileInputFrom(
     membership,
     healthPolicy,
     fsa,
+    known,
   ] = await Promise.all([
     db.transactions.findMany({
       where: { date: { gt: since, lte: now } },
@@ -159,6 +161,8 @@ async function loadProfileInputFrom(
       where: { kind: "fsa", status: { not: "declined" } },
       select: { perPayCents: true, payFrequency: true },
     }),
+    // What the person said or showed, remembered (src/lib/memory/): "I rent" in the chat.
+    listFacts(userId, { client }),
   ]);
   // Books QA: an account linked twice (through two logins) counts once.
   const copies = copiesToLeaveOut(allAccounts);
@@ -171,8 +175,9 @@ async function loadProfileInputFrom(
       })
     : 0;
 
-  // Answers given elsewhere come first; a correction made here wins over them.
-  const told: Told = {};
+  // What Jane remembers them saying comes first, then answers given elsewhere; a correction made
+  // here wins over them all.
+  const told: Told = toldFromFacts(known);
   if (tax?.answered.includes("dependants")) {
     const kids = (tax.childrenUnder17 ?? 0) + (tax.otherDependants ?? 0);
     told.has_children = kids > 0;

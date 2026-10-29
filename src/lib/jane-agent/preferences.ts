@@ -2,6 +2,13 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import {
+  forgetFactsFrom,
+  preferenceRef,
+  recordFact,
+  type FactDraft,
+  type FactValue,
+} from "@/lib/memory/facts";
 
 // What Jane remembers about the person (spec step 91), in jane_preferences. Only ever saved
 // on the person's own tap: "Don't suggest again" on a suggestion, or "Remember this" under
@@ -52,6 +59,38 @@ export async function listPreferences(
   );
 }
 
+// The fact a preference stands for in what Jane knows (src/lib/memory/): a profile correction is
+// that profile fact, "Don't suggest again" is what the person did, the rest is their answer.
+export function factFromPreference(draft: PreferenceDraft): FactDraft {
+  const v = draft.value;
+  const pick = (x: unknown): FactValue | undefined =>
+    typeof x === "string" || typeof x === "number" || typeof x === "boolean" ? x : undefined;
+  const value: FactValue =
+    pick(v.value) ??
+    pick(v.target) ??
+    pick(v.text) ??
+    (Array.isArray(v.days) ? v.days.join(",") : undefined) ??
+    Object.values(v)
+      .map(pick)
+      .find((x) => x !== undefined) ??
+    true;
+  const key =
+    draft.kind === "fact"
+      ? draft.key.startsWith("profile:")
+        ? draft.key.slice("profile:".length)
+        : draft.key === "income"
+          ? "monthly_income"
+          : draft.key
+      : `${draft.kind}:${draft.key}`;
+  return {
+    key,
+    value,
+    label: draft.label,
+    source: draft.kind === "never" ? "action" : "answer",
+    sourceRef: preferenceRef(draft.kind, draft.key),
+  };
+}
+
 // Saves it (or replaces what was saved under the same key, like a new payday).
 export async function savePreference(
   userId: string,
@@ -67,6 +106,10 @@ export async function savePreference(
     create: { userId, kind: draft.kind, key: draft.key, ...data },
     update: data,
   });
+  // What Jane knows takes it as the person's word.
+  await recordFact(userId, factFromPreference(draft), { client }).catch((error) =>
+    console.error("Couldn't add a preference to what Jane knows", { error: String(error) }),
+  );
   await logAudit(
     { type: "user", id: userId },
     "preference_saved",
@@ -83,8 +126,15 @@ export async function deletePreference(
   id: string,
   { client = defaultClient }: Options = {},
 ): Promise<boolean> {
-  const { count } = await scopedFor(userId, client).janePreferences.deleteMany({ where: { id } });
+  const db = scopedFor(userId, client);
+  const row = await db.janePreferences.findFirst({
+    where: { id },
+    select: { kind: true, key: true },
+  });
+  const { count } = await db.janePreferences.deleteMany({ where: { id } });
   if (count > 0) {
+    // And what Jane knew from it.
+    if (row) await forgetFactsFrom(userId, preferenceRef(row.kind, row.key), { client });
     await logAudit(
       { type: "user", id: userId },
       "preference_deleted",

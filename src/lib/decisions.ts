@@ -17,6 +17,7 @@ import { recordFindingDone } from "@/lib/outcomes";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
 import { conciergeMode } from "@/lib/concierge-mode";
 import { hasKit } from "@/lib/diy";
+import { learnFromAnswer } from "@/lib/memory/learn";
 import { PlanOptionsError, parsePlanOptions } from "@/lib/plan-options";
 import { partnerForUser } from "@/lib/referrals";
 
@@ -202,6 +203,15 @@ export async function recordDecision(
       action_id: result.actionId,
     },
   );
+  // The person's own answer (not a standing rule's or autopilot's) is evidence of what they act
+  // on (src/lib/memory/).
+  if (source !== "rule" && source !== "auto") {
+    await learnFromAnswer(
+      userId,
+      { topic: card.findingType, acted: choice !== "no", ref: `decision:${result.decisionId}` },
+      { client },
+    );
+  }
   // The agent works the action itself when it can (src/lib/agent/run.ts).
   // A switch to a picked option is the agent's too, whatever the action (spec step 77).
   if (result.actionId && (isAgentAction(card.actionType) || options?.switchTo)) {

@@ -70,6 +70,7 @@ export async function exportUserData(
     monthlyReports,
     janeMessages,
     janePreferences,
+    userFacts,
     teamAccess,
     taxProfile,
     taxTags,
@@ -530,6 +531,23 @@ export async function exportUserData(
       select: { kind: true, key: true, value: true, label: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
+    // What Jane knows about them (src/lib/memory/), with the history of what it replaced.
+    db.userFacts.findMany({
+      where: { source: { not: "forgotten" } },
+      select: {
+        key: true,
+        value: true,
+        label: true,
+        source: true,
+        sourceRef: true,
+        confidence: true,
+        evidenceCount: true,
+        firstSeen: true,
+        lastConfirmed: true,
+        supersededById: true,
+      },
+      orderBy: { firstSeen: "asc" },
+    }),
     // When the team or Jane's agent viewed or acted on their data (spec step 74): every
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
@@ -738,6 +756,7 @@ export async function exportUserData(
     unusualAnswers,
     janeMessages,
     janePreferences,
+    userFacts,
     investments,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
       at,

@@ -164,6 +164,10 @@ export type AuditEvent =
   // What Jane remembers (spec step 91): saved on the person's tap, deleted in Settings.
   | "preference_saved"
   | "preference_deleted"
+  // What Jane knows about you (/settings/memory): a fact corrected or forgotten, or all of it.
+  | "memory_fact_corrected"
+  | "memory_fact_deleted"
+  | "memory_deleted_all"
   // The action agent (src/lib/agent/run.ts).
   | "agent_message_sent"
   | "agent_reply_received"

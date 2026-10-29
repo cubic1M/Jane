@@ -432,6 +432,7 @@ model User {
   paperAccount         PaperAccount?
   importRuns           ImportRun[]
   problemReports       ProblemReport[]
+  userFacts            UserFact[]
 
   @@map("users")
 }
@@ -2809,6 +2810,47 @@ model JanePreference {
 
   @@unique([userId, kind, key])
   @@map("jane_preferences")
+}
+
+// What Jane knows about the person (src/lib/memory/): one row per thing it learned, from an
+// upload or the nightly scan, an answer, the chat or what the person did with a suggestion.
+// Every new piece of evidence raises or lowers its confidence; a newer value supersedes it
+// (supersededById), so the history stays and only the newest is used. Never a health,
+// religion, politics, sexual orientation, ethnicity or immigration inference
+// (src/lib/memory/sensitive.ts). Listed on /settings/memory, each correctable and deletable;
+// in Download my data, deleted with the account.
+model UserFact {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  // A profile fact (src/profile/facts.ts, "housing") or one of memory's own ("payday",
+  // "main_bank", "rent_payee", "goal:<what>", "habit:<topic>", "prefers_diy").
+  key            String
+  // { value: string | number | boolean }.
+  value          Json
+  // How Jane says it: "You rent your home".
+  label          String
+  // upload, answer, chat, action, detector, or forgotten (the person deleted it: data
+  // doesn't bring it back).
+  source         String
+  // What it came from: "jane_message:<id>", "preference:<kind>:<key>", "suggestion:<key>",
+  // "decision:<id>" or "scan".
+  sourceRef      String?  @map("source_ref")
+  // How sure Jane is, a whole percentage.
+  confidence     Int
+  // How many separate pieces of evidence agreed with it.
+  evidenceCount  Int      @default(1) @map("evidence_count")
+  firstSeen      DateTime @map("first_seen") @db.Timestamptz(3)
+  lastConfirmed  DateTime @map("last_confirmed") @db.Timestamptz(3)
+  // The fact that replaced this one. Null: what Jane knows now.
+  supersededById String?  @map("superseded_by")
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supersededBy UserFact?  @relation("FactSuperseded", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes   UserFact[] @relation("FactSuperseded")
+
+  @@index([userId, key])
+  @@index([supersededById])
+  @@map("user_facts")
 }
 
 // One-tap answers from Jane's emails (spec step 85): one per button on one message. The
