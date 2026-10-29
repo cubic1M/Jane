@@ -971,3 +971,16 @@ export const RENT_TRANSFER_AMOUNT_TOLERANCE = 0.05;
 // Near the start of the month: from this day of the month before, to this day of the month.
 export const RENT_TRANSFER_FROM_DAY = 25;
 export const RENT_TRANSFER_TO_DAY = 7;
+
+// --- Checkup (the report's list of every check Jane ran) -----------------------------------------
+
+// A check says it passed only on at least this many days of statements; under it, "Not enough
+// data yet". A month shows a fee, a double charge or a trial that turned paid.
+export const CHECKUP_MIN_HISTORY_DAYS = 30;
+// Checks on recurring bills (subscriptions, price rises, insurance, phone and internet) need a
+// bill to come at least twice, so about two months.
+export const CHECKUP_MIN_RECURRING_DAYS = 60;
+// A check's span is said in days under this many ("45 days"), in months from it ("3 months").
+export const CHECKUP_DAYS_UNTIL_MONTHS = 61;
+// How many examples a line's detail names (what it found, the kinds of overlap it checks).
+export const CHECKUP_EXAMPLES = 3;

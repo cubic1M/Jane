@@ -21,11 +21,13 @@ const TOP = 3;
 const MORE = "cursor-pointer text-sm font-medium underline underline-offset-2 hover:no-underline";
 import { scanInProgress } from "@/lib/scan";
 import { RefreshWhenScanned } from "./refresh-when-scanned";
+import { Checkup } from "./checkup";
+import { loadCheckup } from "@/lib/checkup";
 import { foundLine, reportState, shortUploadDays } from "./state";
 import { SUGGESTED_UPLOAD_MONTHS } from "@/config/import";
 
-// Shown when nothing was found, and while the first scan runs, so the person knows what we
-// look at.
+// Shown while the first scan runs, so the person knows what we look at. Once it's done, the
+// checkup (./checkup.tsx) says what each check found.
 const WHAT_WE_CHECK = [
   "Subscriptions you may not use",
   "Paying for two services that do the same thing",
@@ -67,6 +69,14 @@ async function ReportContent() {
     firstDetectionDone,
     scanRunning,
   });
+  // Every check's result, once Jane has read everything (never while it's still reading).
+  const checks =
+    state === "nothing" || state === "found"
+      ? await loadCheckup(
+          user.id,
+          findings.map((f) => f.type),
+        )
+      : [];
   // Worth the most first (the query's order); the time-sensitive ones ahead of them.
   const ordered = [
     ...findings.filter((f) => PLAN_URGENT_FINDING_TYPES.includes(f.type)),
@@ -141,17 +151,11 @@ async function ReportContent() {
         <section className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">Nothing to fix right now</h1>
           <p className="text-zinc-600 dark:text-zinc-400">
-            We read {transactions} transactions and didn&apos;t find anything new.
+            Jane read {transactions} transactions and ran {checks.length} checks. Tap one to see
+            what it looked at.
           </p>
-          <details>
-            <summary className={MORE}>What we checked</summary>
-            <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
-              {WHAT_WE_CHECK.map((check) => (
-                <li key={check}>{check}</li>
-              ))}
-            </ul>
-          </details>
           {uploadDays !== null && <MoreMonths days={uploadDays} />}
+          <Checkup lines={checks} />
           <ShownLink href="/actions" className="font-medium text-emerald-700 hover:underline">
             See what we&apos;re working on
           </ShownLink>
@@ -189,6 +193,7 @@ async function ReportContent() {
               <ul className="mt-3 flex flex-col gap-3">{rest.map(row)}</ul>
             </details>
           )}
+          <Checkup lines={checks} />
         </section>
       )}
 
