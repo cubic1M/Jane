@@ -110,6 +110,9 @@ type Options = {
   // Called once, on a first scan, as soon as accounts and transactions are saved: the chat can
   // open (the sample person's click waits for exactly this, then goes straight to the chat).
   onReady?: () => void;
+  // False for a sample person made ahead for the /try link (src/lib/trial-pool.ts): Claude's
+  // card text waits until someone is given them, so one nobody opens costs nothing.
+  explain?: boolean;
 };
 
 async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
@@ -655,6 +658,7 @@ async function syncItemWork(
     now = new Date(),
     progressive = false,
     onReady,
+    explain = true,
   }: Options = {},
 ): Promise<SyncResult> {
   // The first scan's phases, logged once as trial_timing (where the first minute goes).
@@ -860,10 +864,12 @@ async function syncItemWork(
     // The sample person's practice days, replayed (src/lib/practice/demo-start.ts).
     practice ? practice.m.replayDemoPractice(item.userId, practice.plan, { client, now }) : null,
     // Card text from Claude, as a job: retried later if it fails, without failing the sync.
-    (async () =>
-      runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
-        client,
-      }))(),
+    explain
+      ? (async () =>
+          runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
+            client,
+          }))()
+      : null,
   ]);
   for (const result of sectors) {
     if (result.status === "rejected") {

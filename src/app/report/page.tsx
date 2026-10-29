@@ -9,6 +9,7 @@ import { listAccountSummaries } from "@/lib/accounts";
 import { CARD_SELECT } from "@/lib/cards";
 import { scopedDb } from "@/lib/db-scoped";
 import { explanationFor } from "@/lib/card-text";
+import { findingConfidence } from "@/lib/finding-confidence";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsLine } from "@/lib/savings-text";
@@ -51,7 +52,7 @@ async function ReportContent() {
     listAccountSummaries(db),
     db.findings.findMany({
       where: { status: { in: ["new", "shown"] } },
-      select: CARD_SELECT,
+      select: { ...CARD_SELECT, confidence: true },
       orderBy: [{ annualSavingsCents: { sort: "desc", nulls: "last" } }, { id: "asc" }],
     }),
     moneyFound(user.id),
@@ -92,6 +93,7 @@ async function ReportContent() {
   const rest = ordered.slice(TOP);
   const row = (finding: (typeof findings)[number]) => {
     const text = explanationFor(finding);
+    const sure = findingConfidence(finding);
     return (
       <li key={finding.id}>
         <Link
@@ -102,6 +104,9 @@ async function ReportContent() {
             <span className="font-semibold">{text.title}</span>
             <span className="text-sm text-zinc-600 dark:text-zinc-400">
               {savingsLine(finding.type, finding.annualSavingsCents, finding.evidence)}
+            </span>
+            <span data-finding-confidence="" className="text-xs text-zinc-500 dark:text-zinc-400">
+              {sure.percent}% sure, {sure.reason}
             </span>
           </span>
           <span aria-hidden className="text-zinc-400">

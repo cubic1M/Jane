@@ -17,7 +17,15 @@ export async function DemoBanner({ userId }: { userId: string }) {
         <Link href="/signup" className="font-semibold underline">
           Sign up
         </Link>{" "}
-        to use your own.
+        to use your own. Trying it means you agree to the{" "}
+        <Link href="/terms" className="underline">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline">
+          Privacy Policy
+        </Link>
+        .
       </p>
     );
   }

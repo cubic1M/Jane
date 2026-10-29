@@ -7,6 +7,7 @@ import { hit, ipKey } from "@/lib/rate-limit";
 import { phaseTimer } from "@/lib/trial-timing";
 import { syncItem } from "@/lib/plaid/sync";
 import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
+import { secureCookies, sessionCookieName, sessionCookieOptions } from "@/lib/trial-cookie";
 
 // "Try it with sample data" (spec step 138): a sample person with the demo bank, signed in
 // for a day with an ordinary Auth.js database session, then on to Jane's chat. Limited per
@@ -18,18 +19,6 @@ const TRY_READY_WAIT_MS = 8000;
 // Where the browser goes next, or why not. The action returns this instead of redirecting:
 // a redirect from an action that waited for the scan left some browsers on the landing page.
 export type TryState = { error: string } | { next: string } | null;
-
-// Auth.js's session cookie: the __Secure- name on HTTPS, the plain one locally.
-const cookieName = (secure: boolean) =>
-  secure ? "__Secure-authjs.session-token" : "authjs.session-token";
-
-// The same rule as Auth.js, which reads the cookie back: secure when the site's own address
-// (AUTH_URL) is HTTPS, or, without one, when the request came over HTTPS. A production build
-// served over plain HTTP (the end-to-end tests) then uses the plain name both ways.
-function secureCookies(forwardedProto: string | null, authUrl = process.env.AUTH_URL) {
-  if (authUrl) return authUrl.startsWith("https:");
-  return forwardedProto === "https";
-}
 
 export async function tryJane(_previous: TryState, formData: FormData): Promise<TryState> {
   // As at sign-up: the Terms are agreed to before anything is made.
@@ -56,13 +45,11 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   }
   timing.mark("start_trial");
   const secure = secureCookies(h.get("x-forwarded-proto"));
-  (await cookies()).set(cookieName(secure), session.sessionToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    expires: session.expires,
-  });
+  (await cookies()).set(
+    sessionCookieName(secure),
+    session.sessionToken,
+    sessionCookieOptions(secure, session.expires),
+  );
   timing.done();
   // The scan starts now, and the click waits for the chat to be able to open (accounts and
   // transactions saved, about two seconds), then goes straight to the chat: no /scanning page,

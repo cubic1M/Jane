@@ -595,3 +595,18 @@ export async function deleteShareInvite(userId: string): Promise<void> {
     await client.end();
   }
 }
+
+// Sample people made ahead for the /try link (src/lib/trial-pool.ts) and not yet handed out.
+export async function readyTrialPeople(): Promise<number> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(
+      `SELECT count(*)::int AS n FROM users
+       WHERE email LIKE '%+ready@try.jane.invalid' AND first_scan_done_at IS NOT NULL`,
+    );
+    return rows[0].n;
+  } finally {
+    await client.end();
+  }
+}

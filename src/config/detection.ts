@@ -22,6 +22,15 @@ export const SHORT_HISTORY_DAYS = 200;
 // The "money found" total counts only findings at or above this confidence.
 export const MONEY_FOUND_MIN_CONFIDENCE: ConfidenceLevel = "medium";
 
+// How sure Jane is of a finding, shown as "N% sure" with it on the report: its confidence
+// level's figure. In line with how a suggestion's percentage is read back as a level
+// (SUGGESTION_CONFIDENCE_FROM in src/config/priorities.ts: 80 and up is high, 50 and up medium).
+export const FINDING_CONFIDENCE_PERCENT: Record<ConfidenceLevel, number> = {
+  high: 90,
+  medium: 70,
+  low: 40,
+};
+
 // Findings that count toward "money found" only once the user has said yes. A
 // subscription is only saved money if the person actually wants it cancelled.
 export const COUNT_ONLY_WHEN_APPROVED: readonly FindingType[] = ["subscription_review"];
