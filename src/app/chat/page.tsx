@@ -128,6 +128,19 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
           Nothing new from me yet. I&apos;ll post here as soon as I spot something.
         </p>
       )}
+      {/* Each sign-in starts the conversation empty; what Jane learned stays (src/lib/memory/). */}
+      {!listed.some((m) => m.kind === "user" || m.kind === "reply") && !chat.scanning && (
+        <p data-memory-note className="text-sm text-zinc-600 dark:text-zinc-400">
+          Jane remembers what you&apos;ve told it.{" "}
+          <Link
+            href="/settings/memory"
+            className="font-medium underline underline-offset-2 hover:no-underline"
+          >
+            See what it knows
+          </Link>
+          .
+        </p>
+      )}
 
       {/* Room for the cards floating over the end of the chat (as tall as they are: none when
           the dock above the panel has them), so the last message scrolls clear of them. */}

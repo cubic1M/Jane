@@ -365,6 +365,9 @@ async function SettingsContent({
 
   details[itemId("memory", "told")] = (
     <div id="remembers" className={BOX}>
+      <Link href="/settings/memory" className={`self-start ${LINK}`}>
+        What Jane knows about you
+      </Link>
       <MemoryList preferences={remembered} />
     </div>
   );
