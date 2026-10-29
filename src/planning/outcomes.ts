@@ -1,6 +1,7 @@
 import {
   CONFIRMED_SHARE,
   FEE_COMPARE_DAYS,
+  HELD_DAYS,
   LOWER_BILL_SHARE,
   REFUND_MIN_SHARE,
   SAME_CHARGE_SHARE,
@@ -19,6 +20,10 @@ import { dayLabel } from "@/lib/day-label";
 // savings record). Pure: the watch the detector left, the day the person acted, today, what
 // was expected and the transactions in; what they show out, with the transactions that show it.
 // "waiting" until there's enough to tell either way.
+//
+// A charge that "stopped" or fees that "stopped" are an absence, so they count only up to the
+// day the person's statements reach (coveredThrough, per account: the newest transaction, upload
+// or bank sync). Without a newer statement, nothing is verified.
 
 export type OutcomeTx = {
   id: string;
@@ -26,7 +31,11 @@ export type OutcomeTx = {
   amountCents: number;
   description: string;
   pfc: string | null;
+  accountId?: string;
 };
+
+// Per account, the last day its statements reach (YYYY-MM-DD).
+export type Coverage = Readonly<Record<string, string>>;
 
 export type Verified = {
   status: "confirmed" | "partial";
@@ -46,20 +55,57 @@ const keyOf = (description: string) =>
 // Confirmed when the transactions show most of what was expected; partial when some.
 const verdict = (cents: number, expectedCents: number): "confirmed" | "partial" =>
   cents >= expectedCents * CONFIRMED_SHARE ? "confirmed" : "partial";
+const minDay = (a: string, b: string) => (a < b ? a : b);
+const sentence = (parts: string[]) => `${parts.join("; ")}.`.replace(/^./, (c) => c.toUpperCase());
 
-export function verifyWatch(
-  watch: TransactionWatch,
-  { startedOn, asOf, expectedCents }: { startedOn: string; asOf: string; expectedCents: number },
-  transactions: readonly OutcomeTx[],
-): Check {
-  const over = daysBetween(startedOn, asOf) > WATCH_DAYS[watch.kind];
+// How far the statements reach for an account, never past today. Without coverage given (older
+// callers), today; with it, an account it doesn't know reaches nowhere after the day acted.
+function reachOf(coveredThrough: Coverage | undefined, asOf: string, fallback: string) {
+  return (accountId: string | undefined) =>
+    !coveredThrough || !accountId ? asOf : minDay(asOf, coveredThrough[accountId] ?? fallback);
+}
+
+const chargesFrom = (transactions: readonly OutcomeTx[]) => {
   const charges = transactions.filter((t) => t.amountCents > 0);
-  const from = (description: string) => {
+  return (description: string) => {
     const key = keyOf(description);
     return charges
       .filter((t) => keyOf(t.description) === key)
       .sort((a, b) => a.date.localeCompare(b.date));
   };
+};
+
+// Fees: how far the statements reach on every account the fees were charged to.
+function feeReach(
+  watch: Extract<TransactionWatch, { kind: "fee_stops" }>,
+  transactions: readonly OutcomeTx[],
+  reach: (accountId: string | undefined) => string,
+  asOf: string,
+) {
+  const accounts = [
+    ...new Set(
+      transactions
+        .filter((t) => t.amountCents > 0 && watch.pfcs.includes(t.pfc ?? "") && t.accountId)
+        .map((t) => t.accountId!),
+    ),
+  ];
+  return accounts.length === 0 ? asOf : accounts.map(reach).reduce(minDay);
+}
+
+export function verifyWatch(
+  watch: TransactionWatch,
+  {
+    startedOn,
+    asOf,
+    expectedCents,
+    coveredThrough,
+  }: { startedOn: string; asOf: string; expectedCents: number; coveredThrough?: Coverage },
+  transactions: readonly OutcomeTx[],
+): Check {
+  const over = daysBetween(startedOn, asOf) > WATCH_DAYS[watch.kind];
+  const charges = transactions.filter((t) => t.amountCents > 0);
+  const from = chargesFrom(transactions);
+  const reach = reachOf(coveredThrough, asOf, startedOn);
 
   if (watch.kind === "charge_stops") {
     let cents = 0;
@@ -68,6 +114,8 @@ export function verifyWatch(
     const proofs: string[] = [];
     const still: OutcomeTx[] = [];
     let pending = false;
+    // Due and gone, but no statement after it yet.
+    const unread: string[] = [];
     for (const p of watch.payees) {
       const history = from(p.description);
       const last = history.filter((t) => t.date <= startedOn).at(-1);
@@ -81,11 +129,13 @@ export function verifyWatch(
       }
       const interval = Math.round(365 / p.perYear);
       const due = addDays(last.date, interval);
-      if (asOf <= addDays(due, STOP_GRACE_DAYS)) {
+      const seenTo = reach(last.accountId);
+      if (seenTo <= addDays(due, STOP_GRACE_DAYS)) {
         pending = true;
+        if (asOf > addDays(due, STOP_GRACE_DAYS)) unread.push(due);
         continue;
       }
-      if (asOf <= addDays(due, interval + STOP_GRACE_DAYS)) twice = false;
+      if (seenTo <= addDays(due, interval + STOP_GRACE_DAYS)) twice = false;
       cents += p.amountCents * p.perYear;
       evidence.push(last.id);
       proofs.push(
@@ -110,7 +160,9 @@ export function verifyWatch(
         proof:
           still.length > 0
             ? `Still charged: ${still.map((t) => `${formatCents(t.amountCents)} on ${dayLabel(t.date)}`).join(", ")}.`
-            : "No charge to compare with.",
+            : unread.length > 0
+              ? `No statement after ${dayLabel(unread[0])}, when the next charge was due, to check it against.`
+              : "No charge to compare with.",
       };
     }
     return { status: "waiting" };
@@ -190,9 +242,19 @@ export function verifyWatch(
       : { status: "waiting" };
   }
 
-  // Fees that should stop: the FEE_COMPARE_DAYS after acting against the month before.
+  // Fees that should stop: the FEE_COMPARE_DAYS after acting against the month before, once the
+  // statements reach the end of them.
   const end = addDays(startedOn, FEE_COMPARE_DAYS);
   if (asOf < end) return { status: "waiting" };
+  if (feeReach(watch, transactions, reach, asOf) < end) {
+    return over
+      ? {
+          status: "not_seen",
+          evidence: [],
+          proof: `No statement reaching ${dayLabel(end)} to count the fees against.`,
+        }
+      : { status: "waiting" };
+  }
   const fees = charges.filter(
     (t) => watch.pfcs.includes(t.pfc ?? "") && t.date > startedOn && t.date <= end,
   );
@@ -217,6 +279,140 @@ export function verifyWatch(
       fees.length === 0
         ? `No fees in the ${FEE_COMPARE_DAYS} days since, against about ${formatCents(watch.monthlyCents)} a month before.`
         : `${fees.length} fees in the ${FEE_COMPARE_DAYS} days since, about ${formatCents(after)} a month against ${formatCents(watch.monthlyCents)} before.`,
+  };
+}
+
+// Held (the ledger's last state): a verified saving still true HELD_DAYS after it was verified,
+// on statements that reach that far. "lapsed" as soon as the transactions show it came back (the
+// charge is billed again, the bill back up, the refund taken back, the fees back), with the lines
+// that show it; "waiting" until then. Pure, like verifyWatch.
+export type HeldCheck =
+  { status: "waiting" } | { status: "held" | "lapsed"; evidence: string[]; proof: string };
+
+export function checkHeld(
+  watch: TransactionWatch,
+  {
+    startedOn,
+    verifiedOn,
+    asOf,
+    confirmedCents,
+    coveredThrough,
+  }: {
+    startedOn: string;
+    verifiedOn: string;
+    asOf: string;
+    confirmedCents: number;
+    coveredThrough?: Coverage;
+  },
+  transactions: readonly OutcomeTx[],
+): HeldCheck {
+  const heldOn = addDays(verifiedOn, HELD_DAYS);
+  const from = chargesFrom(transactions);
+  const reach = reachOf(coveredThrough, asOf, verifiedOn);
+  const line = (t: OutcomeTx) => `${formatCents(Math.abs(t.amountCents))} on ${dayLabel(t.date)}`;
+
+  if (watch.kind === "charge_stops") {
+    const evidence: string[] = [];
+    const proofs: string[] = [];
+    let covered = true;
+    for (const p of watch.payees) {
+      const history = from(p.description);
+      const last = history.filter((t) => t.date <= startedOn).at(-1);
+      if (!last) continue;
+      const came = history.find(
+        (t) => t.date > startedOn && t.amountCents >= p.amountCents * SAME_CHARGE_SHARE,
+      );
+      if (came) {
+        return { status: "lapsed", evidence: [came.id], proof: `Charged again: ${line(came)}.` };
+      }
+      const seenTo = reach(last.accountId);
+      if (seenTo < heldOn) covered = false;
+      evidence.push(last.id);
+      proofs.push(`no charge since ${line(last)}, through ${dayLabel(seenTo)}`);
+    }
+    if (!covered || evidence.length === 0) return { status: "waiting" };
+    return { status: "held", evidence, proof: sentence(proofs) };
+  }
+
+  if (watch.kind === "bill_drops") {
+    const evidence: string[] = [];
+    const proofs: string[] = [];
+    let recent = true;
+    for (const p of watch.payees) {
+      const after = from(p.description).filter((t) => t.date > startedOn);
+      const lower = after.find((t) => t.amountCents < p.beforeCents * LOWER_BILL_SHARE);
+      if (!lower) continue;
+      const since = after.filter((t) => t.date > lower.date);
+      const back = since.find((t) => t.amountCents >= p.beforeCents * LOWER_BILL_SHARE);
+      if (back) {
+        return {
+          status: "lapsed",
+          evidence: [back.id],
+          proof: `The bill went back up: ${line(back)}, against ${formatCents(p.beforeCents)} before.`,
+        };
+      }
+      // The newest bill must be from around the held day: within one billing cycle of it.
+      const latest = since.at(-1) ?? lower;
+      const cycle = Math.round(365 / p.perYear) + STOP_GRACE_DAYS;
+      if (asOf < heldOn || latest.date < addDays(heldOn, -cycle)) recent = false;
+      evidence.push(latest.id);
+      proofs.push(`still billed ${line(latest)}, down from ${formatCents(p.beforeCents)}`);
+    }
+    if (!recent || evidence.length === 0) return { status: "waiting" };
+    return { status: "held", evidence, proof: sentence(proofs) };
+  }
+
+  if (watch.kind === "refund") {
+    const evidence: string[] = [];
+    const proofs: string[] = [];
+    let covered = true;
+    for (const p of watch.payees) {
+      const key = keyOf(p.description);
+      const back = transactions.find(
+        (t) =>
+          t.amountCents < 0 &&
+          t.date >= startedOn &&
+          keyOf(t.description) === key &&
+          -t.amountCents >= p.amountCents * REFUND_MIN_SHARE,
+      );
+      if (!back) continue;
+      // Taken back: the same amount charged again by them after the refund.
+      const reversed = from(p.description).find(
+        (t) => t.date > back.date && t.amountCents === -back.amountCents,
+      );
+      if (reversed) {
+        return {
+          status: "lapsed",
+          evidence: [reversed.id],
+          proof: `The refund was taken back: ${line(reversed)}.`,
+        };
+      }
+      if (reach(back.accountId) < heldOn) covered = false;
+      evidence.push(back.id);
+      proofs.push(`${line(back)} came back and stayed`);
+    }
+    if (!covered || evidence.length === 0) return { status: "waiting" };
+    return { status: "held", evidence, proof: sentence(proofs) };
+  }
+
+  // Fees: the HELD_DAYS after verifying, against the month before acting.
+  if (feeReach(watch, transactions, reach, asOf) < heldOn) return { status: "waiting" };
+  const fees = transactions.filter(
+    (t) =>
+      t.amountCents > 0 &&
+      watch.pfcs.includes(t.pfc ?? "") &&
+      t.date > verifiedOn &&
+      t.date <= heldOn,
+  );
+  const monthly = Math.round(
+    fees.reduce((s, t) => s + t.amountCents, 0) / (HELD_DAYS / (365 / 12)),
+  );
+  const savedNow = Math.max(0, watch.monthlyCents - monthly) * 12;
+  const words = `${fees.length} fees in the ${HELD_DAYS} days after it was verified, about ${formatCents(monthly)} a month against ${formatCents(watch.monthlyCents)} before.`;
+  return {
+    status: savedNow >= confirmedCents * CONFIRMED_SHARE ? "held" : "lapsed",
+    evidence: fees.map((t) => t.id),
+    proof: words,
   };
 }
 

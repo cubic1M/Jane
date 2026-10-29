@@ -1,15 +1,19 @@
-import { WATCH_DAYS } from "@/config/outcomes";
+import { HELD_DAYS, WATCH_DAYS } from "@/config/outcomes";
 import { loadDetectionInput } from "@/detection/engine";
 import type { DetectionInput } from "@/detection/types";
 import type { Watch } from "@/detectors/contract";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { logAudit, SYSTEM_ACTOR, type AuditActor } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { ledgerStateOf, verifyRule, type LedgerState } from "@/planning/ledger";
 import {
   asWatch,
+  checkHeld,
   verifyWatch,
   watchOfFinding,
   type Check,
+  type Coverage,
   type OutcomeTx,
 } from "@/planning/outcomes";
 import {
@@ -32,8 +36,56 @@ const jsonOf = (watch: Watch | null | undefined) =>
 
 // Statuses that are still checked each night (partial and not seen can still turn into more).
 const CHECKED = ["open", "partial", "not_seen"];
+// Verified: checked each night until Held, or until it came back (lapsed).
+const VERIFIED = ["confirmed", "partial"];
 // Statuses after a yes or a done.
-const ACTED = ["open", "partial", "not_seen", "confirmed", "unverifiable"];
+const ACTED = ["open", "partial", "not_seen", "confirmed", "unverifiable", "lapsed"];
+
+// Every move between the ledger's states goes to the audit log (src/planning/ledger.ts).
+async function auditState(
+  actor: AuditActor,
+  row: { id: string; suggestionKey: string; status: string; heldAt?: Date | null },
+  next: { status: string; heldAt?: Date | null },
+  cents: number,
+): Promise<void> {
+  const from = ledgerStateOf(row);
+  const to = ledgerStateOf({ heldAt: row.heldAt, ...next });
+  if (from === to || to === null) return;
+  await logAudit(
+    actor,
+    "saving_state_changed",
+    { type: "suggestion_outcome", id: row.id },
+    { key: row.suggestionKey, from, to, cents },
+  );
+}
+
+// How far each account's statements reach (YYYY-MM-DD, never past today): its newest
+// transaction, its newest upload's last day, its bank's last sync. A charge that "stopped" is
+// only seen up to there.
+export async function statementCoverage(
+  userId: string,
+  input: Pick<DetectionInput, "transactions">,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<Coverage> {
+  const db = scopedFor(userId, client);
+  const [runs, accounts] = await Promise.all([
+    db.importRuns.findMany({
+      where: { kind: "upload", accountId: { not: null }, toDate: { not: null } },
+      select: { accountId: true, toDate: true },
+    }),
+    db.accounts.findMany({ select: { id: true, item: { select: { lastSyncedAt: true } } } }),
+  ]);
+  const today = isoDate(now);
+  const out: Record<string, string> = {};
+  const reach = (id: string, day: string) => {
+    const capped = day > today ? today : day;
+    if (!out[id] || capped > out[id]) out[id] = capped;
+  };
+  for (const t of input.transactions) reach(t.accountId, t.date);
+  for (const r of runs) reach(r.accountId!, isoDate(r.toDate!));
+  for (const a of accounts) if (a.item?.lastSyncedAt) reach(a.id, isoDate(a.item.lastSyncedAt));
+  return out;
+}
 
 export type ShownSuggestion = {
   key: string;
@@ -148,14 +200,12 @@ export async function recordAnswer(
 ): Promise<void> {
   const outcome = await ensureOutcome(userId, key, client, now);
   if (!outcome || outcome.status === "confirmed") return;
+  const status = answer === "no" ? "declined" : asWatch(outcome.watch) ? "open" : "unverifiable";
   await scopedFor(userId, client).suggestionOutcomes.updateMany({
     where: { id: outcome.id },
-    data: {
-      answer,
-      answeredAt: now,
-      status: answer === "no" ? "declined" : asWatch(outcome.watch) ? "open" : "unverifiable",
-    },
+    data: { answer, answeredAt: now, status },
   });
+  await auditState({ type: "user", id: userId }, outcome, { status }, outcome.expectedCents);
 }
 
 export class OutcomeError extends Error {}
@@ -182,6 +232,7 @@ export async function markSuggestionDone(
       status,
     },
   });
+  await auditState({ type: "user", id: userId }, outcome, { status }, outcome.expectedCents);
   // The suggestion is answered for good: it isn't offered again.
   await scopedFor(userId, client).suggestions.updateMany({
     where: { key, status: { notIn: ["yes", "no"] } },
@@ -209,7 +260,7 @@ export async function recordFindingDone(
   const key = `${FINDING_OUTCOME_PREFIX}${findingId}`;
   if ((await db.suggestionOutcomes.count({ where: { suggestionKey: key } })) > 0) return;
   const watch = watchOfFinding(finding.type, finding.evidence);
-  await db.suggestionOutcomes.create({
+  const row = await db.suggestionOutcomes.create({
     data: {
       userId,
       suggestionKey: key,
@@ -228,6 +279,12 @@ export async function recordFindingDone(
       status: watch ? "open" : "unverifiable",
     },
   });
+  await auditState(
+    { type: "user", id: userId },
+    { ...row, status: "shown" },
+    row,
+    row.expectedCents,
+  );
 }
 
 // What a person holds now, for the investing savings (src/planning/outcomes-holdings.ts).
@@ -262,8 +319,9 @@ async function loadHoldingsNow(userId: string, client: PrismaClient): Promise<Ho
   };
 }
 
-// Each night: the open outcomes against the transactions (and, for investing, the holdings).
-// Returns what changed.
+// Each night: the open outcomes against the transactions (and, for investing, the holdings), and
+// the verified ones for Held (still true HELD_DAYS later) or lapsed (it came back). Returns what
+// changed.
 export async function verifyOutcomes(
   userId: string,
   {
@@ -271,10 +329,13 @@ export async function verifyOutcomes(
     now = new Date(),
     input: given,
   }: Options & { input?: DetectionInput } = {},
-): Promise<{ checked: number; confirmed: number; notSeen: number }> {
+): Promise<{ checked: number; confirmed: number; notSeen: number; held: number; lapsed: number }> {
   const db = scopedFor(userId, client);
-  const open = await db.suggestionOutcomes.findMany({ where: { status: { in: CHECKED } } });
-  if (open.length === 0) return { checked: 0, confirmed: 0, notSeen: 0 };
+  const open = await db.suggestionOutcomes.findMany({
+    where: { status: { in: [...CHECKED, ...VERIFIED] }, heldAt: null },
+  });
+  const counts = { checked: open.length, confirmed: 0, notSeen: 0, held: 0, lapsed: 0 };
+  if (open.length === 0) return counts;
   const input = given ?? (await loadDetectionInput(userId, { client, now }));
   const txs: OutcomeTx[] = input.transactions.map((t) => ({
     id: t.id,
@@ -282,49 +343,122 @@ export async function verifyOutcomes(
     amountCents: t.amountCents,
     description: t.description,
     pfc: t.pfcDetailed,
+    accountId: t.accountId,
   }));
+  const coveredThrough = await statementCoverage(userId, input, { client, now });
   const asOf = isoDate(now);
   let holdingsNow: HoldingsNow | null = null;
-  let confirmed = 0;
-  let notSeen = 0;
+  const holdings = async () => (holdingsNow ??= await loadHoldingsNow(userId, client));
+  const update = async (
+    o: (typeof open)[number],
+    data: Prisma.SuggestionOutcomeUpdateManyMutationInput & { status?: string },
+    cents: number,
+  ) => {
+    await db.suggestionOutcomes.updateMany({ where: { id: o.id }, data });
+    await auditState(
+      SYSTEM_ACTOR,
+      o,
+      { status: data.status ?? o.status, heldAt: (data.heldAt as Date | undefined) ?? o.heldAt },
+      cents,
+    );
+  };
   for (const o of open) {
     const watch = asWatch(o.watch);
     const started = o.doneAt ?? o.answeredAt;
     if (!watch || !started) {
-      await db.suggestionOutcomes.updateMany({
-        where: { id: o.id },
-        data: { status: "unverifiable", checkedAt: now },
-      });
+      await update(o, { status: "unverifiable", checkedAt: now }, o.expectedCents);
       continue;
     }
+    const startedOn = isoDate(started);
+
+    // Verified: held, or came back? Investing, from what they hold once HELD_DAYS have passed.
+    if (VERIFIED.includes(o.status) && o.verifiedAt) {
+      const verifiedOn = isoDate(o.verifiedAt);
+      let held:
+        { status: "waiting" } | { status: "held" | "lapsed"; evidence: string[]; proof: string };
+      if (isHoldingsWatch(watch)) {
+        const due = now.getTime() - o.verifiedAt.getTime() >= HELD_DAYS * DAY_MS;
+        const again = due
+          ? verifyHoldingsWatch(
+              watch,
+              { startedOn, asOf, expectedCents: o.expectedCents },
+              await holdings(),
+            )
+          : null;
+        held =
+          again === null || again.status === "waiting"
+            ? { status: "waiting" }
+            : again.status === "not_seen"
+              ? { status: "lapsed", evidence: [], proof: again.proof }
+              : { status: "held", evidence: [], proof: again.proof };
+      } else {
+        held = checkHeld(
+          watch,
+          {
+            startedOn,
+            verifiedOn,
+            asOf,
+            confirmedCents: o.confirmedCents ?? 0,
+            coveredThrough,
+          },
+          txs,
+        );
+      }
+      if (held.status === "held") {
+        counts.held += 1;
+        await update(
+          o,
+          { heldAt: now, heldProof: held.proof, heldEvidenceTxIds: held.evidence, checkedAt: now },
+          o.confirmedCents ?? 0,
+        );
+        continue;
+      }
+      if (held.status === "lapsed") {
+        counts.lapsed += 1;
+        await update(
+          o,
+          {
+            status: "lapsed",
+            lapsedAt: now,
+            heldProof: held.proof,
+            heldEvidenceTxIds: held.evidence,
+            checkedAt: now,
+          },
+          o.confirmedCents ?? 0,
+        );
+        continue;
+      }
+      // Confirmed waits for Held; partial can still grow.
+      if (o.status === "confirmed") {
+        await db.suggestionOutcomes.updateMany({ where: { id: o.id }, data: { checkedAt: now } });
+        continue;
+      }
+    }
+
     // Long past its window (twice over): it stays as it is.
     if (now.getTime() - started.getTime() > 2 * WATCH_DAYS[watch.kind] * DAY_MS) continue;
-    const about = { startedOn: isoDate(started), asOf, expectedCents: o.expectedCents };
+    const about = { startedOn, asOf, expectedCents: o.expectedCents };
     // Investing savings show in what they hold now, not in their transactions.
     const check: Check = isHoldingsWatch(watch)
-      ? verifyHoldingsWatch(watch, about, (holdingsNow ??= await loadHoldingsNow(userId, client)))
-      : verifyWatch(watch, about, txs);
+      ? verifyHoldingsWatch(watch, about, await holdings())
+      : verifyWatch(watch, { ...about, coveredThrough }, txs);
     if (check.status === "waiting") {
       await db.suggestionOutcomes.updateMany({ where: { id: o.id }, data: { checkedAt: now } });
       continue;
     }
     if (check.status === "not_seen") {
-      if (o.status !== "not_seen") notSeen += 1;
-      await db.suggestionOutcomes.updateMany({
-        where: { id: o.id },
-        data: {
-          status: "not_seen",
-          evidenceTxIds: check.evidence,
-          proof: check.proof,
-          checkedAt: now,
-        },
-      });
+      if (o.status !== "not_seen") counts.notSeen += 1;
+      await update(
+        o,
+        { status: "not_seen", evidenceTxIds: check.evidence, proof: check.proof, checkedAt: now },
+        o.expectedCents,
+      );
       continue;
     }
-    if (check.status === "confirmed" && o.status !== "confirmed") confirmed += 1;
-    await db.suggestionOutcomes.updateMany({
-      where: { id: o.id },
-      data: {
+    if (check.status === "confirmed" && o.status !== "confirmed") counts.confirmed += 1;
+    await update(
+      o,
+      {
         status: check.status,
         confirmedCents: check.cents,
         yearly: check.yearly,
@@ -334,9 +468,10 @@ export async function verifyOutcomes(
         checkedAt: now,
         verifiedAt: o.verifiedAt ?? now,
       },
-    });
+      check.cents,
+    );
   }
-  return { checked: open.length, confirmed, notSeen };
+  return counts;
 }
 
 export type OutcomeView = {
@@ -355,6 +490,15 @@ export type OutcomeView = {
   markedDone: boolean;
   // The day the transactions first showed it.
   verifiedOn: string | null;
+  // The ledger (src/planning/ledger.ts): its state, how sure Jane was when it found it, how it
+  // is verified, and Held (or came back) with the lines that show it.
+  state: LedgerState;
+  confidencePercent: number;
+  rule: string;
+  heldOn: string | null;
+  lapsed: boolean;
+  heldProof: string | null;
+  heldEvidence: { id: string; date: string; description: string; amountCents: number }[];
 };
 
 // Why an expected saving isn't counted yet, in the person's words: "You said yes" until they mark
@@ -384,7 +528,7 @@ export async function savingsRecord(
     where: { status: { in: ACTED } },
     orderBy: [{ verifiedAt: "asc" }, { answeredAt: "asc" }, { id: "asc" }],
   });
-  const ids = [...new Set(rows.flatMap((r) => r.evidenceTxIds))];
+  const ids = [...new Set(rows.flatMap((r) => [...r.evidenceTxIds, ...r.heldEvidenceTxIds]))];
   const txs =
     ids.length > 0
       ? await db.transactions.findMany({
@@ -393,6 +537,13 @@ export async function savingsRecord(
         })
       : [];
   const byId = new Map(txs.map((t) => [t.id, t]));
+  const lines = (txIds: string[]) =>
+    txIds.flatMap((id) => {
+      const t = byId.get(id);
+      return t
+        ? [{ id, date: isoDate(t.date), description: t.description, amountCents: t.amountCents }]
+        : [];
+    });
   const view = (r: (typeof rows)[number]): OutcomeView => ({
     key: r.suggestionKey,
     topic: r.topic,
@@ -403,28 +554,23 @@ export async function savingsRecord(
     yearly: r.yearly,
     verifiedPercent: r.verifiedPercent,
     proof: r.proof,
-    evidence: r.evidenceTxIds.flatMap((id) => {
-      const t = byId.get(id);
-      return t
-        ? [
-            {
-              id,
-              date: isoDate(t.date),
-              description: t.description,
-              amountCents: t.amountCents,
-            },
-          ]
-        : [];
-    }),
+    evidence: lines(r.evidenceTxIds),
     actedOn: (r.doneAt ?? r.answeredAt) ? isoDate((r.doneAt ?? r.answeredAt)!) : null,
     markedDone: r.doneAt !== null,
     verifiedOn: r.verifiedAt ? isoDate(r.verifiedAt) : null,
+    state: ledgerStateOf(r) ?? "done",
+    confidencePercent: r.confidencePercent,
+    rule: verifyRule(asWatch(r.watch)),
+    heldOn: r.heldAt ? isoDate(r.heldAt) : null,
+    lapsed: r.status === "lapsed",
+    heldProof: r.heldProof,
+    heldEvidence: lines(r.heldEvidenceTxIds),
   });
   const confirmed = rows
     .filter((r) => r.status === "confirmed" || r.status === "partial")
     .map(view);
   const expected = rows.filter((r) => r.status === "open" || r.status === "unverifiable").map(view);
-  const notSeen = rows.filter((r) => r.status === "not_seen").map(view);
+  const notSeen = rows.filter((r) => r.status === "not_seen" || r.status === "lapsed").map(view);
   return {
     confirmed,
     expected,

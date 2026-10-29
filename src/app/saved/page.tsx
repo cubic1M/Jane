@@ -1,150 +1,149 @@
 import { connection } from "next/server";
 import { isHiddenPage } from "@/config/hidden-pages";
+import { HELD_DAYS } from "@/config/outcomes";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { LedgerEntryRow, STATE_GLYPH } from "@/components/ledger-entry";
+import { savingsLedger, type LedgerEntry } from "@/lib/ledger";
 import { formatCents } from "@/lib/money";
-import { expectedWhy } from "@/lib/outcomes";
-import { verifiedSavings, type Receipt } from "@/lib/savings-proof";
 import { requireUser } from "@/lib/session";
+import { LEDGER_RULES, type LedgerState } from "@/planning/ledger";
+import { markDone } from "./actions";
 import { ShareForm } from "./share-form";
 
-// What Jane saved you (spec step 139, the verified savings record): what the person's own
-// transactions prove, each with its receipt (Jane's own work, and the suggestions the person
-// acted on), and apart from it what's still an estimate.
+// What Jane saved you: the savings ledger (src/lib/ledger.ts). The headline counts only what the
+// person's own transactions show (Verified and Held), each with its lines; estimates (found, or
+// done and not shown yet) sit apart and are called estimates. Few words: three chips on top,
+// every entry's proof behind a click, the rules in one closed note.
 
-const KIND_LABEL: Record<Receipt["kind"], string> = {
-  refund: "Refund",
-  lower_bill: "Lower bill",
-  switched: "Switched",
-  cancelled: "Cancelled",
+const MUTED = "text-zinc-600 dark:text-zinc-400";
+
+const CHIP: Record<LedgerState, (n: number) => string> = {
+  held: (n) => `${n} held`,
+  verified: (n) => `${n} verified`,
+  done: (n) => `${n} done, waiting`,
+  estimated: (n) => `${n} to do`,
+  not_seen: (n) => `${n} not seen`,
 };
+
+function Section({
+  id,
+  title,
+  note,
+  entries,
+  doneButton = false,
+}: {
+  id: string;
+  title: string;
+  note: string;
+  entries: LedgerEntry[];
+  doneButton?: boolean;
+}) {
+  if (entries.length === 0) return null;
+  return (
+    <section id={id} aria-label={title} className="flex flex-col gap-2">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      <p className={`text-sm ${MUTED}`}>{note}</p>
+      <ul className="flex flex-col gap-2">
+        {entries.map((e) => (
+          <LedgerEntryRow
+            key={e.key}
+            entry={e}
+            action={
+              doneButton && e.state === "estimated" ? (
+                <form action={markDone}>
+                  <input type="hidden" name="key" value={e.key} />
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-zinc-900 px-3 py-1 text-sm font-medium dark:border-zinc-100"
+                  >
+                    I did it
+                  </button>
+                </form>
+              ) : null
+            }
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 async function SavedContent() {
   const user = await requireUser();
   await connection();
-  const all = await verifiedSavings(user.id);
-  const saved = all.actions;
-  const record = all.suggestions;
+  const ledger = await savingsLedger(user.id);
+  const of = (...states: LedgerState[]) => ledger.entries.filter((e) => states.includes(e.state));
+  // At most three chips: what's proven first, then what's waiting on the person.
+  const chips = (["held", "verified", "done", "estimated"] as const)
+    .filter((s) => ledger.counts[s] > 0)
+    .slice(0, 3);
   return (
     <>
       <AppHeader user={user} />
       <section className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">What Jane saved you</h1>
-        <p className="text-4xl font-semibold text-emerald-700">{formatCents(all.confirmedCents)}</p>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Confirmed in your own transactions: refunds that came back, and a year of each lower bill
-          and cancelled charge.
+        <p className="text-4xl font-semibold" data-ledger-saved={ledger.savedCents}>
+          {formatCents(ledger.savedCents)}
         </p>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Receipts</h2>
-        {saved.confirmed.length === 0 && record.confirmed.length === 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Nothing confirmed yet. When a refund comes back or a bill goes down, it shows here.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {saved.confirmed.map((r) => (
-              <li
-                key={r.actionId}
-                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800"
+        <p className={MUTED}>
+          Verified in your own transactions
+          {ledger.heldCents > 0
+            ? `; ${formatCents(ledger.heldCents)} of it held ${HELD_DAYS} days`
+            : ""}
+          .
+        </p>
+        {chips.length > 0 && (
+          <div role="group" aria-label="What matters now" className="flex flex-wrap gap-2">
+            {chips.map((s) => (
+              <a
+                key={s}
+                href={`#${s === "held" || s === "verified" ? "saved" : "estimates"}`}
+                className="rounded-full border border-zinc-300 px-3 py-1 font-mono text-xs uppercase dark:border-zinc-700"
               >
-                <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-                  {KIND_LABEL[r.kind]}
-                </span>
-                <span className="font-semibold">
-                  {r.title}: {formatCents(r.cents)}
-                  {r.yearly ? " a year" : ""}
-                </span>
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">{r.proof}</span>
-                <span className="text-xs text-zinc-500">
-                  Seen: {r.seen.date} · {r.seen.description} ·{" "}
-                  {formatCents(Math.abs(r.seen.amountCents))}
-                </span>
-              </li>
+                {STATE_GLYPH[s]} {CHIP[s](ledger.counts[s])}
+              </a>
             ))}
-            {record.confirmed.map((o) => (
-              <li
-                key={o.key}
-                data-saved-outcome={o.status}
-                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800"
-              >
-                <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-                  {o.status === "partial" ? "Partly confirmed" : "Confirmed"}
-                  {o.verifiedPercent !== null ? ` · ${o.verifiedPercent}% sure` : ""}
-                </span>
-                <span className="font-semibold">
-                  {o.title}: {formatCents(o.confirmedCents ?? 0)}
-                  {o.yearly ? " a year" : ""}
-                </span>
-                {o.status === "partial" && (
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Expected about {formatCents(o.expectedCents)}; this much shows so far.
-                  </span>
-                )}
-                {o.proof && (
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400">{o.proof}</span>
-                )}
-                {o.evidence.map((t) => (
-                  <span key={t.id} className="text-xs text-zinc-500">
-                    Seen: {t.date} · {t.description} · {formatCents(Math.abs(t.amountCents))}
-                  </span>
-                ))}
-              </li>
-            ))}
-          </ul>
+          </div>
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Still estimates</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          About {formatCents(all.expectedCents)} a year more, not counted until your transactions
-          show it.
+      {ledger.counts.held + ledger.counts.verified === 0 ? (
+        <p className={MUTED}>
+          Nothing verified yet. When a statement shows a charge gone or a bill lower, it shows here.
         </p>
-        {(saved.estimated.length > 0 || record.expected.length > 0) && (
-          <ul className="flex flex-col gap-2 text-sm">
-            {saved.estimated.map((e) => (
-              <li key={e.actionId}>
-                <span className="font-medium">{e.title}</span>: about {formatCents(e.cents)}.{" "}
-                <span className="text-zinc-600 dark:text-zinc-400">{e.why}</span>
-              </li>
-            ))}
-            {record.expected.map((o) => (
-              <li key={o.key} data-saved-outcome={o.status}>
-                <span className="font-medium">{o.title}</span>: about {formatCents(o.expectedCents)}
-                . <span className="text-zinc-600 dark:text-zinc-400">{expectedWhy(o)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {(saved.notShown.length > 0 || record.notSeen.length > 0) && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Didn&apos;t show up</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            These were finished a while ago and the saving never appeared in your transactions, so
-            they don&apos;t count as saved. If it does show up later, it comes back.
-          </p>
-          <ul className="flex flex-col gap-2 text-sm">
-            {saved.notShown.map((e) => (
-              <li key={e.actionId}>
-                <span className="font-medium">{e.title}</span>
-              </li>
-            ))}
-            {record.notSeen.map((o) => (
-              <li key={o.key} data-saved-outcome="not_seen">
-                <span className="font-medium">{o.title}</span>
-                {o.proof ? (
-                  <span className="text-zinc-600 dark:text-zinc-400">: {o.proof}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
+      ) : (
+        <Section
+          id="saved"
+          title="Verified"
+          note="Each one opens on the lines that show it."
+          entries={of("held", "verified")}
+        />
       )}
+
+      <Section
+        id="estimates"
+        title="Estimates"
+        note={`About ${formatCents(ledger.doneCents + ledger.estimatedCents)} more. Not counted until your transactions show it.`}
+        entries={of("done", "estimated")}
+        doneButton
+      />
+
+      <Section
+        id="not-seen"
+        title="Not seen"
+        note="The time passed and no saving showed up, so these don't count."
+        entries={of("not_seen")}
+      />
+
+      <details className="text-sm">
+        <summary className="cursor-pointer font-medium">How Jane verifies</summary>
+        <ul className={`mt-2 flex list-disc flex-col gap-1 pl-5 ${MUTED}`}>
+          {LEDGER_RULES.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      </details>
 
       {/* Shared links (/s/...) are hidden in the read-only beta (src/config/hidden-pages.ts). */}
       {!isHiddenPage("/s/link") && (

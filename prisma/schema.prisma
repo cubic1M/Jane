@@ -1431,6 +1431,10 @@ model Action {
   // Spec step 207: when Jane checked the person's transactions long after it was done and
   // the saving never showed up. Set, the action no longer counts as saved.
   savingMissedAt       DateTime?    @map("saving_missed_at") @db.Timestamptz(3)
+  // The savings ledger (src/lib/ledger.ts): when the transactions first showed this action's
+  // saving (Verified), and when it was still true HELD_DAYS later (Held).
+  savingVerifiedAt     DateTime?    @map("saving_verified_at") @db.Timestamptz(3)
+  savingHeldAt         DateTime?    @map("saving_held_at") @db.Timestamptz(3)
   startedAt            DateTime?    @map("started_at") @db.Timestamptz(3)
   completedAt          DateTime?    @map("completed_at") @db.Timestamptz(3)
   createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -4256,7 +4260,8 @@ model Suggestion {
 // The verified savings record: what happened to each suggestion that reached the person, and
 // what their later transactions showed. One a suggestion (key). status: shown (not answered),
 // declined, open (said yes or done, waiting for the transactions), unverifiable (nothing to
-// watch: stays an expectation), confirmed, partial or not_seen. Cents are a year of it unless
+// watch: stays an expectation), confirmed, partial, not_seen or lapsed (verified, then it came
+// back). Cents are a year of it unless
 // yearly is false (a refund). evidenceTxIds are the transactions that show it.
 model SuggestionOutcome {
   id                String    @id @default(cuid())
@@ -4285,6 +4290,12 @@ model SuggestionOutcome {
   proof             String?
   checkedAt         DateTime? @map("checked_at") @db.Timestamptz(3)
   verifiedAt        DateTime? @map("verified_at") @db.Timestamptz(3)
+  // The ledger's Held (src/planning/ledger.ts): still true HELD_DAYS after verifiedAt. Or lapsed
+  // (status "lapsed"): it came back after it was verified. Either way, the lines that show it.
+  heldAt            DateTime? @map("held_at") @db.Timestamptz(3)
+  lapsedAt          DateTime? @map("lapsed_at") @db.Timestamptz(3)
+  heldProof         String?   @map("held_proof")
+  heldEvidenceTxIds String[]  @default([]) @map("held_evidence_tx_ids")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
