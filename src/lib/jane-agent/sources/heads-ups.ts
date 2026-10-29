@@ -1,5 +1,6 @@
 import { HEADS_UP_DEADLINE_DAYS, MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { daysBetween } from "@/detection/units";
+import type { Deadline } from "@/insights/deadlines";
 import { formatCents } from "@/lib/money";
 import type { Candidate } from "../types";
 import type { Snapshot } from "../snapshot";
@@ -26,15 +27,21 @@ function urgentAlerts(snapshot: Snapshot): Candidate[] {
   }));
 }
 
+// "Coming up in 3 days: Return window for Apple ($1,349.00).", counted from asOf. Said again
+// as of the day each time the card shows (../still-true.ts), so it never goes out of date.
+export function deadlineHeadsUp(deadline: Deadline, asOf: string): string {
+  const amount = deadline.amountCents === null ? "" : ` (${formatCents(deadline.amountCents)})`;
+  return `Coming up ${inDays(daysBetween(asOf, deadline.date))}: ${deadline.title}${amount}.`;
+}
+
 function deadlines(snapshot: Snapshot): Candidate[] {
   return snapshot.deadlines.flatMap((deadline) => {
     const days = daysBetween(snapshot.asOf, deadline.date);
     if (days < 0 || days > HEADS_UP_DEADLINE_DAYS) return [];
-    const amount = deadline.amountCents === null ? "" : ` (${formatCents(deadline.amountCents)})`;
     return [
       {
         kind: "heads_up" as const,
-        body: `Coming up ${inDays(days)}: ${deadline.title}${amount}.`,
+        body: deadlineHeadsUp(deadline, snapshot.asOf),
         refs: {
           deadlineKey: deadline.key,
           ...(deadline.entryId ? { deadlineEntryId: deadline.entryId } : {}),

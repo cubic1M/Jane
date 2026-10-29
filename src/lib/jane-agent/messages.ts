@@ -13,6 +13,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import type { PlannedMessage } from "./brain";
 import { localTime } from "./quiet-hours";
 import { closeAnsweredElsewhere } from "./settled";
+import { putAwayUntrue } from "./still-true";
 import {
   MESSAGE_SELECT,
   parseActions,
@@ -155,7 +156,9 @@ export async function closeSettled(
   // Spec step 83: and the rest of Jane's questions answered on their own pages.
   const elsewhere =
     (await closeAnsweredElsewhere(userId, { client, now })) +
-    (await settleBundles(userId, { client, now }));
+    (await settleBundles(userId, { client, now })) +
+    // Heads-ups whose deadline or charge is no longer in the data (./still-true.ts).
+    (await putAwayUntrue(userId, { client, now }));
   const open = await db.janeMessages.findMany({
     where: { status: "open", kind: { in: ["decision", "reply"] } },
     select: { id: true, refs: true, actions: true },
