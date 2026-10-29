@@ -76,6 +76,9 @@ export const PAYDAY_WINDOW_DAYS = 120;
 export const PAYDAY_MIN_DEPOSITS = 3;
 export const PAYDAY_SLACK_DAYS = 2;
 export const PAYDAY_SHARE = 0.75;
+// Something never seen (no car payments, no home cover) is remembered as a "no" only after this
+// many months of data; with less, it may just not have shown up yet.
+export const ABSENCE_MIN_MONTHS = 3;
 // Card habit: any interest charged in this many days means a balance is carried.
 export const CARD_HABIT_DAYS = 90;
 // Rent payee: at least this many rent payments to the same name.

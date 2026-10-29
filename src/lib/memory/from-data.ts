@@ -1,4 +1,5 @@
 import {
+  ABSENCE_MIN_MONTHS,
   CARD_HABIT_DAYS,
   DATA_FACT_KEYS,
   PAYDAY_MIN_DEPOSITS,
@@ -86,11 +87,14 @@ export function factsFromData(
     mainBank,
   }: { source: Extract<FactSource, "upload" | "detector">; mainBank?: string | null },
 ): FactDraft[] {
+  // No data yet (an account with nothing in it): nothing to learn.
+  if (profile.months === 0) return [];
   const drafts: FactDraft[] = [];
   const ref = "scan";
   for (const key of DATA_FACT_KEYS) {
     const fact = profile.facts[key];
     if (!fact || fact.source !== "seen" || fact.value === null || fact.confidence <= 0) continue;
+    if (fact.value === false && profile.months < ABSENCE_MIN_MONTHS) continue;
     drafts.push({
       key,
       value: fact.value,

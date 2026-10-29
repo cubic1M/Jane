@@ -74,6 +74,16 @@ describe("facts from the data", () => {
     expect(cardHabitFrom(input([interest]))).toBeNull();
   });
 
+  it("learns nothing from an empty account, and no 'no' from too little data", () => {
+    const empty = input([]);
+    expect(factsFromData(buildProfile(empty), empty, { source: "upload" })).toEqual([]);
+    // One month of paychecks: no car payments yet doesn't mean no car.
+    const month = input([pay("2026-10-01"), pay("2026-10-15")]);
+    const drafts = factsFromData(buildProfile(month), month, { source: "upload" });
+    expect(drafts.length).toBeGreaterThan(0);
+    expect(drafts.filter((d) => d.value === false)).toEqual([]);
+  });
+
   it("remembers only what was seen, never what was told or a sensitive fact", () => {
     const data = inputFor("family", { housing: "rent" });
     const profile = buildProfile(data);

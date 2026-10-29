@@ -91,6 +91,34 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
+      <h2>What Jane remembers about you</h2>
+      <ul>
+        <li>
+          Jane builds a picture of you so its answers fit: things like whether you rent, when
+          you&apos;re paid, your main bank, your goals and how you like to do things. It learns
+          these from your statements, your answers, what you say in the chat and what you do with
+          its suggestions, and keeps each one with where it came from and how sure it is.
+        </li>
+        <li>
+          Every chat message and answer is kept with your account. Each time you sign in the chat
+          starts empty: older conversations aren&apos;t shown, but what Jane learned from them is
+          still used.
+        </li>
+        <li>
+          Jane never keeps anything about your health, religion, politics, sexual orientation,
+          ethnicity or immigration status, even when your transactions or your words hint at it.
+        </li>
+        <li>
+          Signed in, Settings has{" "}
+          <Link href="/settings/memory" className="underline">
+            What Jane knows about you
+          </Link>
+          : every fact, where it came from and how sure Jane is. You can correct or forget any of
+          them, or delete all of Jane&apos;s memory and your stored chat at once. All of it is in
+          Download my data, and goes when you delete your account or a trial ends.
+        </li>
+      </ul>
+
       <h2>Who else sees it</h2>
       <ul>
         <li>
@@ -104,9 +132,9 @@ export default function PrivacyPage() {
           explanations. What it receives:
           <ul>
             <li>
-              In the chat: your message, your recent messages and Jane&apos;s answers, and the parts
-              of your data the answer needs, such as balances, amounts, dates, categories and
-              cleaned-up merchant names.
+              In the chat: your message, your recent messages and Jane&apos;s answers, what Jane
+              remembers about you (above), and the parts of your data the answer needs, such as
+              balances, amounts, dates, categories and cleaned-up merchant names.
             </li>
             <li>
               For the text on Jane&apos;s cards, the monthly check-in and the weekly review: the

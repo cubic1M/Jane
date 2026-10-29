@@ -66,6 +66,16 @@ describe("the legal pages", () => {
     expect(text(TermsPage)).toContain(`${TRIAL_HOURS} hours`);
   });
 
+  it("say what Jane remembers, what it never keeps, and where to see and delete it", () => {
+    const privacy = text(PrivacyPage);
+    expect(privacy).toMatch(/What Jane remembers about you/);
+    expect(privacy).toMatch(/the chat starts empty/);
+    expect(privacy).toMatch(
+      /never keeps anything about your health, religion, politics, sexual orientation, ethnicity or immigration status/,
+    );
+    expect(privacy).toMatch(/correct or forget any of them, or delete all of Jane's memory/);
+  });
+
   it("name every cookie the app sets", () => {
     const privacy = text(PrivacyPage);
     expect(privacy).toMatch(/A sign-in cookie keeps you signed in/);
