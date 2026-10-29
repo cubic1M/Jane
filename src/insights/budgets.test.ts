@@ -1,3 +1,4 @@
+import { OVER_BUDGET_CONFIDENCE } from "@/config/detection";
 import { describe, expect, it } from "vitest";
 import { budgetSummary, overBudgetAlerts } from "./budgets";
 import { spendingInsights, type InsightTransaction } from "./spending";
@@ -94,6 +95,7 @@ describe("overBudgetAlerts", () => {
         key: "Food and drink:2026-10",
         title: "Food and drink is over budget this month",
         body: "You've spent $230.00 of your $200.00 budget, with 11 days left in the month.",
+        confidence: OVER_BUDGET_CONFIDENCE,
       },
     ]);
     // Next month the same category gets a new key, so it can alert again.

@@ -356,6 +356,26 @@ describe("heads-ups", () => {
     ]);
   });
 
+  it("carries an urgent alert's confidence onto its heads-up", () => {
+    const [message] = bySource(
+      snapshot({
+        urgentAlerts: [
+          {
+            id: "al2",
+            title: "Charged twice?",
+            body: "Two charges of $84.12.",
+            confidence: { percent: 65, reason: "2 same charges in 12 months of data" },
+          },
+        ],
+      }),
+      "heads_ups",
+    );
+    expect(message.refs).toEqual({
+      alertId: "al2",
+      confidence: { percent: 65, reason: "2 same charges in 12 months of data" },
+    });
+  });
+
   it("brings up a trial about to end with how sure Jane is", () => {
     const [message] = bySource(
       snapshot({

@@ -394,6 +394,12 @@ async function JaneContent() {
                 <li key={a.id} className={`${ROW} [overflow-wrap:anywhere]`}>
                   <span className="font-semibold">{a.title}</span>
                   <span className={`text-sm ${MUTED}`}>{a.body}</span>
+                  {a.confidence && (
+                    <span data-alert-confidence="" className={`text-sm ${MUTED}`}>
+                      <span className="font-medium">{a.confidence.percent}% sure:</span>{" "}
+                      {a.confidence.reason}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

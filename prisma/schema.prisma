@@ -1512,17 +1512,20 @@ model SubscriptionCheck {
 }
 
 model Alert {
-  id        String    @id @default(cuid())
-  userId    String    @map("user_id")
-  type      AlertType
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  type              AlertType
   // Identifies the event (e.g. a transaction id), so a rescan never raises it twice.
-  key       String
-  title     String
-  body      String
-  urgent    Boolean   @default(false)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  readAt    DateTime? @map("read_at") @db.Timestamptz(3)
-  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(3)
+  key               String
+  title             String
+  body              String
+  urgent            Boolean   @default(false)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt            DateTime? @map("read_at") @db.Timestamptz(3)
+  emailedAt         DateTime? @map("emailed_at") @db.Timestamptz(3)
+  // How sure Jane is, and the evidence (src/insights/sure.ts); null on alerts from before.
+  confidencePercent Int?      @map("confidence_percent")
+  confidenceReason  String?   @map("confidence_reason")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

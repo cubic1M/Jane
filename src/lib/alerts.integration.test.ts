@@ -7,7 +7,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { raiseAlerts } from "./alerts";
+import { newestUnreadAlerts, raiseAlerts } from "./alerts";
 
 // Runs against a real, migrated Postgres (see engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -20,6 +20,7 @@ const alert = (overrides: Partial<AlertCandidate> = {}): AlertCandidate => ({
   key: `tx_${crypto.randomUUID()}`,
   title: "$1,200.00 at Best Electronics",
   body: "On your card.",
+  confidence: { percent: 82, reason: "12 charges on the account in 12 months of data" },
   ...overrides,
 });
 
@@ -68,6 +69,22 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ type: "fee_charged", urgent: false, emailedAt: null });
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it("keeps each alert's confidence, and the alerts list shows it", async () => {
+    const user = await person();
+    await raiseAlerts(user.id, [alert({ type: "fee_charged", key: "tx_fee_c" })], {
+      client,
+      now: NOW,
+      send,
+    });
+    const [row] = await alertsOf(user.id);
+    expect(row).toMatchObject({
+      confidencePercent: 82,
+      confidenceReason: "12 charges on the account in 12 months of data",
+    });
+    const [shown] = await newestUnreadAlerts(user.id, { client, limit: 5 });
+    expect(shown).toMatchObject({ confidencePercent: 82 });
   });
 
   it("raises an estimated-payment reminder once per date, in the app only", async () => {

@@ -109,7 +109,13 @@ export type Snapshot = {
   deadlines: Deadline[];
   budgetsOver: { category: string; overCents: number; month: string }[];
   goalsBehind: { id: string; name: string; leftCents: number }[];
-  urgentAlerts: { id: string; title: string; body: string }[];
+  urgentAlerts: {
+    id: string;
+    title: string;
+    body: string;
+    // How sure Jane is (alerts from before it was kept have none).
+    confidence?: { percent: number; reason: string };
+  }[];
   // Spec step 83: every budget this month, for "nearly over".
   budgetProgress: HomeSummary["budgetProgress"];
   // Spec step 97: changes Jane noticed, not yet said to be expected. Optional so snapshots
@@ -424,7 +430,14 @@ export async function loadSnapshot(
       // Each alert says whether it is urgent: a bill reminder only when the balance could fall
       // short that day, not every bill due this week.
       .filter((a) => a.urgent && !ALERTS_SAID_ELSEWHERE.includes(a.type))
-      .map((a) => ({ id: a.id, title: a.title, body: a.body })),
+      .map((a) => ({
+        id: a.id,
+        title: a.title,
+        body: a.body,
+        ...(a.confidencePercent === null
+          ? {}
+          : { confidence: { percent: a.confidencePercent, reason: a.confidenceReason ?? "" } }),
+      })),
     unusual: alerts
       .filter((a) => a.type === "unusual_activity")
       .map((a) => ({ id: a.id, key: a.key, title: a.title, body: a.body })),

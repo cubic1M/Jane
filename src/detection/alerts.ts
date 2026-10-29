@@ -8,6 +8,7 @@ import {
   BANK_FEE_CATEGORIES,
   CARD_INTEREST_CATEGORIES,
   CARD_PAYMENT_NAME,
+  DUPLICATE_CHARGE_MAX_PERCENT,
   LARGE_CHARGE_EXCLUDED_PRIMARIES,
   LARGE_CHARGE_MEDIAN_MULTIPLE,
   LARGE_CHARGE_MIN_CENTS,
@@ -20,6 +21,8 @@ import { ESTIMATED_TAX_ALERT_DAYS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/con
 import { formatCents } from "@/lib/money";
 import { nextEstimatedTaxDate } from "@/planning/tax-pack";
 import { estimatedTaxAlertCopy } from "@/planning/tax-pack-copy";
+import type { Confidence } from "@/detectors/contract";
+import { seenConfidence } from "@/insights/sure";
 import { byDate, inList, inLookback, isProcessorFee, isRenewable } from "./helpers";
 import { parseKey, unusualAlerts } from "./unusual";
 import { expectedDates, forecastAccounts, upcomingBills } from "./forecast";
@@ -41,6 +44,8 @@ export type AlertCandidate = {
   body: string;
   // Overrides the type's usual urgency (bill reminders are urgent only when short).
   urgent?: boolean;
+  // How sure Jane is, shown with every alert (src/insights/sure.ts).
+  confidence: Confidence;
 };
 
 export type AlertContext = {
@@ -69,6 +74,9 @@ function accountName(input: DetectionInput, accountId: string): string {
 const merchantName = (t: DetectionTransaction) =>
   t.merchantName ?? merchantOf(t)?.name ?? t.description;
 
+const chargesOf = (candidate: Candidate) =>
+  (candidate.evidence.charges as unknown[] | undefined)?.length ?? 1;
+
 const lastChargeDate = (candidate: Candidate) =>
   (candidate.evidence.charges as { date: string }[] | undefined)?.at(-1)?.date;
 
@@ -92,6 +100,7 @@ export function newSubscriptionAlerts(
         key: c.key,
         title: `New subscription: ${merchant}, ${formatCents(last)}`,
         body: `We spotted a new recurring charge from ${merchant}. If you didn't mean to sign up, it's on your report.`,
+        confidence: seenConfidence(input, chargesOf(c), "charges"),
       };
     });
 }
@@ -116,6 +125,7 @@ export function priceIncreaseAlerts(
           key: `${c.key}:${date}`,
           title: c.title,
           body: `Charged on ${dayLabel(date)}${yearly}. It's on your report if you want to look at it.`,
+          confidence: seenConfidence(input, chargesOf(c), "charges"),
         },
       ];
     });
@@ -133,6 +143,7 @@ export function feeAlerts(input: DetectionInput): AlertCandidate[] {
       key: t.id,
       title: `${formatCents(t.amountCents)} fee on ${accountName(input, t.accountId)}`,
       body: `"${t.description}" on ${dayLabel(t.date)}. Banks often take a fee back when asked; it's on your report.`,
+      confidence: seenConfidence(input, 1, "fee charge"),
     }));
 }
 
@@ -178,6 +189,7 @@ export function largeChargeAlerts(
         key: t.id,
         title: `${formatCents(t.amountCents)} at ${merchantName(t)}`,
         body: `On ${accountName(input, t.accountId)}, ${dayLabel(t.date)}. That's much more than you usually spend there; if you don't recognize it, contact your bank.`,
+        confidence: seenConfidence(input, charges.length, "charges on the account"),
       }));
   });
 }
@@ -191,11 +203,17 @@ export function duplicateChargeAlerts(input: DetectionInput): AlertCandidate[] {
       key: second.id,
       title: `Charged twice? ${formatCents(second.amountCents)} at ${merchantName(second)}`,
       body: `Two charges of ${formatCents(second.amountCents)} on ${accountName(input, second.accountId)}, ${dayLabel(first.date)} and ${dayLabel(second.date)}. If you only bought once, it's on your report and we can ask for the money back.`,
+      confidence: seenConfidence(
+        input,
+        [first, second].length,
+        "same charges",
+        DUPLICATE_CHARGE_MAX_PERCENT,
+      ),
     }));
 }
 
 // A low-balance forecast, at most once per account per month the dip falls in.
-export function lowBalanceAlerts(candidates: Candidate[]): AlertCandidate[] {
+export function lowBalanceAlerts(input: DetectionInput, candidates: Candidate[]): AlertCandidate[] {
   return candidates
     .filter((c) => c.type === "low_balance_risk")
     .map((c): AlertCandidate => {
@@ -205,6 +223,12 @@ export function lowBalanceAlerts(candidates: Candidate[]): AlertCandidate[] {
         key: `${c.key}:${lowestDate.slice(0, "YYYY-MM".length)}`,
         title: c.title,
         body: `That's from your balance today and the bills due before your next deposit. Moving a bill's date or some money now can avoid an overdraft.`,
+        confidence: seenConfidence(
+          input,
+          ((c.evidence.bills as unknown[] | undefined) ?? []).length +
+            ((c.evidence.income as unknown[] | undefined) ?? []).length,
+          "bills and paychecks in the forecast",
+        ),
       };
     });
 }
@@ -233,7 +257,11 @@ export function dueReportedCategories(
 export function billReminderAlerts(
   input: DetectionInput,
   dueReported: ReadonlySet<string> = new Set(),
+  streams: Stream[] = buildStreams(input),
 ): AlertCandidate[] {
+  // The charges behind each bill, for how sure the reminder is.
+  const seen = (merchant: string) =>
+    Math.max(1, ...streams.filter((s) => s.merchant === merchant).map((s) => s.charges.length));
   const until = addDays(input.asOf, BILL_REMINDER_DAYS);
   const forecasts = forecastAccounts(input, BILL_REMINDER_DAYS);
   const balanceOn = (accountId: string | null, date: string) =>
@@ -254,6 +282,7 @@ export function billReminderAlerts(
           ? `Your balance could be about ${formatCents(balance)} that day, so there may not be enough. Moving money in first could avoid a fee.`
           : "Expected from your past charges; the date and amount are estimates.",
         urgent: short,
+        confidence: seenConfidence(input, seen(b.merchant), "earlier charges"),
       };
     });
 }
@@ -279,6 +308,7 @@ export function renewalAlerts(input: DetectionInput, streams: Stream[]): AlertCa
           key: `${s.key}:${date}`,
           title: `${s.merchant} renews ${dayLabel(date)}, about ${formatCents(s.lastAmountCents)}`,
           body: "If you don't want another year (or quarter), cancel before then. It's on your subscriptions page.",
+          confidence: seenConfidence(input, s.charges.length, "earlier charges"),
         })),
     );
 }
@@ -287,13 +317,20 @@ export function renewalAlerts(input: DetectionInput, streams: Stream[]): AlertCa
 // contracting or gig income in the lookback (spec step 72). Keyed by the date, so it's raised
 // once per date. A reminder only: never an amount.
 export function estimatedTaxAlerts(input: DetectionInput): AlertCandidate[] {
-  const hasIncome = input.transactions.some(
+  const income = input.transactions.filter(
     (t) => t.amountCents < 0 && inList(t.pfcDetailed, SELF_EMPLOYED_INCOME_CATEGORIES),
   );
-  if (!hasIncome) return [];
+  if (income.length === 0) return [];
   const date = nextEstimatedTaxDate(input.asOf);
   if (date > addDays(input.asOf, ESTIMATED_TAX_ALERT_DAYS)) return [];
-  return [{ type: "estimated_tax", key: date, ...estimatedTaxAlertCopy(dayLabel(date)) }];
+  return [
+    {
+      type: "estimated_tax",
+      key: date,
+      ...estimatedTaxAlertCopy(dayLabel(date)),
+      confidence: seenConfidence(input, income.length, "contract or gig payments"),
+    },
+  ];
 }
 
 // One alert per charge (docs/feature-audit.md, cluster 10). A charge the unusual rules ask
@@ -328,11 +365,11 @@ export function detectAlerts(
   return [
     ...largeChargeAlerts(input, streams, context.expected),
     ...duplicateChargeAlerts(input),
-    ...lowBalanceAlerts(candidates),
+    ...lowBalanceAlerts(input, candidates),
     ...feeAlerts(input),
     ...priceIncreaseAlerts(input, candidates),
     ...newSubscriptionAlerts(input, candidates, context),
-    ...billReminderAlerts(input, context.dueReported),
+    ...billReminderAlerts(input, context.dueReported, streams),
     ...renewalAlerts(input, streams),
     ...estimatedTaxAlerts(input),
     ...unusualAlerts(input, streams, context.taught, context.expected),

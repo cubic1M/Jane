@@ -17,6 +17,8 @@ import {
   ALERT_RECENT_DAYS,
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
+import type { Confidence } from "@/detectors/contract";
+import { seenConfidence } from "@/insights/sure";
 import { inList } from "./helpers";
 import { priceIncrease } from "./rules/price-increase";
 import { buildStreams, merchantOf, type Stream } from "./streams";
@@ -36,6 +38,7 @@ export type UnusualAlert = {
   key: string;
   title: string;
   body: string;
+  confidence: Confidence;
 };
 
 // What the person told Jane was them: merchant key -> the largest amount they said was
@@ -104,6 +107,7 @@ export function unusualAlerts(
             key: keyOf("spike", merchantKey, t.id),
             title: `${formatCents(t.amountCents)} at ${name(t)}, far above usual`,
             body: `On ${dayLabel(t.date)}. You usually pay about ${formatCents(typical)} there.`,
+            confidence: seenConfidence(input, earlier.length, "earlier charges there"),
           });
           return;
         }
@@ -119,6 +123,7 @@ export function unusualAlerts(
           key: keyOf("new_merchant", merchantKey, t.id),
           title: `${formatCents(t.amountCents)} at ${name(t)}, a first charge`,
           body: `On ${dayLabel(t.date)}. You haven't paid ${name(t)} before.`,
+          confidence: seenConfidence(input, 1, "first charge"),
         });
       }
     });
@@ -150,6 +155,7 @@ export function unusualAlerts(
         key: keyOf("bill_rise", merchantKey, last.id),
         title: `${s.merchant} bill is ${formatCents(rise)} higher than usual`,
         body: `${formatCents(last.amountCents)} on ${dayLabel(last.date)}, where it's usually about ${formatCents(s.priorAverageCents)}.`,
+        confidence: seenConfidence(input, s.priorCount + 1, "bills"),
       });
     }
   }
@@ -179,6 +185,7 @@ export function unusualAlerts(
         key: keyOf("double", merchantKey, b.id),
         title: `${name(b)} charged twice this month`,
         body: `${formatCents(a.amountCents)} on ${dayLabel(a.date)} and ${formatCents(b.amountCents)} on ${dayLabel(b.date)}, though it's a monthly charge.`,
+        confidence: seenConfidence(input, sorted.length, "charges there"),
       });
     }
   }

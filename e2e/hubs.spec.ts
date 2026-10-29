@@ -54,6 +54,9 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
     "href",
     "/plan",
   );
+  // Every alert says how sure Jane is, as the dock's heads-ups do.
+  await page.locator('[data-jane-section="Alerts"] > summary').click();
+  await expect(page.locator("[data-alert-confidence]").first()).toHaveText(/^\d+% sure: \S/);
   await page.locator('main a[href^="/report/"]').first().click();
   await expect(page).toHaveURL(/\/report\/[\w-]+$/);
 

@@ -74,9 +74,11 @@ export async function raiseAlerts(
   if (wanted.length === 0) return { raised: 0, emailed: 0 };
 
   const created = await scopedFor(userId, client).alerts.createManyAndReturn({
-    data: wanted.map((a) => ({
+    data: wanted.map(({ confidence, ...a }) => ({
       userId,
       ...a,
+      confidencePercent: confidence.percent,
+      confidenceReason: confidence.reason,
       urgent: a.urgent ?? isUrgent(a.type),
       createdAt: now,
     })),
@@ -211,6 +213,8 @@ export async function newestUnreadAlerts(
       body: true,
       urgent: true,
       createdAt: true,
+      confidencePercent: true,
+      confidenceReason: true,
     },
   });
 }

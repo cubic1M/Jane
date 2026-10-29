@@ -1,4 +1,8 @@
-import { CARD_LOCK_STEPS, UNUSUAL_REFUND_MISSING_DAYS } from "@/config/detection";
+import {
+  CARD_LOCK_STEPS,
+  MISSING_REFUND_CONFIDENCE,
+  UNUSUAL_REFUND_MISSING_DAYS,
+} from "@/config/detection";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -68,6 +72,7 @@ export async function missingRefundAlerts(
       key: keyOf("refund", "refund", a.id),
       title: `${formatCents(a.refundCents ?? 0)} refund hasn't arrived`,
       body: `Our team finished "${title}" more than ${UNUSUAL_REFUND_MISSING_DAYS} days ago, but the money isn't in your transactions yet.`,
+      confidence: { ...MISSING_REFUND_CONFIDENCE },
     };
   });
 }

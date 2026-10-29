@@ -3,6 +3,7 @@ import {
   BUDGET_SUGGESTION_MONTHS,
   BUDGET_SUGGESTION_ROUNDING_CENTS,
 } from "@/config/budgets";
+import { OVER_BUDGET_CONFIDENCE } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { CATEGORY_LABELS } from "./labels";
 import { monthsEnding, spendingInsights, type InsightTransaction } from "./spending";
@@ -92,7 +93,13 @@ export function budgetSummary(
   };
 }
 
-export type BudgetAlert = { type: "over_budget"; key: string; title: string; body: string };
+export type BudgetAlert = {
+  type: "over_budget";
+  key: string;
+  title: string;
+  body: string;
+  confidence: { percent: number; reason: string };
+};
 
 // One alert per category per month, the first time spending passes the budget. The key
 // names the month, so later scans that month raise nothing new.
@@ -104,5 +111,6 @@ export function overBudgetAlerts(summary: BudgetSummary): BudgetAlert[] {
       key: `${p.category}:${summary.month}`,
       title: `${p.category} is over budget this month`,
       body: `You've spent ${formatCents(p.spentCents)} of your ${formatCents(p.budgetCents)} budget, with ${summary.daysLeft} day${summary.daysLeft === 1 ? "" : "s"} left in the month.`,
+      confidence: { ...OVER_BUDGET_CONFIDENCE },
     }));
 }
