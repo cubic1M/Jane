@@ -55,6 +55,11 @@ test("beside the docked chat, Home and /jane keep their words and marks in place
   const chart = page.locator("[data-net-worth-chart]");
   await expect(chart).toBeVisible();
   await expect(chart).not.toContainText(/×\d/);
+  // The dots drawn on a canvas once every movement has loaded: no counts beside them either
+  // (canvas text isn't in the page's text, so the check above can't see it).
+  const dots = chart.locator("[data-net-worth-dots]");
+  await expect(dots).toBeAttached({ timeout: 30_000 });
+  await expect(dots).not.toHaveAttribute("data-counts", "");
 
   await page.goto("/jane");
   const sections = page.locator("[data-jane-section]");

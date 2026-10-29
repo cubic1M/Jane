@@ -637,6 +637,7 @@ export function NetWorthChart({
               {layout && (
                 <MovementDots
                   ref={dotsRef}
+                  counts={expanded}
                   dots={layout.dots}
                   movements={layout.count}
                   width={width}
@@ -834,8 +835,12 @@ function MovementDots({
   onFocusDot,
   onOpen,
   onShut,
+  counts,
 }: {
   ref: React.RefObject<HTMLCanvasElement | null>;
+  // "×N" beside a dot of several: in the open chart only. On Home's card it was on nearly
+  // every dot (demo-video list); the larger square already says there are several.
+  counts: boolean;
   dots: Dot[];
   movements: number;
   width: number;
@@ -867,7 +872,7 @@ function MovementDots({
       ctx.strokeStyle = ink;
       ctx.fillRect(d.x - s / 2, d.y - s / 2, s, s);
       ctx.strokeRect(d.x - s / 2, d.y - s / 2, s, s);
-      if (d.events.length > 1) {
+      if (counts && d.events.length > 1) {
         ctx.fillStyle = ink;
         ctx.fillText(`×${d.events.length}`, d.x + 5, d.y + 11);
       }
@@ -877,12 +882,13 @@ function MovementDots({
         ctx.setLineDash([]);
       }
     });
-  }, [ref, dots, width, height, selected, focus]);
+  }, [ref, dots, width, height, selected, focus, counts]);
 
   return (
     <canvas
       ref={ref}
       data-net-worth-dots=""
+      data-counts={counts ? "" : undefined}
       data-dots={dots.length}
       data-movements={movements}
       tabIndex={0}
