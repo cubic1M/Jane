@@ -154,6 +154,8 @@ type Options = {
   topic?: Topic | null;
   // Spec step 188: how the person likes answers (src/lib/jane-agent/style.ts).
   style?: string | null;
+  // What Jane knows about the person from earlier (src/lib/memory/facts.ts memoryForChat).
+  memory?: string | null;
   // Spec step 93: how long to wait for Claude to start, and to finish, in milliseconds.
   firstWordsMs?: number;
   deadlineMs?: number;
@@ -474,6 +476,7 @@ async function askClaude(
     advice = false,
     concierge = true,
     style = null,
+    memory = null,
     topic = null,
     firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
@@ -546,9 +549,12 @@ async function askClaude(
   // Figures the answer may use: any in the numbers sent up front or a tool's result (a
   // finding's title has some too: "Charged twice? $64.20 at Target"), the question, and
   // earlier answers.
-  const allowedCents = [question, primer.text, ...history.map((m) => m.content)].flatMap((text) =>
-    dollarFigures(text).map((f) => f.cents),
-  );
+  const allowedCents = [
+    question,
+    primer.text,
+    memory ?? "",
+    ...history.map((m) => m.content),
+  ].flatMap((text) => dollarFigures(text).map((f) => f.cents));
   allowedCents.push(...primer.cents);
   let prepared: Awaited<ReturnType<typeof quotesAnswer>> | null = null;
   if (shopFetch) {
@@ -657,7 +663,7 @@ async function askClaude(
     // Everything below changes with the person and the question, after the cached part.
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${focusLine}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${focusLine}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}${memory ? `\n\n${memory}` : ""}`,
     },
   ];
 

@@ -35,6 +35,8 @@ import { localTime } from "./quiet-hours";
 import { unknownReply, type Reply } from "./replies";
 import { MESSAGE_SELECT, parseRefs, toChatMessage, type ChatMessage } from "./types";
 import { withReadCache } from "@/lib/read-cache";
+import { listFacts, memoryForChat } from "@/lib/memory/facts";
+import { learnFromChat } from "@/lib/memory/learn";
 
 // Typing to Jane (spec step 84). What the person types is stored as a "user" message and
 // Jane's answer as a "reply", right after it. Rules answer first (./intents, ./answer);
@@ -265,6 +267,8 @@ async function answer(
     advice: await adviceMode(userId, { client }),
     concierge: await conciergeMode(userId, { client }),
     style: styleInstructions(style),
+    // What Jane knows about them from earlier: the chat starts fresh, Jane doesn't.
+    memory: memoryForChat(await listFacts(userId, { client }).catch(() => [])),
     topic,
   }).catch((error): Awaited<ReturnType<typeof askClaudeInChat>> => {
     console.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
@@ -338,6 +342,8 @@ async function sendToJaneWork(
     },
     select: MESSAGE_SELECT,
   });
+  // What the message says about them, before the answer, so the answer knows it too.
+  await learnFromChat(userId, text, `jane_message:${sent.id}`, { client, now });
 
   const { reply, intent, source, issues } = await answer(userId, text, history, {
     client,

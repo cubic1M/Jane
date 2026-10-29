@@ -15,7 +15,8 @@ import { loadKindStats } from "@/lib/learning";
 import type { CardExtras } from "@/lib/jane-agent/types";
 import { scrub } from "@/lib/scrub";
 import { resultsByKind } from "@/lib/worked";
-import { buildProfile } from "@/profile/build";
+import { buildProfile, type Profile, type ProfileInput } from "@/profile/build";
+import { learnFromAnswer, learnFromData } from "@/lib/memory/learn";
 import {
   byRank,
   mergeOverlaps,
@@ -69,7 +70,13 @@ export type ScanResult = { fired: number; selected: string[] };
 export async function detectFor(
   userId: string,
   options: Options = {},
-): Promise<{ suggestions: Suggestion[]; advice: boolean; today: string }> {
+): Promise<{
+  suggestions: Suggestion[];
+  advice: boolean;
+  today: string;
+  profile: Profile;
+  input: ProfileInput;
+}> {
   return withReadCache(options.client ?? defaultClient, (client) =>
     detectForWork(userId, { ...options, client }),
   );
@@ -78,7 +85,13 @@ export async function detectFor(
 async function detectForWork(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ suggestions: Suggestion[]; advice: boolean; today: string }> {
+): Promise<{
+  suggestions: Suggestion[];
+  advice: boolean;
+  today: string;
+  profile: Profile;
+  input: ProfileInput;
+}> {
   const [input, advice] = await Promise.all([
     loadProfileInput(userId, { client, now }),
     adviceMode(userId, { client }),
@@ -91,7 +104,7 @@ async function detectForWork(
       error: scrub(String(error)),
     }),
   ).filter((s) => advice || !(ADVICE_TOPICS as readonly string[]).includes(s.topic));
-  return { suggestions, advice, today: input.today };
+  return { suggestions, advice, today: input.today, profile, input };
 }
 
 const isIdea = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
@@ -219,10 +232,12 @@ async function scanSuggestionsWork(
 ): Promise<ScanResult> {
   const db = scopedFor(userId, client);
   const today = dayOf(now);
-  const [{ suggestions: found, advice }, stored] = await Promise.all([
+  const [{ suggestions: found, advice, profile, input }, stored] = await Promise.all([
     detectFor(userId, { client, now }),
     db.suggestions.findMany(),
   ]);
+  // What the scan saw is evidence for what Jane knows about the person (src/lib/memory/).
+  await learnFromData(userId, profile, input, { client, now });
   // Advice offered while the person was in demo advice mode must not outlive it: once a real
   // account is added, those rows go, answered or not (they would show as recommendations).
   const isAdviceRow = (topic: string) => (ADVICE_TOPICS as readonly string[]).includes(topic);
@@ -452,6 +467,11 @@ export async function answerSuggestion(
     data: { status: answer, answeredAt: now },
   });
   await recordAnswer(userId, key, answer, { client, now });
+  await learnFromAnswer(
+    userId,
+    { topic: row.topic, acted: answer === "yes", ref: `suggestion:${key}` },
+    { client, now },
+  );
   await track(userId, "suggestion_answered", {
     topic: row.topic,
     answer,
