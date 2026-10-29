@@ -71,6 +71,8 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   balance_forecast:
     "answers where the balance is heading; the low-balance detector covers a shortfall",
   alerts: "lists the alerts, which already reach the person as heads-ups",
+  suggestions:
+    "lists the suggestions, proposals and weekly plan Jane already brought up, so the chat can look up a card's figures; the suggesting is done by the detectors behind them",
   household: "shows the people on the account and what they share; nothing to suggest",
   recent_changes: "reports changes, which already reach the person as heads-ups",
   proven_savings: "reports what Jane saved",
