@@ -3,7 +3,7 @@ import { ShownLink } from "@/components/shown-link";
 import { redirect } from "next/navigation";
 import { after, connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { BankStatusNotice } from "@/components/bank-status-notice";
 import { BooksNotice } from "@/components/books-notice";
@@ -252,7 +252,7 @@ async function HubContent() {
 export default function HomePage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<LoadingBar label="Loading your hub" />}>
+      <Suspense fallback={<PageLoading label="Loading your hub" />}>
         <HubContent />
       </Suspense>
     </main>

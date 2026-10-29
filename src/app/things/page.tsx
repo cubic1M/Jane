@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { ASSET_KINDS } from "@/config/net-worth";
 import { SYNCED_KINDS, syncedKindOf } from "@/data-sources/types";
 import { scopedDb } from "@/lib/db-scoped";
@@ -11,7 +11,6 @@ import { requireUser } from "@/lib/session";
 import { deleteAsset } from "./actions";
 import { AssetForm } from "./asset-form";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { dayLabel } from "@/lib/day-label";
 
 // Things you own (spec step 67): a home, a car, anything else of value, at the value the
@@ -199,7 +198,7 @@ async function ThingsContent({
 export default function ThingsPage({ searchParams }: PageProps<"/things">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <ThingsContent searchParams={searchParams} />
       </Suspense>
     </main>

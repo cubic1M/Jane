@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
-import { LoadingBar } from "@/components/loading-bar";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { reportPath } from "@/lib/problem-reports";
 import { requireUser } from "@/lib/session";
 import { ReportForm } from "./report-form";
@@ -32,7 +31,7 @@ async function Report({
 export default function ReportPage({ searchParams }: PageProps<"/report-a-problem">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Report searchParams={searchParams} />
       </Suspense>
     </main>

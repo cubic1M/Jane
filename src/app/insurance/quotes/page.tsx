@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { kindWords } from "@/lib/insurance/gaps";
 import { compareCover } from "@/lib/insurance/like-for-like";
@@ -20,7 +20,6 @@ import { toComparison } from "@/lib/comparison";
 import { shopCard } from "@/lib/insurance/shop-card";
 import { getQuotes, keepPolicy } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Quotes for one policy (spec step 103), like for like: same cover and deductible, or each
 // difference spelled out. From the stand-in carrier catalog until a licensed partner is
@@ -229,7 +228,7 @@ async function QuotesContent({
 export default function QuotesPage({ searchParams }: PageProps<"/insurance/quotes">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <QuotesContent searchParams={searchParams} />
       </Suspense>
     </main>

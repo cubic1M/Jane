@@ -3,12 +3,11 @@ import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { DECISIONS, itemId } from "@/lib/area-pages/plans";
 import { requireUser } from "@/lib/session";
 import { loadPlansArea } from "@/lib/area-pages/plans-load";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Plans & goals (spec step 80; docs/design/area-pages.md): the area's tree, with what's coming
 // up first, then goals and net worth, then the planning tools and the look-backs. Math from
@@ -130,7 +129,7 @@ async function AheadContent({
 export default function AheadPage({ searchParams }: PageProps<"/ahead">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <AheadContent searchParams={searchParams} />
       </Suspense>
     </main>

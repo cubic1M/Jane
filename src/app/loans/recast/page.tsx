@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { MORTGAGE_MONEY_SOURCES, RECAST_NOTE } from "@/config/mortgage-money";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
 
 // Recast, refinance or pay extra (spec step 246): a lump sum and/or extra money each month used
@@ -163,7 +162,7 @@ async function RecastContent({ searchParams }: Pick<PageProps<"/loans/recast">, 
 export default function RecastPage({ searchParams }: PageProps<"/loans/recast">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <RecastContent searchParams={searchParams} />
       </Suspense>
     </main>

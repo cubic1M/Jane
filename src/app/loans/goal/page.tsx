@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { CREDIT_GOAL_KINDS, CREDIT_GOAL_LABELS, CREDIT_GOAL_SOURCE } from "@/config/credit-goals";
 import { loadCreditGoals, planFor, type GoalView } from "@/lib/credit-goals";
@@ -10,7 +10,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { endGoalAction, startGoalAction, tickItemAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 
 // A credit score for a goal (spec step 227): the score and date needed, a month-by-month plan
 // from the score simulator, and each month's checklist. A stand-in score; every figure is an
@@ -212,7 +211,7 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
 export default function GoalPage({ searchParams }: PageProps<"/loans/goal">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <GoalContent searchParams={searchParams} />
       </Suspense>
     </main>

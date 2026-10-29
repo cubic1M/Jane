@@ -35,4 +35,25 @@ describe("the loading bar", () => {
     }
     expect(plain).toEqual([]);
   });
+
+  it("is never plain loading words in a page", () => {
+    const plain = files(SRC).filter((f) =>
+      />\s*Loading(…|\.\.\.)\s*</.test(readFileSync(f, "utf8")),
+    );
+    expect(plain.map((f) => relative(SRC, f))).toEqual([]);
+  });
+
+  // Reviewer polish: a page's own fallback keeps the top bar, so the page doesn't draw full width
+  // and then jump under the bar and beside the docked chat.
+  it("comes with the top bar on every signed-in page", () => {
+    const bare: string[] = [];
+    for (const f of files(join(SRC, "app"))) {
+      if (!f.endsWith("page.tsx")) continue;
+      const code = readFileSync(f, "utf8");
+      if (!code.includes("<AppHeader")) continue;
+      const page = code.slice(code.indexOf("export default"));
+      if (/<Suspense\s+fallback=\{<LoadingBar/.test(page)) bare.push(relative(SRC, f));
+    }
+    expect(bare).toEqual([]);
+  });
 });

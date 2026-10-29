@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { AreaTabs } from "@/components/area-tabs";
 import { BackToChat } from "@/components/back-to-chat";
 import { DemoBanner } from "@/components/demo-banner";
+import { LoadingBar } from "@/components/loading-bar";
 import { ProfileMenu } from "@/components/profile-menu";
 import { ScanBarGate } from "@/components/scan-bar-gate";
 import { ChatToggle } from "@/components/side-chat/chat-toggle";
@@ -17,6 +18,25 @@ import { SideChatUser } from "@/components/side-chat/side-chat";
 // a second lookup can land after the browser has gone, where Next.js rejects it.
 // Spec step 86: a page opened from one of Jane's messages links back to it; a page that
 // knows its message passes chatMessageId.
+const TOP_BAR =
+  "flex flex-wrap items-center gap-x-3 gap-y-1 lg:fixed lg:inset-x-0 lg:top-0 lg:z-50 lg:h-14 lg:flex-nowrap lg:border-b lg:border-zinc-300 lg:bg-white lg:px-4 dark:lg:border-zinc-700 dark:lg:bg-zinc-950 print:static";
+
+// Just the logo (founder: "It should just be the logo, and no interaction"): Home and the area
+// tabs are where the pages are.
+function JaneLogo() {
+  return (
+    <span
+      data-jane-logo=""
+      className="inline-flex min-h-11 shrink-0 cursor-default items-center text-base font-bold tracking-tight select-none"
+    >
+      <span aria-hidden className="text-emerald-700">
+        &gt;
+      </span>
+      Jane
+    </span>
+  );
+}
+
 export function AppHeader({
   user,
   chatMessageId,
@@ -28,21 +48,8 @@ export function AppHeader({
     <header className="flex flex-col gap-3 text-sm">
       {/* Above the docked chat (z-40), so the profile menu opens over it and Sign out can be
           pressed; the chat expanded to the whole window (z-50, later on the page) still covers it. */}
-      <div
-        id="app-top-bar"
-        className="flex flex-wrap items-center gap-x-3 gap-y-1 lg:fixed lg:inset-x-0 lg:top-0 lg:z-50 lg:h-14 lg:flex-nowrap lg:border-b lg:border-zinc-300 lg:bg-white lg:px-4 dark:lg:border-zinc-700 dark:lg:bg-zinc-950 print:static"
-      >
-        {/* Just the logo (founder: "It should just be the logo, and no interaction"): Home and
-            the area tabs are where the pages are. */}
-        <span
-          data-jane-logo=""
-          className="inline-flex min-h-11 shrink-0 cursor-default items-center text-base font-bold tracking-tight select-none"
-        >
-          <span aria-hidden className="text-emerald-700">
-            &gt;
-          </span>
-          Jane
-        </span>
+      <div id="app-top-bar" className={TOP_BAR}>
+        <JaneLogo />
         <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
           <AreaTabs />
         </div>
@@ -65,5 +72,39 @@ export function AppHeader({
         <BackToChat messageId={chatMessageId} />
       </Suspense>
     </header>
+  );
+}
+
+// The top bar while a page loads (reviewer polish): the same bar, logo and tabs, with the
+// profile button's room kept, so the page doesn't draw full width and then jump under the bar
+// and beside the docked chat (the room is made for #app-top-bar, globals.css), and a tap on a
+// tab never makes the bar blink away. It needs no session, so it shows in the first frame.
+export function AppHeaderLoading() {
+  return (
+    <header className="flex flex-col gap-3 text-sm" data-header-loading="">
+      <div id="app-top-bar" className={TOP_BAR}>
+        <JaneLogo />
+        <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
+          <AreaTabs />
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <ChatToggle />
+          <span
+            aria-hidden
+            className="size-11 rounded-full border border-zinc-300 dark:border-zinc-700"
+          />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// A signed-in page's own fallback: the top bar, then the loading bar where the page will be.
+export function PageLoading({ label }: { label?: string }) {
+  return (
+    <>
+      <AppHeaderLoading />
+      <LoadingBar label={label} />
+    </>
   );
 }

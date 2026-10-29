@@ -5,7 +5,7 @@ import { AddAccountForm } from "./add-account-form";
 import { ImportForm } from "./import-form";
 import { accountKindOf } from "@/data-sources/types";
 import { UploadHistory } from "./upload-history";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { AccountList } from "@/components/account-list";
 import { listAccountSummaries } from "@/lib/accounts";
 import { canImportCsv } from "@/lib/csv-access";
@@ -13,7 +13,6 @@ import { scopedDb } from "@/lib/db-scoped";
 import { balancesToAsk } from "@/lib/import/account-balance";
 import { listUploads, uploadedTotals } from "@/lib/import/remove";
 import { requireUser } from "@/lib/session";
-import { LoadingBar } from "@/components/loading-bar";
 import { BANK_DOWNLOADS, SUGGESTED_UPLOAD_MONTHS, UPLOAD_REASSURANCE } from "@/config/import";
 
 async function ImportContent() {
@@ -150,7 +149,7 @@ async function ImportContent() {
 export default function ImportPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <ImportContent />
       </Suspense>
     </main>

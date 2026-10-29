@@ -3,7 +3,7 @@ import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
 import { lastControllerRun } from "@/lib/controller-log";
 import { loadJaneHub } from "@/lib/hubs/jane";
@@ -15,7 +15,6 @@ import { changeLine, scoreLine } from "@/lib/jane-agent/replies-health";
 import { formatCents } from "@/lib/money";
 import { loadTimeline } from "@/lib/timeline";
 import { requireUser } from "@/lib/session";
-import { LoadingBar } from "@/components/loading-bar";
 
 // The Jane hub (spec step 80): everything Jane found and is doing, each list a short
 // summary of its full page.
@@ -413,7 +412,7 @@ async function JaneContent() {
 export default function JanePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <JaneContent />
       </Suspense>
     </main>

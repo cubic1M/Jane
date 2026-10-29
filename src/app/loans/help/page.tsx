@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import {
   COUNSELOR_REFERRALS,
   COUNSEL_POINTER,
@@ -13,7 +13,6 @@ import { loadDebtTrouble } from "@/lib/debt-trouble";
 import { dmpLines, headline } from "@/lib/jane-agent/debt-trouble-replies";
 import { requireUser } from "@/lib/session";
 import { formatCents } from "@/lib/money";
-import { LoadingBar } from "@/components/loading-bar";
 
 // When debt is too much (spec step 229): the options laid out as facts, from the person's own
 // debts. Jane doesn't advise settling or filing, gives no legal advice and contacts no one.
@@ -117,7 +116,7 @@ async function HelpContent() {
 export default function HelpPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <HelpContent />
       </Suspense>
     </main>

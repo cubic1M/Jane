@@ -24,7 +24,7 @@ describe("booksFix", () => {
   });
 
   it("sends a transfer with no other side to linking that account", () => {
-    expect(booksFix(issue("transfer", "acc", null)).label).toBe("Link that account");
+    expect(booksFix(issue("transfer", "acc", null)).label).toBe("Add that account");
   });
 
   it("sends a bank's own problems to its bank in Settings", () => {

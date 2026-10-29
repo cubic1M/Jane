@@ -32,3 +32,11 @@ test("an invite link fills in the code, and without one there's a waitlist", asy
   await expect(page).toHaveURL(/\/signup\?waitlist=joined/);
   await expect(page.getByRole("status")).toContainText("You're on the waitlist");
 });
+
+// Signing in with an email Jane doesn't know lands here: the beta is said once, in the error.
+test("sent from sign-in without an invite, the page says private beta once", async ({ page }) => {
+  await page.goto("/signup?error=InviteRequired");
+  await expect(page.getByRole("alert").filter({ hasText: "private beta" })).toBeVisible();
+  await expect(page.getByText(/Jane is in private beta/)).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Join the waitlist" })).toBeVisible();
+});

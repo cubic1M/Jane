@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import type { Route } from "next";
+import { LoadingBar } from "@/components/loading-bar";
 import { embedPage } from "./embed-actions";
 
 // A sub-page opened in place, loaded only when its tree item is tapped; "Open the full page"
@@ -28,13 +29,7 @@ export function LazyPage({
   }, [pageKey]);
   return (
     <div className="flex flex-col gap-3">
-      {body === undefined ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400" role="status">
-          Loading…
-        </p>
-      ) : (
-        body
-      )}
+      {body === undefined ? <LoadingBar label={`Loading ${label.toLowerCase()}`} /> : body}
       <Link href={href} className="text-sm font-medium underline">
         Open the full page: {label}
       </Link>

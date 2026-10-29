@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { previousMonth } from "@/insights/check-in";
 import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { formatCents } from "@/lib/money";
@@ -9,7 +9,6 @@ import { storedReport } from "@/lib/monthly-report-store";
 import { requireUser } from "@/lib/session";
 import { categoryWords } from "@/planning/month-close";
 import { reportLines } from "@/planning/monthly-report";
-import { LoadingBar } from "@/components/loading-bar";
 import { monthLabel } from "@/lib/day-label";
 
 // The month's one report (spec step 148), with the monthly check-in folded in (spec step 45;
@@ -260,7 +259,7 @@ function MonthClose({ view }: { view: CloseView }) {
 export default function MonthlyPage({ searchParams }: PageProps<"/monthly">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <MonthlyContent searchParams={searchParams} />
       </Suspense>
     </main>

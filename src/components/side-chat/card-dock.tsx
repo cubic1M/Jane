@@ -11,10 +11,44 @@ import type { MessageView } from "@/lib/jane-agent/view";
 // sit in the right column directly above the side chat, one at a time with "+N" and arrows,
 // never in the chat's own list. It loads them itself (/api/chat/cards), on every page, again on
 // a new page, on focus, every minute, and after an answer. Nothing to show, it takes no room.
+// The last cards are kept for the tab's session, so a reload paints them at once and the chat
+// under them never jumps down; the first time, the dock slides open instead (reviewer polish).
+
+const KEPT = "jane:dock-cards";
+
+export function keptCards(storage: Pick<Storage, "getItem"> | undefined): MessageView[] {
+  try {
+    const kept = JSON.parse(storage?.getItem(KEPT) ?? "[]");
+    return Array.isArray(kept) ? kept : [];
+  } catch {
+    return [];
+  }
+}
+
+function keepCards(cards: readonly MessageView[]) {
+  try {
+    window.sessionStorage.setItem(KEPT, JSON.stringify(cards));
+  } catch {
+    // Private window or storage blocked: the dock just loads them again.
+  }
+}
+
+const sessionStore = () => {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return undefined;
+  }
+};
 
 export function CardDock() {
   const pathname = usePathname();
-  const [cards, setCards] = useState<MessageView[]>([]);
+  // The cards the tab last showed, at once, so nothing moves when they load. The docked panel
+  // only renders in the browser (useWide is false on the server), so this never mismatches.
+  const [kept] = useState(() => keptCards(sessionStore()));
+  const [cards, setCards] = useState<MessageView[]>(kept);
+  // Kept cards paint in place; a dock that appears later slides open.
+  const [fromKept, setFromKept] = useState(kept.length > 0);
 
   // The card showing now: a reload never takes it away while the person is on it (founder: "the
   // suggestion itself disappears"); it goes when they answer it or step off it.
@@ -23,12 +57,23 @@ export function CardDock() {
     showing.current = id;
   }, []);
 
+  const loaded = useRef(false);
   const load = useCallback(async () => {
     try {
       const response = await fetch("/api/chat/cards", { cache: "no-store" });
       if (!response.ok) return;
       const body = (await response.json()) as { cards?: MessageView[] };
-      setCards((now) => keepShowing(now, body.cards ?? [], showing.current));
+      // The first answer replaces the kept cards outright: one may have been answered since.
+      const first = !loaded.current;
+      loaded.current = true;
+      setFromKept(false);
+      setCards((now) => {
+        const next = first
+          ? (body.cards ?? [])
+          : keepShowing(now, body.cards ?? [], showing.current);
+        keepCards(next);
+        return next;
+      });
     } catch {
       // Offline for a moment: the cards stay as they were until the next load.
     }
@@ -51,7 +96,10 @@ export function CardDock() {
 
   if (cards.length === 0) return null;
   return (
-    <FollowHeight className="shrink-0 border-b border-zinc-300 dark:border-zinc-700">
+    <FollowHeight
+      className="shrink-0 border-b border-zinc-300 dark:border-zinc-700"
+      slideIn={!fromKept}
+    >
       <div className="max-h-[50vh] overflow-y-auto overscroll-contain">
         {/* One stack for good: a reload updates it in place, never starting it over. */}
         <SuggestionCards
@@ -81,9 +129,18 @@ export function keepShowing(
 
 // Its height follows what's inside, smoothly (a card opening, or the next card being taller),
 // so the chat under it never jumps.
-function FollowHeight({ className, children }: { className: string; children: React.ReactNode }) {
+// Appearing from nothing, it opens from no height rather than pushing the chat down in one go.
+function FollowHeight({
+  className,
+  slideIn,
+  children,
+}: {
+  className: string;
+  slideIn: boolean;
+  children: React.ReactNode;
+}) {
   const inner = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | null>(null);
+  const [height, setHeight] = useState<number | null>(slideIn ? 0 : null);
   useEffect(() => {
     const el = inner.current;
     if (!el || typeof ResizeObserver === "undefined") return;

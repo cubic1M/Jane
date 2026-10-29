@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import {
@@ -15,7 +15,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { makeLink, openAccount, putIn, saveChild, takeDown } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Investing for the family (spec step 213, demo advice): a child's custodial account, a Roth
 // IRA for a child with earned income, and a gift link for their college fund.
@@ -228,7 +227,7 @@ async function Content({
 export default function FamilyPage(props: PageProps<"/investments/family">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

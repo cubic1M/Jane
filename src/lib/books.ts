@@ -298,7 +298,7 @@ export async function runBooksCheck(
       key: `transfer:${t.description.trim().toLowerCase()}`,
       accountId: t.accountId,
       detail: { amountCents: t.amountCents, date: t.date },
-      words: `A transfer of ${formatCents(t.amountCents)} on ${t.date} ("${t.description}") left one of your accounts with no matching deposit in another. If it went to an account I can't see, that's fine; link it to count it.`,
+      words: `A transfer of ${formatCents(t.amountCents)} on ${dayLabel(t.date, { year: true })} ("${t.description}") left one of your accounts with no matching deposit in another. If it went to an account I can't see, that's fine; add that account to count it.`,
     });
   }
 

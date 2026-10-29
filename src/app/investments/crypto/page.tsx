@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import {
   CRYPTO_CONNECTION_KINDS,
@@ -14,7 +14,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { linkCrypto, refreshCrypto } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { formatPercentTenths } from "@/lib/percent";
 
 // Crypto (spec step 161): seen and sized, never traded. Each balance says where it came
@@ -188,7 +187,7 @@ async function CryptoContent({
 export default function CryptoPage(props: PageProps<"/investments/crypto">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <CryptoContent searchParams={props.searchParams} />
       </Suspense>
     </main>

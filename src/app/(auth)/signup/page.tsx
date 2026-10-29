@@ -11,7 +11,11 @@ import { invitesRequired, normalizeCode } from "@/lib/invites";
 const FIELD =
   "h-12 rounded-lg border border-zinc-300 bg-transparent px-4 text-base focus-visible:outline-2 focus-visible:outline-zinc-900 dark:border-zinc-700 dark:focus-visible:outline-zinc-100";
 
-type Params = Promise<{ invite?: string | string[]; waitlist?: string | string[] }>;
+type Params = Promise<{
+  invite?: string | string[];
+  waitlist?: string | string[];
+  error?: string | string[];
+}>;
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
@@ -22,9 +26,11 @@ async function SignupForm({ searchParams }: { searchParams: Params }) {
   const invite = normalizeCode(first(params.invite) ?? "") ?? undefined;
   const closed = invitesRequired();
   const joined = first(params.waitlist) === "joined";
+  // Sent here from sign-in without an invite: the error above already says who to ask.
+  const said = first(params.error) === "InviteRequired";
   return (
     <>
-      {closed && !invite && (
+      {closed && !invite && !said && (
         <p
           role="note"
           className="rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"

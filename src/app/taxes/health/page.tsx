@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { loadHealthTaxes } from "@/lib/health-taxes";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { LoadingBar } from "@/components/loading-bar";
 
 // The tax side of health insurance (spec step 269): a Marketplace credit against real income
 // (a mid-year rise caught before it becomes a bill), HSA deposits against the limit, and medical
@@ -107,7 +106,7 @@ async function Content() {
 export default function HealthTaxesPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Content />
       </Suspense>
     </main>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { dayLabel } from "@/lib/day-label";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { formatCents } from "@/lib/money";
@@ -14,7 +14,6 @@ import {
   settleLoanAction,
 } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Money between family and friends (spec step 226): who owes whom, kept kindly. A transfer is
 // a loan only after the person says so, Jane never messages the other person, and a reminder
@@ -209,7 +208,7 @@ async function FamilyContent({ searchParams }: Pick<PageProps<"/loans/family">, 
 export default function FamilyPage({ searchParams }: PageProps<"/loans/family">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <FamilyContent searchParams={searchParams} />
       </Suspense>
     </main>

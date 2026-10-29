@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import {
   DOCUMENT_KINDS,
@@ -23,7 +23,6 @@ import { requireUser } from "@/lib/session";
 import { deleteDocument } from "./actions";
 import { FactsSection, UploadForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Insurance policies, warranties and receipts (spec step 68).
 
@@ -186,7 +185,7 @@ async function DocumentsContent() {
 export default function DocumentsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <DocumentsContent />
       </Suspense>
     </main>

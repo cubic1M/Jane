@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { Suspense } from "react";
 import { AccountList } from "@/components/account-list";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { isFirstDetectionComplete, moneyFound } from "@/detection/engine";
 import { listAccountSummaries } from "@/lib/accounts";
@@ -239,7 +239,7 @@ function MoreMonths({ days }: { days: number }) {
 export default function ReportPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <ReportContent />
       </Suspense>
     </main>

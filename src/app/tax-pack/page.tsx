@@ -2,14 +2,13 @@ import Link from "next/link";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { IRS_ESTIMATED_TAX_URL, type PreparerGroup } from "@/config/tax-pack";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { selectableYears, taxYearFrom, type PackGroup } from "@/planning/tax-pack";
 import { QUARTER_LABELS, TAX_PACK_COPY as COPY } from "@/planning/tax-pack-copy";
-import { LoadingBar } from "@/components/loading-bar";
 import { dayLabel } from "@/lib/day-label";
 import { EmptyState } from "@/components/empty-state";
 
@@ -325,7 +324,7 @@ async function TaxPackContent({
 export default function TaxPackPage({ searchParams }: PageProps<"/tax-pack">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <TaxPackContent searchParams={searchParams} />
       </Suspense>
     </main>

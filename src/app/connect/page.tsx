@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { plaidEnabled } from "@/lib/plaid/client";
@@ -10,7 +10,6 @@ import { requireUser } from "@/lib/session";
 import { linkDemo } from "./demo-actions";
 import { LinkButton } from "./link-button";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { SUGGESTED_UPLOAD_MONTHS, UPLOAD_REASSURANCE } from "@/config/import";
 
 const PRIMARY_BUTTON =
@@ -212,7 +211,7 @@ async function ConnectContent() {
 export default function ConnectPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <ConnectContent />
       </Suspense>
     </main>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { US_STATES } from "@/config/referrals";
 import { INCOME_KIND_ORDER, TAX_YEAR } from "@/config/tax";
 import { requireUser } from "@/lib/session";
@@ -21,7 +21,6 @@ import { parseChildren } from "@/lib/family-taxes";
 import { loadResidency } from "@/lib/tax-states";
 import { localitiesIn } from "@/planning/tax-states";
 import { defaultTaxYear } from "@/planning/tax-pack";
-import { LoadingBar } from "@/components/loading-bar";
 import { centsToInput } from "@/lib/money";
 
 // The tax profile (spec step 118): every answer, and what Jane found, can be changed here.
@@ -188,7 +187,7 @@ async function ProfileContent() {
 export default function TaxProfilePage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <ProfileContent />
       </Suspense>
     </main>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { NET_WORTH_MONTHS } from "@/config/net-worth";
 import { monthsEnding } from "@/insights/spending";
@@ -14,7 +14,6 @@ import { cryptoTotal } from "@/lib/crypto/crypto";
 import { requireUser } from "@/lib/session";
 import { BooksNotice } from "@/components/books-notice";
 import { openBooks } from "@/lib/books";
-import { LoadingBar } from "@/components/loading-bar";
 import { monthLabel } from "@/lib/day-label";
 
 async function NetWorthContent() {
@@ -218,7 +217,7 @@ async function NetWorthContent() {
 export default function NetWorthPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <NetWorthContent />
       </Suspense>
     </main>

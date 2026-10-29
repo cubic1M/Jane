@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { BudgetList } from "@/components/budget-list";
@@ -12,7 +12,6 @@ import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { HorizontalBars, MonthBars } from "./bars";
-import { LoadingBar } from "@/components/loading-bar";
 import { monthLabel } from "@/lib/day-label";
 
 async function Insights() {
@@ -103,7 +102,7 @@ async function Insights() {
 export default function InsightsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar label="Adding things up" />}>
+      <Suspense fallback={<PageLoading label="Adding things up" />}>
         <Insights />
       </Suspense>
     </main>
