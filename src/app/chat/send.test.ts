@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // the chat, and shows a refusal (empty, too long, too many) without logging the text.
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+// This sign-in's chat starts here (src/lib/chat-start.ts).
+const SINCE = vi.hoisted(() => new Date("2026-10-29T15:00:00Z"));
+vi.mock("@/lib/chat-start", () => ({ currentChatStart: vi.fn(async () => SINCE) }));
 vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async () => ({ id: "u1", email: "alex@example.com" })),
 }));
@@ -39,7 +42,8 @@ describe("sendMessage", () => {
   it("sends for the signed-in person and refreshes the chat", async () => {
     vi.mocked(sendToJane).mockResolvedValue({} as never);
     const state = await sendMessage(start, form("cancel Hulu"));
-    expect(sendToJane).toHaveBeenCalledWith("u1", "cancel Hulu");
+    // Only this sign-in's conversation is the answer's history.
+    expect(sendToJane).toHaveBeenCalledWith("u1", "cancel Hulu", { since: SINCE });
     expect(revalidatePath).toHaveBeenCalledWith("/chat");
     expect(state.error).toBeNull();
     expect(state.sentAt).toBeGreaterThan(0);

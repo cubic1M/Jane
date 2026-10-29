@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { alertPrefs, withoutAlertEmails } from "@/lib/alerts";
 import { track } from "@/lib/analytics";
+import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { userFromUnsubscribeToken } from "@/lib/digest/unsubscribe";
 import { chatNotifyPrefs, withoutChatEmails } from "@/lib/jane-agent/notify-prefs";
@@ -46,7 +47,13 @@ export async function POST(request: Request) {
       where: { id: userId },
       data: { digestEnabled: false },
     });
-    if (count > 0) await track(userId, "digest_unsubscribed", {});
+    if (count > 0) {
+      await logAudit({ type: "user", id: userId }, "digest_unsubscribed", {
+        type: "user",
+        id: userId,
+      });
+      await track(userId, "digest_unsubscribed", {});
+    }
   }
 
   if (url.searchParams.get("from") === "page") {

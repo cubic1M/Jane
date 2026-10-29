@@ -3,7 +3,7 @@ import { REAL_ACCOUNT_ADVICE } from "@/config/advice";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { isDemoItemId } from "@/lib/plaid/demo";
+import { isDemoOnly } from "@/lib/digest/recipients";
 import { isTrialUser } from "@/lib/trial-ids";
 import { cachedRead } from "@/lib/read-cache";
 
@@ -37,8 +37,10 @@ async function adviceModeFrom(userId: string, client: PrismaClient): Promise<boo
     db.plaidItems.findMany({ select: { plaidItemId: true } }),
     db.accounts.count({ where: { source: "csv" } }),
   ]);
-  const demoOnly =
-    items.length > 0 && csvAccounts === 0 && items.every((i) => isDemoItemId(i.plaidItemId));
+  const demoOnly = isDemoOnly(
+    items.map((i) => i.plaidItemId),
+    csvAccounts,
+  );
   // Real data: off until REAL_ACCOUNT_ADVICE says otherwise (it doesn't).
   if (!demoOnly) return REAL_ACCOUNT_ADVICE;
   // Spec step 138: a trial person is sample data by construction, so always.

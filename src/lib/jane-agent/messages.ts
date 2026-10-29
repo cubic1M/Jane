@@ -32,20 +32,29 @@ type Options = { client?: PrismaClient; now?: Date };
 // ("reply") don't count either: typing before the day's first visit still gets a brief.
 const JANE_KINDS = ["brief", "decision", "done", "heads_up"];
 
+// Each sign-in starts the chat fresh (src/lib/chat-start.ts): with `since`, only what came after.
+export const sinceSignIn = (since: Date | undefined) =>
+  since ? { createdAt: { gte: since } } : {};
+
 // The newest messages, oldest first (the newest at the bottom of the chat). `pages` is how
-// many pages of CHAT_PAGE_SIZE to show ("Show earlier" adds one).
+// many pages of CHAT_PAGE_SIZE to show ("Show earlier" adds one), and only from this sign-in
+// on when `since` is given.
 export async function chatFeed(
   userId: string,
   {
     client = defaultClient,
     pages = 1,
     now = new Date(),
-  }: { client?: PrismaClient; pages?: number; now?: Date } = {},
+    since,
+  }: { client?: PrismaClient; pages?: number; now?: Date; since?: Date } = {},
 ): Promise<{ messages: ChatMessage[]; hasEarlier: boolean }> {
   const take = CHAT_PAGE_SIZE * Math.max(1, pages);
   const rows = await scopedFor(userId, client).janeMessages.findMany({
     // Spec step 83: a message the person said "Not now" to stays hidden until then.
-    where: { OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }] },
+    where: {
+      OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
+      ...sinceSignIn(since),
+    },
     select: MESSAGE_SELECT,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: take + 1,
@@ -351,10 +360,11 @@ export async function setPinned(
 // Spec step 96: the person's pinned messages, newest first.
 export async function pinnedMessages(
   userId: string,
-  { client = defaultClient }: { client?: PrismaClient } = {},
+  { client = defaultClient, since }: { client?: PrismaClient; since?: Date } = {},
 ): Promise<ChatMessage[]> {
   const rows = await scopedFor(userId, client).janeMessages.findMany({
-    where: { refs: { path: ["pinned"], equals: true } },
+    // Only those the chat shows, so each pin's link lands on its message.
+    where: { refs: { path: ["pinned"], equals: true }, ...sinceSignIn(since) },
     orderBy: { createdAt: "desc" },
     select: MESSAGE_SELECT,
     take: CHAT_PAGE_SIZE,

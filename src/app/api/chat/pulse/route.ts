@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { currentChatStart } from "@/lib/chat-start";
 import { scopedFor } from "@/lib/db-scoped";
+import { sinceSignIn } from "@/lib/jane-agent/messages";
 import { getCurrentUser } from "@/lib/session";
 
 // Polled by the open chat during the first scan (ScanRefresher): how many messages the chat
@@ -10,7 +12,10 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const count = await scopedFor(user.id).janeMessages.count({
     // The same rule as the chat's feed (src/lib/jane-agent/messages.ts, chatFeed).
-    where: { OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: new Date() } }] },
+    where: {
+      OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: new Date() } }],
+      ...sinceSignIn(await currentChatStart()),
+    },
   });
   return NextResponse.json({ count }, { headers: { "cache-control": "no-store" } });
 }

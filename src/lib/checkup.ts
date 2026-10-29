@@ -1,19 +1,25 @@
 import { checkup, type CheckLine } from "@/detection/checkup";
 import { loadDetectionInput } from "@/detection/engine";
+import type { DetectionInput } from "@/detection/types";
 import type { FindingType, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 
 // The report's checkup for one person (src/detection/checkup.ts). Read-only: the same input the
 // scan reads, and the subscription answers Claude already gave, so it never calls Claude.
-// `open` is the findings the report lists, so their checks always say found.
+// `open` is the findings the report lists, so their checks always say found. `input` is the
+// detection input when the caller already read it (the weekly email shares one with its changes).
 export async function loadCheckup(
   userId: string,
   open: readonly FindingType[],
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    input: given,
+  }: { client?: PrismaClient; now?: Date; input?: DetectionInput } = {},
 ): Promise<CheckLine[]> {
   const [input, answers] = await Promise.all([
-    loadDetectionInput(userId, { client, now }),
+    given ?? loadDetectionInput(userId, { client, now }),
     scopedFor(userId, client).subscriptionChecks.findMany({
       select: { merchantKey: true, isSubscription: true },
     }),

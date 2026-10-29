@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { count } = vi.hoisted(() => ({ count: vi.fn() }));
 vi.mock("@/lib/session", () => ({ getCurrentUser: vi.fn() }));
+// This sign-in's chat starts here (src/lib/chat-start.ts).
+const SINCE = vi.hoisted(() => new Date("2026-10-29T15:00:00Z"));
+vi.mock("@/lib/chat-start", () => ({ currentChatStart: vi.fn(async () => SINCE) }));
 vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn(() => ({ janeMessages: { count } })) }));
 
 import { scopedFor } from "@/lib/db-scoped";
@@ -27,5 +30,7 @@ describe("GET /api/chat/pulse", () => {
     expect(await response.json()).toEqual({ count: 4 });
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(scopedFor).toHaveBeenCalledWith("user_1");
+    // Counted as the chat shows them: only this sign-in's.
+    expect(count.mock.calls[0][0].where.createdAt).toEqual({ gte: SINCE });
   });
 });
