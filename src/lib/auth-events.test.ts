@@ -7,11 +7,13 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 vi.mock("@/lib/db", () => ({ db: { user: { updateMany } } }));
 vi.mock("@/lib/terms", () => ({ TERMS_COOKIE: "fc_terms", acceptTerms: vi.fn() }));
+vi.mock("@/lib/share-invites", () => ({ recordInviteJoined: vi.fn() }));
 
 import { track } from "@/lib/analytics";
 import { TERMS_VERSION } from "@/config/legal";
 import { logAudit } from "@/lib/audit";
 import { acceptTerms } from "@/lib/terms";
+import { recordInviteJoined } from "@/lib/share-invites";
 import { logAuthError, recordSignIn, signInMethod } from "./auth-events";
 
 const USER = { type: "user", id: "user_1" };
@@ -38,6 +40,20 @@ describe("recordSignIn", () => {
     });
 
     expect(acceptTerms).toHaveBeenCalledWith("user_1", { via: "signup" });
+  });
+
+  it("counts a new account from a share link as joined, and never a returning one", async () => {
+    vi.mocked(recordInviteJoined).mockReset();
+    await recordSignIn({
+      user: { id: "user_1", email: "friend@example.com" },
+      account: { provider: "resend" },
+      isNewUser: true,
+    });
+    expect(recordInviteJoined).toHaveBeenCalledWith("user_1", "friend@example.com");
+
+    vi.mocked(recordInviteJoined).mockReset();
+    await recordSignIn({ user: { id: "user_1", email: "friend@example.com" }, isNewUser: false });
+    expect(recordInviteJoined).not.toHaveBeenCalled();
   });
 
   it("makes ADMIN_EMAILS admins on sign-in, once", async () => {

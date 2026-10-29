@@ -5,6 +5,7 @@ import { ANONYMOUS_ID_COOKIE } from "@/lib/analytics-events";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
+import { recordInviteJoined } from "@/lib/share-invites";
 import { TERMS_COOKIE, acceptTerms } from "@/lib/terms";
 import { TERMS_VERSION } from "@/config/legal";
 
@@ -31,6 +32,8 @@ export async function recordSignIn({ user, account, isNewUser }: SignInEvent): P
     // The anonymous id ties the sign-up back to the visitor's landing-page events.
     const anonymousId = (await cookies()).get(ANONYMOUS_ID_COOKIE)?.value ?? null;
     await track(user.id, "signup_completed", { method, anonymous_id: anonymousId });
+    // Joined from a beta user's share link: the last step of the invite funnel.
+    if (user.email) await recordInviteJoined(user.id, user.email);
     // Consent given on /signup, if this browser is the one that signed up.
     if ((await cookies()).get(TERMS_COOKIE)?.value === TERMS_VERSION) {
       await acceptTerms(user.id, { via: "signup" });
