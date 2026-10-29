@@ -357,7 +357,8 @@ describe.runIf(url)("what Jane knows, against a real database", () => {
         data: { userId, kind: "user", body: "I rent", dedupeKey: `typed:${userId}` },
       });
     }
-    await cleanUpTrials({ client });
+    // Only this test's own: other files' trials in the shared database are mid-test.
+    await cleanUpTrials({ client, userIds: [trialId, realId] });
     expect(await client.userFact.count({ where: { userId: trialId } })).toBe(0);
     expect(await client.janeMessage.count({ where: { userId: trialId } })).toBe(0);
     expect(await client.userFact.count({ where: { userId: realId } })).toBe(1);

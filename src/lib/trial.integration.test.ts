@@ -151,6 +151,17 @@ describe.runIf(url)("trying Jane with sample data", { timeout: 120_000 }, () => 
     expect(await client.analyticsEvent.count({ where: { userId } })).toBe(0);
   });
 
+  it("deletes only the trial people it is given, when given some", async () => {
+    const expired = new Date(NOW.getTime() - (TRIAL_HOURS + 1) * HOUR);
+    const mine = await start(expired);
+    const theirs = await start(expired);
+    expect(await cleanUpTrials({ client, now: NOW, userIds: [mine.userId] })).toBe(1);
+    expect(await client.user.findUnique({ where: { id: mine.userId } })).toBeNull();
+    // Another test file's trial, mid-test, stays.
+    expect(await client.user.findUnique({ where: { id: theirs.userId } })).not.toBeNull();
+    await client.user.delete({ where: { id: theirs.userId } });
+  });
+
   it("deletes trial people once their day is up, and never anyone else", async () => {
     const old = await start(new Date(NOW.getTime() - (TRIAL_HOURS + 1) * HOUR));
     const real = await client.user.create({
