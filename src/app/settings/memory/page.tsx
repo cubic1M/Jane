@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
-import { LoadingBar } from "@/components/loading-bar";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { SubmitButton } from "@/components/submit-button";
 import type { FactSource } from "@/config/memory";
 import { dayLabel } from "@/lib/day-label";
@@ -150,7 +149,7 @@ async function MemoryContent() {
 export default function MemoryPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar label="Loading what Jane knows" />}>
+      <Suspense fallback={<PageLoading label="Loading what Jane knows" />}>
         <MemoryContent />
       </Suspense>
     </main>
