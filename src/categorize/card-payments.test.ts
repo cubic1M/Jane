@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ScopedDb } from "@/lib/db-scoped";
-import { cardPaymentOutflows, matchCardPayments, type PairableRow } from "./card-payments";
+import {
+  cardPaymentNames,
+  cardPaymentOutflows,
+  matchCardPayments,
+  type PairableRow,
+} from "./card-payments";
 
 const accounts = [
   { id: "chk", type: "depository" },
@@ -61,6 +66,47 @@ describe("cardPaymentOutflows", () => {
     });
     expect(cardPaymentOutflows([rent, thanks("in", "2026-10-01")], accounts)).toEqual([]);
     expect(cardPaymentOutflows([guessed, thanks("in", "2026-10-01")], accounts)).toEqual(["guess"]);
+  });
+});
+
+describe("cardPaymentNames", () => {
+  const named = [
+    { id: "chk", type: "depository", name: "Chase checking" },
+    { id: "card", type: "credit", name: "Chase Freedom" },
+    { id: "amex", type: "credit", name: "Amex Gold" },
+  ];
+  const paid = (id: string, overrides: Partial<PairableRow & { description: string }> = {}) => ({
+    ...row(id, { pfcDetailed: CARD_PAYMENT }),
+    description: "ONLINE PAYMENT 0042",
+    ...overrides,
+  });
+
+  it("names both sides of a payment for the card it paid (QA round 32)", () => {
+    const names = cardPaymentNames([paid("out"), thanks("in", "2026-10-02")], named);
+    expect(names.get("out")).toBe("Chase Freedom payment");
+    expect(names.get("in")).toBe("Chase Freedom payment");
+  });
+
+  it("names an outflow with no card side from the company its words name", () => {
+    const names = cardPaymentNames(
+      [
+        paid("amex", { description: "AMEX EPAYMENT ACH PMT" }),
+        paid("citi", { description: "CITI AUTOPAY" }),
+      ],
+      named,
+    );
+    expect(names.get("amex")).toBe("Amex Gold payment");
+    expect(names.get("citi")).toBe("Citi card payment");
+  });
+
+  it("keeps the bank's words when they name no card company", () => {
+    expect(cardPaymentNames([paid("out")], named).has("out")).toBe(false);
+  });
+
+  it("names only card payments", () => {
+    const rent = { ...row("rent", { pfcDetailed: "RENT_AND_UTILITIES_RENT" }), description: "x" };
+    const refund = row("refund", { accountId: "card", amountCents: -500, pfcDetailed: null });
+    expect(cardPaymentNames([rent, refund], named).size).toBe(0);
   });
 });
 
