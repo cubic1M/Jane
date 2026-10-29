@@ -1990,6 +1990,14 @@ model InviteCode {
   revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(3)
   expiresAt   DateTime? @map("expires_at") @db.Timestamptz(3)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  // A beta user's own share link (src/lib/share-card.ts): one per person, reused each time
+  // they share. Null for the codes the team makes.
+  sharedById  String?   @unique @map("shared_by_id")
+  // The result card the link shows, as it was when they last shared it: "found" with whole
+  // dollars a year (already rounded), or "checked" with how many checks Jane ran. Nothing
+  // else about the person.
+  cardKind    String?   @map("card_kind")
+  cardValue   Int?      @map("card_value")
 
   access BetaAccess[]
 

@@ -49,6 +49,8 @@ const OUTSIDE = [
   "/accountant/[token]",
   // Spec step 213: a gift link to a child's college fund.
   "/gift/[token]",
+  // A beta user's share link: the invite page a friend lands on.
+  "/join/[code]",
 ];
 const outside = (route: string) => OUTSIDE.includes(route) || route.startsWith("/admin");
 

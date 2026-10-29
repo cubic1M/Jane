@@ -3,6 +3,7 @@ import { loadBetaMetrics, type BetaMetrics } from "@/lib/beta-metrics";
 import { loadMetrics, type Metrics } from "@/lib/metrics";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
+import { inviteFunnel, type InviteFunnel } from "@/lib/share-invites";
 import { AdminNav } from "../admin-nav";
 import { LoadingBar } from "@/components/loading-bar";
 
@@ -85,10 +86,14 @@ function rows(windows: { days: number; metrics: Metrics }[]) {
 }
 
 // The closed beta's traction, all time: what goes in the application and the update emails.
-function betaRows(b: BetaMetrics): [string, string][] {
+function betaRows(b: BetaMetrics, invites: InviteFunnel): [string, string][] {
   const people = (n: number) => `${n} ${n === 1 ? "person" : "people"}`;
   return [
     ["Invited (redeemed a code)", String(b.invited)],
+    [
+      "Share links: sent, opened, joined",
+      `${invites.sent} sent, ${invites.opened} opened, ${invites.joined} joined`,
+    ],
     ["Signed up", String(b.signedUp)],
     ["Added accounts by upload", `${b.uploaded.accounts} accounts (${people(b.uploaded.users)})`],
     ["Linked accounts with Plaid", `${b.linked.accounts} accounts (${people(b.linked.users)})`],
@@ -105,9 +110,10 @@ function betaRows(b: BetaMetrics): [string, string][] {
 
 async function MetricsContent() {
   const admin = await requireAdmin();
-  const [{ windows, automateNext }, beta] = await Promise.all([
+  const [{ windows, automateNext }, beta, invites] = await Promise.all([
     loadMetrics(admin, WINDOWS),
     loadBetaMetrics(),
+    inviteFunnel(),
   ]);
   return (
     <>
@@ -123,7 +129,7 @@ async function MetricsContent() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <tbody>
-              {betaRows(beta).map(([name, value]) => (
+              {betaRows(beta, invites).map(([name, value]) => (
                 <Row key={name} name={name} values={[value]} />
               ))}
             </tbody>
