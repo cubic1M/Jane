@@ -538,12 +538,24 @@ async function InvestmentsContent({
       )}
 
       {data.accounts.length === 0 && (
-        <p className="text-zinc-600 dark:text-zinc-400">
-          No investment or retirement accounts yet. When you{" "}
-          <Link href="/connect" className={LINK}>
-            link one
-          </Link>
-          , what it holds shows here.
+        <p data-investments-empty="" className="text-zinc-600 dark:text-zinc-400">
+          {/* The closed beta adds accounts by upload (QA round 32: "When you link one"). */}
+          No investment or retirement accounts yet.{" "}
+          {canImportCsv(user) ? (
+            <>
+              <Link href="/import/investments" className={LINK}>
+                Upload a positions download
+              </Link>{" "}
+              from Fidelity, Schwab, Vanguard or Robinhood, and what it holds shows here.
+            </>
+          ) : (
+            <>
+              <Link href="/connect" className={LINK}>
+                Add your accounts
+              </Link>{" "}
+              and what they hold shows here.
+            </>
+          )}
         </p>
       )}
 

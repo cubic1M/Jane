@@ -1,7 +1,5 @@
+import { cardPaymentNameFromWords } from "@/categorize/card-payments";
 import {
-  CARD_ISSUERS,
-  CARD_ISSUER_SHORT,
-  CARD_PAYMENT_NAME,
   FORECAST_SUBTYPES,
   NOT_BILL_CATEGORIES,
   NOT_BILL_HABIT_FREQUENCIES,
@@ -136,20 +134,9 @@ export const isBillStream = (s: Stream) => !NOT_BILL_CATEGORIES.includes(s.pfcDe
 // one Jane hasn't seen).
 export function billName(s: Stream, accounts: readonly DetectionAccount[] = []): string {
   if (s.pfcDetailed !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT") return s.merchant;
-  const cards = accounts.filter((a) => a.type === "credit");
-  const own = cards.find((a) => a.id === s.accountId);
+  const own = accounts.find((a) => a.type === "credit" && a.id === s.accountId);
   if (own) return `${own.name} payment`;
-  const said = `${s.charges[0]?.description ?? ""} ${s.merchant}`;
-  const issuer = CARD_ISSUERS.find(([pattern]) => pattern.test(said))?.[1];
-  const named = issuer
-    ? cards.find((a) =>
-        [issuer, ...(CARD_ISSUER_SHORT[issuer] ?? [])].some((n) =>
-          a.name.toLowerCase().includes(n.toLowerCase()),
-        ),
-      )
-    : undefined;
-  if (named) return `${named.name} payment`;
-  return issuer ? `${issuer} card payment` : CARD_PAYMENT_NAME;
+  return cardPaymentNameFromWords(`${s.charges[0]?.description ?? ""} ${s.merchant}`, accounts);
 }
 
 // Money the person moves to their own savings or investments on a schedule: never a bill

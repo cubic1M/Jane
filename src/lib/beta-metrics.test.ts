@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
-import { computeBetaMetrics, type BetaRows } from "./beta-metrics";
+import { betaPeople, computeBetaMetrics, type BetaRows } from "./beta-metrics";
 
 const user = (id: string, email = `${id}@example.com`, role: "user" | "admin" = "user") => ({
   id,
@@ -62,6 +62,29 @@ describe("computeBetaMetrics", () => {
     expect(m.linked).toEqual({ users: 0, accounts: 0 });
     expect(m.withFinding).toBe(0);
     expect(m.found).toEqual({ users: 2, totalCents: 0, medianCents: 0 });
+  });
+
+  it("leaves the founders' own accounts in FOUNDER_EMAILS out, and says who was left out", () => {
+    vi.stubEnv("FOUNDER_EMAILS", "me@gmail.test");
+    const rows = {
+      ...empty,
+      users: [
+        user("ana"),
+        user("me", "ME@gmail.test"),
+        user("trial_x", "x@try.jane.invalid"),
+        user("demo"),
+      ],
+      invited: [{ email: "me@gmail.test" }, { email: "ana@example.com" }],
+      accounts: [
+        { userId: "me", source: "csv" as const, demo: false },
+        { userId: "demo", source: "plaid" as const, demo: true },
+      ],
+    };
+    expect(computeBetaMetrics(rows).signedUp).toBe(1);
+    expect(computeBetaMetrics(rows).invited).toBe(1);
+    const people = betaPeople(rows);
+    expect([...people.real]).toEqual(["ana"]);
+    expect(people.excluded).toEqual({ trial: 1, team: 1, demoOnly: 1 });
   });
 
   it("counts invites without the team's own emails, once per email", () => {
