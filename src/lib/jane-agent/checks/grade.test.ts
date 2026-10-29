@@ -143,7 +143,7 @@ describe("fixedChecks", () => {
     expect(failed(good)).toEqual([]);
   });
 
-  it("holds Claude's answers to figures from the person's numbers, the question or earlier", () => {
+  it("holds Claude's answers to figures from the person's numbers or the question", () => {
     const claude = (body: string): Answer => ({ body, actions: [], source: "claude" });
     expect(failed(fixedChecks(q("x"), claude("Netflix is $17.99 a month."), facts))).toEqual([]);
     expect(failed(fixedChecks(q("x"), claude("Netflix is $19.99 a month."), facts))).toEqual([
@@ -152,9 +152,10 @@ describe("fixedChecks", () => {
     expect(failed(fixedChecks(q("is $19.99 a lot?"), claude("$19.99 is a lot."), facts))).toEqual(
       [],
     );
-    expect(
-      failed(fixedChecks(q("x"), claude("It was $19.99 a month."), facts, ["It's $19.99."])),
-    ).toEqual([]);
+    // An earlier answer isn't evidence (card-chat mismatch): only the lookups and the question.
+    expect(failed(fixedChecks(q("x"), claude("It was $19.99 a month."), facts))).toEqual([
+      "guardrails",
+    ]);
     expect(failed(fixedChecks(q("x"), claude("Buy index funds."), facts))).toEqual(["guardrails"]);
   });
 });

@@ -42,13 +42,7 @@ export function firstSentence(body: string): string {
   return end ? line.slice(0, end.index + 1) : line;
 }
 
-export function fixedChecks(
-  question: CheckQuestion,
-  answer: Answer,
-  facts: Facts,
-  // Earlier turns of this conversation: figures there can be used again.
-  earlier: readonly string[] = [],
-): Check[] {
+export function fixedChecks(question: CheckQuestion, answer: Answer, facts: Facts): Check[] {
   const { expect } = question;
   const body = answer.body.trim();
   const checks: Check[] = [];
@@ -102,7 +96,8 @@ export function fixedChecks(
 
   // Nothing the guardrails refuse. Fixed answers (the rules, the fallback) take their
   // figures from the same loaders, so only Claude's are held to the figures the lookups gave.
-  const allowed = [question.text, ...earlier].flatMap((t) => dollarFigures(t).map((f) => f.cents));
+  // As Jane's own check: the question, never an earlier answer (card-chat mismatch).
+  const allowed = dollarFigures(question.text).map((f) => f.cents);
   allowed.push(...facts.allowedCents);
   const guard = checkGuardrails(
     body,

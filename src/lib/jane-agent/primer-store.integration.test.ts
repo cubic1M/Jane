@@ -11,7 +11,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { startTrial } from "@/lib/trial";
 import { chatPrimer } from "./claude-tools";
 import { forgetPrimer } from "./primer-cache";
-import { markPrimerStale, readStoredPrimer } from "./primer-store";
+import { markPrimerStale, readStoredPrimer, usablePrimer } from "./primer-store";
 
 // The person's numbers for Claude are saved after the scan and read back in one query, so the
 // chat doesn't look every sector up while someone waits.
@@ -49,11 +49,9 @@ describe.runIf(url)("the numbers for Claude, saved", { timeout: 120_000 }, () =>
     expect(stored!.at.getTime()).toBe(NOW.getTime());
   });
 
-  it("is read back in one query: the same numbers even when the data has moved on", async () => {
+  it("is read back in one query while the data is the same", async () => {
     forgetPrimer();
     const saved = (await readStoredPrimer(userId, { client }))!.primer;
-    // Change what the lookups would see; the saved copy is what the chat gets.
-    await client.transaction.deleteMany({ where: { userId } });
     const read = await chatPrimer(userId, { client, now: new Date(NOW.getTime() + 60_000) });
     expect(read.text).toBe(saved.text);
     expect(read.cents).toEqual(saved.cents);
@@ -75,5 +73,19 @@ describe.runIf(url)("the numbers for Claude, saved", { timeout: 120_000 }, () =>
       },
       { timeout: 60_000, interval: 250 },
     );
+  });
+
+  it("isn't said once the data has changed, or on another day (card-chat mismatch)", async () => {
+    forgetPrimer();
+    const later = new Date(NOW.getTime() + 180_000);
+    const saved = (await readStoredPrimer(userId, { client }))!.primer;
+    // A copy from yesterday is worked out again.
+    const tomorrow = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
+    expect(usablePrimer((await readStoredPrimer(userId, { client }))!, null, tomorrow)).toBe(false);
+    // A bank disconnected or a file removed: the saved numbers had its money in them.
+    await client.transaction.deleteMany({ where: { userId } });
+    const read = await chatPrimer(userId, { client, now: later });
+    expect(read.text).not.toBe(saved.text);
+    expect((await readStoredPrimer(userId, { client }))!.at.getTime()).toBe(later.getTime());
   });
 });

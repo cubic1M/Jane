@@ -92,7 +92,9 @@ import { guessLine } from "./replies-life";
 import { BLOCK_KINDS } from "./block-data";
 import { listPreferences } from "./preferences";
 import { cachedPrimer, keepPrimer } from "./primer-cache";
-import { isStale, readStoredPrimer, writeStoredPrimer } from "./primer-store";
+import { isStale, readStoredPrimer, usablePrimer, writeStoredPrimer } from "./primer-store";
+import { dataStamp } from "@/lib/data-stamp";
+import { openProposals } from "@/lib/proposals";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
 import { findingCandidate } from "./sources/findings";
@@ -347,6 +349,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "alerts",
     description:
       'The person\'s unread alerts (spec step 192): fees, big or odd charges, price rises, bills coming up and low balances, newest first, each with what it says. Use it for "any alerts for me" and "did anything weird happen".',
+    input_schema: noInput,
+  },
+  {
+    name: "suggestions",
+    description:
+      'What Jane has put in front of the person right now, from the rows behind its cards: the day\'s suggestions (what each is worth, why this person, how sure), the budgets and goals it proposed, and this week\'s plan. Use it before answering about one of those cards ("what\'s this $2,503 idle cash thing", "why do you want me to save $23,600").',
     input_schema: noInput,
   },
   {
@@ -1120,6 +1128,59 @@ async function runChatToolWork(
         })),
       });
     }
+    case "suggestions": {
+      // The rows behind the cards, not the cards' text (card-chat mismatch): a suggestion still
+      // offered, a proposal still open, the plan as the snapshot has it now.
+      const [offered, proposed, snapshot] = await Promise.all([
+        scopedFor(userId, client).suggestions.findMany({
+          where: { status: { in: ["waiting", "selected"] } },
+          orderBy: [{ score: "desc" }, { key: "asc" }],
+          take: 10,
+          select: {
+            title: true,
+            worthCents: true,
+            worthKind: true,
+            why: true,
+            confidencePercent: true,
+            confidenceReason: true,
+          },
+        }),
+        openProposals(userId, { client }),
+        loadSnapshotFast(userId, { client, now }),
+      ]);
+      return out({
+        suggestions: offered.map((o) => ({
+          what: o.title,
+          worth: money(o.worthCents),
+          worthKind: o.worthKind,
+          why: o.why,
+          sure: `${o.confidencePercent}%: ${o.confidenceReason}`,
+        })),
+        proposed: proposed.map((p) =>
+          p.kind === "budget"
+            ? { budget: p.category, monthly: money(p.amountCents) }
+            : p.kind === "goal"
+              ? {
+                  goal: p.name,
+                  target: money(p.targetCents),
+                  by: p.targetDate,
+                  averageMonthlySpending: money(p.monthlySpendingCents),
+                  ...(p.basis ? { basis: p.basis } : {}),
+                  ...(p.monthlySetAsideCents !== undefined
+                    ? { monthlySetAside: money(p.monthlySetAsideCents) }
+                    : {}),
+                }
+              : { categorize: p.merchantName, as: p.detailed },
+        ),
+        thisWeeksPlan: snapshot?.plan.items
+          ? {
+              things: snapshot.plan.items,
+              worthAYear: money(snapshot.plan.annualSavingsCents),
+              safeToJustDo: snapshot.plan.safeItems,
+            }
+          : null,
+      });
+    }
     case "household": {
       const household = await householdOf(userId, { client });
       if (!household) return out({ note: "They aren't sharing with a partner." });
@@ -1522,14 +1583,16 @@ export async function refreshPrimer(userId: string, options: Options): Promise<v
   await refreshSnapshot(userId, options).catch((error) =>
     console.error("Saving the snapshot failed", { error: String(error) }),
   );
+  const stamp = await dataStamp(userId, options.client);
   const primer = await computePrimer(userId, options);
   keepPrimer(userId, options.now, primer);
-  await writeStoredPrimer(userId, primer, options);
+  await writeStoredPrimer(userId, primer, { ...options, stamp });
 }
 
 // Spec step 93: reused for a minute in memory, and saved in the database: one query for the
 // chat to read instead of every sector's lookup. A saved copy that is old is still used at
-// once and refreshed behind it; with none yet, they are worked out here, once.
+// once and refreshed behind it; with none yet, one from another day or one from other data (a
+// bank disconnected, a file uploaded: usablePrimer), they are worked out here, once.
 const refreshing = new Set<string>();
 export async function chatPrimer(
   userId: string,
@@ -1537,8 +1600,11 @@ export async function chatPrimer(
 ): Promise<{ text: string; cents: number[] }> {
   const cached = cachedPrimer(userId, now);
   if (cached) return cached;
-  const stored = await readStoredPrimer(userId, { client });
-  if (stored && stored.primer.text !== "") {
+  const [stored, stamp] = await Promise.all([
+    readStoredPrimer(userId, { client }),
+    dataStamp(userId, client),
+  ]);
+  if (stored && stored.primer.text !== "" && usablePrimer(stored, stamp, now)) {
     keepPrimer(userId, now, stored.primer);
     if (isStale(stored.at, now) && !refreshing.has(userId)) {
       refreshing.add(userId);
@@ -1550,7 +1616,7 @@ export async function chatPrimer(
   }
   const primer = await computePrimer(userId, { client, now });
   keepPrimer(userId, now, primer);
-  await writeStoredPrimer(userId, primer, { client, now });
+  await writeStoredPrimer(userId, primer, { client, now, stamp });
   return primer;
 }
 

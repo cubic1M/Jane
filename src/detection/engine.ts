@@ -24,12 +24,12 @@ import { budgetSummary, overBudgetAlerts } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { detectAlerts, dueReportedCategories } from "./alerts";
 import { detect } from "./detect";
-import { withDirectory } from "./merchants";
+import { namedByDirectory, withDirectory } from "./merchants";
 import { atLeast } from "./helpers";
 import { isAmbiguousRecurring } from "./rules/subscription-review";
 import { buildStreams } from "./streams";
 import { SUBSCRIPTION_PROMPT_VERSION, checkSubscriptions } from "@/lib/subscription-check";
-import type { Candidate, DetectionInput } from "./types";
+import type { Candidate, DetectionInput, DetectionTransaction } from "./types";
 import { isoDate, monthsBefore } from "./units";
 import { copiesToLeaveOut } from "@/planning/books";
 import { cachedRead } from "@/lib/read-cache";
@@ -140,6 +140,19 @@ function contentOf(candidate: Candidate) {
   };
 }
 
+const TRANSACTION_SELECT = {
+  id: true,
+  accountId: true,
+  plaidTransactionId: true,
+  date: true,
+  amountCents: true,
+  description: true,
+  merchantName: true,
+  pfcPrimary: true,
+  pfcDetailed: true,
+  categorySource: true,
+} as const;
+
 async function loadInput(
   db: ScopedDb,
   asOf: string,
@@ -165,18 +178,7 @@ async function loadInput(
         pending: false,
         date: { gt: new Date(`${cutoff}T00:00:00Z`), lte: new Date(`${asOf}T00:00:00Z`) },
       },
-      select: {
-        id: true,
-        accountId: true,
-        plaidTransactionId: true,
-        date: true,
-        amountCents: true,
-        description: true,
-        merchantName: true,
-        pfcPrimary: true,
-        pfcDetailed: true,
-        categorySource: true,
-      },
+      select: TRANSACTION_SELECT,
       orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
     db.recurringStreams.findMany({ orderBy: { id: "asc" } }),
@@ -241,6 +243,37 @@ async function loadInput(
           : [];
       }),
     },
+    directory,
+  );
+}
+
+// The person's settled transactions from one day through another (YYYY-MM-DD, both included),
+// read the way detection reads them (loadInput): an account linked twice counts once and names
+// come from the merchant directory. The chat's search reads through it, so it finds what the
+// cards and pages name (card-chat mismatch: the card said "Apple Store", the search had "Apple").
+export async function loadTransactionsBetween(
+  userId: string,
+  { client = defaultClient, from, to }: { client?: PrismaClient; from: string; to: string },
+): Promise<DetectionTransaction[]> {
+  const db = scopedFor(userId, client);
+  const [accounts, rows, directory] = await Promise.all([
+    db.accounts.findMany({
+      select: { id: true, name: true, type: true, subtype: true, mask: true, itemId: true },
+      orderBy: { id: "asc" },
+    }),
+    db.transactions.findMany({
+      where: {
+        pending: false,
+        date: { gte: new Date(`${from}T00:00:00Z`), lte: new Date(`${to}T00:00:00Z`) },
+      },
+      select: TRANSACTION_SELECT,
+      orderBy: [{ date: "desc" }, { id: "asc" }],
+    }),
+    client.merchant.findMany({ select: { key: true, name: true, aliases: true, category: true } }),
+  ]);
+  const copies = copiesToLeaveOut(accounts);
+  return namedByDirectory(
+    rows.filter((t) => !copies.has(t.accountId)).map((t) => ({ ...t, date: isoDate(t.date) })),
     directory,
   );
 }

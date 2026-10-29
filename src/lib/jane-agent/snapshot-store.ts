@@ -2,6 +2,7 @@ import { CHAT_SNAPSHOT_STORED_MINUTES } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Snapshot } from "./snapshot";
 import { isoDay as day } from "@/lib/dates";
+import { dataStamp, sameData } from "@/lib/data-stamp";
 
 // Jane's snapshot of a person (everything the agenda, the whole-picture and priorities answers
 // and the chat's tools read), kept in the database (depth first): building it looks up every
@@ -20,12 +21,13 @@ export function reviveDates(key: string, value: unknown): unknown {
   return typeof value === "string" && /At$/.test(key) && ISO.test(value) ? new Date(value) : value;
 }
 
-type Stored = { at: string; snapshot: Snapshot | null };
+// stamp: the data it was built from (src/lib/data-stamp.ts).
+type Stored = { at: string; snapshot: Snapshot | null; stamp?: string | null };
 
 async function read(
   userId: string,
   client: PrismaClient,
-): Promise<{ at: Date; snapshot: Snapshot | null } | null> {
+): Promise<{ at: Date; snapshot: Snapshot | null; stamp: string | null } | null> {
   try {
     const row = await client.janePreference.findUnique({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
@@ -35,15 +37,24 @@ async function read(
     // The reviver needs the text form: one round trip through JSON.
     const parsed = JSON.parse(JSON.stringify(row.value), reviveDates) as Stored;
     if (typeof parsed.at !== "string") return null;
-    return { at: new Date(parsed.at), snapshot: parsed.snapshot ?? null };
+    return {
+      at: new Date(parsed.at),
+      snapshot: parsed.snapshot ?? null,
+      stamp: parsed.stamp ?? null,
+    };
   } catch {
     // No database to read (a test's stand-in) or a bad row: it is built instead.
     return null;
   }
 }
 
-async function write(userId: string, snapshot: Snapshot | null, { client, now }: Options) {
-  const value = JSON.parse(JSON.stringify({ at: now.toISOString(), snapshot })) as object;
+async function write(
+  userId: string,
+  snapshot: Snapshot | null,
+  stamp: string | null,
+  { client, now }: Options,
+) {
+  const value = JSON.parse(JSON.stringify({ at: now.toISOString(), snapshot, stamp })) as object;
   try {
     await client.janePreference.upsert({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
@@ -63,25 +74,28 @@ export async function saveSnapshot(
   snapshot: Snapshot | null,
   options: Options,
 ): Promise<void> {
-  await write(userId, snapshot, options);
+  await write(userId, snapshot, await dataStamp(userId, options.client), options);
 }
 
 // Builds a fresh snapshot and saves it. After a sync, a scan or a correction.
 export async function refreshSnapshot(userId: string, options: Options): Promise<Snapshot | null> {
   const { loadSnapshot } = await import("./snapshot");
+  // The stamp from before the build: a change during it makes the saved copy old at once.
+  const stamp = await dataStamp(userId, options.client);
   const snapshot = await loadSnapshot(userId, options);
-  await write(userId, snapshot, options);
+  await write(userId, snapshot, stamp, options);
   return snapshot;
 }
 
 const refreshing = new Set<string>();
 
 // The saved snapshot, in one query. A copy from today that is old is still returned at once and
-// refreshed behind; with none saved, or one from another day, it is built here, once.
+// refreshed behind; with none saved, one from another day, or one built from other data (a bank
+// disconnected, a file uploaded since), it is built here, once.
 export async function loadSnapshotFast(userId: string, options: Options): Promise<Snapshot | null> {
   const { client, now } = options;
-  const stored = await read(userId, client);
-  if (stored && day(stored.at) === day(now)) {
+  const [stored, stamp] = await Promise.all([read(userId, client), dataStamp(userId, client)]);
+  if (stored && day(stored.at) === day(now) && sameData(stored.stamp, stamp)) {
     const old = now.getTime() - stored.at.getTime() >= CHAT_SNAPSHOT_STORED_MINUTES * 60_000;
     if ((old || now.getTime() < stored.at.getTime()) && !refreshing.has(userId)) {
       refreshing.add(userId);

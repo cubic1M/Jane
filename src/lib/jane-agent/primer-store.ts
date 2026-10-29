@@ -1,5 +1,7 @@
 import { CHAT_PRIMER_STORED_MINUTES } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { sameData } from "@/lib/data-stamp";
+import { isoDay } from "@/lib/dates";
 import { staleAndRefreshSnapshot } from "./snapshot-store";
 
 // The person's numbers for Claude, kept in the database (spec step 93, depth first): computing
@@ -13,16 +15,23 @@ type Options = { client: PrismaClient; now: Date };
 
 const KEY = "primer";
 
+// stamp: the data the numbers were worked out from (src/lib/data-stamp.ts).
 export async function readStoredPrimer(
   userId: string,
   { client }: Pick<Options, "client">,
-): Promise<{ primer: Primer; at: Date } | null> {
+): Promise<{ primer: Primer; at: Date; builtAt: Date; stamp: string | null } | null> {
   try {
     const row = await client.janePreference.findUnique({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
       select: { value: true },
     });
-    const value = row?.value as { text?: unknown; cents?: unknown; at?: unknown } | null;
+    const value = row?.value as {
+      text?: unknown;
+      cents?: unknown;
+      at?: unknown;
+      builtAt?: unknown;
+      stamp?: unknown;
+    } | null;
     if (
       !value ||
       typeof value.text !== "string" ||
@@ -31,7 +40,13 @@ export async function readStoredPrimer(
     ) {
       return null;
     }
-    return { primer: { text: value.text, cents: value.cents as number[] }, at: new Date(value.at) };
+    return {
+      primer: { text: value.text, cents: value.cents as number[] },
+      at: new Date(value.at),
+      // When it was worked out: at is set back to 0 to mark it old (markPrimerStale).
+      builtAt: new Date(typeof value.builtAt === "string" ? value.builtAt : value.at),
+      stamp: typeof value.stamp === "string" ? value.stamp : null,
+    };
   } catch {
     // No database to read (a test's stand-in) or a bad row: the numbers are worked out instead.
     return null;
@@ -41,9 +56,9 @@ export async function readStoredPrimer(
 export async function writeStoredPrimer(
   userId: string,
   primer: Primer,
-  { client, now }: Options,
+  { client, now, stamp = null }: Options & { stamp?: string | null },
 ): Promise<void> {
-  const value = { text: primer.text, cents: primer.cents, at: now.toISOString() };
+  const value = { text: primer.text, cents: primer.cents, at: now.toISOString(), stamp };
   try {
     await client.janePreference.upsert({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
@@ -58,6 +73,16 @@ export async function writeStoredPrimer(
 export const isStale = (at: Date, now: Date) =>
   now.getTime() - at.getTime() >= CHAT_PRIMER_STORED_MINUTES * 60_000 ||
   now.getTime() < at.getTime();
+
+// Whether saved numbers may be said at all (card-chat mismatch): only ones worked out today, from
+// the data as it is now. Otherwise the chat would repeat a disconnected bank's purchase or
+// yesterday's "in 3 days". Old within the day (or after a tap) is still fine: it is used at once
+// and refreshed behind (isStale).
+export const usablePrimer = (
+  stored: { builtAt: Date; stamp: string | null },
+  stamp: string | null,
+  now: Date,
+) => isoDay(stored.builtAt) === isoDay(now) && sameData(stored.stamp, stamp);
 
 // Something changed (a tap, a correction): the saved numbers are old; the next question
 // refreshes them. Cheap, and it never fails the change.
@@ -75,9 +100,12 @@ export async function markPrimerStale(
       select: { value: true },
     });
     if (!row) return;
+    const value = row.value as { at?: string; builtAt?: string };
     await client.janePreference.update({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
-      data: { value: { ...(row.value as object), at: new Date(0).toISOString() } },
+      data: {
+        value: { ...value, at: new Date(0).toISOString(), builtAt: value.builtAt ?? value.at },
+      },
     });
   } catch {
     // Nothing saved yet, or no database: nothing to mark.

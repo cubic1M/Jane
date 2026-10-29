@@ -253,7 +253,6 @@ async function runChecks(
         question,
         { body: reply.body, actions: reply.actions, source },
         facts,
-        earlier.map((t) => t.content),
       );
       const fixed = fixedScore(checks);
       let grade: ClaudeGrade | undefined;

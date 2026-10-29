@@ -343,6 +343,29 @@ describe("askClaudeInChat", () => {
     });
   });
 
+  it("never counts an earlier answer's or a card's figure as support (card-chat mismatch)", async () => {
+    // The founder's chat: a stale card said $1,349.00, the first answer repeated it, and the
+    // next kept passing because the chat had said it before.
+    const history = [
+      { role: "user" as const, content: "whats the apple store thing" },
+      {
+        role: "assistant" as const,
+        content: "Coming up in 3 days: Return window for Apple Store ($1,349.00).",
+      },
+    ];
+    create
+      .mockResolvedValueOnce(final("Your $1,349.00 Apple Store purchase can go back in 3 days."))
+      .mockResolvedValueOnce(final("I can't find an Apple Store purchase in your accounts now."));
+    const result = await askClaudeInChat("u1", history, "can i still return it?", options);
+    expect(result.reply.body).toBe("I can't find an Apple Store purchase in your accounts now.");
+    // Told why: the amount isn't in their numbers or a lookup.
+    expect(JSON.stringify(create.mock.calls.at(-1)?.[0].messages.at(-1))).toMatch(/\$1,349\.00/);
+    // The person's own figure still counts: "can I afford a $500 TV?" says $500.
+    create.mockResolvedValueOnce(final("A $500.00 TV would fit this month."));
+    const own = await askClaudeInChat("u1", history, "can i afford a $500 tv", options);
+    expect(own.reply.body).toBe("A $500.00 TV would fit this month.");
+  });
+
   it("asks for a shorter answer once when it is long or a list nobody asked for", async () => {
     const long = `${"Your spending is a bit high this month, mostly on food and shopping. ".repeat(10)}`;
     create

@@ -1,9 +1,9 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { ASK_DEFAULT_SEARCH_DAYS, ASK_MAX_UPCOMING_DAYS, ASK_SEARCH_LIMIT } from "@/config/ask";
 import { INSIGHT_MONTHS } from "@/config/insights";
-import { NON_SPENDING_PRIMARIES } from "@/config/detection";
+import { CARD_PAYMENT_NAME, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { loadDetectionInput } from "@/detection/engine";
+import { loadDetectionInput, loadTransactionsBetween } from "@/detection/engine";
 import { upcomingBills } from "@/detection/forecast";
 import { addDays, isoDate } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -108,6 +108,17 @@ function displayMerchant(t: {
   return t.merchantName ?? normalizeMerchant(t.description)?.name ?? "Unknown merchant";
 }
 
+const CARD_PAYMENT_DETAILED = "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT";
+
+// A card payment by the names Jane gives it elsewhere (src/detection/forecast.ts billName):
+// "Credit card payment", "Chase card payment", "Chase Freedom payment", whatever the bank wrote
+// ("CARD PAYMENT THANK YOU"). A named one needs its first word in the bank's words.
+function cardPaymentAsked(asked: string, words: string): boolean {
+  if (asked === CARD_PAYMENT_NAME.toLowerCase() || asked === "card payment") return true;
+  const named = /^(\S+)(?: \S+)* payment$/.exec(asked)?.[1];
+  return named !== undefined && named !== "car" && words.includes(named);
+}
+
 export async function runAskTool(
   userId: string,
   name: string,
@@ -130,30 +141,29 @@ export async function runAskTool(
       const from = DATE.test(str(args.from))
         ? str(args.from)
         : addDays(to, -ASK_DEFAULT_SEARCH_DAYS);
-      const rows = await db.transactions.findMany({
-        where: {
-          pending: false,
-          date: { gte: new Date(`${from}T00:00:00Z`), lte: new Date(`${to}T00:00:00Z`) },
-        },
-        select: {
-          date: true,
-          amountCents: true,
-          description: true,
-          merchantName: true,
-          pfcPrimary: true,
-        },
-        orderBy: [{ date: "desc" }, { id: "asc" }],
-      });
+      // Read as detection reads them (names from the merchant directory, an account linked twice
+      // once), so what a card or page names is what this finds.
+      const rows = await loadTransactionsBetween(userId, { client, from, to });
       const merchant = str(args.merchant).toLowerCase();
       const category = str(args.category).toLowerCase();
       const matches = rows
         .map((t) => ({
-          date: isoDate(t.date),
+          date: t.date,
           merchant: displayMerchant(t),
+          // The bank's own words, only to match on ("APPLE STORE R102" for "Apple Store"); never
+          // shown, and never for transfers, which name people.
+          words: displayMerchant(t) === "Transfer" ? "" : t.description.toLowerCase(),
+          cardPayment: t.pfcDetailed === CARD_PAYMENT_DETAILED,
           category: categoryLabel(t.pfcPrimary),
           amountCents: t.amountCents,
         }))
-        .filter((t) => !merchant || t.merchant.toLowerCase().includes(merchant))
+        .filter(
+          (t) =>
+            !merchant ||
+            t.merchant.toLowerCase().includes(merchant) ||
+            t.words.includes(merchant) ||
+            (t.cardPayment && cardPaymentAsked(merchant, t.words)),
+        )
         .filter((t) => !category || t.category.toLowerCase() === category);
       const outTotal = matches
         .filter((t) => t.amountCents > 0)

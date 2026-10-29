@@ -43,8 +43,8 @@ import type { OfferedOptions } from "@/lib/option-card";
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
 // person's recent typed messages and Jane's answers to them, and read-only tools over their
 // own data, like Ask (src/lib/ask/answer.ts). Claude's text is only shown once it passes the
-// guardrails, which allow only dollar figures from a tool, the question or an earlier
-// answer. Claude can offer one button from the action registry (propose_action), never
+// guardrails, which allow only dollar figures from a tool, the numbers sent with it or the
+// question (never an earlier answer or card). Claude can offer one button from the action registry (propose_action), never
 // press it: the person taps.
 //
 // Quick by design: a faster model than the rest of the app (chatModel), little thinking,
@@ -52,7 +52,7 @@ import type { OfferedOptions } from "@/lib/option-card";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v30";
+export const CHAT_PROMPT_VERSION = "chat-v31";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -96,6 +96,7 @@ How to answer:
 - "Do I need…", "should I…" and "is it worth…" questions start with a plain yes, no or "it depends on" one named thing, then why, with their figures. A rule of thumb ("safe withdrawal rate") is stated together with the person's own balance from their numbers (the rule as a percent, their balance as given); never work out a new dollar amount yourself.
 - "Change / switch / lower my car insurance" (or home, renters, life, pet) is a request Jane can act on: say what it found (the cheaper quote and how much less, from the tool), then propose_action insurance.reshop for that policy. Never tell the person to ask again in other words.
 - If two figures for the same thing disagree (an estimate in your numbers and a tool's result), use the tool's and say nothing about the other: never "my earlier guess", "the tool shows" or "the brief said".
+- When they ask about one of your cards or something you said before (a return window, a charge, a reminder), look it up first (coming_up, search_transactions, alerts): a card or an earlier message is not evidence, and their accounts may have changed since. If the lookup doesn't show it, say plainly it's no longer in their accounts, without its amount; never repeat a figure only a card or an earlier message had.
 - Speak as Jane, about their money: never say "the app", "findings", "open findings", "the tool", "tools", "my earlier guess", "tool results", "propose_action" or "what_matters_most", and never name internal ids. Say "I found", "I can see", "in your accounts" instead.
 - When a button's card goes under your answer (you called propose_action), your text is one or two sentences that don't repeat the card's figures: the card carries the details.
 - If you were not given propose_action for this message, say nothing about buttons, an earlier button or an offer; just answer the question. "What are the other options from <insurer>" is a question: answer with that insurer's savings and quote options and their figures.
@@ -199,6 +200,7 @@ const STATUS: Record<string, string> = {
   whole_picture: "Looking across everything…",
   balance_forecast: "Looking at where your balance is heading…",
   alerts: "Checking your alerts…",
+  suggestions: "Looking at what I suggested…",
   household: "Checking who you share with…",
   money_moves: "Checking what money moved…",
   explain_figure: "Working out how I got that…",
@@ -547,14 +549,13 @@ async function askClaude(
   // Claude's clock starts now, after the lookup: it always gets its whole first-words window.
   const started = Date.now();
   // Figures the answer may use: any in the numbers sent up front or a tool's result (a
-  // finding's title has some too: "Charged twice? $64.20 at Target"), the question, and
-  // earlier answers.
-  const allowedCents = [
-    question,
-    primer.text,
-    memory ?? "",
-    ...history.map((m) => m.content),
-  ].flatMap((text) => dollarFigures(text).map((f) => f.cents));
+  // finding's title has some too: "Charged twice? $64.20 at Target"), what the person told Jane
+  // (memory) and their own question. Never Jane's earlier answers or cards: what Jane said isn't
+  // evidence (card-chat mismatch: a stale card's $1,349 was repeated, then kept passing because
+  // the chat had said it).
+  const allowedCents = [question, primer.text, memory ?? ""].flatMap((text) =>
+    dollarFigures(text).map((f) => f.cents),
+  );
   allowedCents.push(...primer.cents);
   let prepared: Awaited<ReturnType<typeof quotesAnswer>> | null = null;
   if (shopFetch) {

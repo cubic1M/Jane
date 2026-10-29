@@ -494,6 +494,11 @@ export async function runTaxTool(
           taxYear: r.refund.taxYear,
           estimatedRefund: r.match ? money(r.match.estimatedCents) : null,
           matchesEstimate: r.match?.matches ?? null,
+          // As the refund's card says it ("so it's $10,473 less"), so the chat can too.
+          differenceFromEstimate:
+            r.match && r.match.diffCents !== 0
+              ? `${money(Math.abs(r.match.diffCents))} ${r.match.diffCents > 0 ? "more" : "less"}`
+              : null,
           planSetUp: r.handled,
           demoAdvice:
             advice && r.plan

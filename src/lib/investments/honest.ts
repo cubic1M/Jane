@@ -93,7 +93,8 @@ export async function loadHonest(
     mix.bonds * (FUND_FACTS[CORE_FUNDS.bonds]?.expenseRatioBps ?? 0);
   const cashShare =
     total > 0
-      ? investments.byAssetClass.find((c) => c.assetClass === "cash")!.valueCents / total
+      ? // No cash holding at all (the renter's 401(k)): none of it is in cash.
+        (investments.byAssetClass.find((c) => c.assetClass === "cash")?.valueCents ?? 0) / total
       : 0;
   const rows = returns.periods.flatMap((p): HonestRow[] => {
     if (p.timeWeighted === null || p.benchmark === null) return [];
