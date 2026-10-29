@@ -2,7 +2,7 @@ import Link from "next/link";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { AssetPrompts } from "@/components/asset-prompts";
 import { ViewTracker } from "@/components/view-tracker";
@@ -19,7 +19,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { clearTerms, saveTerms } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
 
 // Every debt in one place (spec step 109): loans and cards with what the bank reports,
@@ -520,7 +519,7 @@ async function LoansContent({
 export default function LoansPage({ searchParams }: PageProps<"/loans">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <LoansContent searchParams={searchParams} />
       </Suspense>
     </main>

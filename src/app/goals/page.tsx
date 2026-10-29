@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
 import { loadTradeoffs } from "@/lib/goal-tradeoffs";
 import { listGoals } from "@/lib/goals";
@@ -11,7 +11,6 @@ import { accountLabels } from "@/lib/account-labels";
 import { GoalForm } from "./goal-form";
 import { GoalTradeoffs } from "./tradeoffs";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { ProgressBar } from "@/components/progress-bar";
 
 const EMPTY = { goalId: "", name: "", target: "", targetDate: "", accountId: "", saved: "" };
@@ -122,7 +121,7 @@ async function Goals() {
 export default function GoalsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Goals />
       </Suspense>
     </main>

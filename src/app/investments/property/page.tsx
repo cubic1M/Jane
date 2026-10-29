@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { PAYDOWN_NOTE } from "@/config/property";
 import { loadProperty } from "@/lib/investments/property";
@@ -10,7 +10,6 @@ import { requireUser } from "@/lib/session";
 import { demoRental } from "./actions";
 import { RentalForm } from "./rental-form";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Property as an investment (spec step 214, demo advice): home equity, each rental's
 // figures from its own transactions, depreciation for the taxes side, and paying the
@@ -164,7 +163,7 @@ async function Content({
 export default function PropertyPage(props: PageProps<"/investments/property">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Content searchParams={props.searchParams} />
       </Suspense>
     </main>

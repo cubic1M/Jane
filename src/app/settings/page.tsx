@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { ALERT_EMAILS_PER_DAY, ALERT_LABELS, ALERT_TYPES } from "@/config/alerts";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/config/digest";
 import { alertPrefs, isUrgent } from "@/lib/alerts";
@@ -49,7 +49,6 @@ import { openBooks } from "@/lib/books";
 import { importEnded } from "@/lib/books-fix";
 import { SETTINGS_ANCHORS, anchorFocus, itemId, settingsTree } from "@/lib/area-pages/settings";
 import { SettingsArea } from "./settings-area";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Settings (spec step 79; docs/design/area-pages.md): the area's tree, one item per setting
 // with what it's set to, and the one thing picked below it. Each form sits in its item's detail
@@ -501,7 +500,7 @@ async function SettingsContent({
 export default function SettingsPage({ searchParams }: PageProps<"/settings">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <SettingsContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ShownLink } from "@/components/shown-link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { ReactNode } from "react";
 import { AreaPage } from "@/components/area-page/area-page";
@@ -62,7 +62,6 @@ import {
 } from "./actions";
 import { HouseholdForm, PolicyForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { dayLabel } from "@/lib/day-label";
 
 // Insurance (spec step 102): every policy in one place, the household facts that matter
@@ -660,7 +659,7 @@ async function InsuranceContent({
 export default function InsurancePage({ searchParams }: PageProps<"/insurance">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <InsuranceContent searchParams={searchParams} />
       </Suspense>
     </main>

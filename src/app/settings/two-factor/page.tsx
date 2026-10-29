@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { CodeForm } from "@/app/mfa/code-form";
 import { enrollment } from "@/lib/mfa";
 import { requireUser } from "@/lib/session";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Turning on two-factor: add the key to an authenticator app, then enter its code. The
 // first code turns it on and shows the backup codes once.
@@ -43,7 +42,7 @@ async function Content() {
 export default function TwoFactorSetupPage() {
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Content />
       </Suspense>
     </main>

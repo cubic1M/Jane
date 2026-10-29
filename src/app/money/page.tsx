@@ -2,14 +2,13 @@ import Link from "next/link";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { HorizontalBars } from "@/app/insights/bars";
 import { SUGGESTION_NODES, dayLabel, itemId, moneyTree } from "@/lib/area-pages/money";
 import { loadMoneyArea } from "@/lib/area-pages/money-load";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { LoadingBar } from "@/components/loading-bar";
 import { ProgressBar } from "@/components/progress-bar";
 
 // Spending & bills (spec step 80; docs/design/area-pages.md): what matters now, the area's
@@ -313,7 +312,7 @@ async function MoneyContent({
 export default function MoneyPage({ searchParams }: PageProps<"/money">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <MoneyContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -2,8 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PositionsForm } from "./positions-form";
-import { AppHeader } from "@/components/app-header";
-import { LoadingBar } from "@/components/loading-bar";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { UPLOAD_REASSURANCE } from "@/config/import";
 import { BROKER_DOWNLOADS } from "@/config/positions-import";
 import { canImportCsv } from "@/lib/csv-access";
@@ -53,7 +52,7 @@ async function InvestmentsUploadContent() {
 export default function InvestmentsUploadPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <InvestmentsUploadContent />
       </Suspense>
     </main>

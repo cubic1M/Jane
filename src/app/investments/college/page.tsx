@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import {
   COLLEGE_COST_GROWTH,
@@ -16,7 +16,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import type { Range } from "@/planning/college";
 import { CollegeForm } from "./college-form";
-import { LoadingBar } from "@/components/loading-bar";
 import { formatPercent as pct } from "@/lib/percent";
 
 // College savings (spec step 158, demo advice): what college could cost, what to put aside
@@ -120,7 +119,7 @@ async function CollegeContent({
 export default function CollegePage(props: PageProps<"/investments/college">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <CollegeContent searchParams={props.searchParams} />
       </Suspense>
     </main>

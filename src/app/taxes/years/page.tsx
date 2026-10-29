@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { PLANNED_EVENT_KINDS } from "@/config/tax-years";
 import { loadMultiYear } from "@/lib/multi-year";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { EventForm, PlanButton, RemoveButton, RetireForm } from "./forms";
-import { LoadingBar } from "@/components/loading-bar";
 
 // Tax moves over several years (spec step 220): the projection, the moves with their effect
 // over the years (demo advice), and what the person has told Jane about their plans.
@@ -119,7 +118,7 @@ async function Content() {
 export default function YearsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Content />
       </Suspense>
     </main>

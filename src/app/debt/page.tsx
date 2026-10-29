@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { MAX_DEBT_EXTRA_CENTS } from "@/config/debt";
 import { MAX_PLANNER_CARDS } from "@/config/planning";
@@ -11,7 +11,6 @@ import { requireUser } from "@/lib/session";
 import { PLANNER_COPY } from "@/planning/debt-copy";
 import { DebtPlanner } from "./planner";
 import { YourPlan } from "./your-plan";
-import { LoadingBar } from "@/components/loading-bar";
 
 // The payoff planner (spec step 20), extended to every debt (spec step 110): the plan
 // across every loan, card and buy now, pay later plan Jane knows about, and below it the
@@ -94,7 +93,7 @@ async function Planner({ searchParams }: { searchParams: PageProps<"/debt">["sea
 export default function DebtPage({ searchParams }: PageProps<"/debt">) {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Planner searchParams={searchParams} />
       </Suspense>
     </main>

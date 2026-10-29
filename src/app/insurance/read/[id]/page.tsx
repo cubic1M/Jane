@@ -2,14 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { getReading } from "@/lib/insurance/readings";
 import { readingHints, readingTitle } from "@/lib/jane-agent/insurance/reading-words";
 import { requireUser } from "@/lib/session";
 import { dismissReadingForm } from "../../actions";
 import { PolicyForm } from "../../forms";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 
 // A policy read from a document (spec step 151): every field Jane read, with where it came
 // from, for the person to fix and confirm. Nothing is saved until they do.
@@ -71,7 +70,7 @@ async function ReadingContent({ params }: { params: Promise<{ id: string }> }) {
 export default function ReadingPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <ReadingContent params={params} />
       </Suspense>
     </main>

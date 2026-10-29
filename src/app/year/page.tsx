@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { yearInReview } from "@/lib/year";
 import { PrintButton } from "./print-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { monthLabel } from "@/lib/day-label";
 
 async function Year({ searchParams }: { searchParams: PageProps<"/year">["searchParams"] }) {
@@ -141,7 +140,7 @@ async function Year({ searchParams }: { searchParams: PageProps<"/year">["search
 export default function YearPage({ searchParams }: PageProps<"/year">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12 print:py-0">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <Year searchParams={searchParams} />
       </Suspense>
     </main>

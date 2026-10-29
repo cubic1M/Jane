@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { after, connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { isoDate } from "@/detection/units";
 import { loadAffordNumbers } from "@/lib/afford";
 import { track } from "@/lib/analytics";
@@ -16,7 +16,6 @@ import {
   shortLine,
 } from "@/planning/afford-copy";
 import { AFFORD_KINDS, parseAffordQuery } from "@/planning/afford-query";
-import { LoadingBar } from "@/components/loading-bar";
 
 // "Can I afford this?" (spec step 69). The form is a plain GET form, so the answer lives
 // in the URL: it can be shared, and nothing is saved.
@@ -251,7 +250,7 @@ async function AffordContent({
 export default function AffordPage({ searchParams }: PageProps<"/afford">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <AffordContent searchParams={searchParams} />
       </Suspense>
     </main>

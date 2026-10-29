@@ -170,6 +170,10 @@ describe.runIf(url)("books that balance", { timeout: 120_000 }, () => {
     expect(books.merged).toBe(1);
     const kinds = books.open.map((o) => o.kind).sort();
     expect(kinds).toEqual(["broken", "duplicate", "gap", "off", "stale", "transfer"]);
+    // Read as people write a day, and with a way in that isn't only linking (reviewer polish).
+    const transfer = books.open.find((o) => o.kind === "transfer")?.words;
+    expect(transfer).toContain("on Oct 12, 2026");
+    expect(transfer).toContain("add that account to count it");
     // Proven alike: merged, the copy's older transaction moved across, the copy gone.
     expect(await client.account.count({ where: { id: dupA.id } })).toBe(0);
     expect(await client.transaction.count({ where: { accountId: keepA.id } })).toBe(5);

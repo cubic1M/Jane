@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { HOME_RULES_SOURCE } from "@/config/home-buying";
 import { dayLabel } from "@/lib/day-label";
@@ -12,7 +12,6 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { startGoalAction } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { formatRate } from "@/lib/percent";
 
 // Buying a home (spec step 179): from saving to closing. What the person can afford under
@@ -241,7 +240,7 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
 export default function HomePage({ searchParams }: PageProps<"/loans/home">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <HomeContent searchParams={searchParams} />
       </Suspense>
     </main>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import {
@@ -16,7 +16,6 @@ import { requireUser } from "@/lib/session";
 import { linkStockPlan, sellNow } from "./actions";
 import { GrantForm } from "./grant-form";
 import { SubmitButton } from "@/components/submit-button";
-import { LoadingBar } from "@/components/loading-bar";
 import { formatPercent as pct } from "@/lib/percent";
 import { dayLabel } from "@/lib/day-label";
 
@@ -168,7 +167,7 @@ async function CompanyContent({
 export default function CompanyStockPage(props: PageProps<"/investments/company-stock">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <CompanyContent searchParams={props.searchParams} />
       </Suspense>
     </main>

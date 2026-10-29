@@ -3,7 +3,7 @@ import { isHiddenPage } from "@/config/hidden-pages";
 import Link from "next/link";
 import { after, connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { AreaPage } from "@/components/area-page/area-page";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { BacktestsSection } from "@/components/backtests";
@@ -595,7 +595,7 @@ async function InvestmentsContent({
 export default function InvestmentsPage({ searchParams }: PageProps<"/investments">) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Suspense fallback={<LoadingBar />}>
+      <Suspense fallback={<PageLoading />}>
         <InvestmentsContent searchParams={searchParams} />
       </Suspense>
     </main>

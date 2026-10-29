@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, PageLoading } from "@/components/app-header";
 import { FORECAST_DAYS, LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/engine";
 import { forecastAccounts, upcomingBills } from "@/detection/forecast";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { LoadingBar } from "@/components/loading-bar";
 import { EmptyState } from "@/components/empty-state";
 
 const dayLabel = (iso: string) =>
@@ -90,7 +89,7 @@ async function Bills() {
 export default function BillsPage() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
-      <Suspense fallback={<LoadingBar label="Looking ahead" />}>
+      <Suspense fallback={<PageLoading label="Looking ahead" />}>
         <Bills />
       </Suspense>
     </main>
