@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { cardPaymentNames } from "@/categorize/card-payments";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { categoryLabel } from "@/insights/labels";
 import { categoryOptions, detailedLabel, listMerchantRules } from "@/lib/categories";
 import { scopedDb } from "@/lib/db-scoped";
+import { isoDay } from "@/lib/dates";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -28,7 +30,7 @@ async function Transactions({
   const isDay = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
   const first = isDay(day) ? day : isDay(from) ? from : null;
   const last = isDay(day) ? day : isDay(to) ? to : first;
-  const [rows, rules] = await Promise.all([
+  const [rows, rules, accounts, cardPayments] = await Promise.all([
     db.transactions.findMany({
       where: {
         pending: false,
@@ -51,6 +53,7 @@ async function Transactions({
       },
       select: {
         id: true,
+        accountId: true,
         date: true,
         amountCents: true,
         description: true,
@@ -63,8 +66,26 @@ async function Transactions({
       take: SHOWN,
     }),
     listMerchantRules(user.id),
+    db.accounts.findMany({ select: { id: true, type: true, name: true } }),
+    // Every card payment, so each one shown is named for the card it paid, even when the
+    // other side is off this page.
+    db.transactions.findMany({
+      where: { pending: false, pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" },
+      select: {
+        id: true,
+        accountId: true,
+        date: true,
+        amountCents: true,
+        description: true,
+        pfcDetailed: true,
+      },
+    }),
   ]);
   const groups = categoryOptions();
+  const paymentNames = cardPaymentNames(
+    cardPayments.map((r) => ({ ...r, date: isoDay(r.date) })),
+    accounts,
+  );
 
   return (
     <>
@@ -108,12 +129,27 @@ async function Transactions({
       )}
 
       {rows.length === 0 ? (
-        <p className="text-zinc-600 dark:text-zinc-400">No transactions found.</p>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          {search || first ? (
+            "No transactions found."
+          ) : (
+            <>
+              No transactions yet.{" "}
+              <Link href="/import" className="font-medium underline">
+                Upload a bank or card statement
+              </Link>{" "}
+              and they show here.
+            </>
+          )}
+        </p>
       ) : (
         <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
           {rows.map((t) => {
             const merchant =
-              t.merchantName ?? normalizeMerchant(t.description)?.name ?? t.description;
+              paymentNames.get(t.id) ??
+              t.merchantName ??
+              normalizeMerchant(t.description)?.name ??
+              t.description;
             const category =
               t.pfcPrimary && t.pfcDetailed
                 ? `${categoryLabel(t.pfcPrimary)} · ${detailedLabel(t.pfcPrimary, t.pfcDetailed)}`
@@ -125,7 +161,8 @@ async function Transactions({
                     <span className="flex flex-col">
                       <span className="font-medium">{merchant}</span>
                       <span className="text-xs text-zinc-500">
-                        {t.date.toISOString().slice(0, 10)} · {category}
+                        <time dateTime={isoDay(t.date)}>{dayLabel(t.date, { year: true })}</time> ·{" "}
+                        {category}
                         {t.categorySource === "user" && " (yours)"}
                       </span>
                     </span>
