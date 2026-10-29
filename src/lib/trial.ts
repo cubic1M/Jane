@@ -49,6 +49,26 @@ export async function cleanUpTrials({
   return count;
 }
 
+// Users have their own helpers; a trial person is made here and nowhere else. `email` is for
+// the ones made ahead for the /try link (src/lib/trial-pool.ts), still at the trial domain.
+export async function createTrialPerson({
+  client = defaultClient,
+  now = new Date(),
+  person,
+  email = (id: string) => `${id}@${TRIAL_EMAIL_DOMAIN}`,
+}: Options & { person?: PersonId; email?: (id: string) => string }): Promise<string> {
+  const id = `${TRIAL_ID_PREFIX}${randomBytes(12).toString("hex")}`;
+  await client.user.create({
+    data: {
+      id,
+      email: email(id),
+      name: person ? (personById(person)?.name ?? "Sample person") : "Sample person",
+      createdAt: now,
+    },
+  });
+  return id;
+}
+
 // A new trial person with the demo bank linked and a session for them. With `defer` only
 // the minimum is done (the user, the Terms, the linked demo item and the session) and the
 // first sync is left to the caller to run afterwards (the response must not wait on it:
@@ -59,7 +79,14 @@ export async function startTrial({
   userAgent = null,
   defer = false,
   person,
-}: Options & { userAgent?: string | null; defer?: boolean; person?: PersonId } = {}): Promise<{
+  termsVia = "trial",
+}: Options & {
+  userAgent?: string | null;
+  defer?: boolean;
+  person?: PersonId;
+  // "try_link": opened the /try link, which says opening it means agreeing (src/app/try/route.ts).
+  termsVia?: "trial" | "try_link";
+} = {}): Promise<{
   userId: string;
   itemId: string;
   sessionToken: string;
@@ -70,16 +97,7 @@ export async function startTrial({
   // Cleaning up other people's finished trials isn't this visitor's wait.
   if (!defer) await cleanUpTrials({ client, now });
   timing.mark("clean_up");
-  const id = `${TRIAL_ID_PREFIX}${randomBytes(12).toString("hex")}`;
-  // Users have their own helpers; a trial person is made here and nowhere else.
-  await client.user.create({
-    data: {
-      id,
-      email: `${id}@${TRIAL_EMAIL_DOMAIN}`,
-      name: person ? (personById(person)?.name ?? "Sample person") : "Sample person",
-      createdAt: now,
-    },
-  });
+  const id = await createTrialPerson({ client, now, person });
   timing.mark("create_user");
   const expires = new Date(now.getTime() + TRIAL_HOURS * HOUR_MS);
   const sessionToken = `${TRIAL_SESSION_PREFIX}${randomBytes(32).toString("hex")}`;
@@ -87,7 +105,7 @@ export async function startTrial({
   // (each is a round trip to the database, and the visitor is waiting).
   const [, { itemId }] = await Promise.all([
     // The visitor ticked "I agree" to try it (src/app/try/actions.ts), as at sign-up.
-    acceptTerms(id, { client, now, via: "trial" }),
+    acceptTerms(id, { client, now, via: termsVia }),
     linkDemoBank(id, { client, now, person }),
     client.session.create({
       data: { sessionToken, userId: id, expires, userAgent: userAgent?.slice(0, 200) ?? null },

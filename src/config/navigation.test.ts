@@ -51,6 +51,8 @@ const OUTSIDE = [
   "/gift/[token]",
   // A beta user's share link: the invite page a friend lands on.
   "/join/[code]",
+  // The /try link's "too many from this address" page, signed out.
+  "/try/busy",
 ];
 const outside = (route: string) => OUTSIDE.includes(route) || route.startsWith("/admin");
 
