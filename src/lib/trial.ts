@@ -10,6 +10,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { demoBankEnabled, linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { acceptTerms } from "@/lib/terms";
 import { phaseTimer } from "@/lib/trial-timing";
 
@@ -39,11 +40,15 @@ export class TrialError extends Error {}
 export async function cleanUpTrials({
   client = defaultClient,
   now = new Date(),
-}: Options = {}): Promise<number> {
+  userIds,
+}: Options & OnlyPeople = {}): Promise<number> {
   const { count } = await client.user.deleteMany({
     where: {
       id: { startsWith: TRIAL_ID_PREFIX },
       createdAt: { lt: new Date(now.getTime() - TRIAL_HOURS * HOUR_MS) },
+      // A test's own trials: in the shared test database, a cleanup for everyone deleted the
+      // trials other test files were using mid-test (one-source, from the memory test).
+      ...(userIds ? { AND: [peopleIn(userIds)] } : {}),
     },
   });
   return count;
