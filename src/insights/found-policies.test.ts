@@ -107,6 +107,8 @@ describe("annualFeeDeadlines", () => {
         amountCents: 9_500,
         href: "/transactions",
         detail: expect.stringMatching(/an estimate/),
+        chargedOn: monthsAgo(11, 1),
+        evidence: { kind: "word" },
       },
     ]);
   });
