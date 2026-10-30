@@ -77,6 +77,19 @@ describe("budgetSummary", () => {
     // Nothing in the three complete months, so nothing to suggest.
     expect(summary.suggestions.Entertainment).toBe(0);
   });
+
+  it("averages only the months the data covers in full", () => {
+    // Night QA 10-30: statements from Jul 28 counted four days of July as a month, so the
+    // suggested Food and drink budget came out about a third low.
+    const late = [
+      tx("2026-07-28", 2_000, "FOOD_AND_DRINK"),
+      tx("2026-08-05", 36_000, "FOOD_AND_DRINK"),
+      tx("2026-09-05", 30_000, "FOOD_AND_DRINK"),
+    ];
+    expect(budgetSummary(late, [], ASOF).suggestions["Food and drink"]).toBe(33_000);
+    // No month covered in full yet: nothing to average.
+    expect(budgetSummary(late.slice(0, 1), [], "2026-08-20").suggestions["Food and drink"]).toBe(0);
+  });
 });
 
 describe("overBudgetAlerts", () => {
