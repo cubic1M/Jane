@@ -1,4 +1,5 @@
 import { matchCardPayments } from "@/categorize/card-payments";
+import { markCashIncome } from "@/categorize/cash-income";
 import { categorizeLeftovers } from "@/categorize/categorize";
 import { IMPORT_RUN_SHOWN_HOURS } from "@/config/import";
 import { moneyFound, runDetection } from "@/detection/engine";
@@ -114,6 +115,7 @@ async function workOut(userId: string, options: Options, stage: (s: ImportStage)
   const db = scopedFor(userId, options.client);
   await stage("matching");
   await matchCardPayments(db);
+  await markCashIncome(db);
   await stage("balances");
   await rebuildUploadedBalances(db, options.now);
   await stage("looking");

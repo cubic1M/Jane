@@ -25,6 +25,7 @@ import { runTaxAutopilot } from "@/lib/tax-autopilot";
 import { runStrategist } from "@/lib/strategist";
 import { planQuestion } from "@/lib/questions";
 import { scanSuggestions } from "@/lib/suggestions";
+import { markCashIncome } from "@/categorize/cash-income";
 import { reapplyRules } from "@/categorize/reapply";
 import { runDetection } from "@/detection/engine";
 import { plural } from "@/lib/plural";
@@ -69,7 +70,8 @@ const STEPS: Record<
     }
     // Rows saved before a keyword rule got better (uploads especially) are brought up to date,
     // and findings found again from them.
-    const recategorized = await reapplyRules(userId, { client });
+    const recategorized =
+      (await reapplyRules(userId, { client })) + (await markCashIncome(scopedFor(userId, client)));
     if (recategorized > 0) await runDetection(userId, { client, now });
     const fixed =
       recategorized > 0

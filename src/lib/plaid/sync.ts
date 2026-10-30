@@ -21,6 +21,7 @@ import {
   INVESTMENT_TRANSACTIONS_PAGE,
 } from "@/config/funds";
 import { runDetection } from "@/detection/engine";
+import { markCashIncome } from "@/categorize/cash-income";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { decrypt } from "@/lib/crypto";
@@ -797,6 +798,8 @@ async function syncItemWork(
   }
 
   timing.mark("cursor_and_track");
+  // Regular cash deposits count as income before Jane reads the month (src/categorize/cash-income.ts).
+  await markCashIncome(db);
   await runDetection(item.userId, { client, now });
   // Phase AW: a sample person's practice portfolio starts by itself, weeks back, before the
   // first suggestions, so "start a practice portfolio" never is one; its days are replayed

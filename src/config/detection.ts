@@ -992,6 +992,21 @@ export const DUPLICATE_CHARGE_MAX_PERCENT = 65;
 // RENT_TRANSFER_MIN_CENTS. A yes files those payments as rent; a no keeps them as transfers, and
 // either way Jane never asks about that payee again.
 export const RENT_TRANSFER_WORDS: readonly string[] = ["ZELLE", "VENMO", "CASH APP", "PAYPAL"];
+// Cash deposits as income (founder, 10-30): Plaid calls cash paid in moved money, so a server
+// who lives on tips read as earning half of what they do. Deposits that come back regularly,
+// at a similar cadence or of similar amounts, count as income (src/categorize/cash-income.ts).
+export const CASH_INCOME_CATEGORIES: readonly PfcDetailed[] = ["TRANSFER_IN_DEPOSIT"];
+// At least this many deposits, spread over at least this many days, at least about monthly.
+export const CASH_INCOME_MIN_DEPOSITS = 4;
+export const CASH_INCOME_MIN_SPAN_DAYS = 28;
+export const CASH_INCOME_MAX_MEDIAN_GAP_DAYS = 35;
+// Regular: the days between deposits vary by at most this share of their average (weekly tips
+// on Mondays and Fridays still pass), or the amounts do.
+export const CASH_INCOME_MAX_GAP_CV = 0.6;
+export const CASH_INCOME_MAX_AMOUNT_CV = 0.5;
+// A deposit more than this many times the usual one is a one-off (a car sold for cash): left out.
+export const CASH_INCOME_ONE_OFF_FACTOR = 3;
+
 export const RENT_TRANSFER_MIN_MONTHS = 2;
 export const RENT_TRANSFER_MIN_CENTS = 50_000;
 // Within this share of the usual amount (a rent can carry a small fee or a utility share).

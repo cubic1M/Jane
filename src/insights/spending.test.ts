@@ -114,6 +114,67 @@ describe("spendingInsights", () => {
     ]);
   });
 
+  it("never counts money in with no category as a refund (night debugger, 10-30)", () => {
+    // A servicemember's pay with no category: two paychecks took "Spent this month" to -$2.6k.
+    const pay = t({
+      amountCents: -241_000,
+      description: "DEPOSIT - DFAS-CLEVELAND MIL PAY",
+      pfcPrimary: null,
+      pfcDetailed: null,
+    });
+    expect(kindOf(pay)).toBe("ignored");
+    const october = run([t({ amountCents: 9_500 }), pay, { ...pay, date: "2026-10-15" }]).months.at(
+      -1,
+    )!;
+    expect(october).toEqual({ month: "2026-10", spendingCents: 9_500, incomeCents: 0 });
+    // Money out with no category is still spending.
+    expect(kindOf(t({ pfcPrimary: null, pfcDetailed: null }))).toBe("spending");
+  });
+
+  it("nets a refund against the month's spending, never below $0", () => {
+    // A flight bought in September and refunded in October comes off October's spending.
+    const refunded = run([
+      t({ amountCents: 30_000, pfcPrimary: "FOOD_AND_DRINK" }),
+      t({ amountCents: -12_000, pfcPrimary: "TRAVEL", description: "DELTA REFUND" }),
+      t({ amountCents: 12_000, pfcPrimary: "TRAVEL", date: "2026-09-02" }),
+    ]);
+    expect(refunded.months.at(-1)!.spendingCents).toBe(18_000);
+    // A big return in a month with little else bought: $0, not less.
+    const returned = run([
+      t({ amountCents: 2_000, pfcPrimary: "FOOD_AND_DRINK" }),
+      t({ amountCents: -50_000, description: "RETURN" }),
+    ]);
+    expect(returned.months.at(-1)!.spendingCents).toBe(0);
+  });
+
+  it("keeps every month at $0 or more, whatever comes in (invariant)", () => {
+    const primaries = [null, "FOOD_AND_DRINK", "GENERAL_MERCHANDISE", "INCOME", "TRANSFER_IN"];
+    let seed = 7;
+    const next = () => (seed = (seed * 48_271) % 2_147_483_647) / 2_147_483_647;
+    const rows = Array.from({ length: 400 }, () =>
+      t({
+        date: `2026-${["08", "09", "10"][Math.floor(next() * 3)]}-1${Math.floor(next() * 9)}`,
+        amountCents: Math.round((next() - 0.6) * 300_000),
+        pfcPrimary: primaries[Math.floor(next() * primaries.length)],
+        pfcDetailed: null,
+      }),
+    );
+    for (const m of run(rows).months) {
+      expect(m.spendingCents).toBeGreaterThanOrEqual(0);
+      expect(m.incomeCents).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("counts cash deposits marked as income as income (src/categorize/cash-income.ts)", () => {
+    const tips = t({ amountCents: -28_000, pfcPrimary: "INCOME", pfcDetailed: "INCOME_OTHER" });
+    expect(kindOf(tips)).toBe("income");
+    expect(
+      kindOf(
+        t({ amountCents: -28_000, pfcPrimary: "TRANSFER_IN", pfcDetailed: "TRANSFER_IN_DEPOSIT" }),
+      ),
+    ).toBe("ignored");
+  });
+
   it("labels uncategorized spending", () => {
     expect(
       run([t({ pfcPrimary: null, pfcDetailed: null })]).categoriesByMonth["2026-10"][0].category,

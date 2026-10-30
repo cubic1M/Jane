@@ -172,6 +172,8 @@ async function Transactions({
                         <time dateTime={isoDay(t.date)}>{dayLabel(t.date, { year: true })}</time> ·{" "}
                         {category}
                         {t.categorySource === "user" && " (yours)"}
+                        {t.categorySource === "cash_income" &&
+                          " (a cash deposit, counted as income)"}
                       </span>
                     </span>
                     <span className={t.amountCents < 0 ? "text-emerald-700" : ""}>
