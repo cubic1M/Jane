@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HEALTH_NEVER_SAY, HEALTH_WEIGHTS } from "@/config/health-score";
 import {
+  cardBalanceOf,
   bandOf,
   fullMonthsOnly,
   healthChange,
@@ -34,6 +35,35 @@ describe("healthScore", () => {
     };
     expect(healthScore(onlyFees)).toBeNull();
     expect(healthScore({ ...onlyFees, cardBalanceCents: 0 })?.score).toBe(100);
+  });
+
+  // Night QA 10-30 (after #1022): the same card-only person still scored 100, from "no card
+  // balance carried": an uploaded card's unknown balance counted as $0.
+  it("leaves out cards whose balance isn't known, and says why", () => {
+    expect(cardBalanceOf([{ currentBalanceCents: null }])).toBeNull();
+    expect(
+      cardBalanceOf([{ currentBalanceCents: 120_000 }, { currentBalanceCents: null }]),
+    ).toBeNull();
+    expect(cardBalanceOf([{ currentBalanceCents: 120_000 }, { currentBalanceCents: -500 }])).toBe(
+      120_000,
+    );
+    expect(cardBalanceOf([])).toBeNull();
+    const cardOnly: HealthInput = {
+      cashCents: null,
+      monthlySpendingCents: null,
+      monthlyIncomeCents: null,
+      slips: 0,
+      cardBalanceCents: null,
+      cardsLinked: true,
+      goals: { onTrack: 0, total: 0 },
+    };
+    expect(healthScore(cardOnly)).toBeNull();
+    const withCash = healthScore({
+      ...cardOnly,
+      cashCents: 500_000,
+      monthlySpendingCents: 200_000,
+    });
+    expect(withCash?.parts.map((p) => p.part)).not.toContain("cards");
   });
 
   it("weights add up to 100", () => {

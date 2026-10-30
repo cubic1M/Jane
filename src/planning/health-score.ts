@@ -28,12 +28,22 @@ export type HealthInput = {
   monthlyIncomeCents: number | null;
   // Late, overdraft and insufficient-funds fees lately; null without transactions.
   slips: number | null;
-  // Card balances carried; null when the person has no cards linked.
+  // Card balances carried; null when the person has no cards linked or a card's balance
+  // isn't known (an uploaded statement).
   cardBalanceCents: number | null;
+  cardsLinked?: boolean;
   goals: { onTrack: number; total: number };
   // One-off costs left out of the spending average (books QA), to say so.
   oneOffs?: OneOff[];
 };
+
+// What the person's cards carry: null with no cards, or when a card's balance isn't known (an
+// uploaded statement carries none), never "no balance carried" (night QA 10-30: a card-only
+// person scored 100 of 100 from it).
+export function cardBalanceOf(cards: readonly { currentBalanceCents: number | null }[]) {
+  if (cards.length === 0 || cards.some((c) => c.currentBalanceCents === null)) return null;
+  return cards.reduce((s, c) => s + Math.max(0, c.currentBalanceCents ?? 0), 0);
+}
 
 export type HealthPartScore = {
   part: HealthPart;
@@ -159,7 +169,12 @@ export function healthScore(input: HealthInput): HealthScore | null {
   }
 
   if (input.cardBalanceCents === null) {
-    skip("cards", "No credit cards linked.");
+    skip(
+      "cards",
+      input.cardsLinked
+        ? "Jane doesn't know your card balance yet: add it on the import page."
+        : "No credit cards linked.",
+    );
   } else if (input.cardBalanceCents <= 0) {
     parts.push(part("cards", 1, "No card balance carried.", ""));
   } else if (!income || income <= 0) {
