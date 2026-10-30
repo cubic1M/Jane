@@ -268,12 +268,30 @@ describe("categorizeByRules", () => {
     expect(out(description)).toBe("RENT_AND_UTILITIES_TELEPHONE");
   });
 
-  it.each(["MATTRESS FIRM", "BATTERY PLUS", "VISIBLE BODY APP", "COMCAST CABLE COMM"])(
-    "doesn't read %s as a phone bill",
-    (description) => {
-      expect(out(description)).not.toBe("RENT_AND_UTILITIES_TELEPHONE");
-    },
-  );
+  // Debugger 10-30: a freelancer's Covered California premium was uncategorized.
+  it.each([
+    "COVERED CALIFORNIA PREMIUM",
+    "BLUE SHIELD OF CA PREMIUM",
+    "MOLINA HEALTHCARE",
+    "AMBETTER HEALTH",
+    "HIGHMARK BCBS",
+    "PREMERA BLUE CROSS",
+    "REGENCE BLUESHIELD",
+    "CAREFIRST BCBS",
+    "HEALTH NET OF CA",
+  ])("reads %s as insurance", (description) => {
+    expect(out(description)).toBe("GENERAL_SERVICES_INSURANCE");
+  });
+
+  it.each([
+    "MATTRESS FIRM",
+    "BATTERY PLUS",
+    "VISIBLE BODY APP",
+    "COMCAST CABLE COMM",
+    "MOLINAS TAQUERIA",
+  ])("doesn't read %s as a phone bill", (description) => {
+    expect(out(description)).not.toBe("RENT_AND_UTILITIES_TELEPHONE");
+  });
 
   // CSV bench, round 12: well-known chains by name, and more kinds of place by their words.
   it.each([
