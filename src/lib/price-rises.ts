@@ -54,6 +54,8 @@ export function priceRiseDeadline(r: PriceRise): Deadline {
     href: "/deadlines",
     detail: `About ${formatCents(r.nowCents)} a month now (last charged ${dayLabel(r.chargedOn)}), likely about ${formatCents(r.thenCents)} after. ${r.cheaper}`,
     chargedOn: r.chargedOn,
+    // An intro price's flat run of charges.
+    evidence: { kind: "pattern", times: r.seenCharges },
   };
 }
 

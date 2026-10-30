@@ -112,6 +112,9 @@ export function annualFeeDeadlines(input: DetectionInput): Deadline[] {
         amountCents: t.amountCents,
         href: "/transactions",
         detail: `About ${formatCents(t.amountCents)}, a year after the last one (an estimate). If the card isn't worth it, ask about a no-fee version before then.`,
+        chargedOn: t.date,
+        // The bank's words say it is the card's annual fee.
+        evidence: { kind: "word" },
       },
     ];
   });

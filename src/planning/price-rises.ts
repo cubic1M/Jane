@@ -45,6 +45,8 @@ export type PriceRise = {
   atStakeCents: number;
   // The charge it is worked out from (the latest), so the chat can find it.
   chargedOn: string;
+  // How many charges it saw (the flat run of an intro price; 1 for a yearly plan).
+  seenCharges: number;
   cheaper: string;
   script: string;
   confidence: { percent: number; reason: string };
@@ -109,6 +111,7 @@ export function priceRises(charges: readonly Charge[], today: string): PriceRise
           thenCents: then,
           atStakeCents: (then - last.amountCents) * 12,
           chargedOn: last.date,
+          seenCharges: list.length,
           cheaper: `Call before ${ends} and ask to keep your price, or switch: new-customer prices elsewhere are often what you pay now.`,
           script: CALL_SCRIPTS.promo_end,
           confidence: {
@@ -142,6 +145,7 @@ export function priceRises(charges: readonly Charge[], today: string): PriceRise
           thenCents: first.amountCents,
           atStakeCents: first.amountCents,
           chargedOn: first.date,
+          seenCharges: 1,
           cheaper: `Decide before ${renews}: keep it, move to a monthly or cheaper plan, or turn off auto-renewal.`,
           script: CALL_SCRIPTS.annual_renewal,
           confidence: {
