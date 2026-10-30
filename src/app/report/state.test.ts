@@ -128,6 +128,20 @@ describe("a finding's % sure on the report", () => {
     expect(evidenceCharges(null)).toBe(0);
   });
 
+  // Debugger 10-30: fees on two accounts (4 ATM fees on checking, an annual fee on the card).
+  // The person's one fees suggestion says "5 bank fees"; the card's own finding rests on 1.
+  it("counts a finding's own charges when others share its topic", () => {
+    const suggestion = {
+      topic: "bank_fees",
+      confidencePercent: 59,
+      confidenceReason: "5 bank fees in 3 months of data",
+    };
+    const card = { type: "bank_fees", evidence: { transactions: [{ date: "2026-08-14" }] } };
+    expect(findingSure(card, [suggestion], 3, 2).reason).toBe("1 charge in 3 months of data");
+    // Alone on its topic, it still says what the suggestion says.
+    expect(findingSure(card, [suggestion], 3, 1).reason).toBe("5 bank fees in 3 months of data");
+  });
+
   it("goes by the months alone when it rests on balances, not charges", () => {
     expect(findingSure({ type: "idle_cash", evidence: { accounts: [] } }, [], 4).reason).toBe(
       "4 months of data",

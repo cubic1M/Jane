@@ -63,6 +63,20 @@ function email(actionType: ActionType, findingType: FindingType, p: DraftPayload
         body: `Hello,\n\nMy ${merchant} price went up${p.facts.previousPrice && p.facts.latestCharge ? ` from ${p.facts.previousPrice} to ${p.facts.latestCharge}` : ""}. Could you keep my previous price, or offer a cheaper plan with the same service?\n\nThank you,`,
       };
     case "request_refund": {
+      // A double charge: one purchase stays, only the extra is owed back (debugger 10-30: the
+      // email asked for both $46.18 charges, $92.36, back).
+      if (findingType === "duplicate_charge" && p.charges.length > 1) {
+        const extra = p.charges.slice(1);
+        const same = extra.every((c) => c.amount === extra[0].amount);
+        const ask =
+          extra.length === 1
+            ? `the extra charge of ${extra[0].amount}`
+            : `the ${extra.length} extra charges${same ? ` of ${extra[0].amount} each` : ""}`;
+        return {
+          subject: "Refund request",
+          body: `Hello,\n\nI was charged twice for one purchase from ${merchant}:\n\n${charges}\n\nPlease refund ${ask}.\n\nThank you,`,
+        };
+      }
       const why =
         findingType === "duplicate_charge"
           ? "I was charged twice for one purchase"

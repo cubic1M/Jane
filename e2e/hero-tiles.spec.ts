@@ -155,6 +155,12 @@ test("saved so far opens on where the savings came from", async ({
   await page.goto("/home");
 
   const tile = page.locator('[data-hub-tile="saved"]');
+  // On a phone each tile takes the whole row; on a wide screen the two share it (debugger
+  // 10-30: on a phone Saved so far sat in the left half with nothing beside it).
+  const safeBox = (await page.locator('[data-hub-tile="safe"]').boundingBox())!;
+  const savedBox = (await tile.boundingBox())!;
+  if (isMobile) expect(Math.abs(savedBox.width - safeBox.width)).toBeLessThanOrEqual(1);
+  else expect(Math.abs(savedBox.y - safeBox.y)).toBeLessThanOrEqual(1);
   const open = tile.getByRole("button", { name: /^Saved so far/ });
   await open.click();
   await expect(open).toHaveAttribute("aria-expanded", "true");
