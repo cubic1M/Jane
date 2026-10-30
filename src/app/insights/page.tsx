@@ -7,12 +7,11 @@ import { INSIGHT_MONTHS } from "@/config/insights";
 import { BudgetList } from "@/components/budget-list";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
-import { spendingInsights } from "@/insights/spending";
+import { spendingInsights, spendingLines } from "@/insights/spending";
+import { accountLabels } from "@/lib/account-labels";
 import { scopedDb } from "@/lib/db-scoped";
-import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { HorizontalBars, MonthBars } from "./bars";
-import { monthLabel } from "@/lib/day-label";
+import { SpendingExplorer } from "./explorer";
 
 async function Insights() {
   const user = await requireUser();
@@ -22,13 +21,20 @@ async function Insights() {
   if (transactions.length === 0) redirect("/home");
 
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
-  const budgets = await db.budgets.findMany({ select: { category: true, amountCents: true } });
+  const [budgets, accounts] = await Promise.all([
+    db.budgets.findMany({ select: { category: true, amountCents: true } }),
+    db.accounts.findMany({ select: { id: true, name: true, mask: true, createdAt: true } }),
+  ]);
   const budget = budgets.length > 0 ? budgetSummary(transactions, budgets, asOf) : null;
   // The latest month that has any spending.
   const latest =
     [...insights.months].reverse().find((m) => m.spendingCents > 0)?.month ??
     insights.months.at(-1)!.month;
-  const categories = insights.categoriesByMonth[latest];
+  const lines = spendingLines(transactions, {
+    asOf,
+    monthCount: INSIGHT_MONTHS,
+    accountNames: accountLabels(accounts),
+  });
 
   return (
     <>
@@ -55,46 +61,14 @@ async function Insights() {
 
       {budget && <BudgetList progress={budget.progress} daysLeft={budget.daysLeft} />}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Income and spending by month</h2>
-        <MonthBars months={insights.months} />
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">{monthLabel(latest, { long: true })} by category</h2>
-        {categories.length === 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400">No spending that month.</p>
-        ) : (
-          <HorizontalBars rows={categories.map((c) => ({ label: c.category, cents: c.cents }))} />
-        )}
-      </section>
-
-      {insights.changes.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-semibold">Biggest changes from last month</h2>
-          <ul className="flex flex-col gap-1 text-sm">
-            {insights.changes.map((c) => (
-              <li key={c.category} className="flex justify-between gap-2">
-                <span>{c.category}</span>
-                <span
-                  className={
-                    c.changeCents > 0 ? "text-red-700 dark:text-red-400" : "text-emerald-700"
-                  }
-                >
-                  {c.changeCents > 0 ? "up" : "down"} {formatCents(Math.abs(c.changeCents))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Where you spend the most</h2>
-        <HorizontalBars
-          rows={insights.topMerchants.map((m) => ({ label: m.merchant, cents: m.cents }))}
-        />
-      </section>
+      <SpendingExplorer
+        months={insights.months}
+        categoriesByMonth={insights.categoriesByMonth}
+        initialMonth={latest}
+        changes={insights.changes}
+        topMerchants={insights.topMerchants}
+        lines={lines}
+      />
     </>
   );
 }

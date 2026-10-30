@@ -2,8 +2,14 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { SIDE_CHAT_MIN_WIDTH_PX, UNREAD_POLL_MS } from "@/config/side-chat";
 import {
+  CARDS_CHANGED_EVENT,
+  DATA_CHANGED_EVENT,
+  SIDE_CHAT_MIN_WIDTH_PX,
+  UNREAD_POLL_MS,
+} from "@/config/side-chat";
+import {
+  fabTucked,
   openedChat,
   isFrameMessage,
   panelShowsOn,
@@ -174,6 +180,10 @@ export function SideChat() {
         }
         return;
       }
+      if (event.data.type === "jane:cards") {
+        window.dispatchEvent(new Event(CARDS_CHANGED_EVENT));
+        return;
+      }
       if (event.data.type === "jane:answering" || event.data.type === "jane:answered") {
         window.dispatchEvent(new Event(event.data.type));
         return;
@@ -278,6 +288,15 @@ export function SideChat() {
     };
   }, [shows, inView]);
 
+  // The person's data changed under the page (an upload finished): the framed chat reloads,
+  // which posts what Jane found and tells the dock its cards changed.
+  useEffect(() => {
+    if (!loaded) return;
+    const refresh = () => post({ type: "jane:refresh" });
+    window.addEventListener(DATA_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(DATA_CHANGED_EVENT, refresh);
+  }, [loaded]);
+
   // Back in view with something new: the framed chat reloads its messages (and so reads them).
   useEffect(() => {
     if (!inView || sideChatStore.get().unread === 0) return;
@@ -327,6 +346,23 @@ export function SideChat() {
     if (!sheetOpen && wasOpen.current) fab.current?.focus();
     wasOpen.current = sheetOpen;
   }, [sheetOpen, wide, shows]);
+
+  // The phone's Jane button tucks away while the person scrolls down to read (fabTucked).
+  const [tucked, setTucked] = useState(false);
+  useEffect(() => {
+    if (wide || !shows) return;
+    let from = window.scrollY;
+    const onScroll = () => {
+      const to = window.scrollY;
+      const end = document.documentElement.scrollHeight - window.innerHeight;
+      // Read now: the updater runs later, when `from` has already moved on.
+      const move = { from, to, end };
+      from = to;
+      setTucked((now) => fabTucked(now, move));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [wide, shows]);
 
   if (!shows) return null;
 
@@ -476,7 +512,12 @@ export function SideChat() {
         aria-expanded={sheetOpen}
         aria-haspopup="dialog"
         onClick={() => sideChatStore.setSheet("half")}
-        className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex size-14 items-center justify-center border-2 border-emerald-800 bg-emerald-700 text-white shadow-lg hover:bg-emerald-800 print:hidden"
+        // Back at once when reached by keyboard while tucked.
+        onFocus={() => setTucked(false)}
+        data-tucked={tucked ? "" : undefined}
+        className={`fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex size-14 items-center justify-center border-2 border-emerald-800 bg-emerald-700 text-white shadow-lg transition-transform duration-200 hover:bg-emerald-800 motion-reduce:transition-none print:hidden ${
+          tucked ? "translate-y-[calc(100%+2rem)]" : ""
+        }`}
       >
         <span aria-hidden className="text-lg font-bold">
           J_

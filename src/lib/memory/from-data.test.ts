@@ -67,11 +67,45 @@ describe("facts from the data", () => {
 
   it("finds where the rent goes and how the cards are used", () => {
     const data = input([rent("2026-08-01"), rent("2026-09-01"), rent("2026-10-01")], true);
-    expect(rentPayeeFrom(data)).toEqual({ name: "GREYSTAR PROPERTIES", matches: 3 });
+    expect(rentPayeeFrom(data)).toEqual({ name: "Greystar Properties", matches: 3 });
     expect(cardHabitFrom(data)).toEqual({ carries: false, matches: 0 });
     const interest = tx("2026-10-05", 2_300, "INTEREST CHARGE", "BANK_FEES_INTEREST_CHARGE");
     expect(cardHabitFrom(input([interest], true))).toEqual({ carries: true, matches: 1 });
     expect(cardHabitFrom(input([interest]))).toBeNull();
+  });
+
+  it("names the payee and the employer without a Bank of America line's ids and holder", () => {
+    // Zelle rent: the payee, without the payment app.
+    const zelle = (date: string) =>
+      tx(date, 185_000, "ZELLE TO OAK RIDGE APTS RENT", "RENT_AND_UTILITIES_RENT");
+    expect(
+      rentPayeeFrom(input(["08-01", "09-01", "10-01"].map((d) => zelle(`2026-${d}`)))),
+    ).toEqual({ name: "Oak Ridge Apts", matches: 3 });
+    const bofaRent = (date: string) =>
+      tx(
+        date,
+        170_000,
+        "BILT RENT DES:RENT PMT ID:XXXXX INDN:SAM EXAMPLE",
+        "RENT_AND_UTILITIES_RENT",
+      );
+    const bofaPay = (date: string) =>
+      tx(
+        date,
+        -240_000,
+        "GLOBEX LLC DES:PAYROLL ID:XXXXX9028 INDN:EXAMPLE,SAM CO ID:XXXXX PPD",
+        "INCOME_SALARY",
+      );
+    const data = input([
+      ...["08-01", "09-01", "10-01"].map((d) => bofaRent(`2026-${d}`)),
+      ...["08-06", "08-20", "09-03", "09-17", "10-01", "10-15"].map((d) => bofaPay(`2026-${d}`)),
+    ]);
+    expect(rentPayeeFrom(data)).toEqual({ name: "Bilt Rent", matches: 3 });
+    const labels = factsFromData(buildProfile(data), data, { source: "upload" }).map(
+      (f) => f.label,
+    );
+    expect(labels).toContain("Your rent goes to Bilt Rent");
+    expect(labels).toContain("Your employer: GLOBEX LLC");
+    expect(labels.join(" ")).not.toMatch(/DES:|INDN|ID:/);
   });
 
   it("learns nothing from an empty account, and no 'no' from too little data", () => {

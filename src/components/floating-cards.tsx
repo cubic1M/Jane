@@ -478,6 +478,13 @@ export function FloatingCards({
                     {current.summary}
                   </p>
                 )}
+                {/* How sure, in view without opening (demo-video list: docked, the details'
+                    "N% sure" line was below the dock's fold); the reason is in the details. */}
+                {current.details.confidence && !open && (
+                  <p data-card-sure="" className="text-xs font-medium tabular-nums">
+                    {current.details.confidence.percent}% sure
+                  </p>
+                )}
               </div>
               <button
                 type="button"

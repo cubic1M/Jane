@@ -23,11 +23,11 @@ export const PROMO_RISE_SHARE = 0.4;
 // PRICE_RISE_LEAD_DAYS ahead, in time to call or switch.
 export const PRICE_RISE_WINDOW_DAYS = 75;
 export const PRICE_RISE_LEAD_DAYS = 30;
-// A plan paid once a year: one charge from a subscription service this many days ago or more,
-// and no other charge from it.
+// A plan paid once a year: one charge this many days ago or more, and no other charge from it,
+// that is a plan's by detection's own rule (src/detection/streams.ts isYearlyPlanCharge: its
+// amount in YEARLY_PLAN_*_CENTS, the plan's name or YEARLY_RENEWAL_WORDS, src/config/detection.ts).
+// A category alone is never enough: a movie ticket and a bookstore receipt were taken for plans.
 export const ANNUAL_MIN_AGE_DAYS = 300;
-// Words that mark a charge as a yearly plan whatever the merchant.
-export const ANNUAL_WORDS = /\b(?:annual|yearly|membership|1 ?yr|12 ?mo)\b/i;
 // Confidence (percent) when the date is Jane's estimate rather than a stated one.
 export const PROMO_CONFIDENCE_CAP = 70;
 export const ANNUAL_CONFIDENCE_CAP = 75;

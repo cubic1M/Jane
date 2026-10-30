@@ -297,9 +297,10 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         posted: 0,
       });
       const chat = await openChat(userId, { client, now: night });
-      // The day's agenda (spec step 184, with the plan and the finding on it) and the autopilot
-      // question (spec step 83); no first-run hello any more.
-      expect(chat?.messages.map((m) => m.kind)).toEqual(["brief", "decision"]);
+      // The day's agenda (spec step 184, with the plan and the finding on it); no first-run
+      // hello any more, and no autopilot question for a real account, where Jane does nothing
+      // on its own (read-only beta).
+      expect(chat?.messages.map((m) => m.kind)).toEqual(["brief"]);
       expect(chat?.messages[0].body).toMatch(/needs your yes:/);
     });
 

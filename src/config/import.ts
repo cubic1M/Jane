@@ -18,6 +18,12 @@ export function uploadTooBig(bytes: number): string {
 // The account choice on /import for "a new account from these files".
 export const NEW_ACCOUNT_ID = "new";
 
+// A file for "a new account" whose rows are at least this share already in one of the person's
+// accounts is that account's again: the upload stops and says to pick it (night QA 10-30: the
+// choice stays on a new account after each upload, and the same Wells Fargo file uploaded again
+// made a second "Wells Fargo checking", doubling its spending and the money found).
+export const NEW_ACCOUNT_SAME_ROWS_SHARE = 0.5;
+
 // The browser event /import sends when an upload is saved, so the progress chip on the page
 // starts following it without a reload (src/components/import-chip.tsx).
 export const IMPORT_STARTED_EVENT = "jane:import-started";

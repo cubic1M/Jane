@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { dismissImport } from "@/app/import/actions";
 import { IMPORT_POLL_MS, IMPORT_STARTED_EVENT } from "@/config/import";
+import { DATA_CHANGED_EVENT } from "@/config/side-chat";
 import type { ImportRunView } from "@/lib/import/background";
 import { formatWholeDollars } from "@/lib/money";
 import { panelShowsOn } from "@/lib/side-chat";
@@ -33,14 +34,21 @@ export function ImportChip() {
   // The last answer, to tell when a running upload has just finished.
   const last = useRef<ImportRunView | null>(null);
 
+  // Only the newest answer counts: under load the page's first "nothing running" could land after
+  // the upload's own check and blank the chip, which then never asked again (demo-polish e2e).
+  const asked = useRef(0);
   const check = useCallback(async () => {
+    const ask = ++asked.current;
     const next = await fetchRun();
+    if (ask !== asked.current) return;
     const before = last.current;
     last.current = next;
     setRun(next);
     // Finished while this page was open: its numbers are loaded again.
     if (before && RUNNING.has(before.stage) && next && !RUNNING.has(next.stage)) {
       router.refresh();
+      // And the side chat, which is a page of its own in a frame.
+      window.dispatchEvent(new Event(DATA_CHANGED_EVENT));
     }
   }, [router]);
 
@@ -75,7 +83,16 @@ export function ImportChip() {
     return () => clearInterval(timer);
   }, [running, check]);
 
-  if (!run) return null;
+  // On the findings it points to, a finished upload's chip has said its piece: it goes, so it
+  // doesn't follow the person to every page after (demo-video list).
+  const arrived =
+    run !== null && run.stage === "done" && run.kind === "upload" && pathname === "/report";
+  const arrivedRun = arrived ? run.id : null;
+  useEffect(() => {
+    if (arrivedRun) void dismissImport(arrivedRun);
+  }, [arrivedRun]);
+
+  if (!run || arrived) return null;
   // The phone's Jane button shows wherever the chat panel does (src/components/side-chat).
   const besideJane = panelShowsOn(pathname);
   const close = () => {
@@ -93,13 +110,12 @@ export function ImportChip() {
       aria-live="polite"
       data-import-chip={run.stage}
       data-import-run={run.id}
-      // A computer: top left, under the top bar (the docked chat is on the right). A phone:
-      // bottom left beside the Jane button, in the room the page keeps free for it, so the page
-      // never drops when the chip arrives after it (reviewer polish: 66px on every page load),
-      // and never over the Jane logo (new-user pass). Where there's no Jane button (the chat's
-      // own pages, whose message box is at the bottom), the first thing on the page instead:
-      // the body is a column, so order-first puts it there.
-      className={`z-40 flex items-center gap-3 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm shadow-sm lg:fixed lg:top-16 lg:bottom-auto lg:left-4 lg:order-none lg:mx-0 lg:mt-0 lg:max-w-[calc(100vw-380px-2rem)] dark:border-zinc-700 dark:bg-zinc-950 ${
+      // Bottom left, like a toast, never over a heading (demo-video list: on /import it sat over
+      // "# Upload statement files"). On a phone it's beside the Jane button, in the room the
+      // page keeps free for it, so the page never drops when the chip arrives after it (66px on
+      // every load). Where a phone has no Jane button (the chat's own pages, whose message box
+      // is at the bottom), the first thing on the page instead: order-first in the body column.
+      className={`z-40 flex items-center gap-3 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm shadow-sm lg:fixed lg:bottom-4 lg:left-4 lg:order-none lg:mx-0 lg:mt-0 lg:max-w-[calc(100vw-380px-2rem)] dark:border-zinc-700 dark:bg-zinc-950 ${
         besideJane
           ? "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 max-w-[calc(100vw-6.5rem)]"
           : "order-first mx-4 mt-2 max-w-[calc(100vw-2rem)] self-start"

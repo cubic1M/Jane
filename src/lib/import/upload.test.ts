@@ -43,9 +43,12 @@ const accountsDelete = vi.fn();
 const importRunsCreate = vi.fn();
 const importRunsUpdate = vi.fn();
 const importRunsDelete = vi.fn();
+const accountsFind = vi.fn();
+const transactionsFind = vi.fn();
 const db = {
   userId: "user_1",
-  accounts: { create: accountsCreate, delete: accountsDelete },
+  accounts: { create: accountsCreate, delete: accountsDelete, findUnique: accountsFind },
+  transactions: { findMany: transactionsFind },
   importRuns: {
     create: importRunsCreate,
     updateMany: importRunsUpdate,
@@ -57,6 +60,8 @@ const BALANCES = [{ date: "2026-10-13", balanceCents: 248451 }];
 beforeEach(() => {
   accountsCreate.mockReset().mockResolvedValue({ id: "acct_new" });
   accountsDelete.mockReset().mockResolvedValue({});
+  accountsFind.mockReset().mockResolvedValue({ name: "Chase card" });
+  transactionsFind.mockReset().mockResolvedValue([]);
   importCsvFiles.mockReset().mockResolvedValue({
     ...counts,
     files: [{ format: "chase_credit_card", rows: 1 }],
@@ -220,6 +225,40 @@ describe("saveUpload into a new account", () => {
     expect(accountsDelete).toHaveBeenCalledWith({ where: { id: "acct_new" } });
     // No record of an upload that didn't happen.
     expect(importRunsDelete).toHaveBeenCalledWith({ where: { id: "run_1" } });
+  });
+
+  it("stops when the file's rows are already in another account, and names it", async () => {
+    // The same file again: the choice stays on a new account after each upload.
+    const two = CHASE_CARD + "10/14/2026,10/15/2026,Blue Bottle,Food & Drink,Sale,-5.50,\n";
+    transactionsFind.mockImplementation(async ({ where }) =>
+      where.dedupeKey.in.map((key: string) => ({ accountId: "acct_1", dedupeKey: key })),
+    );
+    const result = await saveUpload(db, form({ ...fields, files: [csv("card.csv", two)] }));
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "2 of these 2 transactions are already in Chase card. Pick Chase card above, so only the new ones are added.",
+    });
+    expect(transactionsFind.mock.calls[0][0].where.source).toBe("csv");
+    expect(accountsFind).toHaveBeenCalledWith({ where: { id: "acct_1" }, select: { name: true } });
+    expect(accountsCreate).not.toHaveBeenCalled();
+    expect(importCsvFiles).not.toHaveBeenCalled();
+    expect(track).toHaveBeenCalledWith("user_1", "upload_failed", { reason: "already_imported" });
+  });
+
+  it("makes the account when only a few rows overlap another account", async () => {
+    const lines = Array.from(
+      { length: 4 },
+      (_, i) => `10/1${i}/2026,10/1${i}/2026,Shop ${i},Shopping,Sale,-1${i}.00,`,
+    );
+    const text = CHASE_CARD.split("\n")[0] + "\n" + lines.join("\n") + "\n";
+    // One of four rows is in the other account: under half, so it's a new account's.
+    transactionsFind.mockImplementation(async ({ where }) => [
+      { accountId: "acct_1", dedupeKey: where.dedupeKey.in[0] },
+    ]);
+    const result = await saveUpload(db, form({ ...fields, files: [csv("card.csv", text)] }));
+    expect(result).toMatchObject({ ok: true, accountId: "acct_new" });
+    expect(transactionsFind.mock.calls[0][0].where.dedupeKey.in).toHaveLength(4);
   });
 
   it("asks for a name and type", async () => {

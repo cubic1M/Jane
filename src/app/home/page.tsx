@@ -3,6 +3,7 @@ import { ShownLink } from "@/components/shown-link";
 import { redirect } from "next/navigation";
 import { after, connection } from "next/server";
 import { Suspense } from "react";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { BankStatusNotice } from "@/components/bank-status-notice";
@@ -179,7 +180,7 @@ async function HubContent() {
   const treeData = loadTreeData(user.id);
   // Read later by the tree; a failure shows there, not as an unhandled rejection here.
   treeData.catch(() => {});
-  const [top, checklist, autopilot, books, suggestions, banks] = await Promise.all([
+  const [top, checklist, autopilot, books, suggestions, banks, concierge] = await Promise.all([
     loadHubTop(user.id),
     firstWeekChecklist(user.id),
     autopilotOf(user.id),
@@ -187,6 +188,7 @@ async function HubContent() {
     // Jane's cards, as the chat shows them (on a computer the dock above the chat has them).
     loadPopupStack(user.id),
     loadBankNotices(user.id),
+    conciergeMode(user.id),
   ]);
   if (!top) redirect("/connect");
   const { home } = top;
@@ -232,7 +234,9 @@ async function HubContent() {
       />
 
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
-      {autopilot === null && <AutopilotChooser compact />}
+      {/* Only where Jane can act on its own: the read-only beta's real accounts can't, so the
+          question would promise what it won't do (as in the chat). */}
+      {autopilot === null && concierge && <AutopilotChooser compact />}
       {checklist && !checklist.complete && <FirstWeekChecklist items={checklist.items} />}
 
       <p className="text-xs text-zinc-500">

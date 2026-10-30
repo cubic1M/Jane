@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chatInFrame,
+  fabTucked,
   isFrameMessage,
   leavesFrame,
   panelKey,
@@ -88,6 +89,8 @@ describe("messages between the page and the frame", () => {
     expect(isFrameMessage({ type: "jane:panel", state: "open", home: "yes" })).toBe(false);
     expect(isFrameMessage({ type: "jane:refresh" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ready" })).toBe(true);
+    // The framed chat's cards changed: the dock above it loads them again.
+    expect(isFrameMessage({ type: "jane:cards" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ask", text: "What is idle cash?" })).toBe(true);
     expect(isFrameMessage({ type: "jane:ask", text: "" })).toBe(false);
     // A greyed hint after the text (the home hub's "[amount] on [what]"), short, never sent.
@@ -133,5 +136,23 @@ describe("no chat page of its own", () => {
       address: "?focus=needs",
     });
     expect(openedChat("?focus=needs", "")).toBeNull();
+  });
+});
+
+describe("the phone's Jane button while scrolling", () => {
+  const end = 2_000;
+  it("tucks away scrolling down, and comes back scrolling up", () => {
+    expect(fabTucked(false, { from: 300, to: 400, end })).toBe(true);
+    expect(fabTucked(true, { from: 400, to: 350, end })).toBe(false);
+  });
+
+  it("stays out near the top and at the end, where the page keeps room for it", () => {
+    expect(fabTucked(true, { from: 100, to: 40, end })).toBe(false);
+    expect(fabTucked(false, { from: 1_850, to: 1_950, end })).toBe(false);
+  });
+
+  it("ignores a small move", () => {
+    expect(fabTucked(true, { from: 500, to: 497, end })).toBe(true);
+    expect(fabTucked(false, { from: 500, to: 503, end })).toBe(false);
   });
 });

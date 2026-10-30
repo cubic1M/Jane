@@ -4,6 +4,7 @@ import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { confidenceOf, counted, type Source } from "@/profile/confidence";
 import type { Fact, ProfileInput, ProfileTx } from "@/profile/build";
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
+import { withoutAchDetails } from "@/data-sources/merchant";
 import { formatWholeDollars } from "@/lib/money";
 
 // What detectors share. Pure.
@@ -87,9 +88,10 @@ export function weakest(parts: readonly Confidence[]): Confidence {
   return parts.reduce((a, b) => (b.percent < a.percent ? b : a));
 }
 
-// A payee as a person would say it: "NETFLIX.COM" is Netflix, "DISNEY PLUS" is Disney Plus.
+// A payee as a person would say it: "NETFLIX.COM" is Netflix, "DISNEY PLUS" is Disney Plus,
+// "VERIZON WIRELESS DES:PAYMENTREC ID:XXXXX" is Verizon Wireless.
 export function nice(description: string): string {
-  return description
+  return withoutAchDetails(description)
     .replace(/\.com$/i, "")
     .replace(/\*.*$/, "")
     .trim()
