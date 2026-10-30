@@ -71,6 +71,8 @@ describe("the monthly close (step 244)", () => {
     expect(s?.short).toMatch(/^Wework \$285\.00, Adobe Creative Cloud \$59\.99/);
     expect(s?.worthCents).toBe(34_499);
     expect(s?.action.href).toBe("/monthly#close");
+    // Night QA 10-30: "4 unsure charge in 3 months of data".
+    expect(s?.confidence.reason).toMatch(/^2 unsure charges in /);
   });
 
   it("is quiet once the month is closed, and for people with nothing unsure", () => {
