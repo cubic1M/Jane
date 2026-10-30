@@ -332,6 +332,28 @@ describe("categorizeByRules", () => {
     },
   );
 
+  // Night QA 10-30: money in with no category netted against spending as a refund.
+  it.each([
+    ["LIGHTSTREAM LOAN DEPOSIT", "LOAN_DISBURSEMENTS_PERSONAL"],
+    ["SOFI LENDING CORP LOAN PROCEEDS", "LOAN_DISBURSEMENTS_PERSONAL"],
+    ["UPSTART NETWORK LOAN", "LOAN_DISBURSEMENTS_PERSONAL"],
+    ["CA FTB TAX REFUND", "INCOME_TAX_REFUND"],
+    ["TAX PRODUCTS PE1 SBTPG LLC", "INCOME_TAX_REFUND"],
+    ["EDD UI BENEFITS", "INCOME_UNEMPLOYMENT"],
+    ["VA BENEFITS TREAS 310", "INCOME_MILITARY"],
+    ["DEPOSIT - DFAS-CLEVELAND MIL PAY", "INCOME_MILITARY"],
+    ["CHILD SUPPORT PAYMENT", "INCOME_CHILD_SUPPORT"],
+    ["COINBASE INC", "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["FID BKG SVC LLC MONEYLINE", "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["HSA REIMBURSEMENT", "TRANSFER_IN_ACCOUNT_TRANSFER"],
+    // Still a student's aid, not a personal loan.
+    ["DIRECT LOAN DISB UC", "LOAN_DISBURSEMENTS_STUDENT"],
+  ])("reads %s, money in, as %s", (description, category) => {
+    expect(categorizeByRules({ description, amountCents: -150_000, hints: {} })?.detailed).toBe(
+      category,
+    );
+  });
+
   // Night QA 10-30: a payday loan landing in checking read as a $400 refund of spending.
   it.each([["ADVANCE AMERICA LOAN"], ["EARNIN TRANSFER"], ["DAVE INC ADVANCE"]])(
     "reads %s, money in, as a cash advance",
