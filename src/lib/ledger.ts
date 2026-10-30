@@ -37,6 +37,7 @@ export type LedgerEntry = {
   heldProof: string | null;
   heldLines: LedgerLine[];
   lapsed: boolean;
+  foundOn: string | null;
   actedOn: string | null;
   verifiedOn: string | null;
   heldOn: string | null;
@@ -102,6 +103,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       heldProof: r.heldOn ? `Still true on ${dayLabel(r.heldOn, { year: true })}.` : null,
       heldLines: [],
       lapsed: false,
+      foundOn: null,
       actedOn: null,
       verifiedOn: r.verifiedOn,
       heldOn: r.heldOn,
@@ -121,6 +123,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     heldProof: null,
     heldLines: [],
     lapsed: false,
+    foundOn: null,
     actedOn: null,
     verifiedOn: null,
     heldOn: null,
@@ -147,6 +150,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       heldProof: o.heldProof,
       heldLines: o.heldEvidence,
       lapsed: o.lapsed,
+      foundOn: o.foundOn,
       actedOn: o.actedOn,
       verifiedOn: o.verifiedOn,
       heldOn: o.heldOn,
@@ -171,6 +175,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       heldProof: null,
       heldLines: [],
       lapsed: false,
+      foundOn: o.firstShownAt.toISOString().slice(0, 10),
       actedOn: null,
       verifiedOn: null,
       heldOn: null,

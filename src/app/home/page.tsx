@@ -233,6 +233,16 @@ async function HubContent() {
         endDate={addDays(top.cashFlow.asOf, CASH_FLOW_DAYS)}
       />
 
+      {/* The monthly close: Jane closing last month's books (src/app/close). */}
+      <Link
+        href="/close"
+        prefetch={false}
+        data-home-close=""
+        className="self-start font-mono text-sm font-medium underline-offset-2 hover:underline"
+      >
+        [CLOSE] Last month&apos;s close ›
+      </Link>
+
       <NeedsYou waiting={home.waitingOnYou} unreadAlerts={home.unreadAlerts} />
       {/* Only where Jane can act on its own: the read-only beta's real accounts can't, so the
           question would promise what it won't do (as in the chat). */}

@@ -91,6 +91,7 @@ describe("savedReply", () => {
       markedDone: true,
       verifiedOn: "2026-10-01",
       state: "verified" as const,
+      foundOn: "2026-07-30",
       confidencePercent: 80,
       rule: "",
       heldOn: null,

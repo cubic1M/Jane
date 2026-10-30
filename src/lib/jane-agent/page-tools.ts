@@ -12,6 +12,7 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   bills: ["coming_up", "balance_forecast", "subscriptions"],
   budgets: ["budgets"],
   "check-in": ["plan_upkeep"],
+  close: ["month_close", "proven_savings", "monthly_report"],
   connect: ["explainer"],
   deadlines: ["coming_up", "price_rises"],
   debt: ["debts", "payoff_plan", "balance_transfers"],

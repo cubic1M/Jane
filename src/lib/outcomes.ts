@@ -493,6 +493,8 @@ export type OutcomeView = {
   // The ledger (src/planning/ledger.ts): its state, how sure Jane was when it found it, how it
   // is verified, and Held (or came back) with the lines that show it.
   state: LedgerState;
+  // The day Jane first showed it.
+  foundOn: string;
   confidencePercent: number;
   rule: string;
   heldOn: string | null;
@@ -524,11 +526,12 @@ export async function savingsRecord(
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<SavingsRecord> {
   const db = scopedFor(userId, client);
-  const rows = await db.suggestionOutcomes.findMany({
+  const all = await db.suggestionOutcomes.findMany({
     where: { status: { in: ACTED } },
     orderBy: [{ verifiedAt: "asc" }, { answeredAt: "asc" }, { id: "asc" }],
   });
-  const ids = [...new Set(rows.flatMap((r) => [...r.evidenceTxIds, ...r.heldEvidenceTxIds]))];
+  const named = (r: (typeof all)[number]) => [...r.evidenceTxIds, ...r.heldEvidenceTxIds];
+  const ids = [...new Set(all.flatMap(named))];
   const txs =
     ids.length > 0
       ? await db.transactions.findMany({
@@ -537,6 +540,15 @@ export async function savingsRecord(
         })
       : [];
   const byId = new Map(txs.map((t) => [t.id, t]));
+  // The evidence gate (src/lib/evidence/gate.ts), with the rows already read: a line whose named
+  // transactions are all gone (a removed bank or upload) is never shown or counted, even before
+  // removeOrphans deletes it.
+  // Investing lines name holdings, not transactions: their accounts' removal deletes them.
+  const rows = all.filter((r) => {
+    const watch = asWatch(r.watch);
+    if (watch && isHoldingsWatch(watch)) return true;
+    return named(r).length === 0 || named(r).some((id) => byId.has(id));
+  });
   const lines = (txIds: string[]) =>
     txIds.flatMap((id) => {
       const t = byId.get(id);
@@ -559,6 +571,7 @@ export async function savingsRecord(
     markedDone: r.doneAt !== null,
     verifiedOn: r.verifiedAt ? isoDate(r.verifiedAt) : null,
     state: ledgerStateOf(r) ?? "done",
+    foundOn: isoDate(r.firstShownAt),
     confidencePercent: r.confidencePercent,
     rule: verifyRule(asWatch(r.watch)),
     heldOn: r.heldAt ? isoDate(r.heldAt) : null,
