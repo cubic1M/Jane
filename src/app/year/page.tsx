@@ -51,7 +51,7 @@ async function Year({ searchParams }: { searchParams: PageProps<"/year">["search
         </nav>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         {(
           [
             ["Spent", formatCents(review.spendingCents)],

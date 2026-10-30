@@ -34,7 +34,7 @@ describe("GET /api/export", () => {
     const response = await GET();
 
     expect(response.headers.get("content-disposition")).toBe(
-      'attachment; filename="financial-controller-data-2026-10-19.json"',
+      'attachment; filename="jane-data-2026-10-19.json"',
     );
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(JSON.parse(await response.text()).transactions).toHaveLength(2);

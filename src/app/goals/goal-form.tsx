@@ -25,7 +25,7 @@ export function GoalForm({
   const [state, action, pending] = useActionState<GoalState, FormData>(saveGoal, null);
   const id = (name: string) => `${values.goalId || "new"}-${name}`;
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <input type="hidden" name="goalId" value={values.goalId} />
       <label htmlFor={id("name")} className="flex flex-col gap-1 text-sm font-medium">
         What it&apos;s for

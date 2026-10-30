@@ -148,7 +148,7 @@ export function LifeEventsBoard({ events }: { events: BoardEvent[] }) {
           <h2 id="start-heading" className="text-xl font-semibold">
             Start a checklist
           </h2>
-          <ul className="grid gap-3 sm:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {notStarted.map((kind) => (
               <li
                 key={kind}

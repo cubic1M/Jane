@@ -67,9 +67,9 @@ export async function sendMagicLink({ to, url }: { to: string; url: string }): P
   const link = escapeHtml(url);
   await sendEmail({
     to,
-    subject: "Your sign-in link for Financial Controller",
-    text: `Sign in to Financial Controller:\n${url}\n\nThis link expires in 24 hours and works once. If you didn't ask for it, ignore this email.`,
-    html: `<p>Sign in to Financial Controller:</p>
+    subject: "Your sign-in link for Jane",
+    text: `Sign in to Jane:\n${url}\n\nThis link expires in 24 hours and works once. If you didn't ask for it, ignore this email.`,
+    html: `<p>Sign in to Jane:</p>
 <p><a href="${link}">Sign in</a></p>
 <p>This link expires in 24 hours and works once. If you didn't ask for it, ignore this email.</p>`,
   });

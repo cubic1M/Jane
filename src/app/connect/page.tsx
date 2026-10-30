@@ -25,7 +25,7 @@ const PROMISES = [
 
 function Promises() {
   return (
-    <ul className="grid gap-3 sm:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {PROMISES.map(([title, body]) => (
         <li key={title} className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
           <p className="font-semibold">{title}</p>

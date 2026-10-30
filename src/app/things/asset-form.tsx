@@ -31,7 +31,7 @@ export function AssetForm({
   const shown = state ? { ...values, ...state.input } : values;
   const id = (name: string) => `${values.assetId || "new"}-${name}`;
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <input type="hidden" name="assetId" value={values.assetId} />
       <label htmlFor={id("kind")} className="flex flex-col gap-1 text-sm font-medium">
         What it is

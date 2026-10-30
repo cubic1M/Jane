@@ -187,7 +187,11 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
               </ul>
             </section>
           ) : null}
-          <form method="get" className="grid gap-3 sm:grid-cols-3" aria-label="Try a home">
+          <form
+            method="get"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+            aria-label="Try a home"
+          >
             <label className="flex flex-col gap-1 text-sm">
               Price
               <input

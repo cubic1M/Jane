@@ -167,7 +167,7 @@ async function GoalContent({ searchParams }: Pick<PageProps<"/loans/goal">, "sea
             method="get"
             action="/loans/goal"
             aria-label="Preview a plan"
-            className="grid gap-3 sm:grid-cols-4"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-4"
           >
             <label className="flex flex-col gap-1 text-sm">
               For

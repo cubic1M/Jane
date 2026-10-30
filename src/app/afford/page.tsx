@@ -180,7 +180,7 @@ async function AffordContent({
         <p className="text-zinc-600 dark:text-zinc-400">{AFFORD_COPY.intro}</p>
       </div>
 
-      <form method="get" action="/afford" className="grid gap-3 sm:grid-cols-2">
+      <form method="get" action="/afford" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label htmlFor="afford-kind" className="flex flex-col gap-1 text-sm font-medium">
           What it is
           <select id="afford-kind" name="kind" defaultValue={query.form.kind} className={INPUT}>

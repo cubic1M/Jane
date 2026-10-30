@@ -121,7 +121,7 @@ async function RentingContent({ searchParams }: Pick<PageProps<"/loans/renting">
               <SubmitButton className={`${BUTTON} self-end`}>It came back</SubmitButton>
             </form>
           ))}
-        <form action={depositAction} className="grid gap-3 sm:grid-cols-4">
+        <form action={depositAction} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <label className="flex flex-col gap-1 text-sm">
             Deposit
             <input name="amount" inputMode="decimal" className={INPUT} />

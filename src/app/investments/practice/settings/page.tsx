@@ -320,7 +320,7 @@ async function Content({
 
         <fieldset className={SECTION}>
           <legend className="px-1 font-semibold">{PREFERENCE_LABELS.avoid}</legend>
-          <div className="grid gap-1 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {Object.entries(EXCLUSIONS).map(([key, { label }]) => (
               <label key={key} className="flex items-center gap-2 text-sm">
                 <input

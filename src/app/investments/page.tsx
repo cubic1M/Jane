@@ -259,7 +259,7 @@ async function InvestmentsContent({
   }
 
   details[itemId("owned", "total")] = (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <div className={CARD}>
         <span className="text-sm text-zinc-600 dark:text-zinc-400">In total</span>
         <span className="text-2xl font-semibold">{formatCents(data.totalCents)}</span>

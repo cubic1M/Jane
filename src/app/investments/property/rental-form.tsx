@@ -23,7 +23,7 @@ const FIELDS: [string, string, string?][] = [
 export function RentalForm() {
   const [state, action, pending] = useActionState<RentalState, FormData>(saveRental, null);
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {FIELDS.map(([id, label]) => (
         <label
           key={id}

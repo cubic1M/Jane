@@ -152,7 +152,11 @@ async function CarContent({ searchParams }: Pick<PageProps<"/loans/car">, "searc
               </p>
             </section>
           )}
-          <form method="get" className="grid gap-3 sm:grid-cols-2" aria-label="Try a car">
+          <form
+            method="get"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+            aria-label="Try a car"
+          >
             <label className="flex flex-col gap-1 text-sm">
               Price
               <input
@@ -177,7 +181,7 @@ async function CarContent({ searchParams }: Pick<PageProps<"/loans/car">, "searc
                 ))}
               </select>
             </label>
-            <fieldset className="grid gap-3 sm:col-span-2 sm:grid-cols-3">
+            <fieldset className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-3">
               <legend className="text-sm font-medium">The dealer&apos;s offer (optional)</legend>
               <label className="flex flex-col gap-1 text-sm">
                 APR %

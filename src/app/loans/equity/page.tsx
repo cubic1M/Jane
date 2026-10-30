@@ -96,7 +96,7 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
               {data.loanName}: {formatCents(data.balanceCents)} left. I don&apos;t guess these; they
               come from your closing papers and your tax and insurance bills.
             </p>
-            <form action={saveFactsAction} className="grid gap-3 sm:grid-cols-3">
+            <form action={saveFactsAction} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <label className="flex flex-col gap-1 text-sm">
                 Home&apos;s value when the loan began
                 <input
@@ -212,7 +212,7 @@ async function EquityContent({ searchParams }: Pick<PageProps<"/loans/equity">, 
                   method="get"
                   action="/loans/equity"
                   aria-label="Compare ways to pay"
-                  className="grid gap-3 sm:grid-cols-3"
+                  className="grid grid-cols-1 gap-3 sm:grid-cols-3"
                 >
                   <label className="flex flex-col gap-1 text-sm">
                     What it costs
