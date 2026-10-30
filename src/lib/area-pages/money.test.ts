@@ -224,6 +224,24 @@ describe("moneyTree", () => {
     expect(allItems(cushion).find((i) => i.id === "coming:emergency_fund")!.figure).toBe("$2k");
   });
 
+  // Night QA 10-30: "Balance running low $941" beside a $798 balance; $941 was the shortfall.
+  it("shows a low balance's figure as what's short, not as a balance", () => {
+    const low = {
+      ...FULL,
+      suggestions: [
+        {
+          id: "s1",
+          topic: "low_balance",
+          summary: "You hold $798.47 against about $1,739.00 a month in bills.",
+          worthCents: 94_053,
+          urgency: "now",
+          worthKind: "risk",
+        },
+      ],
+    };
+    expect(allItems(low).find((i) => i.id === "coming:low_balance")!.figure).toBe("$941 short");
+  });
+
   // Overnight upload QA: "Uncategorized is up +$3" asked for a look.
   it("says a category is up only when it rose by enough", () => {
     const small = {
