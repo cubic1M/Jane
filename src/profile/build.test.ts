@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PEOPLE } from "@/config/people";
-import { buildProfile } from "./build";
+import { buildProfile, monthsCovered, monthsOfData } from "./build";
 import { confidenceOf, sureWords } from "./confidence";
 import { FACT_KEYS } from "./facts";
 import { inputFor, SAMPLE_TODAY } from "./sample";
@@ -190,5 +190,24 @@ describe("credit card debt", () => {
     const input = inputFor("family");
     expect(input.accounts.some((a) => a.type === "credit")).toBe(true);
     expect(buildProfile(input).facts.card_debt_cents).toMatchObject({ source: "seen" });
+  });
+});
+
+// Debugger 10-30: one report page said "11 months of data" (this count, by calendar months, Nov
+// to Oct) and "12 months of data" (the report's own count, by days) for the same year of
+// statements. One counter now: the days covered, in average months, up to a year.
+describe("months of data, one count", () => {
+  const tx = (date: string) => ({ date }) as Parameters<typeof monthsOfData>[0][number];
+  it("calls a year of statements 12 months, not 11", () => {
+    expect(monthsCovered("2025-11-02", "2026-10-28")).toBe(12);
+    expect(monthsOfData([tx("2025-11-02"), tx("2026-10-20")], "2026-10-28")).toBe(12);
+  });
+  it("keeps three months three and a month one", () => {
+    expect(monthsCovered("2026-07-29", "2026-10-28")).toBe(3);
+    expect(monthsCovered("2026-10-04", "2026-10-28")).toBe(1);
+    expect(monthsCovered("2020-01-01", "2026-10-28")).toBe(12);
+    // A part month never rounds up: three and a half months is three (thin data stays modest).
+    expect(monthsCovered("2026-06-12", "2026-10-28")).toBe(4);
+    expect(monthsCovered("2026-07-12", "2026-10-28")).toBe(3);
   });
 });
