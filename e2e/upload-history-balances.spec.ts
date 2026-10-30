@@ -79,14 +79,21 @@ test("an older file added, then the newer removed: the older months stay as the 
     expect(await chip.getAttribute("data-import-run")).not.toBe(before);
   }).toPass({ timeout: 120_000 });
 
-  // The month before the first row: $1,000.00, as the file's first balance says.
-  const first = ago(rows()[0].n);
-  const monthEnd = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 0));
-  const label = monthEnd.toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  // The file's first month ends at the balance the file gave for it (not one worked back from
+  // today across the missing weeks), and no month before the file is listed: its opening balance
+  // is the day before its first row, not a flat month it doesn't cover (demo-video list).
+  const all = rows();
+  const first = ago(all[0].n);
+  const monthEnd = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0));
+  const closing = all.filter((r) => ago(r.n) <= monthEnd).at(-1)!.bal;
+  const month = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+  const dollars = (cents: number) =>
+    (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
   await page.goto("/net-worth");
-  await expect(page.locator("li").filter({ hasText: label })).toContainText("$1,000.00");
+  await expect(page.locator("li").filter({ hasText: month(first) })).toContainText(
+    dollars(closing),
+  );
+  const prior = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 0));
+  await expect(page.locator("li").filter({ hasText: month(prior) })).toHaveCount(0);
 });
