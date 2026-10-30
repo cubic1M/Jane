@@ -598,9 +598,18 @@ export const venmo: CsvFormat = {
       ? `Transfer to bank${note ? `: ${note}` : ""}`
       : [who, note].filter(Boolean).join(": ") || type;
     if (!description) return { ok: false, reason: "Missing description" };
+    // Venmo's "Payment" and "Charge" are payments between people, not a bank's "Payment" type
+    // (paying a card): passing them on made a roommate's rent share a card payment (debugger
+    // 10-30). Other types (transfers) still go through.
+    const p2p = /^(?:payment|charge)$/i.test(type);
     return {
       ok: true,
-      row: { date, amountCents: -cents || 0, description, hints: { bankType: optional(type) } },
+      row: {
+        date,
+        amountCents: -cents || 0,
+        description,
+        hints: p2p ? {} : { bankType: optional(type) },
+      },
     };
   },
 };
