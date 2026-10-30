@@ -100,6 +100,8 @@ export function subscriptionsReply(
 ): Reply {
   const list = recurring.charges.filter((c) => intent.all || c.subscription);
   const what = intent.all ? "regular charges" : "subscriptions";
+  // "1 subscription", not "1 subscriptions" (night QA 10-30).
+  const counted = `${list.length} ${list.length === 1 ? what.replace(/s$/, "") : what}`;
   if (list.length === 0) {
     return { body: `I don't see any ${what} yet.`, actions: [subscriptionsLink], refs: {} };
   }
@@ -107,8 +109,8 @@ export function subscriptionsReply(
   const monthCents = Math.round(yearCents / 12);
   const lines = [
     intent.total
-      ? `You spend about ${formatCents(monthCents)} a month on ${list.length} ${what}, ${formatCents(yearCents)} a year.`
-      : `You have ${list.length} ${what}, about ${formatCents(monthCents)} a month in all.`,
+      ? `You spend about ${formatCents(monthCents)} a month on ${counted}, ${formatCents(yearCents)} a year.`
+      : `You have ${counted}, about ${formatCents(monthCents)} a month in all.`,
   ];
   const each = (c: Charge) =>
     `${c.merchant} ${formatCents(c.lastAmountCents)} ${EVERY[c.frequency]}`;

@@ -254,6 +254,32 @@ describe("spendingReply", () => {
     );
   });
 
+  // Night QA 10-30: statements from Jul 28 made July's 4 days a "usual month".
+  it("suggests a budget from the months the data covers in full", () => {
+    const food = (date: string, cents: number) => ({
+      date,
+      amountCents: cents,
+      description: "TRADER JOE'S #123",
+      merchantName: null,
+      pfcPrimary: "FOOD_AND_DRINK",
+      pfcDetailed: "FOOD_AND_DRINK_GROCERIES",
+      pending: false,
+    });
+    const rows = [
+      food("2026-07-28", 2_000),
+      food("2026-08-10", 26_800),
+      food("2026-09-10", 26_300),
+      food("2026-10-10", 22_800),
+    ];
+    const reply = spendingReply(
+      { kind: "spending", category: "food", month: "2026-09" },
+      rows,
+      "2026-10-30",
+      [],
+    );
+    expect(reply.body).toMatch(/A \$266\.00 budget would match a usual month\.$/);
+  });
+
   it("tries a merchant when the word isn't a category", () => {
     const reply = spendingReply(
       intent("how much did i spend at target", "spending"),
