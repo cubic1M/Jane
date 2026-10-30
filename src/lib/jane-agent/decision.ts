@@ -1,6 +1,6 @@
 import { DECISION_HIGH_RATE_BPS, DECISION_MIN_CUSHION_MONTHS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { cashLine, liquidCents, monthlySpendCents } from "@/detectors/helpers";
+import { cashLine, cushionSpendCents, liquidCents } from "@/detectors/helpers";
 import { adviceMode } from "@/lib/advice-mode";
 import { formatCents } from "@/lib/money";
 import { loadProfileInput } from "@/lib/profile";
@@ -37,7 +37,7 @@ export async function loadDecisionFacts(
 ): Promise<DecisionFacts> {
   const data = await loadProfileInput(userId, { client, now });
   const profile = buildProfile(data);
-  const spend = monthlySpendCents(data, profile.months);
+  const spend = cushionSpendCents(data, profile.months);
   const cash = liquidCents(data);
   const income = profile.facts.monthly_income;
   const pattern = profile.facts.income_pattern;
