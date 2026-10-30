@@ -13,7 +13,12 @@ import { scopedDb } from "@/lib/db-scoped";
 import { balancesToAsk } from "@/lib/import/account-balance";
 import { listUploads, uploadedTotals } from "@/lib/import/remove";
 import { requireUser } from "@/lib/session";
-import { BANK_DOWNLOADS, SUGGESTED_UPLOAD_MONTHS, UPLOAD_REASSURANCE } from "@/config/import";
+import {
+  BANK_DOWNLOADS,
+  KNOWN_BANKS_LINE,
+  SUGGESTED_UPLOAD_MONTHS,
+  UPLOAD_REASSURANCE,
+} from "@/config/import";
 
 async function ImportContent() {
   const user = await requireUser();
@@ -92,11 +97,7 @@ async function ImportContent() {
             .map(({ id, name, kindLabel, kind }) => ({ id, name, kindLabel, kind }))}
           linked={linked}
         />
-        <p className="text-xs text-zinc-500">
-          Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi,
-          American Express, Discover, Apple Card, U.S. Bank, Ally and Schwab, and Venmo and PayPal
-          statements. For any other CSV you pick which column is which.
-        </p>
+        <p className="text-xs text-zinc-500">{KNOWN_BANKS_LINE}</p>
       </section>
 
       {/* Holdings files have their own page: one upload form per page (src/app/import/investments). */}

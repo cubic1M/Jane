@@ -166,3 +166,9 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
     ],
   },
 ];
+
+// The banks whose CSV layouts Jane reads without the column picker, as /import lists them. Every
+// layout's bank is named here (src/data-sources/csv/known-banks.test.ts; debugger 10-30: Navy
+// Federal was read but not listed).
+export const KNOWN_BANKS_LINE =
+  "Jane knows the CSV layouts of Chase, Bank of America, Wells Fargo, Capital One, Citi, American Express, Discover, Apple Card, U.S. Bank, Ally, Schwab and Navy Federal, and Venmo and PayPal statements. For any other CSV you pick which column is which.";
