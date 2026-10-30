@@ -250,6 +250,22 @@ describe("what changed", () => {
     expect(kept.map((c) => c.title)).toEqual(["New $12.00 fee at Chase."]);
   });
 
+  it("says a new finding once, not again as an alert or a change", () => {
+    const title = "Chase checking could drop to -$2,718.80 around Nov 4";
+    const digest = buildDigest(
+      input({
+        findings: [{ title, annualSavingsCents: null, createdAt: daysAgo(1), confidence: "high" }],
+        alerts: [
+          { title: `${title}.`, createdAt: daysAgo(1), emailedAt: null, confidencePercent: 59 },
+        ],
+        changes: [change({ title, merchant: null, confidencePercent: 59 })],
+      }),
+    );
+    expect(digest?.newFindings.map((f) => f.title)).toEqual([title]);
+    expect(digest?.alerts).toEqual([]);
+    expect(digest?.changes).toEqual([]);
+  });
+
   it("puts the surest first and stops at the cap", () => {
     const many = Array.from({ length: 12 }, (_, i) =>
       change({ title: `Bill ${i}`, merchant: `M${i}`, confidencePercent: 50 + i }),

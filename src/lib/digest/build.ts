@@ -101,6 +101,11 @@ const total = (rows: { annualSavingsCents: number | null }[]) =>
   rows.reduce((sum, r) => sum + (r.annualSavingsCents ?? 0), 0);
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
+const sameWords = (title: string) =>
+  title
+    .trim()
+    .replace(/[.!]+$/, "")
+    .toLowerCase();
 
 // Changes since the last email (or the last week, for someone's first), the surest first. A
 // change an alert already says (the same merchant) isn't said twice.
@@ -142,8 +147,16 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
   const pending = input.actions.filter((a) => PENDING.includes(a.status));
   const since = input.lastSentAt ?? new Date(0);
   const newFindings = input.findings.filter((f) => f.createdAt > since);
-  const alerts = input.alerts.filter((a) => a.createdAt > since && a.emailedAt === null);
-  const changes = changesSince(input.changes ?? [], alerts, input.lastSentAt ?? weekAgo);
+  // Said once: an alert or change that is a new finding's own words stays under the finding
+  // (night QA 10-30: "Chase checking could drop to -$2,718.80 around Nov 4" was in the email
+  // twice, 59% sure under What changed and 80%+ sure under New since last week).
+  const found = new Set(newFindings.map((f) => sameWords(f.title)));
+  const alerts = input.alerts.filter(
+    (a) => a.createdAt > since && a.emailedAt === null && !found.has(sameWords(a.title)),
+  );
+  const changes = changesSince(input.changes ?? [], alerts, input.lastSentAt ?? weekAgo).filter(
+    (c) => !found.has(sameWords(c.title)),
+  );
   // Budgets close to or over their limit; goals; net worth when last week is known.
   const budgets = (input.plans?.budgets ?? [])
     .filter((b) => b.spentCents >= b.budgetCents * DIGEST_BUDGET_NEAR_SHARE)
