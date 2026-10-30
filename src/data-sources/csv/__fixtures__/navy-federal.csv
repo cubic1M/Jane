@@ -1,0 +1,4 @@
+Posting Date,Transaction Date,Amount,Credit Debit Indicator,type,Type Group,Reference,Instructed Currency,Currency Exchange Rate,Instructed Amount,Description,Category
+10/02/2026,10/01/2026,73.92,Debit,POS,Payment,REF36240,,,,COMMISSARY #4410,General
+10/01/2026,10/01/2026,1395.00,Debit,ACH,Payment,REF18663,,,,PAID TO - OAKWOOD APTS RENT,Rent
+09/30/2026,09/30/2026,2410.00,Credit,ACH,Deposit,REF55120,,,,DEPOSIT - DFAS-CLEVELAND MIL PAY,Paycheck
