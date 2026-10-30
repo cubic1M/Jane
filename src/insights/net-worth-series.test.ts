@@ -144,5 +144,4 @@ describe("ranges", () => {
     expect(from(1_000_000, 2_121_000)).toEqual({ cents: 1_121_000, share: null });
     expect(from(1_000_000, 1_900_000).share).toBeCloseTo(0.9);
   });
-
 });
