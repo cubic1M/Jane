@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SuggestionCards } from "@/app/chat/suggestion-cards";
 import { CARDS_CHANGED_EVENT, UNREAD_POLL_MS } from "@/config/side-chat";
+import { keepWheel } from "@/lib/contain-scroll";
 import {
   goneIds,
   goneServerSnapshot,
@@ -121,13 +122,32 @@ export function CardDock() {
     if (gone) keepCards(cards);
   }, [gone, cards]);
 
+  // The dock is the one scroller for a card and its details: the wheel, a trackpad or the keys
+  // move it from anywhere over the card, and at its end the page and the chat behind stay put.
+  const scroller = useRef<HTMLDivElement>(null);
+  const hasCards = shown.length > 0;
+  useEffect(() => {
+    const box = scroller.current;
+    if (!hasCards || !box) return;
+    return keepWheel(box);
+  }, [hasCards]);
+
   if (shown.length === 0) return null;
   return (
     <FollowHeight
       className="shrink-0 border-b border-zinc-300 dark:border-zinc-700"
       slideIn={!fromKept}
     >
-      <div className="max-h-[50vh] overflow-y-auto overscroll-contain">
+      <div
+        ref={scroller}
+        data-dock-scroll=""
+        // Focusable, so the arrow keys, Page Down and Space scroll it (its header's arrows still
+        // step between cards while the header has focus).
+        tabIndex={0}
+        role="region"
+        aria-label="Jane's suggestions, scrollable"
+        className="max-h-[50vh] overflow-y-auto overscroll-contain focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-zinc-500"
+      >
         {/* One stack for good: a reload updates it in place, never starting it over. */}
         <SuggestionCards
           messages={shown}

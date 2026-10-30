@@ -25,6 +25,34 @@ export function takesScroll(path: readonly Scroller[], deltaY: number): boolean 
   );
 }
 
+// From the element under the pointer up to `box` (inclusive): a box that keeps every scroll
+// begun over it to itself (the card dock above the side chat).
+export function pathWithin(target: EventTarget | null, box: Element): Scroller[] {
+  const out: Scroller[] = [];
+  for (let el = target instanceof Element ? target : null; el; el = el.parentElement) {
+    const { overflowY } = getComputedStyle(el);
+    out.push({
+      scrollTop: el.scrollTop,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+      overflowY,
+    });
+    if (el === box) break;
+  }
+  return out;
+}
+
+// Keeps a wheel begun over `box` inside it: what nothing in it can take any further (at its end,
+// or a box too short to scroll) is stopped, never handed to the page or the chat behind it.
+export function keepWheel(box: HTMLElement): () => void {
+  const onWheel = (event: WheelEvent) => {
+    if (event.ctrlKey) return; // a pinch on a trackpad zooms
+    if (!takesScroll(pathWithin(event.target, box), event.deltaY)) event.preventDefault();
+  };
+  box.addEventListener("wheel", onWheel, { passive: false });
+  return () => box.removeEventListener("wheel", onWheel);
+}
+
 function pathOf(target: EventTarget | null, doc: Document): Scroller[] {
   const out: Scroller[] = [];
   for (let el = target instanceof Element ? target : null; el; el = el.parentElement) {
