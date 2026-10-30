@@ -54,8 +54,23 @@ describe("prepareExplainInput", () => {
   it("names fee kinds without the bank's description", () => {
     const { input } = prepareExplainInput(findingOfType("bank_fees"));
 
-    expect(input.facts).toEqual({ account: "bank account", totalLast12Months: "$69.00" });
+    expect(input.facts).toEqual({
+      account: "bank account",
+      total: "$69.00",
+      period: "the last 12 months",
+    });
     expect(input.charges.map((c) => c.kind)).toEqual(["overdraft fee", "overdraft fee"]);
+  });
+
+  it("says the months a fee or interest total covers", () => {
+    // Night QA 10-30: "in the last 3 months" in the title, "over the last 12 months" below it.
+    const finding = findingOfType("bank_fees");
+    const months = { ...finding, evidence: { ...(finding.evidence as object), months: 3 } };
+    expect(prepareExplainInput(months).input.facts).toEqual({
+      account: "bank account",
+      total: "$69.00",
+      period: "the last 3 months",
+    });
   });
 
   it("gives the same hash for the same input and a new one when evidence changes", () => {

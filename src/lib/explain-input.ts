@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
 import type { FindingType } from "@/generated/prisma/client";
+import { lastMonths } from "@/detection/rules/fee-totals";
 import { formatCents } from "@/lib/money";
 
 // Turns a finding into exactly what Claude may see: its type, merchant names, amounts,
@@ -123,7 +124,9 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
     case "card_interest":
       facts = {
         account: finding.type === "card_interest" ? "credit card" : "bank account",
-        totalLast12Months: money(num(evidence.totalCents)),
+        total: money(num(evidence.totalCents)),
+        // "the last 3 months": what the total covers (older findings don't say).
+        ...(num(evidence.months) !== null ? { period: lastMonths(num(evidence.months)!) } : {}),
       };
       sent = charges(evidence.transactions, true);
       break;

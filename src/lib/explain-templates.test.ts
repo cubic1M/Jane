@@ -25,6 +25,26 @@ describe("templateExplanation", () => {
     },
   );
 
+  it("says the months a fee or interest total covers, never a year it doesn't", () => {
+    const fees = templateExplanation("$36.00 in fees on BofA checking in the last 3 months", {
+      findingType: "bank_fees",
+      savingsPerYear: "$144.00",
+      facts: { account: "bank account", total: "$36.00", period: "the last 3 months" },
+      charges: [],
+    });
+    expect(fees.explanation).toMatch(
+      /^Your bank or card company charged you \$36\.00 in fees in the last 3 months\./,
+    );
+    const interest = templateExplanation("$60.44 in interest", {
+      findingType: "card_interest",
+      savingsPerYear: "$241.76",
+      facts: { account: "credit card", total: "$60.44" },
+      charges: [],
+    });
+    expect(interest.explanation).toMatch(/^You paid \$60\.44 in credit card interest\./);
+    expect(`${fees.explanation} ${interest.explanation}`).not.toMatch(/12 months/);
+  });
+
   it("still reads naturally when a figure is missing", () => {
     const content = templateExplanation("Your Geico insurance could cost less", {
       findingType: "insurance_reshop",
