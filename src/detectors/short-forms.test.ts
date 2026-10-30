@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { shortFormProblems, runHarness } from "./harness";
-import { clip, headlineOf, nice } from "./helpers";
+import { cashLine, clip, headlineOf, nice } from "./helpers";
 import { cardHeadline, type Suggestion } from "./contract";
 
 // docs/detectors.md, "Short forms": every suggestion has a headline of at most 60 characters
@@ -63,6 +63,14 @@ describe("the short forms of a suggestion", () => {
     );
     expect(cut.length).toBeLessThanOrEqual(60);
     expect(cut.endsWith("…")).toBe(true);
+  });
+});
+
+describe("cashLine", () => {
+  it("says cash as held, or overdrawn when it's below zero", () => {
+    expect(cashLine(632_109)).toBe("You keep $6,321.09 in cash");
+    expect(cashLine(632_109, "hold")).toBe("You hold $6,321.09 in cash");
+    expect(cashLine(-27_880)).toBe("You're $278.80 overdrawn");
   });
 });
 

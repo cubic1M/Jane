@@ -5,7 +5,7 @@ import { confidenceOf, counted, type Source } from "@/profile/confidence";
 import type { Fact, ProfileInput, ProfileTx } from "@/profile/build";
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
 import { withoutAchDetails } from "@/data-sources/merchant";
-import { formatWholeDollars } from "@/lib/money";
+import { formatCents, formatWholeDollars } from "@/lib/money";
 
 // What detectors share. Pure.
 
@@ -86,6 +86,14 @@ export const factEvidence = (fact: Fact): Confidence => ({
 // percentage, always.
 export function weakest(parts: readonly Confidence[]): Confidence {
   return parts.reduce((a, b) => (b.percent < a.percent ? b : a));
+}
+
+// What the person's cash is, said so a negative balance reads as overdrawn (night QA 10-30: "You
+// keep -$278.80 in cash"). `verb`: "keep" or "hold", as the sentence around it has it.
+export function cashLine(cents: number, verb: "keep" | "hold" = "keep"): string {
+  return cents < 0
+    ? `You're ${formatCents(-cents)} overdrawn`
+    : `You ${verb} ${formatCents(cents)} in cash`;
 }
 
 // A payee as a person would say it: "NETFLIX.COM" is Netflix, "DISNEY PLUS" is Disney Plus,
