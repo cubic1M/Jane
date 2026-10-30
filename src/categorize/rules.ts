@@ -694,18 +694,39 @@ const RULES: readonly Rule[] = [
     category: "HOME_IMPROVEMENT_HARDWARE",
     keywords: ["HOME DEPOT", "LOWE'S", "LOWES", "ACE HARDWARE", "MENARDS"],
   },
+  // A cable company's phone plan is a phone bill (before its cable name below).
+  {
+    category: "RENT_AND_UTILITIES_TELEPHONE",
+    keywords: ["XFINITY MOBILE", "SPECTRUM MOBILE"],
+  },
   {
     category: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
     keywords: ["COMCAST", "XFINITY", "SPECTRUM"],
   },
   // Prepaid carriers too: a phone plan is a bill, not a subscription to cancel (QA round 12:
-  // "MINT MOBILE $30" came up as "Review your Mint Mobile subscription").
+  // "MINT MOBILE $30" came up as "Review your Mint Mobile subscription"). Carriers bill under
+  // shorter names than their brand ("TMOBILE AUTOPAY", "VZWRLSS*APOCC VISB", "ATT*BILL
+  // PAYMENT"; debugger 10-30), so those are here too.
   {
     category: "RENT_AND_UTILITIES_TELEPHONE",
     keywords: [
       "VERIZON",
+      "VZWRLSS",
+      "VZW",
       "AT&T",
+      "AT T MOBILITY",
+      "ATT*BILL",
+      "ATT* BILL",
+      "ATT BILL",
+      "ATT MOBILITY",
       "T-MOBILE",
+      "TMOBILE",
+      "T MOBILE",
+      "VISIBLE SERVICE",
+      "VISIBLE WIRELESS",
+      "TING MOBILE",
+      "ULTRA MOBILE",
+      "PAGE PLUS",
       "MINT MOBILE",
       "BOOST MOBILE",
       "US MOBILE",
