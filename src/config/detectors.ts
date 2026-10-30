@@ -98,6 +98,10 @@ export const DETECTOR_RATES = {
   // Life events (step 264): looked back this many days for a new job or a new child, and
   // what going through the checklist is typically worth in the first year.
   lifeLookbackDays: 90,
+  // A first payment this close to the first day of the person's data may only be where their
+  // statements begin, not when the payments did (night QA 10-30: "Childcare payments began on"
+  // the uploaded statement's first week).
+  lifeNewAfterDataDays: 35,
   newJobTypicalCents: 50_000,
   newChildTypicalCents: 200_000,
   // Two people who share their money plan: what a shared household in Jane is typically worth
