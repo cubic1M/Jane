@@ -448,6 +448,12 @@ export function checksOn(
   return { on: days.reduce(minDay), until: false };
 }
 
+// Whether a saving is a yearly amount: money back comes once, whatever the row says (debugger
+// 10-30: a double charge marked done read "about $46.18/yr"); else what was stored.
+export function outcomeYearly(watch: unknown, stored: boolean): boolean {
+  return asWatch(watch)?.kind === "refund" ? false : stored;
+}
+
 // Whether a stored watch has the shape Watch (rows are JSON).
 export function asWatch(value: unknown): Watch | null {
   if (!value || typeof value !== "object") return null;

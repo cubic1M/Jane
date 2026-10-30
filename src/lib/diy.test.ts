@@ -34,6 +34,15 @@ describe("buildKit", () => {
     expect(kit?.email?.body).toContain("$49.99");
   });
 
+  // Debugger 10-30: "Please refund the following charges … I was charged twice for one
+  // purchase", then both $46.18 charges: the person would ask for $92.36 back, not $46.18.
+  it("asks for the one extra charge back on a double charge, not both", () => {
+    const body = buildKit("request_refund", findingOfType("duplicate_charge"), null)?.email?.body;
+    expect(body).toContain("I was charged twice for one purchase");
+    expect(body).toMatch(/Please refund the extra charge of \$49\.99\./);
+    expect(body).not.toContain("Please refund the following charges");
+  });
+
   it("gives bill negotiation a call script instead of an email", () => {
     const kit = buildKit("negotiate_bill", findingOfType("bill_negotiation"), null);
     expect(kit?.email).toBeNull();
