@@ -179,6 +179,16 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
   );
 }
 
+// Money found with no dollar figure: what's to look at, as the report says it, or "Nothing yet"
+// when there's nothing at all, never "$0/yr" (night QA 10-30). Null when there's a figure.
+export function foundWords(
+  saved: Pick<SavedHero, "label" | "cents">,
+  planItems: number,
+): string | null {
+  if (saved.label !== "Money found" || saved.cents !== 0) return null;
+  return planItems > 0 ? `${planItems} to look at` : "Nothing yet";
+}
+
 export function SavedTile({
   saved,
   planItems,
@@ -194,10 +204,10 @@ export function SavedTile({
   const [showPlan, setShowPlan] = useState(false);
   const closePlan = useCallback(() => setShowPlan(false), []);
   const savedSoFar = saved.label === "Saved so far";
+  const words = foundWords(saved, planItems);
   const number =
-    saved.label === "Money found" && saved.cents === 0 && planItems > 0 ? (
-      // As the report says it when nothing has a sure dollar figure yet.
-      `${planItems} to look at`
+    words !== null ? (
+      words
     ) : (
       <>
         {dollars(saved.cents)}
