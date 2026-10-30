@@ -120,13 +120,14 @@ describe("finishImport", () => {
 });
 
 describe("the chip's view", () => {
-  it("shows the latest upload not closed in the last day, with its share of the bar", async () => {
+  it("shows the latest upload in the last day, with its share of the bar", async () => {
     findFirst.mockResolvedValue({
       id: "r1",
       kind: "upload",
       rows: 172,
       stage: "looking",
       foundCents: null,
+      seenAt: null,
     });
     const now = new Date("2026-10-27T12:00:00Z");
     expect(await currentImportRun("u1", { now })).toEqual({
@@ -139,12 +140,26 @@ describe("the chip's view", () => {
     });
     expect(findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { seenAt: null, createdAt: { gte: new Date("2026-10-26T12:00:00Z") } },
+        where: { createdAt: { gte: new Date("2026-10-26T12:00:00Z") } },
         orderBy: { createdAt: "desc" },
       }),
     );
     findFirst.mockResolvedValue(null);
     expect(await currentImportRun("u1", { now })).toBeNull();
+  });
+
+  // Night QA 10-30: closing the second file's chip brought back the first file's, "Done: found
+  // $214/yr", while Home said $669.
+  it("shows nothing once the latest upload is closed, never an older one", async () => {
+    findFirst.mockResolvedValue({
+      id: "r2",
+      kind: "upload",
+      rows: 81,
+      stage: "done",
+      foundCents: 66_928,
+      seenAt: new Date("2026-10-27T11:00:00Z"),
+    });
+    expect(await currentImportRun("u1", { now: new Date("2026-10-27T12:00:00Z") })).toBeNull();
   });
 
   it("is closed for good once the person closes it", async () => {
