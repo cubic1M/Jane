@@ -49,6 +49,15 @@ describe("renderDigest", () => {
     expect(html).not.toMatch(/<img/);
   });
 
+  // Night QA 10-30: an email whose only finding had no dollar estimate said "Still to look at:
+  // $0.00 a year".
+  it("leaves out what's still to look at when it has no dollar figure", () => {
+    const email = renderDigest({ ...payload, moneyFoundCents: 0 }, LINKS);
+    expect(email.text).not.toContain("Still to look at");
+    expect(email.html).not.toContain("$0.00");
+    expect(renderDigest(payload, LINKS).text).toContain("Still to look at: $500.00 a year");
+  });
+
   it("uses a plain headline in a week with nothing finished", () => {
     expect(renderDigest({ ...payload, savedThisWeekCents: 0 }, LINKS).subject).toBe(
       "Your week in money",
