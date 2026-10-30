@@ -55,8 +55,13 @@ export function LedgerEntryRow({ entry: e, action }: { entry: Entry; action?: Re
           <span className="font-mono text-xs tracking-wide uppercase">
             {STATE_GLYPH[e.state]} [{tag}]
           </span>
-          <span className="flex-1 font-medium [overflow-wrap:anywhere]">{e.title}</span>
-          <span className="font-semibold">{figureOf(e)}</span>
+          {/* A basis, so on a phone the title takes its own line rather than shrinking to a
+              letter a line ("Equino / x" in night QA 10-30); words break only when one is too
+              long for the line. */}
+          <span data-ledger-title="" className="min-w-0 flex-1 basis-48 font-medium break-words">
+            {e.title}
+          </span>
+          <span className="font-semibold whitespace-nowrap">{figureOf(e)}</span>
           {e.confidencePercent !== null && (
             <span className={`text-xs ${MUTED}`}>{e.confidencePercent}% sure</span>
           )}
