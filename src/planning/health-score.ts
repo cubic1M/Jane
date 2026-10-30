@@ -88,6 +88,16 @@ function part(key: HealthPart, share: number, why: string, next: string): Health
   };
 }
 
+// The months the data covers from their first day (night QA 10-30: statements from Jul 28 made
+// July a month of four days, which cut average spending by a third and scored a person whose
+// cash covers two months 100 of 100, beside "Build a cushion for emergencies").
+export function fullMonthsOnly<T extends { month: string }>(
+  months: readonly T[],
+  firstDay: string | null,
+): T[] {
+  return firstDay === null ? [] : months.filter((m) => `${m.month}-01` >= firstDay);
+}
+
 export function healthScore(input: HealthInput): HealthScore | null {
   const parts: HealthPartScore[] = [];
   const left: HealthScore["left"] = [];
