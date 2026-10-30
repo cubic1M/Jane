@@ -41,6 +41,9 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   ReferralConversion: "system",
   ChatReplyLink: "system",
   ProblemReport: "system",
+  // Caches of answers about merchants (is it a subscription, its category): not claims.
+  SubscriptionCheck: "system",
+  MerchantCategory: "system",
 
   // From the data sources.
   PlaidItem: "source",
@@ -66,8 +69,10 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   Decision: cascade,
   Action: cascade,
   Suggestion: rescan,
-  SubscriptionCheck: rescan,
-  MerchantCategory: rescan,
+  // A month summed up from the transactions: cleared with them.
+  MonthClose: rescan,
+  HealthScore: rescan,
+  MonthlyReport: rescan,
   PlanProposal: rescan,
   DebtWatch: rescan,
   CarLoanWatch: rescan,
@@ -79,7 +84,7 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   TaxTag: rescan,
   PayrollChange: rescan,
   SuddenMoney: rescan,
-  BillLadder: rescan,
+
   PracticeOpportunity: rescan,
   JaneMessage: recheck,
   JanePreference: stamp,
@@ -171,6 +176,8 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   FamilyFile: "entered",
   InsuranceCheckup: "entered",
   PracticePreferences: "entered",
+  // A Treasury-bill ladder the person set up (stand-in).
+  BillLadder: "entered",
 
   // Dated records: what was said, done or traded at the time.
   Digest: "record",
@@ -183,9 +190,6 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   ControllerRun: "record",
   MoneyTransfer: "record",
   BrokerageOrder: "record",
-  HealthScore: "record",
-  MonthlyReport: "record",
-  MonthClose: "record",
   PracticePortfolio: "record",
   PracticePosition: "record",
   PracticeTrade: "record",
@@ -196,4 +200,41 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   PaperSignal: "record",
   PaperEventOverlay: "record",
   PaperEventLog: "record",
+};
+
+// When none of the person's data is left (every bank disconnected, every upload removed: "Start
+// over"), these are cleared outright: each is worked out from bank data and names no rows of its
+// own (night debugger, 10-30: proposals, a learned rent payee, a found Geico policy and a month
+// close all stayed after Start over). Prisma model to its scopedFor table (src/lib/evidence/orphans.ts clears them); the lineage test
+// (./lineage.test.ts) fails when a derived table is in neither this nor KEPT_WITHOUT_DATA.
+export const CLEARED_WITHOUT_DATA: Readonly<Record<string, string | [string, object]>> = {
+  // Not a reshop of a policy the person entered: that stands on their policy, not bank data.
+  Finding: ["findings", { type: { not: "insurance_reshop" } }],
+  SuggestionOutcome: "suggestionOutcomes",
+  Alert: "alerts",
+  Suggestion: "suggestions",
+  PlanProposal: "planProposals",
+  DebtWatch: "debtWatches",
+  CarLoanWatch: "carLoanWatches",
+  BooksIssue: "booksIssues",
+  CostlyProduct: "costlyProducts",
+  TaxTag: "taxTags",
+  PayrollChange: "payrollChanges",
+  SuddenMoney: "suddenMoneys",
+  MonthClose: "monthCloses",
+  HealthScore: "healthScores",
+  MonthlyReport: "monthlyReports",
+};
+// Derived, but not from bank data, so kept: from the person's policies, documents or the markets,
+// or hanging off a row above.
+export const KEPT_WITHOUT_DATA: Readonly<Record<string, string>> = {
+  Decision: "goes with its finding (ON DELETE CASCADE)",
+  Action: "goes with its decision (ON DELETE CASCADE)",
+  InsuranceRisk: "from the person's policies and profile",
+  InsuranceSaving: "from the person's policies and quotes",
+  PolicyReading: "read from a document the person uploaded",
+  PracticeOpportunity: "from market data, on the simulated practice account",
+  JaneMessage: "the open ones are put away below, as history",
+  JanePreference: "the saved numbers are refused by their data stamp",
+  UserFact: "the ones read from statements go below; the person's own words stay",
 };
