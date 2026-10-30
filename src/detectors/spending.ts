@@ -309,20 +309,38 @@ const trialConversion: Detector = {
       const after = trial
         ? sorted.filter((t) => t.date > trial.date && t.amountCents >= S.trialConvertedMinCents)
         : [];
-      return trial && after.length
-        ? [{ description, price: after[after.length - 1].amountCents, n: after.length }]
-        : [];
+      if (!trial || after.length === 0) return [];
+      // How often it charges, from the paid charges' spacing; one paid charge says nothing
+      // about that, so it counts once (debugger 10-30: one $120 MasterClass charge read as
+      // "$1,440 a year", as if monthly).
+      const span =
+        (Date.parse(after[after.length - 1].date) - Date.parse(after[0].date)) / 86_400_000;
+      const perYear =
+        after.length < 2
+          ? 1
+          : Math.min(12, Math.max(1, Math.round((365 * (after.length - 1)) / span)));
+      return [
+        {
+          description,
+          price: after[after.length - 1].amountCents,
+          n: after.length,
+          perYear,
+          paced: after.length >= 2,
+        },
+      ];
     });
     if (converted.length === 0) return null;
-    const worth = converted.reduce((s, c) => s + c.price * 12, 0);
+    const worth = converted.reduce((s, c) => s + c.price * c.perYear, 0);
+    const yearly = converted.every((c) => c.paced);
+    const total = `${formatCents(worth)}${yearly ? " a year" : ""}`;
     return {
       id: suggestionId("subscriptions", "trial_conversion"),
       capability: "subscriptions",
       topic: "trial_conversion",
       title: "A free trial turned into a paid subscription: keep it or cancel it",
-      headline: headlineOf("Cancel a trial now billing you", worth, "saves"),
+      headline: headlineOf("Cancel a trial now billing you", worth, "saves", !yearly),
       short: clip(
-        `${converted.map((c) => nice(c.description)).join(", ")} now costs you ${formatCents(worth)} a year.`,
+        `${converted.map((c) => nice(c.description)).join(", ")} now costs you ${total}.`,
       ),
       worthCents: worth,
       worthKind: "saves",
@@ -333,14 +351,14 @@ const trialConversion: Detector = {
         "charges after a trial",
       ),
       urgency: "soon",
-      why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}`).join("; ")}: ${formatCents(worth)} a year.`,
+      why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}${c.paced ? "" : " (charged once since, so how often isn't known yet)"}`).join("; ")}: ${total}.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
       watch: {
         kind: "charge_stops",
         payees: converted.map((c) => ({
           description: c.description,
           amountCents: c.price,
-          perYear: 12,
+          perYear: c.perYear,
         })),
       },
     };
