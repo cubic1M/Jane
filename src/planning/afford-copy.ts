@@ -21,8 +21,10 @@ export const AFFORD_COPY = {
   noGoals: "No goals in progress.",
   monthsHeading: "Checking at the end of each month",
   monthsNote: "Before and after the change.",
+  // An uploaded checking file often has no balance (night QA 10-30: a couple with Wells Fargo
+  // checking uploaded heard "Link a checking account").
   noChecking:
-    "Link a checking account to see safe to spend and your checking balance over the next 12 months.",
+    "Jane needs your checking balance for this: link the account, or add its balance on the import page. Then it shows safe to spend and your checking over the next 12 months.",
   errors: {
     amount: "Enter an amount, like 250.",
     tooBig: `Enter an amount up to ${formatCents(MAX_AFFORD_CENTS)}.`,

@@ -98,7 +98,7 @@ describe("affordReply", () => {
 
   it("says when there's no checking account", () => {
     const reply = affordReply(intent("can I afford 50", "afford"), { ...numbers, safe: null });
-    expect(reply.body).toContain("Link a checking account");
+    expect(reply.body).toContain("Jane needs your checking balance");
   });
 });
 
