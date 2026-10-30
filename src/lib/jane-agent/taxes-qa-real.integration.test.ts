@@ -98,9 +98,9 @@ describe.runIf(url)("tax recommendations and real accounts", { timeout: 300_000 
       expect(real.suggestions.length).toBeGreaterThan(0);
       expect(real.suggestions.filter((s) => TAX_MOVES.includes(s.topic))).toEqual([]);
     }
-    // The walk found these on the sample people; the rest are covered by the list above.
-    for (const t of ["roth_conversion", "s_corp_election", "home_office_deduction"])
-      expect(seen).toContain(t);
+    // The walk found these on the sample people; the rest are covered by the list above. The home
+    // office move isn't shown while its page is hidden in the beta (src/config/hidden-pages.ts).
+    for (const t of ["roth_conversion", "s_corp_election"]) expect(seen).toContain(t);
   });
 
   it("puts tax moves on the calendar as demo advice, and none on a real account's", async () => {
