@@ -36,7 +36,7 @@ import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
 import type { DebtIntent } from "./debt-intents";
-import { debtReply, payoffReply } from "./debt-replies";
+import { debtDetailReply, debtReply, payoffReply } from "./debt-replies";
 import { loanStatusReply, refinanceReply, transferReply } from "./refinance-replies";
 import { studentReply } from "./student-replies";
 import { mortgageReply } from "./mortgage-replies";
@@ -273,8 +273,15 @@ export async function answerDebt(
       }
       return creditReply(credit);
     }
-    case "mortgage":
-      return mortgageReply(await loadMortgage(userId, { client, now }));
+    case "mortgage": {
+      const mortgage = await loadMortgage(userId, { client, now });
+      if (mortgage) return mortgageReply(mortgage);
+      // A mortgage seen only in payments from checking (src/insights/paid-loans.ts): what Jane
+      // knows of it, not "I don't see a mortgage" (night QA 10-30).
+      const book = await loadDebts(userId, { client, now });
+      if (book.debts.some((d) => d.kind === "mortgage")) return debtDetailReply("mortgage", book);
+      return mortgageReply(null);
+    }
     case "student_loans":
       return studentReply(await loadStudentLoans(userId, { client, now }));
     case "balance_transfer":
