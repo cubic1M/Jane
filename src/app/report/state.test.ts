@@ -1,5 +1,13 @@
+import type { FindingType } from "@/generated/prisma/client";
 import { describe, expect, it } from "vitest";
-import { foundLine, reportState, shortUploadDays } from "./state";
+import {
+  evidenceCharges,
+  findingSure,
+  foundLine,
+  reportOrder,
+  reportState,
+  shortUploadDays,
+} from "./state";
 
 const base = { transactions: 240, findings: 0, firstDetectionDone: true, scanRunning: false };
 
@@ -46,5 +54,87 @@ describe("foundLine", () => {
     expect(foundLine(162, ["card_interest"])).toBe(
       "Estimates from 162 transactions. The three that matter most are first; open one to decide.",
     );
+  });
+});
+
+describe("the report's order", () => {
+  const f = (
+    id: string,
+    type: FindingType,
+    annualSavingsCents: number,
+    confidence: "high" | "medium" | "low" = "high",
+  ) => ({ id, type, annualSavingsCents, confidence });
+
+  // Demo-video list: Planet Fitness ($299.88/yr) ranked #2 just for being a subscription.
+  it("puts a subscription to review below surer money of a similar size", () => {
+    const order = reportOrder([
+      f("gym", "subscription_review", 29_988, "medium"),
+      f("cash", "idle_cash", 51_000),
+      f("fees", "bank_fees", 14_400),
+      f("netflix", "subscription_review", 21_588, "medium"),
+    ]).map((x) => x.id);
+    expect(order).toEqual(["cash", "fees", "gym", "netflix"]);
+  });
+
+  it("keeps the time-sensitive first, whatever they're worth", () => {
+    const order = reportOrder([
+      f("cash", "idle_cash", 90_000),
+      f("dup", "duplicate_charge", 1_299),
+    ]);
+    expect(order.map((x) => x.id)).toEqual(["dup", "cash"]);
+  });
+
+  it("ranks the surer of two the same size first", () => {
+    const order = reportOrder([f("a", "bank_fees", 10_000, "low"), f("b", "bank_fees", 10_000)]);
+    expect(order.map((x) => x.id)).toEqual(["b", "a"]);
+  });
+});
+
+describe("a finding's % sure on the report", () => {
+  const fees = {
+    type: "bank_fees",
+    evidence: {
+      transactions: Array.from({ length: 12 }, (_, i) => ({ date: `2026-0${(i % 4) + 6}-01` })),
+    },
+  };
+
+  // Demo-video re-take: idle cash read 59% on its card and 62% on the report.
+  it("says what the scan's suggestion on the same topic says", () => {
+    const sure = findingSure(
+      { type: "idle_cash", evidence: {} },
+      [
+        {
+          topic: "bank_fees",
+          confidencePercent: 62,
+          confidenceReason: "12 bank fees in 4 months of data",
+        },
+        {
+          topic: "idle_cash",
+          confidencePercent: 59,
+          confidenceReason: "1 cash account in 4 months of data",
+        },
+      ],
+      4,
+    );
+    expect(sure).toEqual({ percent: 59, reason: "1 cash account in 4 months of data" });
+  });
+
+  // Demo-video re-take: "6 charges" on the report, from the six rows its card lists, beside
+  // "12 fee charges" on /jane.
+  it("without one, counts every charge behind it, not the few its card lists", () => {
+    expect(findingSure(fees, [], 4).reason).toBe("12 charges in 4 months of data");
+    expect(evidenceCharges(fees.evidence)).toBe(12);
+    expect(evidenceCharges({ charges: [{}, {}], transactions: [{}] })).toBe(3);
+    expect(evidenceCharges(null)).toBe(0);
+  });
+
+  it("goes by the months alone when it rests on balances, not charges", () => {
+    expect(findingSure({ type: "idle_cash", evidence: { accounts: [] } }, [], 4).reason).toBe(
+      "4 months of data",
+    );
+  });
+
+  it("is surer with more history", () => {
+    expect(findingSure(fees, [], 2).percent).toBeLessThan(findingSure(fees, [], 12).percent);
   });
 });

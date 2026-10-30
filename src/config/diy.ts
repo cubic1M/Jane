@@ -82,9 +82,9 @@ export const DIY_KITS: Partial<Record<ActionType, DiyKitConfig>> = {
   move_idle_cash: {
     link: "support",
     steps: [
-      "Pick a savings account from the comparison above, or one your own bank offers at a higher rate.",
+      "Pick a high-yield savings account: compare two or three online banks' rates, or ask your own bank for a higher one.",
       "Open it on their site; it takes about ten minutes and doesn't affect your credit score.",
-      "Move the amount above from your checking account, leaving your usual cushion behind.",
+      "Move the extra cash Jane found from your checking account, leaving your usual cushion behind.",
     ],
     message: "none",
     summary:

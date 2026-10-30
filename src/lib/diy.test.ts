@@ -80,3 +80,13 @@ describe("selfServe (read-only mode)", () => {
     }
   });
 });
+
+// The steps show after "Show me how", where the finding's comparison and figures above are gone
+// (demo-video list: "Pick a savings account from the comparison above" with nothing above).
+describe("the do-it-yourself steps", () => {
+  it("stand on their own, pointing at nothing above them", () => {
+    for (const [type, kit] of Object.entries(DIY_KITS)) {
+      for (const step of kit?.steps ?? []) expect(step, type).not.toMatch(/\babove\b/i);
+    }
+  });
+});

@@ -517,4 +517,21 @@ describe("confidence", () => {
     expect(short.confidence.percent).toBeLessThan(long.confidence.percent);
     expect(long.confidence.reason).toBe("1 fee charge in 12 months of data");
   });
+
+  it("counts every fee in the data for a fee alert, not just the one it's about", () => {
+    const fee = (date: string, description: string, pfcDetailed: string) =>
+      tx({ date, amountCents: 1_200, description, pfcPrimary: "BANK_FEES", pfcDetailed });
+    // Four monthly service fees and three ATM fees over four months; only the latest is recent.
+    const monthly = ["2026-07-14", "2026-08-14", "2026-09-14", "2026-10-14"].map((d) =>
+      fee(d, "MONTHLY SERVICE FEE", "BANK_FEES_OTHER_BANK_FEES"),
+    );
+    const atm = ["2026-07-20", "2026-08-03", "2026-09-09"].map((d) =>
+      fee(d, "ATM FEE", "BANK_FEES_ATM_FEES"),
+    );
+    const alerts = feeAlerts(
+      input({ historyFrom: "2026-06-15", transactions: [...monthly, ...atm] }),
+    );
+    expect(alerts.length).toBeGreaterThan(0);
+    for (const a of alerts) expect(a.confidence.reason).toBe("7 fee charges in 4 months of data");
+  });
 });
