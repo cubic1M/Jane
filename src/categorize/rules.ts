@@ -314,6 +314,14 @@ const RULES: readonly Rule[] = [
       "SOFI INVEST",
       "IRA CONTRIB",
       "BROKERAGE",
+      // College savings (night QA 10-30: a grandparent's "SCHOLARSHARE 529 CONTRIB" $100 a month
+      // read as a subscription to cancel, "could save $1,200 a year").
+      "529 CONTRIB",
+      "529 PLAN",
+      "SCHOLARSHARE",
+      "MY529",
+      "COLLEGE SAVINGS PLAN",
+      "COLLEGEADVANTAGE",
     ],
     direction: "out",
   },
@@ -535,6 +543,17 @@ const RULES: readonly Rule[] = [
       "FRED MEYER",
     ],
   },
+  // A driver's or shopper's pay from a gig platform, before the ride-share and delivery rules
+  // (night QA 10-30: "UBER USA 6787 EDI PAYMNT" read as a taxi refund and "DOORDASH DASHER
+  // PAYOUT" as a restaurant refund, so $10,600 of pay netted against spending, "Spent this
+  // month $691" with $1,400 of rent, and taxes saw no income).
+  {
+    category: "INCOME_GIG_ECONOMY",
+    pattern:
+      /(?<![A-Z0-9])(?:UBER|LYFT|DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYOUT|PAYMNT|PAYMENT|EARNINGS|DASHER|DRIVER|SHOPPER|EDI|DIRECT DEP)(?![A-Z0-9])/,
+    direction: "in",
+  },
+  { category: "INCOME_GIG_ECONOMY", keywords: ["AMAZON FLEX"], direction: "in" },
   // Food delivery before ride shares, so "UBER EATS" isn't a taxi.
   {
     category: "FOOD_AND_DRINK_RESTAURANT",
@@ -661,6 +680,10 @@ const RULES: readonly Rule[] = [
       "LIBERTY MUTUAL",
       "LEMONADE INS",
       "NATIONWIDE",
+      // A Medicare supplement or Advantage plan is health cover the person pays (night QA 10-30).
+      "MEDICARE SUPP",
+      "MEDICARE SUPPLEMENT",
+      "MEDIGAP",
     ],
   },
   {

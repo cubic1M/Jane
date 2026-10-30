@@ -82,6 +82,28 @@ describe("Chase credit card export", () => {
   });
 });
 
+// Night QA 10-30: a Chase download opened in Excel and saved again: two-digit years, dollar signs,
+// thousands commas and negatives in brackets. Every row "Unreadable date", nothing imported.
+describe("a statement saved again by Excel", () => {
+  it("reads every row", () => {
+    const text = [
+      "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #",
+      'DEBIT,10/23/26,SAFEWAY #1234 OAKLAND CA,($83.02),DEBIT_CARD,"$7,416.54",',
+      'CREDIT,10/15/26,ACME PAYROLL PPD ID: 123,"$2,400.00",ACH_CREDIT,"$7,499.56",',
+      'DEBIT,10/1/26,OAK RIDGE APTS,"($1,850.00)",ACH_DEBIT,"$5,099.56",',
+    ].join("\n");
+    const result = readCsvFile({ name: "Chase1234_Activity.csv", text });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.skipped).toEqual([]);
+    expect(result.transactions.map((t) => [t.date, t.amountCents])).toEqual([
+      ["2026-10-23", 8_302],
+      ["2026-10-15", -240_000],
+      ["2026-10-01", 185_000],
+    ]);
+  });
+});
+
 describe("readCsvFile", () => {
   it("rejects an unknown format with a readable message and the column picker's choices", () => {
     const result = readCsvFile(fixture("unknown-bank.csv"));

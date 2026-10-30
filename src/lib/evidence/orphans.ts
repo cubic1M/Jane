@@ -4,7 +4,10 @@ import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { evidenceRefs, type EvidenceRefs } from "@/lib/finding-accounts";
+import { CLEARED_WITHOUT_DATA } from "@/config/lineage";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
+import { hasDemoBank } from "@/lib/plaid/demo";
+import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
 
 // Derived data never outlives its evidence (card-chat mismatch; design in the shared notes,
 // card-chat-mismatch.md). A finding, the decision and actions taken on it, a savings-ledger line
@@ -53,7 +56,32 @@ export function orphaned(refs: EvidenceRefs, present: Present): boolean {
   );
 }
 
-export type Removed = { findings: number; outcomes: number; alerts: number };
+export type Removed = { findings: number; outcomes: number; alerts: number; cleared?: number };
+
+// Clears what CLEARED_WITHOUT_DATA lists, facts read from statements, policies found from
+// payments, and puts away Jane's open cards. Scoped by the person's id on every table.
+async function clearWithoutData(userId: string, client: PrismaClient): Promise<number> {
+  const scoped = scopedFor(userId, client) as unknown as Record<
+    string,
+    { deleteMany: (args: object) => Promise<{ count: number }> }
+  >;
+  let cleared = 0;
+  for (const table of Object.values(CLEARED_WITHOUT_DATA)) {
+    const [key, where] = typeof table === "string" ? [table, {}] : table;
+    cleared += (await scoped[key].deleteMany({ where })).count;
+  }
+  const db = scopedFor(userId, client);
+  cleared += (await db.userFacts.deleteMany({ where: { source: { in: ["upload", "detector"] } } }))
+    .count;
+  cleared += (await db.insurancePolicies.deleteMany({ where: { status: "found" } })).count;
+  cleared += (
+    await db.janeMessages.updateMany({
+      where: { status: "open", kind: { in: ["heads_up", "decision", "brief", "done"] } },
+      data: { status: "answered", answeredAt: new Date(), actions: [] },
+    })
+  ).count;
+  return cleared;
+}
 
 // Deletes everything derived from evidence that is gone. Findings take their decisions, actions
 // and action events with them (foreign keys, ON DELETE CASCADE). Idempotent: safe after every
@@ -64,11 +92,16 @@ export async function removeOrphans(
 ): Promise<Removed> {
   const db = scopedFor(userId, client);
   const [findings, outcomes, alerts] = await Promise.all([
-    db.findings.findMany({ select: { id: true, evidence: true } }),
+    db.findings.findMany({ select: { id: true, key: true, evidence: true } }),
     db.suggestionOutcomes.findMany({ select: { id: true, evidenceTxIds: true } }),
     db.alerts.findMany({ where: { type: "unusual_activity" }, select: { id: true, key: true } }),
   ]);
   const findingRefs = findings.map((f) => ({ id: f.id, refs: evidenceRefs(f.evidence) }));
+  // A sample person's past wins (src/lib/sample-wins.ts) are seeded when the demo bank is
+  // linked, before its transactions arrive, so they name no rows: they stand on the demo bank
+  // itself, and go once it is gone.
+  const wins = findings.filter((f) => f.key.startsWith(SAMPLE_WIN_KEY)).map((f) => f.id);
+  const winsGone = wins.length > 0 && !(await hasDemoBank(userId, { client })) ? wins : [];
   const alertRefs = alerts.flatMap((a) => {
     const parsed = parseKey(a.key);
     return parsed
@@ -88,7 +121,7 @@ export async function removeOrphans(
     rows.filter((r) => orphaned(r.refs, present)).map((r) => r.id);
   const outcomeIds = gone(outcomeRefs);
   const removed: Removed = { findings: 0, outcomes: 0, alerts: 0 };
-  const findingIds = gone(findingRefs);
+  const findingIds = [...gone(findingRefs), ...winsGone];
   if (findingIds.length > 0) {
     removed.findings = (await db.findings.deleteMany({ where: { id: { in: findingIds } } })).count;
   }
@@ -101,7 +134,12 @@ export async function removeOrphans(
   if (alertIds.length > 0) {
     removed.alerts = (await db.alerts.deleteMany({ where: { id: { in: alertIds } } })).count;
   }
-  if (removed.findings + removed.outcomes + removed.alerts > 0) {
+  // Nothing of the person's data is left: everything else worked out from it goes too.
+  const any = findings.length + outcomes.length + alerts.length > 0;
+  if (present.accounts.size === 0 && (any || (await hasDerived(userId, client)))) {
+    removed.cleared = await clearWithoutData(userId, client);
+  }
+  if (removed.findings + removed.outcomes + removed.alerts + (removed.cleared ?? 0) > 0) {
     console.info("derived_removed", JSON.stringify({ userId, ...removed }));
     try {
       await logAudit(
@@ -118,6 +156,18 @@ export async function removeOrphans(
   return removed;
 }
 
+// Whether anything worked out from data is still there, for someone with no data left.
+async function hasDerived(userId: string, client: PrismaClient): Promise<boolean> {
+  const db = scopedFor(userId, client);
+  const [facts, policies, proposals, open] = await Promise.all([
+    db.userFacts.count({ where: { source: { in: ["upload", "detector"] } } }),
+    db.insurancePolicies.count({ where: { status: "found" } }),
+    db.planProposals.count(),
+    db.suggestions.count(),
+  ]);
+  return facts + policies + proposals + open > 0;
+}
+
 // The nightly sweep, for everyone with derived rows: also the one-off cleanup of what was
 // orphaned before this existed (it ships with the deploy; nothing connects to production).
 export async function removeAllOrphans({
@@ -131,6 +181,10 @@ export async function removeAllOrphans({
         { findings: { some: {} } },
         { suggestionOutcomes: { some: {} } },
         { alerts: { some: {} } },
+        { suggestions: { some: {} } },
+        { planProposals: { some: {} } },
+        { userFacts: { some: { source: { in: ["upload", "detector"] } } } },
+        { insurancePolicies: { some: { status: "found" } } },
       ],
       ...peopleIn(userIds),
     },

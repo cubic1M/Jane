@@ -296,8 +296,34 @@ describe("categorizeByRules", () => {
     // Night QA 10-30: a couple's Wells Fargo mortgage and PG&E.
     ["WF HOME MTG AUTO PAY", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
     ["PGANDE WEB ONLINE", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    // Night QA 10-30: a retiree's college savings and Medicare supplement.
+    ["SCHOLARSHARE 529 CONTRIB", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["MY529 CONTRIBUTION", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["BLUE SHIELD MEDICARE SUPP", "GENERAL_SERVICES_INSURANCE"],
   ])("reads %s as %s", (description, category) => {
     expect(out(description)).toBe(category);
+  });
+
+  // Night QA 10-30: a driver's pay from Uber, Lyft and DoorDash read as refunds of rides and meals.
+  it.each([
+    ["UBER USA 6787 EDI PAYMNT"],
+    ["LYFT INC PAYOUT"],
+    ["DOORDASH DASHER PAYOUT"],
+    ["INSTACART SHOPPER PAYOUT"],
+    ["AMAZON FLEX DEPOSIT"],
+  ])("reads %s, money in, as gig pay", (description) => {
+    expect(categorizeByRules({ description, amountCents: -45_000, hints: {} })?.detailed).toBe(
+      "INCOME_GIG_ECONOMY",
+    );
+  });
+
+  it("still reads a ride, a meal and a refund of one as what they are", () => {
+    expect(out("UBER *TRIP HELP.UBER.COM")).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
+    expect(out("DOORDASH*THAI HOUSE")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(
+      categorizeByRules({ description: "UBER *TRIP REFUND", amountCents: -1_200, hints: {} })
+        ?.detailed,
+    ).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
   });
 
   it("lets a place's kind win over the words that come last", () => {
