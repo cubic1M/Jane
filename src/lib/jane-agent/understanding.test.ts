@@ -47,6 +47,8 @@ describe("new questions", () => {
     ["how much is my phone bill", "phone", false],
     ["how much do I pay for Comcast a year", "comcast", true],
     ["what's the cost of my gym", "gym", false],
+    // Night QA 10-30: "in fees" found no spending on "in fees".
+    ["how much do I pay in fees", "fees", false],
   ])("reads %s as what one thing costs", (text, target, year) => {
     expect(parse(text)).toEqual({ kind: "cost", target, year });
   });
