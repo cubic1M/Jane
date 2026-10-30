@@ -111,11 +111,12 @@ describe.runIf(url)("a messy real bank, through the CSV import", { timeout: 120_
     });
     findings.sort((a, b) => a.type.localeCompare(b.type) || a.title.localeCompare(b.title));
     expect(findings).toEqual([
-      // Only the trip's foreign fee: the overdraft fee was given back two days later.
+      // Only the trip's foreign fee: the overdraft fee was given back two days later. One fee
+      // isn't a pace, so it counts once (FEE_PACE_MIN_CHARGES).
       {
         type: "bank_fees",
         title: "$1.28 in fees on Chase Freedom in the last 4 months",
-        annualSavingsCents: 384,
+        annualSavingsCents: 128,
       },
       // $15.49, $15.49, $17.99, $17.99: still a rise after the second charge at the new price.
       {

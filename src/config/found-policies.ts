@@ -69,6 +69,11 @@ export const FOUND_TERM_MONTHS = 12;
 // GEICO was a monthly payment that had been going for longer).
 export const FOUND_START_SEEN_DAYS = 35;
 
+// Fees seen in under a year of statements count at a year's pace only from this many charges
+// (an annual fee aside): one fee isn't a pace (debugger 10-30: one $35 overdraft in 3 months of
+// statements said "Could save about $140.00 a year"), so it counts once.
+export const FEE_PACE_MIN_CHARGES = 2;
+
 // Card annual fees: a fee with these words, charged again a year after the last.
 export const ANNUAL_FEE_WORDS =
   /\bannual (?:membership )?fee\b|\bannual card fee\b|\byearly fee\b/i;

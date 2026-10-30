@@ -10,9 +10,21 @@ const fee = (date: string, amountCents: number, pfc = "BANK_FEES_OVERDRAFT_FEES"
 
 describe("bankFeesYear", () => {
   it("counts fees over a year, scaled up from fewer months", () => {
+    expect(bankFeesYear([fee("2026-08-20", 3400), fee("2026-09-24", 3400)], 3)).toEqual({
+      seenCents: 6800,
+      yearCents: 27_200,
+      count: 2,
+      monthsOfData: 3,
+      estimated: true,
+    });
+  });
+
+  // Debugger 10-30: one $35 overdraft in 3 months said "Could save about $140.00 a year". One
+  // fee isn't a pace: it counts once, as the report's finding does.
+  it("counts a single fee once, not scaled up", () => {
     expect(bankFeesYear([fee("2026-09-24", 3400)], 3)).toEqual({
       seenCents: 3400,
-      yearCents: 13_600,
+      yearCents: 3400,
       count: 1,
       monthsOfData: 3,
       estimated: true,
@@ -27,14 +39,16 @@ describe("bankFeesYear", () => {
       description: "ANNUAL MEMBERSHIP FEE",
       pfc: "BANK_FEES_OTHER_BANK_FEES",
     };
-    expect(bankFeesYear([fee("2026-09-24", 3400), annual], 3)?.yearCents).toBe(3400 * 4 + 9500);
+    const fees = [fee("2026-08-20", 3400), fee("2026-09-24", 3400), annual];
+    expect(bankFeesYear(fees, 3)?.yearCents).toBe(6800 * 4 + 9500);
   });
 
   it("leaves out a fee the bank gave back (messy-bank QA)", () => {
     const foreign = fee("2026-08-02", 128, "BANK_FEES_FOREIGN_TRANSACTION_FEES");
     expect(bankFeesYear([fee("2026-09-24", 3400), fee("2026-09-26", -3400), foreign], 3)).toEqual({
       seenCents: 128,
-      yearCents: 512,
+      // The one fee left counts once.
+      yearCents: 128,
       count: 1,
       monthsOfData: 3,
       estimated: true,

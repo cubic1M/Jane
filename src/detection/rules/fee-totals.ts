@@ -31,6 +31,9 @@ export function totalsByAccount(
     totalCents: number,
     months: number,
   ) => Pick<Candidate, "type" | "title">,
+  // Fees need FEE_PACE_MIN_CHARGES to count at a year's pace; a month of card interest is
+  // already one (it accrues every month a balance is carried).
+  { minChargesForPace = 1 }: { minChargesForPace?: number } = {},
 ): Candidate[] {
   const byAccount = new Map<string, DetectionTransaction[]>();
   for (const t of transactions)
@@ -49,9 +52,11 @@ export function totalsByAccount(
     // A card's annual fee comes once a year: it counts once, never scaled up with the rest
     // (night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year).
     const yearly = sumCents(charges.filter((c) => ANNUAL_FEE_WORDS.test(c.description)));
-    const annual = short
-      ? Math.round(((total - yearly) * MONTHS_PER_YEAR) / months) + yearly
-      : total;
+    const paced =
+      charges.filter((c) => c.amountCents > 0 && !ANNUAL_FEE_WORDS.test(c.description)).length >=
+      minChargesForPace;
+    const annual =
+      short && paced ? Math.round(((total - yearly) * MONTHS_PER_YEAR) / months) + yearly : total;
     // Keyword rules and Plaid are reliable on fee lines; an LLM guess is less certain.
     const sure = charges.every((c) => c.categorySource === "rule" || c.categorySource === "plaid");
     return [

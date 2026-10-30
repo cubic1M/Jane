@@ -47,6 +47,20 @@ describe("bank_fees", () => {
     expect(finding.annualSavingsCents).toBe(14400);
   });
 
+  // Debugger 10-30: one $35 overdraft in 3 months of statements said "Could save about $140.00
+  // a year". One fee isn't a pace: it counts once.
+  it("counts a single fee once, not at a year's pace", () => {
+    const transactions = [
+      tx({ date: "2026-07-02", amountCents: 5_000, description: "SAFEWAY" }),
+      fee("BANK_FEES_OVERDRAFT_FEES", 3500, "2026-09-29"),
+    ];
+
+    const [finding] = bankFees(input({ transactions }), []);
+
+    expect(finding.title).toBe("$35.00 in fees on Everyday Checking in the last 3 months");
+    expect(finding.annualSavingsCents).toBe(3500);
+  });
+
   // Night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year.
   it("counts a card's annual fee once a year, not scaled up with the rest", () => {
     const transactions = [
