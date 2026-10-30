@@ -225,7 +225,18 @@ const RULES: readonly Rule[] = [
   // uncategorised, so the loans page never saw the mortgage).
   {
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    keywords: ["MORTGAGE", "MTG PMT", "MORTGAGE PMT", "HOME LOAN PMT"],
+    // Wells Fargo writes its own as "WF HOME MTG AUTO PAY" (night QA 10-30: left uncategorized,
+    // the month close asked a couple what their $3,240 mortgage was).
+    keywords: [
+      "MORTGAGE",
+      "MTG PMT",
+      "MORTGAGE PMT",
+      "HOME LOAN PMT",
+      "HOME MTG",
+      "MTG AUTO PAY",
+      "MTG PYMT",
+      "MTG PAYMENT",
+    ],
     direction: "out",
   },
   {
@@ -630,6 +641,8 @@ const RULES: readonly Rule[] = [
     category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
     keywords: [
       "PG&E",
+      // How some banks spell it (night QA 10-30: "PGANDE WEB ONLINE").
+      "PGANDE",
       "CON ED",
       "CONEDISON",
       "DUKE ENERGY",
