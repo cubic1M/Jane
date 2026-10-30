@@ -291,6 +291,8 @@ async function TaxPackContent({
             </div>
           </dl>
         )}
+        <h3 className="font-semibold">{COPY.taxPaidHeading}</h3>
+        <Rows group={pack.taxPaid} empty={COPY.taxPaidEmpty} label={COPY.taxPaidHeading} />
         <h3 className="font-semibold">{COPY.remindersHeading}</h3>
         <ul className="flex flex-col gap-1 text-sm">
           {pack.reminders.map((date) => (

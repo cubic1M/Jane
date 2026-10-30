@@ -32,6 +32,8 @@ export const TAX_PACK_COPY = {
   interestEmpty: "No student loan or mortgage interest reported.",
   incomeHeading: "Income from contracting or gig work",
   incomeEmpty: "No contracting or gig income found for this year.",
+  taxPaidHeading: "Tax payments you made",
+  taxPaidEmpty: "No tax payments found for this year.",
   remindersHeading: "IRS estimated-payment dates",
   remindersNote:
     "These are reminders of the usual dates only. Dates can move for weekends and holidays; irs.gov has the exact ones and explains who pays.",
