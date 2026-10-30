@@ -91,12 +91,17 @@ export function weakest(parts: readonly Confidence[]): Confidence {
 // A payee as a person would say it: "NETFLIX.COM" is Netflix, "DISNEY PLUS" is Disney Plus,
 // "VERIZON WIRELESS DES:PAYMENTREC ID:XXXXX" is Verizon Wireless.
 export function nice(description: string): string {
-  return withoutAchDetails(description)
-    .replace(/\.com$/i, "")
-    .replace(/\*.*$/, "")
-    .trim()
-    .toLowerCase()
-    .replace(/\b([a-z])/g, (c) => c.toUpperCase());
+  return (
+    withoutAchDetails(description)
+      // A customer-service number and the state after it ("COMCAST XFINITY 800-266-2278",
+      // "DISNEY PLUS 888-905-7888 CA"; night QA 10-30).
+      .replace(/\s+\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}(?:\s+[A-Z]{2})?\s*$/, "")
+      .replace(/\.com$/i, "")
+      .replace(/\*.*$/, "")
+      .trim()
+      .toLowerCase()
+      .replace(/\b([a-z])/g, (c) => c.toUpperCase())
+  );
 }
 
 // "Netflix, Hulu and Disney Plus".

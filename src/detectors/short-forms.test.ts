@@ -71,5 +71,11 @@ describe("nice", () => {
     expect(nice("NETFLIX.COM")).toBe("Netflix");
     // Night QA 10-30: "You pay $1,020.00 a year on Verizon Wireless Des:Paymentrec Id:Xxxxx".
     expect(nice("VERIZON WIRELESS DES:PAYMENTREC ID:XXXXX")).toBe("Verizon Wireless");
+    // Night QA 10-30: "You pay $1,079.88 a year on Comcast Xfinity 800-266-2278".
+    expect(nice("COMCAST XFINITY 800-266-2278")).toBe("Comcast Xfinity");
+    expect(nice("DISNEY PLUS 888-905-7888 CA")).toBe("Disney Plus");
+    expect(nice("SPECTRUM (855) 707-7328")).toBe("Spectrum");
+    // A number that's part of the name stays.
+    expect(nice("7-ELEVEN 2045")).toBe("7-Eleven 2045");
   });
 });
