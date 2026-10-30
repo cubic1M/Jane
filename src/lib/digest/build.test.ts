@@ -275,6 +275,15 @@ describe("what changed", () => {
     expect(kept[0]).toEqual({ title: "Bill 11", percent: 61 });
   });
 
+  it("carries read-only mode to the plan", () => {
+    const findings = [{ title: "Fees", annualSavingsCents: 100, createdAt: daysAgo(1) }];
+    expect(buildDigest(input({ findings, readOnly: true }))?.plan).toEqual({
+      items: 1,
+      readOnly: true,
+    });
+    expect(buildDigest(input({ findings }))?.plan).toEqual({ items: 1 });
+  });
+
   it("carries new findings' confidence level", () => {
     const digest = buildDigest(
       input({
