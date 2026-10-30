@@ -348,7 +348,7 @@ body {
   }
 }
 
-/* The home hub's shell (docs/design/home-hub.md). On a computer the top bar (#app-top-bar) is
+/* The home hub's shell (docs/design/home-hub.md). On a computer the top bar ([data-app-top-bar]) is
    fixed across the window and the chat is docked on the right (src/components/side-chat):
    the page makes room for it, docked by default (so the room is there from the first frame),
    less when it is folded to a rail (html[data-side-chat], set by the panel), and none on the
@@ -369,22 +369,22 @@ body {
 }
 
 @media (min-width: 1024px) {
-  body:has(#app-top-bar) {
+  body:has([data-app-top-bar]) {
     padding-top: 3.5rem;
     padding-right: 380px;
   }
   /* Animated only once the panel has taken over, so the first paint never slides. */
-  html[data-side-chat] body:has(#app-top-bar) {
+  html[data-side-chat] body:has([data-app-top-bar]) {
     transition: padding-right var(--motion-slow) var(--ease-out-soft);
   }
-  html[data-side-chat="rail"] body:has(#app-top-bar) {
+  html[data-side-chat="rail"] body:has([data-app-top-bar]) {
     padding-right: 56px;
   }
-  html[data-side-chat="none"] body:has(#app-top-bar),
-  body:has(#app-top-bar):has([data-chat-page]) {
+  html[data-side-chat="none"] body:has([data-app-top-bar]),
+  body:has([data-app-top-bar]):has([data-chat-page]) {
     padding-right: 0;
   }
-  html[data-side-chat="full"] body:has(#app-top-bar) {
+  html[data-side-chat="full"] body:has([data-app-top-bar]) {
     overflow: hidden;
   }
 }
@@ -454,7 +454,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-side-chat] body:has(#app-top-bar),
+  html[data-side-chat] body:has([data-app-top-bar]),
   .side-chat,
   .side-chat-sheet,
   .side-chat-sheet[data-sheet="half"],
@@ -1157,14 +1157,14 @@ textarea {
   }
 }
 @media (min-width: 1024px) {
-  body:has(#app-top-bar) .floating-cards {
+  body:has([data-app-top-bar]) .floating-cards {
     right: 380px;
   }
-  html[data-side-chat="rail"] body:has(#app-top-bar) .floating-cards {
+  html[data-side-chat="rail"] body:has([data-app-top-bar]) .floating-cards {
     right: 56px;
   }
-  html[data-side-chat="none"] body:has(#app-top-bar) .floating-cards,
-  body:has(#app-top-bar):has([data-chat-page]) .floating-cards {
+  html[data-side-chat="none"] body:has([data-app-top-bar]) .floating-cards,
+  body:has([data-app-top-bar]):has([data-chat-page]) .floating-cards {
     right: 0;
   }
 }
@@ -1172,7 +1172,7 @@ textarea {
    (src/components/side-chat/card-dock.tsx), so the page's own floating stack stays out. */
 @media (min-width: 1024px) {
   html:not([data-side-chat="rail"]):not([data-side-chat="none"])
-    body:has(#app-top-bar):not(:has([data-chat-page]))
+    body:has([data-app-top-bar]):not(:has([data-chat-page]))
     .floating-cards[data-floating-cards="queue"] {
     display: none;
   }
