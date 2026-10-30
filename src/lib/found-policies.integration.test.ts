@@ -153,6 +153,19 @@ describe.runIf(url)("insurance found from payments", { timeout: 120_000 }, () =>
     ]);
     // Again: nothing new.
     expect(await policiesFromPayments(userId, { client, now: NOW })).toBe(0);
+    // A date from the older rule is put right on the next scan (night QA 10-30).
+    await client.insurancePolicy.updateMany({
+      where: { userId, carrier: "Progressive" },
+      data: { renewalDate: new Date("2026-11-01T00:00:00Z") },
+    });
+    await policiesFromPayments(userId, { client, now: NOW });
+    expect(
+      (
+        await client.insurancePolicy.findFirst({ where: { userId, carrier: "Progressive" } })
+      )?.renewalDate
+        ?.toISOString()
+        .slice(0, 10),
+    ).toBe("2027-01-05");
     // Found renters cover isn't cover yet.
     expect((await loadInsurance(userId, { client, now: NOW })).gaps.map((g) => g.key)).toContain(
       "renters",

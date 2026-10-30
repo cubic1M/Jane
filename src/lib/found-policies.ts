@@ -32,6 +32,14 @@ export async function policiesFromPayments(
   });
   const has = new Set(known.map((k) => k.merchantKey));
   const fresh = found.filter((f) => !has.has(f.merchantKey));
+  // A policy still only found keeps the estimate the payments give today (night QA 10-30: an
+  // older rule dated renewals from the first statement day). Confirmed ones are the person's.
+  for (const f of found.filter((x) => has.has(x.merchantKey))) {
+    await db.insurancePolicies.updateMany({
+      where: { merchantKey: f.merchantKey, status: "found", source: "payments" },
+      data: { renewalDate: f.renewalDate ? new Date(`${f.renewalDate}T00:00:00Z`) : null },
+    });
+  }
   for (const f of fresh) {
     await db.insurancePolicies.create({
       data: {
