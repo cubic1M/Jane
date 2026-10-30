@@ -568,6 +568,7 @@ const RULES: readonly Rule[] = [
     keywords: ["TARGET", "WALMART", "WAL-MART", "COSTCO"],
   },
   { category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", keywords: ["CVS", "WALGREENS", "RITE AID"] },
+  { category: "GENERAL_MERCHANDISE_CONVENIENCE_STORES", keywords: ["7-ELEVEN", "7 ELEVEN"] },
   {
     category: "GENERAL_MERCHANDISE_ELECTRONICS",
     keywords: ["BEST BUY", "APPLE STORE", "MICRO CENTER"],
@@ -1883,6 +1884,23 @@ const RULES: readonly Rule[] = [
       "SCHOLARSHIP",
       "DIRECT LOAN DISB",
       "STUDENT LOAN DISB",
+    ],
+    direction: "in",
+  },
+  // A payday loan or an app's cash advance landing in checking: borrowed money, never a refund
+  // of spending (night QA 10-30: a server's "ADVANCE AMERICA LOAN", $400 in, uncategorized).
+  {
+    category: "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+    keywords: [
+      "ADVANCE AMERICA",
+      "CHECK INTO CASH",
+      "ACE CASH EXPRESS",
+      "SPEEDY CASH",
+      "CHECKSMART",
+      "EARNIN",
+      "BRIGIT",
+      "MONEYLION INSTACASH",
+      "DAVE INC",
     ],
     direction: "in",
   },

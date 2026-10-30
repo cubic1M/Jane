@@ -324,6 +324,20 @@ describe("categorizeByRules", () => {
     },
   );
 
+  // Night QA 10-30: a payday loan landing in checking read as a $400 refund of spending.
+  it.each([["ADVANCE AMERICA LOAN"], ["EARNIN TRANSFER"], ["DAVE INC ADVANCE"]])(
+    "reads %s, money in, as a cash advance",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -40_000, hints: {} })?.detailed).toBe(
+        "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+      );
+    },
+  );
+
+  it("reads 7-Eleven as a convenience store", () => {
+    expect(out("7-ELEVEN 33421")).toBe("GENERAL_MERCHANDISE_CONVENIENCE_STORES");
+  });
+
   it("still reads a ride, a meal and a refund of one as what they are", () => {
     expect(out("UBER *TRIP HELP.UBER.COM")).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
     expect(out("DOORDASH*THAI HOUSE")).toBe("FOOD_AND_DRINK_RESTAURANT");
