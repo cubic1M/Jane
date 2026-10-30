@@ -3,7 +3,7 @@ import type { DetectionInput } from "@/detection/types";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { dayLabel } from "@/lib/day-label";
-import { asWatch } from "@/planning/outcomes";
+import { asWatch, outcomeYearly } from "@/planning/outcomes";
 import { HELD_RULE, verifyRule, type LedgerState } from "@/planning/ledger";
 import { verifiedSavings, type Receipt } from "@/lib/savings-proof";
 
@@ -175,7 +175,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       title: now.title,
       state: "estimated",
       cents: now.worthCents,
-      yearly: true,
+      yearly: outcomeYearly(now.watch ?? o.watch, true),
       confidencePercent: now.confidencePercent || null,
       verifiedPercent: null,
       rule: verifyRule(asWatch(now.watch) ?? asWatch(o.watch)),

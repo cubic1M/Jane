@@ -104,7 +104,12 @@ async function ReportContent() {
   const rest = ordered.slice(TOP);
   const row = (finding: (typeof findings)[number]) => {
     const text = explanationFor(finding);
-    const sure = findingSure(finding, sures, months);
+    const sure = findingSure(
+      finding,
+      sures,
+      months,
+      findings.filter((f) => f.type === finding.type).length,
+    );
     return (
       <li key={finding.id}>
         <Link

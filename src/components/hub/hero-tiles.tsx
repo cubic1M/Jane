@@ -99,7 +99,7 @@ export function SafeTile({ safe }: { safe: SafeHero }) {
   const closeHow = useCallback(() => setShowHow(false), []);
 
   return (
-    <div ref={tile} data-hub-tile="safe" className={`${CARD} col-span-2 sm:col-span-1`}>
+    <div ref={tile} data-hub-tile="safe" className={CARD}>
       <button
         type="button"
         aria-expanded={open}
@@ -193,10 +193,13 @@ export function SavedTile({
   saved,
   planItems,
   plan = null,
+  wide = false,
 }: {
   saved: SavedHero;
   planItems: number;
   plan?: PlanHero | null;
+  // The whole row on a wide screen, when there's no Safe to spend beside it.
+  wide?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const tile = useRef<HTMLDivElement>(null);
@@ -215,7 +218,7 @@ export function SavedTile({
       </>
     );
   return (
-    <div ref={tile} data-hub-tile="saved" className={CARD}>
+    <div ref={tile} data-hub-tile="saved" className={wide ? `${CARD} sm:col-span-2` : CARD}>
       {savedSoFar ? (
         <button
           type="button"

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { VERIFIED_PERCENT, WATCH_DAYS } from "@/config/outcomes";
 import { addDays } from "@/detection/units";
-import { asWatch, verifyWatch, watchOfFinding, type OutcomeTx } from "./outcomes";
+import { asWatch, outcomeYearly, verifyWatch, watchOfFinding, type OutcomeTx } from "./outcomes";
 
 // The verified savings record's check: a saving counts only when later transactions show it,
 // and the transactions that show it are kept as the evidence.
@@ -204,5 +204,27 @@ describe("what to watch", () => {
       }),
     ).toEqual({ kind: "fee_stops", pfcs: ["BANK_FEES_OVERDRAFT_FEES"], monthlyCents: 1_000 });
     expect(watchOfFinding("idle_cash", {})).toBeNull();
+  });
+});
+
+// Debugger 10-30: a double charge marked done read "Charged twice? $46.18 at Doordash, about
+// $46.18/yr" on /saved and the month's close. Money back comes once.
+describe("outcomeYearly", () => {
+  it("never counts a refund as a yearly saving", () => {
+    const refund = {
+      kind: "refund",
+      payees: [{ description: "DOORDASH*TACOS", amountCents: 4618 }],
+    };
+    expect(outcomeYearly(refund, true)).toBe(false);
+  });
+
+  it("keeps what was stored for anything else", () => {
+    const stops = {
+      kind: "charge_stops",
+      payees: [{ description: "HULU", amountCents: 1899, perYear: 12 }],
+    };
+    expect(outcomeYearly(stops, true)).toBe(true);
+    expect(outcomeYearly(stops, false)).toBe(false);
+    expect(outcomeYearly(null, true)).toBe(true);
   });
 });
