@@ -359,16 +359,21 @@ function switchedToYearly(main: Stream, charges: DetectionTransaction[]): Stream
 // One charge that is a year of a plan: in YEARLY_PLAN_*_CENTS, under the plan's own name or
 // saying it renews the year, and not something from the company's shop. The one rule for a plan
 // paid once a year: detection's yearly streams and the price rises (src/planning/price-rises.ts)
-// both use it, so a movie ticket or a campus bookstore receipt is never a "renews" card.
-export function isYearlyPlanCharge(
+// both use it, so a movie ticket or a campus bookstore receipt is never a "renews" card. Says
+// what it saw (src/config/evidence.ts): the bank's words, or the plan's own name; null if neither.
+export function yearlyPlanEvidence(
   c: Pick<DetectionTransaction, "amountCents" | "description" | "merchantName">,
-): boolean {
-  if (c.amountCents < YEARLY_PLAN_MIN_CENTS || c.amountCents > YEARLY_PLAN_MAX_CENTS) return false;
+): "word" | "known_merchant" | null {
+  if (c.amountCents < YEARLY_PLAN_MIN_CENTS || c.amountCents > YEARLY_PLAN_MAX_CENTS) return null;
   const merchant = merchantOf(c);
-  if (!merchant || isGoods(c.description)) return false;
-  const renewal = wordsOf(c.description).some((w) => YEARLY_RENEWAL_WORDS.includes(w));
-  return isPlanName(merchant.key) || planAfterStar(c.description) || renewal;
+  if (!merchant || isGoods(c.description)) return null;
+  if (wordsOf(c.description).some((w) => YEARLY_RENEWAL_WORDS.includes(w))) return "word";
+  return isPlanName(merchant.key) || planAfterStar(c.description) ? "known_merchant" : null;
 }
+
+export const isYearlyPlanCharge = (
+  c: Pick<DetectionTransaction, "amountCents" | "description" | "merchantName">,
+) => yearlyPlanEvidence(c) !== null;
 
 // A yearly plan seen once: one charge in YEARLY_PLAN_*_CENTS, and that one a plan's.
 function yearlyPlan(charges: DetectionTransaction[]): Stream | null {

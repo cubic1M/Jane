@@ -61,7 +61,8 @@ describe("what a person owns, as facts", () => {
     expect(f.fees.top).toEqual({ name: "ARKK", yearlyCents: 3_750 });
     expect(f.fees.unknownNames).toEqual(["XYZFX"]);
     expect(f.cash).toMatchObject({ cents: 600_000 });
-    expect(f.sentences.join(" ")).toMatch(/\$80,000\.00: .*% us stocks/);
+    expect(f.sentences.join(" ")).toMatch(/\$80,000\.00: .*% US stocks/);
+    expect(f.sentences.join(" ")).not.toMatch(/% us stocks/);
     expect(f.sentences.join(" ")).toMatch(
       /largest single stock is Tesla \(TSLA\), \$15,000\.00, which is 19% of everything you own/,
     );

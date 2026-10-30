@@ -36,6 +36,17 @@ describe("price_increase", () => {
     expect(run(input({ transactions: monthly(3, [1699, 1699, 5999], xbox) }))).toEqual([]);
   });
 
+  // Night QA 10-30: a retiree's monthly prescriptions at CVS read as "went up from $49.50 to
+  // $61.00, could save $138 a year".
+  it("never calls a pharmacy's or a doctor's changing bill a price rise", () => {
+    const cvs = {
+      description: "CVS/PHARMACY #4321",
+      pfcPrimary: "MEDICAL",
+      pfcDetailed: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS",
+    };
+    expect(run(input({ transactions: monthly(4, [4950, 4950, 4950, 6100], cvs) }))).toEqual([]);
+  });
+
   // CSV bench, second tuning set: a city utility bill moves with use, like power and water.
   it("never calls a city utility bill's move a price rise", () => {
     const transactions = monthly(4, [9800, 9600, 9900, 12_200], {

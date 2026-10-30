@@ -81,8 +81,10 @@ export function ownedFacts(accounts: readonly InvestmentAccountView[]): OwnedFac
   const cash = { cents: cashCents, share: cashCents / total };
 
   const sentences: string[] = [];
+  // "Bonds" reads "bonds" mid-sentence; "US stocks" stays "US" (night QA 10-30: "50% us stocks").
+  const inSentence = (label: string) => label.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
   sentences.push(
-    `You own ${formatCents(total)}: ${mix.map((m) => `${pct(m.share)} ${m.label.toLowerCase()}`).join(", ")}.`,
+    `You own ${formatCents(total)}: ${mix.map((m) => `${pct(m.share)} ${inSentence(m.label)}`).join(", ")}.`,
   );
   if (biggestStock) {
     sentences.push(

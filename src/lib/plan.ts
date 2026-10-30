@@ -38,6 +38,16 @@ export type PlanItem = {
   countedElsewhere: boolean;
 };
 
+// What the plan is worth a year if the person does it all: a duplicate group whose dollars
+// are already in its services' reviews counts once. /plan and /jane both say it (night QA
+// 10-30: /jane said $3,721.40 for the same 8 things /plan put at $3,553.52).
+export function planTotalCents(items: readonly Pick<PlanItem, "card" | "countedElsewhere">[]) {
+  return items.reduce(
+    (sum, i) => sum + (i.countedElsewhere ? 0 : (i.card.annualSavingsCents ?? 0)),
+    0,
+  );
+}
+
 export async function planFor(
   userId: string,
   { client = defaultClient }: Options = {},

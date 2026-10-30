@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Licensed font files: their licences forbid sharing them, and this repo is public.
 /public/fonts/
+
+# demo video output (scripts/demo-video)
+/scripts/demo-video/out/
