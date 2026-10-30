@@ -37,6 +37,8 @@ export type LedgerEntry = {
   heldProof: string | null;
   heldLines: LedgerLine[];
   lapsed: boolean;
+  // Done and waiting: when it will be checked ("we'll check on Nov 5").
+  checkWords: string | null;
   foundOn: string | null;
   actedOn: string | null;
   verifiedOn: string | null;
@@ -103,6 +105,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       heldProof: r.heldOn ? `Still true on ${dayLabel(r.heldOn, { year: true })}.` : null,
       heldLines: [],
       lapsed: false,
+      checkWords: null,
       foundOn: null,
       actedOn: null,
       verifiedOn: r.verifiedOn,
@@ -123,6 +126,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     heldProof: null,
     heldLines: [],
     lapsed: false,
+    checkWords: null,
     foundOn: null,
     actedOn: null,
     verifiedOn: null,
@@ -150,6 +154,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       heldProof: o.heldProof,
       heldLines: o.heldEvidence,
       lapsed: o.lapsed,
+      checkWords: o.checkWords,
       foundOn: o.foundOn,
       actedOn: o.actedOn,
       verifiedOn: o.verifiedOn,
@@ -175,6 +180,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       heldProof: null,
       heldLines: [],
       lapsed: false,
+      checkWords: null,
       foundOn: o.firstShownAt.toISOString().slice(0, 10),
       actedOn: null,
       verifiedOn: null,

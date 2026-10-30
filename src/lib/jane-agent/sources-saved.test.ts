@@ -98,6 +98,8 @@ describe("savedReply", () => {
       lapsed: false,
       heldProof: null,
       heldEvidence: [],
+      checksOn: null,
+      checkWords: null,
     };
     const reply = savedReply({
       actions: { confirmed: [], confirmedCents: 0, estimated: [], estimatedCents: 0, notShown: [] },

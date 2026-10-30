@@ -416,6 +416,38 @@ export function checkHeld(
   };
 }
 
+// When a Done saving will be checked (founder, 10-30: "Hulu: done, we'll check on Nov 5"). It is
+// still verified only from the next charge or bill after the person acted; this says which day
+// that is: the next charge's due day plus the bank's grace, the next bill's, the end of the fee
+// window, or for a refund the last day Jane watches for it. The earliest across payees. Null when
+// transactions can't say (investing, nothing to watch, no charge before acting). Pure.
+export type CheckDay = { on: string; until: boolean };
+
+export function checksOn(
+  watch: TransactionWatch,
+  startedOn: string,
+  transactions: readonly OutcomeTx[],
+): CheckDay | null {
+  if (watch.kind === "refund") {
+    return { on: addDays(startedOn, WATCH_DAYS.refund), until: true };
+  }
+  if (watch.kind === "fee_stops") {
+    return { on: addDays(startedOn, FEE_COMPARE_DAYS), until: false };
+  }
+  const from = chargesFrom(transactions);
+  const days = watch.payees.flatMap((p) => {
+    const last = from(p.description)
+      .filter((t) => t.date <= startedOn)
+      .at(-1);
+    if (!last) return [];
+    // As verifyWatch counts it: the next one after the last charge before acting.
+    const due = addDays(last.date, Math.round(365 / p.perYear));
+    return [addDays(due, watch.kind === "charge_stops" ? STOP_GRACE_DAYS + 1 : 0)];
+  });
+  if (days.length === 0) return null;
+  return { on: days.reduce(minDay), until: false };
+}
+
 // Whether a stored watch has the shape Watch (rows are JSON).
 export function asWatch(value: unknown): Watch | null {
   if (!value || typeof value !== "object") return null;

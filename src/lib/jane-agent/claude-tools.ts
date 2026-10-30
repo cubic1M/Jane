@@ -786,10 +786,12 @@ async function runChatToolWork(
           ...saved.suggestions.expected.map((o) => ({
             what: o.title,
             about: money(o.expectedCents),
+            // When it will be checked: say it as "Hulu: done, we'll check on Nov 5".
+            check: o.checkWords,
             why:
               o.status === "unverifiable"
                 ? "Done, but it isn't something the transactions can show."
-                : "Done. It counts once your transactions show it.",
+                : `Done. It counts once your transactions show it${o.checkWords ? `; ${o.checkWords}` : ""}.`,
           })),
         ],
       });

@@ -68,6 +68,12 @@ export function LedgerEntryRow({ entry: e, action }: { entry: Entry; action?: Re
           {e.confidencePercent !== null && (
             <span className={`text-xs ${MUTED}`}>{e.confidencePercent}% sure</span>
           )}
+          {/* Founder (10-30): "Hulu: done, we'll check on Nov 5". */}
+          {e.state === "done" && e.checkWords && (
+            <span data-ledger-check="" className={`basis-full text-xs ${MUTED}`}>
+              Done, {e.checkWords}
+            </span>
+          )}
         </summary>
         <div className="flex flex-col gap-2 border-t border-zinc-200 p-3 text-sm dark:border-zinc-800">
           {e.proof && <p>{e.proof}</p>}

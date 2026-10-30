@@ -53,3 +53,7 @@ export const VERIFIED_PERCENT = {
 // The ledger's last state (Held): a verified saving still true this many days after it was
 // verified, on statements that cover those days. Until then it stays Verified.
 export const HELD_DAYS = 90;
+
+// A Done saving's check day is worked out from the charges this many days before the person
+// acted (a yearly charge's last one included).
+export const CHECK_LOOKBACK_DAYS = 400;
