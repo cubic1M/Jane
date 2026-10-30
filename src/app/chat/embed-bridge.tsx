@@ -164,30 +164,18 @@ export function EmbedBridge({ cards = "" }: { cards?: string }) {
         else delete root.dataset.chatEmbedCards;
       }
     };
-    // The panel growing or shrinking keeps the end of the chat in view if it was.
-    let atEnd = true;
-    const nearEnd = () =>
-      window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 80;
-    const onScroll = () => {
-      atEnd = nearEnd();
-    };
-    const onResize = () => {
-      if (atEnd) window.scrollTo({ top: document.documentElement.scrollHeight });
-    };
+    // The panel growing or shrinking keeps the end of the chat in view if it was: ScrollToEnd
+    // (./scroll-to-end.tsx) follows it.
     window.addEventListener("click", onClick, true);
     window.addEventListener("message", onMessage);
-    window.addEventListener("scroll", onScroll, { passive: true });
     // Listening now: ask the page where the panel is.
     window.parent.postMessage({ type: "jane:ready" }, origin);
-    window.addEventListener("resize", onResize);
     // Scrolling past the chat's ends never scrolls the page around the panel.
     const releaseScroll = containScroll(document);
     return () => {
       releaseScroll();
       window.removeEventListener("click", onClick, true);
       window.removeEventListener("message", onMessage);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
       watching?.disconnect();
       delete root.dataset.chatEmbed;
       delete root.dataset.chatEmbedCards;
