@@ -185,6 +185,21 @@ describe("the same charge twice, and a trial that converted", () => {
   });
 });
 
+// Manager decision 10-30: the suggestion says asking is worth it, and never that the bill is too
+// high (the checkup may say it's a typical price).
+describe("asking for a lower phone or internet rate", () => {
+  it("says it's worth asking, never that the bill is too high", () => {
+    const s = fire("equity").find((x) => x.topic === "bill_negotiation")!;
+    expect(s.title).toMatch(/^Worth asking for a lower rate/);
+    // The headline keeps its verb first (src/detectors/short-forms.test.ts) and says no more.
+    expect(s.headline).toMatch(/^Ask for a lower bill rate/);
+    expect(`${s.title} ${s.why} ${s.short}`).not.toMatch(
+      /too high|overpay|above typical|more than you should/i,
+    );
+    expect(s.why).toMatch(/still worth asking/);
+  });
+});
+
 describe("a category running over", () => {
   // Start from a person with no other food spending, so the figures are the made-up ones.
   const noFood = (d: ProfileInput): ProfileInput => ({
