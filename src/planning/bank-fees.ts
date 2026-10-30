@@ -1,5 +1,5 @@
 import { BANK_FEE_CATEGORIES, FEE_REVERSAL_DAYS, PROCESSOR_FEE_PAYEE } from "@/config/detection";
-import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
+import { ANNUAL_FEE_WORDS, FEE_PACE_MIN_CHARGES } from "@/config/found-policies";
 
 // Bank fees in a year, the one definition (the brief's suggestion, the Today card's fees and
 // Jane's answer all use it): fees in the bank-fee categories over the last twelve months, not
@@ -51,7 +51,11 @@ export function bankFeesYear(
   );
   return {
     seenCents,
-    yearCents: Math.round((seenCents - yearly) * (12 / months)) + yearly,
+    // One fee isn't a pace: it counts once (FEE_PACE_MIN_CHARGES), as the report's finding does.
+    yearCents:
+      fees.filter((t) => !ANNUAL_FEE_WORDS.test(t.description)).length >= FEE_PACE_MIN_CHARGES
+        ? Math.round((seenCents - yearly) * (12 / months)) + yearly
+        : seenCents,
     count: fees.length,
     monthsOfData: months,
     estimated: months < 12,
