@@ -97,6 +97,29 @@ describe.runIf(url)("first-week checklist against a real database", () => {
     expect(all?.complete).toBe(true);
   });
 
+  // Night QA 10-30: "Decide on 3 of your cards" beside a report with nothing to fix.
+  it("asks for as many decisions as there are cards, and none when there's nothing to decide", async () => {
+    const userId = await newUser();
+    await client.account.create({
+      data: { userId, source: "csv", name: "Savings", type: "depository" },
+    });
+    const none = await firstWeekChecklist(userId, { client, now: NOW });
+    expect(none?.items.map((i) => i.key)).not.toContain("review_cards");
+    await decide(userId, 1, true);
+    const one = await firstWeekChecklist(userId, { client, now: NOW });
+    expect(one?.items.find((i) => i.key === "review_cards")).toMatchObject({
+      label: "Decide on your card",
+      done: false,
+    });
+    await decide(userId, 1);
+    const two = await firstWeekChecklist(userId, { client, now: NOW });
+    expect(two?.items.find((i) => i.key === "review_cards")).toMatchObject({
+      label: "Decide on 2 of your cards",
+      done: false,
+      progress: "1 of 2",
+    });
+  });
+
   it("sends each item's funnel event once, then one for finishing", async () => {
     const userId = await newUser();
     await client.account.create({
