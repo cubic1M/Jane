@@ -13,6 +13,7 @@ import {
   tx,
 } from "./__fixtures__/build";
 import { buildStreams, detectRecurring } from "./streams";
+import type { DetectionTransaction } from "./types";
 import { addDays } from "./units";
 
 const RENT = { pfcPrimary: "RENT_AND_UTILITIES", pfcDetailed: "RENT_AND_UTILITIES_RENT" };
@@ -262,6 +263,50 @@ describe("fallback recurring detection", () => {
     );
 
     expect(detectRecurring(input({ transactions }))).toEqual([]);
+  });
+});
+
+// Night QA 10-30: a card statement to Sep 30 uploaded on Oct 30 found nothing: its monthly
+// charges were judged against today, and their October charges weren't in the file.
+describe("a stream in an uploaded file", () => {
+  const hulu = (overrides: Partial<DetectionTransaction> = {}) =>
+    [4, 3, 2].map((months) =>
+      tx({
+        date: monthsAgo(months, 5),
+        amountCents: 1799,
+        description: "HULU 877-8244858",
+        merchantName: "Hulu",
+        pfcPrimary: "ENTERTAINMENT",
+        pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
+        ...overrides,
+      }),
+    );
+  // The file's last day: Aug 31, six weeks before AS_OF (Oct 15).
+  const lastDay = (overrides: Partial<DetectionTransaction> = {}) =>
+    tx({ date: monthsAgo(2, 31), description: "TRADER JOE'S #123", ...overrides });
+
+  it("is active while its last charge is recent for the file, not for today", () => {
+    const [stream] = detectRecurring(input({ transactions: [...hulu(), lastDay()] }));
+    expect(stream.merchant).toBe("Hulu");
+    expect(stream.active).toBe(true);
+  });
+
+  it("still stops when the file itself shows it missed", () => {
+    const later = tx({ date: monthsAgo(0, 10), description: "TRADER JOE'S #123" });
+    const [stream] = detectRecurring(input({ transactions: [...hulu(), later] }));
+    expect(stream.active).toBe(false);
+  });
+
+  it("is judged against today in a linked account, which is current", () => {
+    const streams = detectRecurring(
+      input({
+        transactions: [
+          ...hulu().map((t, i) => ({ ...t, plaidTransactionId: `p${i}` })),
+          lastDay({ plaidTransactionId: "p9" }),
+        ],
+      }),
+    );
+    expect(streams[0].active).toBe(false);
   });
 });
 
