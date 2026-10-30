@@ -82,10 +82,13 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     }),
     db.suggestions.findMany({
       where: { status: { notIn: ["gone", "yes", "no"] } },
-      select: { key: true },
+      select: { key: true, title: true, worthCents: true, confidencePercent: true, watch: true },
     }),
   ]);
-  const stillFound = new Set(live.map((s) => s.key));
+  // What each suggestion says now: a later scan moves its figure without showing it again
+  // (debugger 10-30: fees "about $56/yr" here, from before the card's annual fee came in, while
+  // the dock said $381).
+  const stillFound = new Map(live.map((s) => [s.key, s]));
   const entries: LedgerEntry[] = [];
 
   // Jane's finished work: Verified or Held from its receipt; otherwise done or not seen.
@@ -164,17 +167,18 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
 
   // Found and not acted on: still on offer.
   for (const o of shown) {
-    if (!stillFound.has(o.suggestionKey)) continue;
+    const now = stillFound.get(o.suggestionKey);
+    if (!now || now.worthCents <= 0) continue;
     entries.push({
       key: o.suggestionKey,
       by: "you",
-      title: o.title,
+      title: now.title,
       state: "estimated",
-      cents: o.expectedCents,
+      cents: now.worthCents,
       yearly: true,
-      confidencePercent: o.confidencePercent || null,
+      confidencePercent: now.confidencePercent || null,
       verifiedPercent: null,
-      rule: verifyRule(asWatch(o.watch)),
+      rule: verifyRule(asWatch(now.watch) ?? asWatch(o.watch)),
       proof: null,
       lines: [],
       heldProof: null,

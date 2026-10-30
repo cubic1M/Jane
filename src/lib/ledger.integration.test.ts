@@ -202,4 +202,48 @@ describe.runIf(url)("the savings ledger, on a sample person", { timeout: 240_000
       ["suggestion_outcome", "verified", "held"],
     ]);
   });
+
+  // Debugger 10-30: a household's fees read about $56 a year on /saved and the close (shown
+  // after the checking upload) while the dock and the plan said $381 (after the card's annual
+  // fee came in). An estimate on offer says what its suggestion says now.
+  it("shows a found saving at what its suggestion says now, not when first shown", async () => {
+    const key = "cost:bank_fees";
+    const watch = { kind: "fee_stops" as const, pfcs: ["BANK_FEES_ATM_FEES"], monthlyCents: 467 };
+    const base = {
+      capability: "cost",
+      topic: "bank_fees",
+      title: "Stop paying bank and card fees",
+      worthKind: "saves" as const,
+      watch,
+    };
+    await client.suggestion.deleteMany({ where: { userId, key } });
+    await client.suggestionOutcome.deleteMany({ where: { userId, suggestionKey: key } });
+    await client.suggestion.create({
+      data: {
+        userId,
+        key,
+        ...base,
+        worthCents: 5_600,
+        confidencePercent: 59,
+        confidenceReason: "4 bank fees in 3 months of data",
+        urgency: "soon",
+        why: "x",
+        actionLabel: "See the fees",
+        actionHref: "/insights",
+      },
+    });
+    await recordShown(userId, [{ key, ...base, worthCents: 5_600, confidencePercent: 59 }], {
+      client,
+      now: NOW,
+    });
+    // The next scan, after another upload: the suggestion's figure moves; it isn't shown again.
+    await client.suggestion.updateMany({
+      where: { userId, key },
+      data: { worthCents: 38_100, confidencePercent: 61 },
+    });
+    const entry = (await savingsLedger(userId, { client, now: NOW })).entries.find(
+      (e) => e.key === key,
+    );
+    expect(entry).toMatchObject({ state: "estimated", cents: 38_100, confidencePercent: 61 });
+  });
 });
