@@ -156,6 +156,33 @@ describe("the same charge twice, and a trial that converted", () => {
     ).find((x) => x.topic === "trial_conversion")!;
     expect(s.worthCents).toBe(1_800 * 12);
   });
+
+  // Debugger 10-30, the demo bank: a MasterClass trial, then one $120 charge. The report's card
+  // said "Could get back about $120.00"; the plan said "about $1,440.00/yr", as if monthly.
+  it("counts one paid charge once: how often it renews isn't seen yet", () => {
+    const s = fire(
+      "freelancer",
+      add(
+        t("2026-07-01", 100, "SKILLHOUSE", "GENERAL_SERVICES_EDUCATION"),
+        t("2026-07-08", 12_000, "SKILLHOUSE", "GENERAL_SERVICES_EDUCATION"),
+      ),
+    ).find((x) => x.topic === "trial_conversion")!;
+    expect(s.worthCents).toBe(12_000);
+    expect(s.why).not.toMatch(/a year/);
+    expect(s.headline).not.toMatch(/a year/);
+  });
+
+  it("reads a yearly plan's pace from its charges", () => {
+    const s = fire(
+      "freelancer",
+      add(
+        t("2025-07-01", 100, "SKILLHOUSE", "GENERAL_SERVICES_EDUCATION"),
+        t("2025-07-08", 12_000, "SKILLHOUSE", "GENERAL_SERVICES_EDUCATION"),
+        t("2026-07-08", 12_000, "SKILLHOUSE", "GENERAL_SERVICES_EDUCATION"),
+      ),
+    ).find((x) => x.topic === "trial_conversion")!;
+    expect(s.worthCents).toBe(12_000);
+  });
 });
 
 describe("a category running over", () => {
