@@ -131,17 +131,20 @@ describe("spendingInsights", () => {
     expect(kindOf(t({ pfcPrimary: null, pfcDetailed: null }))).toBe("spending");
   });
 
-  it("never shows a month's spending below $0: refunds net only against their own category", () => {
-    const insights = run([
-      t({ amountCents: 2_000, pfcPrimary: "FOOD_AND_DRINK" }),
-      // A big return in a month with little else bought there.
-      t({ amountCents: -50_000, description: "RETURN" }),
-      t({ amountCents: 1_000, date: "2026-09-02" }),
+  it("nets a refund against the month's spending, never below $0", () => {
+    // A flight bought in September and refunded in October comes off October's spending.
+    const refunded = run([
+      t({ amountCents: 30_000, pfcPrimary: "FOOD_AND_DRINK" }),
+      t({ amountCents: -12_000, pfcPrimary: "TRAVEL", description: "DELTA REFUND" }),
+      t({ amountCents: 12_000, pfcPrimary: "TRAVEL", date: "2026-09-02" }),
     ]);
-    const october = insights.months.at(-1)!;
-    expect(october.spendingCents).toBe(2_000);
-    const shown = insights.categoriesByMonth["2026-10"].reduce((sum, c) => sum + c.cents, 0);
-    expect(october.spendingCents).toBe(shown);
+    expect(refunded.months.at(-1)!.spendingCents).toBe(18_000);
+    // A big return in a month with little else bought: $0, not less.
+    const returned = run([
+      t({ amountCents: 2_000, pfcPrimary: "FOOD_AND_DRINK" }),
+      t({ amountCents: -50_000, description: "RETURN" }),
+    ]);
+    expect(returned.months.at(-1)!.spendingCents).toBe(0);
   });
 
   it("keeps every month at $0 or more, whatever comes in (invariant)", () => {

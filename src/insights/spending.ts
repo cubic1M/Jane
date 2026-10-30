@@ -111,13 +111,11 @@ export function spendingInsights(
     merchants.set(merchant, row);
   }
 
-  // A month's spending is its categories added up, each at least $0: refunds net against their
-  // own category, never against the rest of the month, so spending never goes below $0.
+  // Refunds net against the month's spending (a flight bought in August, refunded in September),
+  // but a month's spending never goes below $0 (night debugger, 10-30).
   for (const [month, categories] of byCategory) {
-    totals.get(month)!.spendingCents = [...categories.values()].reduce(
-      (sum, cents) => sum + Math.max(0, cents),
-      0,
-    );
+    const net = [...categories.values()].reduce((sum, cents) => sum + cents, 0);
+    totals.get(month)!.spendingCents = Math.max(0, net);
   }
 
   const categoriesByMonth = Object.fromEntries(
