@@ -135,6 +135,14 @@ export const BANK_DOWNLOADS: readonly BankDownload[] = [
     ],
   },
   {
+    bank: "Navy Federal",
+    steps: [
+      "Sign in at navyfederal.org and open the account.",
+      "Choose the download option above your transactions.",
+      "Pick CSV and the last 3 months, then download.",
+    ],
+  },
+  {
     bank: "Venmo",
     steps: [
       "On venmo.com, open Statements.",
