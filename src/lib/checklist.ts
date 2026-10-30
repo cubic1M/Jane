@@ -53,16 +53,22 @@ export async function firstWeekChecklist(
   if (now.getTime() - user.createdAt.getTime() > CHECKLIST_DAYS * DAY_MS) return null;
 
   const db = scopedFor(userId, client);
-  const [accounts, decisions, budgets, goals, devices] = await Promise.all([
+  const [accounts, decisions, findings, budgets, goals, devices] = await Promise.all([
     db.accounts.count(),
     db.decisions.count({ where: { undoneAt: null } }),
+    db.findings.count(),
     db.budgets.count(),
     db.savingsGoals.count(),
     db.pushSubscriptions.count(),
   ]);
   // Alert preferences start empty ({}) and are saved whole from /settings.
   const alertsChosen = Object.keys(progressOf(user.alertPrefs)).length > 0 || devices > 0;
-  const reviewed = Math.min(decisions, CHECKLIST_CARDS_TO_REVIEW);
+  // As many cards as there are to decide, up to CHECKLIST_CARDS_TO_REVIEW: someone with two
+  // findings can't decide on three (night QA 10-30: "Decide on 3 of your cards" beside a report
+  // saying "Nothing to fix right now"). Before any data, the usual three.
+  const toReview =
+    accounts === 0 ? CHECKLIST_CARDS_TO_REVIEW : Math.min(CHECKLIST_CARDS_TO_REVIEW, findings);
+  const reviewed = Math.min(decisions, toReview);
 
   const items: ChecklistItem[] = [
     {
@@ -73,13 +79,10 @@ export async function firstWeekChecklist(
     },
     {
       key: "review_cards",
-      label: `Decide on ${CHECKLIST_CARDS_TO_REVIEW} of your cards`,
+      label: toReview === 1 ? "Decide on your card" : `Decide on ${toReview} of your cards`,
       href: "/report",
-      done: decisions >= CHECKLIST_CARDS_TO_REVIEW,
-      progress:
-        reviewed > 0 && reviewed < CHECKLIST_CARDS_TO_REVIEW
-          ? `${reviewed} of ${CHECKLIST_CARDS_TO_REVIEW}`
-          : undefined,
+      done: decisions >= toReview,
+      progress: reviewed > 0 && reviewed < toReview ? `${reviewed} of ${toReview}` : undefined,
     },
     {
       key: "budget_or_goal",
@@ -94,6 +97,12 @@ export async function firstWeekChecklist(
       done: alertsChosen,
     },
   ];
+  // With data and nothing to decide, there's no step to take.
+  if (toReview === 0)
+    items.splice(
+      items.findIndex((i) => i.key === "review_cards"),
+      1,
+    );
   const recorded = progressOf(user.checklistProgress);
   return {
     items,
