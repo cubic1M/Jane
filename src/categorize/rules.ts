@@ -250,6 +250,30 @@ const RULES: readonly Rule[] = [
     keywords: ["HSA REIMBURSEMENT", "HSA REIMB"],
     direction: "in",
   },
+  // Retirement money, dividends and rent coming in (night QA 10-30: a retiree's IRA
+  // distribution and an Airbnb host's payout read as refunds, the payout of travel).
+  {
+    category: "INCOME_RETIREMENT_PENSION",
+    keywords: [
+      "IRA DISTRIBUTION",
+      "IRA DIST",
+      "RMD",
+      "ANNUITY",
+      "CALPERS",
+      "CALSTRS",
+      "OPM RETIRE",
+      "TIAA",
+    ],
+    direction: "in",
+  },
+  { category: "INCOME_DIVIDENDS", keywords: ["DIVIDEND"], direction: "in" },
+  {
+    category: "INCOME_RENTAL",
+    keywords: ["AIRBNB PAYMENTS", "AIRBNB PAYOUT", "VRBO PAYOUT", "RENTAL INCOME"],
+    direction: "in",
+  },
+  { category: "INCOME_LONG_TERM_DISABILITY", keywords: ["DISABILITY"], direction: "in" },
+  { category: "INCOME_OTHER", keywords: ["WORKERS COMP"], direction: "in" },
   // Payouts for work done on one's own: income, never a refund that shrinks spending.
   {
     category: "INCOME_CONTRACTOR",

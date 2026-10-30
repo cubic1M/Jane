@@ -346,12 +346,25 @@ describe("categorizeByRules", () => {
     ["COINBASE INC", "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS"],
     ["FID BKG SVC LLC MONEYLINE", "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS"],
     ["HSA REIMBURSEMENT", "TRANSFER_IN_ACCOUNT_TRANSFER"],
+    ["FIDELITY IRA DISTRIBUTION", "INCOME_RETIREMENT_PENSION"],
+    ["VANGUARD RMD DISTRIBUTION", "INCOME_RETIREMENT_PENSION"],
+    ["TIAA ANNUITY PAYMENT", "INCOME_RETIREMENT_PENSION"],
+    ["CALPERS RETIREMENT", "INCOME_RETIREMENT_PENSION"],
+    ["SCHWAB DIVIDEND", "INCOME_DIVIDENDS"],
+    ["AIRBNB PAYMENTS", "INCOME_RENTAL"],
+    ["VRBO PAYOUT", "INCOME_RENTAL"],
+    ["DISABILITY BENEFIT", "INCOME_LONG_TERM_DISABILITY"],
+    ["WORKERS COMP", "INCOME_OTHER"],
     // Still a student's aid, not a personal loan.
     ["DIRECT LOAN DISB UC", "LOAN_DISBURSEMENTS_STUDENT"],
   ])("reads %s, money in, as %s", (description, category) => {
     expect(categorizeByRules({ description, amountCents: -150_000, hints: {} })?.detailed).toBe(
       category,
     );
+  });
+
+  it("still reads an Airbnb stay, money out, as lodging", () => {
+    expect(out("AIRBNB * HMQ4XYZ")).toBe("TRAVEL_LODGING");
   });
 
   // Night QA 10-30: a payday loan landing in checking read as a $400 refund of spending.
