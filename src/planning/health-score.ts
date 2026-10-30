@@ -45,6 +45,14 @@ export function cardBalanceOf(cards: readonly { currentBalanceCents: number | nu
   return cards.reduce((s, c) => s + Math.max(0, c.currentBalanceCents ?? 0), 0);
 }
 
+// Whether spending can be seen at all: it happens in checking or on a card. A savings account
+// alone shows money moved in and interest, so no margin can be worked out from it.
+export function spendingOnFile(accounts: readonly { type: string; subtype: string | null }[]) {
+  return accounts.some(
+    (a) => a.type === "credit" || (a.type === "depository" && a.subtype === "checking"),
+  );
+}
+
 export type HealthPartScore = {
   part: HealthPart;
   label: string;

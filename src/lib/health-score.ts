@@ -11,6 +11,7 @@ import { listGoals } from "@/lib/goals";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import {
   cardBalanceOf,
+  spendingOnFile,
   fullMonthsOnly,
   healthChange,
   healthScore,
@@ -75,8 +76,12 @@ export async function healthInput(
     firstDay,
   ).filter((m) => m.spendingCents > 0 || m.incomeCents > 0);
   const counted = new Set(months.map((m) => m.month));
+  // Spending happens in checking or on a card: with neither on file (a savings account alone),
+  // what's left after spending can't be seen, so no margin (night QA 10-30: a savings-only
+  // upload read "About 100% of what comes in is left after spending", scoring 100 of 100).
+  const spends = spendingOnFile(input.accounts);
   const average = (cents: (m: (typeof months)[number]) => number) =>
-    months.length === 0
+    months.length === 0 || !spends
       ? null
       : Math.round(months.reduce((s, m) => s + cents(m), 0) / months.length);
   const since = addDays(input.asOf, -HEALTH_SLIP_DAYS);
