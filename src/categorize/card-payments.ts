@@ -92,14 +92,33 @@ export function cardPaymentNameFromWords(
 ): string {
   const issuer = CARD_ISSUERS.find(([pattern]) => pattern.test(said))?.[1];
   if (!issuer) return CARD_PAYMENT_NAME;
-  const named = accounts.find(
-    (a) =>
-      a.type === "credit" &&
-      [issuer, ...(CARD_ISSUER_SHORT[issuer] ?? [])].some((n) =>
-        a.name.toLowerCase().includes(n.toLowerCase()),
-      ),
-  );
+  const named = cardNamed(issuer, accounts);
   return named ? `${named.name} payment` : `${issuer} card payment`;
+}
+
+// The card on file that a payment's words name ("CHASE CREDIT CRD AUTOPAY" → the Chase card),
+// if there is one.
+export function paidCardOnFile<A extends { type: string; name: string }>(
+  said: string,
+  accounts: readonly A[],
+): A | null {
+  const issuer = CARD_ISSUERS.find(([pattern]) => pattern.test(said))?.[1];
+  return issuer ? cardNamed(issuer, accounts) : null;
+}
+
+function cardNamed<A extends { type: string; name: string }>(
+  issuer: string,
+  accounts: readonly A[],
+): A | null {
+  return (
+    accounts.find(
+      (a) =>
+        a.type === "credit" &&
+        [issuer, ...(CARD_ISSUER_SHORT[issuer] ?? [])].some((n) =>
+          a.name.toLowerCase().includes(n.toLowerCase()),
+        ),
+    ) ?? null
+  );
 }
 
 // What to call card payments in a list (QA round 32): both sides are named for the card they
