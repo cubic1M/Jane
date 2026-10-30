@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { categorizeByRules } from "@/categorize/rules";
 import { readCsvFile } from "./csv-source";
 
 // Fixtures are made-up transactions in each bank's export layout (headers checked against
@@ -288,6 +289,23 @@ describe("Venmo", () => {
       ["2026-09-12", -4500, "Jordan Lee: Concert tickets"],
       ["2026-09-20", 5000, "Transfer to bank"],
     ]);
+  });
+
+  // Debugger 10-30: Venmo's Type is "Payment" for every person-to-person payment, and a bank's
+  // "Payment" type means paying a card. Roommates paying back their rent shares, and a dinner
+  // sent to a friend, became card payments: out of spending and income both.
+  it("never makes a payment between people a card payment", () => {
+    const categories = result.transactions.map(
+      (t) =>
+        categorizeByRules({
+          description: t.description,
+          amountCents: t.amountCents,
+          hints: t.hints,
+        })?.detailed ?? null,
+    );
+    expect(categories).not.toContain("LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
+    // Rent by Venmo is still rent.
+    expect(categories[1]).toBe("RENT_AND_UTILITIES_RENT");
   });
 
   it("reads the newer layout (Transaction ID, Date)", () => {
