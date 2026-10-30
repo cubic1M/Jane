@@ -90,6 +90,8 @@ export type AuditEvent =
   | "action_status_changed"
   | "membership_paid"
   | "item_removed"
+  // Card-chat mismatch: rows worked out from data that is gone (src/lib/evidence/orphans.ts).
+  | "derived_removed"
   | "user_data_deleted"
   | "admin_mfa_enrolled"
   | "admin_mfa_verified"

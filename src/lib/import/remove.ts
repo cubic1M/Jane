@@ -9,8 +9,9 @@ import { enqueueJob } from "@/lib/jobs";
 // Linked banks and settings are never touched. Every query is the signed-in person's own
 // (scopedFor). After each, the same background job as an upload works the numbers out again
 // (src/lib/import/background.ts), so findings, the "found $X/yr" total and the money pages drop
-// what came from the removed rows. Findings the person already said yes or no to stay, with
-// their answer. Each removal is audit-logged and counted, counts only.
+// what came from the removed rows. A finding built only from removed rows goes too, with the
+// person's answer and any action on it (src/lib/evidence/orphans.ts, run by that job's detection):
+// nothing may stand on evidence that is gone. Each removal is audit-logged and counted, counts only.
 
 export type UploadView = {
   id: string;
