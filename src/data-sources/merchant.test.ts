@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeMerchant, withoutCity, withoutPaymentApp } from "./merchant";
+import { normalizeMerchant, withoutCity, withoutPaymentApp, withoutAchDetails } from "./merchant";
 
 describe("normalizeMerchant", () => {
   it.each([
@@ -81,5 +81,19 @@ describe("normalizeMerchant", () => {
     );
     expect(normalizeMerchant("Zelle To Rent")?.name).toBe("Rent");
     expect(withoutPaymentApp("ZELLE TRANSFER CONF JANE DOE")).toBe("ZELLE TRANSFER CONF JANE DOE");
+  });
+});
+
+describe("withoutAchDetails", () => {
+  it("keeps the company of a Bank of America ACH line", () => {
+    expect(withoutAchDetails("VERIZON WIRELESS DES:PAYMENTREC ID:XXXXX")).toBe("VERIZON WIRELESS");
+    expect(
+      withoutAchDetails("GLOBEX LLC DES:PAYROLL ID:XXXXX9028 INDN:EXAMPLE,SAM CO ID:XXXXX PPD"),
+    ).toBe("GLOBEX LLC");
+  });
+
+  it("leaves every other line as it is", () => {
+    expect(withoutAchDetails("COMCAST XFINITY 800-266-2278")).toBe("COMCAST XFINITY 800-266-2278");
+    expect(withoutAchDetails("DES:ONLY")).toBe("DES:ONLY");
   });
 });

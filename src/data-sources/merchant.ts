@@ -78,6 +78,15 @@ function beforePadding(description: string): string {
   return match && US_STATES.has(match[2].toUpperCase()) ? match[1] : description;
 }
 
+// The company on a Bank of America ACH line, which comes before " DES:"; the rest is the entry's
+// description, ids and the account holder's name ("GLOBEX LLC DES:PAYROLL ID:… INDN:SAM …").
+// Other lines are unchanged. For names shown as they are (night QA 10-30: "Your employer: GLOBEX
+// LLC DES:PAYROLL ID:XXXXX9028 INDN:EXAMPLE,SAM CO ID:XXXXX PPD" in What Jane knows).
+export function withoutAchDetails(description: string): string {
+  const des = description.search(/\s+DES:/i);
+  return des > 0 ? description.slice(0, des).trim() : description;
+}
+
 export function normalizeMerchant(description: string): Merchant | null {
   let text = normalizeDescription(beforePadding(description));
   for (const pattern of BOILERPLATE) text = text.replace(pattern, "");

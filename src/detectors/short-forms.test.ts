@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { shortFormProblems, runHarness } from "./harness";
-import { clip, headlineOf } from "./helpers";
+import { clip, headlineOf, nice } from "./helpers";
 import { cardHeadline, type Suggestion } from "./contract";
 
 // docs/detectors.md, "Short forms": every suggestion has a headline of at most 60 characters
@@ -63,5 +63,13 @@ describe("the short forms of a suggestion", () => {
     );
     expect(cut.length).toBeLessThanOrEqual(60);
     expect(cut.endsWith("…")).toBe(true);
+  });
+});
+
+describe("nice", () => {
+  it("names a payee as a person would say it", () => {
+    expect(nice("NETFLIX.COM")).toBe("Netflix");
+    // Night QA 10-30: "You pay $1,020.00 a year on Verizon Wireless Des:Paymentrec Id:Xxxxx".
+    expect(nice("VERIZON WIRELESS DES:PAYMENTREC ID:XXXXX")).toBe("Verizon Wireless");
   });
 });

@@ -26,6 +26,7 @@ import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 import { addDays } from "@/lib/dates";
+import { withoutAchDetails } from "@/data-sources/merchant";
 import { lifeEventGuesses } from "@/insights/life-signals";
 import type { DetectionInput } from "@/detection/types";
 import { CAR_SIGNAL, KIDS_SIGNALS, NEW_BABY_RECENT_DAYS } from "@/config/life-facts";
@@ -408,11 +409,15 @@ export function buildProfile(input: ProfileInput): Profile {
   const activeSince = addDays(today, -EARNER_ACTIVE_DAYS);
   const lastPaid = new Map<string, string>();
   for (const t of salary) {
-    const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+    const name = withoutAchDetails(t.description)
+      .replace(/\s+PAYROLL.*$/i, "")
+      .trim();
     if (!lastPaid.has(name) || t.date > lastPaid.get(name)!) lastPaid.set(name, t.date);
   }
   for (const t of salary) {
-    const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+    const name = withoutAchDetails(t.description)
+      .replace(/\s+PAYROLL.*$/i, "")
+      .trim();
     if (lastPaid.get(name)! >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
   }
   const topEmployer = [...employers.entries()].sort((a, b) => b[1] - a[1])[0];
