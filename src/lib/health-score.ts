@@ -10,6 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import {
+  fullMonthsOnly,
   healthChange,
   healthScore,
   type HealthChange,
@@ -61,10 +62,17 @@ export async function healthInput(
   // Books QA: a typical month, with one-off costs (a flood's repairs) left out of spending.
   const all = input.transactions.map((t) => ({ ...t, pending: false }));
   const oneOffs = oneOffCharges(all, input.asOf);
-  const months = spendingInsights(withoutOneOffs(all, oneOffs), {
-    asOf: lastFull,
-    monthCount: HEALTH_MONTHS,
-  }).months.filter((m) => m.spendingCents > 0 || m.incomeCents > 0);
+  const firstDay = input.transactions.reduce<string | null>(
+    (min, t) => (min === null || t.date < min ? t.date : min),
+    null,
+  );
+  const months = fullMonthsOnly(
+    spendingInsights(withoutOneOffs(all, oneOffs), {
+      asOf: lastFull,
+      monthCount: HEALTH_MONTHS,
+    }).months,
+    firstDay,
+  ).filter((m) => m.spendingCents > 0 || m.incomeCents > 0);
   const counted = new Set(months.map((m) => m.month));
   const average = (cents: (m: (typeof months)[number]) => number) =>
     months.length === 0

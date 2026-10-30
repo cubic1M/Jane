@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { HEALTH_NEVER_SAY, HEALTH_WEIGHTS } from "@/config/health-score";
-import { bandOf, healthChange, healthScore, type HealthInput } from "./health-score";
+import {
+  bandOf,
+  fullMonthsOnly,
+  healthChange,
+  healthScore,
+  type HealthInput,
+} from "./health-score";
 
 // Spec step 146, pure: a score out of 100 from weighted parts, each explained, with parts
 // Jane can't see left out rather than counted against the person, and never a word that
@@ -173,5 +179,26 @@ describe("bands and change", () => {
       biggest: { label: "Cash cushion", delta: 25 - before.parts[0].points },
     });
     expect(healthChange(now, now)).toEqual({ delta: 0, biggest: null });
+  });
+});
+
+describe("fullMonthsOnly", () => {
+  const months = [{ month: "2026-07" }, { month: "2026-08" }, { month: "2026-09" }];
+
+  it("leaves out a month the data starts partway through", () => {
+    // Statements from Jul 28: July has four days, so it would cut the average by a third.
+    expect(fullMonthsOnly(months, "2026-07-28").map((m) => m.month)).toEqual([
+      "2026-08",
+      "2026-09",
+    ]);
+  });
+
+  it("keeps every month the data covers from its first day", () => {
+    expect(fullMonthsOnly(months, "2026-07-01")).toHaveLength(3);
+    expect(fullMonthsOnly(months, "2025-11-03")).toHaveLength(3);
+  });
+
+  it("has no months without data", () => {
+    expect(fullMonthsOnly(months, null)).toEqual([]);
   });
 });
