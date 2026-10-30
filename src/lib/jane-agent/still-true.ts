@@ -120,7 +120,9 @@ async function factsFor(
 // The card as it should show now, or null when it no longer holds.
 function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
   const { deadlineKey, deadlineEntryId, alertId, change } = m.refs;
-  if (alertId !== undefined && facts.alerts.get(alertId) === false) return null;
+  // An alert that no longer holds, or is gone altogether (removed with the data it was about:
+  // src/lib/evidence/orphans.ts), takes its heads-up with it.
+  if (alertId !== undefined && facts.alerts.get(alertId) !== true) return null;
   if (change && facts.changes) {
     const title = facts.changes.get(change.key);
     if (title === undefined) return null;
