@@ -185,6 +185,44 @@ describe.runIf(url)("derived data never outlives its evidence", { timeout: 240_0
     expect(await approveAll(userId)).toBeGreaterThan(0);
     expect((await verifiedSavings(userId, { client, now: NOW })).expectedCents).toBeGreaterThan(0);
 
+    // What the night debugger saw left after Start over (made-up rows of each kind).
+    await client.planProposal.create({
+      data: {
+        userId,
+        key: "budget:Food and drink",
+        kind: "budget",
+        payload: { amountCents: 50_000 },
+      },
+    });
+    const fact = (key: string, source: string) => ({
+      userId,
+      key,
+      value: "x",
+      label: key,
+      source,
+      confidence: 80,
+      firstSeen: NOW,
+      lastConfirmed: NOW,
+    });
+    await client.userFact.createMany({
+      data: [fact("rent_payee", "upload"), fact("prefers_diy", "chat")],
+    });
+    await client.insurancePolicy.create({
+      data: { userId, kind: "auto", carrier: "Geico", source: "payments", status: "found" },
+    });
+    await client.alert.create({
+      data: { userId, type: "low_balance", key: "low:1", title: "Low balance", body: "." },
+    });
+    await client.janeMessage.create({
+      data: {
+        userId,
+        kind: "decision",
+        body: "I could set a $500.00 monthly budget for Food and drink.",
+        actions: [{ id: "proposal.yes", label: "Yes", kind: "primary" }],
+        dedupeKey: "proposals:budget:Food and drink",
+      },
+    });
+
     await startOver(scopedFor(userId, client));
     // The gate drops them at once, before the background job's detection cleans up.
     expect((await verifiedSavings(userId, { client, now: NOW })).expectedCents).toBe(0);
@@ -192,6 +230,18 @@ describe.runIf(url)("derived data never outlives its evidence", { timeout: 240_0
     await runDetection(userId, { client, now: NOW, checkSubscriptions: async () => new Map() });
     expect(await client.action.count({ where: { userId } })).toBe(0);
     expect(await client.finding.count({ where: { userId } })).toBe(0);
+    // Nothing of the data is left, so nothing worked out from it is either.
+    expect(await client.planProposal.count({ where: { userId } })).toBe(0);
+    expect(await client.alert.count({ where: { userId } })).toBe(0);
+    expect(await client.insurancePolicy.count({ where: { userId } })).toBe(0);
+    expect(await client.janeMessage.count({ where: { userId, status: "open" } })).toBe(0);
+    // What was read from the statements goes; what the person said or did stays.
+    const facts = await client.userFact.findMany({
+      where: { userId },
+      select: { key: true, source: true },
+    });
+    expect(facts.filter((f) => f.source === "upload" || f.source === "detector")).toEqual([]);
+    expect(facts.map((f) => f.key)).toContain("prefers_diy");
   });
 
   it("cleans up rows orphaned before this existed, every night, and is idempotent", async () => {
