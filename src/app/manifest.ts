@@ -5,7 +5,7 @@ import { HOME_PATH } from "@/config/home";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Financial Controller",
+    name: "Jane",
     short_name: "Jane",
     description: "See how much money you're losing, and approve the fixes.",
     // Jane's chat (spec step 81).

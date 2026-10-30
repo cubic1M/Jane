@@ -14,6 +14,7 @@ import {
   uploadTooBig,
 } from "@/config/import";
 import type { MappingChoices } from "@/data-sources/csv/column-mapping";
+import { PICK_COLUMNS } from "@/data-sources/csv/messages";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import { dayLabel } from "@/lib/day-label";
 import type { BalanceAsk } from "@/lib/import/balance-question";
@@ -360,12 +361,24 @@ export function ImportForm({
           {/* Always first, so it keeps what was picked when the file reads fine. */}
           {pickers[index] && (
             <ColumnPicker index={index} file={file.file} choices={pickers[index]}>
-              {!file.ok && (
-                <Alert>
-                  {file.file}: {file.error}
-                </Alert>
-              )}
+              {/* Picking columns is a step, not an error (debugger 10-30: "[ERROR] Jane doesn't
+                  know this bank's layout yet" on a new user's first upload). */}
+              {!file.ok &&
+                (file.error === PICK_COLUMNS ? (
+                  <p className="text-sm">{file.error}</p>
+                ) : (
+                  <Alert>
+                    {file.file}: {file.error}
+                  </Alert>
+                ))}
             </ColumnPicker>
+          )}
+          {/* A button where the picking ends, so a long picker (or a phone) doesn't send the
+              person back up to the top to check their columns. */}
+          {pickers[index] && !file.ok && (
+            <button type="submit" disabled={pending} className={`${SECONDARY_BUTTON} self-start`}>
+              {pending && busy === "preview" ? "Reading…" : "Check these columns"}
+            </button>
           )}
           {file.ok ? (
             <section className="flex flex-col gap-2">

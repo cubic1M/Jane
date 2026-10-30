@@ -5,6 +5,7 @@ import {
   type ColumnMapping,
   type MappingChoices,
 } from "./column-mapping";
+import { PICK_COLUMNS } from "./messages";
 import { detectLayout, type CsvFormat, type ParsedRow } from "./formats";
 import { parseCsv } from "./parse-csv";
 import { looksLikeOfx, readOfx } from "@/data-sources/ofx/parse-ofx";
@@ -186,7 +187,7 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     return {
       ok: false,
       file: file.name,
-      error: "Jane doesn't know this bank's layout yet. Pick which column is which below.",
+      error: PICK_COLUMNS,
       reason: "unknown_format",
       choices: mappingChoices(records),
     };
