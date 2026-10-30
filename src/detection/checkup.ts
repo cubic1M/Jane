@@ -118,6 +118,7 @@ const cushion = (f: Facts) =>
       amountCents: t.amountCents,
       accountId: t.accountId,
       pfc: t.pfcDetailed,
+      description: t.description,
     })),
   });
 const first =

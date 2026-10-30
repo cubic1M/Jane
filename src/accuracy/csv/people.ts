@@ -2798,6 +2798,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       amountCents: x.amountCents,
       accountId: x.account,
       pfc: x.category,
+      description: x.descriptor,
     })),
   });
   if (idle) {
