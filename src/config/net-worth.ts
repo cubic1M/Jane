@@ -49,3 +49,7 @@ export const NET_WORTH_INVESTMENT_MOVE_CENTS = 50_000;
 // The chart's change shows a percentage only from a start of at least this (a positive net
 // worth of real size): from a negative or tiny start a percentage is alarming and meaningless.
 export const NET_WORTH_PERCENT_MIN_START_CENTS = 100_000;
+// Nor past this share either way (demo-video list: "+112.1% since you started", from a start
+// balance worked back from a statement): a doubling over a few months reads as a mistake. The
+// dollars still show.
+export const NET_WORTH_PERCENT_MAX_SHARE = 1;

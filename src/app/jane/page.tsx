@@ -77,11 +77,21 @@ function Section({
       id={id}
       open={open}
       data-jane-section={title}
-      className="scroll-mt-20 border-t border-zinc-200 pt-3 dark:border-zinc-800"
+      className="group scroll-mt-20 border-t border-zinc-200 pt-3 dark:border-zinc-800"
     >
       {/* Only the heading and its line in the summary: links inside it would be a control
-          inside a control. They open with the rest. */}
-      <summary className="cursor-pointer">{title2}</summary>
+          inside a control. They open with the rest. The fold mark sits on the heading's line
+          (demo-video list: the browser's ▶ stood alone on a line above each "# Title"). */}
+      <summary className="flex cursor-pointer list-none items-baseline gap-2 [&::-webkit-details-marker]:hidden">
+        <span
+          aria-hidden="true"
+          data-fold-mark=""
+          className="w-3 shrink-0 text-sm transition-transform group-open:rotate-90 motion-reduce:transition-none"
+        >
+          ▸
+        </span>
+        {title2}
+      </summary>
       <div className="mt-3 flex flex-col gap-3">
         {linkRow}
         {children}
@@ -380,6 +390,8 @@ async function JaneContent() {
         title="Alerts"
         links={[]}
         summary={alerts.unread === 0 ? "none new" : `${alerts.unread} new`}
+        // New ones show without a tap (demo-video list: the alerts were folded away).
+        open={alerts.unread > 0}
       >
         {alerts.items.length === 0 ? (
           <p className={MUTED}>No new alerts. Jane tells you here when something needs a look.</p>
