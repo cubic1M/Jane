@@ -20,9 +20,11 @@ export function HeroRow({
   return (
     <section aria-label="Your money at a glance" className="flex flex-col gap-3">
       {chart}
-      <div className="grid grid-cols-2 gap-3">
+      {/* One per row on a phone, side by side from sm (debugger 10-30: on a phone Saved so far sat
+          in the left half with nothing beside it); Saved takes the row when it's alone. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {safe && <SafeTile safe={safe} />}
-        <SavedTile saved={saved} planItems={planItems} plan={plan} />
+        <SavedTile saved={saved} planItems={planItems} plan={plan} wide={!safe} />
       </div>
     </section>
   );
