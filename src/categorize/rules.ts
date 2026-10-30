@@ -303,6 +303,14 @@ const RULES: readonly Rule[] = [
       "SOFI INVEST",
       "IRA CONTRIB",
       "BROKERAGE",
+      // College savings (night QA 10-30: a grandparent's "SCHOLARSHARE 529 CONTRIB" $100 a month
+      // read as a subscription to cancel, "could save $1,200 a year").
+      "529 CONTRIB",
+      "529 PLAN",
+      "SCHOLARSHARE",
+      "MY529",
+      "COLLEGE SAVINGS PLAN",
+      "COLLEGEADVANTAGE",
     ],
     direction: "out",
   },
@@ -648,6 +656,10 @@ const RULES: readonly Rule[] = [
       "LIBERTY MUTUAL",
       "LEMONADE INS",
       "NATIONWIDE",
+      // A Medicare supplement or Advantage plan is health cover the person pays (night QA 10-30).
+      "MEDICARE SUPP",
+      "MEDICARE SUPPLEMENT",
+      "MEDIGAP",
     ],
   },
   {

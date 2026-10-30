@@ -384,6 +384,9 @@ export const PRICE_INCREASE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
   "LOAN_DISBURSEMENTS",
   "BANK_FEES",
   "GOVERNMENT_AND_NON_PROFIT",
+  // Pharmacy and doctor bills follow what was bought or seen, not a price (night QA 10-30: a
+  // retiree's "CVS Pharmacy went up from $49.50 to $61.00, could save $138 a year").
+  "MEDICAL",
 ];
 export const PRICE_INCREASE_EXCLUDED_CATEGORIES: readonly PfcDetailed[] = [
   "RENT_AND_UTILITIES_RENT",
