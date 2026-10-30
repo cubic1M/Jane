@@ -73,6 +73,21 @@ export async function refreshAfterUpload(
   );
 }
 
+// After a source is gone (a bank disconnected): what an upload's removal does, without the
+// upload's own steps. Findings and proposals (detection, which first deletes what stood on the
+// removed data: src/lib/evidence/orphans.ts), the suggestions and every sector, and the chat's
+// numbers. Before, a disconnect only re-ran detection, so "What matters now" and the dock kept the
+// removed demo bank's cash and Comcast for up to a day (night debugger, 10-30).
+export async function refreshAfterRemoval(userId: string, options: Options = {}): Promise<void> {
+  const client = options.client ?? defaultClient;
+  return withReadCache(client, async (client) => {
+    const now = options.now ?? new Date();
+    await runDetection(userId, { client, now });
+    await refreshAfterUpload(userId, { client, now });
+    await refreshChatNumbers(userId, { client, now });
+  });
+}
+
 // The chat's saved numbers and snapshot, from everything above. No page reads them (Jane does,
 // when asked), and they take seconds, so they're kept after "done".
 async function refreshChatNumbers(

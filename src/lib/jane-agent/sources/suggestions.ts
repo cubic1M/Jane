@@ -9,7 +9,9 @@ import { sentence, type MessageSource } from "./source";
 
 // The short card (docs/detectors.md, "Short forms"): the headline, one why-you line with the
 // person's own number, and how sure Jane is. The whole explanation is behind "Why?".
-export function suggestionCard(s: OfferedSuggestion): string[] {
+export function suggestionCard(
+  s: Pick<OfferedSuggestion, "headline" | "short" | "confidencePercent" | "confidenceReason">,
+): string[] {
   return [
     cardHeadline(s.headline),
     `Why you: ${sentence(s.short)}`,
