@@ -106,6 +106,18 @@ export function hiddenPage(href: string): HiddenPage | null {
 
 export const isHiddenPage = (href: string) => hiddenPage(href) !== null;
 
+// Buttons that only promise a look: the area page a hidden page's link lands on has that.
+export const LOOK_VERBS = ["See", "Check", "Compare", "Review", "Read"] as const;
+const LOOK = new RegExp(`^(${LOOK_VERBS.join("|")})\\b`, "i");
+
+// A button that promises a task on a hidden page (founder, 2026-10-30): "Start a claim" can't be
+// done on /insurance, where the link would land. A suggestion with one isn't shown while its
+// page is hidden (src/lib/suggestions.ts). A look ("See …", "Check your match") stays: the area
+// page it lands on has that.
+export function promisesHiddenPage(action: { label: string; href: string }): boolean {
+  return isHiddenPage(action.href) && !LOOK.test(action.label.trim());
+}
+
 // A link as it may be shown: a hidden page's link becomes its area page.
 export const shownHref = (href: string) => hiddenPage(href)?.to ?? href;
 
