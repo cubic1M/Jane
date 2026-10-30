@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
-vi.mock("@/detection/engine", () => ({ runDetection: vi.fn() }));
+vi.mock("@/lib/import/background", () => ({ refreshAfterRemoval: vi.fn() }));
 vi.mock("@/lib/account-deletion", () => ({ deleteAllData: vi.fn() }));
 vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({ hit: vi.fn(async () => ({ ok: true })) }));
@@ -28,7 +28,7 @@ vi.mock("@/lib/plaid/remove", async (importOriginal) => ({
   removePlaidItem: vi.fn(),
 }));
 
-import { runDetection } from "@/detection/engine";
+import { refreshAfterRemoval } from "@/lib/import/background";
 import { deleteAllData } from "@/lib/account-deletion";
 import { ItemMissingError, removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
@@ -62,22 +62,22 @@ describe("deleteMyData", () => {
 describe("disconnectBank", () => {
   beforeEach(() => {
     vi.mocked(removePlaidItem).mockReset();
-    vi.mocked(runDetection).mockReset();
+    vi.mocked(refreshAfterRemoval).mockReset();
   });
 
-  it("removes the bank, answers at once, and refreshes findings after", async () => {
+  it("removes the bank, answers at once, and works everything out again after", async () => {
     afterCallbacks.length = 0;
     expect(await disconnectBank(null, form({ itemId: "item1" }))).toMatchObject({ ok: true });
     expect(removePlaidItem).toHaveBeenCalledWith("u1", "item1", "user_disconnected");
-    expect(runDetection).not.toHaveBeenCalled();
+    expect(refreshAfterRemoval).not.toHaveBeenCalled();
     for (const callback of afterCallbacks) await callback();
-    expect(runDetection).toHaveBeenCalledWith("u1");
+    expect(refreshAfterRemoval).toHaveBeenCalledWith("u1");
   });
 
   it("refuses an item the person doesn't have", async () => {
     vi.mocked(removePlaidItem).mockRejectedValue(new ItemMissingError());
     expect(await disconnectBank(null, form({ itemId: "x" }))).toMatchObject({ ok: false });
-    expect(runDetection).not.toHaveBeenCalled();
+    expect(refreshAfterRemoval).not.toHaveBeenCalled();
   });
 });
 

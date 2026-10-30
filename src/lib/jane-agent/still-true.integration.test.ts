@@ -16,6 +16,7 @@ import { closeSettled } from "./messages";
 import { loadPopupStack } from "./popup-stack";
 import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
+import { suggestionCard } from "./sources/suggestions";
 import { stillTrue } from "./still-true";
 import { MESSAGE_SELECT, toChatMessage } from "./types";
 
@@ -139,5 +140,53 @@ describe.runIf(url)("Jane's cards are checked against the data before they show"
       "pace:Transportation:2026-10",
     );
     expect(await stillTrue(userId, [toChatMessage(pace)], { client, now: day(10) })).toEqual([]);
+  });
+
+  it("says a suggestion card as the last scan left its suggestion", async () => {
+    // Night debugger (10-30): after a bank was disconnected, the card still said the cash
+    // that bank had held; the rescan had moved on.
+    const now = {
+      key: "idle_cash:test",
+      headline: "Put the cash you don't need to work, earn $412 a year",
+      short: "You keep $19,447.51 in cash; about $8,200.00 is more than you need",
+      why: "Your checking holds more than three months of spending.",
+      confidencePercent: 82,
+      confidenceReason: "1 cash account in 6 months of data",
+    };
+    await client.suggestion.create({
+      data: {
+        userId,
+        ...now,
+        capability: "idle_cash",
+        topic: "idle_cash",
+        title: "Put your idle cash to work",
+        worthCents: 41_200,
+        worthKind: "earns",
+        urgency: "later",
+        actionLabel: "Show me",
+        actionHref: "/insights",
+        status: "selected",
+      },
+    });
+    const card = toChatMessage(
+      await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "decision",
+          body: [
+            "Put the cash you don't need to work, earn $1,055/yr",
+            "Why you: You keep $47,597.63 in cash; about $21,100.61 is more than you need.",
+            "84% sure: 3 cash accounts in 11 months of data.",
+          ].join("\n"),
+          refs: { suggestion: now.key, suggestionWhy: "The old reason." },
+          actions: [{ id: "suggestion.yes", label: "Show me", kind: "primary" }],
+          dedupeKey: "suggestions:idle_cash:test",
+        },
+      }),
+    );
+    const [shown] = await stillTrue(userId, [card], { client, now: day(10) });
+    expect(shown.body.split("\n")).toEqual(suggestionCard(now));
+    expect(shown.body).not.toContain("$47,597.63");
+    expect(shown.refs.suggestionWhy).toBe(now.why);
   });
 });

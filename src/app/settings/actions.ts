@@ -6,13 +6,13 @@ import { redirect } from "next/navigation";
 import { ALERT_TYPES } from "@/config/alerts";
 import { isStateCode } from "@/config/referrals";
 import { TIMEZONES } from "@/config/digest";
-import { runDetection } from "@/detection/engine";
 import { deleteAllData } from "@/lib/account-deletion";
 import { createCalendarToken, turnOffCalendar } from "@/lib/calendar";
 import { appBase } from "@/lib/digest/links";
 import { alertPrefs } from "@/lib/alerts";
 import { db } from "@/lib/db";
 import { PlaidRequestError } from "@/lib/plaid/client";
+import { refreshAfterRemoval } from "@/lib/import/background";
 import { ItemMissingError, removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
 import { scopedFor } from "@/lib/db-scoped";
@@ -100,8 +100,9 @@ export async function disconnectBank(
     }
     throw error;
   }
-  // Findings are worked out again after the response, so Disconnect answers at once.
-  after(() => runDetection(user.id));
+  // Everything is worked out again after the response, so Disconnect answers at once: findings,
+  // proposals, suggestions and the chat's numbers, as after an upload is removed.
+  after(() => refreshAfterRemoval(user.id));
   revalidatePath("/settings");
   return { ok: true, message: "Disconnected. We've removed that bank's data." };
 }
