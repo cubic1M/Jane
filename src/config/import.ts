@@ -37,6 +37,11 @@ export const IMPORT_POLL_MS = 1500;
 export const SUGGESTED_UPLOAD_MONTHS = 3;
 // Files covering fewer days than this get the "add more months" hint.
 export const SUGGESTED_UPLOAD_DAYS = 85;
+// Files whose newest row is more than this many days old get the "these are old" hint: Jane
+// takes a statement's last balance as today's and looks at the last months for charges, so an
+// old statement uploaded by mistake read as "$7,416.54 today" and "Nothing to fix right now"
+// (night QA 10-30).
+export const OLD_UPLOAD_DAYS = 45;
 
 export type BankDownload = { bank: string; steps: string[] };
 
