@@ -36,6 +36,8 @@ export type AccountForecast = {
   lowest: { date: string; balanceCents: number };
   bills: Expected[];
   income: Expected[];
+  // Regular moves in from the person's own accounts (a monthly Venmo cash-out), not income.
+  transfersIn: Expected[];
   // End-of-day balance for each day, today first.
   days: { date: string; balanceCents: number }[];
 };
@@ -148,6 +150,21 @@ export function scheduledTransfers(input: DetectionInput, days: number): Expecte
   return expand(buildStreams(input).filter(isOwnTransfer), input.asOf, addDays(input.asOf, days));
 }
 
+// The other way: money that comes in from the person's own accounts on a schedule (roommates'
+// rent shares cashed out of Venmo every month). Moves out were in the forecast and moves in
+// weren't, so a student's checking "could drop to -$2,718.80" and stayed there (debugger 10-30).
+// Only regular ones: a one-off top-up from savings isn't expected again.
+export function scheduledTransfersIn(input: DetectionInput, days: number): Expected[] {
+  const flipped: DetectionTransaction[] = input.transactions
+    .filter((t) => t.amountCents < 0 && t.pfcPrimary === "TRANSFER_IN")
+    .map((t) => ({ ...t, amountCents: -t.amountCents }));
+  return expand(
+    detectRecurring({ ...input, transactions: flipped }),
+    input.asOf,
+    addDays(input.asOf, days),
+  );
+}
+
 const isHabit = (s: Stream) =>
   !isSubscriptionBox(s) &&
   NOT_BILL_HABIT_PRIMARIES.includes(s.pfcPrimary ?? "") &&
@@ -174,6 +191,7 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
   const until = addDays(input.asOf, days);
   const bills = upcomingBills(input, days);
   const transfers = scheduledTransfers(input, days);
+  const transfersIn = scheduledTransfersIn(input, days);
   const income = expectedIncome(input, until);
 
   return input.accounts
@@ -188,11 +206,13 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
       const accountBills = mine(bills);
       const accountIncome = mine(income);
       const accountTransfers = mine(transfers);
+      const accountTransfersIn = mine(transfersIn);
       let balance = account.currentBalanceCents!;
       const series: { date: string; balanceCents: number }[] = [];
       for (let i = 0; i <= days; i += 1) {
         const date = addDays(input.asOf, i);
         for (const r of accountIncome) if (r.date === date) balance += r.amountCents;
+        for (const r of accountTransfersIn) if (r.date === date) balance += r.amountCents;
         for (const r of accountBills) if (r.date === date) balance -= r.amountCents;
         for (const r of accountTransfers) if (r.date === date) balance -= r.amountCents;
         series.push({ date, balanceCents: balance });
@@ -205,6 +225,7 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
         lowest,
         bills: accountBills,
         income: accountIncome,
+        transfersIn: accountTransfersIn,
         days: series,
       };
     });

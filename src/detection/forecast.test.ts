@@ -219,6 +219,45 @@ describe("forecastAccounts", () => {
     expect(f.days.at(-1)?.balanceCents).toBe(20_000 - 9_800 - 50_000);
   });
 
+  // Debugger 10-30: a student pays the whole rent and the roommates' shares come back by a Venmo
+  // cash-out every month. Moves out were in the forecast, moves in weren't, so it read "could
+  // drop to -$2,718.80" and stayed there.
+  it("brings regular moves in (a monthly Venmo cash-out) into checking too", () => {
+    const cashOut = {
+      description: "VENMO CASHOUT",
+      merchantName: "Venmo",
+      pfcPrimary: "TRANSFER_IN",
+      pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
+    };
+    const data = input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 20_000 }],
+      transactions: [...monthly(4, 9_800, GEICO), ...monthly(4, -160_000, cashOut)],
+    });
+
+    const [f] = forecastAccounts(data, 31);
+    expect(f.days.at(-1)?.balanceCents).toBe(20_000 - 9_800 + 160_000);
+    expect(f.transfersIn.map((t) => t.date)).toEqual(["2026-11-15"]);
+  });
+
+  // ...but a one-off move in (savings topped up once) isn't expected again.
+  it("doesn't expect a one-off move in again", () => {
+    const fromSavings = {
+      description: "TRANSFER FROM SAV XXXXX7781",
+      merchantName: null,
+      pfcPrimary: "TRANSFER_IN",
+      pfcDetailed: "TRANSFER_IN_SAVINGS",
+    };
+    const data = input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 20_000 }],
+      transactions: [
+        ...monthly(4, 9_800, GEICO),
+        tx({ ...fromSavings, date: monthsAgo(1), amountCents: -50_000 }),
+      ],
+    });
+    const [f] = forecastAccounts(data, 31);
+    expect(f.days.at(-1)?.balanceCents).toBe(20_000 - 9_800);
+  });
+
   it("skips accounts without a balance and non-checking accounts", () => {
     const data = input({
       accounts: [{ ...CHECKING, currentBalanceCents: null }],
