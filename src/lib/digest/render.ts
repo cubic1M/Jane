@@ -105,7 +105,11 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
     out.push({
       heading: "Jane's plan this week",
       items: [
-        `${n} ${n === 1 ? "thing" : "things"} Jane can do for you. Say yes, no or change each one; nothing happens until you do.`,
+        p.plan.readOnly
+          ? // As /plan says it in read-only mode (night QA 10-30: the email said "Jane can do
+            // for you" to people Jane does nothing for).
+            `${n} ${n === 1 ? "thing" : "things"} you could do, each with Jane's steps. Nothing changes unless you do it.`
+          : `${n} ${n === 1 ? "thing" : "things"} Jane can do for you. Say yes, no or change each one; nothing happens until you do.`,
       ],
       link: { label: "Review your plan", url: links.plan },
     });

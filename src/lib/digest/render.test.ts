@@ -185,6 +185,14 @@ describe("renderDigest", () => {
     );
   });
 
+  // Night QA 10-30: real accounts are read-only in the beta; the email said "Jane can do for
+  // you" while /plan says the steps are theirs.
+  it("says the plan is theirs to do in read-only mode, as /plan does", () => {
+    const text = renderDigest({ ...payload, plan: { items: 6, readOnly: true } }, LINKS).text;
+    expect(text).toContain("6 things you could do, each with Jane's steps.");
+    expect(text).not.toContain("Jane can do for you");
+  });
+
   it("says what Jane did this week, with only confirmed money", () => {
     const email = renderDigest(
       {

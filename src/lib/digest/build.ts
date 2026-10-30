@@ -51,6 +51,9 @@ export type DigestInput = {
   checkup?: { status: CheckStatus }[];
   // Budgets, goals and net worth, for people who use them.
   plans?: DigestPlans;
+  // Read-only mode (src/lib/concierge-mode.ts): nobody acts for this person, so the plan is
+  // theirs to do with Jane's steps.
+  readOnly?: boolean;
   // The action agent's week (src/lib/what-jane-did.ts).
   janeDid?: {
     finished: number;
@@ -85,7 +88,7 @@ export type DigestPayload = {
   goals?: { name: string; percent: number; savedChangeCents: number | null }[];
   netWorth?: { nowCents: number; changeCents: number; notCounting?: string | null } | null;
   // Jane's plan: how many open findings wait for a yes or no (none before step 49).
-  plan?: { items: number };
+  plan?: { items: number; readOnly?: boolean };
   // What the action agent did this week (none before step 56).
   janeDid?: DigestInput["janeDid"];
 };
@@ -196,7 +199,7 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
     budgets,
     goals,
     netWorth,
-    plan: { items: input.findings.length },
+    plan: { items: input.findings.length, ...(input.readOnly ? { readOnly: true } : {}) },
     janeDid: input.janeDid,
   };
 }
