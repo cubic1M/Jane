@@ -1,6 +1,11 @@
-import { MAX_UPLOAD_BYTES, NEW_ACCOUNT_ID, uploadTooBig } from "@/config/import";
+import {
+  MAX_UPLOAD_BYTES,
+  NEW_ACCOUNT_ID,
+  NEW_ACCOUNT_SAME_ROWS_SHARE,
+  uploadTooBig,
+} from "@/config/import";
 import { mappingFromForm } from "@/data-sources/csv/column-mapping";
-import { CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
+import { CsvDataSource, CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
 import { decodeStatement } from "@/data-sources/csv/decode";
 import { ACCOUNT_KINDS, isAccountKind, type AccountKind } from "@/data-sources/types";
 import { track } from "@/lib/analytics";
@@ -36,6 +41,7 @@ export type UploadFailure =
   | "not_csv"
   | "bad_columns"
   | "account_not_found"
+  | "already_imported"
   | "error";
 
 export const uploadFailed = (userId: string, reason: UploadFailure) =>
@@ -126,6 +132,41 @@ export type UploadResult =
 // for a first upload (once every file reads, so a failed upload leaves no empty account), sorts
 // the rows by the rules and saves them with the statement's balances, records it, and queues
 // the import_finish job that does everything else. `onStage` hears each step as it starts.
+// The person's account that already holds most of these files' rows (same dedupe keys), or
+// null. Rows are keyed by date, amount and description, whatever account they go to.
+async function accountHoldingRows(
+  db: ScopedDb,
+  files: CsvFile[],
+  fields: AccountFields,
+): Promise<{ name: string; rows: number; of: number } | null> {
+  const batch = await new CsvDataSource(
+    {
+      ref: NEW_ACCOUNT_ID,
+      name: fields.name,
+      kind: fields.kind,
+      mask: null,
+      currentBalanceCents: null,
+    },
+    files,
+  ).load();
+  const keys = [...new Set(batch.transactions.map((t) => t.externalId))];
+  if (keys.length === 0) return null;
+  const there = await db.transactions.findMany({
+    where: { source: "csv", dedupeKey: { in: keys } },
+    select: { accountId: true, dedupeKey: true },
+  });
+  const byAccount = new Map<string, Set<string>>();
+  for (const row of there) {
+    const set = byAccount.get(row.accountId) ?? new Set<string>();
+    set.add(row.dedupeKey ?? "");
+    byAccount.set(row.accountId, set);
+  }
+  const [top] = [...byAccount.entries()].sort((a, b) => b[1].size - a[1].size);
+  if (!top || top[1].size < keys.length * NEW_ACCOUNT_SAME_ROWS_SHARE) return null;
+  const account = await db.accounts.findUnique({ where: { id: top[0] }, select: { name: true } });
+  return account ? { name: account.name, rows: top[1].size, of: keys.length } : null;
+}
+
 export async function saveUpload(
   db: ScopedDb,
   formData: FormData,
@@ -147,6 +188,14 @@ export async function saveUpload(
     if (failed && !failed.ok) {
       await uploadFailed(db.userId, failed.reason);
       return { ok: false, error: `${failed.file}: ${failed.error}` };
+    }
+    const already = await accountHoldingRows(db, files, fields);
+    if (already) {
+      await uploadFailed(db.userId, "already_imported");
+      return {
+        ok: false,
+        error: `${already.rows} of these ${already.of} transactions are already in ${already.name}. Pick ${already.name} above, so only the new ones are added.`,
+      };
     }
     accountId = (await createCsvAccountRow(db, fields)).id;
     created = true;
