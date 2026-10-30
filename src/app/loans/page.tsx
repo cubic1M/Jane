@@ -40,7 +40,9 @@ const SAVED: Record<string, string> = {
 const typeable = (d: Debt) => ({
   apr: d.aprFrom === null || d.aprFrom === "typed",
   minimum: d.kind !== "bnpl" && (d.paymentFrom === null || d.paymentFrom === "typed"),
-  balance: d.kind === "bnpl" && (d.balanceFrom === null || d.balanceFrom === "typed"),
+  balance:
+    (d.kind === "bnpl" || d.key.startsWith("paid:")) &&
+    (d.balanceFrom === null || d.balanceFrom === "typed"),
   payoff: d.kind !== "card" && (d.payoffFrom === null || d.payoffFrom === "typed"),
 });
 
