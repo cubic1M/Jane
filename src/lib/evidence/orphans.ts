@@ -5,6 +5,8 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { evidenceRefs, type EvidenceRefs } from "@/lib/finding-accounts";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
+import { hasDemoBank } from "@/lib/plaid/demo";
+import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
 
 // Derived data never outlives its evidence (card-chat mismatch; design in the shared notes,
 // card-chat-mismatch.md). A finding, the decision and actions taken on it, a savings-ledger line
@@ -64,11 +66,16 @@ export async function removeOrphans(
 ): Promise<Removed> {
   const db = scopedFor(userId, client);
   const [findings, outcomes, alerts] = await Promise.all([
-    db.findings.findMany({ select: { id: true, evidence: true } }),
+    db.findings.findMany({ select: { id: true, key: true, evidence: true } }),
     db.suggestionOutcomes.findMany({ select: { id: true, evidenceTxIds: true } }),
     db.alerts.findMany({ where: { type: "unusual_activity" }, select: { id: true, key: true } }),
   ]);
   const findingRefs = findings.map((f) => ({ id: f.id, refs: evidenceRefs(f.evidence) }));
+  // A sample person's past wins (src/lib/sample-wins.ts) are seeded when the demo bank is
+  // linked, before its transactions arrive, so they name no rows: they stand on the demo bank
+  // itself, and go once it is gone.
+  const wins = findings.filter((f) => f.key.startsWith(SAMPLE_WIN_KEY)).map((f) => f.id);
+  const winsGone = wins.length > 0 && !(await hasDemoBank(userId, { client })) ? wins : [];
   const alertRefs = alerts.flatMap((a) => {
     const parsed = parseKey(a.key);
     return parsed
@@ -88,7 +95,7 @@ export async function removeOrphans(
     rows.filter((r) => orphaned(r.refs, present)).map((r) => r.id);
   const outcomeIds = gone(outcomeRefs);
   const removed: Removed = { findings: 0, outcomes: 0, alerts: 0 };
-  const findingIds = gone(findingRefs);
+  const findingIds = [...gone(findingRefs), ...winsGone];
   if (findingIds.length > 0) {
     removed.findings = (await db.findings.deleteMany({ where: { id: { in: findingIds } } })).count;
   }

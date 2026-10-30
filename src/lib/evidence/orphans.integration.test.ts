@@ -22,6 +22,7 @@ import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
+import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
 import { verifiedSavings } from "@/lib/savings-proof";
 import { removeAllOrphans } from "./orphans";
 
@@ -129,6 +130,20 @@ describe.runIf(url)("derived data never outlives its evidence", { timeout: 240_0
     );
     expect(JSON.stringify(proven)).not.toMatch(/\$[1-9]/);
     expect((await said(userId)).join("\n")).not.toMatch(DEMO);
+  });
+
+  it("a sample person's past wins go with their demo bank", async () => {
+    const userId = await person();
+    const { itemId } = await linkDemoBank(userId, { client, now: NOW, person: "renter" });
+    await syncItem(itemId, { client, api: plaid, now: NOW });
+    const wins = () =>
+      client.finding.count({ where: { userId, key: { startsWith: SAMPLE_WIN_KEY } } });
+    expect(await wins()).toBeGreaterThan(0);
+    expect((await verifiedSavings(userId, { client, now: NOW })).confirmedCents).toBeGreaterThan(0);
+    await removePlaidItem(userId, itemId, "user_disconnected", { client, api: plaid });
+    expect(await wins()).toBe(0);
+    const after = await verifiedSavings(userId, { client, now: NOW });
+    expect(after.confirmedCents + after.expectedCents).toBe(0);
   });
 
   it("after an upload is removed, its findings and the actions on them go", async () => {
