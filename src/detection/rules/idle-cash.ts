@@ -35,6 +35,7 @@ export const idleCash: Rule = (input) => {
       amountCents: t.amountCents,
       accountId: t.accountId,
       pfc: t.pfcDetailed,
+      description: t.description,
     })),
   });
   if (!idle) return [];

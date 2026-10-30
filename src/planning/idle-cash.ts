@@ -8,7 +8,9 @@ import {
   NON_SPENDING_PRIMARIES,
   REFERENCE_HIGH_YIELD_RATE_BPS,
 } from "@/config/detection";
+import { categoryOf } from "@/categorize/taxonomy";
 import { monthsBefore } from "@/detection/units";
+import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
 import { daysBetween } from "@/lib/dates";
 
 // Idle cash, the one definition: checking and savings above IDLE_CASH_MONTHS_OF_SPENDING months
@@ -21,7 +23,14 @@ export type IdleAccount = {
   subtype: string | null;
   balanceCents: number | null;
 };
-export type IdleTx = { date: string; amountCents: number; accountId: string; pfc: string | null };
+export type IdleTx = {
+  date: string;
+  amountCents: number;
+  accountId: string;
+  pfc: string | null;
+  // The bank's words: with them, one-off charges are found and left out.
+  description?: string;
+};
 export type IdleCash = {
   accountIds: string[];
   balanceCents: number;
@@ -63,11 +72,16 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
       !NON_SPENDING_PRIMARIES.some((p) => (t.pfc ?? "").startsWith(p)) &&
       !NON_SPENDING_CATEGORIES.includes(t.pfc as never),
   );
+  // One-off charges (a car, a sofa) aren't months of spending: left out as every other monthly
+  // figure leaves them out (src/insights/typical-month.ts). Night QA 10-30: $11,200 of one-offs
+  // made the checkup say "$15,860 cash, under 3 months of spending" for someone whose usual
+  // month is about $2,700, while the cushion card, which leaves them out, saw enough cash.
+  const usual = withoutOneOffsOf(spending, input.asOf);
   // Average monthly spending, per account over that account's own history, then added up.
   let monthly = 0;
   let shortest = Infinity;
-  for (const accountId of [...new Set(spending.map((t) => t.accountId))].sort()) {
-    const rows = spending.filter((t) => t.accountId === accountId);
+  for (const accountId of [...new Set(usual.map((t) => t.accountId))].sort()) {
+    const rows = usual.filter((t) => t.accountId === accountId);
     const earliest = rows.reduce((min, t) => (t.date < min ? t.date : min), input.asOf);
     const months = Math.max(1, daysBetween(earliest, input.asOf) / DAYS_PER_MONTH);
     monthly += rows.reduce((sum, t) => sum + t.amountCents, 0) / months;
@@ -96,4 +110,17 @@ export function idleCashOf(input: IdleInput): IdleCash | null {
       (cushion.excessCents * (REFERENCE_HIGH_YIELD_RATE_BPS - ASSUMED_CURRENT_RATE_BPS)) / 10_000,
     ),
   };
+}
+
+function withoutOneOffsOf(spending: readonly IdleTx[], asOf: string): IdleTx[] {
+  if (spending.some((t) => t.description === undefined)) return [...spending];
+  const rows = spending.map((t) => ({
+    ...t,
+    description: t.description ?? "",
+    merchantName: null,
+    pfcPrimary: t.pfc ? (categoryOf(t.pfc)?.primary ?? null) : null,
+    pfcDetailed: t.pfc,
+    pending: false,
+  }));
+  return withoutOneOffs(rows, oneOffCharges(rows, asOf));
 }
