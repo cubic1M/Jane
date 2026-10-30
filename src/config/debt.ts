@@ -27,6 +27,12 @@ export const BNPL_GRACE_DAYS = 10;
 // Payments a few cents apart (rounding of the last one) are the same plan.
 export const BNPL_AMOUNT_TOLERANCE_CENTS = 2;
 
+// Loans seen only in payments from checking (src/insights/paid-loans.ts): a student loan, car
+// loan or mortgage the person pays but hasn't linked. At least this many payments, the last
+// no more than this many days ago (a statement uploaded up to a month late still counts).
+export const PAID_LOAN_MIN_PAYMENTS = 2;
+export const PAID_LOAN_RECENT_DAYS = 62;
+
 // Terms the person types for a debt the bank doesn't report (src/lib/debts.ts): typo guards.
 export const MAX_TYPED_APR_BPS = 9_999;
 export const MAX_TYPED_DEBT_CENTS = 2_000_000_000;
