@@ -1245,6 +1245,9 @@ const RULES: readonly Rule[] = [
       "SEPTA",
       "CTA",
       "VENTRA",
+      // Paris's metro and buses (night QA 10-30: a traveller's "RATP PARIS" was uncategorized).
+      "RATP",
+      "NAVIGO",
       "METRA",
       "NJ TRANSIT",
       "NJT",
@@ -1951,7 +1954,7 @@ const RULES: readonly Rule[] = [
   { category: "FOOD_AND_DRINK_RESTAURANT", keywords: ["TAVERN", "PUB", "SALOON", "BAR & GRILL"] },
   {
     category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
-    keywords: ["BAKERY", "BAKE SHOP", "DONUTS", "PASTRY", "PATISSERIE"],
+    keywords: ["BAKERY", "BAKE SHOP", "DONUTS", "PASTRY", "PATISSERIE", "BOULANGERIE"],
   },
   // A gift to a church or a charity, and insurance and loans by their own words (QA round 28:
   // "PARKSIDE COMMUNITY CHURCH", "LEMONADE INSURANCE", "HARBOR CREDIT UNION PMT").

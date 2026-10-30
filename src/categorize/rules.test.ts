@@ -337,6 +337,12 @@ describe("categorizeByRules", () => {
     },
   );
 
+  // Night QA 10-30: a traveller's Paris metro and bakery were uncategorized.
+  it("reads the Paris metro and a boulangerie", () => {
+    expect(out("RATP PARIS")).toBe("TRANSPORTATION_PUBLIC_TRANSIT");
+    expect(out("BOULANGERIE PAUL PARIS")).toBe(out("BLUE HERON BAKERY"));
+  });
+
   it("reads 7-Eleven as a convenience store", () => {
     expect(out("7-ELEVEN 33421")).toBe("GENERAL_MERCHANDISE_CONVENIENCE_STORES");
   });
