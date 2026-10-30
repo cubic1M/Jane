@@ -21,7 +21,9 @@ import { syncAllCrypto } from "@/lib/crypto/crypto";
 import { settleAllLadders } from "@/lib/investments/short-term";
 import { settleAllRollovers } from "@/lib/investments/old-accounts";
 import { runAutomaticInvestingForAll } from "@/lib/investments/automatic";
+import { forgetRemovedDemoBanks } from "@/lib/evidence/backfill";
 import { removeAllOrphans } from "@/lib/evidence/orphans";
+import { refreshAfterRemoval } from "@/lib/import/background";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
 // a webhook was missed, then removes items of people inactive for INACTIVE_ITEM_DAYS
@@ -60,6 +62,8 @@ async function dailyWork() {
       retention: await runRetention(),
       // Derived rows whose evidence is gone (card-chat mismatch): also the one-off cleanup.
       orphans: await removeAllOrphans(),
+      // Demo banks removed before their derived rows went with them: once each.
+      demoCleanup: await forgetRemovedDemoBanks({ refresh: (id) => refreshAfterRemoval(id) }),
       // The learning loop: what everyone did with each kind of suggestion, for tomorrow's ranking.
       learning: await refreshKindStats(),
       deadlines: await remindAllDeadlines(),
@@ -119,6 +123,8 @@ async function dailyWork() {
     retention: await runRetention(),
     // Derived rows whose evidence is gone (card-chat mismatch): also the one-off cleanup.
     orphans: await removeAllOrphans(),
+    // Demo banks removed before their derived rows went with them: once each.
+    demoCleanup: await forgetRemovedDemoBanks({ refresh: (id) => refreshAfterRemoval(id) }),
     learning: await refreshKindStats(),
     deadlines: await remindAllDeadlines(),
     insurance: await insuranceDaily(),
