@@ -18,6 +18,10 @@ const { scoped } = vi.hoisted(() => ({
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn(() => scoped) }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+// What goes with a removed source is tested against a real database (src/lib/evidence).
+vi.mock("@/lib/evidence/orphans", () => ({
+  removeOrphans: vi.fn(async () => ({ findings: 0, outcomes: 0, alerts: 0 })),
+}));
 vi.mock("@/lib/alerts", () => ({ raiseAlerts: vi.fn() }));
 // Spec step 208: what the person said is theirs, and refunds that never arrived (own tests).
 vi.mock("@/lib/unusual", () => ({

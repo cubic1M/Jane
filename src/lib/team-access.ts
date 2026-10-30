@@ -129,6 +129,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   membership_paid: automatic,
   // By the person, or automatically when a bank sat unused (spec step 11).
   item_removed: own,
+  derived_removed: own,
   user_data_deleted: own,
   admin_mfa_enrolled: own,
   admin_mfa_verified: own,
