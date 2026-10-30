@@ -59,6 +59,9 @@ export function totalsByAccount(
           accountId,
           accountName: account?.name ?? null,
           totalCents: total,
+          // The months the total covers, for the card's words (night QA 10-30: "in the last 3
+          // months" in the title, "over the last 12 months" in the explanation).
+          months,
           transactions: charges.map((c) => ({ ...evidenceOf(c), category: c.pfcDetailed })),
         },
       },
