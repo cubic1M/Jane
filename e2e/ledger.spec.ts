@@ -41,4 +41,13 @@ test("a sample person's ledger: Held wins with their lines, estimates apart", as
 
   await page.getByText("How Jane verifies").click();
   await expect(page.getByText("Saved counts Verified and Held only.")).toBeVisible();
+
+  // On a phone each title keeps whole words (night QA 10-30: "Equino / x", "subscr / iption").
+  await page.setViewportSize({ width: 375, height: 812 });
+  const titles = page.locator("[data-ledger-title]");
+  expect(await titles.count()).toBeGreaterThan(0);
+  for (const box of await titles.evaluateAll((els) =>
+    els.map((el) => el.getBoundingClientRect().width),
+  ))
+    expect(box).toBeGreaterThan(150);
 });
