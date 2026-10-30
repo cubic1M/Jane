@@ -24,7 +24,7 @@ import { removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
 import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
 import { verifiedSavings } from "@/lib/savings-proof";
-import { removeAllOrphans } from "./orphans";
+import { forgetSince, removeAllOrphans } from "./orphans";
 
 // Derived data never outlives its evidence, against a real, migrated Postgres. The founder asked
 // "how much money did Jane save me" and the chat listed the demo bank's Comcast, Verizon and
@@ -282,5 +282,47 @@ describe.runIf(url)("derived data never outlives its evidence", { timeout: 240_0
       ),
     ).toEqual(["kept"]);
     expect((await removeAllOrphans({ client, userIds: [userId] })).removed.findings).toBe(0);
+  });
+
+  it("forgets the demo bank's stand-ins made while it was linked, and never a real bank's", async () => {
+    // Night debugger, round 6: after the demo bank went, its credit pull, rate and borrowing
+    // checks and insurance checkup stayed.
+    const standIns = async (userId: string) => {
+      await client.creditReport.create({
+        data: {
+          userId,
+          partner: "stand-in",
+          score: 712,
+          model: "VantageScore 3.0",
+          rangeLow: 300,
+          rangeHigh: 850,
+          cardLimitCents: 500_000,
+          averageAgeMonths: 40,
+          hardInquiries: 1,
+          pulledOn: new Date(),
+        },
+      });
+      await client.borrowingCheck.create({
+        data: { userId, checkedOn: new Date(), partner: "stand-in" },
+      });
+      await client.refinanceCheck.create({
+        data: { userId, checkedOn: new Date(), partner: "stand-in" },
+      });
+      await client.insuranceCheckup.create({ data: { userId, reason: "asked" } });
+    };
+    const count = async (userId: string) =>
+      (await client.creditReport.count({ where: { userId } })) +
+      (await client.borrowingCheck.count({ where: { userId } })) +
+      (await client.refinanceCheck.count({ where: { userId } })) +
+      (await client.insuranceCheckup.count({ where: { userId } }));
+    const linked = new Date(Date.now() - 60_000);
+    const demo = await person();
+    const real = await person();
+    await standIns(demo);
+    await standIns(real);
+    await forgetSince(scopedFor(demo, client), linked, "bank", { demo: true });
+    await forgetSince(scopedFor(real, client), linked, "bank", { demo: false });
+    expect(await count(demo)).toBe(0);
+    expect(await count(real)).toBe(4);
   });
 });

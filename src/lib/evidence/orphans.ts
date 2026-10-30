@@ -242,9 +242,23 @@ export async function forgetSince(
   db: ScopedDb,
   since: Date,
   source: "bank" | "upload",
+  { demo = false }: { demo?: boolean } = {},
 ): Promise<number> {
   const after = { gte: since };
+  // The demo bank's stand-ins (a credit pull, rate and borrowing checks, an insurance checkup and
+  // the savings found in its policies) were made for it while it was linked (night debugger,
+  // round 6): they go with it. A real bank's stay; the person asked for them.
+  const standIns = demo
+    ? [
+        db.creditReports.deleteMany({ where: { createdAt: after } }),
+        db.borrowingChecks.deleteMany({ where: { createdAt: after } }),
+        db.refinanceChecks.deleteMany({ where: { createdAt: after } }),
+        db.insuranceCheckups.deleteMany({ where: { createdAt: after } }),
+        db.insuranceSavings.deleteMany({ where: { createdAt: after } }),
+      ]
+    : [];
   const counts = await Promise.all([
+    ...standIns,
     db.alerts.deleteMany({ where: { createdAt: after } }),
     db.employerBenefits.deleteMany({ where: { status: "found", createdAt: after } }),
     db.insuranceRisks.deleteMany({ where: { answeredAt: null, createdAt: after } }),
