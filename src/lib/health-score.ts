@@ -10,6 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import {
+  cardBalanceOf,
   fullMonthsOnly,
   healthChange,
   healthScore,
@@ -99,10 +100,8 @@ export async function healthInput(
               t.pfcDetailed !== null &&
               HEALTH_SLIP_CATEGORIES.includes(t.pfcDetailed),
           ).length,
-    cardBalanceCents:
-      cards.length === 0
-        ? null
-        : cards.reduce((s, a) => s + Math.max(0, a.currentBalanceCents ?? 0), 0),
+    cardBalanceCents: cardBalanceOf(cards),
+    cardsLinked: cards.length > 0,
     goals: {
       total: goals.length,
       onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,
