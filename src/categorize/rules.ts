@@ -256,6 +256,8 @@ const RULES: readonly Rule[] = [
       "AUTO FIN",
       "AUTO FINANCE",
       "MOTOR CREDIT",
+      // Bank of America cuts it short (night QA 10-30: "TOYOTA MOTOR CR DES:AUTO PMT").
+      "MOTOR CR",
       "FORD CREDIT",
       "GM FINANCIAL",
       "NISSAN MOTOR ACCEPT",
@@ -382,6 +384,11 @@ const RULES: readonly Rule[] = [
       "VENMO",
       "CASH APP",
       "TRANSFER TO",
+      // Into the person's own health savings account (night QA 10-30: "HEALTHEQUITY DES:HSA
+      // CONTRB" counted as $150 a month of spending).
+      "HEALTHEQUITY",
+      "HSA CONTRB",
+      "HSA CONTRIB",
       "360 PERFORMANCE SAVINGS",
       "360 SAVINGS",
     ],
@@ -523,6 +530,9 @@ const RULES: readonly Rule[] = [
       "WHOLEFDS",
       "TRADER JOE",
       "SAFEWAY",
+      // Night QA 10-30: "RALEYS #322" was uncategorized.
+      "RALEYS",
+      "RALEY'S",
       "KROGER",
       "PUBLIX",
       "ALDI",
@@ -644,6 +654,9 @@ const RULES: readonly Rule[] = [
       "PG&E",
       // How some banks spell it (night QA 10-30: "PGANDE WEB ONLINE").
       "PGANDE",
+      // City-owned utilities (night QA 10-30: "SMUD DES:UTIL BILL" was uncategorized).
+      "SMUD",
+      "LADWP",
       "CON ED",
       "CONEDISON",
       "DUKE ENERGY",
