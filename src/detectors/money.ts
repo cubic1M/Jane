@@ -126,6 +126,16 @@ const bankFees: Detector = {
     const fees = bankFeesYear(data.transactions, Math.round(rateMonthsOf(profile)));
     if (!fees || fees.count < R.feesMin) return null;
     const total = fees.yearCents;
+    // Night QA 10-30: a traveller's foreign-transaction and annual card fees read as "Stop paying
+    // overdraft and bank fees" though nothing was ever overdrawn.
+    const overdrawn = data.transactions.some(
+      (t) =>
+        t.amountCents > 0 &&
+        (t.pfc === "BANK_FEES_OVERDRAFT_FEES" || t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS"),
+    );
+    const phrase = overdrawn
+      ? "Stop paying overdraft and bank fees"
+      : "Stop paying bank and card fees";
     const span = fees.estimated
       ? `${fees.count} bank fees in ${fees.monthsOfData} months, about ${formatCents(total)} over a year (an estimate)`
       : `${formatCents(total)} in ${fees.count} bank fees in the last 12 months`;
@@ -133,8 +143,8 @@ const bankFees: Detector = {
       id: suggestionId("cost", "bank_fees"),
       capability: "cost",
       topic: "bank_fees",
-      title: "Stop paying overdraft and bank fees",
-      headline: headlineOf("Stop paying overdraft and bank fees", total, "saves"),
+      title: phrase,
+      headline: headlineOf(phrase, total, "saves"),
       short: fees.estimated
         ? `You paid ${formatCents(fees.seenCents)} in ${fees.count} bank fees in ${fees.monthsOfData} months.`
         : `You paid ${formatCents(total)} in ${fees.count} bank fees in a year.`,
