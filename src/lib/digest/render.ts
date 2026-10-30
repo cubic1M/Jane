@@ -221,7 +221,9 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
   const totals = [
     p.savedToDateCents > 0 &&
       `${SAVED_SO_FAR_LABEL}: about ${formatCents(p.savedToDateCents)} a year`,
-    `Still to look at: ${formatCents(p.moneyFoundCents)} a year`,
+    // Nor "Still to look at: $0.00 a year" when what's left has no dollar estimate (night QA
+    // 10-30: an insurance reshop on its own).
+    p.moneyFoundCents > 0 && `Still to look at: ${formatCents(p.moneyFoundCents)} a year`,
   ].filter((line): line is string => typeof line === "string");
   const body = sections(p, links);
 
