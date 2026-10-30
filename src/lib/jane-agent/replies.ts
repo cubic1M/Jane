@@ -13,6 +13,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import type { FindingType } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
+import { fullMonths } from "@/insights/typical-month";
 import {
   kindOf,
   monthsEnding,
@@ -523,8 +524,10 @@ export function spendingReply(
   if (category) {
     const cents = categories.find((c) => c.category === category)?.cents ?? 0;
     const body = `You spent ${fmt(cents)} on ${category} ${when}.${versus(cents, spentIn(before, category))}`;
-    // A usual month: the complete months before this one.
-    const past = months.slice(-1 - AFFORD_USUAL_MONTHS, -1);
+    // A usual month: the complete months before this one, each one the data covers in full (night
+    // QA 10-30: a statement starting Jul 28 made July's $20 of food a month, so "a $185.00
+    // budget would match a usual month" beside $268 and $263).
+    const past = fullMonths(months.slice(-1 - AFFORD_USUAL_MONTHS, -1), transactions);
     const usual = Math.round(
       past.reduce((sum, m) => sum + (spentIn(m, category) ?? 0), 0) / Math.max(1, past.length),
     );
