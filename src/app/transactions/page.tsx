@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { cardPaymentNames } from "@/categorize/card-payments";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { categoryLabel } from "@/insights/labels";
+import { CATEGORY_LABELS, categoryLabel } from "@/insights/labels";
 import { categoryOptions, detailedLabel, listMerchantRules } from "@/lib/categories";
 import { scopedDb } from "@/lib/db-scoped";
 import { isoDay } from "@/lib/dates";
@@ -23,8 +23,13 @@ async function Transactions({
 }) {
   const user = await requireUser();
   const db = await scopedDb();
-  const { q, day, from, to } = await searchParams;
+  const { q, day, from, to, category } = await searchParams;
   const search = typeof q === "string" ? q.trim() : "";
+  // One category, from the insights page's rows: a Plaid primary, or "none" for uncategorized.
+  const primary =
+    category === "none" || (typeof category === "string" && category in CATEGORY_LABELS)
+      ? category
+      : null;
   // A day, or days, from the net worth chart's dots: ?day=2026-10-05, or ?from=…&to=….
   const isDay = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
   const first = isDay(day) ? day : isDay(from) ? from : null;
@@ -33,6 +38,7 @@ async function Transactions({
     db.transactions.findMany({
       where: {
         pending: false,
+        ...(primary ? { pfcPrimary: primary === "none" ? null : primary } : {}),
         ...(first && last
           ? {
               date: {
@@ -116,11 +122,14 @@ async function Transactions({
         </button>
       </form>
 
-      {first && last && (
+      {((first && last) || primary) && (
         <p data-transactions-days="" className="text-sm text-zinc-600 dark:text-zinc-400">
-          {first === last
-            ? `On ${dayLabel(first, { year: true })}.`
-            : `From ${dayLabel(first)} to ${dayLabel(last, { year: true })}.`}{" "}
+          {primary && `${categoryLabel(primary === "none" ? null : primary)}. `}
+          {!first || !last
+            ? null
+            : first === last
+              ? `On ${dayLabel(first, { year: true })}.`
+              : `From ${dayLabel(first)} to ${dayLabel(last, { year: true })}.`}{" "}
           <Link href="/transactions" className="font-medium underline">
             All transactions
           </Link>
@@ -129,7 +138,7 @@ async function Transactions({
 
       {rows.length === 0 ? (
         <p className="text-zinc-600 dark:text-zinc-400">
-          {search || first ? (
+          {search || first || primary ? (
             "No transactions found."
           ) : (
             <>
