@@ -12,6 +12,7 @@ import { summarize } from "@/planning/costly-borrowing";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import {
+  cashLine,
   evidence,
   factEvidence,
   cashKnown,
@@ -304,7 +305,7 @@ const emergencyFund: Detector = {
         short,
         "risk",
       ),
-      short: `You keep ${formatCents(liquidCents(data))} in cash; a cushion for you is ${formatCents(target.targetCents)}.`,
+      short: `${cashLine(liquidCents(data))}; a cushion for you is ${formatCents(target.targetCents)}.`,
       worthCents: short,
       worthKind: "risk",
       confidence: weakest([
@@ -317,10 +318,10 @@ const emergencyFund: Detector = {
       ]),
       urgency: "soon",
       why: starter
-        ? `Your cash is ${formatCents(liquidCents(data))} and your debts are the priority, so start with a ${formatCents(target.targetCents)} buffer so a surprise doesn't go on a card; then the debt plan.`
+        ? `${liquidCents(data) < 0 ? `You're ${formatCents(-liquidCents(data))} overdrawn` : `Your cash is ${formatCents(liquidCents(data))}`} and your debts are the priority, so start with a ${formatCents(target.targetCents)} buffer so a surprise doesn't go on a card; then the debt plan.`
         : gap
-          ? `You spend about ${formatCents(spend)} a month against ${formatCents(Number(incomeFact.value))} coming in, a gap of ${formatCents(spend - Number(incomeFact.value))}; ${target.months} months of it is ${formatCents(target.targetCents)}, and you keep ${formatCents(liquidCents(data))}.`
-          : `You spend about ${formatCents(spend)} a month and keep ${formatCents(liquidCents(data))} in cash; ${target.months} months is ${formatCents(target.targetCents)}.`,
+          ? `You spend about ${formatCents(spend)} a month against ${formatCents(Number(incomeFact.value))} coming in, a gap of ${formatCents(spend - Number(incomeFact.value))}; ${target.months} months of it is ${formatCents(target.targetCents)}. ${cashLine(liquidCents(data))}.`
+          : `You spend about ${formatCents(spend)} a month. ${cashLine(liquidCents(data))}; ${target.months} months is ${formatCents(target.targetCents)}.`,
       action: { label: "Set a savings goal", href: "/goals" },
     };
   },

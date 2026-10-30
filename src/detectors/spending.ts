@@ -379,7 +379,7 @@ const lowBalance: Detector = {
         Math.max(fees, monthly - checking),
         "risk",
       ),
-      short: `You hold ${formatCents(checking)} against about ${formatCents(monthly)} a month in bills.`,
+      short: `${checking < 0 ? `You're ${formatCents(-checking)} overdrawn, with` : `You hold ${formatCents(checking)} against`} about ${formatCents(monthly)} a month in bills.`,
       worthCents: Math.max(fees, monthly - checking),
       worthKind: "risk",
       confidence: evidence("seen", profile.months, bills.length, "regular bills"),
@@ -389,7 +389,7 @@ const lowBalance: Detector = {
       ...(checking < monthly * S.lowCashUrgentShare
         ? { rankCents: Math.round((monthly - checking) * S.lowCashRank) }
         : {}),
-      why: `Your checking and savings hold ${formatCents(checking)} and your regular bills come to about ${formatCents(monthly)} a month${fees ? `; overdraft fees have cost you ${formatCents(fees)}` : ""}.`,
+      why: `Your checking and savings ${checking < 0 ? `are ${formatCents(-checking)} overdrawn` : `hold ${formatCents(checking)}`} and your regular bills come to about ${formatCents(monthly)} a month${fees ? `; overdraft fees have cost you ${formatCents(fees)}` : ""}.`,
       action: { label: "Plan a tight month", href: "/loans/tight" },
     };
   },
