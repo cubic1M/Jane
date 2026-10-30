@@ -2,7 +2,7 @@ import { DETECTOR_RATES } from "@/config/detectors";
 import { TAXABLE_GAINS_SHARE } from "@/config/retirement-income";
 import { IRA_DISTRIBUTION, IRMAA_WATCH, SOCIAL_SECURITY_PAYEE } from "@/config/retirement-taxes";
 import { FEDERAL_BRACKETS, STANDARD_DEDUCTION } from "@/config/tax-rates";
-import type { Profile, ProfileInput } from "@/profile/build";
+import { rateMonthsOf, type Profile, type ProfileInput } from "@/profile/build";
 import type { Balances } from "./retirement-income";
 import {
   irmaaFor,
@@ -62,11 +62,22 @@ export function readRetirementTaxes(profile: Profile, data: ProfileInput): Retir
   const since = new Date(Date.parse(profile.today) - 365 * 86_400_000).toISOString().slice(0, 10);
   const recent = data.transactions.filter((t) => t.date > since && t.amountCents < 0);
   const ssRows = recent.filter((t) => SOCIAL_SECURITY_PAYEE.test(t.description));
-  const pensionRows = recent.filter((t) => t.pfc === "INCOME_RETIREMENT_PENSION");
+  // Social Security is filed as a pension too (INCOME_RETIREMENT_PENSION): never counted twice.
+  const pensionRows = recent.filter(
+    (t) => t.pfc === "INCOME_RETIREMENT_PENSION" && !SOCIAL_SECURITY_PAYEE.test(t.description),
+  );
   const iraRows = recent.filter((t) => IRA_DISTRIBUTION.test(t.description));
-  const ss = yearOf(ssRows);
-  const pension = yearOf(pensionRows);
-  const ira = yearOf(iraRows);
+  // A year of each, from less than a year of statements (night QA 10-30: three months of a
+  // retiree's $2,412 Social Security read as "$7,236 a year", $603 a month): a benefit paid
+  // monthly is its average payment twelve times; a draw is scaled to the months seen.
+  const months = Math.min(12, rateMonthsOf(profile));
+  const monthlyYear = (rows: readonly { amountCents: number }[]) =>
+    months >= 12 || rows.length === 0
+      ? yearOf(rows)
+      : Math.round((yearOf(rows) / rows.length) * 12);
+  const ss = monthlyYear(ssRows);
+  const pension = monthlyYear(pensionRows);
+  const ira = months >= 12 ? yearOf(iraRows) : Math.round((yearOf(iraRows) * 12) / months);
   // Working income: take-home pay grossed up; a business's or freelancer's deposits at the profit
   // share the other tax readers use (taxes QA); retirement income as it arrives.
   const monthly = typeof f.monthly_income.value === "number" ? f.monthly_income.value : 0;

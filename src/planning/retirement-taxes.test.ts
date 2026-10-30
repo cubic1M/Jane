@@ -151,6 +151,20 @@ describe("the sample people get their own figures", () => {
     expect(ruth.irmaa).toMatchObject({ premiumYear: 2028, tier: 0, nextLineCents: $(115_000) });
   });
 
+  // Night QA 10-30: three months of a retiree's statements read as a year: $2,412 of Social
+  // Security a month came out as "$7,236 a year", $603 a month.
+  it("makes a year of benefits from a few months of statements", () => {
+    const year = inputFor("retiree");
+    const cut = new Date(Date.parse(`${year.today}T00:00:00Z`) - 85 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const recent = { ...year, transactions: year.transactions.filter((t) => t.date >= cut) };
+    const short = readRetirementTaxes(buildProfile(recent), recent);
+    expect(short.ssDeposits).toBeGreaterThan(0);
+    expect(short.ssDeposits).toBeLessThan(4);
+    expect(short.ssBenefitsCents).toBe(read("retiree").ssBenefitsCents);
+  });
+
   it("the couple near retirement: no Social Security yet, the couple's line two years ahead", () => {
     const dan = read("preretire");
     expect(dan).toMatchObject({ status: "married_joint", people: 2, ssBenefitsCents: 0 });
