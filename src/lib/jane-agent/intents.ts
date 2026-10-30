@@ -318,13 +318,16 @@ export function fixTypos(text: string): string {
 
 // What to look for in the findings: no "my", no "subscription" or "bill" on the end.
 function cleanTarget(text: string): string {
-  return text
-    .replace(/^(?:(?:my|the|our|a|an|that|this) )+/, "")
-    .replace(
-      /(?:^| )(?:subscriptions?|membership|bill|plan|account|charges?|service|payments?|thing)$/,
-      "",
-    )
-    .trim();
+  return (
+    text
+      // "how much do I pay in fees": the fees, not "in fees" (night QA 10-30).
+      .replace(/^(?:(?:in|on|for|my|the|our|a|an|that|this) )+/, "")
+      .replace(
+        /(?:^| )(?:subscriptions?|membership|bill|plan|account|charges?|service|payments?|thing)$/,
+        "",
+      )
+      .trim()
+  );
 }
 
 // "a trip", "the new couch", "food": what the money is for, without the amount or the
