@@ -19,7 +19,7 @@ const FIELDS: [string, string][] = [
 export function ProductForm() {
   const [state, action, pending] = useActionState<ProductState, FormData>(addProduct, null);
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label htmlFor="product-kind" className="flex flex-col gap-1 text-sm font-medium">
         Kind
         <select id="product-kind" name="kind" className={INPUT} defaultValue="annuity">

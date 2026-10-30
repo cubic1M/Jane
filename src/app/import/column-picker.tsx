@@ -67,7 +67,7 @@ export function ColumnPicker({ index, file, choices, children }: Props) {
         <input type="checkbox" name={name("header")} value="1" defaultChecked={choices.hasHeader} />
         The first row is column names
       </label>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {select("date", "Date", guess.date, undefined, setDate)}
         {order && (
           <label className="flex flex-col gap-1 text-sm font-medium">

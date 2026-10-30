@@ -192,7 +192,7 @@ async function AutoContent({ searchParams }: Pick<PageProps<"/loans/auto">, "sea
             <form
               action={addAddonAction}
               aria-label="Add one"
-              className="grid gap-3 sm:grid-cols-5"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-5"
             >
               <label className="flex flex-col gap-1 text-sm">
                 Kind

@@ -55,7 +55,7 @@ function TermsForm({ debt, open, error }: { debt: Debt; open: boolean; error: st
       <summary className="cursor-pointer font-medium underline underline-offset-2">
         {debt.typedOn ? "Change what you typed" : "Add what your bank doesn't report"}
       </summary>
-      <form action={saveTerms} className="mt-3 grid gap-3 sm:grid-cols-2">
+      <form action={saveTerms} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input type="hidden" name="debtKey" value={debt.key} />
         {open && error && (
           <p role="alert" className="font-medium sm:col-span-2">

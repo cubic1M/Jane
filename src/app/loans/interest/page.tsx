@@ -174,7 +174,7 @@ async function InterestContent({
             <form
               action={addPromoAction}
               aria-label="Add a promotion"
-              className="grid gap-3 sm:grid-cols-3"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-3"
             >
               <label className="flex flex-col gap-1 text-sm">
                 Card

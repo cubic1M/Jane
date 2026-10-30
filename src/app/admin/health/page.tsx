@@ -82,7 +82,7 @@ async function Health() {
         </details>
       </section>
 
-      <section className="grid gap-3 text-sm sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
         <div className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
           <h2 className="font-semibold">Linked banks</h2>
           <p>

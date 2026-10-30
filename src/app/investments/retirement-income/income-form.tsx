@@ -23,7 +23,7 @@ export function IncomeForm({ initial }: { initial: Initial }) {
     </label>
   );
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {field(
         "ssMonthly",
         "Social Security a month at full retirement age (from your ssa.gov statement)",

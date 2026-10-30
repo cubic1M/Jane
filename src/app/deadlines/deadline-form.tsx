@@ -22,7 +22,7 @@ export function DeadlineForm({ today }: { today: string }) {
     if (state?.ok) router.refresh();
   }, [state, router]);
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label htmlFor="deadline-title" className="flex flex-col gap-1 text-sm font-medium">
         What it&apos;s for
         <input

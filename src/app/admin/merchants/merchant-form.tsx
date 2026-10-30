@@ -43,7 +43,7 @@ export function MerchantForm({
   );
 
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <input type="hidden" name="id" value={values.id} />
       {text("name", "Name")}
       {text("key", "Key", "Lower case, as it appears after cleanup; leave empty to use the name.")}

@@ -29,7 +29,7 @@ function Field({
 export function OptionForm({ today }: { today: string }) {
   const [state, action, pending] = useActionState<OptionState, FormData>(saveOption, null);
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label className="flex flex-col gap-1 text-xs font-medium" htmlFor="option-kind">
         What it is
         <select id="option-kind" name="kind" className={INPUT} defaultValue="plan">

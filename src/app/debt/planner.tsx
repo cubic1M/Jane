@@ -109,7 +109,7 @@ export function DebtPlanner({
         {rows.map((row) => (
           <li
             key={row.id}
-            className="grid gap-3 rounded-xl border border-zinc-200 p-4 sm:grid-cols-4 dark:border-zinc-800"
+            className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 p-4 sm:grid-cols-4 dark:border-zinc-800"
           >
             <label className="flex flex-col gap-1 text-sm font-medium">
               Card or loan
@@ -190,7 +190,7 @@ export function DebtPlanner({
       {plans === null ? (
         <p className="text-sm text-zinc-500">Fill in every box to see the numbers.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {plans.map((plan) => (
             <PlanSummary key={plan.strategy} plan={plan} rows={rows} monthLabel={monthLabel} />
           ))}

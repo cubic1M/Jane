@@ -89,7 +89,11 @@ export function LongGameSection({
           )}
         </div>
       )}
-      <form action={saveDates} aria-label="Your dates" className="grid gap-3 sm:grid-cols-3">
+      <form
+        action={saveDates}
+        aria-label="Your dates"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+      >
         <label className="flex flex-col gap-1">
           Loan type
           <select name="loanType" defaultValue={game.loanType} className={INPUT}>

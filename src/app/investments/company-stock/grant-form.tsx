@@ -16,7 +16,7 @@ export function GrantForm({ company }: { company: string | null }) {
     </label>
   );
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {field("company", "Company", { defaultValue: company ?? "" })}
       {field("ticker", "Ticker (if you know it)")}
       <label htmlFor="grant-kind" className="flex flex-col gap-1 text-sm font-medium">

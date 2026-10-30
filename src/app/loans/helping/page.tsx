@@ -116,7 +116,7 @@ async function HelpingContent({ searchParams }: Pick<PageProps<"/loans/helping">
             ))}
           </ul>
         )}
-        <form action={addAction} className="grid gap-3 sm:grid-cols-5">
+        <form action={addAction} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
           <label className="flex flex-col gap-1 text-sm">
             What
             <select name="kind" className={INPUT} defaultValue="cosigned">

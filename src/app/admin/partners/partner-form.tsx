@@ -28,7 +28,7 @@ export function PartnerForm({
   const [state, action, pending] = useActionState<PartnerState, FormData>(savePartner, null);
   const id = (name: string) => `${values.id || "new"}-${name}`;
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <input type="hidden" name="id" value={values.id} />
       <label htmlFor={id("name")} className="flex flex-col gap-1 text-xs font-medium">
         Name

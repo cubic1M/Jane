@@ -154,7 +154,7 @@ async function FamilyContent({ searchParams }: Pick<PageProps<"/loans/family">, 
           <form
             action={addCosignedAction}
             aria-label="Add a co-signed loan"
-            className="grid gap-3 sm:grid-cols-3"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-3"
           >
             <label className="flex flex-col gap-1 text-sm">
               Your loan

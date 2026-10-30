@@ -156,7 +156,7 @@ async function StudentContent({
             {error}
           </p>
         )}
-        <form action={saveProfile} className="grid gap-3 text-sm sm:grid-cols-2">
+        <form action={saveProfile} className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <label className="flex flex-col gap-1 font-medium">
             Income from your last tax return ($)
             <input

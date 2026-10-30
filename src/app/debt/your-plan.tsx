@@ -119,7 +119,7 @@ export function YourPlan({
           <DemoAdviceLabel />
         </div>
       ) : (
-        <dl className="grid gap-2 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           {order.map((s) => (
             <div key={s}>
               <dt className="font-medium">{NAME[s]}</dt>

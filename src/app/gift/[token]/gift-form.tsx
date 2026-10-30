@@ -12,7 +12,7 @@ export function GiftForm({ token }: { token: string }) {
     null,
   );
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label htmlFor="gift-name" className="flex flex-col gap-1 text-sm font-medium">
         Your name
         <input id="gift-name" name="name" className={INPUT} autoComplete="name" />

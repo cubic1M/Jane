@@ -105,7 +105,7 @@ async function NetWorthContent() {
           )}
         </section>
       ) : (
-        <section className="grid gap-3 sm:grid-cols-3">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
             ["You have", today.assetsCents],
             ["You owe", today.debtsCents],
