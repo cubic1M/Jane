@@ -51,6 +51,12 @@ describe("new questions", () => {
     expect(parse(text)).toEqual({ kind: "cost", target, year });
   });
 
+  // Night QA 10-30: "how much do I make a month" answered with spending on "i make".
+  it("never reads a question about the person's own pay as a thing that costs", () => {
+    expect(parse("how much do I make a month").kind).not.toBe("cost");
+    expect(parse("how much do I earn").kind).not.toBe("cost");
+  });
+
   it("leaves 'how much' questions that are about something else alone", () => {
     expect(parse("how much did I spend on food").kind).toBe("spending");
     expect(parse("how much can I spend").kind).toBe("safe_to_spend");

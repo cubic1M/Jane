@@ -25,7 +25,7 @@ import { loadTaxSavings } from "@/lib/tax-savings";
 import { checkFrom } from "@/lib/tax-withholding";
 import { formatCents } from "@/lib/money";
 import { dayLabel } from "@/lib/day-label";
-import { roundDollars } from "@/planning/tax-estimate-copy";
+import { roundDollars, taxPaidText } from "@/planning/tax-estimate-copy";
 import { formatPercent as pct } from "@/lib/percent";
 
 // Direct answers to tax questions (taxes in the chat): three sentences or fewer, from the
@@ -340,11 +340,14 @@ export async function decideTax(
       );
     }
     case "paid": {
-      const so = est.pay.soFar.federalWithheldCents;
-      return made(
-        `Your employer has withheld about ${roundDollars(so)} of federal tax from your pay so far this year. At this pace it will be about ${roundDollars(e.paidCents)} by the end, against ${roundDollars(e.totalTaxCents)} of tax.`,
-        [so, e.paidCents, e.totalTaxCents],
-      );
+      const { text, figures } = taxPaidText({
+        withholdingKnown: est.withholdingKnown,
+        withheldSoFarCents: est.pay.soFar.federalWithheldCents,
+        withheldProjectedCents: est.input.federalWithheldCents,
+        estimatedPaidCents: est.input.federalEstimatedPaidCents,
+        totalTaxCents: e.totalTaxCents,
+      });
+      return made(text, figures);
     }
     case "deductions": {
       const d = e.deduction;

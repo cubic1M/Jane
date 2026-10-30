@@ -46,6 +46,15 @@ describe("parseAmount", () => {
   });
 });
 
+// Night QA 10-30: "how much do I spend on daycare" found no spending on "daycare".
+describe("matchCategory", () => {
+  it("reads childcare words as Services, where Plaid puts childcare", () => {
+    for (const word of ["daycare", "childcare"]) {
+      expect(matchCategory(word, ["Services", "Shopping"])).toBe("Services");
+    }
+  });
+});
+
 describe("parseMonth", () => {
   it("reads this, next and last month", () => {
     expect(parseMonth("this month", TODAY, "past")).toBe("2026-10");

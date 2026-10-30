@@ -720,7 +720,13 @@ export function parseIntent(
     if (!cost) continue;
     const target = cleanTarget(cost[1]);
     // "How much is safe to spend" and "how much do I owe" belong elsewhere.
-    if (target && !SPENDING.test(target) && !/^(?:due|coming up|left|owed?)$/.test(target)) {
+    // "how much do I make a month" is about pay, not a thing that costs "i make" (night QA 10-30).
+    if (
+      target &&
+      !SPENDING.test(target) &&
+      !/^(?:due|coming up|left|owed?)$/.test(target) &&
+      !/^i\b/.test(target)
+    ) {
       return { kind: "cost", target, year: cost[2] === "year" };
     }
   }
@@ -799,7 +805,8 @@ const CATEGORY_WORDS: Readonly<Record<string, readonly string[]>> = {
   "Personal care": ["haircut", "haircuts", "beauty", "gym", "fitness", "salon"],
   Home: ["house", "home improvement", "furniture", "repairs"],
   "Bank fees and interest": ["fees", "bank fees", "interest"],
-  Services: ["service"],
+  // Childcare is Plaid's GENERAL_SERVICES_CHILDCARE (night QA 10-30: "daycare" found nothing).
+  Services: ["service", "daycare", "childcare", "child care", "nanny", "babysitter"],
   "Government and donations": ["donations", "charity", "government"],
   "Loan payments": ["loans", "loan"],
 };
