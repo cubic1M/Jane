@@ -9,6 +9,7 @@ import {
   RENT_PAYEE_MIN,
   type FactSource,
 } from "@/config/memory";
+import { normalizeMerchant } from "@/data-sources/merchant";
 import { addDays } from "@/lib/dates";
 import type { Profile, ProfileInput } from "@/profile/build";
 import type { FactDraft } from "./facts";
@@ -59,7 +60,12 @@ export function rentPayeeFrom(input: ProfileInput): { name: string; matches: num
   const counts = new Map<string, number>();
   for (const t of input.transactions) {
     if (t.amountCents <= 0 || t.pfc !== "RENT_AND_UTILITIES_RENT") continue;
-    const name = t.description.replace(/\s+/g, " ").trim().slice(0, 40);
+    // The payee as the rest of Jane names it ("Oak Ridge Apts", not "ZELLE TO OAK RIDGE APTS
+    // RENT"; night QA 10-30), the bank's words when nothing is left.
+    const name = (normalizeMerchant(t.description)?.name ?? t.description)
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 40);
     if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];

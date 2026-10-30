@@ -96,6 +96,8 @@ import { cachedPrimer, keepPrimer } from "./primer-cache";
 import { isStale, readStoredPrimer, usablePrimer, writeStoredPrimer } from "./primer-store";
 import { dataStamp } from "@/lib/data-stamp";
 import { openProposals } from "@/lib/proposals";
+import { listDeadlines } from "@/lib/deadlines";
+import { DEADLINE_KIND_LABELS } from "@/insights/deadlines";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
 import { findingCandidate } from "./sources/findings";
@@ -395,6 +397,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "deadlines",
+    description:
+      "Everything on the person's Deadlines page, as far ahead as it goes (coming_up stops at a month): return windows, renewals, trials, intro prices ending, card and loan payments, enrollment and their own dates, each with its date, kind, amount, detail and, for one from a charge, the day of that charge (chargedOn: look that day up with search_transactions). Use it before answering about a deadline or a card about one.",
     input_schema: noInput,
   },
   {
@@ -909,6 +917,19 @@ async function runChatToolWork(
           : { score: null, why: "No accounts linked yet." },
       );
     }
+    case "deadlines": {
+      const deadlines = await listDeadlines(userId, { client, now });
+      return out({
+        deadlines: deadlines.map((d) => ({
+          on: d.date,
+          kind: DEADLINE_KIND_LABELS[d.kind],
+          what: d.title,
+          amount: d.amountCents === null ? null : money(d.amountCents),
+          detail: d.detail,
+          ...(d.chargedOn ? { chargedOn: d.chargedOn } : {}),
+        })),
+      });
+    }
     case "price_rises": {
       const rises = await loadPriceRises(userId, { client, now });
       return out({
@@ -916,6 +937,7 @@ async function runChatToolWork(
           what: r.kind === "promo_end" ? "intro price ends" : "yearly plan renews",
           name: r.name,
           on: r.date,
+          lastCharged: r.chargedOn,
           daysLeft: r.daysLeft,
           now: money(r.nowCents),
           likelyAfter: money(r.thenCents),

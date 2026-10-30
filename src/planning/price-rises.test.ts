@@ -90,6 +90,51 @@ describe("price rises", () => {
     ).toEqual([]);
   });
 
+  it("never takes a one-off for a yearly plan by its category alone", () => {
+    // The founder's live /deadlines (10-29), with made-up rows: a movie ticket (AMC the
+    // theater, not AMC+) and a campus bookstore receipt about a year ago became "renews" cards.
+    const oneOffs = [
+      start,
+      {
+        date: "2025-12-06",
+        amountCents: 1_068,
+        description: "AMC ONLINE -- KS 12/06",
+        pfc: "ENTERTAINMENT_TV_AND_MOVIES",
+      },
+      {
+        date: "2025-12-14",
+        amountCents: 4_409,
+        description: "BBOOKSTORE ST839 CHICAGO IL 12/16",
+        pfc: "GENERAL_MERCHANDISE_BOOKSTORES_AND_NEWSSTANDS",
+      },
+      {
+        date: "2025-12-20",
+        amountCents: 8_900,
+        description: "REGAL CINEMAS 4410",
+        pfc: "ENTERTAINMENT_TV_AND_MOVIES",
+      },
+    ];
+    expect(priceRises(oneOffs, TODAY)).toEqual([]);
+    // A real yearly plan in the same categories still is one: its own words say so.
+    const [rise] = priceRises(
+      [
+        ...oneOffs,
+        {
+          date: "2025-12-10",
+          amountCents: 7_900,
+          description: "AMC STUBS A-LIST ANNUAL MEMBERSHIP",
+          pfc: "ENTERTAINMENT_TV_AND_MOVIES",
+        },
+      ],
+      TODAY,
+    );
+    expect(rise).toMatchObject({
+      kind: "annual_renewal",
+      date: "2026-12-10",
+      chargedOn: "2025-12-10",
+    });
+  });
+
   it("names payees the way people say them", () => {
     expect(payeeOf("AT&T FIBER 5521")).toBe("AT&T Fiber");
     expect(payeeOf("SPECTRUM*INTERNET 123")).toBe("Spectrum");
