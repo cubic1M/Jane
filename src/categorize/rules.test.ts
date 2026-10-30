@@ -301,6 +301,28 @@ describe("categorizeByRules", () => {
     expect(out(description)).toBe(category);
   });
 
+  // Night QA 10-30: a driver's pay from Uber, Lyft and DoorDash read as refunds of rides and meals.
+  it.each([
+    ["UBER USA 6787 EDI PAYMNT"],
+    ["LYFT INC PAYOUT"],
+    ["DOORDASH DASHER PAYOUT"],
+    ["INSTACART SHOPPER PAYOUT"],
+    ["AMAZON FLEX DEPOSIT"],
+  ])("reads %s, money in, as gig pay", (description) => {
+    expect(categorizeByRules({ description, amountCents: -45_000, hints: {} })?.detailed).toBe(
+      "INCOME_GIG_ECONOMY",
+    );
+  });
+
+  it("still reads a ride, a meal and a refund of one as what they are", () => {
+    expect(out("UBER *TRIP HELP.UBER.COM")).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
+    expect(out("DOORDASH*THAI HOUSE")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(
+      categorizeByRules({ description: "UBER *TRIP REFUND", amountCents: -1_200, hints: {} })
+        ?.detailed,
+    ).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
+  });
+
   it("lets a place's kind win over the words that come last", () => {
     expect(out("SQ *IRON TEMPLE GYM")).toBe("PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS");
     expect(out("PHO HOA NOODLE 22")).toBe("FOOD_AND_DRINK_RESTAURANT");
