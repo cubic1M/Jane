@@ -2,9 +2,12 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { parseKey } from "@/detection/unusual";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { evidenceRefs, type EvidenceRefs } from "@/lib/finding-accounts";
-import { CLEARED_WITHOUT_DATA } from "@/config/lineage";
+import { CLEARED_WITHOUT_DATA, DEMO_SEEDED } from "@/config/lineage";
+import { PERSON_ASSETS } from "@/data-sources/demo/demo-people";
+import { merchantOf } from "@/detection/streams";
+import { DEMO_ASSETS } from "@/lib/plaid/demo-assets";
 import { peopleIn, type OnlyPeople } from "@/lib/only-people";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
@@ -122,6 +125,7 @@ export async function removeOrphans(
   const outcomeIds = gone(outcomeRefs);
   const removed: Removed = { findings: 0, outcomes: 0, alerts: 0 };
   const findingIds = [...gone(findingRefs), ...winsGone];
+  removed.cleared = await removeDemoLeftovers(userId, client);
   if (findingIds.length > 0) {
     removed.findings = (await db.findings.deleteMany({ where: { id: { in: findingIds } } })).count;
   }
@@ -137,7 +141,7 @@ export async function removeOrphans(
   // Nothing of the person's data is left: everything else worked out from it goes too.
   const any = findings.length + outcomes.length + alerts.length > 0;
   if (present.accounts.size === 0 && (any || (await hasDerived(userId, client)))) {
-    removed.cleared = await clearWithoutData(userId, client);
+    removed.cleared = (removed.cleared ?? 0) + (await clearWithoutData(userId, client));
   }
   if (removed.findings + removed.outcomes + removed.alerts + (removed.cleared ?? 0) > 0) {
     console.info("derived_removed", JSON.stringify({ userId, ...removed }));
@@ -154,6 +158,121 @@ export async function removeOrphans(
     }
   }
   return removed;
+}
+
+// What the demo bank seeded, once the person has no demo bank (night debugger, 10-30: after it
+// was disconnected the dock still offered to add "Demo car" to the demo's GEICO policy, and net
+// worth still counted the demo home). Then: insurance found from payments that no transaction
+// left comes from, and cover changes prepared for an event that is no longer there. How many.
+async function removeDemoLeftovers(userId: string, client: PrismaClient): Promise<number> {
+  const db = scopedFor(userId, client);
+  const scoped = db as unknown as Record<
+    string,
+    { deleteMany: (args: object) => Promise<{ count: number }> }
+  >;
+  let removed = 0;
+  if (!(await hasDemoBank(userId, { client }))) {
+    for (const table of Object.values(DEMO_SEEDED)) {
+      removed += (await scoped[table].deleteMany({ where: { source: "demo" } })).count;
+    }
+    const seeded = [...DEMO_ASSETS, ...Object.values(PERSON_ASSETS).flat()];
+    const assets = await db.ownedAssets.findMany({
+      select: { id: true, kind: true, name: true, valueCents: true },
+    });
+    const demoAssets = assets.filter((a) =>
+      seeded.some((d) => d.kind === a.kind && d.name === a.name && d.valueCents === a.valueCents),
+    );
+    if (demoAssets.length > 0) {
+      removed += (
+        await db.ownedAssets.deleteMany({ where: { id: { in: demoAssets.map((a) => a.id) } } })
+      ).count;
+    }
+  }
+  // Insurance found from payments: its insurer's payments are still there, or it goes.
+  const found = await db.insurancePolicies.findMany({
+    where: { status: "found", merchantKey: { not: null } },
+    select: { id: true, merchantKey: true },
+  });
+  if (found.length > 0) {
+    // Loaded here: detection runs this, so a static import would go round in a circle.
+    const { loadTransactionsBetween } = await import("@/detection/engine");
+    const rows = await loadTransactionsBetween(userId, {
+      client,
+      from: "2000-01-01",
+      to: new Date().toISOString().slice(0, 10),
+    });
+    const paid = new Set(rows.flatMap((t) => merchantOf(t)?.key ?? []));
+    const stale = found.filter((p) => !paid.has(p.merchantKey!)).map((p) => p.id);
+    if (stale.length > 0) {
+      removed += (await db.insurancePolicies.deleteMany({ where: { id: { in: stale } } })).count;
+    }
+  }
+  // Cover changes waiting on the person, for an event whose row is gone: a car they own, a car
+  // loan's account, a life event (src/lib/insurance/cover-changes.ts coverEvents keys them so).
+  const prepared = await db.coverChanges.findMany({
+    where: { status: "prepared" },
+    select: { id: true, eventKey: true },
+  });
+  if (prepared.length > 0) {
+    const keys = [...new Set(prepared.map((c) => c.eventKey))];
+    const [assets, accounts, events] = await Promise.all([
+      db.ownedAssets.findMany({ where: { id: { in: keys } }, select: { id: true } }),
+      db.accounts.findMany({ where: { id: { in: keys } }, select: { id: true } }),
+      db.lifeEvents.findMany({ where: { id: { in: keys } }, select: { id: true } }),
+    ]);
+    const there = new Set([...assets, ...accounts, ...events].map((r) => r.id));
+    // "told:<date>" (what the person said) names no row: it stays.
+    const stale = prepared
+      .filter((c) => !c.eventKey.startsWith("told:") && !there.has(c.eventKey))
+      .map((c) => c.id);
+    if (stale.length > 0) {
+      removed += (await db.coverChanges.deleteMany({ where: { id: { in: stale } } })).count;
+    }
+  }
+  return removed;
+}
+
+// When a source goes (a bank disconnected, an upload removed), what was worked out since it
+// arrived may stand on it: rows the scan works out again from what is left are deleted, and
+// refreshAfterRemoval (src/lib/import/background.ts) rebuilds them. Rows from before it arrived
+// can't come from it, and the person's own answers stay. Night debugger (10-30): after the demo
+// bank went, a real uploader still had its alerts, its employer benefits, its insurance risks
+// ("$400k short on car liability"), its stock and 12 facts learned from it. How many.
+export async function forgetSince(
+  db: ScopedDb,
+  since: Date,
+  source: "bank" | "upload",
+): Promise<number> {
+  const after = { gte: since };
+  const counts = await Promise.all([
+    db.alerts.deleteMany({ where: { createdAt: after } }),
+    db.employerBenefits.deleteMany({ where: { status: "found", createdAt: after } }),
+    db.insuranceRisks.deleteMany({ where: { answeredAt: null, createdAt: after } }),
+    db.booksIssues.deleteMany({ where: { createdAt: after } }),
+    db.debtWatches.deleteMany({}),
+    db.userFacts.deleteMany({
+      where: { source: source === "bank" ? "detector" : "upload", firstSeen: after },
+    }),
+    db.suggestions.deleteMany({ where: { answeredAt: null, firstSeenAt: after } }),
+    db.suggestionOutcomes.deleteMany({ where: { createdAt: after } }),
+    db.healthScores.deleteMany({ where: { createdAt: after } }),
+    db.monthCloses.deleteMany({ where: { createdAt: after } }),
+    db.yearPlans.deleteMany({ where: { createdAt: after } }),
+    // Securities nothing holds or traded any more (their holdings went with the accounts).
+    db.securities.deleteMany({
+      where: { holdings: { none: {} }, investmentTransactions: { none: {} } },
+    }),
+  ]);
+  // Jane's open cards from since then are put away; they stay as the conversation's history.
+  const cards = await db.janeMessages.updateMany({
+    where: {
+      status: "open",
+      createdAt: after,
+      kind: { in: ["heads_up", "decision", "brief", "done"] },
+    },
+    data: { status: "answered", answeredAt: new Date(), actions: [] },
+  });
+  return counts.reduce((n, c) => n + c.count, 0) + cards.count;
 }
 
 // Whether anything worked out from data is still there, for someone with no data left.
