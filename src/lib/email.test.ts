@@ -28,6 +28,9 @@ describe("sendMagicLink", () => {
 
     const body = JSON.parse(init.body);
     expect(body).toMatchObject({ from: "Financial Controller <hello@app.test>", to: "a@b.com" });
+    // Debugger 10-30: a new Jane user's first email said "Financial Controller".
+    expect(body.subject).toBe("Your sign-in link for Jane");
+    expect(`${body.text} ${body.html}`).not.toMatch(/Financial Controller/);
     expect(body.text).toContain(URL_WITH_QUERY);
     expect(body.html).toContain(URL_WITH_QUERY.replaceAll("&", "&amp;"));
   });

@@ -4,7 +4,7 @@ import { sendEmail } from "@/lib/email";
 // Emails the person gets when the team moves one of their actions. Failure reasons stay
 // internal; the person gets a plain note and can reply.
 
-const APP_NAME = "Financial Controller";
+const APP_NAME = "Jane";
 
 function appUrl(path: string): string {
   const base = process.env.APP_URL ?? "http://localhost:3000";

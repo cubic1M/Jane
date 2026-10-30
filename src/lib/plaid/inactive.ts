@@ -33,16 +33,16 @@ export function inactivityStep(person: Person, now: Date): "warn" | "remove" | "
 async function warn(email: string, removalDate: Date, send: typeof sendEmail) {
   const date = removalDate.toISOString().slice(0, 10);
   const link = `${appBase()}/report`;
-  const text = `You haven't used Financial Controller in a while, so on ${date} we'll disconnect your linked banks. Nothing else changes, and you can link them again anytime.\n\nWant to keep them connected? Just open your report: ${link}`;
+  const text = `You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. Nothing else changes, and you can link them again anytime.\n\nWant to keep them connected? Just open your report: ${link}`;
   if (!process.env.RESEND_API_KEY && process.env.NODE_ENV !== "production") {
     console.info(`[dev] Email to ${email}: inactivity warning\n${text}`);
     return;
   }
   await send({
     to: email,
-    subject: "We'll disconnect your banks soon | Financial Controller",
+    subject: "We'll disconnect your banks soon | Jane",
     text,
-    html: `<p>You haven't used Financial Controller in a while, so on ${date} we'll disconnect your linked banks. Nothing else changes, and you can link them again anytime.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
+    html: `<p>You haven't used Jane in a while, so on ${date} we'll disconnect your linked banks. Nothing else changes, and you can link them again anytime.</p><p>Want to keep them connected? <a href="${link}">Open your report</a>.</p>`,
   });
 }
 
