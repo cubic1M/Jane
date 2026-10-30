@@ -51,6 +51,10 @@ export type TaxPack = {
   // Null for a past year: the bank only reports this year's interest.
   interest: { name: string; kind: string; cents: number }[] | null;
   income: PackGroup & { quarterCents: [number, number, number, number] };
+  // Income tax, estimated tax and property tax the person paid in the year, from their
+  // accounts: a preparer asks for them (night QA 10-30: a $9,500 IRS payment and a $2,800 state
+  // one were in the estimate but not in the pack).
+  taxPaid: PackGroup;
   reminders: string[];
   // Spec step 119: the forms to expect for the year, and whether each arrived.
   forms: (ExpectedForm & { received: boolean })[];
@@ -239,6 +243,10 @@ export function buildTaxPack({
     preparer,
     interest,
     income: { ...income, quarterCents },
+    taxPaid: group(
+      inYear.filter((t) => t.amountCents > 0),
+      isIn(["GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT"]),
+    ),
     reminders: estimatedTaxDates(year),
     forms,
     states,
@@ -269,6 +277,7 @@ export function taxPackCsv(pack: TaxPack): string {
       pack.preparer[g],
     ]),
     [TAX_PACK_COPY.incomeHeading, pack.income],
+    [TAX_PACK_COPY.taxPaidHeading, pack.taxPaid],
   ];
   const lines = [
     ["Group", "Date", "Payee", "Amount", TAX_PACK_COPY.noteLabel],

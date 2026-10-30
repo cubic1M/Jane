@@ -40,6 +40,44 @@ describe("which year the pack opens on", () => {
   });
 });
 
+// Night QA 10-30: a $9,500 IRS estimated payment and $2,800 to the state were in the tax
+// estimate but not in the pack a preparer gets.
+describe("tax payments in the pack", () => {
+  const irs = tx({
+    date: "2026-09-15",
+    amountCents: 950_000,
+    description: "IRS USATAXPYMT PPD ID: 3387702000",
+    pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+  });
+  const state = tx({
+    date: "2026-09-15",
+    amountCents: 280_000,
+    description: "FRANCHISE TAX BD CASTTAXRFD PPD",
+    pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+  });
+  const refund = tx({
+    date: "2026-05-02",
+    amountCents: -120_000,
+    description: "IRS TREAS 310 TAX REF",
+    pfcDetailed: "INCOME_TAX_REFUND",
+  });
+  const pack = buildTaxPack({
+    year: 2026,
+    today: "2026-10-30",
+    transactions: [irs, state, refund],
+    loans: [],
+  });
+
+  it("lists each payment made, with a total, and no refunds", () => {
+    expect(pack.taxPaid.rows.map((r) => r.amountCents)).toEqual([950_000, 280_000]);
+    expect(pack.taxPaid.totalCents).toBe(1_230_000);
+  });
+
+  it("puts them in the CSV", () => {
+    expect(taxPackCsv(pack)).toMatch(/Tax payments you made,2026-09-15,.*,9500\.00/);
+  });
+});
+
 describe("estimated-payment reminder dates", () => {
   it("are April 15, June 15, September 15 and the next January 15", () => {
     expect(estimatedTaxDates(2026)).toEqual([
@@ -134,7 +172,8 @@ describe("the pack", () => {
     expect(lines).toContain("Education,2026-03-10,SOMETHING,120.00,Tagged by Jane: check it");
     expect(lines).toContain("Income from contracting or gig work,2026-11-02,SOMETHING,400.00,");
     expect(lines).toContain("Summary,,Medical: total,203.40,");
-    expect(lines).toHaveLength(1 + 2 + 2 + 1 + 1 + 3 + 8);
+    // The summary has a total for each group, tax payments made included.
+    expect(lines).toHaveLength(1 + 2 + 2 + 1 + 1 + 3 + 9);
   });
 });
 
