@@ -37,7 +37,7 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
       // Paying a card that's on file isn't a bill of its own: what's bought on it is counted
       // where it's bought (night QA 10-30: "Other regular bills $52,534.88 a year" counted a
       // $1,640/mo Chase card payment beside the NYT and Audible charged to that card).
-      .filter((s) => !paysCardOnFile(s, input.accounts))
+      .filter((s) => !paysCardOnFile(s, cardsWithCharges(input)))
       .map((s) => ({
         key: s.key,
         merchantKey: s.merchantKey,
@@ -54,6 +54,13 @@ export function recurringCharges(input: DetectionInput): RecurringCharge[] {
       }))
       .sort((a, b) => b.annualCostCents - a.annualCostCents || a.merchant.localeCompare(b.merchant))
   );
+}
+
+// Cards whose own charges are on file: a card account left empty (its upload removed) counts
+// none of what's bought on it, so paying it is still the only sign of that spending.
+function cardsWithCharges(input: DetectionInput): DetectionInput["accounts"] {
+  const charged = new Set(input.transactions.map((t) => t.accountId));
+  return input.accounts.filter((a) => a.type === "credit" && charged.has(a.id));
 }
 
 function paysCardOnFile(s: Stream, accounts: DetectionInput["accounts"]): boolean {

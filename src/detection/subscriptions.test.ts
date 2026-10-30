@@ -136,10 +136,18 @@ describe("recurringCharges and card payments", () => {
     const rows = recurringCharges(
       input({
         accounts: [CHECKING, chaseCard],
-        transactions: [...autopay, ...monthly(4, 1549, NETFLIX)],
+        // Netflix is charged to the Chase card, which is on file with its charges.
+        transactions: [...autopay, ...monthly(4, 1549, { ...NETFLIX, accountId: chaseCard.id })],
       }),
     );
     expect(rows.map((r) => r.merchant)).toEqual([NETFLIX.merchantName]);
+  });
+
+  it("keeps paying a card whose upload was removed, its account left empty", () => {
+    const rows = recurringCharges(
+      input({ accounts: [CHECKING, chaseCard], transactions: autopay }),
+    );
+    expect(rows.map((r) => r.merchant)).toEqual(["Chase card payment"]);
   });
 
   it("keeps paying a card that isn't on file: it's the only sign of that spending", () => {
