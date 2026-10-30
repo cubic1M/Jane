@@ -97,7 +97,7 @@ const monthClose: Detector = {
         ),
       worthCents: total,
       worthKind: "risk",
-      confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charge"),
+      confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charges"),
       urgency: "soon",
       why: `I close each month on the first of the next. In ${monthLabel(month, { long: true })}, ${names.join(" and ")} sit in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
       action: { label: "Confirm the charges", href: "/monthly#close" },

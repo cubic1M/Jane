@@ -28,6 +28,11 @@ function describe(p: BudgetProposal | GoalProposal): string {
   return `I could start an "${p.name}" goal: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}. That's ${p.basis ?? `${EMERGENCY_FUND_MONTHS} months of your own average spending`} (${formatCents(p.monthlySpendingCents)} a month): math from your data, not advice.`;
 }
 
+// A set-up card's words, from the proposal as it is now (../still-true.ts says an open card again
+// from it).
+export const setupBody = (p: BudgetProposal | GoalProposal) =>
+  `${describe(p)} Want me to set it up?`;
+
 const amountOf = (p: BudgetProposal | GoalProposal) =>
   p.kind === "budget" ? p.amountCents : p.targetCents;
 
@@ -50,7 +55,7 @@ export const setupSource: MessageSource = {
       );
       return {
         kind: "decision",
-        body: `${describe(proposal)} Want me to set it up?`,
+        body: setupBody(proposal),
         refs: { proposalKey: proposal.key },
         actions,
         dedupeKey: `${proposal.key}:${amountOf(proposal)}`,

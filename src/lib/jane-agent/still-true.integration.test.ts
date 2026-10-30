@@ -16,6 +16,7 @@ import { closeSettled } from "./messages";
 import { loadPopupStack } from "./popup-stack";
 import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
+import { setupBody } from "./sources/setup";
 import { suggestionCard } from "./sources/suggestions";
 import { stillTrue } from "./still-true";
 import { MESSAGE_SELECT, toChatMessage } from "./types";
@@ -188,5 +189,38 @@ describe.runIf(url)("Jane's cards are checked against the data before they show"
     expect(shown.body.split("\n")).toEqual(suggestionCard(now));
     expect(shown.body).not.toContain("$47,597.63");
     expect(shown.refs.suggestionWhy).toBe(now.why);
+  });
+
+  it("says a set-up card from its proposal as it is now, and puts it away once it's answered", async () => {
+    // Night debugger (10-30): after a second file the dock kept the first file's $1,180 budget.
+    const proposal = {
+      kind: "budget" as const,
+      key: "budget:Food and drink",
+      category: "Food and drink",
+      amountCents: 61_000,
+    };
+    await client.planProposal.create({
+      data: { userId, key: proposal.key, kind: "budget", payload: proposal },
+    });
+    const card = toChatMessage(
+      await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "decision",
+          body: "I could set a $1,180.00 monthly budget for Food and drink. Want me to set it up?",
+          refs: { proposalKey: proposal.key },
+          actions: [{ id: "setup.yes", label: "Set it up", kind: "primary" }],
+          dedupeKey: "setup:budget:Food and drink:118000",
+        },
+      }),
+    );
+    const [shown] = await stillTrue(userId, [card], { client, now: day(10) });
+    expect(shown.body).toBe(setupBody(proposal));
+    expect(shown.body).toContain("$610.00");
+    await client.planProposal.updateMany({
+      where: { userId, key: proposal.key },
+      data: { status: "dismissed" },
+    });
+    expect(await stillTrue(userId, [card], { client, now: day(10) })).toEqual([]);
   });
 });

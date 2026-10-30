@@ -37,10 +37,11 @@ import {
   type ConfidenceLevel,
   type Frequency,
 } from "@/config/detection";
+import { OLD_UPLOAD_DAYS } from "@/config/import";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { byDate, inList, inLookback, merchantMatches } from "./helpers";
 import type { DetectionInput, DetectionRecurringStream, DetectionTransaction } from "./types";
-import { average, dayOfMonth, daysBetween, firstOfMonth, median } from "./units";
+import { addDays, average, dayOfMonth, daysBetween, firstOfMonth, median } from "./units";
 
 // A recurring outflow, from Plaid's recurring streams when we have them, otherwise found
 // in the transactions by our own fallback. Rules only ever see this shape.
@@ -586,9 +587,42 @@ export function detectRecurring(input: DetectionInput): Stream[] {
     groups.set(key, [...(groups.get(key) ?? []), t]);
   }
   joinVariants(groups);
+  const seenThrough = uploadedThrough(input);
   return [...groups.keys()]
     .sort()
-    .flatMap((key) => detectRuns((groups.get(key) ?? []).sort(byDate), input.asOf));
+    .flatMap((key) => detectRuns((groups.get(key) ?? []).sort(byDate), input.asOf))
+    .map((s) => stillActiveInFile(s, s.accountId ? seenThrough.get(s.accountId) : undefined));
+}
+
+// An uploaded account's transactions stop where its file stops: the day of its latest one, but
+// never more than OLD_UPLOAD_DAYS before today (older files get /import's "these files are
+// old" hint, and their charges are judged against today). A linked account's are current to
+// today, so it has none here.
+function uploadedThrough(input: DetectionInput): Map<string, string> {
+  const linked = new Set(
+    input.transactions.filter((t) => t.plaidTransactionId).map((t) => t.accountId),
+  );
+  const oldest = addDays(input.asOf, -OLD_UPLOAD_DAYS);
+  const through = new Map<string, string>();
+  for (const t of input.transactions) {
+    if (linked.has(t.accountId) || t.date < oldest || t.date > input.asOf) continue;
+    if (t.date > (through.get(t.accountId) ?? "")) through.set(t.accountId, t.date);
+  }
+  return through;
+}
+
+// A charge due after the file ends can't have been missed yet: in an uploaded account a stream
+// is active while its last charge is within ACTIVE_WITHIN_INTERVALS gaps of the file's last
+// day, not of today (night QA 10-30: a card statement to Sep 30 uploaded on Oct 30 found
+// nothing, its Hulu, Peacock and gym all "stopped" since their Oct charges weren't in it).
+function stillActiveInFile(s: Stream, through: string | undefined): Stream {
+  if (s.active || !through || s.lastDate === null) return s;
+  const gaps = s.charges.slice(1).map((c, i) => daysBetween(s.charges[i].date, c.date));
+  if (gaps.length === 0) return s;
+  return {
+    ...s,
+    active: daysBetween(s.lastDate, through) <= median(gaps) * ACTIVE_WITHIN_INTERVALS,
+  };
 }
 
 // Outflow streams only (Plaid gives outflows positive amounts, like transactions). Plaid's

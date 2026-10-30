@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { walkToCard } from "./card-walk";
 import { E2E_DATABASE_URL, addJaneMessage, autopilotLevel, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 
@@ -17,19 +18,6 @@ test.afterEach(async () => {
 
 const HEADLINE = "How much should I handle on my own?";
 const LABELS = ["Handle the safe stuff", "Handle everything allowed", "Ask me first"];
-
-async function toCard(page: Page, scope: Locator, docked: boolean): Promise<Locator> {
-  const showing = scope.locator('[data-card-state="showing"]');
-  const headline = showing.getByRole("heading", { level: 3 });
-  await expect(showing).toBeVisible({ timeout: 60_000 });
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  for (let i = 0; i < 30; i += 1) {
-    if (((await headline.textContent()) ?? "").trim() === HEADLINE) return showing;
-    if (docked) await scope.getByRole("button", { name: "Next suggestion" }).click();
-    else await page.keyboard.press("ArrowRight");
-  }
-  throw new Error("The choice card never came up");
-}
 
 test("a choice shows at once, greys the others, and Revert puts the previous level back", async ({
   context,
@@ -50,13 +38,16 @@ test("a choice shows at once, greys the others, and Revert puts the previous lev
     ],
   });
   await page.setViewportSize(isMobile ? { width: 375, height: 812 } : { width: 1440, height: 900 });
-  await page.goto("/home");
   const docked = !isMobile;
   const scope = docked
     ? page.getByRole("complementary", { name: "Chat with Jane" }).locator("[data-card-dock]")
     : page.locator('.floating-cards[data-floating-cards="queue"]');
-  if (isMobile) await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
-  const card = await toCard(page, scope, docked);
+  const openHome = async () => {
+    await page.goto("/home");
+    if (isMobile) await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
+    return scope;
+  };
+  const card = await walkToCard(page, openHome, HEADLINE, { docked });
 
   // Chosen: marked within 150 ms, the others still there, greyed and off, and Revert.
   const started = Date.now();
@@ -88,7 +79,9 @@ test("a choice shows at once, greys the others, and Revert puts the previous lev
   await expect.poll(() => autopilotLevel(userId!), { timeout: 30_000 }).toBe(before);
 
   // And it can be chosen again (the dock may have reloaded its cards meanwhile: find it again).
-  const again = await toCard(page, scope, docked);
+  const again = await walkToCard(page, async (n) => (n ? openHome() : scope), HEADLINE, {
+    docked,
+  });
   await again.getByRole("button", { name: LABELS[2], exact: true }).click();
   await expect(again.locator("[data-card-chosen]")).toBeVisible({ timeout: 150 });
   await expect.poll(() => autopilotLevel(userId!), { timeout: 30_000 }).toBe("ask");

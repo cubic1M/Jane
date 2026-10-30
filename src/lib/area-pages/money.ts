@@ -186,11 +186,16 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
       item(node.branch, s.topic, {
         label: node.label,
         status,
+        // A low balance's worth is how far cash falls short of a month's bills: "$941 short",
+        // never a bare "$941" beside "Balance running low", which reads as the balance (night
+        // QA 10-30: the balance was $798).
         figure:
           s.worthCents > 0
-            ? s.worthKind === "risk"
-              ? shortMoney(s.worthCents)
-              : perYear(s.worthCents)
+            ? s.topic === "low_balance"
+              ? `${shortMoney(s.worthCents)} short`
+              : s.worthKind === "risk"
+                ? shortMoney(s.worthCents)
+                : perYear(s.worthCents)
             : undefined,
         summary: s.summary,
         cents: s.worthCents,
