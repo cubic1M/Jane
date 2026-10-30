@@ -87,6 +87,17 @@ test("a card followed to its page, or answered, doesn't come back", async ({
   await page.waitForTimeout(2_000);
   await expect(cardNamed(page, answered)).toHaveCount(0);
 
+  // On the ledger a Yes is "You said yes", never Done, with the page where it's done (manager
+  // decision 10-30, honest labels).
+  await page.goto("/saved");
+  const said = page.locator('[data-ledger-entry="said_yes"]');
+  await expect(said.first()).toBeVisible({ timeout: 30_000 });
+  await expect(said.first().locator("summary")).toContainText("[You said yes]");
+  await said.first().locator("summary").click();
+  const open = said.first().locator("[data-ledger-open]");
+  await expect(open).toBeVisible();
+  expect(await open.getAttribute("href")).toMatch(/^\/(?!chat)/);
+
   // A fresh tab knows nothing of this one: the server has the answer, so it isn't served.
   const fresh = await context.newPage();
   await fresh.setViewportSize({ width: 1280, height: 800 });

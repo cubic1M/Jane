@@ -5,6 +5,7 @@ import {
   HELD_RULE,
   LEDGER_RULES,
   LEDGER_STATES,
+  STATE_LABEL,
   ledgerStateOf,
   notSeenRule,
   verifyRule,
@@ -14,9 +15,10 @@ import {
 
 describe("the ledger's states", () => {
   it("walks Estimated, Done, Verified, Held; Not seen when it never showed or came back", () => {
+    const marked = new Date("2026-10-30T12:00:00Z");
     expect(ledgerStateOf({ status: "shown" })).toBe("estimated");
-    expect(ledgerStateOf({ status: "open" })).toBe("done");
-    expect(ledgerStateOf({ status: "unverifiable" })).toBe("done");
+    expect(ledgerStateOf({ status: "open", doneAt: marked })).toBe("done");
+    expect(ledgerStateOf({ status: "unverifiable", doneAt: marked })).toBe("done");
     expect(ledgerStateOf({ status: "partial" })).toBe("verified");
     expect(ledgerStateOf({ status: "confirmed", heldAt: null })).toBe("verified");
     expect(ledgerStateOf({ status: "confirmed", heldAt: new Date() })).toBe("held");
@@ -25,9 +27,20 @@ describe("the ledger's states", () => {
     expect(ledgerStateOf({ status: "declined" })).toBeNull();
   });
 
+  // Debugger 10-30 (manager decision, honest labels): Yes on a dock card read "[DONE] Ask your
+  // lender to drop mortgage insurance" on /saved though the person had only said yes. Done needs
+  // a done mark ("I did it", Mark done); until then it's "You said yes".
+  it("never says Done without a done mark", () => {
+    for (const status of ["open", "unverifiable"]) {
+      expect(ledgerStateOf({ status, doneAt: null })).toBe("said_yes");
+      expect(ledgerStateOf({ status })).toBe("said_yes");
+    }
+    expect(STATE_LABEL.said_yes).toBe("You said yes");
+  });
+
   it("counts Verified and Held only", () => {
     expect([...COUNTED].sort()).toEqual(["held", "verified"]);
-    expect(LEDGER_STATES).toHaveLength(5);
+    expect(LEDGER_STATES).toHaveLength(6);
   });
 });
 

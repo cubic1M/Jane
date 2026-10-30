@@ -78,11 +78,20 @@ const inMonth = (day: string | null, month: string) => day?.slice(0, 7) === mont
 const money = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
+const OPEN_LABEL = {
+  done: "Done, checking",
+  said_yes: "You said yes",
+  estimated: "Still to do",
+} as const;
+
 export function closeOf<E extends CloseEntry>(input: CloseInput<E>): MonthClose<E> {
   const { month, today, entries } = input;
   const byCents = (a: { cents: number }, b: { cents: number }) => b.cents - a.cents;
   const found = entries.filter((e) => inMonth(e.foundOn, month)).sort(byCents);
-  const did = entries.filter((e) => inMonth(e.actedOn, month)).sort(byCents);
+  // What the person did: a Yes alone isn't (manager decision 10-30, honest labels).
+  const did = entries
+    .filter((e) => e.state !== "said_yes" && inMonth(e.actedOn, month))
+    .sort(byCents);
   const verified = entries
     .filter(
       (e) =>
@@ -93,12 +102,14 @@ export function closeOf<E extends CloseEntry>(input: CloseInput<E>): MonthClose<
   const changed = input.changes
     .filter((c) => inMonth(c.date, month))
     .sort((a, b) => b.amountCents - a.amountCents || a.key.localeCompare(b.key));
-  const open = entries.filter((e) => e.state === "estimated" || e.state === "done").sort(byCents);
+  const open = entries
+    .filter((e) => e.state === "estimated" || e.state === "said_yes" || e.state === "done")
+    .sort(byCents);
 
   // The chips: what's open (biggest first) and what went up, at most CLOSE_CHIPS_MAX.
   const candidates: (CloseChip & { cents: number })[] = [
     ...open.map((e) => ({
-      label: e.state === "done" ? "Done, checking" : "Still to do",
+      label: OPEN_LABEL[e.state as keyof typeof OPEN_LABEL] ?? "Still to do",
       figure: `${money(e.cents)}${e.yearly ? "/yr" : ""}`,
       sure: e.confidencePercent !== null ? `${e.confidencePercent}%` : null,
       href: "#open",
