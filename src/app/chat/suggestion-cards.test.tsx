@@ -5,7 +5,7 @@ vi.mock("./actions", () => ({ tapButton: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 import type { MessageView } from "@/lib/jane-agent/view";
-import { SuggestionCards, cardOf, cardParts } from "./suggestion-cards";
+import { SuggestionCards, cardOf, cardParts, followAction } from "./suggestion-cards";
 
 // The day's suggestions as floating cards (founder request): the short card with Yes and Not
 // now, the details already on the page, and nothing at all with none waiting.
@@ -152,5 +152,22 @@ describe("the overlay", () => {
 
   it("is nothing with none waiting", () => {
     expect(renderToStaticMarkup(<SuggestionCards messages={[]} />)).toBe("");
+  });
+});
+
+// Following a card to its page is engaging with it, never "done" (the savings record stays an
+// estimate until the transactions show it).
+describe("following a card to its page", () => {
+  type Button = MessageView["buttons"][number];
+  const button = (id: Button["id"]): Button => ({ id, label: id, kind: "primary" });
+  it("is a suggestion's own Yes, else its Not now, else nothing on the server", () => {
+    expect(
+      followAction({ suggestion: true, buttons: [button("suggestion.yes"), button("snooze")] }),
+    ).toBe("suggestion.yes");
+    expect(
+      followAction({ suggestion: false, buttons: [button("finding.yes"), button("snooze")] }),
+    ).toBe("snooze");
+    expect(followAction({ suggestion: false, buttons: [button("finding.yes")] })).toBeNull();
+    expect(followAction({ suggestion: true, buttons: [] })).toBeNull();
   });
 });

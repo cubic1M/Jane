@@ -1,9 +1,17 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SuggestionCards } from "@/app/chat/suggestion-cards";
 import { CARDS_CHANGED_EVENT, UNREAD_POLL_MS } from "@/config/side-chat";
+import {
+  goneIds,
+  goneServerSnapshot,
+  goneSnapshot,
+  skipParam,
+  subscribeGone,
+  withoutGone,
+} from "@/lib/dock-gone";
 import type { MessageView } from "@/lib/jane-agent/view";
 
 // The card dock (founder: "I want them right above the chat on the right (but not in the
@@ -16,10 +24,14 @@ import type { MessageView } from "@/lib/jane-agent/view";
 
 const KEPT = "jane:dock-cards";
 
-export function keptCards(storage: Pick<Storage, "getItem"> | undefined): MessageView[] {
+// Never one the person has dealt with since (answered or followed: src/lib/dock-gone.ts).
+export function keptCards(
+  storage: Pick<Storage, "getItem"> | undefined,
+  gone: readonly string[] = [],
+): MessageView[] {
   try {
     const kept = JSON.parse(storage?.getItem(KEPT) ?? "[]");
-    return Array.isArray(kept) ? kept : [];
+    return Array.isArray(kept) ? withoutGone(kept, gone) : [];
   } catch {
     return [];
   }
@@ -27,7 +39,7 @@ export function keptCards(storage: Pick<Storage, "getItem"> | undefined): Messag
 
 function keepCards(cards: readonly MessageView[]) {
   try {
-    window.sessionStorage.setItem(KEPT, JSON.stringify(cards));
+    window.sessionStorage.setItem(KEPT, JSON.stringify(withoutGone(cards, goneIds())));
   } catch {
     // Private window or storage blocked: the dock just loads them again.
   }
@@ -45,7 +57,7 @@ export function CardDock() {
   const pathname = usePathname();
   // The cards the tab last showed, at once, so nothing moves when they load. The docked panel
   // only renders in the browser (useWide is false on the server), so this never mismatches.
-  const [kept] = useState(() => keptCards(sessionStore()));
+  const [kept] = useState(() => keptCards(sessionStore(), goneIds()));
   const [cards, setCards] = useState<MessageView[]>(kept);
   // Kept cards paint in place; a dock that appears later slides open.
   const [fromKept, setFromKept] = useState(kept.length > 0);
@@ -60,7 +72,12 @@ export function CardDock() {
   const loaded = useRef(false);
   const load = useCallback(async () => {
     try {
-      const response = await fetch("/api/chat/cards", { cache: "no-store" });
+      // Without the ones just dealt with: their answers may not have reached the server yet.
+      const skip = skipParam(goneIds());
+      const response = await fetch(
+        skip ? `/api/chat/cards?skip=${encodeURIComponent(skip)}` : "/api/chat/cards",
+        { cache: "no-store" },
+      );
       if (!response.ok) return;
       const body = (await response.json()) as { cards?: MessageView[] };
       // The first answer replaces the kept cards outright: one may have been answered since.
@@ -70,7 +87,7 @@ export function CardDock() {
       setCards((now) => {
         const next = first
           ? (body.cards ?? [])
-          : keepShowing(now, body.cards ?? [], showing.current);
+          : keepShowing(now, body.cards ?? [], showing.current, goneIds());
         keepCards(next);
         return next;
       });
@@ -97,7 +114,14 @@ export function CardDock() {
     };
   }, [load, pathname]);
 
-  if (cards.length === 0) return null;
+  // One dealt with goes from the dock at once, and from the kept copy.
+  const gone = useSyncExternalStore(subscribeGone, goneSnapshot, goneServerSnapshot);
+  const shown = withoutGone(cards, gone.split(","));
+  useEffect(() => {
+    if (gone) keepCards(cards);
+  }, [gone, cards]);
+
+  if (shown.length === 0) return null;
   return (
     <FollowHeight
       className="shrink-0 border-b border-zinc-300 dark:border-zinc-700"
@@ -106,7 +130,7 @@ export function CardDock() {
       <div className="max-h-[50vh] overflow-y-auto overscroll-contain">
         {/* One stack for good: a reload updates it in place, never starting it over. */}
         <SuggestionCards
-          messages={cards}
+          messages={shown}
           docked
           onAnswered={() => void load()}
           onShowing={onShowing}
@@ -121,11 +145,14 @@ export function keepShowing(
   before: readonly MessageView[],
   after: readonly MessageView[],
   shown: string | null,
+  gone: readonly string[] = [],
 ): MessageView[] {
-  if (!shown || after.some((c) => c.id === shown)) return [...after];
+  // One the person dealt with is never kept, nor let back in by a load that crossed its answer.
+  if (shown && gone.includes(shown)) return withoutGone(after, gone);
+  if (!shown || after.some((c) => c.id === shown)) return withoutGone(after, gone);
   const at = before.findIndex((c) => c.id === shown);
-  if (at < 0) return [...after];
-  const out = [...after];
+  if (at < 0) return withoutGone(after, gone);
+  const out = withoutGone(after, gone);
   out.splice(Math.min(at, out.length), 0, before[at]);
   return out;
 }

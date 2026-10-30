@@ -209,6 +209,7 @@ export function FloatingCards({
   docked = false,
   onShowing,
   onDetails,
+  onFollow,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
@@ -236,6 +237,10 @@ export function FloatingCards({
   // Called when a card's More details is opened (the verified savings record keeps that a
   // suggestion was looked at); nothing waits on it.
   onDetails?: (id: string) => void;
+  // A card followed to one of its pages: it leaves like an answer (the next one shows in the
+  // same frame) and the caller records it. True when the caller opened the page itself (a client
+  // navigation); otherwise the link goes as links do.
+  onFollow?: (id: string, href: string) => boolean;
 }) {
   const [state, setState] = useState(initialState);
   // A revertable card that was just chosen (founder, 2026-10-25): it stays on screen with its
@@ -259,6 +264,18 @@ export function FloatingCards({
   // Cards waiting behind the one showing, drawn as edges under it.
   const behind = Math.max(0, left.length - 1);
   const folded = foldOnPhone && phone && !unfolded && current !== null;
+
+  // Followed to a page: off the stack like an answer; the caller says what it means.
+  function follow(card: FloatingCardData, href: string): boolean {
+    setHeld(null);
+    setLeaving((now) =>
+      now.some((n) => n.id === card.id) ? now : [...now, { ...card, way: "yes" }],
+    );
+    setState((s) => answer(cards, s, mode, card.id));
+    setSlide(null);
+    window.setTimeout(() => setLeaving((now) => now.filter((n) => n.id !== card.id)), LEAVE_MS);
+    return onFollow?.(card.id, href) ?? false;
+  }
 
   function respond(card: FloatingCardData, how: CardAnswer, choice?: string) {
     if (how === "yes" && card.revertable) {
@@ -544,6 +561,11 @@ export function FloatingCards({
                   <a
                     key={link.href + link.label}
                     href={link.href}
+                    onClick={(event) => {
+                      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey)
+                        return;
+                      if (follow(current, link.href)) event.preventDefault();
+                    }}
                     className="inline-flex min-h-11 items-center text-sm font-medium text-emerald-700 hover:underline"
                   >
                     {link.label} ›
