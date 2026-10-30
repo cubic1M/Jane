@@ -54,7 +54,7 @@ export async function forgetRemovedDemoBanks({
     try {
       if (linked) {
         await removeOrphans(userId, { client });
-        const count = await forgetSince(db, linked.createdAt, "bank");
+        const count = await forgetSince(db, linked.createdAt, "bank", { demo: true });
         if (refresh) await refresh(userId);
         console.info("demo_forgotten", JSON.stringify({ userId, rows: count }));
         forgotten += 1;
