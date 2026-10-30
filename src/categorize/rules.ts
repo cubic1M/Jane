@@ -574,6 +574,11 @@ const RULES: readonly Rule[] = [
   {
     category: "FOOD_AND_DRINK_RESTAURANT",
     keywords: [
+      // A college's dining hall (night QA 10-30: a student's "UC DINING HALL", 90 charges and
+      // most of their food, had no category).
+      "DINING HALL",
+      "DINING SERVICES",
+      "CAMPUS DINING",
       "OLIVE GARDEN",
       "APPLEBEE'S",
       "CHILI'S",
@@ -637,7 +642,18 @@ const RULES: readonly Rule[] = [
   { category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES", keywords: ["UBER", "LYFT"] },
   {
     category: "TRANSPORTATION_GAS",
-    keywords: ["SHELL OIL", "CHEVRON", "EXXON", "EXXONMOBIL", "MOBIL", "ARCO", "SUNOCO"],
+    keywords: [
+      "SHELL OIL",
+      "CHEVRON",
+      "EXXON",
+      "EXXONMOBIL",
+      "MOBIL",
+      "ARCO",
+      "SUNOCO",
+      // Night QA 10-30: a Midwest chain left uncategorized ("HOLIDAY STATIONSTORES 0412").
+      "STATIONSTORES",
+      "HOLIDAY STATION",
+    ],
   },
   // Money in from a marketplace is a seller's payout, not a return (life bench, #798).
   {
