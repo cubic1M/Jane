@@ -70,7 +70,7 @@ export type Stream = {
   namedPlan?: true;
 };
 
-export function merchantOf(t: DetectionTransaction) {
+export function merchantOf(t: Pick<DetectionTransaction, "merchantName" | "description">) {
   return normalizeMerchant(t.merchantName ?? t.description) ?? normalizeMerchant(t.description);
 }
 
@@ -356,16 +356,27 @@ function switchedToYearly(main: Stream, charges: DetectionTransaction[]): Stream
   return { ...yearlyStream(plan, merchant), key: `merchant:${merchant.key}@yearly` };
 }
 
-// A yearly plan seen once: one charge, in YEARLY_PLAN_*_CENTS, under the plan's own name or
-// saying it renews the year, and not something from the company's shop.
+// One charge that is a year of a plan: in YEARLY_PLAN_*_CENTS, under the plan's own name or
+// saying it renews the year, and not something from the company's shop. The one rule for a plan
+// paid once a year: detection's yearly streams and the price rises (src/planning/price-rises.ts)
+// both use it, so a movie ticket or a campus bookstore receipt is never a "renews" card.
+export function isYearlyPlanCharge(
+  c: Pick<DetectionTransaction, "amountCents" | "description" | "merchantName">,
+): boolean {
+  if (c.amountCents < YEARLY_PLAN_MIN_CENTS || c.amountCents > YEARLY_PLAN_MAX_CENTS) return false;
+  const merchant = merchantOf(c);
+  if (!merchant || isGoods(c.description)) return false;
+  const renewal = wordsOf(c.description).some((w) => YEARLY_RENEWAL_WORDS.includes(w));
+  return isPlanName(merchant.key) || planAfterStar(c.description) || renewal;
+}
+
+// A yearly plan seen once: one charge in YEARLY_PLAN_*_CENTS, and that one a plan's.
 function yearlyPlan(charges: DetectionTransaction[]): Stream | null {
   const plans = charges.filter(
     (c) => c.amountCents >= YEARLY_PLAN_MIN_CENTS && c.amountCents <= YEARLY_PLAN_MAX_CENTS,
   );
   const merchant = plans.length === 1 ? merchantOf(plans[0]) : null;
-  if (!merchant || isGoods(plans[0].description)) return null;
-  const renewal = wordsOf(plans[0].description).some((w) => YEARLY_RENEWAL_WORDS.includes(w));
-  if (!isPlanName(merchant.key) && !planAfterStar(plans[0].description) && !renewal) return null;
+  if (!merchant || !isYearlyPlanCharge(plans[0])) return null;
   return yearlyStream(plans[0], merchant);
 }
 

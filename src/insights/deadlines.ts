@@ -71,6 +71,9 @@ export type Deadline = {
   entryId?: string;
   // How sure Jane is, for one it guessed from the charges (a trial's end).
   confidence?: Confidence;
+  // The charge it comes from (YYYY-MM-DD), for one worked out from a charge: so the chat can find
+  // that charge however long ago it was (card-chat mismatch).
+  chargedOn?: string;
 };
 
 export const DEADLINE_KIND_LABELS: Record<DeadlineKind, string> = {
@@ -114,6 +117,7 @@ export function renewalDeadlines(input: DetectionInput, streams: Stream[]): Dead
           amountCents: s.lastAmountCents,
           href: "/subscriptions",
           detail: `About ${formatCents(s.lastAmountCents)} ${s.frequency === "ANNUALLY" ? "for another year" : "for another quarter"}. Cancel before then if you don't want it.`,
+          ...(s.lastDate ? { chargedOn: s.lastDate } : {}),
         })),
     );
 }
@@ -153,6 +157,7 @@ export function trialDeadlines(input: DetectionInput): Deadline[] {
           href: purchaseLink(merchant),
           detail: `It started with ${formatCents(start.amountCents)} on ${dayLabel(start.date)}. If it's a trial, the full price usually follows; cancel first if you don't want it. The date is an estimate.`,
           confidence: seenConfidence(input, 1, "small first charge", TRIAL_DEADLINE_MAX_PERCENT),
+          chargedOn: start.date,
         },
       ];
     });
@@ -219,6 +224,7 @@ export function returnDeadlines(input: DetectionInput, streams: Stream[]): Deadl
           amountCents: t.amountCents,
           href: purchaseLink(merchant),
           detail: `${formatCents(t.amountCents)} on ${dayLabel(t.date)}. ${listed ? `${merchant} usually takes` : "Most shops take"} returns within ${days} days; your receipt has the exact date.`,
+          chargedOn: t.date,
         },
       ];
     });

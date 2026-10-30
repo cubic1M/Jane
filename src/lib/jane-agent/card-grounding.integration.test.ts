@@ -27,6 +27,10 @@ import { runJaneAgent } from "./run";
 // 2. The lookups' figures are the data's: each subscription's last charge and each deadline
 //    from a purchase is found by the chat's transaction search, on its day and at its amount,
 //    and the checking balance is the accounts'.
+// 3. Every item on the Deadlines page, as far ahead as it goes, is too: its figures are in the
+//    chat's lookups, the charge it comes from is found on its day, and a yearly renewal is never
+//    listed as a price rise (founder's live /deadlines, 10-29: a movie ticket and a bookstore
+//    receipt were "Price goes up ... renews", and the chat found neither).
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
@@ -137,6 +141,51 @@ describe.runIf(url)("the dock and the chat agree for every sample person", () =>
         expect(safe.checkingBalance).toBe(
           total < 0 ? `-${formatCents(-total)}` : formatCents(total),
         );
+      }
+    },
+  );
+
+  it.each(PEOPLE)(
+    "$id: every Deadlines item is in the chat's lookups and the data",
+    { timeout: 240_000 },
+    async (person) => {
+      const userId = made.get(person.id)!;
+      const now = NOW;
+      const { deadlines } = JSON.parse(
+        (await runChatTool(userId, "deadlines", {}, { client, now })).content,
+      ) as {
+        deadlines: {
+          on: string;
+          kind: string;
+          what: string;
+          amount: string | null;
+          detail: string | null;
+          chargedOn?: string;
+        }[];
+      };
+      const { allowedCents } = await loadFacts(userId, { client, now });
+      for (const d of deadlines) {
+        const said = `${d.what} ${d.amount ?? ""} ${d.detail ?? ""}`;
+        expect(unsupportedFigures(said, allowedCents), d.what).toEqual([]);
+        // A renewal is a renewal, not a price rise.
+        if (/ renews$/.test(d.what)) expect(d.kind, d.what).not.toBe("Price goes up");
+        if (!d.chargedOn) continue;
+        // The charge it comes from, on its day, at a figure the item names.
+        const { transactions } = JSON.parse(
+          (
+            await runChatTool(
+              userId,
+              "search_transactions",
+              { from: d.chargedOn, to: d.chargedOn },
+              { client, now },
+            )
+          ).content,
+        ) as { transactions: { amount: string }[] };
+        const named = [d.amount, ...(said.match(/\$[\d,]+\.\d{2}/g) ?? [])];
+        expect(
+          transactions.some((t) => named.includes(t.amount)),
+          `${d.what}: no charge on ${d.chargedOn} at ${named.join(" or ")}`,
+        ).toBe(true);
       }
     },
   );
