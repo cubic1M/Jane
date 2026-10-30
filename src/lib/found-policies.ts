@@ -42,7 +42,7 @@ export async function policiesFromPayments(
         status: "found",
         premiumCents: f.premiumCents,
         premiumFrequency: f.premiumFrequency,
-        renewalDate: new Date(`${f.renewalDate}T00:00:00Z`),
+        renewalDate: f.renewalDate ? new Date(`${f.renewalDate}T00:00:00Z`) : null,
         termMonths: f.termMonths,
         merchantKey: f.merchantKey,
       },

@@ -46,7 +46,10 @@ describe.runIf(url)("insurance found from payments", { timeout: 120_000 }, () =>
         subtype: "checking",
       },
     });
+    // The statements start in November, so payments from January show when each policy began.
     const months = [
+      "2025-11",
+      "2025-12",
       "2026-01",
       "2026-02",
       "2026-03",
@@ -85,8 +88,10 @@ describe.runIf(url)("insurance found from payments", { timeout: 120_000 }, () =>
           ]),
         ),
         // Progressive since Jan 5; Lemonade since Mar 12.
-        ...months.map((m) => row(`${m}-05`, "PROGRESSIVE *INS", 11_800, INSURANCE, "Progressive")),
-        ...months.slice(2).map((m) => row(`${m}-12`, "LEMONADE INC", 1_400, INSURANCE, "Lemonade")),
+        ...months
+          .slice(2)
+          .map((m) => row(`${m}-05`, "PROGRESSIVE *INS", 11_800, INSURANCE, "Progressive")),
+        ...months.slice(4).map((m) => row(`${m}-12`, "LEMONADE INC", 1_400, INSURANCE, "Lemonade")),
       ],
     });
     return user.id;

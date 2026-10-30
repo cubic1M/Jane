@@ -62,6 +62,12 @@ export const PREMIUM_FREQUENCY_OF: Readonly<Record<string, PremiumFrequency>> = 
 
 // A found policy's term, for the renewal estimate: a year from the first payment seen.
 export const FOUND_TERM_MONTHS = 12;
+// The first payment seen marks the policy's start only when it comes at least this many days
+// after the statements begin; nearer, the payments likely began before them and the renewal
+// isn't known (night QA 10-30: with a year of statements, every insurer "renewed" a year
+// after the first statement day, "GEICO car insurance renews (estimate) in 19 days", though
+// GEICO was a monthly payment that had been going for longer).
+export const FOUND_START_SEEN_DAYS = 35;
 
 // Card annual fees: a fee with these words, charged again a year after the last.
 export const ANNUAL_FEE_WORDS =
