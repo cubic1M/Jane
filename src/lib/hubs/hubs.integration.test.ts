@@ -13,6 +13,7 @@ import { markAlertsRead, newestUnreadAlerts } from "@/lib/alerts";
 import { comparisonFor, comparisonsFor } from "@/lib/compare";
 import { savedToDate } from "@/lib/membership/service";
 import { linkDemoBank } from "@/lib/plaid/demo";
+import { planFor, planTotalCents } from "@/lib/plan";
 import { syncItem } from "@/lib/plaid/sync";
 import { aheadTiles, loadAheadHub } from "./ahead";
 import { loadJaneHub } from "./jane";
@@ -107,6 +108,13 @@ describe.runIf(url)("the hubs against a real database", () => {
       where: { userId, status: { in: ["new", "shown"] } },
     });
     expect(before.decide.total).toBe(open);
+    // The same total /plan says: a duplicate group counts once (night QA 10-30).
+    const plan = await planFor(userId, { client });
+    expect(before.decide.totalSavingsCents).toBe(planTotalCents(plan));
+    expect(plan.some((i) => i.countedElsewhere)).toBe(true);
+    expect(before.decide.totalSavingsCents).toBeLessThan(
+      plan.reduce((sum, i) => sum + (i.card.annualSavingsCents ?? 0), 0),
+    );
     expect(before.decide.items).toHaveLength(5);
     expect(before.decide.items[0].title).toBeTruthy();
     // The demo bank's phone or internet bill has a cheaper option compared.

@@ -155,6 +155,7 @@ async function MoneyContent({
           rows={data.spending.categories
             .slice(0, 5)
             .map((c) => ({ label: c.category, cents: c.cents }))}
+          totalCents={data.spending.spendingCents}
         />
         <Go href="/insights">Where your money goes</Go>
       </>

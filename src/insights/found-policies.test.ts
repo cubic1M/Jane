@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { AS_OF, CARD, GEICO, input, monthly, monthsAgo, tx } from "@/detection/__fixtures__/build";
+import {
+  AS_OF,
+  CARD,
+  GEICO,
+  GROCERIES,
+  input,
+  monthly,
+  monthsAgo,
+  tx,
+} from "@/detection/__fixtures__/build";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionTransaction } from "@/detection/types";
 import {
@@ -20,8 +29,9 @@ const found = (transactions: DetectionTransaction[]) => {
 
 describe("policiesFromStreams", () => {
   it("finds car insurance paid every month, renewing a year from the first payment", () => {
-    // Six payments, the first on May 15.
-    expect(found(monthly(6, 14_200, GEICO))).toEqual([
+    // Six payments, the first on May 15, in statements that start in January.
+    const statementsFrom = tx({ ...GROCERIES, date: monthsAgo(9), amountCents: 4_000 });
+    expect(found([statementsFrom, ...monthly(6, 14_200, GEICO)])).toEqual([
       {
         merchantKey: "geico",
         carrier: "GEICO",
@@ -31,6 +41,30 @@ describe("policiesFromStreams", () => {
         renewalDate: "2027-05-15",
         termMonths: 12,
       },
+    ]);
+  });
+
+  // Night QA 10-30: with a year of statements, GEICO "renewed" a year after the first statement
+  // day, in 19 days, though its monthly payments had been going for longer.
+  it("knows no renewal when the payments began before the statements", () => {
+    expect(found(monthly(12, 14_230, GEICO))).toMatchObject([
+      { carrier: "GEICO", premiumFrequency: "monthly", renewalDate: null, termMonths: 12 },
+    ]);
+  });
+
+  it("renews a yearly premium a year after its last payment", () => {
+    // A premium paid once a year marks its own renewal, whenever the statements start.
+    const data = input({ transactions: monthly(3, 14_230, GEICO) });
+    const [monthlyStream] = buildStreams(data);
+    const paid = tx({ ...GEICO, date: monthsAgo(11), amountCents: 98_000 });
+    const yearly = {
+      ...monthlyStream,
+      frequency: "ANNUALLY" as const,
+      charges: [paid],
+      lastAmountCents: 98_000,
+    };
+    expect(policiesFromStreams(data, [yearly])).toMatchObject([
+      { premiumFrequency: "yearly", renewalDate: monthsAgo(-1), termMonths: 12 },
     ]);
   });
 
@@ -107,6 +141,8 @@ describe("annualFeeDeadlines", () => {
         amountCents: 9_500,
         href: "/transactions",
         detail: expect.stringMatching(/an estimate/),
+        chargedOn: monthsAgo(11, 1),
+        evidence: { kind: "word" },
       },
     ]);
   });

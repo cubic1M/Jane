@@ -250,6 +250,22 @@ describe("what changed", () => {
     expect(kept.map((c) => c.title)).toEqual(["New $12.00 fee at Chase."]);
   });
 
+  it("says a new finding once, not again as an alert or a change", () => {
+    const title = "Chase checking could drop to -$2,718.80 around Nov 4";
+    const digest = buildDigest(
+      input({
+        findings: [{ title, annualSavingsCents: null, createdAt: daysAgo(1), confidence: "high" }],
+        alerts: [
+          { title: `${title}.`, createdAt: daysAgo(1), emailedAt: null, confidencePercent: 59 },
+        ],
+        changes: [change({ title, merchant: null, confidencePercent: 59 })],
+      }),
+    );
+    expect(digest?.newFindings.map((f) => f.title)).toEqual([title]);
+    expect(digest?.alerts).toEqual([]);
+    expect(digest?.changes).toEqual([]);
+  });
+
   it("puts the surest first and stops at the cap", () => {
     const many = Array.from({ length: 12 }, (_, i) =>
       change({ title: `Bill ${i}`, merchant: `M${i}`, confidencePercent: 50 + i }),
@@ -257,6 +273,15 @@ describe("what changed", () => {
     const kept = changesSince(many, [], daysAgo(7));
     expect(kept).toHaveLength(8);
     expect(kept[0]).toEqual({ title: "Bill 11", percent: 61 });
+  });
+
+  it("carries read-only mode to the plan", () => {
+    const findings = [{ title: "Fees", annualSavingsCents: 100, createdAt: daysAgo(1) }];
+    expect(buildDigest(input({ findings, readOnly: true }))?.plan).toEqual({
+      items: 1,
+      readOnly: true,
+    });
+    expect(buildDigest(input({ findings }))?.plan).toEqual({ items: 1 });
   });
 
   it("carries new findings' confidence level", () => {

@@ -60,7 +60,7 @@ test("the top bar holds still while pages load", async ({ context, page, baseURL
     const w = window as unknown as { barGone: boolean };
     w.barGone = false;
     new MutationObserver(() => {
-      if (!document.getElementById("app-top-bar")) w.barGone = true;
+      if (!document.querySelector("[data-app-top-bar]")) w.barGone = true;
     }).observe(document.body, { childList: true, subtree: true });
   });
   await tab

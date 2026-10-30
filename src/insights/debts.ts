@@ -2,6 +2,7 @@ import { BNPL_PAY_IN_4_RATE_SOURCE } from "@/config/debt";
 import { LOAN_DUE_SOON_DAYS } from "@/config/loans";
 import { SYNCED_KINDS, syncedKindOf } from "@/data-sources/types";
 import type { BnplPlan } from "./bnpl";
+import type { PaidLoan } from "./paid-loans";
 import { monthlyInterest } from "@/planning/debt";
 import { mortgagePi, mortgageTermYears } from "@/planning/home-equity";
 import { netWorth } from "./net-worth";
@@ -55,7 +56,8 @@ export type TypedTerms = {
 };
 
 export type Debt = {
-  // "account:<id>" or "bnpl:<plan key>": what typed terms are saved against.
+  // "account:<id>", "bnpl:<plan key>" or "paid:<kind>:<lender>": what typed terms are saved
+  // against.
   key: string;
   accountId: string | null;
   name: string;
@@ -254,6 +256,50 @@ function planDebt(p: BnplPlan, typed: TypedTerms | undefined, asOf: string): Deb
   };
 }
 
+const PAID_LOAN_WORDS: Record<PaidLoan["kind"], string> = {
+  student: "student loan",
+  auto: "car loan",
+  mortgage: "mortgage",
+};
+
+// A loan seen only in payments from checking (./paid-loans.ts): its payment and next date from
+// those, what's owed, the rate and the payoff date only as the person types them.
+function paidDebt(p: PaidLoan, typed: TypedTerms | undefined, asOf: string): Debt {
+  const [balanceCents, balanceFrom] = first<number>([typed?.balanceCents, "typed"]);
+  const [aprBps, aprFrom] = first<number>([typed?.aprBps, "typed"]);
+  const [paymentCents, paymentFrom] = first<number>(
+    [p.paymentCents, "payments"],
+    [typed?.minimumPaymentCents, "typed"],
+  );
+  const [payoffDate, payoffFrom] = first<string>([typed?.payoffDate, "typed"]);
+  const words = PAID_LOAN_WORDS[p.kind];
+  return {
+    key: `paid:${p.key}`,
+    accountId: null,
+    name: `${p.lender} ${words}`,
+    kind: p.kind,
+    kindLabel: `${words.charAt(0).toUpperCase()}${words.slice(1)}, seen in your payments`,
+    balanceCents,
+    balanceFrom,
+    aprBps,
+    rateType: null,
+    aprFrom,
+    paymentCents,
+    paymentEvery: "month",
+    paymentFrom,
+    nextDue: p.nextDate,
+    dueSoon: dueSoonOf(p.nextDate, asOf),
+    payoffDate,
+    payoffFrom,
+    overdue: false,
+    pastDueCents: null,
+    description: `${p.paymentsMade} payments seen`,
+    // Not a bank account: net worth counts it only once one is linked.
+    inNetWorth: false,
+    typedOn: typed ? typed.updatedOn : null,
+  };
+}
+
 // A new loan the person accepted through Jane (spec step 112), from its terms: what's
 // left after the months paid since it was funded, at its level payment.
 export type NewLoanInput = {
@@ -324,12 +370,27 @@ export function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
   };
 }
 
+// A loan seen in payments counts only while no loan account of its kind is on file: once the
+// bank reports the loan, the account is the debt.
+function paidOffFile(paid: readonly PaidLoan[], accounts: readonly DebtAccountInput[]) {
+  const onFile = new Set(
+    accounts
+      .filter((a) => a.type === "loan")
+      .map((a) => {
+        const synced = syncedKindOf(a.type, a.subtype);
+        return synced ? KIND_OF[synced] : null;
+      }),
+  );
+  return paid.filter((p) => !onFile.has(p.kind));
+}
+
 export function debtBook(
   input: {
     accounts: DebtAccountInput[];
     plans: BnplPlan[];
     typed: TypedTerms[];
     newLoans?: NewLoanInput[];
+    paid?: PaidLoan[];
   },
   asOf: string,
 ): DebtBook {
@@ -339,6 +400,9 @@ export function debtBook(
     ...accounts.map((a) => accountDebt(a, typedBy.get(`account:${a.id}`), asOf)),
     ...input.plans.map((p) => planDebt(p, typedBy.get(`bnpl:${p.key}`), asOf)),
     ...(input.newLoans ?? []).map((l) => newLoanDebt(l, asOf)),
+    ...paidOffFile(input.paid ?? [], accounts).map((p) =>
+      paidDebt(p, typedBy.get(`paid:${p.key}`), asOf),
+    ),
   ].sort(
     // Overdue first, then by the next due date, then by name.
     (a, b) =>
@@ -359,6 +423,10 @@ export function debtBook(
   const newLoansOwedCents = debts
     .filter((d) => d.key.startsWith("loan:") || d.key.startsWith("transfer:"))
     .reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
+  // Loans seen in payments, once the person typed what's owed.
+  const paidOwedCents = debts
+    .filter((d) => d.key.startsWith("paid:"))
+    .reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
   const monthly = debts.filter((d) => d.paymentEvery === "month");
   return {
     debts,
@@ -366,7 +434,7 @@ export function debtBook(
     bnplOwedCents,
     bnplUnknown: plans.filter((d) => d.balanceCents === null).length,
     newLoansOwedCents,
-    totalOwedCents: accountsOwedCents + bnplOwedCents + newLoansOwedCents,
+    totalOwedCents: accountsOwedCents + bnplOwedCents + newLoansOwedCents + paidOwedCents,
     monthlyCents: monthly.reduce((sum, d) => sum + (d.paymentCents ?? 0), 0),
     missingMonthly: monthly.filter((d) => d.paymentCents === null).length,
     missingRate: debts.filter((d) => d.aprBps === null && (d.balanceCents ?? 1) > 0),

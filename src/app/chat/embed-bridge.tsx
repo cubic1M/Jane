@@ -1,15 +1,31 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { containScroll } from "@/lib/contain-scroll";
 import { chatInFrame, isFrameMessage, leavesFrame, type FrameMessage } from "@/lib/side-chat";
 
 // The chat inside the side panel (/chat?embed=1, docs/design/home-hub.md). A link to another
 // page opens in the main window, not in the panel; a link to the chat keeps the panel's view;
 // and the page says where the panel is (docked, full or a sheet) and when to reload.
-export function EmbedBridge() {
+// The page asked for a reload: the next render tells it the cards, even if this bridge is a new
+// one (the empty chat and the full one are different pages of the same frame).
+let refreshAsked = false;
+
+export function EmbedBridge({ cards = "" }: { cards?: string }) {
   const router = useRouter();
+
+  // The cards it holds now (their ids): when they change, or after a reload the page asked for
+  // (an upload finished), the page's dock loads them again, so the chat brings its cards with
+  // it. Not on a plain first load: the dock loads its own then, and every page would ask twice.
+  const shownCards = useRef(cards);
+  useEffect(() => {
+    if (window.self === window.top) return;
+    if (cards === shownCards.current && !refreshAsked) return;
+    shownCards.current = cards;
+    refreshAsked = false;
+    window.parent.postMessage({ type: "jane:cards" }, window.location.origin);
+  }, [cards]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -113,8 +129,10 @@ export function EmbedBridge() {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== origin || event.source !== window.parent) return;
       if (!isFrameMessage(event.data)) return;
-      if (event.data.type === "jane:refresh") router.refresh();
-      else if (event.data.type === "jane:ask") {
+      if (event.data.type === "jane:refresh") {
+        refreshAsked = true;
+        router.refresh();
+      } else if (event.data.type === "jane:ask") {
         // "Ask Jane about this" (the feature map): the question waits in the box to be sent.
         const box = document.querySelector<HTMLInputElement>('input[name="message"]');
         if (box) {
@@ -146,30 +164,18 @@ export function EmbedBridge() {
         else delete root.dataset.chatEmbedCards;
       }
     };
-    // The panel growing or shrinking keeps the end of the chat in view if it was.
-    let atEnd = true;
-    const nearEnd = () =>
-      window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 80;
-    const onScroll = () => {
-      atEnd = nearEnd();
-    };
-    const onResize = () => {
-      if (atEnd) window.scrollTo({ top: document.documentElement.scrollHeight });
-    };
+    // The panel growing or shrinking keeps the end of the chat in view if it was: ScrollToEnd
+    // (./scroll-to-end.tsx) follows it.
     window.addEventListener("click", onClick, true);
     window.addEventListener("message", onMessage);
-    window.addEventListener("scroll", onScroll, { passive: true });
     // Listening now: ask the page where the panel is.
     window.parent.postMessage({ type: "jane:ready" }, origin);
-    window.addEventListener("resize", onResize);
     // Scrolling past the chat's ends never scrolls the page around the panel.
     const releaseScroll = containScroll(document);
     return () => {
       releaseScroll();
       window.removeEventListener("click", onClick, true);
       window.removeEventListener("message", onMessage);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
       watching?.disconnect();
       delete root.dataset.chatEmbed;
       delete root.dataset.chatEmbedCards;

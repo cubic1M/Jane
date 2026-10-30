@@ -7,18 +7,26 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import type { PlaidApi } from "plaid";
 import { addDays } from "@/detection/units";
 import { loadMonthClose } from "@/lib/close";
+import { refreshAfterRemoval } from "@/lib/import/background";
+import { runJaneAgent } from "@/lib/jane-agent/run";
 import { savingsLedger } from "@/lib/ledger";
+import { linkDemoBank } from "@/lib/plaid/demo";
+import { removePlaidItem } from "@/lib/plaid/remove";
 import { syncItem } from "@/lib/plaid/sync";
+import { scanSuggestions } from "@/lib/suggestions";
 import { startTrial } from "@/lib/trial";
 
 // The monthly close against a real Postgres: a sample person's month (Maya, the renter, on the
 // demo bank) has its parts from the ledger and the month's changes, each change with how sure
-// Jane is, at most three chips; a person with nothing wrong gets the checkup instead.
+// Jane is, at most three chips; a person with nothing wrong gets the checkup instead. And the
+// lineage invariant: once a bank is removed, no month's close shows anything worked out from it.
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-23T15:00:00Z");
+const at = (day: string) => new Date(`${day}T15:00:00Z`);
 
 describe.runIf(url)("the monthly close", { timeout: 240_000 }, () => {
   let client: PrismaClient;
@@ -29,6 +37,7 @@ describe.runIf(url)("the monthly close", { timeout: 240_000 }, () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     vi.stubEnv("PLAID_CLIENT_ID", "");
     vi.stubEnv("PLAID_SECRET", "");
+    vi.stubEnv("DEMO_BANK", "1");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
   afterAll(async () => {
@@ -120,5 +129,117 @@ describe.runIf(url)("the monthly close", { timeout: 240_000 }, () => {
     expect(close.checkup.lines.length).toBeGreaterThan(3);
     expect(close.checkup.passed).toBeGreaterThan(0);
     expect(close.checkup.found).toBe(0);
+  });
+
+  it("shows nothing from a bank once it is removed (lineage)", async () => {
+    const plaid = new Proxy(
+      {},
+      {
+        get: () => () => {
+          throw new Error("The demo bank must never call Plaid");
+        },
+      },
+    ) as PlaidApi;
+    const user = await client.user.create({
+      data: { email: `close-lineage-${crypto.randomUUID()}@example.com` },
+    });
+    made.push(user.id);
+    const userId = user.id;
+    // Their own checking, uploaded: pay and groceries for half a year.
+    const account = await client.account.create({
+      data: { userId, source: "csv", name: "Chase Checking", type: "depository" },
+    });
+    await client.transaction.createMany({
+      data: Array.from({ length: 6 }, (_, i) => {
+        const date = new Date(Date.UTC(2026, 4 + i, 15));
+        return [
+          {
+            userId,
+            accountId: account.id,
+            source: "csv" as const,
+            date,
+            amountCents: -420_000,
+            description: "ACME CORP PAYROLL",
+            pfcPrimary: "INCOME",
+            pfcDetailed: "INCOME_WAGES",
+          },
+          {
+            userId,
+            accountId: account.id,
+            source: "csv" as const,
+            date,
+            amountCents: 31_250,
+            description: "TRADER JOE'S #552",
+            pfcPrimary: "FOOD_AND_DRINK",
+            pfcDetailed: "FOOD_AND_DRINK_GROCERIES",
+          },
+        ];
+      }).flat(),
+    });
+    const { itemId } = await linkDemoBank(userId, { client, now: NOW });
+    await syncItem(itemId, { client, api: plaid, now: NOW });
+    await scanSuggestions(userId, { client, now: NOW });
+    await runJaneAgent(userId, { client, now: NOW, trigger: "open" });
+    // A saving verified on one of the demo bank's charges, on the ledger.
+    const demoTx = await client.transaction.findFirstOrThrow({
+      where: { userId, accountId: { not: account.id }, amountCents: { gt: 0 } },
+      orderBy: { date: "desc" },
+    });
+    await client.suggestionOutcome.create({
+      data: {
+        userId,
+        suggestionKey: "subscriptions:lineage_check",
+        capability: "subscriptions",
+        topic: "subscription_review",
+        title: "Planted from the demo bank",
+        firstShownAt: at("2026-10-02"),
+        lastShownAt: at("2026-10-02"),
+        answer: "yes",
+        answeredAt: at("2026-10-03"),
+        doneAt: at("2026-10-03"),
+        expectedCents: 12_000,
+        worthKind: "saves",
+        confidencePercent: 80,
+        status: "confirmed",
+        confirmedCents: 12_000,
+        evidenceTxIds: [demoTx.id],
+        verifiedAt: at("2026-10-12"),
+        // Made before the bank, so only its evidence ties it to the bank.
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+      },
+    });
+    const months = ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"];
+    const closes = () =>
+      Promise.all(months.map((m) => loadMonthClose(userId, m, { client, now: NOW })));
+    const textOf = (all: Awaited<ReturnType<typeof closes>>) =>
+      JSON.stringify(all.map((c) => [c.found, c.did, c.verified, c.changed, c.open, c.chips]));
+
+    const before = await closes();
+    expect(textOf(before)).toContain("Planted from the demo bank");
+    expect(before.some((c) => c.found.length + c.open.length + c.changed.length > 0)).toBe(true);
+
+    // The gate alone, before any cleanup: the line's transaction gone, the saving goes.
+    await client.transaction.delete({ where: { id: demoTx.id } });
+    const gated = await loadMonthClose(userId, "2026-10", { client, now: NOW });
+    expect(gated.verified.map((e) => e.title)).not.toContain("Planted from the demo bank");
+    expect((await savingsLedger(userId, { client, now: NOW })).savedCents).toBe(0);
+
+    // The whole bank removed: no month shows anything from it, and every line still exists.
+    await removePlaidItem(userId, itemId, "user_disconnected", { client, api: plaid });
+    await refreshAfterRemoval(userId, { client, now: NOW });
+    const after = await closes();
+    const demoAccounts = /Demo|Comcast|Verizon|Xfinity|GEICO|Planet Fitness|Netflix|Hulu|Spotify/;
+    expect(textOf(after)).not.toMatch(demoAccounts);
+    const lines = after.flatMap((c) =>
+      [...c.found, ...c.did, ...c.verified, ...c.open].flatMap((e) => [...e.lines, ...e.heldLines]),
+    );
+    const there = await client.transaction.count({
+      where: { userId, id: { in: lines.map((l) => l.id) } },
+    });
+    expect(there).toBe(new Set(lines.map((l) => l.id)).size);
+    for (const c of after) {
+      expect(c.verified).toEqual([]);
+      expect(c.changed).toEqual([]);
+    }
   });
 });

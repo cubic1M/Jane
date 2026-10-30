@@ -2,6 +2,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import type { ScopedDb } from "@/lib/db-scoped";
 import { FILE_SOURCE } from "@/lib/import/balances";
+import { forgetSince } from "@/lib/evidence/orphans";
 import { enqueueJob } from "@/lib/jobs";
 
 // Taking uploads back (founder: old and new statements shouldn't mix): one upload's rows, an
@@ -9,8 +10,9 @@ import { enqueueJob } from "@/lib/jobs";
 // Linked banks and settings are never touched. Every query is the signed-in person's own
 // (scopedFor). After each, the same background job as an upload works the numbers out again
 // (src/lib/import/background.ts), so findings, the "found $X/yr" total and the money pages drop
-// what came from the removed rows. Findings the person already said yes or no to stay, with
-// their answer. Each removal is audit-logged and counted, counts only.
+// what came from the removed rows. A finding built only from removed rows goes too, with the
+// person's answer and any action on it (src/lib/evidence/orphans.ts, run by that job's detection):
+// nothing may stand on evidence that is gone. Each removal is audit-logged and counted, counts only.
 
 export type UploadView = {
   id: string;
@@ -108,7 +110,10 @@ export async function uploadedTotals(
 export type Removed = { rows: number; accounts: number; jobId: string } | null;
 
 // The numbers worked out again in the background, shown by the chip as an update.
-async function refreshAfterRemoval(db: Pick<ScopedDb, "userId" | "importRuns">): Promise<string> {
+// What was worked out since the removed rows arrived is forgotten (src/lib/evidence/orphans.ts
+// forgetSince), then the background job works everything out again from what is left.
+async function refreshAfterRemoval(db: RemoveDb, since: Date): Promise<string> {
+  await forgetSince(db, since, "upload");
   const run = await db.importRuns.create({
     data: { userId: db.userId, kind: "removal", rows: 0 },
     select: { id: true },
@@ -127,17 +132,14 @@ async function record(
   ]);
 }
 
-type RemoveDb = Pick<
-  ScopedDb,
-  "userId" | "importRuns" | "accounts" | "transactions" | "balanceSnapshots"
->;
+type RemoveDb = ScopedDb;
 
 // Exactly the rows one upload added (rows it found already there stay with the upload that
 // added them), and the statement balances kept for the days it covered.
 export async function removeUpload(db: RemoveDb, runId: string): Promise<Removed> {
   const run = await db.importRuns.findFirst({
     where: { id: runId, kind: "upload" },
-    select: { id: true, accountId: true, fromDate: true, toDate: true },
+    select: { id: true, accountId: true, fromDate: true, toDate: true, createdAt: true },
   });
   if (!run) return null;
   const { count } = await db.transactions.deleteMany({ where: { importRunId: run.id } });
@@ -152,21 +154,21 @@ export async function removeUpload(db: RemoveDb, runId: string): Promise<Removed
   }
   await db.importRuns.deleteMany({ where: { id: run.id } });
   await record(db.userId, "upload_removed", { rows: count, accounts: 0 });
-  return { rows: count, accounts: 0, jobId: await refreshAfterRemoval(db) };
+  return { rows: count, accounts: 0, jobId: await refreshAfterRemoval(db, run.createdAt) };
 }
 
 // The rows an uploaded account got before uploads were recorded.
 export async function removeEarlierRows(db: RemoveDb, accountId: string): Promise<Removed> {
   const account = await db.accounts.findFirst({
     where: { id: accountId, source: "csv" },
-    select: { id: true },
+    select: { id: true, createdAt: true },
   });
   if (!account) return null;
   const { count } = await db.transactions.deleteMany({
     where: { accountId: account.id, source: "csv", importRunId: null },
   });
   await record(db.userId, "upload_removed", { rows: count, accounts: 0 });
-  return { rows: count, accounts: 0, jobId: await refreshAfterRemoval(db) };
+  return { rows: count, accounts: 0, jobId: await refreshAfterRemoval(db, account.createdAt) };
 }
 
 // An uploaded account and everything in it (its rows, balances and uploads go with it).
@@ -174,20 +176,25 @@ export async function removeEarlierRows(db: RemoveDb, accountId: string): Promis
 export async function removeUploadedAccount(db: RemoveDb, accountId: string): Promise<Removed> {
   const account = await db.accounts.findFirst({
     where: { id: accountId, source: "csv" },
-    select: { id: true },
+    select: { id: true, createdAt: true },
   });
   if (!account) return null;
   const rows = await db.transactions.count({ where: { accountId: account.id } });
   await db.accounts.deleteMany({ where: { id: account.id, source: "csv" } });
   await record(db.userId, "uploaded_account_removed", { rows, accounts: 1 });
-  return { rows, accounts: 1, jobId: await refreshAfterRemoval(db) };
+  return { rows, accounts: 1, jobId: await refreshAfterRemoval(db, account.createdAt) };
 }
 
 // Every uploaded account and statement, in one step. Linked banks and settings stay.
 export async function startOver(db: RemoveDb): Promise<Removed> {
   const totals = await uploadedTotals(db);
   if (totals.accounts === 0) return null;
+  const first = await db.accounts.findFirst({
+    where: { source: "csv" },
+    orderBy: { createdAt: "asc" },
+    select: { createdAt: true },
+  });
   await db.accounts.deleteMany({ where: { source: "csv" } });
   await record(db.userId, "uploads_reset", totals);
-  return { ...totals, jobId: await refreshAfterRemoval(db) };
+  return { ...totals, jobId: await refreshAfterRemoval(db, first?.createdAt ?? new Date(0)) };
 }

@@ -1,4 +1,5 @@
 import { actionWorthCents } from "@/lib/saved-amount";
+import { conciergeMode } from "@/lib/concierge-mode";
 import { isHiddenPage } from "@/config/hidden-pages";
 import { ALERT_TYPES, ALERTS_PAGE_LIMIT } from "@/config/alerts";
 import { DIGEST_CHANGE_KINDS } from "@/config/digest";
@@ -108,7 +109,10 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: ALERTS_PAGE_LIMIT,
   });
-  const plans = await plansFor(userId, now, client);
+  const [plans, concierge] = await Promise.all([
+    plansFor(userId, now, client),
+    conciergeMode(userId, { client }),
+  ]);
   const did = await whatJaneDid(userId, { client, now });
   const { changes, checkup } = await changesAndCheckup(
     userId,
@@ -136,6 +140,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     changes,
     checkup,
     plans,
+    readOnly: !concierge,
     janeDid: {
       finished: did.finished.length,
       confirmedCents: did.confirmedCents,

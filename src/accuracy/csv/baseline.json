@@ -54,7 +54,7 @@
     "bills.precision": 1,
     "bills.recall": 1,
     "falseDoubleCharges": 14,
-    "dollarError": 0.0014373861417886628,
+    "dollarError": 0.0014532444406159914,
     "spendingError": 0.002550017354027193,
     "incomeError": 0,
     "netWorthRight": 0.45,

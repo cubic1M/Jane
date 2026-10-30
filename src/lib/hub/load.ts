@@ -4,6 +4,7 @@ import { loadInsightTransactions } from "@/insights/load";
 import { debtSummary, DEBT_ACCOUNT_SELECT } from "@/insights/loans";
 import { spendingInsights } from "@/insights/spending";
 import { db as defaultClient } from "@/lib/db";
+import { loadDebts } from "@/lib/debts";
 import { scopedFor } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
 import { listGoals } from "@/lib/goals";
@@ -89,10 +90,14 @@ export async function loadHubAreas(
       }),
       quietly("insurance", () => loadInsurance(userId, { client, now })),
       quietly("loans", async () => {
-        const accounts = await db.accounts.findMany({
-          select: DEBT_ACCOUNT_SELECT,
-        });
-        return debtSummary(accounts, asOf);
+        const [accounts, book] = await Promise.all([
+          db.accounts.findMany({ select: DEBT_ACCOUNT_SELECT }),
+          loadDebts(userId, { client, now }),
+        ]);
+        // Loans seen only in payments from checking count too (night QA 10-30: the tile said
+        // "No loans or cards linked" while /loans listed a car loan and a student loan).
+        const seen = book.debts.filter((d) => d.key.startsWith("paid:"));
+        return { summary: debtSummary(accounts, asOf), seen };
       }),
       quietly("taxes", () => loadTaxEstimate(userId, { client, now })),
       quietly("practice", async () => {
@@ -120,8 +125,10 @@ export async function loadHubAreas(
       : null,
     loans: loans
       ? {
-          owedCents: loans.totalOwedCents,
-          lines: loans.lines.map((l) => ({
+          owedCents:
+            loans.summary.totalOwedCents +
+            loans.seen.reduce((sum, d) => sum + (d.balanceCents ?? 0), 0),
+          lines: [...loans.summary.lines, ...loans.seen].map((l) => ({
             name: l.name,
             balanceCents: l.balanceCents,
             overdue: l.overdue,

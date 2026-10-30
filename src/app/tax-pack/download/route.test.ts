@@ -67,6 +67,7 @@ describe("GET /tax-pack/download", () => {
         "Summary,,Business expenses: total,0.00,",
         "Summary,,Rental expenses: total,0.00,",
         "Summary,,Income from contracting or gig work: total,0.00,",
+        "Summary,,Tax payments you made: total,0.00,",
         "",
       ].join("\r\n"),
     );

@@ -1,7 +1,6 @@
 import {
   ANNUAL_CONFIDENCE_CAP,
   ANNUAL_MIN_AGE_DAYS,
-  ANNUAL_WORDS,
   CALL_SCRIPTS,
   PRICE_RISE_WINDOW_DAYS,
   PROMO_CATEGORIES,
@@ -12,7 +11,7 @@ import {
   PROMO_NEW_AFTER_DAYS,
   PROMO_RISE_SHARE,
 } from "@/config/price-rises";
-import { SUBSCRIPTION_CATEGORIES, SUBSCRIPTION_MERCHANTS } from "@/config/detection";
+import { isYearlyPlanCharge } from "@/detection/streams";
 import { confidenceOf } from "@/profile/confidence";
 import { DAY_MS } from "@/lib/dates";
 
@@ -26,6 +25,9 @@ export type Charge = {
   amountCents: number;
   description: string;
   pfc: string | null;
+  // The company's name as the rest of the app says it (the merchant directory's, or the cleaned
+  // bank name). Without one, the payee is read from the description (payeeOf).
+  merchantName?: string | null;
 };
 
 export type PriceRise = {
@@ -41,6 +43,10 @@ export type PriceRise = {
   thenCents: number;
   // A year of the difference (promo) or the renewal itself (annual).
   atStakeCents: number;
+  // The charge it is worked out from (the latest), so the chat can find it.
+  chargedOn: string;
+  // How many charges it saw (the flat run of an intro price; 1 for a yearly plan).
+  seenCharges: number;
   cheaper: string;
   script: string;
   confidence: { percent: number; reason: string };
@@ -71,17 +77,12 @@ function byPayee(charges: readonly Charge[]) {
   const groups = new Map<string, Charge[]>();
   for (const c of charges) {
     if (c.amountCents <= 0) continue;
-    const name = payeeOf(c.description);
+    const name = c.merchantName || payeeOf(c.description);
     groups.set(name, [...(groups.get(name) ?? []), c]);
   }
   for (const list of groups.values()) list.sort((a, b) => a.date.localeCompare(b.date));
   return groups;
 }
-
-const subscriptionLike = (c: Charge) =>
-  SUBSCRIPTION_CATEGORIES.includes((c.pfc ?? "") as never) ||
-  SUBSCRIPTION_MERCHANTS.some((m) => new RegExp(`\\b${m}\\b`, "i").test(c.description)) ||
-  ANNUAL_WORDS.test(c.description);
 
 export function priceRises(charges: readonly Charge[], today: string): PriceRise[] {
   if (charges.length === 0) return [];
@@ -109,6 +110,8 @@ export function priceRises(charges: readonly Charge[], today: string): PriceRise
           nowCents: last.amountCents,
           thenCents: then,
           atStakeCents: (then - last.amountCents) * 12,
+          chargedOn: last.date,
+          seenCharges: list.length,
           cheaper: `Call before ${ends} and ask to keep your price, or switch: new-customer prices elsewhere are often what you pay now.`,
           script: CALL_SCRIPTS.promo_end,
           confidence: {
@@ -118,8 +121,17 @@ export function priceRises(charges: readonly Charge[], today: string): PriceRise
         });
       }
     }
-    // A yearly plan: one charge from a subscription service, about a year ago.
-    if (list.length === 1 && subscriptionLike(first)) {
+    // A yearly plan: one charge about a year ago that is a plan's by detection's own rule (its
+    // name or its words), never by its category alone: a movie ticket (AMC, not AMC+) or a
+    // bookstore receipt was taken for a yearly plan (founder's live /deadlines, 10-29).
+    if (
+      list.length === 1 &&
+      isYearlyPlanCharge({
+        amountCents: first.amountCents,
+        description: first.description,
+        merchantName: first.merchantName ?? null,
+      })
+    ) {
       const age = days(first.date, today);
       const renews = plusDays(first.date, 365);
       if (age >= ANNUAL_MIN_AGE_DAYS && renews >= today) {
@@ -132,6 +144,8 @@ export function priceRises(charges: readonly Charge[], today: string): PriceRise
           nowCents: first.amountCents,
           thenCents: first.amountCents,
           atStakeCents: first.amountCents,
+          chargedOn: first.date,
+          seenCharges: 1,
           cheaper: `Decide before ${renews}: keep it, move to a monthly or cheaper plan, or turn off auto-renewal.`,
           script: CALL_SCRIPTS.annual_renewal,
           confidence: {

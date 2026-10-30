@@ -122,6 +122,8 @@ export const insuranceDeadlines: DeadlineSource = async (userId, { client, now }
         detail: found
           ? "Worked out from your payments, so the date is an estimate. Confirm the policy to keep it on your profile."
           : "A good time to compare prices before it renews.",
+        // A policy on file is the person's; one found from payments is the insurer's charges.
+        evidence: found ? { kind: "known_merchant" } : { kind: "entered" },
       },
     ];
   });
@@ -152,6 +154,8 @@ export const openEnrollmentDeadlines: DeadlineSource = async (userId, { client, 
             date,
             kind: "renewal",
             source: "insurance",
+            // From the plan or the benefits on file, and the calendar.
+            evidence: { kind: "entered" },
             amountCents: null,
             href: "/insurance",
             detail: health
@@ -187,6 +191,8 @@ export const workEnrollmentDeadlines: DeadlineSource = async (userId, { client, 
             date,
             kind: "renewal",
             source: "insurance",
+            // From the plan or the benefits on file, and the calendar.
+            evidence: { kind: "entered" },
             amountCents: null,
             href: "/insurance/benefits",
             detail: "Jane compares your benefits with buying the same cover yourself before it.",

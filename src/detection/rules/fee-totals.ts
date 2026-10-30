@@ -1,4 +1,5 @@
 import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
+import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 import { byDate, evidenceOf, sumCents } from "../helpers";
 import type { Candidate, DetectionAccount, DetectionInput, DetectionTransaction } from "../types";
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "../units";
@@ -45,7 +46,12 @@ export function totalsByAccount(
     const months = short
       ? Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH)))
       : LOOKBACK_MONTHS;
-    const annual = short ? Math.round((total * MONTHS_PER_YEAR) / months) : total;
+    // A card's annual fee comes once a year: it counts once, never scaled up with the rest
+    // (night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year).
+    const yearly = sumCents(charges.filter((c) => ANNUAL_FEE_WORDS.test(c.description)));
+    const annual = short
+      ? Math.round(((total - yearly) * MONTHS_PER_YEAR) / months) + yearly
+      : total;
     // Keyword rules and Plaid are reliable on fee lines; an LLM guess is less certain.
     const sure = charges.every((c) => c.categorySource === "rule" || c.categorySource === "plaid");
     return [
@@ -59,6 +65,9 @@ export function totalsByAccount(
           accountId,
           accountName: account?.name ?? null,
           totalCents: total,
+          // The months the total covers, for the card's words (night QA 10-30: "in the last 3
+          // months" in the title, "over the last 12 months" in the explanation).
+          months,
           transactions: charges.map((c) => ({ ...evidenceOf(c), category: c.pfcDetailed })),
         },
       },

@@ -1,4 +1,5 @@
 import { BANK_FEE_CATEGORIES, FEE_REVERSAL_DAYS, PROCESSOR_FEE_PAYEE } from "@/config/detection";
+import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 
 // Bank fees in a year, the one definition (the brief's suggestion, the Today card's fees and
 // Jane's answer all use it): fees in the bank-fee categories over the last twelve months, not
@@ -43,9 +44,14 @@ export function bankFeesYear(
   const seenCents = Math.max(0, fees.reduce((s, t) => s + t.amountCents, 0) - otherRefunds);
   if (seenCents === 0) return null;
   const months = Math.min(12, Math.max(1, monthsOfData));
+  // A card's annual fee comes once a year, so it counts once, not scaled up with the rest.
+  const yearly = Math.min(
+    seenCents,
+    fees.filter((t) => ANNUAL_FEE_WORDS.test(t.description)).reduce((s, t) => s + t.amountCents, 0),
+  );
   return {
     seenCents,
-    yearCents: Math.round(seenCents * (12 / months)),
+    yearCents: Math.round((seenCents - yearly) * (12 / months)) + yearly,
     count: fees.length,
     monthsOfData: months,
     estimated: months < 12,

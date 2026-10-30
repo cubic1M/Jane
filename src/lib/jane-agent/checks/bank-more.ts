@@ -178,6 +178,9 @@ const rows: Row[] = [
   ["close", "/monthly", "month_close", "is last month closed"],
   ["close", "/monthly", "month_close", "how did the monthly close go"],
   ["close", "/monthly", "month_close", "close the month"],
+  // The monthly close page (/close/[month]): what was found, verified and changed.
+  ["close", "/close", "month_close", "show me last month's close"],
+  ["close", "/close", "proven_savings", "what got verified last month"],
   // Books that balance (spec step 238).
   ["books", "/net-worth", "books_check", "are my numbers right"],
   ["books", "/net-worth", "books_check", "do my books balance"],

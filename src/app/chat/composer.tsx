@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { MicButton } from "./mic-button";
+import { scrollChatToEnd } from "./scroll-to-end";
 import { sendMessage, type SendState } from "./send";
 
 // The message box at the bottom of Jane's chat (spec step 84). What the person typed shows
@@ -79,7 +80,7 @@ export function ChatComposer({
     if (state.sentAt === 0) return;
     form.current?.reset();
     input.current?.focus();
-    form.current?.scrollIntoView({ block: "end" });
+    scrollChatToEnd();
   }, [state.sentAt]);
 
   // Back to the box once the answer is in (it can't take focus while it's disabled).
@@ -92,7 +93,7 @@ export function ChatComposer({
 
   // Keep the answer in view as it grows.
   useEffect(() => {
-    if (draft) form.current?.scrollIntoView({ block: "end" });
+    if (draft) scrollChatToEnd();
   }, [draft]);
 
   async function send(event: FormEvent<HTMLFormElement>) {

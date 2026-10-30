@@ -20,7 +20,36 @@ type Rule = {
   pattern?: RegExp;
 };
 
+// Prop trading firms (founder 10-30): a payout is pay for trading done on one's own (contractor
+// income, usually on a 1099-NEC), and evaluation fees, resets and data fees are what earning it
+// costs. Named here so both are found by the firm's name, and a payout the bank filed as a
+// transfer still counts as income (payoutByRules).
+const PROP_FIRMS = [
+  "LUCID TRADING",
+  "LUCIDTRADING",
+  "TOPSTEP",
+  "TOPSTEPTRADER",
+  "APEX TRADER",
+  "APEXTRADERFUNDING",
+  "TRADEIFY",
+  "MYFUNDEDFUTURES",
+  "MY FUNDED FUTURES",
+  "TAKE PROFIT TRADER",
+  "TAKEPROFITTRADER",
+  "FTMO",
+  "FUNDEDNEXT",
+  "FUNDED NEXT",
+  "THE FUNDED TRADER",
+  "EARN2TRADE",
+  "BULENOX",
+  "ALPHA FUTURES",
+  "ELITE TRADER FUNDING",
+];
+
 const RULES: readonly Rule[] = [
+  // First: "LUCID TRADING RESET FEE" is the firm's fee, never a bank fee.
+  { category: "INCOME_CONTRACTOR", keywords: PROP_FIRMS, direction: "in" },
+  { category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES", keywords: PROP_FIRMS, direction: "out" },
   // Bank fees and interest
   { category: "BANK_FEES_OVERDRAFT_FEES", keywords: ["OVERDRAFT", "OD FEE"] },
   {
@@ -179,7 +208,72 @@ const RULES: readonly Rule[] = [
     keywords: ["INTEREST PAYMENT", "INTEREST EARNED", "INTEREST PAID"],
     direction: "in",
   },
-  { category: "INCOME_TAX_REFUND", keywords: ["TAX REF", "IRS TREAS"], direction: "in" },
+  {
+    category: "INCOME_TAX_REFUND",
+    // A state's refund and one paid through a tax preparer (night QA 10-30: "CA FTB TAX
+    // REFUND", "TAX PRODUCTS PE1 SBTPG LLC" had no category, so they netted against spending).
+    keywords: ["TAX REF", "IRS TREAS", "TAX REFUND", "TAX RFD", "SBTPG", "TAX PRODUCTS"],
+    direction: "in",
+  },
+  // Night QA 10-30: other money in that had no category and netted against spending as a
+  // refund: a personal loan landing, unemployment, veterans' and military pay, child support,
+  // money back from the person's own brokerage or HSA.
+  {
+    category: "LOAN_DISBURSEMENTS_PERSONAL",
+    keywords: [
+      "LIGHTSTREAM",
+      "LOAN PROCEEDS",
+      "LOAN DEPOSIT",
+      "UPSTART",
+      "LENDINGCLUB",
+      "LENDING CLUB",
+      "SOFI LENDING",
+      "PROSPER FUNDING",
+      "BEST EGG",
+    ],
+    direction: "in",
+  },
+  {
+    category: "INCOME_UNEMPLOYMENT",
+    keywords: ["UNEMPLOYMENT", "EDD UI", "UI BENEFITS"],
+    direction: "in",
+  },
+  { category: "INCOME_MILITARY", keywords: ["DFAS", "MIL PAY", "VA BENEFITS"], direction: "in" },
+  { category: "INCOME_CHILD_SUPPORT", keywords: ["CHILD SUPPORT", "CHILD SUPP"], direction: "in" },
+  {
+    category: "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS",
+    keywords: ["COINBASE", "ROBINHOOD", "MONEYLINE"],
+    direction: "in",
+  },
+  {
+    category: "TRANSFER_IN_ACCOUNT_TRANSFER",
+    keywords: ["HSA REIMBURSEMENT", "HSA REIMB"],
+    direction: "in",
+  },
+  // Retirement money, dividends and rent coming in (night QA 10-30: a retiree's IRA
+  // distribution and an Airbnb host's payout read as refunds, the payout of travel).
+  {
+    category: "INCOME_RETIREMENT_PENSION",
+    keywords: [
+      "IRA DISTRIBUTION",
+      "IRA DIST",
+      "RMD",
+      "ANNUITY",
+      "CALPERS",
+      "CALSTRS",
+      "OPM RETIRE",
+      "TIAA",
+    ],
+    direction: "in",
+  },
+  { category: "INCOME_DIVIDENDS", keywords: ["DIVIDEND"], direction: "in" },
+  {
+    category: "INCOME_RENTAL",
+    keywords: ["AIRBNB PAYMENTS", "AIRBNB PAYOUT", "VRBO PAYOUT", "RENTAL INCOME"],
+    direction: "in",
+  },
+  { category: "INCOME_LONG_TERM_DISABILITY", keywords: ["DISABILITY"], direction: "in" },
+  { category: "INCOME_OTHER", keywords: ["WORKERS COMP"], direction: "in" },
   // Payouts for work done on one's own: income, never a refund that shrinks spending.
   {
     category: "INCOME_CONTRACTOR",
@@ -196,7 +290,18 @@ const RULES: readonly Rule[] = [
   // uncategorised, so the loans page never saw the mortgage).
   {
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    keywords: ["MORTGAGE", "MTG PMT", "MORTGAGE PMT", "HOME LOAN PMT"],
+    // Wells Fargo writes its own as "WF HOME MTG AUTO PAY" (night QA 10-30: left uncategorized,
+    // the month close asked a couple what their $3,240 mortgage was).
+    keywords: [
+      "MORTGAGE",
+      "MTG PMT",
+      "MORTGAGE PMT",
+      "HOME LOAN PMT",
+      "HOME MTG",
+      "MTG AUTO PAY",
+      "MTG PYMT",
+      "MTG PAYMENT",
+    ],
     direction: "out",
   },
   {
@@ -216,6 +321,8 @@ const RULES: readonly Rule[] = [
       "AUTO FIN",
       "AUTO FINANCE",
       "MOTOR CREDIT",
+      // Bank of America cuts it short (night QA 10-30: "TOYOTA MOTOR CR DES:AUTO PMT").
+      "MOTOR CR",
       "FORD CREDIT",
       "GM FINANCIAL",
       "NISSAN MOTOR ACCEPT",
@@ -274,6 +381,14 @@ const RULES: readonly Rule[] = [
       "SOFI INVEST",
       "IRA CONTRIB",
       "BROKERAGE",
+      // College savings (night QA 10-30: a grandparent's "SCHOLARSHARE 529 CONTRIB" $100 a month
+      // read as a subscription to cancel, "could save $1,200 a year").
+      "529 CONTRIB",
+      "529 PLAN",
+      "SCHOLARSHARE",
+      "MY529",
+      "COLLEGE SAVINGS PLAN",
+      "COLLEGEADVANTAGE",
     ],
     direction: "out",
   },
@@ -334,6 +449,11 @@ const RULES: readonly Rule[] = [
       "VENMO",
       "CASH APP",
       "TRANSFER TO",
+      // Into the person's own health savings account (night QA 10-30: "HEALTHEQUITY DES:HSA
+      // CONTRB" counted as $150 a month of spending).
+      "HEALTHEQUITY",
+      "HSA CONTRB",
+      "HSA CONTRIB",
       "360 PERFORMANCE SAVINGS",
       "360 SAVINGS",
     ],
@@ -454,6 +574,11 @@ const RULES: readonly Rule[] = [
   {
     category: "FOOD_AND_DRINK_RESTAURANT",
     keywords: [
+      // A college's dining hall (night QA 10-30: a student's "UC DINING HALL", 90 charges and
+      // most of their food, had no category).
+      "DINING HALL",
+      "DINING SERVICES",
+      "CAMPUS DINING",
       "OLIVE GARDEN",
       "APPLEBEE'S",
       "CHILI'S",
@@ -475,6 +600,9 @@ const RULES: readonly Rule[] = [
       "WHOLEFDS",
       "TRADER JOE",
       "SAFEWAY",
+      // Night QA 10-30: "RALEYS #322" was uncategorized.
+      "RALEYS",
+      "RALEY'S",
       "KROGER",
       "PUBLIX",
       "ALDI",
@@ -495,6 +623,17 @@ const RULES: readonly Rule[] = [
       "FRED MEYER",
     ],
   },
+  // A driver's or shopper's pay from a gig platform, before the ride-share and delivery rules
+  // (night QA 10-30: "UBER USA 6787 EDI PAYMNT" read as a taxi refund and "DOORDASH DASHER
+  // PAYOUT" as a restaurant refund, so $10,600 of pay netted against spending, "Spent this
+  // month $691" with $1,400 of rent, and taxes saw no income).
+  {
+    category: "INCOME_GIG_ECONOMY",
+    pattern:
+      /(?<![A-Z0-9])(?:UBER|LYFT|DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYOUT|PAYMNT|PAYMENT|EARNINGS|DASHER|DRIVER|SHOPPER|EDI|DIRECT DEP)(?![A-Z0-9])/,
+    direction: "in",
+  },
+  { category: "INCOME_GIG_ECONOMY", keywords: ["AMAZON FLEX"], direction: "in" },
   // Food delivery before ride shares, so "UBER EATS" isn't a taxi.
   {
     category: "FOOD_AND_DRINK_RESTAURANT",
@@ -503,7 +642,18 @@ const RULES: readonly Rule[] = [
   { category: "TRANSPORTATION_TAXIS_AND_RIDE_SHARES", keywords: ["UBER", "LYFT"] },
   {
     category: "TRANSPORTATION_GAS",
-    keywords: ["SHELL OIL", "CHEVRON", "EXXON", "EXXONMOBIL", "MOBIL", "ARCO", "SUNOCO"],
+    keywords: [
+      "SHELL OIL",
+      "CHEVRON",
+      "EXXON",
+      "EXXONMOBIL",
+      "MOBIL",
+      "ARCO",
+      "SUNOCO",
+      // Night QA 10-30: a Midwest chain left uncategorized ("HOLIDAY STATIONSTORES 0412").
+      "STATIONSTORES",
+      "HOLIDAY STATION",
+    ],
   },
   // Money in from a marketplace is a seller's payout, not a return (life bench, #798).
   {
@@ -520,6 +670,7 @@ const RULES: readonly Rule[] = [
     keywords: ["TARGET", "WALMART", "WAL-MART", "COSTCO"],
   },
   { category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", keywords: ["CVS", "WALGREENS", "RITE AID"] },
+  { category: "GENERAL_MERCHANDISE_CONVENIENCE_STORES", keywords: ["7-ELEVEN", "7 ELEVEN"] },
   {
     category: "GENERAL_MERCHANDISE_ELECTRONICS",
     keywords: ["BEST BUY", "APPLE STORE", "MICRO CENTER"],
@@ -582,6 +733,11 @@ const RULES: readonly Rule[] = [
     category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
     keywords: [
       "PG&E",
+      // How some banks spell it (night QA 10-30: "PGANDE WEB ONLINE").
+      "PGANDE",
+      // City-owned utilities (night QA 10-30: "SMUD DES:UTIL BILL" was uncategorized).
+      "SMUD",
+      "LADWP",
       "CON ED",
       "CONEDISON",
       "DUKE ENERGY",
@@ -619,6 +775,10 @@ const RULES: readonly Rule[] = [
       "LIBERTY MUTUAL",
       "LEMONADE INS",
       "NATIONWIDE",
+      // A Medicare supplement or Advantage plan is health cover the person pays (night QA 10-30).
+      "MEDICARE SUPP",
+      "MEDICARE SUPPLEMENT",
+      "MEDIGAP",
     ],
   },
   {
@@ -1179,6 +1339,9 @@ const RULES: readonly Rule[] = [
       "SEPTA",
       "CTA",
       "VENTRA",
+      // Paris's metro and buses (night QA 10-30: a traveller's "RATP PARIS" was uncategorized).
+      "RATP",
+      "NAVIGO",
       "METRA",
       "NJ TRANSIT",
       "NJT",
@@ -1817,6 +1980,40 @@ const RULES: readonly Rule[] = [
     ],
   },
   { category: "FOOD_AND_DRINK_GROCERIES", keywords: ["MARKET", "FOODS"], direction: "out" },
+  // Financial aid paid out to a student: moved money, like a loan disbursement, never a refund
+  // of spending or taxable pay (night QA 10-30: "FAFSA DISBURSEMENT UC REFUND", $2,100 in,
+  // uncategorized, cancelled a student's August spending).
+  {
+    category: "LOAN_DISBURSEMENTS_STUDENT",
+    keywords: [
+      "FAFSA",
+      "FINANCIAL AID",
+      "FIN AID",
+      "PELL GRANT",
+      "STUDENT AID",
+      "SCHOLARSHIP",
+      "DIRECT LOAN DISB",
+      "STUDENT LOAN DISB",
+    ],
+    direction: "in",
+  },
+  // A payday loan or an app's cash advance landing in checking: borrowed money, never a refund
+  // of spending (night QA 10-30: a server's "ADVANCE AMERICA LOAN", $400 in, uncategorized).
+  {
+    category: "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+    keywords: [
+      "ADVANCE AMERICA",
+      "CHECK INTO CASH",
+      "ACE CASH EXPRESS",
+      "SPEEDY CASH",
+      "CHECKSMART",
+      "EARNIN",
+      "BRIGIT",
+      "MONEYLION INSTACASH",
+      "DAVE INC",
+    ],
+    direction: "in",
+  },
   {
     category: "INCOME_OTHER",
     keywords: ["CASHBACK", "CASH BACK", "REWARDS CREDIT", "STATEMENT CREDIT", "REDEMPTION"],
@@ -1851,7 +2048,7 @@ const RULES: readonly Rule[] = [
   { category: "FOOD_AND_DRINK_RESTAURANT", keywords: ["TAVERN", "PUB", "SALOON", "BAR & GRILL"] },
   {
     category: "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
-    keywords: ["BAKERY", "BAKE SHOP", "DONUTS", "PASTRY", "PATISSERIE"],
+    keywords: ["BAKERY", "BAKE SHOP", "DONUTS", "PASTRY", "PATISSERIE", "BOULANGERIE"],
   },
   // A gift to a church or a charity, and insurance and loans by their own words (QA round 28:
   // "PARKSIDE COMMUNITY CHURCH", "LEMONADE INSURANCE", "HARBOR CREDIT UNION PMT").
@@ -2078,6 +2275,17 @@ const COMPILED = RULES.map((rule) => ({
 }));
 
 export type RuleInput = Pick<NormalizedTransaction, "description" | "amountCents" | "hints">;
+
+// Pay for work done on one's own (a prop firm's payout, a Stripe or Upwork payout, a
+// marketplace's): income, whatever the bank or Claude called it. A bank often files these as a
+// transfer in, which isn't income, so "what did I earn from them" found nothing. Null for
+// anything else.
+const PAYOUTS: readonly string[] = ["INCOME_CONTRACTOR", "INCOME_GIG_ECONOMY"];
+export function payoutByRules(t: RuleInput): Category | null {
+  if (t.amountCents >= 0) return null;
+  const category = categorizeByRules({ ...t, hints: {} });
+  return category && PAYOUTS.includes(category.detailed) ? category : null;
+}
 
 export function categorizeByRules({ description, amountCents, hints }: RuleInput): Category | null {
   const text = normalizeDescription(description);

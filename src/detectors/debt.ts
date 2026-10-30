@@ -1,4 +1,5 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
+import { rateMonthsOf } from "@/profile/build";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { ADDON_RULES } from "@/config/car-loan";
 import { formatCents } from "@/lib/money";
@@ -42,7 +43,7 @@ const studentRepayment: Detector = {
     if (payments.length < D.studentPaymentsMin || balanceOf(data.accounts, "student") <= 0) {
       return null;
     }
-    const monthly = outCents(payments) / Math.max(1, profile.months);
+    const monthly = outCents(payments) / rateMonthsOf(profile);
     const idr = Math.round(income(profile) * D.studentIdrShare);
     const gap = Math.round(monthly - idr);
     if (income(profile) <= 0 || gap < D.studentMinGapCents) return null;
@@ -83,7 +84,7 @@ const autoRefinance: Detector = {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT");
     const balance = balanceOf(data.accounts, "auto");
     if (payments.length < D.autoPaymentsMin || balance <= 0 || income(profile) <= 0) return null;
-    const monthly = outCents(payments) / Math.max(1, profile.months);
+    const monthly = outCents(payments) / rateMonthsOf(profile);
     const share = monthly / income(profile);
     if (share < D.autoPaymentShare) return null;
     return {
@@ -469,7 +470,7 @@ const studentForgiveness: Detector = {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
     const balance = balanceOf(data.accounts, "student");
     if (payments.length < D.studentPaymentsMin || balance <= 0) return null;
-    const monthly = outCents(payments) / Math.max(1, profile.months);
+    const monthly = outCents(payments) / rateMonthsOf(profile);
     const left = Math.round(balance - monthly * D.pslfPayments);
     if (left <= 0) return null;
     return {

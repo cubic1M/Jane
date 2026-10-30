@@ -9,7 +9,10 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { parseKey } from "@/detection/unusual";
 import { addDays } from "@/detection/units";
+import { evidenceRefs } from "@/lib/finding-accounts";
+import { SAMPLE_WIN_KEY } from "@/lib/sample-wins";
 import { unsupportedFigures } from "@/lib/guardrails";
 import { formatCents } from "@/lib/money";
 import { syncItem } from "@/lib/plaid/sync";
@@ -27,6 +30,10 @@ import { runJaneAgent } from "./run";
 // 2. The lookups' figures are the data's: each subscription's last charge and each deadline
 //    from a purchase is found by the chat's transaction search, on its day and at its amount,
 //    and the checking balance is the accounts'.
+// 3. Every item on the Deadlines page, as far ahead as it goes, is too: its figures are in the
+//    chat's lookups, the charge it comes from is found on its day, and a yearly renewal is never
+//    listed as a price rise (founder's live /deadlines, 10-29: a movie ticket and a bookstore
+//    receipt were "Price goes up ... renews", and the chat found neither).
 
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
@@ -140,4 +147,100 @@ describe.runIf(url)("the dock and the chat agree for every sample person", () =>
       }
     },
   );
+
+  it.each(PEOPLE)(
+    "$id: every Deadlines item is in the chat's lookups and the data",
+    { timeout: 240_000 },
+    async (person) => {
+      const userId = made.get(person.id)!;
+      const now = NOW;
+      const { deadlines } = JSON.parse(
+        (await runChatTool(userId, "deadlines", {}, { client, now })).content,
+      ) as {
+        deadlines: {
+          on: string;
+          kind: string;
+          what: string;
+          amount: string | null;
+          detail: string | null;
+          chargedOn?: string;
+        }[];
+      };
+      const { allowedCents } = await loadFacts(userId, { client, now });
+      for (const d of deadlines) {
+        const said = `${d.what} ${d.amount ?? ""} ${d.detail ?? ""}`;
+        expect(unsupportedFigures(said, allowedCents), d.what).toEqual([]);
+        // A renewal is a renewal, not a price rise.
+        if (/ renews$/.test(d.what)) expect(d.kind, d.what).not.toBe("Price goes up");
+        if (!d.chargedOn) continue;
+        // The charge it comes from, on its day, at a figure the item names.
+        const { transactions } = JSON.parse(
+          (
+            await runChatTool(
+              userId,
+              "search_transactions",
+              { from: d.chargedOn, to: d.chargedOn },
+              { client, now },
+            )
+          ).content,
+        ) as { transactions: { amount: string }[] };
+        const named = [d.amount, ...(said.match(/\$[\d,]+\.\d{2}/g) ?? [])];
+        expect(
+          transactions.some((t) => named.includes(t.amount)),
+          `${d.what}: no charge on ${d.chargedOn} at ${named.join(" or ")}`,
+        ).toBe(true);
+      }
+    },
+  );
+
+  // Provenance (card-chat mismatch): what /report, the alerts and the savings ledger show is
+  // stored with the rows it was built from, and those rows exist. A finding that names nothing
+  // can't be traced or retired with its source, so only kinds built from what the person
+  // entered (or from a whole profile) may.
+  it.each(PEOPLE)(
+    "$id: every finding, alert and ledger line traces to rows that exist",
+    { timeout: 240_000 },
+    async (person) => {
+      const userId = made.get(person.id)!;
+      const [findings, alerts, outcomes, accounts] = await Promise.all([
+        client.finding.findMany({
+          where: { userId },
+          select: { key: true, type: true, title: true, evidence: true },
+        }),
+        client.alert.findMany({
+          where: { userId, type: "unusual_activity" },
+          select: { key: true },
+        }),
+        client.suggestionOutcome.findMany({ where: { userId }, select: { evidenceTxIds: true } }),
+        client.account.findMany({ where: { userId }, select: { id: true } }),
+      ]);
+      const accountIds = new Set(accounts.map((a) => a.id));
+      const exists = async (ids: readonly string[]) =>
+        (await client.transaction.count({ where: { userId, id: { in: [...ids] } } })) ===
+        new Set(ids).size;
+      for (const f of findings) {
+        const refs = evidenceRefs(f.evidence);
+        // A sample person's past wins are seeded when the demo bank is linked, before its
+        // transactions arrive: they stand on the demo bank itself and go with it.
+        if (f.key.startsWith(SAMPLE_WIN_KEY)) continue;
+        if (refs.accountIds.length + refs.transactionIds.length === 0) {
+          expect(NAMES_NO_ROWS, `${f.type}: ${f.title} names no rows`).toContain(f.type);
+          continue;
+        }
+        expect(
+          refs.accountIds.every((id) => accountIds.has(id)),
+          f.title,
+        ).toBe(true);
+        expect(await exists(refs.transactionIds), f.title).toBe(true);
+      }
+      for (const a of alerts) {
+        const parsed = parseKey(a.key);
+        if (parsed) expect(await exists([parsed.transactionId]), a.key).toBe(true);
+      }
+      for (const o of outcomes) expect(await exists(o.evidenceTxIds)).toBe(true);
+    },
+  );
 });
+
+// Kinds of finding built from what the person entered or their whole profile, not from rows.
+const NAMES_NO_ROWS: readonly string[] = ["insurance_reshop", "covered_by_card"];

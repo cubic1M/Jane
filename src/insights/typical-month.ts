@@ -5,9 +5,10 @@ import {
   ONE_OFF_REPEAT_SHARE,
   ONE_OFF_SHARE,
 } from "@/config/detection";
+import { FULL_MONTH_START_SLACK_DAYS } from "@/config/budgets";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { formatCents } from "@/lib/money";
-import { kindOf, spendingInsights, type InsightTransaction } from "./spending";
+import { kindOf, monthsEnding, spendingInsights, type InsightTransaction } from "./spending";
 
 // A typical month (books QA): the Reyes' $36,000 of flood repairs in September made their
 // "monthly spending" about $14,900 instead of about $8,600, which left their year plan no room
@@ -97,13 +98,34 @@ export const typicalOf = <T extends InsightTransaction>(transactions: T[], asOf:
 // left out: the one monthly-spend figure the drafted goals, the emergency fund, the cash page and
 // the refund plan use (docs/feature-audit.md, cluster 13). Pass transactions covering at least
 // months + 1 (more history finds one-offs better).
+// The months (YYYY-MM) the transactions cover from (about) their first day: a month the data
+// starts partway through is mostly missing, not a quiet month.
+export function fullMonths(
+  months: readonly string[],
+  transactions: readonly { date: string }[],
+): string[] {
+  const first = transactions.reduce<string | null>(
+    (min, t) => (min === null || t.date < min ? t.date : min),
+    null,
+  );
+  if (first === null) return [];
+  return months.filter((m) => {
+    const start = new Date(`${m}-01T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() + FULL_MONTH_START_SLACK_DAYS);
+    return first <= start.toISOString().slice(0, 10);
+  });
+}
+
 export function typicalMonthlySpending(
   transactions: InsightTransaction[],
   asOf: string,
   months: number,
 ): number {
   const clean = withoutOneOffs(transactions, oneOffCharges(transactions, asOf));
-  const complete = spendingInsights(clean, { asOf, monthCount: months + 1 }).months.slice(0, -1);
+  const covered = new Set(fullMonths(monthsEnding(asOf, months + 1), transactions));
+  const complete = spendingInsights(clean, { asOf, monthCount: months + 1 })
+    .months.slice(0, -1)
+    .filter((m) => covered.has(m.month));
   return complete.length === 0
     ? 0
     : Math.round(complete.reduce((sum, m) => sum + m.spendingCents, 0) / complete.length);

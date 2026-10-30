@@ -6,7 +6,7 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
-import { markPlanShown, planFor } from "@/lib/plan";
+import { markPlanShown, planFor, planTotalCents } from "@/lib/plan";
 import { savingsLine } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
 import { conciergeMode } from "@/lib/concierge-mode";
@@ -56,10 +56,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
     user.id,
     items.map((i) => i.card.findingId),
   );
-  const total = items.reduce(
-    (sum, i) => sum + (i.countedElsewhere ? 0 : (i.card.annualSavingsCents ?? 0)),
-    0,
-  );
+  const total = planTotalCents(items);
   // After "Yes to all".
   const params = await searchParams;
   const count = (value: unknown) => {

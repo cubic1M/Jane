@@ -107,7 +107,11 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
     out.push({
       heading: "Jane's plan this week",
       items: [
-        `${n} ${n === 1 ? "thing" : "things"} Jane can do for you. Say yes, no or change each one; nothing happens until you do.`,
+        p.plan.readOnly
+          ? // As /plan says it in read-only mode (night QA 10-30: the email said "Jane can do
+            // for you" to people Jane does nothing for).
+            `${n} ${n === 1 ? "thing" : "things"} you could do, each with Jane's steps. Nothing changes unless you do it.`
+          : `${n} ${n === 1 ? "thing" : "things"} Jane can do for you. Say yes, no or change each one; nothing happens until you do.`,
       ],
       link: { label: "Review your plan", url: links.plan },
     });
@@ -219,7 +223,9 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
   const totals = [
     p.savedToDateCents > 0 &&
       `${SAVED_SO_FAR_LABEL}: about ${formatCents(p.savedToDateCents)} a year`,
-    `Still to look at: ${formatCents(p.moneyFoundCents)} a year`,
+    // Nor "Still to look at: $0.00 a year" when what's left has no dollar estimate (night QA
+    // 10-30: an insurance reshop on its own).
+    p.moneyFoundCents > 0 && `Still to look at: ${formatCents(p.moneyFoundCents)} a year`,
   ].filter((line): line is string => typeof line === "string");
   const body = sections(p, links);
   const close = { label: "See your monthly close", url: links.close };

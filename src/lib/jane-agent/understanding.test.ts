@@ -47,8 +47,17 @@ describe("new questions", () => {
     ["how much is my phone bill", "phone", false],
     ["how much do I pay for Comcast a year", "comcast", true],
     ["what's the cost of my gym", "gym", false],
+    // Night QA 10-30: "in fees" found no spending on "in fees".
+    ["how much do I pay in fees", "fees", false],
   ])("reads %s as what one thing costs", (text, target, year) => {
     expect(parse(text)).toEqual({ kind: "cost", target, year });
+  });
+
+  // Night QA 10-30: "how much do I make a month" answered with spending on "i make".
+  it("never reads a question about the person's own pay as a thing that costs", () => {
+    expect(parse("how much do I make a month").kind).not.toBe("cost");
+    expect(parse("how much do I earn").kind).not.toBe("cost");
+    expect(parse("how much do we make a month").kind).not.toBe("cost");
   });
 
   it("leaves 'how much' questions that are about something else alone", () => {

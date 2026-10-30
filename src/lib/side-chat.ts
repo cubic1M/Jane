@@ -1,5 +1,8 @@
 import { tabFor } from "@/config/navigation";
 import {
+  FAB_END_PX,
+  FAB_SCROLL_SLACK_PX,
+  FAB_TOP_PX,
   SHEET_CLOSE_BELOW,
   SHEET_FLICK_PX_PER_MS,
   SHEET_FULL,
@@ -101,6 +104,8 @@ export type FrameMessage =
   // Where the panel is, and whether the page beside it is Home (whose hub shows the suggestions).
   | { type: "jane:panel"; state: PanelState | "sheet"; home?: boolean }
   | { type: "jane:refresh" }
+  // The framed chat's cards changed (it loaded, or reloaded): the dock above it loads them again.
+  | { type: "jane:cards" }
   // The framed chat is listening: the page tells it where it is.
   | { type: "jane:ready" }
   // A hint shown greyed after what's typed until the person types (the home hub's "[amount] on
@@ -129,6 +134,7 @@ export function isFrameMessage(data: unknown): data is FrameMessage {
         (m.home === undefined || typeof m.home === "boolean")
       );
     case "jane:refresh":
+    case "jane:cards":
     case "jane:ready":
     case "jane:answering":
     case "jane:answered":
@@ -164,4 +170,16 @@ export function chatInFrame(href: string, origin: string): string | null {
   if (url.searchParams.get("embed") === "1") return null;
   url.searchParams.set("embed", "1");
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+// The phone's Jane button over the page (demo-video list: it covered the amounts in the import
+// preview): it tucks away while the person scrolls down to read, and comes back when they scroll
+// up, near the top, or at the end, where the page keeps room for it. Small moves change nothing.
+export function fabTucked(
+  tucked: boolean,
+  { from, to, end }: { from: number; to: number; end: number },
+): boolean {
+  if (to < FAB_TOP_PX || to >= end - FAB_END_PX) return false;
+  if (Math.abs(to - from) < FAB_SCROLL_SLACK_PX) return tucked;
+  return to > from;
 }

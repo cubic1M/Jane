@@ -1,5 +1,6 @@
 import type { PfcDetailed, PfcPrimary } from "@/categorize/taxonomy";
 import { LOOKBACK_MONTHS, SHORT_HISTORY_DAYS } from "@/config/detection";
+import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 import { ACCOUNT_KINDS, type AccountKind } from "@/data-sources/types";
 import { DAYS_PER_MONTH, MONTHS_PER_YEAR, daysBetween } from "@/detection/units";
 import { idleCashOf } from "@/planning/idle-cash";
@@ -2718,7 +2719,12 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
     for (const f of L.findings.filter(
       (x) => x.type === "card_interest" || x.type === "bank_fees",
     )) {
-      f.annualCents = Math.round((f.annualCents! * MONTHS_PER_YEAR) / months);
+      // A card's annual fee comes once a year: counted once, not scaled with the rest.
+      const yearly = (f.rows ?? [])
+        .map((id) => L.rows.find((x) => x.id === id))
+        .filter((x) => x && ANNUAL_FEE_WORDS.test(x.descriptor))
+        .reduce((sum, x) => sum + x!.amountCents, 0);
+      f.annualCents = Math.round(((f.annualCents! - yearly) * MONTHS_PER_YEAR) / months) + yearly;
     }
   }
   // Round 23: the upload mess, one kind per person, from its own dice.
@@ -2792,6 +2798,7 @@ function person(index: number, set: CsvSet = "tuning"): CsvPerson {
       amountCents: x.amountCents,
       accountId: x.account,
       pfc: x.category,
+      description: x.descriptor,
     })),
   });
   if (idle) {

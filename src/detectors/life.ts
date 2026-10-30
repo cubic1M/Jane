@@ -1,4 +1,5 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, factEvidence, headlineOf, tx, weakest } from "./helpers";
@@ -56,18 +57,27 @@ const lifeChecklist: Detector = {
         action: { label: "Open the checklist", href: "/life-events" },
       };
     }
-    // A new child: the first childcare payment is recent.
+    // A new child: the first childcare payment is recent, and well after the data begins.
     const care = tx(data, (x) => x.pfc === "GENERAL_SERVICES_CHILDCARE")
       .map((x) => x.date)
       .sort();
-    if (care.length > 0 && care[0] >= since) {
+    const dataFrom = data.transactions.reduce(
+      (min, t) => (t.date < min ? t.date : min),
+      data.today,
+    );
+    if (
+      care.length > 0 &&
+      care[0] >= since &&
+      care[0] >= addDays(dataFrom, R.lifeNewAfterDataDays)
+    ) {
+      const began = dayLabel(care[0], { year: true });
       return {
         id: suggestionId("life_event", "life_checklist"),
         capability: "life_event",
         topic: "life_checklist",
         title: "Go through the new-baby checklist",
         headline: headlineOf("Open the new-baby checklist", R.newChildTypicalCents, "saves", true),
-        short: `Childcare payments began on ${care[0]}.`,
+        short: `Childcare payments began on ${began}.`,
         worthCents: R.newChildTypicalCents,
         worthKind: "saves",
         confidence: weakest([
@@ -75,7 +85,7 @@ const lifeChecklist: Detector = {
           evidence("guessed", profile.months, care.length, "childcare payments"),
         ]),
         urgency: "soon",
-        why: `Childcare payments began on ${care[0]}. A new child usually means adding cover, claiming the credit and a care account; the checklist is typically worth about ${formatCents(R.newChildTypicalCents)} in the first year.`,
+        why: `Childcare payments began on ${began}. A new child usually means adding cover, claiming the credit and a care account; the checklist is typically worth about ${formatCents(R.newChildTypicalCents)} in the first year.`,
         action: { label: "Open the checklist", href: "/life-events" },
       };
     }

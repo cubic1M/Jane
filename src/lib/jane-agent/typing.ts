@@ -18,6 +18,7 @@ import { hit } from "@/lib/rate-limit";
 import { claudeLimit, refundClaudeUse } from "./claude-limits";
 import { overDailyCap, recordLimitHit } from "./spend";
 import { answerByRules } from "./answer";
+import { payeeFactsReply, payeesInQuestion, questionParts, rulesCoverQuestion } from "./backup";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
 import { joinReplies, splitQuestions } from "./two-parts";
@@ -212,7 +213,8 @@ async function answer(
   intent = resolvePronoun(text, intent, topic, (t) => parseIntent(t, asOf));
   // Spec step 188: how the person likes Jane to talk.
   const style = styleOf(await listPreferences(userId, { client }));
-  const rules = async () => {
+  // The rules' answer, and how many parts of the message it answered one by one (0: read whole).
+  const rules = async (): Promise<{ reply: Reply; partsAnswered: number } | null> => {
     // Spec step 193: two questions in one message get both answers.
     const two = splitQuestions(text, asOf);
     if (two) {
@@ -220,22 +222,43 @@ async function answer(
         two.map((part) => answerByRules(userId, part, { client, now, topic, cardTopic })),
       );
       if (replies.every((r) => r !== null)) {
-        return shapeReply(joinReplies(replies as Reply[]), style);
+        return {
+          reply: shapeReply(joinReplies(replies as Reply[]), style),
+          partsAnswered: two.length,
+        };
       }
     }
     const reply = await answerByRules(userId, intent, { client, now, topic, cardTopic });
-    return reply ? shapeReply(reply, style) : null;
+    return reply ? { reply: shapeReply(reply, style), partsAnswered: 0 } : null;
   };
-  // The backup for when Claude can't answer: the rules' answer from the same data, or, for
-  // anything they can't place, where the person stands (never a bare "unavailable").
+  // The backup for when Claude can't answer (./backup.ts): the rules' answer only when it answers
+  // the whole question; else what Jane can see for whoever the person named, or, for "how am I
+  // doing", where they stand. Never an answer to a different question (founder 10-30).
   const backup = async ({ limited = false } = {}): Promise<Reply> => {
-    const byRules = await rules();
-    if (byRules)
-      return limited ? { ...byRules, body: `${DAILY_LIMIT_NOTE} ${byRules.body}` } : byRules;
+    const [byRules, payees] = await Promise.all([
+      rules(),
+      payeesInQuestion(userId, text, { client, now }),
+    ]);
+    if (
+      byRules &&
+      rulesCoverQuestion({
+        text,
+        intent,
+        reply: byRules.reply,
+        partsAnswered: byRules.partsAnswered,
+        payees,
+      })
+    ) {
+      const { reply } = byRules;
+      return limited ? { ...reply, body: `${DAILY_LIMIT_NOTE} ${reply.body}` } : reply;
+    }
+    if (UNSAFE_REQUEST.test(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
+    if (payees.length > 0) {
+      return payeeFactsReply(text, payees, limited ? { limitNote: DAILY_LIMIT_NOTE } : {});
+    }
     // Where the person stands answers "how am I doing / what should I do"; for a specific
     // question it would be an unrelated status, so say plainly that it wasn't finished.
-    if (UNSAFE_REQUEST.test(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
-    if (!STATUS_QUESTION.test(text)) {
+    if (!STATUS_QUESTION.test(text) || questionParts(text).length > 1) {
       return { body: limited ? DAILY_LIMIT_NOTE : UNFINISHED_TEXT, actions: [], refs: {} };
     }
     const picture = await answerByRules(
@@ -262,7 +285,7 @@ async function answer(
   // No Claude (no key: dev, tests): the rules answer, as before.
   if (!llmEnabled()) {
     const byRules = await rules();
-    if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };
+    if (byRules) return { reply: byRules.reply, intent: intent.kind, source: "rules" };
     return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };
   }
   // Chat architecture (docs/spec.md): every typed message is answered by Claude, writing from

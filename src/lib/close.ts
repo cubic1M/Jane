@@ -8,6 +8,8 @@ import { detectChanges, type SureChange } from "@/insights/changes";
 import { loadCheckup } from "@/lib/checkup";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { withEvidence } from "@/lib/evidence/gate";
+import { evidenceRefs } from "@/lib/finding-accounts";
 import { savingsLedger, type LedgerEntry } from "@/lib/ledger";
 import { todayOf } from "@/lib/today";
 import { closeOf, type CloseChange, type MonthClose } from "@/planning/close";
@@ -85,7 +87,7 @@ export async function loadMonthClose(
   const today = await todayOf(userId, { client, now });
   const end = lastDay(month) < today ? lastDay(month) : today;
   const db = scopedFor(userId, client);
-  const [ledger, input, acks, findings, open] = await Promise.all([
+  const [ledger, input, acks, found, open] = await Promise.all([
     savingsLedger(userId, { client, now }),
     loadDetectionInput(userId, { client, now: new Date(`${end}T12:00:00Z`) }),
     db.changeAcks.findMany({ select: { key: true } }),
@@ -115,6 +117,8 @@ export async function loadMonthClose(
     }),
   ]);
   const expected = new Set(acks.map((a) => a.key));
+  // Only findings still standing on the person's data (the evidence gate): never a removed bank's.
+  const findings = await withEvidence(userId, found, (f) => evidenceRefs(f.evidence), { client });
   const fromFindings: CloseChange[] = findings.map((f) => {
     const before = (f.evidence as { priorAverageCents?: unknown } | null)?.priorAverageCents;
     return {

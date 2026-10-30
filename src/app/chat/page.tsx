@@ -53,7 +53,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   // Each sign-in starts the chat empty: older conversations stay, unseen (src/lib/chat-start.ts).
   const since = await currentChatStart();
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
-  const [chat, pinned, stacked, practice] = await Promise.all([
+  const [chat, pinned, stackedFirst, practice] = await Promise.all([
     openChat(user.id, { pages, since }),
     pinnedMessages(user.id, { since }),
     // Jane's cards: the day's suggestions, then whatever else waits on the person.
@@ -61,14 +61,22 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
     // Spec step 296: the practice portfolio's cards (demo advice mode only).
     practiceCards(user.id),
   ]);
+  // Opening the chat may be what posts Jane's cards (the first open after an upload): read them
+  // again then, or the list says "Nothing new from me yet" under a dock of ten (demo-video
+  // re-take).
+  const stacked = chat && stackedFirst.length === 0 ? await loadPopupStack(user.id) : stackedFirst;
   if (!chat) {
     return (
-      <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
-        Upload your bank statements and I&apos;ll start looking after your money.{" "}
-        <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
-          Upload your statements
-        </Link>
-      </p>
+      <>
+        {/* Listening, so the chat reloads once an upload is in. */}
+        <EmbedBridge />
+        <p data-chat-embed className="text-sm text-zinc-600 dark:text-zinc-400">
+          <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
+            Upload a bank statement
+          </Link>{" "}
+          and I&apos;ll start looking after your money.
+        </p>
+      </>
     );
   }
   // The cards are the one place a suggestion or a waiting decision shows (on a computer, the
@@ -79,7 +87,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
 
   return (
     <>
-      <EmbedBridge />
+      <EmbedBridge cards={stacked.map((m) => m.id).join()} />
       <h1 data-chat-embed className="sr-only">
         Chat with Jane
       </h1>

@@ -131,19 +131,23 @@ export function priceIncreaseAlerts(
     });
 }
 
-// Each recent bank or card fee.
+// Each recent bank or card fee. How sure: every fee in the data, not just this one (demo-video
+// list: "1 fee charge in 4 months of data" beside a file with 11).
 export function feeAlerts(input: DetectionInput): AlertCandidate[] {
-  return input.transactions
-    .filter((t) => t.amountCents > 0 && isRecent(t.date, input.asOf))
+  const fees = input.transactions
+    .filter((t) => t.amountCents > 0)
     .filter((t) => inList(t.pfcDetailed, [...BANK_FEE_CATEGORIES, ...CARD_INTEREST_CATEGORIES]))
-    .filter((t) => !isProcessorFee(t.description))
+    .filter((t) => !isProcessorFee(t.description));
+  const confidence = seenConfidence(input, fees.length, "fee charges");
+  return fees
+    .filter((t) => isRecent(t.date, input.asOf))
     .sort(byDate)
     .map((t): AlertCandidate => ({
       type: "fee_charged",
       key: t.id,
       title: `${formatCents(t.amountCents)} fee on ${accountName(input, t.accountId)}`,
       body: `"${t.description}" on ${dayLabel(t.date)}. Banks often take a fee back when asked; it's on your report.`,
-      confidence: seenConfidence(input, 1, "fee charge"),
+      confidence,
     }));
 }
 

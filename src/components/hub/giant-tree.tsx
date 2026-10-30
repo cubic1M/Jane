@@ -67,7 +67,9 @@ export function GiantTree({
     <section
       aria-labelledby="giant-tree-heading"
       data-giant-tree=""
-      className="flex flex-col gap-3"
+      // Its columns follow its own width, not the window's: with the chat docked at 1280 the
+      // page is ~850px, and six columns broke "Spending & bills" mid-word (demo-video list).
+      className="@container flex flex-col gap-3"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <h2 id="giant-tree-heading" className="text-base font-semibold">
@@ -77,7 +79,7 @@ export function GiantTree({
           Pick an area to open its tree
         </p>
       </div>
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+      <ul className="grid grid-cols-2 gap-2 @md:grid-cols-3 @4xl:grid-cols-6">
         {areas.map((a) => {
           const isOpen = a.key === openArea;
           return (
@@ -155,7 +157,7 @@ function AreaTree({
       {/* Straight down into the branches (founder: no "extra 1st layer repeating the same
           name"; the tile above already says it). */}
       <ul
-        className={`grid grid-cols-1 gap-x-4 gap-y-4 border-t-2 pt-4 sm:grid-cols-2 xl:grid-cols-3 ${LINE}`}
+        className={`grid grid-cols-1 gap-x-4 gap-y-4 border-t-2 pt-4 @xl:grid-cols-2 @4xl:grid-cols-3 ${LINE}`}
       >
         {area.branches.map((b) => (
           <li key={b.id} data-giant-branch={b.id} className="flex min-w-0 flex-col">

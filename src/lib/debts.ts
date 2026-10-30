@@ -7,6 +7,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { bnplPlans } from "@/insights/bnpl";
 import { debtBook, type DebtBook } from "@/insights/debts";
+import { PAID_LOAN_CATEGORIES, paidLoans } from "@/insights/paid-loans";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -39,7 +40,7 @@ async function loadDebtsFrom(
   const asOf = isoDay(now);
   const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - BNPL_LOOKBACK_DAYS * DAY_MS);
   const words = BNPL_PROVIDERS.flatMap((p) => p.words);
-  const [accounts, payments, typed, newLoans, transfers] = await Promise.all([
+  const [accounts, payments, typed, newLoans, transfers, loanPayments] = await Promise.all([
     db.accounts.findMany({
       where: { type: { in: ["credit", "loan"] } },
       select: {
@@ -116,6 +117,21 @@ async function loadDebtsFrom(
         promoEndsOn: true,
       },
     }),
+    // Loans paid from checking with no loan account on file (src/insights/paid-loans.ts).
+    db.transactions.findMany({
+      where: {
+        date: { gte: since },
+        amountCents: { gt: 0 },
+        pfcDetailed: { in: Object.keys(PAID_LOAN_CATEGORIES) },
+      },
+      select: {
+        date: true,
+        amountCents: true,
+        description: true,
+        merchantName: true,
+        pfcDetailed: true,
+      },
+    }),
   ]);
   return debtBook(
     {
@@ -132,6 +148,10 @@ async function loadDebtsFrom(
         payoffDate: t.payoffDate ? isoDay(t.payoffDate) : null,
         updatedOn: isoDay(t.updatedAt),
       })),
+      paid: paidLoans(
+        loanPayments.map((p) => ({ ...p, date: isoDay(p.date) })),
+        asOf,
+      ),
       newLoans: [
         ...newLoans.map(({ id, fundedAt, ...l }) => ({
           ...l,
@@ -235,7 +255,8 @@ export async function saveDebtTerms(
   const book = await loadDebts(userId, { client, now });
   const debt = book.debts.find((d) => d.key === input.debtKey);
   if (!debt) throw new DebtTermsError("That isn't one of your debts.");
-  if (debt.kind !== "bnpl" && checked.balanceCents !== null) {
+  // A plan's or a loan seen in payments: no bank reports what's owed, so the person types it.
+  if (debt.kind !== "bnpl" && !debt.key.startsWith("paid:") && checked.balanceCents !== null) {
     throw new DebtTermsError("The balance comes from your bank.");
   }
   await scopedFor(userId, client).debtTerms.upsert({

@@ -26,6 +26,7 @@ import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 import { addDays } from "@/lib/dates";
+import { withoutAchDetails } from "@/data-sources/merchant";
 import { lifeEventGuesses } from "@/insights/life-signals";
 import type { DetectionInput } from "@/detection/types";
 import { CAR_SIGNAL, KIDS_SIGNALS, NEW_BABY_RECENT_DAYS } from "@/config/life-facts";
@@ -230,8 +231,17 @@ export type Fact = {
 export type Profile = {
   facts: Record<FactKey, Fact>;
   today: string;
+  // Calendar months of data, for "in N months of data" and confidence.
   months: number;
+  // The months a rate is spread over (monthsForRate): the real span of a short history. Absent
+  // on profiles made by hand; rateMonthsOf falls back to months.
+  rateMonths?: number;
 };
+
+// What a monthly or yearly rate divides by (night QA 10-30: Aug 1 to Oct 26 is "2 months" by the
+// calendar, so payments, premiums and interest read 1.5 times their pace).
+export const rateMonthsOf = (profile: Pick<Profile, "months" | "rateMonths">) =>
+  profile.rateMonths ?? Math.max(1, profile.months);
 
 const monthOf = (day: string) => day.slice(0, 7);
 
@@ -408,11 +418,15 @@ export function buildProfile(input: ProfileInput): Profile {
   const activeSince = addDays(today, -EARNER_ACTIVE_DAYS);
   const lastPaid = new Map<string, string>();
   for (const t of salary) {
-    const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+    const name = withoutAchDetails(t.description)
+      .replace(/\s+PAYROLL.*$/i, "")
+      .trim();
     if (!lastPaid.has(name) || t.date > lastPaid.get(name)!) lastPaid.set(name, t.date);
   }
   for (const t of salary) {
-    const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+    const name = withoutAchDetails(t.description)
+      .replace(/\s+PAYROLL.*$/i, "")
+      .trim();
     if (lastPaid.get(name)! >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
   }
   const topEmployer = [...employers.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -714,5 +728,5 @@ export function buildProfile(input: ProfileInput): Profile {
   // Keep every key present, in the declared order.
   const ordered = {} as Record<FactKey, Fact>;
   for (const spec of FACT_SPECS) ordered[spec.key] = facts[spec.key];
-  return { facts: ordered, today, months };
+  return { facts: ordered, today, months, rateMonths: Math.max(1, monthsForRate(txs, today)) };
 }

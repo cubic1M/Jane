@@ -132,6 +132,17 @@ describe("subscriptionsReply", () => {
         .body,
     ).toBe("I don't see any subscriptions yet.");
   });
+
+  // Night QA 10-30: "You have 1 subscriptions".
+  it("says one subscription in the singular", () => {
+    const one = {
+      ...recurring,
+      charges: recurring.charges.filter((c) => c.subscription).slice(0, 1),
+    };
+    expect(subscriptionsReply({ total: false, all: false }, one, null).body).toMatch(
+      /^You have 1 subscription, about/,
+    );
+  });
 });
 
 describe("paydayReply", () => {

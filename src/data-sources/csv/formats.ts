@@ -49,9 +49,12 @@ export type HeaderlessFormat = Omit<CsvFormat, "requiredHeaders"> & {
 
 // MM/DD/YYYY, as US banks export it, to YYYY-MM-DD.
 export function parseUsDate(value: string): string | null {
-  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  // A two-digit year is 20YY: Excel writes 10/23/26 when a downloaded statement is opened and
+  // saved again (night QA 10-30: every row "Unreadable date", nothing imported).
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})$/.exec(value.trim());
   if (!match) return null;
-  const [, month, day, year] = match.map(Number);
+  const [, month, day, written] = match.map(Number);
+  const year = match[3].length === 2 ? 2000 + written : written;
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
   return date.toISOString().slice(0, 10);
@@ -523,6 +526,37 @@ export const schwabBank: CsvFormat = {
   },
 };
 
+// Navy Federal Credit Union (an account's transactions → Download, CSV): "Posting Date,
+// Transaction Date,Amount,Credit Debit Indicator,type,Type Group,Reference,…,Description,
+// Category". Every amount is positive; the indicator says which way it went (night QA 10-30:
+// the column picker had no way to say so, so pay would have read as spending).
+export const navyFederal: CsvFormat = {
+  id: "navy_federal",
+  bank: "Navy Federal",
+  label: "Navy Federal Credit Union",
+  account: { name: "Navy Federal checking", kind: "checking" },
+  requiredHeaders: ["posting date", "amount", "credit debit indicator", "description"],
+  parseRow(get) {
+    const common = parseCommon(get("posting date"), get("amount"), get("description"));
+    if (!common.ok) return common;
+    const way = get("credit debit indicator").trim().toLowerCase();
+    if (way !== "credit" && way !== "debit") {
+      return { ok: false, reason: `Unreadable credit or debit "${get("credit debit indicator")}"` };
+    }
+    const cents = Math.abs(common.cents);
+    return {
+      ok: true,
+      row: {
+        date: common.date,
+        // Plaid's sign: money out is positive.
+        amountCents: way === "debit" ? cents : -cents,
+        description: common.description,
+        hints: { bankType: optional(get("type")), bankCategory: optional(get("category")) },
+      },
+    };
+  },
+};
+
 // "- $25.00" or "+ $1,200.00" (Venmo) to cents, the sign kept.
 function spacedSignCents(text: string): number | null {
   return parseMoneyToCents(text.replace(/\s+/g, "").replace(/^\+/, ""));
@@ -661,6 +695,7 @@ export const CSV_FORMATS: readonly CsvFormat[] = [
   usBank,
   ally,
   schwabBank,
+  navyFederal,
   venmo,
   paypal,
 ];

@@ -10,6 +10,9 @@ import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
 import { incomeOverride, listPreferences } from "@/lib/jane-agent/preferences";
 import {
+  cardBalanceOf,
+  spendingOnFile,
+  fullMonthsOnly,
   healthChange,
   healthScore,
   type HealthChange,
@@ -61,13 +64,24 @@ export async function healthInput(
   // Books QA: a typical month, with one-off costs (a flood's repairs) left out of spending.
   const all = input.transactions.map((t) => ({ ...t, pending: false }));
   const oneOffs = oneOffCharges(all, input.asOf);
-  const months = spendingInsights(withoutOneOffs(all, oneOffs), {
-    asOf: lastFull,
-    monthCount: HEALTH_MONTHS,
-  }).months.filter((m) => m.spendingCents > 0 || m.incomeCents > 0);
+  const firstDay = input.transactions.reduce<string | null>(
+    (min, t) => (min === null || t.date < min ? t.date : min),
+    null,
+  );
+  const months = fullMonthsOnly(
+    spendingInsights(withoutOneOffs(all, oneOffs), {
+      asOf: lastFull,
+      monthCount: HEALTH_MONTHS,
+    }).months,
+    firstDay,
+  ).filter((m) => m.spendingCents > 0 || m.incomeCents > 0);
   const counted = new Set(months.map((m) => m.month));
+  // Spending happens in checking or on a card: with neither on file (a savings account alone),
+  // what's left after spending can't be seen, so no margin (night QA 10-30: a savings-only
+  // upload read "About 100% of what comes in is left after spending", scoring 100 of 100).
+  const spends = spendingOnFile(input.accounts);
   const average = (cents: (m: (typeof months)[number]) => number) =>
-    months.length === 0
+    months.length === 0 || !spends
       ? null
       : Math.round(months.reduce((s, m) => s + cents(m), 0) / months.length);
   const since = addDays(input.asOf, -HEALTH_SLIP_DAYS);
@@ -91,10 +105,8 @@ export async function healthInput(
               t.pfcDetailed !== null &&
               HEALTH_SLIP_CATEGORIES.includes(t.pfcDetailed),
           ).length,
-    cardBalanceCents:
-      cards.length === 0
-        ? null
-        : cards.reduce((s, a) => s + Math.max(0, a.currentBalanceCents ?? 0), 0),
+    cardBalanceCents: cardBalanceOf(cards),
+    cardsLinked: cards.length > 0,
     goals: {
       total: goals.length,
       onTrack: goals.filter((g) => g.progress.status !== "date_passed").length,

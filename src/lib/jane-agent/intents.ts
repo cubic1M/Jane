@@ -194,12 +194,19 @@ export function parseMonth(
   return thisYear <= current ? thisYear : `${year - 1}-${pad}`;
 }
 
+// A day or a year, never an amount: "nov 1", "november 15th", "the 1st", "10/30", "by 2027"
+// (night QA 10-30: "can I afford rent on Nov 1?" checked a $1.00 purchase).
+const DATE_WORDS =
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.? \d{1,2}(?:st|nd|rd|th)?\b|\b\d{1,2}(?:st|nd|rd|th)\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b(?:in|by|until|before|after|of|for) (?:19|20)\d{2}\b/gi;
+
 // "$900", "900", "$1,200.50", "1.2k", "2 grand", "900 dollars". The first amount wins.
 export function parseAmount(text: string): number | null {
   const scaled = /(?:^|[^\w.,])\$?\s?(\d+(?:\.\d+)?)\s?(k|grand|thousand)\b/.exec(text);
   if (scaled) return Math.round(Number(scaled[1]) * 100_000);
   const money = /\$\s?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)/.exec(text);
-  const bare = /(?:^|[^\w.,$])((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\b/.exec(text);
+  const bare = /(?:^|[^\w.,$])((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\b/.exec(
+    text.replace(DATE_WORDS, " "),
+  );
   const found = money?.[1] ?? bare?.[1];
   if (!found) return null;
   const cents = parseMoneyToCents(found);
@@ -311,13 +318,16 @@ export function fixTypos(text: string): string {
 
 // What to look for in the findings: no "my", no "subscription" or "bill" on the end.
 function cleanTarget(text: string): string {
-  return text
-    .replace(/^(?:(?:my|the|our|a|an|that|this) )+/, "")
-    .replace(
-      /(?:^| )(?:subscriptions?|membership|bill|plan|account|charges?|service|payments?|thing)$/,
-      "",
-    )
-    .trim();
+  return (
+    text
+      // "how much do I pay in fees": the fees, not "in fees" (night QA 10-30).
+      .replace(/^(?:(?:in|on|for|my|the|our|a|an|that|this) )+/, "")
+      .replace(
+        /(?:^| )(?:subscriptions?|membership|bill|plan|account|charges?|service|payments?|thing)$/,
+        "",
+      )
+      .trim()
+  );
 }
 
 // "a trip", "the new couch", "food": what the money is for, without the amount or the
@@ -713,7 +723,14 @@ export function parseIntent(
     if (!cost) continue;
     const target = cleanTarget(cost[1]);
     // "How much is safe to spend" and "how much do I owe" belong elsewhere.
-    if (target && !SPENDING.test(target) && !/^(?:due|coming up|left|owed?)$/.test(target)) {
+    // "how much do I (or we) make a month" is about pay, not a thing that costs "i make" (night QA
+    // 10-30).
+    if (
+      target &&
+      !SPENDING.test(target) &&
+      !/^(?:due|coming up|left|owed?)$/.test(target) &&
+      !/^(?:i|we)\b/.test(target)
+    ) {
       return { kind: "cost", target, year: cost[2] === "year" };
     }
   }
@@ -792,7 +809,8 @@ const CATEGORY_WORDS: Readonly<Record<string, readonly string[]>> = {
   "Personal care": ["haircut", "haircuts", "beauty", "gym", "fitness", "salon"],
   Home: ["house", "home improvement", "furniture", "repairs"],
   "Bank fees and interest": ["fees", "bank fees", "interest"],
-  Services: ["service"],
+  // Childcare is Plaid's GENERAL_SERVICES_CHILDCARE (night QA 10-30: "daycare" found nothing).
+  Services: ["service", "daycare", "childcare", "child care", "nanny", "babysitter"],
   "Government and donations": ["donations", "charity", "government"],
   "Loan payments": ["loans", "loan"],
 };

@@ -8,10 +8,12 @@ export type LevelRule = { limit: number; maxAnnualCents?: number };
 
 export const AUTOPILOT_LEVELS: Record<
   AutopilotChoice,
-  { label: string; description: string; rules: Record<string, LevelRule> }
+  // short: the chat's one line for it (demo-video list: the whole description read as a wall).
+  { label: string; short: string; description: string; rules: Record<string, LevelRule> }
 > = {
   safe: {
     label: "Handle the safe stuff",
+    short: "refunds, fees and small price rises; money only comes back to you.",
     description:
       "Refunds for double charges, trials and fees, asking for your old price back on small increases, and asking for a lower card rate. Money only comes back to you, and you can take anything back for a day.",
     rules: {
@@ -24,6 +26,7 @@ export const AUTOPILOT_LEVELS: Record<
   },
   all: {
     label: "Handle everything allowed",
+    short: "the same, with no size limit.",
     description:
       "The same kinds of requests, with no limit on the size of a price increase and more each month. Moving money, phone calls, cancelling and insurance still need your yes.",
     rules: {
@@ -36,6 +39,7 @@ export const AUTOPILOT_LEVELS: Record<
   },
   ask: {
     label: "Ask me first",
+    short: "nothing without your yes.",
     description: "Jane asks before doing anything. You answer each item on your plan.",
     rules: {},
   },

@@ -17,6 +17,8 @@ import {
   RENEWAL_FREQUENCIES,
   SUBSCRIPTION_CATEGORIES,
   DEADLINE_SOURCE_CONFIDENCE,
+  PLAN_DESCRIPTION_WORDS,
+  PLAN_NAME_PLUS,
   SUBSCRIPTION_MERCHANTS,
   TRIAL_DEADLINE_MAX_PERCENT,
   TRIAL_MAX_START_CENTS,
@@ -25,7 +27,13 @@ import type { Confidence } from "@/detectors/contract";
 import type { AlertCandidate } from "@/detection/alerts";
 import { expectedDates } from "@/detection/forecast";
 import { byDate, inList, inLookback, isRenewable, merchantMatches } from "@/detection/helpers";
-import { merchantOf, type Stream } from "@/detection/streams";
+import { merchantOf, yearlyPlanEvidence, type Stream } from "@/detection/streams";
+import {
+  EVIDENCE_CONFIDENCE_CAP,
+  PATTERN_MIN_TIMES,
+  deadlineSays,
+  type Evidence,
+} from "@/config/evidence";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { addDays, daysBetween, median } from "@/detection/units";
 import { debtSummary, type DebtAccount } from "@/insights/loans";
@@ -71,6 +79,12 @@ export type Deadline = {
   entryId?: string;
   // How sure Jane is, for one it guessed from the charges (a trial's end).
   confidence?: Confidence;
+  // The charge it comes from (YYYY-MM-DD), for one worked out from a charge: so the chat can find
+  // that charge however long ago it was (card-chat mismatch).
+  chargedOn?: string;
+  // What it stood on (src/config/evidence.ts): only one whose evidence is enough for its kind is
+  // listed (upcomingDeadlines); one with none isn't.
+  evidence?: Evidence;
 };
 
 export const DEADLINE_KIND_LABELS: Record<DeadlineKind, string> = {
@@ -114,6 +128,8 @@ export function renewalDeadlines(input: DetectionInput, streams: Stream[]): Dead
           amountCents: s.lastAmountCents,
           href: "/subscriptions",
           detail: `About ${formatCents(s.lastAmountCents)} ${s.frequency === "ANNUALLY" ? "for another year" : "for another quarter"}. Cancel before then if you don't want it.`,
+          ...(s.lastDate ? { chargedOn: s.lastDate } : {}),
+          evidence: streamEvidence(s),
         })),
     );
 }
@@ -139,6 +155,13 @@ export function trialDeadlines(input: DetectionInput): Deadline[] {
         merchantMatches(merchantKey, SUBSCRIPTION_MERCHANTS) ||
         confirmed.includes(merchantKey);
       if (!subscriptionLike || start.amountCents > TRIAL_MAX_START_CENTS) return [];
+      // A plan by its own words ("PARAMOUNT+", "... MEMBERSHIP"), or one Jane knows by name or
+      // the person said so, is a trial; a category alone isn't.
+      const worded =
+        PLAN_NAME_PLUS.test(start.description) ||
+        PLAN_DESCRIPTION_WORDS.some((w) => start.description.toUpperCase().includes(w));
+      const known =
+        merchantMatches(merchantKey, SUBSCRIPTION_MERCHANTS) || confirmed.includes(merchantKey);
       const date = addDays(start.date, TRIAL_LENGTH_DAYS);
       if (date < input.asOf) return [];
       const merchant = merchantName(start);
@@ -153,6 +176,8 @@ export function trialDeadlines(input: DetectionInput): Deadline[] {
           href: purchaseLink(merchant),
           detail: `It started with ${formatCents(start.amountCents)} on ${dayLabel(start.date)}. If it's a trial, the full price usually follows; cancel first if you don't want it. The date is an estimate.`,
           confidence: seenConfidence(input, 1, "small first charge", TRIAL_DEADLINE_MAX_PERCENT),
+          chargedOn: start.date,
+          evidence: { kind: worded ? "word" : known ? "known_merchant" : "category_only" },
         },
       ];
     });
@@ -219,6 +244,8 @@ export function returnDeadlines(input: DetectionInput, streams: Stream[]): Deadl
           amountCents: t.amountCents,
           href: purchaseLink(merchant),
           detail: `${formatCents(t.amountCents)} on ${dayLabel(t.date)}. ${listed ? `${merchant} usually takes` : "Most shops take"} returns within ${days} days; your receipt has the exact date.`,
+          chargedOn: t.date,
+          evidence: { kind: "seen_charge" },
         },
       ];
     });
@@ -236,6 +263,7 @@ export function paymentDeadlines(accounts: DebtAccount[], asOf: string): Deadlin
             date: line.nextDue,
             kind: "payment",
             source: "loans",
+            evidence: { kind: "reported" },
             amountCents: line.monthlyCents,
             href: "/loans",
             detail:
@@ -289,6 +317,7 @@ export function fromDocumentDates(dates: DocumentDate[]): Deadline[] {
       date: d.date,
       kind: shape.kind,
       source: "documents",
+      evidence: { kind: "entered" },
       amountCents: null,
       href: "/documents",
       detail: shape.detail,
@@ -318,6 +347,7 @@ export function enteredDeadlines(rows: EnteredDeadline[]): Deadline[] {
         date,
         kind: r.kind,
         source: "entered",
+        evidence: { kind: "entered" },
         amountCents: null,
         href: null,
         detail: r.note,
@@ -331,10 +361,15 @@ export function enteredDeadlines(rows: EnteredDeadline[]): Deadline[] {
 export function upcomingDeadlines(deadlines: Deadline[], asOf: string): Deadline[] {
   const until = addDays(asOf, DEADLINE_HORIZON_DAYS);
   const seen = new Set<string>();
-  return deadlines
-    .filter((d) => d.date <= until && (d.date >= asOf || d.source === "entered"))
-    .filter((d) => !seen.has(d.key) && Boolean(seen.add(d.key)))
-    .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+  return (
+    deadlines
+      // Only what its evidence is enough to say (src/config/evidence.ts): a renewal from one
+      // charge and a category isn't listed (founder's live /deadlines, 10-29).
+      .filter((d) => deadlineSays(d.kind, d.evidence) === "statement")
+      .filter((d) => d.date <= until && (d.date >= asOf || d.source === "entered"))
+      .filter((d) => !seen.has(d.key) && Boolean(seen.add(d.key)))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title))
+  );
 }
 
 export type DeadlineGroup = {
@@ -356,6 +391,19 @@ export function groupDeadlines(deadlines: Deadline[], asOf: string): DeadlineGro
     groups[index].deadlines.push(d);
   }
   return groups.filter((g) => g.deadlines.length > 0);
+}
+
+// How sure a reminder says it is: never surer than what it stood on allows.
+function capped(confidence: Confidence, evidence: Evidence | undefined): Confidence {
+  const cap = evidence ? EVIDENCE_CONFIDENCE_CAP[evidence.kind] : 0;
+  return confidence.percent <= cap ? confidence : { ...confidence, percent: cap };
+}
+
+// What a renewal from a stream stood on: a cycle seen, or one charge that names the plan.
+function streamEvidence(s: Stream): Evidence {
+  if (s.charges.length >= PATTERN_MIN_TIMES) return { kind: "pattern", times: s.charges.length };
+  const named = s.charges[0] ? yearlyPlanEvidence(s.charges[0]) : null;
+  return named ? { kind: named } : { kind: "pattern", times: s.charges.length };
 }
 
 // "today", "tomorrow", "in 5 days".
@@ -386,6 +434,6 @@ export function deadlineAlerts(deadlines: Deadline[], asOf: string): AlertCandid
       key: d.key,
       title: `${d.title}: ${dayLabel(d.date)} (${dueIn(d.date, asOf)})`,
       body: `${d.detail ? `${d.detail} ` : ""}All your dates are on the deadlines page.`,
-      confidence: d.confidence ?? { ...DEADLINE_SOURCE_CONFIDENCE[d.source] },
+      confidence: capped(d.confidence ?? { ...DEADLINE_SOURCE_CONFIDENCE[d.source] }, d.evidence),
     }));
 }

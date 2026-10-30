@@ -19,6 +19,9 @@ const MUTED = "text-zinc-600 dark:text-zinc-400";
 
 export function figureOf(e: Pick<Entry, "cents" | "yearly" | "state">): string {
   const counted = e.state === "verified" || e.state === "held";
+  // A step with no dollar estimate (moving a due date before a low balance), never "about
+  // $0.00/yr" (night QA 10-30).
+  if (!counted && e.cents === 0) return "No dollar estimate";
   return `${counted ? "" : "about "}${formatCents(e.cents)}${e.yearly ? "/yr" : ""}`;
 }
 
@@ -55,8 +58,13 @@ export function LedgerEntryRow({ entry: e, action }: { entry: Entry; action?: Re
           <span className="font-mono text-xs tracking-wide uppercase">
             {STATE_GLYPH[e.state]} [{tag}]
           </span>
-          <span className="flex-1 font-medium [overflow-wrap:anywhere]">{e.title}</span>
-          <span className="font-semibold">{figureOf(e)}</span>
+          {/* A basis, so on a phone the title takes its own line rather than shrinking to a
+              letter a line ("Equino / x" in night QA 10-30); words break only when one is too
+              long for the line. */}
+          <span data-ledger-title="" className="min-w-0 flex-1 basis-48 font-medium break-words">
+            {e.title}
+          </span>
+          <span className="font-semibold whitespace-nowrap">{figureOf(e)}</span>
           {e.confidencePercent !== null && (
             <span className={`text-xs ${MUTED}`}>{e.confidencePercent}% sure</span>
           )}

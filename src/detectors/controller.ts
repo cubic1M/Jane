@@ -3,7 +3,8 @@ import { previousMonth } from "@/insights/check-in";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { uncertainOf } from "@/planning/month-close";
 
-import { type Detector, suggestionId } from "./contract";
+import { isHiddenPage } from "@/config/hidden-pages";
+import { SHORT_MAX, type Detector, suggestionId } from "./contract";
 import { evidence, nice } from "./helpers";
 import { monthLabel } from "@/lib/day-label";
 
@@ -90,19 +91,36 @@ const monthClose: Detector = {
       topic: "month_close",
       title: `Confirm ${unsure.length === 1 ? "one charge" : `${unsure.length} charges`} so ${monthLabel(month, { long: true })} can close`,
       headline: `Confirm ${unsure.length} charge${unsure.length === 1 ? "" : "s"} to close ${monthLabel(month, { long: true }).split(" ")[0]}: ${formatWholeDollars(total)}`,
-      short:
-        `${names.join(", ")}: I'm not sure what ${unsure.length === 1 ? "it was" : "they were"}.`.slice(
-          0,
-          120,
-        ),
+      short: unsureLine(names, unsure.length === 1 ? "it was" : "they were"),
       worthCents: total,
       worthKind: "risk",
-      confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charge"),
+      confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charges"),
       urgency: "soon",
       why: `I close each month on the first of the next. In ${monthLabel(month, { long: true })}, ${names.join(" and ")} sit in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
-      action: { label: "Confirm the charges", href: "/monthly#close" },
+      action: { label: "Confirm the charges", href: closeHref(month, unsure) },
     };
   },
 };
+
+// As many of the charges as fit in SHORT_MAX, then "and 3 more", never a sentence cut off
+// mid-word (night QA 10-30: "…Shoppette 22 $52.59: I'm not sure what t").
+export function unsureLine(names: readonly string[], what: string): string {
+  const line = (shown: number) =>
+    `${names.slice(0, shown).join(", ")}${shown < names.length ? ` and ${names.length - shown} more` : ""}: I'm not sure what ${what}.`;
+  let shown = names.length;
+  while (shown > 1 && line(shown).length > SHORT_MAX) shown -= 1;
+  return line(shown).length > SHORT_MAX ? line(shown).slice(0, SHORT_MAX) : line(shown);
+}
+
+// Where the charges get confirmed. The read-only beta hides /monthly (it lands on /ahead, which
+// has no close: night QA 10-30, the button led nowhere), so there it's the month's transactions,
+// only the uncategorized ones when that's all they are: fixing a category is what closes it.
+function closeHref(month: string, unsure: readonly { pfcDetailed: string | null }[]): string {
+  if (!isHiddenPage("/monthly")) return "/monthly#close";
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const none = unsure.every((t) => t.pfcDetailed === null) ? "category=none&" : "";
+  return `/transactions?${none}from=${month}-01&to=${last}`;
+}
 
 export const CONTROLLER_DETECTORS: readonly Detector[] = [books, monthClose];

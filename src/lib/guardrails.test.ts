@@ -427,3 +427,61 @@ describe("a lawyer or the word legal is not legal advice", () => {
     },
   );
 });
+
+// Founder 10-30: "How much tax will I have to pay because of Lucid Trading?" was blocked twice
+// because the answer said "tax". Facts from Jane's own data and tools pass on a real account;
+// telling them what to file, deduct or claim never does.
+describe("tax facts are not tax advice (standard profile)", () => {
+  const FIGURES = [320_000, 104_700, 215_300, 421_000];
+  const standard = (t: string) => {
+    const result = checkGuardrails(t, FIGURES, undefined, "standard");
+    return result.ok ? [] : result.issues;
+  };
+
+  it.each([
+    "Lucid Trading paid you $3,200.00 this year, and you paid it $1,047.00 in evaluation fees and resets, so you're up $2,153.00.",
+    "My estimate of your federal tax this year is $4,210.00; it's an estimate from your accounts, not a filing figure.",
+    "Your tax estimate went up this month.",
+    "I can't tell you what to file or deduct; a tax professional can.",
+    "I can't tell you how Lucid Trading's payouts are taxed.",
+    "You paid $1,047.00 in property taxes so far.",
+  ])("passes %j", (text) => {
+    expect(standard(text)).toEqual([]);
+  });
+
+  it.each([
+    "You can deduct the $1,047.00 in evaluation fees.",
+    "The evaluation fees are tax deductible.",
+    "Write those fees off as a business expense.",
+    "Claim the fees as business expenses on your return.",
+    "Put the payouts on Schedule C.",
+    "You should set aside $2,153.00 for taxes.",
+    "I'd set aside about a third of each payout for taxes.",
+    "Prop firm payouts count as self-employment income for taxes.",
+    "The payouts are taxable as ordinary income.",
+    "Itemizing would lower your tax.",
+    "File an amended return for last year.",
+    "You could lower your taxes by opening a solo 401(k).",
+    "That's a tax break worth using.",
+  ])("blocks %j", (text) => {
+    expect(standard(text), text).toContain("tax_or_legal_advice");
+  });
+
+  it("keeps the demo profile as it was: tax advice may pass, legal advice never", () => {
+    expect(
+      checkGuardrails(
+        "You should set aside $2,153.00 for taxes.",
+        FIGURES,
+        undefined,
+        "demo_advice",
+      ).ok,
+    ).toBe(true);
+    expect(
+      checkGuardrails("You should sue them over the fees.", FIGURES, undefined, "demo_advice").ok,
+    ).toBe(false);
+  });
+
+  it("still marks tax talk as advice for the demo label", () => {
+    expect(isAdvice("My estimate of your federal tax this year is $4,210.00.")).toBe(true);
+  });
+});

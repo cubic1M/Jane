@@ -2,9 +2,12 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { parseKey } from "@/detection/unusual";
 import { daysBetween } from "@/detection/units";
 import type { Deadline } from "@/insights/deadlines";
+import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { deadlineHeadsUp } from "./sources/heads-ups";
+import { setupBody } from "./sources/setup";
+import { suggestionCard } from "./sources/suggestions";
 import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
 
 // Jane's cards say what was true when they were posted, and stay open for days. Before one
@@ -22,6 +25,15 @@ import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
 
 type Options = { client?: PrismaClient; now?: Date };
 
+type SuggestionRow = {
+  key: string;
+  headline: string;
+  short: string;
+  why: string;
+  confidencePercent: number;
+  confidenceReason: string;
+};
+
 type Facts = {
   asOf: string;
   deadlines: Map<string, Deadline>;
@@ -29,6 +41,10 @@ type Facts = {
   alerts: Map<string, boolean>;
   // The changes Jane sees today, by key: each one's title.
   changes: Map<string, string> | null;
+  // The suggestions behind suggestion cards, by key, as the last scan left them.
+  suggestions: Map<string, SuggestionRow>;
+  // The open budget and goal proposals behind set-up cards, by key, as the last refresh left them.
+  proposals: Map<string, BudgetProposal | GoalProposal> | null;
 };
 
 type AlertRow = { id: string; type: string; key: string };
@@ -101,11 +117,40 @@ async function factsFor(
   const deadlineAlerts = new Set(alerts.filter((a) => a.type === "deadline_soon").map((a) => a.id));
   const withDeadlines = messages.some((m) => needsDeadlines(m, deadlineAlerts));
   const withChanges = messages.some((m) => m.refs.change !== undefined);
-  if (!withDeadlines && !withChanges && alerts.length === 0) return null;
-  const [coming, changes] = await Promise.all([
+  const suggestionKeys = messages.flatMap((m) => (m.refs.suggestion ? [m.refs.suggestion] : []));
+  const proposalKeys = messages.flatMap((m) => (m.refs.proposalKey ? [m.refs.proposalKey] : []));
+  if (
+    !withDeadlines &&
+    !withChanges &&
+    alerts.length === 0 &&
+    suggestionKeys.length === 0 &&
+    proposalKeys.length === 0
+  ) {
+    return null;
+  }
+  const [coming, changes, suggestions, proposals] = await Promise.all([
     withDeadlines ? comingUp(userId, client, now) : null,
     withChanges
       ? import("@/lib/changes").then((m) => m.loadChanges(userId, { client, now }))
+      : null,
+    suggestionKeys.length > 0
+      ? scopedFor(userId, client).suggestions.findMany({
+          where: { key: { in: suggestionKeys } },
+          select: {
+            key: true,
+            headline: true,
+            short: true,
+            why: true,
+            confidencePercent: true,
+            confidenceReason: true,
+          },
+        })
+      : [],
+    proposalKeys.length > 0
+      ? scopedFor(userId, client).planProposals.findMany({
+          where: { key: { in: proposalKeys }, status: "open" },
+          select: { key: true, payload: true },
+        })
       : null,
   ]);
   const deadlines = new Map((coming?.deadlines ?? []).map((d) => [d.key, d]));
@@ -114,13 +159,43 @@ async function factsFor(
     deadlines,
     alerts: await holding(userId, alerts, deadlines, client),
     changes: changes && new Map(changes.map((c) => [c.key, c.title])),
+    suggestions: new Map(suggestions.map((r) => [r.key, r])),
+    proposals:
+      proposals &&
+      new Map(
+        proposals.flatMap((p) => {
+          const payload = p.payload as unknown as BudgetProposal | GoalProposal;
+          return payload.kind === "budget" || payload.kind === "goal" ? [[p.key, payload]] : [];
+        }),
+      ),
   };
 }
 
 // The card as it should show now, or null when it no longer holds.
 function asNow(m: ChatMessage, facts: Facts): ChatMessage | null {
-  const { deadlineKey, deadlineEntryId, alertId, change } = m.refs;
-  if (alertId !== undefined && facts.alerts.get(alertId) === false) return null;
+  const { deadlineKey, deadlineEntryId, alertId, change, suggestion, proposalKey } = m.refs;
+  // A set-up card is said from its proposal as it is now (night debugger, 10-30: after a second
+  // file the dock kept the first file's "$1,180 budget for Food and drink"); one no longer open
+  // goes.
+  if (proposalKey && facts.proposals) {
+    const proposal = facts.proposals.get(proposalKey);
+    return proposal ? { ...m, body: setupBody(proposal) } : null;
+  }
+  // A suggestion card is said as the last scan left its suggestion: after a bank was
+  // disconnected, "You keep $47,597.63 in cash" stayed while the scan said $19,447.51 (night
+  // debugger, 10-30). One with no row (a news theme's alert) is checked elsewhere.
+  const row = suggestion ? facts.suggestions.get(suggestion) : undefined;
+  if (row) {
+    const [, , , ...rest] = m.body.split("\n");
+    return {
+      ...m,
+      body: [...suggestionCard(row), ...rest].join("\n"),
+      refs: { ...m.refs, suggestionWhy: row.why },
+    };
+  }
+  // An alert that no longer holds, or is gone altogether (removed with the data it was about:
+  // src/lib/evidence/orphans.ts), takes its heads-up with it.
+  if (alertId !== undefined && facts.alerts.get(alertId) !== true) return null;
   if (change && facts.changes) {
     const title = facts.changes.get(change.key);
     if (title === undefined) return null;

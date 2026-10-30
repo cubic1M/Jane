@@ -13,6 +13,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import type { FindingType } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
+import { fullMonths } from "@/insights/typical-month";
 import {
   kindOf,
   monthsEnding,
@@ -53,6 +54,9 @@ import { dayLabel } from "@/lib/day-label";
 // button from the registry (src/lib/jane-agent/actions), checked again when it's tapped.
 
 export type Reply = { body: string; actions: MessageAction[]; refs: MessageRefs };
+
+// A spending question whose words are no category or merchant: not an answer (./backup.ts).
+export const SPENDING_NOT_FOUND = "I couldn't find spending on";
 
 const reply = (body: string, actions: MessageAction[] = [], refs: MessageRefs = {}): Reply => ({
   body,
@@ -520,8 +524,10 @@ export function spendingReply(
   if (category) {
     const cents = categories.find((c) => c.category === category)?.cents ?? 0;
     const body = `You spent ${fmt(cents)} on ${category} ${when}.${versus(cents, spentIn(before, category))}`;
-    // A usual month: the complete months before this one.
-    const past = months.slice(-1 - AFFORD_USUAL_MONTHS, -1);
+    // A usual month: the complete months before this one, each one the data covers in full (night
+    // QA 10-30: a statement starting Jul 28 made July's $20 of food a month, so "a $185.00
+    // budget would match a usual month" beside $268 and $263).
+    const past = fullMonths(months.slice(-1 - AFFORD_USUAL_MONTHS, -1), transactions);
     const usual = Math.round(
       past.reduce((sum, m) => sum + (spentIn(m, category) ?? 0), 0) / Math.max(1, past.length),
     );
@@ -538,7 +544,7 @@ export function spendingReply(
   const matching = spentAt((name) => name.includes(q));
   if (matching.length > 0) return atMerchant(matching);
   return reply(
-    `I couldn't find spending on "${intent.category}" ${when}.${top ? ` The most went to: ${top}.` : ""}`,
+    `${SPENDING_NOT_FOUND} "${intent.category}" ${when}.${top ? ` The most went to: ${top}.` : ""}`,
     open,
   );
 }

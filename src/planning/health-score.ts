@@ -4,6 +4,7 @@ import {
   HEALTH_CUSHION_FULL_MONTHS,
   HEALTH_MARGIN_FULL_RATE,
   HEALTH_MARGIN_ZERO_RATE,
+  HEALTH_MIN_PARTS,
   HEALTH_MONTHS,
   HEALTH_POINTS_PER_SLIP,
   HEALTH_SLIP_DAYS,
@@ -27,12 +28,30 @@ export type HealthInput = {
   monthlyIncomeCents: number | null;
   // Late, overdraft and insufficient-funds fees lately; null without transactions.
   slips: number | null;
-  // Card balances carried; null when the person has no cards linked.
+  // Card balances carried; null when the person has no cards linked or a card's balance
+  // isn't known (an uploaded statement).
   cardBalanceCents: number | null;
+  cardsLinked?: boolean;
   goals: { onTrack: number; total: number };
   // One-off costs left out of the spending average (books QA), to say so.
   oneOffs?: OneOff[];
 };
+
+// What the person's cards carry: null with no cards, or when a card's balance isn't known (an
+// uploaded statement carries none), never "no balance carried" (night QA 10-30: a card-only
+// person scored 100 of 100 from it).
+export function cardBalanceOf(cards: readonly { currentBalanceCents: number | null }[]) {
+  if (cards.length === 0 || cards.some((c) => c.currentBalanceCents === null)) return null;
+  return cards.reduce((s, c) => s + Math.max(0, c.currentBalanceCents ?? 0), 0);
+}
+
+// Whether spending can be seen at all: it happens in checking or on a card. A savings account
+// alone shows money moved in and interest, so no margin can be worked out from it.
+export function spendingOnFile(accounts: readonly { type: string; subtype: string | null }[]) {
+  return accounts.some(
+    (a) => a.type === "credit" || (a.type === "depository" && a.subtype === "checking"),
+  );
+}
 
 export type HealthPartScore = {
   part: HealthPart;
@@ -86,6 +105,16 @@ function part(key: HealthPart, share: number, why: string, next: string): Health
     why,
     next: points < max ? next : null,
   };
+}
+
+// The months the data covers from their first day (night QA 10-30: statements from Jul 28 made
+// July a month of four days, which cut average spending by a third and scored a person whose
+// cash covers two months 100 of 100, beside "Build a cushion for emergencies").
+export function fullMonthsOnly<T extends { month: string }>(
+  months: readonly T[],
+  firstDay: string | null,
+): T[] {
+  return firstDay === null ? [] : months.filter((m) => `${m.month}-01` >= firstDay);
 }
 
 export function healthScore(input: HealthInput): HealthScore | null {
@@ -148,7 +177,12 @@ export function healthScore(input: HealthInput): HealthScore | null {
   }
 
   if (input.cardBalanceCents === null) {
-    skip("cards", "No credit cards linked.");
+    skip(
+      "cards",
+      input.cardsLinked
+        ? "Jane doesn't know your card balance yet: add it on the import page."
+        : "No credit cards linked.",
+    );
   } else if (input.cardBalanceCents <= 0) {
     parts.push(part("cards", 1, "No card balance carried.", ""));
   } else if (!income || income <= 0) {
@@ -178,7 +212,7 @@ export function healthScore(input: HealthInput): HealthScore | null {
     );
   }
 
-  if (parts.length === 0) return null;
+  if (parts.length < HEALTH_MIN_PARTS) return null;
   const counted = {
     points: parts.reduce((s, p) => s + p.points, 0),
     max: parts.reduce((s, p) => s + p.max, 0),

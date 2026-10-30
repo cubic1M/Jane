@@ -58,9 +58,10 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
     };
   },
   bank_fees: (input) => {
-    const total = fact(input.facts, "totalLast12Months");
+    const total = fact(input.facts, "total");
+    const period = fact(input.facts, "period");
     return {
-      explanation: `Your bank or card company charged you${total ? ` ${total}` : ""} in fees over the last 12 months. Banks often refund fees when asked, and a different account could stop them.`,
+      explanation: `Your bank or card company charged you${total ? ` ${total}` : ""} in fees${period ? ` in ${period}` : ""}. Banks often refund fees when asked, and a different account could stop them.`,
       giveUp: "Nothing, though switching accounts takes some setup.",
       alternatives: [
         "Turn on low-balance alerts",
@@ -174,9 +175,10 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
     };
   },
   card_interest: (input) => {
-    const total = fact(input.facts, "totalLast12Months");
+    const total = fact(input.facts, "total");
+    const period = fact(input.facts, "period");
     return {
-      explanation: `You paid${total ? ` ${total}` : ""} in credit card interest over the last 12 months. Paying the balance in full or moving it to a lower-rate card could cut that cost.`,
+      explanation: `You paid${total ? ` ${total}` : ""} in credit card interest${period ? ` in ${period}` : ""}. Paying the balance in full or moving it to a lower-rate card could cut that cost.`,
       giveUp: "A balance transfer usually has a one-time fee.",
       alternatives: [
         "Ask your card issuer for a lower rate",

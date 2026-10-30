@@ -12,7 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
-import { planFor } from "@/lib/plan";
+import { planFor, planTotalCents } from "@/lib/plan";
 import { savingsLine } from "@/lib/savings-text";
 import type { Comparison } from "@/planning/compare";
 
@@ -134,7 +134,7 @@ export async function loadJaneHub(
   return {
     decide: {
       total: plan.length,
-      totalSavingsCents: plan.reduce((sum, i) => sum + (i.card.annualSavingsCents ?? 0), 0),
+      totalSavingsCents: planTotalCents(plan),
       items: top.map((i, index): DecideItem => ({
         findingId: i.card.findingId,
         title: i.card.title,

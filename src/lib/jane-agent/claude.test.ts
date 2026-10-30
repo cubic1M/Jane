@@ -60,8 +60,10 @@ import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { homeSummary } from "@/lib/home";
 import {
+  CANT_ADVISE_TAX,
   CHAT_UNAVAILABLE_TEXT,
   askClaudeInChat,
+  factsOnly,
   plainText,
   resetClaudeHealth,
   tooLong,
@@ -1485,5 +1487,89 @@ describe("plain text", () => {
     expect(plainText("**Card use:** keep it under 30%.\n## Next\n* pay it\n`$5`")).toBe(
       "Card use: keep it under 30%.\nNext\n- pay it\n$5",
     );
+  });
+});
+
+// Founder 10-30: "How much tax will I have to pay because of Lucid Trading? How much did I earn
+// from them, how much did I actually spend for that earning" was blocked twice and answered by
+// the rules about something else. A blocked answer is rewritten without its advice; if that's
+// blocked too, its facts are shown; the rules never stand in. Made-up figures, never real data.
+describe("a blocked answer keeps its facts", () => {
+  const QUESTION =
+    "How much tax will I have to pay because of Acme Prop? How much did I earn from them, how much did I spend for it";
+  // What the lookups gave (passed as memory here, so the figures are allowed).
+  const LOOKED_UP =
+    "Acme Prop: $3,200.00 in, $1,047.00 out, $2,153.00 net. Federal tax estimate: $4,210.00.";
+  const FACTS =
+    "Acme Prop paid you $3,200.00 this year, and you paid it $1,047.00 in evaluation fees and resets, so you're up $2,153.00.";
+  const ESTIMATE = "My estimate of your federal tax this year is $4,210.00.";
+  const ADVICE = "You can deduct the $1,047.00 in fees as business expenses.";
+  const ask = () => askClaudeInChat("u1", [], QUESTION, { ...options, memory: LOOKED_UP });
+
+  beforeEach(() => {
+    create.mockReset();
+    sent.length = 0;
+    forgetPrimer();
+    resetClaudeHealth();
+    vi.mocked(loadSnapshot).mockReset().mockResolvedValue(snapshot);
+    vi.mocked(homeSummary).mockReset();
+  });
+
+  it("shows a factual tax answer as it is: a figure is not advice", async () => {
+    create.mockResolvedValueOnce(final(`${FACTS} ${ESTIMATE}`));
+    const result = await ask();
+    expect(result).toEqual({
+      kind: "answer",
+      reply: { body: `${FACTS} ${ESTIMATE}`, actions: [], refs: {} },
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks once for the same answer without the advice, naming the sentence, and shows it", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fixed = `${FACTS} ${ESTIMATE} ${CANT_ADVISE_TAX}`;
+    create
+      .mockResolvedValueOnce(final(`${FACTS} ${ADVICE} ${ESTIMATE}`))
+      .mockResolvedValueOnce(final(fixed));
+    const result = await ask();
+    expect(result).toEqual({ kind: "answer", reply: { body: fixed, actions: [], refs: {} } });
+    const note = sent[1].at(-1)!.content as string;
+    expect(note).toContain(`"${ADVICE}"`);
+    expect(note).toMatch(/Drop only that advice\. Keep every fact/);
+    expect(note).not.toMatch(/Leave that out/);
+    warn.mockRestore();
+  });
+
+  it("shows the facts without the advice when the rewrite is blocked too", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    create
+      .mockResolvedValueOnce(final(`${FACTS} ${ADVICE}`))
+      .mockResolvedValueOnce(final(`${FACTS} ${ESTIMATE} Write the fees off on Schedule C.`));
+    const result = await ask();
+    expect(result).toEqual({
+      kind: "answer",
+      reply: { body: `${FACTS} ${ESTIMATE} ${CANT_ADVISE_TAX}`, actions: [], refs: {} },
+    });
+    warn.mockRestore();
+  });
+
+  it("tells Claude facts are not advice, and that it can't say what to file", async () => {
+    create.mockResolvedValueOnce(final(FACTS));
+    await ask();
+    const system = (create.mock.calls[0][0].system as { text: string }[])[0].text;
+    expect(system).toMatch(/Facts from their own accounts and your tools are not advice/);
+    expect(system).toMatch(/you can't tell them what to file or deduct/);
+    expect(system).not.toMatch(/don't mention investments, taxes or legal matters at all/);
+  });
+
+  it("keeps only the passing sentences, or nothing when no fact is left", () => {
+    const allowed = [320_000, 104_700, 215_300];
+    expect(factsOnly(`${FACTS} ${ADVICE}`, allowed, "standard")).toBe(
+      `${FACTS} ${CANT_ADVISE_TAX}`,
+    );
+    expect(factsOnly(ADVICE, allowed, "standard")).toBeNull();
+    expect(factsOnly("Sure. You should deduct it.", allowed, "standard")).toBeNull();
+    // Nothing dropped: nothing to fix here.
+    expect(factsOnly(FACTS, allowed, "standard")).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import type { Profile, ProfileInput } from "@/profile/build";
+import { rateMonthsOf } from "@/profile/build";
 import { BUSINESS_SALES_DEPOSIT } from "@/config/insurance";
 import type { SelfEmployment } from "@/lib/insurance/business-rules";
 import { personalPay } from "@/profile/pay";
@@ -17,7 +18,7 @@ const yearsUntil = (today: string, day: string) =>
 export function selfEmploymentFrom(profile: Profile, data: ProfileInput): SelfEmployment {
   const sum = (f: (t: ProfileInput["transactions"][number]) => boolean) =>
     data.transactions.filter(f).reduce((s, t) => s + Math.abs(t.amountCents), 0);
-  const months = Math.max(1, profile.months);
+  const months = rateMonthsOf(profile);
   return {
     declared: profile.facts.income_pattern.value === "business",
     serviceCents: sum((t) => t.pfc === "INCOME_CONTRACTOR" && t.amountCents < 0),

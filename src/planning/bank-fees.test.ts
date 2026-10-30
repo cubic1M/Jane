@@ -19,6 +19,17 @@ describe("bankFeesYear", () => {
     });
   });
 
+  // Night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year.
+  it("counts a card's annual fee once a year, not scaled up with the rest", () => {
+    const annual: FeeTx = {
+      date: "2026-09-03",
+      amountCents: 9500,
+      description: "ANNUAL MEMBERSHIP FEE",
+      pfc: "BANK_FEES_OTHER_BANK_FEES",
+    };
+    expect(bankFeesYear([fee("2026-09-24", 3400), annual], 3)?.yearCents).toBe(3400 * 4 + 9500);
+  });
+
   it("leaves out a fee the bank gave back (messy-bank QA)", () => {
     const foreign = fee("2026-08-02", 128, "BANK_FEES_FOREIGN_TRANSACTION_FEES");
     expect(bankFeesYear([fee("2026-09-24", 3400), fee("2026-09-26", -3400), foreign], 3)).toEqual({

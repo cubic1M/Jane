@@ -22,11 +22,11 @@ const TOP_BAR =
   "flex flex-wrap items-center gap-x-3 gap-y-1 lg:fixed lg:inset-x-0 lg:top-0 lg:z-50 lg:h-14 lg:flex-nowrap lg:border-b lg:border-zinc-300 lg:bg-white lg:px-4 dark:lg:border-zinc-700 dark:lg:bg-zinc-950 print:static";
 
 // Just the logo (founder: "It should just be the logo, and no interaction"): Home and the area
-// tabs are where the pages are.
-function JaneLogo() {
+// tabs are where the pages are. The loading bar's copy isn't marked as the page's logo.
+function JaneLogo({ marked = true }: { marked?: boolean }) {
   return (
     <span
-      data-jane-logo=""
+      data-jane-logo={marked ? "" : undefined}
       className="inline-flex min-h-11 shrink-0 cursor-default items-center text-base font-bold tracking-tight select-none"
     >
       <span aria-hidden className="text-emerald-700">
@@ -48,7 +48,7 @@ export function AppHeader({
     <header className="flex flex-col gap-3 text-sm">
       {/* Above the docked chat (z-40), so the profile menu opens over it and Sign out can be
           pressed; the chat expanded to the whole window (z-50, later on the page) still covers it. */}
-      <div id="app-top-bar" className={TOP_BAR}>
+      <div id="app-top-bar" data-app-top-bar="" className={TOP_BAR}>
         <JaneLogo />
         <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
           <AreaTabs />
@@ -77,13 +77,15 @@ export function AppHeader({
 
 // The top bar while a page loads (reviewer polish): the same bar, logo and tabs, with the
 // profile button's room kept, so the page doesn't draw full width and then jump under the bar
-// and beside the docked chat (the room is made for #app-top-bar, globals.css), and a tap on a
-// tab never makes the bar blink away. It needs no session, so it shows in the first frame.
+// and beside the docked chat (the room is made for [data-app-top-bar], globals.css), and a tap
+// on a tab never makes the bar blink away. It needs no session, so it shows in the first frame.
+// Not the page's own bar or logo (no id, no logo mark): while the page streams in, both are in
+// the document for a moment, and #app-top-bar must stay one element.
 export function AppHeaderLoading() {
   return (
     <header className="flex flex-col gap-3 text-sm" data-header-loading="">
-      <div id="app-top-bar" className={TOP_BAR}>
-        <JaneLogo />
+      <div data-app-top-bar="" className={TOP_BAR}>
+        <JaneLogo marked={false} />
         <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
           <AreaTabs />
         </div>

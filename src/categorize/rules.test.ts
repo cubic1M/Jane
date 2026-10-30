@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categorizeByRules } from "./rules";
+import { categorizeByRules, payoutByRules } from "./rules";
 import { ALL_DETAILED, categoryOf } from "./taxonomy";
 
 const out = (description: string, hints = {}) =>
@@ -293,8 +293,113 @@ describe("categorizeByRules", () => {
     ["BETH SHALOM TEMPLE", "GOVERNMENT_AND_NON_PROFIT_DONATIONS"],
     ["SUNNYSIDE PASTRY", "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK"],
     ["BARKBOX", "GENERAL_MERCHANDISE_PET_SUPPLIES"],
+    // Night QA 10-30: a couple's Wells Fargo mortgage and PG&E.
+    ["WF HOME MTG AUTO PAY", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
+    ["PGANDE WEB ONLINE", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    // Night QA 10-30: a person paid monthly, Bank of America checking.
+    ["TOYOTA MOTOR CR DES:AUTO PMT ID:XXXXX", "LOAN_PAYMENTS_CAR_PAYMENT"],
+    ["SMUD DES:UTIL BILL ID:XXXXX", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    ["RALEYS #322", "FOOD_AND_DRINK_GROCERIES"],
+    ["HEALTHEQUITY DES:HSA CONTRB ID:XXXXX", "TRANSFER_OUT_ACCOUNT_TRANSFER"],
+    // Night QA 10-30: a retiree's college savings and Medicare supplement.
+    ["SCHOLARSHARE 529 CONTRIB", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["MY529 CONTRIBUTION", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["BLUE SHIELD MEDICARE SUPP", "GENERAL_SERVICES_INSURANCE"],
   ])("reads %s as %s", (description, category) => {
     expect(out(description)).toBe(category);
+  });
+
+  // Night QA 10-30: a driver's pay from Uber, Lyft and DoorDash read as refunds of rides and meals.
+  it.each([
+    ["UBER USA 6787 EDI PAYMNT"],
+    ["LYFT INC PAYOUT"],
+    ["DOORDASH DASHER PAYOUT"],
+    ["INSTACART SHOPPER PAYOUT"],
+    ["AMAZON FLEX DEPOSIT"],
+  ])("reads %s, money in, as gig pay", (description) => {
+    expect(categorizeByRules({ description, amountCents: -45_000, hints: {} })?.detailed).toBe(
+      "INCOME_GIG_ECONOMY",
+    );
+  });
+
+  // Night QA 10-30: a student's financial aid read as a $2,100 refund of spending.
+  it.each([["FAFSA DISBURSEMENT UC REFUND"], ["UCLA FINANCIAL AID"], ["PELL GRANT REFUND"]])(
+    "reads %s, money in, as aid paid out, not spending or pay",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -210_000, hints: {} })?.detailed).toBe(
+        "LOAN_DISBURSEMENTS_STUDENT",
+      );
+    },
+  );
+
+  // Night QA 10-30: money in with no category netted against spending as a refund.
+  it.each([
+    ["LIGHTSTREAM LOAN DEPOSIT", "LOAN_DISBURSEMENTS_PERSONAL"],
+    ["SOFI LENDING CORP LOAN PROCEEDS", "LOAN_DISBURSEMENTS_PERSONAL"],
+    ["UPSTART NETWORK LOAN", "LOAN_DISBURSEMENTS_PERSONAL"],
+    ["CA FTB TAX REFUND", "INCOME_TAX_REFUND"],
+    ["TAX PRODUCTS PE1 SBTPG LLC", "INCOME_TAX_REFUND"],
+    ["EDD UI BENEFITS", "INCOME_UNEMPLOYMENT"],
+    ["VA BENEFITS TREAS 310", "INCOME_MILITARY"],
+    ["DEPOSIT - DFAS-CLEVELAND MIL PAY", "INCOME_MILITARY"],
+    ["CHILD SUPPORT PAYMENT", "INCOME_CHILD_SUPPORT"],
+    ["COINBASE INC", "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["FID BKG SVC LLC MONEYLINE", "TRANSFER_IN_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["HSA REIMBURSEMENT", "TRANSFER_IN_ACCOUNT_TRANSFER"],
+    ["FIDELITY IRA DISTRIBUTION", "INCOME_RETIREMENT_PENSION"],
+    ["VANGUARD RMD DISTRIBUTION", "INCOME_RETIREMENT_PENSION"],
+    ["TIAA ANNUITY PAYMENT", "INCOME_RETIREMENT_PENSION"],
+    ["CALPERS RETIREMENT", "INCOME_RETIREMENT_PENSION"],
+    ["SCHWAB DIVIDEND", "INCOME_DIVIDENDS"],
+    ["AIRBNB PAYMENTS", "INCOME_RENTAL"],
+    ["VRBO PAYOUT", "INCOME_RENTAL"],
+    ["DISABILITY BENEFIT", "INCOME_LONG_TERM_DISABILITY"],
+    ["WORKERS COMP", "INCOME_OTHER"],
+    // Still a student's aid, not a personal loan.
+    ["DIRECT LOAN DISB UC", "LOAN_DISBURSEMENTS_STUDENT"],
+  ])("reads %s, money in, as %s", (description, category) => {
+    expect(categorizeByRules({ description, amountCents: -150_000, hints: {} })?.detailed).toBe(
+      category,
+    );
+  });
+
+  it("still reads an Airbnb stay, money out, as lodging", () => {
+    expect(out("AIRBNB * HMQ4XYZ")).toBe("TRAVEL_LODGING");
+  });
+
+  // Night QA 10-30: a payday loan landing in checking read as a $400 refund of spending.
+  it.each([["ADVANCE AMERICA LOAN"], ["EARNIN TRANSFER"], ["DAVE INC ADVANCE"]])(
+    "reads %s, money in, as a cash advance",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -40_000, hints: {} })?.detailed).toBe(
+        "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+      );
+    },
+  );
+
+  // Night QA 10-30: a traveller's Paris metro and bakery were uncategorized.
+  it("reads the Paris metro and a boulangerie", () => {
+    expect(out("RATP PARIS")).toBe("TRANSPORTATION_PUBLIC_TRANSIT");
+    expect(out("BOULANGERIE PAUL PARIS")).toBe(out("BLUE HERON BAKERY"));
+  });
+
+  // Night QA 10-30: a student's dining hall and a Midwest gas chain had no category.
+  it("reads a college dining hall and a Holiday station", () => {
+    expect(out("UC DINING HALL")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(out("HOLIDAY STATIONSTORES 0412")).toBe("TRANSPORTATION_GAS");
+  });
+
+  it("reads 7-Eleven as a convenience store", () => {
+    expect(out("7-ELEVEN 33421")).toBe("GENERAL_MERCHANDISE_CONVENIENCE_STORES");
+  });
+
+  it("still reads a ride, a meal and a refund of one as what they are", () => {
+    expect(out("UBER *TRIP HELP.UBER.COM")).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
+    expect(out("DOORDASH*THAI HOUSE")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(
+      categorizeByRules({ description: "UBER *TRIP REFUND", amountCents: -1_200, hints: {} })
+        ?.detailed,
+    ).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
   });
 
   it("lets a place's kind win over the words that come last", () => {
@@ -363,5 +468,36 @@ describe("taxonomy", () => {
     expect(categoryOf("LOAN_DISBURSEMENTS_OTHER_DISBURSEMENT")?.primary).toBe("LOAN_DISBURSEMENTS");
     expect(categoryOf("BANK_FEES_LATE_FEES")?.primary).toBe("BANK_FEES");
     expect(categoryOf("INCOME_WAGES")).toBeNull();
+  });
+});
+
+// Founder 10-30: a prop trading firm's payouts are earned income, and its evaluation fees and
+// resets are what earning it costs, both found by the firm's name. Made-up descriptions.
+describe("prop trading firms", () => {
+  it.each(["LUCID TRADING PAYOUT ACH CREDIT", "TOPSTEP PAYOUT", "APEX TRADER FUNDING WIRE"])(
+    "counts a payout as contractor income: %j",
+    (description) => {
+      expect(into(description)).toBe("INCOME_CONTRACTOR");
+      expect(payoutByRules({ description, amountCents: -150_000, hints: {} })?.primary).toBe(
+        "INCOME",
+      );
+    },
+  );
+
+  it.each(["LUCIDTRADING.COM EVALUATION", "LUCID TRADING RESET FEE", "TOPSTEP MONTHLY"])(
+    "counts a fee as a service, never a bank fee: %j",
+    (description) => {
+      expect(out(description)).toBe("GENERAL_SERVICES_OTHER_GENERAL_SERVICES");
+      expect(payoutByRules({ description, amountCents: 8_500, hints: {} })).toBeNull();
+    },
+  );
+
+  it("leaves other money in alone", () => {
+    expect(
+      payoutByRules({ description: "TRANSFER FROM SAV 4410", amountCents: -5_000, hints: {} }),
+    ).toBeNull();
+    expect(
+      payoutByRules({ description: "GUSTO PAYROLL", amountCents: -5_000, hints: {} }),
+    ).toBeNull();
   });
 });

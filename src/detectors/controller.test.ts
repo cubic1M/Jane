@@ -5,7 +5,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { PERSON_IDS } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
-import { CONTROLLER_DETECTORS } from "./controller";
+import { CONTROLLER_DETECTORS, unsureLine } from "./controller";
 
 // Phase AP (spec steps 238–244): Jane running the money, brought to the person unasked.
 const detector = (topic: string) => CONTROLLER_DETECTORS.find((d) => d.topic === topic)!;
@@ -70,7 +70,13 @@ describe("the monthly close (step 244)", () => {
     expect(s?.title).toBe("Confirm 2 charges so September 2026 can close");
     expect(s?.short).toMatch(/^Wework \$285\.00, Adobe Creative Cloud \$59\.99/);
     expect(s?.worthCents).toBe(34_499);
-    expect(s?.action.href).toBe("/monthly#close");
+    // /monthly is hidden in the read-only beta (it would land on /ahead, which has no close):
+    // the button opens September's transactions, where fixing a category closes the month.
+    expect(s?.action.href).toMatch(
+      /^\/transactions\?(?:category=none&)?from=2026-09-01&to=2026-09-30$/,
+    );
+    // Night QA 10-30: "4 unsure charge in 3 months of data".
+    expect(s?.confidence.reason).toMatch(/^2 unsure charges in /);
   });
 
   it("is quiet once the month is closed, and for people with nothing unsure", () => {
@@ -81,5 +87,25 @@ describe("the monthly close (step 244)", () => {
     for (const id of PERSON_IDS.filter((p) => p !== "freelancer")) {
       expect(run("month_close", inputFor(id)), id).toBeNull();
     }
+  });
+});
+
+// Night QA 10-30: five unsure charges were cut at 120 characters, mid-word: "…Shoppette 22
+// $52.59: I'm not sure what t".
+describe("the month close's line about unsure charges", () => {
+  it("lists what fits, then how many more, as a whole sentence", () => {
+    const names = [
+      "Exchange Food Court $81.99",
+      "Commissary $68.80",
+      "Commissary $64.99",
+      "Shoppette 22 $54.92",
+      "Shoppette 22 $52.59",
+    ];
+    const line = unsureLine(names, "they were");
+    expect(line.length).toBeLessThanOrEqual(120);
+    expect(line).toMatch(/ and \d more: I'm not sure what they were\.$/);
+    expect(unsureLine(names.slice(0, 2), "they were")).toBe(
+      "Exchange Food Court $81.99, Commissary $68.80: I'm not sure what they were.",
+    );
   });
 });

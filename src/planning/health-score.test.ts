@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { HEALTH_NEVER_SAY, HEALTH_WEIGHTS } from "@/config/health-score";
-import { bandOf, healthChange, healthScore, type HealthInput } from "./health-score";
+import {
+  cardBalanceOf,
+  spendingOnFile,
+  bandOf,
+  fullMonthsOnly,
+  healthChange,
+  healthScore,
+  type HealthInput,
+} from "./health-score";
 
 // Spec step 146, pure: a score out of 100 from weighted parts, each explained, with parts
 // Jane can't see left out rather than counted against the person, and never a word that
@@ -16,6 +24,57 @@ const strong: HealthInput = {
 };
 
 describe("healthScore", () => {
+  // Night QA 10-30: a card-only upload read "Money health 100 of 100" from no late fees alone.
+  it("shows no score from one part alone", () => {
+    const onlyFees: HealthInput = {
+      cashCents: null,
+      monthlySpendingCents: null,
+      monthlyIncomeCents: null,
+      slips: 0,
+      cardBalanceCents: null,
+      goals: { onTrack: 0, total: 0 },
+    };
+    expect(healthScore(onlyFees)).toBeNull();
+    expect(healthScore({ ...onlyFees, cardBalanceCents: 0 })?.score).toBe(100);
+  });
+
+  // Night QA 10-30 (after #1022): the same card-only person still scored 100, from "no card
+  // balance carried": an uploaded card's unknown balance counted as $0.
+  it("leaves out cards whose balance isn't known, and says why", () => {
+    expect(cardBalanceOf([{ currentBalanceCents: null }])).toBeNull();
+    expect(
+      cardBalanceOf([{ currentBalanceCents: 120_000 }, { currentBalanceCents: null }]),
+    ).toBeNull();
+    expect(cardBalanceOf([{ currentBalanceCents: 120_000 }, { currentBalanceCents: -500 }])).toBe(
+      120_000,
+    );
+    expect(cardBalanceOf([])).toBeNull();
+    const cardOnly: HealthInput = {
+      cashCents: null,
+      monthlySpendingCents: null,
+      monthlyIncomeCents: null,
+      slips: 0,
+      cardBalanceCents: null,
+      cardsLinked: true,
+      goals: { onTrack: 0, total: 0 },
+    };
+    expect(healthScore(cardOnly)).toBeNull();
+    const withCash = healthScore({
+      ...cardOnly,
+      cashCents: 500_000,
+      monthlySpendingCents: 200_000,
+    });
+    expect(withCash?.parts.map((p) => p.part)).not.toContain("cards");
+  });
+
+  // Night QA 10-30: a savings-only upload read "About 100% of what comes in is left after
+  // spending" and scored 100 of 100.
+  it("sees spending only where it happens: checking or a card", () => {
+    expect(spendingOnFile([{ type: "depository", subtype: "savings" }])).toBe(false);
+    expect(spendingOnFile([{ type: "depository", subtype: "checking" }])).toBe(true);
+    expect(spendingOnFile([{ type: "credit", subtype: "credit card" }])).toBe(true);
+  });
+
   it("weights add up to 100", () => {
     expect(Object.values(HEALTH_WEIGHTS).reduce((s, w) => s + w, 0)).toBe(100);
   });
@@ -173,5 +232,26 @@ describe("bands and change", () => {
       biggest: { label: "Cash cushion", delta: 25 - before.parts[0].points },
     });
     expect(healthChange(now, now)).toEqual({ delta: 0, biggest: null });
+  });
+});
+
+describe("fullMonthsOnly", () => {
+  const months = [{ month: "2026-07" }, { month: "2026-08" }, { month: "2026-09" }];
+
+  it("leaves out a month the data starts partway through", () => {
+    // Statements from Jul 28: July has four days, so it would cut the average by a third.
+    expect(fullMonthsOnly(months, "2026-07-28").map((m) => m.month)).toEqual([
+      "2026-08",
+      "2026-09",
+    ]);
+  });
+
+  it("keeps every month the data covers from its first day", () => {
+    expect(fullMonthsOnly(months, "2026-07-01")).toHaveLength(3);
+    expect(fullMonthsOnly(months, "2025-11-03")).toHaveLength(3);
+  });
+
+  it("has no months without data", () => {
+    expect(fullMonthsOnly(months, null)).toEqual([]);
   });
 });

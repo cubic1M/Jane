@@ -68,28 +68,31 @@ describe.runIf(url)("price rises seen before they land", { timeout: 120_000 }, (
     vi.unstubAllEnvs();
   });
 
-  it("raises the promo ending and the yearly renewal as deadlines 30 days ahead or more", async () => {
+  it("raises the promo ending as a price rise 30 days ahead or more, and the yearly plan as a renewal", async () => {
     const userId = await priya();
     const rises = await loadPriceRises(userId, { client, now: NOW });
     expect(rises.map((r) => r.kind).sort()).toEqual(["annual_renewal", "promo_end"]);
-    const deadlines = (await listDeadlines(userId, { client, now: NOW })).filter(
-      (d) => d.kind === "price_rise",
-    );
-    expect(deadlines.map((d) => d.title).sort()).toEqual([
-      "AT&T Fiber: intro price ends",
-      "Icloud+ Annual Plan renews",
-    ]);
+    const all = await listDeadlines(userId, { client, now: NOW });
+    // Under the names the rest of the app gives them (the merchant directory's), so the chat's
+    // search finds what a deadline names.
+    const deadlines = all.filter((d) => d.kind === "price_rise");
+    expect(deadlines.map((d) => d.title)).toEqual(["AT&T: intro price ends"]);
     for (const d of deadlines) {
       expect(daysTo(d.date)).toBeGreaterThanOrEqual(PRICE_RISE_LEAD_DAYS);
-      expect(d.detail).toMatch(/Call before|Decide before/);
+      expect(d.detail).toMatch(/Call before/);
+      expect(d.chargedOn).toBeDefined();
     }
+    // A yearly plan renewing is a renewal (no price rise was seen), listed once.
+    const icloud = all.filter((d) => /icloud/i.test(d.title));
+    expect(icloud).toHaveLength(1);
+    expect(icloud[0].kind).toBe("renewal");
   });
 
   it("says it in the chat: the rule answer, Claude's tool, and one heads-up each", async () => {
     const userId = await priya();
     expect(parseIntent("when does my intro rate end?", TODAY)).toEqual({ kind: "price_rises" });
     const reply = (await answerByRules(userId, { kind: "price_rises" }, { client, now: NOW }))!;
-    expect(reply.body).toMatch(/AT&T Fiber's intro price of \$55\.00 a month likely ends/);
+    expect(reply.body).toMatch(/AT&T's intro price of \$55\.00 a month likely ends/);
     expect(reply.body).toMatch(/What to say on the call/);
     const tool = JSON.parse(
       (await runChatTool(userId, "price_rises", {}, { client, now: NOW })).content,

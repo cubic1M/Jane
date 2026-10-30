@@ -27,6 +27,32 @@ describe("parseAmount", () => {
     expect(parseAmount("can i afford a trip")).toBeNull();
     expect(parseAmount("can i afford $0")).toBeNull();
   });
+
+  // Night QA 10-30: "can I afford rent on Nov 1?" checked a $1.00 purchase.
+  it.each([
+    "can i afford rent on nov 1",
+    "can i afford rent on november 15th",
+    "can i afford rent on the 1st",
+    "can i afford rent on 11/1",
+    "can i afford a car by 2027",
+  ])("reads no amount from a date: %s", (text) => {
+    expect(parseAmount(text)).toBeNull();
+  });
+
+  it("still reads an amount beside a date", () => {
+    expect(parseAmount("can i afford 900 on nov 1")).toBe(90_000);
+    expect(parseAmount("can i afford $1,150 on the 1st")).toBe(115_000);
+    expect(parseAmount("can i spend 2027 on a laptop")).toBe(202_700);
+  });
+});
+
+// Night QA 10-30: "how much do I spend on daycare" found no spending on "daycare".
+describe("matchCategory", () => {
+  it("reads childcare words as Services, where Plaid puts childcare", () => {
+    for (const word of ["daycare", "childcare"]) {
+      expect(matchCategory(word, ["Services", "Shopping"])).toBe("Services");
+    }
+  });
 });
 
 describe("parseMonth", () => {
