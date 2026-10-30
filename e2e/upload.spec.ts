@@ -149,6 +149,25 @@ test("the picker reads day-first dates, guesses positive spending, and asks when
   await expect(page.getByRole("cell", { name: "Sep 6, 2026" })).toBeVisible();
 });
 
+// Founder decision 10-30: a bank that puts the sign in a column of its own ("Debit"/"Credit").
+test("the picker reads the sign from a column of its own", async ({ page, baseURL }) => {
+  await signIn(page, baseURL);
+  await page.goto("/import");
+  await uploadFile(page, "sign-debit-credit.csv");
+
+  const picker = page.locator("[data-column-picker]");
+  await expect(picker.locator('[name="map.0.amount"]')).toHaveValue("2");
+  await expect(picker.locator('[name="map.0.out"]')).toHaveValue("marked");
+  await expect(picker.locator('[name="map.0.marker"]')).toHaveValue("3");
+  await expect(picker.locator('[name="map.0.markout"]')).toHaveValue("Debit");
+
+  await page.getByRole("button", { name: "Preview again" }).click();
+  await expect(page.getByText("Columns you picked · 3 rows")).toBeVisible();
+  // The market is money out, the payroll money in.
+  await expect(page.getByRole("cell", { name: "-$42.10" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "$1,800.00", exact: true })).toBeVisible();
+});
+
 test("a web page saved as .csv is refused before the picker", async ({ page, baseURL }) => {
   await signIn(page, baseURL);
   await page.goto("/import");

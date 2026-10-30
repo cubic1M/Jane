@@ -308,3 +308,95 @@ describe("mappingFromForm", () => {
     );
   });
 });
+
+// Founder decision 10-30: banks that put the sign in a column of its own (Navy Federal; DR/CR at
+// other credit unions; Debit/Credit, +/-). Made-up files, one per layout.
+describe("the sign in a column of its own", () => {
+  const marked = (marker: number, out: string): ColumnMapping => ({
+    hasHeader: true,
+    date: 0,
+    description: 1,
+    amount: { kind: "marked", column: 2, marker, out },
+  });
+  const expected = [
+    ["2026-10-02", 4210],
+    ["2026-10-01", -180000],
+    ["2026-09-30", 6125],
+  ];
+
+  it.each([
+    ["sign-debit-credit.csv", "Debit"],
+    ["sign-dr-cr.csv", "DR"],
+    ["sign-plus-minus.csv", "-"],
+  ])("finds the marker column in %s, guesses it, and reads the rows by it", (file, out) => {
+    const result = read(file);
+    expect(result).toMatchObject({ ok: false, reason: "unknown_format" });
+    if (result.ok) return;
+    expect(result.choices?.guess).toMatchObject({
+      amount: 2,
+      marker: 3,
+      debit: null,
+      credit: null,
+    });
+    expect(result.choices?.markers[3]).toEqual({ values: expect.any(Array), out });
+    expect(rows(read(file, marked(3, out)))).toEqual(expected);
+  });
+
+  it("matches the marker whatever its case", () => {
+    expect(rows(read("sign-debit-credit.csv", marked(3, "DEBIT")))).toEqual(expected);
+  });
+
+  it("offers a named column with its own codes, for the person to say which is money out", () => {
+    const result = read("sign-own-codes.csv");
+    if (result.ok) throw new Error("read without a mapping");
+    expect(result.choices?.markers[3]).toEqual({ values: ["W", "P"], out: null });
+    // Not recognized, so no guess: the amounts' own sign stays the default.
+    expect(result.choices?.guess.marker).toBeNull();
+    expect(rows(read("sign-own-codes.csv", marked(3, "W")))).toEqual(expected);
+  });
+
+  it("never takes a column of amounts or a signed amount for a marker", () => {
+    const choices = mappingChoices(parseCsv(fixture("custom-signed.csv")));
+    expect(choices.markers).toEqual({});
+    expect(choices.guess.marker).toBeNull();
+  });
+
+  it("says when a row's marker is empty", () => {
+    const text = "Date,Memo,Amount,Debit/Credit\n2026-10-02,CORNER MARKET,42.10,\n";
+    const result = readCsvFile({ name: "x.csv", text, mapping: marked(3, "Debit") });
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toMatch(/The column saying which way it went is empty/);
+  });
+
+  it("is read from the form, and asks for what's missing", () => {
+    const base = { "map.0.date": "0", "map.0.description": "1", "map.0.amount": "2" };
+    expect(
+      mappingFromForm(
+        form({
+          ...base,
+          "map.0.header": "1",
+          "map.0.out": "marked",
+          "map.0.marker": "3",
+          "map.0.markout": " DR ",
+        }),
+        0,
+      ),
+    ).toEqual({
+      hasHeader: true,
+      date: 0,
+      description: 1,
+      amount: { kind: "marked", column: 2, marker: 3, out: "DR" },
+    });
+    expect(mappingFromForm(form({ ...base, "map.0.out": "marked" }), 0)).toBe(
+      "Pick the column that says which way each amount went.",
+    );
+    expect(mappingFromForm(form({ ...base, "map.0.out": "marked", "map.0.marker": "3" }), 0)).toBe(
+      "Say which value in that column means money out.",
+    );
+  });
+
+  it("keeps Navy Federal's own layout, read without the picker", () => {
+    const result = read("navy-federal.csv");
+    expect(result.ok && result.format.id).toBe("navy_federal");
+  });
+});

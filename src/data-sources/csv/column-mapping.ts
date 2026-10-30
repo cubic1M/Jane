@@ -21,7 +21,11 @@ export type ColumnMapping = {
   description: number;
   amount:
     | { kind: "signed"; column: number; moneyOut: MoneyOut }
-    | { kind: "split"; debit: number; credit: number };
+    | { kind: "split"; debit: number; credit: number }
+    // The amount without a sign, and the way it went in a column of its own: "Debit"/"Credit",
+    // "DR"/"CR", "-"/"+" (Navy Federal, many credit unions). `out` is that column's value for
+    // money out, as written (any case); every other value there is money in.
+    | { kind: "marked"; column: number; marker: number; out: string };
   // A running balance, when the file has one: the account's balance after each row, for net
   // worth over time and today's balance.
   balance?: number;
@@ -29,6 +33,10 @@ export type ColumnMapping = {
 
 // Jane's guess at which sign is spending in a column, and why, or null to ask.
 export type SignGuess = { moneyOut: MoneyOut | null; why: string };
+
+// A column that could say which way each amount went: its few values, and the one for money
+// out when Jane recognizes it (null: the person picks).
+export type MarkerColumn = { values: string[]; out: string | null };
 
 // What the picker shows for a file: each column with a sample value, and first guesses.
 export type MappingChoices = {
@@ -41,11 +49,15 @@ export type MappingChoices = {
     debit: number | null;
     credit: number | null;
     balance: number | null;
+    // The column saying which way each amount went, when the amounts carry no sign.
+    marker: number | null;
   };
   // Columns with numeric dates: the order they're written in, or "unknown" (ask).
   dateOrders: Record<number, DateOrder | "unknown">;
   // Columns with numbers: which sign is spending.
   signs: Record<number, SignGuess>;
+  // Columns with two or three values that could say which way each amount went.
+  markers: Record<number, MarkerColumn>;
 };
 
 export const CUSTOM_FORMAT = { id: "custom", label: "Columns you picked" } as const;
@@ -55,6 +67,35 @@ const CUSTOM_ACCOUNT = { name: "Uploaded account", kind: "checking" } as const;
 const SAMPLE_CHARS = 24;
 // Of the rows with an amount, the share on one side that settles which sign is spending.
 const SIGN_MAJORITY = 0.6;
+
+// The words banks put in a column of its own for which way an amount went, lowercased.
+const OUT_MARKS = ["debit", "dr", "d", "db", "withdrawal", "out", "-"];
+const IN_MARKS = ["credit", "cr", "c", "deposit", "in", "+"];
+// A marker column has this many different values at most (some banks add a third, like "Hold").
+const MARKER_MAX_VALUES = 3;
+const markOf = (value: string) => value.trim().toLowerCase();
+
+// The columns that could say which way each amount went: two or three values, at least one of
+// them recognized as money out and one as money in, or any two values under a name like "Type"
+// or "Indicator" (the person then picks which is money out).
+export function markerColumns(headers: string[], rows: string[][]): MappingChoices["markers"] {
+  const markers: MappingChoices["markers"] = {};
+  const width = Math.max(headers.length, ...rows.map((r) => r.length));
+  for (let i = 0; i < width; i++) {
+    const values = [...new Set(rows.map((r) => (r[i] ?? "").trim()).filter(Boolean))];
+    if (values.length < 2 || values.length > MARKER_MAX_VALUES) continue;
+    if (values.some((v) => parseAmount(v) !== null && !/^[+-]$/.test(v))) continue;
+    const out = values.find((v) => OUT_MARKS.includes(markOf(v))) ?? null;
+    const inn = values.find((v) => IN_MARKS.includes(markOf(v))) ?? null;
+    const named = /indicator|cr\/dr|dr\/cr|debit\/credit|sign|direction|\btype\b/.test(
+      normalizeHeader(headers[i] ?? ""),
+    );
+    if ((out !== null && inn !== null) || (named && values.length === 2)) {
+      markers[i] = { values, out: out !== null && inn !== null ? out : null };
+    }
+  }
+  return markers;
+}
 
 const find = (headers: string[], pattern: RegExp) => {
   const i = headers.findIndex((h) => pattern.test(h));
@@ -142,7 +183,13 @@ export function mappingChoices(records: CsvRecord[]): MappingChoices {
 
   // From the values: the first date, the first number after it, the longest text.
   const byValue = guessFromValues(sampleRow);
-  let guess: MappingChoices["guess"] = { ...byValue, debit: null, credit: null, balance: null };
+  let guess: MappingChoices["guess"] = {
+    ...byValue,
+    debit: null,
+    credit: null,
+    balance: null,
+    marker: null,
+  };
   if (hasHeader) {
     // From the column names, falling back on the values.
     const headers = first.map(normalizeHeader);
@@ -159,8 +206,13 @@ export function mappingChoices(records: CsvRecord[]): MappingChoices {
       credit,
       // "Running Total" too, as some credit unions write it (round 2).
       balance: find(headers, /balance|running bal|running total/),
+      marker: null,
     };
   }
+  const markers = markerColumns(hasHeader ? first : [], rows);
+  // A "Debit/Credit" column of words is the sign, not money out and money in amounts.
+  if (guess.debit !== null && guess.debit in markers) guess.debit = null;
+  if (guess.credit !== null && guess.credit in markers) guess.credit = null;
 
   const dateOrders: MappingChoices["dateOrders"] = {};
   const signs: MappingChoices["signs"] = {};
@@ -172,7 +224,15 @@ export function mappingChoices(records: CsvRecord[]): MappingChoices {
       signs[i] = guessSign(rows, i, guess.description);
     }
   }
-  return { columns, hasHeader, guess, dateOrders, signs };
+  // Amounts that are never negative, beside a column that says which way they went: that column
+  // is the sign (Jane's guess, shown to check).
+  if (guess.amount !== null) {
+    const amounts = rows.map((r) => parseAmount(r[guess.amount!] ?? "")).filter((c) => c !== null);
+    const unsigned = amounts.length > 0 && amounts.every((c) => c >= 0);
+    const known = Object.entries(markers).find(([, m]) => m.out !== null);
+    if (unsigned && known) guess.marker = Number(known[0]);
+  }
+  return { columns, hasHeader, guess, dateOrders, signs, markers };
 }
 
 function guessFromValues(row: string[]) {
@@ -224,6 +284,17 @@ export function mappedLayout(records: CsvRecord[], mapping: ColumnMapping): Layo
           );
           if (typeof cents === "string") return { ok: false, reason: cents };
           amountCents = cents;
+        } else if (mapping.amount.kind === "marked") {
+          const text = at(get, mapping.amount.column);
+          const cents = parseAmount(text);
+          if (cents === null) {
+            return { ok: false, reason: `"${text}" in the amount column isn't an amount` };
+          }
+          const mark = at(get, mapping.amount.marker).trim();
+          if (!mark) return { ok: false, reason: "The column saying which way it went is empty" };
+          // Positive is money out (Plaid's convention); the marker says which way, not the sign.
+          amountCents =
+            markOf(mark) === markOf(mapping.amount.out) ? Math.abs(cents) : -Math.abs(cents) || 0;
         } else {
           const text = at(get, mapping.amount.column);
           const cents = parseAmount(text);
@@ -284,6 +355,20 @@ export function mappingFromForm(
   const amount = column("amount");
   if (amount !== null) {
     const out = value("out");
+    if (out === "marked") {
+      const marker = column("marker");
+      const markOut = value("markout");
+      if (marker === null) return "Pick the column that says which way each amount went.";
+      if (!markOut?.trim()) return "Say which value in that column means money out.";
+      return {
+        hasHeader,
+        date,
+        ...dateOrder,
+        description,
+        amount: { kind: "marked", column: amount, marker, out: markOut.trim() },
+        ...balance,
+      };
+    }
     if (out !== "negative" && out !== "positive") {
       return "Say whether money you spent shows as a negative or a positive number.";
     }
