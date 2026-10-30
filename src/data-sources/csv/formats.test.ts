@@ -14,6 +14,12 @@ describe("parseUsDate", () => {
     expect(parseUsDate("1/3/2026")).toBe("2026-01-03");
   });
 
+  it("reads a two-digit year as 20YY, as Excel writes it on saving a statement", () => {
+    expect(parseUsDate("10/23/26")).toBe("2026-10-23");
+    expect(parseUsDate("2/29/28")).toBe("2028-02-29");
+    expect(parseUsDate("2/30/26")).toBeNull();
+  });
+
   it("rejects impossible or differently formatted dates", () => {
     expect(parseUsDate("02/30/2026")).toBeNull();
     expect(parseUsDate("13/01/2026")).toBeNull();

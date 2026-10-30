@@ -49,9 +49,12 @@ export type HeaderlessFormat = Omit<CsvFormat, "requiredHeaders"> & {
 
 // MM/DD/YYYY, as US banks export it, to YYYY-MM-DD.
 export function parseUsDate(value: string): string | null {
-  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  // A two-digit year is 20YY: Excel writes 10/23/26 when a downloaded statement is opened and
+  // saved again (night QA 10-30: every row "Unreadable date", nothing imported).
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})$/.exec(value.trim());
   if (!match) return null;
-  const [, month, day, year] = match.map(Number);
+  const [, month, day, written] = match.map(Number);
+  const year = match[3].length === 2 ? 2000 + written : written;
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
   return date.toISOString().slice(0, 10);
