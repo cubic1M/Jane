@@ -1,5 +1,6 @@
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/engine";
+import { forecastAccounts } from "@/detection/forecast";
 import { nextPayday } from "@/detection/paydays";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -56,7 +57,11 @@ export async function loadDecisionInput(
   const savingsCents = accounts
     .filter((a) => a.subtype !== "checking")
     .reduce((s, a) => s + (a.currentBalanceCents ?? 0), 0);
-  const days = bnplData.forecastDays;
+  // The checking forecast, the same one the bills page draws. Not only buy now, pay later's:
+  // that one is empty for anyone without a plan (night QA 10-30: an overdrawn student heard "I
+  // can't see a checking account to forecast").
+  const checking = forecastAccounts(input, FORECAST_DAYS)[0] ?? null;
+  const days = bnplData.forecastDays.length > 0 ? bnplData.forecastDays : (checking?.days ?? []);
   const lowest = days.length
     ? days.reduce((a, b) => (b.balanceCents < a.balanceCents ? b : a))
     : null;
@@ -172,7 +177,7 @@ export async function loadDecisionInput(
           }
         : null,
     forecast:
-      bnplData.checkingCents === null
+      bnplData.checkingCents === null && checking === null
         ? null
         : { firstNegative: label(firstNegative), lowest: label(lowest), savingsCents },
     bnpl: {
