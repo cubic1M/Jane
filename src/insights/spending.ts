@@ -15,6 +15,9 @@ export type InsightTransaction = {
   pfcPrimary: string | null;
   pfcDetailed: string | null;
   pending: boolean;
+  // Only the insights page reads these, to list the transactions behind each row.
+  id?: string;
+  accountId?: string;
 };
 
 export type MonthTotals = { month: string; spendingCents: number; incomeCents: number };
@@ -69,6 +72,11 @@ export function monthsEnding(asOf: string, count: number): string[] {
 const sortDesc = <T extends { cents: number }>(rows: T[]) =>
   rows.sort((a, b) => b.cents - a.cents || JSON.stringify(a).localeCompare(JSON.stringify(b)));
 
+// The clean merchant name a transaction is counted under.
+export function merchantOf(t: InsightTransaction): string {
+  return t.merchantName ?? normalizeMerchant(t.description)?.name ?? t.description;
+}
+
 export function spendingInsights(
   transactions: InsightTransaction[],
   { asOf, monthCount }: { asOf: string; monthCount: number },
@@ -94,7 +102,7 @@ export function spendingInsights(
     const categories = byCategory.get(month)!;
     categories.set(category, (categories.get(category) ?? 0) + t.amountCents);
 
-    const merchant = t.merchantName ?? normalizeMerchant(t.description)?.name ?? t.description;
+    const merchant = merchantOf(t);
     const row = merchants.get(merchant) ?? { merchant, cents: 0, count: 0 };
     row.cents += t.amountCents;
     if (t.amountCents > 0) row.count += 1;
@@ -139,4 +147,54 @@ export function spendingInsights(
     ),
     changes,
   };
+}
+
+// One spending transaction behind a row of the insights page. Refunds are negative, so a row's
+// lines add up to exactly its total.
+export type SpendingLine = {
+  date: string;
+  merchant: string;
+  account: string;
+  cents: number;
+  category: string;
+};
+
+// Every transaction spendingInsights counts as spending in the range, newest first.
+export function spendingLines(
+  transactions: InsightTransaction[],
+  {
+    asOf,
+    monthCount,
+    accountNames = new Map(),
+  }: { asOf: string; monthCount: number; accountNames?: ReadonlyMap<string, string> },
+): SpendingLine[] {
+  const inRange = new Set(monthsEnding(asOf, monthCount));
+  return transactions
+    .filter((t) => inRange.has(t.date.slice(0, 7)) && kindOf(t) === "spending")
+    .sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) ||
+        b.amountCents - a.amountCents ||
+        (a.id ?? "").localeCompare(b.id ?? ""),
+    )
+    .map((t) => ({
+      date: t.date,
+      merchant: merchantOf(t),
+      account: (t.accountId && accountNames.get(t.accountId)) || "",
+      cents: t.amountCents,
+      category: categoryLabel(t.pfcPrimary),
+    }));
+}
+
+// The lines behind one row: a category in a month, or a merchant over the whole range.
+export function linesFor(
+  lines: readonly SpendingLine[],
+  { month, category, merchant }: { month?: string; category?: string; merchant?: string },
+): SpendingLine[] {
+  return lines.filter(
+    (l) =>
+      (month === undefined || l.date.startsWith(month)) &&
+      (category === undefined || l.category === category) &&
+      (merchant === undefined || l.merchant === merchant),
+  );
 }

@@ -12,6 +12,8 @@ export async function loadInsightTransactions(
   const rows = await db.transactions.findMany({
     where: { date: { gte: new Date(`${first}-01T00:00:00Z`) } },
     select: {
+      id: true,
+      accountId: true,
       date: true,
       amountCents: true,
       description: true,
