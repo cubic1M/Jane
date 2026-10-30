@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { shortFormProblems, runHarness } from "./harness";
-import { clip, headlineOf, nice } from "./helpers";
+import { cashLine, clip, headlineOf, nice } from "./helpers";
 import { cardHeadline, type Suggestion } from "./contract";
 
 // docs/detectors.md, "Short forms": every suggestion has a headline of at most 60 characters
@@ -66,10 +66,24 @@ describe("the short forms of a suggestion", () => {
   });
 });
 
+describe("cashLine", () => {
+  it("says cash as held, or overdrawn when it's below zero", () => {
+    expect(cashLine(632_109)).toBe("You keep $6,321.09 in cash");
+    expect(cashLine(632_109, "hold")).toBe("You hold $6,321.09 in cash");
+    expect(cashLine(-27_880)).toBe("You're $278.80 overdrawn");
+  });
+});
+
 describe("nice", () => {
   it("names a payee as a person would say it", () => {
     expect(nice("NETFLIX.COM")).toBe("Netflix");
     // Night QA 10-30: "You pay $1,020.00 a year on Verizon Wireless Des:Paymentrec Id:Xxxxx".
     expect(nice("VERIZON WIRELESS DES:PAYMENTREC ID:XXXXX")).toBe("Verizon Wireless");
+    // Night QA 10-30: "You pay $1,079.88 a year on Comcast Xfinity 800-266-2278".
+    expect(nice("COMCAST XFINITY 800-266-2278")).toBe("Comcast Xfinity");
+    expect(nice("DISNEY PLUS 888-905-7888 CA")).toBe("Disney Plus");
+    expect(nice("SPECTRUM (855) 707-7328")).toBe("Spectrum");
+    // A number that's part of the name stays.
+    expect(nice("7-ELEVEN 2045")).toBe("7-Eleven 2045");
   });
 });

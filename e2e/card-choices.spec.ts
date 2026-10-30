@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { walkToCard } from "./card-walk";
 import { E2E_DATABASE_URL, addJaneMessage, deleteUser } from "./db";
 import { demoPerson } from "./demo-person";
 
@@ -23,20 +24,6 @@ const LABELS = [
   // Its own snooze, in place of Not now.
   "Decide this next week",
 ];
-
-// Steps through the stack to the card with this headline.
-async function toCard(page: Page, scope: Locator, docked: boolean): Promise<Locator> {
-  const showing = scope.locator('[data-card-state="showing"]');
-  const headline = showing.getByRole("heading", { level: 3 });
-  await expect(showing).toBeVisible({ timeout: 60_000 });
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  for (let i = 0; i < 30; i += 1) {
-    if (((await headline.textContent()) ?? "").trim() === HEADLINE) return showing;
-    if (docked) await scope.getByRole("button", { name: "Next suggestion" }).click();
-    else await page.keyboard.press("ArrowRight");
-  }
-  throw new Error("The card with the choices never came up");
-}
 
 async function everyChoiceShown(page: Page, card: Locator) {
   const view = page.viewportSize()!;
@@ -97,15 +84,22 @@ test("every choice on a card is in view and clickable, shut and opened", async (
       ];
   for (const size of sizes) {
     await page.setViewportSize(size);
-    await page.goto("/home");
     const docked = size.width >= 1024;
     const scope = docked
       ? page.getByRole("complementary", { name: "Chat with Jane" }).locator("[data-card-dock]")
       : page.locator('.floating-cards[data-floating-cards="queue"]');
-    if (size.width < 640) {
-      await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
-    }
-    const card = await toCard(page, scope, docked);
+    const card = await walkToCard(
+      page,
+      async () => {
+        await page.goto("/home");
+        if (size.width < 640) {
+          await page.locator('[data-card-state="folded"]').click({ timeout: 60_000 });
+        }
+        return scope;
+      },
+      HEADLINE,
+      { docked },
+    );
     await test.step(`${size.width}px, shut`, () => everyChoiceShown(page, card));
     await card.getByRole("button", { name: "More details" }).click();
     await expect(card.locator('[id^="details-"]')).toBeVisible();

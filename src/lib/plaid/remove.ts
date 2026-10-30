@@ -5,6 +5,7 @@ import { decrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { PlaidRequestError, plaid, plaidCall } from "./client";
+import { forgetSince, removeOrphans } from "@/lib/evidence/orphans";
 import { forgetPrimer } from "@/lib/jane-agent/primer-cache";
 import { isDemoToken } from "./demo";
 
@@ -33,7 +34,7 @@ export async function removePlaidItem(
   const db = scopedFor(userId, client);
   const item = await db.plaidItems.findFirst({
     where: { id: itemId },
-    select: { id: true, accessTokenEncrypted: true, institutionName: true },
+    select: { id: true, accessTokenEncrypted: true, institutionName: true, createdAt: true },
   });
   if (!item) throw new ItemMissingError();
 
@@ -51,6 +52,11 @@ export async function removePlaidItem(
   // The chat's copy of the numbers had that bank's in it (card-chat mismatch). The saved copy
   // and the snapshot are refused from now on by their data stamp (src/lib/data-stamp.ts).
   forgetPrimer(userId);
+  // And everything worked out from that bank goes with it: findings, the decisions and actions
+  // on them, ledger lines and alerts (src/lib/evidence/orphans.ts).
+  await removeOrphans(userId, { client });
+  // What was worked out since it was linked may stand on it: worked out again from what's left.
+  await forgetSince(db, item.createdAt, "bank");
   await logAudit(
     actor,
     "item_removed",

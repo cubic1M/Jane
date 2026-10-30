@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
 import type { FindingType } from "@/generated/prisma/client";
+import { lastMonths } from "@/detection/rules/fee-totals";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 
 // Turns a finding into exactly what Claude may see: its type, merchant names, amounts,
@@ -75,6 +77,12 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
     allowedCents.push(cents);
     return formatCents(Math.abs(cents));
   };
+  // A balance, which can be below zero: "-$680.15".
+  const signedMoney = (cents: number | null): string | null => {
+    if (cents === null) return null;
+    allowedCents.push(cents);
+    return formatCents(cents);
+  };
   const charges = (rows: unknown, kinds = false) =>
     list(rows)
       .map(obj)
@@ -123,7 +131,9 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
     case "card_interest":
       facts = {
         account: finding.type === "card_interest" ? "credit card" : "bank account",
-        totalLast12Months: money(num(evidence.totalCents)),
+        total: money(num(evidence.totalCents)),
+        // "the last 3 months": what the total covers (older findings don't say).
+        ...(num(evidence.months) !== null ? { period: lastMonths(num(evidence.months)!) } : {}),
       };
       sent = charges(evidence.transactions, true);
       break;
@@ -175,8 +185,10 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
       facts = {
         account: "checking account",
         balanceToday: money(num(evidence.balanceCents)),
-        lowestBalance: money(num(evidence.lowestCents)),
-        lowestAround: text(evidence.lowestDate),
+        // The low point keeps its sign and the day reads as people read it (night QA 10-30:
+        // "down to about $680.15 around 2026-11-09" for a forecast of -$680.15 on Nov 9).
+        lowestBalance: signedMoney(num(evidence.lowestCents)),
+        lowestAround: text(evidence.lowestDate) && dayLabel(text(evidence.lowestDate)!),
         cushion: money(num(evidence.cushionCents)),
       };
       sent = list(evidence.bills)

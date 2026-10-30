@@ -293,8 +293,61 @@ describe("categorizeByRules", () => {
     ["BETH SHALOM TEMPLE", "GOVERNMENT_AND_NON_PROFIT_DONATIONS"],
     ["SUNNYSIDE PASTRY", "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK"],
     ["BARKBOX", "GENERAL_MERCHANDISE_PET_SUPPLIES"],
+    // Night QA 10-30: a couple's Wells Fargo mortgage and PG&E.
+    ["WF HOME MTG AUTO PAY", "LOAN_PAYMENTS_MORTGAGE_PAYMENT"],
+    ["PGANDE WEB ONLINE", "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"],
+    // Night QA 10-30: a retiree's college savings and Medicare supplement.
+    ["SCHOLARSHARE 529 CONTRIB", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["MY529 CONTRIBUTION", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["BLUE SHIELD MEDICARE SUPP", "GENERAL_SERVICES_INSURANCE"],
   ])("reads %s as %s", (description, category) => {
     expect(out(description)).toBe(category);
+  });
+
+  // Night QA 10-30: a driver's pay from Uber, Lyft and DoorDash read as refunds of rides and meals.
+  it.each([
+    ["UBER USA 6787 EDI PAYMNT"],
+    ["LYFT INC PAYOUT"],
+    ["DOORDASH DASHER PAYOUT"],
+    ["INSTACART SHOPPER PAYOUT"],
+    ["AMAZON FLEX DEPOSIT"],
+  ])("reads %s, money in, as gig pay", (description) => {
+    expect(categorizeByRules({ description, amountCents: -45_000, hints: {} })?.detailed).toBe(
+      "INCOME_GIG_ECONOMY",
+    );
+  });
+
+  // Night QA 10-30: a student's financial aid read as a $2,100 refund of spending.
+  it.each([["FAFSA DISBURSEMENT UC REFUND"], ["UCLA FINANCIAL AID"], ["PELL GRANT REFUND"]])(
+    "reads %s, money in, as aid paid out, not spending or pay",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -210_000, hints: {} })?.detailed).toBe(
+        "LOAN_DISBURSEMENTS_STUDENT",
+      );
+    },
+  );
+
+  // Night QA 10-30: a payday loan landing in checking read as a $400 refund of spending.
+  it.each([["ADVANCE AMERICA LOAN"], ["EARNIN TRANSFER"], ["DAVE INC ADVANCE"]])(
+    "reads %s, money in, as a cash advance",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -40_000, hints: {} })?.detailed).toBe(
+        "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+      );
+    },
+  );
+
+  it("reads 7-Eleven as a convenience store", () => {
+    expect(out("7-ELEVEN 33421")).toBe("GENERAL_MERCHANDISE_CONVENIENCE_STORES");
+  });
+
+  it("still reads a ride, a meal and a refund of one as what they are", () => {
+    expect(out("UBER *TRIP HELP.UBER.COM")).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
+    expect(out("DOORDASH*THAI HOUSE")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(
+      categorizeByRules({ description: "UBER *TRIP REFUND", amountCents: -1_200, hints: {} })
+        ?.detailed,
+    ).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
   });
 
   it("lets a place's kind win over the words that come last", () => {

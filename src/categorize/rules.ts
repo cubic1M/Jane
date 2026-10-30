@@ -225,7 +225,18 @@ const RULES: readonly Rule[] = [
   // uncategorised, so the loans page never saw the mortgage).
   {
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    keywords: ["MORTGAGE", "MTG PMT", "MORTGAGE PMT", "HOME LOAN PMT"],
+    // Wells Fargo writes its own as "WF HOME MTG AUTO PAY" (night QA 10-30: left uncategorized,
+    // the month close asked a couple what their $3,240 mortgage was).
+    keywords: [
+      "MORTGAGE",
+      "MTG PMT",
+      "MORTGAGE PMT",
+      "HOME LOAN PMT",
+      "HOME MTG",
+      "MTG AUTO PAY",
+      "MTG PYMT",
+      "MTG PAYMENT",
+    ],
     direction: "out",
   },
   {
@@ -303,6 +314,14 @@ const RULES: readonly Rule[] = [
       "SOFI INVEST",
       "IRA CONTRIB",
       "BROKERAGE",
+      // College savings (night QA 10-30: a grandparent's "SCHOLARSHARE 529 CONTRIB" $100 a month
+      // read as a subscription to cancel, "could save $1,200 a year").
+      "529 CONTRIB",
+      "529 PLAN",
+      "SCHOLARSHARE",
+      "MY529",
+      "COLLEGE SAVINGS PLAN",
+      "COLLEGEADVANTAGE",
     ],
     direction: "out",
   },
@@ -524,6 +543,17 @@ const RULES: readonly Rule[] = [
       "FRED MEYER",
     ],
   },
+  // A driver's or shopper's pay from a gig platform, before the ride-share and delivery rules
+  // (night QA 10-30: "UBER USA 6787 EDI PAYMNT" read as a taxi refund and "DOORDASH DASHER
+  // PAYOUT" as a restaurant refund, so $10,600 of pay netted against spending, "Spent this
+  // month $691" with $1,400 of rent, and taxes saw no income).
+  {
+    category: "INCOME_GIG_ECONOMY",
+    pattern:
+      /(?<![A-Z0-9])(?:UBER|LYFT|DOORDASH|GRUBHUB|INSTACART|SHIPT|POSTMATES)(?![A-Z0-9]).*(?<![A-Z0-9])(?:PAYOUT|PAYMNT|PAYMENT|EARNINGS|DASHER|DRIVER|SHOPPER|EDI|DIRECT DEP)(?![A-Z0-9])/,
+    direction: "in",
+  },
+  { category: "INCOME_GIG_ECONOMY", keywords: ["AMAZON FLEX"], direction: "in" },
   // Food delivery before ride shares, so "UBER EATS" isn't a taxi.
   {
     category: "FOOD_AND_DRINK_RESTAURANT",
@@ -549,6 +579,7 @@ const RULES: readonly Rule[] = [
     keywords: ["TARGET", "WALMART", "WAL-MART", "COSTCO"],
   },
   { category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", keywords: ["CVS", "WALGREENS", "RITE AID"] },
+  { category: "GENERAL_MERCHANDISE_CONVENIENCE_STORES", keywords: ["7-ELEVEN", "7 ELEVEN"] },
   {
     category: "GENERAL_MERCHANDISE_ELECTRONICS",
     keywords: ["BEST BUY", "APPLE STORE", "MICRO CENTER"],
@@ -611,6 +642,8 @@ const RULES: readonly Rule[] = [
     category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
     keywords: [
       "PG&E",
+      // How some banks spell it (night QA 10-30: "PGANDE WEB ONLINE").
+      "PGANDE",
       "CON ED",
       "CONEDISON",
       "DUKE ENERGY",
@@ -648,6 +681,10 @@ const RULES: readonly Rule[] = [
       "LIBERTY MUTUAL",
       "LEMONADE INS",
       "NATIONWIDE",
+      // A Medicare supplement or Advantage plan is health cover the person pays (night QA 10-30).
+      "MEDICARE SUPP",
+      "MEDICARE SUPPLEMENT",
+      "MEDIGAP",
     ],
   },
   {
@@ -1846,6 +1883,40 @@ const RULES: readonly Rule[] = [
     ],
   },
   { category: "FOOD_AND_DRINK_GROCERIES", keywords: ["MARKET", "FOODS"], direction: "out" },
+  // Financial aid paid out to a student: moved money, like a loan disbursement, never a refund
+  // of spending or taxable pay (night QA 10-30: "FAFSA DISBURSEMENT UC REFUND", $2,100 in,
+  // uncategorized, cancelled a student's August spending).
+  {
+    category: "LOAN_DISBURSEMENTS_STUDENT",
+    keywords: [
+      "FAFSA",
+      "FINANCIAL AID",
+      "FIN AID",
+      "PELL GRANT",
+      "STUDENT AID",
+      "SCHOLARSHIP",
+      "DIRECT LOAN DISB",
+      "STUDENT LOAN DISB",
+    ],
+    direction: "in",
+  },
+  // A payday loan or an app's cash advance landing in checking: borrowed money, never a refund
+  // of spending (night QA 10-30: a server's "ADVANCE AMERICA LOAN", $400 in, uncategorized).
+  {
+    category: "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+    keywords: [
+      "ADVANCE AMERICA",
+      "CHECK INTO CASH",
+      "ACE CASH EXPRESS",
+      "SPEEDY CASH",
+      "CHECKSMART",
+      "EARNIN",
+      "BRIGIT",
+      "MONEYLION INSTACASH",
+      "DAVE INC",
+    ],
+    direction: "in",
+  },
   {
     category: "INCOME_OTHER",
     keywords: ["CASHBACK", "CASH BACK", "REWARDS CREDIT", "STATEMENT CREDIT", "REDEMPTION"],

@@ -71,7 +71,7 @@ describe("checkup", () => {
     expect(lines.get("duplicate_charge")).toMatchObject({ status: "passed" });
     expect(lines.get("trial_conversion")).toMatchObject({ line: "None in 60 days" });
     expect(lines.get("idle_cash")).toMatchObject({ status: "passed" });
-    expect(lines.get("idle_cash")!.line).toMatch(/^\$5,000 cash, \$[\d,]+ cushion$/);
+    expect(lines.get("idle_cash")!.line).toBe("$5,000 cash, under 3 months of spending");
     expect(lines.get("low_balance_risk")).toMatchObject({
       status: "passed",
       line: "Lowest $3,000 in 31 days",

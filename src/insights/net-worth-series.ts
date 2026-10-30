@@ -1,5 +1,6 @@
 import {
   DEBT_ACCOUNT_TYPES,
+  NET_WORTH_PERCENT_MAX_SHARE,
   NET_WORTH_PERCENT_MIN_START_CENTS,
   NET_WORTH_RANGES,
 } from "@/config/net-worth";
@@ -97,8 +98,9 @@ export function changeOver(
   const cents = points[Math.min(to, points.length - 1)].cents - start;
   // A share of a start at or below zero, or of a few dollars, is alarming and means nothing
   // (QA: "-$8,851 ▼ −$7,344 (−487.4%)"): then only the dollars.
+  const share = start < NET_WORTH_PERCENT_MIN_START_CENTS ? null : cents / start;
   return {
     cents,
-    share: start < NET_WORTH_PERCENT_MIN_START_CENTS ? null : cents / start,
+    share: share !== null && Math.abs(share) > NET_WORTH_PERCENT_MAX_SHARE ? null : share,
   };
 }

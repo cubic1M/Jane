@@ -17,6 +17,8 @@ import { snapshotTitle } from "@/lib/hubs/jane";
 import { formatCents } from "@/lib/money";
 import { savingsRecord, statementCoverage, type SavingsRecord } from "@/lib/outcomes";
 import { dayLabel } from "@/lib/day-label";
+import { withEvidence } from "@/lib/evidence/gate";
+import { evidenceRefs } from "@/lib/finding-accounts";
 import { sha256Hex } from "@/lib/hash";
 
 // What Jane saved you (spec step 139). Only what the person's own transactions show counts
@@ -78,7 +80,7 @@ export async function provenSavings(
   { client = defaultClient, now = new Date(), input: given }: Options = {},
 ): Promise<ProvenSavings> {
   const db = scopedFor(userId, client);
-  const [actions, input] = await Promise.all([
+  const [stored, input] = await Promise.all([
     db.actions.findMany({
       where: { status: { in: ["done", "queued", "in_progress", "waiting_on_user"] } },
       select: {
@@ -100,6 +102,14 @@ export async function provenSavings(
     }),
     given ?? loadDetectionInput(userId, { client, now }),
   ]);
+  // Only actions whose evidence is still in the person's data (src/lib/evidence/gate.ts): the
+  // demo bank's Comcast and Verizon were listed as savings after it was disconnected.
+  const actions = await withEvidence(
+    userId,
+    stored,
+    (a) => evidenceRefs(a.decision.finding.evidence),
+    { client },
+  );
   const asOf = isoDate(now);
   const charges = input.transactions.filter((t) => t.amountCents > 0);
   const from = (key: string | null) =>

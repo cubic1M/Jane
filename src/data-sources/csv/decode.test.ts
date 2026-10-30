@@ -11,4 +11,11 @@ describe("decodeStatement", () => {
     const bytes = Uint8Array.from(Buffer.from("CAF\xc9 M\xdcNCHEN,-4.50", "latin1"));
     expect(decodeStatement(bytes)).toBe("CAFÉ MÜNCHEN,-4.50");
   });
+
+  it("reads UTF-16, as Excel's Unicode Text save writes it", () => {
+    const le = new Uint8Array([0xff, 0xfe, ...Buffer.from("Date,CAFÉ", "utf16le")]);
+    expect(decodeStatement(le)).toBe("Date,CAFÉ");
+    const be = Buffer.from("Date,CAFÉ", "utf16le").swap16();
+    expect(decodeStatement(new Uint8Array([0xfe, 0xff, ...be]))).toBe("Date,CAFÉ");
+  });
 });

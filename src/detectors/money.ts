@@ -1,4 +1,5 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
+import { rateMonthsOf } from "@/profile/build";
 import {
   BANK_FEE_CATEGORIES,
   IDLE_CASH_MONTHS_OF_SPENDING,
@@ -12,11 +13,12 @@ import { summarize } from "@/planning/costly-borrowing";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import {
+  cashLine,
+  cushionSpendCents,
   evidence,
   factEvidence,
   cashKnown,
   liquidCents,
-  monthlySpendCents,
   outCents,
   tx,
   weakest,
@@ -121,7 +123,7 @@ const bankFees: Detector = {
   needs: [],
   detect({ profile, data }) {
     // A year of fees, the one definition (src/planning/bank-fees.ts) the chat's answer uses too.
-    const fees = bankFeesYear(data.transactions, profile.months);
+    const fees = bankFeesYear(data.transactions, Math.round(rateMonthsOf(profile)));
     if (!fees || fees.count < R.feesMin) return null;
     const total = fees.yearCents;
     const span = fees.estimated
@@ -176,7 +178,7 @@ const lateFees: Detector = {
       watch: {
         kind: "fee_stops",
         pfcs: ["BANK_FEES_LATE_FEES"],
-        monthlyCents: Math.round(total / Math.max(1, profile.months)),
+        monthlyCents: Math.round(total / rateMonthsOf(profile)),
       },
     };
   },
@@ -227,7 +229,7 @@ const cardInterest: Detector = {
         monthlyCents:
           typeof yearly === "number"
             ? Math.round(total / 12)
-            : Math.round(total / Math.max(1, profile.months)),
+            : Math.round(total / rateMonthsOf(profile)),
       },
     };
   },
@@ -269,7 +271,7 @@ const emergencyFund: Detector = {
   topic: "emergency_fund",
   needs: ["income_pattern"],
   detect({ profile, data }) {
-    const spend = monthlySpendCents(data, profile.months);
+    const spend = cushionSpendCents(data, profile.months);
     const pattern = profile.facts.income_pattern;
     const trouble = profile.facts.debt_trouble;
     const incomeFact = profile.facts.monthly_income;
@@ -304,7 +306,7 @@ const emergencyFund: Detector = {
         short,
         "risk",
       ),
-      short: `You keep ${formatCents(liquidCents(data))} in cash; a cushion for you is ${formatCents(target.targetCents)}.`,
+      short: `${cashLine(liquidCents(data))}; a cushion for you is ${formatCents(target.targetCents)}.`,
       worthCents: short,
       worthKind: "risk",
       confidence: weakest([
@@ -317,10 +319,10 @@ const emergencyFund: Detector = {
       ]),
       urgency: "soon",
       why: starter
-        ? `Your cash is ${formatCents(liquidCents(data))} and your debts are the priority, so start with a ${formatCents(target.targetCents)} buffer so a surprise doesn't go on a card; then the debt plan.`
+        ? `${liquidCents(data) < 0 ? `You're ${formatCents(-liquidCents(data))} overdrawn` : `Your cash is ${formatCents(liquidCents(data))}`} and your debts are the priority, so start with a ${formatCents(target.targetCents)} buffer so a surprise doesn't go on a card; then the debt plan.`
         : gap
-          ? `You spend about ${formatCents(spend)} a month against ${formatCents(Number(incomeFact.value))} coming in, a gap of ${formatCents(spend - Number(incomeFact.value))}; ${target.months} months of it is ${formatCents(target.targetCents)}, and you keep ${formatCents(liquidCents(data))}.`
-          : `You spend about ${formatCents(spend)} a month and keep ${formatCents(liquidCents(data))} in cash; ${target.months} months is ${formatCents(target.targetCents)}.`,
+          ? `You spend about ${formatCents(spend)} a month against ${formatCents(Number(incomeFact.value))} coming in, a gap of ${formatCents(spend - Number(incomeFact.value))}; ${target.months} months of it is ${formatCents(target.targetCents)}. ${cashLine(liquidCents(data))}.`
+          : `You spend about ${formatCents(spend)} a month. ${cashLine(liquidCents(data))}; ${target.months} months is ${formatCents(target.targetCents)}.`,
       action: { label: "Set a savings goal", href: "/goals" },
     };
   },

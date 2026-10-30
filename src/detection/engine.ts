@@ -14,6 +14,7 @@ import { refundChargesAfterCancel } from "@/lib/agent/run";
 import { refreshProposals } from "@/lib/proposals";
 import { applyStandingRules } from "@/lib/standing-rules";
 import { db as defaultClient } from "@/lib/db";
+import { removeOrphans } from "@/lib/evidence/orphans";
 import { llmModel } from "@/lib/anthropic";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { todayOf } from "@/lib/today";
@@ -394,6 +395,9 @@ export async function runDetection(
   }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
+  // First, what was built from data that is gone (a bank disconnected, an upload removed): it
+  // goes, decisions and actions included, so nothing says it again (src/lib/evidence/orphans.ts).
+  await removeOrphans(userId, { client });
   const input = await loadInput(db, await todayOf(userId, { client, now }), client);
   const answers = await subscriptionMerchantKeys(db, input, check);
   input.subscriptionMerchantKeys = answers.yes;

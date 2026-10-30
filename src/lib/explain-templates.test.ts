@@ -25,6 +25,43 @@ describe("templateExplanation", () => {
     },
   );
 
+  // Night QA 10-30: "down to about $680.15 around 2026-11-09" for a forecast of -$680.15.
+  it("says a low point below zero with its sign, on a day people read", () => {
+    const { input, allowedCents } = prepareExplainInput({
+      type: "low_balance_risk",
+      annualSavingsCents: null,
+      evidence: { balanceCents: 79_847, lowestCents: -68_015, lowestDate: "2026-11-09" },
+    });
+    const content = templateExplanation(
+      "Chase checking could drop to -$680.15 around Nov 9",
+      input,
+    );
+    expect(content.explanation).toMatch(/down to about -\$680\.15 around Nov 9,/);
+    expect(checkGuardrails(contentText(content), allowedCents, "low_balance_risk")).toEqual({
+      ok: true,
+    });
+  });
+
+  it("says the months a fee or interest total covers, never a year it doesn't", () => {
+    const fees = templateExplanation("$36.00 in fees on BofA checking in the last 3 months", {
+      findingType: "bank_fees",
+      savingsPerYear: "$144.00",
+      facts: { account: "bank account", total: "$36.00", period: "the last 3 months" },
+      charges: [],
+    });
+    expect(fees.explanation).toMatch(
+      /^Your bank or card company charged you \$36\.00 in fees in the last 3 months\./,
+    );
+    const interest = templateExplanation("$60.44 in interest", {
+      findingType: "card_interest",
+      savingsPerYear: "$241.76",
+      facts: { account: "credit card", total: "$60.44" },
+      charges: [],
+    });
+    expect(interest.explanation).toMatch(/^You paid \$60\.44 in credit card interest\./);
+    expect(`${fees.explanation} ${interest.explanation}`).not.toMatch(/12 months/);
+  });
+
   it("still reads naturally when a figure is missing", () => {
     const content = templateExplanation("Your Geico insurance could cost less", {
       findingType: "insurance_reshop",

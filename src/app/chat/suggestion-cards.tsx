@@ -1,12 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
 import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
 import { DONE_ACTION, REVERT_ACTION } from "@/lib/jane-agent/choices";
 import { popupCard, type PopupCard } from "@/lib/jane-agent/popups";
+import {
+  goneServerSnapshot,
+  goneSnapshot,
+  markGone,
+  subscribeGone,
+  withoutGone,
+} from "@/lib/dock-gone";
 import { noteDetailsOpened, tapButton } from "./actions";
 
 // Jane's pop-ups over the chat or the page (src/lib/jane-agent/popups.ts): the day's suggestions,
@@ -75,8 +82,19 @@ export function cardOf(message: MessageView): FloatingCardData {
   };
 }
 
+// Following a card to the page it points at is engaging with it (founder: the card came straight
+// back on that page): a suggestion takes its own Yes (answered yes; what it saves stays an
+// estimate until the transactions show it), anything else its own Not now (put off until
+// tomorrow). A card with neither is only left out for the rest of the tab's session.
+export function followAction(message: Pick<MessageView, "suggestion" | "buttons">): string | null {
+  if (message.suggestion && message.buttons.some((b) => b.id === "suggestion.yes")) {
+    return "suggestion.yes";
+  }
+  return message.buttons.some((b) => b.id === "snooze") ? "snooze" : null;
+}
+
 export function SuggestionCards({
-  messages,
+  messages: given,
   foldOnPhone = false,
   docked = false,
   onAnswered,
@@ -94,6 +112,10 @@ export function SuggestionCards({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  // Never one the person dealt with in this tab, even if a load brought it back before its
+  // answer reached the server (src/lib/dock-gone.ts).
+  const gone = useSyncExternalStore(subscribeGone, goneSnapshot, goneServerSnapshot);
+  const messages = useMemo(() => withoutGone(given, gone.split(",")), [given, gone]);
   const [open, setOpen] = useState(messages.length);
   // Each card's last tap still on its way to the server, so a Revert follows its choice.
   const sending = useRef(new Map<string, Promise<unknown>>());
@@ -129,10 +151,34 @@ export function SuggestionCards({
             });
           }
         }}
+        onFollow={(id, href) => {
+          setOpen((n) => Math.max(0, n - 1));
+          const message = messages.find((m) => m.id === id);
+          markGone(id);
+          // On the page itself, a client navigation: instant, and the dock stays. In the chat's
+          // frame the link goes to the bridge, which opens it in the page (embed-bridge.tsx).
+          const here = window.self === window.top && href.startsWith("/");
+          if (here) router.push(href);
+          const actionId = message ? followAction(message) : null;
+          if (!message || !actionId) return here;
+          // Behind the navigation: the next page's dock already leaves it out.
+          const data = new FormData();
+          data.set("messageId", id);
+          data.set("actionId", actionId);
+          const sent = (sending.current.get(id) ?? Promise.resolve())
+            .catch(() => undefined)
+            .then(() => tapButton({ message, error: null }, data));
+          sending.current.set(id, sent);
+          void sent.catch(() => undefined).then(() => onAnswered?.());
+          return here;
+        }}
         onAnswer={(id, how, choice) => {
           setOpen((n) => Math.max(0, n - 1));
           const message = messages.find((m) => m.id === id)!;
           const card = cards.find((c) => c.id === id) as PopupCard;
+          // Gone from every stack in this tab at once, unless it stays on screen chosen (with
+          // Revert and Done) until it settles.
+          if (!(how === "yes" && card.revertable)) markGone(id);
           // A suggestion answers Yes, Not now or Never; anything else taps its own buttons,
           // and Not now without a button of its own only puts it off on this screen.
           const actionId = message.suggestion
@@ -158,7 +204,10 @@ export function SuggestionCards({
           });
         }}
         onRevert={(id) => send(id, REVERT_ACTION)}
-        onSettle={(id) => send(id, DONE_ACTION)}
+        onSettle={(id) => {
+          markGone(id);
+          send(id, DONE_ACTION);
+        }}
       />
       {/* Room at the end of the page so the message box is never under a card. */}
       {open > 0 && !docked && <div aria-hidden="true" data-card-room="" className="h-28" />}

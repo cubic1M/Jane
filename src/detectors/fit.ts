@@ -1,4 +1,5 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
+import { rateMonthsOf } from "@/profile/build";
 import {
   FIT_ASSUMED_SCORE,
   FIT_CARD_PAYMENT_SHARE,
@@ -37,7 +38,7 @@ const consolidation: Detector = {
     // payments work out to on what is owed (a guess, and the confidence says so).
     const allRated = cards.every((c) => rate(c.id) !== null);
     const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
-    const yearlyInterest = Math.round((outCents(charges) * 12) / Math.max(1, profile.months));
+    const yearlyInterest = Math.round((outCents(charges) * 12) / rateMonthsOf(profile));
     const apr = allRated
       ? Math.round(cards.reduce((s, c) => s + (rate(c.id) ?? 0) * c.balanceCents, 0) / owed)
       : Math.round((yearlyInterest / owed) * 10_000);

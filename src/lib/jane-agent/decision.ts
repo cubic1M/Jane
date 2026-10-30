@@ -1,6 +1,6 @@
 import { DECISION_HIGH_RATE_BPS, DECISION_MIN_CUSHION_MONTHS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { liquidCents, monthlySpendCents } from "@/detectors/helpers";
+import { cashLine, cushionSpendCents, liquidCents } from "@/detectors/helpers";
 import { adviceMode } from "@/lib/advice-mode";
 import { formatCents } from "@/lib/money";
 import { loadProfileInput } from "@/lib/profile";
@@ -37,7 +37,7 @@ export async function loadDecisionFacts(
 ): Promise<DecisionFacts> {
   const data = await loadProfileInput(userId, { client, now });
   const profile = buildProfile(data);
-  const spend = monthlySpendCents(data, profile.months);
+  const spend = cushionSpendCents(data, profile.months);
   const cash = liquidCents(data);
   const income = profile.facts.monthly_income;
   const pattern = profile.facts.income_pattern;
@@ -97,10 +97,10 @@ function standing(f: DecisionFacts): string[] {
   }
   if (f.cushionTargetCents !== null) {
     lines.push(
-      `You hold ${formatCents(f.cashCents)} in cash${f.cushionMonths !== null ? `, about ${f.cushionMonths} months of spending` : ""}; a cushion for you is ${formatCents(f.cushionTargetCents)}.`,
+      `${cashLine(f.cashCents, "hold")}${f.cushionMonths !== null && f.cashCents >= 0 ? `, about ${f.cushionMonths} months of spending` : ""}; a cushion for you is ${formatCents(f.cushionTargetCents)}.`,
     );
   } else {
-    lines.push(`You hold ${formatCents(f.cashCents)} in cash.`);
+    lines.push(`${cashLine(f.cashCents, "hold")}.`);
   }
   for (const g of f.goalsBehind) {
     lines.push(`Your goal "${g.name}" still has ${formatCents(g.leftCents)} to go.`);
@@ -158,7 +158,7 @@ function cushionReply(f: DecisionFacts, advice: boolean): Reply {
       ? "I need to see a few months of your spending to size a cushion. Once your bank is linked, I'll tell you."
       : [
           `A cushion for you is ${formatCents(f.cushionTargetCents)}${f.monthlySpendCents > 0 ? `: you spend about ${formatCents(f.monthlySpendCents)} a month` : ""}.`,
-          `You hold ${formatCents(f.cashCents)} in cash${f.cushionMonths !== null ? `, about ${f.cushionMonths} months of spending` : ""}.`,
+          `${cashLine(f.cashCents, "hold")}${f.cushionMonths !== null && f.cashCents >= 0 ? `, about ${f.cushionMonths} months of spending` : ""}.`,
           f.cashCents >= f.cushionTargetCents
             ? "That covers it."
             : `You are ${formatCents(f.cushionTargetCents - f.cashCents)} short of it.`,

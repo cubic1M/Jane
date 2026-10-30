@@ -24,6 +24,7 @@ import {
   wrongAccountNote,
   type LinkedAccount,
 } from "@/lib/import/wrong-account";
+import { oldUploadNewest } from "@/lib/import/old-upload";
 import { formatCents } from "@/lib/money";
 
 type AccountOption = { id: string; name: string; kindLabel: string; kind: AccountKind | null };
@@ -186,6 +187,10 @@ export function ImportForm({
   const total = files.reduce((sum, f) => sum + (f.ok ? f.rowCount : 0), 0);
   const suggested = files.find((f) => f.ok)?.account;
   const days = coveredDays(files);
+  const oldNewest = oldUploadNewest(
+    files.flatMap((f) => (f.ok ? [f] : [])),
+    new Date().toISOString().slice(0, 10),
+  );
 
   return (
     <form ref={formRef} onSubmit={onPreview} className="flex flex-col gap-4">
@@ -306,6 +311,17 @@ export function ImportForm({
 
       {preview && !preview.ok && <Alert>{preview.error}</Alert>}
       {error && <Alert>{error}</Alert>}
+      {ready && oldNewest && (
+        <p
+          data-upload-old=""
+          className="rounded-lg bg-zinc-100 p-3 text-sm text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+        >
+          The newest row in {files.length === 1 ? "this file" : "these files"} is from{" "}
+          {dayLabel(oldNewest, { year: true })}. Jane reads a statement&apos;s last balance as
+          today&apos;s and looks at your latest months, so download your most recent statements if
+          you meant to.
+        </p>
+      )}
       {ready && days !== null && days < SUGGESTED_UPLOAD_DAYS && (
         <p
           data-upload-months=""

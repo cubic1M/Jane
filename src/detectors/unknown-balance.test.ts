@@ -37,3 +37,31 @@ describe("cash suggestions with no balance known", () => {
     expect(topics(unknown(renter))).not.toContain("emergency_fund");
   });
 });
+
+// Night QA 10-30: a student whose checking was overdrawn read "You keep -$278.80 in cash" and
+// "You hold -$278.80 against about $2,502.11 a month in bills".
+describe("cash suggestions for an overdrawn account", () => {
+  const overdrawn = (d: ProfileInput): ProfileInput => {
+    let first = true;
+    return {
+      ...d,
+      accounts: d.accounts.map((a) => {
+        if (a.type !== "depository") return a;
+        const balanceCents = first ? -27_880 : 0;
+        first = false;
+        return { ...a, balanceCents };
+      }),
+    };
+  };
+
+  it("say overdrawn, never a negative amount of cash", () => {
+    const cash = run(overdrawn(inputFor("renter"))).filter((s) =>
+      ["low_balance", "emergency_fund"].includes(s.topic),
+    );
+    expect(cash.map((s) => s.topic).sort()).toEqual(["emergency_fund", "low_balance"]);
+    for (const s of cash) {
+      expect(`${s.short} ${s.why}`).toContain("$278.80 overdrawn");
+      expect(`${s.short} ${s.why}`).not.toMatch(/-\$/);
+    }
+  });
+});

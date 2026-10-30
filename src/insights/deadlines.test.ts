@@ -37,6 +37,7 @@ const deadline = (overrides: Partial<Deadline> = {}): Deadline => ({
   amountCents: null,
   href: null,
   detail: null,
+  evidence: { kind: "entered" },
   ...overrides,
 });
 
@@ -300,6 +301,7 @@ describe("hand-entered", () => {
         href: null,
         detail: "Spend the rest on glasses",
         entryId: "d1",
+        evidence: { kind: "entered" },
       },
     ]);
   });

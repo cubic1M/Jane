@@ -20,6 +20,17 @@ vi.mock("@/lib/merchant-outcomes", () => ({
 }));
 vi.mock("@/lib/retention", () => ({ runRetention: vi.fn(async () => ({ rateLimits: 4 })) }));
 vi.mock("@/lib/learning", () => ({ refreshKindStats: vi.fn(async () => 3) }));
+vi.mock("@/lib/evidence/backfill", () => ({
+  forgetRemovedDemoBanks: vi.fn(async () => ({ forgotten: 0, failed: 0 })),
+}));
+vi.mock("@/lib/import/background", () => ({ refreshAfterRemoval: vi.fn() }));
+vi.mock("@/lib/evidence/orphans", () => ({
+  removeAllOrphans: vi.fn(async () => ({
+    users: 0,
+    removed: { findings: 0, outcomes: 0, alerts: 0 },
+    failed: 0,
+  })),
+}));
 vi.mock("@/lib/deadlines", () => ({
   remindAllDeadlines: vi.fn(async () => ({ users: 2, raised: 1, failed: 0 })),
 }));
@@ -102,6 +113,8 @@ describe("GET /api/cron/plaid-sync", () => {
       agent: { checked: 0 },
       outcomes: { merchants: 2 },
       retention: { rateLimits: 4 },
+      orphans: { users: 0, removed: { findings: 0, outcomes: 0, alerts: 0 }, failed: 0 },
+      demoCleanup: { forgotten: 0, failed: 0 },
       learning: 3,
       deadlines: { users: 2, raised: 1, failed: 0 },
       // Spec step 104: insurance reshopped by itself.
@@ -136,6 +149,8 @@ describe("GET /api/cron/plaid-sync", () => {
       agent: { checked: 0 },
       outcomes: { merchants: 2 },
       retention: { rateLimits: 4 },
+      orphans: { users: 0, removed: { findings: 0, outcomes: 0, alerts: 0 }, failed: 0 },
+      demoCleanup: { forgotten: 0, failed: 0 },
       learning: 3,
       deadlines: { users: 2, raised: 1, failed: 0 },
       // Spec step 104: insurance reshopped by itself.

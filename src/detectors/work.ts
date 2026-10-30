@@ -1,4 +1,5 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { rateMonthsOf } from "@/profile/build";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { BUSINESS_LUMPS } from "@/config/detectors";
 import { BUSINESS_SALES_DEPOSIT } from "@/config/insurance";
@@ -236,7 +237,7 @@ const businessInsurance: Detector = {
       );
       if (short.length === 0) return null;
       const work = input.business!;
-      const yearly = (cents: number) => Math.round((cents * 12) / Math.max(1, profile.months));
+      const yearly = (cents: number) => Math.round((cents * 12) / rateMonthsOf(profile));
       const shop = work.salesCents > work.serviceCents;
       const seen = data.transactions.filter(
         (t) =>
