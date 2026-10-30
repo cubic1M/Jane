@@ -46,12 +46,18 @@ const ACTED = ["open", "partial", "not_seen", "confirmed", "unverifiable", "laps
 // Every move between the ledger's states goes to the audit log (src/planning/ledger.ts).
 async function auditState(
   actor: AuditActor,
-  row: { id: string; suggestionKey: string; status: string; heldAt?: Date | null },
-  next: { status: string; heldAt?: Date | null },
+  row: {
+    id: string;
+    suggestionKey: string;
+    status: string;
+    heldAt?: Date | null;
+    doneAt?: Date | null;
+  },
+  next: { status: string; heldAt?: Date | null; doneAt?: Date | null },
   cents: number,
 ): Promise<void> {
   const from = ledgerStateOf(row);
-  const to = ledgerStateOf({ heldAt: row.heldAt, ...next });
+  const to = ledgerStateOf({ heldAt: row.heldAt, doneAt: row.doneAt, ...next });
   if (from === to || to === null) return;
   await logAudit(
     actor,
@@ -234,7 +240,12 @@ export async function markSuggestionDone(
       status,
     },
   });
-  await auditState({ type: "user", id: userId }, outcome, { status }, outcome.expectedCents);
+  await auditState(
+    { type: "user", id: userId },
+    outcome,
+    { status, doneAt: outcome.doneAt ?? now },
+    outcome.expectedCents,
+  );
   // The suggestion is answered for good: it isn't offered again.
   await scopedFor(userId, client).suggestions.updateMany({
     where: { key, status: { notIn: ["yes", "no"] } },

@@ -19,18 +19,20 @@ import type { CheckDay } from "./outcomes";
 // - Not seen: the watch window passed with no saving, or it came back after it was verified.
 // Pure.
 
-export type LedgerState = "estimated" | "done" | "verified" | "held" | "not_seen";
+export type LedgerState = "estimated" | "said_yes" | "done" | "verified" | "held" | "not_seen";
 
 export const LEDGER_STATES: readonly LedgerState[] = [
   "held",
   "verified",
   "done",
+  "said_yes",
   "estimated",
   "not_seen",
 ];
 
 export const STATE_LABEL: Record<LedgerState, string> = {
   estimated: "Estimated",
+  said_yes: "You said yes",
   done: "Done",
   verified: "Verified",
   held: "Held",
@@ -41,16 +43,19 @@ export const STATE_LABEL: Record<LedgerState, string> = {
 export const COUNTED: readonly LedgerState[] = ["verified", "held"];
 
 // A suggestion_outcomes row's state. Null for a no (declined): not on the ledger.
+// Done needs a done mark ("I did it", Mark done): a Yes alone is "You said yes" (manager decision
+// 10-30, honest labels: Yes on a dock card read "[DONE]" though nothing was done).
 export function ledgerStateOf(row: {
   status: string;
   heldAt?: Date | string | null;
+  doneAt?: Date | string | null;
 }): LedgerState | null {
   switch (row.status) {
     case "shown":
       return "estimated";
     case "open":
     case "unverifiable":
-      return "done";
+      return row.doneAt ? "done" : "said_yes";
     case "confirmed":
     case "partial":
       return row.heldAt ? "held" : "verified";

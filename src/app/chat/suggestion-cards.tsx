@@ -73,7 +73,7 @@ export function cardOf(message: MessageView): FloatingCardData {
       whatYesDoes: extra
         ? `${yes ? `${yes.label}. ` : ""}${extra.whatYesDoes}`
         : yes
-          ? `${yes.label}. Nothing is bought or moved: Yes takes you to the page where you finish it.`
+          ? `${yes.label}. Nothing is bought or moved: Yes puts it on your list; Open takes you to the page.`
           : undefined,
       notes: notes.length > 0 ? notes : undefined,
     },

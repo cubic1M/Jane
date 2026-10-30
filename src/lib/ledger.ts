@@ -43,6 +43,10 @@ export type LedgerEntry = {
   actedOn: string | null;
   verifiedOn: string | null;
   heldOn: string | null;
+  // Where the person does it (the suggestion's own page), while it's still theirs to do: said
+  // yes or found (manager decision 10-30: the "here's where to do it" link was only in a chat
+  // message suggestions never show in).
+  href: string | null;
 };
 
 export type Ledger = {
@@ -52,6 +56,7 @@ export type Ledger = {
   heldCents: number;
   // Estimates, apart: found and not acted on, and done but not shown yet.
   estimatedCents: number;
+  saidYesCents: number;
   doneCents: number;
   counts: Record<LedgerState, number>;
 };
@@ -67,14 +72,15 @@ const orderOf: Record<LedgerState, number> = {
   held: 0,
   verified: 1,
   done: 2,
-  estimated: 3,
-  not_seen: 4,
+  said_yes: 3,
+  estimated: 4,
+  not_seen: 5,
 };
 
 export async function savingsLedger(userId: string, options: Options = {}): Promise<Ledger> {
   const client = options.client ?? defaultClient;
   const db = scopedFor(userId, client);
-  const [all, shown, live] = await Promise.all([
+  const [all, shown, live, pages] = await Promise.all([
     verifiedSavings(userId, options),
     db.suggestionOutcomes.findMany({
       where: { status: "shown", worthKind: "saves", expectedCents: { gt: 0 } },
@@ -84,7 +90,11 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       where: { status: { notIn: ["gone", "yes", "no"] } },
       select: { key: true, title: true, worthCents: true, confidencePercent: true, watch: true },
     }),
+    db.suggestions.findMany({ select: { key: true, actionHref: true } }),
   ]);
+  const pageOf = new Map(pages.map((p) => [p.key, p.actionHref]));
+  const hrefOf = (key: string, state: LedgerState) =>
+    state === "said_yes" || state === "estimated" ? (pageOf.get(key) ?? null) : null;
   // What each suggestion says now: a later scan moves its figure without showing it again
   // (debugger 10-30: fees "about $56/yr" here, from before the card's annual fee came in, while
   // the dock said $381).
@@ -113,6 +123,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       actedOn: null,
       verifiedOn: r.verifiedOn,
       heldOn: r.heldOn,
+      href: null,
     });
   }
   const plain = (e: { actionId: string; title: string; cents: number; why: string }) => ({
@@ -134,6 +145,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     actedOn: null,
     verifiedOn: null,
     heldOn: null,
+    href: null,
   });
   for (const e of all.actions.estimated) entries.push({ ...plain(e), state: "done" });
   for (const e of all.actions.notShown) entries.push({ ...plain(e), state: "not_seen" });
@@ -162,6 +174,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       actedOn: o.actedOn,
       verifiedOn: o.verifiedOn,
       heldOn: o.heldOn,
+      href: hrefOf(o.key, o.state),
     });
   }
 
@@ -189,13 +202,14 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
       actedOn: null,
       verifiedOn: null,
       heldOn: null,
+      href: pageOf.get(o.suggestionKey) ?? null,
     });
   }
 
   entries.sort((a, b) => orderOf[a.state] - orderOf[b.state] || b.cents - a.cents);
   const sum = (states: LedgerState[]) =>
     entries.filter((e) => states.includes(e.state)).reduce((t, e) => t + e.cents, 0);
-  const counts = { estimated: 0, done: 0, verified: 0, held: 0, not_seen: 0 };
+  const counts = { estimated: 0, said_yes: 0, done: 0, verified: 0, held: 0, not_seen: 0 };
   for (const e of entries) counts[e.state] += 1;
   return {
     entries,
@@ -203,6 +217,7 @@ export async function savingsLedger(userId: string, options: Options = {}): Prom
     savedCents: all.confirmedCents,
     heldCents: sum(["held"]),
     estimatedCents: sum(["estimated"]),
+    saidYesCents: sum(["said_yes"]),
     doneCents: sum(["done"]),
     counts,
   };

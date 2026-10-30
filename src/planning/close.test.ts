@@ -126,6 +126,23 @@ describe("the monthly close", () => {
     expect(flagged).toMatchObject({ quiet: true, allGood: false });
   });
 
+  // Manager decision 10-30 (honest labels): a Yes alone isn't something the person did.
+  it("keeps a said-yes saving open as You said yes, never under You did", () => {
+    const said = closeOf({
+      month: MONTH,
+      today: "2026-11-02",
+      entries: [
+        entry({ key: "said", state: "said_yes", actedOn: "2026-10-05", cents: 156_200 }),
+        entry({ key: "done", state: "done", actedOn: "2026-10-06" }),
+      ],
+      changes: [],
+      checkup: [],
+    });
+    expect(said.did.map((e) => e.key)).toEqual(["done"]);
+    expect(said.open.map((e) => e.key)).toEqual(["said", "done"]);
+    expect(said.chips[0]).toMatchObject({ label: "You said yes", figure: "$1,562/yr" });
+  });
+
   it("steps months across years", () => {
     expect(monthStep("2026-01", -1)).toBe("2025-12");
     expect(monthStep("2026-12", 1)).toBe("2027-01");

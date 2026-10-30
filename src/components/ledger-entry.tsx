@@ -11,6 +11,7 @@ export const STATE_GLYPH: Record<LedgerState, string> = {
   held: "■",
   verified: "●",
   done: "◐",
+  said_yes: "◔",
   estimated: "○",
   not_seen: "×",
 };
@@ -69,9 +70,9 @@ export function LedgerEntryRow({ entry: e, action }: { entry: Entry; action?: Re
             <span className={`text-xs ${MUTED}`}>{e.confidencePercent}% sure</span>
           )}
           {/* Founder (10-30): "Hulu: done, we'll check on Nov 5". */}
-          {e.state === "done" && e.checkWords && (
+          {(e.state === "done" || e.state === "said_yes") && e.checkWords && (
             <span data-ledger-check="" className={`basis-full text-xs ${MUTED}`}>
-              Done, {e.checkWords}
+              {e.state === "done" ? "Done" : "You said yes"}, {e.checkWords}
             </span>
           )}
         </summary>
@@ -92,6 +93,15 @@ export function LedgerEntryRow({ entry: e, action }: { entry: Entry; action?: Re
             {e.verifiedPercent !== null ? `${e.verifiedPercent}% sure it shows. ` : ""}
             {e.rule}
           </p>
+          {e.href && (
+            <a
+              href={e.href}
+              data-ledger-open=""
+              className="self-start text-sm font-medium underline underline-offset-2"
+            >
+              Open the page where you do it ›
+            </a>
+          )}
           {action}
         </div>
       </details>

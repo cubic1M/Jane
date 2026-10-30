@@ -22,6 +22,7 @@ const CHIP: Record<LedgerState, (n: number) => string> = {
   held: (n) => `${n} held`,
   verified: (n) => `${n} verified`,
   done: (n) => `${n} done, waiting`,
+  said_yes: (n) => `${n} you said yes`,
   estimated: (n) => `${n} to do`,
   not_seen: (n) => `${n} not seen`,
 };
@@ -50,7 +51,7 @@ function Section({
             key={e.key}
             entry={e}
             action={
-              doneButton && e.state === "estimated" ? (
+              doneButton && (e.state === "estimated" || e.state === "said_yes") ? (
                 <form action={markDone}>
                   <input type="hidden" name="key" value={e.key} />
                   <button
@@ -75,7 +76,7 @@ async function SavedContent() {
   const ledger = await savingsLedger(user.id);
   const of = (...states: LedgerState[]) => ledger.entries.filter((e) => states.includes(e.state));
   // At most three chips: what's proven first, then what's waiting on the person.
-  const chips = (["held", "verified", "done", "estimated"] as const)
+  const chips = (["held", "verified", "done", "said_yes", "estimated"] as const)
     .filter((s) => ledger.counts[s] > 0)
     .slice(0, 3);
   return (
@@ -124,8 +125,8 @@ async function SavedContent() {
       <Section
         id="estimates"
         title="Estimates"
-        note={`About ${formatCents(ledger.doneCents + ledger.estimatedCents)} more. Not counted until your transactions show it.`}
-        entries={of("done", "estimated")}
+        note={`About ${formatCents(ledger.doneCents + ledger.saidYesCents + ledger.estimatedCents)} more. Not counted until your transactions show it.`}
+        entries={of("done", "said_yes", "estimated")}
         doneButton
       />
 

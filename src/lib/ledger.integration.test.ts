@@ -16,6 +16,7 @@ import { savingsLedger } from "@/lib/ledger";
 import { markSuggestionDone, recordShown, verifyOutcomes } from "@/lib/outcomes";
 import { syncItem } from "@/lib/plaid/sync";
 import { verifiedSavings } from "@/lib/savings-proof";
+import { answerSuggestion } from "@/lib/suggestions";
 import { startTrial } from "@/lib/trial";
 import { checkResults } from "@/lib/worked";
 
@@ -245,5 +246,58 @@ describe.runIf(url)("the savings ledger, on a sample person", { timeout: 240_000
       (e) => e.key === key,
     );
     expect(entry).toMatchObject({ state: "estimated", cents: 38_100, confidencePercent: 61 });
+  });
+
+  // Manager decision 10-30 (honest labels): Yes on a dock card is "You said yes" on the ledger,
+  // never Done, until the person marks it done. And no entry anywhere reads Done without a mark.
+  it("says You said yes after a Yes, and Done only after a done mark", async () => {
+    const key = "debt:pmi_removal_test";
+    await client.suggestion.deleteMany({ where: { userId, key } });
+    await client.suggestionOutcome.deleteMany({ where: { userId, suggestionKey: key } });
+    const base = {
+      capability: "debt",
+      topic: "pmi_removal",
+      title: "Ask your lender to drop mortgage insurance",
+      worthKind: "saves" as const,
+    };
+    await client.suggestion.create({
+      data: {
+        userId,
+        key,
+        ...base,
+        worthCents: 156_200,
+        confidencePercent: 80,
+        confidenceReason: "x",
+        urgency: "soon",
+        why: "x",
+        actionLabel: "See your loans",
+        actionHref: "/loans",
+      },
+    });
+    await recordShown(userId, [{ key, ...base, worthCents: 156_200, confidencePercent: 80 }], {
+      client,
+      now: NOW,
+    });
+    await answerSuggestion(userId, key, "yes", { client, now: NOW });
+
+    let entry = (await savingsLedger(userId, { client, now: NOW })).entries.find(
+      (e) => e.key === key,
+    );
+    expect(entry).toMatchObject({ state: "said_yes", href: "/loans" });
+
+    await markSuggestionDone(userId, key, { client, now: NOW });
+    entry = (await savingsLedger(userId, { client, now: NOW })).entries.find((e) => e.key === key);
+    expect(entry?.state).toBe("done");
+
+    // The invariant, over the whole ledger: every Done entry of the person's own has a done mark.
+    const ledger = await savingsLedger(userId, { client, now: NOW });
+    const marks = await client.suggestionOutcome.findMany({
+      where: { userId },
+      select: { suggestionKey: true, doneAt: true },
+    });
+    const marked = new Set(marks.filter((m) => m.doneAt).map((m) => m.suggestionKey));
+    for (const e of ledger.entries.filter((x) => x.by === "you" && x.state === "done")) {
+      expect(marked.has(e.key), e.key).toBe(true);
+    }
   });
 });

@@ -106,6 +106,11 @@ describe("the card", () => {
       notes: ["Demo advice: sample data, not financial advice"],
     });
     expect(card.details.whatYesDoes).toMatch(/^Cancel it\. Nothing is bought or moved/);
+    // Yes answers in place; Open is what goes to the page (manager decision 10-30).
+    expect(card.details.whatYesDoes).toMatch(
+      /Yes puts it on your list; Open takes you to the page/,
+    );
+    expect(card.details.whatYesDoes).not.toMatch(/Yes takes you/);
   });
 
   it("explains the headline's figure with the whole reason when there is one", () => {
