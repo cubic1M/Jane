@@ -192,7 +192,7 @@ export function ColumnPicker({ index, file, choices, children }: Props) {
           </>
         )}
       </div>
-      <p className="text-xs text-zinc-500">Then press Preview again to check the rows.</p>
+      <p className="text-xs text-zinc-500">Then check these columns to see the rows.</p>
     </fieldset>
   );
 }

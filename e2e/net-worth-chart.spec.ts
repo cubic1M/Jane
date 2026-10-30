@@ -51,7 +51,9 @@ test("the net worth chart scrubs, changes range and returns to today", async ({
     "aria-pressed",
     "true",
   );
-  await expect(change).toContainText(/^[▲▼] [+−]\$[\d,]+ \([+−][\d.]+%\) Since you started$/);
+  await expect(change).toContainText(
+    /^[▲▼] [+−]\$[\d,]+ \([+−][\d.]+%\) Since [A-Z][a-z]{2} \d{1,2}, \d{4}$/,
+  );
   await expect(ranges.getByRole("button", { name: /^1W/ })).toBeVisible();
 
   // A shorter range: its own change.
@@ -91,7 +93,7 @@ test("the net worth chart scrubs, changes range and returns to today", async ({
     await page.mouse.move(box.x + box.width / 2, box.y - 60);
   }
   await expect(number).toHaveText(today);
-  await expect(change).toContainText("Since you started");
+  await expect(change).toContainText(/Since [A-Z][a-z]{2} \d{1,2}, \d{4}/);
 
   // The keyboard: Left steps back a day, End (or Escape) returns to today.
   await line.focus();

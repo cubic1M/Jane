@@ -65,7 +65,7 @@ const RANGE_WORDS: Record<RangeKey, string> = {
   "1M": "Past month",
   "3M": "Past 3 months",
   "1Y": "Past year",
-  ALL: "Since you started",
+  ALL: "All time",
 };
 
 // Whole dollars, rounded (it said $376/yr where the import chip said $377/yr for $376.80).
@@ -416,9 +416,13 @@ export function NetWorthChart({
   const stroke = "stroke-current";
   const arrow = (cents: number) => (cents >= 0 ? "▲" : "▼");
   const zoomed = view !== null;
+  // All of it starts at the first statement day, not when the person signed up (debugger 10-30:
+  // "+$8,282 Since you started" minutes after a new user's first upload).
   const windowWords = zoomed
     ? `${dayLabel(shown[0].date, { year: true })} to ${dayLabel(shown[shown.length - 1].date, { year: true })}`
-    : RANGE_WORDS[chip];
+    : chip === "ALL" && shown[0]
+      ? `Since ${dayLabel(shown[0].date, { year: true })}`
+      : RANGE_WORDS[chip];
   const focused = focusDot !== null ? (layout?.dots[focusDot] ?? null) : null;
 
   return (

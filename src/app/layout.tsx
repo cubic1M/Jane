@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Financial Controller",
+  title: "Jane",
   description: "See how much money you're losing, and approve the fixes.",
   appleWebApp: { capable: true, title: "Jane", statusBarStyle: "default" },
   icons: { apple: "/icons/192" },

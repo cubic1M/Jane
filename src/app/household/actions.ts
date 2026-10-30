@@ -44,7 +44,7 @@ export async function invite(
   if (process.env.RESEND_API_KEY && !isTrialUser(user.id)) {
     await sendEmail({
       to: email.trim(),
-      subject: `${user.email} invited you to share a household on Financial Controller`,
+      subject: `${user.email} invited you to share a household on Jane`,
       text: `${user.email} invited you to see some of their accounts, and share some of yours if you like.\n\nJoin: ${link}\n\nThe link works for 7 days, only when you sign in with this email.`,
       html: `<p>${user.email} invited you to see some of their accounts, and share some of yours if you like.</p><p><a href="${link}">Join their household</a></p><p>The link works for 7 days, only when you sign in with this email.</p>`,
     }).catch((error) => console.error("Household invite email failed", { error: String(error) }));

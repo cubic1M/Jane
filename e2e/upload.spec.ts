@@ -160,8 +160,12 @@ test("the picker reads the sign from a column of its own", async ({ page, baseUR
   await expect(picker.locator('[name="map.0.out"]')).toHaveValue("marked");
   await expect(picker.locator('[name="map.0.marker"]')).toHaveValue("3");
   await expect(picker.locator('[name="map.0.markout"]')).toHaveValue("Debit");
+  // Picking columns is a step, not an error.
+  await expect(picker.getByText("Jane doesn't know this bank's layout yet.")).toBeVisible();
+  await expect(picker.getByRole("alert")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Preview again" }).click();
+  // The button under the picker checks the columns, with no trip back to the top.
+  await page.getByRole("button", { name: "Check these columns" }).click();
   await expect(page.getByText("Columns you picked · 3 rows")).toBeVisible();
   // The market is money out, the payroll money in.
   await expect(page.getByRole("cell", { name: "-$42.10" })).toBeVisible();
