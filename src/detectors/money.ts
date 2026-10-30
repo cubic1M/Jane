@@ -1,4 +1,5 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
+import { rateMonthsOf } from "@/profile/build";
 import {
   BANK_FEE_CATEGORIES,
   IDLE_CASH_MONTHS_OF_SPENDING,
@@ -122,7 +123,7 @@ const bankFees: Detector = {
   needs: [],
   detect({ profile, data }) {
     // A year of fees, the one definition (src/planning/bank-fees.ts) the chat's answer uses too.
-    const fees = bankFeesYear(data.transactions, profile.months);
+    const fees = bankFeesYear(data.transactions, Math.round(rateMonthsOf(profile)));
     if (!fees || fees.count < R.feesMin) return null;
     const total = fees.yearCents;
     const span = fees.estimated
@@ -177,7 +178,7 @@ const lateFees: Detector = {
       watch: {
         kind: "fee_stops",
         pfcs: ["BANK_FEES_LATE_FEES"],
-        monthlyCents: Math.round(total / Math.max(1, profile.months)),
+        monthlyCents: Math.round(total / rateMonthsOf(profile)),
       },
     };
   },
@@ -228,7 +229,7 @@ const cardInterest: Detector = {
         monthlyCents:
           typeof yearly === "number"
             ? Math.round(total / 12)
-            : Math.round(total / Math.max(1, profile.months)),
+            : Math.round(total / rateMonthsOf(profile)),
       },
     };
   },

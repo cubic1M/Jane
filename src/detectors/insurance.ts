@@ -2,6 +2,7 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
+import { rateMonthsOf } from "@/profile/build";
 import { computeNeeds } from "@/lib/insurance/need/calculators";
 import { needInputFromProfile } from "@/lib/insurance/need/from-profile";
 import { HEALTH_YEAR_DETECTORS } from "./health-year";
@@ -164,7 +165,7 @@ const insuranceShopping: Detector = {
   detect({ profile, data }) {
     const paid = premiums(data, AUTO_HOME);
     // A year of what they pay, from the months of data when there are fewer than twelve.
-    const yearly = Math.round(outCents(paid) * (12 / Math.min(12, Math.max(1, profile.months))));
+    const yearly = Math.round(outCents(paid) * (12 / Math.min(12, rateMonthsOf(profile))));
     if (paid.length < R.insuranceShopMinCharges || yearly < R.insuranceShopMinCents) return null;
     // Real quotes, when Jane has reshopped: the saving the switch card and the chat show.
     const quoted = data.extras?.insuranceShopSavingCents ?? 0;
