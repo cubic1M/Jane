@@ -158,23 +158,24 @@ export type ImportRunView = {
   foundCents: number | null;
 };
 
-// The upload the chip shows: the latest in the last IMPORT_RUN_SHOWN_HOURS that the person
-// hasn't closed. Null when there's none.
+// The upload the chip shows: the latest in the last IMPORT_RUN_SHOWN_HOURS, unless the person
+// closed it. Never an older one: closing the newest chip brought back the first file's ("Done:
+// found $214/yr" after a second file had made it $669, night QA 10-30). Null when there's none.
 export async function currentImportRun(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<ImportRunView | null> {
   const run = await scopedFor(userId, client).importRuns.findFirst({
     where: {
-      seenAt: null,
       createdAt: { gte: new Date(now.getTime() - IMPORT_RUN_SHOWN_HOURS * 60 * 60 * 1000) },
     },
     orderBy: { createdAt: "desc" },
-    select: { id: true, kind: true, rows: true, stage: true, foundCents: true },
+    select: { id: true, kind: true, rows: true, stage: true, foundCents: true, seenAt: true },
   });
-  if (!run) return null;
+  if (!run || run.seenAt) return null;
   const stage = (run.stage in STAGE_PERCENT ? run.stage : "queued") as ImportStage;
-  return { ...run, stage, percent: STAGE_PERCENT[stage] };
+  const { seenAt: _seen, ...shown } = run;
+  return { ...shown, stage, percent: STAGE_PERCENT[stage] };
 }
 
 // The person closed the chip.

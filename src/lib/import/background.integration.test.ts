@@ -16,7 +16,7 @@ vi.mock("@/lib/jane-agent/run", async (importOriginal) => ({
   runJaneAgentSafely: vi.fn(),
 }));
 
-import { currentImportRun, finishImport } from "./background";
+import { currentImportRun, dismissImportRun, finishImport } from "./background";
 import { saveUpload } from "./upload";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadNetWorthHistory } from "@/lib/net-worth-history";
@@ -131,6 +131,10 @@ describe.runIf(url)("an upload finished in the background, against a real databa
     const run = await currentImportRun(userId, { client, now: NOW });
     expect(run).toMatchObject({ id: card.runId, stage: "done", percent: 100 });
     expect(run?.foundCents).toEqual(expect.any(Number));
+    // Closing the newest chip closes it for good: the first file's run (and its older figure)
+    // never comes back in its place (night QA 10-30).
+    await dismissImportRun(userId, card.runId, { client, now: NOW });
+    expect(await currentImportRun(userId, { client, now: NOW })).toBeNull();
 
     // The statement's own balances for checking; month ends worked back for the card.
     const sources = await client.balanceSnapshot.groupBy({
