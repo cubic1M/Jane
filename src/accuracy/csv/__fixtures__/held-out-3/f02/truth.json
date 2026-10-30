@@ -45,7 +45,7 @@
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 232.75
+      "perYear": 99.75
     },
     {
       "type": "card_interest",

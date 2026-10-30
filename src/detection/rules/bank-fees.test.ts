@@ -47,6 +47,26 @@ describe("bank_fees", () => {
     expect(finding.annualSavingsCents).toBe(14400);
   });
 
+  // Night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year.
+  it("counts a card's annual fee once a year, not scaled up with the rest", () => {
+    const transactions = [
+      fee("BANK_FEES_LATE_FEES", 4000, "2026-07-28"),
+      tx({
+        date: "2026-09-03",
+        amountCents: 9500,
+        description: "ANNUAL MEMBERSHIP FEE",
+        pfcPrimary: "BANK_FEES",
+        pfcDetailed: "BANK_FEES_OTHER_BANK_FEES",
+      }),
+      fee("BANK_FEES_OTHER_BANK_FEES", 1200, "2026-09-17"),
+    ];
+
+    const [finding] = bankFees(input({ transactions }), []);
+
+    // $52 of other fees at a year's pace, plus the $95 once.
+    expect(finding.annualSavingsCents).toBe(5200 * 4 + 9500);
+  });
+
   it("leaves interest to the card interest finding", () => {
     const transactions = [fee("BANK_FEES_INTEREST_CHARGE", 2500, "2026-09-01", CARD.id)];
 

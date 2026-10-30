@@ -111,7 +111,7 @@ Calibration, held-out set:
 | 0–49% | 0 | – | – |
 | 50–59% | 26 | 56% | 100% |
 | 60–69% | 31 | 65% | 100% |
-| 70–79% | 10 | 75% | 100% |
+| 70–79% | 11 | 74% | 100% |
 | 80–89% | 18 | 85% | 100% |
 | 90–100% | 12 | 95% | 100% |
 
@@ -159,7 +159,7 @@ Calibration, third held-out set:
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 40 | 55% | 100% |
+| 50–59% | 39 | 55% | 100% |
 | 60–69% | 16 | 66% | 100% |
 | 70–79% | 8 | 73% | 100% |
 | 80–89% | 12 | 85% | 100% |
@@ -331,7 +331,7 @@ Tuning set (20 people, 147 files, 5513 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 99.8% (11 left for Claude) |
 | False "Charged twice?" | 0 (0 people) |
-| Findings, $/yr | Jane $30,610, truth $30,610; error on the ones found 0.0% |
+| Findings, $/yr | Jane $28,429, truth $28,429; error on the ones found 0.0% |
 | Monthly spending, error | 0.0% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 7 of 20 people (off by $53,201 in all) |
@@ -359,7 +359,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 16 | 59% | 100% |
+| 50–59% | 15 | 59% | 100% |
 | 60–69% | 32 | 64% | 100% |
 | 70–79% | 5 | 76% | 100% |
 | 80–89% | 2 | 83% | 100% |
@@ -373,7 +373,7 @@ Second tuning set (20 people, 137 files, 5926 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 98.7% (78 left for Claude) |
 | False "Charged twice?" | 14 (14 people) |
-| Findings, $/yr | Jane $97,264, truth $95,305; error on the ones found 0.1% |
+| Findings, $/yr | Jane $96,224, truth $94,265; error on the ones found 0.1% |
 | Monthly spending, error | 0.3% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 9 of 20 people (off by $135,996 in all) |
@@ -415,7 +415,7 @@ Held-out set (20 people, 114 files, 5484 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 94.3% (256 left for Claude) |
 | False "Charged twice?" | 3 (3 people) |
-| Findings, $/yr | Jane $28,825, truth $29,777; error on the ones found 0.0% |
+| Findings, $/yr | Jane $27,502, truth $28,454; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 11 of 20 people (off by $24,004 in all) |
@@ -443,8 +443,8 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | Said | Suggestions | Average said | Actually right |
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
-| 50–59% | 19 | 58% | 84% |
-| 60–69% | 36 | 64% | 97% |
+| 50–59% | 18 | 58% | 89% |
+| 60–69% | 35 | 64% | 100% |
 | 70–79% | 6 | 76% | 100% |
 | 80–89% | 5 | 83% | 100% |
 | 90–100% | 0 | – | – |
@@ -457,7 +457,7 @@ Second held-out set (20 people, 138 files, 5532 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 91.6% (393 left for Claude) |
 | False "Charged twice?" | 2 (2 people) |
-| Findings, $/yr | Jane $31,131, truth $30,987; error on the ones found 0.0% |
+| Findings, $/yr | Jane $28,268, truth $28,124; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 10 of 20 people (off by $59,230 in all) |
@@ -486,7 +486,7 @@ Suggestions' confidence (is "80% sure" right 80% of the time?):
 | --- | ---: | ---: | ---: |
 | 0–49% | 0 | – | – |
 | 50–59% | 19 | 59% | 100% |
-| 60–69% | 40 | 64% | 93% |
+| 60–69% | 38 | 64% | 95% |
 | 70–79% | 6 | 76% | 100% |
 | 80–89% | 2 | 83% | 100% |
 | 90–100% | 0 | – | – |
@@ -499,7 +499,7 @@ Third held-out set (20 people, 148 files, 5695 transactions):
 | Rows read exactly | 100.0% (0 extra, 0 missing) |
 | Category right (rules only) | 79.8% (1102 left for Claude) |
 | False "Charged twice?" | 4 (4 people) |
-| Findings, $/yr | Jane $51,799, truth $35,077; error on the ones found 0.0% |
+| Findings, $/yr | Jane $49,748, truth $33,026; error on the ones found 0.0% |
 | Monthly spending, error | 0.1% |
 | Monthly income, error | 0.0% |
 | Net worth today right | 7 of 20 people (off by $41,990 in all) |

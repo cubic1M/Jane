@@ -41,7 +41,7 @@
     {
       "type": "bank_fees",
       "about": "card fees",
-      "perYear": 500
+      "perYear": 250
     },
     {
       "type": "subscription_review",
