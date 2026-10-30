@@ -19,6 +19,9 @@ const MUTED = "text-zinc-600 dark:text-zinc-400";
 
 export function figureOf(e: Pick<Entry, "cents" | "yearly" | "state">): string {
   const counted = e.state === "verified" || e.state === "held";
+  // A step with no dollar estimate (moving a due date before a low balance), never "about
+  // $0.00/yr" (night QA 10-30).
+  if (!counted && e.cents === 0) return "No dollar estimate";
   return `${counted ? "" : "about "}${formatCents(e.cents)}${e.yearly ? "/yr" : ""}`;
 }
 
