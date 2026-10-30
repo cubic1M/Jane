@@ -72,18 +72,28 @@ function MonthChart({
     <div className="flex flex-col gap-2">
       <p data-month-readout="" aria-live="polite" className="flex flex-wrap gap-x-4 text-sm">
         <span className="font-semibold">{monthLabel(shown.month, { long: true })}</span>
-        <span>
-          <span className={MUTED}>In </span>
-          <span className="font-medium tabular-nums">{formatCents(shown.incomeCents)}</span>
-        </span>
-        <span>
-          <span className={MUTED}>Out </span>
-          <span className="font-medium tabular-nums">{formatCents(shown.spendingCents)}</span>
-        </span>
-        <span>
-          <span className={MUTED}>Net </span>
-          <span className="font-medium tabular-nums">{signed(net)}</span>
-        </span>
+        {/* Only what there is: a card-only person has no "In $0.00" (empty-states e2e). */}
+        {shown.incomeCents === 0 && shown.spendingCents === 0 && (
+          <span className={MUTED}>Nothing in or out</span>
+        )}
+        {shown.incomeCents > 0 && (
+          <span>
+            <span className={MUTED}>In </span>
+            <span className="font-medium tabular-nums">{formatCents(shown.incomeCents)}</span>
+          </span>
+        )}
+        {shown.spendingCents > 0 && (
+          <span>
+            <span className={MUTED}>Out </span>
+            <span className="font-medium tabular-nums">{formatCents(shown.spendingCents)}</span>
+          </span>
+        )}
+        {shown.incomeCents > 0 && shown.spendingCents > 0 && net !== 0 && (
+          <span>
+            <span className={MUTED}>Net </span>
+            <span className="font-medium tabular-nums">{signed(net)}</span>
+          </span>
+        )}
       </p>
       <div className="flex gap-2">
         <div
@@ -299,6 +309,7 @@ export function SpendingExplorer({
   changes,
   topMerchants,
   lines,
+  incomeNote,
 }: {
   months: MonthTotals[];
   categoriesByMonth: Record<string, CategoryTotal[]>;
@@ -306,6 +317,8 @@ export function SpendingExplorer({
   changes: CategoryChange[];
   topMerchants: MerchantTotal[];
   lines: SpendingLine[];
+  // Said under the chart: cash deposits counted as income, and how sure (./cash-income.tsx).
+  incomeNote?: ReactNode;
 }) {
   const [month, setMonth] = useState(initialMonth);
   // The lines grouped once, so opening a row only looks one up.
@@ -336,6 +349,7 @@ export function SpendingExplorer({
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Income and spending by month</h2>
         <MonthChart months={months} selected={month} onSelect={setMonth} />
+        {incomeNote}
       </section>
 
       <section className="flex flex-col gap-3">

@@ -11,6 +11,7 @@ const { calls, log, m } = vi.hoisted(() => {
 });
 
 vi.mock("@/categorize/card-payments", () => ({ matchCardPayments: (m.match = log("match", 0)) }));
+vi.mock("@/categorize/cash-income", () => ({ markCashIncome: log("cash income", 0) }));
 vi.mock("@/categorize/categorize", () => ({
   categorizeLeftovers: (m.leftovers = log("leftovers", 0)),
 }));
@@ -66,9 +67,11 @@ describe("finishImport", () => {
   it("goes through each stage in order, refreshes every sector, then says done", async () => {
     await finishImport("u1", "run_1");
     const done = calls.indexOf("stage:done");
-    expect(calls.slice(0, 7)).toEqual([
+    expect(calls.slice(0, 8)).toEqual([
       "stage:matching",
       "match",
+      // Regular cash deposits count as income before Jane reads the month.
+      "cash income",
       "stage:balances",
       "balances",
       "stage:looking",
@@ -106,7 +109,9 @@ describe("finishImport", () => {
     });
     await finishImport("u1", "run_1");
     const after = calls.slice(calls.indexOf("leftovers"));
-    expect(after).toEqual(expect.arrayContaining(["match", "balances", "detect", "stage:done"]));
+    expect(after).toEqual(
+      expect.arrayContaining(["match", "cash income", "balances", "detect", "stage:done"]),
+    );
   });
 
   it("marks the upload failed and throws, so the job is retried", async () => {

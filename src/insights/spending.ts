@@ -56,6 +56,9 @@ export type Kind = "income" | "spending" | "ignored";
 export function kindOf(t: InsightTransaction): Kind {
   if (t.pending || isMovingMoney(t)) return "ignored";
   if (t.pfcPrimary === "INCOME") return t.amountCents < 0 ? "income" : "ignored";
+  // Money in with no category isn't a refund: an unknown deposit (pay the rules don't know, a
+  // loan, student aid) took a month's spending below $0 (night debugger, 10-30).
+  if (t.pfcPrimary === null && t.amountCents < 0) return "ignored";
   // Outflows are spending; inflows in a spending category are refunds, which net against it.
   return "spending";
 }
@@ -97,7 +100,6 @@ export function spendingInsights(
       monthTotals.incomeCents += -t.amountCents;
       continue;
     }
-    monthTotals.spendingCents += t.amountCents;
     const category = categoryLabel(t.pfcPrimary);
     const categories = byCategory.get(month)!;
     categories.set(category, (categories.get(category) ?? 0) + t.amountCents);
@@ -107,6 +109,15 @@ export function spendingInsights(
     row.cents += t.amountCents;
     if (t.amountCents > 0) row.count += 1;
     merchants.set(merchant, row);
+  }
+
+  // A month's spending is its categories added up, each at least $0: refunds net against their
+  // own category, never against the rest of the month, so spending never goes below $0.
+  for (const [month, categories] of byCategory) {
+    totals.get(month)!.spendingCents = [...categories.values()].reduce(
+      (sum, cents) => sum + Math.max(0, cents),
+      0,
+    );
   }
 
   const categoriesByMonth = Object.fromEntries(

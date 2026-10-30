@@ -5,12 +5,14 @@ import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { BudgetList } from "@/components/budget-list";
+import { cashIncomeStatus } from "@/categorize/cash-income";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { spendingInsights, spendingLines } from "@/insights/spending";
 import { accountLabels } from "@/lib/account-labels";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
+import { CashIncomeNote } from "./cash-income";
 import { SpendingExplorer } from "./explorer";
 
 async function Insights() {
@@ -21,9 +23,10 @@ async function Insights() {
   if (transactions.length === 0) redirect("/home");
 
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
-  const [budgets, accounts] = await Promise.all([
+  const [budgets, accounts, cash] = await Promise.all([
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
     db.accounts.findMany({ select: { id: true, name: true, mask: true, createdAt: true } }),
+    cashIncomeStatus(db),
   ]);
   const budget = budgets.length > 0 ? budgetSummary(transactions, budgets, asOf) : null;
   // The latest month that has any spending.
@@ -68,6 +71,7 @@ async function Insights() {
         changes={insights.changes}
         topMerchants={insights.topMerchants}
         lines={lines}
+        incomeNote={cash && <CashIncomeNote status={cash} />}
       />
     </>
   );
