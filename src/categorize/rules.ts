@@ -1869,6 +1869,23 @@ const RULES: readonly Rule[] = [
     ],
   },
   { category: "FOOD_AND_DRINK_GROCERIES", keywords: ["MARKET", "FOODS"], direction: "out" },
+  // Financial aid paid out to a student: moved money, like a loan disbursement, never a refund
+  // of spending or taxable pay (night QA 10-30: "FAFSA DISBURSEMENT UC REFUND", $2,100 in,
+  // uncategorized, cancelled a student's August spending).
+  {
+    category: "LOAN_DISBURSEMENTS_STUDENT",
+    keywords: [
+      "FAFSA",
+      "FINANCIAL AID",
+      "FIN AID",
+      "PELL GRANT",
+      "STUDENT AID",
+      "SCHOLARSHIP",
+      "DIRECT LOAN DISB",
+      "STUDENT LOAN DISB",
+    ],
+    direction: "in",
+  },
   {
     category: "INCOME_OTHER",
     keywords: ["CASHBACK", "CASH BACK", "REWARDS CREDIT", "STATEMENT CREDIT", "REDEMPTION"],

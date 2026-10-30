@@ -314,6 +314,16 @@ describe("categorizeByRules", () => {
     );
   });
 
+  // Night QA 10-30: a student's financial aid read as a $2,100 refund of spending.
+  it.each([["FAFSA DISBURSEMENT UC REFUND"], ["UCLA FINANCIAL AID"], ["PELL GRANT REFUND"]])(
+    "reads %s, money in, as aid paid out, not spending or pay",
+    (description) => {
+      expect(categorizeByRules({ description, amountCents: -210_000, hints: {} })?.detailed).toBe(
+        "LOAN_DISBURSEMENTS_STUDENT",
+      );
+    },
+  );
+
   it("still reads a ride, a meal and a refund of one as what they are", () => {
     expect(out("UBER *TRIP HELP.UBER.COM")).toBe("TRANSPORTATION_TAXIS_AND_RIDE_SHARES");
     expect(out("DOORDASH*THAI HOUSE")).toBe("FOOD_AND_DRINK_RESTAURANT");
