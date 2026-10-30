@@ -1,5 +1,6 @@
 import { landing } from "@/lib/area-pages/landing";
 import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
+import { promisesHiddenPage } from "@/config/hidden-pages";
 import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
 import { runDetectors } from "@/detectors";
 import type { Suggestion } from "@/detectors/contract";
@@ -104,7 +105,17 @@ async function detectForWork(
       error: scrub(String(error)),
     }),
   ).filter((s) => advice || !(ADVICE_TOPICS as readonly string[]).includes(s.topic));
-  return { suggestions, advice, today: input.today, profile, input };
+  return { suggestions: forTheBeta(suggestions), advice, today: input.today, profile, input };
+}
+
+// What the closed beta may show: none whose button promises a task on a page it hides
+// (src/config/hidden-pages.ts), for as long as the page is hidden. Not fired, so the scan marks
+// one already stored "gone", and the dock, the chat's cards, Home and the area pages leave it
+// out; it comes back when its page does.
+export function forTheBeta<T extends Pick<Suggestion, "action" | "more">>(suggestions: T[]): T[] {
+  return suggestions.filter(
+    (s) => !promisesHiddenPage(s.action) && !(s.more ?? []).some(promisesHiddenPage),
+  );
 }
 
 const isIdea = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);

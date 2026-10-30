@@ -2,7 +2,14 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
-import { HIDDEN_PAGES, hiddenPage, hiddenRedirects, isHiddenPage, shownHref } from "./hidden-pages";
+import {
+  HIDDEN_PAGES,
+  hiddenPage,
+  hiddenRedirects,
+  isHiddenPage,
+  promisesHiddenPage,
+  shownHref,
+} from "./hidden-pages";
 
 // The pages the read-only beta hides (founder, 2026-10-26): kept in the code, redirected to
 // their area page, and brought back by deleting their line.
@@ -91,6 +98,39 @@ describe("the hidden pages", () => {
     expect(isHiddenPage("https://example.com/actions")).toBe(false);
     expect(shownHref("/actions")).toBe("/jane");
     expect(shownHref("/loans/cards")).toBe("/loans/cards");
+  });
+
+  // Founder, 2026-10-30: a suggestion whose button promises a task on a hidden page isn't shown.
+  it("know a button that promises a task on one, and a look that only lands on the area page", () => {
+    for (const [label, href] of [
+      ["Start a claim", "/insurance/claims"],
+      ["Log your miles", "/taxes/profile"],
+      ["Add your home office", "/taxes/profile"],
+      ["Set up automatic investing", "/investments/auto"],
+      ["Set up your household", "/household"],
+      ["Choose how to split", "/household#money-for-two"],
+      ["Plan a tight month", "/loans/tight"],
+      ["Set up steady pay", "/transfers"],
+    ]) {
+      expect(promisesHiddenPage({ label, href }), label).toBe(true);
+    }
+    for (const [label, href] of [
+      ["See your HSA", "/investments/hsa"],
+      ["see the fees", "/investments/fees"],
+      // The demo bank's 401(k) match card stays.
+      ["Check your match", "/investments/retirement-accounts"],
+      ["Compare safe places", "/investments/short-term"],
+      ["Review my work benefits", "/insurance/benefits"],
+      ["Read your plan's menu", "/investments/plan-menu"],
+    ]) {
+      expect(promisesHiddenPage({ label, href }), label).toBe(false);
+    }
+    // A task on a page the beta keeps.
+    expect(promisesHiddenPage({ label: "Refinance", href: "/loans/refinance" })).toBe(false);
+    expect(promisesHiddenPage({ label: "Get quotes", href: "/insurance?need=auto" })).toBe(false);
+    // "Seed" isn't "See", nor "Checklist" "Check".
+    expect(promisesHiddenPage({ label: "Seed your fund", href: "/investments/auto" })).toBe(true);
+    expect(promisesHiddenPage({ label: "Checklist for a move", href: "/life-events" })).toBe(true);
   });
 
   it("redirect to their area page, for a while (not permanently)", async () => {

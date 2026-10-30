@@ -2,7 +2,10 @@ import { randomBytes } from "node:crypto";
 import { cardHeadline } from "@/detectors/contract";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { promisesHiddenPage } from "@/config/hidden-pages";
 import { PEOPLE } from "@/config/people";
+import { runDetectors } from "@/detectors";
+import { buildProfile } from "@/profile/build";
 import { ADVICE_TOPICS, SUGGESTIONS_PER_DAY } from "@/config/suggestions";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -14,12 +17,14 @@ import { suggestionsSource } from "@/lib/jane-agent/sources/suggestions";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { syncItem } from "@/lib/plaid/sync";
 import { startTrial } from "@/lib/trial";
+import { loadProfileInput } from "@/lib/profile";
 import { answerSuggestion, explainSuggestion, offeredToday, scanSuggestions } from "./suggestions";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 const TOMORROW = new Date("2026-10-19T15:00:00Z");
+const LATER = new Date("2026-10-22T15:00:00Z");
 
 describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () => {
   let client: PrismaClient;
@@ -187,5 +192,59 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
       expect(rows.length).toBeGreaterThan(0);
       for (const r of rows) expect(ADVICE_TOPICS as readonly string[]).not.toContain(r.topic);
     }
+  });
+  // Founder, 2026-10-30: no suggestion whose button promises a task on a page the beta hides
+  // ("Start a claim" landing on /insurance), on the dock, the chat's cards, Home or anywhere a
+  // stored suggestion shows; one stored before the page was hidden goes at the next scan.
+  it("never offers a task on a page the beta hides, and lets one already stored go", async () => {
+    let caught = 0;
+    for (const person of PEOPLE) {
+      const userId = made.get(person.id)!;
+      const input = await loadProfileInput(userId, { client, now: LATER });
+      const hidden = runDetectors({ profile: buildProfile(input), data: input }).filter((s) =>
+        [s.action, ...(s.more ?? [])].some(promisesHiddenPage),
+      );
+      caught += hidden.length;
+      // One already picked for the day, as before the page was hidden.
+      if (hidden[0]) {
+        const h = hidden[0];
+        await client.suggestion.upsert({
+          where: { userId_key: { userId, key: h.id } },
+          create: {
+            userId,
+            key: h.id,
+            capability: h.capability,
+            topic: h.topic,
+            title: h.title,
+            worthCents: h.worthCents,
+            worthKind: h.worthKind,
+            confidencePercent: h.confidence.percent,
+            confidenceReason: h.confidence.reason,
+            urgency: h.urgency,
+            why: h.why,
+            actionLabel: h.action.label,
+            actionHref: h.action.href,
+            status: "selected",
+            selectedOn: new Date("2026-10-22"),
+          },
+          update: { status: "selected", selectedOn: new Date("2026-10-22") },
+        });
+      }
+      await scanSuggestions(userId, { client, now: LATER });
+      const keys = new Set(hidden.map((s) => s.id));
+      const showing = await client.suggestion.findMany({
+        where: { userId, status: { in: ["waiting", "selected"] } },
+        select: { key: true },
+      });
+      expect(showing.filter((r) => keys.has(r.key))).toEqual([]);
+      const offered = await offeredToday(userId, { client, now: LATER });
+      expect(offered.filter((o) => keys.has(o.key))).toEqual([]);
+      if (hidden[0]) {
+        const row = await client.suggestion.findFirst({ where: { userId, key: hidden[0].id } });
+        expect(row?.status).toBe("gone");
+      }
+    }
+    // The sample people do have some for it to catch.
+    expect(caught).toBeGreaterThan(0);
   });
 });
