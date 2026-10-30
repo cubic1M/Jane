@@ -176,7 +176,10 @@ export const CHECKS: Record<FindingType, Check> = {
     passed: (f) => {
       const c = cushion(f)!;
       return {
-        line: `${formatWholeDollars(c.balanceCents)} cash, ${formatWholeDollars(c.cushionCents)} cushion`,
+        // Not "cushion": that's the emergency cushion's word, a typical month's spending sized
+        // for the person ("a cushion for you is $11,558.01"); this is idle cash's own line
+        // (night QA 10-30: "$11,296 cushion" beside it read as a second answer).
+        line: `${formatWholeDollars(c.balanceCents)} cash, under ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending`,
         detail: `You spend about ${formatWholeDollars(c.monthlyCents)} a month, so ${IDLE_CASH_MONTHS_OF_SPENDING} months is ${formatWholeDollars(c.cushionCents)}. Jane flags cash ${formatWholeDollars(IDLE_CASH_MIN_EXCESS_CENTS)} or more above that.`,
       };
     },
