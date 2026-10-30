@@ -4,6 +4,7 @@ import {
   HEALTH_CUSHION_FULL_MONTHS,
   HEALTH_MARGIN_FULL_RATE,
   HEALTH_MARGIN_ZERO_RATE,
+  HEALTH_MIN_PARTS,
   HEALTH_MONTHS,
   HEALTH_POINTS_PER_SLIP,
   HEALTH_SLIP_DAYS,
@@ -188,7 +189,7 @@ export function healthScore(input: HealthInput): HealthScore | null {
     );
   }
 
-  if (parts.length === 0) return null;
+  if (parts.length < HEALTH_MIN_PARTS) return null;
   const counted = {
     points: parts.reduce((s, p) => s + p.points, 0),
     max: parts.reduce((s, p) => s + p.max, 0),
