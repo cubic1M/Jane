@@ -238,3 +238,15 @@ export const KEPT_WITHOUT_DATA: Readonly<Record<string, string>> = {
   JanePreference: "the saved numbers are refused by their data stamp",
   UserFact: "the ones read from statements go below; the person's own words stay",
 };
+
+// Rows the demo bank seeds with source "demo" (its insurance, rental, old 401(k), company stock
+// and costly products), by Prisma model to its scopedFor table: they stand on the demo bank and go
+// once the person has none (src/lib/evidence/orphans.ts). Its home and car (src/lib/plaid/
+// demo-assets.ts) and a sample person's wins (src/lib/sample-wins.ts) go with it too.
+export const DEMO_SEEDED: Readonly<Record<string, string>> = {
+  InsurancePolicy: "insurancePolicies",
+  EquityGrant: "equityGrants",
+  OldPlan: "oldPlans",
+  RentalProperty: "rentalProperties",
+  CostlyProduct: "costlyProducts",
+};
