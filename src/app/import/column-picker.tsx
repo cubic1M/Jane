@@ -19,9 +19,13 @@ type Props = {
 };
 
 export function ColumnPicker({ index, file, choices, children }: Props) {
-  const { columns, guess, dateOrders, signs } = choices;
+  const { columns, guess, dateOrders, signs, markers } = choices;
   const [date, setDate] = useState(guess.date === null ? "" : String(guess.date));
   const [amount, setAmount] = useState(guess.amount === null ? "" : String(guess.amount));
+  // Which way each amount went: by its sign, or by a column of its own (Debit/Credit, DR/CR).
+  const [out, setOut] = useState<string>(guess.marker !== null ? "marked" : "");
+  const [marker, setMarker] = useState(guess.marker === null ? "" : String(guess.marker));
+  const markerColumn = marker === "" ? undefined : markers[Number(marker)];
   const name = (field: string) => `map.${index}.${field}`;
   const order = date === "" ? undefined : dateOrders[Number(date)];
   const sign = amount === "" ? undefined : signs[Number(amount)];
@@ -116,20 +120,76 @@ export function ColumnPicker({ index, file, choices, children }: Props) {
             <select
               key={amount}
               name={name("out")}
-              defaultValue={sign?.moneyOut ?? ""}
+              value={out || (guess.marker === null ? (sign?.moneyOut ?? "") : "marked")}
+              onChange={(event) => setOut(event.target.value)}
               required
               className={FIELD}
             >
               <option value="">Pick one</option>
               <option value="negative">A negative number (-12.50)</option>
               <option value="positive">A positive number (12.50)</option>
+              <option value="marked">Another column says (Debit/Credit, DR/CR)</option>
             </select>
             <span data-sign-guess="" className="text-xs font-normal text-zinc-500">
-              {sign?.moneyOut
-                ? `Jane's guess: ${sign.why.charAt(0).toLowerCase()}${sign.why.slice(1)}. Check the amounts in the preview.`
-                : "Jane can't tell from the rows. Check one you know, like a grocery shop."}
+              {guess.marker !== null && (out === "" || out === "marked")
+                ? "Jane's guess: the amounts have no sign, and another column says which way each went. Check the amounts in the preview."
+                : sign?.moneyOut
+                  ? `Jane's guess: ${sign.why.charAt(0).toLowerCase()}${sign.why.slice(1)}. Check the amounts in the preview.`
+                  : "Jane can't tell from the rows. Check one you know, like a grocery shop."}
             </span>
           </label>
+        )}
+        {amount !== "" && (out === "marked" || (out === "" && guess.marker !== null)) && (
+          <>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              The column that says which way
+              <select
+                name={name("marker")}
+                value={marker}
+                onChange={(event) => setMarker(event.target.value)}
+                required
+                className={FIELD}
+              >
+                <option value="">Pick a column</option>
+                {columns.map((column, i) => (
+                  <option key={i} value={i}>
+                    {column}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Money you spent is marked
+              {/* Keyed by column, so a different column starts from its own guess. */}
+              {markerColumn ? (
+                <select
+                  key={marker}
+                  name={name("markout")}
+                  defaultValue={markerColumn.out ?? ""}
+                  required
+                  className={FIELD}
+                >
+                  <option value="">Pick one</option>
+                  {markerColumn.values.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  key={marker}
+                  name={name("markout")}
+                  placeholder="Debit"
+                  required
+                  className={FIELD}
+                />
+              )}
+              <span className="text-xs font-normal text-zinc-500">
+                Every other value in that column is money in.
+              </span>
+            </label>
+          </>
         )}
       </div>
       <p className="text-xs text-zinc-500">Then press Preview again to check the rows.</p>
