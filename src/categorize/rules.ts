@@ -20,7 +20,36 @@ type Rule = {
   pattern?: RegExp;
 };
 
+// Prop trading firms (founder 10-30): a payout is pay for trading done on one's own (contractor
+// income, usually on a 1099-NEC), and evaluation fees, resets and data fees are what earning it
+// costs. Named here so both are found by the firm's name, and a payout the bank filed as a
+// transfer still counts as income (payoutByRules).
+const PROP_FIRMS = [
+  "LUCID TRADING",
+  "LUCIDTRADING",
+  "TOPSTEP",
+  "TOPSTEPTRADER",
+  "APEX TRADER",
+  "APEXTRADERFUNDING",
+  "TRADEIFY",
+  "MYFUNDEDFUTURES",
+  "MY FUNDED FUTURES",
+  "TAKE PROFIT TRADER",
+  "TAKEPROFITTRADER",
+  "FTMO",
+  "FUNDEDNEXT",
+  "FUNDED NEXT",
+  "THE FUNDED TRADER",
+  "EARN2TRADE",
+  "BULENOX",
+  "ALPHA FUTURES",
+  "ELITE TRADER FUNDING",
+];
+
 const RULES: readonly Rule[] = [
+  // First: "LUCID TRADING RESET FEE" is the firm's fee, never a bank fee.
+  { category: "INCOME_CONTRACTOR", keywords: PROP_FIRMS, direction: "in" },
+  { category: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES", keywords: PROP_FIRMS, direction: "out" },
   // Bank fees and interest
   { category: "BANK_FEES_OVERDRAFT_FEES", keywords: ["OVERDRAFT", "OD FEE"] },
   {
@@ -2078,6 +2107,17 @@ const COMPILED = RULES.map((rule) => ({
 }));
 
 export type RuleInput = Pick<NormalizedTransaction, "description" | "amountCents" | "hints">;
+
+// Pay for work done on one's own (a prop firm's payout, a Stripe or Upwork payout, a
+// marketplace's): income, whatever the bank or Claude called it. A bank often files these as a
+// transfer in, which isn't income, so "what did I earn from them" found nothing. Null for
+// anything else.
+const PAYOUTS: readonly string[] = ["INCOME_CONTRACTOR", "INCOME_GIG_ECONOMY"];
+export function payoutByRules(t: RuleInput): Category | null {
+  if (t.amountCents >= 0) return null;
+  const category = categorizeByRules({ ...t, hints: {} });
+  return category && PAYOUTS.includes(category.detailed) ? category : null;
+}
 
 export function categorizeByRules({ description, amountCents, hints }: RuleInput): Category | null {
   const text = normalizeDescription(description);
