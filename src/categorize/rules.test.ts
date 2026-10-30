@@ -293,6 +293,10 @@ describe("categorizeByRules", () => {
     ["BETH SHALOM TEMPLE", "GOVERNMENT_AND_NON_PROFIT_DONATIONS"],
     ["SUNNYSIDE PASTRY", "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK"],
     ["BARKBOX", "GENERAL_MERCHANDISE_PET_SUPPLIES"],
+    // Night QA 10-30: a retiree's college savings and Medicare supplement.
+    ["SCHOLARSHARE 529 CONTRIB", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["MY529 CONTRIBUTION", "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS"],
+    ["BLUE SHIELD MEDICARE SUPP", "GENERAL_SERVICES_INSURANCE"],
   ])("reads %s as %s", (description, category) => {
     expect(out(description)).toBe(category);
   });
