@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { LINEAGE } from "./lineage";
+import { CLEARED_WITHOUT_DATA, KEPT_WITHOUT_DATA, LINEAGE } from "./lineage";
 
 // Every table with a userId says where its rows come from and, if they're worked out from the
 // data, how they go once that data is gone (card-chat mismatch: actions approved on the demo
@@ -24,5 +24,15 @@ describe("lineage of every user-owned table", () => {
   it("lists no table that is gone or has no userId", () => {
     const owned = new Set(models.filter((m) => m.owned).map((m) => m.name));
     expect(Object.keys(LINEAGE).filter((name) => !owned.has(name))).toEqual([]);
+  });
+
+  it("says, for every derived table, whether it is cleared once no data is left", () => {
+    const derived = Object.entries(LINEAGE)
+      .filter(([, l]) => typeof l === "object")
+      .map(([name]) => name);
+    expect(
+      derived.filter((name) => !(name in CLEARED_WITHOUT_DATA) && !(name in KEPT_WITHOUT_DATA)),
+      "add it to CLEARED_WITHOUT_DATA, or to KEPT_WITHOUT_DATA with why",
+    ).toEqual([]);
   });
 });
