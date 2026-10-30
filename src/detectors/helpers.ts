@@ -1,8 +1,9 @@
-import { categoryOf } from "@/categorize/taxonomy";
+import { PFC_TAXONOMY, categoryOf } from "@/categorize/taxonomy";
 import type { InsightTransaction } from "@/insights/spending";
-import { oneOffCharges, withoutOneOffs } from "@/insights/typical-month";
+import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
+import { oneOffCharges, typicalMonthlySpending, withoutOneOffs } from "@/insights/typical-month";
 import { confidenceOf, counted, type Source } from "@/profile/confidence";
-import type { Fact, ProfileInput, ProfileTx } from "@/profile/build";
+import { monthsForRate, type Fact, type ProfileInput, type ProfileTx } from "@/profile/build";
 import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
 import { withoutAchDetails } from "@/data-sources/merchant";
 import { formatCents, formatWholeDollars } from "@/lib/money";
@@ -36,7 +37,9 @@ export function oneOffsOf(data: ProfileInput): Set<ProfileTx> {
 }
 
 // Everything spent in a typical month, on average: money out except transfers (which stay
-// Jane's) and one-off costs.
+// Jane's) and one-off costs. Spread over the real span of a short history, as income is
+// (monthsForRate): the calendar count made Aug 1 to Oct 26 "2 months", and a freelancer's
+// spending read 40% high beside their income (night QA 10-30: a $51,771 cushion).
 export function monthlySpendCents(data: ProfileInput, months: number): number {
   const oneOffs = oneOffsOf(data);
   const spent = tx(
@@ -47,7 +50,35 @@ export function monthlySpendCents(data: ProfileInput, months: number): number {
       !(t.pfc ?? "").startsWith("TRANSFER") &&
       t.pfc !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
   ).reduce((s, t) => s + t.amountCents, 0);
-  return months > 0 ? Math.round(spent / months) : 0;
+  if (months <= 0) return 0;
+  return Math.round(spent / monthsForRate(data.transactions, data.today));
+}
+
+// A category the taxonomy no longer lists (Plaid's v1 INCOME_WAGES, now INCOME_SALARY) keeps
+// its primary from its name, so pay is never counted as negative spending.
+const PRIMARIES = Object.keys(PFC_TAXONOMY).sort((a, b) => b.length - a.length);
+const primaryPrefix = (detailed: string) =>
+  PRIMARIES.find((p) => detailed.startsWith(`${p}_`)) ?? null;
+
+// A typical month's spending, the one the emergency fund is sized from everywhere: the cushion
+// card, the chat's cushion answers and the goal Jane offers (src/lib/proposals.ts) all use
+// typicalMonthlySpending, so they name one figure (night QA 10-30: "a cushion for you is
+// $11,604.78" beside an "Emergency fund" goal of 3 months at $2,151.16). Falls back to the
+// plain average when no month is covered in full yet.
+export function cushionSpendCents(data: ProfileInput, months: number): number {
+  const rows = data.transactions.map((t) => ({
+    date: t.date,
+    amountCents: t.amountCents,
+    description: t.description,
+    merchantName: null,
+    pfcPrimary: t.pfc ? (categoryOf(t.pfc)?.primary ?? primaryPrefix(t.pfc)) : null,
+    pfcDetailed: t.pfc,
+    pending: false,
+  })) satisfies InsightTransaction[];
+  return (
+    typicalMonthlySpending(rows, data.today, BUDGET_SUGGESTION_MONTHS) ||
+    monthlySpendCents(data, months)
+  );
 }
 
 export const liquidCents = (data: ProfileInput) =>

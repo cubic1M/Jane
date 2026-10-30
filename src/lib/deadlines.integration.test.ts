@@ -139,6 +139,7 @@ describe.runIf(url)("deadlines against a real database", () => {
         amountCents: null,
         href: null,
         detail: null,
+        evidence: { kind: "entered" },
       },
     ];
     const broken: DeadlineSource = async () => {
