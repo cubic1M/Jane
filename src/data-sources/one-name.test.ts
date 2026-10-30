@@ -14,10 +14,7 @@ const ALLOWED: Readonly<Record<string, string>> = {
     "payeeOf: only when no merchant name is passed in (the suggestion detector's profile rows)",
   "src/planning/costly-borrowing.ts": "a lender's name from a loan deposit's words, not a merchant",
   "src/planning/money-for-two.ts": "a payer's name from a paycheck's words, not a merchant",
-  "src/profile/build.ts": "an employer's name from a paycheck's words, not a merchant",
   "src/detectors/life.ts": "an employer's name from a paycheck's words, not a merchant",
-  "src/detectors/helpers.ts": "the detectors' profile rows carry no merchant name yet",
-  "src/lib/memory/from-data.ts": "a fact's label, trimmed to length, not a merchant name",
   "src/lib/insurance/claim-filing.ts": "the person's own claim description, not a bank name",
 };
 
