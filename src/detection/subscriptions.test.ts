@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AS_OF,
   CARD,
+  CHECKING,
   NETFLIX,
   input,
   monthly,
@@ -117,6 +118,41 @@ describe("recurringCharges, as the person reads them", () => {
   it("keeps a payment-app transfer, which can be rent to a person", () => {
     expect(names.some((n) => /landlord/i.test(n))).toBe(true);
     expect(rows.find((r) => r.merchant === NETFLIX.merchantName)).toBeDefined();
+  });
+});
+
+// Night QA 10-30: "Other regular bills $52,534.88 a year" counted a $1,640/mo Chase card
+// payment while the Chase card's own purchases (NYT, Audible) were on file and counted too.
+describe("recurringCharges and card payments", () => {
+  const autopay = monthly(4, 164_000, {
+    description: "CHASE CREDIT CRD AUTOPAY PPD ID: 4760039224",
+    merchantName: null,
+    pfcPrimary: "LOAN_PAYMENTS",
+    pfcDetailed: "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+  });
+  const chaseCard = { ...CARD, id: "acct_chase", name: "Chase card" };
+
+  it("leaves out paying a card that's on file", () => {
+    const rows = recurringCharges(
+      input({
+        accounts: [CHECKING, chaseCard],
+        // Netflix is charged to the Chase card, which is on file with its charges.
+        transactions: [...autopay, ...monthly(4, 1549, { ...NETFLIX, accountId: chaseCard.id })],
+      }),
+    );
+    expect(rows.map((r) => r.merchant)).toEqual([NETFLIX.merchantName]);
+  });
+
+  it("keeps paying a card whose upload was removed, its account left empty", () => {
+    const rows = recurringCharges(
+      input({ accounts: [CHECKING, chaseCard], transactions: autopay }),
+    );
+    expect(rows.map((r) => r.merchant)).toEqual(["Chase card payment"]);
+  });
+
+  it("keeps paying a card that isn't on file: it's the only sign of that spending", () => {
+    const rows = recurringCharges(input({ accounts: [CHECKING], transactions: autopay }));
+    expect(rows.map((r) => r.merchant)).toEqual(["Chase card payment"]);
   });
 });
 
