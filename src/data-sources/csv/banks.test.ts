@@ -234,6 +234,22 @@ describe("Ally Bank", () => {
   });
 });
 
+// Night QA 10-30: every amount positive, the way it went in its own column.
+describe("Navy Federal Credit Union", () => {
+  const result = read("navy-federal.csv");
+
+  it("reads the posting date and signs each amount by its credit or debit indicator", () => {
+    expect(result.format.id).toBe("navy_federal");
+    expect(result.account).toMatchObject({ kind: "checking" });
+    expect(result.skipped).toEqual([]);
+    expect(amounts(result)).toEqual([
+      ["2026-10-02", 7392],
+      ["2026-10-01", 139500],
+      ["2026-09-30", -241000],
+    ]);
+  });
+});
+
 describe("Schwab Bank checking", () => {
   const result = read("schwab-bank.csv");
 
