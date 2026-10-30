@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HEALTH_NEVER_SAY, HEALTH_WEIGHTS } from "@/config/health-score";
 import {
   cardBalanceOf,
+  spendingOnFile,
   bandOf,
   fullMonthsOnly,
   healthChange,
@@ -64,6 +65,14 @@ describe("healthScore", () => {
       monthlySpendingCents: 200_000,
     });
     expect(withCash?.parts.map((p) => p.part)).not.toContain("cards");
+  });
+
+  // Night QA 10-30: a savings-only upload read "About 100% of what comes in is left after
+  // spending" and scored 100 of 100.
+  it("sees spending only where it happens: checking or a card", () => {
+    expect(spendingOnFile([{ type: "depository", subtype: "savings" }])).toBe(false);
+    expect(spendingOnFile([{ type: "depository", subtype: "checking" }])).toBe(true);
+    expect(spendingOnFile([{ type: "credit", subtype: "credit card" }])).toBe(true);
   });
 
   it("weights add up to 100", () => {
