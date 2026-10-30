@@ -1,4 +1,4 @@
-import { HELD_DAYS, WATCH_DAYS } from "@/config/outcomes";
+import { CHECK_LOOKBACK_DAYS, HELD_DAYS, WATCH_DAYS } from "@/config/outcomes";
 import { loadDetectionInput } from "@/detection/engine";
 import type { DetectionInput } from "@/detection/types";
 import type { Watch } from "@/detectors/contract";
@@ -6,10 +6,11 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { logAudit, SYSTEM_ACTOR, type AuditActor } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { ledgerStateOf, verifyRule, type LedgerState } from "@/planning/ledger";
+import { checkWords, ledgerStateOf, verifyRule, type LedgerState } from "@/planning/ledger";
 import {
   asWatch,
   checkHeld,
+  checksOn,
   verifyWatch,
   watchOfFinding,
   type Check,
@@ -21,7 +22,7 @@ import {
   verifyHoldingsWatch,
   type HoldingsNow,
 } from "@/planning/outcomes-holdings";
-import { DAY_MS, isoDay as isoDate } from "@/lib/dates";
+import { addDays, DAY_MS, isoDay as isoDate } from "@/lib/dates";
 
 // The verified savings record: what happened to each suggestion that reached the person (shown,
 // opened, answered, marked done) and what their later transactions showed. A saving counts as
@@ -501,14 +502,19 @@ export type OutcomeView = {
   lapsed: boolean;
   heldProof: string | null;
   heldEvidence: { id: string; date: string; description: string; amountCents: number }[];
+  // Done and waiting: the day it will be checked, and the words for it ("we'll check on Nov 5").
+  checksOn: string | null;
+  checkWords: string | null;
 };
 
 // Why an expected saving isn't counted yet, in the person's words: "You said yes" until they mark
 // it done (QA round 11: it said "You did it" after a bare yes).
-export function expectedWhy(o: Pick<OutcomeView, "status" | "actedOn" | "markedDone">): string {
+export function expectedWhy(
+  o: Pick<OutcomeView, "status" | "actedOn" | "markedDone"> & { checkWords?: string | null },
+): string {
   const did = o.markedDone ? "You did it" : "You said yes";
   if (o.status === "unverifiable") return `${did}; it isn't something your transactions can show.`;
-  return `${did}${o.actedOn ? ` on ${o.actedOn}` : ""}. It counts once your transactions show it.`;
+  return `${did}${o.actedOn ? ` on ${o.actedOn}` : ""}. It counts once your transactions show it${o.checkWords ? `; ${o.checkWords}` : ""}.`;
 }
 
 export type SavingsRecord = {
@@ -523,7 +529,7 @@ export type SavingsRecord = {
 // The person's record, for /saved, the home tile and the monthly report.
 export async function savingsRecord(
   userId: string,
-  { client = defaultClient }: Pick<Options, "client"> = {},
+  { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<SavingsRecord> {
   const db = scopedFor(userId, client);
   const all = await db.suggestionOutcomes.findMany({
@@ -556,6 +562,35 @@ export async function savingsRecord(
         ? [{ id, date: isoDate(t.date), description: t.description, amountCents: t.amountCents }]
         : [];
     });
+  // Done and waiting on a charge or a bill: when it will be checked, from the charges before.
+  const waiting = rows.filter((r) => r.status === "open" && (r.doneAt ?? r.answeredAt));
+  const startOf = (r: (typeof rows)[number]) => isoDate((r.doneAt ?? r.answeredAt)!);
+  const needCharges = waiting.some((r) => {
+    const w = asWatch(r.watch);
+    return w?.kind === "charge_stops" || w?.kind === "bill_drops";
+  });
+  const charges: OutcomeTx[] = needCharges
+    ? (
+        await db.transactions.findMany({
+          where: {
+            amountCents: { gt: 0 },
+            pending: false,
+            date: {
+              gte: new Date(
+                `${addDays(waiting.map(startOf).sort()[0], -CHECK_LOOKBACK_DAYS)}T00:00:00Z`,
+              ),
+            },
+          },
+          select: { id: true, date: true, amountCents: true, description: true, accountId: true },
+        })
+      ).map((t) => ({ ...t, date: isoDate(t.date), pfc: null }))
+    : [];
+  const today = isoDate(now);
+  const checkOf = (r: (typeof rows)[number]) => {
+    const w = asWatch(r.watch);
+    if (r.status !== "open" || !w || isHoldingsWatch(w) || !(r.doneAt ?? r.answeredAt)) return null;
+    return checksOn(w, startOf(r), charges);
+  };
   const view = (r: (typeof rows)[number]): OutcomeView => ({
     key: r.suggestionKey,
     topic: r.topic,
@@ -578,6 +613,8 @@ export async function savingsRecord(
     lapsed: r.status === "lapsed",
     heldProof: r.heldProof,
     heldEvidence: lines(r.heldEvidenceTxIds),
+    checksOn: checkOf(r)?.on ?? null,
+    checkWords: checkWords(checkOf(r), today),
   });
   const confirmed = rows
     .filter((r) => r.status === "confirmed" || r.status === "partial")

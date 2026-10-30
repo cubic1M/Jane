@@ -10,6 +10,8 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { addDays } from "@/detection/units";
 import { logAudit } from "@/lib/audit";
+import { dayLabel } from "@/lib/day-label";
+import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { savingsLedger } from "@/lib/ledger";
 import { markSuggestionDone, recordShown, verifyOutcomes } from "@/lib/outcomes";
 import { syncItem } from "@/lib/plaid/sync";
@@ -149,9 +151,20 @@ describe.runIf(url)("the savings ledger, on a sample person", { timeout: 240_000
     ledger = await savingsLedger(userId, { client, now: NOW });
     expect(mine().state).toBe("done");
     expect(ledger.savedCents).toBe(0);
+    // Founder (10-30): "done, we'll check on <day>", the day it can first be verified: the
+    // next charge's due day plus the bank's grace. On the ledger and in the chat's tool.
+    const due = addDays(lastDay, 30);
+    const checkDay = dayLabel(addDays(due, STOP_GRACE_DAYS + 1));
+    ledger = await savingsLedger(userId, { client, now: at(doneDay) });
+    expect(mine().checkWords).toBe(`we'll check on ${checkDay}`);
+    const tool = JSON.parse(
+      (await runChatTool(userId, "proven_savings", {}, { client, now: at(doneDay) })).content,
+    ) as { estimates: { what: string; check?: string | null }[] };
+    expect(tool.estimates.find((e) => e.what === "Cancel ClassPass")?.check).toBe(
+      `we'll check on ${checkDay}`,
+    );
 
     // Before the next charge was due (and its grace): still Done.
-    const due = addDays(lastDay, 30);
     await verifyOutcomes(userId, { client, now: at(addDays(due, STOP_GRACE_DAYS - 1)) });
     expect(
       (await savingsLedger(userId, { client, now: NOW })).entries.find((e) => e.key === KEY)!.state,

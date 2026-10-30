@@ -289,7 +289,7 @@ export async function verifiedSavings(
 ): Promise<VerifiedSavings> {
   const [actions, record] = await Promise.all([
     provenSavings(userId, options),
-    savingsRecord(userId, { client: options.client }),
+    savingsRecord(userId, { client: options.client, now: options.now }),
   ]);
   const seen = new Set(
     actions.confirmed.map((r) => `${r.seen.date}|${r.seen.description}|${r.seen.amountCents}`),

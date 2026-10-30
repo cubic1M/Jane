@@ -7,6 +7,8 @@ import {
   WATCH_DAYS,
 } from "@/config/outcomes";
 import type { Watch } from "@/detectors/contract";
+import { dayLabel } from "@/lib/day-label";
+import type { CheckDay } from "./outcomes";
 
 // The savings ledger's states (the verified savings record, src/lib/ledger.ts). Each finding the
 // person saw is in one of them, and only Verified and Held count toward "saved":
@@ -100,3 +102,15 @@ export const LEDGER_RULES: readonly string[] = [
   HELD_RULE,
   "Where your transactions can't show a saving, it stays an estimate.",
 ];
+
+// The words for a Done saving's check day, as of today: "we'll check on Nov 5"; once the day has
+// passed with no statement after it, that one is what's missing; a refund is watched for until a
+// day.
+export function checkWords(check: CheckDay | null, today: string): string | null {
+  if (!check) return null;
+  const day = dayLabel(check.on);
+  if (check.until) return `we'll watch for it until ${day}`;
+  return check.on >= today
+    ? `we'll check on ${day}`
+    : `we'll check once a statement after ${day} is in`;
+}
