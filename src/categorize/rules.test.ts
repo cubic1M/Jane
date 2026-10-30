@@ -348,6 +348,12 @@ describe("categorizeByRules", () => {
     expect(out("BOULANGERIE PAUL PARIS")).toBe(out("BLUE HERON BAKERY"));
   });
 
+  // Night QA 10-30: a student's dining hall and a Midwest gas chain had no category.
+  it("reads a college dining hall and a Holiday station", () => {
+    expect(out("UC DINING HALL")).toBe("FOOD_AND_DRINK_RESTAURANT");
+    expect(out("HOLIDAY STATIONSTORES 0412")).toBe("TRANSPORTATION_GAS");
+  });
+
   it("reads 7-Eleven as a convenience store", () => {
     expect(out("7-ELEVEN 33421")).toBe("GENERAL_MERCHANDISE_CONVENIENCE_STORES");
   });
