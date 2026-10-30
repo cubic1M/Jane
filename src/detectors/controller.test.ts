@@ -70,7 +70,11 @@ describe("the monthly close (step 244)", () => {
     expect(s?.title).toBe("Confirm 2 charges so September 2026 can close");
     expect(s?.short).toMatch(/^Wework \$285\.00, Adobe Creative Cloud \$59\.99/);
     expect(s?.worthCents).toBe(34_499);
-    expect(s?.action.href).toBe("/monthly#close");
+    // /monthly is hidden in the read-only beta (it would land on /ahead, which has no close):
+    // the button opens September's transactions, where fixing a category closes the month.
+    expect(s?.action.href).toMatch(
+      /^\/transactions\?(?:category=none&)?from=2026-09-01&to=2026-09-30$/,
+    );
     // Night QA 10-30: "4 unsure charge in 3 months of data".
     expect(s?.confidence.reason).toMatch(/^2 unsure charges in /);
   });

@@ -3,6 +3,7 @@ import { previousMonth } from "@/insights/check-in";
 import { formatCents, formatWholeDollars } from "@/lib/money";
 import { uncertainOf } from "@/planning/month-close";
 
+import { isHiddenPage } from "@/config/hidden-pages";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, nice } from "./helpers";
 import { monthLabel } from "@/lib/day-label";
@@ -100,9 +101,20 @@ const monthClose: Detector = {
       confidence: evidence("seen", Math.max(profile.months, 1), unsure.length, "unsure charges"),
       urgency: "soon",
       why: `I close each month on the first of the next. In ${monthLabel(month, { long: true })}, ${names.join(" and ")} sit in a catch-all category, so I can't tell if ${unsure.length === 1 ? "it's" : "they're"} personal or a business cost. Confirm or fix ${unsure.length === 1 ? "it" : "them"} and the month closes, its figures kept.`,
-      action: { label: "Confirm the charges", href: "/monthly#close" },
+      action: { label: "Confirm the charges", href: closeHref(month, unsure) },
     };
   },
 };
+
+// Where the charges get confirmed. The read-only beta hides /monthly (it lands on /ahead, which
+// has no close: night QA 10-30, the button led nowhere), so there it's the month's transactions,
+// only the uncategorized ones when that's all they are: fixing a category is what closes it.
+function closeHref(month: string, unsure: readonly { pfcDetailed: string | null }[]): string {
+  if (!isHiddenPage("/monthly")) return "/monthly#close";
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  const none = unsure.every((t) => t.pfcDetailed === null) ? "category=none&" : "";
+  return `/transactions?${none}from=${month}-01&to=${last}`;
+}
 
 export const CONTROLLER_DETECTORS: readonly Detector[] = [books, monthClose];
