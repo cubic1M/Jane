@@ -80,12 +80,16 @@ export function reportOrder<T extends Rankable>(findings: readonly T[]): T[] {
 // (src/profile/confidence.ts), from the months of data and every charge behind the finding.
 export type SuggestionSure = { topic: string; confidencePercent: number; confidenceReason: string };
 
+// `sameType` is how many findings share this one's topic: the suggestion speaks for all of them
+// (debugger 10-30: fees on two accounts, "5 bank fees" on the card whose own finding rests on 1),
+// so with more than one each counts its own charges.
 export function findingSure(
   finding: { type: string; evidence: unknown },
   suggestions: readonly SuggestionSure[],
   months: number,
+  sameType = 1,
 ): { percent: number; reason: string } {
-  const same = suggestions.find((s) => s.topic === finding.type);
+  const same = sameType === 1 ? suggestions.find((s) => s.topic === finding.type) : undefined;
   if (same) return { percent: same.confidencePercent, reason: same.confidenceReason };
   const charges = evidenceCharges(finding.evidence);
   const span = `${months} month${months === 1 ? "" : "s"} of data`;
