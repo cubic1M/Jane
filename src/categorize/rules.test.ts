@@ -241,6 +241,40 @@ describe("categorizeByRules", () => {
     expect(out("ACME TRANSFER 0042")).toBe("TRANSFER_OUT_ACCOUNT_TRANSFER");
   });
 
+  // Debugger 10-30: carriers bill under shorter names than their brand ("TMOBILE AUTOPAY",
+  // "VZWRLSS*APOCC VISB", "ATT*BILL PAYMENT"). Each fell through to the same-price rule and came
+  // up as "Review your Tmobile Autopay subscription, save $1,020 a year", while the phone check
+  // said it had no data.
+  it.each([
+    "TMOBILE AUTOPAY",
+    "TMOBILE*AUTO PAY",
+    "TMOBILE POSTPAID WEB",
+    "T MOBILE BILL PAY",
+    "T-MOBILE PCS SVC",
+    "VZWRLSS*APOCC VISB",
+    "VZWRLSS*MY VZ VB P",
+    "VZW WEBPAY",
+    "ATT*BILL PAYMENT",
+    "ATT* BILL PAYMENT",
+    "ATT BILL PAYMENT",
+    "AT T MOBILITY",
+    "VISIBLE SERVICE",
+    "TING MOBILE",
+    "ULTRA MOBILE",
+    "PAGE PLUS CELLULAR",
+    "XFINITY MOBILE",
+    "SPECTRUM MOBILE",
+  ])("reads %s as a phone bill, not a subscription", (description) => {
+    expect(out(description)).toBe("RENT_AND_UTILITIES_TELEPHONE");
+  });
+
+  it.each(["MATTRESS FIRM", "BATTERY PLUS", "VISIBLE BODY APP", "COMCAST CABLE COMM"])(
+    "doesn't read %s as a phone bill",
+    (description) => {
+      expect(out(description)).not.toBe("RENT_AND_UTILITIES_TELEPHONE");
+    },
+  );
+
   // CSV bench, round 12: well-known chains by name, and more kinds of place by their words.
   it.each([
     ["GREYSTAR RE PAYMENT WEB PMT PPD ID: 1839429794", "RENT_AND_UTILITIES_RENT"],
