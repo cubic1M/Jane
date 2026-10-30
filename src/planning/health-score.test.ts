@@ -22,6 +22,20 @@ const strong: HealthInput = {
 };
 
 describe("healthScore", () => {
+  // Night QA 10-30: a card-only upload read "Money health 100 of 100" from no late fees alone.
+  it("shows no score from one part alone", () => {
+    const onlyFees: HealthInput = {
+      cashCents: null,
+      monthlySpendingCents: null,
+      monthlyIncomeCents: null,
+      slips: 0,
+      cardBalanceCents: null,
+      goals: { onTrack: 0, total: 0 },
+    };
+    expect(healthScore(onlyFees)).toBeNull();
+    expect(healthScore({ ...onlyFees, cardBalanceCents: 0 })?.score).toBe(100);
+  });
+
   it("weights add up to 100", () => {
     expect(Object.values(HEALTH_WEIGHTS).reduce((s, w) => s + w, 0)).toBe(100);
   });

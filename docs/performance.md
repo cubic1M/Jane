@@ -83,6 +83,10 @@ over. Lower a number when a page gets lighter; raise one only with a reason in t
 - 2026-10-28: `/investments` 620,000 to 625,000 bytes. The app-wide error boundary (#942, never a
   blank screen) adds about 3.8 kB of first-load JS to every page; `/investments` was 2.7 kB under
   its ceiling and went 1.1 kB over. The other pages still have room.
+- 2026-10-30: `/investments` 625,000 to 630,000 bytes. The card dock above the chat (on every
+  page) now remembers the cards a person dealt with so a followed card never comes back, and keeps
+  the mouse wheel inside a long card (#1000): about 4 kB of first-load JS. `/investments` was 1.0 kB
+  under its ceiling and went 3.0 kB over; `/home` (595 of 600 kB) and the rest still pass.
 
 ## After (2026-10-26): the landing column, the footer, shared reads
 

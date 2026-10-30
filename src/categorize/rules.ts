@@ -225,7 +225,18 @@ const RULES: readonly Rule[] = [
   // uncategorised, so the loans page never saw the mortgage).
   {
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    keywords: ["MORTGAGE", "MTG PMT", "MORTGAGE PMT", "HOME LOAN PMT"],
+    // Wells Fargo writes its own as "WF HOME MTG AUTO PAY" (night QA 10-30: left uncategorized,
+    // the month close asked a couple what their $3,240 mortgage was).
+    keywords: [
+      "MORTGAGE",
+      "MTG PMT",
+      "MORTGAGE PMT",
+      "HOME LOAN PMT",
+      "HOME MTG",
+      "MTG AUTO PAY",
+      "MTG PYMT",
+      "MTG PAYMENT",
+    ],
     direction: "out",
   },
   {
@@ -568,6 +579,7 @@ const RULES: readonly Rule[] = [
     keywords: ["TARGET", "WALMART", "WAL-MART", "COSTCO"],
   },
   { category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", keywords: ["CVS", "WALGREENS", "RITE AID"] },
+  { category: "GENERAL_MERCHANDISE_CONVENIENCE_STORES", keywords: ["7-ELEVEN", "7 ELEVEN"] },
   {
     category: "GENERAL_MERCHANDISE_ELECTRONICS",
     keywords: ["BEST BUY", "APPLE STORE", "MICRO CENTER"],
@@ -630,6 +642,8 @@ const RULES: readonly Rule[] = [
     category: "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
     keywords: [
       "PG&E",
+      // How some banks spell it (night QA 10-30: "PGANDE WEB ONLINE").
+      "PGANDE",
       "CON ED",
       "CONEDISON",
       "DUKE ENERGY",
@@ -1869,6 +1883,40 @@ const RULES: readonly Rule[] = [
     ],
   },
   { category: "FOOD_AND_DRINK_GROCERIES", keywords: ["MARKET", "FOODS"], direction: "out" },
+  // Financial aid paid out to a student: moved money, like a loan disbursement, never a refund
+  // of spending or taxable pay (night QA 10-30: "FAFSA DISBURSEMENT UC REFUND", $2,100 in,
+  // uncategorized, cancelled a student's August spending).
+  {
+    category: "LOAN_DISBURSEMENTS_STUDENT",
+    keywords: [
+      "FAFSA",
+      "FINANCIAL AID",
+      "FIN AID",
+      "PELL GRANT",
+      "STUDENT AID",
+      "SCHOLARSHIP",
+      "DIRECT LOAN DISB",
+      "STUDENT LOAN DISB",
+    ],
+    direction: "in",
+  },
+  // A payday loan or an app's cash advance landing in checking: borrowed money, never a refund
+  // of spending (night QA 10-30: a server's "ADVANCE AMERICA LOAN", $400 in, uncategorized).
+  {
+    category: "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+    keywords: [
+      "ADVANCE AMERICA",
+      "CHECK INTO CASH",
+      "ACE CASH EXPRESS",
+      "SPEEDY CASH",
+      "CHECKSMART",
+      "EARNIN",
+      "BRIGIT",
+      "MONEYLION INSTACASH",
+      "DAVE INC",
+    ],
+    direction: "in",
+  },
   {
     category: "INCOME_OTHER",
     keywords: ["CASHBACK", "CASH BACK", "REWARDS CREDIT", "STATEMENT CREDIT", "REDEMPTION"],

@@ -73,6 +73,7 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   MonthClose: rescan,
   HealthScore: rescan,
   MonthlyReport: rescan,
+  YearPlan: rescan,
   PlanProposal: rescan,
   DebtWatch: rescan,
   CarLoanWatch: rescan,
@@ -162,7 +163,6 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   PaycheckPlan: "entered",
   WhatIfPlan: "entered",
   LeanPlan: "entered",
-  YearPlan: "entered",
   UnusualAnswer: "entered",
   OldPlan: "entered",
   RetirementIncome: "entered",
@@ -224,6 +224,7 @@ export const CLEARED_WITHOUT_DATA: Readonly<Record<string, string | [string, obj
   MonthClose: "monthCloses",
   HealthScore: "healthScores",
   MonthlyReport: "monthlyReports",
+  YearPlan: "yearPlans",
 };
 // Derived, but not from bank data, so kept: from the person's policies, documents or the markets,
 // or hanging off a row above.
@@ -237,4 +238,16 @@ export const KEPT_WITHOUT_DATA: Readonly<Record<string, string>> = {
   JaneMessage: "the open ones are put away below, as history",
   JanePreference: "the saved numbers are refused by their data stamp",
   UserFact: "the ones read from statements go below; the person's own words stay",
+};
+
+// Rows the demo bank seeds with source "demo" (its insurance, rental, old 401(k), company stock
+// and costly products), by Prisma model to its scopedFor table: they stand on the demo bank and go
+// once the person has none (src/lib/evidence/orphans.ts). Its home and car (src/lib/plaid/
+// demo-assets.ts) and a sample person's wins (src/lib/sample-wins.ts) go with it too.
+export const DEMO_SEEDED: Readonly<Record<string, string>> = {
+  InsurancePolicy: "insurancePolicies",
+  EquityGrant: "equityGrants",
+  OldPlan: "oldPlans",
+  RentalProperty: "rentalProperties",
+  CostlyProduct: "costlyProducts",
 };

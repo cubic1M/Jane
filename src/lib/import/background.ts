@@ -10,6 +10,7 @@ import { remindDeadlines } from "@/lib/deadlines";
 import { rebuildUploadedBalances } from "@/lib/import/balances";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
+import { closeSettled } from "@/lib/jane-agent/messages";
 import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import { withReadCache } from "@/lib/read-cache";
@@ -84,6 +85,8 @@ export async function refreshAfterRemoval(userId: string, options: Options = {})
     const now = options.now ?? new Date();
     await runDetection(userId, { client, now });
     await refreshAfterUpload(userId, { client, now });
+    // Jane's cards about what went: put away now, not when the chat next opens.
+    await closeSettled(userId, { client, now });
     await refreshChatNumbers(userId, { client, now });
   });
 }
