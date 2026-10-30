@@ -54,6 +54,9 @@ import { dayLabel } from "@/lib/day-label";
 
 export type Reply = { body: string; actions: MessageAction[]; refs: MessageRefs };
 
+// A spending question whose words are no category or merchant: not an answer (./backup.ts).
+export const SPENDING_NOT_FOUND = "I couldn't find spending on";
+
 const reply = (body: string, actions: MessageAction[] = [], refs: MessageRefs = {}): Reply => ({
   body,
   actions,
@@ -538,7 +541,7 @@ export function spendingReply(
   const matching = spentAt((name) => name.includes(q));
   if (matching.length > 0) return atMerchant(matching);
   return reply(
-    `I couldn't find spending on "${intent.category}" ${when}.${top ? ` The most went to: ${top}.` : ""}`,
+    `${SPENDING_NOT_FOUND} "${intent.category}" ${when}.${top ? ` The most went to: ${top}.` : ""}`,
     open,
   );
 }

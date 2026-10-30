@@ -22,8 +22,10 @@ import {
   checkGuardrails,
   guardrailMatches,
   dollarFigures,
+  splitByGuardrails,
   unsupportedFigures,
   type GuardrailIssue,
+  type GuardrailProfile,
 } from "@/lib/guardrails";
 import type { PolicyKind } from "@/config/insurance";
 import { quotesAnswer } from "./insurance/quotes";
@@ -52,10 +54,10 @@ import type { OfferedOptions } from "@/lib/option-card";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v31";
+export const CHAT_PROMPT_VERSION = "chat-v32";
 
 // The one rule that differs in demo advice mode (spec step 98).
-const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
+const NO_ADVICE = `- Never give investment, tax or legal advice: don't mention investments, and never tell them what to buy, sell, file, deduct, claim, write off or set aside, how to pay less tax, or how the tax rules or the law treat their money. Facts from their own accounts and your tools are not advice, so give them: what came in and went out (what a company paid them, what they paid it, the net), and a tax figure a tool gives, said as your estimate. For a tax question, give those facts first, then say in one sentence that you can't tell them what to file or deduct. Don't suggest financial products beyond Jane's pick from finding_details.`;
 const DEMO_ADVICE = `- This person is using the demo bank with sample data, so you may recommend what to do about investments, taxes, insurance and loans: say what you'd do and why, from their numbers. Never promise a result or a return, and never give legal advice. The app labels your answer as demo advice; don't add a label or disclaimer yourself.`;
 
 const SYSTEM = `You are Jane, the money helper inside a personal finance app, answering in the app's chat. Speak as "I"; if you ever name Jane in the third person, Jane is "it", never "she". You know the person's own money: spending, bills, subscriptions, safe to spend, goals, budgets, and what the app has found or is doing for them.
@@ -67,6 +69,7 @@ Be useful, like a friend who's good with money and has their numbers in front of
 - For "am I OK?", "how am I doing" or "what should I do this month", use whole_picture: start with its headline, then the one to three things that matter most, with the first one's button.
 - What they've told you is under "remembered" in their numbers. Respect it: never suggest anything they said not to suggest, or cutting something they said they need.
 - Follow the conversation (spec step 193): "it", "that one", "the other one", "do it" and "and for my wife's car?" mean what was just said or what the last answer was about (given with their numbers). Don't ask again what they already told you.
+- "What did I earn from X and what did I spend to get it" (a side gig, a prop trading firm, a platform): search_transactions for X from January 1 of this year; its money in is what X paid them, its money out is what they paid X (fees, resets, subscriptions), and calculate gives the net.
 - When they ask two things in one message, answer both, in order, each with its figure; the first sentence still gives the first answer. When you really can't tell what they mean, ask one short question that names the likely choices ("Do you mean your Netflix or your Hulu?"). Never a generic list of things you can do when one of your tools fits.
 - Every message gets a written answer from you, whatever it is: a command ("cancel Netflix", "approve the plan", "undo", "help"), a short reply ("yes", "ok and?", "what do you mean", "why"), a greeting or a thing you can't do. Say in words what it is or what tapping a button would do, with their figures, and only then offer the button. A button or a card is never the whole reply.
 - Say what the data says plainly: if a tool gives a name, a figure or a date, state it, never "probably" or "it looks like". Say you don't know only when no tool has it.
@@ -257,10 +260,17 @@ function rewriteRequest(
         return `It has amounts that aren't in their numbers or the tool results: ${unsupportedFigures(text, allowedCents).join(", ")}. Use those amounts exactly as they appear there instead, or leave just that amount out. (A total or difference you worked out yourself can't be shown: say it without the amount, or leave it out.)`;
       case "investment_advice":
         return "It mentions investing or investments. Say you can't advise on that here and leave it out.";
-      case "tax_or_legal_advice":
-        return advice
-          ? "It gives legal advice. Don't draft or advise on legal matters: say plainly you can't, and point to a lawyer in one sentence, then say what you can do with their numbers."
-          : "It mentions taxes or legal matters. Leave that out.";
+      case "tax_or_legal_advice": {
+        if (advice) {
+          return "It gives legal advice. Don't draft or advise on legal matters: say plainly you can't, and point to a lawyer in one sentence, then say what you can do with their numbers.";
+        }
+        // The sentences that are advice, so the rewrite drops only those and keeps the facts
+        // (founder 10-30: "leave that out" lost the whole answer to a tax question).
+        const advising = splitByGuardrails(text, allowedCents)
+          .dropped.filter((d) => d.issues.includes("tax_or_legal_advice"))
+          .map((d) => `"${d.sentence}"`);
+        return `${advising.length > 0 ? `These sentences tell them what to do about taxes or the law: ${advising.join(" ")}` : "It tells them what to do about taxes or the law."} Drop only that advice. Keep every fact from their accounts and the lookups: what came in, what went out, the net, and a tax figure a tool gave, said as your estimate. Then add one sentence that you can't tell them what to file or deduct.`;
+      }
       case "guaranteed_outcome":
         return 'It promises a result. Say "could" or "about" instead of "will", "definitely" or "guaranteed".';
       default:
@@ -268,6 +278,34 @@ function rewriteRequest(
     }
   });
   return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person: fix only those parts and keep the rest, your suggestion and the other figures included. Don't mention this note.`;
+}
+
+// What Jane says in place of the sentences a blocked answer loses.
+export const CANT_ADVISE_TAX =
+  "I can't tell you what to file, deduct or claim; a tax professional can.";
+export const CANT_ADVISE_LEGAL = "I can't advise on the legal side; a lawyer can.";
+export const CANT_ADVISE_INVESTING = "I can't advise on investments here.";
+
+// A blocked answer with only its sentences that pass, and one line saying what Jane can't advise
+// on: null when what's left isn't an answer (no figure, hardly a sentence) or still doesn't pass.
+export function factsOnly(
+  text: string,
+  allowedCents: readonly number[],
+  profile: GuardrailProfile,
+): string | null {
+  const { kept, dropped } = splitByGuardrails(text, allowedCents, profile);
+  const body = kept.join(" ");
+  if (dropped.length === 0 || body.length < 40 || !/\d/.test(body)) return null;
+  const lost = new Set(dropped.flatMap((d) => d.issues));
+  const taxy = dropped.some((d) =>
+    /\b(?:tax|deduct|claim|file|filing|write|irs|itemi)/i.test(d.sentence),
+  );
+  const lines = [
+    ...(lost.has("tax_or_legal_advice") ? [taxy ? CANT_ADVISE_TAX : CANT_ADVISE_LEGAL] : []),
+    ...(lost.has("investment_advice") ? [CANT_ADVISE_INVESTING] : []),
+  ];
+  const shown = [body, ...lines].join(" ");
+  return checkGuardrails(shown, allowedCents, undefined, profile).ok ? shown : null;
 }
 
 // The chat shows plain text: Claude's markdown emphasis, headings and code marks are dropped
@@ -1037,6 +1075,16 @@ async function askClaude(
     if (!check.ok) {
       // The issues only, never the text: it's about the person's money.
       console.warn("Jane's chat answer was blocked by the guardrails", { issues: check.issues });
+      // Still blocked after the rewrite: its facts, without the sentences that can't be shown,
+      // rather than the rules answering something else (founder 10-30).
+      const facts = factsOnly(spoken, allowedCents, profile);
+      if (facts) {
+        timing.reason = "facts_only";
+        return {
+          kind: "answer",
+          reply: { body: plainText(facts), actions: [], refs: advice ? { advice: true } : {} },
+        };
+      }
       // A safe fallback, with no buttons.
       return {
         kind: "blocked",

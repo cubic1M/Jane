@@ -1,5 +1,5 @@
 import { classifyMerchants } from "./llm";
-import { categorizeByRules } from "./rules";
+import { categorizeByRules, payoutByRules } from "./rules";
 import { categoryOf, type Category } from "./taxonomy";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type { NormalizedTransaction } from "@/data-sources/types";
@@ -43,6 +43,9 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
     const fromSource = transaction.categoryDetailed
       ? categoryOf(transaction.categoryDetailed)
       : null;
+    // A payout the bank filed as a transfer (or anything but income) is income (./rules.ts).
+    const payout = fromSource?.primary === "INCOME" ? null : payoutByRules(transaction);
+    if (fromSource && payout) return { ...transaction, category: payout, categorySource: "rule" };
     if (fromSource) return { ...transaction, category: fromSource, categorySource: "plaid" };
     const fromRules = categorizeByRules(transaction);
     if (fromRules) return { ...transaction, category: fromRules, categorySource: "rule" };

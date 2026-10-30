@@ -46,17 +46,58 @@ const INVESTMENT = [
 ];
 
 // (b) Tax or legal advice. Demo advice (below) allows the tax part, never the legal part.
+// Tax ADVICE is telling the person what to do about their taxes (deduct, claim, write off,
+// itemize, file, set aside, pay less) or how the tax rules treat their money. A figure from
+// Jane's own data and tools ("Lucid Trading paid you $3,200.00", "my estimate of your federal
+// tax this year is $4,210.00") is a fact, not advice: the word "tax" alone isn't blocked
+// (founder 10-30: a tax question was blocked twice and the person got an unrelated answer).
+const DEDUCTIONS =
+  /(?<!(?:payroll|paycheck|pay) )\bdeductions?\b(?! (?:from|on|in) (?:your|my|the|their) (?:pay|paycheck|paychecks|wages)\b)/i;
+const LIABLE =
+  /(?<!(?:injury|damage|personal) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)/i;
+const TAX_WORD = /\btax(es|ed|able)?\b/i;
+// What marks text as tax talk, for the demo advice label (isAdvice).
 const TAX = [
-  /\btax(es|ed|able)?\b/i,
+  TAX_WORD,
   // Tax deductions. An insurance deductible is fine, so "deductible" alone is allowed, and
   // so is what comes out of a paycheck ("payroll deductions", spec step 93).
-  /(?<!(?:payroll|paycheck|pay) )\bdeductions?\b(?! (?:from|on|in) (?:your|my|the|their) (?:pay|paycheck|paychecks|wages)\b)/i,
+  DEDUCTIONS,
   /\bwrite[- ]off\b/i,
   /\birs\b/i,
   // Also a loan's liability and being liable, which demo advice may talk about. Liability
   // cover on an insurance policy is a kind of cover, so it's allowed (spec step 102).
-  /(?<!(?:injury|damage|personal) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)/i,
+  LIABLE,
 ];
+// What is advice wherever it is said.
+const TAX_ADVICE = [
+  DEDUCTIONS,
+  /\bwrit(?:e|es|ing|ten)[- ](?:[\w$.,']+ ){0,3}?offs?\b/i,
+  /\birs\b/i,
+  LIABLE,
+  /\btax[- ]deductible\b/i,
+  /\bdeduct(?:s|ed|ing)?\b(?! (?:from|out of) (?:your|my|the|their|each) (?:pay|paycheck|paychecks|wages)\b)/i,
+  /\bitemi[sz]\w*/i,
+  /\bclaim(?:s|ed|ing)?\b[^.!?]{0,40}\b(?:deductions?|credits?|expenses?|dependents?|exemptions?|losses|as a (?:business|loss|dependent))\b/i,
+  /\btax[- ](?:free|break|breaks|loophole|shelter|strateg\w+|advantaged?|planning)\b/i,
+  /\b(?:lower|reduce|cut|shrink|minimi[sz]e|avoid|save on|pay less)\b[^.!?]{0,40}\btax/i,
+  /\b(?:file|filing|amend\w*)\b[^.!?]{0,30}\b(?:returns?|taxes|schedule|form|1040|extension|jointly|separately)\b/i,
+  /\bschedule [a-z]\b/i,
+];
+// In a sentence that talks about tax: telling them to do something, or what the rules say
+// their money counts as. "You'll owe about $X" is a figure; "you should set aside $X" is advice.
+const TAX_DIRECTIVE = [
+  /\b(?:you should|you need to|you must|you(?:'|’)?d (?:want|need) to|you (?:could|can|may|might) (?:also )?(?:want to|try|consider|use|count|treat|report|put|move|open|contribute)|i(?:'|’)?d|i would|i (?:recommend|suggest|advise)|consider|make sure|be sure to|don(?:'|’)?t forget|remember to|try to)\b/i,
+  /\b(?:set|put) (?:aside|away)\b/i,
+  /\b(?:counts?|treated|reported|qualif\w*|considered) as\b/i,
+  /\b(?:is|are) (?:taxable|tax[- ]free|not taxable|deductible)\b/i,
+];
+
+// The sentences that talk about tax and tell the person what to do about it.
+function taxDirectives(text: string): boolean {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .some((s) => TAX_WORD.test(s) && TAX_DIRECTIVE.some((p) => p.test(s)));
+}
 // Legal ADVICE, meaning directives and claims about the law: suing, going to court, a case
 // the person could win, what they are legally entitled to. Mentioning a lawyer or an attorney,
 // or the word "legal" on its own ("legal deductions", "the legal side"), is the opposite of
@@ -124,7 +165,7 @@ const BENIGN_LEGAL =
 // before checking. `refusalsOnly` (the standard profile) takes out only its own "I can't".
 function withoutReferrals(text: string, refusalsOnly = false): string {
   const patterns = [...(refusalsOnly ? REFERRAL.slice(0, 2) : REFERRAL), ...HANDLERS];
-  const sensitive = [...LEGAL, ...TAX];
+  const sensitive = [...LEGAL, ...TAX, ...TAX_ADVICE];
   return text
     .split(/(?<=[.!?])\s+/)
     .filter(
@@ -243,7 +284,11 @@ function scan(
   const required = findingType && REQUIRED_WORDING[findingType];
   if (required && !required.test(original)) issues.push("missing_required_wording");
   if (!advice && hits(INVESTMENT, "investment")) issues.push("investment_advice");
-  const tax = !advice && hits(TAX, "tax");
+  let tax = !advice && hits(TAX_ADVICE, "tax");
+  if (!advice && taxDirectives(text)) {
+    tax = true;
+    matched.push("tax:directive");
+  }
   const legal = hits(LEGAL, "legal");
   if (tax || legal) issues.push("tax_or_legal_advice");
   if (dollarFigures(text).some((f) => !supported(f, allowedCents))) {
@@ -276,6 +321,25 @@ export function guardrailMatches(
   profile: GuardrailProfile = "standard",
 ): string[] {
   return scan(text, allowedCents, undefined, profile).matched;
+}
+
+// An answer split into the sentences that pass on their own and the ones that don't, so a
+// blocked answer can be rewritten without its advice (Claude is shown what was dropped) and,
+// failing that, shown with only its facts. Lines and sentences both count as sentences.
+export function splitByGuardrails(
+  text: string,
+  allowedCents: readonly number[],
+  profile: GuardrailProfile = "standard",
+): { kept: string[]; dropped: { sentence: string; issues: GuardrailIssue[] }[] } {
+  const kept: string[] = [];
+  const dropped: { sentence: string; issues: GuardrailIssue[] }[] = [];
+  for (const sentence of text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim())) {
+    if (!sentence) continue;
+    const check = checkGuardrails(sentence, allowedCents, undefined, profile);
+    if (check.ok) kept.push(sentence);
+    else dropped.push({ sentence, issues: check.issues });
+  }
+  return { kept, dropped };
 }
 
 // A forecast of a price or the market (spec step 293): news summaries say what happened, never

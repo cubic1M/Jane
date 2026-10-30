@@ -80,4 +80,50 @@ describe.runIf(url)("re-applying the keyword rules to saved rows", () => {
     // Nothing left to move the second time.
     expect(await reapplyRules(user.id, { client })).toBe(0);
   });
+
+  // Founder 10-30: a prop firm's payout the bank or Claude called a transfer is income; the
+  // person's own label stays. Made-up rows.
+  it("moves a payout others filed as a transfer to income, never the person's own", async () => {
+    const user = await client.user.create({
+      data: { email: `reapply-${crypto.randomUUID()}@example.com` },
+    });
+    users.push(user.id);
+    const account = await client.account.create({
+      data: { userId: user.id, source: "csv", name: "Checking", type: "depository" },
+    });
+    let n = 0;
+    const payout = (categorySource: "plaid" | "llm" | "user", amountCents = -150_000) =>
+      client.transaction.create({
+        data: {
+          userId: user.id,
+          accountId: account.id,
+          source: "csv",
+          dedupeKey: `p${n++}`,
+          date: new Date("2026-10-01"),
+          amountCents,
+          description: "LUCID TRADING PAYOUT ACH CREDIT",
+          pfcPrimary: "TRANSFER_IN",
+          pfcDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
+          categorySource,
+        },
+      });
+    const bank = await payout("plaid");
+    const claude = await payout("llm");
+    const mine = await payout("user");
+
+    expect(await reapplyRules(user.id, { client })).toBe(2);
+    const of = (id: string) =>
+      client.transaction.findUniqueOrThrow({
+        where: { id },
+        select: { pfcPrimary: true, pfcDetailed: true, categorySource: true },
+      });
+    const income = {
+      pfcPrimary: "INCOME",
+      pfcDetailed: "INCOME_CONTRACTOR",
+      categorySource: "rule",
+    };
+    expect(await of(bank.id)).toEqual(income);
+    expect(await of(claude.id)).toEqual(income);
+    expect((await of(mine.id)).pfcDetailed).toBe("TRANSFER_IN_ACCOUNT_TRANSFER");
+  });
 });

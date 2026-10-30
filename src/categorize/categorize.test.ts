@@ -70,6 +70,39 @@ describe("categorizeTransactions", () => {
     expect(result.categorySource).toBe("user");
   });
 
+  // Founder 10-30: a prop firm's payout the bank filed as a transfer is income (./rules.ts).
+  it("takes a payout the bank called a transfer as income, and leaves the bank's income alone", async () => {
+    const [payout, income, fee] = await categorizeTransactions(
+      [
+        txn("LUCID TRADING PAYOUT", {
+          amountCents: -150_000,
+          categoryDetailed: "TRANSFER_IN_ACCOUNT_TRANSFER",
+        }),
+        txn("LUCID TRADING PAYOUT 2", {
+          amountCents: -150_000,
+          categoryDetailed: "INCOME_OTHER",
+        }),
+        txn("LUCID TRADING RESET", {
+          amountCents: 8_500,
+          categoryDetailed: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+        }),
+      ],
+      db,
+    );
+    expect(payout).toMatchObject({
+      category: { detailed: "INCOME_CONTRACTOR" },
+      categorySource: "rule",
+    });
+    expect(income).toMatchObject({
+      category: { detailed: "INCOME_OTHER" },
+      categorySource: "plaid",
+    });
+    expect(fee).toMatchObject({
+      category: { detailed: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES" },
+      categorySource: "plaid",
+    });
+  });
+
   it("keeps a category the source already gave", async () => {
     const [result] = await categorizeTransactions(
       [txn("NETFLIX.COM", { categoryDetailed: "ENTERTAINMENT_OTHER_ENTERTAINMENT" })],

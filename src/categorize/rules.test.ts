@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categorizeByRules } from "./rules";
+import { categorizeByRules, payoutByRules } from "./rules";
 import { ALL_DETAILED, categoryOf } from "./taxonomy";
 
 const out = (description: string, hints = {}) =>
@@ -363,5 +363,36 @@ describe("taxonomy", () => {
     expect(categoryOf("LOAN_DISBURSEMENTS_OTHER_DISBURSEMENT")?.primary).toBe("LOAN_DISBURSEMENTS");
     expect(categoryOf("BANK_FEES_LATE_FEES")?.primary).toBe("BANK_FEES");
     expect(categoryOf("INCOME_WAGES")).toBeNull();
+  });
+});
+
+// Founder 10-30: a prop trading firm's payouts are earned income, and its evaluation fees and
+// resets are what earning it costs, both found by the firm's name. Made-up descriptions.
+describe("prop trading firms", () => {
+  it.each(["LUCID TRADING PAYOUT ACH CREDIT", "TOPSTEP PAYOUT", "APEX TRADER FUNDING WIRE"])(
+    "counts a payout as contractor income: %j",
+    (description) => {
+      expect(into(description)).toBe("INCOME_CONTRACTOR");
+      expect(payoutByRules({ description, amountCents: -150_000, hints: {} })?.primary).toBe(
+        "INCOME",
+      );
+    },
+  );
+
+  it.each(["LUCIDTRADING.COM EVALUATION", "LUCID TRADING RESET FEE", "TOPSTEP MONTHLY"])(
+    "counts a fee as a service, never a bank fee: %j",
+    (description) => {
+      expect(out(description)).toBe("GENERAL_SERVICES_OTHER_GENERAL_SERVICES");
+      expect(payoutByRules({ description, amountCents: 8_500, hints: {} })).toBeNull();
+    },
+  );
+
+  it("leaves other money in alone", () => {
+    expect(
+      payoutByRules({ description: "TRANSFER FROM SAV 4410", amountCents: -5_000, hints: {} }),
+    ).toBeNull();
+    expect(
+      payoutByRules({ description: "GUSTO PAYROLL", amountCents: -5_000, hints: {} }),
+    ).toBeNull();
   });
 });
