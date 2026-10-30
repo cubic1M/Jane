@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SuggestionCards } from "@/app/chat/suggestion-cards";
-import { UNREAD_POLL_MS } from "@/config/side-chat";
+import { CARDS_CHANGED_EVENT, UNREAD_POLL_MS } from "@/config/side-chat";
 import type { MessageView } from "@/lib/jane-agent/view";
 
 // The card dock (founder: "I want them right above the chat on the right (but not in the
@@ -87,10 +87,13 @@ export function CardDock() {
     run();
     const timer = setInterval(run, UNREAD_POLL_MS);
     window.addEventListener("focus", run);
+    // The framed chat reloaded with different cards (after an upload, say).
+    window.addEventListener(CARDS_CHANGED_EVENT, run);
     return () => {
       stopped = true;
       clearInterval(timer);
       window.removeEventListener("focus", run);
+      window.removeEventListener(CARDS_CHANGED_EVENT, run);
     };
   }, [load, pathname]);
 

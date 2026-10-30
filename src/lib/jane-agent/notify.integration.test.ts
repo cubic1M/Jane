@@ -228,6 +228,23 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
   describe("which messages go out", () => {
     it("pushes decisions straight away with their first buttons, not the brief, and never twice", async () => {
       const userId = await withMessages("notify-push");
+      // A decision with buttons, of a kind that always goes out on its own (a bill to pay). A real
+      // account no longer gets the autopilot question, its only one before: Jane does nothing
+      // on its own there.
+      await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "decision",
+          body: "Your Netflix plan went up to $17.99. Ask for the old price?",
+          dedupeKey: "billpay:test-decision",
+          actions: [
+            { id: "finding.yes", label: "Show me how", kind: "primary" },
+            { id: "snooze", label: "Not now", kind: "secondary" },
+            { id: "open", label: "Open", kind: "link", href: "/report" },
+          ],
+          createdAt: LINKED,
+        },
+      });
       await device(userId);
       const { push, send } = fakes();
       const result = await deliverChatNotifications(userId, {

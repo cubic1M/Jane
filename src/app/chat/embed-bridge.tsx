@@ -1,15 +1,31 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { containScroll } from "@/lib/contain-scroll";
 import { chatInFrame, isFrameMessage, leavesFrame, type FrameMessage } from "@/lib/side-chat";
 
 // The chat inside the side panel (/chat?embed=1, docs/design/home-hub.md). A link to another
 // page opens in the main window, not in the panel; a link to the chat keeps the panel's view;
 // and the page says where the panel is (docked, full or a sheet) and when to reload.
-export function EmbedBridge() {
+// The page asked for a reload: the next render tells it the cards, even if this bridge is a new
+// one (the empty chat and the full one are different pages of the same frame).
+let refreshAsked = false;
+
+export function EmbedBridge({ cards = "" }: { cards?: string }) {
   const router = useRouter();
+
+  // The cards it holds now (their ids): when they change, or after a reload the page asked for
+  // (an upload finished), the page's dock loads them again, so the chat brings its cards with
+  // it. Not on a plain first load: the dock loads its own then, and every page would ask twice.
+  const shownCards = useRef(cards);
+  useEffect(() => {
+    if (window.self === window.top) return;
+    if (cards === shownCards.current && !refreshAsked) return;
+    shownCards.current = cards;
+    refreshAsked = false;
+    window.parent.postMessage({ type: "jane:cards" }, window.location.origin);
+  }, [cards]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -113,8 +129,10 @@ export function EmbedBridge() {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== origin || event.source !== window.parent) return;
       if (!isFrameMessage(event.data)) return;
-      if (event.data.type === "jane:refresh") router.refresh();
-      else if (event.data.type === "jane:ask") {
+      if (event.data.type === "jane:refresh") {
+        refreshAsked = true;
+        router.refresh();
+      } else if (event.data.type === "jane:ask") {
         // "Ask Jane about this" (the feature map): the question waits in the box to be sent.
         const box = document.querySelector<HTMLInputElement>('input[name="message"]');
         if (box) {

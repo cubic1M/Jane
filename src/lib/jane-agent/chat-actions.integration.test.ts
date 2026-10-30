@@ -65,9 +65,10 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
 
   // Each message on its own (spec step 184's "as they come"): these tests are about each
   // kind of message's buttons. The day's agenda is in ./agent.integration.test.ts.
-  async function person(prefix: string) {
+  // `id` "trial_…": a sample person, whom Jane acts for (concierge on), like the demo bank.
+  async function person(prefix: string, id?: string) {
     const user = await client.user.create({
-      data: { email: `${prefix}-${crypto.randomUUID()}@example.com`, name: "Alex Rivera" },
+      data: { id, email: `${prefix}-${crypto.randomUUID()}@example.com`, name: "Alex Rivera" },
     });
     created.push(user.id);
     await client.janePreference.create({
@@ -77,8 +78,8 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
   }
 
   // Someone with an account (so Jane talks to them) and nothing else.
-  async function plainPerson(prefix: string) {
-    const userId = await person(prefix);
+  async function plainPerson(prefix: string, id?: string) {
+    const userId = await person(prefix, id);
     await client.account.create({
       data: { userId, source: "csv", name: "Checking", type: "depository", subtype: "checking" },
     });
@@ -234,7 +235,7 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
 
     it("asks how much to do on its own; Handle the safe stuff sets the standing rules", async () => {
       const [question] = await withButton(userId, "autopilot.safe");
-      expect(question.body).toMatch(/^How much should I do on my own\?\n/);
+      expect(question.body).toMatch(/^How much should I do on my own\? [^\n]+\n/);
       expect(buttonIds(question)).toEqual([
         "autopilot.safe",
         "autopilot.all",
@@ -358,7 +359,8 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
 
   describe("the autopilot question", () => {
     it("is refused, and loses its buttons, once a level was picked in Settings", async () => {
-      const userId = await plainPerson("chat83-auto");
+      // Asked only where Jane acts on its own: a sample person here (concierge on).
+      const userId = await plainPerson("chat83-auto", `trial_${crypto.randomUUID().slice(0, 24)}`);
       await talk(userId);
       const [question] = await withButton(userId, "autopilot.all");
       await setAutopilot(userId, "ask", { client });
