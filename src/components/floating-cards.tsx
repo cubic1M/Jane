@@ -99,7 +99,8 @@ function DockHeader({
         else return;
         e.preventDefault();
       }}
-      className="mb-2 flex min-h-11 items-center gap-2 text-xs font-semibold tracking-wider"
+      // At the dock's top while a card's details scroll under it.
+      className="sticky top-0 z-10 mb-2 flex min-h-11 items-center gap-2 bg-white text-xs font-semibold tracking-wider dark:bg-zinc-950"
     >
       <p>
         JANE · {position} of {total} {total === 1 ? "suggestion" : "suggestions"}
@@ -209,6 +210,7 @@ export function FloatingCards({
   docked = false,
   onShowing,
   onDetails,
+  onFollow,
 }: {
   cards: FloatingCardData[];
   mode?: CardMode;
@@ -236,6 +238,10 @@ export function FloatingCards({
   // Called when a card's More details is opened (the verified savings record keeps that a
   // suggestion was looked at); nothing waits on it.
   onDetails?: (id: string) => void;
+  // A card followed to one of its pages: it leaves like an answer (the next one shows in the
+  // same frame) and the caller records it. True when the caller opened the page itself (a client
+  // navigation); otherwise the link goes as links do.
+  onFollow?: (id: string, href: string) => boolean;
 }) {
   const [state, setState] = useState(initialState);
   // A revertable card that was just chosen (founder, 2026-10-25): it stays on screen with its
@@ -259,6 +265,18 @@ export function FloatingCards({
   // Cards waiting behind the one showing, drawn as edges under it.
   const behind = Math.max(0, left.length - 1);
   const folded = foldOnPhone && phone && !unfolded && current !== null;
+
+  // Followed to a page: off the stack like an answer; the caller says what it means.
+  function follow(card: FloatingCardData, href: string): boolean {
+    setHeld(null);
+    setLeaving((now) =>
+      now.some((n) => n.id === card.id) ? now : [...now, { ...card, way: "yes" }],
+    );
+    setState((s) => answer(cards, s, mode, card.id));
+    setSlide(null);
+    window.setTimeout(() => setLeaving((now) => now.filter((n) => n.id !== card.id)), LEAVE_MS);
+    return onFollow?.(card.id, href) ?? false;
+  }
 
   function respond(card: FloatingCardData, how: CardAnswer, choice?: string) {
     if (how === "yes" && card.revertable) {
@@ -514,10 +532,13 @@ export function FloatingCards({
             {/* Already here, only hidden: opening it is a toggle, not a fetch. */}
             <Expanding id={`details-${current.id}`} open={open}>
               <div
-                className={`mx-3 mt-2 flex flex-col gap-3 overflow-y-auto overscroll-contain border-t border-zinc-300 pt-3 pb-1 text-sm leading-relaxed tabular-nums dark:border-zinc-700 ${
-                  // Docked, the card stays short enough that its buttons and the chat under it
-                  // keep their room (QA round 12); the details scroll inside it.
-                  docked ? "max-h-[24vh]" : "max-h-[55vh]"
+                className={`mx-3 mt-2 flex flex-col gap-3 border-t border-zinc-300 pt-3 pb-1 text-sm leading-relaxed tabular-nums dark:border-zinc-700 ${
+                  // Docked, the details take their full height and the dock is the one scroller,
+                  // so the wheel or a trackpad moves them from anywhere over the card (founder:
+                  // "you can't scroll down with mouse wheel"; a 24vh box inside the dock only
+                  // moved with the pointer right over it). The buttons stay in view below.
+                  // Floating, the card keeps its own scroller.
+                  docked ? "" : "max-h-[55vh] overflow-y-auto overscroll-contain"
                 }`}
               >
                 {current.details.about && <Prose text={current.details.about} />}
@@ -544,6 +565,11 @@ export function FloatingCards({
                   <a
                     key={link.href + link.label}
                     href={link.href}
+                    onClick={(event) => {
+                      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey)
+                        return;
+                      if (follow(current, link.href)) event.preventDefault();
+                    }}
                     className="inline-flex min-h-11 items-center text-sm font-medium text-emerald-700 hover:underline"
                   >
                     {link.label} ›
@@ -567,7 +593,13 @@ export function FloatingCards({
                 )}
               </div>
             </Expanding>
-            <div className="flex flex-wrap items-center gap-2 p-3">
+            <div
+              className={`flex flex-wrap items-center gap-2 p-3 ${
+                // Docked, the choices stay in sight at the dock's foot while the details scroll
+                // (QA round 12: the buttons keep their room).
+                docked ? "sticky bottom-0 z-10 bg-[var(--background)]" : ""
+              }`}
+            >
               {/* Every choice always in view, labels whole (founder: "not all the choices are
                   shown"): one line when they fit (compact buttons), wrapping onto another
                   rather than ever being cut off or scrolled out of sight. */}

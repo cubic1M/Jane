@@ -46,3 +46,24 @@ describe("the cards kept for the tab", () => {
     expect(keptCards(undefined)).toEqual([]);
   });
 });
+
+// Founder: a card followed to its page came straight back there. One dealt with in this tab is
+// never kept, nor let back in by a load that crossed its answer.
+describe("the dock and the cards dealt with", () => {
+  it("never keeps one dealt with, even the card that was showing", () => {
+    expect(keepShowing([m("a"), m("b")], [m("a"), m("b")], "a", ["a"]).map((c) => c.id)).toEqual([
+      "b",
+    ]);
+    // A load that started before the answer landed still has it: left out.
+    expect(keepShowing([m("a")], [m("a"), m("n")], "n", ["a"]).map((c) => c.id)).toEqual(["n"]);
+    // The showing card kept in its place, the dealt-with one not.
+    expect(
+      keepShowing([m("a"), m("b"), m("c")], [m("a"), m("c")], "b", ["c"]).map((c) => c.id),
+    ).toEqual(["a", "b"]);
+  });
+
+  it("drops it from the copy kept for the tab", () => {
+    const storage = { getItem: () => JSON.stringify([m("a"), m("b")]) };
+    expect(keptCards(storage, ["a"]).map((c) => c.id)).toEqual(["b"]);
+  });
+});

@@ -1147,6 +1147,14 @@ textarea {
     bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
 }
+/* The import chip on a phone sits beside the Jane button (src/components/import-chip.tsx); with
+   the folded card bar there too (Home on a small phone), above it, so the bar can be opened
+   (night debugger: the chip sat right on "[JANE] 10 for you", for up to a day). */
+@media (width < 640px) {
+  body:has(.floating-cards-folded) [data-import-chip] {
+    bottom: calc(1rem + 6px + 2.75rem + 0.5rem + env(safe-area-inset-bottom));
+  }
+}
 /* Folded on a small phone: one line at the very bottom, level with the Jane button and left of
    it, so the first screen stays clear. */
 @media (width < 640px) {
