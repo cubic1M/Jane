@@ -39,9 +39,11 @@ describe("a finding's agenda line", () => {
       type: "insurance_reshop",
       title: "Your AARP insurance could cost less",
       annualSavingsCents: null,
-      savings: "Savings depend on the quotes we find",
+      savings: "Savings depend on what other insurers quote",
     }).bundle?.line;
-    expect(line).toBe("Your AARP insurance could cost less: savings depend on the quotes we find");
+    expect(line).toBe(
+      "Your AARP insurance could cost less: savings depend on what other insurers quote",
+    );
   });
 });
 

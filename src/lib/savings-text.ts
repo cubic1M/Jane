@@ -23,7 +23,8 @@ const fromBalance = (evidence: unknown) =>
 export function savingsLine(type: FindingType, cents: number | null, evidence?: unknown): string {
   if (cents === null) {
     return type === "insurance_reshop"
-      ? "Savings depend on the quotes we find"
+      ? // Read-only beta: the person gets the quotes (debugger 10-30), so not "we find".
+        "Savings depend on what other insurers quote"
       : "No dollar estimate for this one";
   }
   if (isRefund(type)) return `Could get back about ${formatCents(cents)}`;
