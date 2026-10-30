@@ -57,6 +57,7 @@ describe("new questions", () => {
   it("never reads a question about the person's own pay as a thing that costs", () => {
     expect(parse("how much do I make a month").kind).not.toBe("cost");
     expect(parse("how much do I earn").kind).not.toBe("cost");
+    expect(parse("how much do we make a month").kind).not.toBe("cost");
   });
 
   it("leaves 'how much' questions that are about something else alone", () => {

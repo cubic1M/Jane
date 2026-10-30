@@ -723,12 +723,13 @@ export function parseIntent(
     if (!cost) continue;
     const target = cleanTarget(cost[1]);
     // "How much is safe to spend" and "how much do I owe" belong elsewhere.
-    // "how much do I make a month" is about pay, not a thing that costs "i make" (night QA 10-30).
+    // "how much do I (or we) make a month" is about pay, not a thing that costs "i make" (night QA
+    // 10-30).
     if (
       target &&
       !SPENDING.test(target) &&
       !/^(?:due|coming up|left|owed?)$/.test(target) &&
-      !/^i\b/.test(target)
+      !/^(?:i|we)\b/.test(target)
     ) {
       return { kind: "cost", target, year: cost[2] === "year" };
     }
