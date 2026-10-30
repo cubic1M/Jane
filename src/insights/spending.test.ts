@@ -271,12 +271,25 @@ describe("spendingLines", () => {
 describe("typicalMonthlySpending", () => {
   it("averages the complete months before this one, leaving this month out", () => {
     const rows = [
-      t({ date: "2026-08-10", amountCents: 30_000 }),
+      t({ date: "2026-08-02", amountCents: 30_000 }),
       t({ date: "2026-09-10", amountCents: 50_000 }),
       // This month is still going: left out.
       t({ date: "2026-10-05", amountCents: 999_000 }),
     ];
     expect(typicalMonthlySpending(rows, "2026-10-18", 2)).toBe(40_000);
     expect(typicalMonthlySpending([], "2026-10-18", 2)).toBe(0);
+  });
+
+  it("leaves out a month the data starts partway through", () => {
+    // Night QA 10-30: statements from Jul 28 made July a month of four days, and the emergency
+    // fund goal "3 months of your own average spending" came out about a third low.
+    const rows = [
+      t({ date: "2026-07-28", amountCents: 5_000 }),
+      t({ date: "2026-08-10", amountCents: 300_000 }),
+      t({ date: "2026-09-10", amountCents: 340_000 }),
+    ];
+    expect(typicalMonthlySpending(rows, "2026-10-18", 3)).toBe(320_000);
+    // Only partial months: nothing to average yet.
+    expect(typicalMonthlySpending(rows.slice(0, 1), "2026-08-18", 1)).toBe(0);
   });
 });

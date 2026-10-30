@@ -2,6 +2,10 @@
 
 // The suggested budget is the average of this many complete months of spending.
 export const BUDGET_SUGGESTION_MONTHS = 3;
+// A month counts toward a monthly average only when the data starts no later than this many days
+// into it (night QA 10-30: statements from Jul 28 made July a month of four days, so "your own
+// average" and the emergency fund goal came out about a third low).
+export const FULL_MONTH_START_SLACK_DAYS = 7;
 // Budgets are for spending you can change. Rent and utilities, loan payments, services (insurance,
 // childcare, accounting), taxes and the like are fixed obligations, so Jane never suggests a
 // budget for them (spec step 263). Plaid primary categories; a person can still set one by hand.
