@@ -1,5 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { ASK_DEFAULT_SEARCH_DAYS, ASK_MAX_UPCOMING_DAYS, ASK_SEARCH_LIMIT } from "@/config/ask";
+import {
+  ASK_DEFAULT_SEARCH_DAYS,
+  ASK_MAX_UPCOMING_DAYS,
+  ASK_SEARCH_LIMIT,
+  ASK_WHOLE_HISTORY_DAYS,
+} from "@/config/ask";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { CARD_PAYMENT_NAME, NON_SPENDING_PRIMARIES } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
@@ -27,7 +32,7 @@ export const ASK_TOOLS: Anthropic.Tool[] = [
   {
     name: "search_transactions",
     description:
-      "Find the person's transactions. Filter by merchant name (partial match), spending category, and dates. Returns the matching transactions (newest first, up to 25), how many matched, and the total money out and in across all matches.",
+      "Find the person's transactions. Filter by merchant name (partial match), spending category, and dates. Returns the matching transactions (newest first, up to 25), how many matched, and the total money out and in across all matches. When a merchant has none in those dates, outsideTheseDates lists its charges at other times: say those, never that there are none.",
     input_schema: {
       type: "object",
       properties: {
@@ -141,30 +146,40 @@ export async function runAskTool(
       const from = DATE.test(str(args.from))
         ? str(args.from)
         : addDays(to, -ASK_DEFAULT_SEARCH_DAYS);
-      // Read as detection reads them (names from the merchant directory, an account linked twice
-      // once), so what a card or page names is what this finds.
-      const rows = await loadTransactionsBetween(userId, { client, from, to });
       const merchant = str(args.merchant).toLowerCase();
       const category = str(args.category).toLowerCase();
-      const matches = rows
-        .map((t) => ({
-          date: t.date,
-          merchant: displayMerchant(t),
-          // The bank's own words, only to match on ("APPLE STORE R102" for "Apple Store"); never
-          // shown, and never for transfers, which name people.
-          words: displayMerchant(t) === "Transfer" ? "" : t.description.toLowerCase(),
-          cardPayment: t.pfcDetailed === CARD_PAYMENT_DETAILED,
-          category: categoryLabel(t.pfcPrimary),
-          amountCents: t.amountCents,
-        }))
-        .filter(
-          (t) =>
-            !merchant ||
-            t.merchant.toLowerCase().includes(merchant) ||
-            t.words.includes(merchant) ||
-            (t.cardPayment && cardPaymentAsked(merchant, t.words)),
-        )
-        .filter((t) => !category || t.category.toLowerCase() === category);
+      // Read as detection reads them (names from the merchant directory, an account linked twice
+      // once), so what a card or page names is what this finds.
+      const matching = async (from: string, to: string) =>
+        (await loadTransactionsBetween(userId, { client, from, to }))
+          .map((t) => ({
+            date: t.date,
+            merchant: displayMerchant(t),
+            // The bank's own words, only to match on ("APPLE STORE R102" for "Apple Store");
+            // never shown, and never for transfers, which name people.
+            words: displayMerchant(t) === "Transfer" ? "" : t.description.toLowerCase(),
+            cardPayment: t.pfcDetailed === CARD_PAYMENT_DETAILED,
+            category: categoryLabel(t.pfcPrimary),
+            amountCents: t.amountCents,
+          }))
+          .filter(
+            (t) =>
+              !merchant ||
+              t.merchant.toLowerCase().includes(merchant) ||
+              t.words.includes(merchant) ||
+              (t.cardPayment && cardPaymentAsked(merchant, t.words)),
+          )
+          .filter((t) => !category || t.category.toLowerCase() === category);
+      const matches = await matching(from, to);
+      // None in these dates: the merchant's charges from before (or after) them, so a card built
+      // from a charge last December is never answered with "no charges" (founder's live
+      // /deadlines, 10-29: the chat looked from Aug 1 for a December charge).
+      const elsewhere =
+        merchant && matches.length === 0
+          ? (await matching(addDays(today, -ASK_WHOLE_HISTORY_DAYS), today)).filter(
+              (t) => t.date < from || t.date > to,
+            )
+          : [];
       const outTotal = matches
         .filter((t) => t.amountCents > 0)
         .reduce((s, t) => s + t.amountCents, 0);
@@ -184,6 +199,16 @@ export async function runAskTool(
           amount: money(t.amountCents),
           direction: t.amountCents > 0 ? "out" : "in",
         })),
+        ...(elsewhere.length > 0
+          ? {
+              outsideTheseDates: elsewhere.slice(0, ASK_SEARCH_LIMIT).map((t) => ({
+                date: t.date,
+                merchant: t.merchant,
+                amount: money(t.amountCents),
+                direction: t.amountCents > 0 ? "out" : "in",
+              })),
+            }
+          : {}),
       });
     }
 

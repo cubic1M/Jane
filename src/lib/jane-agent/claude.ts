@@ -201,6 +201,7 @@ const STATUS: Record<string, string> = {
   balance_forecast: "Looking at where your balance is heading…",
   alerts: "Checking your alerts…",
   suggestions: "Looking at what I suggested…",
+  deadlines: "Checking your deadlines…",
   household: "Checking who you share with…",
   money_moves: "Checking what money moved…",
   explain_figure: "Working out how I got that…",
