@@ -56,7 +56,7 @@ export async function removePlaidItem(
   // on them, ledger lines and alerts (src/lib/evidence/orphans.ts).
   await removeOrphans(userId, { client });
   // What was worked out since it was linked may stand on it: worked out again from what's left.
-  await forgetSince(db, item.createdAt, "bank");
+  await forgetSince(db, item.createdAt, "bank", { demo: isDemoToken(accessToken) });
   await logAudit(
     actor,
     "item_removed",
