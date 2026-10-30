@@ -5,7 +5,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { PERSON_IDS } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
-import { CONTROLLER_DETECTORS } from "./controller";
+import { CONTROLLER_DETECTORS, unsureLine } from "./controller";
 
 // Phase AP (spec steps 238–244): Jane running the money, brought to the person unasked.
 const detector = (topic: string) => CONTROLLER_DETECTORS.find((d) => d.topic === topic)!;
@@ -83,5 +83,25 @@ describe("the monthly close (step 244)", () => {
     for (const id of PERSON_IDS.filter((p) => p !== "freelancer")) {
       expect(run("month_close", inputFor(id)), id).toBeNull();
     }
+  });
+});
+
+// Night QA 10-30: five unsure charges were cut at 120 characters, mid-word: "…Shoppette 22
+// $52.59: I'm not sure what t".
+describe("the month close's line about unsure charges", () => {
+  it("lists what fits, then how many more, as a whole sentence", () => {
+    const names = [
+      "Exchange Food Court $81.99",
+      "Commissary $68.80",
+      "Commissary $64.99",
+      "Shoppette 22 $54.92",
+      "Shoppette 22 $52.59",
+    ];
+    const line = unsureLine(names, "they were");
+    expect(line.length).toBeLessThanOrEqual(120);
+    expect(line).toMatch(/ and \d more: I'm not sure what they were\.$/);
+    expect(unsureLine(names.slice(0, 2), "they were")).toBe(
+      "Exchange Food Court $81.99, Commissary $68.80: I'm not sure what they were.",
+    );
   });
 });
