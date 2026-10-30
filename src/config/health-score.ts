@@ -15,6 +15,10 @@ export const HEALTH_WEIGHTS = {
 } as const;
 export type HealthPart = keyof typeof HEALTH_WEIGHTS;
 
+// A score needs at least this many parts to be shown: one part alone is a single fact, not
+// health (night QA 10-30: a card-only upload read "Money health 100 of 100" from "no late fees"
+// with balances, income and goals all unknown).
+export const HEALTH_MIN_PARTS = 2;
 // Full cushion points at this many months of spending in cash.
 export const HEALTH_CUSHION_FULL_MONTHS = 3;
 // Full margin points when this share of income is left after spending. None only once
