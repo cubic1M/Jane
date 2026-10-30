@@ -2,7 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { parseKey } from "@/detection/unusual";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { evidenceRefs, type EvidenceRefs } from "@/lib/finding-accounts";
 import { CLEARED_WITHOUT_DATA, DEMO_SEEDED } from "@/config/lineage";
 import { PERSON_ASSETS } from "@/data-sources/demo/demo-people";
@@ -230,6 +230,49 @@ async function removeDemoLeftovers(userId: string, client: PrismaClient): Promis
     }
   }
   return removed;
+}
+
+// When a source goes (a bank disconnected, an upload removed), what was worked out since it
+// arrived may stand on it: rows the scan works out again from what is left are deleted, and
+// refreshAfterRemoval (src/lib/import/background.ts) rebuilds them. Rows from before it arrived
+// can't come from it, and the person's own answers stay. Night debugger (10-30): after the demo
+// bank went, a real uploader still had its alerts, its employer benefits, its insurance risks
+// ("$400k short on car liability"), its stock and 12 facts learned from it. How many.
+export async function forgetSince(
+  db: ScopedDb,
+  since: Date,
+  source: "bank" | "upload",
+): Promise<number> {
+  const after = { gte: since };
+  const counts = await Promise.all([
+    db.alerts.deleteMany({ where: { createdAt: after } }),
+    db.employerBenefits.deleteMany({ where: { status: "found", createdAt: after } }),
+    db.insuranceRisks.deleteMany({ where: { answeredAt: null, createdAt: after } }),
+    db.booksIssues.deleteMany({ where: { createdAt: after } }),
+    db.debtWatches.deleteMany({}),
+    db.userFacts.deleteMany({
+      where: { source: source === "bank" ? "detector" : "upload", firstSeen: after },
+    }),
+    db.suggestions.deleteMany({ where: { answeredAt: null, firstSeenAt: after } }),
+    db.suggestionOutcomes.deleteMany({ where: { createdAt: after } }),
+    db.healthScores.deleteMany({ where: { createdAt: after } }),
+    db.monthCloses.deleteMany({ where: { createdAt: after } }),
+    db.yearPlans.deleteMany({ where: { createdAt: after } }),
+    // Securities nothing holds or traded any more (their holdings went with the accounts).
+    db.securities.deleteMany({
+      where: { holdings: { none: {} }, investmentTransactions: { none: {} } },
+    }),
+  ]);
+  // Jane's open cards from since then are put away; they stay as the conversation's history.
+  const cards = await db.janeMessages.updateMany({
+    where: {
+      status: "open",
+      createdAt: after,
+      kind: { in: ["heads_up", "decision", "brief", "done"] },
+    },
+    data: { status: "answered", answeredAt: new Date(), actions: [] },
+  });
+  return counts.reduce((n, c) => n + c.count, 0) + cards.count;
 }
 
 // Whether anything worked out from data is still there, for someone with no data left.

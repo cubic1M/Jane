@@ -73,6 +73,7 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   MonthClose: rescan,
   HealthScore: rescan,
   MonthlyReport: rescan,
+  YearPlan: rescan,
   PlanProposal: rescan,
   DebtWatch: rescan,
   CarLoanWatch: rescan,
@@ -162,7 +163,6 @@ export const LINEAGE: Readonly<Record<string, Lineage>> = {
   PaycheckPlan: "entered",
   WhatIfPlan: "entered",
   LeanPlan: "entered",
-  YearPlan: "entered",
   UnusualAnswer: "entered",
   OldPlan: "entered",
   RetirementIncome: "entered",
@@ -224,6 +224,7 @@ export const CLEARED_WITHOUT_DATA: Readonly<Record<string, string | [string, obj
   MonthClose: "monthCloses",
   HealthScore: "healthScores",
   MonthlyReport: "monthlyReports",
+  YearPlan: "yearPlans",
 };
 // Derived, but not from bank data, so kept: from the person's policies, documents or the markets,
 // or hanging off a row above.
