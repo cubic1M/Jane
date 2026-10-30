@@ -60,6 +60,17 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
   bank_fees: (input) => {
     const total = fact(input.facts, "total");
     const period = fact(input.facts, "period");
+    if (fact(input.facts, "feeKind") === "annual fee") {
+      return {
+        explanation: `Your card charged${total ? ` ${total}` : ""} as its annual fee${period ? ` in ${period}` : ""}. Card companies often waive it or offer a credit when asked, and most have a no-fee card you can move to.`,
+        giveUp: "The card's perks, if you move to a no-fee card.",
+        alternatives: [
+          "Ask for a credit to keep the card",
+          "Move to the company's no-fee card",
+          "Keep it if you use more in perks than it costs",
+        ],
+      };
+    }
     return {
       explanation: `Your bank or card company charged you${total ? ` ${total}` : ""} in fees${period ? ` in ${period}` : ""}. Banks often refund fees when asked, and a different account could stop them.`,
       giveUp: "Nothing, though switching accounts takes some setup.",

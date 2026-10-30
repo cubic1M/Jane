@@ -14,6 +14,21 @@ export type DiyKitConfig = {
   summary: string;
 };
 
+// A card's annual fee alone (debugger 10-30: an Amex Gold's $325 annual fee got the overdraft
+// steps). It isn't refunded as a courtesy like an overdraft: card companies waive it or offer a
+// credit to keep the card, or move it to their no-fee card, which keeps the account's history.
+export const ANNUAL_FEE_KIT: DiyKitConfig = {
+  link: "support",
+  steps: [
+    "Call the number on the back of your card before the next annual fee, or soon after it posts.",
+    "Ask whether they can waive the fee or offer a credit to keep the card.",
+    "If you don't use its perks, ask to move to their no-fee card instead of closing it: that keeps the account's history.",
+  ],
+  message: "call",
+  summary:
+    "You ask your card company to waive the annual fee or move you to a no-fee card: Jane gives you the steps and what to say.",
+};
+
 export const DIY_KITS: Partial<Record<ActionType, DiyKitConfig>> = {
   cancel_subscription: {
     link: "cancel",

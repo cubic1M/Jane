@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { IDLE_CASH_MONTHS_OF_SPENDING } from "@/config/detection";
+import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 import type { FindingType } from "@/generated/prisma/client";
 import { lastMonths } from "@/detection/rules/fee-totals";
 import { dayLabel } from "@/lib/day-label";
@@ -134,6 +135,14 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
         total: money(num(evidence.totalCents)),
         // "the last 3 months": what the total covers (older findings don't say).
         ...(num(evidence.months) !== null ? { period: lastMonths(num(evidence.months)!) } : {}),
+        // Only a card's annual fee (debugger 10-30): its own words, not an overdraft's.
+        ...(finding.type === "bank_fees" &&
+        list(evidence.transactions).length > 0 &&
+        list(evidence.transactions).every((t) =>
+          ANNUAL_FEE_WORDS.test(text(obj(t).description) ?? ""),
+        )
+          ? { feeKind: "annual fee" }
+          : {}),
       };
       sent = charges(evidence.transactions, true);
       break;

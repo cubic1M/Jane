@@ -90,3 +90,57 @@ describe("the do-it-yourself steps", () => {
     }
   });
 });
+
+// Debugger 10-30: an Amex Gold's $325 annual fee got the overdraft card: "Ask them to refund the
+// fees listed as a courtesy", "Turn off overdraft coverage". An annual fee is waived, met with a
+// retention offer, or left by moving to the same company's no-fee card.
+describe("a card's annual fee", () => {
+  const annualFee = {
+    id: "f-annual",
+    key: "account:amex",
+    type: "bank_fees" as const,
+    title: "$325.00 in fees on Amex Gold in the last 3 months",
+    annualSavingsCents: 32_500,
+    explanation: null,
+    explanationHash: null,
+    evidence: {
+      accountId: "amex",
+      accountName: "Amex Gold",
+      totalCents: 32_500,
+      months: 3,
+      transactions: [
+        { id: "t1", date: "2026-08-14", amountCents: 32_500, description: "ANNUAL MEMBERSHIP FEE" },
+      ],
+    },
+  };
+
+  it("gets steps to waive it or downgrade, and a call script, not a refund email", () => {
+    const kit = buildKit("recover_bank_fees", annualFee, null);
+    expect(kit?.steps.join(" ")).toMatch(/waive/i);
+    expect(kit?.steps.join(" ")).toMatch(/no-fee/i);
+    expect(kit?.email).toBeNull();
+    expect(kit?.script?.join(" ")).toMatch(/annual fee/i);
+  });
+
+  it("says what the person does about an annual fee", () => {
+    const card = buildCard(annualFee);
+    expect(selfServe(card).whatChanges).toMatch(/annual fee/i);
+    expect(card.explanation).toMatch(/annual fee/i);
+    expect(card.explanation).not.toMatch(/refund fees when asked/i);
+    expect(card.alternatives.join(" ")).not.toMatch(/overdraft/i);
+  });
+
+  it("leaves other fees on the refund kit", () => {
+    const atm = {
+      ...annualFee,
+      evidence: {
+        ...annualFee.evidence,
+        transactions: [
+          { id: "t2", date: "2026-08-11", amountCents: 350, description: "NON-WF ATM FEE" },
+        ],
+      },
+    };
+    expect(buildKit("recover_bank_fees", atm, null)?.steps.join(" ")).toMatch(/refund/i);
+    expect(selfServe(buildCard(atm)).whatChanges).toBe(DIY_KITS.recover_bank_fees?.summary);
+  });
+});

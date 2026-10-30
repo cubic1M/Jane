@@ -1,4 +1,5 @@
-import { DIY_KITS } from "@/config/diy";
+import { ANNUAL_FEE_KIT, DIY_KITS } from "@/config/diy";
+import { ANNUAL_FEE_WORDS } from "@/config/found-policies";
 import type { ActionType, FindingType } from "@/generated/prisma/client";
 import type { DecisionCard } from "./cards";
 import { draftPayload, type DraftPayload } from "./drafts";
@@ -22,8 +23,22 @@ export const hasKit = (actionType: ActionType) => Boolean(DIY_KITS[actionType]);
 // The card as a real account sees it (read-only mode): "What changes" says what they do,
 // never "We ...". For showing only: the card's hash, and what's saved with a decision, stay
 // the card as built.
+// A fee finding that is only a card's annual fee gets ANNUAL_FEE_KIT.
+export function annualFeeOnly(descriptions: readonly string[]): boolean {
+  return descriptions.length > 0 && descriptions.every((d) => ANNUAL_FEE_WORDS.test(d));
+}
+
+const feeDescriptions = (evidence: unknown): string[] => {
+  const rows = (evidence as { transactions?: unknown } | null)?.transactions;
+  return Array.isArray(rows)
+    ? rows.map((r) => String((r as { description?: unknown })?.description ?? ""))
+    : [];
+};
+
 export function selfServe(card: DecisionCard): DecisionCard {
-  const summary = DIY_KITS[card.actionType]?.summary;
+  const annual =
+    card.findingType === "bank_fees" && annualFeeOnly(card.evidence.map((r) => r.label));
+  const summary = annual ? ANNUAL_FEE_KIT.summary : DIY_KITS[card.actionType]?.summary;
   return summary ? { ...card, whatChanges: summary } : card;
 }
 
@@ -69,6 +84,13 @@ function email(actionType: ActionType, findingType: FindingType, p: DraftPayload
   }
 }
 
+const ANNUAL_FEE_SCRIPT = [
+  "Hi, I'm calling about the annual fee on my card.",
+  "I've had the card a while and I'm deciding whether to keep it.",
+  "Can you waive this year's fee, or is there a credit or offer to keep the card?",
+  "If not, can I move to your no-fee card and keep the same account?",
+];
+
 function script(actionType: ActionType, p: DraftPayload | null): string[] {
   if (actionType === "card_interest") {
     return [
@@ -92,7 +114,8 @@ export function buildKit(
   finding: { type: FindingType; evidence: unknown },
   merchant: KitMerchant | null,
 ): Kit | null {
-  const config = DIY_KITS[actionType];
+  const annual = finding.type === "bank_fees" && annualFeeOnly(feeDescriptions(finding.evidence));
+  const config = annual ? ANNUAL_FEE_KIT : DIY_KITS[actionType];
   if (!config) return null;
   // The facts for an email or a script, where the action has them; steps need none.
   const prepared = draftPayload(actionType, finding);
@@ -123,6 +146,11 @@ export function buildKit(
           mailto: `mailto:?subject=${encodeURIComponent(message.subject)}&body=${encodeURIComponent(message.body)}`,
         }
       : null,
-    script: config.message === "call" ? script(actionType, prepared?.payload ?? null) : null,
+    script:
+      config.message === "call"
+        ? annual
+          ? ANNUAL_FEE_SCRIPT
+          : script(actionType, prepared?.payload ?? null)
+        : null,
   };
 }
