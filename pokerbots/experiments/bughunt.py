@@ -130,8 +130,26 @@ def check_engine(spec, seed):
     return fails
 
 
-def check_bot(bot_str, spec, seed, hands=60):
+LIBRARY_BOTS = ["champion@15m_w4", "champion@15m_w4+lp", "full_cfr@15m_w4"]
+
+
+def library_spec(rng: random.Random):
+    """A library game under a new name and new time limits / match length (the day-of
+    situation): the CFR bots must find and play the library policy."""
+    from engine.variants import ALL_VARIANTS
+    from bots.full_cfr import DEFAULT_DIR
+    import os
+    names = sorted(v for v in ALL_VARIANTS if os.path.exists(os.path.join(DEFAULT_DIR, f"full_{v}_15m_w4.pkl")))
+    if not names:
+        return None
+    base = ALL_VARIANTS[rng.choice(names)]
+    return base.with_(name=f"day{rng.randrange(10**6)}", hands_per_match=rng.choice([200, 500, 1000]),
+                      time_per_decision=rng.choice([None, 0.5, 1.0, 2.0]), notes="renamed library game")
+
+
+def check_bot(bot_str, spec, seed, hands=60, expect_policy=False):
     from engine.match import play_match
+    from experiments.common import _uses_fallback
     fails = []
     for opp in ("random_legal", bot_str):
         for seat in (0, 1):
@@ -141,6 +159,9 @@ def check_bot(bot_str, spec, seed, hands=60):
                 r = play_match(pair[0], pair[1], spec, deal_seed=seed + seat, hands=hands)
             except Exception:
                 fails.append(dict(kind="crash", bot=bot_str, opp=opp, seat=seat, tb=traceback.format_exc()[-3000:]))
+                return fails
+            if expect_policy and _uses_fallback(a):
+                fails.append(dict(kind="library_policy_not_found", bot=bot_str, base=spec.notes))
                 return fails
             for s in (0, 1):
                 if pair[s] is not a and opp != bot_str:
@@ -175,6 +196,8 @@ def main(argv=None):
     ap.add_argument("--bots", default=",".join(DEFAULT_BOTS))
     ap.add_argument("--seed", type=int, default=int(time.time()) % 100000)
     ap.add_argument("--hands", type=int, default=60)
+    ap.add_argument("--library-share", type=float, default=0.35,
+                    help="share of rounds on a renamed library game with a library CFR bot")
     a = ap.parse_args(argv)
     rng = random.Random(a.seed)
     bots = a.bots.split(",")
@@ -182,15 +205,17 @@ def main(argv=None):
     rounds = n_fail = 0
     OUT.mkdir(parents=True, exist_ok=True)
     while time.time() < t_end:
-        spec = random_spec(rng)
+        lib = rng.random() < a.library_share and library_spec(rng)
+        spec = lib or random_spec(rng)
         seed = rng.randrange(10**6)
         fails = check_evaluator(spec, rng) + check_engine(spec, seed)
         for f in fails:
             record(f, spec, seed)
-        for b in rng.sample(bots, min(3, len(bots))):
+        picks = [rng.choice(LIBRARY_BOTS)] + rng.sample(bots, 2) if lib else rng.sample(bots, min(3, len(bots)))
+        for b in picks:
             if time.time() > t_end:
                 break
-            for f in check_bot(b, spec, seed, a.hands):
+            for f in check_bot(b, spec, seed, a.hands, expect_policy=bool(lib) and b in LIBRARY_BOTS):
                 record(f, spec, seed)
                 n_fail += 1
         n_fail += len(fails)
