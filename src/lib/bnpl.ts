@@ -97,7 +97,7 @@ export async function loadBnpl(
     date: b.date,
     amountCents: b.amountCents,
   }));
-  const checking = forecast?.startCents ?? null;
+  const checking = forecast?.todayCents ?? null;
   const done = await scopedFor(userId, client).moneyTransfers.findMany({
     where: {
       status: { in: ["pending", "completed"] },

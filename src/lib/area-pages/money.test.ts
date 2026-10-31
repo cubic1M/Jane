@@ -358,4 +358,13 @@ describe("moneyTree", () => {
         ?.items.map((i) => i.id),
     ).toEqual(["books:b1"]);
   });
+
+  // Review 10-31: a statement's balance walked forward to today reads as an estimate.
+  it("says about today's balance when it was walked forward from a statement's", () => {
+    const low = (estimated: boolean) =>
+      moneyTree({ ...FULL, lows: [{ ...FULL.lows[0], ...(estimated ? { estimated } : {}) }] })
+        .summaries["coming:low-chk"];
+    expect(low(false)).toMatch(/^\$1,200\.00 today\./);
+    expect(low(true)).toMatch(/^About \$1,200\.00 today\./);
+  });
 });

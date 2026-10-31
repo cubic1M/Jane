@@ -163,7 +163,9 @@ export async function loadMoneyArea(
     lows: forecastAccounts(input, FORECAST_DAYS).map((f) => ({
       accountId: f.accountId,
       name: f.accountName,
-      startCents: f.startCents,
+      // Today's balance: a statement's is walked forward to today, so it's an estimate.
+      startCents: f.todayCents,
+      ...(f.startOn !== input.asOf ? { estimated: true } : {}),
       lowCents: f.lowest.balanceCents,
       date: f.lowest.date,
     })),

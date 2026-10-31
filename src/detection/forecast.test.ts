@@ -217,6 +217,8 @@ describe("forecastAccounts", () => {
     // Pay on the 12th and Geico on the 13th came after the balance, before today (the 15th).
     expect(f.days[0]).toEqual({ date: "2026-10-15", balanceCents: 20_000 + 300_000 - 9_800 });
     expect(f.lowest.date >= "2026-10-15").toBe(true);
+    // Review 10-31: what other pages call today's balance is the walked one.
+    expect(f).toMatchObject({ startCents: 20_000, startOn: "2026-10-10", todayCents: 310_200 });
   });
 
   // Messy-bank QA: a monthly move to savings is no bill, but it still leaves checking.

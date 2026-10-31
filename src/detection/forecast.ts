@@ -41,6 +41,9 @@ export type AccountForecast = {
   // The balance known, and its day: today's, or an uploaded statement's closing balance.
   startCents: number;
   startOn: string;
+  // The balance walked forward to today (what was due since startOn counted): what every page
+  // calls today's balance (review 10-31: the chat and the area pages said the statement's).
+  todayCents: number;
   lowest: { date: string; balanceCents: number };
   bills: Expected[];
   income: Expected[];
@@ -323,8 +326,9 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
       const accountTransfers = mine(transfers);
       const accountTransfersIn = mine(transfersIn);
       const startOn = balanceDay(account, input.asOf);
-      let balance =
+      const todayCents =
         account.currentBalanceCents! + expectedBetween(input, account.id, startOn, input.asOf);
+      let balance = todayCents;
       const series: { date: string; balanceCents: number }[] = [];
       for (let i = 0; i <= days; i += 1) {
         const date = addDays(input.asOf, i);
@@ -340,6 +344,7 @@ export function forecastAccounts(input: DetectionInput, days: number): AccountFo
         accountName: account.name,
         startCents: account.currentBalanceCents!,
         startOn,
+        todayCents,
         lowest,
         bills: accountBills,
         income: accountIncome,

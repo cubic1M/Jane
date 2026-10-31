@@ -81,7 +81,15 @@ export type MoneyTreeInput = {
     worthKind?: string;
   }[];
   // Each checking or savings account's lowest point over the forecast.
-  lows: { accountId: string; name: string; startCents: number; lowCents: number; date: string }[];
+  // startCents: today's balance; estimated when walked forward from a statement's.
+  lows: {
+    accountId: string;
+    name: string;
+    startCents: number;
+    estimated?: boolean;
+    lowCents: number;
+    date: string;
+  }[];
   // The forecast's bills, soonest first, and how many of its days are "this week".
   bills: { merchant: string; date: string; amountCents: number }[];
   weekEnds: string;
@@ -211,7 +219,7 @@ export function moneyTree(input: MoneyTreeInput): AreaTree {
         line: `${l.name}, ${dayLabel(l.date)}`,
         status: under ? "act" : "good",
         figure: shortMoney(l.lowCents),
-        summary: `${formatCents(l.startCents)} today. Lowest point about ${formatCents(l.lowCents)} on ${dayLabel(l.date)}.`,
+        summary: `${l.estimated ? "About " : ""}${formatCents(l.startCents)} today. Lowest point about ${formatCents(l.lowCents)} on ${dayLabel(l.date)}.`,
         cents: under ? input.cushionCents - l.lowCents : undefined,
       }),
     );

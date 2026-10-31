@@ -47,7 +47,7 @@ async function Bills() {
               {formatCents(f.startCents)}{" "}
               {f.startOn === f.days[0]?.date
                 ? "today"
-                : `on ${dayLabel(f.startOn)}, when your statement ends`}
+                : `on ${dayLabel(f.startOn)}, about ${formatCents(f.todayCents)} today`}
               . Lowest point about <strong>{formatCents(f.lowest.balanceCents)}</strong> on{" "}
               {dayLabel(f.lowest.date)}.
             </p>
