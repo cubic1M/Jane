@@ -25,6 +25,19 @@ Checkpoints are written at the given minutes as cache/cfr/full_<variant>_<M>m.pk
 
     python3 -m bots.cfr_full.train --variant a_nlhe100 --minutes 60 \
         --checkpoints 15,30,60 --seed 0 --out cache/cfr/
+
+Multi-core: --workers N (N = number of cores) runs every iteration across N processes:
+the main process walks preflop+flop, the turn/river subtrees (disjoint infosets) are
+walked in parallel and written straight into shared-memory regret tables, and the helper
+processes also sample the fresh deals. For the same batch this is exactly the
+single-process update (parallel.py). --suffix names the checkpoints
+full_<variant>_<M>m_<suffix>.pkl, loaded with make_bot(budget="<M>m_<suffix>").
+
+    python3 -m bots.cfr_full.train --variant a_nlhe100 --minutes 15 --checkpoints 5,10 \
+        --workers 4 --suffix w4 --out cache/cfr/
+
+Optional richer abstraction (defaults unchanged): --buckets 20,15,15,15,
+--feature ehs2 (E[HS^2] buckets on flop/turn), --postflop-sizes '0.33,0.75,1.5;1.0'.
 """
 from __future__ import annotations
 
@@ -69,6 +82,11 @@ class CFRTrainer:
         self._u0 = tree.u0
         self._na = [len(a) for a in tree.actions]
         self._ar = {na: np.arange(na) for na in set(self._na) if na}
+        row_na = np.ones(self.n_infosets)
+        for n in tree.decision_nodes:
+            row_na[self.base[n]:self.base[n] + self.K[self._street[n]]] = self._na[n]
+        self._inv_na = 1.0 / row_na
+        self._sig = None
 
     # ---- strategies ---------------------------------------------------------------------
     def current_table(self, n):
@@ -76,6 +94,13 @@ class CFRTrainer:
         pos = np.maximum(self.R[b:b + K, :na], 0.0)
         tot = pos.sum(axis=1, keepdims=True)
         return np.where(tot > 0, pos / np.where(tot > 0, tot, 1.0), 1.0 / na)
+
+    def current_all(self) -> np.ndarray:
+        """current_table for every infoset at once (row-wise the same arithmetic: unused
+        action columns of R are 0, so the row sums are identical)."""
+        pos = np.maximum(self.R, 0.0)
+        tot = pos.sum(axis=1, keepdims=True)
+        return np.where(tot > 0, pos / np.where(tot > 0, tot, 1.0), self._inv_na[:, None])
 
     def average_strategy(self) -> np.ndarray:
         out = np.zeros_like(self.S)
@@ -101,6 +126,8 @@ class CFRTrainer:
         self._bk = [[buckets[s, p].astype(np.int64) for p in (0, 1)] for s in range(buckets.shape[0])]
         self._out = outcome.astype(np.float64)
         self._w = np.full(B, 1.0 / B) if weights is None else np.asarray(weights, dtype=np.float64)
+        # strategies of this iteration: a node's R rows change only after its own read
+        self._sig = self.current_all()
         return B
 
     def begin(self, buckets, outcome, weights=None) -> int:
@@ -162,7 +189,7 @@ class CFRTrainer:
         s = self._street[n]
         bk = self._bk[s][p] if sel is None else self._bk[s][p][sel]
         na = self._na[n]
-        sig = self.current_table(n)[bk]                      # (m, na)
+        sig = self._sig[self.base[n] + bk, :na]               # (m, na) current strategy
         if p == 0:
             rp, ro = r0, r1
         else:
@@ -242,7 +269,10 @@ class DealPool:
         self.head = 0
 
     def add(self, n, rng):
-        bk, out = self.ab.sample(n, rng)
+        self.add_arrays(*self.ab.sample(n, rng))
+
+    def add_arrays(self, bk, out):
+        n = len(out)
         idx = (self.head + np.arange(n)) % self.cap
         self.bk[:, :, idx] = bk
         self.out[idx] = out
@@ -260,60 +290,118 @@ class DealPool:
 def train(spec: GameSpec, minutes: float, checkpoints=(), seed: int = 0, out_dir: str = "cache/cfr/",
           tree_cfg: TreeConfig = TreeConfig(), abs_cfg: AbstractionConfig = AbstractionConfig(),
           batch: int = 0, log_every: float = 20.0, linear: bool = False, log=print, tag: str = "full",
-          fresh: float = 0.5, pool_batches: int = 32):
+          fresh: float = 0.5, pool_batches: int = 32, workers: int = 1, suffix: str = "",
+          max_iters: int = 0, split_street=None):
+    """workers=1: the original single-process loop. workers=N>1: N processes walk disjoint
+    subtrees of every iteration (exactly the same update for the same batch, see
+    parallel.py) and N-1 of them sample the fresh deals. max_iters > 0 stops after that many
+    iterations (writes the final checkpoint then; for tests/benchmarks). suffix is appended
+    to checkpoint names: full_<variant>_<M>m_<suffix>.pkl (load with budget="<M>m_<suffix>")."""
     t_start = time.perf_counter()
     rng = np.random.default_rng(seed)
     tree = Tree(spec, tree_cfg)
     ab = CardAbstraction(spec, abs_cfg)
     ab.fit(rng, log=log)
     params = dict(alpha=1.0, beta=1.0, gamma=1.0) if linear else {}
-    tr = CFRTrainer(tree, ab.K, **params)
+    workers = max(1, int(workers))
+    par = None
+    if workers > 1:
+        from .parallel import ParallelCFR
+        dcfr = (1.0, 1.0, 1.0) if linear else (1.5, 0.0, 2.0)
+        par = ParallelCFR(spec, tree, ab, ab.K, workers, seed=seed, dcfr=dcfr, split_street=split_street)
+        tr = par.tr
+    else:
+        tr = CFRTrainer(tree, ab.K, **params)
+    try:
+        return _train_loop(spec, minutes, checkpoints, seed, out_dir, tree, ab, tr, par, rng, t_start,
+                           batch, log_every, log, tag, fresh, pool_batches, workers, suffix, max_iters)
+    finally:
+        if par is not None:
+            par.close()
+
+
+def _train_loop(spec, minutes, checkpoints, seed, out_dir, tree, ab, tr, par, rng, t_start, batch,
+                log_every, log, tag, fresh, pool_batches, workers, suffix, max_iters):
     B = batch or default_batch(spec, tree)
     n_fresh = max(1, int(round(fresh * B)))
     pool = DealPool(ab, max(B, pool_batches * B))
     pool.add(B, rng)
     t_fit = time.perf_counter() - t_start
     log(f"[train] {spec.name}: tree {tree.summary()} infosets {tr.n_infosets} batch {B} "
-        f"fresh deals/iter {n_fresh} pool {pool.cap} setup {t_fit:.1f}s (counted in the budget)")
+        f"fresh deals/iter {n_fresh} pool {pool.cap} workers {workers}"
+        + (f" (split at street {par.split}, {len(par.front)} subtrees)" if par else "")
+        + f" setup {t_fit:.1f}s (counted in the budget)")
     cps = sorted(set(float(c) for c in checkpoints) | {float(minutes)})
     written = []
     t_sample = t_cfr = 0.0
+    fresh_deals = 0
     last_log = time.perf_counter()
     vals = []
+    sfx = f"_{suffix}" if suffix else ""
     while cps:
         now = time.perf_counter()
         el = (now - t_start) / 60.0
-        if el >= cps[0]:
+        done = max_iters and tr.t >= max_iters
+        if el >= cps[0] or done:
             m = cps.pop(0)
-            path = os.path.join(out_dir, f"{tag}_{spec.name}_{_fmt(m)}m.pkl")
+            if done:
+                cps = []
+            path = os.path.join(out_dir, f"{tag}_{spec.name}_{_fmt(m)}m{sfx}.pkl")
+            run = max(1e-9, now - t_start - t_fit)
             meta = dict(iterations=tr.t, deals=tr.deals, elapsed_s=round(now - t_start, 1), budget_min=m,
                         setup_s=round(t_fit, 1), sample_s=round(t_sample, 1), cfr_s=round(t_cfr, 1),
                         batch=B, fresh=n_fresh, seed=seed, infosets=tr.n_infosets, touched=tr.touched(),
-                        dcfr=(tr.alpha, tr.beta, tr.gamma))
+                        dcfr=(tr.alpha, tr.beta, tr.gamma), workers=workers,
+                        iters_per_s=round(tr.t / run, 3), fresh_deals=fresh_deals,
+                        fresh_deals_per_s=round(fresh_deals / run, 1))
             save_policy(path, make_policy_data(spec, tree, ab, tr.average_strategy(), tr.visits, meta))
             log(f"[checkpoint] {path}  iters {tr.t} deals {tr.deals} elapsed {now - t_start:.0f}s")
             written.append(path)
             continue
         t0 = time.perf_counter()
-        if tr.t > 0:
-            pool.add(n_fresh, rng)
-        bk, outc = pool.draw(B, rng)
-        t1 = time.perf_counter()
-        vals.append(tr.iterate(bk, outc))
-        t2 = time.perf_counter()
-        t_sample += t1 - t0
-        t_cfr += t2 - t1
+        if par is None:
+            if tr.t > 0:
+                pool.add(n_fresh, rng)
+                fresh_deals += n_fresh
+            bk, outc = pool.draw(B, rng)
+            t1 = time.perf_counter()
+            vals.append(tr.iterate(bk, outc))
+            t2 = time.perf_counter()
+            t_sample += t1 - t0
+            t_cfr += t2 - t1
+        else:
+            bk, outc = pool.draw(B, rng)
+            v, new = par.iterate(bk, outc, n_sample=n_fresh)
+            t1 = time.perf_counter()
+            if new is not None:
+                pool.add_arrays(*new)
+                fresh_deals += new[1].shape[0]
+            t2 = time.perf_counter()
+            vals.append(v)
+            t_cfr += t1 - t0  # sampling runs inside the parallel step (helpers)
+            t_sample += t2 - t1
         if t2 - last_log >= log_every:
             last_log = t2
             run = t2 - t_start - t_fit
+            extra = ""
+            if par is not None:
+                st = par.stats
+                extra = (f"; per iter: top {1e3 * st['top_s'] / tr.t:.0f} ms, own subtrees "
+                         f"{1e3 * st['own_s'] / tr.t:.0f} ms, waiting {1e3 * st['wait_s'] / tr.t:.0f} ms")
             log(f"[train] {spec.name} t={t2 - t_start:6.0f}s iters {tr.t} ({tr.t / run:.2f} it/s, "
-                f"{tr.deals / run:.0f} batch deals/s; sampling {t_sample / run:.0%}) infosets touched "
+                f"{tr.deals / run:.0f} batch deals/s, {fresh_deals / run:.0f} fresh deals/s; "
+                f"sampling {t_sample / run:.0%}{extra}) infosets touched "
                 f"{tr.touched()}/{tr.n_infosets}  root value(p0) {np.mean(vals[-50:]) / spec.big_blind:+.3f} bb")
     return written, tr, ab, tree
 
 
 def _fmt(m: float) -> str:
     return str(int(m)) if float(m).is_integer() else str(m)
+
+
+def _sizes(text: str):
+    """'0.5,1.0;1.0' -> ((0.5, 1.0), (1.0,)): raise sizes per raise depth, depths split by ';'."""
+    return tuple(tuple(float(x) for x in part.split(",") if x.strip()) for part in text.split(";"))
 
 
 def main(argv=None):
@@ -327,11 +415,33 @@ def main(argv=None):
     ap.add_argument("--linear", action="store_true", help="linear CFR weights instead of DCFR(1.5,0,2)")
     ap.add_argument("--log-every", type=float, default=20.0)
     ap.add_argument("--fresh", type=float, default=0.5, help="fraction of each batch that is newly sampled")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="processes (1 = original single-process trainer; use the number of cores)")
+    ap.add_argument("--suffix", default="", help="checkpoint name suffix: full_<variant>_<M>m_<suffix>.pkl")
+    ap.add_argument("--max-iters", type=int, default=0, help="stop after this many iterations")
+    # richer abstraction (defaults = the original abstraction)
+    ap.add_argument("--buckets", default="", help="buckets per street, e.g. 20,15,15,15 (default 16,10,10,10)")
+    ap.add_argument("--feature", default="ehs", choices=("ehs", "ehs2"),
+                    help="postflop bucket feature: ehs = equity (default), ehs2 = E[HS^2] on streets "
+                         "with cards to come (separates draws from made hands)")
+    ap.add_argument("--postflop-sizes", default="",
+                    help="postflop raise sizes as fractions of pot+call per raise depth, depths split "
+                         "by ';' (default '0.5,1.0;1.0'), e.g. '0.33,0.75,1.5;1.0'")
+    ap.add_argument("--preflop-sizes", default="", help="preflop sizes (default '0.75;1.0;0.6')")
     a = ap.parse_args(argv)
     spec = get_variant(a.variant)
     cps = [float(x) for x in a.checkpoints.split(",") if x.strip()]
+    acfg = AbstractionConfig(feature=a.feature)
+    if a.buckets:
+        acfg = AbstractionConfig(buckets=tuple(int(x) for x in a.buckets.split(",")), feature=a.feature)
+    tkw = {}
+    if a.postflop_sizes:
+        tkw["postflop"] = _sizes(a.postflop_sizes)
+    if a.preflop_sizes:
+        tkw["preflop"] = _sizes(a.preflop_sizes)
     written, *_ = train(spec, a.minutes, cps, seed=a.seed, out_dir=a.out, batch=a.batch,
-                        log_every=a.log_every, linear=a.linear, fresh=a.fresh,
+                        log_every=a.log_every, linear=a.linear, fresh=a.fresh, workers=a.workers,
+                        suffix=a.suffix, max_iters=a.max_iters, abs_cfg=acfg, tree_cfg=TreeConfig(**tkw),
                         log=lambda s: (print(s), sys.stdout.flush()))
     print("written:", " ".join(written))
 

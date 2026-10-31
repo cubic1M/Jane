@@ -9,6 +9,8 @@ tree mapping match training exactly:
   strategy                 float32 (num_infosets, max_actions) average strategy, rows normalised
   visits                   float32 (num_infosets,) total own-reach mass (0 = never reached)
   meta                     iterations, deals, elapsed seconds, budget, timings
+  format                   2 since the optional abstraction fields (cfg "feature"); files
+                           without it are format 1 and load unchanged (feature = "ehs")
 """
 from __future__ import annotations
 
@@ -70,7 +72,7 @@ class Policy:
 
 
 def make_policy_data(spec, tree, abstraction, strategy, visits, meta) -> dict:
-    return dict(spec_name=spec.name, spec_repr=repr(spec), tree_cfg=tree.cfg.to_dict(),
+    return dict(format=2, spec_name=spec.name, spec_repr=repr(spec), tree_cfg=tree.cfg.to_dict(),
                 n_nodes=tree.n_nodes, abstraction=abstraction.state(),
                 strategy=np.asarray(strategy, dtype=np.float32),
                 visits=np.asarray(visits, dtype=np.float32), meta=dict(meta))

@@ -329,6 +329,168 @@ class TestPolicyAndBot(unittest.TestCase):
         self.assertIsInstance(make_bot(), FullCFRBot)
 
 
+class TestFastEval(unittest.TestCase):
+    """fasteval.FastEvaluator must return exactly the engine evaluator's scores."""
+
+    def test_matches_engine_all_variants(self):
+        from bots.cfr_full.fasteval import FastEvaluator
+        from engine.evaluator import get_evaluator
+        from engine.variants import ALL_VARIANTS
+        rng = np.random.default_rng(4)
+        for spec in ALL_VARIANTS.values():
+            ev, fe = get_evaluator(spec), FastEvaluator(spec)
+            deck = np.array(spec.deck)
+            suited = deck[deck % 4 == 1]
+            if spec.hole_usage == "any":
+                shapes = [(h, b) for h in range(0, 5) for b in range(0, 8) if 5 <= h + b <= 9]
+            else:
+                shapes = [(h, b) for h in range(spec.hole_exact, 6) for b in range(5 - spec.hole_exact, 8)]
+            for h, b in shapes:
+                c = deck[np.argsort(rng.random((3000, len(deck))), axis=1)[:, :h + b]]
+                if h + b <= len(suited):  # plenty of flushes / straight flushes too
+                    c2 = np.array([rng.choice(suited, h + b, replace=False) for _ in range(200)])
+                    c = np.concatenate([c, c2])
+                np.testing.assert_array_equal(fe.evaluate_batch(c[:, :h], c[:, h:]),
+                                              ev.evaluate_batch(c[:, :h], c[:, h:]), f"{spec.name} {h}+{b}")
+
+    def test_simulate_unchanged(self):
+        """Deals, features and outcomes are bit-identical with the engine evaluator."""
+        for v in ("a_nlhe100", "c_discard3", "d_omaha4x2", "g_pineapple"):
+            spec = VARIANTS[v]
+            ab = CardAbstraction(spec, AbstractionConfig(n_fit=100, table_seconds=0.1, n_post=12, n_disc=6))
+            ab.fit(np.random.default_rng(0), log=None)
+            f1, o1 = ab.simulate(64, np.random.default_rng(5))
+            ab.be = BatchEquity(spec, fast=False)
+            f2, o2 = ab.simulate(64, np.random.default_rng(5))
+            np.testing.assert_array_equal(f1, f2)
+            np.testing.assert_array_equal(o1, o2)
+
+
+def _small_setup(seed=0, spec=None):
+    spec = spec or VARIANTS["f_nlhe20"]
+    ab = CardAbstraction(spec, AbstractionConfig(buckets=(6, 5, 5, 5), n_fit=300, table_seconds=1e4,
+                                                 n_post=16, n_disc=8))
+    rng = np.random.default_rng(seed)
+    ab.fit(rng, log=None)
+    return spec, ab, Tree(spec), rng
+
+
+class TestParallel(unittest.TestCase):
+    """--workers N: the split (top + frontier subtrees) iteration must be exactly the
+    single-process iteration on the same batch; runs must be deterministic per seed."""
+
+    def test_collect_finish_equals_iterate(self):
+        spec, ab, tree, rng = _small_setup()
+        batches = [ab.sample(256, rng) for _ in range(4)]
+        a, b = CFRTrainer(tree, ab.K), CFRTrainer(tree, ab.K)
+        for split in (1, 2, 3):
+            front = b.frontier(split)
+            self.assertTrue(front)
+            for bk, o in batches:
+                va = a.iterate(bk, o)
+                b.begin(bk, o)
+                tasks = b.collect(front)
+                vals = {n: b._walk(n, *tasks[n]) for n in reversed(list(tasks))}  # any order
+                vb = b.finish(vals)
+                self.assertAlmostEqual(va, vb, places=12)
+            np.testing.assert_array_equal(a.R, b.R)
+            np.testing.assert_array_equal(a.S, b.S)
+            np.testing.assert_array_equal(a.visits, b.visits)
+
+    def test_parallel_cfr_matches_single_process(self):
+        from bots.cfr_full.parallel import ParallelCFR
+        spec, ab, tree, rng = _small_setup()
+        batches = [ab.sample(256, rng) for _ in range(4)]
+        a = CFRTrainer(tree, ab.K)
+        with ParallelCFR(spec, tree, ab, ab.K, workers=3, seed=0) as par:
+            for bk, o in batches:
+                va = a.iterate(bk, o)
+                vb, fresh = par.iterate(bk, o, n_sample=50)
+                self.assertAlmostEqual(va, vb, places=12)
+                self.assertEqual(fresh[0].shape, (spec.num_streets, 2, 50))
+                self.assertTrue(fresh[0].max() < max(ab.K))
+            np.testing.assert_array_equal(a.R, par.tr.R)
+            np.testing.assert_array_equal(a.S, par.tr.S)
+            np.testing.assert_array_equal(a.visits, par.tr.visits)
+            self.assertEqual(par.tr.t, 4)
+
+    def test_train_deterministic_and_loadable(self):
+        tmp = tempfile.mkdtemp(prefix="full_cfr_par_")
+        try:
+            cfg = AbstractionConfig(buckets=(6, 5, 5, 5), n_fit=300, table_seconds=1e4, n_post=16, n_disc=8)
+            spec = VARIANTS["f_nlhe20"]
+            strat = {}
+            for w in (1, 1, 2, 2):
+                written, tr, ab, tree = train(spec, minutes=5, seed=3, out_dir=tmp, abs_cfg=cfg, batch=128,
+                                              workers=w, suffix=f"w{w}", max_iters=5, log=lambda s: None)
+                self.assertEqual(tr.t, 5)
+                self.assertTrue(written[0].endswith(f"full_f_nlhe20_5m_w{w}.pkl"))
+                data = load_policy_data(written[0])
+                self.assertEqual(data["meta"]["workers"], w)
+                if w in strat:  # same seed, same worker count -> same policy
+                    np.testing.assert_array_equal(strat[w], data["strategy"])
+                strat[w] = data["strategy"]
+            bot = make_bot(budget="5m_w2", cache_dir=tmp)
+            r = play_match(bot, RandomLegalBot(), spec, deal_seed=2, hands=30)
+            self.assertFalse(bot.using_fallback)
+            self.assertEqual(r.stats[0].illegal + r.stats[0].errors, 0)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestRicherAbstraction(unittest.TestCase):
+    def test_ehs2_feature(self):
+        from engine.cards import parse_cards
+        be = BatchEquity(VARIANTS["a_nlhe100"])
+        rng = np.random.default_rng(0)
+        z = np.zeros((1, 0), np.int64)
+        res = {}
+        for h, b in (("AhKh", "Qh7h2c"), ("7c7d", "Kh8s2c")):
+            my, bd = np.array([parse_cards(h)]), np.array([parse_cards(b)])
+            e = be.equity(my, bd, z, opp_num=2, board_to_come=2, n=6000, rng=rng)[0]
+            e2 = be.ehs2(my, bd, z, opp_num=2, board_to_come=2, n=6000, rng=rng)[0]
+            self.assertTrue(0 <= e2 <= 1)
+            self.assertGreater(e2, e * e - 0.03)  # Jensen: E[HS^2] >= E[HS]^2
+            res[h] = (e, e2)
+        # the flush draw has more potential than the made pair: much larger E[HS^2] - EHS^2
+        self.assertGreater(res["AhKh"][1] - res["AhKh"][0] ** 2, res["7c7d"][1] - res["7c7d"][0] ** 2 + 0.02)
+
+    def test_cli_flags_and_policy(self):
+        from bots.cfr_full.train import main
+        tmp = tempfile.mkdtemp(prefix="full_cfr_cli_")
+        try:
+            main(["--variant", "f_nlhe20", "--minutes", "3", "--max-iters", "3", "--workers", "2",
+                  "--suffix", "rich", "--buckets", "7,6,6,6", "--feature", "ehs2",
+                  "--postflop-sizes", "0.33,0.75;1.0", "--out", tmp, "--batch", "128", "--log-every", "1000"])
+            path = os.path.join(tmp, "full_f_nlhe20_3m_rich.pkl")
+            pol = load_policy(path, VARIANTS["f_nlhe20"])
+            self.assertEqual(pol.abs.cfg.feature, "ehs2")
+            self.assertEqual(pol.abs.cfg.buckets, (7, 6, 6, 6))
+            self.assertEqual(pol.tree.cfg.postflop, ((0.33, 0.75), (1.0,)))
+            fr = {round(a[2], 2) for n in pol.tree.decision_nodes if pol.tree.street[n] > 0
+                  for a in pol.tree.actions[n] if a[0] == A_RAISE}
+            self.assertIn(0.33, fr)
+            bot = self._play(path)
+            self.assertGreater(bot.stats["decisions"], 0)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def _play(self, path):
+        bot = make_bot(policy_path=path)
+        r = play_match(bot, RandomLegalBot(), VARIANTS["f_nlhe20"], deal_seed=4, hands=30)
+        self.assertFalse(bot.using_fallback)
+        self.assertEqual(r.stats[0].illegal + r.stats[0].errors, 0)
+        return bot
+
+    def test_old_policy_files_still_load(self):
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "cache", "cfr", "full_a_nlhe100_15m.pkl")
+        if not os.path.exists(path):
+            self.skipTest("no saved policy")
+        pol = load_policy(path, VARIANTS["a_nlhe100"])
+        self.assertEqual(pol.abs.cfg.feature, "ehs")   # files without the field = the original feature
+        self.assertEqual(pol.abs.K, [16, 10, 10, 10])
+
+
 class TestDecisionLatency(unittest.TestCase):
     """Lazy evaluator tables (fasteval) must be built in new_match, not inside the first
     timed decision: after new_match no decision may take more than 100 ms."""

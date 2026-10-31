@@ -63,6 +63,10 @@ class AbstractionConfig:
     n_pre_mc: int = 0                    # preflop MC samples when no table (0 = auto)
     table_seconds: float = 6.0           # budget for the preflop class table
     n_fit: int = 3000                    # deals used to fit the percentile boundaries
+    # postflop feature: "ehs" = equity (original); "ehs2" = E[HS^2] over the runouts on
+    # streets with board cards to come and no pending discards (elsewhere: equity). Policy
+    # files from before this field load as "ehs".
+    feature: str = "ehs"
 
     def k(self, street: int) -> int:
         b = self.buckets
@@ -114,14 +118,9 @@ class BatchEquity:
             best = s if best is None else np.maximum(best, s)
         return best
 
-    def equity(self, my, board, dead, *, opp_num: int, board_to_come: int, my_left: int = 0,
-               opp_left: int = 0, to_board: bool = True, n: int = 64, rng=None) -> np.ndarray:
-        """my (B,h), board (B,b), dead (B,d) card arrays -> (B,) equity (win + tie/2)."""
-        rng = rng if rng is not None else np.random.default_rng()
-        my = np.asarray(my, dtype=np.int64)
+    def _avail(self, my, board, dead):
+        """Unseen cards per deal (B, A), given the known cards."""
         B = my.shape[0]
-        board = np.asarray(board, dtype=np.int64).reshape(B, -1)
-        dead = np.asarray(dead, dtype=np.int64).reshape(B, -1)
         known = np.zeros((B, self.D), dtype=bool)
         rows = np.arange(B)[:, None]
         for arr in (my, board, dead):
@@ -129,10 +128,14 @@ class BatchEquity:
                 known[rows, self.pos[arr]] = True
         A = self.D - int(known[0].sum())
         avail = np.nonzero(~known)[1].reshape(B, A)
-        avail_cards = self.deck[avail]
-        k = opp_num + board_to_come
+        return self.deck[avail]
+
+    @staticmethod
+    def _draw(avail_cards, n, k, rng):
+        """k distinct cards for each of n samples per deal -> (B * n, k), deal-major rows
+        (partial Fisher-Yates over the available cards of each (deal, sample) row)."""
+        B, A = avail_cards.shape
         R = B * n
-        # partial Fisher-Yates over the available cards of each (deal, sample) row
         W = np.broadcast_to(np.arange(A, dtype=np.int8), (R, A)).copy()
         ridx = np.arange(R)
         for i in range(k):
@@ -141,7 +144,50 @@ class BatchEquity:
             W[:, i] = W[ridx, j]
             W[ridx, j] = wi
         drow = np.repeat(np.arange(B), n)
-        cards = avail_cards[drow[:, None], W[:, :k].astype(np.int64)]
+        return avail_cards[drow[:, None], W[:, :k].astype(np.int64)]
+
+    @staticmethod
+    def ehs2_split(n: int, opp_num: int, board_to_come: int, A: int):
+        """(runouts m, opponents per runout j) for an E[HS^2] estimate costing about n
+        opponent evaluations, like equity() with n samples."""
+        j = max(2, int(round(np.sqrt(n))))
+        j = max(2, min(j, (A - board_to_come) // max(1, opp_num)))
+        return max(1, int(round(n / j))), j
+
+    def ehs2(self, my, board, dead, *, opp_num: int, board_to_come: int, n: int = 64, rng=None):
+        """E[HS^2] (B,): for m runouts of the board, the hand strength HS on the final board
+        vs a random opponent hand, squared, averaged. HS^2 per runout is estimated without
+        bias from j opponent hands ((sum^2 - sum of squares) / (j (j-1))). No discards."""
+        rng = rng if rng is not None else np.random.default_rng()
+        my = np.asarray(my, dtype=np.int64)
+        B = my.shape[0]
+        board = np.asarray(board, dtype=np.int64).reshape(B, -1)
+        dead = np.asarray(dead, dtype=np.int64).reshape(B, -1)
+        avail_cards = self._avail(my, board, dead)
+        m, j = self.ehs2_split(n, opp_num, board_to_come, avail_cards.shape[1])
+        cards = self._draw(avail_cards, m, board_to_come + j * opp_num, rng)     # (B*m, k)
+        R = B * m
+        final_board = np.concatenate([np.repeat(board, m, axis=0), cards[:, :board_to_come]], axis=1)
+        s_me = self.evaluate(np.repeat(my, m, axis=0), final_board)
+        opp = cards[:, board_to_come:].reshape(R * j, opp_num)
+        s_op = self.evaluate(opp, np.repeat(final_board, j, axis=0)).reshape(R, j)
+        x = (s_me[:, None] > s_op) + 0.5 * (s_me[:, None] == s_op)
+        S = x.sum(axis=1)
+        hs2 = (S * S - (x * x).sum(axis=1)) / (j * (j - 1))
+        return hs2.reshape(B, m).mean(axis=1)
+
+    def equity(self, my, board, dead, *, opp_num: int, board_to_come: int, my_left: int = 0,
+               opp_left: int = 0, to_board: bool = True, n: int = 64, rng=None) -> np.ndarray:
+        """my (B,h), board (B,b), dead (B,d) card arrays -> (B,) equity (win + tie/2)."""
+        rng = rng if rng is not None else np.random.default_rng()
+        my = np.asarray(my, dtype=np.int64)
+        B = my.shape[0]
+        board = np.asarray(board, dtype=np.int64).reshape(B, -1)
+        dead = np.asarray(dead, dtype=np.int64).reshape(B, -1)
+        avail_cards = self._avail(my, board, dead)
+        k = opp_num + board_to_come
+        R = B * n
+        cards = self._draw(avail_cards, n, k, rng)
         opp = cards[:, :opp_num]
         fut = cards[:, opp_num:]
         final_board = np.concatenate([np.repeat(board, n, axis=0), fut], axis=1)
@@ -267,6 +313,9 @@ class CardAbstraction:
             return self.table_lookup(my)
         left = sum(d.count for d in _future_rules(sp, street))
         n = self.n_pre if street == 0 else self.n_post
+        btc = sum(sp.board_cards_per_street[street + 1:])
+        if getattr(self.cfg, "feature", "ehs") == "ehs2" and street > 0 and btc > 0 and left == 0:
+            return self.be.ehs2(my, board, dead, opp_num=opp_num, board_to_come=btc, n=n, rng=rng)
         return self.be.equity(my, board, dead, opp_num=opp_num,
                               board_to_come=sum(sp.board_cards_per_street[street + 1:]),
                               my_left=left, opp_left=left, to_board=_next_to_board(sp, street),
