@@ -35,8 +35,12 @@ def make_bot(spec_str: str):
         s = s[:-3]
     kw = {}
     if ":" in s:
-        # options: name:gate=0.5;p.size_factor_min=0.25  (p.* = strategy params)
+        # options: name[@budget]:gate=0.5;p.size_factor_min=0.25  (p.* = strategy params);
+        # "name:opts@budget" is accepted too (the budget is split off the options first)
         s, opts = s.split(":", 1)
+        if "@" in opts:
+            opts, budget_tail = opts.split("@", 1)
+            s = f"{s}@{budget_tail}"
         for item in opts.split(";"):
             k, v = item.split("=", 1)
             try:

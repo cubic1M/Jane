@@ -148,7 +148,7 @@ def checkpoints(mins: int) -> list:
     return sorted({m for m in (5, 15, mins) if m <= mins})
 
 
-def training_hint(spec_name: str, train: int, train_full: int) -> str:
+def training_hint(spec_name: str, train: int, train_full: int, workers: int = 1) -> str:
     """How to check the background training's checkpoints (bot names that load them)."""
     bots, notes = [], []
     if train:
@@ -156,7 +156,8 @@ def training_hint(spec_name: str, train: int, train_full: int) -> str:
         notes.append("preflop_cfr checkpoints " + ", ".join(f"{m}m" for m in checkpoints(train)))
     if train_full:
         cps = checkpoints(train_full)
-        bots.append(f"hybrid@{15 if 15 in cps else cps[-1]}m")
+        suffix = f"_w{workers}" if workers > 1 else ""
+        bots.append(f"hybrid@{15 if 15 in cps else cps[-1]}m{suffix}")
         notes.append("hybrid checkpoints " + ", ".join(f"{m}m" for m in cps))
     return ("\n  CFR training still running in the background. When a checkpoint appears in cache/cfr/, "
             f"check it with:\n    python3 dayof.py --variant {spec_name} --quick --bots " + ",".join(bots)
@@ -174,6 +175,8 @@ def main(argv=None):
     ap.add_argument("--strength-hands", type=int, default=300)
     ap.add_argument("--train", type=int, default=0, help="minutes of preflop-CFR training to start in the background")
     ap.add_argument("--train-full", type=int, default=0, help="minutes of full-game CFR training to start in the background")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="processes for --train-full (multi-core trainer; policies get suffix w<N>)")
     ap.add_argument("--quick", action="store_true", help="skip the strength check")
     a = ap.parse_args(argv)
     t_start = time.time()
@@ -190,9 +193,11 @@ def main(argv=None):
             mod = "bots.cfr_preflop.train" if kind == "preflop" else "bots.cfr_full.train"
             cps = ",".join(str(x) for x in checkpoints(mins))
             log = open(os.path.join(ROOT, f"dayof_train_{kind}_{spec.name}.log"), "w")
-            procs.append(subprocess.Popen([sys.executable, "-m", mod, "--variant", spec.name, "--minutes", str(mins),
-                                           "--checkpoints", cps, "--out", "cache/cfr/"], cwd=ROOT, stdout=log,
-                                          stderr=subprocess.STDOUT))
+            cmd = [sys.executable, "-m", mod, "--variant", spec.name, "--minutes", str(mins),
+                   "--checkpoints", cps, "--out", "cache/cfr/"]
+            if kind == "full" and a.workers > 1:
+                cmd += ["--workers", str(a.workers), "--suffix", f"w{a.workers}"]
+            procs.append(subprocess.Popen(cmd, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT))
             print(f"\n  started {kind} CFR training: {mins} min (checkpoints {cps}), log dayof_train_{kind}_{spec.name}.log")
 
     print("\nB. HAND-RANKING SANITY (frequency of final hand categories, random cards)")
@@ -240,7 +245,7 @@ def main(argv=None):
             print(f"  vs {o:8s} {m:+.2f} ± {se:.2f}   {flag}")
 
     if procs:
-        print(training_hint(spec.name, a.train, a.train_full))
+        print(training_hint(spec.name, a.train, a.train_full, a.workers))
     print("\n" + ("GO" if ok else "NO-GO: fix the failures above") + f"   (checks took {time.time() - t_start:.0f}s)")
     return 0 if ok else 1
 
