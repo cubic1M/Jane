@@ -22,7 +22,7 @@ class HybridBot(Bot):
     name = "hybrid"
 
     def __init__(self, budget: str = "30m", gate: float = 0.35, ad_params: dict | None = None,
-                 ad_adapt: dict | None = None, gate_mode: str = "max", **cfr_kw):
+                 ad_adapt: dict | None = None, gate_mode: str = "max", weak_pa: float = 0.8, **cfr_kw):
         self.cfr = FullCFRBot(budget=budget, **cfr_kw)
         self.ad = AdaptiveBot(params=ad_params, adapt=ad_adapt)
         self.gate = gate
@@ -31,6 +31,7 @@ class HybridBot(Bot):
         # maniacs, pushers. Strong aggressive bots fold sometimes, so CFR keeps playing
         # them (the "max" gate was exploited by an adaptive opponent, REPORT §7).
         self.gate_mode = gate_mode
+        self.weak_pa = weak_pa
         self.using_fallback = False
         self._hand = None
         self._who = None
@@ -50,6 +51,11 @@ class HybridBot(Bot):
             return False
         if self.gate_mode == "nofold":
             return min(dims.get("F", 0.0), dims.get("PF", 0.0)) <= -self.gate
+        if self.gate_mode == "weak":
+            # measured separation (REPORT §7): weak bots (station, maniac, random, quick)
+            # have F <= -0.47 and the pusher PA ~0.9; every strong bot (incl. an
+            # exploiter with A ~0.5) had F >= -0.27 and PA <= 0.08
+            return dims.get("F", 0.0) <= -self.gate or dims.get("PA", 0.0) >= self.weak_pa
         return max(abs(v) for v in dims.values()) >= self.gate
 
     def act(self, obs):
