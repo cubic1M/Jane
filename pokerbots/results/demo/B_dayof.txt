@@ -1,0 +1,81 @@
+==============================================================================
+A. RULES SUMMARY  (read against the announcement!)
+Variant demo_nlhe_scaled: DEMO: NLHE 100bb in 50/100 chips: the same game as a_nlhe100 at another chip scale, so no library match (library miss: train on the day).
+  deck: 52 cards (ranks 23456789TJQKA)
+  hole cards: 2; at showdown use ANY 5 of hole+board
+  board: preflop +0, flop +3, turn +1, river +1
+  final: 2 hole + 5 board cards
+  ranking low->high: high_card < pair < two_pair < trips < straight < flush < full_house < quads < straight_flush
+  blinds 50/100 ante 0; stack 10000 (100 bb), reset every hand; no-limit
+  SB = button acts first preflop, BB acts first after the flop; positions alternate each hand
+  1000 hands per match; time per decision 1.0 s, match clock 120.0 s
+
+  sample hands (call-down play; check order of action, discards, board, winner):
+  hand 0: SB 7s 4d | BB 3d 4h
+    -- street 0
+       SB/button call 50
+       BB        check
+    -- street 1
+       BB        raise to 100
+       SB/button call 100
+    -- street 2
+       BB        check
+       SB/button check
+    -- street 3
+       BB        check
+       SB/button check
+    board As Jc Qh 7c Ah
+    SB/button shows 7s 4d: two_pair
+    BB        shows 3d 4h: pair
+    result: SB +200, BB -200 chips
+  hand 1: SB Qh 8c | BB 7s Ah
+    -- street 0
+       SB/button call 50
+       BB        check
+    -- street 1
+       BB        raise to 100
+       SB/button call 100
+    -- street 2
+       BB        check
+       SB/button check
+    -- street 3
+       BB        check
+       SB/button check
+    board 9h 8h Td 9c 8s
+    SB/button shows Qh 8c: full_house
+    BB        shows 7s Ah: two_pair
+    result: SB +200, BB -200 chips
+
+  LIBRARY: no 15m_w4 policy for this exact game: train it (--train-full 15 --workers <cores>). Nearest (if a difference is a misread rule, fix the spec):
+    a_nlhe100          differs in: small_blind, big_blind, starting_stack
+    b_nlhe200          differs in: small_blind, big_blind, starting_stack
+    f_nlhe20           differs in: small_blind, big_blind, starting_stack
+
+  started full CFR training: 15 min (checkpoints 5,15), log dayof_train_full_demo_nlhe_scaled.log
+
+B. HAND-RANKING SANITY (frequency of final hand categories, random cards)
+    high_card        17.07%
+    pair             44.41%
+    two_pair         23.39%
+    trips             4.72%
+    straight          4.54%
+    flush             3.01%
+    full_house        2.63%
+    quads             0.18%
+    straight_flush    0.05%
+
+C+D. CONFORMANCE + TIMING
+  balanced         OK     mean 3.1 ms  max 13 ms  ~8 s per 1000-hand match  (5s)
+[full_cfr] WARNING: no usable policy at /home/user/Jane/pokerbots/cache/cfr/full_demo_nlhe_scaled_15m_w4.pkl (FileNotFoundError: [Errno 2] No such file or directory: '/home/user/Jane/pokerbots/cache/cfr/full_demo_nlhe_scaled_15m_w4.pkl'); using the equity fallback
+  champion@15m_w4  OK but NO POLICY (playing its fallback; train it or use another bot) mean 3.3 ms  max 14 ms  ~9 s per 1000-hand match  (5s)
+
+E. STRENGTH SANITY  (balanced, 2 duplicate pairs x 300 hands, bb/hand ± se)
+  vs equity   +1.56 ± 0.57   ok
+  vs station  +3.60 ± 0.12   ok
+  vs push     +2.25 ± 0.65   ok
+
+  CFR training still running in the background. When a checkpoint appears in cache/cfr/, check it with:
+    python3 dayof.py --variant demo_nlhe_scaled --quick --bots hybrid@15m_w4
+  (hybrid checkpoints 5m, 15m)
+
+GO   (checks took 52s)

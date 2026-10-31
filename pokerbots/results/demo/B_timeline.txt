@@ -1,0 +1,2 @@
+[+0s 20:43:05] start: dayof --train-full 15 --workers 4
+[+52s 20:43:57] dayof done rc=0 (GO   (checks took 52s))

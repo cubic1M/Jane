@@ -71,7 +71,16 @@ K_IRISH = GameSpec(
     notes="REHEARSAL: Pot-Limit Irish Hold'em, 4 hole cards; after the flop is dealt the DEALER "
           "(SB, in position) discards 2 face up as DEAD cards, then the BB; 150bb = 1500 chips.")
 
-DAY_VARIANTS: tuple = (H_PLO5, I_DOUBLE_DISCARD, J_3STREET, K_IRISH)
+# ---- timed day-of demos (report/demo_log.md): a library hit and a library miss ----------
+DEMO_IRISH = K_IRISH.with_(
+    name="demo_irish", notes="DEMO: the rehearsal game announced under a new name (library hit).")
+DEMO_NLHE_SCALED = A_NLHE100.with_(
+    name="demo_nlhe_scaled", small_blind=50, big_blind=100, starting_stack=10000,
+    time_per_decision=1.0, time_per_match=120.0,
+    notes="DEMO: NLHE 100bb in 50/100 chips: the same game as a_nlhe100 at another chip scale, "
+          "so no library match (library miss: train on the day).")
+
+DAY_VARIANTS: tuple = (H_PLO5, I_DOUBLE_DISCARD, J_3STREET, K_IRISH, DEMO_IRISH, DEMO_NLHE_SCALED)
 
 # ---- policy library: likely extra variants with pre-trained CFR policies --------------
 # If the announced game matches one of these exactly, use its name: the policy is ready.

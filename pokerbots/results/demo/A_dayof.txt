@@ -1,0 +1,78 @@
+==============================================================================
+A. RULES SUMMARY  (read against the announcement!)
+Variant demo_irish: DEMO: the rehearsal game announced under a new name (library hit).
+  deck: 52 cards (ranks 23456789TJQKA)
+  hole cards: 4; at showdown use ANY 5 of hole+board
+  board: preflop +0, flop +3, turn +1, river +1
+  discard: at the start of the flop (after its cards are dealt, before betting), each player discards 2, SB first, then BB, to the muck face up
+  final: 2 hole + 5 board cards
+  ranking low->high: high_card < pair < two_pair < trips < straight < flush < full_house < quads < straight_flush
+  blinds 5/10 ante 0; stack 1500 (150 bb), reset every hand; pot-limit
+  SB = button acts first preflop, BB acts first after the flop; positions alternate each hand
+  1000 hands per match; time per decision 1.0 s, match clock 120.0 s
+
+  sample hands (call-down play; check order of action, discards, board, winner):
+  hand 0: SB 7s 4d 3d 4h | BB As Jc Qh 7c
+    -- street 0
+       SB/button call 5
+       BB        check
+    -- street 1
+       SB/button discard 3d 4h (face up)
+       BB        discard Qh 7c (face up)
+       BB        raise to 10
+       SB/button call 10
+    -- street 2
+       BB        check
+       SB/button check
+    -- street 3
+       BB        check
+       SB/button check
+    board Ah 2s 9s 2d Ks
+    SB/button shows 7s 4d: pair
+    BB        shows As Jc: two_pair
+    result: SB -20, BB +20 chips
+  hand 1: SB Qh 8c 7s Ah | BB 9h 8h Td 9c
+    -- street 0
+       SB/button call 5
+       BB        check
+    -- street 1
+       SB/button discard 7s Ah (face up)
+       BB        discard Td 9c (face up)
+       BB        raise to 10
+       SB/button call 10
+    -- street 2
+       BB        check
+       SB/button check
+    -- street 3
+       BB        check
+       SB/button check
+    board 8s 3d 6s Kc 6d
+    SB/button shows Qh 8c: two_pair
+    BB        shows 9h 8h: two_pair
+    result: SB +0, BB +0 chips
+
+  LIBRARY: same game as full_k_irish_15m_w4.pkl: champion@15m_w4 plays this trained policy NOW (no training needed; still check it in C+D)
+
+B. HAND-RANKING SANITY (frequency of final hand categories, random cards)
+    high_card        17.07%
+    pair             44.41%
+    two_pair         23.39%
+    trips             4.72%
+    straight          4.54%
+    flush             3.01%
+    full_house        2.63%
+    quads             0.18%
+    straight_flush    0.05%
+
+C+D. CONFORMANCE + TIMING
+  balanced         OK     mean 3.3 ms  max 18 ms  ~14 s per 1000-hand match  (8s)
+[full_cfr] no full_demo_irish_15m_w4.pkl; using the library policy full_k_irish_15m_w4.pkl (same game)
+  champion@15m_w4  OK     mean 1.9 ms  max 19 ms  ~8 s per 1000-hand match  (4s)
+  champion@15m_w4+lp OK     mean 1.7 ms  max 13 ms  ~7 s per 1000-hand match  (5s)
+
+E. STRENGTH SANITY  (balanced, 2 duplicate pairs x 300 hands, bb/hand ± se)
+  vs equity   +4.98 ± 0.21   ok
+  vs station  +8.54 ± 0.01   ok
+  vs push     +16.55 ± 0.61   ok
+
+GO   (checks took 88s)
