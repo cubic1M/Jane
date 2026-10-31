@@ -4,6 +4,7 @@ import {
   COUNT_ONLY_WHEN_APPROVED,
   LOOKBACK_MONTHS,
   MONEY_FOUND_MIN_CONFIDENCE,
+  REFUND_FINDING_TYPES,
   RESURFACE_DECLINED_CHANGE,
 } from "@/config/detection";
 import type { Finding, FindingStatus, FindingType, PrismaClient } from "@/generated/prisma/client";
@@ -556,29 +557,48 @@ export async function runDetection(
 
 type MoneyFoundRow = Pick<Finding, "type" | "status" | "confidence" | "annualSavingsCents">;
 
+const counted = (f: MoneyFoundRow) =>
+  f.annualSavingsCents !== null &&
+  OPEN_STATUSES.includes(f.status) &&
+  atLeast(f.confidence, MONEY_FOUND_MIN_CONFIDENCE) &&
+  (!COUNT_ONLY_WHEN_APPROVED.includes(f.type) || APPROVED_STATUSES.includes(f.status));
+
 // Pure part of moneyFound, so the counting rules can be tested without a database.
 export function sumMoneyFound(findings: MoneyFoundRow[]): number {
-  return findings
-    .filter(
-      (f) =>
-        f.annualSavingsCents !== null &&
-        OPEN_STATUSES.includes(f.status) &&
-        atLeast(f.confidence, MONEY_FOUND_MIN_CONFIDENCE) &&
-        (!COUNT_ONLY_WHEN_APPROVED.includes(f.type) || APPROVED_STATUSES.includes(f.status)),
-    )
-    .reduce((sum, f) => sum + (f.annualSavingsCents ?? 0), 0);
+  return sumMoneyFoundParts(findings).cents;
 }
 
-// The headline number: yearly savings across open findings we're confident enough in.
+// Money found, and the part of it that comes back once (REFUND_FINDING_TYPES) rather than every
+// year, so a page doesn't call a $210 double charge "$210 a year" (debugger 10-31).
+export function sumMoneyFoundParts(findings: MoneyFoundRow[]): MoneyFoundParts {
+  const open = findings.filter(counted);
+  const sum = (list: MoneyFoundRow[]) => list.reduce((s, f) => s + (f.annualSavingsCents ?? 0), 0);
+  return {
+    cents: sum(open),
+    onceCents: sum(open.filter((f) => REFUND_FINDING_TYPES.includes(f.type))),
+  };
+}
+
+export type MoneyFoundParts = { cents: number; onceCents: number };
+
+// The headline number: savings across open findings we're confident enough in, yearly ones and
+// money back once (moneyFoundParts says how much of it is which).
 export async function moneyFound(
   userId: string,
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<number> {
+  return (await moneyFoundParts(userId, { client })).cents;
+}
+
+export async function moneyFoundParts(
+  userId: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<MoneyFoundParts> {
   const findings = await scopedFor(userId, client).findings.findMany({
     where: { status: { in: OPEN_STATUSES }, annualSavingsCents: { not: null } },
     select: { type: true, status: true, confidence: true, annualSavingsCents: true },
   });
-  return sumMoneyFound(findings);
+  return sumMoneyFoundParts(findings);
 }
 
 // True once detection has finished for this user at least once (see /scanning).

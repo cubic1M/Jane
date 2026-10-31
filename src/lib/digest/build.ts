@@ -1,6 +1,7 @@
 import { DIGEST_BUDGET_NEAR_SHARE, DIGEST_MAX_CHANGES } from "@/config/digest";
 import type { CheckStatus } from "@/detection/checkup";
-import type { ActionStatus, Confidence } from "@/generated/prisma/client";
+import { REFUND_FINDING_TYPES } from "@/config/detection";
+import type { ActionStatus, Confidence, FindingType } from "@/generated/prisma/client";
 
 // What goes in a week's digest, and whether to send one at all. Pure, so the skip rule
 // and the totals are tested directly. It's the weekly "what changed" email: it goes out only
@@ -15,6 +16,8 @@ export type DigestInput = {
   // When the last digest went out; null for someone's first.
   lastSentAt: Date | null;
   moneyFoundCents: number;
+  // The part of moneyFoundCents that comes back once (a double charge), not every year.
+  moneyFoundOnceCents?: number;
   // "Saved so far": the same total as /jane and Home (savedToDate in
   // src/lib/membership/service.ts), so the email never shows a different number
   // (docs/feature-audit.md, cluster 9).
@@ -31,6 +34,7 @@ export type DigestInput = {
   }[];
   // Open findings on the report.
   findings: {
+    type?: FindingType;
     title: string;
     annualSavingsCents: number | null;
     createdAt: Date;
@@ -75,9 +79,16 @@ export type DigestPayload = {
   savedThisWeekCents: number;
   savedToDateCents: number;
   moneyFoundCents: number;
+  moneyFoundOnceCents?: number;
   finishedThisWeek: { title: string; annualSavingsCents: number | null }[];
   pending: { title: string; status: ActionStatus; userTodo: string | null }[];
-  newFindings: { title: string; annualSavingsCents: number | null; confidence?: Confidence }[];
+  // once: money back once (a double charge), so its amount isn't "a year".
+  newFindings: {
+    title: string;
+    annualSavingsCents: number | null;
+    confidence?: Confidence;
+    once?: true;
+  }[];
   // Older payloads have no confidence on alerts, and no changes or checkup.
   alerts: { title: string; percent?: number | null }[];
   changes?: { title: string; percent: number }[];
@@ -187,6 +198,7 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
     savedThisWeekCents: total(finishedThisWeek),
     savedToDateCents: input.savedToDateCents,
     moneyFoundCents: input.moneyFoundCents,
+    ...(input.moneyFoundOnceCents ? { moneyFoundOnceCents: input.moneyFoundOnceCents } : {}),
     finishedThisWeek: finishedThisWeek.map(({ title, annualSavingsCents }) => ({
       title,
       annualSavingsCents,
@@ -197,10 +209,11 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
       .sort(
         (a, b) => Number(b.status === "waiting_on_user") - Number(a.status === "waiting_on_user"),
       ),
-    newFindings: newFindings.map(({ title, annualSavingsCents, confidence }) => ({
+    newFindings: newFindings.map(({ type, title, annualSavingsCents, confidence }) => ({
       title,
       annualSavingsCents,
       ...(confidence ? { confidence } : {}),
+      ...(type && REFUND_FINDING_TYPES.includes(type) ? { once: true as const } : {}),
     })),
     alerts: alerts.map(({ title, confidencePercent }) => ({
       title,

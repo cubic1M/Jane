@@ -40,6 +40,7 @@ import {
   planChanges,
   runDetection,
   sumMoneyFound,
+  sumMoneyFoundParts,
   type ExistingFinding,
 } from "./engine";
 import type { Candidate } from "./types";
@@ -169,6 +170,16 @@ describe("sumMoneyFound", () => {
         type,
       ).toBe(5_999);
     }
+  });
+
+  // Debugger 10-31: a double charge of $210 made the report say "We found $210.00 a year".
+  it("says which part comes back once", () => {
+    expect(
+      sumMoneyFoundParts([
+        row({ annualSavingsCents: 14_388 }),
+        row({ type: "duplicate_charge", annualSavingsCents: 21_000 }),
+      ]),
+    ).toEqual({ cents: 35_388, onceCents: 21_000 });
   });
 
   it("adds open findings at medium confidence or above", () => {

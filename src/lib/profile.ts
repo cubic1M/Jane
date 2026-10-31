@@ -337,7 +337,11 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
     subscriptions,
+    // A card whose balance or rate isn't known goes by its interest charges seen, as the report
+    // does (debugger 10-30: a statement-file card charging interest read $0 a year, so the dock
+    // and the Loans area never said what the report's top card did).
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
+    cardInterestUnknownCards: cardInterest.available ? cardInterest.unknownCardIds : [],
     insuranceShopSavingCents: shopSaving,
     lastCloseStatus: (lastClose?.status === "closed" || lastClose?.status === "waiting"
       ? lastClose.status

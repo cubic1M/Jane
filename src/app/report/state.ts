@@ -1,3 +1,4 @@
+import { formatCents } from "@/lib/money";
 import { COUNT_ONLY_WHEN_APPROVED } from "@/config/detection";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 import { CONFIDENCE_SCORE, REPORT_LIKELIHOOD } from "@/config/priorities";
@@ -50,6 +51,15 @@ export function staleStatementsEnd(
 ): string | null {
   if (!last) return null;
   return now.getTime() - last.getTime() > after * DAY_MS ? last.toISOString().slice(0, 10) : null;
+}
+
+// "We found $X a year", saying what comes back once as that (debugger 10-31: a $210 double
+// charge read "We found $210.00 a year").
+export function foundHeadline({ cents, onceCents }: { cents: number; onceCents: number }): string {
+  const yearly = cents - onceCents;
+  if (onceCents <= 0) return `We found ${formatCents(cents)} a year`;
+  if (yearly <= 0) return `We found ${formatCents(onceCents)} to get back`;
+  return `We found ${formatCents(yearly)} a year and ${formatCents(onceCents)} to get back`;
 }
 
 // The line under "We found $X a year". Subscriptions count toward the total only once the

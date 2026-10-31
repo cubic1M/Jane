@@ -13,6 +13,20 @@ function historyDays(input: DetectionInput): number {
   return daysBetween(first, input.asOf);
 }
 
+// The months a fee or interest total covers, given the days of history: under
+// SHORT_HISTORY_DAYS it's those months (and the total is counted at a year's pace), otherwise
+// the LOOKBACK_MONTHS window. The one count the report's finding and the dock's card-interest
+// suggestion share (review 10-31: they scaled differently and disagreed by up to $1,000).
+export function paceMonths(days: number): { short: boolean; months: number } {
+  const short = days < SHORT_HISTORY_DAYS;
+  return {
+    short,
+    months: short
+      ? Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH)))
+      : LOOKBACK_MONTHS,
+  };
+}
+
 // "the last 3 months", or "the last month".
 export const lastMonths = (months: number) =>
   months === 1 ? "the last month" : `the last ${months} months`;
@@ -44,11 +58,7 @@ export function totalsByAccount(
     const total = sumCents(charges);
     if (total <= 0) return [];
     const account = input.accounts.find((a) => a.id === accountId);
-    const days = historyDays(input);
-    const short = days < SHORT_HISTORY_DAYS;
-    const months = short
-      ? Math.min(LOOKBACK_MONTHS, Math.max(1, Math.round(days / DAYS_PER_MONTH)))
-      : LOOKBACK_MONTHS;
+    const { short, months } = paceMonths(historyDays(input));
     // A card's annual fee comes once a year: it counts once, never scaled up with the rest
     // (night QA 10-30: a $95 annual fee in 3 months of statements counted as $380 a year).
     const yearly = sumCents(charges.filter((c) => ANNUAL_FEE_WORDS.test(c.description)));
