@@ -14,6 +14,7 @@ import {
   tx,
 } from "./__fixtures__/build";
 import {
+  alertDayOf,
   billReminderAlerts,
   detectAlerts,
   dueReportedCategories,
@@ -306,6 +307,13 @@ describe("bill_due", () => {
     expect(alert.body).toContain("$22.00");
   });
 
+  // Weekly email QA 10-30: a rent reminder "due Nov 1", raised Oct 30, was emailed Nov 2.
+  // Its day comes from its key, so it can be put away once the day has passed.
+  it("knows the day it is about", () => {
+    const [alert] = billReminderAlerts(withBalance(200_000));
+    expect(alertDayOf(alert)).toBe("2026-10-17");
+  });
+
   it("says nothing when the next bill is further off, or just went out", () => {
     expect(billReminderAlerts(withBalance(200_000, "2026-10-10"))).toEqual([]);
     expect(billReminderAlerts(withBalance(200_000, "2026-10-17"))).toEqual([]);
@@ -533,5 +541,14 @@ describe("confidence", () => {
     );
     expect(alerts.length).toBeGreaterThan(0);
     for (const a of alerts) expect(a.confidence.reason).toBe("7 fee charges in 4 months of data");
+  });
+});
+
+describe("alertDayOf", () => {
+  it("reads the day a dated alert is about, and none for an event that happened", () => {
+    expect(alertDayOf({ type: "renews_soon", key: "stream:costco:2026-11-03" })).toBe("2026-11-03");
+    expect(alertDayOf({ type: "estimated_tax", key: "2027-01-15" })).toBe("2027-01-15");
+    expect(alertDayOf({ type: "fee_charged", key: "tx_2026-10-17" })).toBeNull();
+    expect(alertDayOf({ type: "low_balance", key: "acct:2026-11" })).toBeNull();
   });
 });

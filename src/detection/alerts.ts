@@ -48,6 +48,17 @@ export type AlertCandidate = {
   confidence: Confidence;
 };
 
+// The day a dated alert is about (a bill's due date, a renewal, an IRS date), read from its key;
+// null for an alert about something that happened (a charge, a fee). Past that day it is old
+// news: a rent reminder "due Nov 1" raised Oct 30 went out in the Nov 2 email (QA 10-30).
+// Deadline reminders are checked against the deadlines themselves (src/lib/jane-agent/still-true.ts).
+const DATED_ALERTS: readonly AlertType[] = ["bill_due", "renews_soon", "estimated_tax"];
+
+export function alertDayOf(alert: { type: string; key: string }): string | null {
+  if (!DATED_ALERTS.includes(alert.type as AlertType)) return null;
+  return /(\d{4}-\d{2}-\d{2})$/.exec(alert.key)?.[1] ?? null;
+}
+
 export type AlertContext = {
   // Finding ids ("type\0key") that existed before this scan.
   knownFindings: ReadonlySet<string>;
