@@ -26,8 +26,9 @@ export const BNPL_MONTHLY_DAYS = { min: 26, max: 35 } as const;
 export const BNPL_LOOKBACK_DAYS = 200;
 // A plan is still running while its next payment is no more than this late.
 export const BNPL_GRACE_DAYS = 10;
-// Payments a few cents apart (rounding of the last one) are the same plan.
-export const BNPL_AMOUNT_TOLERANCE_CENTS = 2;
+// Payments a few cents apart are the same plan: a total split in four leaves up to 3 cents over
+// on one payment ($129.99 is $32.52 and three of $32.49; review 10-31).
+export const BNPL_AMOUNT_TOLERANCE_CENTS = 3;
 
 // Loans seen only in payments from checking (src/insights/paid-loans.ts): a student loan, car
 // loan or mortgage the person pays but hasn't linked. At least this many payments, the last
