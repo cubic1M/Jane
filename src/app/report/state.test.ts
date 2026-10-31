@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   evidenceCharges,
   findingSure,
+  foundHeadline,
   foundLine,
   reportOrder,
   reportState,
@@ -41,6 +42,19 @@ describe("shortUploadDays", () => {
   it("is null with enough months, or nothing uploaded", () => {
     expect(shortUploadDays(day("2026-07-01"), day("2026-09-30"))).toBeNull();
     expect(shortUploadDays(null, null)).toBeNull();
+  });
+});
+
+// Debugger 10-31: a double charge of $210 read "We found $210.00 a year".
+describe("foundHeadline", () => {
+  it("calls money back once what it is", () => {
+    expect(foundHeadline({ cents: 14_388, onceCents: 0 })).toBe("We found $143.88 a year");
+    expect(foundHeadline({ cents: 21_000, onceCents: 21_000 })).toBe(
+      "We found $210.00 to get back",
+    );
+    expect(foundHeadline({ cents: 35_388, onceCents: 21_000 })).toBe(
+      "We found $143.88 a year and $210.00 to get back",
+    );
   });
 });
 

@@ -4,12 +4,11 @@ import { Suspense } from "react";
 import { AccountList } from "@/components/account-list";
 import { AppHeader, PageLoading } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
-import { isFirstDetectionComplete, moneyFound } from "@/detection/engine";
+import { isFirstDetectionComplete, moneyFoundParts } from "@/detection/engine";
 import { listAccountSummaries } from "@/lib/accounts";
 import { CARD_SELECT } from "@/lib/cards";
 import { scopedDb } from "@/lib/db-scoped";
 import { explanationFor } from "@/lib/card-text";
-import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsLine } from "@/lib/savings-text";
 import { LoadingBar } from "@/components/loading-bar";
@@ -24,6 +23,7 @@ import { Checkup } from "./checkup";
 import { loadCheckup } from "@/lib/checkup";
 import {
   findingSure,
+  foundHeadline,
   foundLine,
   reportOrder,
   reportState,
@@ -56,14 +56,14 @@ const WHAT_WE_CHECK = [
 async function ReportContent() {
   const user = await requireUser();
   const db = await scopedDb();
-  const [accounts, findings, found, firstDetectionDone, scanRunning, uploaded, read, sures] =
+  const [accounts, findings, parts, firstDetectionDone, scanRunning, uploaded, read, sures] =
     await Promise.all([
       listAccountSummaries(db),
       db.findings.findMany({
         where: { status: { in: ["new", "shown"] } },
         select: { ...CARD_SELECT, confidence: true },
       }),
-      moneyFound(user.id),
+      moneyFoundParts(user.id),
       isFirstDetectionComplete(user.id),
       scanInProgress(user.id),
       // What uploaded statements cover, to ask for more months when it's short.
@@ -80,6 +80,7 @@ async function ReportContent() {
         orderBy: { lastSeenAt: "desc" },
       }),
     ]);
+  const found = parts.cents;
   // The profile's own count (src/profile/build.ts), so every "N months of data" agrees.
   // To the last day the statements reach, never past today, as the profile counts.
   const months =
@@ -205,7 +206,7 @@ async function ReportContent() {
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-semibold tracking-tight">
               {found > 0
-                ? `We found ${formatCents(found)} a year`
+                ? foundHeadline(parts)
                 : `We found ${findings.length} ${findings.length === 1 ? "thing" : "things"} to look at`}
             </h1>
             <p className="text-zinc-600 dark:text-zinc-400">

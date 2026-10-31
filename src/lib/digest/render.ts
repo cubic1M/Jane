@@ -34,6 +34,20 @@ function escapeHtml(value: string): string {
 
 const yearly = (cents: number | null) =>
   cents === null ? "" : ` (about ${formatCents(cents)} a year)`;
+// A finding's worth: money back once isn't "a year" (debugger 10-31: a double charge).
+const worth = (f: { annualSavingsCents: number | null; once?: true }) =>
+  f.once && f.annualSavingsCents !== null
+    ? ` (about ${formatCents(f.annualSavingsCents)} back)`
+    : yearly(f.annualSavingsCents);
+// "Still to look at": the yearly part a year, the part that comes back once as that.
+function stillToLook(p: DigestPayload): string | false {
+  if (p.moneyFoundCents <= 0) return false;
+  const once = p.moneyFoundOnceCents ?? 0;
+  const year = p.moneyFoundCents - once;
+  if (once <= 0) return `Still to look at: ${formatCents(p.moneyFoundCents)} a year`;
+  if (year <= 0) return `Still to look at: ${formatCents(once)} to get back`;
+  return `Still to look at: ${formatCents(year)} a year and ${formatCents(once)} to get back`;
+}
 
 // How sure, after each line: "(84% sure)". A finding stores a level, which is the band its
 // percentage fell in (SUGGESTION_CONFIDENCE_FROM), so it says that band.
@@ -153,9 +167,7 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
   if (p.newFindings.length > 0) {
     out.push({
       heading: "New since last week",
-      items: p.newFindings.map(
-        (f) => `${f.title}${yearly(f.annualSavingsCents)}${levelSure(f.confidence)}`,
-      ),
+      items: p.newFindings.map((f) => `${f.title}${worth(f)}${levelSure(f.confidence)}`),
       link: { label: "Open your report", url: links.report },
     });
   }
@@ -225,7 +237,7 @@ export function renderDigest(p: DigestPayload, links: DigestLinks) {
       `${SAVED_SO_FAR_LABEL}: about ${formatCents(p.savedToDateCents)} a year`,
     // Nor "Still to look at: $0.00 a year" when what's left has no dollar estimate (night QA
     // 10-30: an insurance reshop on its own).
-    p.moneyFoundCents > 0 && `Still to look at: ${formatCents(p.moneyFoundCents)} a year`,
+    stillToLook(p),
   ].filter((line): line is string => typeof line === "string");
   const body = sections(p, links);
   const close = { label: "See your monthly close", url: links.close };

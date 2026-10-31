@@ -53,6 +53,8 @@ export type HeroInput = {
     known?: boolean;
   } | null;
   foundCents: number;
+  // The part of foundCents that comes back once, not every year (a double charge).
+  foundOnceCents?: number;
   savedCents: number;
   // What the saved total is made of, biggest first (savedItems, src/lib/membership/service.ts).
   savedItems?: SavedItem[];
@@ -260,6 +262,7 @@ export function heroView(input: HeroInput): HeroView {
     netWorth: input.netWorth ? netWorthHero(input.netWorth) : null,
     saved: savedHero(
       input.foundCents,
+      input.foundOnceCents ?? 0,
       input.savedCents,
       input.savedItems ?? [],
       input.confirmedCents ?? 0,
@@ -405,6 +408,7 @@ function netWorthHero(nw: NonNullable<HeroInput["netWorth"]>): NetWorthHero {
 
 function savedHero(
   foundCents: number,
+  foundOnceCents: number,
   savedCents: number,
   items: SavedItem[],
   confirmedCents: number,
@@ -426,7 +430,8 @@ function savedHero(
   return {
     label: "Money found",
     cents: foundCents,
-    perYear: true,
+    // Not "/yr" when some of it comes back once (debugger 10-31: a $210 double charge).
+    perYear: foundOnceCents === 0,
     share: 0,
     items: [],
     more: 0,

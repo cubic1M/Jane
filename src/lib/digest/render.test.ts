@@ -59,6 +59,28 @@ describe("renderDigest", () => {
     expect(html).not.toMatch(/<img/);
   });
 
+  // Debugger 10-31: a $210 double charge read "about $210.00 a year".
+  it("says money back once is back once, not a year", () => {
+    const email = renderDigest(
+      {
+        ...payload,
+        moneyFoundCents: 71_000,
+        moneyFoundOnceCents: 21_000,
+        newFindings: [
+          {
+            title: "Charged twice? $210.00 at Sunrise Dental",
+            annualSavingsCents: 21_000,
+            once: true,
+          },
+        ],
+      },
+      LINKS,
+    );
+    expect(email.text).toContain("Still to look at: $500.00 a year and $210.00 to get back");
+    expect(email.text).toContain("Charged twice? $210.00 at Sunrise Dental (about $210.00 back)");
+    expect(email.text).not.toContain("$210.00 a year");
+  });
+
   // Night QA 10-30: an email whose only finding had no dollar estimate said "Still to look at:
   // $0.00 a year".
   it("leaves out what's still to look at when it has no dollar figure", () => {
