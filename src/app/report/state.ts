@@ -2,7 +2,7 @@ import { COUNT_ONLY_WHEN_APPROVED } from "@/config/detection";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 import { CONFIDENCE_SCORE, REPORT_LIKELIHOOD } from "@/config/priorities";
 import { confidenceOf, counted } from "@/profile/confidence";
-import { SUGGESTED_UPLOAD_DAYS } from "@/config/import";
+import { STALE_UPLOAD_DAYS, SUGGESTED_UPLOAD_DAYS } from "@/config/import";
 import type { FindingType } from "@/generated/prisma/client";
 
 // What the report shows. While the first scan still runs it says so, with what's found so far,
@@ -39,6 +39,17 @@ export function shortUploadDays(
   if (!first || !last) return null;
   const days = Math.round((last.getTime() - first.getTime()) / DAY_MS) + 1;
   return days < enough ? days : null;
+}
+
+// The last day the statements reach (YYYY-MM-DD) when that's over STALE_UPLOAD_DAYS ago, so the
+// report can say its findings describe then; null when they're recent or there are none.
+export function staleStatementsEnd(
+  last: Date | null,
+  now: Date,
+  after = STALE_UPLOAD_DAYS,
+): string | null {
+  if (!last) return null;
+  return now.getTime() - last.getTime() > after * DAY_MS ? last.toISOString().slice(0, 10) : null;
 }
 
 // The line under "We found $X a year". Subscriptions count toward the total only once the
