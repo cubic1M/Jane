@@ -303,10 +303,25 @@ async function scanSuggestionsWork(
     // stored as waiting, so the area pages and the report's tree have it today, not tomorrow
     // (debugger 10-31: a card's interest was the report's top card while Loans said "All
     // good"). Today's picks stay; tomorrow's scan ranks it with the rest.
+    // One that had gone (it stopped firing) and fires again comes back as waiting too (review
+    // 10-31). Rows another scan created a moment ago are skipped, not an error: scans run from
+    // uploads, syncs and the agent at once.
+    await client.suggestion.createMany({
+      data: found
+        .filter((s) => !byKey.has(s.id))
+        .map((s) => ({
+          userId,
+          key: s.id,
+          ...suggestionData(s, 0, now),
+          status: "waiting" as const,
+        })),
+      skipDuplicates: true,
+    });
     for (const s of found) {
-      if (byKey.has(s.id)) continue;
-      await client.suggestion.create({
-        data: { userId, key: s.id, ...suggestionData(s, 0, now), status: "waiting" },
+      if (byKey.get(s.id)?.status !== "gone") continue;
+      await db.suggestions.updateMany({
+        where: { key: s.id, status: "gone" },
+        data: { ...suggestionData(s, 0, now), status: "waiting" },
       });
     }
     return { fired: found.length, selected: keep.map((c) => c.key) };
