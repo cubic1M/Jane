@@ -76,6 +76,8 @@ describe("who am I", () => {
           ...["2026-03-03", "2026-03-10", "2026-03-17", "2026-03-24"].map((d) =>
             day(d, "PETCO 1881"),
           ),
+          // Statements reaching this month (months count to the last statement day).
+          day("2026-10-15", "SOME SHOP"),
         ],
         accounts: [],
         liabilities: [],
