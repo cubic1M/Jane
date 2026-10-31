@@ -104,7 +104,7 @@ def _helper(conn, counter, spec, tree_cfg, ab_state, K, dcfr, prune_frac, shm_sp
             bk, out, w, tasks, chunks, t = msg
             if tasks:
                 tr.set_batch(bk, out, w)
-            conn.send(("ok", _work(tr, ab, counter, tasks, chunks, seed, t)))
+            conn.send(("ok", _work(tr, ab, counter, tasks, chunks, seed, t) + (time.process_time(),)))
     except Exception:
         try:
             conn.send(("error", traceback.format_exc()))
@@ -156,6 +156,7 @@ class ParallelCFR:
             sub[n] = (tree.kind[n] == DECISION) + sum(sub[c] for c in tree.children[n])
         self.cost = {n: 60e-6 * sub[n] for n in self.front}   # seconds; refined by measurement
         self.stats = dict(top_s=0.0, parallel_s=0.0, items_main=0, items_total=0)
+        self.helper_cpu = [0.0] * (self.workers - 1)   # CPU seconds used by each helper so far
         ctx = mp.get_context("spawn")
         self.counter = ctx.Value("l", 0)
         shm_spec = [(s.name, sh) for s, sh in zip(self._shms, shapes)]
@@ -222,8 +223,9 @@ class ParallelCFR:
             c.send((buckets, outcome, w, tlist, chunks, t))
         vals, secs, samples = _work(tr, self.ab, self.counter, tlist, chunks, self.seed, t)
         self.stats["items_main"] += len(vals) + len(samples)
-        for c in self.conns:
-            v2, s2, sm2 = self._recv(c)
+        for i, c in enumerate(self.conns):
+            v2, s2, sm2, cpu = self._recv(c)
+            self.helper_cpu[i] = cpu
             vals.update(v2)
             secs.update(s2)
             samples.update(sm2)

@@ -143,6 +143,26 @@ def strength(bot, spec, opps=("equity", "station", "push"), pairs=2, hands=300):
     return res
 
 
+def checkpoints(mins: int) -> list:
+    """Checkpoint minutes of a background training run of `mins` minutes."""
+    return sorted({m for m in (5, 15, mins) if m <= mins})
+
+
+def training_hint(spec_name: str, train: int, train_full: int) -> str:
+    """How to check the background training's checkpoints (bot names that load them)."""
+    bots, notes = [], []
+    if train:
+        bots.append(f"preflop_cfr@{train}m")
+        notes.append("preflop_cfr checkpoints " + ", ".join(f"{m}m" for m in checkpoints(train)))
+    if train_full:
+        cps = checkpoints(train_full)
+        bots.append(f"hybrid@{15 if 15 in cps else cps[-1]}m")
+        notes.append("hybrid checkpoints " + ", ".join(f"{m}m" for m in cps))
+    return ("\n  CFR training still running in the background. When a checkpoint appears in cache/cfr/, "
+            f"check it with:\n    python3 dayof.py --variant {spec_name} --quick --bots " + ",".join(bots)
+            + "\n  (" + "; ".join(notes) + ")")
+
+
 def main(argv=None):
     from engine.conformance import check_bot
     from experiments.common import make_bot
@@ -168,7 +188,7 @@ def main(argv=None):
     for kind, mins in (("preflop", a.train), ("full", a.train_full)):
         if mins:
             mod = "bots.cfr_preflop.train" if kind == "preflop" else "bots.cfr_full.train"
-            cps = ",".join(str(x) for x in sorted({m for m in (5, 15, mins) if m <= mins}))
+            cps = ",".join(str(x) for x in checkpoints(mins))
             log = open(os.path.join(ROOT, f"dayof_train_{kind}_{spec.name}.log"), "w")
             procs.append(subprocess.Popen([sys.executable, "-m", mod, "--variant", spec.name, "--minutes", str(mins),
                                            "--checkpoints", cps, "--out", "cache/cfr/"], cwd=ROOT, stdout=log,
@@ -180,7 +200,7 @@ def main(argv=None):
     print(txt)
 
     print("\nC+D. CONFORMANCE + TIMING")
-    bots = a.bots.split(",")
+    bots = [b.strip() for b in a.bots.split(",") if b.strip()]
     lim = spec.time_per_decision
     for b in bots:
         t0 = time.time()
@@ -220,14 +240,7 @@ def main(argv=None):
             print(f"  vs {o:8s} {m:+.2f} ± {se:.2f}   {flag}")
 
     if procs:
-        hint = []
-        if a.train:
-            hint.append(f"preflop_cfr@{a.train}m")
-        if a.train_full:
-            hint.append(f"hybrid@<checkpoint>m (checkpoints 5, 15, {a.train_full}; e.g. hybrid@{min(15, a.train_full)}m)")
-        print(f"\n  CFR training still running in the background. When a checkpoint appears in cache/cfr/, check it with:\n"
-              f"    python3 dayof.py --variant {spec.name} --quick --bots " + ",".join(h.split()[0] for h in hint)
-              + "\n  (" + "; ".join(hint) + ")")
+        print(training_hint(spec.name, a.train, a.train_full))
     print("\n" + ("GO" if ok else "NO-GO: fix the failures above") + f"   (checks took {time.time() - t_start:.0f}s)")
     return 0 if ok else 1
 

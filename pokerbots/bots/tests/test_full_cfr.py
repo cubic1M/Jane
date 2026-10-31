@@ -420,7 +420,7 @@ class TestParallel(unittest.TestCase):
             cfg = AbstractionConfig(buckets=(6, 5, 5, 5), n_fit=300, table_seconds=1e4, n_post=16, n_disc=8)
             spec = VARIANTS["f_nlhe20"]
             strat = {}
-            for w in (1, 1, 2, 2):
+            for w in (1, 1, 2, 2, 3):
                 written, tr, ab, tree = train(spec, minutes=5, seed=3, out_dir=tmp, abs_cfg=cfg, batch=128,
                                               workers=w, suffix=f"w{w}", max_iters=5, log=lambda s: None)
                 self.assertEqual(tr.t, 5)
@@ -430,6 +430,8 @@ class TestParallel(unittest.TestCase):
                 if w in strat:  # same seed, same worker count -> same policy
                     np.testing.assert_array_equal(strat[w], data["strategy"])
                 strat[w] = data["strategy"]
+            # sampling chunks have their own (seed, iteration, chunk) RNG: any workers >= 2 agree
+            np.testing.assert_array_equal(strat[2], strat[3])
             bot = make_bot(budget="5m_w2", cache_dir=tmp)
             r = play_match(bot, RandomLegalBot(), spec, deal_seed=2, hands=30)
             self.assertFalse(bot.using_fallback)

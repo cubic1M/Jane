@@ -294,7 +294,7 @@ def train(spec: GameSpec, minutes: float, checkpoints=(), seed: int = 0, out_dir
           max_iters: int = 0, split_street=None):
     """workers=1: the original single-process loop. workers=N>1: N processes walk disjoint
     subtrees of every iteration (exactly the same update for the same batch, see
-    parallel.py) and N-1 of them sample the fresh deals. max_iters > 0 stops after that many
+    parallel.py) and sample the fresh deals in chunks. max_iters > 0 stops after that many
     iterations (writes the final checkpoint then; for tests/benchmarks). suffix is appended
     to checkpoint names: full_<variant>_<M>m_<suffix>.pkl (load with budget="<M>m_<suffix>")."""
     t_start = time.perf_counter()
@@ -353,7 +353,9 @@ def _train_loop(spec, minutes, checkpoints, seed, out_dir, tree, ab, tr, par, rn
                         batch=B, fresh=n_fresh, seed=seed, infosets=tr.n_infosets, touched=tr.touched(),
                         dcfr=(tr.alpha, tr.beta, tr.gamma), workers=workers,
                         iters_per_s=round(tr.t / run, 3), fresh_deals=fresh_deals,
-                        fresh_deals_per_s=round(fresh_deals / run, 1))
+                        fresh_deals_per_s=round(fresh_deals / run, 1),
+                        cpu_s=round(time.process_time() + (sum(par.helper_cpu) if par else 0.0), 1),
+                        load=_loadavg())
             save_policy(path, make_policy_data(spec, tree, ab, tr.average_strategy(), tr.visits, meta))
             log(f"[checkpoint] {path}  iters {tr.t} deals {tr.deals} elapsed {now - t_start:.0f}s")
             written.append(path)
@@ -389,11 +391,20 @@ def _train_loop(spec, minutes, checkpoints, seed, out_dir, tree, ab, tr, par, rn
                 extra = (f"; per iter: serial top-of-tree {1e3 * st['top_s'] / tr.t:.0f} ms, parallel "
                          f"subtrees+sampling {1e3 * st['parallel_s'] / tr.t:.0f} ms, main took "
                          f"{st['items_main'] / max(1, st['items_total']):.0%} of the work items")
+            cpu = time.process_time() + (sum(par.helper_cpu) if par else 0.0)
+            extra += f"; CPU {cpu / (t2 - t_start):.2f} cores busy, load {_loadavg()}"
             log(f"[train] {spec.name} t={t2 - t_start:6.0f}s iters {tr.t} ({tr.t / run:.2f} it/s, "
                 f"{tr.deals / run:.0f} batch deals/s, {fresh_deals / run:.0f} fresh deals/s; "
-                f"sampling {t_sample / run:.0%}{extra}) infosets touched "
+                f"{'pool' if par else 'sampling'} {t_sample / run:.0%}{extra}) infosets touched "
                 f"{tr.touched()}/{tr.n_infosets}  root value(p0) {np.mean(vals[-50:]) / spec.big_blind:+.3f} bb")
     return written, tr, ab, tree
+
+
+def _loadavg():
+    try:
+        return tuple(round(x, 2) for x in os.getloadavg())
+    except (OSError, AttributeError):
+        return None
 
 
 def _fmt(m: float) -> str:

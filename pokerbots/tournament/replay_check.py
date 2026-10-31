@@ -59,6 +59,8 @@ def replay(h, spec):
     i = [0]
 
     def decide(pos, obs):
+        assert i[0] < len(acts), (f"hand {h['n']}: our engine asks position {pos} for a decision "
+                                  f"(street {obs.street}, {obs.phase}) after the server's last action")
         who, kind, args = acts[i[0]]
         i[0] += 1
         assert who == (sb if pos == 0 else bb), f"hand {h['n']}: expected {who} to act, our engine asks position {pos}"
@@ -74,6 +76,10 @@ def replay(h, spec):
 
     st = HandState(spec, deck)
     d = st.play(decide)
+    # a hand our engine ends early can still give the same chips (e.g. a fold on a street
+    # our spec does not have): every server action must have been replayed
+    assert i[0] == len(acts), (f"hand {h['n']}: our engine ended the hand with {len(acts) - i[0]} server "
+                               f"action(s) not replayed, next: {acts[i[0]][:2]}")
     return {sb: d[0], bb: d[1]}
 
 

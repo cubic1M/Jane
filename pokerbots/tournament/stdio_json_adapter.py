@@ -65,6 +65,11 @@ class StdioAdapter:
     def history(self, actions) -> tuple:
         sp = self.spec
         street, bets, acted = 0, [0, 0], [False, False]
+        # the k-th discard of a player belongs to the k-th discard rule (engine order: by
+        # street); after an all-in no betting actions mark the street changes, so the
+        # discard's street comes from the spec, not from the betting replay
+        rules = sorted(sp.discards, key=lambda r: r.street)
+        n_disc = [0, 0]
         out = []
         for seat, text in actions:
             p = self.pos(seat)
@@ -75,7 +80,11 @@ class StdioAdapter:
                 bets[p] += int(w[1])
                 continue
             if kind == "discard":
-                st = max(street, 1)
+                k = n_disc[p]
+                n_disc[p] += 1
+                st = rules[k].street if k < len(rules) else max(street, 1)
+                if st > street:
+                    street, bets, acted = st, [0, 0], [False, False]
                 out.append(ActionRecord(p, st, DISCARD, 0, cards(w[1:])))
                 continue
             if kind == "fold":
@@ -182,6 +191,10 @@ class StdioAdapter:
             shown = m.get("shown")
             showdown = bool(m.get("showdown")) and shown is not None
             folded = m.get("folded")
+            if folded is None and not showdown:
+                # every hand ends in a fold or a showdown: the hand_end mapping is off
+                self.warn("hand_end", f"HAND_END MAPPING? hand {m.get('hand')}: no fold and no showdown "
+                                      f"(showdown={m.get('showdown')!r}, shown={shown!r}, folded={folded!r})")
             res = HandResult(position=p, delta=int(m["result"]), showdown=showdown,
                              my_cards=cards(shown[seat]) if showdown else (),
                              opp_cards=cards(shown[1 - seat]) if showdown else None,
