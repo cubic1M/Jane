@@ -75,6 +75,16 @@ class FullCFRBot(Bot):
         self.np_rng = np.random.default_rng(seed)
         self.eqm = get_equity_model(spec)
         path = self.policy_path or policy_path_for(spec.name, self.budget, self.cache_dir)
+        if not self.policy_path and not os.path.exists(path):
+            # a new name for a game the library already holds (the day-of spec)
+            from bots.cfr_full.library import find_policy
+            lib = find_policy(spec, self.budget, self.cache_dir)
+            if lib:
+                if self.verbose and (path, lib) not in _WARNED:
+                    _WARNED.add((path, lib))
+                    print(f"[full_cfr] no {os.path.basename(path)}; using the library policy "
+                          f"{os.path.basename(lib)} (same game)", file=sys.stderr)
+                path = lib
         self.policy = None
         self.using_fallback = True
         try:

@@ -375,7 +375,7 @@ adapter.
 | time | who | step | done when |
 |---|---|---|---|
 | 0–5 | A | Read the rules. Copy the closest spec in `engine/variants.py`, edit it, add it to `DAY_VARIANTS`. Put the time limits and the hand count in the spec. Watch for: which seat is which blind, who acts first postflop, who discards first and where the card goes (board / dead face up / muck), exactly-K usage, stack in chips vs bb, pot- vs no-limit, scoring (chips or matches). | spec written |
-| 5–8 | A | `python3 dayof.py --variant <name> --bots balanced,champion@15m --train-full 15 --workers <cores>`. **Read section A of the output against the announcement line by line.** This also starts CFR training in the background, with checkpoints at 5 and 15 minutes. | GO for balanced |
+| 5–8 | A | `python3 dayof.py --variant <name> --bots balanced,champion@15m_w4 --train-full 15 --workers <cores>`. **Read section A of the output against the announcement line by line.** Section A ends with a LIBRARY line. If it says **same game as full_<v>_15m_w4.pkl**, `champion@15m_w4` already plays a trained policy: stop the background training, and take the minute-35 switch as soon as the adapter is proven (minute 20). Otherwise training runs in the background (checkpoints at 5 and 15 minutes); a LIBRARY "nearest" that differs only in a field you may have misread is a cue to re-read the rules. | GO for balanced |
 | 5–20 | B | Wire the tournament API to our `Observation`. If it is the MIT skeleton, edit `PROTOCOL` in `tournament/mit_adapter.py`. If it is JSON over pipes, edit `tournament/stdio_json_adapter.py`. Otherwise copy one of them (three translations: state → Observation, our Action → their action, hand end → HandResult). The adapter prints `[adapter]` warnings on blind, stack, pot, hole-card or hand-end mismatches; there must be none. stdout carries only protocol answers. | 300 local hands vs their sample bot, 0 warnings, 0 illegal |
 | 20 | B | **Prove the mapping:** run their server/engine with our bot and write a hand log; `python3 tournament/replay_check.py <log> <variant>` must report every hand identical (adapt `parse_log` to their log format if needed). | 100% hands match |
 | 20 | A+B | **Submit `balanced`** (`+lp` if scoring is matches won) through the adapter. Safe entry. | submitted |
@@ -387,7 +387,8 @@ adapter.
 Files that change on the day:
 * `engine/variants.py`: one `GameSpec` (3–10 lines).
 * The adapter's `PROTOCOL` (or a new adapter file copied from one of the two).
-* Generated: `cache/cfr/full_<name>_<M>m_w<N>.pkl`.
+* Generated: `cache/cfr/full_<name>_<M>m_w<N>.pkl` (not needed when the LIBRARY line
+  reports the same game: the bot finds the library policy under the new spec name).
 
 Files that do not change: the rest of `engine/`, `bots/`, `experiments/`, `dayof.py`.
 
@@ -538,13 +539,57 @@ Full log: `report/rehearsal_log.md`.
 * A vectorised evaluator for bucketing (`bots/cfr_full/fasteval.py`, bit-identical
   scores) makes bucketing 4–5× faster and single-process training 1.6–1.8× faster.
 * A shared-memory multi-process trainer (`--workers N`) is bit-identical to one
-  process. Its wall-clock gain could not be measured on the saturated study machine;
-  projected about 2.5× at 4 workers on an idle machine.
+  process. Measured on an idle 4-core machine (iterations in 2 minutes, `a_nlhe100`):
+  1 worker 282, 2 workers 485 (1.7×), 4 workers 800 (2.8×). So 15 minutes on 4 cores
+  is about as many iterations as the old 60-minute single-core run.
 * A richer abstraction (20/15/15/15 buckets, E[HS²]) gave no measurable gain at equal
   budget.
 * Day-of command:
   `python3 dayof.py --variant X --train-full 15 --workers <cores>`, or directly:
   `python3 -m bots.cfr_full.train --variant X --minutes 15 --workers N --suffix wN`.
+
+### 7e. Pre-trained policy library
+
+To make the day-of CFR policy instant whenever the announced game is one we
+anticipated, `experiments/train_library.py` trains full-game CFR for 15 minutes on
+4 workers for each of 14 games, and the files are kept in git
+(`cache/cfr/full_<v>_15m_w4.pkl`, about 1 MB each, sha256 list in
+`cache/cfr/LIBRARY.sha256`):
+
+* the 7 study variants a–g;
+* the rehearsal and hold-out variants: Irish PLO (`k_irish`), PLO5, double discard,
+  3-street hold'em;
+* three likely extras: NLHE at 50 bb and 150 bb, and 4-card PLO (`l_nlhe50`,
+  `m_nlhe150`, `n_plo4`).
+
+A policy belongs to a game tree, not a name. `bots/cfr_full/library.py` matches a spec
+to a library policy on every field that changes the tree; the name, time limits,
+match length and notes are ignored. When `full_<dayname>_15m_w4.pkl` does not exist,
+`champion@15m_w4` (and `full_cfr@15m_w4`) loads the matching library policy and says so on
+stderr. `dayof.py` section A prints the match. If there is no match, it prints the
+three nearest library games and the fields where they differ, which also catches
+a misread rule. Any difference in blinds, stack, betting or discards counts as a different
+game, so the bot never plays a policy trained for another tree.
+
+Validation (exp `library_check`, fresh seeds 60000+, 6 duplicate pairs × 1000 hands,
+`champion@15m_w4` row bot, bb/hand, 95% CI):
+
+| variant | vs `champion@30m` (old single-core) | vs `full_cfr@30m` | matches won |
+|---|---|---|---|
+| a_nlhe100 | −0.06 ± 0.13 | −0.06 ± 0.13 | 5 of 12 |
+| c_discard3 | +0.17 ± 0.23 | +0.17 ± 0.23 | 8 of 12 |
+
+Both differences are within noise, so the new trainer's 15-minute policies are as
+strong as the old 30-minute ones; this check cannot rank them. The two columns are
+identical because the champion's gate never trips against a strong bot: it then plays
+pure full CFR, deal for deal. Decisions take 0.18 ms (hold'em) and 0.95 ms (discard
+hold'em) on average, and at most 9 ms.
+
+Iterations per 15-minute library policy, with training sharing the machine with tests:
+a_nlhe100 5,818; c_discard3 3,545; k_irish 4,020; n_plo4 5,374 (the rest are in
+`results/logs/library.log`). `bots/tests/test_library.py` checks every listed file:
+the hash, that it was trained for the variant in its name, more than 1,000 iterations,
+and legal, fast play from both seats.
 
 ## Appendix: assumptions and defaults chosen
 * Scoring: total chips (lead protection off). If matches are won/lost, switch it on.

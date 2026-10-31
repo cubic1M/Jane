@@ -1,7 +1,12 @@
 __pycache__/
 *.pyc
 results/raw/
-cache/
+cache/*
+!cache/cfr/
+cache/cfr/*
+# the pre-trained policy library is kept in git (experiments/train_library.py)
+!cache/cfr/full_*_15m_w4.pkl
+!cache/cfr/LIBRARY.sha256
 *.log
 results_quick/
 report/tables_quick.md

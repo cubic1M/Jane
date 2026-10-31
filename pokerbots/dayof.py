@@ -40,6 +40,8 @@ from engine.variants import get_variant  # noqa: E402
 POS = {0: "SB/button", 1: "BB"}
 
 
+LIBRARY_BUDGET = "15m_w4"  # experiments/train_library.py
+
 def rules_summary(spec) -> str:
     st = ["preflop", "flop", "turn", "river"] + [f"street{i}" for i in range(4, 10)]
     lines = [f"Variant {spec.name}: {spec.notes}",
@@ -148,6 +150,23 @@ def checkpoints(mins: int) -> list:
     return sorted({m for m in (5, 15, mins) if m <= mins})
 
 
+def library_status(spec, budget: str = LIBRARY_BUDGET) -> str:
+    """Whether the pre-trained policy library already holds this game."""
+    from bots.cfr_full.library import find_policy, nearest
+    from bots.full_cfr import DEFAULT_DIR
+    p = find_policy(spec, budget, DEFAULT_DIR)
+    if p:
+        return (f"\n  LIBRARY: same game as {os.path.basename(p)}: champion@{budget} plays this trained "
+                f"policy NOW (no training needed; still check it in C+D)")
+    near = nearest(spec, budget, DEFAULT_DIR)
+    if not near:
+        return f"\n  LIBRARY: no {budget} policies in {DEFAULT_DIR}: train (--train-full 15 --workers <cores>)"
+    lines = [f"\n  LIBRARY: no {budget} policy for this exact game: train it (--train-full 15 --workers <cores>)."
+             " Nearest (if a difference is a misread rule, fix the spec):"]
+    lines += [f"    {name:18s} differs in: {', '.join(d) or '-'}" for name, _, d in near]
+    return "\n".join(lines)
+
+
 def training_hint(spec_name: str, train: int, train_full: int, workers: int = 1) -> str:
     """How to check the background training's checkpoints (bot names that load them)."""
     bots, notes = [], []
@@ -169,7 +188,7 @@ def main(argv=None):
     from experiments.common import make_bot
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--variant", required=True)
-    ap.add_argument("--bots", default="balanced,champion@15m,equity",
+    ap.add_argument("--bots", default="balanced,champion@15m_w4,equity",
                     help="bots to conformance-check; the first is the main bot (CFR bots report NO POLICY until trained)")
     ap.add_argument("--hands", type=int, default=60, help="conformance hands per match")
     ap.add_argument("--pairs", type=int, default=2)
@@ -188,6 +207,7 @@ def main(argv=None):
     print(rules_summary(spec))
     print("\n  sample hands (call-down play; check order of action, discards, board, winner):")
     print(narrated_hands(spec))
+    print(library_status(spec))
     procs = []
     for kind, mins in (("preflop", a.train), ("full", a.train_full)):
         if mins:

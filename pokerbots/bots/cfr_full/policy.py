@@ -94,11 +94,10 @@ def load_policy_data(path: str) -> dict:
 def load_policy(path: str, spec: GameSpec) -> Policy:
     data = load_policy_data(path)
     if data["spec_repr"] != repr(spec):
-        # time limits do not change the game tree; anything else does
-        a = spec.with_(time_per_decision=None, time_per_match=None, hands_per_match=1, notes="")
+        # name, time limits and match length do not change the game tree; anything else does
+        from bots.cfr_full.library import game_key
         b_spec = _spec_from_repr(data["spec_repr"])
-        if b_spec is None or repr(a) != repr(b_spec.with_(time_per_decision=None, time_per_match=None,
-                                                         hands_per_match=1, notes="")):
+        if b_spec is None or game_key(spec) != game_key(b_spec):
             raise ValueError(f"policy {path} was trained for a different spec ({data['spec_name']})")
     return Policy(spec, data)
 

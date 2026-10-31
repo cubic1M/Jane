@@ -321,6 +321,28 @@ class TestPolicyAndBot(unittest.TestCase):
         bot.new_match(VARIANTS["f_nlhe20"], 0)
         self.assertFalse(bot.using_fallback)
 
+    def test_library_finds_same_game_under_a_new_name(self):
+        from bots.cfr_full.library import find_policy, nearest
+        path = self.paths["f_nlhe20"][0]
+        budget = os.path.basename(path)[len("full_f_nlhe20_"):-len(".pkl")]
+        day = VARIANTS["f_nlhe20"].with_(name="day_variant", time_per_decision=0.5, time_per_match=60.0,
+                                          hands_per_match=500, notes="announced")
+        self.assertEqual(find_policy(day, budget, self.tmp), path)
+        load_policy(path, day)                       # the loader accepts the renamed game
+        bot = make_bot(budget=budget, cache_dir=self.tmp, verbose=False)
+        bot.new_match(day, 0)
+        self.assertFalse(bot.using_fallback)
+        # any game-tree difference is a different game: no policy, and nearest names the field
+        deeper = day.with_(starting_stack=day.starting_stack * 2)
+        self.assertIsNone(find_policy(deeper, budget, self.tmp))
+        with self.assertRaises(ValueError):
+            load_policy(path, deeper)
+        bot = make_bot(budget=budget, cache_dir=self.tmp, verbose=False)
+        bot.new_match(deeper, 0)
+        self.assertTrue(bot.using_fallback)
+        name, p, d = nearest(deeper, budget, self.tmp)[0]
+        self.assertEqual((name, d), ("f_nlhe20", ["starting_stack"]))
+
     def test_bot_without_policy_falls_back(self):
         for v in ("a_nlhe100", "c_discard3", "d_omaha4x2", "g_pineapple"):
             bot = self._check_play(lambda: make_bot(budget="no_such_budget", verbose=False), VARIANTS[v],
