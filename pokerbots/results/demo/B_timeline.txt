@@ -1,2 +1,13 @@
 [+0s 20:43:05] start: dayof --train-full 15 --workers 4
 [+52s 20:43:57] dayof done rc=0 (GO   (checks took 52s))
+[+303s 20:48:08] 5-minute checkpoint written
+[+304s 20:48:09] 5m check:   champion@5m_w4   OK     mean 0.2 ms  max 1 ms  ~0 s per 1000-hand match  (1s) / GO   (checks took 1s)
+[+905s 20:58:10] 15-minute checkpoint written
+[+907s 20:58:12] 15m check: GO   (checks took 2s)
+  champion@15m_w4  OK     mean 0.2 ms  max 0 ms  ~0 s per 1000-hand match  (1s)
+  champion@15m_w4+lp OK     mean 0.2 ms  max 0 ms  ~0 s per 1000-hand match  (1s)
+[train] demo_nlhe_scaled t=   884s iters 6324 (7.16 it/s, 7334 batch deals/s, 3667 fresh deals/s; pool 0%; per iter: serial top-of-tree 26 ms, parallel subtrees+sampling 114 ms, main took 25% of the work items; CPU 3.26 cores busy, load (3.07, 3.07, 2.09)) infosets touched 38616/38616  root value(p0) +0.028 bb
+[checkpoint] cache/cfr/full_demo_nlhe_scaled_15m_w4.pkl  iters 6438 deals 6592512 elapsed 900s
+written: cache/cfr/full_demo_nlhe_scaled_5m_w4.pkl cache/cfr/full_demo_nlhe_scaled_15m_w4.pkl
+[+907s 20:58:12] strength: freshly trained champion vs balanced, 6 pairs x 1000 hands
+[+981s 20:59:26] done

@@ -21,14 +21,17 @@ MANIFEST = os.path.join(DEFAULT_DIR, "LIBRARY.sha256")
 def entries():
     if not os.path.exists(MANIFEST):
         return []
-    return [line.split() for line in open(MANIFEST) if line.strip()]
+    with open(MANIFEST) as f:
+        return [line.split() for line in f if line.strip()]
 
 
 @unittest.skipUnless(entries(), "no policy library in cache/cfr")
 class TestLibrary(unittest.TestCase):
     def test_every_policy_file_is_listed_and_intact(self):
+        # library games only: a policy trained on the day lands in the same folder
+        from experiments.train_library import ORDER
         listed = {name for _, name in entries()}
-        on_disk = {f for f in os.listdir(DEFAULT_DIR) if f.endswith("_15m_w4.pkl")}
+        on_disk = {f"full_{v}_15m_w4.pkl" for v in ORDER} & set(os.listdir(DEFAULT_DIR))
         self.assertEqual(on_disk - listed, set(), "rerun: python3 -m experiments.train_library --manifest-only")
         for digest, name in entries():
             with open(os.path.join(DEFAULT_DIR, name), "rb") as f:

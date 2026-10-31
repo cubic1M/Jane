@@ -4,7 +4,6 @@ all:
 quick:
 	QUICK=1 ./run_all.sh
 test:
-	python3 -m unittest discover -s engine/tests -t .
-	python3 -m unittest discover -s bots/tests -t .
+	./run_tests.sh
 tables:
 	python3 -m report.make_tables

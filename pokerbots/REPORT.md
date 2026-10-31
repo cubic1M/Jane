@@ -610,6 +610,17 @@ iteration expensive. `bots/tests/test_library.py` checks every listed file:
 the hash, that it was trained for the variant in its name, more than 1,000 iterations,
 and legal, fast play from both seats.
 
+### 7f. Timed day-of demos (details: `report/demo_log.md`)
+
+| scenario | spec to verified champion | notes |
+|---|---|---|
+| library hit (rehearsal game, new name), through the real server | **about 2 min** machine time | 4,000/4,000 server hands replay identically; +8.6 bb/hand vs the example bot; 108 s of the 120 s bank left |
+| library miss (NLHE at 50/100 chips), 15-min training on 4 cores | **about 16 min** | `balanced` GO at 52 s; day-trained champion as strong as the library one on the same seeds |
+| all 244 tests (`./run_tests.sh`, 5 suites in parallel) | 2 min 54 s | all pass |
+
+The champion's one losing matchup remains `opp_exploit` (−0.39 ± 0.27 on hold'em in
+this demo; −0.23 ± 0.20 over 5 variants in §7a).
+
 ## Appendix: assumptions and defaults chosen
 * Scoring: total chips (lead protection off). If matches are won/lost, switch it on.
 * Matches: 1000 hands heads-up, stacks reset each hand, positions alternate; all
