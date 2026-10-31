@@ -107,11 +107,11 @@ export async function explainFigure(
       ...base,
       ...empty,
       value: formatCents(safe.safeCents),
-      summary: `What's in checking, less the bills due before ${safe.payday ?? "your next paycheck"}, what's left in this month's budgets, this month's goal amounts and the set-aside for yearly bills.`,
+      summary: `What's in checking, less the bills and regular transfers due before ${safe.payday ?? "your next paycheck"}, what's left in this month's budgets, this month's goal amounts and the set-aside for yearly bills.`,
       rows: [
         { label: "In checking today", value: formatCents(safe.balanceCents) },
         ...safe.bills.map((b) => ({
-          label: `Bill: ${b.merchant}`,
+          label: b.transfer ? `Regular transfer: ${b.merchant}` : `Bill: ${b.merchant}`,
           value: `−${formatCents(b.amountCents)}`,
           note: b.date,
         })),

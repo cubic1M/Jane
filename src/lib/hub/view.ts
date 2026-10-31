@@ -34,9 +34,14 @@ export type SafeInput = {
   goalsCents: number;
   setAsideCents: number;
   safeCents: number;
-  // The bills before payday, one by one (src/planning/safe-to-spend.ts).
-  bills?: { merchant: string; date: string; amountCents: number }[];
+  // The bills before payday, one by one (src/planning/safe-to-spend.ts); transfer marks a
+  // regular move out that isn't a bill.
+  bills?: { merchant: string; date: string; amountCents: number; transfer?: true }[];
 };
+
+// "Bills", or "Bills and transfers" when a regular move out is among them.
+const billsWord = (safe: SafeInput) =>
+  safe.bills?.some((b) => b.transfer) ? "Bills and transfers" : "Bills";
 
 export type HeroInput = {
   asOf: string;
@@ -315,7 +320,7 @@ function planHero(input: HeroInput): PlanHero | null {
 function safeHero(safe: SafeInput): SafeHero {
   const short = safe.safeCents < 0;
   const raw = [
-    { key: "bills", label: "Bills before payday", cents: safe.billsCents },
+    { key: "bills", label: `${billsWord(safe)} before payday`, cents: safe.billsCents },
     { key: "budgets", label: "Left in budgets", cents: safe.budgetsLeftCents },
     { key: "goals", label: "Goals", cents: safe.goalsCents },
     { key: "setAside", label: "Yearly bills", cents: safe.setAsideCents },
@@ -324,7 +329,7 @@ function safeHero(safe: SafeInput): SafeHero {
   const total = raw.reduce((sum, p) => sum + p.cents, 0);
   const held = [
     {
-      label: `Bills before ${safe.payday ? dayLabel(safe.payday) : "payday"}`,
+      label: `${billsWord(safe)} before ${safe.payday ? dayLabel(safe.payday) : "payday"}`,
       cents: safe.billsCents,
     },
     { label: "Left in your budgets", cents: safe.budgetsLeftCents },
@@ -350,7 +355,7 @@ function safeSteps(safe: SafeInput, short: boolean): CalcLine[] {
   const billLines: CalcLine[] =
     bills.length === 0
       ? safe.billsCents > 0
-        ? [{ label: "Bills before payday", sign: "−", cents: safe.billsCents }]
+        ? [{ label: `${billsWord(safe)} before payday`, sign: "−", cents: safe.billsCents }]
         : []
       : bills.slice(0, SAFE_BILLS_SHOWN).map((b) => ({
           label: b.merchant,
