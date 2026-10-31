@@ -4,6 +4,7 @@ import { nextPayday } from "@/detection/paydays";
 import { recurringCharges, type RecurringCharge } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
+import { findingByKey } from "./finding-by-key";
 
 // What charges the person on a schedule and when they're next paid (spec step 88), from the
 // same loaders as the Subscriptions page and safe to spend, for the chat's rule answers and
@@ -30,11 +31,11 @@ export async function loadRecurring(
     }),
     db.findings.findMany({
       where: { status: { in: ["new", "shown"] } },
-      select: { id: true, key: true },
+      select: { id: true, key: true, type: true, createdAt: true },
     }),
   ]);
   input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
-  const findingFor = new Map(findings.map((f) => [f.key, f.id]));
+  const findingFor = findingByKey(findings);
   // The same payday as safe to spend (src/planning/safe-to-spend.ts, spec step 182).
   const payday = nextPayday(input, FORECAST_DAYS);
   const nextIncome = payday
