@@ -18,11 +18,14 @@ Design (subtree parallel, exact):
   Within an iteration the current strategy at a node only depends on R rows of that node,
   which nothing else touches before the node itself is updated, so this is EXACTLY the
   single-process iteration on the same batch (bit-identical; see the tests).
-  * Load balance: frontier subtrees are assigned longest-first to the least loaded process
-    (LPT), with each subtree's cost measured in the previous iteration.
-  * Helpers also sample the fresh deals (the bucket computation) for the deal pool, after
-    their walk, so sampling runs in parallel too. Each helper has its own seeded RNG stream,
-    so a run with a fixed iteration count is deterministic for a given (seed, workers).
+  * Fresh deals for the deal pool (the bucket computation) are sampled in chunks of
+    CHUNK deals in the same parallel phase. Chunk c of iteration t uses its own RNG seeded
+    by (seed, t, c), so the sampled deals do not depend on which process took the chunk:
+    a run with a fixed iteration count gives the same policy for every workers >= 2.
+  * Load balance: dynamic self-scheduling. All processes (main included) take the next work
+    item from a shared counter: subtrees first, longest (measured last iteration) first,
+    then the sampling chunks. A process that is slow or descheduled (busy machine) simply
+    takes fewer items, instead of holding up a barrier.
 Processes use the "spawn" start method (safe on macOS as well as Linux).
 """
 from __future__ import annotations
@@ -35,7 +38,9 @@ from multiprocessing import shared_memory
 import numpy as np
 
 from .abstraction import CardAbstraction
-from .tree import DECISION, Tree, TreeConfig
+from .tree import DECISION, Tree
+
+CHUNK = 64  # fresh deals per sampling work item
 
 
 def _cfg_from_dict(d):
@@ -51,36 +56,55 @@ def _attach(name, shape):
     return shm, np.ndarray(shape, dtype=np.float64, buffer=shm.buf)
 
 
-def _helper(conn, spec, tree_cfg, ab_state, K, dcfr, prune_frac, shm_spec, seed_seq):
+def _chunk_rng(seed: int, t: int, c: int):
+    return np.random.default_rng([int(seed), 7919, int(t), int(c)])
+
+
+def _work(tr, ab, counter, tasks, chunks, seed, t):
+    """Take work items from the shared counter until none is left. Returns
+    ({node: values}, {node: seconds}, {chunk: (buckets, outcome)})."""
+    vals, secs, samples = {}, {}, {}
+    nt = len(tasks)
+    total = nt + len(chunks)
+    while True:
+        with counter.get_lock():
+            i = counter.value
+            counter.value = i + 1
+        if i >= total:
+            break
+        if i < nt:
+            n, r0, r1, sel = tasks[i]
+            t0 = time.perf_counter()
+            vals[n] = tr._walk(n, r0, r1, sel)
+            secs[n] = time.perf_counter() - t0
+        else:
+            c, size = chunks[i - nt]
+            samples[c] = ab.sample(size, _chunk_rng(seed, t, c))
+    return vals, secs, samples
+
+
+def _helper(conn, counter, spec, tree_cfg, ab_state, K, dcfr, prune_frac, shm_spec, seed):
     from .train import CFRTrainer
     shms = []
     try:
         tree = Tree(spec, _cfg_from_dict(tree_cfg))
-        ab = CardAbstraction.from_state(spec, ab_state) if ab_state is not None else None
+        ab = CardAbstraction.from_state(spec, ab_state)
         arrays = []
         for name, shape in shm_spec:
             shm, arr = _attach(name, shape)
             shms.append(shm)
             arrays.append(arr)
         tr = CFRTrainer(tree, K, *dcfr, prune_frac=prune_frac, arrays=tuple(arrays))
-        rng = np.random.default_rng(seed_seq)
-        if ab is not None:
-            ab.warm()
+        ab.warm()
         conn.send(("ready", None))
         while True:
             msg = conn.recv()
             if msg is None:
                 break
-            bk, out, w, tasks, n_sample = msg
-            tr.set_batch(bk, out, w)
-            res = []
-            for n, r0, r1, sel in tasks:
-                t0 = time.perf_counter()
-                v = tr._walk(n, r0, r1, sel)
-                res.append((n, v, time.perf_counter() - t0))
-            t0 = time.perf_counter()
-            samp = ab.sample(n_sample, rng) if (n_sample and ab is not None) else None
-            conn.send(("ok", (res, samp, time.perf_counter() - t0)))
+            bk, out, w, tasks, chunks, t = msg
+            if tasks:
+                tr.set_batch(bk, out, w)
+            conn.send(("ok", _work(tr, ab, counter, tasks, chunks, seed, t)))
     except Exception:
         try:
             conn.send(("error", traceback.format_exc()))
@@ -102,22 +126,24 @@ class ParallelCFR:
     """Owns the shared R/S/visits arrays, a main-process CFRTrainer on them, and N-1 helpers.
 
     iterate(bk, out, n_sample) runs one exact CFR iteration on the batch and returns
-    (root value, freshly sampled deals or None)."""
+    (root value, n_sample freshly sampled deals as (buckets, outcome), or None)."""
 
     def __init__(self, spec, tree: Tree, ab: CardAbstraction, K, workers: int, seed: int = 0,
-                 dcfr=(1.5, 0.0, 2.0), prune_frac=0.85, split_street=None, sample=True):
+                 dcfr=(1.5, 0.0, 2.0), prune_frac=0.85, split_street=None):
         from .policy import infoset_bases
         from .train import CFRTrainer
         self.workers = int(workers)
         if self.workers < 2:
             raise ValueError("ParallelCFR needs workers >= 2 (workers=1 is the plain CFRTrainer)")
+        self.ab = ab
+        self.seed = int(seed)
         _, n_inf = infoset_bases(tree, list(K))
         A = tree.max_actions
         shapes = [(n_inf, A), (n_inf, A), (n_inf,)]
         self._shms, arrays = [], []
+        self.procs, self.conns = [], []
         for shape in shapes:
-            nbytes = int(np.prod(shape)) * 8
-            shm = shared_memory.SharedMemory(create=True, size=max(8, nbytes))
+            shm = shared_memory.SharedMemory(create=True, size=max(8, int(np.prod(shape)) * 8))
             arr = np.ndarray(shape, dtype=np.float64, buffer=shm.buf)
             arr[...] = 0.0
             self._shms.append(shm)
@@ -129,19 +155,16 @@ class ParallelCFR:
         for n in range(tree.n_nodes - 1, -1, -1):
             sub[n] = (tree.kind[n] == DECISION) + sum(sub[c] for c in tree.children[n])
         self.cost = {n: 60e-6 * sub[n] for n in self.front}   # seconds; refined by measurement
-        self.top_cost = 120e-6 * (len(tree.decision_nodes) - sum(sub[n] for n in self.front))
-        self.samp_cost = 0.0
-        self.stats = dict(top_s=0.0, wait_s=0.0, own_s=0.0, own_cpu_s=0.0)
+        self.stats = dict(top_s=0.0, parallel_s=0.0, items_main=0, items_total=0)
         ctx = mp.get_context("spawn")
-        seeds = np.random.SeedSequence([int(seed), 7919]).spawn(self.workers - 1)
+        self.counter = ctx.Value("l", 0)
         shm_spec = [(s.name, sh) for s, sh in zip(self._shms, shapes)]
-        self.procs, self.conns = [], []
         try:
-            for i in range(self.workers - 1):
+            for _ in range(self.workers - 1):
                 a, b = ctx.Pipe()
                 p = ctx.Process(target=_helper, daemon=True,
-                                args=(b, spec, tree.cfg.to_dict(), ab.state() if sample else None, list(K),
-                                      tuple(dcfr), prune_frac, shm_spec, seeds[i]))
+                                args=(b, self.counter, spec, tree.cfg.to_dict(), ab.state(), list(K),
+                                      tuple(dcfr), prune_frac, shm_spec, self.seed))
                 p.start()
                 self.procs.append(p)
                 self.conns.append(a)
@@ -159,16 +182,16 @@ class ParallelCFR:
         return payload
 
     def close(self):
-        for c in getattr(self, "conns", []):
+        for c in self.conns:
             try:
                 c.send(None)
             except Exception:
                 pass
-        for p in getattr(self, "procs", []):
+        for p in self.procs:
             p.join(timeout=5)
             if p.is_alive():
                 p.terminate()
-        for shm in getattr(self, "_shms", []):
+        for shm in self._shms:
             try:
                 shm.close()
                 shm.unlink()
@@ -182,66 +205,44 @@ class ParallelCFR:
     def __exit__(self, *exc):
         self.close()
 
-    # ---- assignment -------------------------------------------------------------------------
-    def _assign(self, tasks: dict, n_helpers_sampling: bool):
-        """LPT: longest measured subtree first, to the currently least loaded process.
-        Process 0 is this (main) process; it is pre-charged with the top-of-tree walks,
-        helpers with their sampling share."""
-        W = self.workers
-        load = [2.0 * self.top_cost] + [self.samp_cost if n_helpers_sampling else 0.0] * (W - 1)
-        out = [[] for _ in range(W)]
-        for n in sorted(tasks, key=lambda n: -self.cost[n]):
-            i = int(np.argmin(load))
-            out[i].append(n)
-            load[i] += self.cost[n]
-        return out
-
     # ---- one iteration ----------------------------------------------------------------------
     def iterate(self, buckets, outcome, weights=None, n_sample: int = 0):
         tr = self.tr
         t0 = time.perf_counter()
         tr.begin(buckets, outcome, weights)
+        t = tr.t
         tasks = tr.collect(self.front) if self.front else {}
+        order = sorted(tasks, key=lambda n: -self.cost[n])
+        tlist = [(n,) + tasks[n] for n in order]
+        chunks = [(c, min(CHUNK, n_sample - c * CHUNK)) for c in range(-(-n_sample // CHUNK))]
         t1 = time.perf_counter()
-        groups = self._assign(tasks, n_sample > 0)
-        H = self.workers - 1
-        shares = [n_sample // H + (1 if i < n_sample % H else 0) for i in range(H)]
+        self.counter.value = 0          # helpers are idle between iterations
         w = tr._w if weights is not None else None
-        for i, c in enumerate(self.conns):
-            c.send((buckets, outcome, w, [(n,) + tasks[n] for n in groups[i + 1]], shares[i]))
-        vals = {}
-        t2 = time.perf_counter()
-        c2 = time.process_time()
-        for n in groups[0]:
-            a = time.perf_counter()
-            vals[n] = tr._walk(n, *tasks[n])
-            self.cost[n] = 0.5 * self.cost[n] + 0.5 * (time.perf_counter() - a)
-        t3 = time.perf_counter()
-        samples, st = [], []
         for c in self.conns:
-            res, samp, ts = self._recv(c)
-            for n, v, dt in res:
-                vals[n] = v
-                self.cost[n] = 0.5 * self.cost[n] + 0.5 * dt
-            if samp is not None:
-                samples.append(samp)
-            st.append(ts)
-        t4 = time.perf_counter()
+            c.send((buckets, outcome, w, tlist, chunks, t))
+        vals, secs, samples = _work(tr, self.ab, self.counter, tlist, chunks, self.seed, t)
+        self.stats["items_main"] += len(vals) + len(samples)
+        for c in self.conns:
+            v2, s2, sm2 = self._recv(c)
+            vals.update(v2)
+            secs.update(s2)
+            samples.update(sm2)
+        t2 = time.perf_counter()
+        for n, dt in secs.items():
+            self.cost[n] = 0.5 * self.cost[n] + 0.5 * dt
+        self.stats["items_total"] += len(tlist) + len(chunks)
         if self.front:
             v = tr.finish(vals)
         else:  # no frontier (one-street game): the main process walks the whole tree
             B = len(tr._w)
             v = float(np.dot(tr._walk(0, np.ones(B), np.ones(B), None), tr._w))
             tr._discount()
-        t5 = time.perf_counter()
-        if st:
-            self.samp_cost = 0.5 * self.samp_cost + 0.5 * float(np.mean(st))
-        self.top_cost = 0.5 * self.top_cost + 0.25 * ((t1 - t0) + (t5 - t4))
-        self.stats["top_s"] += (t1 - t0) + (t5 - t4)
-        self.stats["own_s"] += t3 - t2
-        self.stats["own_cpu_s"] += time.process_time() - c2
-        self.stats["wait_s"] += t4 - t3
+        t3 = time.perf_counter()
+        self.stats["top_s"] += (t1 - t0) + (t3 - t2)
+        self.stats["parallel_s"] += t2 - t1
         fresh = None
-        if samples:
-            fresh = (np.concatenate([s[0] for s in samples], axis=2), np.concatenate([s[1] for s in samples]))
+        if chunks:
+            ks = sorted(samples)
+            fresh = (np.concatenate([samples[k][0] for k in ks], axis=2),
+                     np.concatenate([samples[k][1] for k in ks]))
         return v, fresh

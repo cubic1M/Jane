@@ -378,7 +378,7 @@ def _train_loop(spec, minutes, checkpoints, seed, out_dir, tree, ab, tr, par, rn
                 fresh_deals += new[1].shape[0]
             t2 = time.perf_counter()
             vals.append(v)
-            t_cfr += t1 - t0  # sampling runs inside the parallel step (helpers)
+            t_cfr += t1 - t0  # sampling runs inside the parallel step
             t_sample += t2 - t1
         if t2 - last_log >= log_every:
             last_log = t2
@@ -386,8 +386,9 @@ def _train_loop(spec, minutes, checkpoints, seed, out_dir, tree, ab, tr, par, rn
             extra = ""
             if par is not None:
                 st = par.stats
-                extra = (f"; per iter: top {1e3 * st['top_s'] / tr.t:.0f} ms, own subtrees "
-                         f"{1e3 * st['own_s'] / tr.t:.0f} ms, waiting {1e3 * st['wait_s'] / tr.t:.0f} ms")
+                extra = (f"; per iter: serial top-of-tree {1e3 * st['top_s'] / tr.t:.0f} ms, parallel "
+                         f"subtrees+sampling {1e3 * st['parallel_s'] / tr.t:.0f} ms, main took "
+                         f"{st['items_main'] / max(1, st['items_total']):.0%} of the work items")
             log(f"[train] {spec.name} t={t2 - t_start:6.0f}s iters {tr.t} ({tr.t / run:.2f} it/s, "
                 f"{tr.deals / run:.0f} batch deals/s, {fresh_deals / run:.0f} fresh deals/s; "
                 f"sampling {t_sample / run:.0%}{extra}) infosets touched "
