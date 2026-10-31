@@ -18,6 +18,7 @@ export const EVERY: Record<Frequency, string> = {
   SEMI_MONTHLY: "twice a month",
   MONTHLY: "a month",
   QUARTERLY: "every 3 months",
+  SEMIANNUALLY: "every 6 months",
   ANNUALLY: "a year",
 };
 

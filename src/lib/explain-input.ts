@@ -41,6 +41,7 @@ const FREQUENCY_WORDS: Record<string, string> = {
   SEMI_MONTHLY: "twice a month",
   MONTHLY: "monthly",
   QUARTERLY: "every three months",
+  SEMIANNUALLY: "every six months",
   ANNUALLY: "yearly",
 };
 

@@ -2,7 +2,11 @@
 // amount to set aside. Math from the person's own data, never advice.
 
 // Streams charged less often than monthly, as Plaid or our fallback detect them.
-export const IRREGULAR_STREAM_FREQUENCIES: readonly string[] = ["QUARTERLY", "ANNUALLY"];
+export const IRREGULAR_STREAM_FREQUENCIES: readonly string[] = [
+  "QUARTERLY",
+  "SEMIANNUALLY",
+  "ANNUALLY",
+];
 
 // Our own pattern for bills twice a year: 2+ charges at one merchant, amounts within the
 // stream tolerance, every gap inside this day range.

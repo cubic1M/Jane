@@ -63,6 +63,23 @@ describe("upcomingBills", () => {
     ]);
   });
 
+  // Debugger 10-31: a six-month car insurance premium and a property tax paid twice a year, a
+  // year of statements: neither was "coming up", in the forecast or on the subscriptions page.
+  it("lists a bill paid twice a year, seen twice", () => {
+    const geico = {
+      description: "GEICO AUTO PAY 6MO PREMIUM",
+      pfcPrimary: "GENERAL_SERVICES",
+      pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+    };
+    const transactions = [
+      tx({ ...geico, date: "2025-10-25", amountCents: 61_240 }),
+      tx({ ...geico, date: "2026-04-25", amountCents: 61_240 }),
+    ];
+    expect(upcomingBills(input({ transactions }), 31).map((b) => [b.date, b.amountCents])).toEqual([
+      ["2026-10-25", 61_240],
+    ]);
+  });
+
   it("expands each active stream across the window", () => {
     const bills = upcomingBills(input({ transactions: monthly(4, 1549, NETFLIX) }), 61);
 
