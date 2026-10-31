@@ -800,6 +800,13 @@ export const OWN_ACCOUNT_TRANSFERS: readonly string[] = [
   "TRANSFER_OUT_INVESTMENT_AND_RETIREMENT_FUNDS",
   "TRANSFER_OUT_WITHDRAWAL",
 ];
+// Safe to spend holds back these regular transfers out before payday: ones that may be paying
+// someone (rent by Zelle before the person says it's rent), not moves to savings, investments
+// or cash, which a goal's monthly amount already holds back (review 10-31).
+export const PAYMENT_TRANSFERS: readonly string[] = ["TRANSFER_OUT_ACCOUNT_TRANSFER"];
+// A move out of one of the person's checking accounts that arrives in another within this many
+// days stays in checking: safe to spend leaves it alone.
+export const OWN_MOVE_DAYS = 3;
 // A charge is unusually large when it is at least this much (in cents)...
 export const LARGE_CHARGE_MIN_CENTS = 50_000;
 // ...and at least this many times the account's typical (median) charge...
