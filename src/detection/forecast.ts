@@ -1,4 +1,6 @@
 import { cardPaymentNameFromWords } from "@/categorize/card-payments";
+import { BNPL_AMOUNT_TOLERANCE_CENTS } from "@/config/debt";
+import { bnplPlans, bnplProviderOf } from "@/insights/bnpl";
 import {
   FORECAST_SUBTYPES,
   NOT_BILL_CATEGORIES,
@@ -185,17 +187,42 @@ const isHabit = (s: Stream) =>
 // What "Coming up" lists: bills, not moves to one's own accounts or a weekly habit.
 export const isComingUp = (s: Stream) => isBillStream(s) && !isOwnTransfer(s) && !isHabit(s);
 
+// A buy now, pay later plan ends (debugger 10-30: a Klarna Pay in 4 that had made its four
+// payments was still "coming up" on Nov 11 and Nov 25). Payments to Affirm, Klarna or Afterpay
+// are expected only while src/insights/bnpl.ts finds their plan running, and a Pay in 4's only
+// as many times as it has payments left. Null: not a plan's payments, or no known end.
+function bnplPaymentsLeft(input: DetectionInput): (s: Stream) => number | null {
+  const plans = bnplPlans(input.transactions, input.asOf);
+  return (s) => {
+    const last = s.charges.at(-1);
+    const provider = last ? bnplProviderOf(last) : null;
+    if (!provider) return null;
+    const plan = plans.find(
+      (p) =>
+        p.provider === provider.key &&
+        Math.abs(p.paymentCents - s.lastAmountCents) <= BNPL_AMOUNT_TOLERANCE_CENTS,
+    );
+    return plan ? plan.paymentsLeft : 0;
+  };
+}
+
 // `remindedElsewhere`: payment categories whose due date the bank reports, left out.
 export function upcomingBills(
   input: DetectionInput,
   days: number,
   remindedElsewhere: ReadonlySet<string> = new Set(),
 ): Expected[] {
-  const bills = buildStreams(input)
+  const left = bnplPaymentsLeft(input);
+  const until = addDays(input.asOf, days);
+  return buildStreams(input)
     .filter(isComingUp)
     .filter((s) => !remindedElsewhere.has(s.pfcDetailed ?? ""))
-    .map((s) => ({ ...s, merchant: billName(s, input.accounts) }));
-  return expand(bills, input.asOf, addDays(input.asOf, days));
+    .flatMap((s) => {
+      const rows = expand([{ ...s, merchant: billName(s, input.accounts) }], input.asOf, until);
+      const n = left(s);
+      return n === null ? rows : rows.slice(0, n);
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || a.merchant.localeCompare(b.merchant));
 }
 
 export function forecastAccounts(input: DetectionInput, days: number): AccountForecast[] {

@@ -337,3 +337,35 @@ describe("billName for a card payment", () => {
     expect(billName(netflix, [CHECKING, SAPPHIRE])).toBe(netflix.merchant);
   });
 });
+
+// Debugger 10-30: a Klarna Pay in 4 that had made its four payments was still "coming up" on
+// Nov 11 and Nov 25. src/insights/bnpl.ts knows the plan ended; the bills forecast now asks it.
+describe("upcomingBills, for buy now, pay later", () => {
+  const KLARNA = {
+    description: "KLARNA* NIKE.COM",
+    merchantName: null,
+    pfcPrimary: "LOAN_PAYMENTS",
+    pfcDetailed: "LOAN_PAYMENTS_OTHER_PAYMENT",
+  };
+  // Payments two weeks apart, the last one `lastDaysAgo` before AS_OF (Oct 15).
+  const payIn4 = (made: number, lastDaysAgo: number) =>
+    Array.from({ length: made }, (_, i) =>
+      tx({
+        ...KLARNA,
+        date: addDays(AS_OF, -lastDaysAgo - 14 * (made - 1 - i)),
+        amountCents: 3_249,
+      }),
+    );
+
+  it("leaves out a Pay in 4 that has made its four payments", () => {
+    const bills = upcomingBills(input({ transactions: payIn4(4, 1) }), 61);
+    expect(bills.filter((b) => /klarna/i.test(b.merchant))).toEqual([]);
+  });
+
+  it("expects only the payment left on a Pay in 4 still running", () => {
+    const bills = upcomingBills(input({ transactions: payIn4(3, 7) }), 61);
+    expect(bills.filter((b) => /klarna/i.test(b.merchant)).map((b) => b.date)).toEqual([
+      "2026-10-22",
+    ]);
+  });
+});
