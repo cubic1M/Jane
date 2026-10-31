@@ -402,6 +402,119 @@ Fallback plan (variant hostile to the main bot):
   simplest possible adapter (they need only cards, board, pot, stacks, legal actions;
   `equity` does not use position or history at all, so a blind-order bug cannot hurt it).
 
+## 7. Round 2: a realistic field, a dress rehearsal, and two debugging passes
+
+Round 1 tested our bots mostly against each other and against dummies. Round 2 asked
+what actually wins against the kind of bots other strong teams will bring.
+
+### 7a. The realistic field
+Three subagents that never saw `bots/` each wrote two bots "as a strong team would in
+60 minutes with Claude" (`opponents/`). All six are spec-driven, pass conformance on
+all 11 variants, and beat the dummies:
+
+| bot | style |
+|---|---|
+| `opp_tag` | tight-aggressive |
+| `opp_gtolite` | approximately balanced: mixing, polarized river, minimum-defence frequency, check-raises, light modelling |
+| `opp_lag` | loose-aggressive: overbets, barrels |
+| `opp_exploit` | opponent-modelling exploiter: probes with small bets, attacks what it finds, switches style when exploited |
+| `opp_solver` | small preflop solver plus sound postflop play |
+| `opp_quick` | the simple bot a team ships when the hour goes badly |
+
+**Results.** Our four candidates against all six, variants a, c, d, e, g. These deal
+seeds (40000+) were never used for any design or tuning; 6 duplicate pairs per cell,
+so about 27 pairs per opponent row over the 5 variants. Values are bb/hand.
+
+| mean vs the field | a | c | d | e | g | matches won |
+|---|---|---|---|---|---|---|
+| **full_cfr@30m** | **+0.33 ± 0.11** | **+1.10 ± 0.22** | **+0.20 ± 0.15** | **+0.22 ± 0.12** | **+0.81 ± 0.10** | **259–101 (72%)** |
+| balanced | −0.09 ± 0.11 | +0.93 ± 0.26 | −0.21 ± 0.12 | −0.32 ± 0.15 | +0.92 ± 0.23 | 182–178 (51%) |
+| hybrid@30m (gate 0.35) | −0.13 ± 0.12 | +0.44 ± 0.27 | −0.21 ± 0.13 | −0.33 ± 0.11 | +0.47 ± 0.20 | 193–167 (54%) |
+| adaptive | −0.30 ± 0.13 | +0.10 ± 0.36 | −0.50 ± 0.13 | −0.68 ± 0.15 | +0.42 ± 0.18 | 173–187 (48%) |
+
+| by opponent (all 5 variants) | adaptive | hybrid (0.35) | full_cfr | balanced |
+|---|---|---|---|---|
+| opp_tag | −0.35 ± 0.20 | −0.02 ± 0.19 | +0.24 ± 0.17 | −0.22 ± 0.25 |
+| opp_gtolite | +0.40 ± 0.28 | +0.30 ± 0.18 | +0.29 ± 0.16 | +0.38 ± 0.26 |
+| opp_lag | **−1.03 ± 0.19** | −0.59 ± 0.17 | +0.29 ± 0.17 | −0.59 ± 0.15 |
+| opp_exploit | **−3.71 ± 0.63** | **−2.84 ± 0.43** | +0.05 ± 0.20 | −0.85 ± 0.34 |
+| opp_solver | +1.46 ± 0.65 | +1.26 ± 0.50 | +0.92 ± 0.31 | +1.31 ± 0.62 |
+| opp_quick | +2.09 ± 0.42 | +2.20 ± 0.48 | +1.40 ± 0.30 | +1.46 ± 0.36 |
+
+**This overturns round 1's base recommendation.**
+* Full CFR is the only bot that is non-negative against every opponent, and it is best
+  on every variant, Omaha included.
+* The adaptive bot, best in round 1, is worst here.
+  - The independent exploiter beats it by 3.7 bb/hand and the LAG by 1.0.
+  - Balanced, the same bot without opponent modelling, loses far less (−0.85, −0.59),
+    so it is the modelling itself that gets exploited.
+  - Diagnosis: the exploiter's early small-bet probing makes adaptive read it as a
+    bluffer. Adaptive then widens its read of the exploiter's raises from the top 35%
+    to the top 63% of hands, and calls too wide when the exploiter switches to value.
+* Round 1's hybrid inherits this weakness, because its gate (any exploit score ≥ 0.35)
+  opens against aggressive bots. Raising the gate to 0.6 or 0.8 did not fix it in an
+  early read (5 pairs per cell, stopped once the cause was clear).
+
+**A better gate.** Adaptive's exploit scores, measured against every opponent, separate
+weak bots from strong ones cleanly:
+* Weak bots: station, maniac, random and opp_quick have a fold-to-bet score F ≤ −0.47;
+  the pusher has a preflop-aggression score PA ≈ 0.9.
+* Strong bots: every one, including the exploiter (aggression ≈ 0.5), has F ≥ −0.27
+  and PA ≤ 0.08.
+
+`hybrid:gate_mode=weak` therefore hands a hand to adaptive only if F ≤ −0.45 or
+PA ≥ 0.8; otherwise CFR plays. Results on fresh seeds (50000+) follow.
+
+<!-- CONFIRM -->
+
+### 7b. Timed dress rehearsal
+Full log: `report/rehearsal_log.md`.
+* An organiser subagent wrote a surprise variant (pot-limit Irish hold'em) and its own
+  JSON stdin/stdout server, with 16 planted gotchas kept unseen.
+* **Rules to a verified submission took 7.5 minutes.**
+* The submission met all of the organiser's pass criteria: 5/5 matches won; 0 illegal
+  actions, timeouts or stray lines; about 118 s of the 120 s bank left; slowest
+  decision 29 ms.
+* All 16 gotchas were handled.
+* New day-of tools:
+  - `tournament/stdio_json_adapter.py`, a JSON-over-pipes adapter template with
+    self-checks;
+  - `tournament/replay_check.py`, which replays a server's hand log through our engine
+    and proves the spec matches (300/300 hands identical).
+* The rehearsal also caught a real bug: a 1.05 s first decision, from a lazily built
+  table in the new CFR code. It is fixed and guarded by a latency test.
+
+### 7c. Debugging (two passes plus a fuzzer)
+* `experiments/bughunt.py` plays random valid rule variants against every bot and
+  checks legality, crashes, chip conservation, hidden-card leaks and evaluator
+  agreement. It ran about 820 random variants overnight with **0 failures**.
+* **Two debugging subagents found 11 real defects, each fixed with a failing-then-
+  passing test:**
+  - engine: discards-left counts with two rules on a street; equity used the wrong
+    pending discard rule;
+  - balanced/adaptive: crashed preflop when a variant discards preflop;
+  - MIT adapter: discarded cards never recorded; the closing check missed at
+    check-check showdowns;
+  - JSON adapter: discards after an all-in put on the wrong street; impossible hand
+    ends accepted silently;
+  - replay check: could miss a mismatch or crash;
+  - CFR bot: a discard error lost the pot; lost track of the hand after a wrapper
+    resized its raise;
+  - `dayof.py`: wrong checkpoint hints, and a crash on spaces in bot names.
+* The engine now also hides face-down discards at showdown, as real servers do.
+
+### 7d. Faster CFR training
+* A vectorised evaluator for bucketing (`bots/cfr_full/fasteval.py`, bit-identical
+  scores) makes bucketing 4–5× faster and single-process training 1.6–1.8× faster.
+* A shared-memory multi-process trainer (`--workers N`) is bit-identical to one
+  process. Its wall-clock gain could not be measured on the saturated study machine;
+  projected about 2.5× at 4 workers on an idle machine.
+* A richer abstraction (20/15/15/15 buckets, E[HS²]) gave no measurable gain at equal
+  budget.
+* Day-of command:
+  `python3 dayof.py --variant X --train-full 15 --workers <cores>`, or directly:
+  `python3 -m bots.cfr_full.train --variant X --minutes 15 --workers N --suffix wN`.
+
 ## Appendix: assumptions and defaults chosen
 * Scoring: total chips (lead protection off). If matches are won/lost, switch it on.
 * Matches: 1000 hands heads-up, stacks reset each hand, positions alternate; all
