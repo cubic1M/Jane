@@ -98,6 +98,26 @@ describe("checkup", () => {
     expect(line.line).toBe("1 bill at typical prices; you could still ask for a lower rate");
   });
 
+  // Review 10-30: with money held back for a dated payment, "$X cash, under 3 months of spending"
+  // could be false; the line says what was held back.
+  it("says what it held back when cash isn't idle because of it", () => {
+    const data = doingWell();
+    data.transactions.push(
+      tx({
+        description: "GEICO ANNUAL PREMIUM",
+        merchantName: "Geico",
+        pfcPrimary: "GENERAL_SERVICES",
+        pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+        accountId: CHECKING.id,
+        date: addDays(AS_OF, -340),
+        amountCents: 400_000,
+      }),
+    );
+    const line = byType(checkup(data)).get("idle_cash")!;
+    expect(line.status).toBe("passed");
+    expect(line.line).toMatch(/after \$4,000 held back/);
+  });
+
   it("says not enough data, not passed, where there's nothing to judge by", () => {
     const lines = byType(checkup(doingWell()));
 

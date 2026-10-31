@@ -211,6 +211,7 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
         averageMonthlySpending: money(num(evidence.averageMonthlySpendingCents)),
         monthsOfSpendingKept: IDLE_CASH_MONTHS_OF_SPENDING,
         cushion: money(num(evidence.cushionCents)),
+        ...(num(evidence.setAsideCents) ? { heldBack: money(num(evidence.setAsideCents)) } : {}),
         extraCash: money(num(evidence.excessCents)),
         highYieldSavingsRate: percent(num(evidence.referenceRateBps)),
         assumedCurrentRate: percent(num(evidence.assumedCurrentRateBps)),

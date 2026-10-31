@@ -4,6 +4,7 @@ import {
   LOOKBACK_MONTHS,
   IDLE_CASH_MONTHS_OF_SPENDING,
   IDLE_CASH_SUBTYPES,
+  IDLE_CASH_ESTIMATED_TAX_WORDS,
   IDLE_CASH_TAX_DATE_DAYS,
   IDLE_CASH_YEARLY_CATEGORIES,
   NON_SPENDING_CATEGORIES,
@@ -85,14 +86,14 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
   // month is about $2,700, while the cushion card, which leaves them out, saw enough cash.
   // Estimated tax payments are dated, not monthly spending: held back below for each date still
   // to come, and left out of the months of spending so they aren't counted twice.
-  const estimated = input.transactions.filter(
-    (t) => t.date > cutoff && t.date <= input.asOf && isEstimatedTax(t),
+  const estimated = estimatedTaxes(
+    input.transactions.filter((t) => t.date > cutoff && t.date <= input.asOf),
   );
   const until = addDays(input.asOf, Math.round(IDLE_CASH_MONTHS_OF_SPENDING * DAYS_PER_MONTH));
-  const yearly = yearlyDue(input.transactions, input.asOf, until);
-  const heldYearly = new Set(yearly);
+  const yearly = yearlyDue(input.transactions, input.asOf, until, estimated);
+  const held = new Set([...estimated, ...yearly]);
   const usual = withoutOneOffsOf(
-    spending.filter((t) => !isEstimatedTax(t) && !heldYearly.has(t)),
+    spending.filter((t) => !held.has(t)),
     input.asOf,
   );
   // Average monthly spending, per account over that account's own history, then added up.
@@ -109,9 +110,14 @@ export function cashCushionOf(input: IdleInput): Omit<IdleCash, "earnsCents"> | 
   if (accounts.length === 0 || monthlyCents <= 0) return null;
   const balanceCents = accounts.reduce((sum, a) => sum + (a.balanceCents ?? 0), 0);
   const cushionCents = monthlyCents * IDLE_CASH_MONTHS_OF_SPENDING;
-  const last = [...estimated].sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+  // Each payee's latest estimated payment (the IRS and the state, paid the same day, are two),
+  // for each estimated date still to come.
+  const latest = new Map<string, IdleTx>();
+  for (const t of [...estimated].sort((a, b) => a.date.localeCompare(b.date)))
+    latest.set(payeeOf(t), t);
+  const perDate = [...latest.values()].reduce((sum, t) => sum + t.amountCents, 0);
   const setAsideCents =
-    (last ? last.amountCents * estimatedDatesBetween(input.asOf, until).length : 0) +
+    perDate * estimatedDatesBetween(input.asOf, until).length +
     yearly.reduce((sum, t) => sum + t.amountCents, 0);
   return {
     accountIds: accounts.map((a) => a.id),
@@ -162,25 +168,62 @@ function estimatedDatesBetween(from: string, until: string): string[] {
   return [...dates].filter((d) => d > from && d <= until).sort();
 }
 
-// A tax payment near an estimated-payment date (IDLE_CASH_TAX_DATE_DAYS).
-function isEstimatedTax(t: IdleTx): boolean {
-  if (t.pfc !== "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" || t.amountCents <= 0) return false;
+const payeeOf = (t: IdleTx) => normalizeMerchant(t.description ?? "")?.key ?? "";
+
+// The estimated-payment date a tax payment is near (IDLE_CASH_TAX_DATE_DAYS), or null.
+function nearEstimatedDate(t: IdleTx): string | null {
+  if (t.pfc !== "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" || t.amountCents <= 0) return null;
   const year = Number(t.date.slice(0, 4));
-  return estimatedDatesBetween(`${year - 1}-12-31`, `${year + 1}-01-31`).some(
-    (d) => Math.abs(daysBetween(d, t.date)) <= IDLE_CASH_TAX_DATE_DAYS,
+  return (
+    estimatedDatesBetween(`${year - 1}-12-31`, `${year + 1}-01-31`).find(
+      (d) => Math.abs(daysBetween(d, t.date)) <= IDLE_CASH_TAX_DATE_DAYS,
+    ) ?? null
+  );
+}
+
+// Estimated tax payments: near an estimated date, and either saying so in their words or paid by
+// the same payee near two different estimated dates (review 10-30: a county property tax due
+// Apr 10 was taken for one).
+function estimatedTaxes(txs: readonly IdleTx[]): Set<IdleTx> {
+  const near = txs.flatMap((t) => {
+    const date = nearEstimatedDate(t);
+    return date ? [{ t, date }] : [];
+  });
+  const datesByPayee = new Map<string, Set<string>>();
+  for (const { t, date } of near) {
+    const key = payeeOf(t);
+    datesByPayee.set(key, (datesByPayee.get(key) ?? new Set()).add(date));
+  }
+  return new Set(
+    near
+      .filter(
+        ({ t }) =>
+          IDLE_CASH_ESTIMATED_TAX_WORDS.test(t.description ?? "") ||
+          (datesByPayee.get(payeeOf(t))?.size ?? 0) >= 2,
+      )
+      .map(({ t }) => t),
   );
 }
 
 // Yearly bills due again inside the window: a charge seen once in the past year, in a yearly
 // category (insurance, a property tax) or with annual-fee words, whose anniversary falls after
 // `from` and by `until`. Estimated tax is held back on its own dates.
-function yearlyDue(txs: readonly IdleTx[], from: string, until: string): IdleTx[] {
+function yearlyDue(
+  txs: readonly IdleTx[],
+  from: string,
+  until: string,
+  estimated: ReadonlySet<IdleTx>,
+): IdleTx[] {
   const yearAgo = addDays(from, -365);
+  // Per account and payee: two cards' annual fees are two yearly bills (review 10-30).
   const byMerchant = new Map<string, IdleTx[]>();
   for (const t of txs) {
     if (t.amountCents <= 0 || t.date <= addDays(yearAgo, -35) || t.date > from) continue;
     const key = normalizeMerchant(t.description ?? "")?.key;
-    if (key) byMerchant.set(key, [...(byMerchant.get(key) ?? []), t]);
+    if (key) {
+      const slot = `${t.accountId}|${key}`;
+      byMerchant.set(slot, [...(byMerchant.get(slot) ?? []), t]);
+    }
   }
   return [...byMerchant.values()].flatMap((charges) => {
     if (charges.length !== 1) return [];
@@ -188,7 +231,7 @@ function yearlyDue(txs: readonly IdleTx[], from: string, until: string): IdleTx[
     const yearlyKind =
       IDLE_CASH_YEARLY_CATEGORIES.includes(t.pfc ?? "") ||
       ANNUAL_FEE_WORDS.test(t.description ?? "");
-    if (!yearlyKind || isEstimatedTax(t)) return [];
+    if (!yearlyKind || estimated.has(t)) return [];
     const next = addDays(t.date, 365);
     return next > from && next <= until ? [t] : [];
   });

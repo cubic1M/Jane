@@ -57,6 +57,9 @@ export const idleCash: Rule = (input) => {
         totalBalanceCents: idle.balanceCents,
         averageMonthlySpendingCents: idle.monthlyCents,
         cushionCents: idle.cushionCents,
+        // Held back for dated payments (estimated tax, yearly bills): balance less cushion less
+        // this is the extra cash (review 10-30).
+        setAsideCents: idle.setAsideCents,
         excessCents: idle.excessCents,
         referenceRateBps: REFERENCE_HIGH_YIELD_RATE_BPS,
         assumedCurrentRateBps: ASSUMED_CURRENT_RATE_BPS,
