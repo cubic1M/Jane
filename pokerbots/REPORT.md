@@ -519,7 +519,12 @@ Full log: `report/rehearsal_log.md`.
 ### 7c. Debugging (two passes plus a fuzzer)
 * `experiments/bughunt.py` plays random valid rule variants against every bot and
   checks legality, crashes, chip conservation, hidden-card leaks and evaluator
-  agreement. It ran about 820 random variants overnight with **0 failures**.
+  agreement. It ran about 820 random variants overnight with **0 failures**. A second
+  run (3 workers × 100 minutes, after the policy library was finished) covered **2,457
+  more variants with 0 failures**. About a third of its rounds were library games under
+  a new name and new time limits, played by `champion@15m_w4`, `champion@15m_w4+lp` or
+  `full_cfr@15m_w4`. Such a round fails if the bot does not find its library policy.
+  The bots found it all ~1,040 times.
 * **Two debugging subagents found 11 real defects, each fixed with a failing-then-
   passing test:**
   - engine: discards-left counts with two rules on a street; equity used the wrong
