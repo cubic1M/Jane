@@ -362,6 +362,33 @@ describe("upcomingBills, for buy now, pay later", () => {
     expect(bills.filter((b) => /klarna/i.test(b.merchant))).toEqual([]);
   });
 
+  // Review 10-31: only a Pay in 4's cadence (every two weeks) ends this way.
+  it("keeps a quarterly bill whose name only contains a plan company's", () => {
+    const transactions = [-273, -182, -91].map((d) =>
+      tx({
+        description: "AFFIRM HEALTH QUARTERLY",
+        merchantName: null,
+        pfcPrimary: "GENERAL_SERVICES",
+        pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+        date: addDays(AS_OF, d + 10),
+        amountCents: 30_000,
+      }),
+    );
+    expect(upcomingBills(input({ transactions }), 31).map((b) => b.amountCents)).toEqual([30_000]);
+  });
+
+  it("keeps a monthly Affirm plan, whose end the payments don't show", () => {
+    const transactions = [6, 5, 4, 3, 2, 1].map((m) =>
+      tx({
+        ...KLARNA,
+        description: "AFFIRM * PAY 8XKQ",
+        date: monthsAgo(m, 3),
+        amountCents: 5_000,
+      }),
+    );
+    expect(upcomingBills(input({ transactions }), 31).map((b) => b.date)).toEqual(["2026-11-03"]);
+  });
+
   it("expects only the payment left on a Pay in 4 still running", () => {
     const bills = upcomingBills(input({ transactions: payIn4(3, 7) }), 61);
     expect(bills.filter((b) => /klarna/i.test(b.merchant)).map((b) => b.date)).toEqual([

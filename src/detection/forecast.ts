@@ -190,10 +190,13 @@ export const isComingUp = (s: Stream) => isBillStream(s) && !isOwnTransfer(s) &&
 // A buy now, pay later plan ends (debugger 10-30: a Klarna Pay in 4 that had made its four
 // payments was still "coming up" on Nov 11 and Nov 25). Payments to Affirm, Klarna or Afterpay
 // are expected only while src/insights/bnpl.ts finds their plan running, and a Pay in 4's only
-// as many times as it has payments left. Null: not a plan's payments, or no known end.
+// as many times as it has payments left. Only a Pay in 4's cadence, every two weeks: a monthly
+// plan's end isn't in its payments, and a quarterly "AFFIRM HEALTH" bill is no plan (review
+// 10-31). Null: not a plan's payments, or no known end.
 function bnplPaymentsLeft(input: DetectionInput): (s: Stream) => number | null {
   const plans = bnplPlans(input.transactions, input.asOf);
   return (s) => {
+    if (s.frequency !== "BIWEEKLY") return null;
     const last = s.charges.at(-1);
     const provider = last ? bnplProviderOf(last) : null;
     if (!provider) return null;
