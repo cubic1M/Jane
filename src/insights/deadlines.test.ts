@@ -71,6 +71,25 @@ describe("renewals", () => {
     ]);
   });
 
+  // Debugger 10-31: a six-month car premium's renewal said "for another quarter".
+  it("says how long the next charge buys, by the stream's frequency", () => {
+    const detail = (frequency: "ANNUALLY" | "QUARTERLY" | "SEMIANNUALLY") =>
+      run(
+        input({
+          recurringStreams: [
+            plaidStream({
+              frequency,
+              lastDate: addDays(AS_OF, -60),
+              predictedNextDate: addDays(AS_OF, 25),
+            }),
+          ],
+        }),
+      )[0]?.detail;
+    expect(detail("ANNUALLY")).toMatch(/for another year\./);
+    expect(detail("QUARTERLY")).toMatch(/for another three months\./);
+    expect(detail("SEMIANNUALLY")).toMatch(/for another six months\./);
+  });
+
   it("leaves out a renewal past the horizon", () => {
     const data = input({
       recurringStreams: [
