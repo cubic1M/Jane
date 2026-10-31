@@ -239,6 +239,25 @@ describe("forecastAccounts", () => {
     expect(f.transfersIn.map((t) => t.date)).toEqual(["2026-11-15"]);
   });
 
+  // Review 10-30: a paycheck the bank tags as a transfer in was expected twice, as pay and as a
+  // move in ("ACME CORP PAYROLL" six months running: +$6,200 instead of +$3,200).
+  it("doesn't expect a paycheck tagged as a transfer in twice", () => {
+    const payTaggedTransfer = {
+      description: "ACME CORP PAYROLL",
+      merchantName: "Acme Corp",
+      pfcPrimary: "TRANSFER_IN",
+      pfcDetailed: "TRANSFER_IN_OTHER_TRANSFER_IN",
+    };
+    const data = input({
+      accounts: [{ ...CHECKING, currentBalanceCents: 20_000 }],
+      transactions: [...monthly(4, 9_800, GEICO), ...monthly(6, -300_000, payTaggedTransfer)],
+    });
+    const [f] = forecastAccounts(data, 31);
+    const inflows = f.income.length + f.transfersIn.length;
+    expect(inflows).toBe(1);
+    expect(f.days.at(-1)?.balanceCents).toBe(20_000 - 9_800 + 300_000);
+  });
+
   // ...but a one-off move in (savings topped up once) isn't expected again.
   it("doesn't expect a one-off move in again", () => {
     const fromSavings = {

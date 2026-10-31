@@ -158,8 +158,12 @@ export function scheduledTransfersIn(input: DetectionInput, days: number): Expec
   const flipped: DetectionTransaction[] = input.transactions
     .filter((t) => t.amountCents < 0 && t.pfcPrimary === "TRANSFER_IN")
     .map((t) => ({ ...t, amountCents: -t.amountCents }));
+  // A paycheck the bank tags as a transfer in is already expected on its payday: never twice
+  // (review 10-30: "ACME CORP PAYROLL" tagged a transfer in read +$6,200 for +$3,200).
+  const payroll = (s: Stream) =>
+    s.charges.some((c) => isPaycheck({ ...c, amountCents: -Math.abs(c.amountCents) }));
   return expand(
-    detectRecurring({ ...input, transactions: flipped }),
+    detectRecurring({ ...input, transactions: flipped }).filter((s) => !payroll(s)),
     input.asOf,
     addDays(input.asOf, days),
   );

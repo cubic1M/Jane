@@ -151,3 +151,53 @@ describe("cash held back for a yearly bill", () => {
     expect(sofa.setAsideCents).toBe(0);
   });
 });
+
+// Review 10-30 of #1078/#1082.
+describe("held back, after review", () => {
+  const pay = (
+    date: string,
+    cents: number,
+    description: string,
+    pfc = "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    accountId = "chk",
+  ): IdleTx => ({
+    date,
+    amountCents: cents,
+    accountId,
+    pfc,
+    description,
+  });
+
+  it("holds back the federal and the state estimated payment made the same day", () => {
+    const c = cashCushionOf({
+      asOf: AS_OF,
+      accounts: [CHECKING],
+      transactions: [
+        ...usual(),
+        pay("2026-09-15", 380_000, "IRS USATAXPYMT 270265834527718"),
+        pay("2026-09-15", 90_000, "FRANCHISE TAX BD CAEXPMTS"),
+      ],
+    })!;
+    expect(c.setAsideCents).toBe(470_000);
+  });
+
+  it("doesn't take a property tax near an estimated date for an estimated payment", () => {
+    const c = cashCushionOf({
+      asOf: AS_OF,
+      accounts: [CHECKING],
+      transactions: [...usual(), pay("2026-09-10", 400_000, "COUNTY TAX COLLECTOR PROP TAX")],
+    })!;
+    expect(c.setAsideCents).toBe(0);
+  });
+
+  it("holds back two cards' annual fees, one each", () => {
+    const fee = (date: string, accountId: string) =>
+      pay(date, 9_500, "ANNUAL MEMBERSHIP FEE", "BANK_FEES_OTHER_BANK_FEES", accountId);
+    const c = cashCushionOf({
+      asOf: AS_OF,
+      accounts: [CHECKING],
+      transactions: [...usual(), fee("2025-11-20", "card-a"), fee("2025-12-05", "card-b")],
+    })!;
+    expect(c.setAsideCents).toBe(19_000);
+  });
+});

@@ -180,8 +180,13 @@ export const CHECKS: Record<FindingType, Check> = {
         // Not "cushion": that's the emergency cushion's word, a typical month's spending sized
         // for the person ("a cushion for you is $11,558.01"); this is idle cash's own line
         // (night QA 10-30: "$11,296 cushion" beside it read as a second answer).
-        line: `${formatWholeDollars(c.balanceCents)} cash, under ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending`,
-        detail: `You spend about ${formatWholeDollars(c.monthlyCents)} a month, so ${IDLE_CASH_MONTHS_OF_SPENDING} months is ${formatWholeDollars(c.cushionCents)}. Jane flags cash ${formatWholeDollars(IDLE_CASH_MIN_EXCESS_CENTS)} or more above that.`,
+        // With money held back for a dated payment (estimated tax, a yearly bill), say so: the
+        // cash alone may be over the months (review 10-30).
+        line:
+          c.setAsideCents > 0
+            ? `${formatWholeDollars(c.balanceCents)} cash, under ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending after ${formatWholeDollars(c.setAsideCents)} held back for payments due`
+            : `${formatWholeDollars(c.balanceCents)} cash, under ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending`,
+        detail: `You spend about ${formatWholeDollars(c.monthlyCents)} a month, so ${IDLE_CASH_MONTHS_OF_SPENDING} months is ${formatWholeDollars(c.cushionCents)}${c.setAsideCents > 0 ? `, and ${formatWholeDollars(c.setAsideCents)} is held back for tax or yearly bills due within them` : ""}. Jane flags cash ${formatWholeDollars(IDLE_CASH_MIN_EXCESS_CENTS)} or more above that.`,
       };
     },
   },

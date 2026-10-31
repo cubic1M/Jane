@@ -84,8 +84,9 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
   idle_cash: (input) => {
     const extra = fact(input.facts, "extraCash");
     const rate = fact(input.facts, "highYieldSavingsRate");
+    const held = fact(input.facts, "heldBack");
     return {
-      explanation: `You keep${extra ? ` ${extra}` : " more"} beyond a few months of spending in accounts that likely pay little interest. A high-yield savings account${rate ? ` paying around ${rate}` : ""} could earn ${yearly(input, "more each year")}.`,
+      explanation: `You keep${extra ? ` ${extra}` : " more"} beyond a few months of spending${held ? ` and ${held} for payments due` : ""} in accounts that likely pay little interest. A high-yield savings account${rate ? ` paying around ${rate}` : ""} could earn ${yearly(input, "more each year")}.`,
       giveUp: "Moving money between banks can take a few days.",
       alternatives: [
         "Ask your bank for a better savings rate",
