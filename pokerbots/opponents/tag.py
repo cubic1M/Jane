@@ -45,6 +45,7 @@ def push_frac(eff_bb: float) -> float:
 
 class TagBot(Bot):
     name = "opp_tag"
+    STRICT = False  # tests set True to surface bugs instead of falling back
 
     def __init__(self, **params):
         self.p = dict(PARAMS, **params)
@@ -65,6 +66,8 @@ class TagBot(Bot):
             hv = HandView(obs)
             a = self._preflop(obs, hv) if obs.street == 0 else self._postflop(obs, hv)
         except Exception:  # never crash a match: fall back to a passive legal action
+            if self.STRICT:
+                raise
             a = obs.legal.passive() if obs.legal.can_check else Fold()
         return safe(obs, a)
 
@@ -92,6 +95,8 @@ class TagBot(Bot):
             return Check() if lg.can_check else lg.passive()
 
         # facing a raise
+        if not lg.can_call:
+            return Check() if lg.can_check else Fold()
         r = opp_pre_range(obs, self.opp)
         call = lg.call_amount
         req = call / (obs.pot + call)

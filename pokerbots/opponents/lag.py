@@ -20,7 +20,7 @@ import numpy as np
 from engine.bot import Bot
 from engine.game import CALL, CHECK, FOLD, RAISE, Fold, RaiseTo
 
-from . import _common as C
+from . import _lagexp as C
 
 PARAMS = dict(
     open_frac=0.82,        # SB opens this share of hands
@@ -147,16 +147,16 @@ class LagBot(Bot):
         frac = 0.55 if pre_aggr == opp else (0.85 if pre_aggr == me else 1.0)
         # opponent aggression on earlier postflop streets narrows its range
         for st in range(1, obs.street):
-            if C.opp_raised_on(obs.history, st, opp):
+            if C.acted_on(obs.history, st, opp, RAISE):
                 frac *= 0.6
-            elif any(r.street == st and r.kind == CALL and r.position == opp for r in obs.history):
+            elif C.acted_on(obs.history, st, opp, CALL):
                 frac *= 0.8
         return max(frac, 0.12)
 
     def _postflop(self, obs):
         sp, lg, p = self.spec, obs.legal, self.p
         me, opp = obs.position, 1 - obs.position
-        river = C.is_last_street(obs, sp) and obs.board_cards_to_come == 0
+        river = C.is_river(obs, sp)
         scare = C.scare_card(obs, sp)
         frac = self._range_frac(obs)
         spr = C.eff_stack(obs) / max(1, obs.pot)
