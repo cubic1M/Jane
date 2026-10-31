@@ -85,4 +85,22 @@ describe.runIf(url)("a second scan on the same day", () => {
     });
     expect(stored).toMatchObject({ status: "waiting", worthCents: 42_300 });
   });
+
+  // Review 10-31: one that had gone (it stopped firing) and fires again today comes back today,
+  // and two scans at once don't trip over the same new row.
+  it("brings back one that had gone, and survives two scans at once", async () => {
+    await client.suggestion.update({
+      where: { userId_key: { userId, key: "debt:card_interest" } },
+      data: { status: "gone" },
+    });
+    await Promise.all([
+      scanSuggestions(userId, { client, now: LATER }),
+      scanSuggestions(userId, { client, now: LATER }),
+    ]);
+    const back = await client.suggestion.findUnique({
+      where: { userId_key: { userId, key: "debt:card_interest" } },
+      select: { status: true },
+    });
+    expect(back?.status).toBe("waiting");
+  });
 });
