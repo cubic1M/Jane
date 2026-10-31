@@ -104,6 +104,14 @@ const merchantName = (t: DetectionTransaction) =>
 
 const purchaseLink = (merchant: string) => `/transactions?${new URLSearchParams({ q: merchant })}`;
 
+// What the next charge buys, by the stream's frequency (debugger 10-31: a six-month car
+// premium's renewal said "for another quarter").
+const RENEWAL_TERM: Record<string, string> = {
+  QUARTERLY: "for another three months",
+  SEMIANNUALLY: "for another six months",
+  ANNUALLY: "for another year",
+};
+
 // Yearly and quarterly subscriptions' next charge. Monthly ones come round too often to be
 // a deadline; they're on /bills.
 export function renewalDeadlines(input: DetectionInput, streams: Stream[]): Deadline[] {
@@ -127,7 +135,7 @@ export function renewalDeadlines(input: DetectionInput, streams: Stream[]): Dead
           source: "transactions",
           amountCents: s.lastAmountCents,
           href: "/subscriptions",
-          detail: `About ${formatCents(s.lastAmountCents)} ${s.frequency === "ANNUALLY" ? "for another year" : "for another quarter"}. Cancel before then if you don't want it.`,
+          detail: `About ${formatCents(s.lastAmountCents)} ${RENEWAL_TERM[s.frequency ?? ""] ?? "for another term"}. Cancel before then if you don't want it.`,
           ...(s.lastDate ? { chargedOn: s.lastDate } : {}),
           evidence: streamEvidence(s),
         })),
