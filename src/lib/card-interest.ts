@@ -87,6 +87,9 @@ export type CardInterest = {
   promos: PromoView[];
   // Every card's interest for a year, and the yearly saving from rate requests granted.
   interestYearCents: number;
+  // Cards whose balance or rate isn't known (a statement file says neither), so their interest
+  // isn't in interestYearCents: the year can't be worked out from balances and rates.
+  unknownCards: number;
   grantedSavingCents: number;
   requests: (RateRequestView & { cardName: string })[];
 };
@@ -120,6 +123,7 @@ export async function loadCardInterest(
     cards: [],
     promos: [],
     interestYearCents: 0,
+    unknownCards: 0,
     grantedSavingCents: 0,
     requests: [],
   };
@@ -146,7 +150,15 @@ export async function loadCardInterest(
     payments.reduce((s, t) => s + -t.amountCents, 0) / PROMO_PACE_MONTHS,
   );
   const cards: CardView[] = [];
+  let unknownCards = 0;
   for (const d of book.debts) {
+    if (
+      d.kind === "card" &&
+      d.accountId &&
+      d.inNetWorth &&
+      (d.balanceCents === null || (d.balanceCents > 0 && d.aprBps === null))
+    )
+      unknownCards += 1;
     if (d.kind !== "card" || !d.accountId || !d.inNetWorth) continue;
     const balanceCents = d.balanceCents ?? 0;
     const aprBps = d.aprBps ?? 0;
@@ -204,6 +216,7 @@ export async function loadCardInterest(
       }),
     })),
     interestYearCents: cards.reduce((s, c) => s + c.interestYearCents, 0),
+    unknownCards,
     grantedSavingCents: requestRows
       .filter((r) => r.status === "granted")
       .reduce((s, r) => s + r.savingYearlyCents, 0),

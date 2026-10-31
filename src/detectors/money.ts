@@ -202,9 +202,14 @@ const cardInterest: Detector = {
   detect({ profile, data }) {
     const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
     // A year of interest from the cards' balances and rates when known (the loans page and the
-    // chat's figure); otherwise the interest charges seen, over the months of data.
+    // chat's figure); otherwise the interest charges seen, at a year's pace as the report puts
+    // it (debugger 10-30: $141 in four months is the report's "$423 a year", but compared as $141
+    // against a yearly minimum it was no suggestion at all).
     const yearly = data.extras?.cardInterestYearCents;
-    const total = typeof yearly === "number" ? yearly : outCents(charges);
+    const seen = outCents(charges);
+    const months = rateMonthsOf(profile);
+    const total =
+      typeof yearly === "number" ? yearly : Math.round((seen * 12) / Math.min(12, months));
     if (total < R.interestMinCents) return null;
     return {
       id: suggestionId("debt", "card_interest"),
@@ -215,7 +220,7 @@ const cardInterest: Detector = {
       short:
         typeof yearly === "number"
           ? `Your cards cost you about ${formatCents(total)} a year in interest.`
-          : `You paid ${formatCents(total)} in card interest over ${profile.months} months.`,
+          : `You paid ${formatCents(seen)} in card interest over ${profile.months} months.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
@@ -226,7 +231,7 @@ const cardInterest: Detector = {
       why: `${
         typeof yearly === "number"
           ? `At your balances and rates your cards cost about ${formatCents(total)} a year in interest`
-          : `You paid ${formatCents(total)} in card interest over ${profile.months} months`
+          : `You paid ${formatCents(seen)} in card interest over ${profile.months} months, about ${formatCents(total)} a year`
       }; ${
         profile.facts.debt_trouble.value === true
           ? "a payoff plan that starts with the highest rate stops it, a card at a time"
@@ -236,10 +241,7 @@ const cardInterest: Detector = {
       watch: {
         kind: "fee_stops",
         pfcs: ["BANK_FEES_INTEREST_CHARGE"],
-        monthlyCents:
-          typeof yearly === "number"
-            ? Math.round(total / 12)
-            : Math.round(total / rateMonthsOf(profile)),
+        monthlyCents: Math.round(total / 12),
       },
     };
   },
