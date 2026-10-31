@@ -17,6 +17,7 @@ import { snapshotTitle } from "@/lib/hubs/jane";
 import { formatCents } from "@/lib/money";
 import { savingsRecord, statementCoverage, type SavingsRecord } from "@/lib/outcomes";
 import { dayLabel } from "@/lib/day-label";
+import { validTimezone } from "@/lib/digest/week";
 import { withEvidence } from "@/lib/evidence/gate";
 import { evidenceRefs } from "@/lib/finding-accounts";
 import { sha256Hex } from "@/lib/hash";
@@ -341,13 +342,18 @@ export async function revokeSavedShares(
 export async function sharedTotal(
   token: string,
   { client = defaultClient }: Options = {},
-): Promise<{ totalCents: number; createdAt: Date } | null> {
+): Promise<{ totalCents: number; createdAt: Date; timezone: string } | null> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
   const share = await client.savedShare.findUnique({
     where: { tokenHash: sha256Hex(token) },
-    select: { totalCents: true, createdAt: true, revokedAt: true },
+    select: { totalCents: true, createdAt: true, revokedAt: true, user: { select: { timezone: true } } },
   });
   return share && !share.revokedAt
-    ? { totalCents: share.totalCents, createdAt: share.createdAt }
+    ? {
+        totalCents: share.totalCents,
+        createdAt: share.createdAt,
+        // The sharer's day, as their own pages write it.
+        timezone: validTimezone(share.user.timezone),
+      }
     : null;
 }

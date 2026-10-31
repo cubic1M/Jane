@@ -80,6 +80,8 @@ import {
   stageButton,
   SUDDEN_LINK,
 } from "../investments/sudden-copy";
+import { momentLabel } from "@/lib/day-label";
+import { validTimezone } from "@/lib/digest/week";
 import { valuesPlanLine, valuesButton, VALUES_LINK } from "../investments/values-copy";
 import { attentionLine, FILE_LINK } from "../investments/family-file-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
@@ -759,7 +761,7 @@ export const investmentsSource: MessageSource = {
     ) {
       out.push({
         kind: "decision",
-        body: `Automatic investing has been paused since ${auto.plan.updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}. Want me to start again from your next paycheck? ${AUTO_PROMISE}`,
+        body: `Automatic investing has been paused since ${momentLabel(auto.plan.updatedAt, validTimezone(snapshot.timezone))}. Want me to start again from your next paycheck? ${AUTO_PROMISE}`,
         refs: {},
         actions: [resumeButton(), AUTO_LINK, snoozeButton()],
         dedupeKey: `auto:paused:${auto.plan.updatedAt.toISOString().slice(0, 10)}`,

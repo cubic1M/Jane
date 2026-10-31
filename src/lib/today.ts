@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { validTimezone } from "@/lib/digest/week";
 import { localTime } from "@/lib/jane-agent/quiet-hours";
 import { cachedRead } from "@/lib/read-cache";
 
@@ -26,4 +27,10 @@ export async function todayOf(
       ? await timezoneOnce(userId)
       : await cachedRead(`timezone:${userId}`, client, () => timezoneFrom(userId, client));
   return localDate(now, timezone);
+}
+
+// The person's timezone for labelling moments (momentLabel in src/lib/day-label.ts): theirs, or
+// US Pacific when unknown or not a real zone.
+export async function timezoneOf(userId: string): Promise<string> {
+  return validTimezone(await timezoneOnce(userId));
 }

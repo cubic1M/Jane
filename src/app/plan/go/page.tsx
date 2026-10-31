@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { dayLabel } from "@/lib/day-label";
 import { viewPlanLink } from "@/lib/plan-links";
 import { GoAheadForm, TakeBackForm } from "./go-forms";
 import { LoadingBar } from "@/components/loading-bar";
@@ -43,7 +44,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/plan/go">["
             : `Jane is on ${view.approved} ${view.approved === 1 ? "thing" : "things"}`}
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          From this link on {view.usedAt.toISOString().slice(0, 10)}.
+          From this link on {dayLabel(view.usedOn, { year: true })}.
         </p>
         {view.canTakeBack && <TakeBackForm token={value} />}
         <Link href="/actions" className="font-medium text-emerald-700 hover:underline">

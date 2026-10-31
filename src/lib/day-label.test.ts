@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLabel, monthLabel } from "./day-label";
+import { dayLabel, momentLabel, monthLabel } from "./day-label";
 
 describe("dayLabel", () => {
   it("reads a day as a month and day", () => {
@@ -23,5 +23,15 @@ describe("monthLabel", () => {
     expect(monthLabel("2027-06", { long: true })).toBe("June 2027");
     expect(monthLabel("2026-12", { long: true, year: false })).toBe("December");
     expect(monthLabel("2026-03", { year: false })).toBe("Mar");
+  });
+});
+
+describe("momentLabel", () => {
+  // 9:29pm in Los Angeles on Oct 30 is already Oct 31 in UTC.
+  const evening = new Date("2026-10-31T04:29:00Z");
+
+  it("reads a moment as the person's own day", () => {
+    expect(momentLabel(evening, "America/Los_Angeles", { year: true })).toBe("Oct 30, 2026");
+    expect(momentLabel(evening.toISOString(), "America/New_York")).toBe("Oct 31");
   });
 });

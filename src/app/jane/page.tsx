@@ -15,6 +15,8 @@ import { changeLine, scoreLine } from "@/lib/jane-agent/replies-health";
 import { formatCents } from "@/lib/money";
 import { loadTimeline } from "@/lib/timeline";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
+import { momentLabel } from "@/lib/day-label";
 
 // The Jane hub (spec step 80): everything Jane found and is doing, each list a short
 // summary of its full page.
@@ -104,12 +106,13 @@ async function JaneContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const [hub, accounts, lastRun, snapshot, timeline] = await Promise.all([
+  const [hub, accounts, lastRun, snapshot, timeline, timezone] = await Promise.all([
     loadJaneHub(user.id),
     db.accounts.count(),
     lastControllerRun(user.id),
     loadSnapshot(user.id),
     loadTimeline(user.id, { limit: 20 }),
+    timezoneOf(user.id),
   ]);
   // Spec step 143: the one to three things that matter most, and why.
   const top = snapshot ? rankedFor(snapshot).slice(0, TOP_THINGS) : [];
@@ -203,11 +206,7 @@ async function JaneContent() {
                 <span className="font-semibold [overflow-wrap:anywhere]">{e.what}</span>
                 <span className={`text-sm ${MUTED}`}>
                   <time dateTime={e.at.toISOString()}>
-                    {e.at.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      timeZone: "UTC",
-                    })}
+                    {momentLabel(e.at, timezone)}
                   </time>
                   {" · "}
                   {e.sectorLabel}

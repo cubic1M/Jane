@@ -20,6 +20,8 @@ import { PROVIDER_LABELS, rawFacts } from "@/lib/documents/facts";
 import { DOCUMENT_SELECT } from "@/lib/documents/store";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
+import { momentLabel } from "@/lib/day-label";
 import { deleteDocument } from "./actions";
 import { FactsSection, UploadForm } from "./forms";
 import { SubmitButton } from "@/components/submit-button";
@@ -52,6 +54,7 @@ const SOURCE_NOTE: Record<string, string> = {
 async function DocumentsContent() {
   const user = await requireUser();
   const db = await scopedDb();
+  const timezone = await timezoneOf(user.id);
   const documents = await db.documents.findMany({
     select: DOCUMENT_SELECT,
     orderBy: [{ uploadedAt: "desc" }, { id: "asc" }],
@@ -114,7 +117,7 @@ async function DocumentsContent() {
                   <h2 className="font-semibold">{documentTitle(d)}</h2>
                   <span className="text-sm text-zinc-500">
                     {DOCUMENT_KINDS[kind] ?? "Document"} · {type} · {sizeLabel(d.sizeBytes)} · added{" "}
-                    {dateLabel(d.uploadedAt)}
+                    {momentLabel(d.uploadedAt, timezone, { year: true })}
                   </span>
                 </div>
                 {d.coverageSummary && <p>{d.coverageSummary}</p>}

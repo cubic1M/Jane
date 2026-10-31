@@ -7,9 +7,10 @@ import { formatCents } from "@/lib/money";
 import { loadClose, type CloseView } from "@/lib/month-close";
 import { storedReport } from "@/lib/monthly-report-store";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
 import { categoryWords } from "@/planning/month-close";
 import { reportLines } from "@/planning/monthly-report";
-import { monthLabel } from "@/lib/day-label";
+import { momentLabel, monthLabel } from "@/lib/day-label";
 
 // The month's one report (spec step 148), with the monthly check-in folded in (spec step 45;
 // docs/feature-audit.md, cluster 2). For any month: Jane's short summary, what was spent and
@@ -40,7 +41,7 @@ async function MonthlyContent({
   const latest = previousMonth(new Date().toISOString().slice(0, 10));
   const asked = typeof m === "string" && MONTH.test(m) && m <= latest ? m : null;
   // With no month asked for, the newest report made, or else the month just ended.
-  const stored = await storedReport(user.id, asked);
+  const [stored, timezone] = await Promise.all([storedReport(user.id, asked), timezoneOf(user.id)]);
   const month = asked ?? stored?.month ?? latest;
   const report = stored?.month === month ? stored.report : null;
   const [checkIn, close] = await Promise.all([
@@ -62,7 +63,7 @@ async function MonthlyContent({
         <p className="text-lg">{summary}</p>
         <p className={MUTED}>
           {stored && report
-            ? `Made ${stored.createdAt.toISOString().slice(0, 10)}. Each figure comes from the page it links to.`
+            ? `Made ${momentLabel(stored.createdAt, timezone, { year: true })}. Each figure comes from the page it links to.`
             : month === latest
               ? "Worked out from your accounts now. The full report, with what you saved, paid down and moved, comes in the first days of the month."
               : "Worked out from your accounts now."}

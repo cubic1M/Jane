@@ -54,7 +54,7 @@ export function GivingSection({ view }: { view: GivingView }) {
       )}
       {view.fund && (
         <p className="text-sm">
-          Your donor-advised fund: {view.fund.name}, opened {dayLabel(view.fund.openedAt)} (a
+          Your donor-advised fund: {view.fund.name}, opened {dayLabel(view.fund.openedOn)} (a
           stand-in for now).
         </p>
       )}

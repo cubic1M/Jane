@@ -6,6 +6,8 @@ import { loadMoneyForTwo } from "@/lib/money-for-two";
 import { formatCents } from "@/lib/money";
 import { savingsPhrase } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
+import { timezoneOf } from "@/lib/today";
+import { momentLabel } from "@/lib/day-label";
 import { HOUSEHOLD_MAX_MEMBERS } from "@/config/household";
 import { leave, share } from "./actions";
 import { InviteForm } from "./forms";
@@ -24,7 +26,7 @@ const label = (a: { name: string; mask: string | null }) =>
 async function Household() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [household, accounts, shared, two, myGoals] = await Promise.all([
+  const [household, accounts, shared, two, myGoals, timezone] = await Promise.all([
     householdOf(user.id),
     mine.accounts.findMany({
       select: { id: true, name: true, mask: true, sharedWithHousehold: true },
@@ -37,6 +39,7 @@ async function Household() {
       select: { id: true, name: true, sharedWithHousehold: true },
       orderBy: { targetDate: "asc" },
     }),
+    timezoneOf(user.id),
   ]);
   const partnerFindings = await shared.findings();
   const bills = await sharedBills(user.id);
@@ -78,7 +81,7 @@ async function Household() {
           {household?.invites[0] && (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Waiting for {household.invites[0].email} to join (until{" "}
-              {household.invites[0].expiresAt.toISOString().slice(0, 10)}).
+              {momentLabel(household.invites[0].expiresAt, timezone, { year: true })}).
             </p>
           )}
           {!full && <InviteForm />}

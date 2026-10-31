@@ -22,3 +22,20 @@ export function monthLabel(
     timeZone: "UTC",
   });
 }
+
+// A moment (when something happened: an upload, a note, a checkup) as the person's own day, in
+// their timezone (validTimezone in src/lib/digest/week.ts). Days above are calendar days and read
+// in UTC; a moment isn't: at 9pm in Los Angeles it is already tomorrow in UTC, and an upload made
+// tonight read "added" tomorrow (overnight debugger, 2026-10-30).
+export function momentLabel(
+  at: Date | string,
+  timezone: string,
+  { year = false }: { year?: boolean } = {},
+): string {
+  return new Date(at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(year ? { year: "numeric" } : {}),
+    timeZone: timezone,
+  });
+}
