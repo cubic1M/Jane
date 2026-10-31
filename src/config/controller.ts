@@ -34,6 +34,10 @@ export const CONTROLLER_BUDGET_MS = 25_000;
 // The cron works through people's runs for at most this long, then leaves the rest queued
 // for the next job runner.
 export const CONTROLLER_CRON_BUDGET_MS = 240_000;
+// Inside the daily cron, the controller gets only the time left before the function's limit,
+// less this much for a run already under way to finish (CONTROLLER_BUDGET_MS) and the reply
+// (debugger 10-31: the cron hit its limit and returned 504, so it never counted as run).
+export const CONTROLLER_RUN_RESERVE_MS = 60_000;
 // A bank is synced again when it last synced this long ago.
 export const CONTROLLER_SYNC_HOURS = 20;
 // "What I checked last night" is said in the chat for a run this recent.

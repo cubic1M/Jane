@@ -131,4 +131,32 @@ describe.runIf(url)("the job queue against a real database", () => {
     expect(await job(theirs)).toMatchObject({ status: "queued", attempts: 0 });
     expect(handler.mock.calls).toEqual([[{ userId: "u-jobs-mine" }]]);
   });
+
+  // Debugger 10-31 (production): the daily crons drained up to 20 jobs (each a person's
+  // controller run, up to 25 s) with no clock, past the function's limit. With a budget it stops
+  // after the job that uses it up, and the jobs it claimed but didn't reach go back as they were.
+  it("stops when its time is up and puts the rest back", async () => {
+    const a = await queue("u-jobs-budget");
+    const b = await queue("u-jobs-budget");
+    const c = await queue("u-jobs-budget");
+    let clock = 0;
+    const handler = vi.fn(async () => {
+      clock += 10_000;
+    });
+    const counts = await runDueJobs({
+      client,
+      now: at(0),
+      handlers: { explain_findings: handler },
+      userIds: ["u-jobs-budget"],
+      budgetMs: 15_000,
+      clock: () => clock,
+    });
+    expect(counts.done).toBe(2);
+    const statuses = await Promise.all([a, b, c].map(job));
+    expect(statuses.filter((j) => j.status === "done")).toHaveLength(2);
+    expect(statuses.find((j) => j.status !== "done")).toMatchObject({
+      status: "queued",
+      attempts: 0,
+    });
+  });
 });

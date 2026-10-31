@@ -335,7 +335,13 @@ export async function queueNightlyRuns({
   let done = 0;
   const started = Date.now();
   while (Date.now() - started < budgetMs) {
-    const counts = await drain({ client, now, userIds });
+    // Only the time left: a batch of runs can't carry the cron past its budget (debugger 10-31).
+    const counts = await drain({
+      client,
+      now,
+      userIds,
+      budgetMs: Math.max(0, budgetMs - (Date.now() - started)),
+    });
     const handled = counts.done + counts.retried + counts.failed;
     done += counts.done;
     if (handled === 0) break;

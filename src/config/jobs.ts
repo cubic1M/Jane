@@ -9,5 +9,8 @@ export const JOB_BACKOFF_MINUTES: readonly number[] = [1, 5, 30, 120, 720];
 export const JOB_STUCK_MINUTES = 15;
 // Most jobs run in one go.
 export const JOB_BATCH = 20;
+// How long a daily cron spends on due jobs before moving on (the rest wait for the next runner),
+// so a long queue can't push the cron past its limit (debugger 10-31).
+export const CRON_JOBS_BUDGET_MS = 60_000;
 // Longest error message kept.
 export const JOB_ERROR_LENGTH = 500;
