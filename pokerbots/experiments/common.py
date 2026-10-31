@@ -1,6 +1,6 @@
 """Shared experiment plumbing: bot spec strings, duplicate-pair jobs, result files.
 
-Bot spec string: name[@budget][+lp][!bug]
+Bot spec string: name[@budget][:opt=v;p.param=v][+lp][!bug]
     balanced            registry bot
     full_cfr@30m        CFR bot with the 30-minute policy (make_bot(budget="30m"))
     balanced+lp         wrapped in LeadProtection
@@ -34,6 +34,20 @@ def make_bot(spec_str: str):
     if lp:
         s = s[:-3]
     kw = {}
+    if ":" in s:
+        # options: name:gate=0.5;p.size_factor_min=0.25  (p.* = strategy params)
+        s, opts = s.split(":", 1)
+        for item in opts.split(";"):
+            k, v = item.split("=", 1)
+            try:
+                v = float(v) if "." in v or "e" in v else int(v)
+            except ValueError:
+                pass
+            if k.startswith("p."):
+                key = "ad_params" if s.split("@")[0] == "hybrid" else "params"
+                kw.setdefault(key, {})[k[2:]] = v
+            else:
+                kw[k] = v
     if "@" in s:
         s, budget = s.split("@", 1)
         # QUICK runs train tiny budgets only: BUDGET_OVERRIDE=1m maps every @XXm to it

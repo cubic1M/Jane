@@ -14,6 +14,13 @@ BOTS = {
     "full_cfr": ("bots.full_cfr", {}),
     "adaptive_cfr": ("bots.adaptive_cfr", {}),
     "hybrid": ("bots.hybrid", {}),
+    # independent "realistic field" opponents (opponents/, written without seeing bots/)
+    "opp_tag": ("opponents.tag", {}),
+    "opp_gtolite": ("opponents.gto_lite", {}),
+    "opp_lag": ("opponents.lag", {}),
+    "opp_exploit": ("opponents.exploiter", {}),
+    "opp_solver": ("opponents.pushfold_solver", {}),
+    "opp_quick": ("opponents.quick", {}),
     "push": ("bots.dummies", {"kind": "push"}),
     "station": ("bots.dummies", {"kind": "station"}),
     "maniac": ("bots.dummies", {"kind": "maniac"}),
