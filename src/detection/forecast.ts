@@ -249,26 +249,31 @@ function newPayIn4(input: DetectionInput, streams: Stream[], until: string): Exp
     if (plan.kind !== "pay_in_4" || !plan.nextDate || !plan.paymentsLeft) return [];
     const same = (cents: number) =>
       Math.abs(cents - plan.paymentCents) <= BNPL_AMOUNT_TOLERANCE_CENTS;
-    const covered = streams.some((s) => {
-      const last = s.charges.at(-1);
-      return last && bnplProviderOf(last)?.key === plan.provider && same(s.lastAmountCents);
-    });
+    // Any of a stream's payments, not only its latest (review 10-31: a stream at $32.60 beside
+    // a $32.49 plan expected the same day twice).
+    const covered = streams.some((s) =>
+      s.charges.some((c) => bnplProviderOf(c)?.key === plan.provider && same(c.amountCents)),
+    );
     if (covered) return [];
     const paid = input.transactions
       .filter(
         (t) => t.amountCents > 0 && bnplProviderOf(t)?.key === plan.provider && same(t.amountCents),
       )
       .sort((a, b) => b.date.localeCompare(a.date))[0];
-    return Array.from({ length: plan.paymentsLeft }, (_, i) =>
-      addDays(plan.nextDate!, BNPL_PAY_IN_4_STEP_DAYS * i),
-    )
-      .filter((date) => date >= input.asOf && date <= until)
-      .map((date) => ({
-        merchant: plan.providerName,
-        date,
-        amountCents: plan.paymentCents,
-        accountId: paid?.accountId ?? null,
-      }));
+    return (
+      Array.from({ length: plan.paymentsLeft }, (_, i) =>
+        addDays(plan.nextDate!, BNPL_PAY_IN_4_STEP_DAYS * i),
+      )
+        // A payment a day or two late (the plan is still running) is expected today.
+        .map((date) => (date < input.asOf ? input.asOf : date))
+        .filter((date) => date <= until)
+        .map((date) => ({
+          merchant: plan.providerName,
+          date,
+          amountCents: plan.paymentCents,
+          accountId: paid?.accountId ?? null,
+        }))
+    );
   });
 }
 

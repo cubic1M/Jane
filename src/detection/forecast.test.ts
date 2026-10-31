@@ -390,6 +390,28 @@ describe("upcomingBills, for buy now, pay later", () => {
     ]);
   });
 
+  // Review 10-31: $129.99 in four is $32.52 then three of $32.49 (the cents left over go on one
+  // payment), one plan, not two; and a payment a day late is still expected, today.
+  it("reads a Pay in 4 with its rounding as one plan", () => {
+    const transactions = [
+      tx({ ...KLARNA, date: addDays(AS_OF, -21), amountCents: 3_252 }),
+      tx({ ...KLARNA, date: addDays(AS_OF, -7), amountCents: 3_249 }),
+    ];
+    const bills = upcomingBills(input({ transactions }), 61);
+    expect(bills.filter((b) => /klarna/i.test(b.merchant)).map((b) => b.date)).toEqual([
+      "2026-10-22",
+      "2026-11-05",
+    ]);
+  });
+
+  it("still expects a payment a day or two late, today", () => {
+    const bills = upcomingBills(input({ transactions: payIn4(2, 15) }), 61);
+    expect(bills.filter((b) => /klarna/i.test(b.merchant)).map((b) => b.date)).toEqual([
+      "2026-10-15",
+      "2026-10-28",
+    ]);
+  });
+
   it("leaves out a Pay in 4 that has made its four payments", () => {
     const bills = upcomingBills(input({ transactions: payIn4(4, 1) }), 61);
     expect(bills.filter((b) => /klarna/i.test(b.merchant))).toEqual([]);
