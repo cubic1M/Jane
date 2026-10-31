@@ -1,5 +1,16 @@
-import { FORECAST_DAYS, FORECAST_SUBTYPES } from "@/config/detection";
-import { scheduledTransfers, upcomingBills, type Expected } from "@/detection/forecast";
+import {
+  FORECAST_DAYS,
+  FORECAST_SUBTYPES,
+  OWN_MOVE_DAYS,
+  PAYMENT_TRANSFERS,
+} from "@/config/detection";
+import {
+  scheduledTransfers,
+  scheduledTransfersIn,
+  upcomingBills,
+  type Expected,
+} from "@/detection/forecast";
+import { daysBetween } from "@/detection/units";
 import { nextPayday } from "@/detection/paydays";
 import type { DetectionInput } from "@/detection/types";
 
@@ -41,12 +52,25 @@ export function safeToSpend(
   // The next paycheck (spec step 182): payroll deposits only, never interest or a refund.
   const payday = nextPayday(input, FORECAST_DAYS)?.date ?? null;
 
-  // Bills and regular moves out from checking up to the day before payday (or across the window
-  // without one), as the forecast takes them out (debugger 10-30: rent sent by Zelle left
-  // checking in the forecast but not here, so safe to spend was $1,400 too high).
+  // Bills and regular moves out that may be payments to others (Zelle, Venmo, "transfer to")
+  // from checking up to the day before payday (or across the window without one), as the
+  // forecast takes them out (debugger 10-30: rent sent by Zelle left checking in the forecast but
+  // not here, so safe to spend was $1,400 too high). Not moves to savings, investments or cash:
+  // a goal's monthly amount already holds those back. Not a move into another of the person's
+  // checking accounts: it's still in checking (review 10-31).
+  const arriving = scheduledTransfersIn(input, FORECAST_DAYS).filter(
+    (t) => t.accountId !== null && checkingIds.has(t.accountId),
+  );
+  const toOwnChecking = (t: Expected) =>
+    arriving.some(
+      (a) =>
+        a.accountId !== t.accountId &&
+        a.amountCents === t.amountCents &&
+        Math.abs(daysBetween(a.date, t.date)) <= OWN_MOVE_DAYS,
+    );
   const bills = [
     ...upcomingBills(input, FORECAST_DAYS),
-    ...scheduledTransfers(input, FORECAST_DAYS),
+    ...scheduledTransfers(input, FORECAST_DAYS, PAYMENT_TRANSFERS).filter((t) => !toOwnChecking(t)),
   ]
     .sort((a, b) => a.date.localeCompare(b.date) || a.merchant.localeCompare(b.merchant))
     .filter(
