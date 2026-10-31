@@ -243,15 +243,23 @@ export type Profile = {
 export const rateMonthsOf = (profile: Pick<Profile, "months" | "rateMonths">) =>
   profile.rateMonths ?? Math.max(1, profile.months);
 
-const monthOf = (day: string) => day.slice(0, 7);
+// How many months the data covers, up to a year: the days from the first day to today, in average
+// months. The one count, here and on the report (debugger 10-30: one page said "11 months of
+// data" by calendar months, Nov to Oct, and "12 months" by days, for the same year).
+// Whole months, with a few days' slack so a statement a few days short of a month still counts
+// (a year from Nov 2 to Oct 28 is 12), and a part month never rounds up (3.5 months is 3: thin
+// data stays modest).
+const MONTH_SLACK = 0.2;
+export function monthsCovered(first: string, today: string): number {
+  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000;
+  const months = Math.floor((days + 1) / (365.25 / 12) + MONTH_SLACK);
+  return Math.min(PROFILE_MONTHS, Math.max(1, months));
+}
 
-// How many calendar months the data covers, up to a year.
 export function monthsOfData(txs: readonly ProfileTx[], today: string): number {
   if (txs.length === 0) return 0;
   const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
-  const [fy, fm] = monthOf(first).split("-").map(Number);
-  const [ty, tm] = monthOf(today).split("-").map(Number);
-  return Math.min(PROFILE_MONTHS, Math.max(1, (ty - fy) * 12 + (tm - fm)));
+  return monthsCovered(first, today);
 }
 
 // The months a monthly rate is spread over. A full year is the calendar count; a shorter history

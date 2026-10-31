@@ -29,7 +29,9 @@ describe("rateMonthsOf", () => {
         ),
       ),
     );
-    expect(profile.months).toBe(2);
+    // Aug 1 to Oct 26 is about 2.8 months: 3 by the one count (debugger 10-30), not 2 by the
+    // calendar; rates still spread over the real span.
+    expect(profile.months).toBe(3);
     expect(rateMonthsOf(profile)).toBeGreaterThan(2.8);
     expect(rateMonthsOf(profile)).toBeLessThan(3);
     // Three monthly premiums are about a year of twelve, not eighteen.
