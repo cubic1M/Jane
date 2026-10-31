@@ -126,6 +126,9 @@ export type ProfileInput = {
     // A year of interest on the person's cards from their balances and rates (the chat's
     // figure). Null: not available, so the interest charges seen are used. Absent: not loaded.
     cardInterestYearCents?: number | null;
+    // Cards (account ids) not in cardInterestYearCents because their balance or rate isn't
+    // known: their interest is counted from the charges seen. Absent: none.
+    cardInterestUnknownCards?: readonly string[];
     // What Jane's open reshops of car and home cover would save a year (the switch card's and
     // the chat's figure); 0 when there are none. Absent: not loaded.
     insuranceShopSavingCents?: number;
