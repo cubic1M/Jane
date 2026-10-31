@@ -5,3 +5,4 @@ cache/
 *.log
 results_quick/
 report/tables_quick.md
+results/bughunt/progress.json
