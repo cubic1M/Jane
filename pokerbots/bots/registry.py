@@ -14,6 +14,8 @@ BOTS = {
     "full_cfr": ("bots.full_cfr", {}),
     "adaptive_cfr": ("bots.adaptive_cfr", {}),
     "hybrid": ("bots.hybrid", {}),
+    # round-2 recommendation: full CFR, adaptive only vs measured weak bots (REPORT §1/§7)
+    "champion": ("bots.hybrid", {"gate_mode": "weak", "gate": 0.45}),
     # independent "realistic field" opponents (opponents/, written without seeing bots/)
     "opp_tag": ("opponents.tag", {}),
     "opp_gtolite": ("opponents.gto_lite", {}),
