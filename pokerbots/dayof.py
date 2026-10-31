@@ -219,9 +219,15 @@ def main(argv=None):
                 ok = False
             print(f"  vs {o:8s} {m:+.2f} ± {se:.2f}   {flag}")
 
-    for p in procs:
-        print(f"\n  CFR training still running (pid {p.pid}); load it with make_bot('preflop_cfr', budget='{a.train}m') "
-              f"when the checkpoint appears in cache/cfr/")
+    if procs:
+        hint = []
+        if a.train:
+            hint.append(f"preflop_cfr@{a.train}m")
+        if a.train_full:
+            hint.append(f"hybrid@<checkpoint>m (checkpoints 5, 15, {a.train_full}; e.g. hybrid@{min(15, a.train_full)}m)")
+        print(f"\n  CFR training still running in the background. When a checkpoint appears in cache/cfr/, check it with:\n"
+              f"    python3 dayof.py --variant {spec.name} --quick --bots " + ",".join(h.split()[0] for h in hint)
+              + "\n  (" + "; ".join(hint) + ")")
     print("\n" + ("GO" if ok else "NO-GO: fix the failures above") + f"   (checks took {time.time() - t_start:.0f}s)")
     return 0 if ok else 1
 

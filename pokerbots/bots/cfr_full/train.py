@@ -46,7 +46,9 @@ from .tree import DECISION, FOLD_T, SHOW_T, Tree, TreeConfig
 class CFRTrainer:
     """Vectorised CFR over the abstract tree. `K` = buckets per street."""
 
-    def __init__(self, tree: Tree, K, alpha=1.5, beta=0.0, gamma=2.0, prune_frac=0.85):
+    def __init__(self, tree: Tree, K, alpha=1.5, beta=0.0, gamma=2.0, prune_frac=0.85, arrays=None):
+        """arrays: optional preallocated (R, S, visits) zero arrays (e.g. views on shared
+        memory, see parallel.py); by default they are allocated here."""
         self.tree = tree
         self.K = list(K)
         self.alpha, self.beta, self.gamma = alpha, beta, gamma
@@ -54,9 +56,9 @@ class CFRTrainer:
         self.base, self.n_infosets = infoset_bases(tree, self.K)
         A = tree.max_actions
         self.A = A
-        self.R = np.zeros((self.n_infosets, A))
-        self.S = np.zeros((self.n_infosets, A))
-        self.visits = np.zeros(self.n_infosets)
+        if arrays is None:
+            arrays = (np.zeros((self.n_infosets, A)), np.zeros((self.n_infosets, A)), np.zeros(self.n_infosets))
+        self.R, self.S, self.visits = arrays
         self.t = 0
         self.deals = 0
         # flat per-node data for the DFS
@@ -89,16 +91,61 @@ class CFRTrainer:
         """One CFR iteration on a batch: buckets (S, 2, B), outcome (B,) in {-1,0,1}
         (+1 = position 0 wins). weights: optional chance probability per deal (default 1/B).
         Returns the batch's root value for position 0 under the current strategy."""
+        B = self.begin(buckets, outcome, weights)
+        v = self._walk(0, np.ones(B), np.ones(B), None)
+        self._discount()
+        return float(np.dot(v, self._w))
+
+    def set_batch(self, buckets: np.ndarray, outcome: np.ndarray, weights=None) -> int:
         B = buckets.shape[2]
         self._bk = [[buckets[s, p].astype(np.int64) for p in (0, 1)] for s in range(buckets.shape[0])]
         self._out = outcome.astype(np.float64)
-        w = np.full(B, 1.0 / B) if weights is None else np.asarray(weights, dtype=np.float64)
-        self._w = w
+        self._w = np.full(B, 1.0 / B) if weights is None else np.asarray(weights, dtype=np.float64)
+        return B
+
+    def begin(self, buckets, outcome, weights=None) -> int:
+        """Start iteration t+1 on a batch (iterate() = begin + full walk + discount)."""
+        B = self.set_batch(buckets, outcome, weights)
         self.t += 1
         self.deals += B
-        v = self._walk(0, np.ones(B), np.ones(B), None)
+        return B
+
+    # ---- split iteration (parallel.py): top of the tree here, frontier subtrees elsewhere --
+    def frontier(self, split_street: int) -> list:
+        """Decision nodes on street >= split_street whose parent is on an earlier street:
+        roots of disjoint subtrees (disjoint infoset rows) that can be walked in parallel."""
+        tr = self.tree
+        return [n for n in tr.decision_nodes
+                if tr.street[n] >= split_street and tr.parent[n] >= 0 and tr.street[tr.parent[n]] < split_street]
+
+    def collect(self, front) -> dict:
+        """Phase 1: walk the top of the tree without updates; returns {frontier node: (r0, r1,
+        sel)}, the exact arguments the full walk would pass to each frontier subtree."""
+        self._front, self._tasks, self._collecting = set(front), {}, True
+        B = len(self._w)
+        self._walk_top(0, np.ones(B), np.ones(B), None)
+        return self._tasks
+
+    def finish(self, values: dict) -> float:
+        """Phase 2: frontier values in hand, walk the top again with updates, then discount.
+        Together with the subtree walks this is exactly one iterate() on the same batch."""
+        self._collecting, self._vals = False, values
+        B = len(self._w)
+        v = self._walk_top(0, np.ones(B), np.ones(B), None)
+        self._vals = self._tasks = None
         self._discount()
-        return float(np.dot(v, w))
+        return float(np.dot(v, self._w))
+
+    def _walk_top(self, n, r0, r1, sel):
+        if n in self._front:
+            if self._collecting:
+                self._tasks[n] = (r0, r1, sel)
+                return np.zeros(len(r0))
+            return self._vals[n]
+        k = self._kind[n]
+        if k != DECISION:
+            return self._walk(n, r0, r1, sel)
+        return self._decision(n, r0, r1, sel, self._walk_top, not self._collecting)
 
     def _walk(self, n, r0, r1, sel):
         """r0, r1 = players' own reach; returns position-0 utility per active deal."""
@@ -108,6 +155,9 @@ class CFRTrainer:
         if k == SHOW_T:
             o = self._out if sel is None else self._out[sel]
             return self._u0[n] * o
+        return self._decision(n, r0, r1, sel, self._walk, True)
+
+    def _decision(self, n, r0, r1, sel, walk, update):
         p = self._player[n]
         s = self._street[n]
         bk = self._bk[s][p] if sel is None else self._bk[s][p][sel]
@@ -129,19 +179,21 @@ class CFRTrainer:
                 va[a] = 0.0
                 continue
             if cnt >= self.prune_frac * m:
-                res = self._walk(kids[a], rpa, ro, sel) if p == 0 else self._walk(kids[a], ro, rpa, sel)
+                res = walk(kids[a], rpa, ro, sel) if p == 0 else walk(kids[a], ro, rpa, sel)
                 va[a] = res
             else:
                 idx = np.flatnonzero(act)
                 ss = idx if sel is None else sel[idx]
                 if p == 0:
-                    res = self._walk(kids[a], rpa[idx], ro[idx], ss)
+                    res = walk(kids[a], rpa[idx], ro[idx], ss)
                 else:
-                    res = self._walk(kids[a], ro[idx], rpa[idx], ss)
+                    res = walk(kids[a], ro[idx], rpa[idx], ss)
                 row = va[a]
                 row[:] = 0.0
                 row[idx] = res
         v = np.einsum("ma,am->m", sig, va)
+        if not update:
+            return v
         cw = self._w if sel is None else self._w[sel]
         b = self.base[n]
         K = self.K[s]

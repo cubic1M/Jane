@@ -21,8 +21,7 @@ random hands of every variant.
 """
 from __future__ import annotations
 
-from functools import lru_cache
-from itertools import combinations, combinations_with_replacement
+from itertools import combinations
 
 import numpy as np
 
@@ -35,61 +34,64 @@ _CARD = np.array([int(_P5[c >> 2]) | (1 << (32 + 4 * (c & 3))) for c in range(52
 _LO = (1 << 32) - 1
 
 
-def _rep_cards(ranks) -> list[int]:
-    """Representative cards for a rank multiset with no suit holding 5+ cards (no flush)."""
-    load = [0, 0, 0, 0]
-    out = []
-    i = 0
-    rs = list(ranks)
-    while i < len(rs):
-        r = rs[i]
-        j = i
-        while j < len(rs) and rs[j] == r:
-            j += 1
-        suits = sorted(range(4), key=lambda u: (load[u], u))[: j - i]
-        for u in suits:
-            load[u] += 1
-            out.append((r << 2) | u)
-        i = j
-    return out
+_CACHE: dict = {}
 
 
-@lru_cache(maxsize=None)
-def _rank_table(spec_key, n: int):
-    """Sorted codes (sum 5**rank) of all valid n-rank multisets and their non-flush scores."""
-    spec = spec_key
-    ev = get_evaluator(spec)
-    ranks = sorted(spec.deck_ranks)
-    ms = [c for c in combinations_with_replacement(ranks, n)
-          if max((c.count(r) for r in set(c)), default=0) <= 4]
-    codes = np.array([int(_P5[list(c)].sum()) if c else 0 for c in ms], dtype=np.int64)
-    if n >= 5:
-        reps = np.array([_rep_cards(c) for c in ms], dtype=np.int64)
-        scores = ev.eval_any(reps)
-    else:
-        scores = np.zeros(len(ms), dtype=np.int64)
-    order = np.argsort(codes)
-    return codes[order], scores[order], [ms[i] for i in order]
+def _rules_key(spec: GameSpec):
+    return (tuple(sorted(spec.deck_ranks)), tuple(spec.category_order), bool(spec.ace_low_straight))
 
 
-@lru_cache(maxsize=None)
-def _exact_table(spec_key, k: int):
+def _multisets(ranks, n: int) -> np.ndarray:
+    """All rank-count vectors (M, 13) over `ranks` with total n and every count <= 4."""
+    cnt = np.zeros((1, 13), dtype=np.int64)
+    tot = np.zeros(1, dtype=np.int64)
+    for r in ranks:
+        c = np.arange(5)
+        new_tot = (tot[:, None] + c[None, :]).ravel()
+        keep = new_tot <= n
+        rep = np.repeat(cnt, 5, axis=0)
+        rep[:, r] = np.tile(c, len(cnt))
+        cnt, tot = rep[keep], new_tot[keep]
+    return cnt[tot == n]
+
+
+def _rep_cards(counts: np.ndarray) -> np.ndarray:
+    """Representative cards (M, n) for rank-count vectors, ranks ascending and card j in
+    suit j % 4: equal ranks are adjacent (<= 4 of them) so they get distinct suits, and no
+    suit gets 5+ cards for n <= 16, so the hand has no flush."""
+    n = int(counts[0].sum())
+    cs = np.cumsum(counts, axis=1)
+    ranks = np.stack([(cs <= j).sum(axis=1) for j in range(n)], axis=1)
+    return (ranks << 2) | (np.arange(n) % 4)
+
+
+def _rank_table(spec: GameSpec, n: int):
+    """Sorted codes (sum 5**rank) of all valid n-rank multisets, their non-flush scores
+    and count vectors. Vectorised (well under 100 ms for n <= 9) and cached per rule set."""
+    key = ("rank", _rules_key(spec), n)
+    tab = _CACHE.get(key)
+    if tab is None:
+        counts = _multisets(sorted(spec.deck_ranks), n)
+        codes = counts @ _P5
+        scores = get_evaluator(spec).eval_any(_rep_cards(counts)) if n >= 5 else np.zeros(len(codes), np.int64)
+        order = np.argsort(codes)
+        tab = _CACHE[key] = (codes[order], scores[order], counts[order])
+    return tab
+
+
+def _exact_table(spec: GameSpec, k: int):
     """2-D non-flush score table for exactly k hole + (5-k) board ranks."""
-    spec = spec_key
-    ev = get_evaluator(spec)
-    hc, _, hms = _rank_table(spec, k)
-    bc, _, bms = _rank_table(spec, 5 - k)
-    T = np.zeros((len(hc), len(bc)), dtype=np.int64)
-    rows, ii, jj = [], [], []
-    for i, h in enumerate(hms):
-        for j, b in enumerate(bms):
-            c = tuple(sorted(h + b))
-            if max(c.count(r) for r in set(c)) <= 4:
-                rows.append(_rep_cards(c))
-                ii.append(i)
-                jj.append(j)
-    T[np.array(ii), np.array(jj)] = ev.eval_any(np.array(rows, dtype=np.int64))
-    return hc, bc, T
+    key = ("exact", _rules_key(spec), k)
+    tab = _CACHE.get(key)
+    if tab is None:
+        hc, _, hcnt = _rank_table(spec, k)
+        bc, _, bcnt = _rank_table(spec, 5 - k)
+        comb = (hcnt[:, None, :] + bcnt[None, :, :]).reshape(-1, 13)
+        ok = comb.max(axis=1) <= 4
+        T = np.zeros(len(comb), dtype=np.int64)
+        T[ok] = get_evaluator(spec).eval_any(_rep_cards(comb[ok]))
+        tab = _CACHE[key] = (hc, bc, T.reshape(len(hc), len(bc)))
+    return tab
 
 
 class FastEvaluator:
@@ -176,7 +178,7 @@ class FastEvaluator:
             boards = boards.reshape(len(holes), -1)
         if self.any:
             n = holes.shape[1] + boards.shape[1]
-            if 5 <= n <= 12:
+            if 5 <= n <= 9:
                 return self._eval_any(np.concatenate([holes, boards], axis=1))
         elif holes.shape[1] >= self.k and boards.shape[1] >= 5 - self.k:
             return self._eval_exact(holes, boards)
