@@ -2,7 +2,7 @@ import { matchCardPayments } from "@/categorize/card-payments";
 import { markCashIncome } from "@/categorize/cash-income";
 import { categorizeLeftovers } from "@/categorize/categorize";
 import { IMPORT_RUN_SHOWN_HOURS } from "@/config/import";
-import { moneyFound, runDetection } from "@/detection/engine";
+import { moneyFoundYearly, runDetection } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { confirmSwitches } from "@/lib/agent/switch";
 import { db as defaultClient } from "@/lib/db";
@@ -147,7 +147,7 @@ async function finishImportWork(userId: string, runId: string, options: Options)
   };
   try {
     await workOut(userId, options, stage);
-    await stage("done", await moneyFound(userId, options));
+    await stage("done", await moneyFoundYearly(userId, options));
   } catch (error) {
     await stage("failed").catch(() => {});
     throw error;
@@ -158,7 +158,7 @@ async function finishImportWork(userId: string, runId: string, options: Options)
   try {
     if ((await categorizeLeftovers(db)) > 0) {
       await workOut(userId, options, async () => {});
-      await stage("done", await moneyFound(userId, options));
+      await stage("done", await moneyFoundYearly(userId, options));
     }
   } catch (error) {
     console.error("Sorting the rest of an upload failed", { error: String(error) });

@@ -42,6 +42,7 @@ import {
   runDetection,
   sumMoneyFound,
   sumMoneyFoundParts,
+  yearlyFoundCents,
   type ExistingFinding,
 } from "./engine";
 import type { Candidate } from "./types";
@@ -181,6 +182,15 @@ describe("sumMoneyFound", () => {
         row({ type: "duplicate_charge", annualSavingsCents: 21_000 }),
       ]),
     ).toEqual({ cents: 35_388, onceCents: 21_000 });
+  });
+
+  // Review 10-31: the share card and the upload chip say "/yr", so they show the yearly part.
+  it("gives the yearly part on its own, for what says /yr", () => {
+    const parts = sumMoneyFoundParts([
+      row({ annualSavingsCents: 14_388 }),
+      row({ type: "duplicate_charge", annualSavingsCents: 21_000 }),
+    ]);
+    expect(yearlyFoundCents(parts)).toBe(14_388);
   });
 
   it("adds open findings at medium confidence or above", () => {

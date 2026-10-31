@@ -596,6 +596,17 @@ export function sumMoneyFoundParts(findings: MoneyFoundRow[]): MoneyFoundParts {
 
 export type MoneyFoundParts = { cents: number; onceCents: number };
 
+// The part that comes every year, for what says "/yr" (the share card, the upload chip): a
+// double charge's $210 back is never "$210/yr" (review 10-31).
+export const yearlyFoundCents = (parts: MoneyFoundParts) => parts.cents - parts.onceCents;
+
+export async function moneyFoundYearly(
+  userId: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<number> {
+  return yearlyFoundCents(await moneyFoundParts(userId, { client }));
+}
+
 // The headline number: savings across open findings we're confident enough in, yearly ones and
 // money back once (moneyFoundParts says how much of it is which).
 export async function moneyFound(
