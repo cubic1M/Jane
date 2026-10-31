@@ -29,8 +29,31 @@ describe("runJaneAgentForAll", () => {
     expect(run.mock.calls.map(([id]) => id)).toEqual(["never", "older"]);
     expect(run).toHaveBeenCalledWith("never", { client, now, trigger: "cron" });
     expect(client.user.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { deletedAt: null, accounts: { some: {} } } }),
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          accounts: { some: {} },
+          NOT: { id: { startsWith: "trial_" } },
+        },
+      }),
     );
+  });
+
+  // Debugger 10-31 (production): the digest cron hit its 300 s limit ("Task timed out after 300
+  // seconds") running up to 200 people's daily chat one after another. With a budget it stops
+  // when the time is up; the people it didn't reach are the stalest tomorrow, so they go first.
+  it("stops when its time is up", async () => {
+    let clock = 0;
+    const run = vi.fn<typeof runJaneAgent>(async () => {
+      clock += 1_000;
+      return { posted: 1 };
+    });
+    expect(await runJaneAgentForAll({ client, run, budgetMs: 1_500, clock: () => clock })).toEqual({
+      people: 2,
+      posted: 2,
+      failed: 0,
+    });
+    expect(run.mock.calls.map(([id]) => id)).toEqual(["never", "older"]);
   });
 
   it("carries on past one person's failure", async () => {

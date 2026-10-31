@@ -1,3 +1,4 @@
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 import {
   CHAT_CRON_LIMIT,
   CHAT_HISTORY_HOURS,
@@ -250,11 +251,17 @@ export async function runJaneAgentForAll({
   now = new Date(),
   limit = CHAT_CRON_LIMIT,
   run: runOne = runJaneAgent,
+  budgetMs,
+  clock = Date.now,
 }: {
   client?: PrismaClient;
   now?: Date;
   limit?: number;
   run?: typeof runJaneAgent;
+  // Stop once this much time has gone (debugger 10-31: the digest cron hit its 300 s limit
+  // running up to 200 people's chat); who's left is the stalest tomorrow, so first.
+  budgetMs?: number;
+  clock?: () => number;
 } = {}): Promise<{
   people: number;
   posted: number;
@@ -263,7 +270,12 @@ export async function runJaneAgentForAll({
   // A system job across all users: it reads ids and when Jane last posted, nothing else;
   // runJaneAgent scopes everything after to the one person.
   const users = await client.user.findMany({
-    where: { deletedAt: null, accounts: { some: {} } },
+    // Not trial people: sample data, gone within hours, never in the daily runs.
+    where: {
+      deletedAt: null,
+      accounts: { some: {} },
+      NOT: { id: { startsWith: TRIAL_ID_PREFIX } },
+    },
     select: {
       id: true,
       janeMessages: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
@@ -273,8 +285,11 @@ export async function runJaneAgentForAll({
   const last = (u: (typeof users)[number]) => u.janeMessages[0]?.createdAt.getTime() ?? 0;
   const batch = [...users].sort((a, b) => last(a) - last(b)).slice(0, limit);
 
-  const run = { people: batch.length, posted: 0, failed: 0 };
+  const run = { people: 0, posted: 0, failed: 0 };
+  const started = clock();
   for (const user of batch) {
+    if (budgetMs !== undefined && clock() - started >= budgetMs) break;
+    run.people += 1;
     try {
       run.posted += (await runOne(user.id, { client, now, trigger: "cron" })).posted;
     } catch (error) {
