@@ -106,6 +106,17 @@ class TestLegality(unittest.TestCase):
             self.assertEqual(r.stats[0].summary()["errors"], 0)
             self.assertEqual(bot.errors, 0, bot.last_error)
 
+    def test_preflop_discard_variant_has_no_internal_errors(self):
+        # a discard BEFORE preflop betting leaves fewer cards than the preflop model was
+        # fitted on; this used to raise in every preflop decision (-> check/fold fallback)
+        from engine.spec import DiscardRule, GameSpec
+        spec = GameSpec("pre_disc", hole_cards=3, starting_stack=200,
+                        discards=(DiscardRule(0, 1, to_board=False, face_up=False),))
+        bot = BalancedBot()
+        r = play_match(bot, RandomLegalBot(), spec, deal_seed=4, hands=30)
+        self.assertEqual(r.stats[0].summary()["errors"], 0)
+        self.assertEqual(bot.errors, 0, bot.last_error)
+
     def test_tight_clock_still_legal(self):
         spec = A.with_(time_per_decision=0.004, time_per_match=0.5)
         bot = BalancedBot()

@@ -36,6 +36,8 @@ import numpy as np
 from engine.evaluator import get_evaluator
 from engine.spec import GameSpec
 
+from .fasteval import FastEvaluator
+
 _PERMS = np.array(list(permutations(range(4))), dtype=np.int64)  # (24, 4)
 
 
@@ -68,25 +70,39 @@ class AbstractionConfig:
 
 
 class BatchEquity:
-    """Vectorised spec-aware equity for a batch of deals (one hand per row)."""
+    """Vectorised spec-aware equity for a batch of deals (one hand per row).
 
-    def __init__(self, spec: GameSpec):
+    Hand scores come from fasteval.FastEvaluator (bit-identical to the engine evaluator,
+    3-10x faster); fast=False uses the engine evaluator itself."""
+
+    def __init__(self, spec: GameSpec, fast: bool = True):
         self.spec = spec
-        self.ev = get_evaluator(spec)
+        self.engine_ev = get_evaluator(spec)
+        self.ev = FastEvaluator(spec) if fast else self.engine_ev
         self.deck = np.array(spec.deck, dtype=np.int64)
         self.D = len(self.deck)
         self.pos = np.full(52, -1, dtype=np.int64)
         self.pos[self.deck] = np.arange(self.D)
         self.chunk = 1024 if spec.hole_usage == "exactly" else 4096
+        if fast:
+            self.chunk = 2048 if spec.hole_usage == "exactly" else 16384
+
+    def _chunked(self, ev, holes, boards, chunk):
+        n = len(holes)
+        if n <= chunk:
+            return ev.evaluate_batch(holes, boards)
+        out = np.empty(n, dtype=np.int64)
+        for i in range(0, n, chunk):
+            out[i:i + chunk] = ev.evaluate_batch(holes[i:i + chunk], boards[i:i + chunk])
+        return out
 
     def evaluate(self, holes: np.ndarray, boards: np.ndarray) -> np.ndarray:
-        n = len(holes)
-        if n <= self.chunk:
-            return self.ev.evaluate_batch(holes, boards)
-        out = np.empty(n, dtype=np.int64)
-        for i in range(0, n, self.chunk):
-            out[i:i + self.chunk] = self.ev.evaluate_batch(holes[i:i + self.chunk], boards[i:i + self.chunk])
-        return out
+        return self._chunked(self.ev, holes, boards, self.chunk)
+
+    def evaluate_engine(self, holes: np.ndarray, boards: np.ndarray) -> np.ndarray:
+        """The engine evaluator in its original chunks (used to time the sampling tiers, so
+        the faster evaluator does not change the auto-chosen sample counts)."""
+        return self._chunked(self.engine_ev, holes, boards, 1024 if self.spec.hole_usage == "exactly" else 4096)
 
     def best_keep(self, hole: np.ndarray, board: np.ndarray, n_discard: int) -> np.ndarray:
         if n_discard == 0:
@@ -192,10 +208,14 @@ class CardAbstraction:
         sp = self.spec
         h, b = sp.final_hole_cards, sp.final_board_cards
         cards = self.be.deck[np.argsort(rng.random((2000, self.be.D)), axis=1)[:, :h + b]]
+        self.be.evaluate_engine(cards[:200, :h], cards[:200, h:])
+        t0 = time.perf_counter()
+        self.be.evaluate_engine(cards[:, :h], cards[:, h:])
+        us = (time.perf_counter() - t0) / 2000 * 1e6
         self.be.evaluate(cards[:200, :h], cards[:200, h:])
         t0 = time.perf_counter()
         self.be.evaluate(cards[:, :h], cards[:, h:])
-        us = (time.perf_counter() - t0) / 2000 * 1e6
+        self.info["fast_eval_us"] = (time.perf_counter() - t0) / 2000 * 1e6
         self.info["eval_us"] = us
         # cost tiers rather than a continuous formula, so a busy machine does not change
         # the abstraction: ~0.5 us/hand (hold'em-like) -> 56, Omaha-like (~5 us) -> 24

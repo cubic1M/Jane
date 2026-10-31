@@ -530,7 +530,10 @@ class BalancedBot(Bot):
         info = {"f_pre": f_pre, "post_keep": keep, "n": n, "percentile": None,
                 "made": None, "draw": 0.0}
         if obs.street == 0:
-            own = self.profile.hand_equity(obs.my_cards, n)
+            if len(obs.my_cards) == self.profile.k:
+                own = self.profile.hand_equity(obs.my_cards, n)
+            else:  # after a preflop discard the card model (fitted on full hands) does not apply
+                own = self.model.equity_obs(obs, n=n, rng=self.np_rng) if n else 0.5
             info["pre_equity"] = own
             info["percentile"] = self.profile.percentile(own)
         if obs.street == 0 and f_pre >= 0.999:

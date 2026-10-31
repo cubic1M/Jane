@@ -30,6 +30,7 @@ class BotProcess:
         self.name, self.cmd = name, cmd
         self.action_timeout, self.clock = action_timeout, time_bank
         self.dead = False
+        self.next_id = 0
         self.stats = {"decisions": 0, "timeouts": 0, "illegal": 0, "auto": 0, "stray_lines": 0,
                       "max_think": 0.0}
         self._err = open(stderr_path, "w")
@@ -64,24 +65,35 @@ class BotProcess:
                 return
             self.stats["stray_lines"] += 1
 
-    def ask(self, msg: dict, limit: float) -> tuple[str | None, float]:
-        """Sends a request; returns (reply line or None on timeout/crash, seconds taken)."""
+    def ask(self, msg: dict, limit: float, rid: int | None = None) -> tuple[str | None, float]:
+        """Sends a request; returns (reply line or None on timeout/crash, seconds taken).
+
+        With a request id, lines that start with a different integer (late answers to an
+        earlier request) are skipped; any other line is taken as the answer."""
         self._drain()
         if self.dead:
             return None, 0.0
         self.send(msg)
         t0 = time.perf_counter()
-        try:
-            line = self.lines.get(timeout=max(limit, 0.0))
-        except queue.Empty:
-            line = None
-        took = time.perf_counter() - t0
-        if line is _EOF:
-            self.dead, line = True, None
-        return (line.strip() if line is not None else None), took
+        line = None
+        while True:
+            try:
+                line = self.lines.get(timeout=max(limit - (time.perf_counter() - t0), 0.0))
+            except queue.Empty:
+                line = None
+                break
+            if line is _EOF:
+                self.dead, line = True, None
+                break
+            first = line.split(maxsplit=1)[0] if line.strip() else ""
+            if rid is not None and first.lstrip("-").isdigit() and int(first) != rid:
+                self.stats["stray_lines"] += 1
+                continue
+            break
+        return (line.strip() if line is not None else None), time.perf_counter() - t0
 
-    def handshake(self, msg: dict) -> bool:
-        reply, _ = self.ask(msg, STARTUP_GRACE)
+    def handshake(self, msg: dict, grace: float) -> bool:
+        reply, _ = self.ask(msg, grace)
         return reply is not None and reply.lower() == "ready"
 
     def decide(self, msg: dict) -> tuple[str | None, str]:
@@ -91,16 +103,20 @@ class BotProcess:
             if msg["phase"] == "discard":
                 return "discard " + " ".join(msg["hole"][:poker.DISCARD_COUNT]), "AUTO"
             return ("check" if "check" in msg["legal"] else "fold"), "AUTO"
-        msg = {**msg, "clock": round(self.clock, 3)}
+        self.next_id += 1
+        msg = {"type": "act", "id": self.next_id, **msg, "clock": round(self.clock, 3)}
         limit = min(self.action_timeout, self.clock)
-        reply, took = self.ask(msg, limit)
+        reply, took = self.ask(msg, limit, self.next_id)
         self.clock -= took
         self.stats["decisions"] += 1
         self.stats["max_think"] = max(self.stats["max_think"], took)
         if reply is None:
             self.stats["timeouts"] += 1
             return None, f"TIMEOUT {took:.3f}s" + (" (process ended)" if self.dead else "")
-        return reply, ""
+        parts = reply.split(maxsplit=1)
+        if parts[0] == str(self.next_id):
+            return (parts[1] if len(parts) > 1 else ""), ""
+        return reply, ""   # no id: illegal, the hand folds it
 
     def close(self) -> None:
         try:
@@ -112,11 +128,13 @@ class BotProcess:
         except subprocess.TimeoutExpired:
             self.proc.kill()
             self.proc.wait()
+        self.proc.stdout.close()
         self._err.close()
 
 
 def play_match(bot1_cmd: str, bot2_cmd: str, hands: int, seed: int, log_path: str,
-               action_timeout: float = poker.ACTION_TIMEOUT, time_bank: float = poker.TIME_BANK) -> dict:
+               action_timeout: float = poker.ACTION_TIMEOUT, time_bank: float = poker.TIME_BANK,
+               startup_grace: float = STARTUP_GRACE) -> dict:
     base = os.path.splitext(log_path)[0]
     bots = [BotProcess("bot1", bot1_cmd, action_timeout, time_bank, base + ".bot1.stderr"),
             BotProcess("bot2", bot2_cmd, action_timeout, time_bank, base + ".bot2.stderr")]
@@ -124,12 +142,13 @@ def play_match(bot1_cmd: str, bot2_cmd: str, hands: int, seed: int, log_path: st
     log = open(log_path, "w")
     log.write(f"# match seed={seed} hands={hands} bot1={bot1_cmd!r} bot2={bot2_cmd!r}\n")
     try:
-        for i, b in enumerate(bots):
+        for b in bots:
             ok = b.handshake({"type": "match_start", "you": b.name, "hands": hands,
                               "small_blind": poker.SMALL_BLIND, "big_blind": poker.BIG_BLIND,
                               "stack": poker.STACK, "hole_cards": poker.HOLE_CARDS,
                               "discard_count": poker.DISCARD_COUNT,
-                              "action_timeout": action_timeout, "time_bank": time_bank})
+                              "action_timeout": action_timeout, "time_bank": time_bank},
+                             startup_grace)
             log.write(f"# {b.name} handshake {'ok' if ok else 'MISSING (no ready line)'}\n")
         for h in range(1, hands + 1):
             dealer = 0 if h % 2 == 1 else 1                  # index into bots
@@ -183,7 +202,7 @@ def _log_hand(log, hand, by_seat, deltas, score, notes) -> None:
             log.write(f"  {by_seat[s].name} shows {' '.join(poker.strs(hand.hole[s]))}: "
                       f"{poker.CATEGORIES[hand.values[s][0]]}\n")
     log.write(f"  result {by_seat[0].name} {deltas[0]:+d}, {by_seat[1].name} {deltas[1]:+d}"
-              f" | match {score[0] if by_seat[0].name == 'bot1' else score[1]:+d} for bot1\n")
+              f" | match total bot1 {score[0]:+d}\n")
 
 
 def main(argv=None) -> int:

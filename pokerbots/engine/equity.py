@@ -38,11 +38,12 @@ class EquityModel:
         self.deck = np.array(spec.deck, dtype=np.int64)
         self._pre_cache: dict = {}
 
-    def _future_to_board(self, street: int) -> bool:
-        for d in self.spec.discards:
-            if d.street >= street:
-                return d.to_board
-        return True
+    def _future_to_board(self, street: int, include_current: bool = True) -> bool:
+        """to_board of the next discard rule. include_current=False in a betting phase:
+        that street's discards are already done."""
+        nxt = [d for d in self.spec.discards
+               if d.street > street or (include_current and d.street == street)]
+        return min(nxt, key=lambda d: d.street).to_board if nxt else True
 
     def equity(self, my_cards, board, *, opp_num_cards: int, board_to_come: int,
                my_discards_left: int = 0, opp_discards_left: int = 0, discard_to_board: bool = True,
@@ -125,7 +126,7 @@ class EquityModel:
         return self.equity(mine, tuple(obs.board) + tuple(extra_board),
                            opp_num_cards=obs.opp_num_cards, board_to_come=obs.board_cards_to_come,
                            my_discards_left=my_left, opp_discards_left=obs.opp_discards_left,
-                           discard_to_board=self._future_to_board(obs.street),
+                           discard_to_board=self._future_to_board(obs.street, obs.phase == "discard"),
                            dead=self.dead_cards(obs) + tuple(c for c in obs.my_cards if c not in mine and c not in extra_board),
                            n=n, rng=rng, opp_sampler=opp_sampler)
 

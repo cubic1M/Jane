@@ -35,8 +35,8 @@ class SpecInfo:
         self.ev = get_evaluator(spec)
         self.ms = max(1e-4, self.model.ms_per_sample())
         h = spec.hole_cards
-        # preflop equity sample size: ~4 ms per new class, 120..400 samples
-        self.n_pre = int(np.clip(4.0 / self.ms, 120, 400))
+        # preflop equity sample size: ~6 ms per new class, 150..1000 samples
+        self.n_pre = int(np.clip(6.0 / self.ms, 150, 1000))
         rng = np.random.default_rng([7, h, len(spec.deck)])
         deck = np.array(spec.deck, dtype=np.int64)
         hands = np.array([rng.choice(deck, h, replace=False) for _ in range(POOL_SIZE)], dtype=np.int64)

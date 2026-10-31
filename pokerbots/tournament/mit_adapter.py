@@ -72,6 +72,9 @@ class AdaptedPlayer:
         """Rebuild our ActionRecord history from the previous_state chain."""
         hist = []
         chain = self._chain(rs)
+        board_now = list(chain[-1].board) if chain else []
+        to_board = bool(self.spec.discards) and self.spec.discards[0].to_board
+        flop_n = self.spec.board_cards_per_street[1] if self.spec.num_streets > 1 else 0
         for s0, s1 in zip(chain, chain[1:]):
             our_street, is_disc = PROTOCOL["streets"].get(s0.street, (None, False))
             if our_street is None:
@@ -80,9 +83,14 @@ class AdaptedPlayer:
             if is_disc:
                 # in a discard step only the player with actor != street % 2 discards; the
                 # other one's turn is a placeholder check (skipped). Opponent hands are
-                # empty in the skeleton, so its discarded card is read from the board.
+                # empty in the skeleton, and the skeleton pops our own card from a hand
+                # list shared by every state (so a before/after diff is empty): the card
+                # is read from the board, where discards land in order (first step first).
                 if actor != s0.street % 2:
                     gone = [c for c in s0.hands[actor] if c not in s1.hands[actor]]
+                    i = flop_n + (s0.street - min(k for k, v in PROTOCOL["streets"].items() if v[1]))
+                    if not gone and to_board and i < len(board_now):
+                        gone = [board_now[i]]
                     hist.append(ActionRecord(actor, our_street, DISCARD, 0, _cards(gone)))
                 continue
             cost = s0.pips[1 - actor] - s0.pips[actor]
@@ -190,6 +198,12 @@ class AdaptedPlayer:
             showdown = len(opp) > 0
             hist = self._history(prev, active)
             folded_by = None
+            if showdown and (not hist or hist[-1].kind != CALL):
+                # a showdown closed by a check: the skeleton's TerminalState points at the
+                # state before that check, so the closing check is not in the chain
+                our_street, is_disc = PROTOCOL["streets"].get(prev.street, (None, True))
+                if our_street is not None and not is_disc and prev.pips[0] == prev.pips[1]:
+                    hist.append(ActionRecord(prev.button % 2, our_street, CHECK, 0))
             if not showdown:
                 folded_by = prev.button % 2
                 our_street = PROTOCOL["streets"].get(prev.street, (0, False))[0]

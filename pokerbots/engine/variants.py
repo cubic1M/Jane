@@ -63,7 +63,15 @@ J_3STREET = GameSpec(
     name="j_3street", board_cards_per_street=(0, 4, 1), starting_stack=200,
     notes="HOLD-OUT drill: only 3 betting rounds: preflop, a 4-card flop, a 1-card river. 100bb.")
 
-DAY_VARIANTS: tuple = (H_PLO5, I_DOUBLE_DISCARD, J_3STREET)
+K_IRISH = GameSpec(
+    name="k_irish", hole_cards=4, hole_usage="any", betting="pot_limit",
+    small_blind=5, big_blind=10, starting_stack=1500,
+    discards=(DiscardRule(street=1, count=2, to_board=False, face_up=True, order="ip_first"),),
+    hands_per_match=1000, time_per_decision=1.0, time_per_match=120.0,
+    notes="REHEARSAL: Pot-Limit Irish Hold'em, 4 hole cards; after the flop is dealt the DEALER "
+          "(SB, in position) discards 2 face up as DEAD cards, then the BB; 150bb = 1500 chips.")
+
+DAY_VARIANTS: tuple = (H_PLO5, I_DOUBLE_DISCARD, J_3STREET, K_IRISH)
 
 ALL_VARIANTS = {**VARIANTS, **{s.name: s for s in DAY_VARIANTS}}
 

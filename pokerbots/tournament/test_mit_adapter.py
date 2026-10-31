@@ -98,6 +98,53 @@ class TestAdapter(unittest.TestCase):
         self.assertEqual(res.history[-1].kind, "fold")
         self.assertEqual(res.history[-1].position, 1)
 
+    def _bb_hand_to_flop_betting(self, mine):
+        """We are index 1 (BB). Like the real skeleton, the discard pops our card from a
+        hand list shared by every state, and the opponent's hand is empty."""
+        hands = [[], mine]
+        gs = GS(0, 60.0, 1)
+        r0 = FakeRound(0, 0, [1, 2], [STACK - 1, STACK - 2], hands, [], None)
+        self.p.handle_new_round(gs, r0, 1)
+        r1 = r0.nxt(button=1, pips=[2, 2], stacks=[STACK - 2, STACK - 2])      # SB limps
+        r2 = r1.nxt(street=2, pips=[0, 0], board=["Kh", "8d", "2s"])           # BB checks
+        self.p._observation(gs, r2, 1)                                          # our discard decision
+        mine.pop(2)                                                             # 7c, in place
+        r3 = r2.nxt(button=0, board=["Kh", "8d", "2s", "7c"])
+        r4 = r3.nxt(street=3)                                                   # SB discards Qs
+        r5 = r4.nxt(button=1, board=["Kh", "8d", "2s", "7c", "Qs"])
+        return gs, r5.nxt(street=4)                                             # flop betting, BB first
+
+    def test_discard_cards_in_history(self):
+        P = mit_adapter.parse_card
+        gs, r6 = self._bb_hand_to_flop_betting(["As", "Ad", "7c"])
+        obs = self.p._observation(gs, r6, 1)
+        disc = [(h.position, h.cards) for h in obs.history if h.kind == "discard"]
+        self.assertEqual(disc, [(1, (P("7c"),)), (0, (P("Qs"),))])
+
+    def test_showdown_after_check_check_records_last_check(self):
+        gs, r = self._bb_hand_to_flop_betting(["As", "Ad", "7c"])
+        for street in (4, 5):
+            r = r.nxt(button=2)                                                 # BB checks
+            r = r.nxt(button=1, street=street + 1, board=r.board + ["3c"])      # SB checks
+        river = r                                                               # street 6, BB to act
+        shown = [["Kc", "Qd"], river.hands[1]]                                  # the 'O' clause
+        got = {}
+        self.p.bot.end_hand = lambda res: got.setdefault("res", res)
+        # BB checks, SB checks: the skeleton's TerminalState points at the state BEFORE SB's check
+        last = river.nxt(button=2)._replace(hands=shown)
+        self.p.handle_round_over(gs, TS([2, -2], last), 1)
+        h = got["res"].history
+        self.assertTrue(got["res"].showdown)
+        self.assertEqual([(x.position, x.street, x.kind) for x in h[-2:]],
+                         [(1, 3, "check"), (0, 3, "check")])
+        # BB bets, SB calls: the TerminalState points at the state AFTER the call; nothing added
+        r_bet = river.nxt(button=2, pips=[0, 10], stacks=[STACK - 2, STACK - 12])
+        r_call = r_bet.nxt(button=3, pips=[10, 10], stacks=[STACK - 12, STACK - 12])
+        got.clear()
+        self.p.handle_round_over(gs, TS([12, -12], r_call._replace(hands=shown)), 1)
+        self.assertEqual([(x.position, x.kind) for x in got["res"].history[-2:]],
+                         [(1, "raise"), (0, "call")])
+
     def test_wrong_blind_mapping_is_flagged(self):
         saved = dict(mit_adapter.PROTOCOL)
         mit_adapter.PROTOCOL["sb_index"] = 1                             # the bug

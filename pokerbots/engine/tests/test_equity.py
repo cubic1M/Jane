@@ -73,5 +73,35 @@ class TestEquity(unittest.TestCase):
         self.assertAlmostEqual(ea + eb, 1.0, delta=0.03)
 
 
+class TestMixedDiscardRules(unittest.TestCase):
+    def test_bet_phase_uses_the_next_discard_rule(self):
+        """Flop: discard to the muck; turn: discard to the board. During flop BETTING the
+        flop rule is done, so the pending discard (turn) goes to the board."""
+        from engine.spec import DiscardRule, GameSpec
+        from engine.match import deal_order
+        sp = GameSpec("mixed", hole_cards=4, starting_stack=200,
+                      discards=(DiscardRule(1, 1, to_board=False, face_up=False),
+                                DiscardRule(2, 1, to_board=True, face_up=True)))
+        m = get_equity_model(sp)
+        got = {}
+
+        def dec(pos, o):
+            if o.phase == "discard":
+                return Discard([o.my_cards[0]])
+            if o.street == 1 and "obs" not in got:
+                got["obs"] = o
+            return Check() if o.legal.can_check else Call()
+
+        HandState(sp, deal_order(sp, 3, 0)).play(dec)
+        o = got["obs"]
+        self.assertEqual((o.phase, o.my_discards_left), ("bet", 1))
+        kw = dict(opp_num_cards=o.opp_num_cards, board_to_come=o.board_cards_to_come,
+                  my_discards_left=1, opp_discards_left=1, dead=m.dead_cards(o), n=400)
+        to_board = m.equity(o.my_cards, o.board, discard_to_board=True,
+                            rng=np.random.default_rng(5), **kw)
+        got_eq = m.equity_obs(o, n=400, rng=np.random.default_rng(5))
+        self.assertEqual(got_eq, to_board)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,8 @@
 """A simple legal bot for the rehearsal protocol. Not a strong one.
 
 Reads one JSON object per line on stdin, answers only "match_start" ("ready") and
-"act" messages, one line each, and flushes after every answer. Logs go to stderr.
+"act" messages ("<id> <action>"), one line each, and flushes after every answer.
+Logs go to stderr, never stdout.
 """
 import json
 import random
@@ -40,7 +41,7 @@ def choose_bet(msg, rng) -> str:
     s = strength(msg["hole"] + msg["board"])
     if "raise" in legal and s > 0.8 and rng.random() < 0.5:
         lo, hi = msg["raise_by"]
-        return f"raise {min(hi, max(lo, msg['pot'] // 2))}"
+        return f"raise {min(hi, max(lo, msg['pot'] * 3 // 4))}"
     if "check" in legal:
         return "check"
     if msg["to_call"] <= max(msg["pot"] // 3, 10) or s > 0.7:
@@ -56,7 +57,8 @@ def main() -> None:
         if kind == "match_start":
             reply = "ready"
         elif kind == "act":
-            reply = choose_discard(msg) if msg["phase"] == "discard" else choose_bet(msg, rng)
+            action = choose_discard(msg) if msg["phase"] == "discard" else choose_bet(msg, rng)
+            reply = f"{msg['id']} {action}"     # always echo the request id
         elif kind == "match_end":
             print(f"example_bot: final score {msg['score']}", file=sys.stderr)
             break

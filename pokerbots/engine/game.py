@@ -176,6 +176,7 @@ class HandState:
         self.done = False
         self.deltas = [0, 0]
         self.showdown = False
+        self._street_discards_left = [0, 0]
 
     # ---- helpers -------------------------------------------------------------------
     def _put(self, p: int, amount: int) -> int:
@@ -185,10 +186,12 @@ class HandState:
         self.committed[p] += amount
         return amount
 
-    def _future_discards(self, p: int, street: int, include_current: bool) -> int:
-        n = 0
+    def _future_discards(self, p: int, street: int) -> int:
+        """Cards p still has to discard: later streets plus what is left on this one
+        (including a pending discard; several rules may share a street)."""
+        n = self._street_discards_left[p]
         for d in self.spec.discards:
-            if d.street > street or (include_current and d.street == street):
+            if d.street > street:
                 n += d.count
         return n
 
@@ -225,7 +228,6 @@ class HandState:
         for (pos, st, kind, amt, cards, face_up) in self.history:
             if pos == o and kind == DISCARD and face_up:
                 opp_vis.extend(cards)
-        pending = phase == "discard"
         return Observation(
             hand_index=self.hand_index, hands_in_match=self.spec.hands_per_match,
             position=p, street=self.street, phase=phase,
@@ -237,15 +239,15 @@ class HandState:
             my_committed=self.committed[p], opp_committed=self.committed[o],
             legal=legal, history=tuple(hist),
             board_cards_to_come=self._board_to_come(),
-            my_discards_left=self._future_discards(p, self.street, pending and self._pending_discard[p]),
-            opp_discards_left=self._future_discards(o, self.street, pending and self._pending_discard[o]),
+            my_discards_left=self._future_discards(p, self.street),
+            opp_discards_left=self._future_discards(o, self.street),
             bankroll=self.bankrolls[p], time_left=self.time_left[p],
             big_blind=self.spec.big_blind)
 
     # ---- the hand --------------------------------------------------------------------
     def play(self, decide: DecideFn) -> list[int]:
         spec = self.spec
-        self._pending_discard = [False, False]
+        self._street_discards_left = [0, 0]   # discard cards still due on this street
         # antes and blinds
         if spec.ante:
             for p in (0, 1):
@@ -260,13 +262,15 @@ class HandState:
             n = spec.board_cards_per_street[street]
             self.board.extend(self.deck_rest[:n])
             self.deck_rest = self.deck_rest[n:]
+            due = sum(r.count for r in spec.discards_on_street(street))
+            self._street_discards_left = [due, due]
             for rule in spec.discards_on_street(street):
                 order = (1, 0) if rule.order == "oop_first" else (0, 1)
-                self._pending_discard = [True, True]
                 for p in order:
                     if self.folded is None:
                         self._discard(p, rule, decide)
-                    self._pending_discard[p] = False
+                    self._street_discards_left[p] -= rule.count
+            self._street_discards_left = [0, 0]
             if self.folded is not None:
                 return self._finish()
             self._betting_round(decide)

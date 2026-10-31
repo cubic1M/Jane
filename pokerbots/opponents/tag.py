@@ -23,7 +23,7 @@ import numpy as np
 from engine.bot import Bot
 from engine.game import Call, Check, Fold, RaiseTo
 
-from ._common import (HandView, OppModel, bet_pot, choose_discard, eff_stack, equity_vs,
+from ._tg_common import (HandView, OppModel, bet_pot, choose_discard, eff_stack, equity_vs,
                       fold_or_check, get_info, opp_pre_range, raise_to, safe, shove)
 
 PARAMS = dict(

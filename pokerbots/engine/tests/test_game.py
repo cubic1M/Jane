@@ -165,6 +165,26 @@ class TestDiscards(unittest.TestCase):
         self.assertEqual(own.my_discards, (parse_cards("Kc")[0],))
         self.assertEqual(len(h.board), 5)
 
+    def test_discards_left_with_two_rules_on_one_street(self):
+        # two 1-card discards on the flop: each player's count must drop as each rule is done
+        sp = GameSpec("two_rules", hole_cards=4, starting_stack=200,
+                      discards=(DiscardRule(1, 1, True, True, "oop_first"),
+                                DiscardRule(1, 1, True, True, "oop_first")))
+        seen = []
+
+        def dec(pos, o):
+            if o.phase == "discard":
+                seen.append((pos, o.my_discards_left, o.opp_discards_left))
+                return Discard([o.my_cards[0]])
+            if o.street == 1 and not any(s[0] == "bet" for s in seen):
+                seen.append(("bet", o.my_discards_left, o.opp_discards_left))
+            return Check() if o.legal.can_check else Call()
+
+        HandState(sp, deal_order(sp, 1, 0)).play(dec)
+        self.assertEqual(seen, [(1, 2, 2), (0, 2, 1),   # rule 1: BB, then SB
+                                (1, 1, 1), (0, 1, 0),   # rule 2: BB, then SB
+                                ("bet", 0, 0)])
+
     def test_illegal_discard_is_fold(self):
         sp = VARIANTS["c_discard3"]
         h = HandState(sp, deck("AsAdAh KcKdKh 2c3c4d", sp))

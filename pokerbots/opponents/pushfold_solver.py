@@ -65,11 +65,17 @@ def _showdown(spec, ev, h0, h1, board, rng):
     return ev.evaluate_batch(h0, board), ev.evaluate_batch(h1, board)
 
 
+def pre_n(spec):
+    """Samples for a preflop equity lookup (~5 ms); shared by the solve and the bot so
+    the engine's preflop cache is warmed by the solve."""
+    return int(np.clip(round(5.0 / get_equity_model(spec).ms_per_sample(), -2), 100, 1200))
+
+
 def simulate(spec, rng, budget_s):
     m = get_equity_model(spec)
     ms = m.ms_per_sample()
     n_total = int(np.clip(budget_s * 1000 / ms, 20000, 300000))
-    K = int(np.clip(n_total * 2 // 120, 300, 5000))
+    K = int(np.clip(n_total * 2 // 250, 300, 3000))
     deck = np.array(spec.deck, dtype=np.int64)
     h, nb = spec.hole_cards, spec.total_board_dealt
     pool = np.sort(deck[np.argsort(rng.random((K, len(deck))), 1)[:, :h]], 1)
@@ -94,6 +100,9 @@ def simulate(spec, rng, budget_s):
     cnt = np.bincount(I, minlength=K) + np.bincount(J, minlength=K)
     tot = np.bincount(I, R, minlength=K) + np.bincount(J, 1 - R, minlength=K)
     strength = (tot + 1.0) / (cnt + 2.0)
+    if spec.hole_cards == 2:   # few suit classes: use (cached) exact-ish class equities
+        npre = pre_n(spec)
+        strength = np.array([m.preflop_equity(tuple(int(c) for c in row), n=npre) for row in pool])
     edges = np.quantile(strength, np.arange(1, B) / B)
     pb = np.searchsorted(edges, strength)
     num = np.zeros((B, B)); den = np.zeros((B, B))
@@ -228,6 +237,7 @@ class Solution:
         rest = max(0.5, budget_s - (time.perf_counter() - t0) - 0.3)
         self.avg, self.iters = solve_cfr(self.root, self.nodes, rest)
         self.smax = spec.starting_stack - spec.ante
+        self.n_pre = pre_n(spec)
         self.seconds = time.perf_counter() - t0
 
 
@@ -235,7 +245,7 @@ def get_solution(spec, budget_s=SOLVE_BUDGET_S):
     k = _key(spec)
     sol = _CACHE.get(k)
     if sol is None:
-        sol = _CACHE[k] = Solution(k, budget_s=budget_s)
+        sol = _CACHE[k] = Solution(spec, budget_s=budget_s)
     return sol
 
 
@@ -261,6 +271,7 @@ class SolverBot(Bot):
             except Exception:   # never let the solver cost us the match
                 self.sol = None
         self.opp_agg = [1.0, 3.0]   # postflop opp (bets+raises, opportunities), prior 1/3
+        self.opp_pre = [0, 0]       # hands seen, hands where the opponent shoved preflop
         self._range = (None, None)
 
     # ---- helpers ------------------------------------------------------------------
@@ -270,7 +281,10 @@ class SolverBot(Bot):
         return int(np.clip(ms_budget / self.msps, lo, hi))
 
     def _pre_eq(self, cards):
-        return self.m.preflop_equity(cards, n=self._n(5.0, 100, 1200))
+        n = self.sol.n_pre if self.sol is not None else pre_n(self.spec)
+        if self.spec.time_per_decision:
+            n = min(n, self._n(5.0, 50, 1200))
+        return self.m.preflop_equity(cards, n=n)
 
     def _bucket(self, cards):
         return int(np.searchsorted(self.sol.edges, self._pre_eq(cards)))
@@ -348,7 +362,9 @@ class SolverBot(Bot):
         if lg.discard_count:
             return self._discard(obs)
         if obs.street == 0:
-            a = self._preflop_solved(obs)
+            a = self._vs_jammer(obs)
+            if a is None:
+                a = self._preflop_solved(obs)
             if a is not None:
                 return a
             return self._preflop_rule(obs)
@@ -380,6 +396,16 @@ class SolverBot(Bot):
         mx = max(obs.my_pip, obs.opp_pip)
         frac = OPEN_FRAC if nr == 0 else RAISE_FRAC
         return RaiseTo(lg.clamp_raise(mx + frac * (obs.pot + lg.call_amount)))
+
+    def _vs_jammer(self, obs):
+        """Exploit: an opponent who shoves preflop far too often has a near-random
+        range, so call shoves on equity vs a random hand and pot odds."""
+        lg = obs.legal
+        hands, jams = self.opp_pre
+        if obs.opp_stack > 0 or lg.call_amount == 0 or hands < 20 or jams / hands < 0.15:
+            return None
+        e = self._pre_eq(obs.my_cards)
+        return Call() if e > lg.call_amount / (obs.pot + lg.call_amount) + 0.03 else Fold()
 
     def _preflop_rule(self, obs):
         """Fallback: preflop equity vs pot odds, scaled to the variant's equity spread."""
@@ -413,7 +439,7 @@ class SolverBot(Bot):
         if call > 0:
             po = call / (pot + call)
             bet_frac = call / max(1, pot - call)
-            margin = (0.03 + 0.07 * min(bet_frac, 1.5)) * float(np.clip(0.35 / max(agg, 0.05), 0.5, 1.5))
+            margin = (0.03 + 0.07 * min(bet_frac, 1.5)) * float(np.clip((0.3 / max(agg, 0.05)) ** 1.5, 0.3, 1.5))
             if last:
                 margin += 0.03
             if lg.can_raise and eq > 0.82 - 0.03 * (not last) and u < 0.85:
@@ -440,6 +466,11 @@ class SolverBot(Bot):
     def end_hand(self, result):
         # postflop aggression of the opponent: bets/raises per opportunity
         opp = 1 - result.position
+        self.opp_pre[0] += 1
+        cap = self.spec.starting_stack - self.spec.ante
+        if any(r.position == opp and r.street == 0 and r.kind == "raise" and r.amount >= 0.9 * cap
+               for r in result.history):
+            self.opp_pre[1] += 1
         for r in result.history:
             if r.position == opp and r.street > 0 and r.kind in ("raise", "check", "call", "fold"):
                 self.opp_agg[1] += 1
