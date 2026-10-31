@@ -27,6 +27,9 @@ export type Expected = {
   accountId: string | null;
   // A payment to a card, named for its card (see billName).
   cardPayment?: true;
+  // A regular move out that isn't a bill (to savings, or by Zelle before Jane knows it's rent):
+  // the forecast and safe to spend take it out of checking, "Coming up" doesn't list it.
+  transfer?: true;
 };
 
 export type AccountForecast = {
@@ -147,7 +150,11 @@ export function billName(s: Stream, accounts: readonly DetectionAccount[] = []):
 const isOwnTransfer = (s: Stream) => OWN_ACCOUNT_TRANSFERS.includes(s.pfcDetailed ?? "");
 
 export function scheduledTransfers(input: DetectionInput, days: number): Expected[] {
-  return expand(buildStreams(input).filter(isOwnTransfer), input.asOf, addDays(input.asOf, days));
+  return expand(
+    buildStreams(input).filter(isOwnTransfer),
+    input.asOf,
+    addDays(input.asOf, days),
+  ).map((t) => ({ ...t, transfer: true as const }));
 }
 
 // The other way: money that comes in from the person's own accounts on a schedule (roommates'

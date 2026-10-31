@@ -8,7 +8,7 @@ import {
   monthsAgo,
   tx,
 } from "@/detection/__fixtures__/build";
-import { upcomingBills } from "@/detection/forecast";
+import { forecastAccounts, upcomingBills } from "@/detection/forecast";
 import type { DetectionInput } from "@/detection/types";
 import { safeToSpend } from "./safe-to-spend";
 
@@ -94,5 +94,33 @@ describe("safeToSpend", () => {
     expect(
       safeToSpend(data(), { budgetsLeftCents: 200_000, goalsCents: 0 }).safeCents,
     ).toBeLessThan(0);
+  });
+
+  // Debugger 10-30: rent paid by Zelle to a person is a transfer until the person says it's
+  // rent. The forecast took it out of checking ("lowest about $4,809.21") while safe to spend
+  // left it in ($6,209 when $1,400 rent was due before payday).
+  const zelle = [3, 2, 1].map((m) =>
+    tx({
+      date: monthsAgo(m, 25),
+      amountCents: 140_000,
+      description: "Zelle payment to Marcus Webb",
+      merchantName: null,
+      pfcPrimary: "TRANSFER_OUT",
+      pfcDetailed: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+    }),
+  );
+
+  it("holds back a regular transfer out before payday, as the forecast does", () => {
+    const d = data([...pay, ...geico, ...netflix, ...zelle]);
+    const safe = safeToSpend(d, { budgetsLeftCents: 0, goalsCents: 0 });
+    expect(safe.bills.map((b) => [b.date, b.amountCents, b.transfer ?? false])).toEqual([
+      ["2026-10-20", 9_800, false],
+      ["2026-10-25", 140_000, true],
+    ]);
+    expect(safe.safeCents).toBe(150_000 - 9_800 - 140_000);
+    // The same money out as the forecast before payday (it adds no income before then).
+    const [checking] = forecastAccounts(d, 31);
+    const dayBefore = checking.days.find((x) => x.date === "2026-10-31")!;
+    expect(safe.safeCents).toBe(dayBefore.balanceCents);
   });
 });
