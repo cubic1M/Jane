@@ -38,6 +38,8 @@ export const CHARGES_PER_YEAR = {
   SEMI_MONTHLY: 24,
   MONTHLY: 12,
   QUARTERLY: 4,
+  // Six-month car insurance premiums and property tax paid in two instalments (debugger 10-31).
+  SEMIANNUALLY: 2,
   ANNUALLY: 1,
 } as const;
 
@@ -71,6 +73,7 @@ export const FALLBACK_INTERVAL_DAYS: Readonly<
   BIWEEKLY: [13, 16],
   MONTHLY: [26, 35],
   QUARTERLY: [84, 98],
+  SEMIANNUALLY: [175, 190],
 };
 
 // Two charges a month apart are enough where a repeat can only be a bill or a subscription: these
@@ -88,7 +91,9 @@ export const SHORT_RUN_MIN_CHARGES = 2;
 // ...and only at these gaps: a month, or a quarter (a water bill or insurance paid every three
 // months, seen twice in a short history; CSV bench, second tuning set). A week apart is a second
 // purchase.
-export const SHORT_RUN_FREQUENCIES: readonly Frequency[] = ["MONTHLY", "QUARTERLY"];
+// Or six months: a car insurance premium or a property tax instalment, seen twice in a year
+// of statements (debugger 10-31).
+export const SHORT_RUN_FREQUENCIES: readonly Frequency[] = ["MONTHLY", "QUARTERLY", "SEMIANNUALLY"];
 export const SHORT_RUN_CATEGORIES: readonly PfcDetailed[] = [
   "RENT_AND_UTILITIES_RENT",
   "RENT_AND_UTILITIES_GAS_AND_ELECTRICITY",
@@ -98,6 +103,7 @@ export const SHORT_RUN_CATEGORIES: readonly PfcDetailed[] = [
   "RENT_AND_UTILITIES_SEWAGE_AND_WASTE_MANAGEMENT",
   "RENT_AND_UTILITIES_OTHER_UTILITIES",
   "GENERAL_SERVICES_INSURANCE",
+  "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
   "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
   "LOAN_PAYMENTS_CAR_PAYMENT",
   "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
@@ -707,7 +713,7 @@ export const NEXT_CHARGE_WINDOW_DAYS = 400;
 // Yearly and quarterly renewals get a "renews soon" alert this many days ahead (monthly
 // charges are too frequent to be news).
 export const RENEWAL_ALERT_DAYS = 7;
-export const RENEWAL_FREQUENCIES: readonly Frequency[] = ["QUARTERLY", "ANNUALLY"];
+export const RENEWAL_FREQUENCIES: readonly Frequency[] = ["QUARTERLY", "SEMIANNUALLY", "ANNUALLY"];
 // A bill reminder comes this many days before the bill's expected date.
 export const BILL_REMINDER_DAYS = 3;
 // Recurring charges that aren't bills to pay (books QA): card interest is added to the card's

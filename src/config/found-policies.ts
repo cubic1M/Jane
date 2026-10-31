@@ -57,6 +57,8 @@ export const PREMIUM_FREQUENCY_OF: Readonly<Record<string, PremiumFrequency>> = 
   MONTHLY: "monthly",
   QUARTERLY: "quarterly",
   SEMI_ANNUALLY: "semiannual",
+  // The detector's own name for it (src/config/detection.ts CHARGES_PER_YEAR).
+  SEMIANNUALLY: "semiannual",
   ANNUALLY: "yearly",
 };
 

@@ -47,6 +47,7 @@ const STEP: Record<string, { months: number } | { days: number }> = {
   SEMI_MONTHLY: { days: 15 },
   MONTHLY: { months: 1 },
   QUARTERLY: { months: 3 },
+  SEMIANNUALLY: { months: 6 },
   ANNUALLY: { months: 12 },
 };
 
