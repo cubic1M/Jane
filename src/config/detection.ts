@@ -483,6 +483,10 @@ export const ASSUMED_CURRENT_RATE_BPS = 50;
 export const IDLE_CASH_MEDIUM_CONFIDENCE_MONTHS = 3;
 export const IDLE_CASH_HIGH_CONFIDENCE_MONTHS = 6;
 // Outflows that move money rather than spend it, left out of average monthly spending.
+// A tax payment this many days either side of an IRS estimated-payment date is an estimated
+// payment: idle cash holds the same back for each date still to come inside its cushion months
+// (debugger 10-30: a freelancer's $1,884 "idle" with the Jan 15 payment of $3,800 to make).
+export const IDLE_CASH_TAX_DATE_DAYS = 10;
 export const NON_SPENDING_PRIMARIES: readonly PfcPrimary[] = [
   "TRANSFER_OUT",
   "TRANSFER_IN",

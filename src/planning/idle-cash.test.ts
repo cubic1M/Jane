@@ -77,3 +77,37 @@ describe("cashCushionOf", () => {
     expect(cushion.monthlyCents).toBeGreaterThan(plain.monthlyCents);
   });
 });
+
+// Debugger 10-30: a freelancer pays the IRS each quarter ($3,800 on Sep 15). Jane called $1,884
+// "more cash than 3 months of spending" with the Jan 15 payment still to make. A quarterly
+// estimated payment seen this year is held back for each due date inside the cushion's months.
+describe("cash held back for estimated tax", () => {
+  const irs = (date: string): IdleTx => ({
+    date,
+    amountCents: 380_000,
+    accountId: "chk",
+    pfc: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    description: "IRS USATAXPYMT 270265834527718",
+  });
+
+  it("holds back the next estimated payment before calling cash idle", () => {
+    const without = cashCushionOf({ asOf: AS_OF, accounts: [CHECKING], transactions: usual() })!;
+    const withTax = cashCushionOf({
+      asOf: AS_OF,
+      accounts: [CHECKING],
+      transactions: [...usual(), irs("2026-09-15")],
+    })!;
+    // Jan 15 is inside the next three months: one payment held back.
+    expect(withTax.setAsideCents).toBe(380_000);
+    expect(withTax.excessCents).toBe(without.excessCents - 380_000);
+  });
+
+  it("holds back nothing without a payment near an estimated date", () => {
+    const withTax = cashCushionOf({
+      asOf: AS_OF,
+      accounts: [CHECKING],
+      transactions: [...usual(), irs("2026-08-02")],
+    })!;
+    expect(withTax.setAsideCents).toBe(0);
+  });
+});
