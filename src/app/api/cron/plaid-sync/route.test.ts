@@ -69,8 +69,10 @@ vi.mock("@/lib/controller", () => ({
   queueNightlyRuns: vi.fn(async () => ({ queued: 3, done: 3 })),
 }));
 
+import { queueNightlyRuns } from "@/lib/controller";
 import { syncItem } from "@/lib/plaid/sync";
-import { GET } from "./route";
+import { CONTROLLER_CRON_BUDGET_MS, CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
+import { GET, maxDuration } from "./route";
 
 const call = (authorization?: string) =>
   GET(
@@ -172,5 +174,22 @@ describe("GET /api/cron/plaid-sync", () => {
     await call("Bearer cron-secret");
     expect(reportMissedJobs).toHaveBeenCalled();
     expect(recordRun).toHaveBeenCalledWith("plaid-sync", expect.any(Function));
+  });
+
+  // Debugger 10-31 (production logs): this cron returned 504 and its health check called it
+  // and the digest stale for over a day. The nightly controller drained people's runs for up to
+  // 240 s inside it, after the other steps and before six more, past the function's limit. It
+  // now runs last, with only the time left less one run's worth, and the limit is declared.
+  it("gives the controller only the time left, last, inside a declared limit", async () => {
+    expect(maxDuration).toBeGreaterThanOrEqual(300);
+    vi.mocked(queueNightlyRuns).mockClear();
+    const response = await call("Bearer cron-secret");
+    const body = await response.json();
+    expect(Object.keys(body).at(-1)).toBe("controller");
+    const budget = vi.mocked(queueNightlyRuns).mock.calls[0][0]!.budgetMs!;
+    expect(budget).toBeGreaterThan(0);
+    expect(budget).toBeLessThanOrEqual(
+      Math.min(CONTROLLER_CRON_BUDGET_MS, maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS),
+    );
   });
 });

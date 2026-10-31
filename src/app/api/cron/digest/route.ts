@@ -6,10 +6,16 @@ import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
 import { runMonthlyReports } from "@/lib/monthly-report";
 import { runNews } from "@/lib/news/store";
+import { CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
+
+// The function's limit, declared like the other long crons; the due jobs at the end get only
+// what's left of it (debugger 10-31: the health check called this job stale for over a day).
+export const maxDuration = 300;
 
 // Vercel Cron, daily: sends this week's digest to anyone whose Monday has arrived. With
 // ?dry_run=1 it renders every digest and returns them without sending or storing.
 export async function GET(request: Request) {
+  const startedAt = Date.now();
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -51,7 +57,12 @@ export async function GET(request: Request) {
           return null;
         }),
         // A second daily chance for jobs waiting to be retried.
-        jobs: await runDueJobs(),
+        jobs: await runDueJobs({
+          budgetMs: Math.max(
+            0,
+            maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS - (Date.now() - startedAt),
+          ),
+        }),
       };
     }),
   );

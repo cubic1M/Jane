@@ -8,6 +8,8 @@ import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runAgentFollowUps } from "@/lib/agent/run";
 import { runDueJobs } from "@/lib/jobs";
 import { queueNightlyRuns } from "@/lib/controller";
+import { CONTROLLER_CRON_BUDGET_MS, CONTROLLER_RUN_RESERVE_MS } from "@/config/controller";
+import { CRON_JOBS_BUDGET_MS } from "@/config/jobs";
 import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
 import { runRetention } from "@/lib/retention";
 import { refreshKindStats } from "@/lib/learning";
@@ -31,13 +33,19 @@ import { refreshAfterRemoval } from "@/lib/import/background";
 // time (CSV accounts too, so that runs even without Plaid), and last raises deadline
 // reminders (spec step 71) from what just synced. Vercel sends
 // "Authorization: Bearer $CRON_SECRET".
+// The function's limit, declared like the other long crons. The controller runs last and gets
+// only what's left of it (debugger 10-31: it drained for up to 240 s mid-list, the request hit
+// the limit with a 504, and the health check called this job and the digest stale).
+export const maxDuration = 300;
+
 export async function GET(request: Request) {
+  const startedAt = Date.now();
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   await checkHealth();
-  return NextResponse.json(await recordRun("plaid-sync", dailyWork));
+  return NextResponse.json(await recordRun("plaid-sync", () => dailyWork(startedAt)));
 }
 
 // Tells the team if another daily job has stopped. Never stops this one.
@@ -49,14 +57,27 @@ async function checkHealth() {
   }
 }
 
-async function dailyWork() {
+// The nightly controller, with the time left before the limit (none left: it only queues, and
+// the job runner takes the runs up next).
+const controller = (startedAt: number) =>
+  queueNightlyRuns({
+    budgetMs: Math.max(
+      0,
+      Math.min(
+        CONTROLLER_CRON_BUDGET_MS,
+        maxDuration * 1000 - CONTROLLER_RUN_RESERVE_MS - (Date.now() - startedAt),
+      ),
+    ),
+  });
+
+async function dailyWork(startedAt: number) {
   if (!plaidEnabled()) {
     return {
       synced: 0,
       failed: 0,
       inactive: null,
       snapshots: await takeSnapshots(),
-      jobs: await runDueJobs(),
+      jobs: await runDueJobs({ budgetMs: CRON_JOBS_BUDGET_MS }),
       agent: await runAgentFollowUps(),
       outcomes: await refreshMerchantOutcomes(),
       retention: await runRetention(),
@@ -71,8 +92,6 @@ async function dailyWork() {
       insurance: await insuranceDaily(),
       // Spec step 134: automatic investing on new paychecks.
       autoInvest: await runAutoInvestForAll(),
-      // Spec step 142: each person's nightly controller run, through the jobs table.
-      controller: await queueNightlyRuns(),
       // Spec step 156: demo holdings revalued at the stand-in feed's prices.
       prices: await refreshDemoPrices(),
       // Spec step 159: medical charges saved to the HSA receipts vault.
@@ -85,6 +104,8 @@ async function dailyWork() {
       rollovers: await settleAllRollovers(),
       // Spec step 234: Treasury bills that matured are rolled into the next (stand-in).
       ladders: await settleAllLadders(),
+      // Spec step 142: each person's nightly controller run, through the jobs table. Last.
+      controller: await controller(startedAt),
     };
   }
 
@@ -117,7 +138,7 @@ async function dailyWork() {
     failed,
     inactive,
     snapshots: await takeSnapshots(),
-    jobs: await runDueJobs(),
+    jobs: await runDueJobs({ budgetMs: CRON_JOBS_BUDGET_MS }),
     agent: await runAgentFollowUps(),
     outcomes: await refreshMerchantOutcomes(),
     retention: await runRetention(),
@@ -129,13 +150,13 @@ async function dailyWork() {
     deadlines: await remindAllDeadlines(),
     insurance: await insuranceDaily(),
     autoInvest: await runAutoInvestForAll(),
-    // Spec step 142: each person's nightly controller run, through the jobs table.
-    controller: await queueNightlyRuns(),
     prices: await refreshDemoPrices(),
     hsaReceipts: await collectAllReceipts(),
     crypto: await syncAllCrypto(),
     automaticInvesting: await runAutomaticInvestingForAll(),
     rollovers: await settleAllRollovers(),
     ladders: await settleAllLadders(),
+    // Spec step 142: each person's nightly controller run, through the jobs table. Last.
+    controller: await controller(startedAt),
   };
 }

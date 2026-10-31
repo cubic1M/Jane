@@ -144,14 +144,32 @@ async function execute(job: Claimed, client: PrismaClient, now: Date, handlers: 
 }
 
 // Runs every job that's due, up to JOB_BATCH.
+// `budgetMs`: stop after the job that uses it up and put the ones claimed but not reached back
+// as they were, for the next runner (debugger 10-31: the daily crons ran 20 controller runs of
+// up to 25 s each with no clock, past their limit, and returned 504).
 export async function runDueJobs({
   client = defaultClient,
   now = new Date(),
   handlers = HANDLERS,
   userIds,
-}: Options & OnlyPeople = {}): Promise<{ done: number; retried: number; failed: number }> {
+  budgetMs,
+  clock = Date.now,
+}: Options & OnlyPeople & { budgetMs?: number; clock?: () => number } = {}): Promise<{
+  done: number;
+  retried: number;
+  failed: number;
+}> {
   const counts = { done: 0, retried: 0, failed: 0 };
-  for (const job of await claim(client, now, JOB_BATCH, undefined, userIds)) {
+  const started = clock();
+  const claimed = await claim(client, now, JOB_BATCH, undefined, userIds);
+  for (const [i, job] of claimed.entries()) {
+    if (budgetMs !== undefined && clock() - started >= budgetMs) {
+      await client.job.updateMany({
+        where: { id: { in: claimed.slice(i).map((j) => j.id) }, status: "running" },
+        data: { status: "queued", attempts: { decrement: 1 } },
+      });
+      break;
+    }
     counts[await execute(job, client, now, handlers)] += 1;
   }
   return counts;
