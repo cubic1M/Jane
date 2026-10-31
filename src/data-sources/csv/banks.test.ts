@@ -183,6 +183,16 @@ describe("Apple Card", () => {
     });
   });
 
+  // Debugger 10-31: "SPOTIFY P2D3F STOCKHOLM" read as "Review your Spotify Stockholm
+  // subscription", though Apple's own Merchant column says "Spotify".
+  it("names the merchant from Apple's Merchant column", () => {
+    const file = readCsvFile({
+      name: "apple.csv",
+      text: "Transaction Date,Clearing Date,Description,Merchant,Category,Type,Amount (USD),Purchased By\n09/09/2026,09/10/2026,SPOTIFY P2D3F STOCKHOLM,Spotify,Other,Purchase,16.99,Leo Example\n",
+    });
+    expect(file.ok && file.transactions.map((t) => t.merchantName)).toEqual(["Spotify"]);
+  });
+
   it("works without the Purchased By column", () => {
     const older = readCsvFile({
       name: "apple-older.csv",

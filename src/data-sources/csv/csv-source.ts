@@ -232,7 +232,7 @@ export function readCsvFile(file: CsvFile): CsvFileResult {
     date: row.date,
     amountCents: row.amountCents,
     description: row.description,
-    merchantName: normalizeMerchant(row.description)?.name ?? null,
+    merchantName: normalizeMerchant(row.merchant ?? row.description)?.name ?? null,
     categoryPrimary: null,
     categoryDetailed: null,
     pending: false,
