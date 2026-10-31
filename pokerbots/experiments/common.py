@@ -50,6 +50,9 @@ def make_bot(spec_str: str):
             if k.startswith("p."):
                 key = "ad_params" if s.split("@")[0] == "hybrid" else "params"
                 kw.setdefault(key, {})[k[2:]] = v
+            elif k.startswith("a."):    # adaptive bot's ADAPT_PARAMS
+                key = "ad_adapt" if s.split("@")[0] == "hybrid" else "adapt"
+                kw.setdefault(key, {})[k[2:]] = v
             else:
                 kw[k] = v
     if "@" in s:

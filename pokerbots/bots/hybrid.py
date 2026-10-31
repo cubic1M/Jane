@@ -21,9 +21,10 @@ from engine.bot import Bot
 class HybridBot(Bot):
     name = "hybrid"
 
-    def __init__(self, budget: str = "30m", gate: float = 0.35, ad_params: dict | None = None, **cfr_kw):
+    def __init__(self, budget: str = "30m", gate: float = 0.35, ad_params: dict | None = None,
+                 ad_adapt: dict | None = None, **cfr_kw):
         self.cfr = FullCFRBot(budget=budget, **cfr_kw)
-        self.ad = AdaptiveBot(params=ad_params)
+        self.ad = AdaptiveBot(params=ad_params, adapt=ad_adapt)
         self.gate = gate
         self.using_fallback = False
         self._hand = None
