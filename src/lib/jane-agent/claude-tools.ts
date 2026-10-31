@@ -1130,7 +1130,11 @@ async function runChatToolWork(
       return out({
         accounts: forecasts.map((f) => ({
           account: f.accountName,
-          balanceToday: money(f.startCents),
+          balanceToday: money(f.todayCents),
+          // An uploaded statement's balance, when it isn't today's: today's is walked forward.
+          ...(f.startCents !== f.todayCents || f.startOn !== input.asOf
+            ? { statementBalance: money(f.startCents), statementBalanceOn: f.startOn }
+            : {}),
           lowestPoint: money(f.lowest.balanceCents),
           lowestOn: f.lowest.date,
           goesNegative: f.lowest.balanceCents < 0,

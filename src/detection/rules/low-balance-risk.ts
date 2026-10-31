@@ -25,7 +25,7 @@ export const lowBalanceRisk: Rule = (input) =>
       evidence: {
         accountId: f.accountId,
         accountName: f.accountName,
-        balanceCents: f.startCents,
+        balanceCents: f.todayCents,
         lowestCents: f.lowest.balanceCents,
         lowestDate: f.lowest.date,
         cushionCents: LOW_BALANCE_CUSHION_CENTS,
